@@ -68,6 +68,16 @@ export class CacheService {
 }
 ```
 
+## Parsing connection URLs
+
+Redis, BullMQ and GraphQL rate limiting share the same URL parser. To parse an explicit URL without reading environment variables or loading Nest module assembly, use the connection-options entry point:
+
+```typescript
+import { parseRedisUrl } from "@nest-boot/redis/connection-options";
+
+const connection = parseRedisUrl("rediss://redis.local:6380/2");
+```
+
 ## API Reference
 
 For detailed API documentation, see the [Redis API Reference](/docs/api/redis).

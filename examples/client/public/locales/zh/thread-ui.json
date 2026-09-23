@@ -1,4 +1,8 @@
 {
+  "alertDialog": {
+    "cancel": "取消",
+    "confirm": "确认"
+  },
   "complexFilter": {
     "operators": {
       "$eq": "等于",
@@ -20,9 +24,14 @@
     "clearAll": "清除全部",
     "selectField": "选择字段",
     "selectOperator": "选择操作符",
-    "selectValue": "选择值"
+    "selectValue": "选择值",
+    "removeCondition": "删除条件",
+    "removeGroup": "删除条件组"
   },
   "dataFilter": {
+    "loading": "加载中",
+    "loadFailed": "无法加载选项",
+    "noOptions": "没有找到选项",
     "addFilter": "添加筛选",
     "removeFilter": "移除筛选",
     "empty": "空",
@@ -43,7 +52,10 @@
       "$nin": "不包含"
     },
     "minimumAriaLabel": "{{label}} 最小值",
-    "maximumAriaLabel": "{{label}} 最大值"
+    "maximumAriaLabel": "{{label}} 最大值",
+    "search": "搜索",
+    "sort": "排序",
+    "sortField": "排序字段"
   },
   "dataTable": {
     "allSelected": "已全选",
@@ -55,9 +67,7 @@
     "selectAll": "选择全部",
     "selectAllRows": "选择所有行",
     "selectAllRowsOnPage": "选择本页全部 {{count}} 行",
-    "selectAllRowsOnPage_other": "选择本页全部 {{count}} 行",
     "selectedRows": "已选择 {{count}} 行",
-    "selectedRows_other": "已选择 {{count}} 行",
     "selectRow": "选择行",
     "unselectAll": "取消全选"
   },
@@ -212,5 +222,33 @@
       "nav": "导航栏",
       "weekNumberHeader": "周数"
     }
+  },
+  "fileUpload": {
+    "title": "上传文件",
+    "browseFiles": "浏览文件",
+    "placeholder": "点击上传、拖放文件到此处或粘贴文件",
+    "removeFile": "移除 {{name}}",
+    "uploadFile": "上传 {{name}}",
+    "cancelFile": "取消上传 {{name}}",
+    "retryFile": "重新上传 {{name}}",
+    "status": {
+      "idle": "等待上传",
+      "queued": "排队中",
+      "uploading": "上传中",
+      "done": "已上传",
+      "error": "上传失败",
+      "canceled": "已取消"
+    }
+  },
+  "common": {
+    "copy": "复制"
+  },
+  "page": {
+    "back": "返回",
+    "moreActions": "更多操作"
+  },
+  "codeBlock": {
+    "copy": "复制代码",
+    "selectLanguage": "选择代码语言"
   }
 }

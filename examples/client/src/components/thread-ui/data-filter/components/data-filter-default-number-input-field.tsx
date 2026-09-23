@@ -155,6 +155,7 @@ export const DataFilterDefaultNumberInputField: FC<
   return (
     <div className="px-2 pb-2">
       <CommitNumberInput
+        ariaLabel={item.label}
         item={item}
         placeholder={item.placeholder}
         value={typeof value === "number" ? value : undefined}

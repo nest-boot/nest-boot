@@ -5,8 +5,8 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import dayjs from "dayjs";
 import { t } from "i18next";
 import { Plus } from "lucide-react";
-import { toast } from "sonner";
 import { z } from "zod";
+import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
 
 import { createAbilitySubject } from "@/lib/ability";
@@ -132,11 +132,15 @@ function AdminUsersPage() {
       setEmail("");
       setPassword("");
       await refetch();
-      toast.success(t("admin:users.create.success"));
+      toast.add({ type: "success", title: t("admin:users.create.success") });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("admin:users.create.failed"),
-      );
+      toast.add({
+        type: "error",
+        title:
+          error instanceof Error
+            ? error.message
+            : t("admin:users.create.failed"),
+      });
     }
   };
 

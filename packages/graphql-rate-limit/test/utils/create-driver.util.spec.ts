@@ -90,6 +90,22 @@ describe("createGraphQLRateLimitDriver", () => {
     expect(Redis).toHaveBeenCalledWith(expect.objectContaining(connection));
   });
 
+  it("lets explicit connection options override parsed environment values", () => {
+    process.env.REDIS_URL = "rediss://user:password@environment.redis:6380/2";
+    createGraphQLRateLimitDriver({
+      ...options,
+      connection: { host: "explicit.redis", port: 6379, db: 0 },
+    });
+    expect(Redis).toHaveBeenCalledWith({
+      host: "explicit.redis",
+      port: 6379,
+      db: 0,
+      username: "user",
+      password: "password",
+      tls: {},
+    });
+  });
+
   it("lets an explicit custom driver override Redis environment config", () => {
     process.env.REDIS_URL = "redis://redis.local";
     const driver = {

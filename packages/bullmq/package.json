@@ -82,5 +82,8 @@
       "import": "./dist/index.js"
     },
     "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@nest-boot/redis": "workspace:^"
   }
 }

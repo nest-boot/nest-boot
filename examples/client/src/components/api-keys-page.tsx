@@ -5,7 +5,6 @@ import dayjs from "dayjs";
 import { t } from "i18next";
 import { isEmpty } from "lodash";
 import { AlertTriangle, Check, Copy, KeyRound } from "lucide-react";
-import { toast } from "sonner";
 import z from "zod";
 
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
@@ -19,6 +18,7 @@ import type {
 import type { ApiKeySearch } from "@/lib/api-key-search";
 import type { PageInfo } from "@/lib/connection-search";
 import type { createAbility } from "@/lib/ability";
+import { toast } from "@/components/thread-ui/toast";
 import { createAbilitySubject } from "@/lib/ability";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Badge } from "@/components/thread-ui/badge";
@@ -170,11 +170,14 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
           setCreateDialogOpen(false);
           createForm.reset();
           await refetch();
-          toast.success(t("api-key:toast.created_success"));
+          toast.add({
+            type: "success",
+            title: t("api-key:toast.created_success"),
+          });
         }
       } catch (err) {
         if (err instanceof Error) {
-          toast.error(err.message);
+          toast.add({ type: "error", title: err.message });
         }
       }
     },
@@ -207,10 +210,13 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
         setRenameDialogOpen(false);
         setRenamingApiKey(null);
         renameForm.reset();
-        toast.success(t("api-key:toast.updated_success"));
+        toast.add({
+          type: "success",
+          title: t("api-key:toast.updated_success"),
+        });
       } catch (err) {
         if (err instanceof Error) {
-          toast.error(err.message);
+          toast.add({ type: "error", title: err.message });
         }
       }
     },
@@ -291,10 +297,10 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
       await deleteApiKey(apiKey.id);
 
       await refetch();
-      toast.success(t("api-key:toast.deleted_success"));
+      toast.add({ type: "success", title: t("api-key:toast.deleted_success") });
     } catch (err) {
       if (err instanceof Error) {
-        toast.error(err.message);
+        toast.add({ type: "error", title: err.message });
       }
     }
   };
@@ -303,16 +309,17 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
     if (!canUpdate(apiKey)) return;
     try {
       await updateApiKey(apiKey.id, { enabled: !apiKey.enabled });
-      toast.success(
-        t(
+      toast.add({
+        type: "success",
+        title: t(
           apiKey.enabled
             ? "api-key:toast.disabled_success"
             : "api-key:toast.enabled_success",
         ),
-      );
+      });
     } catch (err) {
       if (err instanceof Error) {
-        toast.error(err.message);
+        toast.add({ type: "error", title: err.message });
       }
     }
   };

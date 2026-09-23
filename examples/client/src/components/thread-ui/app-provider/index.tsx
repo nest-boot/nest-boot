@@ -1,6 +1,6 @@
 "use client";
 
-import { I18nextProvider, useTranslation } from "react-i18next";
+import { I18nextProvider } from "react-i18next";
 import type { FC, PropsWithChildren } from "react";
 import type { i18n as I18nInstance } from "i18next";
 
@@ -12,10 +12,6 @@ export type AppProviderProps = PropsWithChildren<{
   i18n: I18nInstance;
   toast?: ToastProviderProps;
 }>;
-
-export const useThreadUITranslation = () => {
-  return useTranslation("thread-ui");
-};
 
 export const AppProvider: FC<AppProviderProps> = ({
   children,

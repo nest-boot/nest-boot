@@ -2,9 +2,9 @@ import { useCallback, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { Copy } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
-import { toast } from "sonner";
 import { t } from "i18next";
 import type { WorkspaceRole } from "@/gql/graphql";
+import { toast } from "@/components/thread-ui/toast";
 import { Button } from "@/components/thread-ui/button";
 import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
 import { Input } from "@/components/thread-ui/input";
@@ -71,7 +71,7 @@ export function InviteMemberDialog({
     onSubmit: async ({ value }) => {
       const email = value.email.trim();
       if (!email) {
-        toast.error(t("member:invite.email_required"));
+        toast.add({ type: "error", title: t("member:invite.email_required") });
         return;
       }
       if (
@@ -80,7 +80,7 @@ export function InviteMemberDialog({
         value.roles.length === 0 ||
         value.roles.some((role) => !grantableRoles.includes(role))
       ) {
-        toast.error(t("member:invite.role_label"));
+        toast.add({ type: "error", title: t("member:invite.role_label") });
         return;
       }
 
@@ -105,14 +105,17 @@ export function InviteMemberDialog({
 
           try {
             await navigator.clipboard.writeText(link);
-            toast.success(t("member:invite.link_copied"));
+            toast.add({
+              type: "success",
+              title: t("member:invite.link_copied"),
+            });
           } catch {
-            toast.error(t("member:invite.copy_failed"));
+            toast.add({ type: "error", title: t("member:invite.copy_failed") });
           }
         }
       } catch (err) {
         if (err instanceof Error) {
-          toast.error(err.message);
+          toast.add({ type: "error", title: err.message });
         }
       }
     },
@@ -128,10 +131,10 @@ export function InviteMemberDialog({
   const handleCopyInviteLink = useCallback(async (link: string) => {
     try {
       await navigator.clipboard.writeText(link);
-      toast.success(t("member:invite.link_copied"));
+      toast.add({ type: "success", title: t("member:invite.link_copied") });
     } catch (err) {
       if (err instanceof Error) {
-        toast.error(err.message);
+        toast.add({ type: "error", title: err.message });
       }
     }
   }, []);

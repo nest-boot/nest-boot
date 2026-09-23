@@ -7,24 +7,24 @@ export const getDataFilterOperatorLabel = (
 ): string => {
   switch (operator) {
     case "$eq":
-      return t("thread-ui:dataFilter.operators.$eq");
+      return t("dataFilter.operators.$eq");
     case "$ne":
-      return t("thread-ui:dataFilter.operators.$ne");
+      return t("dataFilter.operators.$ne");
     case "$gt":
-      return t("thread-ui:dataFilter.operators.$gt");
+      return t("dataFilter.operators.$gt");
     case "$gte":
-      return t("thread-ui:dataFilter.operators.$gte");
+      return t("dataFilter.operators.$gte");
     case "$lt":
-      return t("thread-ui:dataFilter.operators.$lt");
+      return t("dataFilter.operators.$lt");
     case "$lte":
-      return t("thread-ui:dataFilter.operators.$lte");
+      return t("dataFilter.operators.$lte");
     case "$between":
-      return t("thread-ui:dataFilter.operators.$between");
+      return t("dataFilter.operators.$between");
     case "$fulltext":
-      return t("thread-ui:dataFilter.operators.$fulltext");
+      return t("dataFilter.operators.$fulltext");
     case "$in":
-      return t("thread-ui:dataFilter.operators.$in");
+      return t("dataFilter.operators.$in");
     case "$nin":
-      return t("thread-ui:dataFilter.operators.$nin");
+      return t("dataFilter.operators.$nin");
   }
 };

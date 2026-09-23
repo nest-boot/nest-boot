@@ -85,32 +85,30 @@ const buildDayPickerLocale = (
   t: TFunction,
   language?: string,
 ): Partial<DayPickerLocale> => {
-  const localeCode = t("thread-ui:calendar.code", {
+  const localeCode = t("calendar.code", {
     defaultValue: language ?? "en-US",
   });
-  const eras = getWidthResource(
-    t("thread-ui:calendar.eras", { returnObjects: true }),
-  );
+  const eras = getWidthResource(t("calendar.eras", { returnObjects: true }));
   const quarters = getWidthResource(
-    t("thread-ui:calendar.quarters", { returnObjects: true }),
+    t("calendar.quarters", { returnObjects: true }),
   );
   const months = getWidthResource(
-    t("thread-ui:calendar.months", { returnObjects: true }),
+    t("calendar.months", { returnObjects: true }),
   );
   const weekdays = getWidthResource(
-    t("thread-ui:calendar.weekdays", { returnObjects: true }),
+    t("calendar.weekdays", { returnObjects: true }),
   );
   const dayPeriods = getDayPeriodResource(
-    t("thread-ui:calendar.dayPeriods", { returnObjects: true }),
+    t("calendar.dayPeriods", { returnObjects: true }),
   );
   const formattingDayPeriods = getDayPeriodResource(
-    t("thread-ui:calendar.formattingDayPeriods", { returnObjects: true }),
+    t("calendar.formattingDayPeriods", { returnObjects: true }),
   );
   const weekStartsOn = Number(
-    t("thread-ui:calendar.options.weekStartsOn", { defaultValue: 0 }),
+    t("calendar.options.weekStartsOn", { defaultValue: 0 }),
   ) as DayPickerLocaleOptions["weekStartsOn"];
   const firstWeekContainsDate = Number(
-    t("thread-ui:calendar.options.firstWeekContainsDate", { defaultValue: 1 }),
+    t("calendar.options.firstWeekContainsDate", { defaultValue: 1 }),
   ) as DayPickerLocaleOptions["firstWeekContainsDate"];
   const wideMonths = months.wide ?? [];
   const wideWeekdays = weekdays.wide ?? [];
@@ -122,17 +120,17 @@ const buildDayPickerLocale = (
         let label = formatDateLabel(date, localeCode);
 
         if (modifiers.today) {
-          label = t("thread-ui:calendar.labels.today", { label });
+          label = t("calendar.labels.today", { label });
         }
 
         if (modifiers.selected) {
-          label = t("thread-ui:calendar.labels.selected", { label });
+          label = t("calendar.labels.selected", { label });
         }
 
         return label;
       },
       labelGrid: (date) =>
-        t("thread-ui:calendar.labels.grid", {
+        t("calendar.labels.grid", {
           month: wideMonths[date.getMonth()] ?? String(date.getMonth() + 1),
           year: date.getFullYear(),
         }),
@@ -140,25 +138,25 @@ const buildDayPickerLocale = (
         let label = formatDateLabel(date, localeCode);
 
         if (modifiers?.today) {
-          label = t("thread-ui:calendar.labels.today", { label });
+          label = t("calendar.labels.today", { label });
         }
 
         return label;
       },
-      labelMonthDropdown: t("thread-ui:calendar.labels.monthDropdown"),
-      labelNav: t("thread-ui:calendar.labels.nav"),
-      labelNext: t("thread-ui:calendar.labels.next"),
-      labelPrevious: t("thread-ui:calendar.labels.previous"),
+      labelMonthDropdown: t("calendar.labels.monthDropdown"),
+      labelNav: t("calendar.labels.nav"),
+      labelNext: t("calendar.labels.next"),
+      labelPrevious: t("calendar.labels.previous"),
       labelWeekday: (date) =>
         wideWeekdays[date.getDay()] ?? String(date.getDay()),
       labelWeekNumber: (weekNumber) =>
-        t("thread-ui:calendar.labels.weekNumber", { weekNumber }),
-      labelWeekNumberHeader: t("thread-ui:calendar.labels.weekNumberHeader"),
-      labelYearDropdown: t("thread-ui:calendar.labels.yearDropdown"),
+        t("calendar.labels.weekNumber", { weekNumber }),
+      labelWeekNumberHeader: t("calendar.labels.weekNumberHeader"),
+      labelYearDropdown: t("calendar.labels.yearDropdown"),
     },
     localize: {
       ordinalNumber: (value, options) =>
-        t("thread-ui:calendar.ordinalNumber", {
+        t("calendar.ordinalNumber", {
           number: Number(value),
           unit: options?.unit,
         }),

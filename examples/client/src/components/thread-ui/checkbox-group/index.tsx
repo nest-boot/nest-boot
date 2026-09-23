@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckboxGroup as CheckboxGroupPrimitive } from "@base-ui/react/checkbox-group";
+import { useId } from "react";
 import type {
   CheckboxGroupChangeEventDetails,
   CheckboxGroupProps as CheckboxGroupPrimitiveProps,
@@ -73,13 +74,17 @@ export function CheckboxGroupItem({
   children,
   description,
   disabled,
+  id: idProp,
   ...props
 }: CheckboxGroupItemProps) {
+  const generatedId = useId();
+  const id = idProp ?? generatedId;
+
   return (
     <Field data-disabled={disabled} orientation="horizontal">
-      <Checkbox disabled={disabled} {...props} />
+      <Checkbox disabled={disabled} id={id} {...props} />
       <FieldContent>
-        <FieldLabel>{children}</FieldLabel>
+        <FieldLabel htmlFor={id}>{children}</FieldLabel>
         {description && <FieldDescription>{description}</FieldDescription>}
       </FieldContent>
     </Field>

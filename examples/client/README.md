@@ -4,7 +4,8 @@ TanStack Start client for the Nest Boot full-stack example. It uses Apollo
 Client and GraphQL for browser authentication and application APIs, including
 social and generic OAuth authorization flows. Better Auth remains an internal
 server implementation detail. The UI uses shadcn, internationalization, and
-Playwright end-to-end tests.
+Playwright end-to-end tests. The shadcn components use the Base UI Rhea style
+(`base-rhea`) with the neutral color palette and Lucide icons.
 
 Email/password flows use GraphQL end to end. The example includes persistent
 and browser-session sign-in, enumeration-safe password recovery, reset-token
@@ -26,6 +27,23 @@ pnpm --filter @nest-boot/example-client dev
 
 The client listens on `http://localhost:3000` and proxies `/api` requests to
 `http://localhost:4000`.
+
+## UI components
+
+`components.json` selects the shadcn `base-rhea` style and the
+[Thread UI registry](https://thread-ui.vercel.app/r/registry.json). Components
+are checked into `src/components/ui` and `src/components/thread-ui`; Thread UI
+translations are in `public/locales/{en,zh}/thread-ui.json`.
+
+Use `toast.add({ type: "success", title: "..." })` from
+`@/components/thread-ui/toast` for notifications. `AppProvider` mounts the
+matching Base UI toaster. Keep `i18next` as a runtime dependency and
+`react-day-picker` at the version required by Thread UI's calendar registry.
+
+When refreshing registry components, preserve the alert dialog `data-testid`
+attributes and checkbox group option `testId` support used by the example's
+end-to-end tests. Keep the dialog content's viewport height limit and vertical
+scrolling so long permission forms remain usable on smaller screens.
 
 ## Generated GraphQL types
 

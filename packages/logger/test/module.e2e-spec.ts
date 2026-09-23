@@ -115,6 +115,134 @@ describe("LoggerModule - e2e", () => {
     expect(records.every((record) => !("time" in record))).toBe(true);
   });
 
+  it.each(["fallback", "request"])(
+    "preserves Nest error arguments in the %s logger",
+    async (mode) => {
+      const output: string[] = [];
+      const logger = await createConfiguredLogger({
+        stream: createOutputStream(output),
+        timestamp: false,
+      });
+      const error = new Error("operation failed");
+      const stack = error.stack;
+      if (!stack) throw new Error("Expected the test Error to have a stack");
+      const logErrors = () => {
+        logger.error("explicit stack", stack, "OrdersService");
+        logger.error("stack only", stack);
+        logger.error("context only", "OrdersService");
+        logger.error(
+          "structured error",
+          { err: error, orderId: "42" },
+          "OrdersService",
+        );
+        logger.error(error, { orderId: "42" }, "OrdersService");
+        logger.error("error parameter", error, "OrdersService");
+        logger.error("missing stack", undefined, "OrdersService");
+        logger.error("opaque stack", "trace text", "OrdersService");
+        logger.error("trailing stack", "OrdersService", stack);
+        logger.error(
+          "metadata and stack",
+          { orderId: "42" },
+          stack,
+          "OrdersService",
+        );
+        logger.error(
+          "metadata and opaque stack",
+          { orderId: "42" },
+          "trace text",
+          "OrdersService",
+        );
+        logger.error(
+          "stack before metadata",
+          stack,
+          { orderId: "42" },
+          "OrdersService",
+        );
+      };
+      if (mode === "request") {
+        await RequestContext.run(
+          new RequestContext({ type: "queue" }),
+          logErrors,
+        );
+      } else {
+        logErrors();
+      }
+
+      const records = parseRecords(output);
+      const serializedError = expect.objectContaining({
+        message: error.message,
+        stack,
+      });
+      expect(records).toEqual([
+        expect.objectContaining({
+          msg: "explicit stack",
+          stack,
+          context: "OrdersService",
+        }),
+        expect.objectContaining({
+          msg: "stack only",
+          stack,
+          context: ConfiguredLoggerConsumer.name,
+        }),
+        expect.objectContaining({
+          msg: "context only",
+          context: "OrdersService",
+        }),
+        expect.objectContaining({
+          msg: "structured error",
+          err: serializedError,
+          orderId: "42",
+          context: "OrdersService",
+        }),
+        expect.objectContaining({
+          msg: error.message,
+          err: serializedError,
+          orderId: "42",
+          context: "OrdersService",
+        }),
+        expect.objectContaining({
+          msg: "error parameter",
+          err: serializedError,
+          context: "OrdersService",
+        }),
+        expect.objectContaining({
+          msg: "missing stack",
+          context: "OrdersService",
+        }),
+        expect.objectContaining({
+          msg: "opaque stack",
+          stack: "trace text",
+          context: "OrdersService",
+        }),
+        expect.objectContaining({
+          msg: "trailing stack",
+          stack,
+          context: "OrdersService",
+        }),
+        expect.objectContaining({
+          msg: "metadata and stack",
+          orderId: "42",
+          stack,
+          context: "OrdersService",
+        }),
+        expect.objectContaining({
+          msg: "metadata and opaque stack",
+          orderId: "42",
+          stack: "trace text",
+          context: "OrdersService",
+        }),
+        expect.objectContaining({
+          msg: "stack before metadata",
+          orderId: "42",
+          stack,
+          context: "OrdersService",
+        }),
+      ]);
+      expect(records[2]).not.toHaveProperty("stack");
+      expect(records[6]).not.toHaveProperty("stack");
+    },
+  );
+
   it("should honor disabled logging outside HTTP request contexts", async () => {
     const output: string[] = [];
     const logger = await createConfiguredLogger({

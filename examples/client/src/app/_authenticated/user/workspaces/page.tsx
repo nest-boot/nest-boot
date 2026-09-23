@@ -10,7 +10,7 @@ import dayjs from "dayjs";
 import { t } from "i18next";
 import { ArrowRight, Check, Plus, X } from "lucide-react";
 import { pick } from "lodash";
-import { toast } from "sonner";
+import { toast } from "@/components/thread-ui/toast";
 
 import { Link } from "@/components/link";
 import { DataTable } from "@/components/thread-ui/data-table";
@@ -177,13 +177,18 @@ function UserWorkspacesComponent() {
     try {
       await acceptInvitation({ variables: { id: invitationId } });
       await refetch();
-      toast.success(t("user:workspaces.invitations.toast.accepted"));
+      toast.add({
+        type: "success",
+        title: t("user:workspaces.invitations.toast.accepted"),
+      });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("user:workspaces.invitations.toast.accept_failed"),
-      );
+      toast.add({
+        type: "error",
+        title:
+          error instanceof Error
+            ? error.message
+            : t("user:workspaces.invitations.toast.accept_failed"),
+      });
     } finally {
       setAcceptingInvitationId(null);
     }
@@ -195,13 +200,18 @@ function UserWorkspacesComponent() {
     try {
       await rejectInvitation({ variables: { id: invitationId } });
       await refetch();
-      toast.success(t("user:workspaces.invitations.toast.rejected"));
+      toast.add({
+        type: "success",
+        title: t("user:workspaces.invitations.toast.rejected"),
+      });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("user:workspaces.invitations.toast.reject_failed"),
-      );
+      toast.add({
+        type: "error",
+        title:
+          error instanceof Error
+            ? error.message
+            : t("user:workspaces.invitations.toast.reject_failed"),
+      });
     } finally {
       setRejectingInvitationId(null);
     }

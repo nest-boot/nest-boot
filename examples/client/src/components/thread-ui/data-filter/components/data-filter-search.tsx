@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { FC } from "react";
 import {
   InputGroup,
@@ -10,6 +11,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 
 export interface DataFilterSearchProps {
+  "aria-label"?: string;
   placeholder?: string;
 }
 
@@ -37,10 +39,12 @@ const createSearchDraftState = (
 
 export const DataFilterSearch: FC<DataFilterSearchViewProps> = ({
   loading,
+  "aria-label": ariaLabel,
   placeholder,
   value,
   onChange,
 }) => {
+  const { t } = useTranslation("thread-ui");
   const [draftState, setDraftState] = useState(() =>
     createSearchDraftState(value),
   );
@@ -67,6 +71,7 @@ export const DataFilterSearch: FC<DataFilterSearchViewProps> = ({
     >
       <InputGroup>
         <InputGroupInput
+          aria-label={ariaLabel ?? t("dataFilter.search", "Search")}
           placeholder={placeholder}
           value={query}
           onBlur={emitChange}

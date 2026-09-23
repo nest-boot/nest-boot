@@ -1,9 +1,9 @@
 import { useForm } from "@tanstack/react-form";
-import { toast } from "sonner";
 import { z } from "zod";
 
 import { useMutation } from "@apollo/client/react";
 import { useNavigate } from "@tanstack/react-router";
+import { toast } from "@/components/thread-ui/toast";
 import { Button } from "@/components/thread-ui/button";
 import { Input } from "@/components/thread-ui/input";
 import { graphql } from "@/gql";
@@ -49,7 +49,7 @@ export function CreateWorkspaceForm() {
         });
 
         if (result.data?.createWorkspace) {
-          toast.success("工作空间创建成功！");
+          toast.add({ type: "success", title: "工作空间创建成功！" });
           // 跳转到新创建的工作空间
           navigate({
             to: "/workspaces/$workspaceId",
@@ -59,7 +59,7 @@ export function CreateWorkspaceForm() {
         }
       } catch (error) {
         console.error("创建工作空间失败:", error);
-        toast.error("创建工作空间失败，请稍后重试");
+        toast.add({ type: "error", title: "创建工作空间失败，请稍后重试" });
       }
     },
   });

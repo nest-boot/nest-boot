@@ -1,4 +1,4 @@
-import { omitBy } from "lodash";
+import { omitBy } from "lodash-es";
 
 import { isEmpty } from "./is-empty";
 
