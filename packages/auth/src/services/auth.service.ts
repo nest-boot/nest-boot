@@ -5,6 +5,10 @@ import { AUTH_TOKEN } from "../auth.constants.js";
 import { AuthMiddleware } from "../auth.middleware.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
+import {
+  adaptBetterAuth,
+  type BetterAuthAdapter,
+} from "../infrastructure/better-auth-adapter.js";
 import type { AuthAccessToken } from "../interfaces/auth-access-token.interface.js";
 import type { AuthAccount } from "../interfaces/auth-account.interface.js";
 import type { AuthAccountInfo } from "../interfaces/auth-account-info.interface.js";
@@ -39,124 +43,6 @@ import { applyAuthResponseCookies } from "../utils/apply-auth-response-cookies.u
 import { SessionService } from "./session.service.js";
 import { UserService } from "./user.service.js";
 
-interface InternalAuthResponse<Result> {
-  headers: Headers;
-  response: Result;
-}
-
-interface StatusResult {
-  status: boolean;
-}
-
-interface InternalAuth {
-  $context: Promise<{
-    socialProviders: { id: string; name: string }[];
-  }>;
-  api: {
-    accountInfo(options: {
-      query: AuthAccountSelector;
-      headers: HeadersInit;
-    }): Promise<AuthAccountInfo>;
-    getAccessToken(options: {
-      body: AuthAccountSelector;
-      headers: HeadersInit;
-    }): Promise<{
-      accessToken: string;
-      accessTokenExpiresAt?: Date;
-      scopes: string[];
-      idToken?: string;
-    }>;
-    refreshToken(options: {
-      body: AuthAccountSelector;
-      headers: HeadersInit;
-    }): Promise<{
-      accessToken?: string;
-      refreshToken: string;
-      accessTokenExpiresAt?: Date;
-      refreshTokenExpiresAt?: Date | null;
-      scope?: string | null;
-      idToken?: string | null;
-      providerId: string;
-      accountId: string;
-    }>;
-    signUpEmail(options: {
-      body: SignUpOptions;
-      headers: HeadersInit;
-      returnHeaders: true;
-    }): Promise<InternalAuthResponse<SignUpResult>>;
-    signInEmail(options: {
-      body: SignInOptions;
-      headers: HeadersInit;
-      returnHeaders: true;
-    }): Promise<
-      InternalAuthResponse<Omit<SignInResult, "url"> & { url?: string }>
-    >;
-    signInSocial(options: {
-      body: SignInSocialOptions;
-      headers: HeadersInit;
-      returnHeaders: true;
-    }): Promise<
-      InternalAuthResponse<{
-        redirect: boolean;
-        url?: string;
-        token?: string;
-        user?: AuthUser;
-      }>
-    >;
-    signOut(options: {
-      headers: HeadersInit;
-      returnHeaders: true;
-    }): Promise<InternalAuthResponse<{ success: boolean }>>;
-    sendVerificationEmail(options: {
-      body: SendVerificationEmailOptions;
-    }): Promise<StatusResult>;
-    requestPasswordReset(options: {
-      body: RequestPasswordResetOptions;
-    }): Promise<RequestPasswordResetResult>;
-    resetPassword(options: {
-      body: ResetPasswordOptions;
-    }): Promise<StatusResult>;
-    verifyPassword(options: {
-      body: { password: string };
-      headers: HeadersInit;
-    }): Promise<StatusResult>;
-    updateUser(options: {
-      body: UpdateAuthUserOptions;
-      headers: HeadersInit;
-      returnHeaders: true;
-    }): Promise<InternalAuthResponse<StatusResult>>;
-    changeEmail(options: {
-      body: ChangeAuthEmailOptions;
-      headers: HeadersInit;
-      returnHeaders: true;
-    }): Promise<InternalAuthResponse<StatusResult>>;
-    changePassword(options: {
-      body: ChangeAuthPasswordOptions;
-      headers: HeadersInit;
-      returnHeaders: true;
-    }): Promise<InternalAuthResponse<{ token: string | null }>>;
-    setPassword(options: {
-      body: { newPassword: string };
-      headers: HeadersInit;
-    }): Promise<StatusResult>;
-    deleteUser(options: {
-      body: DeleteAuthUserOptions;
-      headers: HeadersInit;
-      returnHeaders: true;
-    }): Promise<InternalAuthResponse<DeleteAuthUserResult>>;
-    listUserAccounts(options: { headers: HeadersInit }): Promise<AuthAccount[]>;
-    linkSocialAccount(options: {
-      body: LinkAuthSocialAccountOptions;
-      headers: HeadersInit;
-      returnHeaders: true;
-    }): Promise<InternalAuthResponse<LinkAuthSocialAccountResult>>;
-    unlinkAccount(options: {
-      body: UnlinkAuthAccountOptions;
-      headers: HeadersInit;
-    }): Promise<StatusResult>;
-  };
-}
-
 /** Application-facing user and account authentication operations. */
 @Injectable()
 export class AuthService {
@@ -170,10 +56,10 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly sessionService: SessionService,
   ) {
-    this.auth = auth as InternalAuth;
+    this.auth = adaptBetterAuth(auth);
   }
 
-  private readonly auth: InternalAuth;
+  private readonly auth: BetterAuthAdapter;
 
   /** Starts impersonation and adopts its identity before returning application fields. */
   async impersonateUser(id: string): Promise<User> {

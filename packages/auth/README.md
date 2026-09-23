@@ -607,3 +607,17 @@ Authentication and successful-use tracking are internal infrastructure responsib
 `getUserConnection`, `getSessionConnectionByUser`, and the member/invitation
 connection methods instead. `listCurrentUserSessions` remains an internal
 credential-hydration helper for session revocation, not a GraphQL listing API.
+
+## Internal BetterAuth integration
+
+`AuthModule` owns Nest provider registration and HTTP middleware wiring.
+`infrastructure/create-auth-instance.ts` validates options, resolves environment/default
+precedence with the existing config helpers, and constructs the BetterAuth instance.
+`infrastructure/better-auth-adapter.ts` derives the auth/session API surface from that
+factory's upstream type and owns the untyped injection boundary. Update this boundary
+when changing the BetterAuth integration instead of adding service-local API declarations.
+
+Application services retain their public options/results, identity and transaction rules.
+They normalize upstream results and use `applyAuthResponseCookies` to forward response
+cookies; session cookie creation remains in `SessionService`. Contextual service providers
+continue to own request execution and transaction boundaries.

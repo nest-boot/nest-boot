@@ -382,6 +382,27 @@ describe("AuthModule", () => {
     ]);
   });
 
+  it("preserves explicit upstream options ahead of environment defaults", () => {
+    process.env.APP_NAME = "Environment app";
+    process.env.AUTH_URL = "https://environment.example.com";
+    const options = {
+      secret,
+      appName: "Configured app",
+      baseURL: "https://configured.example.com",
+      basePath: "/custom-auth",
+      session: { expiresIn: 3600, updateAge: 0 },
+      trustedOrigins: ["https://client.example.com"],
+    };
+    getAuthProvider().useFactory(options, { em: {} });
+    expect(mockBetterAuth).toHaveBeenCalledWith(
+      expect.objectContaining(options),
+    );
+    expect(mockBetterAuth.mock.calls[0]?.[0].session).toBe(options.session);
+    expect(mockBetterAuth.mock.calls[0]?.[0].trustedOrigins).toBe(
+      options.trustedOrigins,
+    );
+  });
+
   it("preserves hyphenated lifecycle roles in the auth adapter configuration", () => {
     const authProvider = getAuthProvider();
     authProvider.useFactory(
