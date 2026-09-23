@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type { TSESTree } from "@typescript-eslint/utils";
 import type { SourceCode } from "@typescript-eslint/utils/ts-eslint";
 import * as ts from "typescript";
@@ -60,12 +62,14 @@ export function reexportedImportName(
           undefined,
           ts.ModuleKind.ESNext,
         ).resolvedModule;
-        const file =
-          resolved && program.getSourceFile(resolved.resolvedFileName);
-        const moduleSymbol = file && checker.getSymbolAtLocation(file);
-        if (moduleSymbol) {
-          for (const exported of checker.getExportsOfModule(moduleSymbol)) {
-            exports.set(unalias(exported), exported.name);
+        for (const file of resolved
+          ? moduleSourceFiles(program, resolved.resolvedFileName)
+          : []) {
+          const moduleSymbol = checker.getSymbolAtLocation(file);
+          if (moduleSymbol) {
+            for (const exported of checker.getExportsOfModule(moduleSymbol)) {
+              exports.set(unalias(exported), exported.name);
+            }
           }
         }
         cache.exports.set(exportKey, exports);
@@ -79,4 +83,45 @@ export function reexportedImportName(
   }
   names.set(key, null);
   return null;
+}
+
+// A workspace can import its own source while its public entry point resolves
+// to dist/*.d.ts. Use build source maps to locate that exact source entry point;
+// do not guess package identity from a filename or accept same-name functions.
+function moduleSourceFiles(
+  program: ts.Program,
+  filename: string,
+): ts.SourceFile[] {
+  const files = new Set<ts.SourceFile>();
+  const declaration = program.getSourceFile(filename);
+  if (declaration) files.add(declaration);
+  if (!/\.d\.[cm]?ts$/.test(filename)) return [...files];
+  for (const mapFile of [
+    filename + ".map",
+    filename.replace(/\.d\.([cm]?)ts$/, ".$1js.map"),
+  ]) {
+    const content = ts.sys.readFile(mapFile);
+    if (!content) continue;
+    try {
+      const map = JSON.parse(content) as {
+        sourceRoot?: unknown;
+        sources?: unknown;
+      } | null;
+      if (!map || !Array.isArray(map.sources)) continue;
+      for (const source of map.sources) {
+        if (typeof source !== "string") continue;
+        const file = program.getSourceFile(
+          path.resolve(
+            path.dirname(mapFile),
+            typeof map.sourceRoot === "string" ? map.sourceRoot : "",
+            source,
+          ),
+        );
+        if (file) files.add(file);
+      }
+    } catch {
+      // An unavailable or malformed source map cannot establish an origin.
+    }
+  }
+  return [...files];
 }

@@ -606,3 +606,20 @@ it.each([
     false,
   );
 });
+
+it.each([
+  ["mikro-orm-crypt", "EncryptedProperty"],
+  ["mikro-orm-hash", "HashedProperty"],
+])(
+  "preserves %s decorators imported from workspace source",
+  (packageName, decorator) => {
+    const code = `import { Entity } from "@mikro-orm/decorators/legacy";
+import { t } from "@mikro-orm/core";
+import { ${decorator} as Secret } from "../${packageName}/src/index.js";
+@Entity() class Thing { @Secret({ type: t.string }) name!: string; }`;
+    const result = linter.verifyAndFix(code, config, { filename });
+    expect(result.output).toBe(code);
+    expect(result.messages).toEqual([]);
+    expect(compileDiagnostics(result.output)).toEqual([]);
+  },
+);
