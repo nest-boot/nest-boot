@@ -153,6 +153,7 @@ export function importedBindingName(
   for (const definition of variable.defs) {
     if (
       !namespaceMember &&
+      node === identifier &&
       definition.type === Scope.DefinitionType.Variable &&
       definition.parent.kind === "const" &&
       definition.node.id.type === AST_NODE_TYPES.ObjectPattern &&
@@ -192,7 +193,9 @@ export function importedBindingName(
                   : null;
             if (!key) break;
             if (key === name)
-              return importedBindingName(source, modules, entry.value);
+              return entry.value.type === AST_NODE_TYPES.MemberExpression
+                ? importedBindingName(source, modules, entry.value)
+                : null;
           }
         }
       }
