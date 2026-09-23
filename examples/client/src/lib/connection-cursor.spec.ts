@@ -46,4 +46,13 @@ describe("browser connection cursor", () => {
       'missing the "createdAt" sort field',
     );
   });
+
+  it.each([undefined, null])(
+    "matches the server's ID-only cursor without ordering (%s)",
+    (orderField) => {
+      expect(createConnectionCursor({ id: "123" }, orderField)).toBe(
+        new Cursor({ id: "123" }).toString(),
+      );
+    },
+  );
 });

@@ -80,7 +80,9 @@ API-key pages also demonstrate two hooks for list/detail navigation:
   data is discarded; unavailable storage falls back to memory for that tab.
 - `usePageNavigation({ key, searchSchema, record })` reads those
   conditions and calculates the current cursor from the live record's ID and
-  sort value. The connection search schema supplies the default `orderBy`;
+  sort value. Without `orderBy` (or with `null`), the server defaults to ID
+  ascending and the cursor contains only the ID. When a list applies its own
+  default ordering, its search schema must normalize that `orderBy`;
   GraphQL order names map to camelCase record fields (`CREATED_AT` to `createdAt`).
   Include each supported sort field in the detail query; explicit `null` values
   are supported, while a missing field raises an error instead of an incorrect

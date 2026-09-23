@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 import { usePageSearch } from "./use-page-search";
 import { usePageNavigation } from "./use-page-navigation";
 import type { ReactNode } from "react";
@@ -43,6 +44,74 @@ afterEach(() => {
 });
 
 describe("usePageNavigation", () => {
+  it("accepts a schema without an orderBy property on direct entry", () => {
+    const searchSchema = z.object({ first: z.number().default(10) });
+    const { result } = renderHook(
+      () =>
+        usePageNavigation({
+          key: ["id-only"],
+          searchSchema,
+          record: { id: "B" },
+        }),
+      { wrapper },
+    );
+    const cursor = btoa(JSON.stringify({ id: "B" }));
+    expect(result.current.currentCursor).toBe(cursor);
+    expect(result.current.previousSearch).toEqual({ last: 1, before: cursor });
+    expect(result.current.nextSearch).toEqual({ first: 1, after: cursor });
+    expect(result.current.search).toEqual({ first: 10 });
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it.each([undefined, null])(
+    "retains filters and return pagination when saved ordering is %s",
+    (orderBy) => {
+      const searchSchema = z.object({
+        first: z.number().default(10),
+        after: z.string().optional(),
+        query: z.string().optional(),
+        orderBy: z.object({ field: z.string() }).nullish(),
+      });
+      renderHook(
+        () =>
+          usePageSearch({
+            key: ["id-only"],
+            searchSchema,
+            search: { first: 5, after: "old", query: "example", orderBy },
+          }),
+        { wrapper },
+      );
+      const { result } = renderHook(
+        () =>
+          usePageNavigation({
+            key: ["id-only"],
+            searchSchema,
+            record: { id: "B" },
+          }),
+        { wrapper },
+      );
+      const cursor = btoa(JSON.stringify({ id: "B" }));
+      expect(result.current.previousSearch).toEqual({
+        query: "example",
+        orderBy,
+        last: 1,
+        before: cursor,
+      });
+      expect(result.current.nextSearch).toEqual({
+        query: "example",
+        orderBy,
+        first: 1,
+        after: cursor,
+      });
+      expect(result.current.getReturnSearch("previous")).toEqual({
+        query: "example",
+        orderBy,
+        first: 5,
+        after: "previous",
+      });
+    },
+  );
+
   it.each([
     { first: 5, after: "old" },
     { last: 5, before: "old" },

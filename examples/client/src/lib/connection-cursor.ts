@@ -1,10 +1,11 @@
 import { camelCase, get } from "lodash";
 
-/** Uses GraphQL order enum names (e.g. CREATED_AT) and camelCase record fields. */
+/** Uses ID alone without ordering; otherwise maps GraphQL enums to camelCase fields. */
 export function createConnectionCursor<Record extends { id: string }>(
   record: Record,
-  orderField: string,
+  orderField?: string | null,
 ): string {
+  if (orderField == null) return encodeConnectionCursor({ id: record.id });
   const field = camelCase(orderField);
   const value: unknown = get(record, field);
   if (value === undefined) {

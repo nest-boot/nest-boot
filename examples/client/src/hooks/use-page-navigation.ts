@@ -5,7 +5,7 @@ import type { PageKey } from "./use-page-search";
 import { createConnectionCursor } from "@/lib/connection-cursor";
 
 interface CursorPageSearch {
-  orderBy: { field: string };
+  orderBy?: { field: string } | null;
   first?: number;
   last?: number;
   after?: string;
@@ -17,9 +17,9 @@ interface PageNavigationOptions<
   Record extends { id: string },
 > {
   key: PageKey;
-  /** Must accept {} and provide a default orderBy, including on stored searches. */
+  /** Must accept {} and normalize any client-side default ordering. */
   searchSchema: Schema;
-  /** Must include the id and the camelCase field selected by orderBy.field. */
+  /** Must include the id and, when ordered, the field selected by orderBy.field. */
   record: Record;
 }
 
@@ -33,7 +33,7 @@ export function usePageNavigation<
     () => savedSearch ?? searchSchema.parse({}),
     [savedSearch, searchSchema],
   );
-  const currentCursor = createConnectionCursor(record, search.orderBy.field);
+  const currentCursor = createConnectionCursor(record, search.orderBy?.field);
   const { first, last, after: _after, before: _before, ...conditions } = search;
 
   return {
