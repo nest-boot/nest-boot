@@ -2365,15 +2365,6 @@ export type LeaveWorkspaceFromSettingsRouteMutation = {
   leaveWorkspace: { __typename?: "LeaveWorkspacePayload"; memberId: string };
 };
 
-export type CreateWorkspaceFromCreateWorkspaceFormMutationVariables = Exact<{
-  input: CreateWorkspaceInput;
-}>;
-
-export type CreateWorkspaceFromCreateWorkspaceFormMutation = {
-  __typename?: "Mutation";
-  createWorkspace: { __typename?: "CreateWorkspacePayload"; id: string };
-};
-
 export type CreateWorkspaceFromCreateWorkspaceRouteMutationVariables = Exact<{
   input: CreateWorkspaceInput;
 }>;
@@ -7349,60 +7340,6 @@ export const LeaveWorkspaceFromSettingsRouteDocument = {
 } as unknown as DocumentNode<
   LeaveWorkspaceFromSettingsRouteMutation,
   LeaveWorkspaceFromSettingsRouteMutationVariables
->;
-export const CreateWorkspaceFromCreateWorkspaceFormDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "mutation",
-      name: { kind: "Name", value: "createWorkspaceFromCreateWorkspaceForm" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "input" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "CreateWorkspaceInput" },
-            },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "createWorkspace" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "input" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "input" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  CreateWorkspaceFromCreateWorkspaceFormMutation,
-  CreateWorkspaceFromCreateWorkspaceFormMutationVariables
 >;
 export const CreateWorkspaceFromCreateWorkspaceRouteDocument = {
   kind: "Document",

@@ -59,6 +59,16 @@ Use `Page variant="compact"` for form pages, with full-width `PageLayoutSection`
 elements so cards stay stacked within the compact page.
 Use theme color tokens from `src/styles.css` in application code.
 
+Application JSX also rejects native form controls and tables in favor of the
+existing components, and uses Thread UI's form controls and buttons instead of
+importing their lower-level shadcn counterparts. The local `client-ui/card-structure`
+rule checks Card section nesting, title/description placement, form field
+placement, and explicit submit buttons. It understands import aliases,
+namespaces, render props, and nested cards; dialogs form a separate boundary.
+Reusable components may return Card sections without a local Card wrapper.
+Inline list actions remain in `CardContent`; deciding whether an `onClick`
+action applies to a row or the whole card still requires review.
+
 The topbar's user row links to the profile. Its Language and Theme submenus
 persist preferences in the browser, with Chinese/English and light/dark/system
 options. Use `useTranslation` in rendered components so text updates when the

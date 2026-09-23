@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { Copy } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
@@ -8,6 +8,7 @@ import { toast } from "@/components/thread-ui/toast";
 import { Button } from "@/components/thread-ui/button";
 import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
 import { Input } from "@/components/thread-ui/input";
+import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,7 @@ export function InviteMemberDialog({
   onSuccess?: () => void | Promise<void>;
 }) {
   const { t } = useTranslation();
+  const formId = useId();
   const [inviteLinkOpen, setInviteLinkOpen] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
   const {
@@ -146,100 +148,101 @@ export function InviteMemberDialog({
   return (
     <>
       <Dialog open={inviteOpen} onOpenChange={handleInviteOpenChange}>
-        <DialogContent
-          className="max-w-md"
-          data-testid="workspace-invite-dialog"
-        >
+        <DialogContent data-testid="workspace-invite-dialog">
           <DialogHeader>
             <DialogTitle>{t("member:invite.title")}</DialogTitle>
           </DialogHeader>
           <form
+            id={formId}
             onSubmit={(e) => {
               e.preventDefault();
               e.stopPropagation();
               inviteForm.handleSubmit();
             }}
           >
-            <div className="space-y-4">
-              <div className="bg-muted text-muted-foreground rounded-lg p-4 text-sm">
-                <ul className="list-disc space-y-1 pl-5">
-                  <li>{t("member:invite.description")}</li>
-                  <li>{t("member:invite.link_copied")}</li>
-                  <li>{t("member:invite.link_user_join")}</li>
-                  <li>{t("member:invite.link_expires")}</li>
-                </ul>
-              </div>
+            <FormLayout>
+              <FormLayoutItem>
+                <div className="bg-muted text-muted-foreground rounded-lg p-4 text-sm">
+                  <ul className="list-disc space-y-1 pl-5">
+                    <li>{t("member:invite.description")}</li>
+                    <li>{t("member:invite.link_copied")}</li>
+                    <li>{t("member:invite.link_user_join")}</li>
+                    <li>{t("member:invite.link_expires")}</li>
+                  </ul>
+                </div>
+              </FormLayoutItem>
 
-              <inviteForm.Field name="email">
-                {(field) => (
-                  <Input
-                    id="invite-email"
-                    data-testid="workspace-invite-email-input"
-                    type="email"
-                    label={t("member:invite.email_label")}
-                    placeholder={t("member:invite.email_placeholder")}
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    error={
-                      field.state.meta.errors.length > 0
-                        ? field.state.meta.errors
-                            .map((error: any) =>
-                              typeof error === "string"
-                                ? error
-                                : error?.message || error,
-                            )
-                            .join(", ")
-                        : undefined
-                    }
-                  />
-                )}
-              </inviteForm.Field>
+              <FormLayoutItem>
+                <inviteForm.Field name="email">
+                  {(field) => (
+                    <Input
+                      id="invite-email"
+                      data-testid="workspace-invite-email-input"
+                      type="email"
+                      label={t("member:invite.email_label")}
+                      placeholder={t("member:invite.email_placeholder")}
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                      error={
+                        field.state.meta.errors.length > 0
+                          ? field.state.meta.errors
+                              .map((error: any) =>
+                                typeof error === "string"
+                                  ? error
+                                  : error?.message || error,
+                              )
+                              .join(", ")
+                          : undefined
+                      }
+                    />
+                  )}
+                </inviteForm.Field>
+              </FormLayoutItem>
 
-              <inviteForm.Field name="roles">
-                {(field) => (
-                  <RoleCheckboxGroup
-                    label={t("member:invite.role_label")}
-                    options={(data?.workspaceRoles ?? []).filter(
-                      ({ grantable }) => grantable,
-                    )}
-                    testIdPrefix="invite-role"
-                    value={field.state.value}
-                    onValueChange={(value) => field.handleChange(value)}
-                    disabled={loadingRoles || !!rolesError}
-                  />
-                )}
-              </inviteForm.Field>
-            </div>
-
-            <DialogFooter className="mt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleInviteOpenChange(false)}
-              >
-                {t("action.cancel")}
-              </Button>
-              <Button
-                type="submit"
-                data-testid="workspace-invite-confirm"
-                loading={createInviteLoading}
-                disabled={
-                  loadingRoles || !!rolesError || grantableRoles.length === 0
-                }
-              >
-                {t("member:invite.confirm_and_copy")}
-              </Button>
-            </DialogFooter>
+              <FormLayoutItem>
+                <inviteForm.Field name="roles">
+                  {(field) => (
+                    <RoleCheckboxGroup
+                      label={t("member:invite.role_label")}
+                      options={(data?.workspaceRoles ?? []).filter(
+                        ({ grantable }) => grantable,
+                      )}
+                      testIdPrefix="invite-role"
+                      value={field.state.value}
+                      onValueChange={(value) => field.handleChange(value)}
+                      disabled={loadingRoles || !!rolesError}
+                    />
+                  )}
+                </inviteForm.Field>
+              </FormLayoutItem>
+            </FormLayout>
           </form>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleInviteOpenChange(false)}
+            >
+              {t("action.cancel")}
+            </Button>
+            <Button
+              type="submit"
+              form={formId}
+              data-testid="workspace-invite-confirm"
+              loading={createInviteLoading}
+              disabled={
+                loadingRoles || !!rolesError || grantableRoles.length === 0
+              }
+            >
+              {t("member:invite.confirm_and_copy")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={inviteLinkOpen} onOpenChange={setInviteLinkOpen}>
-        <DialogContent
-          className="max-w-md"
-          data-testid="workspace-invite-link-dialog"
-        >
+        <DialogContent data-testid="workspace-invite-link-dialog">
           <DialogHeader>
             <DialogTitle>{t("member:invite.link_generated")}</DialogTitle>
           </DialogHeader>

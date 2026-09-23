@@ -68,7 +68,6 @@ type Documents = {
   "\n  mutation updateWorkspaceFromSettingsRoute(\n    $id: ID!\n    $input: UpdateWorkspaceInput!\n  ) {\n    updateWorkspace(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateWorkspaceFromSettingsRouteDocument;
   "\n  mutation deleteWorkspaceFromSettingsRoute($id: ID!) {\n    deleteWorkspace(id: $id) {\n      id\n    }\n  }\n": typeof types.DeleteWorkspaceFromSettingsRouteDocument;
   "\n  mutation leaveWorkspaceFromSettingsRoute {\n    leaveWorkspace {\n      memberId\n    }\n  }\n": typeof types.LeaveWorkspaceFromSettingsRouteDocument;
-  "\n  mutation createWorkspaceFromCreateWorkspaceForm(\n    $input: CreateWorkspaceInput!\n  ) {\n    createWorkspace(input: $input) {\n      id\n    }\n  }\n": typeof types.CreateWorkspaceFromCreateWorkspaceFormDocument;
   "\n  mutation createWorkspaceFromCreateWorkspaceRoute(\n    $input: CreateWorkspaceInput!\n  ) {\n    createWorkspace(input: $input) {\n      id\n    }\n  }\n": typeof types.CreateWorkspaceFromCreateWorkspaceRouteDocument;
   "\n  query getFirstWorkspaceFromWorkspacesRoute {\n    currentUser {\n      workspaces(first: 1) {\n        edges {\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n": typeof types.GetFirstWorkspaceFromWorkspacesRouteDocument;
   "\n  mutation signInFromLoginForm($input: AuthSignInInput!) {\n    signIn(input: $input) {\n      user {\n        id\n      }\n    }\n  }\n": typeof types.SignInFromLoginFormDocument;
@@ -192,8 +191,6 @@ const documents: Documents = {
     types.DeleteWorkspaceFromSettingsRouteDocument,
   "\n  mutation leaveWorkspaceFromSettingsRoute {\n    leaveWorkspace {\n      memberId\n    }\n  }\n":
     types.LeaveWorkspaceFromSettingsRouteDocument,
-  "\n  mutation createWorkspaceFromCreateWorkspaceForm(\n    $input: CreateWorkspaceInput!\n  ) {\n    createWorkspace(input: $input) {\n      id\n    }\n  }\n":
-    types.CreateWorkspaceFromCreateWorkspaceFormDocument,
   "\n  mutation createWorkspaceFromCreateWorkspaceRoute(\n    $input: CreateWorkspaceInput!\n  ) {\n    createWorkspace(input: $input) {\n      id\n    }\n  }\n":
     types.CreateWorkspaceFromCreateWorkspaceRouteDocument,
   "\n  query getFirstWorkspaceFromWorkspacesRoute {\n    currentUser {\n      workspaces(first: 1) {\n        edges {\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n":
@@ -560,12 +557,6 @@ export function graphql(
 export function graphql(
   source: "\n  mutation leaveWorkspaceFromSettingsRoute {\n    leaveWorkspace {\n      memberId\n    }\n  }\n",
 ): (typeof documents)["\n  mutation leaveWorkspaceFromSettingsRoute {\n    leaveWorkspace {\n      memberId\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n  mutation createWorkspaceFromCreateWorkspaceForm(\n    $input: CreateWorkspaceInput!\n  ) {\n    createWorkspace(input: $input) {\n      id\n    }\n  }\n",
-): (typeof documents)["\n  mutation createWorkspaceFromCreateWorkspaceForm(\n    $input: CreateWorkspaceInput!\n  ) {\n    createWorkspace(input: $input) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

@@ -500,24 +500,10 @@ function UserSecurityComponent() {
           <PageLayoutSection>
             <Card data-testid="user-sessions-card">
               <CardHeader>
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="space-y-1.5">
-                    <CardTitle>{t("user:security.sessions.title")}</CardTitle>
-                    <CardDescription>
-                      {t("user:security.sessions.description")}
-                    </CardDescription>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={otherSessionCount === 0}
-                    loading={revokingOthers}
-                    onClick={handleRevokeOtherSessions}
-                    data-testid="user-revoke-other-session-list"
-                  >
-                    {t("user:security.sessions.revoke_others")}
-                  </Button>
-                </div>
+                <CardTitle>{t("user:security.sessions.title")}</CardTitle>
+                <CardDescription>
+                  {t("user:security.sessions.description")}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {sessionsLoading ? (
@@ -581,6 +567,18 @@ function UserSecurityComponent() {
                   </div>
                 )}
               </CardContent>
+              <CardFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={otherSessionCount === 0}
+                  loading={revokingOthers}
+                  onClick={handleRevokeOtherSessions}
+                  data-testid="user-revoke-other-session-list"
+                >
+                  {t("user:security.sessions.revoke_others")}
+                </Button>
+              </CardFooter>
             </Card>
           </PageLayoutSection>
 
@@ -619,33 +617,10 @@ function UserSecurityComponent() {
           <PageLayoutSection>
             <Card data-testid="user-accounts-card">
               <CardHeader>
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="space-y-1.5">
-                    <CardTitle>{t("user:security.accounts.title")}</CardTitle>
-                    <CardDescription>
-                      {t("user:security.accounts.description")}
-                    </CardDescription>
-                  </div>
-                  {linkableProviders.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {linkableProviders.map((provider) => (
-                        <Button
-                          key={provider.id}
-                          type="button"
-                          variant="outline"
-                          disabled={linkingProviderId !== undefined}
-                          loading={linkingProviderId === provider.id}
-                          onClick={() => handleLinkAccount(provider.id)}
-                          data-testid={`user-link-social-account-${provider.id}`}
-                        >
-                          {t("user:security.accounts.link", {
-                            provider: provider.name,
-                          })}
-                        </Button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
+                <CardTitle>{t("user:security.accounts.title")}</CardTitle>
+                <CardDescription>
+                  {t("user:security.accounts.description")}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {accountsLoading ? (
@@ -694,6 +669,27 @@ function UserSecurityComponent() {
                   </div>
                 )}
               </CardContent>
+              {linkableProviders.length > 0 && (
+                <CardFooter>
+                  <div className="flex flex-wrap gap-2">
+                    {linkableProviders.map((provider) => (
+                      <Button
+                        key={provider.id}
+                        type="button"
+                        variant="outline"
+                        disabled={linkingProviderId !== undefined}
+                        loading={linkingProviderId === provider.id}
+                        onClick={() => handleLinkAccount(provider.id)}
+                        data-testid={`user-link-social-account-${provider.id}`}
+                      >
+                        {t("user:security.accounts.link", {
+                          provider: provider.name,
+                        })}
+                      </Button>
+                    ))}
+                  </div>
+                </CardFooter>
+              )}
             </Card>
           </PageLayoutSection>
 

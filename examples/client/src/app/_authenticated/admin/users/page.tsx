@@ -19,6 +19,7 @@ import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
 import { DataTable } from "@/components/thread-ui/data-table";
 import { Input } from "@/components/thread-ui/input";
+import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import {
   Page,
   PageActions,
@@ -338,25 +339,31 @@ function AdminUsersPage() {
               {t("admin:users.create.description")}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              label={t("admin:users.table.name")}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-            <Input
-              type="email"
-              label={t("admin:users.table.email")}
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-            <Input
-              type="password"
-              label={t("admin:users.create.password")}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </div>
+          <FormLayout>
+            <FormLayoutItem>
+              <Input
+                label={t("admin:users.table.name")}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </FormLayoutItem>
+            <FormLayoutItem>
+              <Input
+                type="email"
+                label={t("admin:users.table.email")}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </FormLayoutItem>
+            <FormLayoutItem>
+              <Input
+                type="password"
+                label={t("admin:users.create.password")}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </FormLayoutItem>
+          </FormLayout>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               {t("action.cancel")}

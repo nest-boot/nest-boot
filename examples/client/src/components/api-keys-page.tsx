@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import dayjs from "dayjs";
@@ -27,6 +27,7 @@ import { Button } from "@/components/thread-ui/button";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { DataTable } from "@/components/thread-ui/data-table";
 import { Input } from "@/components/thread-ui/input";
+import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import {
   Page,
@@ -119,6 +120,8 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
   refetch,
 }: ApiKeysPageProps<Permission>) {
   const { t } = useTranslation();
+  const createFormId = useId();
+  const renameFormId = useId();
   const isPermission = (value: UserApiKeyPermission): value is Permission =>
     permissionValues.some((permission) => permission === value);
   const canCreate = ability.can("write", subject);
@@ -498,66 +501,72 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
               </DialogDescription>
             </DialogHeader>
             <form
+              id={createFormId}
               onSubmit={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 createForm.handleSubmit();
               }}
             >
-              <div className="flex flex-col gap-4 py-4">
-                <createForm.Field name="name">
-                  {(field) => (
-                    <Input
-                      id="api-key-name"
-                      data-testid="api-key-name-input"
-                      label={t("api-key:form.name.label")}
-                      placeholder={t("api-key:form.name.placeholder")}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      error={
-                        field.state.meta.errors.length > 0
-                          ? field.state.meta.errors
-                              .map((error: any) =>
-                                typeof error === "string"
-                                  ? error
-                                  : error?.message || error,
-                              )
-                              .join(", ")
-                          : undefined
-                      }
-                    />
-                  )}
-                </createForm.Field>
-                <createForm.Field name="permissions">
-                  {(field) => (
-                    <PermissionCheckboxGroup
-                      options={permissionOptions}
-                      value={field.state.value}
-                      onChange={field.handleChange}
-                      disabled={createLoading}
-                    />
-                  )}
-                </createForm.Field>
-              </div>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleCreateDialogOpenChange(false)}
-                >
-                  {t("action.cancel")}
-                </Button>
-                <Button
-                  type="submit"
-                  data-testid="api-key-create-submit"
-                  disabled={!canCreate}
-                  loading={createLoading}
-                >
-                  {t("action.create")}
-                </Button>
-              </DialogFooter>
+              <FormLayout>
+                <FormLayoutItem>
+                  <createForm.Field name="name">
+                    {(field) => (
+                      <Input
+                        id="api-key-name"
+                        data-testid="api-key-name-input"
+                        label={t("api-key:form.name.label")}
+                        placeholder={t("api-key:form.name.placeholder")}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        error={
+                          field.state.meta.errors.length > 0
+                            ? field.state.meta.errors
+                                .map((error: any) =>
+                                  typeof error === "string"
+                                    ? error
+                                    : error?.message || error,
+                                )
+                                .join(", ")
+                            : undefined
+                        }
+                      />
+                    )}
+                  </createForm.Field>
+                </FormLayoutItem>
+                <FormLayoutItem>
+                  <createForm.Field name="permissions">
+                    {(field) => (
+                      <PermissionCheckboxGroup
+                        options={permissionOptions}
+                        value={field.state.value}
+                        onChange={field.handleChange}
+                        disabled={createLoading}
+                      />
+                    )}
+                  </createForm.Field>
+                </FormLayoutItem>
+              </FormLayout>
             </form>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleCreateDialogOpenChange(false)}
+              >
+                {t("action.cancel")}
+              </Button>
+              <Button
+                type="submit"
+                form={createFormId}
+                data-testid="api-key-create-submit"
+                disabled={!canCreate}
+                loading={createLoading}
+              >
+                {t("action.create")}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -573,66 +582,72 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
               </DialogDescription>
             </DialogHeader>
             <form
+              id={renameFormId}
               onSubmit={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 renameForm.handleSubmit();
               }}
             >
-              <div className="flex flex-col gap-4 py-4">
-                <renameForm.Field name="name">
-                  {(field) => (
-                    <Input
-                      id="api-key-rename"
-                      data-testid="api-key-rename-input"
-                      label={t("api-key:form.name.label")}
-                      placeholder={t("api-key:form.name.placeholder")}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      error={
-                        field.state.meta.errors.length > 0
-                          ? field.state.meta.errors
-                              .map((error: any) =>
-                                typeof error === "string"
-                                  ? error
-                                  : error?.message || error,
-                              )
-                              .join(", ")
-                          : undefined
-                      }
-                    />
-                  )}
-                </renameForm.Field>
-                <renameForm.Field name="permissions">
-                  {(field) => (
-                    <PermissionCheckboxGroup
-                      options={permissionOptions}
-                      value={field.state.value}
-                      onChange={field.handleChange}
-                      disabled={updateLoading}
-                    />
-                  )}
-                </renameForm.Field>
-              </div>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleRenameDialogOpenChange(false)}
-                >
-                  {t("action.cancel")}
-                </Button>
-                <Button
-                  type="submit"
-                  data-testid="api-key-rename-submit"
-                  disabled={!renamingApiKey || !canUpdate(renamingApiKey)}
-                  loading={updateLoading}
-                >
-                  {t("action.save")}
-                </Button>
-              </DialogFooter>
+              <FormLayout>
+                <FormLayoutItem>
+                  <renameForm.Field name="name">
+                    {(field) => (
+                      <Input
+                        id="api-key-rename"
+                        data-testid="api-key-rename-input"
+                        label={t("api-key:form.name.label")}
+                        placeholder={t("api-key:form.name.placeholder")}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        error={
+                          field.state.meta.errors.length > 0
+                            ? field.state.meta.errors
+                                .map((error: any) =>
+                                  typeof error === "string"
+                                    ? error
+                                    : error?.message || error,
+                                )
+                                .join(", ")
+                            : undefined
+                        }
+                      />
+                    )}
+                  </renameForm.Field>
+                </FormLayoutItem>
+                <FormLayoutItem>
+                  <renameForm.Field name="permissions">
+                    {(field) => (
+                      <PermissionCheckboxGroup
+                        options={permissionOptions}
+                        value={field.state.value}
+                        onChange={field.handleChange}
+                        disabled={updateLoading}
+                      />
+                    )}
+                  </renameForm.Field>
+                </FormLayoutItem>
+              </FormLayout>
             </form>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleRenameDialogOpenChange(false)}
+              >
+                {t("action.cancel")}
+              </Button>
+              <Button
+                type="submit"
+                form={renameFormId}
+                data-testid="api-key-rename-submit"
+                disabled={!renamingApiKey || !canUpdate(renamingApiKey)}
+                loading={updateLoading}
+              >
+                {t("action.save")}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -649,7 +664,7 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
             <DialogHeader>
               <DialogTitle>{t("api-key:created.title")}</DialogTitle>
             </DialogHeader>
-            <Alert className="mt-2">
+            <Alert>
               <AlertTriangle className="text-warning h-4 w-4" />
               <AlertTitle>{t("api-key:created.warning")}</AlertTitle>
               <AlertDescription>

@@ -9,6 +9,8 @@ import { useCurrentUserContext } from "../../../contexts/current-user-context";
 import type { UserPermission } from "@/lib/permissions";
 import type { UserRole } from "@/gql/graphql";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   PageLayout,
@@ -361,17 +363,20 @@ function AdminUserPage() {
                     />
                   </FormLayoutItem>
                   <FormLayoutItem>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
+                    <Field
+                      orientation="horizontal"
+                      data-disabled={!canSetEmail}
+                    >
+                      <Checkbox
+                        id="admin-user-email-verified"
                         checked={emailVerified}
                         disabled={!canSetEmail}
-                        onChange={(event) =>
-                          setEmailVerified(event.target.checked)
-                        }
+                        onCheckedChange={setEmailVerified}
                       />
-                      {t("admin:user.profile.email_verified")}
-                    </label>
+                      <FieldLabel htmlFor="admin-user-email-verified">
+                        {t("admin:user.profile.email_verified")}
+                      </FieldLabel>
+                    </Field>
                   </FormLayoutItem>
                 </FormLayout>
               </CardContent>

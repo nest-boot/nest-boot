@@ -8,8 +8,10 @@ import { z } from "zod";
 import type { ChangeEvent, ComponentProps, FormEvent } from "react";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import {
+  Field,
   FieldDescription,
   FieldError,
+  FieldLabel,
   FieldSeparator,
 } from "@/components/ui/field";
 import { toast } from "@/components/thread-ui/toast";
@@ -27,7 +29,6 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import {
   createEmailVerificationCallbackUrl,
   createEmailVerificationPagePath,
@@ -348,21 +349,23 @@ export function LoginForm({
                 {mode === "login" && (
                   <FormLayoutItem>
                     <div className="flex items-center justify-between gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id="remember-me"
-                          data-testid="auth-remember-me"
-                          checked={values.rememberMe}
-                          onCheckedChange={(checked) =>
-                            setValues((current) => ({
-                              ...current,
-                              rememberMe: checked,
-                            }))
-                          }
-                        />
-                        <Label htmlFor="remember-me">
-                          {t("auth:form.rememberMe")}
-                        </Label>
+                      <div>
+                        <Field orientation="horizontal">
+                          <Checkbox
+                            id="remember-me"
+                            data-testid="auth-remember-me"
+                            checked={values.rememberMe}
+                            onCheckedChange={(checked) =>
+                              setValues((current) => ({
+                                ...current,
+                                rememberMe: checked,
+                              }))
+                            }
+                          />
+                          <FieldLabel htmlFor="remember-me">
+                            {t("auth:form.rememberMe")}
+                          </FieldLabel>
+                        </Field>
                       </div>
 
                       <Link
