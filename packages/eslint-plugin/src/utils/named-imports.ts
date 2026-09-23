@@ -111,6 +111,106 @@ export function namedImportBinding(
   return local;
 }
 
+function staticPropertyName(
+  property: TSESTree.Property | TSESTree.MemberExpression,
+): string | null {
+  const key =
+    property.type === AST_NODE_TYPES.Property
+      ? property.key
+      : property.property;
+  return !property.computed && key.type === AST_NODE_TYPES.Identifier
+    ? key.name
+    : key.type === AST_NODE_TYPES.Literal && typeof key.value === "string"
+      ? key.value
+      : null;
+}
+
+/** Follows one const destructure; the caller must verify its namespace import. */
+function destructuredReference(variable: Scope.Variable): {
+  namespace: TSESTree.Identifier;
+  member: string;
+} | null {
+  for (const definition of variable.defs) {
+    if (
+      definition.type !== Scope.DefinitionType.Variable ||
+      definition.parent.kind !== "const" ||
+      definition.node.id.type !== AST_NODE_TYPES.ObjectPattern ||
+      definition.node.init === null
+    )
+      continue;
+    for (const property of definition.node.id.properties) {
+      if (property.type !== AST_NODE_TYPES.Property) continue;
+      const binding =
+        property.value.type === AST_NODE_TYPES.AssignmentPattern
+          ? property.value.left
+          : property.value;
+      if (
+        binding.type !== AST_NODE_TYPES.Identifier ||
+        !variable.identifiers.includes(binding)
+      )
+        continue;
+      const member = staticPropertyName(property);
+      if (!member) continue;
+      const init = definition.node.init;
+      if (init.type === AST_NODE_TYPES.Identifier)
+        return { namespace: init, member };
+      if (init.type !== AST_NODE_TYPES.ObjectExpression) continue;
+      for (const entry of init.properties.toReversed()) {
+        if (entry.type === AST_NODE_TYPES.SpreadElement) break;
+        const key = staticPropertyName(entry);
+        if (!key) break;
+        if (key !== member) continue;
+        if (
+          entry.value.type !== AST_NODE_TYPES.MemberExpression ||
+          entry.value.object.type !== AST_NODE_TYPES.Identifier
+        )
+          return null;
+        const selected = staticPropertyName(entry.value);
+        return selected
+          ? { namespace: entry.value.object, member: selected }
+          : null;
+      }
+    }
+  }
+  return null;
+}
+
+function referenceVariable(source: Readonly<SourceCode>, node: TSESTree.Node) {
+  const identifier =
+    node.type === AST_NODE_TYPES.MemberExpression
+      ? node.object
+      : node.type === AST_NODE_TYPES.TSQualifiedName
+        ? node.left
+        : node;
+  return (source.scopeManager?.scopes ?? [])
+    .flatMap((scope) => scope.references)
+    .find((reference) => reference.identifier === identifier)?.resolved;
+}
+
+function referenceImports(
+  source: Readonly<SourceCode>,
+  node: TSESTree.Node,
+  destructuredOnly = false,
+) {
+  let variable = referenceVariable(source, node);
+  const destructured =
+    variable && node.type === AST_NODE_TYPES.Identifier
+      ? destructuredReference(variable)
+      : null;
+  if (destructuredOnly && !destructured) return [];
+  if (destructured)
+    variable = referenceVariable(source, destructured.namespace);
+  return (variable?.defs ?? []).flatMap((definition) =>
+    definition.type === Scope.DefinitionType.ImportBinding &&
+    definition.parent.type === AST_NODE_TYPES.ImportDeclaration &&
+    definition.node.type !== AST_NODE_TYPES.TSImportEqualsDeclaration &&
+    (!destructured ||
+      definition.node.type === AST_NODE_TYPES.ImportNamespaceSpecifier)
+      ? [{ declaration: definition.parent, specifier: definition.node }]
+      : [],
+  );
+}
+
 /** Resolves named and namespace imports through their lexical references. @internal */
 export function importedBindingName(
   source: Readonly<SourceCode>,
@@ -150,56 +250,17 @@ export function importedBindingName(
   // Preserve the rules' support for unresolved ambient decorator names.
   if (!variable)
     return !namespaceMember && node === identifier ? identifier.name : null;
+  if (!namespaceMember && node === identifier) {
+    const destructured = destructuredReference(variable);
+    if (destructured)
+      return importedBindingName(
+        source,
+        modules,
+        destructured.namespace,
+        destructured.member,
+      );
+  }
   for (const definition of variable.defs) {
-    if (
-      !namespaceMember &&
-      node === identifier &&
-      definition.type === Scope.DefinitionType.Variable &&
-      definition.parent.kind === "const" &&
-      definition.node.id.type === AST_NODE_TYPES.ObjectPattern &&
-      definition.node.init !== null
-    ) {
-      for (const property of definition.node.id.properties) {
-        if (property.type !== AST_NODE_TYPES.Property) continue;
-        const binding =
-          property.value.type === AST_NODE_TYPES.AssignmentPattern
-            ? property.value.left
-            : property.value;
-        if (
-          binding.type !== AST_NODE_TYPES.Identifier ||
-          !variable.identifiers.includes(binding)
-        )
-          continue;
-        const name =
-          !property.computed && property.key.type === AST_NODE_TYPES.Identifier
-            ? property.key.name
-            : property.key.type === AST_NODE_TYPES.Literal &&
-                typeof property.key.value === "string"
-              ? property.key.value
-              : null;
-        if (!name) continue;
-        const init = definition.node.init;
-        if (init.type === AST_NODE_TYPES.Identifier)
-          return importedBindingName(source, modules, init, name);
-        if (init.type === AST_NODE_TYPES.ObjectExpression) {
-          for (const entry of init.properties.toReversed()) {
-            if (entry.type === AST_NODE_TYPES.SpreadElement) break;
-            const key =
-              !entry.computed && entry.key.type === AST_NODE_TYPES.Identifier
-                ? entry.key.name
-                : entry.key.type === AST_NODE_TYPES.Literal &&
-                    typeof entry.key.value === "string"
-                  ? entry.key.value
-                  : null;
-            if (!key) break;
-            if (key === name)
-              return entry.value.type === AST_NODE_TYPES.MemberExpression
-                ? importedBindingName(source, modules, entry.value)
-                : null;
-          }
-        }
-      }
-    }
     if (
       definition.type !== Scope.DefinitionType.ImportBinding ||
       definition.parent.type !== AST_NODE_TYPES.ImportDeclaration
@@ -229,19 +290,11 @@ export function isTypeOnlyImportReference(
   source: Readonly<SourceCode>,
   node: TSESTree.Node,
 ): boolean {
-  const identifier =
-    node.type === AST_NODE_TYPES.MemberExpression ? node.object : node;
-  const variable = (source.scopeManager?.scopes ?? [])
-    .flatMap((scope) => scope.references)
-    .find((reference) => reference.identifier === identifier)?.resolved;
-  return (
-    variable?.defs.some(
-      (definition) =>
-        definition.type === Scope.DefinitionType.ImportBinding &&
-        (definition.parent.importKind === "type" ||
-          (definition.node.type === AST_NODE_TYPES.ImportSpecifier &&
-            definition.node.importKind === "type")),
-    ) ?? false
+  return referenceImports(source, node).some(
+    ({ declaration, specifier }) =>
+      declaration.importKind === "type" ||
+      (specifier.type === AST_NODE_TYPES.ImportSpecifier &&
+        specifier.importKind === "type"),
   );
 }
 
@@ -388,28 +441,18 @@ function promotionEdits(
 export function promoteImportReferences(
   source: Readonly<SourceCode>,
   nodes: readonly TSESTree.Node[],
+  options: { destructuredOnly?: boolean } = {},
 ): RuleFix[] {
   const promotions = new Map<TSESTree.ImportDeclaration, Set<string>>();
   for (const node of nodes) {
-    const identifier =
-      node.type === AST_NODE_TYPES.MemberExpression
-        ? node.object
-        : node.type === AST_NODE_TYPES.TSQualifiedName
-          ? node.left
-          : node;
-    const variable = (source.scopeManager?.scopes ?? [])
-      .flatMap((scope) => scope.references)
-      .find((reference) => reference.identifier === identifier)?.resolved;
-    for (const definition of variable?.defs ?? []) {
-      if (
-        definition.type !== Scope.DefinitionType.ImportBinding ||
-        definition.parent.type !== AST_NODE_TYPES.ImportDeclaration ||
-        definition.node.type === AST_NODE_TYPES.TSImportEqualsDeclaration
-      )
-        continue;
-      const names = promotions.get(definition.parent) ?? new Set<string>();
-      names.add(definition.node.local.name);
-      promotions.set(definition.parent, names);
+    for (const { declaration, specifier } of referenceImports(
+      source,
+      node,
+      options.destructuredOnly,
+    )) {
+      const names = promotions.get(declaration) ?? new Set<string>();
+      names.add(specifier.local.name);
+      promotions.set(declaration, names);
     }
   }
   return promotionEdits(source, promotions);

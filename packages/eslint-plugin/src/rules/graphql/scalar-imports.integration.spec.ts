@@ -631,3 +631,75 @@ const { ObjectType: Model, Field: Column, ${scalar}: Value } = gql;
     );
   },
 );
+
+it.each([
+  ["@nestjs/graphql", "Field", "Int", "Integer", "score!: number", false],
+  [
+    "./.cache/graphql-imports/barrel.js",
+    "Field",
+    "Int",
+    "[Integer]",
+    "scores?: number[]",
+    false,
+  ],
+  [
+    "./.cache/graphql-imports/renamed.js",
+    "Column",
+    "Identifier",
+    "Integer",
+    "id!: string",
+    false,
+  ],
+  [
+    "./.cache/graphql-imports/barrel.js",
+    "Field",
+    "GraphQLJSONObject",
+    "Integer",
+    "data?: Record<string, unknown>",
+    false,
+  ],
+  [
+    "./.cache/graphql-imports/barrel.js",
+    "Field",
+    "Int",
+    "Integer",
+    "score!: number",
+    true,
+  ],
+] as const)(
+  "promotes erased destructured %s/%s/%s (%s, %s, overlay: %s)",
+  (module, field, scalar, expression, property, overlay) => {
+    const initializer = overlay
+      ? `{ ...gql, Column: gql.${field}, Integer: gql["${scalar}"] }`
+      : "gql";
+    const bindings = overlay
+      ? "Column, Integer"
+      : `${field}: Column, ${scalar}: Integer`;
+    const code = `import { ObjectType } from "@nest-boot/graphql";
+import type * as gql from "${module}";
+const { ${bindings} } = ${initializer};
+@ObjectType() export class Thing { @Column(() => ${expression}) ${property}; }`;
+    const result = linter.verifyAndFix(code, config, { filename });
+    expect(result.messages).toEqual([]);
+    expect(result.output).not.toContain("import type * as gql");
+    expect(result.output).toContain(`@Column(() => ${expression}`);
+    expect(compileDiagnostics(result.output, true)).toEqual([]);
+    expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+      false,
+    );
+  },
+);
+
+it("promotes a const-destructured model namespace", () => {
+  const code = `import { Field } from "@nest-boot/graphql";
+import type * as gql from "./.cache/graphql-imports/barrel.js";
+const { ObjectType: Model } = gql;
+@Model() export class Thing { @Field(() => String) name!: string; }`;
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).not.toContain("import type * as gql");
+  expect(compileDiagnostics(result.output, true)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});

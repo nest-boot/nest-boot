@@ -606,6 +606,7 @@ export default createRule<
 
           let needReport = true;
           let scalarReference: TSESTree.Node | null = null;
+          let verifiedScalarReference: TSESTree.Node | null = null;
 
           if (
             callExpr.arguments.length > 0 &&
@@ -666,6 +667,7 @@ export default createRule<
               explicitScalar === typeInfo.typeName &&
               typeInfo.isArray ===
                 (firstArg.body.type === AST_NODE_TYPES.ArrayExpression);
+            if (isValidScalar) verifiedScalarReference = scalarNode;
             if (
               isValidScalar &&
               scalarNode &&
@@ -683,6 +685,23 @@ export default createRule<
             if (typeMatches && hasNullableOption === typeInfo.isNullable) {
               needReport = false;
             }
+          }
+
+          const destructuredImports = promoteImportReferences(
+            source,
+            [
+              callExpr.callee,
+              ...(verifiedScalarReference ? [verifiedScalarReference] : []),
+            ],
+            { destructuredOnly: true },
+          );
+          if (destructuredImports.length) {
+            context.report({
+              node: member,
+              messageId: "alignFieldDecoratorWithTsType",
+              fix: () => destructuredImports,
+            });
+            return;
           }
 
           if (!needReport) {
