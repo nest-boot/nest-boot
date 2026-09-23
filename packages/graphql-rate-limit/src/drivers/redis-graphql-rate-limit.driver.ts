@@ -61,7 +61,7 @@ export class RedisGraphQLRateLimitDriver extends GraphQLRateLimitDriver {
 
         local nextAvailable = currentlyAvailable - points
         if nextAvailable >= 0 then
-          currentlyAvailable = nextAvailable
+          currentlyAvailable = math.min(maximumAvailable, nextAvailable)
           redis.call("HSET", bucketKey, "currentlyAvailable", currentlyAvailable)
           return { false, currentlyAvailable }
         end

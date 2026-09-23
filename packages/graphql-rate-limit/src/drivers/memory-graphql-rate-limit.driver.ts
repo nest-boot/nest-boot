@@ -54,7 +54,10 @@ export class MemoryGraphQLRateLimitDriver extends GraphQLRateLimitDriver {
     const nextAvailable = bucket.currentlyAvailable - input.points;
     const blocked = nextAvailable < 0;
     if (!blocked) {
-      bucket.currentlyAvailable = nextAvailable;
+      bucket.currentlyAvailable = Math.min(
+        input.maximumAvailable,
+        nextAvailable,
+      );
     }
 
     this.buckets.set(input.key, bucket, {

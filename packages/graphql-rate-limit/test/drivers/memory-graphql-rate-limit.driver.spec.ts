@@ -75,6 +75,39 @@ describe("MemoryGraphQLRateLimitDriver", () => {
     });
   });
 
+  it.each([
+    { name: "elapsed restoration", elapsed: 2000, firstBalance: 100 },
+    { name: "multiple in-flight refunds", elapsed: 1000, firstBalance: 95 },
+    { name: "bucket expiration", elapsed: 4001, firstBalance: 100 },
+  ])("caps refunds after $name", async ({ elapsed, firstBalance }) => {
+    const driver = new MemoryGraphQLRateLimitDriver();
+    const input = {
+      key: "graphql-rate-limit:refund",
+      maximumAvailable: 100,
+      restoreRate: 25,
+    };
+
+    try {
+      await driver.update({ ...input, points: 30 });
+      await driver.update({ ...input, points: 30 });
+      vi.advanceTimersByTime(elapsed);
+
+      const first = await driver.update({ ...input, points: -30 });
+      expect(first.blocked).toBe(false);
+      expect(first.currentlyAvailable).toBe(firstBalance);
+      await expect(driver.update({ ...input, points: -30 })).resolves.toEqual({
+        blocked: false,
+        currentlyAvailable: 100,
+      });
+      await expect(driver.update({ ...input, points: 101 })).resolves.toEqual({
+        blocked: true,
+        currentlyAvailable: 100,
+      });
+    } finally {
+      driver.close();
+    }
+  });
+
   it("serializes concurrent updates within the process", async () => {
     const driver = new MemoryGraphQLRateLimitDriver();
     const input = {
