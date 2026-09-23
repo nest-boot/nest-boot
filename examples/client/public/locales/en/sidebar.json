@@ -16,7 +16,7 @@
   },
   "user": {
     "account": "Account",
-    "api_keys": "Personal API Keys",
+    "api_keys": "API Keys",
     "logout": "Log out",
     "security": "Security",
     "theme": {

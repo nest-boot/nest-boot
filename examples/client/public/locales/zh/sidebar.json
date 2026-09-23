@@ -16,7 +16,7 @@
   },
   "user": {
     "account": "个人账户",
-    "api_keys": "个人 API 密钥",
+    "api_keys": "API 密钥",
     "logout": "退出登录",
     "security": "安全",
     "theme": {

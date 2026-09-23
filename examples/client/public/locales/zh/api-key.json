@@ -64,7 +64,7 @@
   "title": "API 密钥",
   "user": {
     "description": "创建和管理属于当前用户账号的 API 密钥。",
-    "title": "个人 API 密钥"
+    "title": "API 密钥"
   },
   "toast": {
     "created_success": "API 密钥创建成功",

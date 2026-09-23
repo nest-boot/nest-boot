@@ -64,7 +64,7 @@
   "title": "API Keys",
   "user": {
     "description": "Create and manage API keys owned by your user account.",
-    "title": "Personal API Keys"
+    "title": "API Keys"
   },
   "toast": {
     "created_success": "API key created",
