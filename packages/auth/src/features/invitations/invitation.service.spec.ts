@@ -4,19 +4,19 @@ import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 
-import { mockRlsContext } from "../../test/mock-rls-context.js";
+import { mockRlsContext } from "../../../test/mock-rls-context.js";
 import {
   createTestInvitation,
   createTestMember,
   createTestUser,
   createTestWorkspace,
   createWorkspaceServices,
-} from "../../test/workspace-service.fixture.js";
-import { InvitationConnection } from "../connections/invitation.connection-definition.js";
-import { Invitation } from "../entities/invitation.entity.js";
-import { Member } from "../entities/member.entity.js";
-import { User } from "../entities/user.entity.js";
-import { Workspace } from "../entities/workspace.entity.js";
+} from "../../../test/workspace-service.fixture.js";
+import { Invitation } from "../../entities/invitation.entity.js";
+import { Member } from "../../entities/member.entity.js";
+import { User } from "../../entities/user.entity.js";
+import { Workspace } from "../../entities/workspace.entity.js";
+import { InvitationConnection } from "./invitation.connection-definition.js";
 
 describe("InvitationService", () => {
   it.each([false, true])(

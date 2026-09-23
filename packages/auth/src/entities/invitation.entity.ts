@@ -13,8 +13,8 @@ import {
 } from "@mikro-orm/decorators/legacy";
 import { Field, ID, ObjectType } from "@nest-boot/graphql";
 
-import { InvitationStatus } from "../enums/invitation-status.enum.js";
 import { WorkspaceRole } from "../enums/workspace-role.enum.js";
+import { InvitationStatus } from "../features/invitations/invitation-status.enum.js";
 import { workspaceScopePolicy } from "../policies/workspace-scope.policy.js";
 import { User } from "./user.entity.js";
 import { Workspace } from "./workspace.entity.js";

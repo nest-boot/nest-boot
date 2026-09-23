@@ -1,6 +1,6 @@
-import type { Invitation } from "../entities/invitation.entity.js";
-import type { Workspace } from "../entities/workspace.entity.js";
-import type { AuthInvitationEmailInviter } from "../types/auth-invitation-email-inviter.type.js";
+import type { Invitation } from "../../entities/invitation.entity.js";
+import type { Workspace } from "../../entities/workspace.entity.js";
+import type { AuthInvitationEmailInviter } from "./auth-invitation-email-inviter.type.js";
 
 /** Data supplied when a workspace invitation message must be sent. */
 export interface AuthInvitationEmailData {

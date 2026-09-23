@@ -1,12 +1,12 @@
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
-import { Invitation } from "../entities/invitation.entity.js";
-import { Member } from "../entities/member.entity.js";
-import { User } from "../entities/user.entity.js";
-import { Workspace } from "../entities/workspace.entity.js";
-import { type InvitationService } from "../services/invitation.service.js";
+import { Invitation } from "../../entities/invitation.entity.js";
+import { Member } from "../../entities/member.entity.js";
+import { User } from "../../entities/user.entity.js";
+import { Workspace } from "../../entities/workspace.entity.js";
 import { InvitationResolver } from "./invitation.resolver.js";
+import { type InvitationService } from "./invitation.service.js";
 
 describe("InvitationResolver", () => {
   it("delegates invitation lookup by ID without injecting the current user", async () => {

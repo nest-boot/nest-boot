@@ -10,9 +10,9 @@ import { Test } from "@nestjs/testing";
 import type { GraphQLInputObjectType, GraphQLObjectType } from "graphql";
 
 import { AuthModule } from "./auth.module.js";
+import { InvitationResolver } from "./features/invitations/invitation.resolver.js";
 import { CAN_METADATA } from "./permission.constants.js";
 import { AuthResolver } from "./resolvers/auth.resolver.js";
-import { InvitationResolver } from "./resolvers/invitation.resolver.js";
 import { MemberResolver } from "./resolvers/member.resolver.js";
 import { SessionResolver } from "./resolvers/session.resolver.js";
 import { UserResolver } from "./resolvers/user.resolver.js";

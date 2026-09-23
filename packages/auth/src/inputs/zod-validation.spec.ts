@@ -1,10 +1,10 @@
 import { toZodSchema, ZodValidationPipe } from "@nest-boot/validator";
 
+import { CreateInvitationInput } from "../features/invitations/create-invitation.input.js";
 import { AddMemberInput } from "./add-member.input.js";
 import { AuthLinkSocialAccountInput } from "./auth-link-social-account.input.js";
 import { AuthSignInSocialInput } from "./auth-sign-in-social.input.js";
 import { BanUserInput } from "./ban-user.input.js";
-import { CreateInvitationInput } from "./create-invitation.input.js";
 import { CreateUserApiKeyInput } from "./create-user-api-key.input.js";
 import { SetUserPermissionsInput } from "./set-user-permissions.input.js";
 import { UpdateMemberInput } from "./update-member.input.js";

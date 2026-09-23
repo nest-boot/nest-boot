@@ -1,5 +1,5 @@
+import type { AuthSendInvitationEmail } from "../features/invitations/auth-send-invitation-email.type.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
-import type { AuthSendInvitationEmail } from "../types/auth-send-invitation-email.type.js";
 import type { PermissionName } from "../types/permission-name.type.js";
 
 /** Workspace lifecycle options owned by AuthModule. */

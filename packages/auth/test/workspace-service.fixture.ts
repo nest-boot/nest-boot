@@ -3,7 +3,7 @@ import type { Mocked } from "vitest";
 
 import type { AuthModuleOptions } from "../src/auth-module-options.interface.js";
 import { Invitation, Member, User, Workspace } from "../src/entities/index.js";
-import { InvitationService } from "../src/services/invitation.service.js";
+import { InvitationService } from "../src/features/invitations/invitation.service.js";
 import { MemberService } from "../src/services/member.service.js";
 import { WorkspaceService } from "../src/services/workspace.service.js";
 import { mockAuthorization } from "./mock-authorization.js";

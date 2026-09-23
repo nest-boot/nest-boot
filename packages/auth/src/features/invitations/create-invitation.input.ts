@@ -1,7 +1,7 @@
 import { Field, InputType, Int } from "@nest-boot/graphql";
 import { ZodField } from "@nest-boot/validator";
 
-import { WorkspaceRole } from "../enums/workspace-role.enum.js";
+import { WorkspaceRole } from "../../enums/workspace-role.enum.js";
 
 /** Input for creating a workspace invitation. */
 @InputType()

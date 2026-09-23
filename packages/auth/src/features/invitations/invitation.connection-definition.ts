@@ -1,7 +1,7 @@
 import { ArgsType, ObjectType } from "@nest-boot/graphql";
 import { ConnectionBuilder } from "@nest-boot/graphql-connection";
 
-import { Invitation } from "../entities/invitation.entity.js";
+import { Invitation } from "../../entities/invitation.entity.js";
 
 const { Connection, ConnectionArgs } = new ConnectionBuilder(Invitation)
   .addField({

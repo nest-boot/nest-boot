@@ -2,21 +2,21 @@ import { ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
-import { restoreAuthorization } from "../../test/mock-authorization.js";
+import { restoreAuthorization } from "../../../test/mock-authorization.js";
 import {
   createTestInvitation,
   createTestMember,
   createTestUser,
   createTestWorkspace,
   createWorkspaceServices,
-} from "../../test/workspace-service.fixture.js";
-import { AuthAbility } from "../abilities/auth.ability.js";
-import { API_KEY } from "../auth.constants.js";
-import { Invitation } from "../entities/invitation.entity.js";
-import { Member } from "../entities/member.entity.js";
-import { User } from "../entities/user.entity.js";
-import { Workspace } from "../entities/workspace.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+} from "../../../test/workspace-service.fixture.js";
+import { AuthAbility } from "../../abilities/auth.ability.js";
+import { API_KEY } from "../../auth.constants.js";
+import { Invitation } from "../../entities/invitation.entity.js";
+import { Member } from "../../entities/member.entity.js";
+import { User } from "../../entities/user.entity.js";
+import { Workspace } from "../../entities/workspace.entity.js";
+import { WorkspaceApiKey } from "../../entities/workspace-api-key.entity.js";
 import { InvitationService } from "./invitation.service.js";
 
 describe("InvitationService read authorization", () => {

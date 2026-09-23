@@ -9,17 +9,17 @@ import {
 } from "@nest-boot/graphql";
 import { NotFoundException } from "@nestjs/common";
 
-import { CurrentUser } from "../decorators/current-user.decorator.js";
-import { CurrentWorkspace } from "../decorators/current-workspace.decorator.js";
-import { Invitation } from "../entities/invitation.entity.js";
-import { User } from "../entities/user.entity.js";
-import { Workspace } from "../entities/workspace.entity.js";
-import { CreateInvitationInput } from "../inputs/create-invitation.input.js";
-import { AcceptInvitationPayload } from "../objects/accept-invitation-payload.object.js";
-import { CancelInvitationPayload } from "../objects/cancel-invitation-payload.object.js";
-import { CreateInvitationPayload } from "../objects/create-invitation-payload.object.js";
-import { RejectInvitationPayload } from "../objects/reject-invitation-payload.object.js";
-import { InvitationService } from "../services/invitation.service.js";
+import { CurrentUser } from "../../decorators/current-user.decorator.js";
+import { CurrentWorkspace } from "../../decorators/current-workspace.decorator.js";
+import { Invitation } from "../../entities/invitation.entity.js";
+import { User } from "../../entities/user.entity.js";
+import { Workspace } from "../../entities/workspace.entity.js";
+import { AcceptInvitationPayload } from "./accept-invitation-payload.object.js";
+import { CancelInvitationPayload } from "./cancel-invitation-payload.object.js";
+import { CreateInvitationInput } from "./create-invitation.input.js";
+import { CreateInvitationPayload } from "./create-invitation-payload.object.js";
+import { InvitationService } from "./invitation.service.js";
+import { RejectInvitationPayload } from "./reject-invitation-payload.object.js";
 
 /** GraphQL resolver for workspace invitations. */
 @Resolver(() => Invitation)

@@ -2,9 +2,9 @@ import { Invitation as BaseInvitation } from "../entities/invitation.entity.js";
 import { Member as BaseMember } from "../entities/member.entity.js";
 import { User as BaseUser } from "../entities/user.entity.js";
 import { Workspace as BaseWorkspace } from "../entities/workspace.entity.js";
-import { type InvitationService } from "../services/invitation.service.js";
+import { InvitationResolver } from "../features/invitations/invitation.resolver.js";
+import { type InvitationService } from "../features/invitations/invitation.service.js";
 import { type MemberService } from "../services/member.service.js";
-import { InvitationResolver } from "./invitation.resolver.js";
 import { MemberResolver } from "./member.resolver.js";
 
 describe("workspace relation fields", () => {

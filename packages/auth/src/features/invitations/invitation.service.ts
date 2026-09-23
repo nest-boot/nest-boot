@@ -20,27 +20,27 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
-import type { AuthModuleOptions } from "../auth-module-options.interface.js";
-import { InvitationConnection } from "../connections/invitation.connection-definition.js";
-import { Invitation } from "../entities/invitation.entity.js";
-import { Member } from "../entities/member.entity.js";
-import { User } from "../entities/user.entity.js";
-import { Workspace } from "../entities/workspace.entity.js";
-import { RequestIdentity } from "../infrastructure/request-identity.js";
-import type { AcceptInvitationResult } from "../interfaces/accept-invitation-result.interface.js";
-import type { CreateInvitationOptions } from "../interfaces/create-invitation-options.interface.js";
-import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
-import { assertCan } from "../utils/assert-can.util.js";
+import { MODULE_OPTIONS_TOKEN } from "../../auth.module-definition.js";
+import type { AuthModuleOptions } from "../../auth-module-options.interface.js";
+import { Invitation } from "../../entities/invitation.entity.js";
+import { Member } from "../../entities/member.entity.js";
+import { User } from "../../entities/user.entity.js";
+import { Workspace } from "../../entities/workspace.entity.js";
+import { RequestIdentity } from "../../infrastructure/request-identity.js";
+import type { AuthModuleRoles } from "../../types/auth-module-roles.type.js";
+import { assertCan } from "../../utils/assert-can.util.js";
 import {
   normalizeAuthRoles,
   resolveAuthPermissions,
-} from "../utils/auth-role.util.js";
-import { can } from "../utils/can.util.js";
-import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
-import { assertCanGrantPermissions } from "../utils/permission-grants.util.js";
-import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
-import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
+} from "../../utils/auth-role.util.js";
+import { can } from "../../utils/can.util.js";
+import { getCurrentApiKey } from "../../utils/get-current-api-key.util.js";
+import { assertCanGrantPermissions } from "../../utils/permission-grants.util.js";
+import { resolveAuthCatalog } from "../../utils/resolve-auth-catalog.util.js";
+import { DEFAULT_WORKSPACE_ROLE } from "../../workspace.constants.js";
+import type { AcceptInvitationResult } from "./accept-invitation-result.interface.js";
+import type { CreateInvitationOptions } from "./create-invitation-options.interface.js";
+import { InvitationConnection } from "./invitation.connection-definition.js";
 
 /** Workspace invitation queries and lifecycle operations. */
 @Injectable()
