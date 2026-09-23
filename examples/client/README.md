@@ -80,7 +80,7 @@ API-key pages also demonstrate two hooks for list/detail navigation:
   the same schema. Schemas must normalize JSON-compatible search values
   idempotently, as the existing connection search schemas do. Invalid stored
   data is discarded; unavailable storage falls back to memory for that tab.
-- `usePageNavigation({ key, searchSchema, record })` reads those
+- `usePageNavigation({ key, searchSchema, record, query })` reads those
   conditions and calculates the current cursor from the live record's ID and
   sort value. Without `orderBy` (or with `null`), the server defaults to ID
   ascending and the cursor contains only the ID. When a list applies its own
@@ -88,19 +88,31 @@ API-key pages also demonstrate two hooks for list/detail navigation:
   GraphQL order names map to camelCase record fields (`CREATED_AT` to `createdAt`).
   Include each supported sort field in the detail query; explicit `null` values
   are supported, while a missing field raises an error instead of an incorrect
-  cursor. It derives previous/next connection arguments without persisting
-  a cursor map. Apollo queries both adjacent records; loading/error disables
-  navigation, and errors offer retry. `getBackSearch(previousCursor)`
-  first checks for saved list search; without it, it returns the schema's default
-  first page. With saved search, it uses the preceding record's cursor so the
-  current record becomes the first list row, retaining the original filters,
-  sorting, and page size. Both `null` and `undefined` cursors mean the first record
-  and return to page one. Call this method only after the current record's neighbors
-  load successfully; otherwise use `navigation.pageSearch` unchanged. The navigation
-  hook also exposes `setPageSearch`. Detail pages use it to save the new list position
-  after loading each record's neighbors, including browser back/forward. They update
-  only existing saved search, so direct entry without a list visit remains read-only.
-  The breadcrumb and footer share the resulting destination.
+  cursor without persisting a cursor map. An optional stable
+  `query({ pageSearch, cursor })` closure receives the current list search and
+  the detail record's cursor separately; a list's `after`/`before` cannot stand in
+  for the current record. The closure
+  returns `{ previous: { edges }, next: { edges } }`, with each edge containing
+  `cursor` and `node.id`. It runs when the record cursor, user/page scope, filters,
+  sorting, or closure changes; updating only pagination does not trigger another
+  request. API-key pages supply a `useCallback` closure executing Apollo's
+  `useLazyQuery` for both adjacent records in one request. GraphQL accepts one
+  `$cursor`, using it as `before` with `last: 1` and as `after` with `first: 1`;
+  both directions share the search query, filter, and ordering.
+  The hook returns `previous`, `next`, `loading`, `error`, and `refetch()` for
+  navigation and retries. It ignores obsolete responses after record/scope changes
+  or retries and hides stale links during loading or errors. A missing query owner
+  is an error; an empty edges array is a valid boundary.
+  Pages use `backSearch` directly for both breadcrumb and footer links. While
+  loading or on failure it retains `pageSearch`. After a successful query, saved
+  search is positioned using the preceding cursor so the current record becomes
+  the first list row, retaining filters, sorting, and page size. No predecessor
+  means the filtered first page. The hook calls `setPageSearch` internally to save
+  this position, including after browser back/forward; pages need no separate
+  persistence effect. Without saved search, `backSearch` uses schema defaults and
+  no list visit is written. `pageSearch` and `setPageSearch` remain available for
+  explicit updates. Query closures use list filters and ordering; list pagination
+  is retained for returning to the list and does not drive adjacent-record queries.
 
 The list URL remains authoritative: entering a bare list URL resets its search
 instead of silently restoring storage. Direct detail visits without saved search

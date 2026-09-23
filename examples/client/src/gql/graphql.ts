@@ -2290,8 +2290,7 @@ export type AcceptInvitationFromInviteRouteMutation = {
 };
 
 export type GetWorkspaceApiKeyNeighborsQueryVariables = Exact<{
-  before: Scalars["String"]["input"];
-  after: Scalars["String"]["input"];
+  cursor: Scalars["String"]["input"];
   filter?: InputMaybe<Scalars["WorkspaceApiKeyFilter"]["input"]>;
   orderBy?: InputMaybe<WorkspaceApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
@@ -2322,8 +2321,7 @@ export type GetWorkspaceApiKeyNeighborsQuery = {
 };
 
 export type GetUserApiKeyNeighborsQueryVariables = Exact<{
-  before: Scalars["String"]["input"];
-  after: Scalars["String"]["input"];
+  cursor: Scalars["String"]["input"];
   filter?: InputMaybe<Scalars["UserApiKeyFilter"]["input"]>;
   orderBy?: InputMaybe<UserApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
@@ -7175,21 +7173,7 @@ export const GetWorkspaceApiKeyNeighborsDocument = {
           kind: "VariableDefinition",
           variable: {
             kind: "Variable",
-            name: { kind: "Name", value: "before" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "String" },
-            },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "after" },
+            name: { kind: "Name", value: "cursor" },
           },
           type: {
             kind: "NonNullType",
@@ -7255,7 +7239,7 @@ export const GetWorkspaceApiKeyNeighborsDocument = {
                       name: { kind: "Name", value: "before" },
                       value: {
                         kind: "Variable",
-                        name: { kind: "Name", value: "before" },
+                        name: { kind: "Name", value: "cursor" },
                       },
                     },
                     {
@@ -7330,7 +7314,7 @@ export const GetWorkspaceApiKeyNeighborsDocument = {
                       name: { kind: "Name", value: "after" },
                       value: {
                         kind: "Variable",
-                        name: { kind: "Name", value: "after" },
+                        name: { kind: "Name", value: "cursor" },
                       },
                     },
                     {
@@ -7413,21 +7397,7 @@ export const GetUserApiKeyNeighborsDocument = {
           kind: "VariableDefinition",
           variable: {
             kind: "Variable",
-            name: { kind: "Name", value: "before" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "String" },
-            },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "after" },
+            name: { kind: "Name", value: "cursor" },
           },
           type: {
             kind: "NonNullType",
@@ -7493,7 +7463,7 @@ export const GetUserApiKeyNeighborsDocument = {
                       name: { kind: "Name", value: "before" },
                       value: {
                         kind: "Variable",
-                        name: { kind: "Name", value: "before" },
+                        name: { kind: "Name", value: "cursor" },
                       },
                     },
                     {
@@ -7568,7 +7538,7 @@ export const GetUserApiKeyNeighborsDocument = {
                       name: { kind: "Name", value: "after" },
                       value: {
                         kind: "Variable",
-                        name: { kind: "Name", value: "after" },
+                        name: { kind: "Name", value: "cursor" },
                       },
                     },
                     {

@@ -170,6 +170,69 @@ test("browses details across pages, survives back and refresh, then anchors the 
   expect(readSearch(page)).toEqual(restored);
 });
 
+test("ignores a delayed lazy-query result after browser back to another record", async ({
+  page,
+}) => {
+  const [, b, c, d] = await prepareKeys(page);
+  let releaseOldQuery!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    releaseOldQuery = resolve;
+  });
+  let pendingQueries = 0;
+  await page.route("**/api/graphql", async (route) => {
+    const body = route.request().postDataJSON() as {
+      operationName?: string;
+      variables?: { cursor: string };
+    };
+    if (body.operationName !== "getUserApiKeyNeighbors") {
+      await route.continue();
+      return;
+    }
+    const id = JSON.parse(
+      Buffer.from(body.variables!.cursor, "base64").toString(),
+    ).id as string;
+    if (id !== b.id) {
+      await route.continue();
+      return;
+    }
+    pendingQueries++;
+    try {
+      const response = await route.fetch();
+      await pending;
+      await route.fulfill({ response });
+    } catch {
+      // Apollo may abort the superseded request when executing the new one.
+    } finally {
+      pendingQueries--;
+    }
+  });
+  try {
+    await page.goto(listPath());
+    await page.getByRole("button", { name: "下一页", exact: true }).click();
+    await page.getByRole("link", { name: c.name, exact: true }).click();
+    await expectNeighbor(page, "previous", b.id);
+    await expectNeighbor(page, "next", d.id);
+    await expectSavedPosition(page, b.id);
+    await page.getByTestId("api-key-previous").click();
+    await expectDetails(page, b.name);
+    await expect.poll(() => pendingQueries).toBeGreaterThan(0);
+    await expect(page.getByTestId("api-key-previous")).toBeDisabled();
+    await expect(page.getByTestId("api-key-next")).toBeDisabled();
+    await expectSavedPosition(page, b.id);
+    await page.goBack();
+    await expectDetails(page, c.name);
+    await expectNeighbor(page, "previous", b.id);
+    await expectNeighbor(page, "next", d.id);
+    releaseOldQuery();
+    await expect.poll(() => pendingQueries).toBe(0);
+    await expectSavedPosition(page, b.id);
+    await expectNeighbor(page, "previous", b.id);
+    await expectNeighbor(page, "next", d.id);
+  } finally {
+    releaseOldQuery();
+  }
+});
+
 test("restores the exact list search from create/cancel and create/success, without storing the secret", async ({
   page,
 }) => {

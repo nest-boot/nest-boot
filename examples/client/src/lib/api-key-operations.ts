@@ -2,8 +2,7 @@ import { graphql } from "@/gql";
 
 export const GET_WORKSPACE_API_KEY_NEIGHBORS = graphql(`
   query getWorkspaceApiKeyNeighbors(
-    $before: String!
-    $after: String!
+    $cursor: String!
     $filter: WorkspaceApiKeyFilter
     $orderBy: WorkspaceApiKeyOrder
     $query: String
@@ -12,7 +11,7 @@ export const GET_WORKSPACE_API_KEY_NEIGHBORS = graphql(`
       id
       previous: apiKeys(
         last: 1
-        before: $before
+        before: $cursor
         filter: $filter
         orderBy: $orderBy
         query: $query
@@ -26,7 +25,7 @@ export const GET_WORKSPACE_API_KEY_NEIGHBORS = graphql(`
       }
       next: apiKeys(
         first: 1
-        after: $after
+        after: $cursor
         filter: $filter
         orderBy: $orderBy
         query: $query
@@ -44,8 +43,7 @@ export const GET_WORKSPACE_API_KEY_NEIGHBORS = graphql(`
 
 export const GET_USER_API_KEY_NEIGHBORS = graphql(`
   query getUserApiKeyNeighbors(
-    $before: String!
-    $after: String!
+    $cursor: String!
     $filter: UserApiKeyFilter
     $orderBy: UserApiKeyOrder
     $query: String
@@ -54,7 +52,7 @@ export const GET_USER_API_KEY_NEIGHBORS = graphql(`
       id
       previous: apiKeys(
         last: 1
-        before: $before
+        before: $cursor
         filter: $filter
         orderBy: $orderBy
         query: $query
@@ -68,7 +66,7 @@ export const GET_USER_API_KEY_NEIGHBORS = graphql(`
       }
       next: apiKeys(
         first: 1
-        after: $after
+        after: $cursor
         filter: $filter
         orderBy: $orderBy
         query: $query

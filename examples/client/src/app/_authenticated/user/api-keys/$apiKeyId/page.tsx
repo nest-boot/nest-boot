@@ -1,8 +1,9 @@
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useLazyQuery, useMutation } from "@apollo/client/react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { t } from "i18next";
-import { useEffect } from "react";
+import { useCallback } from "react";
 
+import type { PageNavigationQueryOptions } from "@/hooks/use-page-navigation";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import { ApiKeyNavigation } from "@/components/api-key-navigation";
 import { useAbility } from "@/contexts/ability-context";
@@ -58,38 +59,34 @@ function ApiKeyDetailsPage() {
   const [updateApiKey] = useMutation(
     UPDATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
   );
+  const [loadNeighbors] = useLazyQuery(GET_USER_API_KEY_NEIGHBORS, {
+    fetchPolicy: "network-only",
+  });
   const navigation = usePageNavigation({
     key: userApiKeysPageKey,
     searchSchema: apiKeySearchSchema,
     record: apiKey,
-  });
-  const { query, filter, orderBy } = createApiKeyQueryVariables(
-    navigation.pageSearch,
-  );
-  const { data, loading, error, refetch } = useQuery(
-    GET_USER_API_KEY_NEIGHBORS,
-    {
-      variables: {
-        query,
-        filter,
-        orderBy,
-        before: navigation.previousSearch.before,
-        after: navigation.nextSearch.after,
+    query: useCallback(
+      async ({
+        pageSearch,
+        cursor,
+      }: PageNavigationQueryOptions<typeof apiKeySearchSchema>) => {
+        const { query, filter, orderBy } =
+          createApiKeyQueryVariables(pageSearch);
+        const { data } = await loadNeighbors({
+          variables: {
+            query,
+            filter,
+            orderBy,
+            cursor,
+          },
+        });
+        return data?.currentUser;
       },
-      fetchPolicy: "network-only",
-    },
-  );
-  const neighbors = !loading && !error ? data?.currentUser : undefined;
-  const previous = neighbors?.previous.edges[0];
-  const next = neighbors?.next.edges[0];
-  const listSearch = neighbors
-    ? navigation.getBackSearch(previous?.cursor)
-    : navigation.pageSearch;
-  const { setPageSearch } = navigation;
-  useEffect(() => {
-    if (!neighbors) return;
-    setPageSearch((saved) => (saved === undefined ? undefined : listSearch));
-  }, [neighbors, listSearch, setPageSearch]);
+      [loadNeighbors],
+    ),
+  });
+  const { previous, next, backSearch, error } = navigation;
   return (
     <ApiKeyFormPage
       key={apiKey.id}
@@ -99,7 +96,7 @@ function ApiKeyDetailsPage() {
         createAbilitySubject("UserApiKey", apiKey),
       )}
       listPath={"/user/api-keys"}
-      listSearch={listSearch}
+      listSearch={backSearch}
       navigation={
         <ApiKeyNavigation
           previousPath={
@@ -108,7 +105,7 @@ function ApiKeyDetailsPage() {
           nextPath={next ? `/user/api-keys/${next.node.id}` : undefined}
           failed={Boolean(error)}
           onRetry={() => {
-            void refetch().catch(() => undefined);
+            void navigation.refetch().catch(() => undefined);
           }}
         />
       }
