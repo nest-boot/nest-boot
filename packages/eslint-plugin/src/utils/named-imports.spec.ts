@@ -3,7 +3,7 @@ import { Linter, type Rule } from "eslint";
 import * as ts from "typescript";
 
 import { createRule } from "./createRule.js";
-import { namedImportEdits } from "./named-imports.js";
+import { importedBindingName, namedImportEdits } from "./named-imports.js";
 
 const rule = createRule<[], "missing">({
   name: "test-import",
@@ -26,6 +26,39 @@ const rule = createRule<[], "missing">({
       },
     };
   },
+});
+
+it.each([
+  "const { Entity } = { Entity }; @Entity() class Thing {}",
+  "const { Entity: orm } = { Entity: orm.Entity }; @orm.Entity() class Thing {}",
+])("does not recurse through cyclic destructured bindings: %s", (code) => {
+  const probe = createRule<[], "unused">({
+    name: "test-origin",
+    meta: {
+      type: "problem",
+      docs: { description: "Exercise import origin resolution." },
+      schema: [],
+      messages: { unused: "Unused." },
+    },
+    defaultOptions: [],
+    create(context) {
+      return {
+        "CallExpression > Identifier, CallExpression > MemberExpression"(node) {
+          expect(
+            importedBindingName(context.sourceCode, "@mikro-orm/core", node),
+          ).toBeNull();
+        },
+      };
+    },
+  });
+  const result = new Linter().verify(code, {
+    languageOptions: { parser },
+    plugins: {
+      test: { rules: { origin: probe as unknown as Rule.RuleModule } },
+    },
+    rules: { "test/origin": "error" },
+  });
+  expect(result).toEqual([]);
 });
 
 it.each([
