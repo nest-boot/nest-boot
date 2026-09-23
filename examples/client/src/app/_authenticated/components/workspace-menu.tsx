@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { Boxes, Loader2 } from "lucide-react";
 import { useQuery } from "@apollo/client/react";
 import { useTranslation } from "react-i18next";
 import { useMemo, useState } from "react";
@@ -131,6 +131,7 @@ export function WorkspaceMenu({
         render={<Link to="/user/workspaces" />}
         data-testid="workspace-switcher-manage"
       >
+        <Boxes />
         {t("sidebar:switcher.manageWorkspaces")}
       </TopbarMenuItem>
     </>
