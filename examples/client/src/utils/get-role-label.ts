@@ -6,6 +6,8 @@ export function getRoleLabel(role: string) {
       return t("member:role.owner");
     case "ADMIN":
       return t("member:role.admin");
+    case "USER":
+      return t("member:role.user");
     case "MEMBER":
       return t("member:role.member");
     default:

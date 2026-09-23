@@ -81,7 +81,8 @@
   "role": {
     "admin": "Admin",
     "member": "Member",
-    "owner": "Owner"
+    "owner": "Owner",
+    "user": "User"
   },
   "status": {
     "active": "Active",
