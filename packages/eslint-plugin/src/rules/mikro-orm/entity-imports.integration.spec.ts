@@ -739,3 +739,57 @@ it("repairs a project barrel before its consumer is autofixed", () => {
     false,
   );
 });
+
+it.each([
+  'export * from "@mikro-orm/core";',
+  'export * from "@mikro-orm/postgresql";',
+  'export * from "@mikro-orm/knex";',
+  'export type * from "@mikro-orm/core";',
+  'export * from "@mikro-orm/core"; export * from "@mikro-orm/sql"; export { EntityManager, EntityRepository, MikroORM, Options, defineConfig, raw } from "@mikro-orm/sql";',
+  'export type * from "@mikro-orm/core"; export * from "@mikro-orm/sql"; export { EntityManager, EntityRepository, MikroORM, Options, defineConfig, raw } from "@mikro-orm/sql";',
+  'export * from "@mikro-orm/core"; export { Entity } from "./.cache/orm-imports/other-decorators.js";',
+])("restores wildcard legacy decorator exports: %s", (code) => {
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toContain("@mikro-orm/decorators/legacy");
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});
+
+it.each([
+  'export * from "@mikro-orm/core"; export * from "@mikro-orm/decorators/legacy";',
+  'export type * from "@mikro-orm/core"; export type * from "@mikro-orm/decorators/legacy";',
+  'export * as orm from "@mikro-orm/core";',
+])("preserves existing wildcard and namespace APIs: %s", (code) => {
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toBe(code);
+  expect(compileDiagnostics(result.output)).toEqual([]);
+});
+
+it("preserves both runtime and type members in a migrated namespace barrel", () => {
+  const barrel = linter.verifyAndFix(
+    'export * from "@mikro-orm/core";',
+    config,
+    { filename },
+  );
+  expect(barrel.messages).toEqual([]);
+  writeFileSync(path.join(fixtureRoot, "wildcard-barrel.ts"), barrel.output);
+  writeFileSync(
+    path.join(fixtureRoot, "namespace-barrel.ts"),
+    'export * as orm from "./wildcard-barrel.js";',
+  );
+  const code = `import { orm } from "./.cache/orm-imports/namespace-barrel.js";
+@orm.Entity() export class Thing { @orm.Property({ type: orm.t.string }) name?: string; }
+export type EntityReference = orm.Ref<Thing>;`;
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toContain("nullable: true");
+  expect(result.output).toContain("orm.Ref<Thing>");
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});

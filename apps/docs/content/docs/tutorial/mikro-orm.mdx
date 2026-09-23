@@ -8,7 +8,7 @@ The `@nest-boot/mikro-orm` module wraps [`@mikro-orm/nestjs`](https://mikro-orm.
 ## Installation
 
 ```bash
-pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/nestjs @mikro-orm/reflection @mikro-orm/migrations
+pnpm add @nest-boot/mikro-orm @mikro-orm/core @mikro-orm/decorators @mikro-orm/nestjs @mikro-orm/reflection @mikro-orm/migrations
 
 # Install the driver matching DATABASE_URL
 pnpm add @mikro-orm/postgresql
@@ -16,6 +16,19 @@ pnpm add @mikro-orm/postgresql
 ```
 
 Use `@mikro-orm/core` for `t`, `Opt`, `Ref` and `Collection`, and `@mikro-orm/decorators/legacy` for entity decorators such as `Entity`, `Property` and `Enum`. Driver-specific APIs such as `PostgreSqlDriver` and the SQL `EntityManager` stay in their driver package. The entity ESLint autofix migrates named helper and legacy decorator imports while preserving aliases and type-only bindings.
+
+When upgrading from MikroORM v6, barrels that re-export core or a driver also need to re-export legacy decorators. ESLint adds the missing exports for plain `export *`. For `export * as orm`, create a compatibility barrel and point the namespace re-export to it, preserving both runtime members such as `orm.Entity()` and type members such as `orm.Ref<T>`:
+
+```ts
+// orm-compat.ts
+export * from "@mikro-orm/core";
+export * from "@mikro-orm/decorators/legacy";
+
+// index.ts
+export * as orm from "./orm-compat.js";
+```
+
+If the original barrel re-exported a driver, retain that driver entry point in the compatibility barrel. Namespace re-exports are not automatically replaced with spread objects, which lose the type namespace; an ESLint single-file fix cannot create the companion file.
 
 ## Module Registration
 
@@ -241,7 +254,8 @@ pnpm add @nest-boot/mikro-orm-crypt @nest-boot/crypt
 ```
 
 ```typescript
-import { Entity, PrimaryKey, t } from "@mikro-orm/postgresql";
+import { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
 import { EncryptedProperty } from "@nest-boot/mikro-orm-crypt";
 
 @Entity()
@@ -281,7 +295,8 @@ pnpm add @nest-boot/mikro-orm-hash @nest-boot/hash
 ```
 
 ```typescript
-import { Entity, PrimaryKey, t } from "@mikro-orm/postgresql";
+import { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
 import { HashedProperty } from "@nest-boot/mikro-orm-hash";
 
 @Entity()

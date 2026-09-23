@@ -84,6 +84,25 @@ export function legacyDecoratorImports(source: Readonly<SourceCode>) {
     );
   };
 
+  const wildcardExports = source.ast.body.filter(
+    (node): node is TSESTree.ExportAllDeclaration =>
+      node.type === AST_NODE_TYPES.ExportAllDeclaration &&
+      !node.exported &&
+      entryPoints.has(node.source.value),
+  );
+  const wildcardKind = wildcardExports.some(
+    (node) => node.exportKind !== "type",
+  )
+    ? "value"
+    : "type";
+  const hasLegacyWildcard = source.ast.body.some(
+    (node) =>
+      node.type === AST_NODE_TYPES.ExportAllDeclaration &&
+      !node.exported &&
+      node.source.value === legacy &&
+      (wildcardKind === "type" || node.exportKind !== "type"),
+  );
+
   return source.ast.body.flatMap<LegacyImportEdit>((node) => {
     // v7 renamed the shared SQL entry point; remaining SQL bindings stay valid there.
     if (
@@ -100,6 +119,14 @@ export function legacyDecoratorImports(source: Readonly<SourceCode>) {
             text.slice(0, node.source.range[0] - node.range[0]) +
             JSON.stringify("@mikro-orm/sql") +
             text.slice(node.source.range[1] - node.range[0]),
+        },
+      ];
+    }
+    if (node === wildcardExports[0] && !hasLegacyWildcard) {
+      return [
+        {
+          node,
+          text: `${source.getText(node)}\nexport ${wildcardKind === "type" ? "type " : ""}* from ${JSON.stringify(legacy)};`,
         },
       ];
     }

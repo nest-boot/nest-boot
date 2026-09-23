@@ -3,7 +3,12 @@ import { Linter, type Rule } from "eslint";
 import * as ts from "typescript";
 
 import { createRule } from "./createRule.js";
-import { importedBindingName, namedImportEdits } from "./named-imports.js";
+import {
+  importedBindingName,
+  isTypeOnlyImportReference,
+  namedImportEdits,
+  promoteImportReferences,
+} from "./named-imports.js";
 
 const rule = createRule<[], "missing">({
   name: "test-import",
@@ -71,6 +76,30 @@ it.each<[string, string | null]>([
     'import * as orm from "@mikro-orm/decorators/legacy"; function shadow(orm: { Entity(): ClassDecorator }) { const { Entity: Model } = orm; @Model() class Thing {} }',
     null,
   ],
+  [
+    'import type * as orm from "@mikro-orm/decorators/legacy"; const { Entity: Model } = orm; @Model() class Thing {}',
+    "Entity",
+  ],
+  [
+    'import type * as orm from "@mikro-orm/decorators/legacy"; const { Model } = { ...orm, Model: orm["Entity"] }; @Model() class Thing {}',
+    "Entity",
+  ],
+  [
+    'import type * as orm from "@mikro-orm/decorators/legacy"; const { Entity: Model } = { Entity: orm.Entity, ...unknown }; @Model() class Thing {}',
+    null,
+  ],
+  [
+    'import type { Entity as orm } from "@mikro-orm/decorators/legacy"; const { Entity: Model } = orm; @Model() class Thing {}',
+    null,
+  ],
+  [
+    'import type * as orm from "@mikro-orm/decorators/legacy"; function shadow(orm: { Entity(): ClassDecorator }) { const { Entity: Model } = orm; @Model() class Thing {} }',
+    null,
+  ],
+  [
+    'import * as orm from "@mikro-orm/decorators/legacy"; const { Entity: Model } = { Entity: orm[unknown] }; @Model() class Thing {}',
+    null,
+  ],
 ])("resolves only verified namespace bindings: %s", (code, expected) => {
   const probe = createRule<[], "unused">({
     name: "test-origin",
@@ -91,6 +120,13 @@ it.each<[string, string | null]>([
               node,
             ),
           ).toBe(expected);
+          const erased = code.includes("import type") && expected !== null;
+          expect(isTypeOnlyImportReference(context.sourceCode, node)).toBe(
+            erased,
+          );
+          expect(
+            promoteImportReferences(context.sourceCode, [node]).length > 0,
+          ).toBe(erased);
         },
       };
     },
