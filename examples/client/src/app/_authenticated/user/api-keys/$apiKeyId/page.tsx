@@ -81,7 +81,11 @@ function ApiKeyDetailsPage() {
             cursor,
           },
         });
-        return data?.currentUser;
+        if (!data?.currentUser) return undefined;
+        return {
+          previous: data.currentUser.previous.edges[0],
+          next: data.currentUser.next.edges[0],
+        };
       },
       [apiKey, loadNeighbors],
     ),

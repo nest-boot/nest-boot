@@ -2,7 +2,7 @@ import { camelCase, get } from "lodash";
 
 /** Derives a record cursor using the normalized page search's ordering. */
 export function createConnectionCursor<
-  Record extends { id: string },
+  Record extends { id: string | number },
   Search extends object,
 >(
   record: Record,
@@ -22,7 +22,7 @@ export function createConnectionCursor<
 
 /** Browser equivalent of @nest-boot/graphql-connection's base64 JSON cursor. */
 export function encodeConnectionCursor(position: {
-  id: string;
+  id: string | number;
   value?: unknown;
 }): string {
   const bytes = new TextEncoder().encode(JSON.stringify(position));

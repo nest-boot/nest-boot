@@ -92,9 +92,11 @@ function ApiKeyDetailsPage() {
           },
           context: { headers: { "x-workspace-id": workspaceId } },
         });
-        return data?.currentWorkspace?.id === workspaceId
-          ? data.currentWorkspace
-          : undefined;
+        if (data?.currentWorkspace?.id !== workspaceId) return undefined;
+        return {
+          previous: data.currentWorkspace.previous.edges[0],
+          next: data.currentWorkspace.next.edges[0],
+        };
       },
       [apiKey, loadNeighbors, workspaceId],
     ),

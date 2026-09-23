@@ -7,6 +7,7 @@ import { usePageSearch } from "./use-page-search";
 import { usePageNavigation } from "./use-page-navigation";
 import type { ReactNode } from "react";
 import type {
+  PageNavigationEdge,
   PageNavigationQueryOptions,
   PageNavigationQueryResult,
 } from "./use-page-navigation";
@@ -49,10 +50,10 @@ function neighbors(
   next?: string,
 ): PageNavigationQueryResult {
   return {
-    previous: {
-      edges: previous ? [{ cursor: previous, node: { id: previous } }] : [],
-    },
-    next: { edges: next ? [{ cursor: next, node: { id: next } }] : [] },
+    previous: previous
+      ? { cursor: previous, node: { id: previous } }
+      : undefined,
+    next: next ? { cursor: next, node: { id: next } } : undefined,
   };
 }
 function saveSearch(search: z.input<typeof apiKeySearchSchema>, key = pageKey) {
@@ -107,6 +108,13 @@ describe("usePageNavigation", () => {
     expectTypeOf<Parameters<Options["query"]>[0]>().toEqualTypeOf<{
       pageSearch: z.output<typeof apiKeySearchSchema>;
     }>();
+    expectTypeOf<PageNavigationQueryResult>().toEqualTypeOf<{
+      previous?: PageNavigationEdge;
+      next?: PageNavigationEdge;
+    }>();
+    expectTypeOf<PageNavigationEdge["node"]["id"]>().toEqualTypeOf<
+      string | number
+    >();
     rerender({ execute: query });
     act(() => result.current.setPageSearch({ first: 5, after: "saved" }));
     expect(query).toHaveBeenCalledTimes(1);
@@ -132,6 +140,42 @@ describe("usePageNavigation", () => {
     });
     expect(result.current.previous?.node.id).toBe("B");
     expect(result.current.next).toBeUndefined();
+  });
+
+  it("accepts numeric IDs including zero and retains the complete preceding cursor", async () => {
+    const saved = saveSearch({ first: 5, after: "old" });
+    const data: PageNavigationQueryResult = {
+      previous: {
+        cursor: btoa(
+          JSON.stringify({ id: 0, value: "2026-09-23T10:00:00.000Z" }),
+        ),
+        node: { id: 0 },
+      },
+      next: {
+        cursor: btoa(
+          JSON.stringify({ id: 2, value: "2026-09-21T10:00:00.000Z" }),
+        ),
+        node: { id: 2 },
+      },
+    };
+    const query = vi.fn().mockResolvedValue(data);
+    const { result } = renderHook(
+      () =>
+        usePageNavigation({
+          key: pageKey,
+          searchSchema: apiKeySearchSchema,
+          query,
+        }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.previous).toEqual(data.previous);
+    expect(result.current.next).toEqual(data.next);
+    expect(result.current.backSearch).toMatchObject({
+      first: 5,
+      after: data.previous?.cursor,
+    });
+    expect(saved.result.current.pageSearch).toEqual(result.current.backSearch);
   });
 
   it("retains saved search during loading and failure, and retries without page-owned query state", async () => {

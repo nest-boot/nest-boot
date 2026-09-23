@@ -50,6 +50,18 @@ describe("browser connection cursor", () => {
     ).toThrow('missing the "createdAt" sort field');
   });
 
+  it.each([undefined, "ID"])(
+    "preserves numeric zero IDs with ordering %s",
+    (field) => {
+      expect(
+        createConnectionCursor(
+          { id: 0 },
+          { orderBy: field ? { field } : undefined },
+        ),
+      ).toBe(new Cursor(field ? { id: 0, value: 0 } : { id: 0 }).toString());
+    },
+  );
+
   it.each([undefined, null])(
     "matches the server's ID-only cursor without ordering (%s)",
     (orderBy) => {
