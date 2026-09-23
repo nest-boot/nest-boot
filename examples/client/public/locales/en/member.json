@@ -64,7 +64,7 @@
   "invite": {
     "button": "Invite",
     "confirm_and_copy": "Confirm and Copy Link",
-    "copy_failed": "The invitation was created, but the link could not be copied automatically",
+    "copy_failed": "The invitation was created, but the link could not be copied. You can select and copy it manually.",
     "description": "The system will generate an invite link",
     "email_label": "Email",
     "email_placeholder": "user@example.com",
@@ -76,7 +76,15 @@
     "link_user_join": "Invited users can join the workspace by clicking the link",
     "role_label": "Role",
     "select_role_placeholder": "Select a role",
-    "title": "Invite Workspace Member"
+    "title": "Invite Workspace Member",
+    "back": "Back to Members",
+    "form_title": "Invitation",
+    "form_description": "The invited user can join this workspace using the link. Invitations expire in 48 hours.",
+    "role_required": "Select at least one role.",
+    "role_invalid": "Select only roles you can grant.",
+    "no_roles": "You do not have any roles available to grant.",
+    "failed": "Unable to create the invitation. Please try again.",
+    "copy_link": "Copy Invite Link"
   },
   "role": {
     "admin": "Admin",

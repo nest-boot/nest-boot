@@ -94,22 +94,61 @@ test("submits administrator forms with Enter and preserves drafts in other cards
   const email = `${uniqueSeed("admin-form")}@example.com`;
   await signInAsE2eAdministrator(page);
   await page.goto("/admin/users");
-  await page.getByRole("button", { name: "创建用户", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "创建用户", exact: true });
-  await dialog.getByLabel("名称", { exact: true }).fill("Form target");
-  await dialog.getByLabel("邮箱", { exact: true }).fill(email);
-  const password = dialog.getByLabel("临时密码");
+  await page.getByRole("link", { name: "创建用户", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/users\/create$/);
+  await page.reload();
+  const createPage = page.getByTestId("admin-create-user-page");
+  await expect(createPage).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const breadcrumbs = createPage.getByRole("navigation", {
+    name: "面包屑导航",
+  });
+  await expect(breadcrumbs.getByRole("link")).toHaveCount(1);
+  await breadcrumbs.getByRole("link", { name: "用户", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/users(?:\?.*)?$/);
+  await page.goto("/admin/users/create");
+  let attempts = 0;
+  await page.route("**/api/graphql", async (route) => {
+    if (!route.request().postData()?.includes("createUserFromCreateUserRoute"))
+      return route.continue();
+    attempts++;
+    if (attempts === 1)
+      return route.fulfill({
+        json: { errors: [{ message: "Temporary creation failure" }] },
+      });
+    return route.continue();
+  });
+  await page.getByTestId("admin-create-user-submit").click();
+  await expect(
+    createPage.getByText("请输入姓名", { exact: true }),
+  ).toBeVisible();
+  expect(attempts).toBe(0);
+  await createPage.getByLabel("名称", { exact: true }).fill("Form target");
+  await createPage.getByLabel("邮箱", { exact: true }).fill(email);
+  const password = createPage.getByLabel("临时密码");
   await password.fill(testPassword);
+  await password.press("Enter");
+  await expect(
+    createPage.getByText("Temporary creation failure", { exact: true }),
+  ).toBeVisible();
+  await expect(password).toHaveValue(testPassword);
+  await expect(createPage.getByLabel("邮箱", { exact: true })).toHaveValue(
+    email,
+  );
   const created = page.waitForResponse(
     (response) =>
-      response.request().postData()?.includes("createUserFromUsersRoute") ===
-      true,
+      response
+        .request()
+        .postData()
+        ?.includes("createUserFromCreateUserRoute") === true,
   );
-  await password.press("Enter");
+  await page.getByTestId("admin-create-user-submit").click();
   const result = await (await created).json();
   expect(result.errors).toBeUndefined();
   const id = result.data.createUser.id;
-  await expect(dialog).not.toBeVisible();
+  await expect(page).toHaveURL(/\/admin\/users(?:\?.*)?$/);
+  await expect(page.getByRole("row").filter({ hasText: email })).toBeVisible();
+  expect(attempts).toBe(2);
 
   await page.goto(`/admin/users/${id}`);
   const name = page.getByTestId("admin-user-name");

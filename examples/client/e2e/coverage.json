@@ -75,8 +75,12 @@
       "domain": "Invitations",
       "scenario": "Create, cancel, register through, accept, and reject invitations",
       "status": "covered",
-      "specs": ["invitation.spec.ts", "user.spec.ts"],
-      "notes": "Covers owner and recipient flows, including the personal pending-invitation list."
+      "specs": [
+        "invitation.spec.ts",
+        "user.spec.ts",
+        "invitation-create.spec.ts"
+      ],
+      "notes": "Covers owner and recipient flows, including the personal pending-invitation list. The standalone invite route supports direct navigation/reload, cancellation, mobile layout, email/role validation, unchanged-value retries after a failed request, copy failure recovery, and workspace isolation. Unauthorized creation links redirect and available roles respect the issuer grants."
     },
     {
       "domain": "Invitations",
@@ -144,7 +148,7 @@
       "scenario": "Independent user detail forms and keyboard submission",
       "status": "covered",
       "specs": ["form-state.spec.ts"],
-      "notes": "Creates a user with Enter, initializes asynchronous profile fields, preserves an unsaved profile draft while saving roles, and saves the profile with Enter."
+      "notes": "Opens and reloads the standalone user creation route, returns to the list on cancellation/success, validates before mutation, retries a failed creation without losing fields, initializes asynchronous profile fields, preserves an unsaved profile draft while saving roles, and saves the profile with Enter. Direct user creation URLs reject read-only administrators."
     },
     {
       "domain": "Auth",

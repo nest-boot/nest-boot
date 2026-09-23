@@ -13,8 +13,8 @@ import { useTranslation } from "react-i18next";
 import z from "zod";
 import { isEmpty, pick } from "lodash";
 import { useCurrentMemberContext } from "../contexts/current-member-context";
-import { InviteMemberDialog } from "./components/invite-member-dialog";
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import { Link } from "@/components/link";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
@@ -239,7 +239,6 @@ function MembersComponent() {
   const query = search?.query ?? "";
   const filterValues = (search?.filter ?? {}) as Record<string, unknown>;
 
-  const [inviteOpen, setInviteOpen] = useState(false);
   const [invitationPage, setInvitationPage] = useState<{
     first?: number;
     last?: number;
@@ -438,7 +437,12 @@ function MembersComponent() {
           <PageActions>
             <PagePrimaryAction
               data-testid="members-invite-action"
-              onClick={() => setInviteOpen(true)}
+              render={
+                <Link
+                  to="/workspaces/$workspaceId/members/invite"
+                  params={{ workspaceId }}
+                />
+              }
             >
               {t("member:invite.button")}
             </PagePrimaryAction>
@@ -698,16 +702,6 @@ function MembersComponent() {
             </PageLayoutSection>
           ) : null}
         </PageLayout>
-
-        {canCreateInvitation ? (
-          <InviteMemberDialog
-            inviteOpen={inviteOpen}
-            onInviteOpenChange={setInviteOpen}
-            onSuccess={async () => {
-              await refetch();
-            }}
-          />
-        ) : null}
       </PageContent>
     </Page>
   );

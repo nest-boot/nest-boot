@@ -1,5 +1,4 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
-import { t } from "i18next";
 
 import { AppTopbar } from "../components/app-topbar";
 import { AdminSidebar } from "./components/admin-sidebar";
@@ -11,7 +10,6 @@ export const Route = createFileRoute("/_authenticated/admin")({
     if (!ability.can("read", "User")) {
       throw redirect({ to: "/user" });
     }
-    return { title: t("admin:title") };
   },
 });
 

@@ -1522,6 +1522,15 @@ export type ImpersonateUserFromUserRouteMutation = {
   impersonateUser: { __typename?: "User"; id: string };
 };
 
+export type CreateUserFromCreateUserRouteMutationVariables = Exact<{
+  input: CreateUserInput;
+}>;
+
+export type CreateUserFromCreateUserRouteMutation = {
+  __typename?: "Mutation";
+  createUser: { __typename?: "CreateUserPayload"; id: string };
+};
+
 export type GetUsersFromUsersRouteQueryVariables = Exact<{
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
@@ -1557,15 +1566,6 @@ export type GetUsersFromUsersRouteQuery = {
       endCursor?: string | null;
     };
   };
-};
-
-export type CreateUserFromUsersRouteMutationVariables = Exact<{
-  input: CreateUserInput;
-}>;
-
-export type CreateUserFromUsersRouteMutation = {
-  __typename?: "Mutation";
-  createUser: { __typename?: "CreateUserPayload"; id: string };
 };
 
 export type SignOutFromSidebarUserMutationVariables = Exact<{
@@ -1989,11 +1989,11 @@ export type RemoveMemberFromMemberRouteMutation = {
   removeMember: { __typename?: "RemoveMemberPayload"; id: string };
 };
 
-export type GetRolesFromInviteMemberDialogQueryVariables = Exact<{
+export type GetRolesFromInviteMemberRouteQueryVariables = Exact<{
   [key: string]: never;
 }>;
 
-export type GetRolesFromInviteMemberDialogQuery = {
+export type GetRolesFromInviteMemberRouteQuery = {
   __typename?: "Query";
   workspaceRoles: Array<{
     __typename?: "WorkspaceRoleOption";
@@ -2002,11 +2002,11 @@ export type GetRolesFromInviteMemberDialogQuery = {
   }>;
 };
 
-export type CreateInvitationFromInviteMemberDialogMutationVariables = Exact<{
+export type CreateInvitationFromInviteMemberRouteMutationVariables = Exact<{
   input: CreateInvitationInput;
 }>;
 
-export type CreateInvitationFromInviteMemberDialogMutation = {
+export type CreateInvitationFromInviteMemberRouteMutation = {
   __typename?: "Mutation";
   createInvitation: { __typename?: "CreateInvitationPayload"; id: string };
 };
@@ -3471,6 +3471,60 @@ export const ImpersonateUserFromUserRouteDocument = {
   ImpersonateUserFromUserRouteMutation,
   ImpersonateUserFromUserRouteMutationVariables
 >;
+export const CreateUserFromCreateUserRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "createUserFromCreateUserRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "CreateUserInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "createUser" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  CreateUserFromCreateUserRouteMutation,
+  CreateUserFromCreateUserRouteMutationVariables
+>;
 export const GetUsersFromUsersRouteDocument = {
   kind: "Document",
   definitions: [
@@ -3684,60 +3738,6 @@ export const GetUsersFromUsersRouteDocument = {
 } as unknown as DocumentNode<
   GetUsersFromUsersRouteQuery,
   GetUsersFromUsersRouteQueryVariables
->;
-export const CreateUserFromUsersRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "mutation",
-      name: { kind: "Name", value: "createUserFromUsersRoute" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "input" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "CreateUserInput" },
-            },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "createUser" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "input" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "input" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  CreateUserFromUsersRouteMutation,
-  CreateUserFromUsersRouteMutationVariables
 >;
 export const SignOutFromSidebarUserDocument = {
   kind: "Document",
@@ -5610,13 +5610,13 @@ export const RemoveMemberFromMemberRouteDocument = {
   RemoveMemberFromMemberRouteMutation,
   RemoveMemberFromMemberRouteMutationVariables
 >;
-export const GetRolesFromInviteMemberDialogDocument = {
+export const GetRolesFromInviteMemberRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "query",
-      name: { kind: "Name", value: "getRolesFromInviteMemberDialog" },
+      name: { kind: "Name", value: "getRolesFromInviteMemberRoute" },
       selectionSet: {
         kind: "SelectionSet",
         selections: [
@@ -5636,16 +5636,16 @@ export const GetRolesFromInviteMemberDialogDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  GetRolesFromInviteMemberDialogQuery,
-  GetRolesFromInviteMemberDialogQueryVariables
+  GetRolesFromInviteMemberRouteQuery,
+  GetRolesFromInviteMemberRouteQueryVariables
 >;
-export const CreateInvitationFromInviteMemberDialogDocument = {
+export const CreateInvitationFromInviteMemberRouteDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "createInvitationFromInviteMemberDialog" },
+      name: { kind: "Name", value: "createInvitationFromInviteMemberRoute" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -5690,8 +5690,8 @@ export const CreateInvitationFromInviteMemberDialogDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  CreateInvitationFromInviteMemberDialogMutation,
-  CreateInvitationFromInviteMemberDialogMutationVariables
+  CreateInvitationFromInviteMemberRouteMutation,
+  CreateInvitationFromInviteMemberRouteMutationVariables
 >;
 export const GetMembersFromMembersRouteDocument = {
   kind: "Document",

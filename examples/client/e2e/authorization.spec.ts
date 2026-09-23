@@ -42,6 +42,9 @@ test("limits user detail queries and actions to the administrator's abilities", 
       );
     };
     await setPermissions(["USER__READ"]);
+    await page.goto("/admin/users/create");
+    await expect(page).toHaveURL(/\/admin\/users(?:\?.*)?$/);
+    await expect(page.getByTestId("admin-create-user-page")).toHaveCount(0);
     await page.goto(`/admin/users/${target.id}`);
     await expect(page.getByTestId("admin-user-page")).toBeVisible();
     await expect(page.getByTestId("admin-user-name")).toHaveValue(
@@ -51,7 +54,10 @@ test("limits user detail queries and actions to the administrator's abilities", 
     await expect(page.getByTestId("admin-user-email")).toBeDisabled();
     await expect(page.getByTestId("admin-impersonate-user")).toHaveCount(0);
     // With no catalog/session abilities, unrelated field queries must not fail the page.
-    const buttons = page.getByTestId("admin-user-page").getByRole("button");
+    const buttons = page
+      .getByTestId("admin-user-page")
+      .locator('[data-slot="card"]')
+      .getByRole("button");
     for (const button of await buttons.all())
       await expect(button).toBeDisabled();
 

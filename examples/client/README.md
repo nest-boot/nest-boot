@@ -42,8 +42,8 @@ matching Base UI toaster. Keep `i18next` as a runtime dependency and
 
 When refreshing registry components, preserve the alert dialog `data-testid`
 attributes and checkbox group option `testId` support used by the example's
-end-to-end tests. Keep the dialog content's viewport height limit and vertical
-scrolling so long permission forms remain usable on smaller screens.
+end-to-end tests. Resource creation and long permission forms use standalone
+compact pages; confirmation dialogs retain their viewport bounds.
 
 ESLint includes [@shadcn/lint](https://github.com/shadcn-ui/lint) checks for
 component restyling, raw colors, arbitrary values, inline styles, dynamic
@@ -67,6 +67,14 @@ key once in a success Card. Keep that secret in component state only, outside
 URLs and persistent storage; the creation mutation does not cache it. Details
 query through the current user/workspace and allow read-only viewing when the
 principal lacks write permission. Enable/disable and delete remain list actions.
+
+Create users at `/admin/users/create` and invite members at
+`/workspaces/$workspaceId/members/invite`. Both routes check the relevant creation
+ability, validate with TanStack Form, and keep submit actions in `CardFooter`.
+User creation returns to the refreshed user list. Invitations show the link in a
+success Card on the same page; automatic clipboard failures leave the link
+available for manual copying, and returning to Members refreshes the invitation
+list. Role choices are restricted to the caller's grantable workspace roles.
 
 Use TanStack Form (`@tanstack/react-form`) for editable forms, including login,
 password recovery/change, administrator edits, and password-confirmed account

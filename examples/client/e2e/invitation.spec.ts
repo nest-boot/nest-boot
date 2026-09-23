@@ -128,7 +128,7 @@ test.describe("workspace invitations", () => {
         await page.getByTestId("workspace-invite-link").textContent()
       )?.trim();
       expect(inviteLink).toContain("/invite?invitationId=");
-      await page.getByTestId("workspace-invite-link-close").click();
+      await page.getByTestId("workspace-invite-back").click();
 
       const invitation = page.getByTestId(`invitation-${inviteeEmail}`);
       await expect(invitation).toBeVisible();
@@ -183,15 +183,20 @@ test.describe("workspace invitations", () => {
     await expect(page.getByTestId("members-page")).toBeVisible();
 
     await page.getByTestId("members-invite-action").click();
+    await expect(page).toHaveURL(
+      new RegExp(`/workspaces/${workspaceId}/members/invite$`),
+    );
+    await page.reload();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
     await expect(page.getByTestId("invite-role-OWNER")).toBeEnabled();
     await page.getByTestId("invite-role-MEMBER").click();
     await page.getByTestId("workspace-invite-confirm").click();
 
-    const inviteDialog = page.getByTestId("workspace-invite-link-dialog");
-    await expect(inviteDialog).toBeVisible();
+    const inviteResult = page.getByTestId("workspace-invite-result");
+    await expect(inviteResult).toBeVisible();
     const inviteLink = (
-      await inviteDialog.getByTestId("workspace-invite-link").textContent()
+      await inviteResult.getByTestId("workspace-invite-link").textContent()
     )?.trim();
     expect(inviteLink).toMatch(
       /\/invite\?invitationId=[0-9a-f]{8}-[0-9a-f-]{27}$/,
@@ -203,7 +208,7 @@ test.describe("workspace invitations", () => {
         `Invitation to join ${workspaceName}`,
       ),
     ).resolves.toBe(inviteLink);
-    await inviteDialog.getByTestId("workspace-invite-link-close").click();
+    await inviteResult.getByTestId("workspace-invite-back").click();
 
     const inviteeContext = await browser.newContext({
       locale: "zh-CN",
@@ -272,19 +277,24 @@ test.describe("workspace invitations", () => {
     await expect(page.getByTestId("members-page")).toBeVisible();
 
     await page.getByTestId("members-invite-action").click();
+    await expect(page).toHaveURL(
+      new RegExp(`/workspaces/${workspaceId}/members/invite$`),
+    );
+    await page.reload();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
     await page.getByTestId("invite-role-MEMBER").click();
     await page.getByTestId("workspace-invite-confirm").click();
 
-    const inviteDialog = page.getByTestId("workspace-invite-link-dialog");
-    await expect(inviteDialog).toBeVisible();
+    const inviteResult = page.getByTestId("workspace-invite-result");
+    await expect(inviteResult).toBeVisible();
     const inviteLink = (
-      await inviteDialog.getByTestId("workspace-invite-link").textContent()
+      await inviteResult.getByTestId("workspace-invite-link").textContent()
     )?.trim();
     expect(inviteLink).toMatch(
       /\/invite\?invitationId=[0-9a-f]{8}-[0-9a-f-]{27}$/,
     );
-    await inviteDialog.getByTestId("workspace-invite-link-close").click();
+    await inviteResult.getByTestId("workspace-invite-back").click();
 
     const inviteeContext = await browser.newContext({
       locale: "zh-CN",
@@ -376,6 +386,16 @@ test.describe("workspace invitations", () => {
       const permission = memberPage.getByTestId("permission-WORKSPACE__UPDATE");
       await expect(memberPage.locator("#member-name")).toBeDisabled();
       await expect(permission).toBeDisabled();
+      await memberPage.goto(`/workspaces/${workspaceId}/members/invite`);
+      await expect(memberPage).toHaveURL(
+        new RegExp(`/workspaces/${workspaceId}/members(?:\\?.*)?$`),
+      );
+      await expect(memberPage.getByTestId("workspace-invite-page")).toHaveCount(
+        0,
+      );
+      await memberPage.goto(
+        `/workspaces/${workspaceId}/members/${currentMember.id}`,
+      );
 
       // Direct-permission editors do not need profile-write or role-setting ability.
       await graphqlRequest(
