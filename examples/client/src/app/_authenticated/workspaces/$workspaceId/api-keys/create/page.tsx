@@ -49,7 +49,8 @@ export const Route = createFileRoute(
 
 function CreateApiKeyPage() {
   const { workspaceId } = Route.useParams();
-  const { search } = usePageSearch(getWorkspaceApiKeysPageKey(workspaceId), {
+  const { search } = usePageSearch({
+    key: getWorkspaceApiKeysPageKey(workspaceId),
     searchSchema: apiKeySearchSchema,
   });
   const { permissionOptions } = Route.useRouteContext();

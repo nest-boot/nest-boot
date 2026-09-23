@@ -46,7 +46,8 @@ describe("usePageNavigation", () => {
   ])("preserves filters and size but replaces pagination: %j", (pagination) => {
     renderHook(
       () =>
-        usePageSearch(pageKey, {
+        usePageSearch({
+          key: pageKey,
           searchSchema: apiKeySearchSchema,
           search: { ...conditions, ...pagination },
         }),
@@ -54,7 +55,8 @@ describe("usePageNavigation", () => {
     );
     const { result } = renderHook(
       () =>
-        usePageNavigation(pageKey, {
+        usePageNavigation({
+          key: pageKey,
           searchSchema: apiKeySearchSchema,
           record,
           getCursor: createApiKeyCursor,
@@ -93,7 +95,8 @@ describe("usePageNavigation", () => {
   it("derives the position from live record data, including browser-back and null sort values, without persisting it", () => {
     renderHook(
       () =>
-        usePageSearch(pageKey, {
+        usePageSearch({
+          key: pageKey,
           searchSchema: apiKeySearchSchema,
           search: {
             orderBy: {
@@ -107,7 +110,8 @@ describe("usePageNavigation", () => {
     const stored = JSON.stringify(sessionStorage);
     const { result, rerender } = renderHook(
       ({ item }) =>
-        usePageNavigation(pageKey, {
+        usePageNavigation({
+          key: pageKey,
           searchSchema: apiKeySearchSchema,
           record: item,
           getCursor: createApiKeyCursor,
@@ -126,7 +130,8 @@ describe("usePageNavigation", () => {
   it("uses schema defaults on direct entry without writing a fake list visit", () => {
     const { result } = renderHook(
       () =>
-        usePageNavigation(pageKey, {
+        usePageNavigation({
+          key: pageKey,
           searchSchema: apiKeySearchSchema,
           record,
           getCursor: createApiKeyCursor,

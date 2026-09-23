@@ -70,7 +70,7 @@ principal lacks write permission. Enable/disable and delete remain list actions.
 
 API-key pages also demonstrate two hooks for list/detail navigation:
 
-- `usePageSearch(pageKey, { searchSchema, search })` saves the list's validated
+- `usePageSearch({ key, searchSchema, search })` saves the list's validated
   URL search in `sessionStorage`. Omit `search` on creation/detail pages to read
   without overwriting it; passing `{}` explicitly resets it. The current user's
   ID scopes every key. Personal keys use `["user", "api-keys"]`; workspace keys
@@ -78,7 +78,7 @@ API-key pages also demonstrate two hooks for list/detail navigation:
   the same schema. Schemas must normalize JSON-compatible search values
   idempotently, as the existing connection search schemas do. Invalid stored
   data is discarded; unavailable storage falls back to memory for that tab.
-- `usePageNavigation(pageKey, { searchSchema, record, getCursor })` reads those
+- `usePageNavigation({ key, searchSchema, record, getCursor })` reads those
   conditions and calculates the current cursor from the live record's ID and
   sort value. It derives previous/next connection arguments without persisting
   a cursor map. Apollo queries both adjacent records; loading/error disables

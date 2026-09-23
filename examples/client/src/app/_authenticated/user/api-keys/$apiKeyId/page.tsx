@@ -58,7 +58,8 @@ function ApiKeyDetailsPage() {
   const [updateApiKey] = useMutation(
     UPDATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
   );
-  const navigation = usePageNavigation(userApiKeysPageKey, {
+  const navigation = usePageNavigation({
+    key: userApiKeysPageKey,
     searchSchema: apiKeySearchSchema,
     record: apiKey,
     getCursor: createApiKeyCursor,

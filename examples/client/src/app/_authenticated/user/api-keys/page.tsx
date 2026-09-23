@@ -26,7 +26,8 @@ function ApiKeysComponent() {
   const { t } = useTranslation();
   const ability = useAbility();
   const search = Route.useSearch();
-  usePageSearch(userApiKeysPageKey, {
+  usePageSearch({
+    key: userApiKeysPageKey,
     searchSchema: apiKeySearchSchema,
     search,
   });

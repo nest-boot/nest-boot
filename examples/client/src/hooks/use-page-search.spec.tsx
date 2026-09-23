@@ -47,7 +47,7 @@ describe("usePageSearch", () => {
   it("synchronizes equal keys, persists across remounts, and only writes when search is provided", () => {
     const pageKey = key();
     const reader = renderHook(
-      () => usePageSearch([...pageKey], { searchSchema }),
+      () => usePageSearch({ key: [...pageKey], searchSchema }),
       { wrapper },
     );
     expect(reader.result.current.search).toBeUndefined();
@@ -56,7 +56,7 @@ describe("usePageSearch", () => {
     };
     const writer = renderHook(
       ({ search }: { search?: z.input<typeof searchSchema> }) =>
-        usePageSearch([...pageKey], { searchSchema, search }),
+        usePageSearch({ key: [...pageKey], searchSchema, search }),
       { wrapper, initialProps },
     );
     expect(reader.result.current.search).toEqual({
@@ -71,7 +71,7 @@ describe("usePageSearch", () => {
     writer.unmount();
     reader.unmount();
     const restored = renderHook(
-      () => usePageSearch(pageKey, { searchSchema }),
+      () => usePageSearch({ key: pageKey, searchSchema }),
       { wrapper },
     );
     expect(restored.result.current.search).toEqual({
@@ -81,9 +81,12 @@ describe("usePageSearch", () => {
     expectTypeOf(restored.result.current.search).toEqualTypeOf<
       z.output<typeof searchSchema> | undefined
     >();
-    renderHook(() => usePageSearch(pageKey, { searchSchema, search: {} }), {
-      wrapper,
-    });
+    renderHook(
+      () => usePageSearch({ key: pageKey, searchSchema, search: {} }),
+      {
+        wrapper,
+      },
+    );
     expect(restored.result.current.search).toEqual({ query: "", first: 20 });
   });
 
@@ -91,19 +94,20 @@ describe("usePageSearch", () => {
     const pageKey = key();
     renderHook(
       () =>
-        usePageSearch([...pageKey, "workspace-one"], {
+        usePageSearch({
+          key: [...pageKey, "workspace-one"],
           searchSchema,
           search: { query: "private" },
         }),
       { wrapper },
     );
     const reader = renderHook(
-      () => usePageSearch([...pageKey, "workspace-two"], { searchSchema }),
+      () => usePageSearch({ key: [...pageKey, "workspace-two"], searchSchema }),
       { wrapper },
     );
     expect(reader.result.current.search).toBeUndefined();
     const scoped = renderHook(
-      () => usePageSearch([...pageKey, "workspace-one"], { searchSchema }),
+      () => usePageSearch({ key: [...pageKey, "workspace-one"], searchSchema }),
       { wrapper },
     );
     expect(scoped.result.current.search?.query).toBe("private");
@@ -122,7 +126,7 @@ describe("usePageSearch", () => {
       sessionStorage.setItem(storageKey(pageKey), raw);
       sessionStorage.setItem("unrelated", "keep");
       const { result } = renderHook(
-        () => usePageSearch(pageKey, { searchSchema }),
+        () => usePageSearch({ key: pageKey, searchSchema }),
         { wrapper },
       );
       expect(result.current.search).toBeUndefined();
@@ -138,7 +142,7 @@ describe("usePageSearch", () => {
       JSON.stringify({ query: "example", secret: "not search" }),
     );
     const { result } = renderHook(
-      () => usePageSearch(pageKey, { searchSchema }),
+      () => usePageSearch({ key: pageKey, searchSchema }),
       { wrapper },
     );
     expect(result.current.search).toEqual({ query: "example", first: 20 });
@@ -162,12 +166,13 @@ describe("usePageSearch", () => {
         throw new Error("Storage unavailable");
       });
       const reader = renderHook(
-        () => usePageSearch(pageKey, { searchSchema }),
+        () => usePageSearch({ key: pageKey, searchSchema }),
         { wrapper },
       );
       renderHook(
         () =>
-          usePageSearch(pageKey, {
+          usePageSearch({
+            key: pageKey,
             searchSchema,
             search: { query: "fallback" },
           }),

@@ -68,14 +68,12 @@ function ApiKeyDetailsPage() {
   const ability = useAbility();
   const router = useRouter();
   const [updateApiKey] = useMutation(UPDATE_API_KEY_FROM_API_KEYS_ROUTE);
-  const navigation = usePageNavigation(
-    getWorkspaceApiKeysPageKey(workspaceId),
-    {
-      searchSchema: apiKeySearchSchema,
-      record: apiKey,
-      getCursor: createApiKeyCursor,
-    },
-  );
+  const navigation = usePageNavigation({
+    key: getWorkspaceApiKeysPageKey(workspaceId),
+    searchSchema: apiKeySearchSchema,
+    record: apiKey,
+    getCursor: createApiKeyCursor,
+  });
   const { query, filter, orderBy } = createApiKeyQueryVariables(
     navigation.search,
   );

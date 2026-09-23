@@ -34,7 +34,8 @@ function ApiKeysComponent() {
   const { t } = useTranslation();
   const ability = useAbility();
   const search = Route.useSearch();
-  usePageSearch(getWorkspaceApiKeysPageKey(workspaceId), {
+  usePageSearch({
+    key: getWorkspaceApiKeysPageKey(workspaceId),
     searchSchema: apiKeySearchSchema,
     search,
   });

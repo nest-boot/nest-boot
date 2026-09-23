@@ -38,7 +38,8 @@ export const Route = createFileRoute("/_authenticated/user/api-keys/create/")({
 });
 
 function CreateApiKeyPage() {
-  const { search } = usePageSearch(userApiKeysPageKey, {
+  const { search } = usePageSearch({
+    key: userApiKeysPageKey,
     searchSchema: apiKeySearchSchema,
   });
   const { permissionOptions } = Route.useRouteContext();

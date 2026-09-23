@@ -5,6 +5,7 @@ import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-use
 export type PageKey = ReadonlyArray<string | number>;
 
 export interface PageSearchOptions<Schema extends z.ZodType> {
+  key: PageKey;
   searchSchema: Schema;
   /** Omit to read only. An empty object explicitly replaces the saved search. */
   search?: z.input<Schema>;
@@ -69,18 +70,19 @@ function parse<Schema extends z.ZodType>(
 }
 
 /** Remembers validated list search, scoped to the current user and page key. */
-export function usePageSearch<Schema extends z.ZodType>(
-  pageKey: PageKey,
-  { searchSchema, search }: PageSearchOptions<Schema>,
-): { search: z.output<Schema> | undefined } {
+export function usePageSearch<Schema extends z.ZodType>({
+  key,
+  searchSchema,
+  search,
+}: PageSearchOptions<Schema>): { search: z.output<Schema> | undefined } {
   const { id: userId } = useCurrentUserContext();
-  const key = `page-search:v1:${JSON.stringify([userId, ...pageKey])}`;
+  const storageKey = `page-search:v1:${JSON.stringify([userId, ...key])}`;
   const subscribe = useCallback(
     (listener: () => void) => {
-      const entry = getEntry(key);
+      const entry = getEntry(storageKey);
       entry.listeners.add(listener);
       const onStorage = (event: StorageEvent) => {
-        if (event.key === null || event.key === key) listener();
+        if (event.key === null || event.key === storageKey) listener();
       };
       window.addEventListener("storage", onStorage);
       return () => {
@@ -88,9 +90,9 @@ export function usePageSearch<Schema extends z.ZodType>(
         window.removeEventListener("storage", onStorage);
       };
     },
-    [key],
+    [storageKey],
   );
-  const getSnapshot = useCallback(() => read(key), [key]);
+  const getSnapshot = useCallback(() => read(storageKey), [storageKey]);
   const raw = useSyncExternalStore(subscribe, getSnapshot, () => null);
   const savedSearch = useMemo(
     () => parse(raw, searchSchema),
@@ -109,11 +111,15 @@ export function usePageSearch<Schema extends z.ZodType>(
   }
 
   useEffect(() => {
-    if (serialized !== undefined) write(key, serialized);
-    else if (raw !== null && savedSearch === undefined && read(key) === raw) {
-      write(key, null);
+    if (serialized !== undefined) write(storageKey, serialized);
+    else if (
+      raw !== null &&
+      savedSearch === undefined &&
+      read(storageKey) === raw
+    ) {
+      write(storageKey, null);
     }
-  }, [key, serialized, raw, savedSearch]);
+  }, [storageKey, serialized, raw, savedSearch]);
 
   return { search: savedSearch };
 }

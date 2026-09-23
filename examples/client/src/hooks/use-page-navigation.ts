@@ -14,6 +14,7 @@ interface PageNavigationOptions<
   Schema extends z.ZodType<CursorPageSearch>,
   Record,
 > {
+  key: PageKey;
   /** Must accept {} to provide the direct-entry defaults. */
   searchSchema: Schema;
   record: Record;
@@ -24,11 +25,13 @@ interface PageNavigationOptions<
 export function usePageNavigation<
   Schema extends z.ZodType<CursorPageSearch>,
   Record,
->(
-  pageKey: PageKey,
-  { searchSchema, record, getCursor }: PageNavigationOptions<Schema, Record>,
-) {
-  const { search: savedSearch } = usePageSearch(pageKey, { searchSchema });
+>({
+  key,
+  searchSchema,
+  record,
+  getCursor,
+}: PageNavigationOptions<Schema, Record>) {
+  const { search: savedSearch } = usePageSearch({ key, searchSchema });
   const search = useMemo(
     () => savedSearch ?? searchSchema.parse({}),
     [savedSearch, searchSchema],
