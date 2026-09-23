@@ -12,6 +12,12 @@ interface CursorPageSearch {
   before?: string;
 }
 
+interface BackSearchOptions {
+  /** True once neighbors for the current record and scope loaded successfully. */
+  ready: boolean;
+  previousCursor?: string | null;
+}
+
 interface PageNavigationOptions<
   Schema extends z.ZodType<CursorPageSearch>,
   Record extends { id: string },
@@ -41,11 +47,12 @@ export function usePageNavigation<
     currentCursor,
     previousSearch: { ...conditions, last: 1, before: currentCursor },
     nextSearch: { ...conditions, first: 1, after: currentCursor },
-    /** undefined means not loaded; null means the current record is first. */
-    getReturnSearch(
-      previousCursor: string | null | undefined,
-    ): z.output<Schema> {
-      if (previousCursor === undefined) return search;
+    /** Default to page one without saved search; otherwise wait before repositioning. */
+    getBackSearch({
+      ready,
+      previousCursor,
+    }: BackSearchOptions): z.output<Schema> {
+      if (!savedSearch || !ready) return search;
       return searchSchema.parse({
         ...conditions,
         first: first ?? last,

@@ -94,6 +94,12 @@ test("browses details across pages, survives back and refresh, then anchors the 
   await expectDetails(page, a.name);
   await expectNeighbor(page, "next", b.id);
   await expect(page.getByTestId("api-key-previous")).toBeDisabled();
+  const firstPage = new URL(
+    (await page.getByTestId("api-key-back").getAttribute("href"))!,
+    page.url(),
+  );
+  expect(firstPage.searchParams.get("after")).toBeNull();
+  expect(firstPage.searchParams.get("query")).toBe(query);
   await page.goBack();
   await expectDetails(page, b.name);
   await page.goBack();
@@ -168,7 +174,7 @@ test("restores the exact list search from create/cancel and create/success, with
 test("handles invalid storage, direct detail entry and failed neighbor queries", async ({
   page,
 }) => {
-  const [a, b, c] = await prepareKeys(page);
+  const [a, b, c, d] = await prepareKeys(page);
   await page.goto(listPath());
   await expect(
     page.getByRole("link", { name: a.name, exact: true }),
@@ -184,6 +190,12 @@ test("handles invalid storage, direct detail entry and failed neighbor queries",
   // Direct-entry defaults are CREATED_AT DESC, not the previous ascending search.
   await expectNeighbor(page, "previous", c.id);
   await expectNeighbor(page, "next", a.id);
+  const directBackUrl = new URL(
+    (await page.getByTestId("api-key-back").getAttribute("href"))!,
+    page.url(),
+  );
+  expect(directBackUrl.searchParams.get("after")).toBeNull();
+  expect(directBackUrl.searchParams.get("query")).toBeNull();
   expect(
     await page.evaluate(() =>
       Object.keys(sessionStorage).filter((key) =>
@@ -195,6 +207,12 @@ test("handles invalid storage, direct detail entry and failed neighbor queries",
   await expect(
     page.getByRole("link", { name: b.name, exact: true }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "下一页", exact: true }).click();
+  await expect(
+    page.getByRole("link", { name: c.name, exact: true }),
+  ).toBeVisible();
+  const original = readSearch(page);
+  expect(original.after).not.toBeNull();
   let fail = true;
   await page.route("**/api/graphql", async (route) => {
     const body = route.request().postDataJSON() as { operationName?: string };
@@ -204,7 +222,7 @@ test("handles invalid storage, direct detail entry and failed neighbor queries",
       });
     } else await route.continue();
   });
-  await page.getByRole("link", { name: b.name, exact: true }).click();
+  await page.getByRole("link", { name: c.name, exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("无法加载相邻 API 密钥");
   await expect(page.getByTestId("api-key-previous")).toBeDisabled();
   await expect(page.getByTestId("api-key-next")).toBeDisabled();
@@ -213,11 +231,11 @@ test("handles invalid storage, direct detail entry and failed neighbor queries",
     page.url(),
   );
   expect(fallback.searchParams.get("query")).toBe(query);
-  expect(fallback.searchParams.get("after")).toBeNull();
+  expect(fallback.searchParams.get("after")).toBe(original.after);
   fail = false;
   await page.getByRole("button", { name: "重试", exact: true }).click();
-  await expectNeighbor(page, "previous", a.id);
-  await expectNeighbor(page, "next", c.id);
+  await expectNeighbor(page, "previous", b.id);
+  await expectNeighbor(page, "next", d.id);
 });
 
 for (const field of ["CREATED_AT", "LAST_USED_AT"]) {
@@ -234,6 +252,10 @@ for (const field of ["CREATED_AT", "LAST_USED_AT"]) {
     await expectDetails(page, b.name);
     await expectNeighbor(page, "previous", c.id);
     await expectNeighbor(page, "next", a.id);
+    await expect(page.getByTestId("api-key-back")).toHaveAttribute(
+      "href",
+      /[?&]after=/,
+    );
     const backUrl = new URL(
       (await page.getByTestId("api-key-back").getAttribute("href"))!,
       page.url(),

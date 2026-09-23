@@ -103,7 +103,12 @@ describe("usePageNavigation", () => {
         first: 1,
         after: cursor,
       });
-      expect(result.current.getReturnSearch("previous")).toEqual({
+      expect(
+        result.current.getBackSearch({
+          ready: true,
+          previousCursor: "previous",
+        }),
+      ).toEqual({
         query: "example",
         orderBy,
         first: 5,
@@ -145,19 +150,32 @@ describe("usePageNavigation", () => {
       first: 1,
       after: cursor,
     });
-    expect(result.current.getReturnSearch("previous")).toEqual({
+    expect(
+      result.current.getBackSearch({
+        ready: true,
+        previousCursor: "previous",
+      }),
+    ).toEqual({
       ...conditions,
       first: 5,
       after: "previous",
     });
-    expect(result.current.getReturnSearch(null)).toEqual({
-      ...conditions,
-      first: 5,
-      after: undefined,
-    });
-    expect(result.current.getReturnSearch(undefined)).toEqual(
+    for (const previousCursor of [null, undefined]) {
+      expect(
+        result.current.getBackSearch({ ready: true, previousCursor }),
+      ).toEqual({
+        ...conditions,
+        first: 5,
+        after: undefined,
+      });
+    }
+    expect(result.current.getBackSearch({ ready: false })).toEqual(
       apiKeySearchSchema.parse({ ...conditions, ...pagination }),
     );
+    // A stale cursor from a previous query must not override the saved page.
+    expect(
+      result.current.getBackSearch({ ready: false, previousCursor: "stale" }),
+    ).toEqual(apiKeySearchSchema.parse({ ...conditions, ...pagination }));
   });
 
   it("derives the position from live record data, including browser-back and null sort values, without persisting it", () => {
@@ -215,6 +233,12 @@ describe("usePageNavigation", () => {
       id: record.id,
       value: record.createdAt,
     });
+    expect(
+      result.current.getBackSearch({ ready: true, previousCursor: "previous" }),
+    ).toEqual(result.current.search);
+    expect(result.current.getBackSearch({ ready: false })).toEqual(
+      result.current.search,
+    );
     expect(sessionStorage.length).toBe(0);
   });
 
@@ -266,6 +290,8 @@ describe("usePageNavigation", () => {
       field: "NAME",
       direction: OrderDirection.ASC,
     });
-    expect(result.current.getReturnSearch(null)).toMatchObject({ first: 7 });
+    expect(result.current.getBackSearch({ ready: true })).toMatchObject({
+      first: 7,
+    });
   });
 });

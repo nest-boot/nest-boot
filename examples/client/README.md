@@ -88,11 +88,15 @@ API-key pages also demonstrate two hooks for list/detail navigation:
   are supported, while a missing field raises an error instead of an incorrect
   cursor. It derives previous/next connection arguments without persisting
   a cursor map. Apollo queries both adjacent records; loading/error disables
-  navigation, and errors offer retry. `getReturnSearch(previousCursor)` uses
-  the preceding record's cursor so the current record becomes the first list
-  row, retaining the original filters, sorting, and page size. Pass `null` for
-  the first record, or `undefined` while neighbors are unavailable to use the
-  saved search unchanged. The breadcrumb and footer share this destination.
+  navigation, and errors offer retry. `getBackSearch({ ready, previousCursor })`
+  first checks for saved list search; without it, it returns the schema's default
+  first page. With saved search, it uses the preceding record's cursor so the
+  current record becomes the first list row, retaining the original filters,
+  sorting, and page size. Pass `ready: false`
+  while neighbors are unavailable (loading, failed, or for another scope) to use
+  the saved search unchanged. Once ready, both `null` and `undefined` cursors mean
+  the first record and return to page one. The hook handles this choice internally;
+  the breadcrumb and footer share the resulting destination.
 
 The list URL remains authoritative: entering a bare list URL resets its search
 instead of silently restoring storage. Direct detail visits without saved search

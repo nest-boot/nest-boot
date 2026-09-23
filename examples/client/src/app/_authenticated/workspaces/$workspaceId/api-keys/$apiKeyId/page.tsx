@@ -95,9 +95,10 @@ function ApiKeyDetailsPage() {
       : undefined;
   const previous = neighbors?.previous.edges[0];
   const next = neighbors?.next.edges[0];
-  const listSearch = navigation.getReturnSearch(
-    neighbors ? (previous?.cursor ?? null) : undefined,
-  );
+  const listSearch = navigation.getBackSearch({
+    ready: Boolean(neighbors),
+    previousCursor: previous?.cursor,
+  });
   const listPath = `/workspaces/${workspaceId}/api-keys`;
   return (
     <ApiKeyFormPage
