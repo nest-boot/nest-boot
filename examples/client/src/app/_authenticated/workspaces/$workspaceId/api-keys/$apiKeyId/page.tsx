@@ -94,14 +94,14 @@ function ApiKeyDetailsPage() {
         });
         if (data?.currentWorkspace?.id !== workspaceId) return undefined;
         return {
-          previous: data.currentWorkspace.previous.edges[0],
-          next: data.currentWorkspace.next.edges[0],
+          prevEdge: data.currentWorkspace.previous.edges[0],
+          nextEdge: data.currentWorkspace.next.edges[0],
         };
       },
       [apiKey, loadNeighbors, workspaceId],
     ),
   });
-  const { previous, next, backSearch, error } = navigation;
+  const { prevEdge, nextEdge, backSearch, error } = navigation;
   const listPath = `/workspaces/${workspaceId}/api-keys`;
   return (
     <ApiKeyFormPage
@@ -116,9 +116,9 @@ function ApiKeyDetailsPage() {
       navigation={
         <ApiKeyNavigation
           previousPath={
-            previous ? `${listPath}/${previous.node.id}` : undefined
+            prevEdge ? `${listPath}/${prevEdge.node.id}` : undefined
           }
-          nextPath={next ? `${listPath}/${next.node.id}` : undefined}
+          nextPath={nextEdge ? `${listPath}/${nextEdge.node.id}` : undefined}
           failed={Boolean(error)}
           onRetry={() => {
             void navigation.refetch().catch(() => undefined);

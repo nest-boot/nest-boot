@@ -83,14 +83,14 @@ function ApiKeyDetailsPage() {
         });
         if (!data?.currentUser) return undefined;
         return {
-          previous: data.currentUser.previous.edges[0],
-          next: data.currentUser.next.edges[0],
+          prevEdge: data.currentUser.previous.edges[0],
+          nextEdge: data.currentUser.next.edges[0],
         };
       },
       [apiKey, loadNeighbors],
     ),
   });
-  const { previous, next, backSearch, error } = navigation;
+  const { prevEdge, nextEdge, backSearch, error } = navigation;
   return (
     <ApiKeyFormPage
       key={apiKey.id}
@@ -104,9 +104,9 @@ function ApiKeyDetailsPage() {
       navigation={
         <ApiKeyNavigation
           previousPath={
-            previous ? `/user/api-keys/${previous.node.id}` : undefined
+            prevEdge ? `/user/api-keys/${prevEdge.node.id}` : undefined
           }
-          nextPath={next ? `/user/api-keys/${next.node.id}` : undefined}
+          nextPath={nextEdge ? `/user/api-keys/${nextEdge.node.id}` : undefined}
           failed={Boolean(error)}
           onRetry={() => {
             void navigation.refetch().catch(() => undefined);
