@@ -44,6 +44,111 @@ afterEach(() => {
 });
 
 describe("usePageSearch", () => {
+  it("applies supplied search on mount and changes, using the setter's validation and defaults", () => {
+    const pageKey = key();
+    sessionStorage.setItem(storageKey(pageKey), "invalid json");
+    const incoming = { query: "list", first: 5, secret: "omit" };
+    const initialProps: { search: z.input<typeof searchSchema> } = {
+      search: incoming,
+    };
+    const { result, rerender } = renderHook(
+      ({ search }: { search: z.input<typeof searchSchema> }) =>
+        usePageSearch({ key: pageKey, searchSchema, search }),
+      { wrapper, initialProps },
+    );
+    const reader = renderHook(
+      () => usePageSearch({ key: pageKey, searchSchema }),
+      { wrapper },
+    );
+    expect(result.current.pageSearch).toEqual({ query: "list", first: 5 });
+    expect(JSON.parse(sessionStorage.getItem(storageKey(pageKey))!)).toEqual({
+      query: "list",
+      first: 5,
+    });
+    rerender({ search: { query: "changed", first: 10 } });
+    expect(reader.result.current.pageSearch).toEqual({
+      query: "changed",
+      first: 10,
+    });
+    rerender({ search: {} });
+    expect(reader.result.current.pageSearch).toEqual({ query: "", first: 20 });
+  });
+
+  it("treats omitted search as read-only and explicit undefined as a clear", () => {
+    const pageKey = key();
+    const initialProps: { search?: z.input<typeof searchSchema> } = {
+      search: { query: "saved" },
+    };
+    const { result, rerender } = renderHook(
+      (options: { search?: z.input<typeof searchSchema> }) =>
+        usePageSearch({ key: pageKey, searchSchema, ...options }),
+      { wrapper, initialProps },
+    );
+    rerender({});
+    expect(result.current.pageSearch?.query).toBe("saved");
+    rerender({ search: undefined });
+    expect(result.current.pageSearch).toBeUndefined();
+    expect(sessionStorage.getItem(storageKey(pageKey))).toBeNull();
+    act(() => result.current.setPageSearch({ query: "manual" }));
+    rerender({});
+    expect(result.current.pageSearch?.query).toBe("manual");
+    rerender({ search: undefined });
+    expect(result.current.pageSearch).toBeUndefined();
+  });
+
+  it("does not replay unchanged search over explicit shared updates", () => {
+    const pageKey = key();
+    const setItem = vi.spyOn(
+      Object.getPrototypeOf(sessionStorage) as Storage,
+      "setItem",
+    );
+    const { result, rerender } = renderHook(
+      ({ search }: { search: z.input<typeof searchSchema> }) =>
+        usePageSearch({ key: pageKey, searchSchema, search }),
+      { wrapper, initialProps: { search: { query: "list" } } },
+    );
+    expect(setItem).toHaveBeenCalledTimes(1);
+    act(() => result.current.setPageSearch({ query: "manual", first: 5 }));
+    rerender({ search: { query: "list" } });
+    expect(result.current.pageSearch).toEqual({ query: "manual", first: 5 });
+    expect(setItem).toHaveBeenCalledTimes(2);
+    rerender({ search: { query: "new list" } });
+    expect(result.current.pageSearch).toEqual({ query: "new list", first: 20 });
+    expect(setItem).toHaveBeenCalledTimes(3);
+  });
+
+  it("applies search to a changed scope even if the supplied value is unchanged", () => {
+    const pageKey = key();
+    const { result, rerender } = renderHook(
+      ({ workspace }) =>
+        usePageSearch({
+          key: [...pageKey, workspace],
+          searchSchema,
+          search: { query: "incoming" },
+        }),
+      { wrapper, initialProps: { workspace: "one" } },
+    );
+    act(() => result.current.setPageSearch({ query: "one saved" }));
+    rerender({ workspace: "two" });
+    expect(result.current.pageSearch?.query).toBe("incoming");
+    expect(
+      JSON.parse(sessionStorage.getItem(storageKey([...pageKey, "one"]))!)
+        .query,
+    ).toBe("one saved");
+    act(() => result.current.setPageSearch({ query: "alice saved" }));
+    const aliceKey = storageKey([...pageKey, "two"]);
+    userId = "bob";
+    rerender({ workspace: "two" });
+    expect(result.current.pageSearch?.query).toBe("incoming");
+    expect(JSON.parse(sessionStorage.getItem(aliceKey)!).query).toBe(
+      "alice saved",
+    );
+    expect(
+      JSON.parse(sessionStorage.getItem(storageKey([...pageKey, "two"]))!)
+        .query,
+    ).toBe("incoming");
+  });
+
   it("only writes explicitly, synchronizes equal keys, and persists across remounts", () => {
     const pageKey = key();
     const reader = renderHook(

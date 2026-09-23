@@ -70,10 +70,14 @@ principal lacks write permission. Enable/disable and delete remain list actions.
 
 API-key pages also demonstrate two hooks for list/detail navigation:
 
-- `usePageSearch({ key, searchSchema })` returns `pageSearch` and `setPageSearch`.
-  Reading never overwrites storage. Lists call `setPageSearch` in an effect when
-  URL search changes. The setter accepts a value or a function of the latest
-  shared value; `{}` resets to schema defaults and `undefined` clears storage.
+- `usePageSearch({ key, searchSchema, search? })` returns `pageSearch` and
+  `setPageSearch`. Lists pass `search: Route.useSearch()`; the hook applies it
+  through the setter in an effect on mount, value changes, or user/page scope
+  changes. Omitting `search` only reads saved state; explicitly passing
+  `search: undefined` clears it. Equal search objects are not reapplied on
+  rerenders, so manual updates are retained until the supplied search changes.
+  The setter accepts a value or a function of the latest shared value;
+  `{}` resets to schema defaults and `undefined` clears storage.
   Writes are schema-validated; invalid updates throw and preserve the saved value.
   The current user's ID scopes every key. Personal keys use `["user", "api-keys"]`; workspace keys
   use `["workspaces", workspaceId, "api-keys"]`. All callers of a key must reuse

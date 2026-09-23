@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+import { useDeepCompareEffect } from "react-use";
 import type z from "zod";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 
@@ -7,6 +8,8 @@ export type PageKey = ReadonlyArray<string | number>;
 export interface PageSearchOptions<Schema extends z.ZodType> {
   key: PageKey;
   searchSchema: Schema;
+  /** Applied like setPageSearch when present/changed; explicit undefined clears. */
+  search?: z.input<Schema>;
 }
 
 type PageSearchUpdater<Schema extends z.ZodType> = (
@@ -77,13 +80,14 @@ function parse<Schema extends z.ZodType>(
 }
 
 /** Remembers validated list search, scoped to the current user and page key. */
-export function usePageSearch<Schema extends z.ZodType>({
-  key,
-  searchSchema,
-}: PageSearchOptions<Schema>): {
+export function usePageSearch<Schema extends z.ZodType>(
+  options: PageSearchOptions<Schema>,
+): {
   pageSearch: z.output<Schema> | undefined;
   setPageSearch: (update: PageSearchUpdate<Schema>) => void;
 } {
+  const { key, searchSchema, search } = options;
+  const hasSearch = Object.hasOwn(options, "search");
   const { id: userId } = useCurrentUserContext();
   const storageKey = `page-search:v1:${JSON.stringify([userId, ...key])}`;
   const subscribe = useCallback(
@@ -126,6 +130,10 @@ export function usePageSearch<Schema extends z.ZodType>({
     },
     [storageKey, searchSchema],
   );
+
+  useDeepCompareEffect(() => {
+    if (hasSearch) setPageSearch(search);
+  }, [hasSearch, search, setPageSearch]);
 
   useEffect(() => {
     if (raw !== null && pageSearch === undefined && read(storageKey) === raw) {

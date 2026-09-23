@@ -2,7 +2,6 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useTranslation } from "react-i18next";
-import { useEffect } from "react";
 import { useAbility } from "@/contexts/ability-context";
 import { usePageSearch } from "@/hooks/use-page-search";
 
@@ -35,13 +34,11 @@ function ApiKeysComponent() {
   const { t } = useTranslation();
   const ability = useAbility();
   const search = Route.useSearch();
-  const { setPageSearch } = usePageSearch({
+  usePageSearch({
     key: getWorkspaceApiKeysPageKey(workspaceId),
     searchSchema: apiKeySearchSchema,
+    search,
   });
-  useEffect(() => {
-    setPageSearch(search);
-  }, [search, setPageSearch]);
   const { data, refetch } = useQuery(GET_API_KEYS_FROM_API_KEYS_ROUTE, {
     fetchPolicy: "network-only",
     variables: createApiKeyQueryVariables(search),
