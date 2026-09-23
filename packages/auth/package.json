@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/auth",
-  "version": "8.0.5-beta.5",
+  "version": "8.0.5-beta.6",
   "repository": {
     "type": "git",
     "url": "https://github.com/nest-boot/nest-boot.git",
