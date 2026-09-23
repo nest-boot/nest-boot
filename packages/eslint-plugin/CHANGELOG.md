@@ -1,3 +1,14 @@
+## 8.0.1-beta.1 (2026-09-23)
+
+### 🩹 Fixes
+
+- **eslint-plugin:** generate valid MikroORM 7 decorator imports ([#370](https://github.com/nest-boot/nest-boot/pull/370))
+- **eslint-plugin:** reuse existing GraphQL scalar imports ([#371](https://github.com/nest-boot/nest-boot/pull/371))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.1-beta.0 (2026-09-19)
 
 ### 🧱 Updated Dependencies
