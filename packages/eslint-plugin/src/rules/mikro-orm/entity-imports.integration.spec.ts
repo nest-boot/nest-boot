@@ -627,6 +627,8 @@ import { ${decorator} as Secret } from "../${packageName}/src/index.js";
 );
 
 it.each([
+  'import type * as orm from "@mikro-orm/core"; const { Entity, Property } = orm; @Entity() class Thing { @Property() name!: string; }',
+  'import * as orm from "@mikro-orm/core"; const { ["Entity"]: Model, t }: { Entity: () => ClassDecorator; t: typeof orm.t } = orm; @Model() class Thing { name!: string; }',
   'import * as orm from "@mikro-orm/core"; const { Entity, t }: { Entity: () => ClassDecorator; t: typeof orm.t } = orm; @Entity() class Thing { name!: string; }',
   'import * as orm from "@mikro-orm/core"; const { Entity, Property } = orm; @Entity() class Thing { @Property() name!: string; }',
   'import * as orm from "@mikro-orm/core"; const { Entity: Model, Property: Column, t: types } = orm; @Model() class Thing { @Column({ type: types.string }) name!: string; score!: number; }',
@@ -658,4 +660,18 @@ const { Entity }: Record<string, () => ClassDecorator> = { Entity: orm.Entity, [
   expect(result.messages).toEqual([]);
   expect(result.output).toBe(code);
   expect(compileDiagnostics(result.output)).toEqual([]);
+});
+
+it("recognizes const-destructured ORM exports from a project barrel", () => {
+  const code = `import * as orm from "./.cache/orm-imports/orm-barrel.js";
+const { Entity: Model, EncryptedProperty: Secret, t } = orm;
+@Model() class Thing { @Secret({ type: t.string }) name!: string; score!: number; }`;
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toContain("@Secret({ type: t.string })");
+  expect(result.output).toContain("@Property({ type: t2.float })");
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
 });
