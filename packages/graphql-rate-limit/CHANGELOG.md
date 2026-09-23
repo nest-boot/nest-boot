@@ -1,3 +1,17 @@
+## 8.0.2-beta.2 (2026-09-23)
+
+### 🩹 Fixes
+
+- **graphql-rate-limit:** cap refunded points at bucket capacity ([#368](https://github.com/nest-boot/nest-boot/pull/368))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/redis to 8.0.1-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.2-beta.1 (2026-09-20)
 
 ### 🩹 Fixes

@@ -1,3 +1,9 @@
+## 8.0.6-beta.0 (2026-09-23)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/logger to 8.0.4-beta.1
+
 ## 8.0.5-beta.0 (2026-09-19)
 
 ### 🧱 Updated Dependencies
