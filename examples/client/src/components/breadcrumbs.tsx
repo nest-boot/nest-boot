@@ -17,9 +17,13 @@ export interface BreadcrumbsItemProps {
 
 export interface BreadcrumbsProps {
   baseItems?: Array<BreadcrumbsItemProps>;
+  searchByPath?: Record<string, Record<string, unknown> | undefined>;
 }
 
-export const Breadcrumbs: FC<BreadcrumbsProps> = ({ baseItems = [] }) => {
+export const Breadcrumbs: FC<BreadcrumbsProps> = ({
+  baseItems = [],
+  searchByPath,
+}) => {
   const { buildLocation } = useRouter();
 
   const matches = useRouterState({ select: (state) => state.matches });
@@ -59,7 +63,12 @@ export const Breadcrumbs: FC<BreadcrumbsProps> = ({ baseItems = [] }) => {
       {breadcrumbs.map((breadcrumb) => (
         <BreadcrumbAction
           key={breadcrumb.path}
-          render={<Link to={breadcrumb.path} />}
+          render={
+            <Link
+              to={breadcrumb.path}
+              search={searchByPath?.[breadcrumb.path.replace(/\/+$/, "")]}
+            />
+          }
         >
           {breadcrumb.title}
         </BreadcrumbAction>

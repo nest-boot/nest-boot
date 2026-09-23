@@ -5,7 +5,9 @@ import { AlertTriangle, Check, Copy } from "lucide-react";
 import dayjs from "dayjs";
 import z from "zod";
 
+import type { ReactNode } from "react";
 import type { ApiKeyRow } from "@/components/api-keys-page";
+import type { ApiKeySearch } from "@/lib/api-key-search";
 import type { UserApiKeyPermission } from "@/gql/graphql";
 import type { PermissionOption } from "@/lib/permissions";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -17,6 +19,7 @@ import { Input } from "@/components/thread-ui/input";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import {
   Page,
+  PageActions,
   PageContent,
   PageDescription,
   PageHeader,
@@ -42,6 +45,8 @@ interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
   apiKey?: ApiKeyRow<Permission>;
   canWrite: boolean;
   listPath: string;
+  listSearch?: ApiKeySearch;
+  navigation?: ReactNode;
   permissionValues: ReadonlyArray<Permission>;
   permissionOptions: ReadonlyArray<PermissionOption<Permission>>;
   defaultPermissions?: ReadonlyArray<Permission>;
@@ -56,6 +61,8 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
   apiKey,
   canWrite,
   listPath,
+  listSearch,
+  navigation,
   permissionValues,
   permissionOptions,
   defaultPermissions = [],
@@ -135,7 +142,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
   return (
     <Page variant="compact">
       <PageHeader>
-        <Breadcrumbs />
+        <Breadcrumbs searchByPath={{ [listPath]: listSearch }} />
         <PageTitle>
           {t(
             createdKey
@@ -154,6 +161,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
             )}
           </PageDescription>
         )}
+        {navigation && !createdKey && <PageActions>{navigation}</PageActions>}
       </PageHeader>
       <PageContent>
         <PageLayout>
@@ -212,7 +220,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                     </Button>
                     <Button
                       data-testid="api-key-back"
-                      render={<Link to={listPath} />}
+                      render={<Link to={listPath} search={listSearch} />}
                     >
                       {t("api-key:back")}
                     </Button>
@@ -307,7 +315,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                       <Button
                         variant="outline"
                         data-testid="api-key-back"
-                        render={<Link to={listPath} />}
+                        render={<Link to={listPath} search={listSearch} />}
                       >
                         {t("api-key:back")}
                       </Button>

@@ -68,6 +68,31 @@ URLs and persistent storage; the creation mutation does not cache it. Details
 query through the current user/workspace and allow read-only viewing when the
 principal lacks write permission. Enable/disable and delete remain list actions.
 
+API-key pages also demonstrate two hooks for list/detail navigation:
+
+- `usePageSearch(pageKey, { searchSchema, search })` saves the list's validated
+  URL search in `sessionStorage`. Omit `search` on creation/detail pages to read
+  without overwriting it; passing `{}` explicitly resets it. The current user's
+  ID scopes every key. Personal keys use `["user", "api-keys"]`; workspace keys
+  use `["workspaces", workspaceId, "api-keys"]`. All callers of a key must reuse
+  the same schema. Schemas must normalize JSON-compatible search values
+  idempotently, as the existing connection search schemas do. Invalid stored
+  data is discarded; unavailable storage falls back to memory for that tab.
+- `usePageNavigation(pageKey, { searchSchema, record, getCursor })` reads those
+  conditions and calculates the current cursor from the live record's ID and
+  sort value. It derives previous/next connection arguments without persisting
+  a cursor map. Apollo queries both adjacent records; loading/error disables
+  navigation, and errors offer retry. `getReturnSearch(previousCursor)` uses
+  the preceding record's cursor so the current record becomes the first list
+  row, retaining the original filters, sorting, and page size. Pass `null` for
+  the first record, or `undefined` while neighbors are unavailable to use the
+  saved search unchanged. The breadcrumb and footer share this destination.
+
+The list URL remains authoritative: entering a bare list URL resets its search
+instead of silently restoring storage. Direct detail visits without saved search
+use schema defaults. Browser history continues to restore its own URLs; no
+cross-tab synchronization or frozen snapshot of changing records is provided.
+
 Create users at `/admin/users/create` and invite members at
 `/workspaces/$workspaceId/members/invite`. Both routes check the relevant creation
 ability, validate with TanStack Form, and keep submit actions in `CardFooter`.

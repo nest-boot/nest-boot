@@ -77,5 +77,12 @@
   },
   "back": "返回 API 密钥列表",
   "details": "API 密钥",
-  "usage": "使用情况"
+  "usage": "使用情况",
+  "navigation": {
+    "label": "API 密钥导航",
+    "previous": "上一条 API 密钥",
+    "next": "下一条 API 密钥",
+    "failed": "无法加载相邻 API 密钥。",
+    "retry": "重试"
+  }
 }

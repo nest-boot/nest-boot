@@ -1,5 +1,89 @@
 import { graphql } from "@/gql";
 
+export const GET_WORKSPACE_API_KEY_NEIGHBORS = graphql(`
+  query getWorkspaceApiKeyNeighbors(
+    $before: String!
+    $after: String!
+    $filter: WorkspaceApiKeyFilter
+    $orderBy: WorkspaceApiKeyOrder
+    $query: String
+  ) {
+    currentWorkspace {
+      id
+      previous: apiKeys(
+        last: 1
+        before: $before
+        filter: $filter
+        orderBy: $orderBy
+        query: $query
+      ) {
+        edges {
+          cursor
+          node {
+            id
+          }
+        }
+      }
+      next: apiKeys(
+        first: 1
+        after: $after
+        filter: $filter
+        orderBy: $orderBy
+        query: $query
+      ) {
+        edges {
+          cursor
+          node {
+            id
+          }
+        }
+      }
+    }
+  }
+`);
+
+export const GET_USER_API_KEY_NEIGHBORS = graphql(`
+  query getUserApiKeyNeighbors(
+    $before: String!
+    $after: String!
+    $filter: UserApiKeyFilter
+    $orderBy: UserApiKeyOrder
+    $query: String
+  ) {
+    currentUser {
+      id
+      previous: apiKeys(
+        last: 1
+        before: $before
+        filter: $filter
+        orderBy: $orderBy
+        query: $query
+      ) {
+        edges {
+          cursor
+          node {
+            id
+          }
+        }
+      }
+      next: apiKeys(
+        first: 1
+        after: $after
+        filter: $filter
+        orderBy: $orderBy
+        query: $query
+      ) {
+        edges {
+          cursor
+          node {
+            id
+          }
+        }
+      }
+    }
+  }
+`);
+
 export const GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE = graphql(`
   query getUserApiKeysFromUserApiKeysRoute(
     $after: String

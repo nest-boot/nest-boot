@@ -3,6 +3,8 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
 
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
+import { usePageSearch } from "@/hooks/use-page-search";
+import { apiKeySearchSchema, userApiKeysPageKey } from "@/lib/api-key-search";
 import {
   CREATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
   GET_USER_API_KEY_OPTIONS,
@@ -36,6 +38,9 @@ export const Route = createFileRoute("/_authenticated/user/api-keys/create/")({
 });
 
 function CreateApiKeyPage() {
+  const { search } = usePageSearch(userApiKeysPageKey, {
+    searchSchema: apiKeySearchSchema,
+  });
   const { permissionOptions } = Route.useRouteContext();
   const [createApiKey] = useMutation(
     CREATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
@@ -45,6 +50,7 @@ function CreateApiKeyPage() {
     <ApiKeyFormPage
       canWrite
       listPath={"/user/api-keys"}
+      listSearch={search}
       permissionValues={authPermissionValues}
       permissionOptions={getPermissionOptions(permissionOptions)}
       defaultPermissions={getDefaultApiKeyPermissions(permissionOptions)}

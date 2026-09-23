@@ -3,6 +3,11 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
 
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
+import { usePageSearch } from "@/hooks/use-page-search";
+import {
+  apiKeySearchSchema,
+  getWorkspaceApiKeysPageKey,
+} from "@/lib/api-key-search";
 import {
   CREATE_API_KEY_FROM_API_KEYS_ROUTE,
   GET_WORKSPACE_API_KEY_OPTIONS,
@@ -44,6 +49,9 @@ export const Route = createFileRoute(
 
 function CreateApiKeyPage() {
   const { workspaceId } = Route.useParams();
+  const { search } = usePageSearch(getWorkspaceApiKeysPageKey(workspaceId), {
+    searchSchema: apiKeySearchSchema,
+  });
   const { permissionOptions } = Route.useRouteContext();
   const [createApiKey] = useMutation(CREATE_API_KEY_FROM_API_KEYS_ROUTE, {
     fetchPolicy: "no-cache",
@@ -53,6 +61,7 @@ function CreateApiKeyPage() {
       key={workspaceId}
       canWrite
       listPath={`/workspaces/${workspaceId}/api-keys`}
+      listSearch={search}
       permissionValues={workspaceApiKeyPermissionValues}
       permissionOptions={getPermissionOptions(permissionOptions)}
       defaultPermissions={getDefaultApiKeyPermissions(permissionOptions)}

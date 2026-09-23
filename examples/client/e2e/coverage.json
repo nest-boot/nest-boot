@@ -116,6 +116,16 @@
       "notes": "Uses four standalone create/detail routes, checks reloads and direct links, validates names, copies the once-only secret, and disables, edits, and deletes both owner types. Checks mobile layout, read-only controls, creation guards, and rejection of missing, deleted, cross-workspace, and foreign-owner detail IDs. Bearer authentication and privilege ceilings are covered by server PostgreSQL E2E."
     },
     {
+      "domain": "API keys",
+      "scenario": "List search restoration and adjacent detail navigation with workspace isolation",
+      "status": "covered",
+      "specs": [
+        "user-api-key-navigation.spec.ts",
+        "workspace-api-key-navigation.spec.ts"
+      ],
+      "notes": "Preserves filters, order, page size and cursor through creation and details. Traverses adjacent records across list pages, restores browser history and reloads, and returns the current record as the first row using the preceding cursor. Checks default/direct entry, invalid session data, failed neighbor queries and retry, null sort values, and two workspaces with distinct filters and pagination in the same browser session."
+    },
+    {
       "domain": "Administration",
       "scenario": "User search and DataFilter conditions with persistent pagination state",
       "status": "covered",

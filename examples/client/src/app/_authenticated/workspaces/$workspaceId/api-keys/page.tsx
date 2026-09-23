@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useTranslation } from "react-i18next";
 import { useAbility } from "@/contexts/ability-context";
+import { usePageSearch } from "@/hooks/use-page-search";
 
 import { ApiKeysPage } from "@/components/api-keys-page";
 import {
@@ -13,6 +14,7 @@ import {
 import {
   apiKeySearchSchema,
   createApiKeyQueryVariables,
+  getWorkspaceApiKeysPageKey,
 } from "@/lib/api-key-search";
 
 export const Route = createFileRoute(
@@ -32,6 +34,10 @@ function ApiKeysComponent() {
   const { t } = useTranslation();
   const ability = useAbility();
   const search = Route.useSearch();
+  usePageSearch(getWorkspaceApiKeysPageKey(workspaceId), {
+    searchSchema: apiKeySearchSchema,
+    search,
+  });
   const { data, refetch } = useQuery(GET_API_KEYS_FROM_API_KEYS_ROUTE, {
     fetchPolicy: "network-only",
     variables: createApiKeyQueryVariables(search),
