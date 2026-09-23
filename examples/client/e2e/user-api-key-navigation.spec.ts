@@ -94,12 +94,18 @@ test("browses details across pages, survives back and refresh, then anchors the 
   await expectDetails(page, a.name);
   await expectNeighbor(page, "next", b.id);
   await expect(page.getByTestId("api-key-previous")).toBeDisabled();
-  const firstPage = new URL(
-    (await page.getByTestId("api-key-back").getAttribute("href"))!,
-    page.url(),
-  );
-  expect(firstPage.searchParams.get("after")).toBeNull();
-  expect(firstPage.searchParams.get("query")).toBe(query);
+  await expect
+    .poll(async () => {
+      const firstPage = new URL(
+        (await page.getByTestId("api-key-back").getAttribute("href"))!,
+        page.url(),
+      );
+      return {
+        after: firstPage.searchParams.get("after"),
+        query: firstPage.searchParams.get("query"),
+      };
+    })
+    .toEqual({ after: null, query });
   await page.goBack();
   await expectDetails(page, b.name);
   await page.goBack();
@@ -252,19 +258,21 @@ for (const field of ["CREATED_AT", "LAST_USED_AT"]) {
     await expectDetails(page, b.name);
     await expectNeighbor(page, "previous", c.id);
     await expectNeighbor(page, "next", a.id);
-    await expect(page.getByTestId("api-key-back")).toHaveAttribute(
-      "href",
-      /[?&]after=/,
-    );
-    const backUrl = new URL(
-      (await page.getByTestId("api-key-back").getAttribute("href"))!,
-      page.url(),
-    );
-    const cursor = JSON.parse(
-      Buffer.from(backUrl.searchParams.get("after")!, "base64").toString(),
-    );
-    expect(cursor.id).toBe(c.id);
-    if (field === "LAST_USED_AT") expect(cursor.value).toBeNull();
+    await expect
+      .poll(async () => {
+        const backUrl = new URL(
+          (await page.getByTestId("api-key-back").getAttribute("href"))!,
+          page.url(),
+        );
+        const cursor = backUrl.searchParams.get("after");
+        return cursor
+          ? JSON.parse(Buffer.from(cursor, "base64").toString())
+          : null;
+      })
+      .toMatchObject({
+        id: c.id,
+        ...(field === "LAST_USED_AT" ? { value: null } : {}),
+      });
     await page.getByTestId("api-key-back").click();
     await expect(page.getByRole("row").nth(1)).toContainText(b.name);
     await expect(page.getByRole("row").nth(2)).toContainText(a.name);

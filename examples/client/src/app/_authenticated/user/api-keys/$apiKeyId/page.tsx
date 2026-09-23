@@ -81,10 +81,9 @@ function ApiKeyDetailsPage() {
   const neighbors = !loading && !error ? data?.currentUser : undefined;
   const previous = neighbors?.previous.edges[0];
   const next = neighbors?.next.edges[0];
-  const listSearch = navigation.getBackSearch({
-    ready: Boolean(neighbors),
-    previousCursor: previous?.cursor,
-  });
+  const listSearch = neighbors
+    ? navigation.getBackSearch(previous?.cursor)
+    : navigation.search;
   return (
     <ApiKeyFormPage
       key={apiKey.id}
