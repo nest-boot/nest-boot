@@ -28,10 +28,42 @@ const rule = createRule<[], "missing">({
   },
 });
 
-it.each([
-  "const { Entity } = { Entity }; @Entity() class Thing {}",
-  "const { Entity: orm } = { Entity: orm.Entity }; @orm.Entity() class Thing {}",
-])("does not recurse through cyclic destructured bindings: %s", (code) => {
+it.each<[string, string | null]>([
+  ["const { Entity } = { Entity }; @Entity() class Thing {}", null],
+  [
+    "const { Entity: orm } = { Entity: orm.Entity }; @orm.Entity() class Thing {}",
+    null,
+  ],
+  [
+    'import * as orm from "@mikro-orm/decorators/legacy"; const { ["Entity"]: Model = () => (() => undefined), ...rest } = orm; @Model() class Thing {}',
+    "Entity",
+  ],
+  [
+    'import * as orm from "@mikro-orm/decorators/legacy"; const { Entity: Model } = { ...orm, "Entity": orm["Entity"] }; @Model() class Thing {}',
+    "Entity",
+  ],
+  [
+    'import * as orm from "@mikro-orm/decorators/legacy"; const { Entity: Model } = { ...orm, Entity: orm.Entity }; @Model() class Thing {}',
+    "Entity",
+  ],
+  [
+    'import * as orm from "@mikro-orm/decorators/legacy"; const { Entity: Model } = { Entity: orm.Entity, ...unknown }; @Model() class Thing {}',
+    null,
+  ],
+  [
+    'import * as orm from "@mikro-orm/decorators/legacy"; const { Entity: Model } = { Entity: orm.Entity, [unknown]: orm.Entity }; @Model() class Thing {}',
+    null,
+  ],
+  [
+    'import { Entity as orm } from "@mikro-orm/decorators/legacy"; const { Entity: Model } = orm; @Model() class Thing {}',
+    null,
+  ],
+  ["const { Entity: Model } = orm; @Model() class Thing {}", null],
+  [
+    'import * as orm from "@mikro-orm/decorators/legacy"; function shadow(orm: { Entity(): ClassDecorator }) { const { Entity: Model } = orm; @Model() class Thing {} }',
+    null,
+  ],
+])("resolves only verified namespace bindings: %s", (code, expected) => {
   const probe = createRule<[], "unused">({
     name: "test-origin",
     meta: {
@@ -45,8 +77,12 @@ it.each([
       return {
         "CallExpression > Identifier, CallExpression > MemberExpression"(node) {
           expect(
-            importedBindingName(context.sourceCode, "@mikro-orm/core", node),
-          ).toBeNull();
+            importedBindingName(
+              context.sourceCode,
+              "@mikro-orm/decorators/legacy",
+              node,
+            ),
+          ).toBe(expected);
         },
       };
     },
