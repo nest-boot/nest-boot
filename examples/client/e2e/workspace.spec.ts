@@ -170,7 +170,7 @@ test.describe("workspace management", () => {
     await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
   });
 
-  test("loads, switches, and creates workspaces from the switcher", async ({
+  test("loads and switches workspaces and opens workspace management", async ({
     page,
   }) => {
     const seed = uniqueSeed("workspace-switcher");
@@ -216,7 +216,13 @@ test.describe("workspace management", () => {
     await expect(page).toHaveURL(new RegExp(`/workspaces/${target.id}/`));
 
     await page.getByTestId("topbar-menu-trigger").click();
-    await page.getByTestId("workspace-switcher-create").click();
+    await expect(
+      page.getByText("最近的工作空间", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByTestId("workspace-switcher-create")).toHaveCount(0);
+    await page.getByTestId("workspace-switcher-manage").click();
+    await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
+    await page.getByTestId("user-workspace-create-action").click();
     await expect(page).toHaveURL(/\/workspaces\/create$/);
     await expect(page.getByTestId("workspace-create-submit")).toBeVisible();
   });

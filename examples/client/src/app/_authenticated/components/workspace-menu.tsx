@@ -99,9 +99,7 @@ export function WorkspaceMenu({
   return (
     <>
       <TopbarMenuWorkspaceGroup value={currentWorkspaceId ?? ""}>
-        <TopbarMenuWorkspaceLabel>
-          {t("sidebar:switcher.workspaces")}
-        </TopbarMenuWorkspaceLabel>
+        <TopbarMenuWorkspaceLabel />
         {workspaces.map((workspace) => (
           <TopbarMenuWorkspaceItem
             key={workspace.id}
@@ -134,12 +132,6 @@ export function WorkspaceMenu({
         data-testid="workspace-switcher-manage"
       >
         {t("sidebar:switcher.manageWorkspaces")}
-      </TopbarMenuItem>
-      <TopbarMenuItem
-        render={<Link to="/workspaces/create" />}
-        data-testid="workspace-switcher-create"
-      >
-        {t("sidebar:switcher.createWorkspace")}
       </TopbarMenuItem>
     </>
   );
