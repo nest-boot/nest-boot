@@ -60,6 +60,14 @@ it.each<[string, string | null]>([
   ],
   ["const { Entity: Model } = orm; @Model() class Thing {}", null],
   [
+    'import * as orm from "@mikro-orm/decorators/legacy"; function dynamic(key: string) { const { [key]: Model } = orm; @Model() class Thing {} }',
+    null,
+  ],
+  [
+    'import * as orm from "@mikro-orm/decorators/legacy"; const { nested: { Entity: Model } } = { nested: orm }; @Model() class Thing {}',
+    null,
+  ],
+  [
     'import * as orm from "@mikro-orm/decorators/legacy"; function shadow(orm: { Entity(): ClassDecorator }) { const { Entity: Model } = orm; @Model() class Thing {} }',
     null,
   ],

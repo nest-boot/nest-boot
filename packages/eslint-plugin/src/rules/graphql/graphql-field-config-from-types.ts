@@ -1,9 +1,5 @@
 import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
-import {
-  type RuleFix,
-  type RuleFixer,
-  Scope,
-} from "@typescript-eslint/utils/ts-eslint";
+import type { RuleFix, RuleFixer } from "@typescript-eslint/utils/ts-eslint";
 
 import { createRule } from "../../utils/createRule.js";
 import {
@@ -294,11 +290,28 @@ export default createRule<
     const decoratorName = (name: TSESTree.Node) =>
       importedBindingName(source, graphqlModules, name);
 
-    const ensureImports = (fixes: CustomFix[], info: TypeInfo) => {
+    // Origin checks already verify imports and const namespace destructures.
+    // A resolved binding distinguishes those values from supported ambient names.
+    const hasResolvedBinding = (node: TSESTree.Node) => {
+      const identifier =
+        node.type === AST_NODE_TYPES.MemberExpression ? node.object : node;
+      return (source.scopeManager?.scopes ?? []).some((scope) =>
+        scope.references.some(
+          (reference) =>
+            reference.identifier === identifier && reference.resolved !== null,
+        ),
+      );
+    };
+
+    const ensureImports = (
+      fixes: CustomFix[],
+      info: TypeInfo,
+      includeField = true,
+    ) => {
       const expected =
         info.isCustomType || info.scalarExpression ? "" : (info.typeName ?? "");
       const names = [
-        "Field",
+        ...(includeField ? ["Field"] : []),
         ...(["Int", "Float", "ID"].includes(expected) ? [expected] : []),
       ];
       const edits = namedImportEdits(
@@ -425,9 +438,15 @@ export default createRule<
       // Build the new decorator text
       const optionsExpr =
         existingOptions.length > 0 ? `, { ${existingOptions.join(", ")} }` : "";
-      const newDecoratorText = `@${fieldBinding()}(${typeExpr}${optionsExpr})`;
+      const existingField =
+        callExpr.type === AST_NODE_TYPES.CallExpression &&
+        hasResolvedBinding(callExpr.callee) &&
+        !isTypeOnlyImportReference(source, callExpr.callee)
+          ? source.getText(callExpr.callee)
+          : null;
+      const newDecoratorText = `@${existingField ?? fieldBinding()}(${typeExpr}${optionsExpr})`;
 
-      ensureImports(fixes, info);
+      ensureImports(fixes, info, existingField === null);
 
       fixes.push({
         type: "replace",
@@ -650,28 +669,10 @@ export default createRule<
             if (
               isValidScalar &&
               scalarNode &&
+              hasResolvedBinding(scalarNode) &&
               !isTypeOnlyImportReference(source, scalarNode)
             ) {
-              const identifier =
-                scalarNode.type === AST_NODE_TYPES.MemberExpression
-                  ? scalarNode.object
-                  : scalarNode;
-              const imported = (source.scopeManager?.scopes ?? []).some(
-                (scope) =>
-                  scope.references.some(
-                    (reference) =>
-                      reference.identifier === identifier &&
-                      reference.resolved?.defs.some(
-                        (definition) =>
-                          definition.type ===
-                          Scope.DefinitionType.ImportBinding,
-                      ),
-                  ),
-              );
-              // Keep existing explicit value references, including namespace members.
-              // Unresolved ambient names still need generated imports when fixing a field.
-              if (imported)
-                typeInfo.scalarExpression = source.getText(scalarNode);
+              typeInfo.scalarExpression = source.getText(scalarNode);
             }
 
             const typeMatches =

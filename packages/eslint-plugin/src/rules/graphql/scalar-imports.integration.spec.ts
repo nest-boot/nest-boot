@@ -137,6 +137,7 @@ const cases: {
       'import { ObjectType } from "@nest-boot/graphql"; import * as gql from "@nest-boot/graphql";',
     property: "@gql.Field(() => gql.Int) score?: number;",
     expected: "gql.Int",
+    field: "gql.Field",
   },
   {
     name: "namespace MikroORM wrapper",
@@ -419,8 +420,9 @@ const options: ts.CompilerOptions = {
 const sourceFiles = new Map<string, ts.SourceFile>();
 let previousProgram: ts.Program | undefined;
 
-function compileDiagnostics(code: string): string[] {
-  const host = ts.createCompilerHost(options);
+function compileDiagnostics(code: string, noUnusedLocals = false): string[] {
+  const compilerOptions = { ...options, noUnusedLocals };
+  const host = ts.createCompilerHost(compilerOptions);
   const getSourceFile = host.getSourceFile.bind(host);
   host.getSourceFile = (file, ...args) => {
     if (file === filename)
@@ -431,7 +433,12 @@ function compileDiagnostics(code: string): string[] {
     if (source) sourceFiles.set(file, source);
     return source;
   };
-  const program = ts.createProgram([filename], options, host, previousProgram);
+  const program = ts.createProgram(
+    [filename],
+    compilerOptions,
+    host,
+    previousProgram,
+  );
   previousProgram = program;
   return ts
     .getPreEmitDiagnostics(program)
@@ -589,12 +596,36 @@ it.each([
   (module, model, field, scalar) => {
     const code = `import * as gql from "${module}";
 const { ${model}: Model, ${field}: Column, ${scalar}: Integer } = gql;
-@Model() class Thing { @Column(() => Integer) score?: number; }`;
+@Model() export class Thing { @Column(() => Integer) score?: number; }`;
     const result = linter.verifyAndFix(code, config, { filename });
     expect(result.messages).toEqual([]);
-    expect(result.output).toContain("{ nullable: true }");
+    expect(result.output).toContain(
+      "@Column(() => Integer, { nullable: true })",
+    );
     expect(result.output).not.toContain("Float");
-    expect(compileDiagnostics(result.output)).toEqual([]);
+    expect(compileDiagnostics(result.output, true)).toEqual([]);
+    expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+      false,
+    );
+  },
+);
+
+it.each([
+  ["Int", "[Value]", "scores?: number[]"],
+  ["ID", "Value", "id?: string"],
+  ["GraphQLJSONObject", "Value", "data?: Record<string, unknown>"],
+])(
+  "retains destructured %s when correcting nullability",
+  (scalar, expression, property) => {
+    const code = `import * as gql from "./.cache/graphql-imports/barrel.js";
+const { ObjectType: Model, Field: Column, ${scalar}: Value } = gql;
+@Model() export class Thing { @Column(() => ${expression}) ${property}; }`;
+    const result = linter.verifyAndFix(code, config, { filename });
+    expect(result.messages).toEqual([]);
+    expect(result.output).toContain(
+      `@Column(() => ${expression}, { nullable: true })`,
+    );
+    expect(compileDiagnostics(result.output, true)).toEqual([]);
     expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
       false,
     );
