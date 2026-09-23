@@ -116,6 +116,7 @@ export function importedBindingName(
   source: Readonly<SourceCode>,
   modules: Modules,
   node: TSESTree.Node,
+  namespaceMember?: string,
 ): string | null {
   const identifier =
     node.type === AST_NODE_TYPES.Identifier
@@ -129,27 +130,85 @@ export function importedBindingName(
           : null;
   if (!identifier) return null;
   const member =
-    node.type === AST_NODE_TYPES.MemberExpression &&
+    namespaceMember ??
+    (node.type === AST_NODE_TYPES.MemberExpression &&
     !node.computed &&
     node.property.type === AST_NODE_TYPES.Identifier
       ? node.property.name
-      : node.type === AST_NODE_TYPES.TSQualifiedName
-        ? node.right.name
-        : null;
+      : node.type === AST_NODE_TYPES.MemberExpression &&
+          node.computed &&
+          node.property.type === AST_NODE_TYPES.Literal &&
+          typeof node.property.value === "string"
+        ? node.property.value
+        : node.type === AST_NODE_TYPES.TSQualifiedName
+          ? node.right.name
+          : null);
   const reference = (source.scopeManager?.scopes ?? [])
     .flatMap((scope) => scope.references)
     .find((candidate) => candidate.identifier === identifier);
   const variable = reference?.resolved;
   // Preserve the rules' support for unresolved ambient decorator names.
-  if (!variable) return node === identifier ? identifier.name : null;
+  if (!variable)
+    return !namespaceMember && node === identifier ? identifier.name : null;
   for (const definition of variable.defs) {
+    if (
+      !namespaceMember &&
+      definition.type === Scope.DefinitionType.Variable &&
+      definition.parent.kind === "const" &&
+      definition.node.id.type === AST_NODE_TYPES.ObjectPattern &&
+      definition.node.init !== null
+    ) {
+      for (const property of definition.node.id.properties) {
+        if (property.type !== AST_NODE_TYPES.Property) continue;
+        const binding =
+          property.value.type === AST_NODE_TYPES.AssignmentPattern
+            ? property.value.left
+            : property.value;
+        if (
+          binding.type !== AST_NODE_TYPES.Identifier ||
+          !variable.identifiers.includes(binding)
+        )
+          continue;
+        const name =
+          !property.computed && property.key.type === AST_NODE_TYPES.Identifier
+            ? property.key.name
+            : property.key.type === AST_NODE_TYPES.Literal &&
+                typeof property.key.value === "string"
+              ? property.key.value
+              : null;
+        if (!name) continue;
+        const init = definition.node.init;
+        if (init.type === AST_NODE_TYPES.Identifier)
+          return importedBindingName(source, modules, init, name);
+        if (init.type === AST_NODE_TYPES.ObjectExpression) {
+          for (const entry of init.properties.toReversed()) {
+            if (entry.type === AST_NODE_TYPES.SpreadElement) break;
+            const key =
+              !entry.computed && entry.key.type === AST_NODE_TYPES.Identifier
+                ? entry.key.name
+                : entry.key.type === AST_NODE_TYPES.Literal &&
+                    typeof entry.key.value === "string"
+                  ? entry.key.value
+                  : null;
+            if (!key) break;
+            if (key === name)
+              return importedBindingName(source, modules, entry.value);
+          }
+        }
+      }
+    }
     if (
       definition.type !== Scope.DefinitionType.ImportBinding ||
       definition.parent.type !== AST_NODE_TYPES.ImportDeclaration
     )
       continue;
+    if (
+      namespaceMember &&
+      definition.node.type !== AST_NODE_TYPES.ImportNamespaceSpecifier
+    )
+      return null;
     if (!matchesModule(modules, definition.parent.source.value))
-      return reexportedImportName(source, modules, node);
+      return reexportedImportName(source, modules, node, namespaceMember);
     if (
       node === identifier &&
       definition.node.type === AST_NODE_TYPES.ImportSpecifier

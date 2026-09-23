@@ -65,6 +65,8 @@ const config: Linter.Config[] = [
     languageOptions: {
       parser,
       parserOptions: {
+        // verifyAndFix reparses different source snapshots in this process, including on CI.
+        disallowAutomaticSingleRunInference: true,
         projectService: { allowDefaultProject: ["v8-autofix-fixture.ts"] },
         tsconfigRootDir: packageRoot,
       },
@@ -623,3 +625,37 @@ import { ${decorator} as Secret } from "../${packageName}/src/index.js";
     expect(compileDiagnostics(result.output)).toEqual([]);
   },
 );
+
+it.each([
+  'import * as orm from "@mikro-orm/core"; const { Entity, t }: { Entity: () => ClassDecorator; t: typeof orm.t } = orm; @Entity() class Thing { name!: string; }',
+  'import * as orm from "@mikro-orm/core"; const { Entity, Property } = orm; @Entity() class Thing { @Property() name!: string; }',
+  'import * as orm from "@mikro-orm/core"; const { Entity: Model, Property: Column, t: types } = orm; @Model() class Thing { @Column({ type: types.string }) name!: string; score!: number; }',
+  'import * as orm from "@mikro-orm/postgresql"; const { Entity, t, ...driver } = orm; @Entity() class Thing { name!: string; } const Driver = driver.PostgreSqlDriver;',
+  'import type * as orm from "@mikro-orm/core"; const { Entity, Property, t } = orm; @Entity() class Thing { @Property({ type: t.string }) name!: string; }',
+  'import * as orm from "@mikro-orm/core"; function make() { const { Entity: Model, Property = () => (() => undefined), t } = orm; @Model() class Thing { @Property({ type: t.string }) name!: string; } return Thing; }',
+  'import * as orm from "@mikro-orm/core"; const { "Entity": Model, t } = orm, other = 1; function shadow(orm: { Entity(): ClassDecorator }) { const { Entity } = orm; @Entity() class Other {} } @Model() class Thing { name!: string; }',
+])("migrates destructured namespace decorators: %s", (code) => {
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toContain("@mikro-orm/decorators/legacy");
+  expect(result.output).toContain("@Property");
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  if (code.includes("class Other"))
+    expect(result.output).toContain(
+      "const { Entity } = orm; @Entity() class Other",
+    );
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});
+
+it("does not recognize namespace decorators overridden by computed properties", () => {
+  const code = `import * as orm from "@mikro-orm/decorators/legacy";
+const key: string = "Entity";
+const { Entity }: Record<string, () => ClassDecorator> = { Entity: orm.Entity, [key]: () => (() => undefined) };
+@Entity() class Thing { name!: string; }`;
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toBe(code);
+  expect(compileDiagnostics(result.output)).toEqual([]);
+});

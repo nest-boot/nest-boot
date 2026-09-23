@@ -193,8 +193,36 @@ export function legacyNamespaceEdits(source: Readonly<SourceCode>): RuleFix[] {
             definition.node === binding,
         ),
       );
+    const mixedPatterns: {
+      pattern: TSESTree.ObjectPattern;
+      moved: Set<TSESTree.Node>;
+    }[] = [];
     const references = (variable?.references ?? []).flatMap((reference) => {
       const parent = reference.identifier.parent;
+      if (
+        parent.type === AST_NODE_TYPES.VariableDeclarator &&
+        parent.init === reference.identifier &&
+        parent.id.type === AST_NODE_TYPES.ObjectPattern
+      ) {
+        const moved = new Set<TSESTree.Node>(
+          parent.id.properties.filter((property) => {
+            if (property.type !== AST_NODE_TYPES.Property) return false;
+            const name =
+              !property.computed &&
+              property.key.type === AST_NODE_TYPES.Identifier
+                ? property.key.name
+                : property.key.type === AST_NODE_TYPES.Literal &&
+                    typeof property.key.value === "string"
+                  ? property.key.value
+                  : null;
+            return name !== null && decorators.has(name);
+          }),
+        );
+        if (moved.size === parent.id.properties.length && moved.size > 0)
+          return [reference.identifier];
+        if (moved.size > 0) mixedPatterns.push({ pattern: parent.id, moved });
+        return [];
+      }
       const name =
         parent.type === AST_NODE_TYPES.MemberExpression &&
         parent.object === reference.identifier
@@ -212,7 +240,7 @@ export function legacyNamespaceEdits(source: Readonly<SourceCode>): RuleFix[] {
             : null;
       return name && decorators.has(name) ? [reference.identifier] : [];
     });
-    if (!references.length) continue;
+    if (!references.length && !mixedPatterns.length) continue;
     if (
       references.length === variable?.references.length &&
       declaration.specifiers.length === 1
@@ -236,6 +264,71 @@ export function legacyNamespaceEdits(source: Readonly<SourceCode>): RuleFix[] {
     });
     for (const reference of references)
       edits.push({ range: reference.range, text: name });
+    for (const { pattern, moved } of mixedPatterns) {
+      if (pattern.typeAnnotation) {
+        const init =
+          pattern.parent.type === AST_NODE_TYPES.VariableDeclarator
+            ? pattern.parent.init
+            : null;
+        if (init) {
+          const properties = pattern.properties.flatMap((property) => {
+            if (
+              !moved.has(property) ||
+              property.type !== AST_NODE_TYPES.Property
+            )
+              return [];
+            const key =
+              property.key.type === AST_NODE_TYPES.Identifier
+                ? property.key.name
+                : property.key.type === AST_NODE_TYPES.Literal
+                  ? String(property.key.value)
+                  : undefined;
+            if (!key) return [];
+            return [`${JSON.stringify(key)}: ${name}[${JSON.stringify(key)}]`];
+          });
+          edits.push({
+            range: init.range,
+            text: `{ ...${source.getText(init)}, ${properties.join(", ")} }`,
+          });
+        }
+        continue;
+      }
+      const retained = new Set<TSESTree.Node>(
+        pattern.properties.filter((property) => !moved.has(property)),
+      );
+      edits.push({
+        range: pattern.range,
+        text: `${selectedPattern(source, pattern, moved)} = ${name}, ${selectedPattern(source, pattern, retained)}`,
+      });
+    }
+    if (mixedPatterns.length && declaration.importKind === "type")
+      edits.push({ range: source.getTokens(declaration)[1].range, text: "" });
   }
   return edits;
+}
+
+function selectedPattern(
+  source: Readonly<SourceCode>,
+  pattern: TSESTree.ObjectPattern,
+  selected: ReadonlySet<TSESTree.Node>,
+): string {
+  const ranges: TSESTree.Range[] = [];
+  for (const [index, property] of pattern.properties.entries()) {
+    if (!selected.has(property)) ranges.push(property.range);
+    const comma = source.getTokenAfter(property);
+    if (
+      comma?.value === "," &&
+      (!selected.has(property) ||
+        !pattern.properties
+          .slice(index + 1)
+          .some((later) => selected.has(later)))
+    )
+      ranges.push(comma.range);
+  }
+  let text = source.getText(pattern);
+  for (const [start, end] of ranges.sort((a, b) => b[0] - a[0]))
+    text =
+      text.slice(0, start - pattern.range[0]) +
+      text.slice(end - pattern.range[0]);
+  return text;
 }
