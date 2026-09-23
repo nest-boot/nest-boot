@@ -20,8 +20,8 @@ import {
 } from "@/components/thread-ui/page-layout";
 
 import { Input } from "@/components/thread-ui/input";
-import { Field, FieldGroup, FieldSet } from "@/components/ui/field";
-import { Card, CardContent } from "@/components/ui/card";
+import { FieldGroup, FieldSet } from "@/components/ui/field";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { graphql } from "@/gql";
 
 const CREATE_WORKSPACE_FROM_CREATE_WORKSPACE_ROUTE = graphql(`
@@ -91,6 +91,7 @@ function CreateWorkspaceComponent() {
                 <Card>
                   <CardContent>
                     <form
+                      id="workspace-create-form"
                       onSubmit={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
@@ -118,26 +119,28 @@ function CreateWorkspaceComponent() {
                             </form.Field>
                           </FieldGroup>
                         </FieldSet>
-
-                        <Field orientation="horizontal">
-                          <Button
-                            type="submit"
-                            data-testid="workspace-create-submit"
-                            loading={loading}
-                          >
-                            Create
-                          </Button>
-                          <Button
-                            variant="outline"
-                            type="button"
-                            onClick={() => router.history.back()}
-                          >
-                            Back
-                          </Button>
-                        </Field>
                       </FieldGroup>
                     </form>
                   </CardContent>
+                  <CardFooter>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="submit"
+                        form="workspace-create-form"
+                        data-testid="workspace-create-submit"
+                        loading={loading}
+                      >
+                        Create
+                      </Button>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onClick={() => router.history.back()}
+                      >
+                        Back
+                      </Button>
+                    </div>
+                  </CardFooter>
                 </Card>
               </PageLayoutSection>
             </PageLayout>

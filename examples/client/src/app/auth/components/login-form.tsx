@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { LogIn, ShieldCheck, UserPlus } from "lucide-react";
@@ -8,7 +8,6 @@ import { z } from "zod";
 import type { ChangeEvent, ComponentProps, FormEvent } from "react";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import {
-  Field,
   FieldDescription,
   FieldError,
   FieldSeparator,
@@ -22,6 +21,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -94,6 +94,7 @@ export function LoginForm({
   redirect?: string;
 }) {
   const { t } = useTranslation();
+  const formId = useId();
   const apolloClient = useApolloClient();
   const navigate = useNavigate();
   const [signIn] = useMutation(AUTH_SIGN_IN_FROM_LOGIN_FORM);
@@ -297,7 +298,7 @@ export function LoginForm({
               </TabsTrigger>
             </TabsList>
 
-            <form onSubmit={handleSubmit} className="mt-6">
+            <form id={formId} onSubmit={handleSubmit} className="mt-6">
               <FormLayout>
                 {mode === "register" && (
                   <FormLayoutItem>
@@ -380,51 +381,53 @@ export function LoginForm({
                     <FieldError>{errors.form}</FieldError>
                   </FormLayoutItem>
                 )}
-
-                <FormLayoutItem>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    data-testid="auth-submit"
-                    loading={loading}
-                  >
-                    {mode === "login" ? <LogIn /> : <UserPlus />}
-                    {submitLabel}
-                  </Button>
-                </FormLayoutItem>
-
-                {socialProviders.length > 0 && (
-                  <>
-                    <FormLayoutItem>
-                      <FieldSeparator>{t("auth:form.or")}</FieldSeparator>
-                    </FormLayoutItem>
-
-                    {socialProviders.map((provider) => (
-                      <FormLayoutItem key={provider.id}>
-                        <Field>
-                          <Button
-                            className="w-full"
-                            variant="outline"
-                            type="button"
-                            onClick={() => handleSocialLogin(provider)}
-                            disabled={loading || socialProviderId !== undefined}
-                            loading={socialProviderId === provider.id}
-                            data-testid={`auth-social-submit-${provider.id}`}
-                          >
-                            <ShieldCheck />
-                            {t("auth:continueWithProvider", {
-                              provider: provider.name,
-                            })}
-                          </Button>
-                        </Field>
-                      </FormLayoutItem>
-                    ))}
-                  </>
-                )}
               </FormLayout>
             </form>
           </Tabs>
         </CardContent>
+        <CardFooter>
+          <FormLayout className="w-full">
+            <FormLayoutItem>
+              <Button
+                type="submit"
+                form={formId}
+                className="w-full"
+                data-testid="auth-submit"
+                loading={loading}
+              >
+                {mode === "login" ? <LogIn /> : <UserPlus />}
+                {submitLabel}
+              </Button>
+            </FormLayoutItem>
+
+            {socialProviders.length > 0 && (
+              <>
+                <FormLayoutItem>
+                  <FieldSeparator>{t("auth:form.or")}</FieldSeparator>
+                </FormLayoutItem>
+
+                {socialProviders.map((provider) => (
+                  <FormLayoutItem key={provider.id}>
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      type="button"
+                      onClick={() => handleSocialLogin(provider)}
+                      disabled={loading || socialProviderId !== undefined}
+                      loading={socialProviderId === provider.id}
+                      data-testid={`auth-social-submit-${provider.id}`}
+                    >
+                      <ShieldCheck />
+                      {t("auth:continueWithProvider", {
+                        provider: provider.name,
+                      })}
+                    </Button>
+                  </FormLayoutItem>
+                ))}
+              </>
+            )}
+          </FormLayout>
+        </CardFooter>
       </Card>
       <div className="px-6">
         <FieldDescription className="text-center">

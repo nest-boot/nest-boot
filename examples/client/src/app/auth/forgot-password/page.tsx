@@ -14,6 +14,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -99,16 +100,9 @@ function ForgotPasswordComponent() {
           {submitted ? (
             <div className="flex flex-col items-center gap-5 text-center">
               <MailCheck className="text-primary size-10" />
-              <Button
-                className="w-full"
-                variant="outline"
-                render={<Link to="/auth/login" />}
-              >
-                {t("auth:passwordReset.backToLogin")}
-              </Button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit}>
+            <form id="forgot-password-form" onSubmit={handleSubmit}>
               <FormLayout>
                 <FormLayoutItem>
                   <Input
@@ -126,29 +120,43 @@ function ForgotPasswordComponent() {
                     error={error}
                   />
                 </FormLayoutItem>
-
-                <FormLayoutItem>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    data-testid="forgot-password-submit"
-                    loading={loading}
-                  >
-                    {t("auth:passwordReset.sendLink")}
-                  </Button>
-                </FormLayoutItem>
-
-                <FormLayoutItem>
-                  <FieldDescription className="text-center">
-                    <Link to="/auth/login">
-                      {t("auth:passwordReset.backToLogin")}
-                    </Link>
-                  </FieldDescription>
-                </FormLayoutItem>
               </FormLayout>
             </form>
           )}
         </CardContent>
+        <CardFooter>
+          {submitted ? (
+            <Button
+              className="w-full"
+              variant="outline"
+              render={<Link to="/auth/login" />}
+            >
+              {t("auth:passwordReset.backToLogin")}
+            </Button>
+          ) : (
+            <FormLayout className="w-full">
+              <FormLayoutItem>
+                <Button
+                  type="submit"
+                  form="forgot-password-form"
+                  className="w-full"
+                  data-testid="forgot-password-submit"
+                  loading={loading}
+                >
+                  {t("auth:passwordReset.sendLink")}
+                </Button>
+              </FormLayoutItem>
+
+              <FormLayoutItem>
+                <FieldDescription className="text-center">
+                  <Link to="/auth/login">
+                    {t("auth:passwordReset.backToLogin")}
+                  </Link>
+                </FieldDescription>
+              </FormLayoutItem>
+            </FormLayout>
+          )}
+        </CardFooter>
       </Card>
     </AuthPageShell>
   );

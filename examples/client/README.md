@@ -52,7 +52,9 @@ styles and existing `variant`/`size` props. Use `FormLayout` with
 `FormLayoutItem` for form layout and plain `div` elements for other custom
 layout; do not add Card or Field styling exceptions to the lint rules.
 Keep card titles and descriptions in `CardHeader`, the body in `CardContent`,
-and standalone card actions in `CardFooter`.
+and submit buttons and standalone card actions in `CardFooter`. When a submit
+button is outside its form, connect it to the form's `id` with the native `form`
+attribute so validation, Enter-key submission, and loading states keep working.
 Use `Page variant="compact"` for form pages, with full-width `PageLayoutSection`
 elements so cards stay stacked within the compact page.
 Use theme color tokens from `src/styles.css` in application code.

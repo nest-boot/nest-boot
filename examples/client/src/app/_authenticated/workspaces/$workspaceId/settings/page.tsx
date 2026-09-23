@@ -33,7 +33,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Field, FieldGroup, FieldSet } from "@/components/ui/field";
+import { FieldGroup, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/thread-ui/input";
 import { graphql } from "@/gql";
 import { createAbilitySubject } from "@/lib/ability";
@@ -191,6 +191,7 @@ function SettingsComponent() {
             <Card>
               <CardContent>
                 <form
+                  id="workspace-settings-form"
                   onSubmit={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -233,33 +234,31 @@ function SettingsComponent() {
                           />
                         )}
                       </form.Field>
-
-                      <form.Subscribe
-                        selector={(state) => [
-                          state.isDirty,
-                          state.isSubmitting,
-                          state.canSubmit,
-                        ]}
-                      >
-                        {([isDirty, isSubmitting, canSubmit]) => (
-                          <Field orientation="horizontal">
-                            <Button
-                              type="submit"
-                              data-testid="workspace-settings-save"
-                              disabled={
-                                !canUpdateWorkspace || !isDirty || !canSubmit
-                              }
-                              loading={isSubmitting}
-                            >
-                              {t("action.save")}
-                            </Button>
-                          </Field>
-                        )}
-                      </form.Subscribe>
                     </FieldGroup>
                   </FieldSet>
                 </form>
               </CardContent>
+              <CardFooter>
+                <form.Subscribe
+                  selector={(state) => [
+                    state.isDirty,
+                    state.isSubmitting,
+                    state.canSubmit,
+                  ]}
+                >
+                  {([isDirty, isSubmitting, canSubmit]) => (
+                    <Button
+                      type="submit"
+                      form="workspace-settings-form"
+                      data-testid="workspace-settings-save"
+                      disabled={!canUpdateWorkspace || !isDirty || !canSubmit}
+                      loading={isSubmitting}
+                    >
+                      {t("action.save")}
+                    </Button>
+                  )}
+                </form.Subscribe>
+              </CardFooter>
             </Card>
           </PageLayoutSection>
 

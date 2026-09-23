@@ -35,6 +35,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -426,7 +427,7 @@ function UserSecurityComponent() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit}>
+                <form id="user-password-form" onSubmit={handleSubmit}>
                   <FieldSet>
                     <FieldGroup>
                       <Input
@@ -479,20 +480,20 @@ function UserSecurityComponent() {
                       </Field>
 
                       {error && <FieldError>{error}</FieldError>}
-
-                      <Field orientation="horizontal">
-                        <Button
-                          type="submit"
-                          data-testid="user-change-password-submit"
-                          loading={loading}
-                        >
-                          {t("user:security.form.submit")}
-                        </Button>
-                      </Field>
                     </FieldGroup>
                   </FieldSet>
                 </form>
               </CardContent>
+              <CardFooter>
+                <Button
+                  type="submit"
+                  form="user-password-form"
+                  data-testid="user-change-password-submit"
+                  loading={loading}
+                >
+                  {t("user:security.form.submit")}
+                </Button>
+              </CardFooter>
             </Card>
           </PageLayoutSection>
 
@@ -751,20 +752,20 @@ function UserSecurityComponent() {
                       }
                     />
                   </FormLayoutItem>
-                  <FormLayoutItem>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      disabled={!deletePassword}
-                      loading={deletingUser}
-                      onClick={handleDeleteUser}
-                      data-testid="user-delete-account"
-                    >
-                      {t("user:security.delete.action")}
-                    </Button>
-                  </FormLayoutItem>
                 </FormLayout>
               </CardContent>
+              <CardFooter>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={!deletePassword}
+                  loading={deletingUser}
+                  onClick={handleDeleteUser}
+                  data-testid="user-delete-account"
+                >
+                  {t("user:security.delete.action")}
+                </Button>
+              </CardFooter>
             </Card>
           </PageLayoutSection>
         </PageLayout>

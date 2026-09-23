@@ -28,10 +28,11 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Field, FieldGroup, FieldSet } from "@/components/ui/field";
+import { FieldGroup, FieldSet } from "@/components/ui/field";
 import { graphql } from "@/gql";
 
 const UPDATE_USER_FROM_USER_ROUTE = graphql(`
@@ -203,6 +204,7 @@ function UserComponent() {
               </CardHeader>
               <CardContent>
                 <form
+                  id="user-profile-form"
                   onSubmit={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -236,31 +238,31 @@ function UserComponent() {
                           />
                         )}
                       </form.Field>
-
-                      <Field orientation="horizontal">
-                        <form.Subscribe
-                          selector={(state) => [
-                            state.isDirty,
-                            state.isSubmitting,
-                            state.canSubmit,
-                          ]}
-                        >
-                          {([isDirty, isSubmitting, canSubmit]) => (
-                            <Button
-                              type="submit"
-                              data-testid="user-profile-save"
-                              disabled={!isDirty || !canSubmit}
-                              loading={isSubmitting}
-                            >
-                              {t("action.save")}
-                            </Button>
-                          )}
-                        </form.Subscribe>
-                      </Field>
                     </FieldGroup>
                   </FieldSet>
                 </form>
               </CardContent>
+              <CardFooter>
+                <form.Subscribe
+                  selector={(state) => [
+                    state.isDirty,
+                    state.isSubmitting,
+                    state.canSubmit,
+                  ]}
+                >
+                  {([isDirty, isSubmitting, canSubmit]) => (
+                    <Button
+                      type="submit"
+                      form="user-profile-form"
+                      data-testid="user-profile-save"
+                      disabled={!isDirty || !canSubmit}
+                      loading={isSubmitting}
+                    >
+                      {t("action.save")}
+                    </Button>
+                  )}
+                </form.Subscribe>
+              </CardFooter>
             </Card>
           </PageLayoutSection>
 
@@ -274,6 +276,7 @@ function UserComponent() {
               </CardHeader>
               <CardContent>
                 <form
+                  id="user-email-form"
                   onSubmit={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -317,31 +320,31 @@ function UserComponent() {
                           />
                         )}
                       </emailForm.Field>
-
-                      <Field orientation="horizontal">
-                        <emailForm.Subscribe
-                          selector={(state) => [
-                            state.isDirty,
-                            state.isSubmitting,
-                            state.canSubmit,
-                          ]}
-                        >
-                          {([isDirty, isSubmitting, canSubmit]) => (
-                            <Button
-                              type="submit"
-                              data-testid="user-change-email-submit"
-                              disabled={!isDirty || !canSubmit}
-                              loading={isSubmitting}
-                            >
-                              {t("user:email.form.submit")}
-                            </Button>
-                          )}
-                        </emailForm.Subscribe>
-                      </Field>
                     </FieldGroup>
                   </FieldSet>
                 </form>
               </CardContent>
+              <CardFooter>
+                <emailForm.Subscribe
+                  selector={(state) => [
+                    state.isDirty,
+                    state.isSubmitting,
+                    state.canSubmit,
+                  ]}
+                >
+                  {([isDirty, isSubmitting, canSubmit]) => (
+                    <Button
+                      type="submit"
+                      form="user-email-form"
+                      data-testid="user-change-email-submit"
+                      disabled={!isDirty || !canSubmit}
+                      loading={isSubmitting}
+                    >
+                      {t("user:email.form.submit")}
+                    </Button>
+                  )}
+                </emailForm.Subscribe>
+              </CardFooter>
             </Card>
           </PageLayoutSection>
         </PageLayout>

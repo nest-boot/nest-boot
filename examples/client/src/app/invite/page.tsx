@@ -14,6 +14,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -210,7 +211,7 @@ function InviteComponent() {
             <CardTitle>{t("workspace:invite.error.title")}</CardTitle>
             <CardDescription>{invitationUnavailableMessage}</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardFooter>
             <Button
               onClick={handleExit}
               className="w-full"
@@ -218,7 +219,7 @@ function InviteComponent() {
             >
               {t("workspace:invite.error.back_button")}
             </Button>
-          </CardContent>
+          </CardFooter>
         </Card>
       </div>
     );
@@ -264,28 +265,30 @@ function InviteComponent() {
                 {t("workspace:invite.form.email.mismatch_error")}
               </p>
             ) : null}
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleExit}
-                className="flex-1"
-              >
-                {t("action.cancel")}
-              </Button>
-              <Button
-                type="button"
-                data-testid="invite-accept-submit"
-                disabled={!!emailMismatch}
-                loading={acceptLoading}
-                className="flex-1"
-                onClick={handleAccept}
-              >
-                {t("workspace:invite.form.submit")}
-              </Button>
-            </div>
           </div>
         </CardContent>
+        <CardFooter>
+          <div className="flex w-full flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExit}
+              className="flex-1"
+            >
+              {t("action.cancel")}
+            </Button>
+            <Button
+              type="button"
+              data-testid="invite-accept-submit"
+              disabled={!!emailMismatch}
+              loading={acceptLoading}
+              className="flex-1"
+              onClick={handleAccept}
+            >
+              {t("workspace:invite.form.submit")}
+            </Button>
+          </div>
+        </CardFooter>
       </Card>
     </div>
   );

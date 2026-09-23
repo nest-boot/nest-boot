@@ -31,7 +31,7 @@ import {
   PageSecondaryAction,
   PageTitle,
 } from "@/components/thread-ui/page";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { graphql } from "@/gql";
 import { createAbilitySubject } from "@/lib/ability";
 import { isAccessDenied } from "@/lib/auth-errors";
@@ -225,15 +225,13 @@ function MemberDetails({
               <CardHeader>
                 <CardTitle>{t("member:details.sections.profile")}</CardTitle>
               </CardHeader>
-              <CardContent>
-                <MemberProfileForm
-                  member={member}
-                  onSave={save}
-                  disabled={
-                    saving || removing || !ability.can("write", memberSubject)
-                  }
-                />
-              </CardContent>
+              <MemberProfileForm
+                member={member}
+                onSave={save}
+                disabled={
+                  saving || removing || !ability.can("write", memberSubject)
+                }
+              />
             </Card>
           </PageLayoutSection>
           <PageLayoutSection>
@@ -241,18 +239,14 @@ function MemberDetails({
               <CardHeader>
                 <CardTitle>{t("member:details.sections.roles")}</CardTitle>
               </CardHeader>
-              <CardContent>
-                <MemberRolesForm
-                  member={member}
-                  onSave={save}
-                  options={data.workspaceRoles}
-                  disabled={
-                    saving ||
-                    removing ||
-                    !ability.can("set-roles", memberSubject)
-                  }
-                />
-              </CardContent>
+              <MemberRolesForm
+                member={member}
+                onSave={save}
+                options={data.workspaceRoles}
+                disabled={
+                  saving || removing || !ability.can("set-roles", memberSubject)
+                }
+              />
             </Card>
           </PageLayoutSection>
           <PageLayoutSection>
@@ -262,18 +256,16 @@ function MemberDetails({
                   {t("member:details.sections.permissions")}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <MemberPermissionsForm
-                  member={member}
-                  onSave={save}
-                  options={data.workspacePermissions}
-                  disabled={
-                    saving ||
-                    removing ||
-                    !ability.can("set-permissions", memberSubject)
-                  }
-                />
-              </CardContent>
+              <MemberPermissionsForm
+                member={member}
+                onSave={save}
+                options={data.workspacePermissions}
+                disabled={
+                  saving ||
+                  removing ||
+                  !ability.can("set-permissions", memberSubject)
+                }
+              />
             </Card>
           </PageLayoutSection>
         </PageLayout>

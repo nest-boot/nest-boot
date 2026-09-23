@@ -34,6 +34,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -350,39 +351,38 @@ function AdminUserPage() {
                       onValueChange={setRoles}
                     />
                   </FormLayoutItem>
-                  <FormLayoutItem>
-                    <Button
-                      data-testid="admin-user-roles-save"
-                      disabled={
-                        !canSetRoles ||
-                        roles.length === 0 ||
-                        roles.some(
-                          (role) =>
-                            !data?.userRoles?.some(
-                              (option) =>
-                                option.role === role && option.grantable,
-                            ),
-                        )
-                      }
-                      loading={savingRole}
-                      onClick={() =>
-                        run(
-                          () =>
-                            setUserRoles({
-                              variables: {
-                                id: userId,
-                                input: { roles },
-                              },
-                            }),
-                          t("admin:user.roles.success"),
-                        )
-                      }
-                    >
-                      {t("action.save")}
-                    </Button>
-                  </FormLayoutItem>
                 </FormLayout>
               </CardContent>
+              <CardFooter>
+                <Button
+                  data-testid="admin-user-roles-save"
+                  disabled={
+                    !canSetRoles ||
+                    roles.length === 0 ||
+                    roles.some(
+                      (role) =>
+                        !data?.userRoles?.some(
+                          (option) => option.role === role && option.grantable,
+                        ),
+                    )
+                  }
+                  loading={savingRole}
+                  onClick={() =>
+                    run(
+                      () =>
+                        setUserRoles({
+                          variables: {
+                            id: userId,
+                            input: { roles },
+                          },
+                        }),
+                      t("admin:user.roles.success"),
+                    )
+                  }
+                >
+                  {t("action.save")}
+                </Button>
+              </CardFooter>
             </Card>
           </PageLayoutSection>
 
@@ -428,34 +428,32 @@ function AdminUserPage() {
                       {t("admin:user.profile.email_verified")}
                     </label>
                   </FormLayoutItem>
-                  <FormLayoutItem>
-                    <Button
-                      loading={updating}
-                      data-testid="admin-user-profile-save"
-                      disabled={!canUpdate}
-                      onClick={() =>
-                        run(
-                          () =>
-                            updateUser({
-                              variables: {
-                                id: userId,
-                                input: {
-                                  name,
-                                  ...(canSetEmail
-                                    ? { email, emailVerified }
-                                    : {}),
-                                },
-                              },
-                            }),
-                          t("admin:user.profile.success"),
-                        )
-                      }
-                    >
-                      {t("action.save")}
-                    </Button>
-                  </FormLayoutItem>
                 </FormLayout>
               </CardContent>
+              <CardFooter>
+                <Button
+                  loading={updating}
+                  data-testid="admin-user-profile-save"
+                  disabled={!canUpdate}
+                  onClick={() =>
+                    run(
+                      () =>
+                        updateUser({
+                          variables: {
+                            id: userId,
+                            input: {
+                              name,
+                              ...(canSetEmail ? { email, emailVerified } : {}),
+                            },
+                          },
+                        }),
+                      t("admin:user.profile.success"),
+                    )
+                  }
+                >
+                  {t("action.save")}
+                </Button>
+              </CardFooter>
             </Card>
           </PageLayoutSection>
 
@@ -479,39 +477,39 @@ function AdminUserPage() {
                       onChange={setPermissions}
                     />
                   </FormLayoutItem>
-                  <FormLayoutItem>
-                    <Button
-                      loading={savingPermissions}
-                      data-testid="admin-user-permissions-save"
-                      disabled={
-                        !canSetPermissions ||
-                        permissions.some(
-                          (permission) =>
-                            !data?.userPermissions?.some(
-                              (option) =>
-                                option.permission === permission &&
-                                option.grantable,
-                            ),
-                        )
-                      }
-                      onClick={() =>
-                        run(
-                          () =>
-                            setUserPermissions({
-                              variables: {
-                                id: userId,
-                                input: { permissions },
-                              },
-                            }),
-                          t("admin:user.permissions.success"),
-                        )
-                      }
-                    >
-                      {t("action.save")}
-                    </Button>
-                  </FormLayoutItem>
                 </FormLayout>
               </CardContent>
+              <CardFooter>
+                <Button
+                  loading={savingPermissions}
+                  data-testid="admin-user-permissions-save"
+                  disabled={
+                    !canSetPermissions ||
+                    permissions.some(
+                      (permission) =>
+                        !data?.userPermissions?.some(
+                          (option) =>
+                            option.permission === permission &&
+                            option.grantable,
+                        ),
+                    )
+                  }
+                  onClick={() =>
+                    run(
+                      () =>
+                        setUserPermissions({
+                          variables: {
+                            id: userId,
+                            input: { permissions },
+                          },
+                        }),
+                      t("admin:user.permissions.success"),
+                    )
+                  }
+                >
+                  {t("action.save")}
+                </Button>
+              </CardFooter>
             </Card>
           </PageLayoutSection>
 
@@ -594,22 +592,24 @@ function AdminUserPage() {
                       {t("action.load_more")}
                     </Button>
                   )}
-                  <Button
-                    variant="outline"
-                    data-testid="admin-user-sessions-revoke"
-                    disabled={!canRevokeSessions || sessions.length === 0}
-                    loading={revokingSessions}
-                    onClick={() =>
-                      run(
-                        () => revokeUserSessions({ variables: { userId } }),
-                        t("admin:user.sessions.revoked_all"),
-                      )
-                    }
-                  >
-                    {t("admin:user.sessions.revoke_all")}
-                  </Button>
                 </div>
               </CardContent>
+              <CardFooter>
+                <Button
+                  variant="outline"
+                  data-testid="admin-user-sessions-revoke"
+                  disabled={!canRevokeSessions || sessions.length === 0}
+                  loading={revokingSessions}
+                  onClick={() =>
+                    run(
+                      () => revokeUserSessions({ variables: { userId } }),
+                      t("admin:user.sessions.revoked_all"),
+                    )
+                  }
+                >
+                  {t("admin:user.sessions.revoke_all")}
+                </Button>
+              </CardFooter>
             </Card>
           </PageLayoutSection>
 
@@ -632,27 +632,27 @@ function AdminUserPage() {
                       onChange={(event) => setNewPassword(event.target.value)}
                     />
                   </FormLayoutItem>
-                  <FormLayoutItem>
-                    <Button
-                      disabled={!canSetPassword || newPassword.length < 8}
-                      loading={settingPassword}
-                      onClick={() =>
-                        run(async () => {
-                          await setUserPassword({
-                            variables: {
-                              id: userId,
-                              input: { password: newPassword },
-                            },
-                          });
-                          setNewPassword("");
-                        }, t("admin:user.password.success"))
-                      }
-                    >
-                      {t("admin:user.password.action")}
-                    </Button>
-                  </FormLayoutItem>
                 </FormLayout>
               </CardContent>
+              <CardFooter>
+                <Button
+                  disabled={!canSetPassword || newPassword.length < 8}
+                  loading={settingPassword}
+                  onClick={() =>
+                    run(async () => {
+                      await setUserPassword({
+                        variables: {
+                          id: userId,
+                          input: { password: newPassword },
+                        },
+                      });
+                      setNewPassword("");
+                    }, t("admin:user.password.success"))
+                  }
+                >
+                  {t("admin:user.password.action")}
+                </Button>
+              </CardFooter>
             </Card>
           </PageLayoutSection>
 
@@ -670,88 +670,81 @@ function AdminUserPage() {
               </CardHeader>
               <CardContent>
                 <FormLayout>
-                  {user.banned ? (
-                    <>
-                      <FormLayoutItem>
-                        <Badge color="red">
-                          {user.banReason || t("admin:users.banned")}
-                        </Badge>
-                      </FormLayoutItem>
-                      <FormLayoutItem>
-                        <Button
-                          loading={unbanning}
-                          disabled={!canBan}
-                          onClick={() =>
-                            run(
-                              () => unbanUser({ variables: { id: userId } }),
-                              t("admin:user.ban.unbanned"),
-                            )
-                          }
-                        >
-                          {t("admin:user.ban.unban")}
-                        </Button>
-                      </FormLayoutItem>
-                    </>
-                  ) : (
-                    <>
-                      <FormLayoutItem>
-                        <Input
-                          label={t("admin:user.ban.reason")}
-                          disabled={!canBan}
-                          value={banReason}
-                          onChange={(event) => setBanReason(event.target.value)}
-                        />
-                      </FormLayoutItem>
-                      <FormLayoutItem>
-                        <Button
-                          variant="destructive"
-                          disabled={!canBan || currentUser.id === userId}
-                          loading={banning}
-                          onClick={() =>
-                            run(
-                              () =>
-                                banUser({
-                                  variables: {
-                                    id: userId,
-                                    input: { reason: banReason || undefined },
-                                  },
-                                }),
-                              t("admin:user.ban.banned"),
-                            )
-                          }
-                        >
-                          {t("admin:user.ban.action")}
-                        </Button>
-                      </FormLayoutItem>
-                    </>
-                  )}
                   <FormLayoutItem>
-                    <Button
-                      variant="destructive"
-                      disabled={!canDelete || currentUser.id === userId}
-                      loading={deleting}
-                      onClick={async () => {
-                        const confirmed = await alertDialog({
-                          title: t("admin:user.delete.confirm_title"),
-                          description: t(
-                            "admin:user.delete.confirm_description",
-                          ),
-                          confirmText: t("action.delete"),
-                          cancelText: t("action.cancel"),
-                          variant: "destructive",
-                        });
-                        if (!confirmed) return;
-                        await run(async () => {
-                          await deleteUser({ variables: { id: userId } });
-                          await navigate({ to: "/admin/users" });
-                        }, t("admin:user.delete.success"));
-                      }}
-                    >
-                      {t("admin:user.delete.action")}
-                    </Button>
+                    {user.banned ? (
+                      <Badge color="red">
+                        {user.banReason || t("admin:users.banned")}
+                      </Badge>
+                    ) : (
+                      <Input
+                        label={t("admin:user.ban.reason")}
+                        disabled={!canBan}
+                        value={banReason}
+                        onChange={(event) => setBanReason(event.target.value)}
+                      />
+                    )}
                   </FormLayoutItem>
                 </FormLayout>
               </CardContent>
+              <CardFooter>
+                <div className="flex flex-wrap gap-2">
+                  {user.banned ? (
+                    <Button
+                      loading={unbanning}
+                      disabled={!canBan}
+                      onClick={() =>
+                        run(
+                          () => unbanUser({ variables: { id: userId } }),
+                          t("admin:user.ban.unbanned"),
+                        )
+                      }
+                    >
+                      {t("admin:user.ban.unban")}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="destructive"
+                      disabled={!canBan || currentUser.id === userId}
+                      loading={banning}
+                      onClick={() =>
+                        run(
+                          () =>
+                            banUser({
+                              variables: {
+                                id: userId,
+                                input: { reason: banReason || undefined },
+                              },
+                            }),
+                          t("admin:user.ban.banned"),
+                        )
+                      }
+                    >
+                      {t("admin:user.ban.action")}
+                    </Button>
+                  )}
+                  <Button
+                    variant="destructive"
+                    disabled={!canDelete || currentUser.id === userId}
+                    loading={deleting}
+                    onClick={async () => {
+                      const confirmed = await alertDialog({
+                        title: t("admin:user.delete.confirm_title"),
+                        description: t("admin:user.delete.confirm_description"),
+                        confirmText: t("action.delete"),
+                        cancelText: t("action.cancel"),
+                        variant: "destructive",
+                      });
+                      if (!confirmed) return;
+                      await run(async () => {
+                        await deleteUser({ variables: { id: userId } });
+                        await navigate({ to: "/admin/users" });
+                      }, t("admin:user.delete.success"));
+                    }}
+                  >
+                    {t("admin:user.delete.action")}
+                  </Button>
+                </div>
+              </CardFooter>
             </Card>
           </PageLayoutSection>
         </PageLayout>

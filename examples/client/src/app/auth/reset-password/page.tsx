@@ -17,6 +17,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -112,22 +113,9 @@ function ResetPasswordComponent() {
               ) : (
                 <CircleX className="text-destructive size-10" />
               )}
-              <Button
-                className="w-full"
-                variant="outline"
-                render={
-                  <Link
-                    to={completed ? "/auth/login" : "/auth/forgot-password"}
-                  />
-                }
-              >
-                {completed
-                  ? t("auth:passwordReset.signIn")
-                  : t("auth:passwordReset.requestNewLink")}
-              </Button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit}>
+            <form id="reset-password-form" onSubmit={handleSubmit}>
               <FormLayout>
                 <FormLayoutItem>
                   <Input
@@ -163,21 +151,37 @@ function ResetPasswordComponent() {
                     <FieldError>{error}</FieldError>
                   </FormLayoutItem>
                 )}
-
-                <FormLayoutItem>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    data-testid="reset-password-submit"
-                    loading={loading}
-                  >
-                    {t("auth:passwordReset.resetSubmit")}
-                  </Button>
-                </FormLayoutItem>
               </FormLayout>
             </form>
           )}
         </CardContent>
+        <CardFooter>
+          {completed || invalidToken ? (
+            <Button
+              className="w-full"
+              variant="outline"
+              render={
+                <Link
+                  to={completed ? "/auth/login" : "/auth/forgot-password"}
+                />
+              }
+            >
+              {completed
+                ? t("auth:passwordReset.signIn")
+                : t("auth:passwordReset.requestNewLink")}
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              form="reset-password-form"
+              className="w-full"
+              data-testid="reset-password-submit"
+              loading={loading}
+            >
+              {t("auth:passwordReset.resetSubmit")}
+            </Button>
+          )}
+        </CardFooter>
       </Card>
     </AuthPageShell>
   );
