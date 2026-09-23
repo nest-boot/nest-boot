@@ -1924,6 +1924,8 @@ export type GetWorkspacesFromUserWorkspacesRouteQueryVariables = Exact<{
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
   orderBy?: InputMaybe<WorkspaceOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["WorkspaceFilter"]["input"]>;
   invitationFirst?: InputMaybe<Scalars["Int"]["input"]>;
   invitationLast?: InputMaybe<Scalars["Int"]["input"]>;
   invitationAfter?: InputMaybe<Scalars["String"]["input"]>;
@@ -5156,6 +5158,25 @@ export const GetWorkspacesFromUserWorkspacesRouteDocument = {
           kind: "VariableDefinition",
           variable: {
             kind: "Variable",
+            name: { kind: "Name", value: "query" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "filter" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "WorkspaceFilter" },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
             name: { kind: "Name", value: "invitationFirst" },
           },
           type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
@@ -5236,6 +5257,22 @@ export const GetWorkspacesFromUserWorkspacesRouteDocument = {
                       value: {
                         kind: "Variable",
                         name: { kind: "Name", value: "orderBy" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "query" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "query" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "filter" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "filter" },
                       },
                     },
                   ],

@@ -113,7 +113,7 @@
     "title": "Workspaces",
     "description": "View and open the workspaces available to your account.",
     "create": "Create workspace",
-    "open": "Open workspace",
+    "search": "Search workspace names",
     "invitations": {
       "title": "Pending invitations",
       "description": "Review workspaces that have invited you to join.",

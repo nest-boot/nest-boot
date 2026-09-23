@@ -113,7 +113,7 @@
     "title": "工作空间",
     "description": "查看并进入当前账户可访问的工作空间。",
     "create": "创建工作空间",
-    "open": "进入工作空间",
+    "search": "搜索工作空间名称",
     "invitations": {
       "title": "待处理邀请",
       "description": "查看邀请您加入的工作空间。",
