@@ -334,61 +334,6 @@ function AdminUserPage() {
           <PageLayoutSection>
             <Card>
               <CardHeader>
-                <CardTitle>{t("admin:user.roles.title")}</CardTitle>
-                <CardDescription>
-                  {t("admin:user.roles.description")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <FormLayout>
-                  <FormLayoutItem>
-                    <RoleCheckboxGroup
-                      label={t("admin:user.roles.label")}
-                      options={data?.userRoles ?? []}
-                      testIdPrefix="user-role"
-                      value={roles}
-                      disabled={!canSetRoles}
-                      onValueChange={setRoles}
-                    />
-                  </FormLayoutItem>
-                </FormLayout>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  data-testid="admin-user-roles-save"
-                  disabled={
-                    !canSetRoles ||
-                    roles.length === 0 ||
-                    roles.some(
-                      (role) =>
-                        !data?.userRoles?.some(
-                          (option) => option.role === role && option.grantable,
-                        ),
-                    )
-                  }
-                  loading={savingRole}
-                  onClick={() =>
-                    run(
-                      () =>
-                        setUserRoles({
-                          variables: {
-                            id: userId,
-                            input: { roles },
-                          },
-                        }),
-                      t("admin:user.roles.success"),
-                    )
-                  }
-                >
-                  {t("action.save")}
-                </Button>
-              </CardFooter>
-            </Card>
-          </PageLayoutSection>
-
-          <PageLayoutSection>
-            <Card>
-              <CardHeader>
                 <CardTitle>{t("admin:user.profile.title")}</CardTitle>
                 <CardDescription>
                   {t("admin:user.profile.description")}
@@ -448,6 +393,61 @@ function AdminUserPage() {
                           },
                         }),
                       t("admin:user.profile.success"),
+                    )
+                  }
+                >
+                  {t("action.save")}
+                </Button>
+              </CardFooter>
+            </Card>
+          </PageLayoutSection>
+
+          <PageLayoutSection>
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("admin:user.roles.title")}</CardTitle>
+                <CardDescription>
+                  {t("admin:user.roles.description")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FormLayout>
+                  <FormLayoutItem>
+                    <RoleCheckboxGroup
+                      label={t("admin:user.roles.label")}
+                      options={data?.userRoles ?? []}
+                      testIdPrefix="user-role"
+                      value={roles}
+                      disabled={!canSetRoles}
+                      onValueChange={setRoles}
+                    />
+                  </FormLayoutItem>
+                </FormLayout>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  data-testid="admin-user-roles-save"
+                  disabled={
+                    !canSetRoles ||
+                    roles.length === 0 ||
+                    roles.some(
+                      (role) =>
+                        !data?.userRoles?.some(
+                          (option) => option.role === role && option.grantable,
+                        ),
+                    )
+                  }
+                  loading={savingRole}
+                  onClick={() =>
+                    run(
+                      () =>
+                        setUserRoles({
+                          variables: {
+                            id: userId,
+                            input: { roles },
+                          },
+                        }),
+                      t("admin:user.roles.success"),
                     )
                   }
                 >
