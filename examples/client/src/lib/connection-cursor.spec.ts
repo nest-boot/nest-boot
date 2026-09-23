@@ -35,22 +35,25 @@ describe("browser connection cursor", () => {
   ])(
     "derives the server cursor for $field from record data",
     ({ field, record, value }) => {
-      expect(createConnectionCursor(record, field)).toBe(
+      expect(createConnectionCursor(record, { orderBy: { field } })).toBe(
         new Cursor({ id: record.id, value }).toString(),
       );
     },
   );
 
   it("rejects missing sort data instead of silently falling back to ID pagination", () => {
-    expect(() => createConnectionCursor({ id: "123" }, "CREATED_AT")).toThrow(
-      'missing the "createdAt" sort field',
-    );
+    expect(() =>
+      createConnectionCursor(
+        { id: "123" },
+        { orderBy: { field: "CREATED_AT" } },
+      ),
+    ).toThrow('missing the "createdAt" sort field');
   });
 
   it.each([undefined, null])(
     "matches the server's ID-only cursor without ordering (%s)",
-    (orderField) => {
-      expect(createConnectionCursor({ id: "123" }, orderField)).toBe(
+    (orderBy) => {
+      expect(createConnectionCursor({ id: "123" }, { orderBy })).toBe(
         new Cursor({ id: "123" }).toString(),
       );
     },

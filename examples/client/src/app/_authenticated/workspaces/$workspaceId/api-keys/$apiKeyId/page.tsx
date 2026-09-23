@@ -9,6 +9,7 @@ import { ApiKeyNavigation } from "@/components/api-key-navigation";
 import { useAbility } from "@/contexts/ability-context";
 import { usePageNavigation } from "@/hooks/use-page-navigation";
 import { createAbilitySubject } from "@/lib/ability";
+import { createConnectionCursor } from "@/lib/connection-cursor";
 import {
   GET_WORKSPACE_API_KEY,
   GET_WORKSPACE_API_KEY_NEIGHBORS,
@@ -75,14 +76,13 @@ function ApiKeyDetailsPage() {
   const navigation = usePageNavigation({
     key: getWorkspaceApiKeysPageKey(workspaceId),
     searchSchema: apiKeySearchSchema,
-    record: apiKey,
     query: useCallback(
       async ({
         pageSearch,
-        cursor,
       }: PageNavigationQueryOptions<typeof apiKeySearchSchema>) => {
         const { query, filter, orderBy } =
           createApiKeyQueryVariables(pageSearch);
+        const cursor = createConnectionCursor(apiKey, pageSearch);
         const { data } = await loadNeighbors({
           variables: {
             query,
@@ -96,7 +96,7 @@ function ApiKeyDetailsPage() {
           ? data.currentWorkspace
           : undefined;
       },
-      [loadNeighbors, workspaceId],
+      [apiKey, loadNeighbors, workspaceId],
     ),
   });
   const { previous, next, backSearch, error } = navigation;

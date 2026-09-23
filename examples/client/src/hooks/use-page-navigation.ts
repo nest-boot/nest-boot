@@ -5,10 +5,8 @@ import { usePageSearch } from "./use-page-search";
 import type z from "zod";
 import type { PageKey } from "./use-page-search";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
-import { createConnectionCursor } from "@/lib/connection-cursor";
 
 interface CursorPageSearch {
-  orderBy?: { field: string } | null;
   first?: number;
   last?: number;
   after?: string;
@@ -24,8 +22,6 @@ export interface PageNavigationQueryOptions<
   Schema extends z.ZodType<CursorPageSearch>,
 > {
   pageSearch: z.output<Schema>;
-  /** Cursor for the current detail record, independent of list pagination. */
-  cursor: string;
 }
 
 interface PageNavigationEdge {
@@ -46,7 +42,6 @@ interface NavigationRequest<Schema extends z.ZodType<CursorPageSearch>> {
   scope: string;
   query: PageNavigationQuery<Schema>;
   conditions: PageSearchConditions<Schema>;
-  cursor: string;
 }
 
 interface NavigationState<Schema extends z.ZodType<CursorPageSearch>> {
@@ -56,24 +51,20 @@ interface NavigationState<Schema extends z.ZodType<CursorPageSearch>> {
   error?: unknown;
 }
 
-interface PageNavigationOptions<
-  Schema extends z.ZodType<CursorPageSearch>,
-  Record extends { id: string },
-> {
+interface PageNavigationOptions<Schema extends z.ZodType<CursorPageSearch>> {
   key: PageKey;
   /** Must accept {} and normalize any client-side default ordering. */
   searchSchema: Schema;
-  /** Must include the id and, when ordered, the field selected by orderBy.field. */
-  record: Record;
   /** A stable closure that executes the application's lazy query. */
   query: PageNavigationQuery<Schema>;
 }
 
-/** Derives cursor navigation from live record data; only page search is stored. */
-export function usePageNavigation<
-  Schema extends z.ZodType<CursorPageSearch>,
-  Record extends { id: string },
->({ key, searchSchema, record, query }: PageNavigationOptions<Schema, Record>) {
+/** Queries adjacent records and remembers the list position for returning. */
+export function usePageNavigation<Schema extends z.ZodType<CursorPageSearch>>({
+  key,
+  searchSchema,
+  query,
+}: PageNavigationOptions<Schema>) {
   const { id: userId } = useCurrentUserContext();
   const requestId = useRef(0);
   const [state, setState] = useState<NavigationState<Schema>>();
@@ -84,10 +75,6 @@ export function usePageNavigation<
   const pageSearch = useMemo(
     () => savedSearch ?? searchSchema.parse({}),
     [savedSearch, searchSchema],
-  );
-  const currentCursor = createConnectionCursor(
-    record,
-    pageSearch.orderBy?.field,
   );
   const {
     first: _first,
@@ -101,14 +88,13 @@ export function usePageNavigation<
     scope: JSON.stringify([userId, ...key]),
     query,
     conditions,
-    cursor: currentCursor,
   };
 
   async function refetch() {
     const id = ++requestId.current;
     setState({ request, loading: true });
     try {
-      const data = await query({ pageSearch, cursor: currentCursor });
+      const data = await query({ pageSearch });
       if (!data) throw new Error("Page navigation query returned no result.");
       if (requestId.current === id) setState({ request, loading: false, data });
       return data;

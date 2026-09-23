@@ -2,12 +2,17 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { z } from "zod";
+import { useCallback } from "react";
 import { usePageSearch } from "./use-page-search";
 import { usePageNavigation } from "./use-page-navigation";
 import type { ReactNode } from "react";
-import type { PageNavigationQueryResult } from "./use-page-navigation";
+import type {
+  PageNavigationQueryOptions,
+  PageNavigationQueryResult,
+} from "./use-page-navigation";
 import { CurrentUserProvider } from "@/app/_authenticated/contexts/current-user-context";
 import { apiKeySearchSchema } from "@/lib/api-key-search";
+import { createConnectionCursor } from "@/lib/connection-cursor";
 import { UserApiKeyOrderField } from "@/gql/graphql";
 import {
   OrderDirection,
@@ -71,24 +76,21 @@ afterEach(() => {
 });
 
 describe("usePageNavigation", () => {
-  it("executes the lazy-query closure for changed conditions or records, but not saved pagination", async () => {
+  it("executes the lazy-query closure for changed conditions or closures, but not saved pagination", async () => {
     const query = vi.fn().mockResolvedValue(neighbors("A", "C"));
     const { result, rerender } = renderHook(
-      ({ item, execute }) =>
+      ({ execute }) =>
         usePageNavigation({
           key: pageKey,
           searchSchema: apiKeySearchSchema,
-          record: item,
           query: execute,
         }),
-      { wrapper, initialProps: { item: record, execute: query } },
+      { wrapper, initialProps: { execute: query } },
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
-    const cursor = btoa(JSON.stringify({ id: "B", value: record.createdAt }));
     expect(query).toHaveBeenCalledTimes(1);
     expect(query).toHaveBeenLastCalledWith({
       pageSearch: apiKeySearchSchema.parse({}),
-      cursor,
     });
     // Only the closure receives query arguments; pages consume the final search.
     expect(result.current).not.toHaveProperty("previousSearch");
@@ -96,12 +98,16 @@ describe("usePageNavigation", () => {
     expect(result.current).not.toHaveProperty("getBackSearch");
     expect(result.current).not.toHaveProperty("currentCursor");
     type Options = Parameters<
-      typeof usePageNavigation<typeof apiKeySearchSchema, typeof record>
+      typeof usePageNavigation<typeof apiKeySearchSchema>
     >[0];
     expectTypeOf<Pick<Options, "query">>().toEqualTypeOf<
       Required<Pick<Options, "query">>
     >();
-    rerender({ item: { ...record }, execute: query });
+    expectTypeOf<Extract<keyof Options, "record">>().toEqualTypeOf<never>();
+    expectTypeOf<Parameters<Options["query"]>[0]>().toEqualTypeOf<{
+      pageSearch: z.output<typeof apiKeySearchSchema>;
+    }>();
+    rerender({ execute: query });
     act(() => result.current.setPageSearch({ first: 5, after: "saved" }));
     expect(query).toHaveBeenCalledTimes(1);
     act(() =>
@@ -109,11 +115,8 @@ describe("usePageNavigation", () => {
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(query).toHaveBeenCalledTimes(2);
-    rerender({ item: { ...record, id: "C" }, execute: query });
-    await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(query).toHaveBeenCalledTimes(3);
     const otherQuery = vi.fn().mockResolvedValue(neighbors("B"));
-    rerender({ item: { ...record, id: "C" }, execute: otherQuery });
+    rerender({ execute: otherQuery });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(otherQuery).toHaveBeenCalledTimes(1);
     await act(async () => {
@@ -126,7 +129,6 @@ describe("usePageNavigation", () => {
         first: 5,
         after: "B",
       }),
-      cursor: btoa(JSON.stringify({ id: "C", value: record.createdAt })),
     });
     expect(result.current.previous?.node.id).toBe("B");
     expect(result.current.next).toBeUndefined();
@@ -149,7 +151,6 @@ describe("usePageNavigation", () => {
         usePageNavigation({
           key: pageKey,
           searchSchema: apiKeySearchSchema,
-          record,
           query,
         }),
       { wrapper },
@@ -184,7 +185,6 @@ describe("usePageNavigation", () => {
         usePageNavigation({
           key: pageKey,
           searchSchema: apiKeySearchSchema,
-          record,
           query,
         }),
       { wrapper },
@@ -201,16 +201,13 @@ describe("usePageNavigation", () => {
         usePageNavigation({
           key: ["id-only"],
           searchSchema,
-          record: { id: "B" },
           query,
         }),
       { wrapper },
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
-    const cursor = btoa(JSON.stringify({ id: "B" }));
     expect(query).toHaveBeenLastCalledWith({
       pageSearch: { first: 10 },
-      cursor,
     });
     expect(result.current.backSearch).toEqual({ first: 10 });
     expect(sessionStorage.length).toBe(0);
@@ -243,16 +240,13 @@ describe("usePageNavigation", () => {
           usePageNavigation({
             key: ["id-only"],
             searchSchema,
-            record: { id: "B" },
             query,
           }),
         { wrapper },
       );
       await waitFor(() => expect(result.current.loading).toBe(false));
-      const cursor = btoa(JSON.stringify({ id: "B" }));
       expect(query).toHaveBeenLastCalledWith({
         pageSearch: { query: "example", orderBy, first: 5, after: "old" },
-        cursor,
       });
       expect(result.current.backSearch).toEqual({
         query: "example",
@@ -279,16 +273,13 @@ describe("usePageNavigation", () => {
           usePageNavigation({
             key: pageKey,
             searchSchema: apiKeySearchSchema,
-            record,
             query,
           }),
         { wrapper },
       );
       await waitFor(() => expect(result.current.loading).toBe(false));
-      const cursor = btoa(JSON.stringify({ id: record.id, value: record.id }));
       expect(query).toHaveBeenLastCalledWith({
         pageSearch: apiKeySearchSchema.parse({ ...conditions, ...pagination }),
-        cursor,
       });
       expect(result.current.backSearch).toEqual({
         ...conditions,
@@ -309,7 +300,6 @@ describe("usePageNavigation", () => {
         usePageNavigation({
           key: pageKey,
           searchSchema: apiKeySearchSchema,
-          record: { ...record, id: "A" },
           query,
         }),
       { wrapper },
@@ -330,31 +320,30 @@ describe("usePageNavigation", () => {
     const initial = deferred();
     const switched = deferred();
     const returned = deferred();
-    const query = vi
+    const firstQuery = vi
       .fn()
       .mockReturnValueOnce(initial.promise)
-      .mockReturnValueOnce(switched.promise)
       .mockReturnValueOnce(returned.promise);
+    const otherQuery = vi.fn().mockReturnValueOnce(switched.promise);
     const { result, rerender } = renderHook(
-      ({ item }) =>
+      ({ query }) =>
         usePageNavigation({
           key: pageKey,
           searchSchema: apiKeySearchSchema,
-          record: item,
           query,
         }),
-      { wrapper, initialProps: { item: record } },
+      { wrapper, initialProps: { query: firstQuery } },
     );
     await act(async () => {
       initial.resolve(neighbors("A", "C"));
       await initial.promise;
     });
     expect(result.current.previous?.node.id).toBe("A");
-    rerender({ item: { ...record, id: "C" } });
+    rerender({ query: otherQuery });
     expect(result.current.loading).toBe(true);
     expect(result.current.previous).toBeUndefined();
     expect(result.current.backSearch).toMatchObject({ after: "A" });
-    rerender({ item: record });
+    rerender({ query: firstQuery });
     expect(result.current.previous).toBeUndefined();
     await act(async () => {
       returned.resolve(neighbors("A", "C"));
@@ -392,7 +381,6 @@ describe("usePageNavigation", () => {
         usePageNavigation({
           key,
           searchSchema: apiKeySearchSchema,
-          record,
           query,
         }),
       { wrapper, initialProps: { key: firstKey } },
@@ -426,7 +414,6 @@ describe("usePageNavigation", () => {
         usePageNavigation({
           key: pageKey,
           searchSchema: apiKeySearchSchema,
-          record,
           query,
         }),
       { wrapper },
@@ -441,7 +428,7 @@ describe("usePageNavigation", () => {
     });
   });
 
-  it("passes live record cursors to the query, including browser-back and null sort values, without a stored cursor map", async () => {
+  it("calculates live cursors inside the query closure across record changes and browser back", async () => {
     saveSearch({
       orderBy: {
         field: UserApiKeyOrderField.LAST_USED_AT,
@@ -449,35 +436,43 @@ describe("usePageNavigation", () => {
       },
     });
     const stored = JSON.stringify(sessionStorage);
-    const query = vi.fn().mockResolvedValue(neighbors());
+    const execute = vi.fn().mockResolvedValue(neighbors());
     const { result, rerender } = renderHook(
       ({ item }) =>
         usePageNavigation({
           key: pageKey,
           searchSchema: apiKeySearchSchema,
-          record: item,
-          query,
+          query: useCallback(
+            ({
+              pageSearch,
+            }: PageNavigationQueryOptions<typeof apiKeySearchSchema>) =>
+              execute({
+                pageSearch,
+                cursor: createConnectionCursor(item, pageSearch),
+              }),
+            [item, execute],
+          ),
         }),
       { wrapper, initialProps: { item: record } },
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     const original = btoa(JSON.stringify({ id: "B", value: null }));
-    expect(query).toHaveBeenLastCalledWith(
+    expect(execute).toHaveBeenLastCalledWith(
       expect.objectContaining({ cursor: original }),
     );
     rerender({ item: { ...record, id: "C" } });
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(query).toHaveBeenLastCalledWith(
+    expect(execute).toHaveBeenLastCalledWith(
       expect.objectContaining({
         cursor: btoa(JSON.stringify({ id: "C", value: null })),
       }),
     );
     rerender({ item: record });
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(query).toHaveBeenLastCalledWith(
+    expect(execute).toHaveBeenLastCalledWith(
       expect.objectContaining({ cursor: original }),
     );
-    expect(query).toHaveBeenCalledTimes(3);
+    expect(execute).toHaveBeenCalledTimes(3);
     expect(JSON.stringify(sessionStorage)).toBe(stored);
   });
 
@@ -488,7 +483,6 @@ describe("usePageNavigation", () => {
         usePageNavigation({
           key: pageKey,
           searchSchema: apiKeySearchSchema,
-          record,
           query,
         }),
       { wrapper },
@@ -501,13 +495,9 @@ describe("usePageNavigation", () => {
         direction: OrderDirection.DESC,
       },
     });
-    expect(query).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        cursor: btoa(
-          JSON.stringify({ id: record.id, value: record.createdAt }),
-        ),
-      }),
-    );
+    expect(query).toHaveBeenLastCalledWith({
+      pageSearch: result.current.pageSearch,
+    });
     expect(result.current.previous?.node.id).toBe("previous");
     expect(sessionStorage.length).toBe(0);
   });
@@ -523,7 +513,6 @@ describe("usePageNavigation", () => {
         usePageNavigation({
           key: pageKey,
           searchSchema: apiKeySearchSchema,
-          record,
           query,
         }),
       { wrapper },
@@ -533,13 +522,9 @@ describe("usePageNavigation", () => {
       UserApiKeyOrderField.CREATED_AT,
     );
     expect(result.current.backSearch).toMatchObject({ first: 5 });
-    expect(query).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        cursor: btoa(
-          JSON.stringify({ id: record.id, value: record.createdAt }),
-        ),
-      }),
-    );
+    expect(query).toHaveBeenLastCalledWith({
+      pageSearch: result.current.pageSearch,
+    });
   });
 
   it("uses another resource's schema defaults instead of hardcoded API-key ordering", async () => {
@@ -555,17 +540,14 @@ describe("usePageNavigation", () => {
         usePageNavigation({
           key: ["other-resource"],
           searchSchema,
-          record: { id: "1", name: "Alice" },
           query,
         }),
       { wrapper },
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(query).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        cursor: btoa(JSON.stringify({ id: "1", value: "Alice" })),
-      }),
-    );
+    expect(query).toHaveBeenLastCalledWith({
+      pageSearch: result.current.pageSearch,
+    });
     expect(result.current.backSearch).toMatchObject({
       first: 7,
       orderBy: { field: "NAME", direction: OrderDirection.ASC },

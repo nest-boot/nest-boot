@@ -9,6 +9,7 @@ import { ApiKeyNavigation } from "@/components/api-key-navigation";
 import { useAbility } from "@/contexts/ability-context";
 import { usePageNavigation } from "@/hooks/use-page-navigation";
 import { createAbilitySubject } from "@/lib/ability";
+import { createConnectionCursor } from "@/lib/connection-cursor";
 import {
   GET_USER_API_KEY,
   GET_USER_API_KEY_NEIGHBORS,
@@ -65,14 +66,13 @@ function ApiKeyDetailsPage() {
   const navigation = usePageNavigation({
     key: userApiKeysPageKey,
     searchSchema: apiKeySearchSchema,
-    record: apiKey,
     query: useCallback(
       async ({
         pageSearch,
-        cursor,
       }: PageNavigationQueryOptions<typeof apiKeySearchSchema>) => {
         const { query, filter, orderBy } =
           createApiKeyQueryVariables(pageSearch);
+        const cursor = createConnectionCursor(apiKey, pageSearch);
         const { data } = await loadNeighbors({
           variables: {
             query,
@@ -83,7 +83,7 @@ function ApiKeyDetailsPage() {
         });
         return data?.currentUser;
       },
-      [loadNeighbors],
+      [apiKey, loadNeighbors],
     ),
   });
   const { previous, next, backSearch, error } = navigation;

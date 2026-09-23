@@ -84,28 +84,30 @@ API-key pages also demonstrate two hooks for list/detail navigation:
   the same schema. Schemas must normalize JSON-compatible search values
   idempotently, as the existing connection search schemas do. Invalid stored
   data is discarded; unavailable storage falls back to memory for that tab.
-- `usePageNavigation({ key, searchSchema, record, query })` reads those
-  conditions and calculates the current cursor from the live record's ID and
-  sort value. Without `orderBy` (or with `null`), the server defaults to ID
-  ascending and the cursor contains only the ID. When a list applies its own
-  default ordering, its search schema must normalize that `orderBy`;
-  GraphQL order names map to camelCase record fields (`CREATED_AT` to `createdAt`).
-  Include each supported sort field in the detail query; explicit `null` values
-  are supported, while a missing field raises an error instead of an incorrect
-  cursor. No cursor map is persisted. The required, stable
-  `query({ pageSearch, cursor })` closure receives the current list search and
-  the detail record's cursor separately; a list's `after`/`before` cannot stand in
-  for the current record. The calculated cursor is passed only to the query closure,
-  not exposed in the hook's return value. The closure
-  returns `{ previous: { edges }, next: { edges } }`, with each edge containing
-  `cursor` and `node.id`. It runs when the record cursor, user/page scope, filters,
-  sorting, or closure changes; updating only pagination does not trigger another
-  request. API-key pages supply a `useCallback` closure executing Apollo's
-  `useLazyQuery` for both adjacent records in one request. GraphQL accepts one
-  `$cursor`, using it as `before` with `last: 1` and as `after` with `first: 1`;
-  both directions share the search query, filter, and ordering.
+- `usePageNavigation({ key, searchSchema, query })` reads those conditions
+  and manages adjacent-record queries. The required, stable `query({ pageSearch })`
+  closure captures the current record and calls `createConnectionCursor(record,
+pageSearch)` to calculate its cursor. Include the record in the closure's
+  `useCallback` dependencies so record changes, including browser back/forward,
+  trigger a new query. The hook reruns it when the user/page scope, filters,
+  sorting, or closure changes; changing only saved pagination does not trigger
+  another request.
+  The cursor utility uses the record ID alone when `orderBy` is absent or `null`,
+  matching the server's default ID ordering. When a list applies its own default
+  ordering, its search schema must normalize that `orderBy`. GraphQL order names
+  map to camelCase record fields (`CREATED_AT` to `createdAt`); include each
+  supported sort field in the detail query. Explicit `null` values are supported,
+  while a missing sort field throws and is handled as a navigation query failure.
+  List pagination (`after`/`before`) is not the current record's cursor.
+  No record or calculated cursor is passed to the navigation hook, and no cursor
+  map is persisted.
+  The closure returns `{ previous: { edges }, next: { edges } }`, with each edge
+  containing `cursor` and `node.id`. API-key pages execute Apollo's `useLazyQuery`
+  for both adjacent records in one request. GraphQL accepts one `$cursor`, using
+  it as `before` with `last: 1` and as `after` with `first: 1`; both directions share
+  the search query, filter, and ordering.
   The hook returns `previous`, `next`, `loading`, `error`, and `refetch()` for
-  navigation and retries. It ignores obsolete responses after record/scope changes
+  navigation and retries. It ignores obsolete responses after closure/scope changes
   or retries and hides stale links during loading or errors. A missing query owner
   is an error; an empty edges array is a valid boundary.
   Pages use `backSearch` directly for both breadcrumb and footer links. While

@@ -1,10 +1,14 @@
 import { camelCase, get } from "lodash";
 
-/** Uses ID alone without ordering; otherwise maps GraphQL enums to camelCase fields. */
-export function createConnectionCursor<Record extends { id: string }>(
+/** Derives a record cursor using the normalized page search's ordering. */
+export function createConnectionCursor<
+  Record extends { id: string },
+  Search extends object,
+>(
   record: Record,
-  orderField?: string | null,
+  pageSearch: Search & { orderBy?: { field: string } | null },
 ): string {
+  const orderField = pageSearch.orderBy?.field;
   if (orderField == null) return encodeConnectionCursor({ id: record.id });
   const field = camelCase(orderField);
   const value: unknown = get(record, field);
