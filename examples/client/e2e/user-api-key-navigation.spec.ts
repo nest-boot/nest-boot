@@ -67,10 +67,11 @@ async function expectNeighbor(
   direction: "previous" | "next",
   id: string,
 ) {
-  await expect(page.getByTestId(`api-key-${direction}`)).toHaveAttribute(
-    "href",
-    `/user/api-keys/${id}`,
-  );
+  await expect(
+    page.getByLabel(direction === "previous" ? "Previous item" : "Next item", {
+      exact: true,
+    }),
+  ).toHaveAttribute("href", `/user/api-keys/${id}`);
 }
 
 async function expectSavedPosition(page: Page, previousId?: string) {
@@ -121,14 +122,16 @@ test("browses details across pages, survives back and refresh, then anchors the 
   await expectDetails(page, c.name);
   await page.setViewportSize(desktopViewport);
   await expect(pagination).toBeVisible();
-  await page.getByTestId("api-key-previous").click();
+  await page.getByLabel("Previous item", { exact: true }).click();
   await expectDetails(page, b.name);
   await expectNeighbor(page, "previous", a.id);
   await expectSavedPosition(page, a.id);
-  await page.getByTestId("api-key-previous").click();
+  await page.getByLabel("Previous item", { exact: true }).click();
   await expectDetails(page, a.name);
   await expectNeighbor(page, "next", b.id);
-  await expect(page.getByTestId("api-key-previous")).toBeDisabled();
+  await expect(
+    page.getByLabel("Previous item", { exact: true }),
+  ).toBeDisabled();
   await expect
     .poll(async () => {
       const firstPage = new URL(
@@ -150,12 +153,12 @@ test("browses details across pages, survives back and refresh, then anchors the 
   await expectSavedPosition(page, b.id);
   await page.reload();
   await expectNeighbor(page, "previous", b.id);
-  await page.getByTestId("api-key-next").click();
+  await page.getByLabel("Next item", { exact: true }).click();
   await expectDetails(page, d.name);
   await expectNeighbor(page, "previous", c.id);
-  await expect(page.getByTestId("api-key-next")).toBeDisabled();
+  await expect(page.getByLabel("Next item", { exact: true })).toBeDisabled();
   await expectSavedPosition(page, c.id);
-  await page.getByTestId("api-key-previous").click();
+  await page.getByLabel("Previous item", { exact: true }).click();
   await expectDetails(page, c.name);
   await expectNeighbor(page, "previous", b.id);
   await page.getByTestId("api-key-back").click();
@@ -223,11 +226,13 @@ test("ignores a delayed lazy-query result after browser back to another record",
     await expectNeighbor(page, "previous", b.id);
     await expectNeighbor(page, "next", d.id);
     await expectSavedPosition(page, b.id);
-    await page.getByTestId("api-key-previous").click();
+    await page.getByLabel("Previous item", { exact: true }).click();
     await expectDetails(page, b.name);
     await expect.poll(() => pendingQueries).toBeGreaterThan(0);
-    await expect(page.getByTestId("api-key-previous")).toBeDisabled();
-    await expect(page.getByTestId("api-key-next")).toBeDisabled();
+    await expect(
+      page.getByLabel("Previous item", { exact: true }),
+    ).toBeDisabled();
+    await expect(page.getByLabel("Next item", { exact: true })).toBeDisabled();
     await expectSavedPosition(page, b.id);
     await page.goBack();
     await expectDetails(page, c.name);
@@ -335,10 +340,12 @@ test("handles invalid storage, direct detail entry and failed neighbor queries",
   });
   await page.getByRole("link", { name: c.name, exact: true }).click();
   await expect(page.getByRole("alert")).toContainText(
-    "Could not load adjacent API keys",
+    "Could not load adjacent records",
   );
-  await expect(page.getByTestId("api-key-previous")).toBeDisabled();
-  await expect(page.getByTestId("api-key-next")).toBeDisabled();
+  await expect(
+    page.getByLabel("Previous item", { exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByLabel("Next item", { exact: true })).toBeDisabled();
   const fallback = new URL(
     (await page.getByTestId("api-key-back").getAttribute("href"))!,
     page.url(),
@@ -361,7 +368,7 @@ for (const field of ["CREATED_AT", "LAST_USED_AT"]) {
     await page.getByRole("link", { name: c.name, exact: true }).click();
     await expectNeighbor(page, "previous", d.id);
     await expectNeighbor(page, "next", b.id);
-    await page.getByTestId("api-key-next").click();
+    await page.getByLabel("Next item", { exact: true }).click();
     await expectDetails(page, b.name);
     await expectNeighbor(page, "previous", c.id);
     await expectNeighbor(page, "next", a.id);

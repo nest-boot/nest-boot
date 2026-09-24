@@ -550,7 +550,6 @@ function AdminUserDetails() {
             </Button>
           ) : null}
           <RecordNavigation
-            testIdPrefix="admin-user"
             previousPath={
               previousEdge ? `/admin/users/${previousEdge.node.id}` : undefined
             }

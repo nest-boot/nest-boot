@@ -77,12 +77,5 @@
   },
   "back": "Back to API Keys",
   "details": "API Key",
-  "usage": "Usage",
-  "navigation": {
-    "label": "API key navigation",
-    "previous": "Previous API key",
-    "next": "Next API key",
-    "failed": "Could not load adjacent API keys.",
-    "retry": "Retry"
-  }
+  "usage": "Usage"
 }

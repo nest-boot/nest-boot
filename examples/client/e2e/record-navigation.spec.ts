@@ -93,28 +93,25 @@ test("administrator users restore create searches and navigate filtered details 
     .getByRole("cell")
     .first()
     .click();
-  await expect(page.getByTestId("admin-user-previous")).toHaveAttribute(
-    "href",
-    `/admin/users/${a.id}`,
-  );
-  await expect(page.getByTestId("admin-user-next")).toHaveAttribute(
+  await expect(
+    page.getByLabel("Previous item", { exact: true }),
+  ).toHaveAttribute("href", `/admin/users/${a.id}`);
+  await expect(page.getByLabel("Next item", { exact: true })).toHaveAttribute(
     "href",
     `/admin/users/${c.id}`,
   );
   await expect(page.locator('[data-slot="page-pagination"]')).toBeVisible();
   await page.getByTestId("admin-user-name").fill("Unsaved draft");
-  await page.getByTestId("admin-user-next").click();
+  await page.getByLabel("Next item", { exact: true }).click();
   await expect(page.getByTestId("admin-user-name")).toHaveValue(c.name);
-  await expect(page.getByTestId("admin-user-next")).toBeDisabled();
-  await expect(page.getByTestId("admin-user-previous")).toHaveAttribute(
-    "href",
-    `/admin/users/${b.id}`,
-  );
+  await expect(page.getByLabel("Next item", { exact: true })).toBeDisabled();
+  await expect(
+    page.getByLabel("Previous item", { exact: true }),
+  ).toHaveAttribute("href", `/admin/users/${b.id}`);
   await page.reload();
-  await expect(page.getByTestId("admin-user-previous")).toHaveAttribute(
-    "href",
-    `/admin/users/${b.id}`,
-  );
+  await expect(
+    page.getByLabel("Previous item", { exact: true }),
+  ).toHaveAttribute("href", `/admin/users/${b.id}`);
   await backToList(page);
   await expect(page.getByRole("row").nth(1)).toContainText(c.name);
   expect(readSearch(page)).toMatchObject({
@@ -154,22 +151,20 @@ test("member navigation and invitation return searches stay isolated by workspac
   await expect(page.getByRole("row").nth(1)).toContainText(users[1].name);
   expect(readSearch(page)).toEqual(firstSearch);
   await page.goto(`${firstList}/${members[1]}`);
-  await expect(page.getByTestId("member-previous")).toHaveAttribute(
-    "href",
-    `${firstList}/${members[2]}`,
-  );
-  await expect(page.getByTestId("member-next")).toHaveAttribute(
+  await expect(
+    page.getByLabel("Previous item", { exact: true }),
+  ).toHaveAttribute("href", `${firstList}/${members[2]}`);
+  await expect(page.getByLabel("Next item", { exact: true })).toHaveAttribute(
     "href",
     `${firstList}/${members[0]}`,
   );
   await page.locator("#member-name").fill("Unsaved member draft");
-  await page.getByTestId("member-next").click();
+  await page.getByLabel("Next item", { exact: true }).click();
   await expect(page.locator("#member-name")).toHaveValue(users[0].name);
-  await expect(page.getByTestId("member-next")).toBeDisabled();
-  await expect(page.getByTestId("member-previous")).toHaveAttribute(
-    "href",
-    `${firstList}/${members[1]}`,
-  );
+  await expect(page.getByLabel("Next item", { exact: true })).toBeDisabled();
+  await expect(
+    page.getByLabel("Previous item", { exact: true }),
+  ).toHaveAttribute("href", `${firstList}/${members[1]}`);
   await backToList(page);
   await expect(page.getByRole("row").nth(1)).toContainText(users[0].name);
   const anchoredSearch = readSearch(page);

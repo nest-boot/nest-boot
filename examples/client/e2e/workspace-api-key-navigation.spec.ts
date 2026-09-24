@@ -75,7 +75,7 @@ test("isolates two workspaces' list search, creation returns and detail navigati
     await expect(page.getByTestId("api-key-rename-input")).toHaveValue(
       current.name,
     );
-    await expect(page.getByTestId("api-key-next")).toHaveAttribute(
+    await expect(page.getByLabel("Next item", { exact: true })).toHaveAttribute(
       "href",
       `${workspace.path}/${workspace === one ? workspace.keys[3].id : workspace.keys[4].id}`,
     );
@@ -120,20 +120,18 @@ test("isolates two workspaces' list search, creation returns and detail navigati
     ),
   ).toEqual(saved);
   await page.goto(`${one.path}/${one.keys[3].id}`);
-  await expect(page.getByTestId("api-key-previous")).toHaveAttribute(
-    "href",
-    `${one.path}/${one.keys[2].id}`,
-  );
-  await expect(page.getByTestId("api-key-next")).toHaveAttribute(
+  await expect(
+    page.getByLabel("Previous item", { exact: true }),
+  ).toHaveAttribute("href", `${one.path}/${one.keys[2].id}`);
+  await expect(page.getByLabel("Next item", { exact: true })).toHaveAttribute(
     "href",
     `${one.path}/${one.keys[4].id}`,
   );
-  await page.getByTestId("api-key-next").click();
-  await expect(page.getByTestId("api-key-previous")).toHaveAttribute(
-    "href",
-    `${one.path}/${one.keys[3].id}`,
-  );
-  await expect(page.getByTestId("api-key-next")).toBeDisabled();
+  await page.getByLabel("Next item", { exact: true }).click();
+  await expect(
+    page.getByLabel("Previous item", { exact: true }),
+  ).toHaveAttribute("href", `${one.path}/${one.keys[3].id}`);
+  await expect(page.getByLabel("Next item", { exact: true })).toBeDisabled();
   await expect
     .poll(async () =>
       page.evaluate((workspaceId) => {
@@ -154,11 +152,10 @@ test("isolates two workspaces' list search, creation returns and detail navigati
   expect(
     await page.evaluate((key) => sessionStorage.getItem(key), otherKey),
   ).toBe(saved[otherKey]);
-  await page.getByTestId("api-key-previous").click();
-  await expect(page.getByTestId("api-key-previous")).toHaveAttribute(
-    "href",
-    `${one.path}/${one.keys[2].id}`,
-  );
+  await page.getByLabel("Previous item", { exact: true }).click();
+  await expect(
+    page.getByLabel("Previous item", { exact: true }),
+  ).toHaveAttribute("href", `${one.path}/${one.keys[2].id}`);
   // Workspace detail has one breadcrumb: it must retain only this workspace's conditions.
   await page.locator('[data-slot="breadcrumb-action"]').click();
   await expect(page.getByRole("row").nth(1)).toContainText(one.keys[3].name);
@@ -169,11 +166,10 @@ test("isolates two workspaces' list search, creation returns and detail navigati
     prefix: { $eq: "alpha" },
   });
   await page.goto(`${two.path}/${two.keys[3].id}`);
-  await expect(page.getByTestId("api-key-previous")).toHaveAttribute(
-    "href",
-    `${two.path}/${two.keys[2].id}`,
-  );
-  await expect(page.getByTestId("api-key-next")).toHaveAttribute(
+  await expect(
+    page.getByLabel("Previous item", { exact: true }),
+  ).toHaveAttribute("href", `${two.path}/${two.keys[2].id}`);
+  await expect(page.getByLabel("Next item", { exact: true })).toHaveAttribute(
     "href",
     `${two.path}/${two.keys[4].id}`,
   );

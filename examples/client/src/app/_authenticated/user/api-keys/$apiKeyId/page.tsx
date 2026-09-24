@@ -8,7 +8,7 @@ import { graphql } from "@/gql";
 import { UPDATE_USER_API_KEY } from "@/graphql/mutations/update-user-api-key";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
-import { ApiKeyNavigation } from "@/components/api-key-navigation";
+import { RecordNavigation } from "@/components/record-navigation";
 import { useAbility } from "@/contexts/ability-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { createAbilitySubject } from "@/lib/ability";
@@ -161,7 +161,7 @@ function ApiKeyDetailsPage() {
       listPath={"/user/api-keys"}
       listSearch={backSearch}
       navigation={
-        <ApiKeyNavigation
+        <RecordNavigation
           previousPath={
             previousEdge ? `/user/api-keys/${previousEdge.node.id}` : undefined
           }

@@ -302,7 +302,6 @@ function MemberDetails({
               </PageSecondaryAction>
             )}
           <RecordNavigation
-            testIdPrefix="member"
             previousPath={
               previousEdge
                 ? `/workspaces/${workspaceId}/members/${previousEdge.node.id}`
