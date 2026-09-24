@@ -76,7 +76,7 @@
     },
     "description": "搜索、查看和管理应用用户。",
     "loading": "正在加载用户…",
-    "search": "搜索名称或邮箱（使用 * 进行前缀搜索）",
+    "search": "搜索名称或邮箱",
     "table": {
       "created_at": "创建时间",
       "email": "邮箱",

@@ -58,7 +58,7 @@
       }
     },
     "search": {
-      "placeholder": "Search name or email (use * for a prefix)"
+      "placeholder": "Search name or email"
     }
   },
   "invite": {

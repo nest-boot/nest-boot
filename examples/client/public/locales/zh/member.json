@@ -58,7 +58,7 @@
       }
     },
     "search": {
-      "placeholder": "搜索姓名或邮箱（前缀匹配请加 *）"
+      "placeholder": "搜索姓名或邮箱"
     }
   },
   "invite": {

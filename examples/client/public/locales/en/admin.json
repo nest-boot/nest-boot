@@ -76,7 +76,7 @@
     },
     "description": "Search, review, and administer application users.",
     "loading": "Loading users…",
-    "search": "Search name or email (use * for a prefix)",
+    "search": "Search name or email",
     "table": {
       "created_at": "Created",
       "email": "Email",
