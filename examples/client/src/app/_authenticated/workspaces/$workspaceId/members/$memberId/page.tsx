@@ -312,10 +312,6 @@ function MemberDetails({
                 ? `/workspaces/${workspaceId}/members/${nextEdge.node.id}`
                 : undefined
             }
-            failed={Boolean(navigation.error)}
-            onRetry={() => {
-              void navigation.refetch().catch(() => undefined);
-            }}
           />
         </PageActions>
       </PageHeader>

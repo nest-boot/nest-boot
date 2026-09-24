@@ -24,7 +24,6 @@
     "message": "Unsaved changes"
   },
   "navigation": {
-    "failed": "Could not load adjacent records.",
     "retry": "Retry"
   },
   "overview": {

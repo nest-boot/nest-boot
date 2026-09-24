@@ -554,10 +554,6 @@ function AdminUserDetails() {
               previousEdge ? `/admin/users/${previousEdge.node.id}` : undefined
             }
             nextPath={nextEdge ? `/admin/users/${nextEdge.node.id}` : undefined}
-            failed={Boolean(navigation.error)}
-            onRetry={() => {
-              void navigation.refetch().catch(() => undefined);
-            }}
           />
         </PageActions>
       </PageHeader>

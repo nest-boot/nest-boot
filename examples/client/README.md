@@ -187,7 +187,8 @@ The hook returns `search`, `setSearch`, `clearSearch`, `backSearch`,
   the current cursor is `before` with `last: 1` and `after` with `first: 1`, sharing
   filters and ordering. `{}` is a valid result with no neighbors; a missing owner
   returns `undefined` and becomes a navigation error. Obsolete responses are
-  ignored; loading and errors hide stale links. `refetch()` supports retrying.
+  ignored; loading and errors hide stale links. `RecordNavigation` disables
+  unavailable previous/next actions. Failed queries show no alert or retry button.
 - Detail links consume `backSearch`. Loading and errors preserve saved search.
   Success positions saved search after `previousEdge.cursor`, keeping the current
   record first when returning to the list while retaining filters, sorting, view

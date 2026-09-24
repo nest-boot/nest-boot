@@ -163,7 +163,7 @@ function ApiKeyDetailsPage() {
       [apiKey, loadNeighbors, workspaceId],
     ),
   });
-  const { previousEdge, nextEdge, backSearch, error } = navigation;
+  const { previousEdge, nextEdge, backSearch } = navigation;
   const listPath = `/workspaces/${workspaceId}/api-keys`;
   return (
     <ApiKeyFormPage
@@ -181,10 +181,6 @@ function ApiKeyDetailsPage() {
             previousEdge ? `${listPath}/${previousEdge.node.id}` : undefined
           }
           nextPath={nextEdge ? `${listPath}/${nextEdge.node.id}` : undefined}
-          failed={Boolean(error)}
-          onRetry={() => {
-            void navigation.refetch().catch(() => undefined);
-          }}
         />
       }
       permissionValues={workspaceApiKeyPermissionValues}

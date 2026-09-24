@@ -287,7 +287,7 @@ test("restores the exact list search from create/cancel and create/success, with
 test("handles invalid storage, direct detail entry and failed neighbor queries", async ({
   page,
 }) => {
-  const [a, b, c, d] = await prepareKeys(page);
+  const [a, b, c] = await prepareKeys(page);
   await page.goto(listPath());
   await expect(
     page.getByRole("link", { name: a.name, exact: true }),
@@ -329,33 +329,38 @@ test("handles invalid storage, direct detail entry and failed neighbor queries",
   ).toBeVisible();
   const original = readSearch(page);
   expect(original.after).not.toBeNull();
-  let fail = true;
   await page.route("**/api/graphql", async (route) => {
     const body = route.request().postDataJSON() as { operationName?: string };
-    if (body.operationName === "getUserApiKeyNeighbors" && fail) {
+    if (body.operationName === "getUserApiKeyNeighbors") {
       await route.fulfill({
         json: { errors: [{ message: "Simulated neighbor failure" }] },
       });
     } else await route.continue();
   });
-  await page.getByRole("link", { name: c.name, exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "Could not load adjacent records",
+  const failedResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/graphql") &&
+      response.request().postDataJSON()?.operationName ===
+        "getUserApiKeyNeighbors",
   );
+  await page.getByRole("link", { name: c.name, exact: true }).click();
+  expect((await (await failedResponse).json()).errors).toEqual([
+    { message: "Simulated neighbor failure" },
+  ]);
   await expect(
     page.getByLabel("Previous item", { exact: true }),
   ).toBeDisabled();
   await expect(page.getByLabel("Next item", { exact: true })).toBeDisabled();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Retry", exact: true }),
+  ).toHaveCount(0);
   const fallback = new URL(
     (await page.getByTestId("api-key-back").getAttribute("href"))!,
     page.url(),
   );
   expect(fallback.searchParams.get("query")).toBe(query);
   expect(fallback.searchParams.get("after")).toBe(original.after);
-  fail = false;
-  await page.getByRole("button", { name: "Retry", exact: true }).click();
-  await expectNeighbor(page, "previous", b.id);
-  await expectNeighbor(page, "next", d.id);
 });
 
 for (const field of ["CREATED_AT", "LAST_USED_AT"]) {

@@ -149,7 +149,7 @@ function ApiKeyDetailsPage() {
       [apiKey, loadNeighbors],
     ),
   });
-  const { previousEdge, nextEdge, backSearch, error } = navigation;
+  const { previousEdge, nextEdge, backSearch } = navigation;
   return (
     <ApiKeyFormPage
       key={apiKey.id}
@@ -166,10 +166,6 @@ function ApiKeyDetailsPage() {
             previousEdge ? `/user/api-keys/${previousEdge.node.id}` : undefined
           }
           nextPath={nextEdge ? `/user/api-keys/${nextEdge.node.id}` : undefined}
-          failed={Boolean(error)}
-          onRetry={() => {
-            void navigation.refetch().catch(() => undefined);
-          }}
         />
       }
       permissionValues={authPermissionValues}
