@@ -13,7 +13,7 @@ import type { PermissionOption } from "@/lib/permissions";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Link } from "@/components/link";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
-import { Badge } from "@/components/thread-ui/badge";
+import { ApiKeyStatusBadge } from "@/components/api-key-status-badge";
 import { Button } from "@/components/thread-ui/button";
 import { Input } from "@/components/thread-ui/input";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
@@ -39,7 +39,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getFormErrorMessage } from "@/lib/form-errors";
-import { getApiKeyStatus } from "@/lib/api-key-status";
 
 interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
   apiKey?: ApiKeyRow<Permission>;
@@ -137,7 +136,6 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
   const error = useStore(form.store, (state) =>
     getFormErrorMessage(state.errors),
   );
-  const status = apiKey ? getApiKeyStatus(apiKey) : undefined;
 
   return (
     <Page variant="compact">
@@ -323,7 +321,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                   </CardFooter>
                 </Card>
               </PageLayoutSection>
-              {apiKey && status && (
+              {apiKey && (
                 <PageLayoutSection>
                   <Card>
                     <CardHeader>
@@ -336,9 +334,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                             {t("api-key:table.status")}
                           </dt>
                           <dd>
-                            <Badge color={status.color}>
-                              {t(`api-key:status.${status.label}`)}
-                            </Badge>
+                            <ApiKeyStatusBadge apiKey={apiKey} />
                           </dd>
                         </div>
                         <div>

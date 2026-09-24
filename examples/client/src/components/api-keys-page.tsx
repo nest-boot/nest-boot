@@ -17,7 +17,7 @@ import type { createAbility } from "@/lib/ability";
 import { toast } from "@/components/thread-ui/toast";
 import { createAbilitySubject } from "@/lib/ability";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
-import { Badge } from "@/components/thread-ui/badge";
+import { ApiKeyStatusBadge } from "@/components/api-key-status-badge";
 import { Link } from "@/components/link";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { DataTable } from "@/components/thread-ui/data-table";
@@ -31,7 +31,6 @@ import {
   PageTitle,
 } from "@/components/thread-ui/page";
 import { Card, CardContent } from "@/components/ui/card";
-import { getApiKeyStatus } from "@/lib/api-key-status";
 import {
   getNextPageSearch,
   getPreviousPageSearch,
@@ -243,18 +242,9 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
                     accessorKey: "status",
                     header: t("api-key:table.status"),
                     size: 80,
-                    cell: ({ row }) => {
-                      const status = getApiKeyStatus(row.original);
-
-                      return (
-                        <Badge
-                          color={status.color}
-                          data-testid={`api-key-status-${row.original.id}`}
-                        >
-                          {t(`api-key:status.${status.label}`)}
-                        </Badge>
-                      );
-                    },
+                    cell: ({ row }) => (
+                      <ApiKeyStatusBadge apiKey={row.original} />
+                    ),
                   },
                   {
                     accessorKey: "start",
