@@ -12,7 +12,10 @@
     "createWorkspace": "创建工作空间",
     "workspaces": "工作空间",
     "loadMore": "加载更多",
-    "manageWorkspaces": "管理工作空间"
+    "manageWorkspaces": "管理工作空间",
+    "loading": "正在加载工作空间…",
+    "retry": "重新加载工作空间",
+    "loadFailed": "无法加载工作空间"
   },
   "user": {
     "account": "个人资料",

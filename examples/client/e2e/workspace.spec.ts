@@ -108,6 +108,14 @@ test.describe("workspace management", () => {
       ).toHaveCount(0);
       await expect(page.getByTestId("workspace-leave")).toBeVisible();
 
+      // Prime the switcher so leaving must replace a previously cached connection.
+      await page.getByTestId("topbar-menu-trigger").click();
+      await expect(
+        page.getByRole("menuitemradio", { name: workspaceName, exact: true }),
+      ).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("menu")).toHaveCount(0);
+
       await page.getByTestId("workspace-leave").click();
       const leaveResponse = page.waitForResponse(
         (response) =>
@@ -129,6 +137,20 @@ test.describe("workspace management", () => {
       });
       await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
       await expect(page.getByText("You left the workspace")).toBeVisible();
+      const refreshedMenu = page.waitForResponse(
+        (response) =>
+          response
+            .request()
+            .postData()
+            ?.includes("getWorkspacesFromWorkspaceSwitcher") === true,
+      );
+      await page.getByTestId("topbar-menu-trigger").click();
+      await refreshedMenu;
+      await expect(
+        page.getByText("Loading workspaces…", { exact: true }),
+      ).toHaveCount(0);
+      await expect(page.getByRole("menuitemradio")).toHaveCount(0);
+
       await expect(
         memberPage.getByTestId("workspace-settings-name-input"),
       ).toHaveValue(workspaceName);

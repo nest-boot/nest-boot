@@ -12,7 +12,10 @@
     "createWorkspace": "Create workspace",
     "workspaces": "Workspaces",
     "loadMore": "Load more",
-    "manageWorkspaces": "Manage workspaces"
+    "manageWorkspaces": "Manage workspaces",
+    "loading": "Loading workspaces…",
+    "retry": "Retry loading workspaces",
+    "loadFailed": "Unable to load workspaces"
   },
   "user": {
     "account": "Profile",

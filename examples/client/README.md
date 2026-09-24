@@ -210,6 +210,13 @@ Reusable components may return Card sections without a local Card wrapper.
 Inline list actions remain in `CardContent`; deciding whether an `onClick`
 action applies to a row or the whole card still requires review.
 
+The workspace menu refreshes whenever its popup mounts. It uses Apollo's
+`no-cache` policy so each opening gets current membership without relying on
+other queries invalidating the cache. `fetchMore` merges pages with `updateQuery`
+and deduplicates workspace IDs; there is no separate React copy of connection
+or pagination data. A closed menu's late requests cannot update a new opening.
+Loading, initial-query retry, and pagination failures have explicit UI states.
+
 The topbar's user row links to the profile. Its Language and Theme submenus
 persist preferences in the browser, with Chinese/English and light/dark/system
 options. Use `useTranslation` in rendered components so text updates when the

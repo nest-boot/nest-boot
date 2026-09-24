@@ -395,6 +395,20 @@ test.describe("user pages", () => {
         page.getByTestId(`user-invitation-${rejectedInvitation.id}`),
       ).toHaveText(rejectedWorkspaceName);
 
+      // Prime the switcher before membership changes, without reloading afterward.
+      const menuResponse = page.waitForResponse(
+        (response) =>
+          response
+            .request()
+            .postData()
+            ?.includes("getWorkspacesFromWorkspaceSwitcher") === true,
+      );
+      await page.getByTestId("topbar-menu-trigger").click();
+      await menuResponse;
+      await expect(page.getByRole("menuitemradio")).toHaveCount(0);
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("menu")).toHaveCount(0);
+
       await page
         .getByTestId(`user-invitation-accept-${acceptedInvitation.id}`)
         .click();
@@ -407,6 +421,16 @@ test.describe("user pages", () => {
       await expect(
         page.getByTestId(`user-workspace-row-${acceptedWorkspace.id}`),
       ).toHaveText(acceptedWorkspaceName);
+
+      await page.getByTestId("topbar-menu-trigger").click();
+      await expect(
+        page.getByRole("menuitemradio", {
+          name: acceptedWorkspaceName,
+          exact: true,
+        }),
+      ).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("menu")).toHaveCount(0);
 
       await page
         .getByTestId(`user-invitation-reject-${rejectedInvitation.id}`)
