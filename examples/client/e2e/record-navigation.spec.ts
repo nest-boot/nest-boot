@@ -147,7 +147,10 @@ test("member navigation and invitation return searches stay isolated by workspac
   const firstSearch = readSearch(page);
   await page.goto(`${firstList}/invite`);
   await page.reload();
-  await page.getByTestId("workspace-invite-back").click();
+  await page
+    .getByRole("navigation", { name: "Breadcrumbs" })
+    .getByRole("link", { name: "Members", exact: true })
+    .click();
   await expect(page.getByRole("row").nth(1)).toContainText(users[1].name);
   expect(readSearch(page)).toEqual(firstSearch);
   await page.goto(`${firstList}/${members[1]}`);
@@ -181,11 +184,17 @@ test("member navigation and invitation return searches stay isolated by workspac
   await page.getByRole("checkbox", { name: "Member", exact: true }).check();
   await page.getByTestId("workspace-invite-confirm").click();
   await expect(page.getByTestId("workspace-invite-result")).toBeVisible();
-  await page.getByTestId("workspace-invite-back").click();
+  await page
+    .getByRole("navigation", { name: "Breadcrumbs" })
+    .getByRole("link", { name: "Members", exact: true })
+    .click();
   await expect(page.getByTestId("members-page")).toBeVisible();
   expect(readSearch(page)).toEqual(secondSearch);
   await page.goto(`${firstList}/invite`);
-  await page.getByTestId("workspace-invite-back").click();
+  await page
+    .getByRole("navigation", { name: "Breadcrumbs" })
+    .getByRole("link", { name: "Members", exact: true })
+    .click();
   await expect(page.getByRole("row").nth(1)).toContainText(users[0].name);
   expect(readSearch(page)).toEqual(anchoredSearch);
 });
@@ -238,7 +247,9 @@ test("workspace overview and settings use browser history to restore list search
     page.getByRole("textbox", { name: "Name", exact: true }),
   ).toHaveAttribute("placeholder", "My Workspace");
   await expect(
-    page.getByRole("link", { name: "Back to Workspaces", exact: true }),
+    page
+      .getByRole("navigation", { name: "Breadcrumbs" })
+      .getByRole("link", { name: "Workspaces", exact: true }),
   ).toBeVisible();
   await page.getByTestId("topbar-menu-trigger").click();
   await page.getByTestId("user-menu-language").click();
@@ -258,7 +269,9 @@ test("workspace overview and settings use browser history to restore list search
     page.getByRole("button", { name: "创建", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "返回工作空间", exact: true }),
+    page
+      .getByRole("navigation", { name: "面包屑导航" })
+      .getByRole("link", { name: "工作空间", exact: true }),
   ).toBeVisible();
   await page.getByTestId("topbar-menu-trigger").click();
   await page.getByTestId("user-menu-language").click();

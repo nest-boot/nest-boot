@@ -300,7 +300,10 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
     await page.goto(`/user/api-keys/${key.entity.id}`);
     await expect(page.getByTestId("api-key-rename-input")).toBeDisabled();
     await expect(page.getByTestId("api-key-rename-submit")).toHaveCount(0);
-    await page.getByTestId("api-key-back").click();
+    await page
+      .getByRole("navigation", { name: "Breadcrumbs" })
+      .getByRole("link", { name: "API Keys", exact: true })
+      .click();
     allowedId = key.entity.id;
     await page.reload();
     await row.getByRole("button").click();

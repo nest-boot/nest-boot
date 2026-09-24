@@ -120,23 +120,14 @@ function CreateWorkspaceComponent() {
               </form>
             </CardContent>
             <CardFooter>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="submit"
-                  form="workspace-create-form"
-                  data-testid="workspace-create-submit"
-                  loading={loading}
-                >
-                  {t("common:action.create")}
-                </Button>
-                <Button
-                  variant="outline"
-                  type="button"
-                  render={<Link to="/user/workspaces" search={backSearch} />}
-                >
-                  {t("workspace:create.back")}
-                </Button>
-              </div>
+              <Button
+                type="submit"
+                form="workspace-create-form"
+                data-testid="workspace-create-submit"
+                loading={loading}
+              >
+                {t("common:action.create")}
+              </Button>
             </CardFooter>
           </Card>
         </PageLayoutSection>

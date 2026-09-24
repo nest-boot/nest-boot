@@ -75,8 +75,10 @@ Use the `Page` Props API: `title`, `description`, `breadcrumbActions`,
 `primaryAction`, `secondaryActions`, and `paginationActions`. Pass page bodies
 directly as children; Page renders its own header and content. Creation and
 detail pages provide an explicit parent breadcrumb with the saved list search.
-Top-level pages omit breadcrumbs. Configure `paginationActions.previous` and
-`paginationActions.next` with `disabled`, `onAction`, and `render` for router links. The registry component hides pagination
+Top-level pages omit breadcrumbs. Return navigation belongs only in Page
+breadcrumbs; do not duplicate it with buttons in form or success-card footers.
+Configure `paginationActions.previous` and `paginationActions.next` with
+`disabled`, `onAction`, and `render` for router links. The registry component hides pagination
 below the `@2xl/page` container breakpoint (42rem). Page padding belongs to the
 outer wrapper, so a compact page can reach that breakpoint and display pagination.
 Its default accessible labels are translated through the `thread-ui` namespace.

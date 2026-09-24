@@ -72,7 +72,6 @@
   "create": {
     "title": "创建工作空间",
     "description": "创建一个新的工作空间，开始管理您的项目。",
-    "back": "返回工作空间",
     "form": {
       "name": {
         "label": "名称",

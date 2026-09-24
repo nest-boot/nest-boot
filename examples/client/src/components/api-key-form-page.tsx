@@ -183,40 +183,30 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                 </div>
               </CardContent>
               <CardFooter>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(createdKey);
-                        setCopied(true);
-                      } catch {
-                        toast.add({
-                          type: "error",
-                          title: t("api-key:created.copy_failed"),
-                        });
-                      }
-                    }}
-                  >
-                    {copied ? (
-                      <Check data-icon="inline-start" />
-                    ) : (
-                      <Copy data-icon="inline-start" />
-                    )}
-                    {t(
-                      copied
-                        ? "api-key:created.copied"
-                        : "api-key:created.copy",
-                    )}
-                  </Button>
-                  <Button
-                    data-testid="api-key-back"
-                    render={<Link to={listPath} search={listSearch} />}
-                  >
-                    {t("api-key:back")}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(createdKey);
+                      setCopied(true);
+                    } catch {
+                      toast.add({
+                        type: "error",
+                        title: t("api-key:created.copy_failed"),
+                      });
+                    }
+                  }}
+                >
+                  {copied ? (
+                    <Check data-icon="inline-start" />
+                  ) : (
+                    <Copy data-icon="inline-start" />
+                  )}
+                  {t(
+                    copied ? "api-key:created.copied" : "api-key:created.copy",
+                  )}
+                </Button>
               </CardFooter>
             </Card>
           </PageLayoutSection>
@@ -286,31 +276,22 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                     </FormLayout>
                   </form>
                 </CardContent>
-                <CardFooter>
-                  <div className="flex flex-wrap gap-2">
-                    {canWrite && (
-                      <Button
-                        type="submit"
-                        form={formId}
-                        data-testid={
-                          apiKey
-                            ? "api-key-rename-submit"
-                            : "api-key-create-submit"
-                        }
-                        loading={submitting}
-                      >
-                        {t(apiKey ? "action.save" : "action.create")}
-                      </Button>
-                    )}
+                {canWrite && (
+                  <CardFooter>
                     <Button
-                      variant="outline"
-                      data-testid="api-key-back"
-                      render={<Link to={listPath} search={listSearch} />}
+                      type="submit"
+                      form={formId}
+                      data-testid={
+                        apiKey
+                          ? "api-key-rename-submit"
+                          : "api-key-create-submit"
+                      }
+                      loading={submitting}
                     >
-                      {t("api-key:back")}
+                      {t(apiKey ? "action.save" : "action.create")}
                     </Button>
-                  </div>
-                </CardFooter>
+                  </CardFooter>
+                )}
               </Card>
             </PageLayoutSection>
             {apiKey && (

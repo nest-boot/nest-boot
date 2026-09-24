@@ -258,7 +258,10 @@ async function exerciseApiKeyLifecycle(
     ),
   ).toBe(true);
   expect(page.url()).not.toContain(secret!);
-  await page.getByTestId("api-key-back").click();
+  await page
+    .getByRole("navigation", { name: "Breadcrumbs" })
+    .getByRole("link", { name: "API Keys", exact: true })
+    .click();
   await expect(page).toHaveURL((url) => url.pathname === listUrl.pathname);
   await expect(revealedKey).toHaveCount(0);
 
@@ -300,7 +303,10 @@ async function exerciseApiKeyLifecycle(
   await expect(
     getPermissionCheckbox(page, `${scope}_API_KEY__WRITE`),
   ).not.toBeChecked();
-  await page.getByTestId("api-key-back").click();
+  await page
+    .getByRole("navigation", { name: "Breadcrumbs" })
+    .getByRole("link", { name: "API Keys", exact: true })
+    .click();
 
   const renamedRow = page
     .getByRole("row")

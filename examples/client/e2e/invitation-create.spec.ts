@@ -22,7 +22,10 @@ test("validates and retries invitations on their own page with recoverable copy 
   await page.goto(path);
   await page.getByTestId("workspace-invite-email-input").fill(email);
   await page.getByRole("checkbox", { name: "Member", exact: true }).check();
-  await page.getByTestId("workspace-invite-back").click();
+  await page
+    .getByRole("navigation", { name: "Breadcrumbs" })
+    .getByRole("link", { name: "Members", exact: true })
+    .click();
   await expect(page.getByTestId("members-page")).toBeVisible();
   await page.goto(path);
   await page.reload();
@@ -102,7 +105,10 @@ test("validates and retries invitations on their own page with recoverable copy 
   );
   await page.getByTestId("workspace-invite-copy").click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
-  await page.getByTestId("workspace-invite-back").click();
+  await page
+    .getByRole("navigation", { name: "Breadcrumbs" })
+    .getByRole("link", { name: "Members", exact: true })
+    .click();
   await expect(page).toHaveURL(
     new RegExp(`/workspaces/${workspaceId}/members(?:\\?.*)?$`),
   );
@@ -115,6 +121,9 @@ test("validates and retries invitations on their own page with recoverable copy 
     "",
   );
   await expect(page.getByTestId("workspace-invite-link")).toHaveCount(0);
-  await page.getByTestId("workspace-invite-back").click();
+  await page
+    .getByRole("navigation", { name: "Breadcrumbs" })
+    .getByRole("link", { name: "Members", exact: true })
+    .click();
   await expect(page.getByTestId(`invitation-${email}`)).toHaveCount(0);
 });

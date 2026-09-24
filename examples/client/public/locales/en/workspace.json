@@ -72,7 +72,6 @@
   "create": {
     "title": "Create Workspace",
     "description": "Create a new workspace to start managing your projects.",
-    "back": "Back to Workspaces",
     "form": {
       "name": {
         "label": "Name",

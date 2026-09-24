@@ -97,12 +97,16 @@ test("isolates two workspaces' list search, creation returns and detail navigati
     await expect
       .poll(async () => {
         const href = await page
-          .getByTestId("api-key-back")
+          .getByRole("navigation", { name: "Breadcrumbs" })
+          .getByRole("link", { name: "API Keys", exact: true })
           .getAttribute("href");
         return href ? listLocation(new URL(href, page.url())) : null;
       })
       .toEqual(listLocation(new URL(listUrls[index])));
-    await page.getByTestId("api-key-back").click();
+    await page
+      .getByRole("navigation", { name: "Breadcrumbs" })
+      .getByRole("link", { name: "API Keys", exact: true })
+      .click();
     await expect(page).toHaveURL((url) => url.pathname === workspace.path);
     expect(listLocation(new URL(page.url()))).toEqual(
       listLocation(new URL(listUrls[index])),
@@ -173,7 +177,10 @@ test("isolates two workspaces' list search, creation returns and detail navigati
     "href",
     `${two.path}/${two.keys[4].id}`,
   );
-  await page.getByTestId("api-key-back").click();
+  await page
+    .getByRole("navigation", { name: "Breadcrumbs" })
+    .getByRole("link", { name: "API Keys", exact: true })
+    .click();
   await expect(page).toHaveURL((url) => url.pathname === two.path);
   expect(listLocation(new URL(page.url()))).toEqual(
     listLocation(new URL(listUrls[1])),

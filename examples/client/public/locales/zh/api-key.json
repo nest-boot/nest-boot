@@ -75,7 +75,6 @@
     "updated_success": "API 密钥更新成功",
     "deleted_success": "API 密钥删除成功"
   },
-  "back": "返回 API 密钥列表",
   "details": "API 密钥",
   "usage": "使用情况"
 }

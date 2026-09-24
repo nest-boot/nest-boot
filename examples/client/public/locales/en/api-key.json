@@ -75,7 +75,6 @@
     "updated_success": "API key updated",
     "deleted_success": "API key deleted"
   },
-  "back": "Back to API Keys",
   "details": "API Key",
   "usage": "Usage"
 }

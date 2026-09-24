@@ -77,7 +77,6 @@
     "role_label": "Role",
     "select_role_placeholder": "Select a role",
     "title": "Invite Workspace Member",
-    "back": "Back to Members",
     "form_title": "Invitation",
     "form_description": "The invited user can join this workspace using the link. Invitations expire in 48 hours.",
     "role_required": "Select at least one role.",

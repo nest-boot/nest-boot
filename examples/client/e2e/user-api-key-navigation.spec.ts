@@ -135,7 +135,10 @@ test("browses details across pages, survives back and refresh, then anchors the 
   await expect
     .poll(async () => {
       const firstPage = new URL(
-        (await page.getByTestId("api-key-back").getAttribute("href"))!,
+        (await page
+          .getByRole("navigation", { name: "Breadcrumbs" })
+          .getByRole("link", { name: "API Keys", exact: true })
+          .getAttribute("href"))!,
         page.url(),
       );
       return {
@@ -161,7 +164,10 @@ test("browses details across pages, survives back and refresh, then anchors the 
   await page.getByLabel("Previous item", { exact: true }).click();
   await expectDetails(page, c.name);
   await expectNeighbor(page, "previous", b.id);
-  await page.getByTestId("api-key-back").click();
+  await page
+    .getByRole("navigation", { name: "Breadcrumbs" })
+    .getByRole("link", { name: "API Keys", exact: true })
+    .click();
   await expect(page.getByRole("row").nth(1)).toContainText(c.name);
   await expect(page.getByRole("row").nth(2)).toContainText(d.name);
   const restored = readSearch(page);
@@ -174,7 +180,7 @@ test("browses details across pages, survives back and refresh, then anchors the 
   expect(JSON.parse(Buffer.from(restored.after!, "base64").toString())).toEqual(
     { id: b.id, value: b.id },
   );
-  // The breadcrumb uses the same destination as the footer.
+  // Reopening details keeps the same return destination.
   await page.getByRole("link", { name: c.name, exact: true }).click();
   await expectNeighbor(page, "previous", b.id);
   const breadcrumbs = page.getByRole("navigation", { name: "Breadcrumbs" });
@@ -263,7 +269,10 @@ test("restores the exact list search from create/cancel and create/success, with
     .getByRole("button", { name: "Create API Key", exact: true })
     .click();
   await page.reload();
-  await page.getByTestId("api-key-back").click();
+  await page
+    .getByRole("navigation", { name: "Breadcrumbs" })
+    .getByRole("link", { name: "API Keys", exact: true })
+    .click();
   await expect(page.getByRole("row").nth(1)).toContainText("Navigation C");
   expect(readSearch(page)).toEqual(original);
   await page
@@ -280,7 +289,10 @@ test("restores the exact list search from create/cancel and create/success, with
       value,
     ),
   ).toBe(false);
-  await page.getByTestId("api-key-back").click();
+  await page
+    .getByRole("navigation", { name: "Breadcrumbs" })
+    .getByRole("link", { name: "API Keys", exact: true })
+    .click();
   await expect(page.getByRole("row").nth(1)).toContainText("Navigation C");
   expect(readSearch(page)).toEqual(original);
   // An explicit bare list URL is authoritative; it resets saved filters.
@@ -288,7 +300,10 @@ test("restores the exact list search from create/cancel and create/success, with
   await page
     .getByRole("button", { name: "Create API Key", exact: true })
     .click();
-  await page.getByTestId("api-key-back").click();
+  await page
+    .getByRole("navigation", { name: "Breadcrumbs" })
+    .getByRole("link", { name: "API Keys", exact: true })
+    .click();
   await expect(page.getByTestId("api-keys-page")).toBeVisible();
   expect(readSearch(page).query).toBeNull();
 });
@@ -314,7 +329,10 @@ test("handles invalid storage, direct detail entry and failed neighbor queries",
   await expectNeighbor(page, "previous", c.id);
   await expectNeighbor(page, "next", a.id);
   const directBackUrl = new URL(
-    (await page.getByTestId("api-key-back").getAttribute("href"))!,
+    (await page
+      .getByRole("navigation", { name: "Breadcrumbs" })
+      .getByRole("link", { name: "API Keys", exact: true })
+      .getAttribute("href"))!,
     page.url(),
   );
   expect(directBackUrl.searchParams.get("after")).toBeNull();
@@ -365,7 +383,10 @@ test("handles invalid storage, direct detail entry and failed neighbor queries",
     page.getByRole("button", { name: "Retry", exact: true }),
   ).toHaveCount(0);
   const fallback = new URL(
-    (await page.getByTestId("api-key-back").getAttribute("href"))!,
+    (await page
+      .getByRole("navigation", { name: "Breadcrumbs" })
+      .getByRole("link", { name: "API Keys", exact: true })
+      .getAttribute("href"))!,
     page.url(),
   );
   expect(fallback.searchParams.get("query")).toBe(query);
@@ -389,7 +410,10 @@ for (const field of ["CREATED_AT", "LAST_USED_AT"]) {
     await expect
       .poll(async () => {
         const backUrl = new URL(
-          (await page.getByTestId("api-key-back").getAttribute("href"))!,
+          (await page
+            .getByRole("navigation", { name: "Breadcrumbs" })
+            .getByRole("link", { name: "API Keys", exact: true })
+            .getAttribute("href"))!,
           page.url(),
         );
         const cursor = backUrl.searchParams.get("after");
@@ -401,7 +425,10 @@ for (const field of ["CREATED_AT", "LAST_USED_AT"]) {
         id: c.id,
         ...(field === "LAST_USED_AT" ? { value: null } : {}),
       });
-    await page.getByTestId("api-key-back").click();
+    await page
+      .getByRole("navigation", { name: "Breadcrumbs" })
+      .getByRole("link", { name: "API Keys", exact: true })
+      .click();
     await expect(page.getByRole("row").nth(1)).toContainText(b.name);
     await expect(page.getByRole("row").nth(2)).toContainText(a.name);
     expect(readSearch(page).orderBy).toEqual({ field, direction: "DESC" });

@@ -128,7 +128,10 @@ test.describe("workspace invitations", () => {
         await page.getByTestId("workspace-invite-link").textContent()
       )?.trim();
       expect(inviteLink).toContain("/invite?invitationId=");
-      await page.getByTestId("workspace-invite-back").click();
+      await page
+        .getByRole("navigation", { name: "Breadcrumbs" })
+        .getByRole("link", { name: "Members", exact: true })
+        .click();
 
       const invitation = page.getByTestId(`invitation-${inviteeEmail}`);
       await expect(invitation).toBeVisible();
@@ -215,7 +218,10 @@ test.describe("workspace invitations", () => {
         `Invitation to join ${workspaceName}`,
       ),
     ).resolves.toBe(inviteLink);
-    await inviteResult.getByTestId("workspace-invite-back").click();
+    await page
+      .getByRole("navigation", { name: "Breadcrumbs" })
+      .getByRole("link", { name: "Members", exact: true })
+      .click();
 
     const inviteeContext = await browser.newContext({
       locale: "en-US",
@@ -301,7 +307,10 @@ test.describe("workspace invitations", () => {
     expect(inviteLink).toMatch(
       /\/invite\?invitationId=[0-9a-f]{8}-[0-9a-f-]{27}$/,
     );
-    await inviteResult.getByTestId("workspace-invite-back").click();
+    await page
+      .getByRole("navigation", { name: "Breadcrumbs" })
+      .getByRole("link", { name: "Members", exact: true })
+      .click();
 
     const inviteeContext = await browser.newContext({
       locale: "en-US",

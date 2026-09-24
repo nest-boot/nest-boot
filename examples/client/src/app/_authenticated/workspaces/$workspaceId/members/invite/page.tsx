@@ -216,32 +216,18 @@ function InviteMemberForm() {
                 </div>
               </CardContent>
               <CardFooter>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    data-testid="workspace-invite-copy"
-                    onClick={() => copyInviteLink(inviteLink)}
-                  >
-                    {copied ? (
-                      <Check data-icon="inline-start" />
-                    ) : (
-                      <Copy data-icon="inline-start" />
-                    )}
-                    {t("member:invite.copy_link")}
-                  </Button>
-                  <Button
-                    data-testid="workspace-invite-back"
-                    render={
-                      <Link
-                        to="/workspaces/$workspaceId/members"
-                        params={{ workspaceId }}
-                        search={backSearch}
-                      />
-                    }
-                  >
-                    {t("member:invite.back")}
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  data-testid="workspace-invite-copy"
+                  onClick={() => copyInviteLink(inviteLink)}
+                >
+                  {copied ? (
+                    <Check data-icon="inline-start" />
+                  ) : (
+                    <Copy data-icon="inline-start" />
+                  )}
+                  {t("member:invite.copy_link")}
+                </Button>
               </CardFooter>
             </Card>
           ) : (
@@ -315,30 +301,15 @@ function InviteMemberForm() {
                 </form>
               </CardContent>
               <CardFooter>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="submit"
-                    form={formId}
-                    data-testid="workspace-invite-confirm"
-                    loading={submitting}
-                    disabled={!canInvite || grantableOptions.length === 0}
-                  >
-                    {t("member:invite.confirm_and_copy")}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    data-testid="workspace-invite-back"
-                    render={
-                      <Link
-                        to="/workspaces/$workspaceId/members"
-                        params={{ workspaceId }}
-                        search={backSearch}
-                      />
-                    }
-                  >
-                    {t("member:invite.back")}
-                  </Button>
-                </div>
+                <Button
+                  type="submit"
+                  form={formId}
+                  data-testid="workspace-invite-confirm"
+                  loading={submitting}
+                  disabled={!canInvite || grantableOptions.length === 0}
+                >
+                  {t("member:invite.confirm_and_copy")}
+                </Button>
               </CardFooter>
             </Card>
           )}
