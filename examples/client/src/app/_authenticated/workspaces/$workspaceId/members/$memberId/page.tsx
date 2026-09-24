@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useMutation } from "@apollo/client/react";
+import { useCallback, useState } from "react";
+import { useLazyQuery, useMutation } from "@apollo/client/react";
 import {
   createFileRoute,
   redirect,
@@ -7,6 +7,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 
 import { useCurrentMemberContext } from "../../contexts/current-member-context";
 import { MemberProfileForm } from "./components/member-profile-form";
@@ -14,20 +15,66 @@ import { MemberRolesForm } from "./components/member-roles-form";
 import { MemberPermissionsForm } from "./components/member-permissions-form";
 import type { MemberFormProps } from "./components/member-form-props";
 import type { GetMemberFromMemberRouteQuery } from "@/gql/graphql";
+import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
+import { Link } from "@/components/link";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
+import { getMembersResourceKey } from "@/lib/resource-keys";
+import { memberSearchSchema } from "@/schemas/member-search-schema";
+import { createConnectionCursor } from "@/lib/connection-cursor";
+import {
+  PageLayout,
+  PageLayoutSection,
+} from "@/components/thread-ui/page-layout";
 import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
-import {
-  Page,
-  PageActions,
-  PageContent,
-  PageHeader,
-  PageSecondaryAction,
-  PageTitle,
-} from "@/components/thread-ui/page";
+import { Page } from "@/components/thread-ui/page";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { graphql } from "@/gql";
 import { createAbilitySubject } from "@/lib/ability";
 import { isAccessDenied } from "@/lib/auth-errors";
+
+const GET_MEMBER_NEIGHBORS = graphql(`
+  query getMemberNeighbors(
+    $cursor: String!
+    $query: String
+    $filter: MemberFilter
+    $orderBy: MemberOrder
+  ) {
+    currentWorkspace {
+      id
+      previous: members(
+        last: 1
+        before: $cursor
+        query: $query
+        filter: $filter
+        orderBy: $orderBy
+      ) {
+        edges {
+          cursor
+          node {
+            id
+          }
+        }
+      }
+      next: members(
+        first: 1
+        after: $cursor
+        query: $query
+        filter: $filter
+        orderBy: $orderBy
+      ) {
+        edges {
+          cursor
+          node {
+            id
+          }
+        }
+      }
+    }
+  }
+`);
 
 const GET_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   query getMemberFromMemberRoute($id: ID!) {
@@ -39,6 +86,7 @@ const GET_MEMBER_FROM_MEMBER_ROUTE = graphql(`
       status
       name
       email
+      createdAt
     }
     workspaceRoles {
       role
@@ -108,6 +156,7 @@ function MemberDetails({
     member: NonNullable<GetMemberFromMemberRouteQuery["member"]>;
   };
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const navigate = useNavigate();
   const { workspaceId } = Route.useParams();
@@ -118,6 +167,37 @@ function MemberDetails({
     REMOVE_MEMBER_FROM_MEMBER_ROUTE,
   );
   const member = data.member;
+  const [loadNeighbors] = useLazyQuery(GET_MEMBER_NEIGHBORS, {
+    fetchPolicy: "network-only",
+  });
+  const currentUser = useCurrentUserContext();
+  const navigation = useResourceNavigation({
+    key: [currentUser.id, ...getMembersResourceKey(workspaceId)],
+    searchSchema: memberSearchSchema,
+    query: useCallback(
+      async ({
+        search,
+      }: ResourceNavigationQueryOptions<typeof memberSearchSchema>) => {
+        const { query, filter, orderBy } = search;
+        const { data } = await loadNeighbors({
+          variables: {
+            query,
+            filter,
+            orderBy,
+            cursor: createConnectionCursor(member, search),
+          },
+          context: { headers: { "x-workspace-id": workspaceId } },
+        });
+        if (data?.currentWorkspace?.id !== workspaceId) return undefined;
+        return {
+          previousEdge: data.currentWorkspace.previous.edges[0],
+          nextEdge: data.currentWorkspace.next.edges[0],
+        };
+      },
+      [member, loadNeighbors, workspaceId],
+    ),
+  });
+  const { previousEdge, nextEdge, backSearch } = navigation;
   const memberSubject = createAbilitySubject("Member", member);
 
   const save: MemberFormProps["onSave"] = async (
@@ -177,6 +257,7 @@ function MemberDetails({
       await navigate({
         to: "/workspaces/$workspaceId/members",
         params: { workspaceId },
+        search: backSearch,
       });
       toast.add({
         type: "success",
@@ -192,46 +273,100 @@ function MemberDetails({
   };
 
   return (
-    <Page variant="compact" data-testid="member-detail-page">
-      <PageHeader>
-        <PageTitle>{member.name ?? member.id}</PageTitle>
-        {member.id !== currentMember.id &&
-          ability.can("write", memberSubject) && (
-            <PageActions>
-              <PageSecondaryAction
-                data-testid="member-delete-action"
-                destructive
-                disabled={saving || removing}
-                onAction={handleRemove}
-              >
-                {t("member:details.actions.delete_member")}
-              </PageSecondaryAction>
-            </PageActions>
-          )}
-      </PageHeader>
-      <PageContent className="space-y-8">
-        <MemberProfileForm
-          member={member}
-          onSave={save}
-          disabled={saving || removing || !ability.can("write", memberSubject)}
-        />
-        <MemberRolesForm
-          member={member}
-          onSave={save}
-          options={data.workspaceRoles}
-          disabled={
-            saving || removing || !ability.can("set-roles", memberSubject)
-          }
-        />
-        <MemberPermissionsForm
-          member={member}
-          onSave={save}
-          options={data.workspacePermissions}
-          disabled={
-            saving || removing || !ability.can("set-permissions", memberSubject)
-          }
-        />
-      </PageContent>
+    <Page
+      variant="compact"
+      title={member.name ?? member.id}
+      breadcrumbActions={[
+        {
+          label: t("member:title"),
+          render: (
+            <Link
+              to="/workspaces/$workspaceId/members"
+              params={{ workspaceId }}
+              search={backSearch}
+            />
+          ),
+        },
+      ]}
+      paginationActions={{
+        previous: {
+          disabled: !previousEdge,
+          render: previousEdge ? (
+            <Link
+              to={`/workspaces/${workspaceId}/members/` + previousEdge.node.id}
+            />
+          ) : undefined,
+        },
+        next: {
+          disabled: !nextEdge,
+          render: nextEdge ? (
+            <Link
+              to={`/workspaces/${workspaceId}/members/` + nextEdge.node.id}
+            />
+          ) : undefined,
+        },
+      }}
+      secondaryActions={
+        member.id !== currentMember.id && ability.can("write", memberSubject)
+          ? [
+              {
+                label: t("member:details.actions.delete_member"),
+                destructive: true,
+                disabled: saving || removing,
+                onAction: handleRemove,
+              },
+            ]
+          : undefined
+      }
+    >
+      <PageLayout>
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("member:details.sections.profile")}</CardTitle>
+            </CardHeader>
+            <MemberProfileForm
+              member={member}
+              onSave={save}
+              disabled={
+                saving || removing || !ability.can("write", memberSubject)
+              }
+            />
+          </Card>
+        </PageLayoutSection>
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("member:details.sections.roles")}</CardTitle>
+            </CardHeader>
+            <MemberRolesForm
+              member={member}
+              onSave={save}
+              options={data.workspaceRoles}
+              disabled={
+                saving || removing || !ability.can("set-roles", memberSubject)
+              }
+            />
+          </Card>
+        </PageLayoutSection>
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("member:details.sections.permissions")}</CardTitle>
+            </CardHeader>
+            <MemberPermissionsForm
+              member={member}
+              onSave={save}
+              options={data.workspacePermissions}
+              disabled={
+                saving ||
+                removing ||
+                !ability.can("set-permissions", memberSubject)
+              }
+            />
+          </Card>
+        </PageLayoutSection>
+      </PageLayout>
     </Page>
   );
 }

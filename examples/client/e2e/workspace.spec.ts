@@ -20,7 +20,9 @@ test.describe("workspace management", () => {
     const workspace = await createWorkspaceByApi(page, seed);
     await page.goto(`/workspaces/${workspace.id}/members`);
     const row = page.getByRole("row").filter({
-      has: page.getByTestId(`member-row-${email}`),
+      has: page
+        .getByRole("cell")
+        .getByText("Self-disabling owner", { exact: true }),
     });
     await row.getByRole("button").click();
     const pageErrors: Array<string> = [];
@@ -38,10 +40,12 @@ test.describe("workspace management", () => {
           .postData()
           ?.includes("updateMemberStatusFromMembersRoute") === true,
     );
-    await page.getByRole("menuitem", { name: "禁用", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Disable", exact: true }).click();
     expect((await (await updated).json()).errors).toBeUndefined();
     await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
-    await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Workspaces", exact: true }),
+    ).toBeVisible();
     const workspaces = await listWorkspaces(page, { first: 10 });
     expect(workspaces.edges).toEqual([]);
     expect(refetches).toEqual([]);
@@ -58,7 +62,7 @@ test.describe("workspace management", () => {
     const workspaceName = `所有权工作空间 ${seed}`;
     const memberName = `New Owner ${seed}`;
     const memberContext = await browser.newContext({
-      locale: "zh-CN",
+      locale: "en-US",
       timezoneId: "Asia/Shanghai",
     });
     const memberPage = await memberContext.newPage();
@@ -75,10 +79,14 @@ test.describe("workspace management", () => {
       const workspaceId = await createFirstWorkspace(page, workspaceName);
       const memberId = await addMemberByApi(page, workspaceId, memberEmail);
       await page.goto(`/workspaces/${workspaceId}/members/${memberId}`);
-      await page.getByTestId("member-role-OWNER").click();
-      await page.getByTestId("member-role-MEMBER").click();
-      await page.getByTestId("member-roles-save").click();
-      await expect(page.getByText("成员更新成功")).toBeVisible();
+      await page.getByRole("checkbox", { name: "Owner", exact: true }).click();
+      await page.getByRole("checkbox", { name: "Member", exact: true }).click();
+      await page
+        .locator('[data-slot="card"]')
+        .filter({ has: page.getByText("Roles", { exact: true }) })
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
+      await expect(page.getByText("Member updated successfully")).toBeVisible();
 
       const { currentWorkspace } = await graphqlRequest<{
         currentWorkspace: {
@@ -98,17 +106,41 @@ test.describe("workspace management", () => {
 
       await memberPage.goto(`/workspaces/${workspaceId}/settings`);
       await expect(
-        memberPage.getByTestId("workspace-transfer-ownership"),
+        memberPage.getByRole("button", {
+          name: "Transfer ownership",
+          exact: true,
+        }),
       ).toHaveCount(0);
-      await expect(memberPage.getByTestId("workspace-leave")).toBeVisible();
+      await expect(
+        memberPage.getByRole("button", {
+          name: "Leave workspace",
+          exact: true,
+        }),
+      ).toBeVisible();
 
       await page.goto(`/workspaces/${workspaceId}/settings`);
       await expect(
-        page.getByTestId("workspace-transfer-ownership"),
+        page.getByRole("button", { name: "Transfer ownership", exact: true }),
       ).toHaveCount(0);
-      await expect(page.getByTestId("workspace-leave")).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Leave workspace", exact: true }),
+      ).toBeVisible();
 
-      await page.getByTestId("workspace-leave").click();
+      // Prime the switcher so leaving must replace a previously cached connection.
+      await page
+        .getByRole("button", {
+          name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+        })
+        .click();
+      await expect(
+        page.getByRole("menuitemradio", { name: workspaceName, exact: true }),
+      ).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("menu")).toHaveCount(0);
+
+      await page
+        .getByRole("button", { name: "Leave workspace", exact: true })
+        .click();
       const leaveResponse = page.waitForResponse(
         (response) =>
           response.url().includes("/graphql") &&
@@ -117,7 +149,10 @@ test.describe("workspace management", () => {
             .postData()
             ?.includes("leaveWorkspaceFromSettingsRoute") === true,
       );
-      await page.getByTestId("alert-dialog-confirm").click();
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Leave workspace", exact: true })
+        .click();
       const leaveResult = await (await leaveResponse).json();
       expect(leaveResult.errors).toBeUndefined();
       expect(leaveResult.data.leaveWorkspace).toEqual({
@@ -125,10 +160,28 @@ test.describe("workspace management", () => {
         memberId: expect.any(String),
       });
       await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
-      await expect(page.getByText("已退出工作空间")).toBeVisible();
+      await expect(page.getByText("You left the workspace")).toBeVisible();
+      const refreshedMenu = page.waitForResponse(
+        (response) =>
+          response
+            .request()
+            .postData()
+            ?.includes("getWorkspacesFromWorkspaceSwitcher") === true,
+      );
+      await page
+        .getByRole("button", {
+          name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+        })
+        .click();
+      await refreshedMenu;
       await expect(
-        memberPage.getByTestId("workspace-settings-name-input"),
-      ).toHaveValue(workspaceName);
+        page.getByText("Loading workspaces…", { exact: true }),
+      ).toHaveCount(0);
+      await expect(page.getByRole("menuitemradio")).toHaveCount(0);
+
+      await expect(memberPage.getByLabel("Name", { exact: true })).toHaveValue(
+        workspaceName,
+      );
     } finally {
       await memberContext.close();
     }
@@ -148,29 +201,39 @@ test.describe("workspace management", () => {
 
     await createFirstWorkspace(page, workspaceName);
 
-    const nameInput = page.getByTestId("workspace-settings-name-input");
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
+    const nameInput = page.getByLabel("Name", { exact: true });
     await expect(nameInput).toHaveValue(workspaceName);
 
     await nameInput.fill(renamedWorkspaceName);
-    await page.getByTestId("workspace-settings-save").click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(nameInput).toHaveValue(renamedWorkspaceName);
 
     // The normalized Workspace cache must refresh without a page reload.
-    await expect(page.getByTestId("workspace-switcher-trigger")).toContainText(
-      renamedWorkspaceName,
-    );
+    await expect(
+      page.getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      }),
+    ).toContainText(renamedWorkspaceName);
 
     await page.reload();
     await expect(nameInput).toHaveValue(renamedWorkspaceName);
 
-    await page.getByTestId("workspace-settings-delete").click();
-    await page.getByTestId("alert-dialog-confirm").click();
+    await page
+      .getByRole("button", { name: "Delete Workspace", exact: true })
+      .click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Delete", exact: true })
+      .click();
 
     await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
-    await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Workspaces", exact: true }),
+    ).toBeVisible();
   });
 
-  test("loads, switches, and creates workspaces from the switcher", async ({
+  test("loads and switches workspaces and opens workspace management", async ({
     page,
   }) => {
     const seed = uniqueSeed("workspace-switcher");
@@ -202,23 +265,45 @@ test.describe("workspace management", () => {
     expect(secondPage.edges).toHaveLength(1);
 
     await page.goto(`/workspaces/${firstWorkspaceId}/settings`);
-    await page.getByTestId("workspace-switcher-trigger").click();
-    await expect(
-      page.locator('[data-testid^="workspace-switcher-workspace-"]'),
-    ).toHaveCount(10);
-    await page.getByTestId("workspace-switcher-load-more").click();
-    await expect(
-      page.locator('[data-testid^="workspace-switcher-workspace-"]'),
-    ).toHaveCount(11);
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
+    await expect(page.getByRole("menuitemradio")).toHaveCount(10);
+    await page
+      .getByRole("menuitem", { name: "Load more", exact: true })
+      .click();
+    await expect(page.getByRole("menuitemradio")).toHaveCount(11);
 
     const target = workspaces.at(-1)!;
-    await page.getByTestId(`workspace-switcher-workspace-${target.id}`).click();
-    await expect(page).toHaveURL(new RegExp(`/workspaces/${target.id}/`));
+    await page
+      .getByRole("menuitemradio", { name: target.name, exact: true })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`/workspaces/${target.id}$`));
 
-    await page.getByTestId("workspace-switcher-trigger").click();
-    await page.getByTestId("workspace-switcher-create").click();
-    await expect(page).toHaveURL(/\/workspaces\/create$/);
-    await expect(page.getByTestId("workspace-create-submit")).toBeVisible();
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
+    await expect(
+      page.getByText("Recent workspaces", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: "Create workspace", exact: true }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("menuitem", { name: "Manage workspaces", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
+    await page
+      .getByRole("link", { name: "Create workspace", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/user\/workspaces\/create$/);
+    await expect(
+      page.getByRole("button", { name: "Create", exact: true }),
+    ).toBeVisible();
   });
 });
 

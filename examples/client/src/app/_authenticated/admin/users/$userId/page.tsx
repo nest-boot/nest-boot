@@ -1,12 +1,29 @@
-import { useEffect, useState } from "react";
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useCallback, useState } from "react";
+import { useForm, useStore } from "@tanstack/react-form";
+import { z } from "zod";
+import { useLazyQuery, useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 
 import { useCurrentUserContext } from "../../../contexts/current-user-context";
+import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 import type { UserPermission } from "@/lib/permissions";
 import type { UserRole } from "@/gql/graphql";
+import { Link } from "@/components/link";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
+import { adminUserSearchSchema } from "@/schemas/admin-user-search-schema";
+import { adminUsersResourceKey } from "@/lib/resource-keys";
+import { createConnectionCursor } from "@/lib/connection-cursor";
+import { getFormErrorMessage } from "@/lib/form-errors";
+import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import {
+  PageLayout,
+  PageLayoutSection,
+} from "@/components/thread-ui/page-layout";
 import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
@@ -15,23 +32,56 @@ import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
 import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
 import { Input } from "@/components/thread-ui/input";
-import {
-  Page,
-  PageContent,
-  PageDescription,
-  PageHeader,
-  PageTitle,
-} from "@/components/thread-ui/page";
+import { Page } from "@/components/thread-ui/page";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { graphql } from "@/gql";
 import { getPermissionOptions } from "@/lib/permissions";
 import { createAbilitySubject } from "@/lib/ability";
+
+const GET_ADMIN_USER_NEIGHBORS = graphql(`
+  query getAdminUserNeighbors(
+    $cursor: String!
+    $query: String
+    $filter: UserFilter
+    $orderBy: UserOrder
+  ) {
+    previous: users(
+      last: 1
+      before: $cursor
+      query: $query
+      filter: $filter
+      orderBy: $orderBy
+    ) {
+      edges {
+        cursor
+        node {
+          id
+        }
+      }
+    }
+    next: users(
+      first: 1
+      after: $cursor
+      query: $query
+      filter: $filter
+      orderBy: $orderBy
+    ) {
+      edges {
+        cursor
+        node {
+          id
+        }
+      }
+    }
+  }
+`);
 
 const GET_USER_FROM_USER_ROUTE = graphql(`
   query getUserFromUserRoute(
@@ -181,12 +231,19 @@ export const Route = createFileRoute("/_authenticated/admin/users/$userId/")({
       !ability.can("read", createAbilitySubject("User", data.user))
     )
       throw redirect({ to: "/admin/users" });
-    return { title: t("admin:user.title") };
+    return { title: t("admin:user.title"), user: data.user };
   },
 });
 
 function AdminUserPage() {
   const { userId } = Route.useParams();
+  return <AdminUserDetails key={userId} />;
+}
+
+function AdminUserDetails() {
+  const { t } = useTranslation();
+  const { userId } = Route.useParams();
+  const { user: initialUser } = Route.useRouteContext();
   const navigate = useNavigate();
   const currentUser = useCurrentUserContext();
   const ability = useAbility();
@@ -204,42 +261,49 @@ function AdminUserPage() {
     },
   );
   const user = data?.user;
+  const navigationRecord = user ?? initialUser;
+  const [loadNeighbors] = useLazyQuery(GET_ADMIN_USER_NEIGHBORS, {
+    fetchPolicy: "network-only",
+  });
+  const navigation = useResourceNavigation({
+    key: [currentUser.id, ...adminUsersResourceKey],
+    searchSchema: adminUserSearchSchema,
+    query: useCallback(
+      async ({
+        search,
+      }: ResourceNavigationQueryOptions<typeof adminUserSearchSchema>) => {
+        const { query, filter, orderBy } = search;
+        const { data } = await loadNeighbors({
+          variables: {
+            query,
+            filter,
+            orderBy,
+            cursor: createConnectionCursor(navigationRecord, search),
+          },
+        });
+        if (!data) return undefined;
+        return {
+          previousEdge: data.previous.edges[0],
+          nextEdge: data.next.edges[0],
+        };
+      },
+      [navigationRecord, loadNeighbors],
+    ),
+  });
+  const { previousEdge, nextEdge, backSearch } = navigation;
   const sessions = data?.user?.sessions?.edges.map(({ node }) => node) ?? [];
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [permissions, setPermissions] = useState<Array<UserPermission>>([]);
-  const [roles, setRoles] = useState<Array<UserRole>>([]);
-  const [banReason, setBanReason] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [revokingSessionId, setRevokingSessionId] = useState<string>();
 
-  useEffect(() => {
-    if (!user) return;
-    setName(user.name);
-    setEmail(user.email);
-    setEmailVerified(user.emailVerified);
-    setPermissions(user.permissions);
-    setRoles(user.roles);
-    setBanReason(user.banReason ?? "");
-  }, [user]);
-
-  const [updateUser, { loading: updating }] = useMutation(
-    UPDATE_USER_FROM_USER_ROUTE,
-  );
-  const [setUserPermissions, { loading: savingPermissions }] = useMutation(
+  const [updateUser] = useMutation(UPDATE_USER_FROM_USER_ROUTE);
+  const [setUserPermissions] = useMutation(
     SET_USER_PERMISSIONS_FROM_USER_ROUTE,
   );
-  const [setUserRoles, { loading: savingRole }] = useMutation(
-    SET_USER_ROLES_FROM_USER_ROUTE,
-  );
-  const [banUser, { loading: banning }] = useMutation(BAN_USER_FROM_USER_ROUTE);
+  const [setUserRoles] = useMutation(SET_USER_ROLES_FROM_USER_ROUTE);
+  const [banUser] = useMutation(BAN_USER_FROM_USER_ROUTE);
   const [unbanUser, { loading: unbanning }] = useMutation(
     UNBAN_USER_FROM_USER_ROUTE,
   );
-  const [setUserPassword, { loading: settingPassword }] = useMutation(
-    SET_USER_PASSWORD_FROM_USER_ROUTE,
-  );
+  const [setUserPassword] = useMutation(SET_USER_PASSWORD_FROM_USER_ROUTE);
   const [revokeSession] = useMutation(REVOKE_USER_SESSION_FROM_USER_ROUTE);
   const [revokeUserSessions, { loading: revokingSessions }] = useMutation(
     REVOKE_USER_SESSIONS_FROM_USER_ROUTE,
@@ -251,21 +315,17 @@ function AdminUserPage() {
     IMPERSONATE_USER_FROM_USER_ROUTE,
   );
 
-  if (loading) {
-    return <Page>{t("admin:user.loading")}</Page>;
-  }
-  if (!user) {
-    return <Page>{t("admin:user.not_found")}</Page>;
-  }
-
-  const userSubject = createAbilitySubject("User", user);
-  const canSetRoles = ability.can("set-roles", userSubject);
-  const canSetPermissions = ability.can("set-permissions", userSubject);
-  const canUpdate = ability.can("update", userSubject);
-  const canSetEmail = canUpdate && ability.can("set-email", userSubject);
-  const canBan = ability.can("ban", userSubject);
-  const canDelete = ability.can("delete", userSubject);
-  const canSetPassword = ability.can("set-password", userSubject);
+  const userSubject = user ? createAbilitySubject("User", user) : undefined;
+  const canSetRoles = !!userSubject && ability.can("set-roles", userSubject);
+  const canSetPermissions =
+    !!userSubject && ability.can("set-permissions", userSubject);
+  const canUpdate = !!userSubject && ability.can("update", userSubject);
+  const canSetEmail =
+    !!userSubject && canUpdate && ability.can("set-email", userSubject);
+  const canBan = !!userSubject && ability.can("ban", userSubject);
+  const canDelete = !!userSubject && ability.can("delete", userSubject);
+  const canSetPassword =
+    !!userSubject && ability.can("set-password", userSubject);
   const canRevokeSessions = ability.can("revoke", "Session");
 
   const run = async (operation: () => Promise<unknown>, message: string) => {
@@ -279,402 +339,737 @@ function AdminUserPage() {
       await refetch();
       toast.add({ type: "success", title: message });
     } catch (error) {
-      toast.add({
-        type: "error",
-        title: error instanceof Error ? error.message : t("admin:failed"),
-      });
+      const message =
+        error instanceof Error ? error.message : t("admin:failed");
+      toast.add({ type: "error", title: message });
+      return message;
     }
   };
 
+  const canGrantRoles = (roles: Array<UserRole>) =>
+    roles.length > 0 &&
+    roles.every((role) =>
+      data?.userRoles?.some(
+        (option) => option.role === role && option.grantable,
+      ),
+    );
+  const canGrantPermissions = (permissions: Array<UserPermission>) =>
+    permissions.every((permission) =>
+      data?.userPermissions?.some(
+        (option) => option.permission === permission && option.grantable,
+      ),
+    );
+
+  const profileForm = useForm({
+    defaultValues: {
+      name: user?.name ?? "",
+      email: user?.email ?? "",
+      emailVerified: user?.emailVerified ?? false,
+    },
+    validators: {
+      onSubmit: z.object({
+        name: z.string().trim().min(1, t("auth:form.name.required")),
+        email: z.string().email(t("auth:form.email.invalid")),
+        emailVerified: z.boolean(),
+      }),
+    },
+    listeners: {
+      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
+    },
+    onSubmit: async ({ value, formApi }) => {
+      if (!canUpdate) return;
+      const error = await run(
+        () =>
+          updateUser({
+            variables: {
+              id: userId,
+              input: {
+                name: value.name,
+                ...(canSetEmail
+                  ? { email: value.email, emailVerified: value.emailVerified }
+                  : {}),
+              },
+            },
+          }),
+        t("admin:user.profile.success"),
+      );
+      if (error) formApi.setErrorMap({ onSubmit: { form: error, fields: {} } });
+      else formApi.reset(value);
+    },
+  });
+  const rolesForm = useForm({
+    defaultValues: { roles: user?.roles ?? [] },
+    validators: {
+      onSubmit: ({ value }) =>
+        canGrantRoles(value.roles)
+          ? undefined
+          : { fields: { roles: t("admin:user.roles.invalid") } },
+    },
+    listeners: {
+      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
+    },
+    onSubmit: async ({ value, formApi }) => {
+      if (!canSetRoles || !canGrantRoles(value.roles)) return;
+      const error = await run(
+        () => setUserRoles({ variables: { id: userId, input: value } }),
+        t("admin:user.roles.success"),
+      );
+      if (error) formApi.setErrorMap({ onSubmit: { form: error, fields: {} } });
+      else formApi.reset(value);
+    },
+  });
+  const permissionsForm = useForm({
+    defaultValues: { permissions: user?.permissions ?? [] },
+    validators: {
+      onSubmit: ({ value }) =>
+        canGrantPermissions(value.permissions)
+          ? undefined
+          : { fields: { permissions: t("admin:user.permissions.invalid") } },
+    },
+    listeners: {
+      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
+    },
+    onSubmit: async ({ value, formApi }) => {
+      if (!canSetPermissions || !canGrantPermissions(value.permissions)) return;
+      const error = await run(
+        () => setUserPermissions({ variables: { id: userId, input: value } }),
+        t("admin:user.permissions.success"),
+      );
+      if (error) formApi.setErrorMap({ onSubmit: { form: error, fields: {} } });
+      else formApi.reset(value);
+    },
+  });
+  const passwordForm = useForm({
+    defaultValues: { password: "" },
+    validators: {
+      onSubmit: z.object({
+        password: z.string().min(8, t("auth:form.password.min")),
+      }),
+    },
+    listeners: {
+      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
+    },
+    onSubmit: async ({ value, formApi }) => {
+      if (!canSetPassword) return;
+      const error = await run(
+        () => setUserPassword({ variables: { id: userId, input: value } }),
+        t("admin:user.password.success"),
+      );
+      if (error) formApi.setErrorMap({ onSubmit: { form: error, fields: {} } });
+      else formApi.reset();
+    },
+  });
+  const banForm = useForm({
+    defaultValues: { reason: user?.banReason ?? "" },
+    listeners: {
+      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
+    },
+    onSubmit: async ({ value, formApi }) => {
+      if (!canBan || userId === currentUser.id || user?.banned) return;
+      const error = await run(
+        () =>
+          banUser({
+            variables: {
+              id: userId,
+              input: { reason: value.reason || undefined },
+            },
+          }),
+        t("admin:user.ban.banned"),
+      );
+      if (error) formApi.setErrorMap({ onSubmit: { form: error, fields: {} } });
+      else formApi.reset(value);
+    },
+  });
+  const updating = useStore(profileForm.store, (state) => state.isSubmitting);
+  const savingRole = useStore(rolesForm.store, (state) => state.isSubmitting);
+  const savingPermissions = useStore(
+    permissionsForm.store,
+    (state) => state.isSubmitting,
+  );
+  const settingPassword = useStore(
+    passwordForm.store,
+    (state) => state.isSubmitting,
+  );
+  const banning = useStore(banForm.store, (state) => state.isSubmitting);
+  const roles = useStore(rolesForm.store, (state) => state.values.roles);
+  const permissions = useStore(
+    permissionsForm.store,
+    (state) => state.values.permissions,
+  );
+  const newPassword = useStore(
+    passwordForm.store,
+    (state) => state.values.password,
+  );
+
+  if (loading) {
+    return <Page variant="compact" title={t("admin:user.loading")} />;
+  }
+  if (!user) {
+    return <Page variant="compact" title={t("admin:user.not_found")} />;
+  }
+
   return (
-    <Page data-testid="admin-user-page">
-      <PageHeader>
-        <PageTitle>{user.name}</PageTitle>
-        <PageDescription>{user.email}</PageDescription>
-        {user.id !== currentUser.id &&
-        ability.can("impersonate", createAbilitySubject("User", user)) ? (
-          <Button
-            variant="outline"
-            loading={impersonating}
-            data-testid="admin-impersonate-user"
-            onClick={async () => {
-              try {
-                await impersonateUser({ variables: { id: user.id } });
-                window.location.assign("/user");
-              } catch (error) {
-                toast.add({
-                  type: "error",
-                  title:
-                    error instanceof Error
-                      ? error.message
-                      : t("admin:impersonation.failed"),
-                });
-              }
-            }}
-          >
-            {t("admin:impersonation.start")}
-          </Button>
-        ) : null}
-      </PageHeader>
-      <PageContent className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("admin:user.roles.title")}</CardTitle>
-            <CardDescription>
-              {t("admin:user.roles.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <RoleCheckboxGroup
-              label={t("admin:user.roles.label")}
-              options={data?.userRoles ?? []}
-              testIdPrefix="user-role"
-              value={roles}
-              disabled={!canSetRoles}
-              onValueChange={setRoles}
-            />
-            <Button
-              data-testid="admin-user-roles-save"
-              disabled={
-                !canSetRoles ||
-                roles.length === 0 ||
-                roles.some(
-                  (role) =>
-                    !data?.userRoles?.some(
-                      (option) => option.role === role && option.grantable,
-                    ),
-                )
-              }
-              loading={savingRole}
-              onClick={() =>
-                run(
-                  () =>
-                    setUserRoles({
-                      variables: {
-                        id: userId,
-                        input: { roles },
-                      },
-                    }),
-                  t("admin:user.roles.success"),
-                )
-              }
-            >
-              {t("action.save")}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("admin:user.profile.title")}</CardTitle>
-            <CardDescription>
-              {t("admin:user.profile.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              label={t("admin:users.table.name")}
-              data-testid="admin-user-name"
-              disabled={!canUpdate}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-            <Input
-              type="email"
-              label={t("admin:users.table.email")}
-              data-testid="admin-user-email"
-              disabled={!canSetEmail}
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={emailVerified}
-                disabled={!canSetEmail}
-                onChange={(event) => setEmailVerified(event.target.checked)}
-              />
-              {t("admin:user.profile.email_verified")}
-            </label>
-            <Button
-              loading={updating}
-              data-testid="admin-user-profile-save"
-              disabled={!canUpdate}
-              onClick={() =>
-                run(
-                  () =>
-                    updateUser({
-                      variables: {
-                        id: userId,
-                        input: {
-                          name,
-                          ...(canSetEmail ? { email, emailVerified } : {}),
-                        },
-                      },
-                    }),
-                  t("admin:user.profile.success"),
-                )
-              }
-            >
-              {t("action.save")}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("admin:user.permissions.title")}</CardTitle>
-            <CardDescription>
-              {t("admin:user.permissions.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <PermissionCheckboxGroup
-              options={getPermissionOptions(data?.userPermissions ?? [])}
-              value={permissions}
-              disabled={!canSetPermissions}
-              onChange={setPermissions}
-            />
-            <Button
-              loading={savingPermissions}
-              data-testid="admin-user-permissions-save"
-              disabled={
-                !canSetPermissions ||
-                permissions.some(
-                  (permission) =>
-                    !data?.userPermissions?.some(
-                      (option) =>
-                        option.permission === permission && option.grantable,
-                    ),
-                )
-              }
-              onClick={() =>
-                run(
-                  () =>
-                    setUserPermissions({
-                      variables: {
-                        id: userId,
-                        input: { permissions },
-                      },
-                    }),
-                  t("admin:user.permissions.success"),
-                )
-              }
-            >
-              {t("action.save")}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("admin:user.sessions.title")}</CardTitle>
-            <CardDescription>
-              {t("admin:user.sessions.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {sessions.map((session) => (
-              <div
-                key={session.id}
-                className="flex items-center justify-between gap-4 border-b py-3 last:border-0"
+    <Page
+      variant="compact"
+      title={user.name}
+      description={user.email}
+      breadcrumbActions={[
+        {
+          label: t("admin:users.title"),
+          render: <Link to={"/admin/users"} search={backSearch} />,
+        },
+      ]}
+      paginationActions={{
+        previous: {
+          disabled: !previousEdge,
+          render: previousEdge ? (
+            <Link to={"/admin/users/" + previousEdge.node.id} />
+          ) : undefined,
+        },
+        next: {
+          disabled: !nextEdge,
+          render: nextEdge ? (
+            <Link to={"/admin/users/" + nextEdge.node.id} />
+          ) : undefined,
+        },
+      }}
+      secondaryActions={
+        user.id !== currentUser.id &&
+        ability.can("impersonate", createAbilitySubject("User", user))
+          ? [
+              {
+                label: t("admin:impersonation.start"),
+                loading: impersonating,
+                onAction: async () => {
+                  try {
+                    await impersonateUser({ variables: { id: user.id } });
+                    window.location.assign("/user");
+                  } catch (error) {
+                    toast.add({
+                      type: "error",
+                      title:
+                        error instanceof Error
+                          ? error.message
+                          : t("admin:impersonation.failed"),
+                    });
+                  }
+                },
+              },
+            ]
+          : undefined
+      }
+    >
+      <PageLayout>
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("admin:user.profile.title")}</CardTitle>
+              <CardDescription>
+                {t("admin:user.profile.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                id="admin-user-profile-form"
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (profileForm.state.isSubmitting) return;
+                  profileForm.setErrorMap({ onSubmit: undefined });
+                  profileForm.handleSubmit();
+                }}
               >
-                <div>
-                  <p className="text-sm font-medium">
-                    {session.userAgent ?? t("admin:user.sessions.unknown")}
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    {session.ipAddress ?? "—"} ·{" "}
-                    {dayjs(session.createdAt).format("YYYY-MM-DD HH:mm")}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  data-testid={`admin-user-session-revoke-${session.id}`}
-                  loading={revokingSessionId === session.id}
-                  disabled={!canRevokeSessions}
-                  onClick={async () => {
-                    setRevokingSessionId(session.id);
-                    await run(
-                      () =>
-                        revokeSession({
-                          variables: { userId, id: session.id },
+                <FormLayout>
+                  <FormLayoutItem>
+                    <profileForm.Field name="name">
+                      {(field) => (
+                        <Input
+                          label={t("admin:users.table.name")}
+                          disabled={!canUpdate}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
+                      )}
+                    </profileForm.Field>
+                  </FormLayoutItem>
+                  <FormLayoutItem>
+                    <profileForm.Field name="email">
+                      {(field) => (
+                        <Input
+                          type="email"
+                          label={t("admin:users.table.email")}
+                          disabled={!canSetEmail}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
+                      )}
+                    </profileForm.Field>
+                  </FormLayoutItem>
+                  <FormLayoutItem>
+                    <Field
+                      orientation="horizontal"
+                      data-disabled={!canSetEmail}
+                    >
+                      <profileForm.Field name="emailVerified">
+                        {(field) => (
+                          <Checkbox
+                            id="admin-user-email-verified"
+                            checked={field.state.value}
+                            disabled={!canSetEmail}
+                            onCheckedChange={field.handleChange}
+                          />
+                        )}
+                      </profileForm.Field>
+                      <FieldLabel htmlFor="admin-user-email-verified">
+                        {t("admin:user.profile.email_verified")}
+                      </FieldLabel>
+                    </Field>
+                  </FormLayoutItem>
+                  <profileForm.Subscribe
+                    selector={(state) => getFormErrorMessage(state.errors)}
+                  >
+                    {(error) =>
+                      error ? (
+                        <FormLayoutItem>
+                          <FieldError>{error}</FieldError>
+                        </FormLayoutItem>
+                      ) : null
+                    }
+                  </profileForm.Subscribe>
+                </FormLayout>
+              </form>
+            </CardContent>
+            <CardFooter>
+              <Button
+                loading={updating}
+                disabled={!canUpdate}
+                type="submit"
+                form="admin-user-profile-form"
+              >
+                {t("action.save")}
+              </Button>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
+
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("admin:user.roles.title")}</CardTitle>
+              <CardDescription>
+                {t("admin:user.roles.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                id="admin-user-roles-form"
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (rolesForm.state.isSubmitting) return;
+                  rolesForm.setErrorMap({ onSubmit: undefined });
+                  rolesForm.handleSubmit();
+                }}
+              >
+                <FormLayout>
+                  <FormLayoutItem>
+                    <rolesForm.Field name="roles">
+                      {(field) => (
+                        <>
+                          <RoleCheckboxGroup
+                            label={t("admin:user.roles.label")}
+                            options={data?.userRoles ?? []}
+                            value={field.state.value}
+                            disabled={!canSetRoles}
+                            onValueChange={field.handleChange}
+                          />
+                          <FieldError>
+                            {getFormErrorMessage(field.state.meta.errors)}
+                          </FieldError>
+                        </>
+                      )}
+                    </rolesForm.Field>
+                  </FormLayoutItem>
+                  <rolesForm.Subscribe
+                    selector={(state) => getFormErrorMessage(state.errors)}
+                  >
+                    {(error) =>
+                      error ? (
+                        <FormLayoutItem>
+                          <FieldError>{error}</FieldError>
+                        </FormLayoutItem>
+                      ) : null
+                    }
+                  </rolesForm.Subscribe>
+                </FormLayout>
+              </form>
+            </CardContent>
+            <CardFooter>
+              <Button
+                disabled={!canSetRoles || !canGrantRoles(roles)}
+                loading={savingRole}
+                type="submit"
+                form="admin-user-roles-form"
+              >
+                {t("action.save")}
+              </Button>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
+
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("admin:user.permissions.title")}</CardTitle>
+              <CardDescription>
+                {t("admin:user.permissions.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                id="admin-user-permissions-form"
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (permissionsForm.state.isSubmitting) return;
+                  permissionsForm.setErrorMap({ onSubmit: undefined });
+                  permissionsForm.handleSubmit();
+                }}
+              >
+                <FormLayout>
+                  <FormLayoutItem>
+                    <permissionsForm.Field name="permissions">
+                      {(field) => (
+                        <>
+                          <PermissionCheckboxGroup
+                            options={getPermissionOptions(
+                              data?.userPermissions ?? [],
+                            )}
+                            value={field.state.value}
+                            disabled={!canSetPermissions}
+                            onChange={field.handleChange}
+                          />
+                          <FieldError>
+                            {getFormErrorMessage(field.state.meta.errors)}
+                          </FieldError>
+                        </>
+                      )}
+                    </permissionsForm.Field>
+                  </FormLayoutItem>
+                  <permissionsForm.Subscribe
+                    selector={(state) => getFormErrorMessage(state.errors)}
+                  >
+                    {(error) =>
+                      error ? (
+                        <FormLayoutItem>
+                          <FieldError>{error}</FieldError>
+                        </FormLayoutItem>
+                      ) : null
+                    }
+                  </permissionsForm.Subscribe>
+                </FormLayout>
+              </form>
+            </CardContent>
+            <CardFooter>
+              <Button
+                loading={savingPermissions}
+                disabled={
+                  !canSetPermissions || !canGrantPermissions(permissions)
+                }
+                type="submit"
+                form="admin-user-permissions-form"
+              >
+                {t("action.save")}
+              </Button>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
+
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("admin:user.sessions.title")}</CardTitle>
+              <CardDescription>
+                {t("admin:user.sessions.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {sessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className="flex items-center justify-between gap-4 border-b py-3 last:border-0"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">
+                        {session.userAgent ?? t("admin:user.sessions.unknown")}
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {session.ipAddress ?? "—"} ·{" "}
+                        {dayjs(session.createdAt).format("YYYY-MM-DD HH:mm")}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      loading={revokingSessionId === session.id}
+                      disabled={!canRevokeSessions}
+                      onClick={async () => {
+                        setRevokingSessionId(session.id);
+                        await run(
+                          () =>
+                            revokeSession({
+                              variables: { userId, id: session.id },
+                            }),
+                          t("admin:user.sessions.revoked"),
+                        );
+                        setRevokingSessionId(undefined);
+                      }}
+                    >
+                      {t("admin:user.sessions.revoke")}
+                    </Button>
+                  </div>
+                ))}
+                {user?.sessions?.pageInfo.hasNextPage && (
+                  <Button
+                    variant="outline"
+                    loading={loading}
+                    onClick={() =>
+                      fetchMore({
+                        variables: {
+                          sessionsAfter: user.sessions?.pageInfo.endCursor,
+                        },
+                        updateQuery: (previous, { fetchMoreResult }) => ({
+                          ...fetchMoreResult,
+                          user:
+                            fetchMoreResult.user?.sessions &&
+                            previous.user?.sessions
+                              ? {
+                                  ...fetchMoreResult.user,
+                                  sessions: {
+                                    ...fetchMoreResult.user.sessions,
+                                    edges: [
+                                      ...previous.user.sessions.edges,
+                                      ...fetchMoreResult.user.sessions.edges,
+                                    ],
+                                  },
+                                }
+                              : fetchMoreResult.user,
                         }),
-                      t("admin:user.sessions.revoked"),
-                    );
-                    setRevokingSessionId(undefined);
-                  }}
-                >
-                  {t("admin:user.sessions.revoke")}
-                </Button>
+                      })
+                    }
+                  >
+                    {t("action.load_more")}
+                  </Button>
+                )}
               </div>
-            ))}
-            {user?.sessions?.pageInfo.hasNextPage && (
+            </CardContent>
+            <CardFooter>
               <Button
                 variant="outline"
-                loading={loading}
+                disabled={!canRevokeSessions || sessions.length === 0}
+                loading={revokingSessions}
                 onClick={() =>
-                  fetchMore({
-                    variables: {
-                      sessionsAfter: user.sessions?.pageInfo.endCursor,
-                    },
-                    updateQuery: (previous, { fetchMoreResult }) => ({
-                      ...fetchMoreResult,
-                      user:
-                        fetchMoreResult.user?.sessions &&
-                        previous.user?.sessions
-                          ? {
-                              ...fetchMoreResult.user,
-                              sessions: {
-                                ...fetchMoreResult.user.sessions,
-                                edges: [
-                                  ...previous.user.sessions.edges,
-                                  ...fetchMoreResult.user.sessions.edges,
-                                ],
-                              },
-                            }
-                          : fetchMoreResult.user,
-                    }),
-                  })
+                  run(
+                    () => revokeUserSessions({ variables: { userId } }),
+                    t("admin:user.sessions.revoked_all"),
+                  )
                 }
               >
-                {t("action.load_more")}
+                {t("admin:user.sessions.revoke_all")}
               </Button>
-            )}
-            <Button
-              variant="outline"
-              data-testid="admin-user-sessions-revoke"
-              disabled={!canRevokeSessions || sessions.length === 0}
-              loading={revokingSessions}
-              onClick={() =>
-                run(
-                  () => revokeUserSessions({ variables: { userId } }),
-                  t("admin:user.sessions.revoked_all"),
-                )
-              }
-            >
-              {t("admin:user.sessions.revoke_all")}
-            </Button>
-          </CardContent>
-        </Card>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("admin:user.password.title")}</CardTitle>
-            <CardDescription>
-              {t("admin:user.password.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              type="password"
-              label={t("admin:user.password.new")}
-              disabled={!canSetPassword}
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-            />
-            <Button
-              disabled={!canSetPassword || newPassword.length < 8}
-              loading={settingPassword}
-              onClick={() =>
-                run(async () => {
-                  await setUserPassword({
-                    variables: {
-                      id: userId,
-                      input: { password: newPassword },
-                    },
-                  });
-                  setNewPassword("");
-                }, t("admin:user.password.success"))
-              }
-            >
-              {t("admin:user.password.action")}
-            </Button>
-          </CardContent>
-        </Card>
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("admin:user.password.title")}</CardTitle>
+              <CardDescription>
+                {t("admin:user.password.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                id="admin-user-password-form"
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (passwordForm.state.isSubmitting) return;
+                  passwordForm.setErrorMap({ onSubmit: undefined });
+                  passwordForm.handleSubmit();
+                }}
+              >
+                <FormLayout>
+                  <FormLayoutItem>
+                    <passwordForm.Field name="password">
+                      {(field) => (
+                        <Input
+                          type="password"
+                          label={t("admin:user.password.new")}
+                          disabled={!canSetPassword}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
+                      )}
+                    </passwordForm.Field>
+                  </FormLayoutItem>
+                  <passwordForm.Subscribe
+                    selector={(state) => getFormErrorMessage(state.errors)}
+                  >
+                    {(error) =>
+                      error ? (
+                        <FormLayoutItem>
+                          <FieldError>{error}</FieldError>
+                        </FormLayoutItem>
+                      ) : null
+                    }
+                  </passwordForm.Subscribe>
+                </FormLayout>
+              </form>
+            </CardContent>
+            <CardFooter>
+              <Button
+                disabled={!canSetPassword || newPassword.length < 8}
+                loading={settingPassword}
+                type="submit"
+                form="admin-user-password-form"
+              >
+                {t("admin:user.password.action")}
+              </Button>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
 
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle className="text-destructive">
-              {user.banned
-                ? t("admin:user.ban.unban_title")
-                : t("admin:user.ban.title")}
-            </CardTitle>
-            <CardDescription>{t("admin:user.ban.description")}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {user.banned ? (
-              <>
-                <Badge color="red">
-                  {user.banReason || t("admin:users.banned")}
-                </Badge>
-                <Button
-                  loading={unbanning}
-                  disabled={!canBan}
-                  onClick={() =>
-                    run(
-                      () => unbanUser({ variables: { id: userId } }),
-                      t("admin:user.ban.unbanned"),
-                    )
-                  }
-                >
-                  {t("admin:user.ban.unban")}
-                </Button>
-              </>
-            ) : (
-              <>
-                <Input
-                  label={t("admin:user.ban.reason")}
-                  disabled={!canBan}
-                  value={banReason}
-                  onChange={(event) => setBanReason(event.target.value)}
-                />
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {user.banned
+                  ? t("admin:user.ban.unban_title")
+                  : t("admin:user.ban.title")}
+              </CardTitle>
+              <CardDescription>
+                {t("admin:user.ban.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                id="admin-user-ban-form"
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (banForm.state.isSubmitting) return;
+                  banForm.setErrorMap({ onSubmit: undefined });
+                  banForm.handleSubmit();
+                }}
+              >
+                <FormLayout>
+                  <FormLayoutItem>
+                    {user.banned ? (
+                      <Badge color="red">
+                        {user.banReason || t("admin:users.banned")}
+                      </Badge>
+                    ) : (
+                      <banForm.Field name="reason">
+                        {(field) => (
+                          <Input
+                            label={t("admin:user.ban.reason")}
+                            disabled={!canBan}
+                            value={field.state.value}
+                            onChange={(event) =>
+                              field.handleChange(event.target.value)
+                            }
+                            error={getFormErrorMessage(field.state.meta.errors)}
+                          />
+                        )}
+                      </banForm.Field>
+                    )}
+                  </FormLayoutItem>
+                  <banForm.Subscribe
+                    selector={(state) => getFormErrorMessage(state.errors)}
+                  >
+                    {(error) =>
+                      error ? (
+                        <FormLayoutItem>
+                          <FieldError>{error}</FieldError>
+                        </FormLayoutItem>
+                      ) : null
+                    }
+                  </banForm.Subscribe>
+                </FormLayout>
+              </form>
+            </CardContent>
+            <CardFooter>
+              <div className="flex flex-wrap gap-2">
+                {user.banned ? (
+                  <Button
+                    loading={unbanning}
+                    disabled={!canBan}
+                    onClick={() =>
+                      run(
+                        () => unbanUser({ variables: { id: userId } }),
+                        t("admin:user.ban.unbanned"),
+                      )
+                    }
+                  >
+                    {t("admin:user.ban.unban")}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="destructive"
+                    disabled={!canBan || currentUser.id === userId}
+                    loading={banning}
+                    type="submit"
+                    form="admin-user-ban-form"
+                  >
+                    {t("admin:user.ban.action")}
+                  </Button>
+                )}
                 <Button
                   variant="destructive"
-                  disabled={!canBan || currentUser.id === userId}
-                  loading={banning}
-                  onClick={() =>
-                    run(
-                      () =>
-                        banUser({
-                          variables: {
-                            id: userId,
-                            input: { reason: banReason || undefined },
-                          },
-                        }),
-                      t("admin:user.ban.banned"),
-                    )
-                  }
+                  disabled={!canDelete || currentUser.id === userId}
+                  loading={deleting}
+                  onClick={async () => {
+                    const confirmed = await alertDialog({
+                      title: t("admin:user.delete.confirm_title"),
+                      description: t("admin:user.delete.confirm_description"),
+                      confirmText: t("action.delete"),
+                      cancelText: t("action.cancel"),
+                      variant: "destructive",
+                    });
+                    if (!confirmed) return;
+                    await run(async () => {
+                      await deleteUser({ variables: { id: userId } });
+                      await navigate({
+                        to: "/admin/users",
+                        search: backSearch,
+                      });
+                    }, t("admin:user.delete.success"));
+                  }}
                 >
-                  {t("admin:user.ban.action")}
+                  {t("admin:user.delete.action")}
                 </Button>
-              </>
-            )}
-            <Button
-              variant="destructive"
-              disabled={!canDelete || currentUser.id === userId}
-              loading={deleting}
-              onClick={async () => {
-                const confirmed = await alertDialog({
-                  title: t("admin:user.delete.confirm_title"),
-                  description: t("admin:user.delete.confirm_description"),
-                  confirmText: t("action.delete"),
-                  cancelText: t("action.cancel"),
-                  variant: "destructive",
-                });
-                if (!confirmed) return;
-                await run(async () => {
-                  await deleteUser({ variables: { id: userId } });
-                  await navigate({ to: "/admin/users" });
-                }, t("admin:user.delete.success"));
-              }}
-            >
-              {t("admin:user.delete.action")}
-            </Button>
-          </CardContent>
-        </Card>
-      </PageContent>
+              </div>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
+      </PageLayout>
     </Page>
   );
 }

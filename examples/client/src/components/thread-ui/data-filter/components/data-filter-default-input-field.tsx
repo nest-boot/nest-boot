@@ -57,27 +57,25 @@ export const DataFilterDefaultInputField: FC<
   };
 
   return (
-    <div className="px-2 pb-2">
-      <Input
-        aria-label={item.label}
-        placeholder={item.placeholder}
-        value={draftValue}
-        onBlur={commitValue}
-        onChange={(event) => {
-          setDraftState({
-            sourceValue: currentValue,
-            value: event.target.value,
-          });
-        }}
-        onKeyDown={(event) => {
-          if (event.key !== "Enter" || event.nativeEvent.isComposing) {
-            return;
-          }
+    <Input
+      aria-label={item.label}
+      placeholder={item.placeholder}
+      value={draftValue}
+      onBlur={commitValue}
+      onChange={(event) => {
+        setDraftState({
+          sourceValue: currentValue,
+          value: event.target.value,
+        });
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" || event.nativeEvent.isComposing) {
+          return;
+        }
 
-          event.preventDefault();
-          commitValue();
-        }}
-      />
-    </div>
+        event.preventDefault();
+        commitValue();
+      }}
+    />
   );
 };

@@ -7,9 +7,10 @@
   "created": {
     "copied": "Copied",
     "copy": "Copy API Key",
-    "description": "This is the only time you will be able to view this key. Please copy and store it securely now. Once this window is closed, you will not be able to see it again.",
+    "description": "Copy and store this key securely now. After leaving or refreshing this page, you will not be able to view the full key again.",
     "title": "API Key Created",
-    "warning": "Attention: This key will only be shown once!"
+    "warning": "Attention: This key will only be shown once!",
+    "copy_failed": "Could not copy the key. Please select and copy it manually."
   },
   "description": "Create and manage API keys for this workspace.",
   "filter": {
@@ -36,13 +37,14 @@
       "placeholder": "Enter a name for this API key",
       "required": "API key name is required",
       "too_long": "API key name is too long"
-    }
+    },
+    "save_failed": "Unable to save this API key. Please try again."
   },
   "never_expires": "Never expires",
   "never_used": "Never used",
   "edit": {
     "description": "Update the display name and permissions for this API key.",
-    "title": "Edit API Key"
+    "title": "API Key Details"
   },
   "delete": {
     "description": "Delete {{name}}? This action cannot be undone.",
@@ -64,7 +66,7 @@
   "title": "API Keys",
   "user": {
     "description": "Create and manage API keys owned by your user account.",
-    "title": "Personal API Keys"
+    "title": "API Keys"
   },
   "toast": {
     "created_success": "API key created",
@@ -72,5 +74,7 @@
     "enabled_success": "API key enabled",
     "updated_success": "API key updated",
     "deleted_success": "API key deleted"
-  }
+  },
+  "details": "API Key",
+  "usage": "Usage"
 }

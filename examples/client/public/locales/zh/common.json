@@ -17,10 +17,20 @@
     "saving": "保存中..."
   },
   "app": {
-    "name": "Nest Boot 示例"
+    "name": "Nest Boot"
   },
   "contextualSaveBar": {
     "discard": "丢弃",
     "message": "有未保存的更改"
+  },
+  "navigation": {
+    "retry": "重试"
+  },
+  "overview": {
+    "title": "概览",
+    "workspace": "工作空间",
+    "loading": "正在加载概览…",
+    "failed": "无法加载概览。",
+    "view_api_keys": "查看 API 密钥"
   }
 }

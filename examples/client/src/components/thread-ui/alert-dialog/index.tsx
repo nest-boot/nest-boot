@@ -117,7 +117,7 @@ const AlertDialogRenderer = memo(function AlertDialogRenderer({
         if (!open) onRemove(id);
       }}
     >
-      <AlertDialogContent data-testid="alert-dialog" size={options.size}>
+      <AlertDialogContent size={options.size}>
         <AlertDialogHeader>
           {options.icon && (
             <AlertDialogMedia
@@ -140,11 +140,10 @@ const AlertDialogRenderer = memo(function AlertDialogRenderer({
         {options.content}
 
         <AlertDialogFooter>
-          <AlertDialogCancel data-testid="alert-dialog-cancel">
+          <AlertDialogCancel>
             {options.cancelText ?? t("alertDialog.cancel", "Cancel")}
           </AlertDialogCancel>
           <AlertDialogAction
-            data-testid="alert-dialog-confirm"
             variant={options.variant}
             onClick={() => onClose(id, true)}
           >

@@ -18,6 +18,9 @@
     "hooks": "@/hooks"
   },
   "iconLibrary": "lucide",
+  "rtl": false,
+  "menuColor": "default",
+  "menuAccent": "subtle",
   "registries": {
     "@thread-ui": "https://thread-ui.vercel.app/r/{name}.json"
   }

@@ -1,334 +1,143 @@
-import { useMutation } from "@apollo/client/react";
-import { useForm } from "@tanstack/react-form";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
+import { useQuery } from "@apollo/client/react";
+import { createFileRoute } from "@tanstack/react-router";
 import { t } from "i18next";
-import { CircleX, MailCheck } from "lucide-react";
-import { z } from "zod";
-
+import { useTranslation } from "react-i18next";
+import { Boxes, CircleUserRound, KeyRound, LockKeyhole } from "lucide-react";
 import { useCurrentUserContext } from "../contexts/current-user-context";
-import { toast } from "@/components/thread-ui/toast";
+import { Link } from "@/components/link";
+import {
+  OverviewCard,
+  OverviewCount,
+  OverviewError,
+} from "@/components/overview-card";
 import { Button } from "@/components/thread-ui/button";
+import { Page } from "@/components/thread-ui/page";
 import {
-  Page,
-  PageContent,
-  PageDescription,
-  PageHeader,
-  PageTitle,
-} from "@/components/thread-ui/page";
-import { Input } from "@/components/thread-ui/input";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Field, FieldGroup, FieldSet } from "@/components/ui/field";
+  PageLayout,
+  PageLayoutSection,
+} from "@/components/thread-ui/page-layout";
+import { useAbility } from "@/contexts/ability-context";
 import { graphql } from "@/gql";
 
-const UPDATE_USER_FROM_USER_ROUTE = graphql(`
-  mutation updateUserFromUserRoute($input: AuthUpdateUserInput!) {
-    updateCurrentUser(input: $input)
+const GET_OVERVIEW = graphql(`
+  query getUserOverview($includeApiKeys: Boolean!) {
+    currentUser {
+      id
+      workspaces(first: 1) {
+        totalCount
+        totalCountRelation
+      }
+      sessions(first: 1) {
+        totalCount
+        totalCountRelation
+      }
+      apiKeys(first: 1) @include(if: $includeApiKeys) {
+        totalCount
+        totalCountRelation
+      }
+    }
   }
 `);
-
-const CHANGE_EMAIL_FROM_USER_ROUTE = graphql(`
-  mutation changeEmailFromUserRoute($input: AuthChangeEmailInput!) {
-    changeCurrentUserEmail(input: $input)
-  }
-`);
-
 export const Route = createFileRoute("/_authenticated/user/")({
-  component: UserComponent,
-  beforeLoad: () => ({ title: t("user:profile.title") }),
-  validateSearch: zodValidator(
-    z.object({
-      emailChangeCallback: z
-        .union([z.literal(true), z.literal("true")])
-        .optional(),
-      error: z.string().optional(),
-      newEmail: z.string().optional(),
-    }),
-  ),
+  component: Overview,
+  beforeLoad: () => ({ title: t("common:overview.title") }),
 });
-
-function UserComponent() {
-  const router = useRouter();
-  const currentUser = useCurrentUserContext();
-  const [updateUser] = useMutation(UPDATE_USER_FROM_USER_ROUTE);
-  const [changeEmail] = useMutation(CHANGE_EMAIL_FROM_USER_ROUTE);
-  const search = Route.useSearch();
-  const emailChangeCompleted = Boolean(
-    search.emailChangeCallback &&
-    search.newEmail &&
-    currentUser.email === search.newEmail,
-  );
-  const emailChangeConfirmed = Boolean(
-    search.emailChangeCallback &&
-    search.newEmail &&
-    !search.error &&
-    !emailChangeCompleted,
-  );
-
-  const form = useForm({
-    defaultValues: {
-      name: currentUser.name,
-    },
-    onSubmit: async ({ value }) => {
-      const name = value.name.trim();
-
-      try {
-        await updateUser({ variables: { input: { name } } });
-        await router.invalidate();
-        form.reset({ name });
-        toast.add({ type: "success", title: t("user:profile.toast.updated") });
-      } catch (error) {
-        toast.add({
-          type: "error",
-          title:
-            error instanceof Error
-              ? error.message
-              : t("user:profile.toast.update_failed"),
-        });
-      }
-    },
+function Overview() {
+  const { t } = useTranslation();
+  const ability = useAbility();
+  const user = useCurrentUserContext();
+  const canReadApiKeys = ability.can("read", "UserApiKey");
+  const { data, loading, error, refetch } = useQuery(GET_OVERVIEW, {
+    variables: { includeApiKeys: canReadApiKeys },
+    fetchPolicy: "network-only",
   });
-  const emailForm = useForm({
-    defaultValues: {
-      newEmail: "",
-    },
-    onSubmit: async ({ value }) => {
-      const newEmail = value.newEmail.trim().toLowerCase();
-
-      try {
-        const result = await changeEmail({
-          variables: {
-            input: {
-              callbackURL: `${window.location.origin}/user?${new URLSearchParams(
-                {
-                  emailChangeCallback: "true",
-                  newEmail,
-                },
-              ).toString()}`,
-              newEmail,
-            },
-          },
-        });
-
-        if (!result.data?.changeCurrentUserEmail) {
-          throw new Error(t("user:email.toast.request_failed"));
-        }
-
-        emailForm.reset();
-        toast.add({
-          type: "success",
-          title: t("user:email.toast.confirmation_sent"),
-        });
-      } catch (error) {
-        toast.add({
-          type: "error",
-          title:
-            error instanceof Error
-              ? error.message
-              : t("user:email.toast.request_failed"),
-        });
-      }
-    },
-  });
-
+  const summary = error ? undefined : data?.currentUser;
   return (
-    <Page data-testid="user-profile-page">
-      <PageHeader>
-        <PageTitle>{t("user:profile.title")}</PageTitle>
-        <PageDescription>{t("user:profile.description")}</PageDescription>
-      </PageHeader>
-
-      <PageContent>
-        {emailChangeCompleted && !search.error && (
-          <Alert data-testid="user-email-changed-alert">
-            <MailCheck />
-            <AlertTitle>{t("user:email.changed.title")}</AlertTitle>
-            <AlertDescription>
-              {t("user:email.changed.description")}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {emailChangeConfirmed && (
-          <Alert data-testid="user-email-confirmed-alert">
-            <MailCheck />
-            <AlertTitle>{t("user:email.confirmed.title")}</AlertTitle>
-            <AlertDescription>
-              {t("user:email.confirmed.description", {
-                email: search.newEmail,
-              })}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {search.error && (
-          <Alert variant="destructive" data-testid="user-email-error-alert">
-            <CircleX />
-            <AlertTitle>{t("user:email.error.title")}</AlertTitle>
-            <AlertDescription>
-              {t("user:email.error.description")}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("user:profile.card.title")}</CardTitle>
-            <CardDescription>
-              {t("user:profile.card.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                form.handleSubmit();
+    <Page
+      title={t("common:overview.title")}
+      description={t("user:overview.description", { name: user.name })}
+    >
+      <PageLayout>
+        {error && (
+          <PageLayoutSection>
+            <OverviewError
+              onRetry={() => {
+                void refetch().catch(() => undefined);
               }}
+            />
+          </PageLayoutSection>
+        )}
+        <PageLayoutSection>
+          <div className="grid gap-4 @3xl/page-layout:grid-cols-3">
+            <OverviewCard
+              title={t("user:workspaces.title")}
+              description={t("user:overview.workspaces")}
+              icon={<Boxes />}
+              action={
+                <Button
+                  variant="outline"
+                  render={<Link to="/user/workspaces" />}
+                >
+                  {t("sidebar:switcher.manageWorkspaces")}
+                </Button>
+              }
             >
-              <FieldSet>
-                <FieldGroup>
-                  <form.Field
-                    name="name"
-                    validators={{
-                      onChange: ({ value }) =>
-                        value.trim()
-                          ? undefined
-                          : t("user:profile.form.name.required"),
-                    }}
+              <OverviewCount
+                connection={summary?.workspaces}
+                loading={loading}
+              />
+            </OverviewCard>
+
+            {canReadApiKeys && (
+              <OverviewCard
+                title={t("sidebar:user.api_keys")}
+                description={t("user:overview.api_keys")}
+                icon={<KeyRound />}
+                action={
+                  <Button
+                    variant="outline"
+                    render={<Link to="/user/api-keys" />}
                   >
-                    {(field) => (
-                      <Input
-                        id="name"
-                        data-testid="user-profile-name-input"
-                        label={t("user:profile.form.name.label")}
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(event) =>
-                          field.handleChange(event.target.value)
-                        }
-                        error={field.state.meta.errors.join(", ") || undefined}
-                      />
-                    )}
-                  </form.Field>
-
-                  <Input
-                    id="email"
-                    label={t("user:profile.form.email.label")}
-                    value={currentUser.email}
-                    disabled
-                  />
-
-                  <Field orientation="horizontal">
-                    <form.Subscribe
-                      selector={(state) => [
-                        state.isDirty,
-                        state.isSubmitting,
-                        state.canSubmit,
-                      ]}
-                    >
-                      {([isDirty, isSubmitting, canSubmit]) => (
-                        <Button
-                          type="submit"
-                          data-testid="user-profile-save"
-                          disabled={!isDirty || !canSubmit}
-                          loading={isSubmitting}
-                        >
-                          {t("action.save")}
-                        </Button>
-                      )}
-                    </form.Subscribe>
-                  </Field>
-                </FieldGroup>
-              </FieldSet>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("user:email.card.title")}</CardTitle>
-            <CardDescription>
-              {t("user:email.card.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                emailForm.handleSubmit();
-              }}
+                    {t("common:overview.view_api_keys")}
+                  </Button>
+                }
+              >
+                <OverviewCount
+                  connection={summary?.apiKeys}
+                  loading={loading}
+                />
+              </OverviewCard>
+            )}
+            <OverviewCard
+              title={t("user:overview.sessions")}
+              description={t("user:overview.security")}
+              icon={<LockKeyhole />}
+              action={
+                <Button variant="outline" render={<Link to="/user/security" />}>
+                  {t("user:overview.manage_security")}
+                </Button>
+              }
             >
-              <FieldSet>
-                <FieldGroup>
-                  <Input
-                    id="current-email"
-                    data-testid="user-current-email"
-                    label={t("user:email.form.current_email")}
-                    value={currentUser.email}
-                    disabled
-                  />
-
-                  <emailForm.Field
-                    name="newEmail"
-                    validators={{
-                      onChange: ({ value }) =>
-                        z.string().email().safeParse(value.trim()).success
-                          ? undefined
-                          : t("user:email.form.invalid"),
-                    }}
-                  >
-                    {(field) => (
-                      <Input
-                        id="new-email"
-                        data-testid="user-new-email-input"
-                        type="email"
-                        autoComplete="email"
-                        label={t("user:email.form.new_email")}
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(event) =>
-                          field.handleChange(event.target.value)
-                        }
-                        error={field.state.meta.errors.join(", ") || undefined}
-                      />
-                    )}
-                  </emailForm.Field>
-
-                  <Field orientation="horizontal">
-                    <emailForm.Subscribe
-                      selector={(state) => [
-                        state.isDirty,
-                        state.isSubmitting,
-                        state.canSubmit,
-                      ]}
-                    >
-                      {([isDirty, isSubmitting, canSubmit]) => (
-                        <Button
-                          type="submit"
-                          data-testid="user-change-email-submit"
-                          disabled={!isDirty || !canSubmit}
-                          loading={isSubmitting}
-                        >
-                          {t("user:email.form.submit")}
-                        </Button>
-                      )}
-                    </emailForm.Subscribe>
-                  </Field>
-                </FieldGroup>
-              </FieldSet>
-            </form>
-          </CardContent>
-        </Card>
-      </PageContent>
+              <OverviewCount connection={summary?.sessions} loading={loading} />
+            </OverviewCard>
+          </div>
+        </PageLayoutSection>
+        <PageLayoutSection span="full">
+          <OverviewCard
+            title={t("user:profile.title")}
+            description={t("user:profile.description")}
+            icon={<CircleUserRound />}
+            action={
+              <Button variant="outline" render={<Link to="/user/profile" />}>
+                {t("user:overview.edit_profile")}
+              </Button>
+            }
+          >
+            <p>{user.name}</p>
+            <p className="text-muted-foreground">{user.email}</p>
+          </OverviewCard>
+        </PageLayoutSection>
+      </PageLayout>
     </Page>
   );
 }

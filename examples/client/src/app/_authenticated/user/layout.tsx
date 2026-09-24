@@ -1,36 +1,26 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { t } from "i18next";
 
+import { AppTopbar } from "../components/app-topbar";
 import { UserSidebar } from "./components/user-sidebar";
-import { Breadcrumbs } from "@/components/breadcrumbs";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { Layout, LayoutContent } from "@/components/thread-ui/layout";
 
 export const Route = createFileRoute("/_authenticated/user")({
   component: UserLayout,
   beforeLoad: () => ({
-    title: t("user:title"),
+    title: t("common:overview.title"),
   }),
 });
 
 function UserLayout() {
   return (
-    <SidebarProvider>
+    <Layout>
+      <AppTopbar />
       <UserSidebar />
 
-      <SidebarInset>
-        <header className="bg-background flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] duration-200 ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:left-(--sidebar-width) md:group-has-data-[collapsible=icon]/sidebar-wrapper:left-(--sidebar-width-icon)">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger />
-            <Breadcrumbs />
-          </div>
-        </header>
-
+      <LayoutContent data-scroll-restoration-id="main-content">
         <Outlet />
-      </SidebarInset>
-    </SidebarProvider>
+      </LayoutContent>
+    </Layout>
   );
 }

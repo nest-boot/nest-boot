@@ -59,6 +59,13 @@
     },
     {
       "domain": "Workspace",
+      "scenario": "Workspace DataFilter, pagination persistence, and row navigation",
+      "status": "covered",
+      "specs": ["workspace-filter.spec.ts"],
+      "notes": "Searches workspace names, applies name and creation-date filters, resets cursors on filter changes, and preserves criteria across pagination and reloads. Opens a workspace from a date cell or the keyboard-accessible name link without an arrow action column."
+    },
+    {
+      "domain": "Workspace",
       "scenario": "Multiple owner role assignment and member exit",
       "status": "covered",
       "specs": ["workspace.spec.ts"],
@@ -68,8 +75,12 @@
       "domain": "Invitations",
       "scenario": "Create, cancel, register through, accept, and reject invitations",
       "status": "covered",
-      "specs": ["invitation.spec.ts", "user.spec.ts"],
-      "notes": "Covers owner and recipient flows, including the personal pending-invitation list."
+      "specs": [
+        "invitation.spec.ts",
+        "user.spec.ts",
+        "invitation-create.spec.ts"
+      ],
+      "notes": "Covers owner and recipient flows, including the personal pending-invitation list. The standalone invite route supports direct navigation/reload, cancellation, mobile layout, email/role validation, unchanged-value retries after a failed request, copy failure recovery, and workspace isolation. Unauthorized creation links redirect and available roles respect the issuer grants."
     },
     {
       "domain": "Invitations",
@@ -102,7 +113,59 @@
       "scenario": "User and workspace API key lifecycle",
       "status": "covered",
       "specs": ["api-key.spec.ts"],
-      "notes": "Creates, reveals, disables, edits, and deletes both owner types. Bearer authentication and privilege ceilings are covered by server PostgreSQL E2E."
+      "notes": "Uses four standalone create/detail routes, checks reloads and direct links, validates names, copies the once-only secret, and disables, edits, and deletes both owner types. Checks mobile layout, read-only controls, creation guards, and rejection of missing, deleted, cross-workspace, and foreign-owner detail IDs. Bearer authentication and privilege ceilings are covered by server PostgreSQL E2E."
+    },
+    {
+      "domain": "API keys",
+      "scenario": "List search restoration and adjacent detail navigation with workspace isolation",
+      "status": "covered",
+      "specs": [
+        "user-api-key-navigation.spec.ts",
+        "workspace-api-key-navigation.spec.ts"
+      ],
+      "notes": "Preserves filters, order, page size and cursor through creation and details. Traverses adjacent records across list pages, restores browser history and reloads, and returns the current record as the first row using the preceding cursor. Checks default/direct entry, invalid session data, failed neighbor queries and retry, null sort values, and two workspaces with distinct filters and pagination in the same browser session."
+    },
+    {
+      "domain": "Administration",
+      "scenario": "User search and DataFilter conditions with persistent pagination state",
+      "status": "covered",
+      "specs": ["admin-user-filter.spec.ts"],
+      "notes": "Searches by email prefix, filters by name, email, and creation date, resets the cursor when filters change, and preserves search and filters across next/previous pages and reloads."
+    },
+    {
+      "domain": "Navigation",
+      "scenario": "Responsive application layout, unified account menu, and page breadcrumbs",
+      "status": "covered",
+      "specs": ["user.spec.ts", "workspace.spec.ts"],
+      "notes": "Navigates with the mobile drawer, closes it after navigation and desktop resize, keeps the topbar visible while content scrolls, and returns through page breadcrumbs. Checks that new routes reset the main viewport to the top while browser back/forward restores each history entry's scroll position. The unified topbar menu provides account actions and paginated workspace switching."
+    },
+    {
+      "domain": "Navigation",
+      "scenario": "Profile navigation and persistent language/theme preferences in the user menu",
+      "status": "covered",
+      "specs": ["user.spec.ts"],
+      "notes": "Opens the profile from the user identity row, changes language without losing unsaved form input, persists language and theme across reloads, and follows system color scheme changes."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Form validation, pending submissions, and server-error retries",
+      "status": "covered",
+      "specs": ["form-state.spec.ts"],
+      "notes": "Rejects invalid login fields and mismatched reset passwords before any mutation, prevents duplicate pending submissions, preserves inputs after server errors, and retries unchanged values."
+    },
+    {
+      "domain": "Administration",
+      "scenario": "Independent user detail forms and keyboard submission",
+      "status": "covered",
+      "specs": ["form-state.spec.ts"],
+      "notes": "Opens and reloads the standalone user creation route, returns to the list on cancellation/success, validates before mutation, retries a failed creation without losing fields, initializes asynchronous profile fields, preserves an unsaved profile draft while saving roles, and saves the profile with Enter. Direct user creation URLs reject read-only administrators."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Password-confirmed account deletion form",
+      "status": "covered",
+      "specs": ["form-state.spec.ts"],
+      "notes": "Cancels confirmation without losing the password, recovers from an incorrect password, and deletes a disposable test account after correction."
     }
   ]
 }

@@ -1,9 +1,15 @@
 "use client";
 
 import { cva } from "class-variance-authority";
-import { ArrowLeftIcon, MoreHorizontalIcon } from "lucide-react";
+import { MoreHorizontalIcon } from "lucide-react";
 import { Children, isValidElement } from "react";
 import { useTranslation } from "react-i18next";
+import { BreadcrumbAction, BreadcrumbActions } from "./breadcrumb-actions";
+import {
+  PageNextAction,
+  PagePagination,
+  PagePreviousAction,
+} from "./pagination";
 import type {
   AriaAttributes,
   ComponentProps,
@@ -12,6 +18,8 @@ import type {
   ReactNode,
 } from "react";
 import type { VariantProps } from "class-variance-authority";
+import type { BreadcrumbActionProps } from "./breadcrumb-actions";
+import type { PagePaginationActionProps } from "./pagination";
 
 import type { DataAttributes } from "@/components/thread-ui/common";
 import { Button } from "@/components/thread-ui/button";
@@ -24,7 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const pageVariants = cva(
-  "mx-auto flex min-h-min w-full flex-1 flex-col p-4 @container/page",
+  "mx-auto flex min-h-min w-full min-w-0 flex-1 flex-col @container/page",
   {
     variants: {
       variant: {
@@ -39,12 +47,169 @@ const pageVariants = cva(
   },
 );
 
-export type PageProps = ComponentProps<"div"> &
-  VariantProps<typeof pageVariants>;
+export type PagePrimaryActionConfig = Omit<
+  PagePrimaryActionProps,
+  "children" | "onClick"
+> & {
+  label: ReactNode;
+  icon?: ReactNode;
+  onAction?: () => void;
+};
 
-export const Page: FC<PageProps> = ({ className, variant, ...props }) => {
+export type PageSecondaryActionConfig = Omit<
+  PageSecondaryActionProps,
+  "children"
+> & {
+  key?: string;
+  label: ReactNode;
+};
+
+export type PageBreadcrumbActionConfig = Omit<
+  BreadcrumbActionProps,
+  "children" | "onClick"
+> & {
+  key?: string;
+  label: ReactNode;
+  onAction?: () => void;
+};
+
+export type PagePaginationActionConfig = Omit<
+  PagePaginationActionProps,
+  "onClick"
+> & {
+  onAction?: () => void;
+};
+
+export interface PagePaginationActionsConfig {
+  previous?: PagePaginationActionConfig;
+  next?: PagePaginationActionConfig;
+}
+
+export type PageProps = Omit<ComponentProps<"div">, "title"> &
+  VariantProps<typeof pageVariants> & {
+    title?: ReactNode;
+    description?: ReactNode;
+    breadcrumbActions?: Array<PageBreadcrumbActionConfig>;
+    primaryAction?: PagePrimaryActionConfig;
+    secondaryActions?: Array<PageSecondaryActionConfig>;
+    paginationActions?: PagePaginationActionsConfig;
+  };
+
+export const Page: FC<PageProps> = ({
+  children,
+  className,
+  variant,
+  title,
+  description,
+  breadcrumbActions,
+  primaryAction,
+  secondaryActions,
+  paginationActions,
+  ...props
+}) => {
+  const configured =
+    title !== undefined ||
+    description !== undefined ||
+    breadcrumbActions !== undefined ||
+    primaryAction !== undefined ||
+    secondaryActions !== undefined ||
+    paginationActions !== undefined;
+  const hasPagination = Boolean(
+    paginationActions?.previous || paginationActions?.next,
+  );
+  const hasActions = Boolean(
+    primaryAction || secondaryActions?.length || hasPagination,
+  );
+  const hasHeader =
+    title != null ||
+    description != null ||
+    Boolean(breadcrumbActions?.length) ||
+    hasActions;
+  const {
+    label: primaryLabel,
+    icon: primaryIcon,
+    onAction: onPrimaryAction,
+    ...primaryProps
+  } = primaryAction ?? {};
+  const { onAction: onPrevious, ...previousProps } =
+    paginationActions?.previous ?? {};
+  const { onAction: onNext, ...nextProps } = paginationActions?.next ?? {};
+
   return (
-    <div className={cn(pageVariants({ variant }), className)} {...props} />
+    <div
+      className="flex min-h-min w-full min-w-0 flex-1 flex-col p-4"
+      data-slot="page-wrapper"
+    >
+      <div
+        className={cn(pageVariants({ variant }), className)}
+        data-slot="page"
+        {...props}
+      >
+        {configured ? (
+          <>
+            {hasHeader && (
+              <PageHeader>
+                {Boolean(breadcrumbActions?.length) && (
+                  <BreadcrumbActions>
+                    {breadcrumbActions?.map(
+                      ({ key, label, onAction, ...action }, index) => (
+                        <BreadcrumbAction
+                          key={key ?? index}
+                          {...action}
+                          onClick={onAction}
+                        >
+                          {label}
+                        </BreadcrumbAction>
+                      ),
+                    )}
+                  </BreadcrumbActions>
+                )}
+                {title != null && <PageTitle>{title}</PageTitle>}
+                {description != null && (
+                  <PageDescription>{description}</PageDescription>
+                )}
+                {hasActions && (
+                  <PageActions>
+                    {secondaryActions?.map(
+                      ({ key, label, ...action }, index) => (
+                        <PageSecondaryAction key={key ?? index} {...action}>
+                          {label}
+                        </PageSecondaryAction>
+                      ),
+                    )}
+                    {primaryAction && (
+                      <PagePrimaryAction
+                        {...primaryProps}
+                        onClick={onPrimaryAction}
+                      >
+                        {primaryIcon}
+                        {primaryLabel}
+                      </PagePrimaryAction>
+                    )}
+                    {hasPagination && (
+                      <PagePagination>
+                        {paginationActions?.previous && (
+                          <PagePreviousAction
+                            {...previousProps}
+                            onClick={onPrevious}
+                          />
+                        )}
+                        {paginationActions?.next && (
+                          <PageNextAction {...nextProps} onClick={onNext} />
+                        )}
+                      </PagePagination>
+                    )}
+                  </PageActions>
+                )}
+              </PageHeader>
+            )}
+            <PageContent>{children}</PageContent>
+          </>
+        ) : (
+          children
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -55,7 +220,7 @@ export const PageHeader: FC<PageHeaderProps> = ({ className, ...props }) => {
     <header
       data-slot="page-header"
       className={cn(
-        "group/page-header grid gap-1 pb-4 has-data-[slot=page-actions]:grid-cols-[1fr_auto] has-data-[slot=page-back-action]:grid-cols-[1fr_auto] has-data-[slot=page-back-action]:grid-rows-[auto_auto_auto] @3xl/page:has-data-[slot=page-back-action]:grid-cols-[auto_1fr_auto] @3xl/page:has-data-[slot=page-back-action]:grid-rows-[auto_auto] @3xl/page:has-data-[slot=page-back-action]:gap-x-2",
+        "group/page-header grid grid-cols-[minmax(0,1fr)] items-center gap-1 pb-4 has-data-[slot=page-actions]:grid-cols-[minmax(0,1fr)_auto] has-data-[slot=page-breadcrumb-actions]:grid-cols-[auto_minmax(0,1fr)] has-data-[slot=page-breadcrumb-actions]:has-data-[slot=page-actions]:grid-cols-[auto_minmax(0,1fr)_auto]",
         className,
       )}
       {...props}
@@ -70,46 +235,22 @@ export type PageActionProps = Omit<
   className?: string;
 };
 
-export type PageBackActionProps = PageActionProps;
-
-export const PageBackAction: FC<PageBackActionProps> = ({
-  children,
-  className,
-  "aria-label": ariaLabel,
-  ...props
-}) => {
-  const { t } = useTranslation("thread-ui");
-
-  return (
-    <Button
-      aria-label={
-        ariaLabel ?? (children == null ? t("page.back", "Back") : undefined)
-      }
-      {...props}
-      data-slot="page-back-action"
-      size="icon"
-      variant="ghost"
-      className={cn(
-        "col-start-1 row-start-1 self-start justify-self-start @3xl/page:row-span-2",
-        className,
-      )}
-    >
-      {children ?? <ArrowLeftIcon />}
-    </Button>
-  );
-};
-
 export type PagePrimaryActionProps = PageActionProps;
 
 export const PagePrimaryAction: FC<PagePrimaryActionProps> = ({
   className,
+  nativeButton,
+  render,
   ...props
 }) => {
   return (
     <Button
+      role={(nativeButton ?? render == null) ? undefined : "link"}
       {...props}
-      className={cn("order-last", className)}
+      className={cn("order-20", className)}
       data-slot="page-primary-action"
+      nativeButton={nativeButton ?? render == null}
+      render={render}
       variant="default"
     />
   );
@@ -117,7 +258,7 @@ export const PagePrimaryAction: FC<PagePrimaryActionProps> = ({
 
 export type PageSecondaryActionProps = Pick<
   PageActionProps,
-  "className" | "disabled" | "title"
+  "className" | "disabled" | "title" | "loading" | "nativeButton" | "render"
 > &
   AriaAttributes &
   DataAttributes & {
@@ -145,7 +286,7 @@ export const PageTitle: FC<PageTitleProps> = ({ className, ...props }) => {
     <h2
       data-slot="page-title"
       className={cn(
-        "py-0.5 text-2xl font-semibold tracking-tight group-has-data-[slot=page-back-action]/page-header:col-span-2 group-has-data-[slot=page-back-action]/page-header:row-start-2 @3xl/page:group-has-data-[slot=page-back-action]/page-header:col-span-1 @3xl/page:group-has-data-[slot=page-back-action]/page-header:col-start-2 @3xl/page:group-has-data-[slot=page-back-action]/page-header:row-start-1",
+        "col-start-1 row-start-1 min-w-0 truncate py-0.5 text-lg font-semibold tracking-tight group-has-data-[slot=page-breadcrumb-actions]/page-header:col-start-2 @2xl/page:text-xl",
         className,
       )}
       {...props}
@@ -163,7 +304,7 @@ export const PageDescription: FC<PageDescriptionProps> = ({
     <p
       data-slot="page-description"
       className={cn(
-        "text-muted-foreground text-sm group-has-data-[slot=page-back-action]/page-header:col-span-2 group-has-data-[slot=page-back-action]/page-header:row-start-3 @3xl/page:group-has-data-[slot=page-back-action]/page-header:col-span-1 @3xl/page:group-has-data-[slot=page-back-action]/page-header:col-start-2 @3xl/page:group-has-data-[slot=page-back-action]/page-header:row-start-2",
+        "text-muted-foreground col-span-full row-start-2 min-w-0 text-sm wrap-anywhere @2xl/page:group-has-data-[slot=page-breadcrumb-actions]/page-header:col-start-2",
         className,
       )}
       {...props}
@@ -209,7 +350,16 @@ export const PageActions: FC<PageActionsProps> = ({
       (
         {
           key,
-          props: { children, className, destructive, icon, onAction, ...props },
+          props: {
+            children,
+            className,
+            destructive,
+            icon,
+            nativeButton,
+            render,
+            onAction,
+            ...props
+          },
         },
         index,
       ) => (
@@ -218,6 +368,9 @@ export const PageActions: FC<PageActionsProps> = ({
           {...props}
           className={className}
           data-slot="page-secondary-action"
+          nativeButton={nativeButton ?? render == null}
+          render={render}
+          role={(nativeButton ?? render == null) ? undefined : "link"}
           variant={destructive ? "destructive" : "secondary"}
           onClick={() => onAction?.()}
         >
@@ -231,7 +384,18 @@ export const PageActions: FC<PageActionsProps> = ({
       (
         {
           key,
-          props: { children, className, destructive, icon, onAction, ...props },
+          props: {
+            children,
+            className,
+            destructive,
+            disabled,
+            icon,
+            loading,
+            nativeButton,
+            render,
+            onAction,
+            ...props
+          },
         },
         index,
       ) => (
@@ -239,6 +403,9 @@ export const PageActions: FC<PageActionsProps> = ({
           key={key ?? index}
           {...props}
           className={className}
+          disabled={disabled || loading}
+          nativeButton={nativeButton ?? false}
+          render={render}
           variant={destructive ? "destructive" : "default"}
           onClick={() => onAction?.()}
         >
@@ -253,20 +420,19 @@ export const PageActions: FC<PageActionsProps> = ({
       {...props}
       data-slot="page-actions"
       className={cn(
-        "col-start-2 row-span-2 row-start-1 flex items-center gap-2 self-start justify-self-end group-has-data-[slot=page-back-action]/page-header:row-span-1 @3xl/page:group-has-data-[slot=page-back-action]/page-header:col-start-3 @3xl/page:group-has-data-[slot=page-back-action]/page-header:row-span-2 [&>[data-slot=page-primary-action]]:order-last [&>[data-slot=page-secondary-actions]]:order-10",
+        "col-start-2 row-start-1 flex shrink-0 items-center gap-2 justify-self-end group-has-data-[slot=page-breadcrumb-actions]/page-header:col-start-3 [&>[data-slot=page-primary-action]]:order-20 [&>[data-slot=page-secondary-actions]]:order-10",
         className,
       )}
     >
-      {actionChildren}
       {secondaryActions.length > 0 ? (
         <div
           className="order-10 flex items-center gap-2"
           data-slot="page-secondary-actions"
         >
-          <div className="hidden @3xl/page:flex @3xl/page:items-center @3xl/page:gap-2">
+          <div className="hidden @2xl/page:flex @2xl/page:items-center @2xl/page:gap-2">
             {renderSecondaryButtons(inlineSecondaryActions)}
           </div>
-          <div className="@3xl/page:hidden">
+          <div className="@2xl/page:hidden">
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
@@ -285,7 +451,7 @@ export const PageActions: FC<PageActionsProps> = ({
             </DropdownMenu>
           </div>
           {overflowSecondaryActions.length > 0 ? (
-            <div className="hidden @3xl/page:block">
+            <div className="hidden @2xl/page:block">
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
@@ -306,6 +472,7 @@ export const PageActions: FC<PageActionsProps> = ({
           ) : null}
         </div>
       ) : null}
+      {actionChildren}
     </div>
   );
 };
@@ -315,3 +482,21 @@ export type PageContentProps = ComponentProps<"div">;
 export const PageContent: FC<PageContentProps> = ({ className, ...props }) => {
   return <div className={cn("flex-1", className)} {...props} />;
 };
+
+export { BreadcrumbActions, BreadcrumbAction } from "./breadcrumb-actions";
+export type {
+  BreadcrumbActionsProps,
+  BreadcrumbActionProps,
+} from "./breadcrumb-actions";
+
+export {
+  PagePagination,
+  PagePreviousAction,
+  PageNextAction,
+} from "./pagination";
+export type {
+  PagePaginationProps,
+  PagePaginationActionProps,
+  PagePreviousActionProps,
+  PageNextActionProps,
+} from "./pagination";

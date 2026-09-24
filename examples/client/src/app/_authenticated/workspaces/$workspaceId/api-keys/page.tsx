@@ -1,20 +1,33 @@
 import { useMutation, useQuery } from "@apollo/client/react";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
+import { graphql } from "@/gql";
+import { UPDATE_WORKSPACE_API_KEY } from "@/graphql/mutations/update-workspace-api-key";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { useAbility } from "@/contexts/ability-context";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { ApiKeysPage } from "@/components/api-keys-page";
-import { graphql } from "@/gql";
-import {
-  apiKeySearchSchema,
-  createApiKeyQueryVariables,
-} from "@/lib/api-key-search";
-import {
-  getDefaultApiKeyPermissions,
-  getPermissionOptions,
-  workspaceApiKeyPermissionValues,
-} from "@/lib/permissions";
+import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
+import { getWorkspaceApiKeysResourceKey } from "@/lib/resource-keys";
+
+const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
+  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {
+    deleteWorkspaceApiKey(id: $id) {
+      workspaceId
+      id
+      name
+      start
+      prefix
+      enabled
+      permissions
+      createdAt
+      lastUsedAt
+      expiresAt
+    }
+  }
+`);
 
 const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
   query getApiKeysFromApiKeysRoute(
@@ -26,11 +39,6 @@ const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
     $orderBy: WorkspaceApiKeyOrder
     $query: String
   ) {
-    workspaceApiKeyPermissions {
-      permission
-      grantable
-      default
-    }
     currentWorkspace {
       apiKeys(
         after: $after
@@ -66,77 +74,10 @@ const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
   }
 `);
 
-const CREATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
-  mutation createWorkspaceApiKeyFromApiKeysRoute(
-    $input: CreateWorkspaceApiKeyInput!
-  ) {
-    createWorkspaceApiKey(input: $input) {
-      apiKey
-      entity {
-        workspaceId
-        id
-        name
-        start
-        prefix
-        enabled
-        permissions
-        createdAt
-        lastUsedAt
-        expiresAt
-      }
-    }
-  }
-`);
-
-const UPDATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
-  mutation updateWorkspaceApiKeyFromApiKeysRoute(
-    $id: ID!
-    $input: UpdateWorkspaceApiKeyInput!
-  ) {
-    updateWorkspaceApiKey(id: $id, input: $input) {
-      workspaceId
-      id
-      name
-      start
-      prefix
-      enabled
-      permissions
-      createdAt
-      lastUsedAt
-      expiresAt
-    }
-  }
-`);
-
-const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
-  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {
-    deleteWorkspaceApiKey(id: $id) {
-      workspaceId
-      id
-      name
-      start
-      prefix
-      enabled
-      permissions
-      createdAt
-      lastUsedAt
-      expiresAt
-    }
-  }
-`);
-
 export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/api-keys/",
 )({
   component: ScopedApiKeysComponent,
-  beforeLoad: ({ context, params }) => {
-    if (!context.ability.can("read", "WorkspaceApiKey")) {
-      throw redirect({
-        to: "/workspaces/$workspaceId",
-        params: { workspaceId: params.workspaceId },
-      });
-    }
-  },
   validateSearch: zodValidator(apiKeySearchSchema),
 });
 
@@ -146,17 +87,22 @@ function ScopedApiKeysComponent() {
 }
 
 function ApiKeysComponent() {
+  const { workspaceId } = Route.useParams();
+  const { t } = useTranslation();
   const ability = useAbility();
   const search = Route.useSearch();
+  const currentUser = useCurrentUserContext();
+  useResourceNavigation({
+    key: [currentUser.id, ...getWorkspaceApiKeysResourceKey(workspaceId)],
+    searchSchema: apiKeySearchSchema,
+    search,
+  });
   const { data, refetch } = useQuery(GET_API_KEYS_FROM_API_KEYS_ROUTE, {
     fetchPolicy: "network-only",
-    variables: createApiKeyQueryVariables(search),
+    variables: search,
   });
-  const [createApiKey, { loading: createLoading }] = useMutation(
-    CREATE_API_KEY_FROM_API_KEYS_ROUTE,
-  );
   const [updateApiKey, { loading: updateLoading }] = useMutation(
-    UPDATE_API_KEY_FROM_API_KEYS_ROUTE,
+    UPDATE_WORKSPACE_API_KEY,
   );
   const [deleteApiKey, { loading: deleteLoading }] = useMutation(
     DELETE_API_KEY_FROM_API_KEYS_ROUTE,
@@ -169,23 +115,13 @@ function ApiKeysComponent() {
       ability={ability}
       title={t("api-key:title")}
       description={t("api-key:description")}
+      createPath={`/workspaces/${workspaceId}/api-keys/create`}
+      detailPath={(id) => `/workspaces/${workspaceId}/api-keys/${id}`}
       search={search}
       apiKeys={connection?.edges.map((edge) => edge.node) ?? []}
       pageInfo={connection?.pageInfo}
-      permissionValues={workspaceApiKeyPermissionValues}
-      permissionOptions={getPermissionOptions(
-        data?.workspaceApiKeyPermissions ?? [],
-      )}
-      defaultPermissions={getDefaultApiKeyPermissions(
-        data?.workspaceApiKeyPermissions ?? [],
-      )}
-      createLoading={createLoading}
       updateLoading={updateLoading}
       deleteLoading={deleteLoading}
-      createApiKey={async (input) => {
-        const result = await createApiKey({ variables: { input } });
-        return result.data?.createWorkspaceApiKey.apiKey;
-      }}
       updateApiKey={(id, input) => updateApiKey({ variables: { id, input } })}
       deleteApiKey={(id) => deleteApiKey({ variables: { id } })}
       refetch={refetch}

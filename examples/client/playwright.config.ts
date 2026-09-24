@@ -23,7 +23,7 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: clientUrl,
-    locale: "zh-CN",
+    locale: "en-US",
     screenshot: "only-on-failure",
     timezoneId: "Asia/Shanghai",
     trace: "on-first-retry",

@@ -7,7 +7,7 @@ import type { FC } from "react";
 
 import type {
   DataFilterDatePickerBetweenValue,
-  DataFilterItemProps,
+  DataFilterField,
   DataFilterNumberInputBetweenValue,
   DataFilterOperator,
 } from "../types";
@@ -73,7 +73,7 @@ const getSelectValue = (value: unknown) => {
 };
 
 interface DataFilterDefaultFieldProps {
-  item: DataFilterItemProps;
+  item: DataFilterField;
   operator: DataFilterOperator;
   value: unknown;
   onChange: (value: unknown) => void;

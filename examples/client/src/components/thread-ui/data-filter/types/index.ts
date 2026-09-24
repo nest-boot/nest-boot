@@ -14,7 +14,7 @@ export type * from "./data-filter-item-checkbox-props";
 export type * from "./data-filter-item-date-picker-props";
 export type * from "./data-filter-item-input-props";
 export type * from "./data-filter-item-number-input-props";
-export type * from "./data-filter-item-props";
+export type * from "./data-filter-field";
 export type * from "./data-filter-item-select-props";
 export type * from "./data-filter-not-in-operator";
 export type * from "./data-filter-number-input-operator";

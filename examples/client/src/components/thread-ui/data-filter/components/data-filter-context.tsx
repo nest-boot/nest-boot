@@ -17,15 +17,15 @@ import {
 } from "../utils";
 import type { FC, ReactNode } from "react";
 import type {
-  DataFilterItemProps,
+  DataFilterField,
   DataFilterSelectOption,
   DataFilterSortValue,
   DataFilterValue,
 } from "../types";
 
 type DataFilterGroups = {
-  visibleFilters: Array<DataFilterItemProps>;
-  hiddenFilters: Array<DataFilterItemProps>;
+  visibleFilters: Array<DataFilterField>;
+  hiddenFilters: Array<DataFilterField>;
 };
 
 type DataFilterContextValue = DataFilterGroups & {
@@ -46,16 +46,18 @@ type DataFilterContextValue = DataFilterGroups & {
 
 interface DataFilterProviderProps {
   children: ReactNode;
-  filters: Array<DataFilterItemProps>;
+  filters: Array<DataFilterField>;
   value?: DataFilterValue;
   defaultValue?: DataFilterValue;
   onChange?: (value: DataFilterValue) => void;
+  /** Standalone items control raw conditions, including incomplete editor values. */
+  onFieldValueChange?: (field: string, value: unknown) => void;
 }
 
 const DataFilterContext = createContext<DataFilterContextValue | null>(null);
 
 const getFilterGroups = (
-  filters: Array<DataFilterItemProps>,
+  filters: Array<DataFilterField>,
   values: Record<string, unknown>,
   visibleFields = new Set<string>(),
 ): DataFilterGroups => {
@@ -130,6 +132,7 @@ export const DataFilterProvider: FC<DataFilterProviderProps> = ({
   value: controlledValue,
   defaultValue,
   onChange,
+  onFieldValueChange,
 }) => {
   const isControlled = typeof controlledValue !== "undefined";
   const [uncontrolledValue, setUncontrolledValue] = useState(() =>
@@ -137,9 +140,13 @@ export const DataFilterProvider: FC<DataFilterProviderProps> = ({
   );
   const rawValue = isControlled ? controlledValue : uncontrolledValue;
   const value = useMemo(() => normalizeDataFilterValue(rawValue), [rawValue]);
-  const [filterValues, setFilterValues] = useState<Record<string, unknown>>(
-    () => hydrateDataFilterValueFilter(value.filter),
-  );
+  const [draftFilterValues, setFilterValues] = useState<
+    Record<string, unknown>
+  >(() => hydrateDataFilterValueFilter(value.filter));
+  const isFieldControlled = typeof onFieldValueChange === "function";
+  const filterValues = isFieldControlled
+    ? (controlledValue?.filter ?? value.filter)
+    : draftFilterValues;
   const [visibleFields, setVisibleFields] = useState(() => {
     return getActiveFields(value.filter);
   });
@@ -153,6 +160,10 @@ export const DataFilterProvider: FC<DataFilterProviderProps> = ({
   const isMountedRef = useRef(false);
 
   useEffect(() => {
+    if (isFieldControlled) {
+      return;
+    }
+
     const hydratedValues = hydrateDataFilterValueFilter(value.filter);
 
     setFilterValues((currentValues) => {
@@ -175,7 +186,7 @@ export const DataFilterProvider: FC<DataFilterProviderProps> = ({
     setVisibleFields((currentFields) => {
       return new Set([...currentFields, ...getActiveFields(hydratedValues)]);
     });
-  }, [filters, value.filter]);
+  }, [filters, isFieldControlled, value.filter]);
 
   useEffect(() => {
     setFilterGroups(getFilterGroups(filters, filterValues, visibleFields));
@@ -310,6 +321,11 @@ export const DataFilterProvider: FC<DataFilterProviderProps> = ({
 
   const setFilterValue = useCallback(
     (field: string, value: unknown) => {
+      if (onFieldValueChange) {
+        onFieldValueChange(field, value);
+        return;
+      }
+
       const nextValues = {
         ...filterValues,
         [field]: value,
@@ -318,7 +334,7 @@ export const DataFilterProvider: FC<DataFilterProviderProps> = ({
       setFilterValues(nextValues);
       emitValueChange(createNextValue(nextValues));
     },
-    [createNextValue, emitValueChange, filterValues],
+    [createNextValue, emitValueChange, filterValues, onFieldValueChange],
   );
 
   const setFilterVisible = useCallback((field: string, visible: boolean) => {

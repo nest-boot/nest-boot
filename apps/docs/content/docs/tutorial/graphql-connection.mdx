@@ -140,6 +140,35 @@ export const { Connection: BookConnection } = new ConnectionBuilder(Book)
 
 With that configuration, `filter: { title: { $fulltext: "nest" } }` and `query: "title:nest"` both search `searchableTitle`, while regular operators such as `$eq` still target `title`.
 
+### Calendar-date filters
+
+For scalar fields declared with `type: "date"`, structured `filter` values in
+`YYYY-MM-DD` format represent a complete day. Full ISO timestamps retain their
+exact time. The backend expands dates after validating filters and resolving
+field aliases. Callback output targeting these registered date paths follows the
+same rule: return a full ISO timestamp when an exact instant is intended.
+
+Send `X-Timezone-Offset: String(new Date().getTimezoneOffset())` from the client.
+The value is integer minutes of UTC minus local time (UTC+8 sends `-480`). It is a
+fixed offset for the whole request, including historical dates; it does not carry
+IANA timezone or daylight-saving rules. Missing headers use UTC (`0`); invalid
+values outside `-840` through `840` are rejected.
+
+| Date condition     | Result in the request's fixed offset                             |
+| ------------------ | ---------------------------------------------------------------- |
+| Bare date or `$eq` | At or after the day's start, before the next day's start         |
+| `$ne`              | Exclude that day                                                 |
+| `$gte` / `$lt`     | Compare with the day's start                                     |
+| `$gt` / `$lte`     | At or after / before the next day's start                        |
+| `$between`         | Include both calendar days, excluding the day after the end date |
+
+For example, `{ created_at: { $lte: "2026-09-24" } }` with offset `-480`
+becomes `{ createdAt: { $lt: "2026-09-24T16:00:00.000Z" } }` when the field
+maps to `createdAt`. This avoids relying on database fractional-second precision.
+Date values in `$in` / `$nin` and logical combinations are also supported.
+This behavior applies to structured filters, not dates already parsed into
+precise instants by the text search syntax.
+
 ## Search Query
 
 Human-friendly search syntax with field-specific filters: `field:value`, quoted strings, and negation.

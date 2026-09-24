@@ -58,13 +58,13 @@
       }
     },
     "search": {
-      "placeholder": "搜索姓名或邮箱（前缀匹配请加 *）"
+      "placeholder": "搜索姓名或邮箱"
     }
   },
   "invite": {
     "button": "邀请",
     "confirm_and_copy": "确认并复制链接",
-    "copy_failed": "邀请已创建，但无法自动复制链接",
+    "copy_failed": "邀请已创建，但无法复制链接。您可以手动选择并复制。",
     "description": "系统将生成一个邀请链接",
     "email_label": "邮箱",
     "email_placeholder": "user@example.com",
@@ -76,12 +76,20 @@
     "link_user_join": "邀请的用户可以通过点击链接加入工作空间",
     "role_label": "角色",
     "select_role_placeholder": "选择角色",
-    "title": "邀请工作空间成员"
+    "title": "邀请工作空间成员",
+    "form_title": "邀请信息",
+    "form_description": "受邀用户可以通过链接加入此工作空间，邀请将在 48 小时后过期。",
+    "role_required": "请至少选择一个角色。",
+    "role_invalid": "请选择您可以授予的角色。",
+    "no_roles": "您没有可授予的角色。",
+    "failed": "无法创建邀请，请重试。",
+    "copy_link": "复制邀请链接"
   },
   "role": {
     "admin": "管理员",
     "member": "成员",
-    "owner": "所有者"
+    "owner": "所有者",
+    "user": "普通用户"
   },
   "status": {
     "active": "活跃",

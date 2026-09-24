@@ -4,7 +4,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { Loader2 } from "lucide-react";
 import z from "zod";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { toast } from "@/components/thread-ui/toast";
 
 import { graphql } from "@/gql";
@@ -14,6 +14,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -67,6 +68,7 @@ export const Route = createFileRoute("/invite/")({
 });
 
 function InviteComponent() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const search = Route.useSearch();
 
@@ -107,7 +109,7 @@ function InviteComponent() {
       return t("workspace:invite.error.expired");
     }
     return null;
-  }, [invitation, invitationId, inviteError]);
+  }, [invitation, invitationId, inviteError, t]);
 
   // 如果未登录，立即跳转到登录页（避免闪烁）
   useEffect(() => {
@@ -200,24 +202,17 @@ function InviteComponent() {
   // 错误处理（只有在查询完成且确实有错误或没有数据时才显示）
   if (!inviteLoading && invitationUnavailableMessage) {
     return (
-      <div
-        className="flex min-h-screen items-center justify-center"
-        data-testid="invite-error-page"
-      >
+      <div className="flex min-h-screen items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>{t("workspace:invite.error.title")}</CardTitle>
             <CardDescription>{invitationUnavailableMessage}</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button
-              onClick={handleExit}
-              className="w-full"
-              data-testid="invite-error-exit"
-            >
+          <CardFooter>
+            <Button onClick={handleExit} className="w-full">
               {t("workspace:invite.error.back_button")}
             </Button>
-          </CardContent>
+          </CardFooter>
         </Card>
       </div>
     );
@@ -243,10 +238,7 @@ function InviteComponent() {
   }
 
   return (
-    <div
-      className="flex min-h-screen items-center justify-center p-4"
-      data-testid="invite-accept-page"
-    >
+    <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>{t("workspace:invite.title")}</CardTitle>
@@ -263,28 +255,29 @@ function InviteComponent() {
                 {t("workspace:invite.form.email.mismatch_error")}
               </p>
             ) : null}
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleExit}
-                className="flex-1"
-              >
-                {t("action.cancel")}
-              </Button>
-              <Button
-                type="button"
-                data-testid="invite-accept-submit"
-                disabled={!!emailMismatch}
-                loading={acceptLoading}
-                className="flex-1"
-                onClick={handleAccept}
-              >
-                {t("workspace:invite.form.submit")}
-              </Button>
-            </div>
           </div>
         </CardContent>
+        <CardFooter>
+          <div className="flex w-full flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExit}
+              className="flex-1"
+            >
+              {t("action.cancel")}
+            </Button>
+            <Button
+              type="button"
+              disabled={!!emailMismatch}
+              loading={acceptLoading}
+              className="flex-1"
+              onClick={handleAccept}
+            >
+              {t("workspace:invite.form.submit")}
+            </Button>
+          </div>
+        </CardFooter>
       </Card>
     </div>
   );

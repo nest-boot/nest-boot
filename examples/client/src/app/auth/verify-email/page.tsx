@@ -3,19 +3,20 @@ import { useMutation } from "@apollo/client/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { CircleCheck, CircleX, MailCheck, RotateCw } from "lucide-react";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { AuthPageShell } from "../components/auth-page-shell";
+import { FieldDescription, FieldError } from "@/components/ui/field";
 import { Button } from "@/components/thread-ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FieldDescription } from "@/components/ui/field";
 import { graphql } from "@/gql";
 import { createEmailVerificationCallbackUrl } from "@/lib/auth-redirect";
 
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/auth/verify-email/")({
 });
 
 function VerifyEmailComponent() {
+  const { t } = useTranslation();
   const search = Route.useSearch();
   const [sendVerificationEmail] = useMutation(
     SEND_VERIFICATION_EMAIL_FROM_VERIFY_EMAIL,
@@ -87,7 +89,7 @@ function VerifyEmailComponent() {
 
   return (
     <AuthPageShell>
-      <Card data-testid="verify-email-view">
+      <Card>
         <CardHeader className="text-center">
           <div className="mb-2 flex justify-center">
             {invalid ? (
@@ -115,27 +117,23 @@ function VerifyEmailComponent() {
                   })}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {resent && (
-            <FieldDescription
-              className="text-center"
-              data-testid="verify-email-resent"
-            >
-              {t("auth:emailVerification.resent")}
-            </FieldDescription>
-          )}
-          {error && (
-            <FieldDescription className="text-destructive text-center">
-              {error}
-            </FieldDescription>
-          )}
-
+        {(resent || error) && (
+          <CardContent>
+            <div className="flex flex-col gap-4">
+              {resent && (
+                <FieldDescription className="text-center">
+                  {t("auth:emailVerification.resent")}
+                </FieldDescription>
+              )}
+              {error && (
+                <FieldError className="text-center">{error}</FieldError>
+              )}
+            </div>
+          </CardContent>
+        )}
+        <CardFooter>
           {verified ? (
-            <Button
-              className="w-full"
-              render={<a href={loginUrl} />}
-              data-testid="verify-email-sign-in"
-            >
+            <Button className="w-full" render={<a href={loginUrl} />}>
               {t("auth:emailVerification.signIn")}
             </Button>
           ) : search.email ? (
@@ -145,7 +143,6 @@ function VerifyEmailComponent() {
               className="w-full"
               onClick={resend}
               loading={loading}
-              data-testid="verify-email-resend"
             >
               <RotateCw />
               {t("auth:emailVerification.resend")}
@@ -159,7 +156,7 @@ function VerifyEmailComponent() {
               {t("auth:emailVerification.backToSignIn")}
             </Button>
           )}
-        </CardContent>
+        </CardFooter>
       </Card>
     </AuthPageShell>
   );

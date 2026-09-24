@@ -17,10 +17,20 @@
     "saving": "Saving..."
   },
   "app": {
-    "name": "Nest Boot Example"
+    "name": "Nest Boot"
   },
   "contextualSaveBar": {
     "discard": "Discard",
     "message": "Unsaved changes"
+  },
+  "navigation": {
+    "retry": "Retry"
+  },
+  "overview": {
+    "title": "Overview",
+    "workspace": "Workspace",
+    "loading": "Loading overview…",
+    "failed": "Could not load overview.",
+    "view_api_keys": "View API keys"
   }
 }

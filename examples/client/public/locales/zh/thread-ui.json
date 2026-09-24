@@ -244,11 +244,33 @@
     "copy": "复制"
   },
   "page": {
-    "back": "返回",
+    "pagination": "项目导航",
+    "previousItem": "上一项",
+    "nextItem": "下一项",
+    "breadcrumbs": "面包屑导航",
+    "parentPages": "上级页面",
     "moreActions": "更多操作"
   },
   "codeBlock": {
     "copy": "复制代码",
     "selectLanguage": "选择代码语言"
+  },
+  "layout": {
+    "navigation": "导航",
+    "toggleNavigation": "切换导航",
+    "skipToContent": "跳转到主要内容"
+  },
+  "topbarMenu": {
+    "choose": "选择工作空间",
+    "switch": "切换工作空间：{{name}}",
+    "recentWorkspaces": "最近的工作空间",
+    "create": "创建工作空间",
+    "userMenu": "账号：{{name}}",
+    "accountMenu": "工作空间与账号：{{name}}",
+    "profile": "个人中心：{{name}}",
+    "language": "语言",
+    "theme": "主题",
+    "help": "帮助中心",
+    "signOut": "退出登录"
   }
 }

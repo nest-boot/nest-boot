@@ -1,47 +1,28 @@
-import { Link, linkOptions } from "@tanstack/react-router";
-import { t } from "i18next";
-import { UsersRound } from "lucide-react";
-import { SidebarUser } from "../../components/sidebar-user";
+import { linkOptions } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { LayoutDashboard, UsersRound } from "lucide-react";
 import type { ComponentProps, FC } from "react";
+import { Link } from "@/components/link";
 
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 export const AdminSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
+  const { t } = useTranslation();
+  const { setOpenMobile } = useSidebar();
   const usersLink = linkOptions({ to: "/admin/users" });
 
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              render={
-                <Link to="/workspaces">
-                  <img
-                    src="/logo.svg"
-                    alt={t("app.name")}
-                    className="aspect-square size-8"
-                  />
-                  <span className="font-medium">{t("app.name")}</span>
-                </Link>
-              }
-            />
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
+    <Sidebar collapsible="offcanvas" {...props}>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>{t("sidebar:admin.title")}</SidebarGroupLabel>
@@ -50,7 +31,21 @@ export const AdminSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   render={
-                    <Link {...usersLink} data-testid="admin-sidebar-users-link">
+                    <Link
+                      to="/admin"
+                      activeOptions={{ exact: true }}
+                      onClick={() => setOpenMobile(false)}
+                    >
+                      <LayoutDashboard />
+                      <span>{t("common:overview.title")}</span>
+                    </Link>
+                  }
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={
+                    <Link {...usersLink} onClick={() => setOpenMobile(false)}>
                       <UsersRound />
                       <span>{t("sidebar:admin.users")}</span>
                     </Link>
@@ -61,10 +56,6 @@ export const AdminSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <SidebarUser />
-      </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   );
 };

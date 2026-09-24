@@ -1,4 +1,4 @@
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 
 import type { PermissionOption } from "@/lib/permissions";
 import { CheckboxGroup } from "@/components/thread-ui/checkbox-group";
@@ -16,11 +16,11 @@ export function PermissionCheckboxGroup<Permission extends string>({
   onChange,
   disabled = false,
 }: PermissionCheckboxGroupProps<Permission>) {
+  const { t } = useTranslation();
   const items = options.map((option) => ({
     value: option.value,
     label: t(option.name),
     description: t(option.description),
-    testId: `permission-${option.value}`,
     disabled: option.grantable === false && !value.includes(option.value),
   }));
   return (

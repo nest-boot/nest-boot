@@ -8,6 +8,205 @@ import { createFirstWorkspace } from "./utils/workspace";
 import type { Page } from "@playwright/test";
 
 test.describe("user pages", () => {
+  test("opens the profile from the user row and persists language and theme preferences", async ({
+    page,
+  }) => {
+    await registerUser(page, {
+      email: `${uniqueSeed("user-preferences")}@example.com`,
+      name: "Preferences User",
+    });
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
+    const profileLink = page.getByRole("menuitem", { name: /^Open profile:/ });
+    await expect(profileLink).toContainText("Preferences User");
+    await expect(profileLink).toHaveAttribute("href", "/user/profile");
+    await expect(
+      page.getByRole("menuitem", { name: "Workspaces", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("menuitem", { name: "API Keys", exact: true }),
+    ).toHaveCount(0);
+    await profileLink.click();
+    await expect(page).toHaveURL(/\/user\/profile$/);
+
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
+    await page.getByRole("menuitem", { name: /^(Language|语言)$/ }).click();
+    await page
+      .getByRole("menuitemradio", { name: "简体中文", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "个人资料", exact: true }),
+    ).toBeVisible();
+
+    const nameInput = page.getByLabel(/^(Name|名称)$/);
+    await nameInput.fill("Unsaved profile name");
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
+    await page.getByRole("menuitem", { name: /^(Language|语言)$/ }).click();
+    await page
+      .getByRole("menuitemradio", { name: "English", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Profile", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Security", exact: true }),
+    ).toHaveText("Security");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(nameInput).toHaveValue("Unsaved profile name");
+
+    const selectTheme = async (name: string) => {
+      await page
+        .getByRole("button", {
+          name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+        })
+        .click();
+      await page.getByRole("menuitem", { name: "Theme", exact: true }).click();
+      await page.getByRole("menuitemradio", { name, exact: true }).click();
+    };
+    await selectTheme("Dark");
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+    await page.reload();
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+    await expect(
+      page.getByRole("heading", { name: "Profile", exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
+    await page.getByRole("menuitem", { name: "Theme", exact: true }).click();
+    await expect(
+      page.getByRole("menuitemradio", { name: "Dark", exact: true }),
+    ).toHaveAttribute("aria-checked", "true");
+    await page
+      .getByRole("menuitemradio", { name: "Light", exact: true })
+      .click();
+    await expect(page.locator("html")).toHaveClass(/\blight\b/);
+
+    await page.emulateMedia({ colorScheme: "dark" });
+    await selectTheme("System");
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+    await page.emulateMedia({ colorScheme: "light" });
+    await expect(page.locator("html")).toHaveClass(/\blight\b/);
+    await page.reload();
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
+    await page.getByRole("menuitem", { name: /^(Language|语言)$/ }).click();
+    await expect(
+      page.getByRole("menuitemradio", { name: "English", exact: true }),
+    ).toHaveAttribute("aria-checked", "true");
+    await page
+      .getByRole("menuitemradio", { name: "简体中文", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "个人资料", exact: true }),
+    ).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("lang", "zh");
+  });
+
+  test("navigates top-level pages with the mobile drawer, account menu, and browser history", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 500 });
+    await registerUser(page, {
+      email: `${uniqueSeed("mobile-navigation")}@example.com`,
+      name: "Mobile navigation",
+    });
+    await page.goto("/user/profile");
+
+    const viewport = page.getByRole("main");
+    await page
+      .getByRole("button", { name: "Send verification email", exact: true })
+      .scrollIntoViewIfNeeded();
+    await expect
+      .poll(() => viewport.evaluate((element) => element.scrollTop))
+      .toBeGreaterThan(0);
+    const navigation = page.getByRole("button", { name: "Toggle navigation" });
+    await navigation.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.getByRole("link", { name: "Security", exact: true }).click();
+    await expect(page).toHaveURL(/\/user\/security$/);
+    await expect(navigation).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect
+      .poll(() => viewport.evaluate((element) => element.scrollTop))
+      .toBe(0);
+
+    await page
+      .locator('[data-slot="card"]')
+      .filter({ has: page.getByText("Delete account", { exact: true }) })
+      .scrollIntoViewIfNeeded();
+    const securityScrollTop = await viewport.evaluate(
+      (element) => element.scrollTop,
+    );
+    expect(securityScrollTop).toBeGreaterThan(200);
+    await expect(
+      page.getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      }),
+    ).toBeInViewport();
+    await expect(navigation).toBeInViewport();
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
+    await page.getByRole("menuitem", { name: /^Open profile:/ }).click();
+    await expect(page).toHaveURL(/\/user\/profile$/);
+    await expect
+      .poll(() => viewport.evaluate((element) => element.scrollTop))
+      .toBe(0);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/user\/security$/);
+    await expect
+      .poll(() => viewport.evaluate((element) => element.scrollTop))
+      .toBe(securityScrollTop);
+    await page.goForward();
+    await expect(page).toHaveURL(/\/user\/profile$/);
+    await expect
+      .poll(() => viewport.evaluate((element) => element.scrollTop))
+      .toBe(0);
+
+    await navigation.click();
+    await page.getByRole("link", { name: "Security", exact: true }).click();
+    await expect(
+      page.getByRole("navigation", { name: "Breadcrumbs" }),
+    ).toHaveCount(0);
+    await navigation.click();
+    await page
+      .getByRole("dialog")
+      .getByRole("link", { name: "Overview", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/user$/);
+    await expect(
+      page.getByRole("heading", { name: "Overview", exact: true }),
+    ).toBeVisible();
+
+    await navigation.click();
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Security", exact: true }),
+    ).toBeVisible();
+    await expect(navigation).toBeHidden();
+  });
+
   test("loads subsequent pages of linked accounts", async ({ page }) => {
     await registerUser(page, {
       email: `${uniqueSeed("account-pages")}@example.com`,
@@ -64,13 +263,37 @@ test.describe("user pages", () => {
     });
     try {
       await page.goto("/user/security");
-      await expect(page.getByTestId("user-account-test-0")).toBeVisible();
-      await expect(page.getByTestId("user-account-test-20")).toHaveCount(0);
-      await page.getByTestId("user-accounts-load-more").click();
+      await expect(
+        page
+          .locator('[data-slot="card"]')
+          .filter({ has: page.getByText("Linked accounts", { exact: true }) })
+          .getByText("test-0", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page
+          .locator('[data-slot="card"]')
+          .filter({ has: page.getByText("Linked accounts", { exact: true }) })
+          .getByText("test-20", { exact: true }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("button", { name: "Load more", exact: true })
+        .click();
       await expect.poll(() => cursors).toContain("next");
-      await expect(page.getByTestId("user-account-test-20")).toBeVisible();
-      await expect(page.getByTestId("user-account-test-0")).toBeVisible();
-      await expect(page.getByTestId("user-accounts-load-more")).toHaveCount(0);
+      await expect(
+        page
+          .locator('[data-slot="card"]')
+          .filter({ has: page.getByText("Linked accounts", { exact: true }) })
+          .getByText("test-20", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page
+          .locator('[data-slot="card"]')
+          .filter({ has: page.getByText("Linked accounts", { exact: true }) })
+          .getByText("test-0", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Load more", exact: true }),
+      ).toHaveCount(0);
       expect(cursors).toContain("next");
     } finally {
       await page.unrouteAll({ behavior: "wait" });
@@ -91,23 +314,33 @@ test.describe("user pages", () => {
     });
     await createFirstWorkspace(page, workspaceName);
 
-    await page.getByTestId("sidebar-user-menu").click();
-    await page.getByTestId("sidebar-user-account-link").click();
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
+    await page.getByRole("menuitem", { name: /^Open profile:/ }).click();
 
-    await expect(page).toHaveURL(/\/user$/);
-    await expect(page.getByTestId("user-profile-page")).toBeVisible();
+    await expect(page).toHaveURL(/\/user\/profile$/);
+    await expect(
+      page.getByRole("heading", { name: "Profile", exact: true }),
+    ).toBeVisible();
 
-    const nameInput = page.getByTestId("user-profile-name-input");
+    const nameInput = page.getByLabel("Name", { exact: true });
     await nameInput.fill(updatedName);
-    await page.getByTestId("user-profile-save").click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(nameInput).toHaveValue(updatedName);
 
     await page.reload();
     await expect(nameInput).toHaveValue(updatedName);
 
-    await page.getByTestId("user-new-email-input").fill(newEmail);
-    await page.getByTestId("user-change-email-submit").click();
-    await expect(page.getByText("确认邮件已发送至当前邮箱")).toBeVisible();
+    await page.getByLabel("New email", { exact: true }).fill(newEmail);
+    await page
+      .getByRole("button", { name: "Send verification email", exact: true })
+      .click();
+    await expect(
+      page.getByText("Confirmation email sent to your current address"),
+    ).toBeVisible();
 
     const confirmationUrl = await waitForEmailUrl(
       page.request,
@@ -115,8 +348,10 @@ test.describe("user pages", () => {
       "Confirm your email change",
     );
     await page.goto(confirmationUrl);
-    await expect(page).toHaveURL(/\/user\?emailChangeCallback=true/);
-    await expect(page.getByTestId("user-email-confirmed-alert")).toBeVisible();
+    await expect(page).toHaveURL(/\/user\/profile\?emailChangeCallback=true/);
+    await expect(
+      page.getByRole("alert").filter({ hasText: "Email change confirmed" }),
+    ).toBeVisible();
 
     const verificationUrl = await waitForEmailUrl(
       page.request,
@@ -124,18 +359,32 @@ test.describe("user pages", () => {
       "Verify your email address",
     );
     await page.goto(verificationUrl);
-    await expect(page).toHaveURL(/\/user\?emailChangeCallback=true/);
-    await expect(page.getByTestId("user-email-changed-alert")).toBeVisible();
-    await expect(page.getByTestId("user-current-email")).toHaveValue(newEmail);
+    await expect(page).toHaveURL(/\/user\/profile\?emailChangeCallback=true/);
+    await expect(
+      page.getByRole("alert").filter({ hasText: "Email changed" }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Current email", { exact: true })).toHaveValue(
+      newEmail,
+    );
 
-    await page.getByTestId("user-sidebar-workspaces-link").click();
+    await page
+      .locator('[data-slot="sidebar"]')
+      .getByRole("link", { name: "Workspaces", exact: true })
+      .click();
     await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
-    await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Workspaces", exact: true }),
+    ).toBeVisible();
     await expect(page.getByText(workspaceName, { exact: true })).toBeVisible();
 
-    await page.getByTestId("user-sidebar-api-keys-link").click();
+    await page
+      .locator('[data-slot="sidebar"]')
+      .getByRole("link", { name: "API Keys", exact: true })
+      .click();
     await expect(page).toHaveURL(/\/user\/api-keys(?:\?.*)?$/);
-    await expect(page.getByTestId("api-keys-page")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "API Keys", exact: true }),
+    ).toBeVisible();
   });
 
   test("lists active sessions and signs out other devices", async ({
@@ -151,27 +400,45 @@ test.describe("user pages", () => {
     });
 
     const otherContext = await browser.newContext({
-      locale: "zh-CN",
+      locale: "en-US",
       timezoneId: "Asia/Shanghai",
     });
     const otherPage = await otherContext.newPage();
 
     try {
       await otherPage.goto("/auth/login");
-      await otherPage.getByTestId("auth-email-input").fill(email);
-      await otherPage.getByTestId("auth-password-input").fill(testPassword);
-      await otherPage.getByTestId("auth-submit").click();
+      await otherPage.getByLabel("Email", { exact: true }).fill(email);
+      await otherPage
+        .getByLabel("Password", { exact: true })
+        .fill(testPassword);
+      await otherPage
+        .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+        .click();
       await expect(otherPage).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
 
       await page.goto("/user/security");
-      await expect(page.getByTestId("user-session-row")).toHaveCount(2);
-      await expect(page.getByText("当前会话", { exact: true })).toHaveCount(1);
+      await expect(
+        page
+          .locator('[data-slot="card"]')
+          .filter({ has: page.getByText("Active sessions", { exact: true }) })
+          .getByRole("listitem"),
+      ).toHaveCount(2);
+      await expect(
+        page.getByText("Current session", { exact: true }),
+      ).toHaveCount(1);
 
-      await page.getByTestId("user-revoke-other-session-list").click();
-      await expect(page.getByTestId("user-session-row")).toHaveCount(1);
-      await expect(page.getByText("其他会话已退出")).toBeVisible();
+      await page
+        .getByRole("button", { name: "Sign out other sessions", exact: true })
+        .click();
+      await expect(
+        page
+          .locator('[data-slot="card"]')
+          .filter({ has: page.getByText("Active sessions", { exact: true }) })
+          .getByRole("listitem"),
+      ).toHaveCount(1);
+      await expect(page.getByText("Other sessions signed out")).toBeVisible();
 
-      await otherPage.goto("/user");
+      await otherPage.goto("/user/profile");
       await expect(otherPage).toHaveURL(/\/auth\/login/);
     } finally {
       await otherContext.close();
@@ -194,7 +461,7 @@ test.describe("user pages", () => {
     });
 
     const ownerContext = await browser.newContext({
-      locale: "zh-CN",
+      locale: "en-US",
       timezoneId: "Asia/Shanghai",
     });
     const ownerPage = await ownerContext.newPage();
@@ -213,46 +480,120 @@ test.describe("user pages", () => {
         ownerPage,
         rejectedWorkspaceName,
       );
-      const acceptedInvitation = await createInvitationByApi(
+      await createInvitationByApi(
         ownerPage,
         acceptedWorkspace.id,
         inviteeEmail,
       );
-      const rejectedInvitation = await createInvitationByApi(
+      await createInvitationByApi(
         ownerPage,
         rejectedWorkspace.id,
         inviteeEmail,
       );
 
       await page.reload();
-      await expect(page.getByTestId("user-invitations")).toBeVisible();
       await expect(
-        page.getByTestId(`user-invitation-${acceptedInvitation.id}`),
+        page.locator('[data-slot="card"]').filter({
+          has: page.getByText("Pending invitations", { exact: true }),
+        }),
+      ).toBeVisible();
+      await expect(
+        page
+          .locator('[data-slot="card"]')
+          .filter({
+            has: page.getByText("Pending invitations", { exact: true }),
+          })
+          .getByRole("cell", { name: acceptedWorkspaceName, exact: true }),
       ).toHaveText(acceptedWorkspaceName);
       await expect(
-        page.getByTestId(`user-invitation-${rejectedInvitation.id}`),
+        page
+          .locator('[data-slot="card"]')
+          .filter({
+            has: page.getByText("Pending invitations", { exact: true }),
+          })
+          .getByRole("cell", { name: rejectedWorkspaceName, exact: true }),
       ).toHaveText(rejectedWorkspaceName);
 
+      // Prime the switcher before membership changes, without reloading afterward.
+      const menuResponse = page.waitForResponse(
+        (response) =>
+          response
+            .request()
+            .postData()
+            ?.includes("getWorkspacesFromWorkspaceSwitcher") === true,
+      );
       await page
-        .getByTestId(`user-invitation-accept-${acceptedInvitation.id}`)
+        .getByRole("button", {
+          name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+        })
         .click();
-      await expect(page.getByText("已接受邀请", { exact: true })).toBeVisible();
+      await menuResponse;
+      await expect(page.getByRole("menuitemradio")).toHaveCount(0);
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("menu")).toHaveCount(0);
+
+      await page
+        .getByRole("row")
+        .filter({
+          has: page.getByRole("cell", {
+            name: acceptedWorkspaceName,
+            exact: true,
+          }),
+        })
+        .getByRole("button", { name: "Accept", exact: true })
+        .click();
       await expect(
-        page.getByTestId(`user-invitation-${acceptedInvitation.id}`),
+        page.getByText("Invitation accepted", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page
+          .locator('[data-slot="card"]')
+          .filter({
+            has: page.getByText("Pending invitations", { exact: true }),
+          })
+          .getByRole("cell", { name: acceptedWorkspaceName, exact: true }),
       ).toHaveCount(0);
       await expect(
-        page.getByTestId(`user-workspace-row-${acceptedWorkspace.id}`),
+        page.getByRole("link", { name: acceptedWorkspaceName, exact: true }),
       ).toHaveText(acceptedWorkspaceName);
 
       await page
-        .getByTestId(`user-invitation-reject-${rejectedInvitation.id}`)
+        .getByRole("button", {
+          name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+        })
         .click();
-      await expect(page.getByText("已拒绝邀请", { exact: true })).toBeVisible();
       await expect(
-        page.getByTestId(`user-invitation-${rejectedInvitation.id}`),
+        page.getByRole("menuitemradio", {
+          name: acceptedWorkspaceName,
+          exact: true,
+        }),
+      ).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("menu")).toHaveCount(0);
+
+      await page
+        .getByRole("row")
+        .filter({
+          has: page.getByRole("cell", {
+            name: rejectedWorkspaceName,
+            exact: true,
+          }),
+        })
+        .getByRole("button", { name: "Reject", exact: true })
+        .click();
+      await expect(
+        page.getByText("Invitation rejected", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page
+          .locator('[data-slot="card"]')
+          .filter({
+            has: page.getByText("Pending invitations", { exact: true }),
+          })
+          .getByRole("cell", { name: rejectedWorkspaceName, exact: true }),
       ).toHaveCount(0);
       await expect(
-        page.getByTestId(`user-workspace-row-${rejectedWorkspace.id}`),
+        page.getByRole("link", { name: rejectedWorkspaceName, exact: true }),
       ).toHaveCount(0);
     } finally {
       await ownerContext.close();

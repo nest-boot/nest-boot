@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import {
   createFileRoute,
@@ -8,27 +8,34 @@ import {
 import { zodValidator } from "@tanstack/zod-adapter";
 import dayjs from "dayjs";
 import { t } from "i18next";
-import { ArrowRight, Check, Plus, X } from "lucide-react";
-import { pick } from "lodash";
+import { useTranslation } from "react-i18next";
+import { Check, Plus, X } from "lucide-react";
+import { isEmpty } from "lodash";
+import type { DataFilterField } from "@/components/thread-ui/data-filter";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { workspaceSearchSchema } from "@/schemas/workspace-search-schema";
+import { workspacesResourceKey } from "@/lib/resource-keys";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
+import { DataFilter } from "@/components/thread-ui/data-filter";
 import { toast } from "@/components/thread-ui/toast";
 
 import { Link } from "@/components/link";
 import { DataTable } from "@/components/thread-ui/data-table";
-import {
-  Page,
-  PageActions,
-  PageContent,
-  PageDescription,
-  PageHeader,
-  PagePrimaryAction,
-  PageTitle,
-} from "@/components/thread-ui/page";
+import { Page } from "@/components/thread-ui/page";
 import { Button } from "@/components/thread-ui/button";
-import { graphql } from "@/gql";
-import { WorkspaceOrderField } from "@/gql/graphql";
 import {
-  OrderDirection,
-  createConnectionSearchSchema,
+  PageLayout,
+  PageLayoutSection,
+} from "@/components/thread-ui/page-layout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { graphql } from "@/gql";
+import {
   getNextPageSearch,
   getPreviousPageSearch,
 } from "@/lib/connection-search";
@@ -41,6 +48,8 @@ const GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE = graphql(`
     $first: Int
     $last: Int
     $orderBy: WorkspaceOrder
+    $query: String
+    $filter: WorkspaceFilter
     $invitationFirst: Int
     $invitationLast: Int
     $invitationAfter: String
@@ -53,6 +62,8 @@ const GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE = graphql(`
         first: $first
         last: $last
         orderBy: $orderBy
+        query: $query
+        filter: $filter
       ) {
         edges {
           node {
@@ -120,20 +131,22 @@ const REJECT_INVITATION_FROM_USER_WORKSPACES_ROUTE = graphql(`
 export const Route = createFileRoute("/_authenticated/user/workspaces/")({
   component: UserWorkspacesComponent,
   beforeLoad: () => ({ title: t("user:workspaces.title") }),
-  validateSearch: zodValidator(
-    createConnectionSearchSchema({
-      pageSize: 20,
-      orderField: WorkspaceOrderField,
-      defaultOrderField: WorkspaceOrderField.CREATED_AT,
-      defaultOrderDirection: OrderDirection.DESC,
-    }),
-  ),
+  validateSearch: zodValidator(workspaceSearchSchema),
 });
 
 function UserWorkspacesComponent() {
+  const { t } = useTranslation();
   const search = Route.useSearch();
+  const currentUser = useCurrentUserContext();
+  useResourceNavigation({
+    key: [currentUser.id, ...workspacesResourceKey],
+    searchSchema: workspaceSearchSchema,
+    search,
+  });
   const navigate = useNavigate();
   const location = useLocation();
+  const query = search.query ?? "";
+  const filterValues = (search.filter ?? {}) as Record<string, unknown>;
   const [invitationPage, setInvitationPage] = useState<{
     first?: number;
     last?: number;
@@ -147,19 +160,16 @@ function UserWorkspacesComponent() {
     string | null
   >(null);
 
-  const { data, refetch } = useQuery(
+  const { data, loading, refetch } = useQuery(
     GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE,
     {
+      fetchPolicy: "network-only",
       variables: {
         invitationFirst: invitationPage.first,
         invitationLast: invitationPage.last,
         invitationAfter: invitationPage.after,
         invitationBefore: invitationPage.before,
-        ...pick(search, ["after", "before", "first", "last"]),
-        orderBy: {
-          field: search.orderBy?.field ?? WorkspaceOrderField.CREATED_AT,
-          direction: search.orderBy?.direction ?? OrderDirection.DESC,
-        },
+        ...search,
       },
     },
   );
@@ -225,189 +235,214 @@ function UserWorkspacesComponent() {
   const pageInfo = data?.currentUser.workspaces.pageInfo;
   const invitationActionPending =
     acceptingInvitationId !== null || rejectingInvitationId !== null;
+  const filters: Array<DataFilterField> = useMemo(
+    () => [
+      {
+        label: t("user:workspaces.table.name"),
+        field: "name",
+        type: "input",
+        operators: ["$eq", "$ne"],
+        defaultOperator: "$eq",
+      },
+      {
+        label: t("user:workspaces.table.created_at"),
+        field: "created_at",
+        type: "date-picker",
+        max: dayjs().toISOString(),
+        operators: ["$gte", "$lte"],
+        defaultOperator: "$gte",
+      },
+    ],
+    [t],
+  );
 
   return (
-    <Page data-testid="user-workspaces-page">
-      <PageHeader>
-        <PageTitle>{t("user:workspaces.title")}</PageTitle>
-        <PageDescription>{t("user:workspaces.description")}</PageDescription>
-        <PageActions>
-          <PagePrimaryAction
-            data-testid="user-workspace-create-action"
-            render={<Link to="/workspaces/create" />}
-          >
-            <Plus data-icon="inline-start" />
-            {t("user:workspaces.create")}
-          </PagePrimaryAction>
-        </PageActions>
-      </PageHeader>
-
-      <PageContent className="space-y-8">
+    <Page
+      title={t("user:workspaces.title")}
+      description={t("user:workspaces.description")}
+      primaryAction={{
+        render: <Link to="/user/workspaces/create" />,
+        icon: <Plus data-icon="inline-start" />,
+        label: t("user:workspaces.create"),
+      }}
+    >
+      <PageLayout>
         {invitations.length > 0 ||
         invitationPage.after ||
         invitationPage.before ? (
-          <section className="space-y-3" data-testid="user-invitations">
-            <div>
-              <h3 className="font-semibold">
-                {t("user:workspaces.invitations.title")}
-              </h3>
-              <p className="text-muted-foreground text-sm">
-                {t("user:workspaces.invitations.description")}
-              </p>
-            </div>
+          <PageLayoutSection>
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("user:workspaces.invitations.title")}</CardTitle>
+                <CardDescription>
+                  {t("user:workspaces.invitations.description")}
+                </CardDescription>
+              </CardHeader>
 
-            <DataTable
-              columns={[
-                {
-                  accessorKey: "workspace.name",
-                  header: t("user:workspaces.invitations.table.workspace"),
-                  cell: ({ row }) => (
-                    <span
-                      className="font-medium"
-                      data-testid={`user-invitation-${row.original.id}`}
-                    >
-                      {row.original.workspace.name}
-                    </span>
-                  ),
-                },
-                {
-                  accessorKey: "roles",
-                  header: t("user:workspaces.invitations.table.role"),
-                  cell: ({ row }) => getRolesLabel(row.original.roles),
-                },
-                {
-                  accessorKey: "expiresAt",
-                  header: t("user:workspaces.invitations.table.expires_at"),
-                  cell: ({ row }) =>
-                    dayjs(row.original.expiresAt).format("YYYY-MM-DD HH:mm"),
-                },
-                {
-                  id: "actions",
-                  header: "",
-                  size: 220,
-                  cell: ({ row }) => (
-                    <div
-                      className="flex justify-end gap-2"
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        data-testid={`user-invitation-reject-${row.original.id}`}
-                        disabled={invitationActionPending}
-                        loading={rejectingInvitationId === row.original.id}
-                        onClick={() => handleRejectInvitation(row.original.id)}
-                      >
-                        <X />
-                        {t("user:workspaces.invitations.reject")}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        data-testid={`user-invitation-accept-${row.original.id}`}
-                        disabled={invitationActionPending}
-                        loading={acceptingInvitationId === row.original.id}
-                        onClick={() => handleAcceptInvitation(row.original.id)}
-                      >
-                        <Check />
-                        {t("user:workspaces.invitations.accept")}
-                      </Button>
-                    </div>
-                  ),
-                },
-              ]}
-              data={invitations}
-              pagination={{
-                hasPreviousPage: invitationPageInfo?.hasPreviousPage,
-                hasNextPage: invitationPageInfo?.hasNextPage,
-                onPreviousPage: () =>
-                  setInvitationPage({
-                    last: 20,
-                    before: invitationPageInfo?.startCursor ?? undefined,
-                  }),
-                onNextPage: () =>
-                  setInvitationPage({
-                    first: 20,
-                    after: invitationPageInfo?.endCursor ?? undefined,
-                  }),
-              }}
-            />
-          </section>
+              <CardContent>
+                <DataTable
+                  columns={[
+                    {
+                      accessorKey: "workspace.name",
+                      header: t("user:workspaces.invitations.table.workspace"),
+                      cell: ({ row }) => (
+                        <span className="font-medium">
+                          {row.original.workspace.name}
+                        </span>
+                      ),
+                    },
+                    {
+                      accessorKey: "roles",
+                      header: t("user:workspaces.invitations.table.role"),
+                      cell: ({ row }) => getRolesLabel(row.original.roles),
+                    },
+                    {
+                      accessorKey: "expiresAt",
+                      header: t("user:workspaces.invitations.table.expires_at"),
+                      cell: ({ row }) =>
+                        dayjs(row.original.expiresAt).format(
+                          "YYYY-MM-DD HH:mm",
+                        ),
+                    },
+                    {
+                      id: "actions",
+                      header: "",
+                      size: 220,
+                      cell: ({ row }) => (
+                        <div
+                          className="flex justify-end gap-2"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={invitationActionPending}
+                            loading={rejectingInvitationId === row.original.id}
+                            onClick={() =>
+                              handleRejectInvitation(row.original.id)
+                            }
+                          >
+                            <X />
+                            {t("user:workspaces.invitations.reject")}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={invitationActionPending}
+                            loading={acceptingInvitationId === row.original.id}
+                            onClick={() =>
+                              handleAcceptInvitation(row.original.id)
+                            }
+                          >
+                            <Check />
+                            {t("user:workspaces.invitations.accept")}
+                          </Button>
+                        </div>
+                      ),
+                    },
+                  ]}
+                  data={invitations}
+                  pagination={{
+                    hasPreviousPage: invitationPageInfo?.hasPreviousPage,
+                    hasNextPage: invitationPageInfo?.hasNextPage,
+                    onPreviousPage: () =>
+                      setInvitationPage({
+                        last: 20,
+                        before: invitationPageInfo?.startCursor ?? undefined,
+                      }),
+                    onNextPage: () =>
+                      setInvitationPage({
+                        first: 20,
+                        after: invitationPageInfo?.endCursor ?? undefined,
+                      }),
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </PageLayoutSection>
         ) : null}
 
-        <DataTable
-          columns={[
-            {
-              accessorKey: "name",
-              header: t("user:workspaces.table.name"),
-              cell: ({ row }) => (
-                <span
-                  className="font-medium"
-                  data-testid={`user-workspace-row-${row.original.id}`}
-                >
-                  {row.original.name}
-                </span>
-              ),
-            },
-            {
-              accessorKey: "createdAt",
-              header: t("user:workspaces.table.created_at"),
-              cell: ({ row }) =>
-                dayjs(row.original.createdAt).format("YYYY-MM-DD"),
-            },
-            {
-              accessorKey: "updatedAt",
-              header: t("user:workspaces.table.updated_at"),
-              cell: ({ row }) =>
-                dayjs(row.original.updatedAt).format("YYYY-MM-DD"),
-            },
-            {
-              id: "open",
-              header: "",
-              size: 64,
-              cell: ({ row }) => (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t("user:workspaces.open")}
-                  render={
-                    <Link
-                      to="/workspaces/$workspaceId/settings"
-                      params={{ workspaceId: row.original.id }}
-                    />
-                  }
-                >
-                  <ArrowRight />
-                </Button>
-              ),
-            },
-          ]}
-          data={workspaces}
-          pagination={{
-            hasPreviousPage: pageInfo?.hasPreviousPage,
-            hasNextPage: pageInfo?.hasNextPage,
-            onPreviousPage: () => {
-              navigate({
-                to: location.pathname,
-                search: getPreviousPageSearch(search, pageInfo),
-              });
-            },
-            onNextPage: () => {
-              navigate({
-                to: location.pathname,
-                search: getNextPageSearch(search, pageInfo),
-              });
-            },
-          }}
-          onRowClick={(row) => {
-            navigate({
-              to: "/workspaces/$workspaceId/settings",
-              params: { workspaceId: row.original.id },
-            });
-          }}
-        />
-      </PageContent>
+        <PageLayoutSection>
+          <Card>
+            <CardContent>
+              <div className="space-y-4">
+                <DataFilter
+                  filters={filters}
+                  loading={loading}
+                  value={{ filter: filterValues, query }}
+                  search={{ placeholder: t("user:workspaces.search") }}
+                  onChange={(value) => {
+                    navigate({
+                      to: "/user/workspaces",
+                      search: {
+                        query: value.query || undefined,
+                        filter: isEmpty(value.filter)
+                          ? undefined
+                          : value.filter,
+                        orderBy: search.orderBy,
+                      },
+                    });
+                  }}
+                />
+                <DataTable
+                  columns={[
+                    {
+                      accessorKey: "name",
+                      header: t("user:workspaces.table.name"),
+                      cell: ({ row }) => (
+                        <Link
+                          to="/workspaces/$workspaceId"
+                          params={{ workspaceId: row.original.id }}
+                          onClick={(event) => event.stopPropagation()}
+                          className="font-medium"
+                        >
+                          {row.original.name}
+                        </Link>
+                      ),
+                    },
+                    {
+                      accessorKey: "createdAt",
+                      header: t("user:workspaces.table.created_at"),
+                      cell: ({ row }) =>
+                        dayjs(row.original.createdAt).format("YYYY-MM-DD"),
+                    },
+                    {
+                      accessorKey: "updatedAt",
+                      header: t("user:workspaces.table.updated_at"),
+                      cell: ({ row }) =>
+                        dayjs(row.original.updatedAt).format("YYYY-MM-DD"),
+                    },
+                  ]}
+                  data={workspaces}
+                  pagination={{
+                    hasPreviousPage: pageInfo?.hasPreviousPage,
+                    hasNextPage: pageInfo?.hasNextPage,
+                    onPreviousPage: () => {
+                      navigate({
+                        to: location.pathname,
+                        search: getPreviousPageSearch(search, pageInfo),
+                      });
+                    },
+                    onNextPage: () => {
+                      navigate({
+                        to: location.pathname,
+                        search: getNextPageSearch(search, pageInfo),
+                      });
+                    },
+                  }}
+                  onRowClick={(row) => {
+                    navigate({
+                      to: "/workspaces/$workspaceId",
+                      params: { workspaceId: row.original.id },
+                    });
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </PageLayoutSection>
+      </PageLayout>
     </Page>
   );
 }

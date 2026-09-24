@@ -37,6 +37,8 @@
     "title": "Accept Workspace Invitation"
   },
   "settings": {
+    "saved": "Workspace updated",
+    "save_failed": "Unable to save the workspace. Please try again.",
     "dangerZone": {
       "deleteButton": "Delete Workspace",
       "description": "Permanently delete this workspace, its memberships, invitations and workspace API keys. This cannot be undone. User accounts will be retained.",
@@ -60,5 +62,21 @@
       "title": "Leave workspace"
     }
   },
-  "title": "Settings"
+  "title": "Settings",
+  "overview": {
+    "description": "An overview of {{name}}.",
+    "members": "Members of this workspace.",
+    "api_keys": "API keys belonging to this workspace.",
+    "manage_members": "Manage members"
+  },
+  "create": {
+    "title": "Create Workspace",
+    "description": "Create a new workspace to start managing your projects.",
+    "form": {
+      "name": {
+        "label": "Name",
+        "placeholder": "My Workspace"
+      }
+    }
+  }
 }

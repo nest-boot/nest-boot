@@ -151,7 +151,7 @@ export const DataFilterDefaultSelectField: FC<
       }}
     >
       <div className="grid gap-1">
-        <ComboboxChips className="mx-2 items-start">
+        <ComboboxChips className="items-start">
           <ComboboxValue>
             {selectedValues.map((optionValue) => {
               const option = getOption(optionValue);

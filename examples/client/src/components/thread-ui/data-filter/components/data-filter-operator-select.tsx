@@ -7,7 +7,7 @@ import {
 } from "../utils";
 import type { FC } from "react";
 
-import type { DataFilterItemProps, DataFilterOperator } from "../types";
+import type { DataFilterField, DataFilterOperator } from "../types";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,7 +21,7 @@ const isUpperBoundOperator = (operator: DataFilterOperator) => {
 };
 
 interface DataFilterOperatorSelectProps {
-  item: DataFilterItemProps;
+  item: DataFilterField;
   operator: DataFilterOperator;
   value: unknown;
   onChange: (operator: DataFilterOperator, value: unknown) => void;

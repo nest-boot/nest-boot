@@ -1,38 +1,34 @@
 import { useState } from "react";
+import { useForm, useStore } from "@tanstack/react-form";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MonitorSmartphone } from "lucide-react";
 import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import type { FormEvent } from "react";
+import { getFormErrorMessage } from "@/lib/form-errors";
+import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import {
+  PageLayout,
+  PageLayoutSection,
+} from "@/components/thread-ui/page-layout";
 import { toast } from "@/components/thread-ui/toast";
 
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Button } from "@/components/thread-ui/button";
 import { Input } from "@/components/thread-ui/input";
-import {
-  Page,
-  PageContent,
-  PageDescription,
-  PageHeader,
-  PageTitle,
-} from "@/components/thread-ui/page";
+import { Page } from "@/components/thread-ui/page";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldSet,
-} from "@/components/ui/field";
 import { graphql } from "@/gql";
 
 const CHANGE_PASSWORD_FROM_USER_SECURITY = graphql(`
@@ -151,6 +147,7 @@ export const Route = createFileRoute("/_authenticated/user/security/")({
 });
 
 function UserSecurityComponent() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const {
     data: sessionData,
@@ -175,18 +172,10 @@ function UserSecurityComponent() {
   const [unlinkAccount] = useMutation(UNLINK_ACCOUNT_FROM_USER_SECURITY);
   const [linkAccount] = useMutation(LINK_ACCOUNT_FROM_USER_SECURITY);
   const [deleteUser, { client }] = useMutation(DELETE_USER_FROM_USER_SECURITY);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [revokeOtherSessions, setRevokeOtherSessions] = useState(true);
-  const [error, setError] = useState<string>();
-  const [loading, setLoading] = useState(false);
   const [revokingSessionId, setRevokingSessionId] = useState<string>();
   const [revokingOthers, setRevokingOthers] = useState(false);
   const [unlinkingAccountId, setUnlinkingAccountId] = useState<string>();
   const [linkingProviderId, setLinkingProviderId] = useState<string>();
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deletingUser, setDeletingUser] = useState(false);
   const sessions =
     sessionData?.currentUser.sessions.edges.map(({ node }) => node) ?? [];
   const accounts =
@@ -253,52 +242,55 @@ function UserSecurityComponent() {
     }
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(undefined);
-
-    const parsed = createChangePasswordSchema().safeParse({
-      confirmPassword,
-      currentPassword,
-      newPassword,
-    });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await changePassword({
-        variables: {
-          input: {
-            currentPassword: parsed.data.currentPassword,
-            newPassword: parsed.data.newPassword,
-            revokeOtherSessions,
+  const passwordForm = useForm({
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+      revokeOtherSessions: true,
+    },
+    validators: { onSubmit: createChangePasswordSchema() },
+    listeners: {
+      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
+    },
+    onSubmit: async ({ value, formApi }) => {
+      try {
+        const result = await changePassword({
+          variables: {
+            input: {
+              currentPassword: value.currentPassword,
+              newPassword: value.newPassword,
+              revokeOtherSessions: value.revokeOtherSessions,
+            },
           },
-        },
-      });
+        });
 
-      if (!result.data?.changeCurrentUserPassword) {
-        throw new Error(t("user:security.toast.update_failed"));
+        if (!result.data?.changeCurrentUserPassword) {
+          throw new Error(t("user:security.toast.update_failed"));
+        }
+
+        await refetch({ after: undefined });
+        formApi.reset({
+          ...value,
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+        toast.add({ type: "success", title: t("user:security.toast.updated") });
+      } catch (cause) {
+        const message =
+          cause instanceof Error
+            ? cause.message
+            : t("user:security.toast.update_failed");
+        formApi.setErrorMap({ onSubmit: { form: message, fields: {} } });
+        toast.add({ type: "error", title: message });
       }
-
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      await refetch({ after: undefined });
-      toast.add({ type: "success", title: t("user:security.toast.updated") });
-    } catch (cause) {
-      const message =
-        cause instanceof Error
-          ? cause.message
-          : t("user:security.toast.update_failed");
-      setError(message);
-      toast.add({ type: "error", title: message });
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
+  const loading = useStore(passwordForm.store, (state) => state.isSubmitting);
+  const error = useStore(passwordForm.store, (state) =>
+    getFormErrorMessage(state.errors),
+  );
 
   const handleUnlinkAccount = async (accountId: string) => {
     const confirmed = await alertDialog({
@@ -362,302 +354,320 @@ function UserSecurityComponent() {
     }
   };
 
-  const handleDeleteUser = async () => {
-    const confirmed = await alertDialog({
-      title: t("user:security.delete.confirm_title"),
-      description: t("user:security.delete.confirm_description"),
-      confirmText: t("user:security.delete.action"),
-      cancelText: t("action.cancel"),
-      variant: "destructive",
-    });
-    if (!confirmed) return;
-
-    setDeletingUser(true);
-    try {
-      const result = await deleteUser({
-        variables: { input: { password: deletePassword } },
+  const deleteForm = useForm({
+    defaultValues: { password: "" },
+    validators: {
+      onSubmit: z.object({
+        password: z.string().min(1, t("user:security.form.current_required")),
+      }),
+    },
+    listeners: {
+      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
+    },
+    onSubmit: async ({ value, formApi }) => {
+      const confirmed = await alertDialog({
+        title: t("user:security.delete.confirm_title"),
+        description: t("user:security.delete.confirm_description"),
+        confirmText: t("user:security.delete.action"),
+        cancelText: t("action.cancel"),
+        variant: "destructive",
       });
-      if (!result.data?.deleteCurrentUser.success) {
-        throw new Error(
-          result.data?.deleteCurrentUser.message ||
-            t("user:security.delete.failed"),
-        );
-      }
-      await client.clearStore();
-      await navigate({ to: "/auth/login", replace: true });
-      toast.add({ type: "success", title: t("user:security.delete.success") });
-    } catch (cause) {
-      toast.add({
-        type: "error",
-        title:
+      if (!confirmed) return;
+
+      try {
+        const result = await deleteUser({
+          variables: { input: { password: value.password } },
+        });
+        if (!result.data?.deleteCurrentUser.success) {
+          throw new Error(
+            result.data?.deleteCurrentUser.message ||
+              t("user:security.delete.failed"),
+          );
+        }
+        await client.clearStore();
+        await navigate({ to: "/auth/login", replace: true });
+        toast.add({
+          type: "success",
+          title: t("user:security.delete.success"),
+        });
+      } catch (cause) {
+        const message =
           cause instanceof Error
             ? cause.message
-            : t("user:security.delete.failed"),
-      });
-    } finally {
-      setDeletingUser(false);
-    }
-  };
+            : t("user:security.delete.failed");
+        formApi.setErrorMap({ onSubmit: { form: message, fields: {} } });
+        toast.add({ type: "error", title: message });
+      }
+    },
+  });
+  const deletingUser = useStore(
+    deleteForm.store,
+    (state) => state.isSubmitting,
+  );
+  const deletePassword = useStore(
+    deleteForm.store,
+    (state) => state.values.password,
+  );
+  const deleteError = useStore(deleteForm.store, (state) =>
+    getFormErrorMessage(state.errors),
+  );
 
   return (
-    <Page data-testid="user-security-page">
-      <PageHeader>
-        <PageTitle>{t("user:security.title")}</PageTitle>
-        <PageDescription>{t("user:security.description")}</PageDescription>
-      </PageHeader>
-
-      <PageContent>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("user:security.card.title")}</CardTitle>
-            <CardDescription>
-              {t("user:security.card.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit}>
-              <FieldSet>
-                <FieldGroup>
-                  <Input
-                    id="current-password"
-                    data-testid="user-current-password"
-                    type="password"
-                    autoComplete="current-password"
-                    label={t("user:security.form.current_password")}
-                    value={currentPassword}
-                    onChange={(event) => {
-                      setCurrentPassword(event.target.value);
-                      setError(undefined);
-                    }}
-                  />
-                  <Input
-                    id="new-password"
-                    data-testid="user-new-password"
-                    type="password"
-                    autoComplete="new-password"
-                    label={t("user:security.form.new_password")}
-                    value={newPassword}
-                    onChange={(event) => {
-                      setNewPassword(event.target.value);
-                      setError(undefined);
-                    }}
-                  />
-                  <Input
-                    id="confirm-password"
-                    data-testid="user-confirm-password"
-                    type="password"
-                    autoComplete="new-password"
-                    label={t("user:security.form.confirm_password")}
-                    value={confirmPassword}
-                    onChange={(event) => {
-                      setConfirmPassword(event.target.value);
-                      setError(undefined);
-                    }}
-                  />
-
-                  <Field orientation="horizontal">
-                    <Checkbox
-                      id="revoke-other-sessions"
-                      data-testid="user-revoke-other-sessions"
-                      checked={revokeOtherSessions}
-                      onCheckedChange={setRevokeOtherSessions}
-                    />
-                    <FieldLabel htmlFor="revoke-other-sessions">
-                      {t("user:security.form.revoke_other_sessions")}
-                    </FieldLabel>
-                  </Field>
-
+    <Page
+      variant="compact"
+      title={t("user:security.title")}
+      description={t("user:security.description")}
+    >
+      <PageLayout>
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("user:security.card.title")}</CardTitle>
+              <CardDescription>
+                {t("user:security.card.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                noValidate
+                id="user-password-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (passwordForm.state.isSubmitting) return;
+                  passwordForm.setErrorMap({ onSubmit: undefined });
+                  passwordForm.handleSubmit();
+                }}
+              >
+                <FormLayout>
+                  <FormLayoutItem>
+                    <passwordForm.Field name="currentPassword">
+                      {(field) => (
+                        <Input
+                          id="current-password"
+                          type="password"
+                          autoComplete="current-password"
+                          label={t("user:security.form.current_password")}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
+                      )}
+                    </passwordForm.Field>
+                  </FormLayoutItem>
+                  <FormLayoutItem>
+                    <passwordForm.Field name="newPassword">
+                      {(field) => (
+                        <Input
+                          id="new-password"
+                          type="password"
+                          autoComplete="new-password"
+                          label={t("user:security.form.new_password")}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
+                      )}
+                    </passwordForm.Field>
+                  </FormLayoutItem>
+                  <FormLayoutItem>
+                    <passwordForm.Field name="confirmPassword">
+                      {(field) => (
+                        <Input
+                          id="confirm-password"
+                          type="password"
+                          autoComplete="new-password"
+                          label={t("user:security.form.confirm_password")}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
+                      )}
+                    </passwordForm.Field>
+                  </FormLayoutItem>
+                  <FormLayoutItem>
+                    <Field orientation="horizontal">
+                      <passwordForm.Field name="revokeOtherSessions">
+                        {(field) => (
+                          <Checkbox
+                            id="revoke-other-sessions"
+                            checked={field.state.value}
+                            onCheckedChange={field.handleChange}
+                          />
+                        )}
+                      </passwordForm.Field>
+                      <FieldLabel htmlFor="revoke-other-sessions">
+                        {t("user:security.form.revoke_other_sessions")}
+                      </FieldLabel>
+                    </Field>
+                  </FormLayoutItem>
                   {error && (
-                    <FieldDescription className="text-destructive">
-                      {error}
-                    </FieldDescription>
+                    <FormLayoutItem>
+                      <FieldError>{error}</FieldError>
+                    </FormLayoutItem>
                   )}
+                </FormLayout>
+              </form>
+            </CardContent>
+            <CardFooter>
+              <Button type="submit" form="user-password-form" loading={loading}>
+                {t("user:security.form.submit")}
+              </Button>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
 
-                  <Field orientation="horizontal">
-                    <Button
-                      type="submit"
-                      data-testid="user-change-password-submit"
-                      loading={loading}
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("user:security.sessions.title")}</CardTitle>
+              <CardDescription>
+                {t("user:security.sessions.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {sessionsLoading ? (
+                <p className="text-muted-foreground text-sm">
+                  {t("user:security.sessions.loading")}
+                </p>
+              ) : sessions.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  {t("user:security.sessions.empty")}
+                </p>
+              ) : (
+                <ul className="divide-y">
+                  {sessions.map((session) => (
+                    <li
+                      key={session.id}
+                      className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
                     >
-                      {t("user:security.form.submit")}
-                    </Button>
-                  </Field>
-                </FieldGroup>
-              </FieldSet>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="user-sessions-card">
-          <CardHeader>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="space-y-1.5">
-                <CardTitle>{t("user:security.sessions.title")}</CardTitle>
-                <CardDescription>
-                  {t("user:security.sessions.description")}
-                </CardDescription>
-              </div>
+                      <div className="flex min-w-0 items-start gap-3">
+                        <MonitorSmartphone className="text-muted-foreground mt-0.5 size-5 shrink-0" />
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="max-w-xl truncate text-sm font-medium">
+                              {session.userAgent ??
+                                t("user:security.sessions.unknown_device")}
+                            </p>
+                            {session.current && (
+                              <Badge variant="secondary">
+                                {t("user:security.sessions.current")}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-muted-foreground text-xs">
+                            {session.ipAddress ??
+                              t("user:security.sessions.unknown_ip")}
+                            {" · "}
+                            {t("user:security.sessions.created", {
+                              date: formatSessionDate(session.createdAt),
+                            })}
+                            {" · "}
+                            {t("user:security.sessions.expires", {
+                              date: formatSessionDate(session.expiresAt),
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      {!session.current && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          loading={revokingSessionId === session.id}
+                          onClick={() => handleRevokeSession(session.id)}
+                        >
+                          {t("user:security.sessions.revoke")}
+                        </Button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+            <CardFooter>
               <Button
                 type="button"
                 variant="outline"
                 disabled={otherSessionCount === 0}
                 loading={revokingOthers}
                 onClick={handleRevokeOtherSessions}
-                data-testid="user-revoke-other-session-list"
               >
                 {t("user:security.sessions.revoke_others")}
               </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {sessionsLoading ? (
-              <p className="text-muted-foreground text-sm">
-                {t("user:security.sessions.loading")}
-              </p>
-            ) : sessions.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                {t("user:security.sessions.empty")}
-              </p>
-            ) : (
-              <div className="divide-y" data-testid="user-session-list">
-                {sessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
-                    data-testid="user-session-row"
-                  >
-                    <div className="flex min-w-0 items-start gap-3">
-                      <MonitorSmartphone className="text-muted-foreground mt-0.5 size-5 shrink-0" />
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="max-w-xl truncate text-sm font-medium">
-                            {session.userAgent ??
-                              t("user:security.sessions.unknown_device")}
-                          </p>
-                          {session.current && (
-                            <Badge variant="secondary">
-                              {t("user:security.sessions.current")}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-muted-foreground text-xs">
-                          {session.ipAddress ??
-                            t("user:security.sessions.unknown_ip")}
-                          {" · "}
-                          {t("user:security.sessions.created", {
-                            date: formatSessionDate(session.createdAt),
-                          })}
-                          {" · "}
-                          {t("user:security.sessions.expires", {
-                            date: formatSessionDate(session.expiresAt),
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                    {!session.current && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        loading={revokingSessionId === session.id}
-                        onClick={() => handleRevokeSession(session.id)}
-                        data-testid="user-revoke-session"
-                      >
-                        {t("user:security.sessions.revoke")}
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
 
         {sessionData?.currentUser.sessions.pageInfo.hasNextPage && (
-          <Button
-            variant="outline"
-            loading={sessionsLoading}
-            onClick={() =>
-              fetchMoreSessions({
-                variables: {
-                  after: sessionData.currentUser.sessions.pageInfo.endCursor,
-                },
-                updateQuery: (previous, { fetchMoreResult }) => ({
-                  ...fetchMoreResult,
-                  currentUser: {
-                    ...fetchMoreResult.currentUser,
-                    sessions: {
-                      ...fetchMoreResult.currentUser.sessions,
-                      edges: [
-                        ...previous.currentUser.sessions.edges,
-                        ...fetchMoreResult.currentUser.sessions.edges,
-                      ],
-                    },
+          <PageLayoutSection>
+            <Button
+              variant="outline"
+              loading={sessionsLoading}
+              onClick={() =>
+                fetchMoreSessions({
+                  variables: {
+                    after: sessionData.currentUser.sessions.pageInfo.endCursor,
                   },
-                }),
-              })
-            }
-          >
-            {t("action.load_more")}
-          </Button>
+                  updateQuery: (previous, { fetchMoreResult }) => ({
+                    ...fetchMoreResult,
+                    currentUser: {
+                      ...fetchMoreResult.currentUser,
+                      sessions: {
+                        ...fetchMoreResult.currentUser.sessions,
+                        edges: [
+                          ...previous.currentUser.sessions.edges,
+                          ...fetchMoreResult.currentUser.sessions.edges,
+                        ],
+                      },
+                    },
+                  }),
+                })
+              }
+            >
+              {t("action.load_more")}
+            </Button>
+          </PageLayoutSection>
         )}
 
-        <Card data-testid="user-accounts-card">
-          <CardHeader>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="space-y-1.5">
-                <CardTitle>{t("user:security.accounts.title")}</CardTitle>
-                <CardDescription>
-                  {t("user:security.accounts.description")}
-                </CardDescription>
-              </div>
-              {linkableProviders.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {linkableProviders.map((provider) => (
-                    <Button
-                      key={provider.id}
-                      type="button"
-                      variant="outline"
-                      disabled={linkingProviderId !== undefined}
-                      loading={linkingProviderId === provider.id}
-                      onClick={() => handleLinkAccount(provider.id)}
-                      data-testid={`user-link-social-account-${provider.id}`}
-                    >
-                      {t("user:security.accounts.link", {
-                        provider: provider.name,
-                      })}
-                    </Button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {accountsLoading ? (
-              <p className="text-muted-foreground text-sm">
-                {t("user:security.accounts.loading")}
-              </p>
-            ) : (
-              <div className="divide-y">
-                {accounts.map((account) => {
-                  const credential = account.providerId === "credential";
-                  return (
-                    <div
-                      key={account.id}
-                      className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
-                      data-testid={`user-account-${account.providerId}`}
-                    >
-                      <div>
-                        <p className="font-medium capitalize">
-                          {socialProviders.find(
-                            (provider) => provider.id === account.providerId,
-                          )?.name ?? account.providerId}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          {account.issuer} · {account.accountId}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("user:security.accounts.title")}</CardTitle>
+              <CardDescription>
+                {t("user:security.accounts.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {accountsLoading ? (
+                <p className="text-muted-foreground text-sm">
+                  {t("user:security.accounts.loading")}
+                </p>
+              ) : (
+                <div className="divide-y">
+                  {accounts.map((account) => {
+                    const credential = account.providerId === "credential";
+                    return (
+                      <div
+                        key={account.id}
+                        className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+                      >
+                        <div>
+                          <p className="font-medium capitalize">
+                            {socialProviders.find(
+                              (provider) => provider.id === account.providerId,
+                            )?.name ?? account.providerId}
+                          </p>
+                          <p className="text-muted-foreground text-xs">
+                            {account.issuer} · {account.accountId}
+                          </p>
+                        </div>
                         {!credential &&
                         (accountData?.currentUser.accounts.totalCount ?? 0) >
                           1 ? (
@@ -672,75 +682,125 @@ function UserSecurityComponent() {
                           </Button>
                         ) : null}
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+            {linkableProviders.length > 0 && (
+              <CardFooter>
+                <div className="flex flex-wrap gap-2">
+                  {linkableProviders.map((provider) => (
+                    <Button
+                      key={provider.id}
+                      type="button"
+                      variant="outline"
+                      disabled={linkingProviderId !== undefined}
+                      loading={linkingProviderId === provider.id}
+                      onClick={() => handleLinkAccount(provider.id)}
+                    >
+                      {t("user:security.accounts.link", {
+                        provider: provider.name,
+                      })}
+                    </Button>
+                  ))}
+                </div>
+              </CardFooter>
             )}
-          </CardContent>
-        </Card>
+          </Card>
+        </PageLayoutSection>
 
         {accountData?.currentUser.accounts.pageInfo.hasNextPage && (
-          <Button
-            variant="outline"
-            loading={accountsLoading}
-            data-testid="user-accounts-load-more"
-            onClick={() =>
-              fetchMoreAccounts({
-                variables: {
-                  after: accountData.currentUser.accounts.pageInfo.endCursor,
-                },
-                updateQuery: (previous, { fetchMoreResult }) => ({
-                  ...fetchMoreResult,
-                  currentUser: {
-                    ...fetchMoreResult.currentUser,
-                    accounts: {
-                      ...fetchMoreResult.currentUser.accounts,
-                      edges: [
-                        ...previous.currentUser.accounts.edges,
-                        ...fetchMoreResult.currentUser.accounts.edges,
-                      ],
-                    },
+          <PageLayoutSection>
+            <Button
+              variant="outline"
+              loading={accountsLoading}
+              onClick={() =>
+                fetchMoreAccounts({
+                  variables: {
+                    after: accountData.currentUser.accounts.pageInfo.endCursor,
                   },
-                }),
-              })
-            }
-          >
-            {t("action.load_more")}
-          </Button>
+                  updateQuery: (previous, { fetchMoreResult }) => ({
+                    ...fetchMoreResult,
+                    currentUser: {
+                      ...fetchMoreResult.currentUser,
+                      accounts: {
+                        ...fetchMoreResult.currentUser.accounts,
+                        edges: [
+                          ...previous.currentUser.accounts.edges,
+                          ...fetchMoreResult.currentUser.accounts.edges,
+                        ],
+                      },
+                    },
+                  }),
+                })
+              }
+            >
+              {t("action.load_more")}
+            </Button>
+          </PageLayoutSection>
         )}
 
-        <Card className="border-destructive" data-testid="user-delete-card">
-          <CardHeader>
-            <CardTitle className="text-destructive">
-              {t("user:security.delete.title")}
-            </CardTitle>
-            <CardDescription>
-              {t("user:security.delete.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              id="delete-account-password"
-              type="password"
-              autoComplete="current-password"
-              label={t("user:security.delete.password")}
-              value={deletePassword}
-              onChange={(event) => setDeletePassword(event.target.value)}
-            />
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={!deletePassword}
-              loading={deletingUser}
-              onClick={handleDeleteUser}
-              data-testid="user-delete-account"
-            >
-              {t("user:security.delete.action")}
-            </Button>
-          </CardContent>
-        </Card>
-      </PageContent>
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("user:security.delete.title")}</CardTitle>
+              <CardDescription>
+                {t("user:security.delete.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                noValidate
+                id="user-delete-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (deleteForm.state.isSubmitting) return;
+                  deleteForm.setErrorMap({ onSubmit: undefined });
+                  deleteForm.handleSubmit();
+                }}
+              >
+                <FormLayout>
+                  <FormLayoutItem>
+                    <deleteForm.Field name="password">
+                      {(field) => (
+                        <Input
+                          id="delete-account-password"
+                          type="password"
+                          autoComplete="current-password"
+                          label={t("user:security.delete.password")}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
+                      )}
+                    </deleteForm.Field>
+                  </FormLayoutItem>
+                  {deleteError && (
+                    <FormLayoutItem>
+                      <FieldError>{deleteError}</FieldError>
+                    </FormLayoutItem>
+                  )}
+                </FormLayout>
+              </form>
+            </CardContent>
+            <CardFooter>
+              <Button
+                type="submit"
+                form="user-delete-form"
+                variant="destructive"
+                disabled={!deletePassword}
+                loading={deletingUser}
+              >
+                {t("user:security.delete.action")}
+              </Button>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
+      </PageLayout>
     </Page>
   );
 }
@@ -760,6 +820,7 @@ function createChangePasswordSchema() {
         .min(1, t("user:security.form.current_required")),
       newPassword: z.string().min(8, t("auth:form.password.min")),
       confirmPassword: z.string(),
+      revokeOtherSessions: z.boolean(),
     })
     .refine((value) => value.newPassword === value.confirmPassword, {
       message: t("auth:passwordReset.passwordMismatch"),

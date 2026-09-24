@@ -34,11 +34,17 @@ export const getDataFilterDateRange = (
   return [getDataFilterDate(from), getDataFilterDate(to)];
 };
 
+export const getDataFilterDateValue = (date?: Date): string | undefined =>
+  date ? dayjs(date).format("YYYY-MM-DD") : undefined;
+
 export const getDataFilterDateRangeValue = (dateRange?: {
   from?: Date;
   to?: Date;
 }): DataFilterBetweenValue<string> => {
-  return [dateRange?.from?.toISOString(), dateRange?.to?.toISOString()];
+  return [
+    getDataFilterDateValue(dateRange?.from),
+    getDataFilterDateValue(dateRange?.to),
+  ];
 };
 
 export const getDataFilterDateDisabled = ({

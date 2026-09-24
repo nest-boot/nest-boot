@@ -21,6 +21,12 @@ i18n
   // for all options read: https://www.i18next.com/overview/configuration-options
   .init({
     fallbackLng: "en",
+    supportedLngs: ["en", "zh"],
+    load: "languageOnly",
+    detection: {
+      order: ["localStorage", "navigator", "htmlTag"],
+      caches: ["localStorage"],
+    },
     ns: [
       "common",
       "auth",

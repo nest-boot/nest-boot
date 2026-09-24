@@ -1,26 +1,21 @@
-import { KeyRound, Settings, User } from "lucide-react";
+import { KeyRound, LayoutDashboard, Settings, User } from "lucide-react";
 
 import { linkOptions, useParams } from "@tanstack/react-router";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 
-import { SidebarUser } from "../../../components/sidebar-user";
-import { SidebarLogo } from "./sidebar-logo";
-import { WorkspaceSwitcher } from "./workspace-switcher";
 import type { LinkProps } from "@tanstack/react-router";
 import type { ComponentProps, ComponentType, FC } from "react";
 import { useAbility } from "@/contexts/ability-context";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 import { Link } from "@/components/link";
@@ -29,16 +24,17 @@ type SidebarItem = {
   title: string;
   icon: ComponentType<{ className?: string }>;
   link: LinkProps;
-  testId?: string;
 };
 
 export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
   ...props
 }) => {
+  const { t } = useTranslation();
   const workspaceId = useParams({
     from: "/_authenticated/workspaces/$workspaceId",
     select: (params) => params.workspaceId,
   });
+  const { setOpenMobile } = useSidebar();
   const ability = useAbility();
 
   const sidebarGroups: Array<{
@@ -46,8 +42,17 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
     items: Array<SidebarItem>;
   }> = [
     {
-      title: t("sidebar:navigation.settings"),
+      title: t("common:overview.workspace"),
       items: [
+        {
+          title: t("common:overview.title"),
+          icon: LayoutDashboard,
+          link: linkOptions({
+            to: "/workspaces/$workspaceId",
+            params: { workspaceId },
+            activeOptions: { exact: true },
+          }),
+        },
         ...(ability.can("read", "WorkspaceApiKey")
           ? [
               {
@@ -57,7 +62,6 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
                   to: "/workspaces/$workspaceId/api-keys",
                   params: { workspaceId },
                 }),
-                testId: "workspace-sidebar-api-keys-link",
               },
             ]
           : []),
@@ -86,13 +90,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
   ];
 
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <SidebarLogo />
-
-        <WorkspaceSwitcher />
-      </SidebarHeader>
-
+    <Sidebar collapsible="offcanvas" {...props}>
       <SidebarContent>
         {sidebarGroups.map((group) => (
           <SidebarGroup key={group.title}>
@@ -104,7 +102,10 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       render={
-                        <Link {...item.link} data-testid={item.testId}>
+                        <Link
+                          {...item.link}
+                          onClick={() => setOpenMobile(false)}
+                        >
                           <item.icon />
                           <span>{item.title}</span>
                         </Link>
@@ -117,12 +118,6 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
           </SidebarGroup>
         ))}
       </SidebarContent>
-
-      <SidebarFooter>
-        <SidebarUser />
-      </SidebarFooter>
-
-      <SidebarRail />
     </Sidebar>
   );
 };

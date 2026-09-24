@@ -35,6 +35,7 @@
     },
     "permissions": {
       "description": "Set the user's administrative permission ceiling.",
+      "invalid": "Select only permissions you can grant.",
       "success": "Permissions updated",
       "title": "Permissions"
     },
@@ -46,6 +47,7 @@
     },
     "roles": {
       "description": "Assign one or more configured administrative roles.",
+      "invalid": "Select at least one role you can grant.",
       "label": "Roles",
       "success": "Roles updated",
       "title": "Roles"
@@ -74,8 +76,7 @@
     },
     "description": "Search, review, and administer application users.",
     "loading": "Loading users…",
-    "search": "Search by email or name",
-    "search_action": "Search",
+    "search": "Search name or email",
     "table": {
       "created_at": "Created",
       "email": "Email",
@@ -86,5 +87,10 @@
     "title": "Users",
     "unverified": "Unverified",
     "verified": "Verified"
+  },
+  "overview": {
+    "description": "Manage users and their access to this application.",
+    "users": "User accounts within your authorized scope.",
+    "manage_users": "Manage users"
   }
 }

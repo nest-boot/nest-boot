@@ -130,7 +130,7 @@ export const DataFilterDefaultNumberInputField: FC<
       : [value, undefined];
 
     return (
-      <div className="grid gap-2 px-2 pb-2">
+      <div className="grid gap-2">
         <CommitNumberInput
           ariaLabel={t("dataFilter.minimumAriaLabel", { label: item.label })}
           item={item}
@@ -153,14 +153,12 @@ export const DataFilterDefaultNumberInputField: FC<
   }
 
   return (
-    <div className="px-2 pb-2">
-      <CommitNumberInput
-        ariaLabel={item.label}
-        item={item}
-        placeholder={item.placeholder}
-        value={typeof value === "number" ? value : undefined}
-        onCommit={onChange}
-      />
-    </div>
+    <CommitNumberInput
+      ariaLabel={item.label}
+      item={item}
+      placeholder={item.placeholder}
+      value={typeof value === "number" ? value : undefined}
+      onCommit={onChange}
+    />
   );
 };

@@ -6,7 +6,6 @@ interface RoleCheckboxGroupProps<Role extends string> {
   value: Array<Role>;
   onValueChange: (value: Array<Role>) => void;
   label: string;
-  testIdPrefix: string;
   disabled?: boolean;
 }
 
@@ -14,7 +13,6 @@ interface RoleCheckboxGroupProps<Role extends string> {
 export function RoleCheckboxGroup<Role extends string>({
   options,
   value,
-  testIdPrefix,
   ...props
 }: RoleCheckboxGroupProps<Role>) {
   return (
@@ -24,7 +22,6 @@ export function RoleCheckboxGroup<Role extends string>({
       items={options.map(({ role, grantable }) => ({
         label: getRoleLabel(role),
         value: role,
-        testId: `${testIdPrefix}-${role}`,
         disabled: !grantable && !value.includes(role),
       }))}
     />

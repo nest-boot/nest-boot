@@ -13,33 +13,61 @@ test.describe("email authentication", () => {
     const email = `${uniqueSeed("auth")}@example.com`;
 
     await page.goto("/auth/register");
-    await expect(page.getByTestId("auth-view")).toBeVisible();
-    await expect(page.getByTestId("auth-tab-register")).toHaveAttribute(
-      "data-active",
-    );
-    await page.getByTestId("auth-name-input").fill("Playwright User");
-    await page.getByTestId("auth-email-input").fill(email);
-    await page.getByTestId("auth-password-input").fill(testPassword);
-    await page.getByTestId("auth-submit").click();
+    await expect(
+      page
+        .locator('[data-slot="card"]')
+        .filter({ has: page.getByText("Welcome back", { exact: true }) }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("tab", { name: "Register", exact: true }),
+    ).toHaveAttribute("data-active");
+    await page.getByLabel("Name", { exact: true }).fill("Playwright User");
+    await page.getByLabel("Email", { exact: true }).fill(email);
+    await page.getByLabel("Password", { exact: true }).fill(testPassword);
+    await page
+      .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+      .click();
 
-    await expect(page.getByTestId("verify-email-view")).toBeVisible();
-    await page.getByTestId("verify-email-resend").click();
-    await expect(page.getByTestId("verify-email-resent")).toBeVisible();
+    await expect(
+      page.locator('[data-slot="card"]').filter({
+        has: page.getByText(
+          /^(Check your email|Email verified|Verification failed)$/,
+        ),
+      }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Resend verification email", exact: true })
+      .click();
+    await expect(
+      page.getByText("A new verification email has been sent.", {
+        exact: true,
+      }),
+    ).toBeVisible();
     await completeEmailVerification(page, email);
 
     await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
-    await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Workspaces", exact: true }),
+    ).toBeVisible();
 
     await context.clearCookies();
     await page.goto("/auth/login");
-    await expect(page.getByTestId("auth-remember-me")).toBeChecked();
-    await page.getByTestId("auth-remember-me").uncheck();
-    await page.getByTestId("auth-email-input").fill(email);
-    await page.getByTestId("auth-password-input").fill(testPassword);
-    await page.getByTestId("auth-submit").click();
+    await expect(
+      page.getByRole("checkbox", { name: "Remember me", exact: true }),
+    ).toBeChecked();
+    await page
+      .getByRole("checkbox", { name: "Remember me", exact: true })
+      .uncheck();
+    await page.getByLabel("Email", { exact: true }).fill(email);
+    await page.getByLabel("Password", { exact: true }).fill(testPassword);
+    await page
+      .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+      .click();
 
     await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
-    await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Workspaces", exact: true }),
+    ).toBeVisible();
   });
 
   test("resets and changes a password through GraphQL", async ({
@@ -51,21 +79,37 @@ test.describe("email authentication", () => {
     const changedPassword = "changed-correct-horse-battery-staple";
 
     await page.goto("/auth/register");
-    await page.getByTestId("auth-name-input").fill("Password Flow User");
-    await page.getByTestId("auth-email-input").fill(email);
-    await page.getByTestId("auth-password-input").fill(testPassword);
-    await page.getByTestId("auth-submit").click();
+    await page.getByLabel("Name", { exact: true }).fill("Password Flow User");
+    await page.getByLabel("Email", { exact: true }).fill(email);
+    await page.getByLabel("Password", { exact: true }).fill(testPassword);
+    await page
+      .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+      .click();
     await completeEmailVerification(page, email);
     await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
 
-    await page.getByTestId("sidebar-user-menu").click();
-    await page.getByTestId("sidebar-user-sign-out").click();
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
+    await page.getByRole("menuitem", { name: "Log out", exact: true }).click();
     await expect(page).toHaveURL(/\/auth\/login(?:\?.*)?$/);
-    await page.getByTestId("auth-forgot-password-link").click();
+    await page
+      .getByRole("link", { name: "Forgot password?", exact: true })
+      .click();
     await expect(page).toHaveURL(/\/auth\/forgot-password$/);
-    await page.getByTestId("forgot-password-email").fill(email);
-    await page.getByTestId("forgot-password-submit").click();
-    await expect(page.getByText(/如果该邮箱对应的账户存在/)).toBeVisible();
+    await page
+      .locator('[data-slot="card"]')
+      .filter({ has: page.getByText("Forgot your password?", { exact: true }) })
+      .getByLabel("Email", { exact: true })
+      .fill(email);
+    await page
+      .getByRole("button", { name: "Send reset link", exact: true })
+      .click();
+    await expect(
+      page.getByText(/If an account exists for that email/),
+    ).toBeVisible();
 
     const passwordResetUrl = await waitForEmailUrl(
       page.request,
@@ -74,15 +118,21 @@ test.describe("email authentication", () => {
     );
     await page.goto(passwordResetUrl);
     await expect(page).toHaveURL(/\/auth\/reset-password\?token=/);
-    await page.getByTestId("reset-password-new").fill(resetPassword);
-    await page.getByTestId("reset-password-confirm").fill(resetPassword);
-    await page.getByTestId("reset-password-submit").click();
-    await expect(page.getByText("密码已重置")).toBeVisible();
-    await page.getByRole("link", { name: "登录" }).click();
+    await page.getByLabel("New password", { exact: true }).fill(resetPassword);
+    await page
+      .getByLabel("Confirm new password", { exact: true })
+      .fill(resetPassword);
+    await page
+      .getByRole("button", { name: "Reset password", exact: true })
+      .click();
+    await expect(page.getByText("Your password has been reset")).toBeVisible();
+    await page.getByRole("link", { name: "Sign in" }).click();
 
-    await page.getByTestId("auth-email-input").fill(email);
-    await page.getByTestId("auth-password-input").fill(resetPassword);
-    await page.getByTestId("auth-submit").click();
+    await page.getByLabel("Email", { exact: true }).fill(email);
+    await page.getByLabel("Password", { exact: true }).fill(resetPassword);
+    await page
+      .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+      .click();
     await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
 
     const otherContext = await browser.newContext();
@@ -99,58 +149,106 @@ test.describe("email authentication", () => {
     }
 
     await page.goto("/user/security");
-    await expect(page.getByTestId("user-security-page")).toBeVisible();
-    await expect(page.getByTestId("user-session-row")).toHaveCount(2);
     await expect(
-      page.getByTestId("user-link-social-account-github"),
+      page.getByRole("heading", { name: "Security", exact: true }),
     ).toBeVisible();
-    await page.getByTestId("user-current-password").fill(resetPassword);
-    await page.getByTestId("user-new-password").fill(changedPassword);
-    await page.getByTestId("user-confirm-password").fill(changedPassword);
-    await expect(page.getByTestId("user-revoke-other-sessions")).toBeChecked();
-    await page.getByTestId("user-change-password-submit").click();
-    await expect(page.getByText("密码已修改")).toBeVisible();
-    await expect(page.getByTestId("user-session-row")).toHaveCount(1);
-    await expect(page.getByText("当前会话", { exact: true })).toHaveCount(1);
     await expect(
-      page.getByTestId("user-revoke-other-session-list"),
+      page
+        .locator('[data-slot="card"]')
+        .filter({ has: page.getByText("Active sessions", { exact: true }) })
+        .getByRole("listitem"),
+    ).toHaveCount(2);
+    await expect(
+      page.getByRole("button", { name: "Link GitHub", exact: true }),
+    ).toBeVisible();
+    await page
+      .locator('[data-slot="card"]')
+      .filter({ has: page.getByText("Change password", { exact: true }) })
+      .getByLabel("Current password", { exact: true })
+      .fill(resetPassword);
+    await page
+      .getByLabel("New password", { exact: true })
+      .fill(changedPassword);
+    await page
+      .getByLabel("Confirm new password", { exact: true })
+      .fill(changedPassword);
+    await expect(
+      page.getByRole("checkbox", {
+        name: "Sign out other sessions",
+        exact: true,
+      }),
+    ).toBeChecked();
+    await page
+      .getByRole("button", { name: "Change password", exact: true })
+      .click();
+    await expect(page.getByText("Password changed")).toBeVisible();
+    await expect(
+      page
+        .locator('[data-slot="card"]')
+        .filter({ has: page.getByText("Active sessions", { exact: true }) })
+        .getByRole("listitem"),
+    ).toHaveCount(1);
+    await expect(
+      page.getByText("Current session", { exact: true }),
+    ).toHaveCount(1);
+    await expect(
+      page.getByRole("button", {
+        name: "Sign out other sessions",
+        exact: true,
+      }),
     ).toBeDisabled();
 
-    await page.getByTestId("sidebar-user-menu").click();
-    await page.getByTestId("sidebar-user-sign-out").click();
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
+    await page.getByRole("menuitem", { name: "Log out", exact: true }).click();
     await expect(page).toHaveURL(/\/auth\/login$/);
-    await page.getByTestId("auth-email-input").fill(email);
-    await page.getByTestId("auth-password-input").fill(resetPassword);
-    await page.getByTestId("auth-submit").click();
+    await page.getByLabel("Email", { exact: true }).fill(email);
+    await page.getByLabel("Password", { exact: true }).fill(resetPassword);
+    await page
+      .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+      .click();
     await expect(page).toHaveURL(/\/auth\/login/);
 
-    await page.getByTestId("auth-password-input").fill(changedPassword);
-    await page.getByTestId("auth-submit").click();
+    await page.getByLabel("Password", { exact: true }).fill(changedPassword);
+    await page
+      .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+      .click();
     await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
   });
 
   test("shows an invalid email-verification callback", async ({ page }) => {
     await page.goto("/auth/verify-email?error=invalid_token");
 
-    await expect(page.getByTestId("verify-email-view")).toContainText(
-      "验证失败",
-    );
-    await expect(page.getByTestId("verify-email-sign-in")).toHaveCount(0);
+    await expect(
+      page.locator('[data-slot="card"]').filter({
+        has: page.getByText(
+          /^(Check your email|Email verified|Verification failed)$/,
+        ),
+      }),
+    ).toContainText("Verification failed");
+    await expect(
+      page.getByRole("link", { name: "Continue to sign in", exact: true }),
+    ).toHaveCount(0);
   });
 
   test("keeps login and registration on canonical routes", async ({ page }) => {
     await page.goto("/auth/login?redirect=%2Fuser%2Fsecurity");
-    await expect(page.getByTestId("auth-social-submit-github")).toBeVisible();
-    await page.getByTestId("auth-tab-register").click();
+    await expect(
+      page.getByRole("button", { name: "Continue with GitHub", exact: true }),
+    ).toBeVisible();
+    await page.getByRole("tab", { name: "Register", exact: true }).click();
     await expect(page).toHaveURL(
       /\/auth\/register\?redirect=%2Fuser%2Fsecurity$/,
     );
     // The URL can change before the destination form has finished rendering.
-    await expect(page.getByTestId("auth-name-input")).toBeVisible();
+    await expect(page.getByLabel("Name", { exact: true })).toBeVisible();
 
-    await page.getByTestId("auth-tab-login").click();
+    await page.getByRole("tab", { name: "Sign in", exact: true }).click();
     await expect(page).toHaveURL(/\/auth\/login\?redirect=%2Fuser%2Fsecurity$/);
-    await expect(page.getByTestId("auth-name-input")).toHaveCount(0);
+    await expect(page.getByLabel("Name", { exact: true })).toHaveCount(0);
   });
 
   test("starts configured social login through GraphQL", async ({
@@ -197,7 +295,9 @@ test.describe("email authentication", () => {
     });
 
     await page.goto("/auth/login?redirect=%2Fuser%2Fsecurity");
-    await page.getByTestId("auth-social-submit-github").click();
+    await page
+      .getByRole("button", { name: "Continue with GitHub", exact: true })
+      .click();
     await expect(page).toHaveURL(/\/auth\/forgot-password$/);
   });
 });

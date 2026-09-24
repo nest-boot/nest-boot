@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { getPermissionCheckbox } from "./utils/permissions";
 
 import {
   e2eAdministratorEmail,
@@ -26,10 +27,9 @@ for (const change of [
         email: `${seed}@example.com`,
         name: "Self-editing administrator",
       });
-      const { currentUser, currentSession } = await graphqlRequest<{
+      const { currentUser } = await graphqlRequest<{
         currentUser: { id: string };
-        currentSession: { id: string };
-      }>(page.request, "query { currentUser { id } currentSession { id } }");
+      }>(page.request, "query { currentUser { id } }");
       await signInAsE2eAdministrator(adminPage);
       if (change === "permissions") {
         await graphqlRequest(
@@ -50,10 +50,14 @@ for (const change of [
         );
       }
       await page.goto(`/admin/users/${currentUser.id}`);
-      await expect(page.getByTestId("admin-user-page")).toBeVisible();
-      await expect(page.getByTestId("admin-user-sessions-revoke")).toHaveText(
-        "撤销全部会话",
-      );
+      await expect(
+        page
+          .locator('[data-slot="page"]')
+          .filter({ has: page.getByLabel("Email", { exact: true }) }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Revoke all sessions", exact: true }),
+      ).toHaveText("Revoke all sessions");
       const refetches: Array<string> = [];
       const pageErrors: Array<string> = [];
       page.on("request", (request) => {
@@ -62,30 +66,52 @@ for (const change of [
       });
       page.on("pageerror", (error) => pageErrors.push(error.message));
       if (change === "roles") {
-        await page.getByTestId("user-role-USER").check();
-        await page.getByTestId("user-role-ADMIN").uncheck();
-        await page.getByTestId("admin-user-roles-save").click();
+        await page.getByRole("checkbox", { name: "User", exact: true }).check();
+        await page
+          .getByRole("checkbox", { name: "Admin", exact: true })
+          .uncheck();
+        await page
+          .locator('[data-slot="card"]')
+          .filter({ has: page.getByText("Roles", { exact: true }) })
+          .getByRole("button", { name: "Save", exact: true })
+          .click();
       } else if (change === "permissions") {
         for (const permission of ["USER__READ", "USER__SET_PERMISSIONS"])
-          await page.getByTestId(`permission-${permission}`).uncheck();
-        await page.getByTestId("admin-user-permissions-save").click();
+          await getPermissionCheckbox(page, permission).uncheck();
+        await page
+          .locator('[data-slot="card"]')
+          .filter({ has: page.getByText("Permissions", { exact: true }) })
+          .getByRole("button", { name: "Save", exact: true })
+          .click();
       } else {
         await page
-          .getByTestId(
-            change === "current-session"
-              ? `admin-user-session-revoke-${currentSession.id}`
-              : "admin-user-sessions-revoke",
-          )
+          .getByRole("button", {
+            name:
+              change === "current-session" ? "Revoke" : "Revoke all sessions",
+            exact: true,
+          })
           .click();
       }
       if (change === "roles" || change === "permissions") {
         await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
-        await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
-        await page.getByTestId("sidebar-user-menu").click();
-        await expect(page.getByTestId("sidebar-admin-link")).toHaveCount(0);
+        await expect(
+          page.getByRole("heading", { name: "Workspaces", exact: true }),
+        ).toBeVisible();
+        await page
+          .getByRole("button", {
+            name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+          })
+          .click();
+        await expect(
+          page.getByRole("menuitem", { name: "Administration", exact: true }),
+        ).toHaveCount(0);
       } else {
         await expect(page).toHaveURL(/\/auth\/login(?:\?.*)?$/);
-        await expect(page.getByTestId("auth-submit")).toBeVisible();
+        await expect(
+          page.getByRole("button", {
+            name: /^(Loading )?(Sign in|Create account)$/,
+          }),
+        ).toBeVisible();
       }
       expect(refetches).toEqual([]);
       expect(pageErrors).toEqual([]);
@@ -103,7 +129,7 @@ test.describe("administrator impersonation", () => {
     const seed = uniqueSeed("impersonation");
     const targetEmail = `${seed}@example.com`;
     const targetContext = await browser.newContext({
-      locale: "zh-CN",
+      locale: "en-US",
       timezoneId: "Asia/Shanghai",
     });
     const targetPage = await targetContext.newPage();
@@ -131,27 +157,49 @@ test.describe("administrator impersonation", () => {
 
     await signInAsE2eAdministrator(page);
     await page.goto(`/admin/users/${targetId}`);
-    await expect(page.getByTestId("admin-user-page")).toBeVisible();
-    await page.getByTestId("admin-impersonate-user").click();
+    await expect(
+      page
+        .locator('[data-slot="page"]')
+        .filter({ has: page.getByLabel("Email", { exact: true }) }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Impersonate user", exact: true })
+      .click();
 
     await expect(page).toHaveURL(/\/user$/);
-    await expect(page.getByTestId("user-current-email")).toHaveValue(
-      targetEmail,
-    );
-    await expect(page.getByTestId("impersonation-banner")).toBeVisible();
+    await expect(
+      page.getByRole("main").getByText(targetEmail, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("You are impersonating another user.", { exact: true }),
+    ).toBeVisible();
 
     await page.goto("/user/security");
-    await expect(page.getByTestId("user-security-page")).toBeVisible();
-    await expect(page.getByTestId("impersonation-banner")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Security", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("You are impersonating another user.", { exact: true }),
+    ).toBeVisible();
 
     await page.goto("/user/workspaces");
-    await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
-    await expect(page.getByTestId("impersonation-banner")).toBeVisible();
-    await page.getByTestId("stop-impersonating").click();
+    await expect(
+      page.getByRole("heading", { name: "Workspaces", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("You are impersonating another user.", { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Return to administrator", exact: true })
+      .click();
 
     await expect(page).toHaveURL(/\/admin\/users(?:\?.*)?$/);
-    await expect(page.getByTestId("admin-users-page")).toBeVisible();
-    await expect(page.getByTestId("impersonation-banner")).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "Users", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("You are impersonating another user.", { exact: true }),
+    ).toHaveCount(0);
 
     const restored = await graphqlRequest<{
       currentUser: { email: string };

@@ -12,13 +12,21 @@
     "createWorkspace": "创建工作空间",
     "workspaces": "工作空间",
     "loadMore": "加载更多",
-    "manageWorkspaces": "管理工作空间"
+    "manageWorkspaces": "管理工作空间",
+    "loading": "正在加载工作空间…",
+    "retry": "重新加载工作空间",
+    "loadFailed": "无法加载工作空间"
   },
   "user": {
-    "account": "个人账户",
-    "api_keys": "个人 API 密钥",
+    "account": "个人资料",
+    "api_keys": "API 密钥",
     "logout": "退出登录",
     "security": "安全",
+    "theme": {
+      "light": "浅色",
+      "dark": "深色",
+      "system": "跟随系统"
+    },
     "title": "个人中心",
     "workspaces": "工作空间"
   }

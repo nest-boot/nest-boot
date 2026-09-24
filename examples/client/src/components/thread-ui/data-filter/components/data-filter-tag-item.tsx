@@ -1,4 +1,5 @@
-import { ChevronDown, Trash2 } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { useState } from "react";
 
 import { useTranslation } from "react-i18next";
 import {
@@ -14,18 +15,21 @@ import {
 import { useDataFilterContext } from "./data-filter-context";
 import { DataFilterDefaultField } from "./data-filter-default-field";
 import { DataFilterOperatorSelect } from "./data-filter-operator-select";
+import { DataFilterRemoveAction } from "./data-filter-remove-action";
+import {
+  DataFilterPopover,
+  DataFilterPopoverBody,
+  DataFilterPopoverContent,
+  DataFilterPopoverHeader,
+  DataFilterPopoverTrigger,
+} from "./data-filter-popover";
 import type {
+  DataFilterField,
   DataFilterItemBaseProps,
-  DataFilterItemProps,
   DataFilterOperator,
 } from "../types";
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
@@ -34,10 +38,18 @@ import {
 } from "@/components/ui/tooltip";
 
 interface DataFilterTagItemProps {
-  item: DataFilterItemProps;
+  item: DataFilterField;
+  defaultOpen?: boolean;
+  showRemoveAction?: boolean;
+  onRemove?: () => void;
 }
 
-export const DataFilterTagItem: FC<DataFilterTagItemProps> = ({ item }) => {
+export const DataFilterTagItem: FC<DataFilterTagItemProps> = ({
+  item,
+  defaultOpen,
+  showRemoveAction = true,
+  onRemove,
+}) => {
   const { field, label } = item;
   const { t } = useTranslation("thread-ui");
   const {
@@ -48,6 +60,9 @@ export const DataFilterTagItem: FC<DataFilterTagItemProps> = ({ item }) => {
     removeFilter,
   } = useDataFilterContext();
   const fieldValue = filterValues[field];
+  const [open, setOpen] = useState(
+    defaultOpen ?? isEmptyDataFilterValue(fieldValue),
+  );
   const operators = getDataFilterOperators(item);
   const getOperator = (value: unknown): DataFilterOperator => {
     const condition = getDataFilterCondition(value);
@@ -78,7 +93,7 @@ export const DataFilterTagItem: FC<DataFilterTagItemProps> = ({ item }) => {
     });
   };
 
-  const getValue = (): string | undefined => {
+  const getValue = (): ReactNode => {
     if (rawValue === null) {
       return undefined;
     }
@@ -87,16 +102,9 @@ export const DataFilterTagItem: FC<DataFilterTagItemProps> = ({ item }) => {
       return undefined;
     }
 
-    return String(
-      typeof renderValue !== "undefined"
-        ? renderValue({
-            field,
-            label,
-            operator,
-            value: rawValue,
-          })
-        : getDefaultValue(),
-    );
+    return renderValue
+      ? renderValue({ field, label, operator, value: rawValue })
+      : String(getDefaultValue());
   };
 
   const handleOperatorChange = (
@@ -111,7 +119,12 @@ export const DataFilterTagItem: FC<DataFilterTagItemProps> = ({ item }) => {
   };
 
   const remove = () => {
-    removeFilter(field);
+    setOpen(false);
+    if (onRemove) {
+      onRemove();
+    } else {
+      removeFilter(field);
+    }
   };
 
   const render = item.render as
@@ -126,16 +139,20 @@ export const DataFilterTagItem: FC<DataFilterTagItemProps> = ({ item }) => {
         ? t("dataFilter.isNotEmpty")
         : getDataFilterOperatorLabel(operator, t);
   const shouldRenderContent = rawValue !== null;
-  const labelValue = value
-    ? `${label} ${operatorLabel} ${value}`
-    : `${label} ${operatorLabel}`;
+  const labelValue = (
+    <>
+      {label} {operatorLabel}
+      {value != null && value !== false && <> {value}</>}
+    </>
+  );
 
   return (
-    <Popover
+    <DataFilterPopover
       key={field}
-      defaultOpen={isFieldValueEmpty}
       modal={true}
+      open={open}
       onOpenChange={(open) => {
+        setOpen(open);
         // Remove empty filters when their popover closes.
         if (!open && isFieldValueEmpty) {
           hideFilter(field);
@@ -146,7 +163,7 @@ export const DataFilterTagItem: FC<DataFilterTagItemProps> = ({ item }) => {
         <Tooltip>
           <TooltipTrigger
             render={
-              <PopoverTrigger
+              <DataFilterPopoverTrigger
                 render={
                   <Button
                     className="max-w-72 min-w-0"
@@ -164,14 +181,8 @@ export const DataFilterTagItem: FC<DataFilterTagItemProps> = ({ item }) => {
         </Tooltip>
       </TooltipProvider>
 
-      <PopoverContent
-        align="start"
-        className="grid w-fit max-w-64 min-w-48 gap-1 p-1"
-      >
-        <div
-          className="flex items-center justify-between"
-          data-slot="data-filter-tag-item-header"
-        >
+      <DataFilterPopoverContent aria-label={label}>
+        <DataFilterPopoverHeader>
           <DataFilterOperatorSelect
             item={item}
             operator={operator}
@@ -179,18 +190,11 @@ export const DataFilterTagItem: FC<DataFilterTagItemProps> = ({ item }) => {
             onChange={handleOperatorChange}
           />
 
-          <Button
-            aria-label={t("dataFilter.removeFilter")}
-            size="icon-xs"
-            variant="ghost"
-            onClick={remove}
-          >
-            <Trash2 />
-          </Button>
-        </div>
+          {showRemoveAction && <DataFilterRemoveAction onClick={remove} />}
+        </DataFilterPopoverHeader>
 
         {shouldRenderContent && (
-          <div data-slot="data-filter-tag-item-content">
+          <DataFilterPopoverBody>
             {render ? (
               render({
                 operator,
@@ -207,9 +211,9 @@ export const DataFilterTagItem: FC<DataFilterTagItemProps> = ({ item }) => {
                 onChange={handleValueChange}
               />
             )}
-          </div>
+          </DataFilterPopoverBody>
         )}
-      </PopoverContent>
-    </Popover>
+      </DataFilterPopoverContent>
+    </DataFilterPopover>
   );
 };

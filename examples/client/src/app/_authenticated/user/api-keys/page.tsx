@@ -1,20 +1,32 @@
 import { useMutation, useQuery } from "@apollo/client/react";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
-import { t } from "i18next";
+import { useTranslation } from "react-i18next";
+import { graphql } from "@/gql";
+import { UPDATE_USER_API_KEY } from "@/graphql/mutations/update-user-api-key";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { useAbility } from "@/contexts/ability-context";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { ApiKeysPage } from "@/components/api-keys-page";
-import { graphql } from "@/gql";
-import {
-  apiKeySearchSchema,
-  createApiKeyQueryVariables,
-} from "@/lib/api-key-search";
-import {
-  authPermissionValues,
-  getDefaultApiKeyPermissions,
-  getPermissionOptions,
-} from "@/lib/permissions";
+import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
+import { userApiKeysResourceKey } from "@/lib/resource-keys";
+
+const DELETE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
+  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {
+    deleteUserApiKey(id: $id) {
+      id
+      name
+      start
+      prefix
+      enabled
+      permissions
+      createdAt
+      lastUsedAt
+      expiresAt
+    }
+  }
+`);
 
 const GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE = graphql(`
   query getUserApiKeysFromUserApiKeysRoute(
@@ -26,11 +38,6 @@ const GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE = graphql(`
     $orderBy: UserApiKeyOrder
     $query: String
   ) {
-    userApiKeyPermissions {
-      permission
-      grantable
-      default
-    }
     currentUser {
       apiKeys(
         after: $after
@@ -65,87 +72,30 @@ const GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE = graphql(`
   }
 `);
 
-const CREATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
-  mutation createUserApiKeyFromUserApiKeysRoute(
-    $input: CreateUserApiKeyInput!
-  ) {
-    createUserApiKey(input: $input) {
-      apiKey
-      entity {
-        id
-        name
-        start
-        prefix
-        enabled
-        permissions
-        createdAt
-        lastUsedAt
-        expiresAt
-      }
-    }
-  }
-`);
-
-const UPDATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
-  mutation updateUserApiKeyFromUserApiKeysRoute(
-    $id: ID!
-    $input: UpdateUserApiKeyInput!
-  ) {
-    updateUserApiKey(id: $id, input: $input) {
-      id
-      name
-      start
-      prefix
-      enabled
-      permissions
-      createdAt
-      lastUsedAt
-      expiresAt
-    }
-  }
-`);
-
-const DELETE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
-  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {
-    deleteUserApiKey(id: $id) {
-      id
-      name
-      start
-      prefix
-      enabled
-      permissions
-      createdAt
-      lastUsedAt
-      expiresAt
-    }
-  }
-`);
-
 export const Route = createFileRoute("/_authenticated/user/api-keys/")({
   component: ApiKeysComponent,
-  beforeLoad: ({ context }) => {
-    if (!context.ability.can("read", "UserApiKey")) {
-      throw redirect({ to: "/user" });
-    }
-  },
   validateSearch: zodValidator(apiKeySearchSchema),
 });
 
 function ApiKeysComponent() {
+  const { t } = useTranslation();
   const ability = useAbility();
   const search = Route.useSearch();
+  const currentUser = useCurrentUserContext();
+  useResourceNavigation({
+    key: [currentUser.id, ...userApiKeysResourceKey],
+    searchSchema: apiKeySearchSchema,
+    search,
+  });
   const { data, refetch } = useQuery(
     GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE,
     {
-      variables: createApiKeyQueryVariables(search),
+      fetchPolicy: "network-only",
+      variables: search,
     },
   );
-  const [createApiKey, { loading: createLoading }] = useMutation(
-    CREATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
-  );
-  const [updateApiKey, { loading: updateLoading }] = useMutation(
-    UPDATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
-  );
+  const [updateApiKey, { loading: updateLoading }] =
+    useMutation(UPDATE_USER_API_KEY);
   const [deleteApiKey, { loading: deleteLoading }] = useMutation(
     DELETE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
   );
@@ -157,23 +107,13 @@ function ApiKeysComponent() {
       ability={ability}
       title={t("api-key:user.title")}
       description={t("api-key:user.description")}
+      createPath={"/user/api-keys/create"}
+      detailPath={(id) => `/user/api-keys/${id}`}
       search={search}
       apiKeys={connection?.edges.map((edge) => edge.node) ?? []}
       pageInfo={connection?.pageInfo}
-      permissionValues={authPermissionValues}
-      permissionOptions={getPermissionOptions(
-        data?.userApiKeyPermissions ?? [],
-      )}
-      defaultPermissions={getDefaultApiKeyPermissions(
-        data?.userApiKeyPermissions ?? [],
-      )}
-      createLoading={createLoading}
       updateLoading={updateLoading}
       deleteLoading={deleteLoading}
-      createApiKey={async (input) => {
-        const result = await createApiKey({ variables: { input } });
-        return result.data?.createUserApiKey.apiKey;
-      }}
       updateApiKey={(id, input) => updateApiKey({ variables: { id, input } })}
       deleteApiKey={(id) => deleteApiKey({ variables: { id } })}
       refetch={refetch}

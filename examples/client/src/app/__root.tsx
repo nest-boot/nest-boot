@@ -6,6 +6,8 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { t } from "i18next";
+import { ThemeProvider } from "next-themes";
+import { useTranslation } from "react-i18next";
 
 import appCss from "../styles.css?url";
 import type i18n from "i18next";
@@ -51,16 +53,21 @@ export const Route = createRootRouteWithContext<
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const { i18n: translations } = useTranslation(undefined, {
+    useSuspense: false,
+  });
   return (
-    <html lang="en">
+    <html lang={translations.resolvedLanguage ?? "en"} suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
 
-      <body className="bg-background min-h-screen">
-        <AppProvider i18n={i18next}>
-          <TooltipProvider>{children}</TooltipProvider>
-        </AppProvider>
+      <body className="bg-canvas min-h-screen">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <AppProvider i18n={i18next}>
+            <TooltipProvider>{children}</TooltipProvider>
+          </AppProvider>
+        </ThemeProvider>
 
         <TanStackDevtools
           config={{

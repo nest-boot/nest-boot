@@ -1,10 +1,21 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
+import { useForm, useStore } from "@tanstack/react-form";
 import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { LogIn, ShieldCheck, UserPlus } from "lucide-react";
 import { t } from "i18next";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import type { ChangeEvent, ComponentProps, FormEvent } from "react";
+import type { ComponentProps } from "react";
+import { getFormErrorMessage } from "@/lib/form-errors";
+import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldSeparator,
+} from "@/components/ui/field";
 import { toast } from "@/components/thread-ui/toast";
 
 import { cn } from "@/lib/utils";
@@ -14,18 +25,12 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldSeparator,
-} from "@/components/ui/field";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import {
   createEmailVerificationCallbackUrl,
   createEmailVerificationPagePath,
@@ -73,15 +78,6 @@ const INVITATION_ID_KEY = "invitation_id";
 
 type AuthMode = "login" | "register";
 
-interface AuthFormValues {
-  email: string;
-  name: string;
-  password: string;
-  rememberMe: boolean;
-}
-
-type AuthFormErrors = Partial<Record<keyof AuthFormValues | "form", string>>;
-
 export function LoginForm({
   className,
   mode,
@@ -91,6 +87,8 @@ export function LoginForm({
   mode: AuthMode;
   redirect?: string;
 }) {
+  const { t } = useTranslation();
+  const formId = useId();
   const apolloClient = useApolloClient();
   const navigate = useNavigate();
   const [signIn] = useMutation(AUTH_SIGN_IN_FROM_LOGIN_FORM);
@@ -99,14 +97,6 @@ export function LoginForm({
   const { data: socialProviderData } = useQuery(
     GET_SOCIAL_PROVIDERS_FROM_LOGIN_FORM,
   );
-  const [values, setValues] = useState<AuthFormValues>({
-    email: "",
-    name: "",
-    password: "",
-    rememberMe: true,
-  });
-  const [errors, setErrors] = useState<AuthFormErrors>({});
-  const [loading, setLoading] = useState(false);
   const [socialProviderId, setSocialProviderId] = useState<string>();
   const socialProviders = socialProviderData?.socialProviders ?? [];
   const submitLabel = useMemo(
@@ -114,11 +104,11 @@ export function LoginForm({
       mode === "login"
         ? t("auth:form.loginSubmit")
         : t("auth:form.registerSubmit"),
-    [mode],
+    [mode, t],
   );
 
   const handleSocialLogin = async (provider: { id: string; name: string }) => {
-    setErrors((current) => ({ ...current, form: undefined }));
+    form.setErrorMap({ onSubmit: undefined });
     setSocialProviderId(provider.id);
 
     try {
@@ -150,126 +140,95 @@ export function LoginForm({
     } catch (error) {
       const message =
         error instanceof Error ? error.message : t("auth:form.authFailed");
-      setErrors((current) => ({ ...current, form: message }));
+      form.setErrorMap({ onSubmit: { form: message, fields: {} } });
       toast.add({ type: "error", title: message });
       setSocialProviderId(undefined);
     }
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setErrors({});
+  const schema =
+    mode === "login"
+      ? createLoginSchema()
+      : createRegisterSchema(createLoginSchema());
+  const form = useForm({
+    defaultValues: { email: "", name: "", password: "", rememberMe: true },
+    validators: { onSubmit: schema },
+    listeners: {
+      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
+    },
+    onSubmit: async ({ value, formApi }) => {
+      try {
+        if (mode === "login") {
+          const input = createLoginSchema().parse(value);
+          const result = await signIn({
+            variables: {
+              input: {
+                email: input.email,
+                password: input.password,
+                rememberMe: input.rememberMe,
+              },
+            },
+          });
 
-    const loginSchema = createLoginSchema();
-    const registerSchema = createRegisterSchema(loginSchema);
-    const parsed =
-      mode === "login"
-        ? loginSchema.safeParse(values)
-        : registerSchema.safeParse(values);
+          if (!result.data?.signIn.user.id) {
+            throw new Error(t("auth:form.authFailed"));
+          }
+        } else {
+          const input = createRegisterSchema(createLoginSchema()).parse(value);
+          const postAuthPath = resolvePostAuthUrl(redirect);
+          const result = await signUp({
+            variables: {
+              input: {
+                callbackURL: createEmailVerificationCallbackUrl(
+                  window.location.origin,
+                  postAuthPath,
+                ),
+                email: input.email,
+                name: input.name,
+                password: input.password,
+              },
+            },
+          });
 
-    if (!parsed.success) {
-      setErrors(
-        parsed.error.issues.reduce<AuthFormErrors>((nextErrors, issue) => {
-          const field = issue.path[0] as keyof AuthFormValues | undefined;
-
-          if (field && !nextErrors[field]) {
-            nextErrors[field] = issue.message;
+          if (!result.data?.signUp.id) {
+            throw new Error(t("auth:form.authFailed"));
           }
 
-          return nextErrors;
-        }, {}),
-      );
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      if (mode === "login") {
-        const input = loginSchema.parse(values);
-        const result = await signIn({
-          variables: {
-            input: {
-              email: input.email,
-              password: input.password,
-              rememberMe: input.rememberMe,
-            },
-          },
-        });
-
-        if (!result.data?.signIn.user.id) {
-          throw new Error(t("auth:form.authFailed"));
-        }
-      } else {
-        const input = registerSchema.parse(values);
-        const postAuthPath = resolvePostAuthUrl(redirect);
-        const result = await signUp({
-          variables: {
-            input: {
-              callbackURL: createEmailVerificationCallbackUrl(
-                window.location.origin,
-                postAuthPath,
-              ),
-              email: input.email,
-              name: input.name,
-              password: input.password,
-            },
-          },
-        });
-
-        if (!result.data?.signUp.id) {
-          throw new Error(t("auth:form.authFailed"));
+          await apolloClient.clearStore();
+          window.location.assign(
+            createEmailVerificationPagePath(input.email, postAuthPath),
+          );
+          return;
         }
 
         await apolloClient.clearStore();
-        window.location.assign(
-          createEmailVerificationPagePath(input.email, postAuthPath),
-        );
-        return;
+        toast.add({
+          type: "success",
+          title:
+            mode === "login"
+              ? t("auth:form.loginSuccess")
+              : t("auth:form.registerSuccess"),
+        });
+        window.location.assign(resolvePostAuthUrl(redirect));
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : t("auth:form.authFailed");
+
+        formApi.setErrorMap({ onSubmit: { form: message, fields: {} } });
+        toast.add({ type: "error", title: message });
       }
-
-      await apolloClient.clearStore();
-      toast.add({
-        type: "success",
-        title:
-          mode === "login"
-            ? t("auth:form.loginSuccess")
-            : t("auth:form.registerSuccess"),
-      });
-      window.location.assign(resolvePostAuthUrl(redirect));
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : t("auth:form.authFailed");
-
-      setErrors({ form: message });
-      toast.add({ type: "error", title: message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateValue =
-    (name: keyof AuthFormValues) => (event: ChangeEvent<HTMLInputElement>) => {
-      setValues((current) => ({
-        ...current,
-        [name]: event.target.value,
-      }));
-      setErrors((current) => ({
-        ...current,
-        [name]: undefined,
-        form: undefined,
-      }));
-    };
+    },
+  });
+  const loading = useStore(form.store, (state) => state.isSubmitting);
+  const formError = useStore(form.store, (state) =>
+    getFormErrorMessage(state.errors),
+  );
 
   return (
-    <div
-      className={cn("flex flex-col gap-6", className)}
-      data-testid="auth-view"
-      {...props}
-    >
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">{t("auth:welcomeBack")}</CardTitle>
+          <CardTitle>{t("auth:welcomeBack")}</CardTitle>
           <CardDescription>{t("auth:emailAuthDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -284,144 +243,184 @@ export function LoginForm({
             className="w-full"
           >
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login" data-testid="auth-tab-login">
+              <TabsTrigger value="login">
                 <LogIn />
                 {t("auth:form.loginTab")}
               </TabsTrigger>
-              <TabsTrigger value="register" data-testid="auth-tab-register">
+              <TabsTrigger value="register">
                 <UserPlus />
                 {t("auth:form.registerTab")}
               </TabsTrigger>
             </TabsList>
 
-            <form onSubmit={handleSubmit} className="mt-6">
-              <FieldGroup className="gap-4">
+            <form
+              noValidate
+              id={formId}
+              onSubmit={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (form.state.isSubmitting) return;
+                form.setErrorMap({ onSubmit: undefined });
+                form.handleSubmit();
+              }}
+              className="mt-6"
+            >
+              <FormLayout>
                 {mode === "register" && (
-                  <Input
-                    id="name"
-                    data-testid="auth-name-input"
-                    autoComplete="name"
-                    label={t("auth:form.name.label")}
-                    placeholder={t("auth:form.name.placeholder")}
-                    value={values.name}
-                    onChange={updateValue("name")}
-                    error={errors.name}
-                  />
+                  <FormLayoutItem>
+                    <form.Field name="name">
+                      {(field) => (
+                        <Input
+                          id="name"
+                          autoComplete="name"
+                          label={t("auth:form.name.label")}
+                          placeholder={t("auth:form.name.placeholder")}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
+                      )}
+                    </form.Field>
+                  </FormLayoutItem>
                 )}
 
-                <Input
-                  id="email"
-                  data-testid="auth-email-input"
-                  type="email"
-                  autoComplete="email"
-                  label={t("auth:form.email.label")}
-                  placeholder={t("auth:form.email.placeholder")}
-                  value={values.email}
-                  onChange={updateValue("email")}
-                  error={errors.email}
-                />
+                <FormLayoutItem>
+                  <form.Field name="email">
+                    {(field) => (
+                      <Input
+                        id="email"
+                        type="email"
+                        autoComplete="email"
+                        label={t("auth:form.email.label")}
+                        placeholder={t("auth:form.email.placeholder")}
+                        value={field.state.value}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        error={getFormErrorMessage(field.state.meta.errors)}
+                      />
+                    )}
+                  </form.Field>
+                </FormLayoutItem>
 
-                <Input
-                  id="password"
-                  data-testid="auth-password-input"
-                  type="password"
-                  autoComplete={
-                    mode === "login" ? "current-password" : "new-password"
-                  }
-                  label={t("auth:form.password.label")}
-                  placeholder={t("auth:form.password.placeholder")}
-                  value={values.password}
-                  onChange={updateValue("password")}
-                  error={errors.password}
-                />
+                <FormLayoutItem>
+                  <form.Field name="password">
+                    {(field) => (
+                      <Input
+                        id="password"
+                        type="password"
+                        autoComplete={
+                          mode === "login" ? "current-password" : "new-password"
+                        }
+                        label={t("auth:form.password.label")}
+                        placeholder={t("auth:form.password.placeholder")}
+                        value={field.state.value}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        error={getFormErrorMessage(field.state.meta.errors)}
+                      />
+                    )}
+                  </form.Field>
+                </FormLayoutItem>
 
                 {mode === "login" && (
-                  <div className="flex items-center justify-between gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="remember-me"
-                        data-testid="auth-remember-me"
-                        checked={values.rememberMe}
-                        onCheckedChange={(checked) =>
-                          setValues((current) => ({
-                            ...current,
-                            rememberMe: checked,
-                          }))
-                        }
-                      />
-                      <Label htmlFor="remember-me">
-                        {t("auth:form.rememberMe")}
-                      </Label>
+                  <FormLayoutItem>
+                    <div className="flex items-center justify-between gap-4 text-sm">
+                      <div>
+                        <Field orientation="horizontal">
+                          <form.Field name="rememberMe">
+                            {(field) => (
+                              <Checkbox
+                                id="remember-me"
+                                checked={field.state.value}
+                                onCheckedChange={field.handleChange}
+                              />
+                            )}
+                          </form.Field>
+                          <FieldLabel htmlFor="remember-me">
+                            {t("auth:form.rememberMe")}
+                          </FieldLabel>
+                        </Field>
+                      </div>
+
+                      <Link
+                        to="/auth/forgot-password"
+                        className="text-primary underline-offset-4 hover:underline"
+                      >
+                        {t("auth:form.forgotPassword")}
+                      </Link>
                     </div>
-
-                    <Link
-                      to="/auth/forgot-password"
-                      className="text-primary underline-offset-4 hover:underline"
-                      data-testid="auth-forgot-password-link"
-                    >
-                      {t("auth:form.forgotPassword")}
-                    </Link>
-                  </div>
+                  </FormLayoutItem>
                 )}
 
-                {errors.form && (
-                  <FieldDescription className="text-destructive">
-                    {errors.form}
-                  </FieldDescription>
+                {formError && (
+                  <FormLayoutItem>
+                    <FieldError>{formError}</FieldError>
+                  </FormLayoutItem>
                 )}
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  data-testid="auth-submit"
-                  loading={loading}
-                >
-                  {mode === "login" ? <LogIn /> : <UserPlus />}
-                  {submitLabel}
-                </Button>
-
-                {socialProviders.length > 0 && (
-                  <>
-                    <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
-                      {t("auth:form.or")}
-                    </FieldSeparator>
-
-                    {socialProviders.map((provider) => (
-                      <Field key={provider.id}>
-                        <Button
-                          className="w-full"
-                          variant="outline"
-                          type="button"
-                          onClick={() => handleSocialLogin(provider)}
-                          disabled={loading || socialProviderId !== undefined}
-                          loading={socialProviderId === provider.id}
-                          data-testid={`auth-social-submit-${provider.id}`}
-                        >
-                          <ShieldCheck />
-                          {t("auth:continueWithProvider", {
-                            provider: provider.name,
-                          })}
-                        </Button>
-                      </Field>
-                    ))}
-                  </>
-                )}
-              </FieldGroup>
+              </FormLayout>
             </form>
           </Tabs>
         </CardContent>
+        <CardFooter>
+          <FormLayout className="w-full">
+            <FormLayoutItem>
+              <Button
+                type="submit"
+                form={formId}
+                className="w-full"
+                loading={loading}
+              >
+                {mode === "login" ? <LogIn /> : <UserPlus />}
+                {submitLabel}
+              </Button>
+            </FormLayoutItem>
+
+            {socialProviders.length > 0 && (
+              <>
+                <FormLayoutItem>
+                  <FieldSeparator>{t("auth:form.or")}</FieldSeparator>
+                </FormLayoutItem>
+
+                {socialProviders.map((provider) => (
+                  <FormLayoutItem key={provider.id}>
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      type="button"
+                      onClick={() => handleSocialLogin(provider)}
+                      disabled={loading || socialProviderId !== undefined}
+                      loading={socialProviderId === provider.id}
+                    >
+                      <ShieldCheck />
+                      {t("auth:continueWithProvider", {
+                        provider: provider.name,
+                      })}
+                    </Button>
+                  </FormLayoutItem>
+                ))}
+              </>
+            )}
+          </FormLayout>
+        </CardFooter>
       </Card>
-      <FieldDescription className="px-6 text-center">
-        {t("auth:byClickingContinue")}{" "}
-        <a href="#">{t("auth:termsOfService")}</a> {t("auth:and")}{" "}
-        <a href="#">{t("auth:privacyPolicy")}</a>.
-      </FieldDescription>
+      <div className="px-6">
+        <FieldDescription className="text-center">
+          {t("auth:byClickingContinue")}{" "}
+          <a href="#">{t("auth:termsOfService")}</a> {t("auth:and")}{" "}
+          <a href="#">{t("auth:privacyPolicy")}</a>.
+        </FieldDescription>
+      </div>
     </div>
   );
 }
 
 function createLoginSchema() {
   return z.object({
+    name: z.string(),
     email: z.string().email(t("auth:form.email.invalid")),
     password: z.string().min(8, t("auth:form.password.min")),
     rememberMe: z.boolean(),

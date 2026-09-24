@@ -37,6 +37,8 @@
     "title": "接受工作空间邀请"
   },
   "settings": {
+    "saved": "保存成功",
+    "save_failed": "保存失败，请稍后重试",
     "dangerZone": {
       "deleteButton": "删除工作空间",
       "description": "永久删除工作空间及其成员关系、邀请和工作区 API Key，无法恢复。用户账号会保留。",
@@ -60,5 +62,21 @@
       "title": "退出工作空间"
     }
   },
-  "title": "设置"
+  "title": "设置",
+  "overview": {
+    "description": "{{name}}的概览。",
+    "members": "此工作空间中的成员。",
+    "api_keys": "此工作空间所拥有的 API 密钥。",
+    "manage_members": "管理成员"
+  },
+  "create": {
+    "title": "创建工作空间",
+    "description": "创建一个新的工作空间，开始管理您的项目。",
+    "form": {
+      "name": {
+        "label": "名称",
+        "placeholder": "我的工作空间"
+      }
+    }
+  }
 }
