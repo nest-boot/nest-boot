@@ -410,26 +410,24 @@ function MembersComponent() {
           <Card>
             <CardContent>
               <div className="space-y-4">
-                <div data-testid="members-page">
-                  <DataFilter
-                    filters={filters}
-                    value={{ filter: filterValues, query }}
-                    onChange={(value) => {
-                      navigate({
-                        to: location.pathname,
-                        search: {
-                          ...(value.query ? { query: value.query } : {}),
-                          ...(!isEmpty(value.filter)
-                            ? { filter: value.filter }
-                            : {}),
-                        },
-                      });
-                    }}
-                    search={{
-                      placeholder: t("member:filter.search.placeholder"),
-                    }}
-                  />
-                </div>
+                <DataFilter
+                  filters={filters}
+                  value={{ filter: filterValues, query }}
+                  onChange={(value) => {
+                    navigate({
+                      to: location.pathname,
+                      search: {
+                        ...(value.query ? { query: value.query } : {}),
+                        ...(!isEmpty(value.filter)
+                          ? { filter: value.filter }
+                          : {}),
+                      },
+                    });
+                  }}
+                  search={{
+                    placeholder: t("member:filter.search.placeholder"),
+                  }}
+                />
 
                 <DataTable
                   columns={[

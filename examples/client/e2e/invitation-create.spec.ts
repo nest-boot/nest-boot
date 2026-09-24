@@ -26,7 +26,9 @@ test("validates and retries invitations on their own page with recoverable copy 
     .getByRole("navigation", { name: "Breadcrumbs" })
     .getByRole("link", { name: "Members", exact: true })
     .click();
-  await expect(page.getByTestId("members-page")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Members", exact: true }),
+  ).toBeVisible();
   await page.goto(path);
   await page.reload();
   await expect(page.getByTestId("workspace-invite-email-input")).toHaveValue(

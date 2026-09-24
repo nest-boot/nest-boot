@@ -188,7 +188,9 @@ test("member navigation and invitation return searches stay isolated by workspac
     .getByRole("navigation", { name: "Breadcrumbs" })
     .getByRole("link", { name: "Members", exact: true })
     .click();
-  await expect(page.getByTestId("members-page")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Members", exact: true }),
+  ).toBeVisible();
   expect(readSearch(page)).toEqual(secondSearch);
   await page.goto(`${firstList}/invite`);
   await page

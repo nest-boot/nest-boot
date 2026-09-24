@@ -118,7 +118,9 @@ test.describe("workspace invitations", () => {
       const workspaceId = await createFirstWorkspace(page, workspaceName);
 
       await page.goto(`/workspaces/${workspaceId}/members`);
-      await expect(page.getByTestId("members-page")).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Members", exact: true }),
+      ).toBeVisible();
 
       await page.getByRole("link", { name: "Invite", exact: true }).click();
       await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
@@ -188,7 +190,9 @@ test.describe("workspace invitations", () => {
     const workspaceId = await createFirstWorkspace(page, workspaceName);
 
     await page.goto(`/workspaces/${workspaceId}/members`);
-    await expect(page.getByTestId("members-page")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Members", exact: true }),
+    ).toBeVisible();
 
     await page.getByRole("link", { name: "Invite", exact: true }).click();
     await expect(page).toHaveURL(
@@ -287,7 +291,9 @@ test.describe("workspace invitations", () => {
     const workspaceId = await createFirstWorkspace(page, workspaceName);
 
     await page.goto(`/workspaces/${workspaceId}/members`);
-    await expect(page.getByTestId("members-page")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Members", exact: true }),
+    ).toBeVisible();
 
     await page.getByRole("link", { name: "Invite", exact: true }).click();
     await expect(page).toHaveURL(
