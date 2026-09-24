@@ -3,7 +3,7 @@ import { formatRenderValue } from "./format-render-value";
 import { getDataFilterBetweenValue } from "./get-data-filter-between-value";
 import { isEmpty } from "./is-empty";
 import type {
-  DataFilterItemProps,
+  DataFilterField,
   DataFilterOperator,
   DataFilterSelectOption,
 } from "../types";
@@ -19,7 +19,7 @@ export const getDataFilterDefaultRenderValue = ({
 }: {
   checkedLabel: string;
   field: string;
-  item: DataFilterItemProps;
+  item: DataFilterField;
   operator: DataFilterOperator;
   selectOptionCache?: Record<string, DataFilterSelectOption>;
   uncheckedLabel: string;

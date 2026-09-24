@@ -11,7 +11,7 @@ import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Check, Plus, X } from "lucide-react";
 import { isEmpty } from "lodash";
-import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import {
   workspaceSearchSchema,
@@ -244,7 +244,7 @@ function UserWorkspacesComponent() {
   const pageInfo = data?.currentUser.workspaces.pageInfo;
   const invitationActionPending =
     acceptingInvitationId !== null || rejectingInvitationId !== null;
-  const filters: Array<DataFilterItemProps> = useMemo(
+  const filters: Array<DataFilterField> = useMemo(
     () => [
       {
         label: t("user:workspaces.table.name"),

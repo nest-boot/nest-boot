@@ -80,6 +80,9 @@ Its default accessible labels are translated through the `thread-ui` namespace.
 Use theme color tokens from `src/styles.css` in application code.
 
 API key lists use `DataFilter` and `DataTable`; rows and name links open details.
+Use `DataFilterField` for toolbar filter configurations. `DataFilterItem` is a
+standalone controlled condition; `DataFilterItemProps` describes its component
+props, including `value` and `onChange`.
 Creation and details use separate pages at `/user/api-keys/create`,
 `/user/api-keys/$apiKeyId`, `/workspaces/$workspaceId/api-keys/create`, and
 `/workspaces/$workspaceId/api-keys/$apiKeyId`. Creation and details both use

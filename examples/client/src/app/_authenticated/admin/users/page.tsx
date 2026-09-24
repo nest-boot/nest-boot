@@ -7,7 +7,7 @@ import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 import { isEmpty } from "lodash";
-import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import {
   adminUserSearchSchema,
@@ -101,7 +101,7 @@ function AdminUsersPage() {
   });
   const users = data?.users.edges.map(({ node }) => node) ?? [];
   const canCreate = ability.can("create", "User");
-  const filters: Array<DataFilterItemProps> = useMemo(
+  const filters: Array<DataFilterField> = useMemo(
     () => [
       {
         label: t("admin:users.table.name"),

@@ -8,13 +8,13 @@ import {
 import type { FC } from "react";
 import type { DataFilterSearchProps } from "./components/data-filter-search";
 import type { DataFilterSortProps } from "./components/data-filter-sort";
-import type { DataFilterItemProps, DataFilterValue } from "./types";
+import type { DataFilterField, DataFilterValue } from "./types";
 import { cn } from "@/lib/utils";
 
 export interface DataFilterProps {
   className?: string;
   loading?: boolean;
-  filters: Array<DataFilterItemProps>;
+  filters: Array<DataFilterField>;
   search?: false | DataFilterSearchProps;
   sort?: false | DataFilterSortProps;
   value?: DataFilterValue;

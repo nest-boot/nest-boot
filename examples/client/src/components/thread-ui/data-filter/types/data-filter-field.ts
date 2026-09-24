@@ -4,7 +4,7 @@ import type { DataFilterItemInputProps } from "./data-filter-item-input-props";
 import type { DataFilterItemNumberInputProps } from "./data-filter-item-number-input-props";
 import type { DataFilterItemSelectProps } from "./data-filter-item-select-props";
 
-export type DataFilterItemProps =
+export type DataFilterField =
   | DataFilterItemInputProps
   | DataFilterItemNumberInputProps
   | DataFilterItemDatePickerProps

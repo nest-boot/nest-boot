@@ -12,7 +12,7 @@ import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
 import { useCurrentMemberContext } from "../contexts/current-member-context";
-import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { getMembersPageKey, memberSearchSchema } from "@/lib/member-search";
 import { usePageSearch } from "@/hooks/use-page-search";
@@ -238,7 +238,7 @@ function MembersComponent() {
   const invitationPageInfo = data?.currentWorkspace?.invitations?.pageInfo;
   const pageInfo = data?.currentWorkspace?.members.pageInfo;
 
-  const filters: Array<DataFilterItemProps> = useMemo(() => {
+  const filters: Array<DataFilterField> = useMemo(() => {
     return [
       {
         label: t("member:filter.items.name.label"),

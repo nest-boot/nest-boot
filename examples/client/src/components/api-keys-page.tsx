@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
 import { KeyRound } from "lucide-react";
 
-import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import type {
   UpdateUserApiKeyInput,
   UserApiKey,
@@ -104,7 +104,7 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
   const query = search?.query ?? "";
   const filterValues = (search?.filter ?? {}) as Record<string, unknown>;
 
-  const filters: Array<DataFilterItemProps> = useMemo(() => {
+  const filters: Array<DataFilterField> = useMemo(() => {
     return [
       {
         label: t("api-key:filter.items.name.label"),

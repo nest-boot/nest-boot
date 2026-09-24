@@ -1,8 +1,8 @@
 import { getDataFilterOperators } from "./get-data-filter-operators";
-import type { DataFilterItemProps, DataFilterOperator } from "../types";
+import type { DataFilterField, DataFilterOperator } from "../types";
 
 export const getDefaultDataFilterOperator = (
-  item: DataFilterItemProps,
+  item: DataFilterField,
 ): DataFilterOperator => {
   return item.defaultOperator ?? getDataFilterOperators(item)[0] ?? "$eq";
 };

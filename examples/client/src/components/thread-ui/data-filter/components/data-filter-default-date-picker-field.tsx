@@ -44,7 +44,7 @@ export const DataFilterDefaultDatePickerField: FC<
 
     return (
       <Calendar
-        className="p-0 px-2 pb-2"
+        className="p-0"
         defaultMonth={selectedRange.from ?? selectedRange.to}
         disabled={disabled}
         mode="range"
@@ -58,7 +58,7 @@ export const DataFilterDefaultDatePickerField: FC<
 
   return (
     <Calendar
-      className="p-0 px-2 pb-2"
+      className="p-0"
       defaultMonth={selected}
       disabled={disabled}
       mode="single"
