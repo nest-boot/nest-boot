@@ -3,15 +3,15 @@ import { WorkspaceOrderField } from "@/gql/graphql";
 import {
   OrderDirection,
   createConnectionSearchSchema,
-  createDateFilterSearchSchema,
+  createDateFilterItemSearchSchema,
   createFilterSchema,
-  createInputFilterSearchSchema,
+  createInputFilterItemSearchSchema,
 } from "@/lib/connection-search";
 
 export const workspaceSearchSchema = createConnectionSearchSchema({
   filterSchema: createFilterSchema({
-    name: createInputFilterSearchSchema(),
-    created_at: createDateFilterSearchSchema(),
+    name: createInputFilterItemSearchSchema(),
+    created_at: createDateFilterItemSearchSchema(),
   }),
   pageSize: 20,
   orderField: WorkspaceOrderField,

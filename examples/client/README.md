@@ -110,8 +110,8 @@ and invitation pages retain their return-to-list breadcrumbs.
 
 Shared resource search schemas, their inferred types, and tests live in
 `src/schemas`. `lib/connection-search.ts` provides `createFilterSchema`, the
-`createInputFilterSearchSchema`, `createSelectFilterSearchSchema`, and
-`createDateFilterSearchSchema` field factories, the pagination schema factory,
+`createInputFilterItemSearchSchema`, `createSelectFilterItemSearchSchema`, and
+`createDateFilterItemSearchSchema` field factories, the pagination schema factory,
 and previous/next search helpers. `createFilterSchema` wraps the field shape in
 an optional object; field factories allow omitted values and normalize invalid
 field values to `undefined`. Keep reusable functions in `lib` and schema

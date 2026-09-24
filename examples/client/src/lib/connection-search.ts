@@ -28,7 +28,7 @@ export function createFilterSchema<Shape extends z.ZodRawShape>(shape: Shape) {
   return z.object(shape).optional();
 }
 
-export function createInputFilterSearchSchema(
+export function createInputFilterItemSearchSchema(
   valueSchema: z.ZodString = z.string().max(255),
   options: { fulltext?: boolean } = {},
 ) {
@@ -45,7 +45,7 @@ export function createInputFilterSearchSchema(
     .catch(undefined);
 }
 
-export function createSelectFilterSearchSchema<
+export function createSelectFilterItemSearchSchema<
   ValueSchema extends z.ZodTypeAny,
 >(valueSchema: ValueSchema, max?: number) {
   const arraySchema =
@@ -69,7 +69,7 @@ export function createSelectFilterSearchSchema<
     .catch(undefined);
 }
 
-export function createDateFilterSearchSchema() {
+export function createDateFilterItemSearchSchema() {
   const dateValueSchema = z.string().datetime();
 
   return z

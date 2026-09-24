@@ -4,18 +4,18 @@ import { UserApiKeyOrderField } from "@/gql/graphql";
 import {
   OrderDirection,
   createConnectionSearchSchema,
-  createDateFilterSearchSchema,
+  createDateFilterItemSearchSchema,
   createFilterSchema,
-  createInputFilterSearchSchema,
+  createInputFilterItemSearchSchema,
 } from "@/lib/connection-search";
 
 export const apiKeySearchSchema = createConnectionSearchSchema({
   filterSchema: createFilterSchema({
-    name: createInputFilterSearchSchema(z.string().max(255), {
+    name: createInputFilterItemSearchSchema(z.string().max(255), {
       fulltext: true,
     }),
-    prefix: createInputFilterSearchSchema(),
-    created_at: createDateFilterSearchSchema(),
+    prefix: createInputFilterItemSearchSchema(),
+    created_at: createDateFilterItemSearchSchema(),
   }),
   pageSize: 20,
   orderField: UserApiKeyOrderField,

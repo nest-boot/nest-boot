@@ -3,16 +3,16 @@ import { UserOrderField } from "@/gql/graphql";
 import {
   OrderDirection,
   createConnectionSearchSchema,
-  createDateFilterSearchSchema,
+  createDateFilterItemSearchSchema,
   createFilterSchema,
-  createInputFilterSearchSchema,
+  createInputFilterItemSearchSchema,
 } from "@/lib/connection-search";
 
 export const adminUserSearchSchema = createConnectionSearchSchema({
   filterSchema: createFilterSchema({
-    name: createInputFilterSearchSchema(),
-    email: createInputFilterSearchSchema(),
-    created_at: createDateFilterSearchSchema(),
+    name: createInputFilterItemSearchSchema(),
+    email: createInputFilterItemSearchSchema(),
+    created_at: createDateFilterItemSearchSchema(),
   }),
   pageSize: 20,
   orderField: UserOrderField,
