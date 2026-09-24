@@ -14,7 +14,7 @@ export const apiKeySearchSchema = createConnectionSearchSchema({
     name: createInputFilterItemSearchSchema(z.string().max(255), {
       fulltext: true,
     }),
-    prefix: createInputFilterItemSearchSchema(),
+    prefix: createInputFilterItemSearchSchema(undefined, { fulltext: false }),
     created_at: createDateFilterItemSearchSchema(),
   }),
   pageSize: 20,

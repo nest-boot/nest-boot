@@ -14,15 +14,20 @@ export interface PageInfo {
   startCursor?: string | null;
 }
 
-export interface CreateConnectionSearchSchemaOptions<
-  OrderField extends EnumLike,
-> {
-  filterSchema?: z.ZodSchema;
+interface ConnectionPaginationOptions<OrderField extends EnumLike> {
   pageSize: number;
   orderField: OrderField;
   defaultOrderField: OrderField[keyof OrderField];
   defaultOrderDirection: OrderDirection;
 }
+
+export type CreateConnectionSearchSchemaOptions<
+  OrderField extends EnumLike,
+  FilterSchema extends z.ZodType | undefined = undefined,
+> = ConnectionPaginationOptions<OrderField> &
+  (FilterSchema extends z.ZodType
+    ? { filterSchema: FilterSchema }
+    : { filterSchema?: undefined });
 
 export function createFilterSchema<Shape extends z.ZodRawShape>(shape: Shape) {
   return z.object(shape).optional();
@@ -36,7 +41,10 @@ export function createInputFilterItemSearchSchema(
   const operatorSchema = {
     $eq: nullableValueSchema.optional(),
     $ne: nullableValueSchema.optional(),
-    ...(options.fulltext ? { $fulltext: valueSchema.optional() } : {}),
+    $fulltext:
+      options.fulltext === false
+        ? z.never().optional()
+        : valueSchema.optional(),
   };
 
   return z
@@ -69,20 +77,21 @@ export function createSelectFilterItemSearchSchema<
     .catch(undefined);
 }
 
-export function createDateFilterItemSearchSchema() {
-  const dateValueSchema = z.string().datetime();
-
+function createComparableFilterItemSearchSchema<ValueSchema extends z.ZodType>(
+  valueSchema: ValueSchema,
+) {
   return z
     .union([
-      dateValueSchema,
+      valueSchema,
       z
         .object({
-          $eq: dateValueSchema.nullable().optional(),
-          $ne: dateValueSchema.nullable().optional(),
-          $gt: dateValueSchema.optional(),
-          $gte: dateValueSchema.optional(),
-          $lt: dateValueSchema.optional(),
-          $lte: dateValueSchema.optional(),
+          $eq: valueSchema.nullable().optional(),
+          $ne: valueSchema.nullable().optional(),
+          $gt: valueSchema.optional(),
+          $gte: valueSchema.optional(),
+          $lt: valueSchema.optional(),
+          $lte: valueSchema.optional(),
+          $between: z.tuple([valueSchema, valueSchema]).optional(),
         })
         .strict(),
     ])
@@ -90,8 +99,35 @@ export function createDateFilterItemSearchSchema() {
     .catch(undefined);
 }
 
-export function createConnectionSearchSchema<OrderField extends EnumLike>(
-  options: CreateConnectionSearchSchemaOptions<OrderField>,
+export function createDateFilterItemSearchSchema() {
+  return createComparableFilterItemSearchSchema(z.string().datetime());
+}
+
+export function createNumberFilterItemSearchSchema(
+  valueSchema: z.ZodNumber = z.number(),
+) {
+  return createComparableFilterItemSearchSchema(valueSchema);
+}
+
+export function createCheckboxFilterItemSearchSchema() {
+  const valueSchema = z.boolean();
+
+  return z
+    .union([
+      valueSchema,
+      z
+        .object({
+          $eq: valueSchema.nullable().optional(),
+          $ne: valueSchema.nullable().optional(),
+        })
+        .strict(),
+    ])
+    .optional()
+    .catch(undefined);
+}
+
+function createConnectionPaginationSchema<OrderField extends EnumLike>(
+  options: ConnectionPaginationOptions<OrderField>,
 ) {
   return z
     .object({
@@ -125,7 +161,6 @@ export function createConnectionSearchSchema<OrderField extends EnumLike>(
           field: options.defaultOrderField,
           direction: options.defaultOrderDirection,
         }),
-      ...(options.filterSchema ? { filter: options.filterSchema } : {}),
     })
     .transform((data) => {
       const { first, last, after, before, ...rest } = data;
@@ -153,8 +188,39 @@ export function createConnectionSearchSchema<OrderField extends EnumLike>(
     });
 }
 
-export type ConnectionSearch<OrderField extends EnumLike> = z.infer<
-  ReturnType<typeof createConnectionSearchSchema<OrderField>>
+export function createConnectionSearchSchema<
+  OrderField extends EnumLike,
+  FilterSchema extends z.ZodType,
+>(
+  options: ConnectionPaginationOptions<OrderField> & {
+    filterSchema: FilterSchema;
+  },
+): z.ZodIntersection<
+  ReturnType<typeof createConnectionPaginationSchema<OrderField>>,
+  z.ZodObject<{ filter: FilterSchema }>
+>;
+export function createConnectionSearchSchema<OrderField extends EnumLike>(
+  options: CreateConnectionSearchSchemaOptions<OrderField>,
+): ReturnType<typeof createConnectionPaginationSchema<OrderField>>;
+export function createConnectionSearchSchema<OrderField extends EnumLike>(
+  options: ConnectionPaginationOptions<OrderField> & {
+    filterSchema?: z.ZodType;
+  },
+) {
+  const paginationSchema = createConnectionPaginationSchema(options);
+
+  return options.filterSchema
+    ? paginationSchema.and(z.object({ filter: options.filterSchema }))
+    : paginationSchema;
+}
+
+export type ConnectionSearch<
+  OrderField extends EnumLike,
+  FilterSchema extends z.ZodType | undefined = undefined,
+> = z.infer<
+  FilterSchema extends z.ZodType
+    ? ReturnType<typeof createConnectionSearchSchema<OrderField, FilterSchema>>
+    : ReturnType<typeof createConnectionSearchSchema<OrderField>>
 >;
 
 export function getPreviousPageSearch<

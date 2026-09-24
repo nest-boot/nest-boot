@@ -10,23 +10,17 @@ const DATA_FILTER_OPERATORS = new Set([
   "$fulltext",
   "$in",
   "$nin",
+  "$between",
 ]);
 
-function getFilterCondition(value: any): { operator?: string; value: any } {
+function getFilterConditions(value: any): Array<[string, any]> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return { value };
+    return [];
   }
 
-  const condition = Object.entries(value).find(([operator]) =>
+  return Object.entries(value).filter(([operator]) =>
     DATA_FILTER_OPERATORS.has(operator),
   );
-
-  return condition
-    ? {
-        operator: condition[0],
-        value: condition[1],
-      }
-    : { value };
 }
 
 export function formatFilterValues(
@@ -36,12 +30,16 @@ export function formatFilterValues(
   const filter: Record<string, any> = {};
 
   for (const [key, value] of Object.entries(values)) {
-    const condition = getFilterCondition(value);
-    filter[key] =
-      formatValue?.(key, condition.value, condition.operator) ??
-      (condition.operator
-        ? { [condition.operator]: condition.value }
-        : condition.value);
+    const conditions = getFilterConditions(value);
+    filter[key] = conditions.length
+      ? Object.assign(
+          {},
+          ...conditions.map(
+            ([operator, value]) =>
+              formatValue?.(key, value, operator) ?? { [operator]: value },
+          ),
+        )
+      : (formatValue?.(key, value) ?? value);
   }
 
   return filter;
@@ -62,7 +60,13 @@ export function formatConnectionFilterValue(
     return value;
   }
 
-  if (field === "created_at" || field === "createdAt") {
+  if (value !== null && (field === "created_at" || field === "createdAt")) {
+    if (operator === "$between") {
+      return {
+        $between: [value[0], dayjs(value[1]).endOf("day").toISOString()],
+      };
+    }
+
     const dateOperator = operator === "$lte" ? "$lte" : (operator ?? "$gte");
 
     return {
