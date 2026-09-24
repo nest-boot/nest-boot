@@ -66,23 +66,25 @@ test("administrator users restore create searches and navigate filtered details 
   const [a, b, c] = await createUsers(page, seed);
   await page.goto(filteredPath("/admin/users", `${seed}*`));
   await expect(page.getByRole("row").nth(1)).toContainText(a.name);
-  await page.getByRole("button", { name: "下一页", exact: true }).click();
+  await page.getByRole("button", { name: "Next page", exact: true }).click();
   await expect(page.getByRole("row").nth(1)).toContainText(b.name);
   const original = readSearch(page);
-  await page.getByRole("link", { name: "创建用户", exact: true }).click();
+  await page.getByRole("link", { name: "Create user", exact: true }).click();
   await page.reload();
   await backToList(page);
   await expect(page.getByRole("row").nth(1)).toContainText(b.name);
   expect(readSearch(page)).toEqual(original);
-  await page.getByRole("link", { name: "创建用户", exact: true }).click();
+  await page.getByRole("link", { name: "Create user", exact: true }).click();
   await page
-    .getByRole("textbox", { name: "名称", exact: true })
+    .getByRole("textbox", { name: "Name", exact: true })
     .fill("Unrelated created user");
   await page
-    .getByRole("textbox", { name: "邮箱", exact: true })
+    .getByRole("textbox", { name: "Email", exact: true })
     .fill(`${uniqueSeed("unrelated-created")}@example.com`);
-  await page.getByLabel("临时密码", { exact: true }).fill(testPassword);
-  await page.getByRole("button", { name: "创建用户", exact: true }).click();
+  await page
+    .getByLabel("Temporary password", { exact: true })
+    .fill(testPassword);
+  await page.getByRole("button", { name: "Create user", exact: true }).click();
   await expect(page.getByRole("row").nth(1)).toContainText(b.name);
   expect(readSearch(page)).toEqual(original);
   await page
@@ -141,7 +143,7 @@ test("member navigation and invitation return searches stay isolated by workspac
   await page.goto(filteredPath(firstList, `${seed}*`, "CREATED_AT", "DESC"));
   await expect(page.getByRole("row").nth(1)).toContainText(users[2].name);
   await page
-    .getByRole("button", { name: "下一页", exact: true })
+    .getByRole("button", { name: "Next page", exact: true })
     .first()
     .click();
   await expect(page.getByRole("row").nth(1)).toContainText(users[1].name);
@@ -181,7 +183,7 @@ test("member navigation and invitation return searches stay isolated by workspac
   await page
     .getByTestId("workspace-invite-email-input")
     .fill(`${seed}-invited@example.com`);
-  await page.getByTestId("invite-role-MEMBER").check();
+  await page.getByRole("checkbox", { name: "Member", exact: true }).check();
   await page.getByTestId("workspace-invite-confirm").click();
   await expect(page.getByTestId("workspace-invite-result")).toBeVisible();
   await page.getByTestId("workspace-invite-back").click();
@@ -216,7 +218,7 @@ test("workspace settings navigate the filtered list and create preserves its ret
   );
   await expect(page.getByRole("row").nth(1)).toContainText(c.name);
   await page
-    .getByRole("button", { name: "下一页", exact: true })
+    .getByRole("button", { name: "Next page", exact: true })
     .first()
     .click();
   await expect(page.getByRole("row").nth(1)).toContainText(b.name);

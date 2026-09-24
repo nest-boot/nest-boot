@@ -40,10 +40,24 @@ Use `toast.add({ type: "success", title: "..." })` from
 matching Base UI toaster. Keep `i18next` as a runtime dependency and
 `react-day-picker` at the version required by Thread UI's calendar registry.
 
-When refreshing registry components, preserve the alert dialog `data-testid`
-attributes and checkbox group option `testId` support used by the example's
-end-to-end tests. Resource creation and long permission forms use standalone
-pages; confirmation dialogs retain their viewport bounds.
+Refresh installed Thread UI components through the registry without adding
+test-only component extensions. End-to-end tests default to English and locate
+registry controls by role and translated accessible name; language preference
+tests also cover Chinese. Resource creation and long permission forms use
+standalone pages; confirmation dialogs retain their viewport bounds.
+
+The theme comes from `@thread-ui/theme`. After refreshing components, refresh
+the theme last from this directory:
+
+```bash
+pnpm dlx shadcn@latest add @thread-ui/theme --overwrite
+```
+
+This `registry:theme` item writes colors, radii, and base styles into
+`src/styles.css`, as configured in `components.json`; it is not a runtime CSS
+package. Keep the Tailwind imports and generated styles in that entry point,
+without a separate local palette. Pages use `bg-canvas`, sidebars use
+`bg-sidebar`, and the topbar uses `bg-topbar`, all supplied by the theme.
 
 ESLint includes [@shadcn/lint](https://github.com/shadcn-ui/lint) checks for
 component restyling, raw colors, arbitrary values, inline styles, dynamic

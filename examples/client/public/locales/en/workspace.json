@@ -37,6 +37,8 @@
     "title": "Accept Workspace Invitation"
   },
   "settings": {
+    "saved": "Workspace updated",
+    "save_failed": "Unable to save the workspace. Please try again.",
     "dangerZone": {
       "deleteButton": "Delete Workspace",
       "description": "Permanently delete this workspace, its memberships, invitations and workspace API keys. This cannot be undone. User accounts will be retained.",

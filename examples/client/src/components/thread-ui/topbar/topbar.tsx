@@ -106,7 +106,7 @@ export function Topbar({
       data-slot="topbar"
       data-variant={variant ?? "auto"}
       className={cn(
-        "group/topbar border-border bg-background text-foreground z-20 grid h-14 min-w-0 shrink-0 auto-cols-[minmax(0,auto)] grid-flow-col grid-cols-[minmax(0,1fr)] items-center justify-items-end gap-2 border-b px-3 md:gap-4 md:px-4",
+        "group/topbar border-border bg-topbar text-foreground z-20 grid h-14 min-w-0 shrink-0 auto-cols-[minmax(0,auto)] grid-flow-col grid-cols-[minmax(0,1fr)] items-center justify-items-end gap-2 border-b px-3 md:gap-4 md:px-4",
         className,
       )}
     >

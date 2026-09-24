@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { getPermissionCheckbox } from "./utils/permissions";
 
 import {
   e2eAdministratorEmail,
@@ -52,7 +53,7 @@ for (const change of [
       await page.goto(`/admin/users/${currentUser.id}`);
       await expect(page.getByTestId("admin-user-page")).toBeVisible();
       await expect(page.getByTestId("admin-user-sessions-revoke")).toHaveText(
-        "撤销全部会话",
+        "Revoke all sessions",
       );
       const refetches: Array<string> = [];
       const pageErrors: Array<string> = [];
@@ -62,12 +63,14 @@ for (const change of [
       });
       page.on("pageerror", (error) => pageErrors.push(error.message));
       if (change === "roles") {
-        await page.getByTestId("user-role-USER").check();
-        await page.getByTestId("user-role-ADMIN").uncheck();
+        await page.getByRole("checkbox", { name: "User", exact: true }).check();
+        await page
+          .getByRole("checkbox", { name: "Admin", exact: true })
+          .uncheck();
         await page.getByTestId("admin-user-roles-save").click();
       } else if (change === "permissions") {
         for (const permission of ["USER__READ", "USER__SET_PERMISSIONS"])
-          await page.getByTestId(`permission-${permission}`).uncheck();
+          await getPermissionCheckbox(page, permission).uncheck();
         await page.getByTestId("admin-user-permissions-save").click();
       } else {
         await page
@@ -103,7 +106,7 @@ test.describe("administrator impersonation", () => {
     const seed = uniqueSeed("impersonation");
     const targetEmail = `${seed}@example.com`;
     const targetContext = await browser.newContext({
-      locale: "zh-CN",
+      locale: "en-US",
       timezoneId: "Asia/Shanghai",
     });
     const targetPage = await targetContext.newPage();

@@ -659,7 +659,6 @@ function AdminUserDetails() {
                             <RoleCheckboxGroup
                               label={t("admin:user.roles.label")}
                               options={data?.userRoles ?? []}
-                              testIdPrefix="user-role"
                               value={field.state.value}
                               disabled={!canSetRoles}
                               onValueChange={field.handleChange}

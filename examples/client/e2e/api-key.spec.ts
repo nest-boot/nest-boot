@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { getPermissionCheckbox } from "./utils/permissions";
 
 import { registerUser } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
@@ -50,19 +51,24 @@ test.describe("API keys", () => {
       await issuerPage.goto(`/workspaces/${workspaceId}/api-keys`);
       await issuerPage.getByTestId("api-key-create-action").click();
       await expect(
-        issuerPage.getByTestId("permission-WORKSPACE__UPDATE"),
+        issuerPage.getByRole("checkbox", {
+          name: "Update Workspace",
+          exact: true,
+        }),
       ).not.toBeChecked();
-      await issuerPage.getByTestId("permission-WORKSPACE__UPDATE").click();
+      await issuerPage
+        .getByRole("checkbox", { name: "Update Workspace", exact: true })
+        .click();
       for (const permission of [
         "WORKSPACE__DELETE",
         "MEMBER__WRITE",
         "MEMBER__INVITE",
       ]) {
         await expect(
-          issuerPage.getByTestId(`permission-${permission}`),
+          getPermissionCheckbox(issuerPage, permission),
         ).toBeDisabled();
         await expect(
-          issuerPage.getByTestId(`permission-${permission}`),
+          getPermissionCheckbox(issuerPage, permission),
         ).not.toBeChecked();
       }
       await issuerPage
@@ -212,15 +218,19 @@ async function exerciseApiKeyLifecycle(
     .toBe(true);
   await page.getByTestId("api-key-name-input").press("Enter");
   await expect(
-    page.getByText("API 密钥名称是必填的", { exact: true }),
+    page.getByText("API key name is required", { exact: true }),
   ).toBeVisible();
-  const invitationPermission = page.getByTestId("permission-MEMBER__INVITE");
+  const invitationPermission = page.getByRole("checkbox", {
+    name: "Manage Member Invitations",
+    exact: true,
+  });
   await expect(invitationPermission).not.toBeChecked();
   await expect(invitationPermission).toBeEnabled();
   await page.getByTestId("api-key-name-input").fill(names.name);
   for (const action of ["read", "write"]) {
-    const permission = page.getByTestId(
-      `permission-${scope}_API_KEY__${action.toUpperCase()}`,
+    const permission = getPermissionCheckbox(
+      page,
+      `${scope}_API_KEY__${action.toUpperCase()}`,
     );
     await expect(permission).toBeVisible();
     await expect(permission).not.toBeChecked();
@@ -232,11 +242,9 @@ async function exerciseApiKeyLifecycle(
   const revealedKey = page.getByTestId("api-key-created-value");
   await expect(revealedKey).toContainText(/^sk[A-Za-z0-9_-]{64}$/);
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page
-    .getByRole("button", { name: "复制 API 密钥", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Copy API Key", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "已复制", exact: true }),
+    page.getByRole("button", { name: "Copied", exact: true }),
   ).toBeVisible();
   const secret = await revealedKey.textContent();
   expect(
@@ -255,8 +263,8 @@ async function exerciseApiKeyLifecycle(
   await expect(row).toContainText("sk");
 
   await row.getByRole("button").click();
-  await page.getByRole("menuitem", { name: "禁用" }).click();
-  await expect(row).toContainText("已禁用");
+  await page.getByRole("menuitem", { name: "Disable" }).click();
+  await expect(row).toContainText("Disabled");
 
   const detailPath = await row
     .getByRole("link", { name: names.name, exact: true })
@@ -272,21 +280,21 @@ async function exerciseApiKeyLifecycle(
   await expect(revealedKey).toHaveCount(0);
   for (const action of ["read", "write"]) {
     await expect(
-      page.getByTestId(`permission-${scope}_API_KEY__${action.toUpperCase()}`),
+      getPermissionCheckbox(page, `${scope}_API_KEY__${action.toUpperCase()}`),
     ).toBeChecked();
   }
   await page.getByTestId("api-key-rename-input").fill(names.renamedName);
-  await page.getByTestId(`permission-${scope}_API_KEY__WRITE`).click();
+  await getPermissionCheckbox(page, `${scope}_API_KEY__WRITE`).click();
   await page.getByTestId("api-key-rename-input").press("Enter");
   await expect(
-    page.getByText("API 密钥更新成功", { exact: true }),
+    page.getByText("API key updated", { exact: true }),
   ).toBeVisible();
   await page.reload();
   await expect(page.getByTestId("api-key-rename-input")).toHaveValue(
     names.renamedName,
   );
   await expect(
-    page.getByTestId(`permission-${scope}_API_KEY__WRITE`),
+    getPermissionCheckbox(page, `${scope}_API_KEY__WRITE`),
   ).not.toBeChecked();
   await page.getByTestId("api-key-back").click();
 
@@ -296,8 +304,11 @@ async function exerciseApiKeyLifecycle(
   await expect(renamedRow).toBeVisible();
 
   await renamedRow.getByRole("button").click();
-  await page.getByRole("menuitem", { name: "删除" }).click();
-  await page.getByTestId("alert-dialog-confirm").click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
   await expect(renamedRow).not.toBeVisible();
   // Deleted and invalid IDs do not render an editor or stale cached data.
   await page.goto(detailPath!);

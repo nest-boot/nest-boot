@@ -94,15 +94,27 @@ test("limits user detail queries and actions to the administrator's abilities", 
       "USER__SET_PERMISSIONS",
     ]);
     await page.reload();
-    await expect(page.getByTestId("user-role-ADMIN")).toBeDisabled();
-    await expect(page.getByTestId("user-role-USER")).toBeEnabled();
-    await expect(page.getByTestId("permission-USER__DELETE")).toBeDisabled();
-    await expect(page.getByTestId("permission-USER__READ")).toBeEnabled();
-    await page.getByTestId("permission-USER__READ").check();
+    await expect(
+      page.getByRole("checkbox", { name: "Admin", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("checkbox", { name: "User", exact: true }),
+    ).toBeEnabled();
+    await expect(
+      page.getByRole("checkbox", { name: "Delete Users", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("checkbox", { name: "Read Users", exact: true }),
+    ).toBeEnabled();
+    await page
+      .getByRole("checkbox", { name: "Read Users", exact: true })
+      .check();
     await page.getByTestId("admin-user-permissions-save").click();
     await expect(page.getByTestId("admin-user-permissions-save")).toBeEnabled();
     await page.reload();
-    await expect(page.getByTestId("permission-USER__READ")).toBeChecked();
+    await expect(
+      page.getByRole("checkbox", { name: "Read Users", exact: true }),
+    ).toBeChecked();
 
     // Existing grants stay removable but cannot be granted again by this caller.
     await graphqlRequest(
@@ -111,12 +123,18 @@ test("limits user detail queries and actions to the administrator's abilities", 
       { id: target.id, input: { permissions: ["USER__DELETE"] } },
     );
     await page.reload();
-    await expect(page.getByTestId("permission-USER__DELETE")).toBeChecked();
+    await expect(
+      page.getByRole("checkbox", { name: "Delete Users", exact: true }),
+    ).toBeChecked();
     await expect(
       page.getByTestId("admin-user-permissions-save"),
     ).toBeDisabled();
-    await page.getByTestId("permission-USER__DELETE").uncheck();
-    await expect(page.getByTestId("permission-USER__DELETE")).toBeDisabled();
+    await page
+      .getByRole("checkbox", { name: "Delete Users", exact: true })
+      .uncheck();
+    await expect(
+      page.getByRole("checkbox", { name: "Delete Users", exact: true }),
+    ).toBeDisabled();
     await expect(page.getByTestId("admin-user-permissions-save")).toBeEnabled();
 
     await setPermissions([]);
@@ -187,7 +205,7 @@ test("authorizes workspace API-key controls and deletion without an owner role",
       .getByRole("row")
       .filter({ hasText: "Read-only workspace key" });
     await row.getByRole("button").click();
-    for (const name of ["编辑", "禁用", "删除"])
+    for (const name of ["Edit", "Disable", "Delete"])
       await expect(
         page.getByRole("menuitem", { name, exact: true }),
       ).toBeDisabled();
@@ -198,7 +216,7 @@ test("authorizes workspace API-key controls and deletion without an owner role",
     );
     await expect(page.getByTestId("api-key-rename-input")).toBeDisabled();
     await expect(
-      page.getByTestId("permission-WORKSPACE__UPDATE"),
+      page.getByRole("checkbox", { name: "Update Workspace", exact: true }),
     ).toBeDisabled();
     await expect(page.getByTestId("api-key-rename-submit")).toHaveCount(0);
     await page.goto(`/workspaces/${workspace.id}/api-keys/create`);
@@ -208,7 +226,10 @@ test("authorizes workspace API-key controls and deletion without an owner role",
     await page.goto(`/workspaces/${workspace.id}/settings`);
     await expect(page.getByTestId("workspace-settings-delete")).toBeEnabled();
     await page.getByTestId("workspace-settings-delete").click();
-    await page.getByTestId("alert-dialog-confirm").click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Delete", exact: true })
+      .click();
     await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
     const { currentUser } = await graphqlRequest<{
       currentUser: { workspaces: { edges: Array<unknown> } };
@@ -267,7 +288,7 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
       .getByRole("row")
       .filter({ hasText: "Conditionally writable key" });
     await row.getByRole("button").click();
-    for (const name of ["编辑", "禁用", "删除"])
+    for (const name of ["Edit", "Disable", "Delete"])
       await expect(
         page.getByRole("menuitem", { name, exact: true }),
       ).toBeDisabled();
@@ -279,7 +300,7 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
     allowedId = key.entity.id;
     await page.reload();
     await row.getByRole("button").click();
-    for (const name of ["编辑", "禁用", "删除"])
+    for (const name of ["Edit", "Disable", "Delete"])
       await expect(
         page.getByRole("menuitem", { name, exact: true }),
       ).toBeEnabled();

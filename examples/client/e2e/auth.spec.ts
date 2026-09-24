@@ -65,7 +65,9 @@ test.describe("email authentication", () => {
     await expect(page).toHaveURL(/\/auth\/forgot-password$/);
     await page.getByTestId("forgot-password-email").fill(email);
     await page.getByTestId("forgot-password-submit").click();
-    await expect(page.getByText(/如果该邮箱对应的账户存在/)).toBeVisible();
+    await expect(
+      page.getByText(/If an account exists for that email/),
+    ).toBeVisible();
 
     const passwordResetUrl = await waitForEmailUrl(
       page.request,
@@ -77,8 +79,8 @@ test.describe("email authentication", () => {
     await page.getByTestId("reset-password-new").fill(resetPassword);
     await page.getByTestId("reset-password-confirm").fill(resetPassword);
     await page.getByTestId("reset-password-submit").click();
-    await expect(page.getByText("密码已重置")).toBeVisible();
-    await page.getByRole("link", { name: "登录" }).click();
+    await expect(page.getByText("Your password has been reset")).toBeVisible();
+    await page.getByRole("link", { name: "Sign in" }).click();
 
     await page.getByTestId("auth-email-input").fill(email);
     await page.getByTestId("auth-password-input").fill(resetPassword);
@@ -109,9 +111,11 @@ test.describe("email authentication", () => {
     await page.getByTestId("user-confirm-password").fill(changedPassword);
     await expect(page.getByTestId("user-revoke-other-sessions")).toBeChecked();
     await page.getByTestId("user-change-password-submit").click();
-    await expect(page.getByText("密码已修改")).toBeVisible();
+    await expect(page.getByText("Password changed")).toBeVisible();
     await expect(page.getByTestId("user-session-row")).toHaveCount(1);
-    await expect(page.getByText("当前会话", { exact: true })).toHaveCount(1);
+    await expect(
+      page.getByText("Current session", { exact: true }),
+    ).toHaveCount(1);
     await expect(
       page.getByTestId("user-revoke-other-session-list"),
     ).toBeDisabled();
@@ -133,7 +137,7 @@ test.describe("email authentication", () => {
     await page.goto("/auth/verify-email?error=invalid_token");
 
     await expect(page.getByTestId("verify-email-view")).toContainText(
-      "验证失败",
+      "Verification failed",
     );
     await expect(page.getByTestId("verify-email-sign-in")).toHaveCount(0);
   });

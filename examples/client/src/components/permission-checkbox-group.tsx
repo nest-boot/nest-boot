@@ -21,7 +21,6 @@ export function PermissionCheckboxGroup<Permission extends string>({
     value: option.value,
     label: t(option.name),
     description: t(option.description),
-    testId: `permission-${option.value}`,
     disabled: option.grantable === false && !value.includes(option.value),
   }));
   return (

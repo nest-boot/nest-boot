@@ -79,7 +79,6 @@ export function MemberRolesForm({
                     <RoleCheckboxGroup
                       label={t("member:details.form.role.label")}
                       options={options}
-                      testIdPrefix="member-role"
                       value={field.state.value}
                       onValueChange={field.handleChange}
                       disabled={disabled}

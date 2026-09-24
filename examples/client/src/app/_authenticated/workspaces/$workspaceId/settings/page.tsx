@@ -158,12 +158,14 @@ function SettingsComponent() {
         });
         await router.invalidate();
         form.reset({ name: value.name.trim() });
-        toast.add({ type: "success", title: "保存成功" });
+        toast.add({ type: "success", title: t("workspace:settings.saved") });
       } catch (error) {
         toast.add({
           type: "error",
           title:
-            error instanceof Error ? error.message : "保存失败，请稍后重试",
+            error instanceof Error
+              ? error.message
+              : t("workspace:settings.save_failed"),
         });
       }
     },

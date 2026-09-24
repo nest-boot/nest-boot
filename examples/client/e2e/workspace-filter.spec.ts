@@ -19,7 +19,7 @@ test("filters workspaces, preserves pagination state, and opens rows without an 
 
   await page.goto("/user/workspaces");
   const links = page.locator('[data-testid^="user-workspace-row-"]');
-  const search = page.getByRole("textbox", { name: "搜索", exact: true });
+  const search = page.getByRole("textbox", { name: "Search", exact: true });
   await expect(links).toHaveCount(4);
   await expect(page.getByRole("columnheader")).toHaveCount(3);
   await search.fill(name);
@@ -30,13 +30,13 @@ test("filters workspaces, preserves pagination state, and opens rows without an 
   smallPageUrl.searchParams.set("first", "2");
   await page.goto(smallPageUrl.href);
   await expect(links).toHaveCount(2);
-  await page.getByRole("button", { name: "下一页", exact: true }).click();
+  await page.getByRole("button", { name: "Next page", exact: true }).click();
   await expect(links).toHaveCount(1);
   expect(new URL(page.url()).searchParams.get("after")).toBeTruthy();
 
-  await page.getByRole("button", { name: "添加筛选", exact: true }).click();
-  await page.getByRole("menuitem", { name: "名称", exact: true }).click();
-  const nameFilter = page.getByRole("textbox", { name: "名称", exact: true });
+  await page.getByRole("button", { name: "Add Filter", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Name", exact: true }).click();
+  const nameFilter = page.getByRole("textbox", { name: "Name", exact: true });
   await nameFilter.fill(name);
   await nameFilter.press("Enter");
   await page.keyboard.press("Escape");
@@ -49,9 +49,11 @@ test("filters workspaces, preserves pagination state, and opens rows without an 
   await page.goto(filteredPageUrl.href);
   await expect(links).toHaveCount(2);
   const filterParam = new URL(page.url()).searchParams.get("filter");
-  await page.getByRole("button", { name: "下一页", exact: true }).click();
+  await page.getByRole("button", { name: "Next page", exact: true }).click();
   await expect(links).toHaveCount(1);
-  await page.getByRole("button", { name: "上一页", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Previous page", exact: true })
+    .click();
   await expect(links).toHaveCount(2);
   await page.reload();
   await expect(links).toHaveCount(2);
@@ -61,7 +63,7 @@ test("filters workspaces, preserves pagination state, and opens rows without an 
   await search.fill("");
   await search.press("Enter");
   await expect(links).toHaveCount(3);
-  await page.getByRole("button", { name: /^名称 / }).click();
+  await page.getByRole("button", { name: /^Name / }).click();
   await nameFilter.fill(other.name);
   await nameFilter.press("Enter");
   await page.keyboard.press("Escape");
@@ -98,8 +100,10 @@ test("filters workspaces, preserves pagination state, and opens rows without an 
   await page.goto(dateUrl.href);
   expect((await (await dateResponse).json()).errors).toBeUndefined();
   await expect(links).toHaveCount(0);
-  await expect(page.getByText("没有找到项目", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: /^创建时间 / }).click();
-  await page.getByRole("button", { name: "移除筛选", exact: true }).click();
+  await expect(page.getByText("No items found", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /^Created / }).click();
+  await page
+    .getByRole("button", { name: "Remove filter", exact: true })
+    .click();
   await expect(target).toBeVisible();
 });

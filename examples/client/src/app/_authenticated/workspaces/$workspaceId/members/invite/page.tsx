@@ -287,7 +287,6 @@ function InviteMemberForm() {
                               <RoleCheckboxGroup
                                 label={t("member:invite.role_label")}
                                 options={grantableOptions}
-                                testIdPrefix="invite-role"
                                 value={field.state.value}
                                 onValueChange={field.handleChange}
                                 disabled={submitting || !canInvite}

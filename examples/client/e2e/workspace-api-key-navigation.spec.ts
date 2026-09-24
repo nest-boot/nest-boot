@@ -67,7 +67,7 @@ test("isolates two workspaces' list search, creation returns and detail navigati
     await expect(
       page.getByRole("link", { name: workspace.keys[0].name, exact: true }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "下一页", exact: true }).click();
+    await page.getByRole("button", { name: "Next page", exact: true }).click();
     const current = workspace === one ? workspace.keys[2] : workspace.keys[3];
     await expect(page.getByRole("row").nth(1)).toContainText(current.name);
     listUrls.push(page.url());

@@ -20,7 +20,7 @@ test.describe("workspace invitations", () => {
     const inviteeEmail = `${seed}-invitee@example.com`;
     const workspaceName = `过期邀请工作空间 ${seed}`;
     const inviteeContext = await browser.newContext({
-      locale: "zh-CN",
+      locale: "en-US",
       timezoneId: "Asia/Shanghai",
     });
     const inviteePage = await inviteeContext.newPage();
@@ -75,7 +75,7 @@ test.describe("workspace invitations", () => {
       await expect(inviteePage.getByTestId("invite-error-page")).toBeVisible();
       await expect(
         inviteePage.getByText(
-          "该邀请已过期，请联系工作空间管理员重新发送邀请。",
+          "This invitation has expired. Ask a workspace administrator to send a new one.",
         ),
       ).toBeVisible();
       expect(
@@ -101,7 +101,7 @@ test.describe("workspace invitations", () => {
     const inviteeEmail = `${seed}-invitee@example.com`;
     const workspaceName = `删除邀请工作空间 ${seed}`;
     const inviteeContext = await browser.newContext({
-      locale: "zh-CN",
+      locale: "en-US",
       timezoneId: "Asia/Shanghai",
     });
     const inviteePage = await inviteeContext.newPage();
@@ -122,7 +122,7 @@ test.describe("workspace invitations", () => {
 
       await page.getByTestId("members-invite-action").click();
       await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
-      await page.getByTestId("invite-role-MEMBER").click();
+      await page.getByRole("checkbox", { name: "Member", exact: true }).click();
       await page.getByTestId("workspace-invite-confirm").click();
       const inviteLink = (
         await page.getByTestId("workspace-invite-link").textContent()
@@ -136,8 +136,11 @@ test.describe("workspace invitations", () => {
         0,
       );
 
-      await invitation.getByRole("button", { name: "取消" }).click();
-      await page.getByTestId("alert-dialog-confirm").click();
+      await invitation.getByRole("button", { name: "Cancel" }).click();
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Confirm", exact: true })
+        .click();
 
       await expect(invitation).toHaveCount(0);
 
@@ -146,7 +149,9 @@ test.describe("workspace invitations", () => {
       }, new URL(inviteLink!).searchParams.get("invitationId")!);
       await inviteePage.goto(inviteLink!);
       await expect(inviteePage.getByTestId("invite-error-page")).toBeVisible();
-      await expect(inviteePage.getByText("该邀请已被取消。")).toBeVisible();
+      await expect(
+        inviteePage.getByText("This invitation has been canceled."),
+      ).toBeVisible();
       expect(
         await inviteePage.evaluate(() => localStorage.getItem("invitation_id")),
       ).toBeNull();
@@ -189,8 +194,10 @@ test.describe("workspace invitations", () => {
     await page.reload();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
-    await expect(page.getByTestId("invite-role-OWNER")).toBeEnabled();
-    await page.getByTestId("invite-role-MEMBER").click();
+    await expect(
+      page.getByRole("checkbox", { name: "Owner", exact: true }),
+    ).toBeEnabled();
+    await page.getByRole("checkbox", { name: "Member", exact: true }).click();
     await page.getByTestId("workspace-invite-confirm").click();
 
     const inviteResult = page.getByTestId("workspace-invite-result");
@@ -211,7 +218,7 @@ test.describe("workspace invitations", () => {
     await inviteResult.getByTestId("workspace-invite-back").click();
 
     const inviteeContext = await browser.newContext({
-      locale: "zh-CN",
+      locale: "en-US",
       timezoneId: "Asia/Shanghai",
     });
     const inviteePage = await inviteeContext.newPage();
@@ -249,7 +256,7 @@ test.describe("workspace invitations", () => {
     });
 
     await memberRow.getByRole("button").click();
-    await page.getByRole("menuitem", { name: "禁用" }).click();
+    await page.getByRole("menuitem", { name: "Disable" }).click();
     await expect(page).toHaveURL(
       new RegExp(`/workspaces/${workspaceId}/members(?:\\?.*)?$`),
     );
@@ -283,7 +290,7 @@ test.describe("workspace invitations", () => {
     await page.reload();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
-    await page.getByTestId("invite-role-MEMBER").click();
+    await page.getByRole("checkbox", { name: "Member", exact: true }).click();
     await page.getByTestId("workspace-invite-confirm").click();
 
     const inviteResult = page.getByTestId("workspace-invite-result");
@@ -297,7 +304,7 @@ test.describe("workspace invitations", () => {
     await inviteResult.getByTestId("workspace-invite-back").click();
 
     const inviteeContext = await browser.newContext({
-      locale: "zh-CN",
+      locale: "en-US",
       timezoneId: "Asia/Shanghai",
     });
     const inviteePage = await inviteeContext.newPage();
@@ -328,8 +335,11 @@ test.describe("workspace invitations", () => {
 
       await expect(memberRow).toBeVisible();
       await memberRow.getByRole("button").click();
-      await page.getByRole("menuitem", { name: "删除" }).click();
-      await page.getByTestId("alert-dialog-confirm").click();
+      await page.getByRole("menuitem", { name: "Delete" }).click();
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Confirm", exact: true })
+        .click();
       await expect(page.getByTestId(`member-row-${inviteeEmail}`)).toHaveCount(
         0,
       );
@@ -356,7 +366,7 @@ test.describe("workspace invitations", () => {
     const seed = uniqueSeed("member-permission-ability");
     const memberEmail = `${seed}-member@example.com`;
     const memberContext = await browser.newContext({
-      locale: "zh-CN",
+      locale: "en-US",
       timezoneId: "Asia/Shanghai",
     });
     const memberPage = await memberContext.newPage();
@@ -383,7 +393,10 @@ test.describe("workspace invitations", () => {
       await memberPage.goto(
         `/workspaces/${workspaceId}/members/${currentMember.id}`,
       );
-      const permission = memberPage.getByTestId("permission-WORKSPACE__UPDATE");
+      const permission = memberPage.getByRole("checkbox", {
+        name: "Update Workspace",
+        exact: true,
+      });
       await expect(memberPage.locator("#member-name")).toBeDisabled();
       await expect(permission).toBeDisabled();
       await memberPage.goto(`/workspaces/${workspaceId}/members/invite`);
@@ -411,11 +424,15 @@ test.describe("workspace invitations", () => {
       );
       await memberPage.reload();
       await expect(memberPage.locator("#member-name")).toBeDisabled();
-      await expect(memberPage.getByTestId("member-role-OWNER")).toBeDisabled();
+      await expect(
+        memberPage.getByRole("checkbox", { name: "Owner", exact: true }),
+      ).toBeDisabled();
       await expect(permission).toBeEnabled();
       await permission.click();
       await memberPage.getByTestId("member-permissions-save").click();
-      await expect(memberPage.getByText("成员更新成功")).toBeVisible();
+      await expect(
+        memberPage.getByText("Member updated successfully"),
+      ).toBeVisible();
       await permission.click();
       await memberPage.getByTestId("member-permissions-save").click();
       await expect(permission).not.toBeChecked();
@@ -427,15 +444,23 @@ test.describe("workspace invitations", () => {
         { "x-workspace-id": workspaceId },
       );
       await memberPage.goto(`/workspaces/${workspaceId}/members/${memberId}`);
-      await expect(memberPage.getByTestId("member-role-OWNER")).toBeDisabled();
+      await expect(
+        memberPage.getByRole("checkbox", { name: "Owner", exact: true }),
+      ).toBeDisabled();
       await memberPage.goto(`/workspaces/${workspaceId}/members`);
       await memberPage.getByTestId("members-invite-action").click();
-      await expect(memberPage.getByTestId("invite-role-ADMIN")).toBeEnabled();
-      await expect(memberPage.getByTestId("invite-role-OWNER")).toHaveCount(0);
+      await expect(
+        memberPage.getByRole("checkbox", { name: "Admin", exact: true }),
+      ).toBeEnabled();
+      await expect(
+        memberPage.getByRole("checkbox", { name: "Owner", exact: true }),
+      ).toHaveCount(0);
       await memberPage
         .getByTestId("workspace-invite-email-input")
         .fill(`${seed}-invited@example.com`);
-      await memberPage.getByTestId("invite-role-MEMBER").click();
+      await memberPage
+        .getByRole("checkbox", { name: "Member", exact: true })
+        .click();
       await memberPage.getByTestId("workspace-invite-confirm").click();
       await expect(
         memberPage.getByTestId("workspace-invite-link"),
@@ -444,7 +469,9 @@ test.describe("workspace invitations", () => {
         `/workspaces/${workspaceId}/members/${currentMember.id}`,
       );
       // An existing owner role stays selected and may be removed, not silently discarded.
-      await expect(memberPage.getByTestId("member-role-OWNER")).toBeEnabled();
+      await expect(
+        memberPage.getByRole("checkbox", { name: "Owner", exact: true }),
+      ).toBeEnabled();
       await expect(memberPage.locator("#member-name")).toBeEnabled();
       await memberPage.locator("#member-name").fill("Shared owner name");
       await memberPage
@@ -454,7 +481,9 @@ test.describe("workspace invitations", () => {
       await permission.click();
       await memberPage.getByTestId("member-profile-save").click();
       await memberPage.getByTestId("member-permissions-save").click();
-      await expect(memberPage.getByText("成员更新成功").first()).toBeVisible();
+      await expect(
+        memberPage.getByText("Member updated successfully").first(),
+      ).toBeVisible();
       await memberPage.reload();
       await expect(permission).toBeChecked();
       await expect(permission).toBeEnabled();
@@ -491,7 +520,7 @@ test.describe("workspace invitations", () => {
     const workspaceName = `成员权限工作空间 ${seed}`;
     const renamedWorkspace = `成员已更新 ${seed}`;
     const memberContext = await browser.newContext({
-      locale: "zh-CN",
+      locale: "en-US",
       timezoneId: "Asia/Shanghai",
     });
     const memberPage = await memberContext.newPage();
@@ -518,25 +547,27 @@ test.describe("workspace invitations", () => {
 
       await page.goto(`/workspaces/${workspaceId}/members/${memberId}`);
       await expect(page.getByTestId("member-detail-page")).toBeVisible();
-      await page.getByTestId("member-role-ADMIN").click();
-      await expect(page.getByLabel("姓名", { exact: true })).toHaveValue(
+      await page.getByRole("checkbox", { name: "Admin", exact: true }).click();
+      await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
         "Authorized Member",
       );
       await expect(
-        page.getByLabel("姓名", { exact: true }),
+        page.getByLabel("Name", { exact: true }),
       ).not.toHaveAttribute("readonly", "");
-      await expect(page.getByLabel("邮箱", { exact: true })).toHaveValue(
+      await expect(page.getByLabel("Email", { exact: true })).toHaveValue(
         memberEmail,
       );
       await expect(
-        page.getByLabel("邮箱", { exact: true }),
+        page.getByLabel("Email", { exact: true }),
       ).not.toHaveAttribute("readonly", "");
-      await page.getByTestId("member-role-MEMBER").click();
-      await page.getByLabel("姓名", { exact: true }).fill("Workspace Member");
+      await page.getByRole("checkbox", { name: "Member", exact: true }).click();
+      await page.getByLabel("Name", { exact: true }).fill("Workspace Member");
       await page
-        .getByLabel("邮箱", { exact: true })
+        .getByLabel("Email", { exact: true })
         .fill(`public-${memberEmail}`);
-      await page.getByTestId("permission-WORKSPACE__UPDATE").click();
+      await page
+        .getByRole("checkbox", { name: "Update Workspace", exact: true })
+        .click();
       let roleWrites = 0;
       let permissionWrites = 0;
       page.on("request", (request) => {
@@ -552,9 +583,11 @@ test.describe("workspace invitations", () => {
       expect(roleWrites).toBe(0);
       expect(permissionWrites).toBe(0);
       // Saving one form preserves unsaved changes in the other forms.
-      await expect(page.getByTestId("member-role-ADMIN")).toBeChecked();
       await expect(
-        page.getByTestId("permission-WORKSPACE__UPDATE"),
+        page.getByRole("checkbox", { name: "Admin", exact: true }),
+      ).toBeChecked();
+      await expect(
+        page.getByRole("checkbox", { name: "Update Workspace", exact: true }),
       ).toBeChecked();
       await page.route("**/api/graphql", async (route) => {
         if (
@@ -593,9 +626,11 @@ test.describe("workspace invitations", () => {
         roles: ["MEMBER"],
         permissions: [],
       });
-      await expect(page.getByTestId("member-role-ADMIN")).toBeChecked();
       await expect(
-        page.getByTestId("permission-WORKSPACE__UPDATE"),
+        page.getByRole("checkbox", { name: "Admin", exact: true }),
+      ).toBeChecked();
+      await expect(
+        page.getByRole("checkbox", { name: "Update Workspace", exact: true }),
       ).toBeChecked();
       await page.getByTestId("member-roles-save").click();
       await expect.poll(() => roleWrites).toBe(2);
@@ -606,20 +641,22 @@ test.describe("workspace invitations", () => {
       await expect(
         page.getByRole("heading", { name: "Workspace Member", exact: true }),
       ).toBeVisible();
-      await expect(page.getByLabel("姓名", { exact: true })).toHaveValue(
+      await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
         "Workspace Member",
       );
-      await expect(page.getByLabel("邮箱", { exact: true })).toHaveValue(
+      await expect(page.getByLabel("Email", { exact: true })).toHaveValue(
         `public-${memberEmail}`,
       );
-      await expect(page.getByTestId("member-role-ADMIN")).toBeChecked();
       await expect(
-        page.getByTestId("permission-WORKSPACE__UPDATE"),
+        page.getByRole("checkbox", { name: "Admin", exact: true }),
+      ).toBeChecked();
+      await expect(
+        page.getByRole("checkbox", { name: "Update Workspace", exact: true }),
       ).toBeChecked();
 
       // A profile-only second save must not replay the previous authorization writes.
       await page
-        .getByLabel("姓名", { exact: true })
+        .getByLabel("Name", { exact: true })
         .fill("Updated Workspace Member");
       await page.getByTestId("member-profile-save").click();
       await expect(
@@ -631,8 +668,8 @@ test.describe("workspace invitations", () => {
       expect(roleWrites).toBe(2);
       expect(permissionWrites).toBe(1);
 
-      await page.getByTestId("member-role-MEMBER").click();
-      await page.getByTestId("member-role-ADMIN").click();
+      await page.getByRole("checkbox", { name: "Member", exact: true }).click();
+      await page.getByRole("checkbox", { name: "Admin", exact: true }).click();
       const rolesSaved = page.waitForResponse(
         (response) =>
           response
@@ -653,7 +690,7 @@ test.describe("workspace invitations", () => {
         memberPage.getByTestId("workspace-settings-save"),
       ).toBeEnabled();
       await memberPage.getByTestId("workspace-settings-save").click();
-      await expect(memberPage.getByText("保存成功")).toBeVisible();
+      await expect(memberPage.getByText("Workspace updated")).toBeVisible();
 
       const { currentMember } = await graphqlRequest<{
         currentMember: { id: string };
@@ -664,8 +701,8 @@ test.describe("workspace invitations", () => {
         { "x-workspace-id": workspaceId },
       );
       await page.goto(`/workspaces/${workspaceId}/members/${currentMember.id}`);
-      await page.getByTestId("member-role-MEMBER").click();
-      await page.getByTestId("member-role-OWNER").click();
+      await page.getByRole("checkbox", { name: "Member", exact: true }).click();
+      await page.getByRole("checkbox", { name: "Owner", exact: true }).click();
       await page.getByTestId("member-roles-save").click();
       await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
       await expect(page.getByTestId("user-workspaces-page")).toBeVisible();

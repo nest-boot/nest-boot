@@ -26,6 +26,16 @@ test.describe("user pages", () => {
     await profileLink.click();
     await expect(page).toHaveURL(/\/user$/);
 
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await page.getByTestId("topbar-menu-trigger").click();
+    await page.getByTestId("user-menu-language").click();
+    await page
+      .getByRole("menuitemradio", { name: "简体中文", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "个人资料", exact: true }),
+    ).toBeVisible();
+
     const nameInput = page.getByTestId("user-profile-name-input");
     await nameInput.fill("Unsaved profile name");
     await page.getByTestId("topbar-menu-trigger").click();
@@ -99,7 +109,7 @@ test.describe("user pages", () => {
     await expect
       .poll(() => viewport.evaluate((element) => element.scrollTop))
       .toBeGreaterThan(0);
-    const navigation = page.getByRole("button", { name: "切换导航" });
+    const navigation = page.getByRole("button", { name: "Toggle navigation" });
     await navigation.click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.getByTestId("user-sidebar-security-link").click();
@@ -137,7 +147,7 @@ test.describe("user pages", () => {
     await navigation.click();
     await page.getByTestId("user-sidebar-security-link").click();
     await page
-      .getByRole("navigation", { name: "面包屑导航" })
+      .getByRole("navigation", { name: "Breadcrumbs" })
       .getByRole("link")
       .click();
     await expect(page).toHaveURL(/\/user$/);
@@ -249,7 +259,9 @@ test.describe("user pages", () => {
 
     await page.getByTestId("user-new-email-input").fill(newEmail);
     await page.getByTestId("user-change-email-submit").click();
-    await expect(page.getByText("确认邮件已发送至当前邮箱")).toBeVisible();
+    await expect(
+      page.getByText("Confirmation email sent to your current address"),
+    ).toBeVisible();
 
     const confirmationUrl = await waitForEmailUrl(
       page.request,
@@ -293,7 +305,7 @@ test.describe("user pages", () => {
     });
 
     const otherContext = await browser.newContext({
-      locale: "zh-CN",
+      locale: "en-US",
       timezoneId: "Asia/Shanghai",
     });
     const otherPage = await otherContext.newPage();
@@ -307,11 +319,13 @@ test.describe("user pages", () => {
 
       await page.goto("/user/security");
       await expect(page.getByTestId("user-session-row")).toHaveCount(2);
-      await expect(page.getByText("当前会话", { exact: true })).toHaveCount(1);
+      await expect(
+        page.getByText("Current session", { exact: true }),
+      ).toHaveCount(1);
 
       await page.getByTestId("user-revoke-other-session-list").click();
       await expect(page.getByTestId("user-session-row")).toHaveCount(1);
-      await expect(page.getByText("其他会话已退出")).toBeVisible();
+      await expect(page.getByText("Other sessions signed out")).toBeVisible();
 
       await otherPage.goto("/user");
       await expect(otherPage).toHaveURL(/\/auth\/login/);
@@ -336,7 +350,7 @@ test.describe("user pages", () => {
     });
 
     const ownerContext = await browser.newContext({
-      locale: "zh-CN",
+      locale: "en-US",
       timezoneId: "Asia/Shanghai",
     });
     const ownerPage = await ownerContext.newPage();
@@ -378,7 +392,9 @@ test.describe("user pages", () => {
       await page
         .getByTestId(`user-invitation-accept-${acceptedInvitation.id}`)
         .click();
-      await expect(page.getByText("已接受邀请", { exact: true })).toBeVisible();
+      await expect(
+        page.getByText("Invitation accepted", { exact: true }),
+      ).toBeVisible();
       await expect(
         page.getByTestId(`user-invitation-${acceptedInvitation.id}`),
       ).toHaveCount(0);
@@ -389,7 +405,9 @@ test.describe("user pages", () => {
       await page
         .getByTestId(`user-invitation-reject-${rejectedInvitation.id}`)
         .click();
-      await expect(page.getByText("已拒绝邀请", { exact: true })).toBeVisible();
+      await expect(
+        page.getByText("Invitation rejected", { exact: true }),
+      ).toBeVisible();
       await expect(
         page.getByTestId(`user-invitation-${rejectedInvitation.id}`),
       ).toHaveCount(0);

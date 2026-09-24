@@ -91,7 +91,7 @@ function AuthenticatedContent() {
     <div className="flex h-svh flex-col">
       {currentSession?.impersonatedById ? (
         <div
-          className="bg-warning-surface text-warning-foreground z-50 flex min-h-12 shrink-0 items-center justify-center gap-4 px-4 py-2 text-sm shadow"
+          className="bg-secondary text-secondary-foreground z-50 flex min-h-12 shrink-0 items-center justify-center gap-4 px-4 py-2 text-sm shadow"
           data-testid="impersonation-banner"
         >
           <span>{t("admin:impersonation.active")}</span>

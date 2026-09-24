@@ -48,7 +48,7 @@ export function Layout({ children, className, ...props }: LayoutProps) {
         data-slot="layout"
         open={true}
         className={cn(
-          "bg-sidebar isolate grid h-svh min-h-0 grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[auto_minmax(0,1fr)] overflow-hidden",
+          "bg-canvas isolate grid h-svh min-h-0 grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[auto_minmax(0,1fr)] overflow-hidden",
           "[&>[data-slot=topbar]]:col-span-full [&>[data-slot=topbar]]:row-start-1",
           "[&>[data-slot=sidebar]]:relative [&>[data-slot=sidebar]]:col-start-1 [&>[data-slot=sidebar]]:row-start-2 [&>[data-slot=sidebar]]:min-h-0 [&>[data-slot=sidebar][data-side=right]]:col-start-3",
           "[&>[data-slot=sidebar]>[data-slot=sidebar-container]]:absolute [&>[data-slot=sidebar]>[data-slot=sidebar-container]]:inset-0 [&>[data-slot=sidebar]>[data-slot=sidebar-container]]:h-full [&>[data-slot=sidebar]>[data-slot=sidebar-container]]:w-full",
@@ -104,7 +104,7 @@ export function LayoutContent({
             {...props}
             id={id}
             className={cn(
-              "bg-sidebar focus-visible:ring-ring/50 block size-full min-h-0 min-w-0 overscroll-contain outline-none focus-visible:ring-2 focus-visible:ring-inset",
+              "bg-canvas focus-visible:ring-ring/50 block size-full min-h-0 min-w-0 overscroll-contain outline-none focus-visible:ring-2 focus-visible:ring-inset",
               className,
             )}
           />

@@ -106,7 +106,7 @@ test("browses details across pages, survives back and refresh, then anchors the 
   await expect(
     page.getByRole("link", { name: a.name, exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "下一页", exact: true }).click();
+  await page.getByRole("button", { name: "Next page", exact: true }).click();
   const row = page.getByRole("row").filter({ hasText: c.name });
   await row.getByRole("cell").nth(2).click();
   await expectDetails(page, c.name);
@@ -173,8 +173,8 @@ test("browses details across pages, survives back and refresh, then anchors the 
   // The breadcrumb uses the same destination as the footer.
   await page.getByRole("link", { name: c.name, exact: true }).click();
   await expectNeighbor(page, "previous", b.id);
-  await page.getByRole("button", { name: "上级页面" }).click();
-  await page.getByRole("menuitem", { name: "API 密钥", exact: true }).click();
+  await page.getByRole("button", { name: "Parent pages" }).click();
+  await page.getByRole("menuitem", { name: "API Keys", exact: true }).click();
   await expect(page.getByRole("row").nth(1)).toContainText(c.name);
   expect(readSearch(page)).toEqual(restored);
 });
@@ -217,7 +217,7 @@ test("ignores a delayed lazy-query result after browser back to another record",
   });
   try {
     await page.goto(listPath());
-    await page.getByRole("button", { name: "下一页", exact: true }).click();
+    await page.getByRole("button", { name: "Next page", exact: true }).click();
     await page.getByRole("link", { name: c.name, exact: true }).click();
     await expectNeighbor(page, "previous", b.id);
     await expectNeighbor(page, "next", d.id);
@@ -247,7 +247,7 @@ test("restores the exact list search from create/cancel and create/success, with
 }) => {
   await prepareKeys(page);
   await page.goto(listPath());
-  await page.getByRole("button", { name: "下一页", exact: true }).click();
+  await page.getByRole("button", { name: "Next page", exact: true }).click();
   await expect(page.getByRole("row").nth(1)).toContainText("Navigation C");
   const original = readSearch(page);
   await page.getByTestId("api-key-create-action").click();
@@ -316,7 +316,7 @@ test("handles invalid storage, direct detail entry and failed neighbor queries",
   await expect(
     page.getByRole("link", { name: b.name, exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "下一页", exact: true }).click();
+  await page.getByRole("button", { name: "Next page", exact: true }).click();
   await expect(
     page.getByRole("link", { name: c.name, exact: true }),
   ).toBeVisible();
@@ -332,7 +332,9 @@ test("handles invalid storage, direct detail entry and failed neighbor queries",
     } else await route.continue();
   });
   await page.getByRole("link", { name: c.name, exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("无法加载相邻 API 密钥");
+  await expect(page.getByRole("alert")).toContainText(
+    "Could not load adjacent API keys",
+  );
   await expect(page.getByTestId("api-key-previous")).toBeDisabled();
   await expect(page.getByTestId("api-key-next")).toBeDisabled();
   const fallback = new URL(
@@ -342,7 +344,7 @@ test("handles invalid storage, direct detail entry and failed neighbor queries",
   expect(fallback.searchParams.get("query")).toBe(query);
   expect(fallback.searchParams.get("after")).toBe(original.after);
   fail = false;
-  await page.getByRole("button", { name: "重试", exact: true }).click();
+  await page.getByRole("button", { name: "Retry", exact: true }).click();
   await expectNeighbor(page, "previous", b.id);
   await expectNeighbor(page, "next", d.id);
 });

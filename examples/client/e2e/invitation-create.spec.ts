@@ -21,7 +21,7 @@ test("validates and retries invitations on their own page with recoverable copy 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(path);
   await page.getByTestId("workspace-invite-email-input").fill(email);
-  await page.getByTestId("invite-role-MEMBER").check();
+  await page.getByRole("checkbox", { name: "Member", exact: true }).check();
   await page.getByTestId("workspace-invite-back").click();
   await expect(page.getByTestId("members-page")).toBeVisible();
   await page.goto(path);
@@ -29,7 +29,9 @@ test("validates and retries invitations on their own page with recoverable copy 
   await expect(page.getByTestId("workspace-invite-email-input")).toHaveValue(
     "",
   );
-  await expect(page.getByTestId("invite-role-MEMBER")).not.toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: "Member", exact: true }),
+  ).not.toBeChecked();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(
     await page.evaluate(
@@ -56,14 +58,14 @@ test("validates and retries invitations on their own page with recoverable copy 
   await page.getByTestId("workspace-invite-email-input").fill("invalid-email");
   await page.getByTestId("workspace-invite-confirm").click();
   await expect(
-    page.getByText("请至少选择一个角色。", { exact: true }),
+    page.getByText("Select at least one role.", { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByTestId("workspace-invite-email-input"),
   ).toHaveAttribute("aria-invalid", "true");
   expect(attempts).toBe(0);
   await page.getByTestId("workspace-invite-email-input").fill(email);
-  await page.getByTestId("invite-role-MEMBER").check();
+  await page.getByRole("checkbox", { name: "Member", exact: true }).check();
   await page.getByTestId("workspace-invite-email-input").press("Enter");
   await expect(
     page.getByText("Temporary invitation failure", { exact: true }),
@@ -71,7 +73,9 @@ test("validates and retries invitations on their own page with recoverable copy 
   await expect(page.getByTestId("workspace-invite-email-input")).toHaveValue(
     email,
   );
-  await expect(page.getByTestId("invite-role-MEMBER")).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: "Member", exact: true }),
+  ).toBeChecked();
   await page.evaluate(() => {
     Object.defineProperty(navigator.clipboard, "writeText", {
       configurable: true,
@@ -86,9 +90,12 @@ test("validates and retries invitations on their own page with recoverable copy 
   expect(link).toContain("/invite?invitationId=");
   expect(attempts).toBe(2);
   await expect(
-    page.getByText("邀请已创建，但无法复制链接。您可以手动选择并复制。", {
-      exact: true,
-    }),
+    page.getByText(
+      "The invitation was created, but the link could not be copied. You can select and copy it manually.",
+      {
+        exact: true,
+      },
+    ),
   ).toBeVisible();
   await page.evaluate(() =>
     Reflect.deleteProperty(navigator.clipboard, "writeText"),

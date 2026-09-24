@@ -74,7 +74,7 @@ test("validates matching passwords before submitting a reset and recovers from r
   await confirm.fill("a-different-password");
   await confirm.press("Enter");
   await expect(confirm).toHaveAttribute("aria-invalid", "true");
-  await expect(page.getByText("两次输入的密码不一致")).toBeVisible();
+  await expect(page.getByText("The passwords do not match")).toBeVisible();
   expect(attempts).toBe(0);
 
   await confirm.fill(testPassword);
@@ -84,7 +84,7 @@ test("validates matching passwords before submitting a reset and recovers from r
   ).toBeVisible();
   await expect(confirm).toHaveValue(testPassword);
   await page.getByTestId("reset-password-submit").click();
-  await expect(page.getByText("密码已重置")).toBeVisible();
+  await expect(page.getByText("Your password has been reset")).toBeVisible();
   expect(attempts).toBe(2);
 });
 
@@ -94,17 +94,17 @@ test("submits administrator forms with Enter and preserves drafts in other cards
   const email = `${uniqueSeed("admin-form")}@example.com`;
   await signInAsE2eAdministrator(page);
   await page.goto("/admin/users");
-  await page.getByRole("link", { name: "创建用户", exact: true }).click();
+  await page.getByRole("link", { name: "Create user", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/users\/create$/);
   await page.reload();
   const createPage = page.getByTestId("admin-create-user-page");
   await expect(createPage).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   const breadcrumbs = createPage.getByRole("navigation", {
-    name: "面包屑导航",
+    name: "Breadcrumbs",
   });
   await expect(breadcrumbs.getByRole("link")).toHaveCount(1);
-  await breadcrumbs.getByRole("link", { name: "用户", exact: true }).click();
+  await breadcrumbs.getByRole("link", { name: "Users", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/users(?:\?.*)?$/);
   await page.goto("/admin/users/create");
   let attempts = 0;
@@ -120,19 +120,19 @@ test("submits administrator forms with Enter and preserves drafts in other cards
   });
   await page.getByTestId("admin-create-user-submit").click();
   await expect(
-    createPage.getByText("请输入姓名", { exact: true }),
+    createPage.getByText("Enter your name", { exact: true }),
   ).toBeVisible();
   expect(attempts).toBe(0);
-  await createPage.getByLabel("名称", { exact: true }).fill("Form target");
-  await createPage.getByLabel("邮箱", { exact: true }).fill(email);
-  const password = createPage.getByLabel("临时密码");
+  await createPage.getByLabel("Name", { exact: true }).fill("Form target");
+  await createPage.getByLabel("Email", { exact: true }).fill(email);
+  const password = createPage.getByLabel("Temporary password");
   await password.fill(testPassword);
   await password.press("Enter");
   await expect(
     createPage.getByText("Temporary creation failure", { exact: true }),
   ).toBeVisible();
   await expect(password).toHaveValue(testPassword);
-  await expect(createPage.getByLabel("邮箱", { exact: true })).toHaveValue(
+  await expect(createPage.getByLabel("Email", { exact: true })).toHaveValue(
     email,
   );
   const created = page.waitForResponse(
@@ -154,7 +154,7 @@ test("submits administrator forms with Enter and preserves drafts in other cards
   const name = page.getByTestId("admin-user-name");
   await expect(name).toHaveValue("Form target");
   await name.fill("Unsaved profile draft");
-  await page.getByTestId("user-role-ADMIN").check();
+  await page.getByRole("checkbox", { name: "Admin", exact: true }).check();
   const rolesSaved = page.waitForResponse(
     (response) =>
       response.request().postData()?.includes("setUserRolesFromUserRoute") ===
@@ -174,7 +174,9 @@ test("submits administrator forms with Enter and preserves drafts in other cards
   ).toBeVisible();
   await page.reload();
   await expect(name).toHaveValue("Unsaved profile draft");
-  await expect(page.getByTestId("user-role-ADMIN")).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: "Admin", exact: true }),
+  ).toBeChecked();
 });
 
 test("cancels account deletion without losing input and retries after a failed password", async ({
@@ -186,16 +188,22 @@ test("cancels account deletion without losing input and retries after a failed p
   });
   await page.goto("/user/security");
   const card = page.getByTestId("user-delete-card");
-  const password = card.getByLabel("当前密码");
+  const password = card.getByLabel("Current password");
   const submit = page.getByTestId("user-delete-account");
   await password.fill("incorrect-password");
   await password.press("Enter");
-  await expect(page.getByTestId("alert-dialog")).toBeVisible();
-  await page.getByTestId("alert-dialog-cancel").click();
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
   await expect(submit).toBeEnabled();
   await expect(password).toHaveValue("incorrect-password");
   await submit.click();
-  await page.getByTestId("alert-dialog-confirm").click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Delete account", exact: true })
+    .click();
   await expect(card.getByRole("alert")).toBeVisible();
   await expect(submit).toBeEnabled();
   await expect(password).toHaveValue("incorrect-password");
@@ -207,6 +215,9 @@ test("cancels account deletion without losing input and retries after a failed p
 
   await password.fill(testPassword);
   await submit.click();
-  await page.getByTestId("alert-dialog-confirm").click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Delete account", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/auth\/login(?:\?.*)?$/);
 });

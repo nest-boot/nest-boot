@@ -62,7 +62,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
 
-      <body className="bg-background min-h-screen">
+      <body className="bg-canvas min-h-screen">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AppProvider i18n={i18next}>
             <TooltipProvider>{children}</TooltipProvider>
