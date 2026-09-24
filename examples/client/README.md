@@ -68,8 +68,8 @@ Use theme color tokens from `src/styles.css` in application code.
 API key lists use `DataFilter` and `DataTable`; rows and name links open details.
 Creation and details use separate pages at `/user/api-keys/create`,
 `/user/api-keys/$apiKeyId`, `/workspaces/$workspaceId/api-keys/create`, and
-`/workspaces/$workspaceId/api-keys/$apiKeyId`. Creation and details both use the
-default page width. Details include `PagePagination` and its previous/next
+`/workspaces/$workspaceId/api-keys/$apiKeyId`. Creation and details both use
+compact pages. Details include `PagePagination` and its previous/next
 actions, following the registry's narrow-container visibility rule.
 The create page reveals the full
 key once in a success Card. Keep that secret in component state only, outside

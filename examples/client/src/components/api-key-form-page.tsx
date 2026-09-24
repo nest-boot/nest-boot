@@ -140,7 +140,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
   const status = apiKey ? getApiKeyStatus(apiKey) : undefined;
 
   return (
-    <Page>
+    <Page variant="compact">
       <PageHeader>
         <Breadcrumbs searchByPath={{ [listPath]: listSearch }} />
         <PageTitle>
