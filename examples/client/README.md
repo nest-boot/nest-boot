@@ -170,8 +170,9 @@ Administrator users use `["admin", "users"]`, members use
 schema for its list, creation, and detail routes. List and neighbor requests
 use the same normalized query conditions. Member navigation explicitly sends
 the workspace header and checks the returned workspace ID. Workspace management
-uses `["user", "workspaces"]` with `usePageSearch` only: Overview, creation,
-and settings preserve the saved list search when returning to `/user/workspaces`.
+uses `["user", "workspaces"]` with `usePageSearch` only: creation and settings
+preserve the saved list search when returning to `/user/workspaces`.
+The workspace Overview is a home page and has no back action.
 Workspace settings has no previous/next actions or neighbor requests.
 Profile and security remain independent compact forms without record navigation.
 

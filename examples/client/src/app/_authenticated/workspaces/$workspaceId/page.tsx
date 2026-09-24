@@ -24,12 +24,6 @@ import {
 } from "@/components/thread-ui/page-layout";
 import { useAbility } from "@/contexts/ability-context";
 import { graphql } from "@/gql";
-import { Breadcrumbs } from "@/components/breadcrumbs";
-import { usePageSearch } from "@/hooks/use-page-search";
-import {
-  workspaceSearchSchema,
-  workspacesPageKey,
-} from "@/lib/workspace-search";
 
 const GET_OVERVIEW = graphql(`
   query getWorkspaceOverview(
@@ -62,10 +56,6 @@ function Overview() {
   const workspace = useCurrentWorkspaceContext();
   const canReadMembers = ability.can("read", "Member");
   const canReadApiKeys = ability.can("read", "WorkspaceApiKey");
-  const { pageSearch } = usePageSearch({
-    key: workspacesPageKey,
-    searchSchema: workspaceSearchSchema,
-  });
   const { data, loading, error, refetch } = useQuery(GET_OVERVIEW, {
     variables: {
       workspaceId: workspace.id,
@@ -80,15 +70,6 @@ function Overview() {
   return (
     <Page>
       <PageHeader>
-        <Breadcrumbs
-          baseItems={[
-            {
-              title: t("user:workspaces.title"),
-              link: { to: "/user/workspaces" },
-            },
-          ]}
-          searchByPath={{ "/user/workspaces": pageSearch }}
-        />
         <PageTitle>{t("common:overview.title")}</PageTitle>
         <PageDescription>
           {t("workspace:overview.description", { name: workspace.name })}
