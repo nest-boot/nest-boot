@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import z from "zod";
 
 import {
+  createDataFilterDateSearchSchema,
   createDataFilterInputSearchSchema,
   createDataFilterSelectSearchSchema,
-  dataFilterDateSearchSchema,
 } from "./data-filter-search-schema";
 
 describe("data filter search schemas", () => {
@@ -25,11 +25,9 @@ describe("data filter search schemas", () => {
   });
 
   it("accepts null equality conditions used by empty date filters", () => {
-    expect(dataFilterDateSearchSchema.safeParse({ $eq: null }).success).toBe(
-      true,
-    );
-    expect(dataFilterDateSearchSchema.safeParse({ $ne: null }).success).toBe(
-      true,
-    );
+    const schema = createDataFilterDateSearchSchema();
+
+    expect(schema.safeParse({ $eq: null }).success).toBe(true);
+    expect(schema.safeParse({ $ne: null }).success).toBe(true);
   });
 });

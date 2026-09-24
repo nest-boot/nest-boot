@@ -36,18 +36,20 @@ export function createDataFilterSelectSearchSchema<
   ]);
 }
 
-const dateValueSchema = z.string().datetime();
+export function createDataFilterDateSearchSchema() {
+  const dateValueSchema = z.string().datetime();
 
-export const dataFilterDateSearchSchema = z.union([
-  dateValueSchema,
-  z
-    .object({
-      $eq: dateValueSchema.nullable().optional(),
-      $ne: dateValueSchema.nullable().optional(),
-      $gt: dateValueSchema.optional(),
-      $gte: dateValueSchema.optional(),
-      $lt: dateValueSchema.optional(),
-      $lte: dateValueSchema.optional(),
-    })
-    .strict(),
-]);
+  return z.union([
+    dateValueSchema,
+    z
+      .object({
+        $eq: dateValueSchema.nullable().optional(),
+        $ne: dateValueSchema.nullable().optional(),
+        $gt: dateValueSchema.optional(),
+        $gte: dateValueSchema.optional(),
+        $lt: dateValueSchema.optional(),
+        $lte: dateValueSchema.optional(),
+      })
+      .strict(),
+  ]);
+}

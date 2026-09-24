@@ -5,9 +5,9 @@ import {
   createConnectionSearchSchema,
 } from "@/lib/connection-search";
 import {
+  createDataFilterDateSearchSchema,
   createDataFilterInputSearchSchema,
   createDataFilterSelectSearchSchema,
-  dataFilterDateSearchSchema,
 } from "@/lib/data-filter-search-schema";
 
 export const memberSearchSchema = createConnectionSearchSchema({
@@ -25,7 +25,9 @@ export const memberSearchSchema = createConnectionSearchSchema({
       )
         .optional()
         .catch(undefined),
-      created_at: dataFilterDateSearchSchema.optional().catch(undefined),
+      created_at: createDataFilterDateSearchSchema()
+        .optional()
+        .catch(undefined),
     })
     .optional(),
   pageSize: 20,

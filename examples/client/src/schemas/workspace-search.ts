@@ -5,15 +5,17 @@ import {
   createConnectionSearchSchema,
 } from "@/lib/connection-search";
 import {
+  createDataFilterDateSearchSchema,
   createDataFilterInputSearchSchema,
-  dataFilterDateSearchSchema,
 } from "@/lib/data-filter-search-schema";
 
 export const workspaceSearchSchema = createConnectionSearchSchema({
   filterSchema: z
     .object({
       name: createDataFilterInputSearchSchema().optional().catch(undefined),
-      created_at: dataFilterDateSearchSchema.optional().catch(undefined),
+      created_at: createDataFilterDateSearchSchema()
+        .optional()
+        .catch(undefined),
     })
     .optional(),
   pageSize: 20,
