@@ -71,9 +71,12 @@ button is outside its form, connect it to the form's `id` with the native `form`
 attribute so validation, Enter-key submission, and loading states keep working.
 Use `Page variant="compact"` for form pages, with full-width `PageLayoutSection`
 elements so cards stay stacked within the compact page.
-`PagePagination` groups `PagePreviousAction` and `PageNextAction` inside
-`PageActions`, after the primary action. Each action supports `disabled`,
-`onClick`, and `render` for router links. The registry component hides pagination
+Use the `Page` Props API: `title`, `description`, `breadcrumbActions`,
+`primaryAction`, `secondaryActions`, and `paginationActions`. Pass page bodies
+directly as children; Page renders its own header and content. Creation and
+detail pages provide an explicit parent breadcrumb with the saved list search.
+Top-level pages omit breadcrumbs. Configure `paginationActions.previous` and
+`paginationActions.next` with `disabled`, `onAction`, and `render` for router links. The registry component hides pagination
 below the `@2xl/page` container breakpoint (42rem). Page padding belongs to the
 outer wrapper, so a compact page can reach that breakpoint and display pagination.
 Its default accessible labels are translated through the `thread-ui` namespace.
@@ -187,7 +190,7 @@ The hook returns `search`, `setSearch`, `clearSearch`, `backSearch`,
   the current cursor is `before` with `last: 1` and `after` with `first: 1`, sharing
   filters and ordering. `{}` is a valid result with no neighbors; a missing owner
   returns `undefined` and becomes a navigation error. Obsolete responses are
-  ignored; loading and errors hide stale links. `RecordNavigation` disables
+  ignored; loading and errors hide stale links. `Page.paginationActions` disables
   unavailable previous/next actions. Failed queries show no alert or retry button.
 - Detail links consume `backSearch`. Loading and errors preserve saved search.
   Success positions saved search after `previousEdge.cursor`, keeping the current

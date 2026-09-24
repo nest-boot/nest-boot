@@ -8,7 +8,7 @@ import { graphql } from "@/gql";
 import { UPDATE_WORKSPACE_API_KEY } from "@/graphql/mutations/update-workspace-api-key";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
-import { RecordNavigation } from "@/components/record-navigation";
+import { Link } from "@/components/link";
 import { useAbility } from "@/contexts/ability-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { createAbilitySubject } from "@/lib/ability";
@@ -175,14 +175,20 @@ function ApiKeyDetailsPage() {
       )}
       listPath={listPath}
       listSearch={backSearch}
-      navigation={
-        <RecordNavigation
-          previousPath={
-            previousEdge ? `${listPath}/${previousEdge.node.id}` : undefined
-          }
-          nextPath={nextEdge ? `${listPath}/${nextEdge.node.id}` : undefined}
-        />
-      }
+      paginationActions={{
+        previous: {
+          disabled: !previousEdge,
+          render: previousEdge ? (
+            <Link to={listPath + "/" + previousEdge.node.id} />
+          ) : undefined,
+        },
+        next: {
+          disabled: !nextEdge,
+          render: nextEdge ? (
+            <Link to={listPath + "/" + nextEdge.node.id} />
+          ) : undefined,
+        },
+      }}
       permissionValues={workspaceApiKeyPermissionValues}
       permissionOptions={getPermissionOptions(permissionOptions)}
       onSave={async (input) => {

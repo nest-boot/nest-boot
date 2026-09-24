@@ -10,13 +10,7 @@ import {
   OverviewError,
 } from "@/components/overview-card";
 import { Button } from "@/components/thread-ui/button";
-import {
-  Page,
-  PageContent,
-  PageDescription,
-  PageHeader,
-  PageTitle,
-} from "@/components/thread-ui/page";
+import { Page } from "@/components/thread-ui/page";
 import {
   PageLayout,
   PageLayoutSection,
@@ -42,38 +36,35 @@ function Overview() {
   });
   const summary = error ? undefined : data;
   return (
-    <Page>
-      <PageHeader>
-        <PageTitle>{t("common:overview.title")}</PageTitle>
-        <PageDescription>{t("admin:overview.description")}</PageDescription>
-      </PageHeader>
-      <PageContent>
-        <PageLayout>
-          {error && (
-            <PageLayoutSection>
-              <OverviewError
-                onRetry={() => {
-                  void refetch().catch(() => undefined);
-                }}
-              />
-            </PageLayoutSection>
-          )}
+    <Page
+      title={t("common:overview.title")}
+      description={t("admin:overview.description")}
+    >
+      <PageLayout>
+        {error && (
           <PageLayoutSection>
-            <OverviewCard
-              title={t("sidebar:admin.users")}
-              description={t("admin:overview.users")}
-              icon={<UsersRound />}
-              action={
-                <Button variant="outline" render={<Link to="/admin/users" />}>
-                  {t("admin:overview.manage_users")}
-                </Button>
-              }
-            >
-              <OverviewCount connection={summary?.users} loading={loading} />
-            </OverviewCard>
+            <OverviewError
+              onRetry={() => {
+                void refetch().catch(() => undefined);
+              }}
+            />
           </PageLayoutSection>
-        </PageLayout>
-      </PageContent>
+        )}
+        <PageLayoutSection>
+          <OverviewCard
+            title={t("sidebar:admin.users")}
+            description={t("admin:overview.users")}
+            icon={<UsersRound />}
+            action={
+              <Button variant="outline" render={<Link to="/admin/users" />}>
+                {t("admin:overview.manage_users")}
+              </Button>
+            }
+          >
+            <OverviewCount connection={summary?.users} loading={loading} />
+          </OverviewCard>
+        </PageLayoutSection>
+      </PageLayout>
     </Page>
   );
 }

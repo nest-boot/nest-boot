@@ -200,7 +200,9 @@ test("authorizes workspace API-key controls and deletion without an owner role",
     );
     await page.goto(`/workspaces/${workspace.id}/api-keys`);
     await expect(page.getByTestId("api-keys-page")).toBeVisible();
-    await expect(page.getByTestId("api-key-create-action")).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "Create API Key", exact: true }),
+    ).toBeDisabled();
     const row = page
       .getByRole("row")
       .filter({ hasText: "Read-only workspace key" });
@@ -283,7 +285,9 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
     await page.goto("/user/api-keys");
     await expect(page.getByTestId("api-keys-page")).toBeVisible();
     // A class-level write check opens the form; the Service checks the proposed key.
-    await expect(page.getByTestId("api-key-create-action")).toBeEnabled();
+    await expect(
+      page.getByRole("button", { name: "Create API Key", exact: true }),
+    ).toBeEnabled();
     const row = page
       .getByRole("row")
       .filter({ hasText: "Conditionally writable key" });

@@ -49,7 +49,9 @@ test.describe("API keys", () => {
         { "x-workspace-id": workspaceId },
       );
       await issuerPage.goto(`/workspaces/${workspaceId}/api-keys`);
-      await issuerPage.getByTestId("api-key-create-action").click();
+      await issuerPage
+        .getByRole("button", { name: "Create API Key", exact: true })
+        .click();
       await expect(
         issuerPage.getByRole("checkbox", {
           name: "Update Workspace",
@@ -205,7 +207,9 @@ async function exerciseApiKeyLifecycle(
   await expect(page.getByTestId("api-keys-page")).toBeVisible();
   if (scope === "USER") await page.setViewportSize({ width: 390, height: 844 });
 
-  await page.getByTestId("api-key-create-action").click();
+  await page
+    .getByRole("button", { name: "Create API Key", exact: true })
+    .click();
   await expect(page).toHaveURL(`${listUrl}/create`);
   await page.reload();
   await expect(page.getByRole("dialog")).toHaveCount(0);

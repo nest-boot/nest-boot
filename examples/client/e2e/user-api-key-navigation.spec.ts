@@ -177,8 +177,11 @@ test("browses details across pages, survives back and refresh, then anchors the 
   // The breadcrumb uses the same destination as the footer.
   await page.getByRole("link", { name: c.name, exact: true }).click();
   await expectNeighbor(page, "previous", b.id);
-  await page.getByRole("button", { name: "Parent pages" }).click();
-  await page.getByRole("menuitem", { name: "API Keys", exact: true }).click();
+  const breadcrumbs = page.getByRole("navigation", { name: "Breadcrumbs" });
+  await expect(breadcrumbs.getByRole("link")).toHaveCount(1);
+  await breadcrumbs
+    .getByRole("link", { name: "API Keys", exact: true })
+    .click();
   await expect(page.getByRole("row").nth(1)).toContainText(c.name);
   expect(readSearch(page)).toEqual(restored);
 });
@@ -256,12 +259,16 @@ test("restores the exact list search from create/cancel and create/success, with
   await page.getByRole("button", { name: "Next page", exact: true }).click();
   await expect(page.getByRole("row").nth(1)).toContainText("Navigation C");
   const original = readSearch(page);
-  await page.getByTestId("api-key-create-action").click();
+  await page
+    .getByRole("button", { name: "Create API Key", exact: true })
+    .click();
   await page.reload();
   await page.getByTestId("api-key-back").click();
   await expect(page.getByRole("row").nth(1)).toContainText("Navigation C");
   expect(readSearch(page)).toEqual(original);
-  await page.getByTestId("api-key-create-action").click();
+  await page
+    .getByRole("button", { name: "Create API Key", exact: true })
+    .click();
   await page.getByTestId("api-key-name-input").fill("Created sample");
   await page.getByTestId("api-key-create-submit").click();
   const secret = page.getByTestId("api-key-created-value");
@@ -278,7 +285,9 @@ test("restores the exact list search from create/cancel and create/success, with
   expect(readSearch(page)).toEqual(original);
   // An explicit bare list URL is authoritative; it resets saved filters.
   await page.goto("/user/api-keys");
-  await page.getByTestId("api-key-create-action").click();
+  await page
+    .getByRole("button", { name: "Create API Key", exact: true })
+    .click();
   await page.getByTestId("api-key-back").click();
   await expect(page.getByTestId("api-keys-page")).toBeVisible();
   expect(readSearch(page).query).toBeNull();

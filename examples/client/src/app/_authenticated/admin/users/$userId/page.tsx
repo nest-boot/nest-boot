@@ -11,8 +11,8 @@ import { useCurrentUserContext } from "../../../contexts/current-user-context";
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 import type { UserPermission } from "@/lib/permissions";
 import type { UserRole } from "@/gql/graphql";
+import { Link } from "@/components/link";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
-import { RecordNavigation } from "@/components/record-navigation";
 import { adminUserSearchSchema } from "@/schemas/admin-user-search-schema";
 import { adminUsersResourceKey } from "@/lib/resource-keys";
 import { createConnectionCursor } from "@/lib/connection-cursor";
@@ -21,7 +21,6 @@ import { getFormErrorMessage } from "@/lib/form-errors";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   PageLayout,
   PageLayoutSection,
@@ -34,14 +33,7 @@ import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
 import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
 import { Input } from "@/components/thread-ui/input";
-import {
-  Page,
-  PageActions,
-  PageContent,
-  PageDescription,
-  PageHeader,
-  PageTitle,
-} from "@/components/thread-ui/page";
+import { Page } from "@/components/thread-ui/page";
 import {
   Card,
   CardContent,
@@ -512,574 +504,583 @@ function AdminUserDetails() {
   );
 
   if (loading) {
-    return <Page variant="compact">{t("admin:user.loading")}</Page>;
+    return <Page variant="compact" title={t("admin:user.loading")} />;
   }
   if (!user) {
-    return <Page variant="compact">{t("admin:user.not_found")}</Page>;
+    return <Page variant="compact" title={t("admin:user.not_found")} />;
   }
 
   return (
-    <Page variant="compact" data-testid="admin-user-page">
-      <PageHeader>
-        <Breadcrumbs searchByPath={{ "/admin/users": backSearch }} />
-        <PageTitle>{user.name}</PageTitle>
-        <PageDescription>{user.email}</PageDescription>
-        <PageActions>
-          {user.id !== currentUser.id &&
-          ability.can("impersonate", createAbilitySubject("User", user)) ? (
-            <Button
-              variant="outline"
-              loading={impersonating}
-              data-testid="admin-impersonate-user"
-              onClick={async () => {
-                try {
-                  await impersonateUser({ variables: { id: user.id } });
-                  window.location.assign("/user");
-                } catch (error) {
-                  toast.add({
-                    type: "error",
-                    title:
-                      error instanceof Error
-                        ? error.message
-                        : t("admin:impersonation.failed"),
-                  });
-                }
-              }}
-            >
-              {t("admin:impersonation.start")}
-            </Button>
-          ) : null}
-          <RecordNavigation
-            previousPath={
-              previousEdge ? `/admin/users/${previousEdge.node.id}` : undefined
-            }
-            nextPath={nextEdge ? `/admin/users/${nextEdge.node.id}` : undefined}
-          />
-        </PageActions>
-      </PageHeader>
-      <PageContent>
-        <PageLayout>
-          <PageLayoutSection>
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("admin:user.profile.title")}</CardTitle>
-                <CardDescription>
-                  {t("admin:user.profile.description")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form
-                  id="admin-user-profile-form"
-                  noValidate
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (profileForm.state.isSubmitting) return;
-                    profileForm.setErrorMap({ onSubmit: undefined });
-                    profileForm.handleSubmit();
-                  }}
-                >
-                  <FormLayout>
-                    <FormLayoutItem>
-                      <profileForm.Field name="name">
-                        {(field) => (
-                          <Input
-                            label={t("admin:users.table.name")}
-                            data-testid="admin-user-name"
-                            disabled={!canUpdate}
-                            value={field.state.value}
-                            onChange={(event) =>
-                              field.handleChange(event.target.value)
-                            }
-                            error={getFormErrorMessage(field.state.meta.errors)}
-                          />
-                        )}
-                      </profileForm.Field>
-                    </FormLayoutItem>
-                    <FormLayoutItem>
-                      <profileForm.Field name="email">
-                        {(field) => (
-                          <Input
-                            type="email"
-                            label={t("admin:users.table.email")}
-                            data-testid="admin-user-email"
-                            disabled={!canSetEmail}
-                            value={field.state.value}
-                            onChange={(event) =>
-                              field.handleChange(event.target.value)
-                            }
-                            error={getFormErrorMessage(field.state.meta.errors)}
-                          />
-                        )}
-                      </profileForm.Field>
-                    </FormLayoutItem>
-                    <FormLayoutItem>
-                      <Field
-                        orientation="horizontal"
-                        data-disabled={!canSetEmail}
-                      >
-                        <profileForm.Field name="emailVerified">
-                          {(field) => (
-                            <Checkbox
-                              id="admin-user-email-verified"
-                              checked={field.state.value}
-                              disabled={!canSetEmail}
-                              onCheckedChange={field.handleChange}
-                            />
-                          )}
-                        </profileForm.Field>
-                        <FieldLabel htmlFor="admin-user-email-verified">
-                          {t("admin:user.profile.email_verified")}
-                        </FieldLabel>
-                      </Field>
-                    </FormLayoutItem>
-                    <profileForm.Subscribe
-                      selector={(state) => getFormErrorMessage(state.errors)}
-                    >
-                      {(error) =>
-                        error ? (
-                          <FormLayoutItem>
-                            <FieldError>{error}</FieldError>
-                          </FormLayoutItem>
-                        ) : null
-                      }
-                    </profileForm.Subscribe>
-                  </FormLayout>
-                </form>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  loading={updating}
-                  data-testid="admin-user-profile-save"
-                  disabled={!canUpdate}
-                  type="submit"
-                  form="admin-user-profile-form"
-                >
-                  {t("action.save")}
-                </Button>
-              </CardFooter>
-            </Card>
-          </PageLayoutSection>
-
-          <PageLayoutSection>
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("admin:user.roles.title")}</CardTitle>
-                <CardDescription>
-                  {t("admin:user.roles.description")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form
-                  id="admin-user-roles-form"
-                  noValidate
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (rolesForm.state.isSubmitting) return;
-                    rolesForm.setErrorMap({ onSubmit: undefined });
-                    rolesForm.handleSubmit();
-                  }}
-                >
-                  <FormLayout>
-                    <FormLayoutItem>
-                      <rolesForm.Field name="roles">
-                        {(field) => (
-                          <>
-                            <RoleCheckboxGroup
-                              label={t("admin:user.roles.label")}
-                              options={data?.userRoles ?? []}
-                              value={field.state.value}
-                              disabled={!canSetRoles}
-                              onValueChange={field.handleChange}
-                            />
-                            <FieldError>
-                              {getFormErrorMessage(field.state.meta.errors)}
-                            </FieldError>
-                          </>
-                        )}
-                      </rolesForm.Field>
-                    </FormLayoutItem>
-                    <rolesForm.Subscribe
-                      selector={(state) => getFormErrorMessage(state.errors)}
-                    >
-                      {(error) =>
-                        error ? (
-                          <FormLayoutItem>
-                            <FieldError>{error}</FieldError>
-                          </FormLayoutItem>
-                        ) : null
-                      }
-                    </rolesForm.Subscribe>
-                  </FormLayout>
-                </form>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  data-testid="admin-user-roles-save"
-                  disabled={!canSetRoles || !canGrantRoles(roles)}
-                  loading={savingRole}
-                  type="submit"
-                  form="admin-user-roles-form"
-                >
-                  {t("action.save")}
-                </Button>
-              </CardFooter>
-            </Card>
-          </PageLayoutSection>
-
-          <PageLayoutSection>
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("admin:user.permissions.title")}</CardTitle>
-                <CardDescription>
-                  {t("admin:user.permissions.description")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form
-                  id="admin-user-permissions-form"
-                  noValidate
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (permissionsForm.state.isSubmitting) return;
-                    permissionsForm.setErrorMap({ onSubmit: undefined });
-                    permissionsForm.handleSubmit();
-                  }}
-                >
-                  <FormLayout>
-                    <FormLayoutItem>
-                      <permissionsForm.Field name="permissions">
-                        {(field) => (
-                          <>
-                            <PermissionCheckboxGroup
-                              options={getPermissionOptions(
-                                data?.userPermissions ?? [],
-                              )}
-                              value={field.state.value}
-                              disabled={!canSetPermissions}
-                              onChange={field.handleChange}
-                            />
-                            <FieldError>
-                              {getFormErrorMessage(field.state.meta.errors)}
-                            </FieldError>
-                          </>
-                        )}
-                      </permissionsForm.Field>
-                    </FormLayoutItem>
-                    <permissionsForm.Subscribe
-                      selector={(state) => getFormErrorMessage(state.errors)}
-                    >
-                      {(error) =>
-                        error ? (
-                          <FormLayoutItem>
-                            <FieldError>{error}</FieldError>
-                          </FormLayoutItem>
-                        ) : null
-                      }
-                    </permissionsForm.Subscribe>
-                  </FormLayout>
-                </form>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  loading={savingPermissions}
-                  data-testid="admin-user-permissions-save"
-                  disabled={
-                    !canSetPermissions || !canGrantPermissions(permissions)
+    <Page
+      variant="compact"
+      data-testid="admin-user-page"
+      title={user.name}
+      description={user.email}
+      breadcrumbActions={[
+        {
+          label: t("admin:users.title"),
+          render: <Link to={"/admin/users"} search={backSearch} />,
+        },
+      ]}
+      paginationActions={{
+        previous: {
+          disabled: !previousEdge,
+          render: previousEdge ? (
+            <Link to={"/admin/users/" + previousEdge.node.id} />
+          ) : undefined,
+        },
+        next: {
+          disabled: !nextEdge,
+          render: nextEdge ? (
+            <Link to={"/admin/users/" + nextEdge.node.id} />
+          ) : undefined,
+        },
+      }}
+      secondaryActions={
+        user.id !== currentUser.id &&
+        ability.can("impersonate", createAbilitySubject("User", user))
+          ? [
+              {
+                label: t("admin:impersonation.start"),
+                loading: impersonating,
+                "data-testid": "admin-impersonate-user",
+                onAction: async () => {
+                  try {
+                    await impersonateUser({ variables: { id: user.id } });
+                    window.location.assign("/user");
+                  } catch (error) {
+                    toast.add({
+                      type: "error",
+                      title:
+                        error instanceof Error
+                          ? error.message
+                          : t("admin:impersonation.failed"),
+                    });
                   }
-                  type="submit"
-                  form="admin-user-permissions-form"
-                >
-                  {t("action.save")}
-                </Button>
-              </CardFooter>
-            </Card>
-          </PageLayoutSection>
-
-          <PageLayoutSection>
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("admin:user.sessions.title")}</CardTitle>
-                <CardDescription>
-                  {t("admin:user.sessions.description")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {sessions.map((session) => (
-                    <div
-                      key={session.id}
-                      className="flex items-center justify-between gap-4 border-b py-3 last:border-0"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">
-                          {session.userAgent ??
-                            t("admin:user.sessions.unknown")}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          {session.ipAddress ?? "—"} ·{" "}
-                          {dayjs(session.createdAt).format("YYYY-MM-DD HH:mm")}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        data-testid={`admin-user-session-revoke-${session.id}`}
-                        loading={revokingSessionId === session.id}
-                        disabled={!canRevokeSessions}
-                        onClick={async () => {
-                          setRevokingSessionId(session.id);
-                          await run(
-                            () =>
-                              revokeSession({
-                                variables: { userId, id: session.id },
-                              }),
-                            t("admin:user.sessions.revoked"),
-                          );
-                          setRevokingSessionId(undefined);
-                        }}
-                      >
-                        {t("admin:user.sessions.revoke")}
-                      </Button>
-                    </div>
-                  ))}
-                  {user?.sessions?.pageInfo.hasNextPage && (
-                    <Button
-                      variant="outline"
-                      loading={loading}
-                      onClick={() =>
-                        fetchMore({
-                          variables: {
-                            sessionsAfter: user.sessions?.pageInfo.endCursor,
-                          },
-                          updateQuery: (previous, { fetchMoreResult }) => ({
-                            ...fetchMoreResult,
-                            user:
-                              fetchMoreResult.user?.sessions &&
-                              previous.user?.sessions
-                                ? {
-                                    ...fetchMoreResult.user,
-                                    sessions: {
-                                      ...fetchMoreResult.user.sessions,
-                                      edges: [
-                                        ...previous.user.sessions.edges,
-                                        ...fetchMoreResult.user.sessions.edges,
-                                      ],
-                                    },
-                                  }
-                                : fetchMoreResult.user,
-                          }),
-                        })
-                      }
-                    >
-                      {t("action.load_more")}
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  variant="outline"
-                  data-testid="admin-user-sessions-revoke"
-                  disabled={!canRevokeSessions || sessions.length === 0}
-                  loading={revokingSessions}
-                  onClick={() =>
-                    run(
-                      () => revokeUserSessions({ variables: { userId } }),
-                      t("admin:user.sessions.revoked_all"),
-                    )
-                  }
-                >
-                  {t("admin:user.sessions.revoke_all")}
-                </Button>
-              </CardFooter>
-            </Card>
-          </PageLayoutSection>
-
-          <PageLayoutSection>
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("admin:user.password.title")}</CardTitle>
-                <CardDescription>
-                  {t("admin:user.password.description")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form
-                  id="admin-user-password-form"
-                  noValidate
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (passwordForm.state.isSubmitting) return;
-                    passwordForm.setErrorMap({ onSubmit: undefined });
-                    passwordForm.handleSubmit();
-                  }}
-                >
-                  <FormLayout>
-                    <FormLayoutItem>
-                      <passwordForm.Field name="password">
-                        {(field) => (
-                          <Input
-                            type="password"
-                            label={t("admin:user.password.new")}
-                            disabled={!canSetPassword}
-                            value={field.state.value}
-                            onChange={(event) =>
-                              field.handleChange(event.target.value)
-                            }
-                            error={getFormErrorMessage(field.state.meta.errors)}
-                          />
-                        )}
-                      </passwordForm.Field>
-                    </FormLayoutItem>
-                    <passwordForm.Subscribe
-                      selector={(state) => getFormErrorMessage(state.errors)}
-                    >
-                      {(error) =>
-                        error ? (
-                          <FormLayoutItem>
-                            <FieldError>{error}</FieldError>
-                          </FormLayoutItem>
-                        ) : null
-                      }
-                    </passwordForm.Subscribe>
-                  </FormLayout>
-                </form>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  disabled={!canSetPassword || newPassword.length < 8}
-                  loading={settingPassword}
-                  type="submit"
-                  form="admin-user-password-form"
-                >
-                  {t("admin:user.password.action")}
-                </Button>
-              </CardFooter>
-            </Card>
-          </PageLayoutSection>
-
-          <PageLayoutSection>
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {user.banned
-                    ? t("admin:user.ban.unban_title")
-                    : t("admin:user.ban.title")}
-                </CardTitle>
-                <CardDescription>
-                  {t("admin:user.ban.description")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form
-                  id="admin-user-ban-form"
-                  noValidate
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (banForm.state.isSubmitting) return;
-                    banForm.setErrorMap({ onSubmit: undefined });
-                    banForm.handleSubmit();
-                  }}
-                >
-                  <FormLayout>
-                    <FormLayoutItem>
-                      {user.banned ? (
-                        <Badge color="red">
-                          {user.banReason || t("admin:users.banned")}
-                        </Badge>
-                      ) : (
-                        <banForm.Field name="reason">
-                          {(field) => (
-                            <Input
-                              label={t("admin:user.ban.reason")}
-                              disabled={!canBan}
-                              value={field.state.value}
-                              onChange={(event) =>
-                                field.handleChange(event.target.value)
-                              }
-                              error={getFormErrorMessage(
-                                field.state.meta.errors,
-                              )}
-                            />
-                          )}
-                        </banForm.Field>
+                },
+              },
+            ]
+          : undefined
+      }
+    >
+      <PageLayout>
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("admin:user.profile.title")}</CardTitle>
+              <CardDescription>
+                {t("admin:user.profile.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                id="admin-user-profile-form"
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (profileForm.state.isSubmitting) return;
+                  profileForm.setErrorMap({ onSubmit: undefined });
+                  profileForm.handleSubmit();
+                }}
+              >
+                <FormLayout>
+                  <FormLayoutItem>
+                    <profileForm.Field name="name">
+                      {(field) => (
+                        <Input
+                          label={t("admin:users.table.name")}
+                          data-testid="admin-user-name"
+                          disabled={!canUpdate}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
                       )}
-                    </FormLayoutItem>
-                    <banForm.Subscribe
-                      selector={(state) => getFormErrorMessage(state.errors)}
+                    </profileForm.Field>
+                  </FormLayoutItem>
+                  <FormLayoutItem>
+                    <profileForm.Field name="email">
+                      {(field) => (
+                        <Input
+                          type="email"
+                          label={t("admin:users.table.email")}
+                          data-testid="admin-user-email"
+                          disabled={!canSetEmail}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
+                      )}
+                    </profileForm.Field>
+                  </FormLayoutItem>
+                  <FormLayoutItem>
+                    <Field
+                      orientation="horizontal"
+                      data-disabled={!canSetEmail}
                     >
-                      {(error) =>
-                        error ? (
-                          <FormLayoutItem>
-                            <FieldError>{error}</FieldError>
-                          </FormLayoutItem>
-                        ) : null
-                      }
-                    </banForm.Subscribe>
-                  </FormLayout>
-                </form>
-              </CardContent>
-              <CardFooter>
-                <div className="flex flex-wrap gap-2">
-                  {user.banned ? (
+                      <profileForm.Field name="emailVerified">
+                        {(field) => (
+                          <Checkbox
+                            id="admin-user-email-verified"
+                            checked={field.state.value}
+                            disabled={!canSetEmail}
+                            onCheckedChange={field.handleChange}
+                          />
+                        )}
+                      </profileForm.Field>
+                      <FieldLabel htmlFor="admin-user-email-verified">
+                        {t("admin:user.profile.email_verified")}
+                      </FieldLabel>
+                    </Field>
+                  </FormLayoutItem>
+                  <profileForm.Subscribe
+                    selector={(state) => getFormErrorMessage(state.errors)}
+                  >
+                    {(error) =>
+                      error ? (
+                        <FormLayoutItem>
+                          <FieldError>{error}</FieldError>
+                        </FormLayoutItem>
+                      ) : null
+                    }
+                  </profileForm.Subscribe>
+                </FormLayout>
+              </form>
+            </CardContent>
+            <CardFooter>
+              <Button
+                loading={updating}
+                data-testid="admin-user-profile-save"
+                disabled={!canUpdate}
+                type="submit"
+                form="admin-user-profile-form"
+              >
+                {t("action.save")}
+              </Button>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
+
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("admin:user.roles.title")}</CardTitle>
+              <CardDescription>
+                {t("admin:user.roles.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                id="admin-user-roles-form"
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (rolesForm.state.isSubmitting) return;
+                  rolesForm.setErrorMap({ onSubmit: undefined });
+                  rolesForm.handleSubmit();
+                }}
+              >
+                <FormLayout>
+                  <FormLayoutItem>
+                    <rolesForm.Field name="roles">
+                      {(field) => (
+                        <>
+                          <RoleCheckboxGroup
+                            label={t("admin:user.roles.label")}
+                            options={data?.userRoles ?? []}
+                            value={field.state.value}
+                            disabled={!canSetRoles}
+                            onValueChange={field.handleChange}
+                          />
+                          <FieldError>
+                            {getFormErrorMessage(field.state.meta.errors)}
+                          </FieldError>
+                        </>
+                      )}
+                    </rolesForm.Field>
+                  </FormLayoutItem>
+                  <rolesForm.Subscribe
+                    selector={(state) => getFormErrorMessage(state.errors)}
+                  >
+                    {(error) =>
+                      error ? (
+                        <FormLayoutItem>
+                          <FieldError>{error}</FieldError>
+                        </FormLayoutItem>
+                      ) : null
+                    }
+                  </rolesForm.Subscribe>
+                </FormLayout>
+              </form>
+            </CardContent>
+            <CardFooter>
+              <Button
+                data-testid="admin-user-roles-save"
+                disabled={!canSetRoles || !canGrantRoles(roles)}
+                loading={savingRole}
+                type="submit"
+                form="admin-user-roles-form"
+              >
+                {t("action.save")}
+              </Button>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
+
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("admin:user.permissions.title")}</CardTitle>
+              <CardDescription>
+                {t("admin:user.permissions.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                id="admin-user-permissions-form"
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (permissionsForm.state.isSubmitting) return;
+                  permissionsForm.setErrorMap({ onSubmit: undefined });
+                  permissionsForm.handleSubmit();
+                }}
+              >
+                <FormLayout>
+                  <FormLayoutItem>
+                    <permissionsForm.Field name="permissions">
+                      {(field) => (
+                        <>
+                          <PermissionCheckboxGroup
+                            options={getPermissionOptions(
+                              data?.userPermissions ?? [],
+                            )}
+                            value={field.state.value}
+                            disabled={!canSetPermissions}
+                            onChange={field.handleChange}
+                          />
+                          <FieldError>
+                            {getFormErrorMessage(field.state.meta.errors)}
+                          </FieldError>
+                        </>
+                      )}
+                    </permissionsForm.Field>
+                  </FormLayoutItem>
+                  <permissionsForm.Subscribe
+                    selector={(state) => getFormErrorMessage(state.errors)}
+                  >
+                    {(error) =>
+                      error ? (
+                        <FormLayoutItem>
+                          <FieldError>{error}</FieldError>
+                        </FormLayoutItem>
+                      ) : null
+                    }
+                  </permissionsForm.Subscribe>
+                </FormLayout>
+              </form>
+            </CardContent>
+            <CardFooter>
+              <Button
+                loading={savingPermissions}
+                data-testid="admin-user-permissions-save"
+                disabled={
+                  !canSetPermissions || !canGrantPermissions(permissions)
+                }
+                type="submit"
+                form="admin-user-permissions-form"
+              >
+                {t("action.save")}
+              </Button>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
+
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("admin:user.sessions.title")}</CardTitle>
+              <CardDescription>
+                {t("admin:user.sessions.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {sessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className="flex items-center justify-between gap-4 border-b py-3 last:border-0"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">
+                        {session.userAgent ?? t("admin:user.sessions.unknown")}
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {session.ipAddress ?? "—"} ·{" "}
+                        {dayjs(session.createdAt).format("YYYY-MM-DD HH:mm")}
+                      </p>
+                    </div>
                     <Button
-                      loading={unbanning}
-                      disabled={!canBan}
-                      onClick={() =>
-                        run(
-                          () => unbanUser({ variables: { id: userId } }),
-                          t("admin:user.ban.unbanned"),
-                        )
-                      }
+                      size="sm"
+                      variant="outline"
+                      data-testid={`admin-user-session-revoke-${session.id}`}
+                      loading={revokingSessionId === session.id}
+                      disabled={!canRevokeSessions}
+                      onClick={async () => {
+                        setRevokingSessionId(session.id);
+                        await run(
+                          () =>
+                            revokeSession({
+                              variables: { userId, id: session.id },
+                            }),
+                          t("admin:user.sessions.revoked"),
+                        );
+                        setRevokingSessionId(undefined);
+                      }}
                     >
-                      {t("admin:user.ban.unban")}
+                      {t("admin:user.sessions.revoke")}
                     </Button>
-                  ) : (
-                    <Button
-                      variant="destructive"
-                      disabled={!canBan || currentUser.id === userId}
-                      loading={banning}
-                      type="submit"
-                      form="admin-user-ban-form"
-                    >
-                      {t("admin:user.ban.action")}
-                    </Button>
-                  )}
+                  </div>
+                ))}
+                {user?.sessions?.pageInfo.hasNextPage && (
+                  <Button
+                    variant="outline"
+                    loading={loading}
+                    onClick={() =>
+                      fetchMore({
+                        variables: {
+                          sessionsAfter: user.sessions?.pageInfo.endCursor,
+                        },
+                        updateQuery: (previous, { fetchMoreResult }) => ({
+                          ...fetchMoreResult,
+                          user:
+                            fetchMoreResult.user?.sessions &&
+                            previous.user?.sessions
+                              ? {
+                                  ...fetchMoreResult.user,
+                                  sessions: {
+                                    ...fetchMoreResult.user.sessions,
+                                    edges: [
+                                      ...previous.user.sessions.edges,
+                                      ...fetchMoreResult.user.sessions.edges,
+                                    ],
+                                  },
+                                }
+                              : fetchMoreResult.user,
+                        }),
+                      })
+                    }
+                  >
+                    {t("action.load_more")}
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button
+                variant="outline"
+                data-testid="admin-user-sessions-revoke"
+                disabled={!canRevokeSessions || sessions.length === 0}
+                loading={revokingSessions}
+                onClick={() =>
+                  run(
+                    () => revokeUserSessions({ variables: { userId } }),
+                    t("admin:user.sessions.revoked_all"),
+                  )
+                }
+              >
+                {t("admin:user.sessions.revoke_all")}
+              </Button>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
+
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("admin:user.password.title")}</CardTitle>
+              <CardDescription>
+                {t("admin:user.password.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                id="admin-user-password-form"
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (passwordForm.state.isSubmitting) return;
+                  passwordForm.setErrorMap({ onSubmit: undefined });
+                  passwordForm.handleSubmit();
+                }}
+              >
+                <FormLayout>
+                  <FormLayoutItem>
+                    <passwordForm.Field name="password">
+                      {(field) => (
+                        <Input
+                          type="password"
+                          label={t("admin:user.password.new")}
+                          disabled={!canSetPassword}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
+                      )}
+                    </passwordForm.Field>
+                  </FormLayoutItem>
+                  <passwordForm.Subscribe
+                    selector={(state) => getFormErrorMessage(state.errors)}
+                  >
+                    {(error) =>
+                      error ? (
+                        <FormLayoutItem>
+                          <FieldError>{error}</FieldError>
+                        </FormLayoutItem>
+                      ) : null
+                    }
+                  </passwordForm.Subscribe>
+                </FormLayout>
+              </form>
+            </CardContent>
+            <CardFooter>
+              <Button
+                disabled={!canSetPassword || newPassword.length < 8}
+                loading={settingPassword}
+                type="submit"
+                form="admin-user-password-form"
+              >
+                {t("admin:user.password.action")}
+              </Button>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
+
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {user.banned
+                  ? t("admin:user.ban.unban_title")
+                  : t("admin:user.ban.title")}
+              </CardTitle>
+              <CardDescription>
+                {t("admin:user.ban.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                id="admin-user-ban-form"
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (banForm.state.isSubmitting) return;
+                  banForm.setErrorMap({ onSubmit: undefined });
+                  banForm.handleSubmit();
+                }}
+              >
+                <FormLayout>
+                  <FormLayoutItem>
+                    {user.banned ? (
+                      <Badge color="red">
+                        {user.banReason || t("admin:users.banned")}
+                      </Badge>
+                    ) : (
+                      <banForm.Field name="reason">
+                        {(field) => (
+                          <Input
+                            label={t("admin:user.ban.reason")}
+                            disabled={!canBan}
+                            value={field.state.value}
+                            onChange={(event) =>
+                              field.handleChange(event.target.value)
+                            }
+                            error={getFormErrorMessage(field.state.meta.errors)}
+                          />
+                        )}
+                      </banForm.Field>
+                    )}
+                  </FormLayoutItem>
+                  <banForm.Subscribe
+                    selector={(state) => getFormErrorMessage(state.errors)}
+                  >
+                    {(error) =>
+                      error ? (
+                        <FormLayoutItem>
+                          <FieldError>{error}</FieldError>
+                        </FormLayoutItem>
+                      ) : null
+                    }
+                  </banForm.Subscribe>
+                </FormLayout>
+              </form>
+            </CardContent>
+            <CardFooter>
+              <div className="flex flex-wrap gap-2">
+                {user.banned ? (
+                  <Button
+                    loading={unbanning}
+                    disabled={!canBan}
+                    onClick={() =>
+                      run(
+                        () => unbanUser({ variables: { id: userId } }),
+                        t("admin:user.ban.unbanned"),
+                      )
+                    }
+                  >
+                    {t("admin:user.ban.unban")}
+                  </Button>
+                ) : (
                   <Button
                     variant="destructive"
-                    disabled={!canDelete || currentUser.id === userId}
-                    loading={deleting}
-                    onClick={async () => {
-                      const confirmed = await alertDialog({
-                        title: t("admin:user.delete.confirm_title"),
-                        description: t("admin:user.delete.confirm_description"),
-                        confirmText: t("action.delete"),
-                        cancelText: t("action.cancel"),
-                        variant: "destructive",
-                      });
-                      if (!confirmed) return;
-                      await run(async () => {
-                        await deleteUser({ variables: { id: userId } });
-                        await navigate({
-                          to: "/admin/users",
-                          search: backSearch,
-                        });
-                      }, t("admin:user.delete.success"));
-                    }}
+                    disabled={!canBan || currentUser.id === userId}
+                    loading={banning}
+                    type="submit"
+                    form="admin-user-ban-form"
                   >
-                    {t("admin:user.delete.action")}
+                    {t("admin:user.ban.action")}
                   </Button>
-                </div>
-              </CardFooter>
-            </Card>
-          </PageLayoutSection>
-        </PageLayout>
-      </PageContent>
+                )}
+                <Button
+                  variant="destructive"
+                  disabled={!canDelete || currentUser.id === userId}
+                  loading={deleting}
+                  onClick={async () => {
+                    const confirmed = await alertDialog({
+                      title: t("admin:user.delete.confirm_title"),
+                      description: t("admin:user.delete.confirm_description"),
+                      confirmText: t("action.delete"),
+                      cancelText: t("action.cancel"),
+                      variant: "destructive",
+                    });
+                    if (!confirmed) return;
+                    await run(async () => {
+                      await deleteUser({ variables: { id: userId } });
+                      await navigate({
+                        to: "/admin/users",
+                        search: backSearch,
+                      });
+                    }, t("admin:user.delete.success"));
+                  }}
+                >
+                  {t("admin:user.delete.action")}
+                </Button>
+              </div>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
+      </PageLayout>
     </Page>
   );
 }

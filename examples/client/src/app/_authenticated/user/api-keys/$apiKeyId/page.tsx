@@ -8,7 +8,7 @@ import { graphql } from "@/gql";
 import { UPDATE_USER_API_KEY } from "@/graphql/mutations/update-user-api-key";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
-import { RecordNavigation } from "@/components/record-navigation";
+import { Link } from "@/components/link";
 import { useAbility } from "@/contexts/ability-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { createAbilitySubject } from "@/lib/ability";
@@ -160,14 +160,20 @@ function ApiKeyDetailsPage() {
       )}
       listPath={"/user/api-keys"}
       listSearch={backSearch}
-      navigation={
-        <RecordNavigation
-          previousPath={
-            previousEdge ? `/user/api-keys/${previousEdge.node.id}` : undefined
-          }
-          nextPath={nextEdge ? `/user/api-keys/${nextEdge.node.id}` : undefined}
-        />
-      }
+      paginationActions={{
+        previous: {
+          disabled: !previousEdge,
+          render: previousEdge ? (
+            <Link to={"/user/api-keys/" + previousEdge.node.id} />
+          ) : undefined,
+        },
+        next: {
+          disabled: !nextEdge,
+          render: nextEdge ? (
+            <Link to={"/user/api-keys/" + nextEdge.node.id} />
+          ) : undefined,
+        },
+      }}
       permissionValues={authPermissionValues}
       permissionOptions={getPermissionOptions(permissionOptions)}
       onSave={async (input) => {

@@ -11,13 +11,7 @@ import {
   OverviewError,
 } from "@/components/overview-card";
 import { Button } from "@/components/thread-ui/button";
-import {
-  Page,
-  PageContent,
-  PageDescription,
-  PageHeader,
-  PageTitle,
-} from "@/components/thread-ui/page";
+import { Page } from "@/components/thread-ui/page";
 import {
   PageLayout,
   PageLayoutSection,
@@ -68,80 +62,77 @@ function Overview() {
   const summary =
     !error && data?.workspace?.id === workspace.id ? data.workspace : undefined;
   return (
-    <Page>
-      <PageHeader>
-        <PageTitle>{t("common:overview.title")}</PageTitle>
-        <PageDescription>
-          {t("workspace:overview.description", { name: workspace.name })}
-        </PageDescription>
-      </PageHeader>
-      <PageContent>
-        <PageLayout>
-          {error && (
-            <PageLayoutSection>
-              <OverviewError
-                onRetry={() => {
-                  void refetch().catch(() => undefined);
-                }}
-              />
-            </PageLayoutSection>
-          )}
+    <Page
+      title={t("common:overview.title")}
+      description={t("workspace:overview.description", {
+        name: workspace.name,
+      })}
+    >
+      <PageLayout>
+        {error && (
           <PageLayoutSection>
-            <div className="grid gap-4 @3xl/page-layout:grid-cols-2">
-              {canReadMembers && (
-                <OverviewCard
-                  title={t("sidebar:navigation.members")}
-                  description={t("workspace:overview.members")}
-                  icon={<UsersRound />}
-                  action={
-                    <Button
-                      variant="outline"
-                      render={
-                        <Link
-                          to="/workspaces/$workspaceId/members"
-                          params={{ workspaceId: workspace.id }}
-                        />
-                      }
-                    >
-                      {t("workspace:overview.manage_members")}
-                    </Button>
-                  }
-                >
-                  <OverviewCount
-                    connection={summary?.members}
-                    loading={loading}
-                  />
-                </OverviewCard>
-              )}
-              {canReadApiKeys && (
-                <OverviewCard
-                  title={t("sidebar:navigation.api_keys")}
-                  description={t("workspace:overview.api_keys")}
-                  icon={<KeyRound />}
-                  action={
-                    <Button
-                      variant="outline"
-                      render={
-                        <Link
-                          to="/workspaces/$workspaceId/api-keys"
-                          params={{ workspaceId: workspace.id }}
-                        />
-                      }
-                    >
-                      {t("common:overview.view_api_keys")}
-                    </Button>
-                  }
-                >
-                  <OverviewCount
-                    connection={summary?.apiKeys}
-                    loading={loading}
-                  />
-                </OverviewCard>
-              )}
-            </div>
+            <OverviewError
+              onRetry={() => {
+                void refetch().catch(() => undefined);
+              }}
+            />
           </PageLayoutSection>
-        </PageLayout>
-      </PageContent>
+        )}
+        <PageLayoutSection>
+          <div className="grid gap-4 @3xl/page-layout:grid-cols-2">
+            {canReadMembers && (
+              <OverviewCard
+                title={t("sidebar:navigation.members")}
+                description={t("workspace:overview.members")}
+                icon={<UsersRound />}
+                action={
+                  <Button
+                    variant="outline"
+                    render={
+                      <Link
+                        to="/workspaces/$workspaceId/members"
+                        params={{ workspaceId: workspace.id }}
+                      />
+                    }
+                  >
+                    {t("workspace:overview.manage_members")}
+                  </Button>
+                }
+              >
+                <OverviewCount
+                  connection={summary?.members}
+                  loading={loading}
+                />
+              </OverviewCard>
+            )}
+            {canReadApiKeys && (
+              <OverviewCard
+                title={t("sidebar:navigation.api_keys")}
+                description={t("workspace:overview.api_keys")}
+                icon={<KeyRound />}
+                action={
+                  <Button
+                    variant="outline"
+                    render={
+                      <Link
+                        to="/workspaces/$workspaceId/api-keys"
+                        params={{ workspaceId: workspace.id }}
+                      />
+                    }
+                  >
+                    {t("common:overview.view_api_keys")}
+                  </Button>
+                }
+              >
+                <OverviewCount
+                  connection={summary?.apiKeys}
+                  loading={loading}
+                />
+              </OverviewCard>
+            )}
+          </div>
+        </PageLayoutSection>
+      </PageLayout>
     </Page>
   );
 }

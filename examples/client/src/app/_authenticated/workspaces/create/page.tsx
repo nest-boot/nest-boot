@@ -9,15 +9,7 @@ import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { Button } from "@/components/thread-ui/button";
 import { Link } from "@/components/link";
 import { Layout, LayoutContent } from "@/components/thread-ui/layout";
-import {
-  BreadcrumbAction,
-  BreadcrumbActions,
-  Page,
-  PageContent,
-  PageDescription,
-  PageHeader,
-  PageTitle,
-} from "@/components/thread-ui/page";
+import { Page } from "@/components/thread-ui/page";
 import {
   PageLayout,
   PageLayoutSection,
@@ -81,82 +73,77 @@ function CreateWorkspaceComponent() {
     <Layout>
       <AppTopbar showSidebar={false} />
       <LayoutContent data-scroll-restoration-id="main-content">
-        <Page variant="compact">
-          <PageHeader>
-            <BreadcrumbActions>
-              <BreadcrumbAction
-                render={<Link to="/user/workspaces" search={backSearch} />}
-              >
-                Workspaces
-              </BreadcrumbAction>
-            </BreadcrumbActions>
-            <PageTitle>Create Workspace</PageTitle>
-            <PageDescription>
-              Create a new workspace to start managing your projects.
-            </PageDescription>
-          </PageHeader>
-          <PageContent>
-            <PageLayout>
-              <PageLayoutSection>
-                <Card>
-                  <CardContent>
-                    <form
-                      id="workspace-create-form"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        form.handleSubmit();
-                      }}
+        <Page
+          variant="compact"
+          title="Create Workspace"
+          description="Create a new workspace to start managing your projects."
+          breadcrumbActions={[
+            {
+              label: "Workspaces",
+              render: <Link to={"/user/workspaces"} search={backSearch} />,
+            },
+          ]}
+        >
+          <PageLayout>
+            <PageLayoutSection>
+              <Card>
+                <CardContent>
+                  <form
+                    id="workspace-create-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      form.handleSubmit();
+                    }}
+                  >
+                    <FieldGroup>
+                      <FieldSet>
+                        <FieldGroup>
+                          <form.Field name="name">
+                            {(field) => (
+                              <Input
+                                id="name"
+                                data-testid="workspace-create-name-input"
+                                label="Name"
+                                placeholder="My Workspace"
+                                required
+                                value={field.state.value}
+                                onChange={(e) =>
+                                  field.handleChange(e.target.value)
+                                }
+                                onBlur={field.handleBlur}
+                              />
+                            )}
+                          </form.Field>
+                        </FieldGroup>
+                      </FieldSet>
+                    </FieldGroup>
+                  </form>
+                </CardContent>
+                <CardFooter>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="submit"
+                      form="workspace-create-form"
+                      data-testid="workspace-create-submit"
+                      loading={loading}
                     >
-                      <FieldGroup>
-                        <FieldSet>
-                          <FieldGroup>
-                            <form.Field name="name">
-                              {(field) => (
-                                <Input
-                                  id="name"
-                                  data-testid="workspace-create-name-input"
-                                  label="Name"
-                                  placeholder="My Workspace"
-                                  required
-                                  value={field.state.value}
-                                  onChange={(e) =>
-                                    field.handleChange(e.target.value)
-                                  }
-                                  onBlur={field.handleBlur}
-                                />
-                              )}
-                            </form.Field>
-                          </FieldGroup>
-                        </FieldSet>
-                      </FieldGroup>
-                    </form>
-                  </CardContent>
-                  <CardFooter>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="submit"
-                        form="workspace-create-form"
-                        data-testid="workspace-create-submit"
-                        loading={loading}
-                      >
-                        Create
-                      </Button>
-                      <Button
-                        variant="outline"
-                        type="button"
-                        render={
-                          <Link to="/user/workspaces" search={backSearch} />
-                        }
-                      >
-                        Back
-                      </Button>
-                    </div>
-                  </CardFooter>
-                </Card>
-              </PageLayoutSection>
-            </PageLayout>
-          </PageContent>
+                      Create
+                    </Button>
+                    <Button
+                      variant="outline"
+                      type="button"
+                      render={
+                        <Link to="/user/workspaces" search={backSearch} />
+                      }
+                    >
+                      Back
+                    </Button>
+                  </div>
+                </CardFooter>
+              </Card>
+            </PageLayoutSection>
+          </PageLayout>
         </Page>
       </LayoutContent>
     </Layout>

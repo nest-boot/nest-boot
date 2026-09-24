@@ -16,14 +16,13 @@ import { MemberPermissionsForm } from "./components/member-permissions-form";
 import type { MemberFormProps } from "./components/member-form-props";
 import type { GetMemberFromMemberRouteQuery } from "@/gql/graphql";
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
+import { Link } from "@/components/link";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
-import { RecordNavigation } from "@/components/record-navigation";
 import { getMembersResourceKey } from "@/lib/resource-keys";
 import { memberSearchSchema } from "@/schemas/member-search-schema";
 import { createConnectionCursor } from "@/lib/connection-cursor";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   PageLayout,
   PageLayoutSection,
@@ -31,14 +30,7 @@ import {
 import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
-import {
-  Page,
-  PageActions,
-  PageContent,
-  PageHeader,
-  PageSecondaryAction,
-  PageTitle,
-} from "@/components/thread-ui/page";
+import { Page } from "@/components/thread-ui/page";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { graphql } from "@/gql";
 import { createAbilitySubject } from "@/lib/ability";
@@ -283,90 +275,102 @@ function MemberDetails({
   };
 
   return (
-    <Page variant="compact" data-testid="member-detail-page">
-      <PageHeader>
-        <Breadcrumbs
-          searchByPath={{ [`/workspaces/${workspaceId}/members`]: backSearch }}
-        />
-        <PageTitle>{member.name ?? member.id}</PageTitle>
-        <PageActions>
-          {member.id !== currentMember.id &&
-            ability.can("write", memberSubject) && (
-              <PageSecondaryAction
-                data-testid="member-delete-action"
-                destructive
-                disabled={saving || removing}
-                onAction={handleRemove}
-              >
-                {t("member:details.actions.delete_member")}
-              </PageSecondaryAction>
-            )}
-          <RecordNavigation
-            previousPath={
-              previousEdge
-                ? `/workspaces/${workspaceId}/members/${previousEdge.node.id}`
-                : undefined
-            }
-            nextPath={
-              nextEdge
-                ? `/workspaces/${workspaceId}/members/${nextEdge.node.id}`
-                : undefined
-            }
-          />
-        </PageActions>
-      </PageHeader>
-      <PageContent>
-        <PageLayout>
-          <PageLayoutSection>
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("member:details.sections.profile")}</CardTitle>
-              </CardHeader>
-              <MemberProfileForm
-                member={member}
-                onSave={save}
-                disabled={
-                  saving || removing || !ability.can("write", memberSubject)
-                }
-              />
-            </Card>
-          </PageLayoutSection>
-          <PageLayoutSection>
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("member:details.sections.roles")}</CardTitle>
-              </CardHeader>
-              <MemberRolesForm
-                member={member}
-                onSave={save}
-                options={data.workspaceRoles}
-                disabled={
-                  saving || removing || !ability.can("set-roles", memberSubject)
-                }
-              />
-            </Card>
-          </PageLayoutSection>
-          <PageLayoutSection>
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {t("member:details.sections.permissions")}
-                </CardTitle>
-              </CardHeader>
-              <MemberPermissionsForm
-                member={member}
-                onSave={save}
-                options={data.workspacePermissions}
-                disabled={
-                  saving ||
-                  removing ||
-                  !ability.can("set-permissions", memberSubject)
-                }
-              />
-            </Card>
-          </PageLayoutSection>
-        </PageLayout>
-      </PageContent>
+    <Page
+      variant="compact"
+      data-testid="member-detail-page"
+      title={member.name ?? member.id}
+      breadcrumbActions={[
+        {
+          label: t("member:title"),
+          render: (
+            <Link
+              to="/workspaces/$workspaceId/members"
+              params={{ workspaceId }}
+              search={backSearch}
+            />
+          ),
+        },
+      ]}
+      paginationActions={{
+        previous: {
+          disabled: !previousEdge,
+          render: previousEdge ? (
+            <Link
+              to={`/workspaces/${workspaceId}/members/` + previousEdge.node.id}
+            />
+          ) : undefined,
+        },
+        next: {
+          disabled: !nextEdge,
+          render: nextEdge ? (
+            <Link
+              to={`/workspaces/${workspaceId}/members/` + nextEdge.node.id}
+            />
+          ) : undefined,
+        },
+      }}
+      secondaryActions={
+        member.id !== currentMember.id && ability.can("write", memberSubject)
+          ? [
+              {
+                label: t("member:details.actions.delete_member"),
+                "data-testid": "member-delete-action",
+                destructive: true,
+                disabled: saving || removing,
+                onAction: handleRemove,
+              },
+            ]
+          : undefined
+      }
+    >
+      <PageLayout>
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("member:details.sections.profile")}</CardTitle>
+            </CardHeader>
+            <MemberProfileForm
+              member={member}
+              onSave={save}
+              disabled={
+                saving || removing || !ability.can("write", memberSubject)
+              }
+            />
+          </Card>
+        </PageLayoutSection>
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("member:details.sections.roles")}</CardTitle>
+            </CardHeader>
+            <MemberRolesForm
+              member={member}
+              onSave={save}
+              options={data.workspaceRoles}
+              disabled={
+                saving || removing || !ability.can("set-roles", memberSubject)
+              }
+            />
+          </Card>
+        </PageLayoutSection>
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("member:details.sections.permissions")}</CardTitle>
+            </CardHeader>
+            <MemberPermissionsForm
+              member={member}
+              onSave={save}
+              options={data.workspacePermissions}
+              disabled={
+                saving ||
+                removing ||
+                !ability.can("set-permissions", memberSubject)
+              }
+            />
+          </Card>
+        </PageLayoutSection>
+      </PageLayout>
     </Page>
   );
 }

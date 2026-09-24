@@ -22,15 +22,7 @@ import { toast } from "@/components/thread-ui/toast";
 
 import { Link } from "@/components/link";
 import { DataTable } from "@/components/thread-ui/data-table";
-import {
-  Page,
-  PageActions,
-  PageContent,
-  PageDescription,
-  PageHeader,
-  PagePrimaryAction,
-  PageTitle,
-} from "@/components/thread-ui/page";
+import { Page } from "@/components/thread-ui/page";
 import { Button } from "@/components/thread-ui/button";
 import {
   PageLayout,
@@ -266,216 +258,199 @@ function UserWorkspacesComponent() {
   );
 
   return (
-    <Page data-testid="user-workspaces-page">
-      <PageHeader>
-        <PageTitle>{t("user:workspaces.title")}</PageTitle>
-        <PageDescription>{t("user:workspaces.description")}</PageDescription>
-        <PageActions>
-          <PagePrimaryAction
-            data-testid="user-workspace-create-action"
-            render={<Link to="/workspaces/create" />}
-          >
-            <Plus data-icon="inline-start" />
-            {t("user:workspaces.create")}
-          </PagePrimaryAction>
-        </PageActions>
-      </PageHeader>
-
-      <PageContent>
-        <PageLayout>
-          {invitations.length > 0 ||
-          invitationPage.after ||
-          invitationPage.before ? (
-            <PageLayoutSection>
-              <Card data-testid="user-invitations">
-                <CardHeader>
-                  <CardTitle>
-                    {t("user:workspaces.invitations.title")}
-                  </CardTitle>
-                  <CardDescription>
-                    {t("user:workspaces.invitations.description")}
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent>
-                  <DataTable
-                    columns={[
-                      {
-                        accessorKey: "workspace.name",
-                        header: t(
-                          "user:workspaces.invitations.table.workspace",
-                        ),
-                        cell: ({ row }) => (
-                          <span
-                            className="font-medium"
-                            data-testid={`user-invitation-${row.original.id}`}
-                          >
-                            {row.original.workspace.name}
-                          </span>
-                        ),
-                      },
-                      {
-                        accessorKey: "roles",
-                        header: t("user:workspaces.invitations.table.role"),
-                        cell: ({ row }) => getRolesLabel(row.original.roles),
-                      },
-                      {
-                        accessorKey: "expiresAt",
-                        header: t(
-                          "user:workspaces.invitations.table.expires_at",
-                        ),
-                        cell: ({ row }) =>
-                          dayjs(row.original.expiresAt).format(
-                            "YYYY-MM-DD HH:mm",
-                          ),
-                      },
-                      {
-                        id: "actions",
-                        header: "",
-                        size: 220,
-                        cell: ({ row }) => (
-                          <div
-                            className="flex justify-end gap-2"
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              data-testid={`user-invitation-reject-${row.original.id}`}
-                              disabled={invitationActionPending}
-                              loading={
-                                rejectingInvitationId === row.original.id
-                              }
-                              onClick={() =>
-                                handleRejectInvitation(row.original.id)
-                              }
-                            >
-                              <X />
-                              {t("user:workspaces.invitations.reject")}
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              data-testid={`user-invitation-accept-${row.original.id}`}
-                              disabled={invitationActionPending}
-                              loading={
-                                acceptingInvitationId === row.original.id
-                              }
-                              onClick={() =>
-                                handleAcceptInvitation(row.original.id)
-                              }
-                            >
-                              <Check />
-                              {t("user:workspaces.invitations.accept")}
-                            </Button>
-                          </div>
-                        ),
-                      },
-                    ]}
-                    data={invitations}
-                    pagination={{
-                      hasPreviousPage: invitationPageInfo?.hasPreviousPage,
-                      hasNextPage: invitationPageInfo?.hasNextPage,
-                      onPreviousPage: () =>
-                        setInvitationPage({
-                          last: 20,
-                          before: invitationPageInfo?.startCursor ?? undefined,
-                        }),
-                      onNextPage: () =>
-                        setInvitationPage({
-                          first: 20,
-                          after: invitationPageInfo?.endCursor ?? undefined,
-                        }),
-                    }}
-                  />
-                </CardContent>
-              </Card>
-            </PageLayoutSection>
-          ) : null}
-
+    <Page
+      data-testid="user-workspaces-page"
+      title={t("user:workspaces.title")}
+      description={t("user:workspaces.description")}
+      primaryAction={{
+        render: <Link to="/workspaces/create" />,
+        icon: <Plus data-icon="inline-start" />,
+        label: t("user:workspaces.create"),
+      }}
+    >
+      <PageLayout>
+        {invitations.length > 0 ||
+        invitationPage.after ||
+        invitationPage.before ? (
           <PageLayoutSection>
-            <Card>
+            <Card data-testid="user-invitations">
+              <CardHeader>
+                <CardTitle>{t("user:workspaces.invitations.title")}</CardTitle>
+                <CardDescription>
+                  {t("user:workspaces.invitations.description")}
+                </CardDescription>
+              </CardHeader>
+
               <CardContent>
-                <div className="space-y-4">
-                  <DataFilter
-                    filters={filters}
-                    loading={loading}
-                    value={{ filter: filterValues, query }}
-                    search={{ placeholder: t("user:workspaces.search") }}
-                    onChange={(value) => {
-                      navigate({
-                        to: "/user/workspaces",
-                        search: {
-                          query: value.query || undefined,
-                          filter: isEmpty(value.filter)
-                            ? undefined
-                            : value.filter,
-                          orderBy: search.orderBy,
-                        },
-                      });
-                    }}
-                  />
-                  <DataTable
-                    columns={[
-                      {
-                        accessorKey: "name",
-                        header: t("user:workspaces.table.name"),
-                        cell: ({ row }) => (
-                          <Link
-                            to="/workspaces/$workspaceId"
-                            params={{ workspaceId: row.original.id }}
-                            onClick={(event) => event.stopPropagation()}
-                            className="font-medium"
-                            data-testid={`user-workspace-row-${row.original.id}`}
-                          >
-                            {row.original.name}
-                          </Link>
+                <DataTable
+                  columns={[
+                    {
+                      accessorKey: "workspace.name",
+                      header: t("user:workspaces.invitations.table.workspace"),
+                      cell: ({ row }) => (
+                        <span
+                          className="font-medium"
+                          data-testid={`user-invitation-${row.original.id}`}
+                        >
+                          {row.original.workspace.name}
+                        </span>
+                      ),
+                    },
+                    {
+                      accessorKey: "roles",
+                      header: t("user:workspaces.invitations.table.role"),
+                      cell: ({ row }) => getRolesLabel(row.original.roles),
+                    },
+                    {
+                      accessorKey: "expiresAt",
+                      header: t("user:workspaces.invitations.table.expires_at"),
+                      cell: ({ row }) =>
+                        dayjs(row.original.expiresAt).format(
+                          "YYYY-MM-DD HH:mm",
                         ),
-                      },
-                      {
-                        accessorKey: "createdAt",
-                        header: t("user:workspaces.table.created_at"),
-                        cell: ({ row }) =>
-                          dayjs(row.original.createdAt).format("YYYY-MM-DD"),
-                      },
-                      {
-                        accessorKey: "updatedAt",
-                        header: t("user:workspaces.table.updated_at"),
-                        cell: ({ row }) =>
-                          dayjs(row.original.updatedAt).format("YYYY-MM-DD"),
-                      },
-                    ]}
-                    data={workspaces}
-                    pagination={{
-                      hasPreviousPage: pageInfo?.hasPreviousPage,
-                      hasNextPage: pageInfo?.hasNextPage,
-                      onPreviousPage: () => {
-                        navigate({
-                          to: location.pathname,
-                          search: getPreviousPageSearch(search, pageInfo),
-                        });
-                      },
-                      onNextPage: () => {
-                        navigate({
-                          to: location.pathname,
-                          search: getNextPageSearch(search, pageInfo),
-                        });
-                      },
-                    }}
-                    onRowClick={(row) => {
-                      navigate({
-                        to: "/workspaces/$workspaceId",
-                        params: { workspaceId: row.original.id },
-                      });
-                    }}
-                  />
-                </div>
+                    },
+                    {
+                      id: "actions",
+                      header: "",
+                      size: 220,
+                      cell: ({ row }) => (
+                        <div
+                          className="flex justify-end gap-2"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            data-testid={`user-invitation-reject-${row.original.id}`}
+                            disabled={invitationActionPending}
+                            loading={rejectingInvitationId === row.original.id}
+                            onClick={() =>
+                              handleRejectInvitation(row.original.id)
+                            }
+                          >
+                            <X />
+                            {t("user:workspaces.invitations.reject")}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            data-testid={`user-invitation-accept-${row.original.id}`}
+                            disabled={invitationActionPending}
+                            loading={acceptingInvitationId === row.original.id}
+                            onClick={() =>
+                              handleAcceptInvitation(row.original.id)
+                            }
+                          >
+                            <Check />
+                            {t("user:workspaces.invitations.accept")}
+                          </Button>
+                        </div>
+                      ),
+                    },
+                  ]}
+                  data={invitations}
+                  pagination={{
+                    hasPreviousPage: invitationPageInfo?.hasPreviousPage,
+                    hasNextPage: invitationPageInfo?.hasNextPage,
+                    onPreviousPage: () =>
+                      setInvitationPage({
+                        last: 20,
+                        before: invitationPageInfo?.startCursor ?? undefined,
+                      }),
+                    onNextPage: () =>
+                      setInvitationPage({
+                        first: 20,
+                        after: invitationPageInfo?.endCursor ?? undefined,
+                      }),
+                  }}
+                />
               </CardContent>
             </Card>
           </PageLayoutSection>
-        </PageLayout>
-      </PageContent>
+        ) : null}
+
+        <PageLayoutSection>
+          <Card>
+            <CardContent>
+              <div className="space-y-4">
+                <DataFilter
+                  filters={filters}
+                  loading={loading}
+                  value={{ filter: filterValues, query }}
+                  search={{ placeholder: t("user:workspaces.search") }}
+                  onChange={(value) => {
+                    navigate({
+                      to: "/user/workspaces",
+                      search: {
+                        query: value.query || undefined,
+                        filter: isEmpty(value.filter)
+                          ? undefined
+                          : value.filter,
+                        orderBy: search.orderBy,
+                      },
+                    });
+                  }}
+                />
+                <DataTable
+                  columns={[
+                    {
+                      accessorKey: "name",
+                      header: t("user:workspaces.table.name"),
+                      cell: ({ row }) => (
+                        <Link
+                          to="/workspaces/$workspaceId"
+                          params={{ workspaceId: row.original.id }}
+                          onClick={(event) => event.stopPropagation()}
+                          className="font-medium"
+                          data-testid={`user-workspace-row-${row.original.id}`}
+                        >
+                          {row.original.name}
+                        </Link>
+                      ),
+                    },
+                    {
+                      accessorKey: "createdAt",
+                      header: t("user:workspaces.table.created_at"),
+                      cell: ({ row }) =>
+                        dayjs(row.original.createdAt).format("YYYY-MM-DD"),
+                    },
+                    {
+                      accessorKey: "updatedAt",
+                      header: t("user:workspaces.table.updated_at"),
+                      cell: ({ row }) =>
+                        dayjs(row.original.updatedAt).format("YYYY-MM-DD"),
+                    },
+                  ]}
+                  data={workspaces}
+                  pagination={{
+                    hasPreviousPage: pageInfo?.hasPreviousPage,
+                    hasNextPage: pageInfo?.hasNextPage,
+                    onPreviousPage: () => {
+                      navigate({
+                        to: location.pathname,
+                        search: getPreviousPageSearch(search, pageInfo),
+                      });
+                    },
+                    onNextPage: () => {
+                      navigate({
+                        to: location.pathname,
+                        search: getNextPageSearch(search, pageInfo),
+                      });
+                    },
+                  }}
+                  onRowClick={(row) => {
+                    navigate({
+                      to: "/workspaces/$workspaceId",
+                      params: { workspaceId: row.original.id },
+                    });
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </PageLayoutSection>
+      </PageLayout>
     </Page>
   );
 }

@@ -251,7 +251,9 @@ test.describe("workspace management", () => {
     await expect(page.getByTestId("workspace-switcher-create")).toHaveCount(0);
     await page.getByTestId("workspace-switcher-manage").click();
     await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
-    await page.getByTestId("user-workspace-create-action").click();
+    await page
+      .getByRole("link", { name: "Create workspace", exact: true })
+      .click();
     await expect(page).toHaveURL(/\/workspaces\/create$/);
     await expect(page.getByTestId("workspace-create-submit")).toBeVisible();
   });

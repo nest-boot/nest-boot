@@ -5,22 +5,16 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import { Link } from "@/components/link";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { adminUserSearchSchema } from "@/schemas/admin-user-search-schema";
 import { adminUsersResourceKey } from "@/lib/resource-keys";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Button } from "@/components/thread-ui/button";
 import { Input } from "@/components/thread-ui/input";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
-import {
-  Page,
-  PageContent,
-  PageDescription,
-  PageHeader,
-  PageTitle,
-} from "@/components/thread-ui/page";
+import { Page } from "@/components/thread-ui/page";
 import {
   PageLayout,
   PageLayoutSection,
@@ -115,102 +109,106 @@ function CreateUserPage() {
   );
 
   return (
-    <Page variant="compact" data-testid="admin-create-user-page">
-      <PageHeader>
-        <Breadcrumbs searchByPath={{ "/admin/users": backSearch }} />
-        <PageTitle>{t("admin:users.create.title")}</PageTitle>
-        <PageDescription>{t("admin:users.create.description")}</PageDescription>
-      </PageHeader>
-      <PageContent>
-        <PageLayout>
-          <PageLayoutSection>
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("admin:user.profile.title")}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form
-                  id={formId}
-                  noValidate
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (createForm.state.isSubmitting) return;
-                    createForm.setErrorMap({ onSubmit: undefined });
-                    createForm.handleSubmit();
-                  }}
-                >
-                  <FormLayout>
+    <Page
+      variant="compact"
+      data-testid="admin-create-user-page"
+      title={t("admin:users.create.title")}
+      description={t("admin:users.create.description")}
+      breadcrumbActions={[
+        {
+          label: t("admin:users.title"),
+          render: <Link to={"/admin/users"} search={backSearch} />,
+        },
+      ]}
+    >
+      <PageLayout>
+        <PageLayoutSection>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("admin:user.profile.title")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form
+                id={formId}
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (createForm.state.isSubmitting) return;
+                  createForm.setErrorMap({ onSubmit: undefined });
+                  createForm.handleSubmit();
+                }}
+              >
+                <FormLayout>
+                  <FormLayoutItem>
+                    <createForm.Field name="name">
+                      {(field) => (
+                        <Input
+                          label={t("admin:users.table.name")}
+                          disabled={creating}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
+                      )}
+                    </createForm.Field>
+                  </FormLayoutItem>
+                  <FormLayoutItem>
+                    <createForm.Field name="email">
+                      {(field) => (
+                        <Input
+                          type="email"
+                          label={t("admin:users.table.email")}
+                          disabled={creating}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
+                      )}
+                    </createForm.Field>
+                  </FormLayoutItem>
+                  <FormLayoutItem>
+                    <createForm.Field name="password">
+                      {(field) => (
+                        <Input
+                          type="password"
+                          label={t("admin:users.create.password")}
+                          disabled={creating}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
+                      )}
+                    </createForm.Field>
+                  </FormLayoutItem>
+                  {createError && (
                     <FormLayoutItem>
-                      <createForm.Field name="name">
-                        {(field) => (
-                          <Input
-                            label={t("admin:users.table.name")}
-                            disabled={creating}
-                            value={field.state.value}
-                            onChange={(event) =>
-                              field.handleChange(event.target.value)
-                            }
-                            error={getFormErrorMessage(field.state.meta.errors)}
-                          />
-                        )}
-                      </createForm.Field>
+                      <FieldError>{createError}</FieldError>
                     </FormLayoutItem>
-                    <FormLayoutItem>
-                      <createForm.Field name="email">
-                        {(field) => (
-                          <Input
-                            type="email"
-                            label={t("admin:users.table.email")}
-                            disabled={creating}
-                            value={field.state.value}
-                            onChange={(event) =>
-                              field.handleChange(event.target.value)
-                            }
-                            error={getFormErrorMessage(field.state.meta.errors)}
-                          />
-                        )}
-                      </createForm.Field>
-                    </FormLayoutItem>
-                    <FormLayoutItem>
-                      <createForm.Field name="password">
-                        {(field) => (
-                          <Input
-                            type="password"
-                            label={t("admin:users.create.password")}
-                            disabled={creating}
-                            value={field.state.value}
-                            onChange={(event) =>
-                              field.handleChange(event.target.value)
-                            }
-                            error={getFormErrorMessage(field.state.meta.errors)}
-                          />
-                        )}
-                      </createForm.Field>
-                    </FormLayoutItem>
-                    {createError && (
-                      <FormLayoutItem>
-                        <FieldError>{createError}</FieldError>
-                      </FormLayoutItem>
-                    )}
-                  </FormLayout>
-                </form>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  type="submit"
-                  form={formId}
-                  data-testid="admin-create-user-submit"
-                  disabled={!canCreate}
-                  loading={creating}
-                >
-                  {t("admin:users.create.action")}
-                </Button>
-              </CardFooter>
-            </Card>
-          </PageLayoutSection>
-        </PageLayout>
-      </PageContent>
+                  )}
+                </FormLayout>
+              </form>
+            </CardContent>
+            <CardFooter>
+              <Button
+                type="submit"
+                form={formId}
+                data-testid="admin-create-user-submit"
+                disabled={!canCreate}
+                loading={creating}
+              >
+                {t("admin:users.create.action")}
+              </Button>
+            </CardFooter>
+          </Card>
+        </PageLayoutSection>
+      </PageLayout>
     </Page>
   );
 }

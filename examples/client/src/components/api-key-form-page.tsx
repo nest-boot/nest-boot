@@ -5,26 +5,18 @@ import { AlertTriangle, Check, Copy } from "lucide-react";
 import dayjs from "dayjs";
 import z from "zod";
 
-import type { ReactNode } from "react";
+import type { PagePaginationActionsConfig } from "@/components/thread-ui/page";
 import type { ApiKeyRow } from "@/components/api-keys-page";
 import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
 import type { UserApiKeyPermission } from "@/gql/graphql";
 import type { PermissionOption } from "@/lib/permissions";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Link } from "@/components/link";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import { ApiKeyStatusBadge } from "@/components/api-key-status-badge";
 import { Button } from "@/components/thread-ui/button";
 import { Input } from "@/components/thread-ui/input";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
-import {
-  Page,
-  PageActions,
-  PageContent,
-  PageDescription,
-  PageHeader,
-  PageTitle,
-} from "@/components/thread-ui/page";
+import { Page } from "@/components/thread-ui/page";
 import {
   PageLayout,
   PageLayoutSection,
@@ -45,7 +37,7 @@ interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
   canWrite: boolean;
   listPath: string;
   listSearch?: ApiKeySearch;
-  navigation?: ReactNode;
+  paginationActions?: PagePaginationActionsConfig;
   permissionValues: ReadonlyArray<Permission>;
   permissionOptions: ReadonlyArray<PermissionOption<Permission>>;
   defaultPermissions?: ReadonlyArray<Permission>;
@@ -61,7 +53,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
   canWrite,
   listPath,
   listSearch,
-  navigation,
+  paginationActions,
   permissionValues,
   permissionOptions,
   defaultPermissions = [],
@@ -138,85 +130,180 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
   );
 
   return (
-    <Page variant="compact">
-      <PageHeader>
-        <Breadcrumbs searchByPath={{ [listPath]: listSearch }} />
-        <PageTitle>
-          {t(
-            createdKey
-              ? "api-key:created.title"
-              : apiKey
-                ? "api-key:edit.title"
-                : "api-key:create.title",
-          )}
-        </PageTitle>
-        {!createdKey && (
-          <PageDescription>
-            {t(
+    <Page
+      variant="compact"
+      title={t(
+        createdKey
+          ? "api-key:created.title"
+          : apiKey
+            ? "api-key:edit.title"
+            : "api-key:create.title",
+      )}
+      description={
+        createdKey
+          ? undefined
+          : t(
               apiKey
                 ? "api-key:edit.description"
                 : "api-key:create.description",
-            )}
-          </PageDescription>
-        )}
-        {navigation && !createdKey && <PageActions>{navigation}</PageActions>}
-      </PageHeader>
-      <PageContent>
-        <PageLayout>
-          {createdKey ? (
+            )
+      }
+      breadcrumbActions={[
+        {
+          label: t("api-key:title"),
+          render: <Link to={listPath} search={listSearch} />,
+        },
+      ]}
+      paginationActions={createdKey ? undefined : paginationActions}
+    >
+      <PageLayout>
+        {createdKey ? (
+          <PageLayoutSection>
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("api-key:created.title")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Alert>
+                    <AlertTriangle />
+                    <AlertTitle>{t("api-key:created.warning")}</AlertTitle>
+                    <AlertDescription>
+                      {t("api-key:created.description")}
+                    </AlertDescription>
+                  </Alert>
+                  <div className="bg-muted rounded-md p-4">
+                    <code
+                      className="text-sm break-all"
+                      data-testid="api-key-created-value"
+                    >
+                      {createdKey}
+                    </code>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(createdKey);
+                        setCopied(true);
+                      } catch {
+                        toast.add({
+                          type: "error",
+                          title: t("api-key:created.copy_failed"),
+                        });
+                      }
+                    }}
+                  >
+                    {copied ? (
+                      <Check data-icon="inline-start" />
+                    ) : (
+                      <Copy data-icon="inline-start" />
+                    )}
+                    {t(
+                      copied
+                        ? "api-key:created.copied"
+                        : "api-key:created.copy",
+                    )}
+                  </Button>
+                  <Button
+                    data-testid="api-key-back"
+                    render={<Link to={listPath} search={listSearch} />}
+                  >
+                    {t("api-key:back")}
+                  </Button>
+                </div>
+              </CardFooter>
+            </Card>
+          </PageLayoutSection>
+        ) : (
+          <>
             <PageLayoutSection>
               <Card>
                 <CardHeader>
-                  <CardTitle>{t("api-key:created.title")}</CardTitle>
+                  <CardTitle>{apiKey?.name ?? t("api-key:details")}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <Alert>
-                      <AlertTriangle />
-                      <AlertTitle>{t("api-key:created.warning")}</AlertTitle>
-                      <AlertDescription>
-                        {t("api-key:created.description")}
-                      </AlertDescription>
-                    </Alert>
-                    <div className="bg-muted rounded-md p-4">
-                      <code
-                        className="text-sm break-all"
-                        data-testid="api-key-created-value"
-                      >
-                        {createdKey}
-                      </code>
-                    </div>
-                  </div>
+                  <form
+                    id={formId}
+                    noValidate
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (form.state.isSubmitting || !canWrite) return;
+                      form.setErrorMap({ onSubmit: undefined });
+                      form.handleSubmit();
+                    }}
+                  >
+                    <FormLayout>
+                      <FormLayoutItem>
+                        <form.Field name="name">
+                          {(field) => (
+                            <Input
+                              id={`${formId}-name`}
+                              data-testid={
+                                apiKey
+                                  ? "api-key-rename-input"
+                                  : "api-key-name-input"
+                              }
+                              label={t("api-key:form.name.label")}
+                              placeholder={t("api-key:form.name.placeholder")}
+                              value={field.state.value}
+                              onChange={(event) =>
+                                field.handleChange(event.target.value)
+                              }
+                              disabled={!canWrite || submitting}
+                              error={getFormErrorMessage(
+                                field.state.meta.errors,
+                              )}
+                            />
+                          )}
+                        </form.Field>
+                      </FormLayoutItem>
+                      <FormLayoutItem>
+                        <form.Field name="permissions">
+                          {(field) => (
+                            <PermissionCheckboxGroup
+                              options={permissionOptions}
+                              value={field.state.value}
+                              onChange={field.handleChange}
+                              disabled={!canWrite || submitting}
+                            />
+                          )}
+                        </form.Field>
+                      </FormLayoutItem>
+                      {error && (
+                        <FormLayoutItem>
+                          <Alert variant="destructive">
+                            <AlertDescription>{error}</AlertDescription>
+                          </Alert>
+                        </FormLayoutItem>
+                      )}
+                    </FormLayout>
+                  </form>
                 </CardContent>
                 <CardFooter>
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(createdKey);
-                          setCopied(true);
-                        } catch {
-                          toast.add({
-                            type: "error",
-                            title: t("api-key:created.copy_failed"),
-                          });
+                    {canWrite && (
+                      <Button
+                        type="submit"
+                        form={formId}
+                        data-testid={
+                          apiKey
+                            ? "api-key-rename-submit"
+                            : "api-key-create-submit"
                         }
-                      }}
-                    >
-                      {copied ? (
-                        <Check data-icon="inline-start" />
-                      ) : (
-                        <Copy data-icon="inline-start" />
-                      )}
-                      {t(
-                        copied
-                          ? "api-key:created.copied"
-                          : "api-key:created.copy",
-                      )}
-                    </Button>
+                        loading={submitting}
+                      >
+                        {t(apiKey ? "action.save" : "action.create")}
+                      </Button>
+                    )}
                     <Button
+                      variant="outline"
                       data-testid="api-key-back"
                       render={<Link to={listPath} search={listSearch} />}
                     >
@@ -226,164 +313,68 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                 </CardFooter>
               </Card>
             </PageLayoutSection>
-          ) : (
-            <>
+            {apiKey && (
               <PageLayoutSection>
                 <Card>
                   <CardHeader>
-                    <CardTitle>
-                      {apiKey?.name ?? t("api-key:details")}
-                    </CardTitle>
+                    <CardTitle>{t("api-key:usage")}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <form
-                      id={formId}
-                      noValidate
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        if (form.state.isSubmitting || !canWrite) return;
-                        form.setErrorMap({ onSubmit: undefined });
-                        form.handleSubmit();
-                      }}
-                    >
-                      <FormLayout>
-                        <FormLayoutItem>
-                          <form.Field name="name">
-                            {(field) => (
-                              <Input
-                                id={`${formId}-name`}
-                                data-testid={
-                                  apiKey
-                                    ? "api-key-rename-input"
-                                    : "api-key-name-input"
-                                }
-                                label={t("api-key:form.name.label")}
-                                placeholder={t("api-key:form.name.placeholder")}
-                                value={field.state.value}
-                                onChange={(event) =>
-                                  field.handleChange(event.target.value)
-                                }
-                                disabled={!canWrite || submitting}
-                                error={getFormErrorMessage(
-                                  field.state.meta.errors,
-                                )}
-                              />
-                            )}
-                          </form.Field>
-                        </FormLayoutItem>
-                        <FormLayoutItem>
-                          <form.Field name="permissions">
-                            {(field) => (
-                              <PermissionCheckboxGroup
-                                options={permissionOptions}
-                                value={field.state.value}
-                                onChange={field.handleChange}
-                                disabled={!canWrite || submitting}
-                              />
-                            )}
-                          </form.Field>
-                        </FormLayoutItem>
-                        {error && (
-                          <FormLayoutItem>
-                            <Alert variant="destructive">
-                              <AlertDescription>{error}</AlertDescription>
-                            </Alert>
-                          </FormLayoutItem>
-                        )}
-                      </FormLayout>
-                    </form>
+                    <dl className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <dt className="text-muted-foreground text-sm">
+                          {t("api-key:table.status")}
+                        </dt>
+                        <dd>
+                          <ApiKeyStatusBadge apiKey={apiKey} />
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground text-sm">
+                          {t("api-key:table.key_start")}
+                        </dt>
+                        <dd>
+                          <code>{apiKey.start ?? apiKey.prefix ?? "—"}</code>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground text-sm">
+                          {t("api-key:table.created_at")}
+                        </dt>
+                        <dd>
+                          {dayjs(apiKey.createdAt).format("YYYY-MM-DD HH:mm")}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground text-sm">
+                          {t("api-key:table.last_used")}
+                        </dt>
+                        <dd>
+                          {apiKey.lastUsedAt
+                            ? dayjs(apiKey.lastUsedAt).format(
+                                "YYYY-MM-DD HH:mm",
+                              )
+                            : t("api-key:never_used")}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground text-sm">
+                          {t("api-key:table.expires_at")}
+                        </dt>
+                        <dd>
+                          {apiKey.expiresAt
+                            ? dayjs(apiKey.expiresAt).format("YYYY-MM-DD")
+                            : t("api-key:never_expires")}
+                        </dd>
+                      </div>
+                    </dl>
                   </CardContent>
-                  <CardFooter>
-                    <div className="flex flex-wrap gap-2">
-                      {canWrite && (
-                        <Button
-                          type="submit"
-                          form={formId}
-                          data-testid={
-                            apiKey
-                              ? "api-key-rename-submit"
-                              : "api-key-create-submit"
-                          }
-                          loading={submitting}
-                        >
-                          {t(apiKey ? "action.save" : "action.create")}
-                        </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        data-testid="api-key-back"
-                        render={<Link to={listPath} search={listSearch} />}
-                      >
-                        {t("api-key:back")}
-                      </Button>
-                    </div>
-                  </CardFooter>
                 </Card>
               </PageLayoutSection>
-              {apiKey && (
-                <PageLayoutSection>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>{t("api-key:usage")}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <dl className="grid gap-4 sm:grid-cols-2">
-                        <div>
-                          <dt className="text-muted-foreground text-sm">
-                            {t("api-key:table.status")}
-                          </dt>
-                          <dd>
-                            <ApiKeyStatusBadge apiKey={apiKey} />
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted-foreground text-sm">
-                            {t("api-key:table.key_start")}
-                          </dt>
-                          <dd>
-                            <code>{apiKey.start ?? apiKey.prefix ?? "—"}</code>
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted-foreground text-sm">
-                            {t("api-key:table.created_at")}
-                          </dt>
-                          <dd>
-                            {dayjs(apiKey.createdAt).format("YYYY-MM-DD HH:mm")}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted-foreground text-sm">
-                            {t("api-key:table.last_used")}
-                          </dt>
-                          <dd>
-                            {apiKey.lastUsedAt
-                              ? dayjs(apiKey.lastUsedAt).format(
-                                  "YYYY-MM-DD HH:mm",
-                                )
-                              : t("api-key:never_used")}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted-foreground text-sm">
-                            {t("api-key:table.expires_at")}
-                          </dt>
-                          <dd>
-                            {apiKey.expiresAt
-                              ? dayjs(apiKey.expiresAt).format("YYYY-MM-DD")
-                              : t("api-key:never_expires")}
-                          </dd>
-                        </div>
-                      </dl>
-                    </CardContent>
-                  </Card>
-                </PageLayoutSection>
-              )}
-            </>
-          )}
-        </PageLayout>
-      </PageContent>
+            )}
+          </>
+        )}
+      </PageLayout>
     </Page>
   );
 }

@@ -4,7 +4,9 @@ import type { Page } from "@playwright/test";
 
 export async function createFirstWorkspace(page: Page, name: string) {
   await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
-  await page.getByTestId("user-workspace-create-action").click();
+  await page
+    .getByRole("link", { name: "Create workspace", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/workspaces\/create$/);
   await page.getByTestId("workspace-create-name-input").fill(name);
   await page.getByTestId("workspace-create-submit").click();

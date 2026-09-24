@@ -120,7 +120,7 @@ test.describe("workspace invitations", () => {
       await page.goto(`/workspaces/${workspaceId}/members`);
       await expect(page.getByTestId("members-page")).toBeVisible();
 
-      await page.getByTestId("members-invite-action").click();
+      await page.getByRole("link", { name: "Invite", exact: true }).click();
       await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
       await page.getByRole("checkbox", { name: "Member", exact: true }).click();
       await page.getByTestId("workspace-invite-confirm").click();
@@ -187,7 +187,7 @@ test.describe("workspace invitations", () => {
     await page.goto(`/workspaces/${workspaceId}/members`);
     await expect(page.getByTestId("members-page")).toBeVisible();
 
-    await page.getByTestId("members-invite-action").click();
+    await page.getByRole("link", { name: "Invite", exact: true }).click();
     await expect(page).toHaveURL(
       new RegExp(`/workspaces/${workspaceId}/members/invite$`),
     );
@@ -283,7 +283,7 @@ test.describe("workspace invitations", () => {
     await page.goto(`/workspaces/${workspaceId}/members`);
     await expect(page.getByTestId("members-page")).toBeVisible();
 
-    await page.getByTestId("members-invite-action").click();
+    await page.getByRole("link", { name: "Invite", exact: true }).click();
     await expect(page).toHaveURL(
       new RegExp(`/workspaces/${workspaceId}/members/invite$`),
     );
@@ -448,7 +448,9 @@ test.describe("workspace invitations", () => {
         memberPage.getByRole("checkbox", { name: "Owner", exact: true }),
       ).toBeDisabled();
       await memberPage.goto(`/workspaces/${workspaceId}/members`);
-      await memberPage.getByTestId("members-invite-action").click();
+      await memberPage
+        .getByRole("link", { name: "Invite", exact: true })
+        .click();
       await expect(
         memberPage.getByRole("checkbox", { name: "Admin", exact: true }),
       ).toBeEnabled();

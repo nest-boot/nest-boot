@@ -20,15 +20,7 @@ import { useAbility } from "@/contexts/ability-context";
 import { createAbilitySubject } from "@/lib/ability";
 import { Badge } from "@/components/thread-ui/badge";
 import { DataTable } from "@/components/thread-ui/data-table";
-import {
-  Page,
-  PageActions,
-  PageContent,
-  PageDescription,
-  PageHeader,
-  PagePrimaryAction,
-  PageTitle,
-} from "@/components/thread-ui/page";
+import { Page } from "@/components/thread-ui/page";
 import { graphql } from "@/gql";
 import {
   getNextPageSearch,
@@ -130,131 +122,126 @@ function AdminUsersPage() {
   );
 
   return (
-    <Page data-testid="admin-users-page">
-      <PageHeader>
-        <PageTitle>{t("admin:users.title")}</PageTitle>
-        <PageDescription>{t("admin:users.description")}</PageDescription>
-        {canCreate ? (
-          <PageActions>
-            <PagePrimaryAction render={<Link to="/admin/users/create" />}>
-              <Plus data-icon="inline-start" />
-              {t("admin:users.create.action")}
-            </PagePrimaryAction>
-          </PageActions>
-        ) : null}
-      </PageHeader>
-      <PageContent>
-        <Card>
-          <CardContent>
-            <div className="space-y-4">
-              <DataFilter
-                filters={filters}
-                loading={loading}
-                value={{ filter: filterValues, query }}
-                search={{ placeholder: t("admin:users.search") }}
-                onChange={(value) => {
+    <Page
+      data-testid="admin-users-page"
+      title={t("admin:users.title")}
+      description={t("admin:users.description")}
+      primaryAction={
+        canCreate
+          ? {
+              render: <Link to="/admin/users/create" />,
+              icon: <Plus data-icon="inline-start" />,
+              label: t("admin:users.create.action"),
+            }
+          : undefined
+      }
+    >
+      <Card>
+        <CardContent>
+          <div className="space-y-4">
+            <DataFilter
+              filters={filters}
+              loading={loading}
+              value={{ filter: filterValues, query }}
+              search={{ placeholder: t("admin:users.search") }}
+              onChange={(value) => {
+                navigate({
+                  to: "/admin/users",
+                  search: {
+                    query: value.query || undefined,
+                    filter: isEmpty(value.filter) ? undefined : value.filter,
+                    orderBy: search.orderBy,
+                  },
+                });
+              }}
+            />
+
+            <DataTable
+              data={users}
+              columns={[
+                {
+                  accessorKey: "name",
+                  header: t("admin:users.table.name"),
+                  cell: ({ row }) => (
+                    <div>
+                      <p className="font-medium">{row.original.name}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {row.original.email}
+                      </p>
+                    </div>
+                  ),
+                },
+                {
+                  accessorKey: "emailVerified",
+                  header: t("admin:users.table.email_status"),
+                  cell: ({ row }) => (
+                    <Badge
+                      color={row.original.emailVerified ? "green" : "gray"}
+                    >
+                      {t(
+                        row.original.emailVerified
+                          ? "admin:users.verified"
+                          : "admin:users.unverified",
+                      )}
+                    </Badge>
+                  ),
+                },
+                {
+                  accessorKey: "banned",
+                  header: t("admin:users.table.status"),
+                  cell: ({ row }) => (
+                    <Badge color={row.original.banned ? "red" : "green"}>
+                      {t(
+                        row.original.banned
+                          ? "admin:users.banned"
+                          : "admin:users.active",
+                      )}
+                    </Badge>
+                  ),
+                },
+                {
+                  accessorKey: "createdAt",
+                  header: t("admin:users.table.created_at"),
+                  cell: ({ row }) =>
+                    dayjs(row.original.createdAt).format("YYYY-MM-DD"),
+                },
+              ]}
+              onRowClick={(row) => {
+                if (
+                  !ability.can(
+                    "read",
+                    createAbilitySubject("User", row.original),
+                  )
+                )
+                  return;
+                navigate({
+                  to: "/admin/users/$userId",
+                  params: { userId: row.original.id },
+                });
+              }}
+              pagination={{
+                hasPreviousPage: data?.users.pageInfo.hasPreviousPage ?? false,
+                hasNextPage: data?.users.pageInfo.hasNextPage ?? false,
+                onPreviousPage: () =>
                   navigate({
                     to: "/admin/users",
-                    search: {
-                      query: value.query || undefined,
-                      filter: isEmpty(value.filter) ? undefined : value.filter,
-                      orderBy: search.orderBy,
-                    },
-                  });
-                }}
-              />
-
-              <DataTable
-                data={users}
-                columns={[
-                  {
-                    accessorKey: "name",
-                    header: t("admin:users.table.name"),
-                    cell: ({ row }) => (
-                      <div>
-                        <p className="font-medium">{row.original.name}</p>
-                        <p className="text-muted-foreground text-xs">
-                          {row.original.email}
-                        </p>
-                      </div>
-                    ),
-                  },
-                  {
-                    accessorKey: "emailVerified",
-                    header: t("admin:users.table.email_status"),
-                    cell: ({ row }) => (
-                      <Badge
-                        color={row.original.emailVerified ? "green" : "gray"}
-                      >
-                        {t(
-                          row.original.emailVerified
-                            ? "admin:users.verified"
-                            : "admin:users.unverified",
-                        )}
-                      </Badge>
-                    ),
-                  },
-                  {
-                    accessorKey: "banned",
-                    header: t("admin:users.table.status"),
-                    cell: ({ row }) => (
-                      <Badge color={row.original.banned ? "red" : "green"}>
-                        {t(
-                          row.original.banned
-                            ? "admin:users.banned"
-                            : "admin:users.active",
-                        )}
-                      </Badge>
-                    ),
-                  },
-                  {
-                    accessorKey: "createdAt",
-                    header: t("admin:users.table.created_at"),
-                    cell: ({ row }) =>
-                      dayjs(row.original.createdAt).format("YYYY-MM-DD"),
-                  },
-                ]}
-                onRowClick={(row) => {
-                  if (
-                    !ability.can(
-                      "read",
-                      createAbilitySubject("User", row.original),
-                    )
-                  )
-                    return;
+                    search: getPreviousPageSearch(search, data?.users.pageInfo),
+                  }),
+                onNextPage: () =>
                   navigate({
-                    to: "/admin/users/$userId",
-                    params: { userId: row.original.id },
-                  });
-                }}
-                pagination={{
-                  hasPreviousPage:
-                    data?.users.pageInfo.hasPreviousPage ?? false,
-                  hasNextPage: data?.users.pageInfo.hasNextPage ?? false,
-                  onPreviousPage: () =>
-                    navigate({
-                      to: "/admin/users",
-                      search: getPreviousPageSearch(
-                        search,
-                        data?.users.pageInfo,
-                      ),
-                    }),
-                  onNextPage: () =>
-                    navigate({
-                      to: "/admin/users",
-                      search: getNextPageSearch(search, data?.users.pageInfo),
-                    }),
-                }}
-              />
-              {loading ? (
-                <p className="text-muted-foreground mt-3 text-sm">
-                  {t("admin:users.loading")}
-                </p>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
-      </PageContent>
+                    to: "/admin/users",
+                    search: getNextPageSearch(search, data?.users.pageInfo),
+                  }),
+              }}
+            />
+            {loading ? (
+              <p className="text-muted-foreground mt-3 text-sm">
+                {t("admin:users.loading")}
+              </p>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
     </Page>
   );
 }

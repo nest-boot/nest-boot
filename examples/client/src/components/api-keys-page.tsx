@@ -21,15 +21,7 @@ import { ApiKeyStatusBadge } from "@/components/api-key-status-badge";
 import { Link } from "@/components/link";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { DataTable } from "@/components/thread-ui/data-table";
-import {
-  Page,
-  PageActions,
-  PageContent,
-  PageDescription,
-  PageHeader,
-  PagePrimaryAction,
-  PageTitle,
-} from "@/components/thread-ui/page";
+import { Page } from "@/components/thread-ui/page";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   getNextPageSearch,
@@ -178,154 +170,146 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
   };
 
   return (
-    <Page>
-      <PageHeader>
-        <PageTitle>{title}</PageTitle>
-        <PageDescription>{description}</PageDescription>
-        <PageActions>
-          <PagePrimaryAction
-            data-testid="api-key-create-action"
-            disabled={!canCreate}
-            onClick={() => navigate({ to: createPath })}
-          >
-            <KeyRound data-icon="inline-start" />
-            {t("api-key:create.button")}
-          </PagePrimaryAction>
-        </PageActions>
-      </PageHeader>
-      <PageContent>
-        <Card>
-          <CardContent>
-            <div className="space-y-4">
-              <div data-testid="api-keys-page">
-                <DataFilter
-                  filters={filters}
-                  value={{ filter: filterValues, query }}
-                  onChange={(value) => {
-                    navigate({
-                      to: location.pathname,
-                      search: {
-                        ...(value.query ? { query: value.query } : {}),
-                        ...(!isEmpty(value.filter)
-                          ? { filter: value.filter }
-                          : {}),
-                      },
-                    });
-                  }}
-                  search={{
-                    placeholder: t("api-key:filter.search.placeholder"),
-                  }}
-                />
-              </div>
-
-              <DataTable
-                columns={[
-                  {
-                    accessorKey: "name",
-                    header: t("api-key:table.name"),
-                    cell: ({ row }) => {
-                      const apiKey = row.original;
-
-                      return (
-                        <Link
-                          to={detailPath(apiKey.id)}
-                          onClick={(event) => event.stopPropagation()}
-                          className="font-medium"
-                          data-testid={`api-key-row-${apiKey.id}`}
-                        >
-                          {apiKey.name}
-                        </Link>
-                      );
+    <Page
+      title={title}
+      description={description}
+      primaryAction={{
+        disabled: !canCreate,
+        onAction: () => navigate({ to: createPath }),
+        icon: <KeyRound data-icon="inline-start" />,
+        label: t("api-key:create.button"),
+      }}
+    >
+      <Card>
+        <CardContent>
+          <div className="space-y-4">
+            <div data-testid="api-keys-page">
+              <DataFilter
+                filters={filters}
+                value={{ filter: filterValues, query }}
+                onChange={(value) => {
+                  navigate({
+                    to: location.pathname,
+                    search: {
+                      ...(value.query ? { query: value.query } : {}),
+                      ...(!isEmpty(value.filter)
+                        ? { filter: value.filter }
+                        : {}),
                     },
-                  },
-                  {
-                    accessorKey: "status",
-                    header: t("api-key:table.status"),
-                    size: 80,
-                    cell: ({ row }) => (
-                      <ApiKeyStatusBadge apiKey={row.original} />
-                    ),
-                  },
-                  {
-                    accessorKey: "start",
-                    header: t("api-key:table.key_start"),
-                    size: 100,
-                    cell: ({ row }) => (
-                      <code className="text-xs">
-                        {row.original.start ?? row.original.prefix ?? "—"}
-                      </code>
-                    ),
-                  },
-                  {
-                    accessorKey: "lastUsedAt",
-                    header: t("api-key:table.last_used"),
-                    cell: ({ row }) =>
-                      row.original.lastUsedAt
-                        ? dayjs(row.original.lastUsedAt).format(
-                            "YYYY-MM-DD HH:mm",
-                          )
-                        : t("api-key:never_used"),
-                  },
-                  {
-                    accessorKey: "expiresAt",
-                    header: t("api-key:table.expires_at"),
-                    cell: ({ row }) =>
-                      row.original.expiresAt
-                        ? dayjs(row.original.expiresAt).format("YYYY-MM-DD")
-                        : t("api-key:never_expires"),
-                  },
-                  {
-                    accessorKey: "createdAt",
-                    header: t("api-key:table.created_at"),
-                    cell: ({ row }) =>
-                      dayjs(row.original.createdAt).format("YYYY-MM-DD"),
-                  },
-                ]}
-                data={apiKeys}
-                onRowClick={(row) =>
-                  navigate({ to: detailPath(row.original.id) })
-                }
-                pagination={{
-                  hasPreviousPage: pageInfo?.hasPreviousPage,
-                  hasNextPage: pageInfo?.hasNextPage,
-                  onPreviousPage: () => {
-                    navigate({
-                      to: location.pathname,
-                      search: getPreviousPageSearch(search, pageInfo),
-                    });
-                  },
-                  onNextPage: () => {
-                    navigate({
-                      to: location.pathname,
-                      search: getNextPageSearch(search, pageInfo),
-                    });
-                  },
+                  });
                 }}
-                rowActions={(row) => [
-                  {
-                    disabled: updateLoading || !canUpdate(row.original),
-                    label: row.original.enabled
-                      ? t("action.disable")
-                      : t("action.enable"),
-                    onClick: () => handleToggleApiKey(row.original),
-                  },
-                  {
-                    disabled: updateLoading || !canUpdate(row.original),
-                    label: t("action.edit"),
-                    onClick: () =>
-                      navigate({ to: detailPath(row.original.id) }),
-                  },
-                  {
-                    disabled: deleteLoading || !canDelete(row.original),
-                    label: t("action.delete"),
-                    onClick: () => handleDeleteApiKey(row.original),
-                  },
-                ]}
+                search={{
+                  placeholder: t("api-key:filter.search.placeholder"),
+                }}
               />
             </div>
-          </CardContent>
-        </Card>
-      </PageContent>
+
+            <DataTable
+              columns={[
+                {
+                  accessorKey: "name",
+                  header: t("api-key:table.name"),
+                  cell: ({ row }) => {
+                    const apiKey = row.original;
+
+                    return (
+                      <Link
+                        to={detailPath(apiKey.id)}
+                        onClick={(event) => event.stopPropagation()}
+                        className="font-medium"
+                        data-testid={`api-key-row-${apiKey.id}`}
+                      >
+                        {apiKey.name}
+                      </Link>
+                    );
+                  },
+                },
+                {
+                  accessorKey: "status",
+                  header: t("api-key:table.status"),
+                  size: 80,
+                  cell: ({ row }) => (
+                    <ApiKeyStatusBadge apiKey={row.original} />
+                  ),
+                },
+                {
+                  accessorKey: "start",
+                  header: t("api-key:table.key_start"),
+                  size: 100,
+                  cell: ({ row }) => (
+                    <code className="text-xs">
+                      {row.original.start ?? row.original.prefix ?? "—"}
+                    </code>
+                  ),
+                },
+                {
+                  accessorKey: "lastUsedAt",
+                  header: t("api-key:table.last_used"),
+                  cell: ({ row }) =>
+                    row.original.lastUsedAt
+                      ? dayjs(row.original.lastUsedAt).format(
+                          "YYYY-MM-DD HH:mm",
+                        )
+                      : t("api-key:never_used"),
+                },
+                {
+                  accessorKey: "expiresAt",
+                  header: t("api-key:table.expires_at"),
+                  cell: ({ row }) =>
+                    row.original.expiresAt
+                      ? dayjs(row.original.expiresAt).format("YYYY-MM-DD")
+                      : t("api-key:never_expires"),
+                },
+                {
+                  accessorKey: "createdAt",
+                  header: t("api-key:table.created_at"),
+                  cell: ({ row }) =>
+                    dayjs(row.original.createdAt).format("YYYY-MM-DD"),
+                },
+              ]}
+              data={apiKeys}
+              onRowClick={(row) =>
+                navigate({ to: detailPath(row.original.id) })
+              }
+              pagination={{
+                hasPreviousPage: pageInfo?.hasPreviousPage,
+                hasNextPage: pageInfo?.hasNextPage,
+                onPreviousPage: () => {
+                  navigate({
+                    to: location.pathname,
+                    search: getPreviousPageSearch(search, pageInfo),
+                  });
+                },
+                onNextPage: () => {
+                  navigate({
+                    to: location.pathname,
+                    search: getNextPageSearch(search, pageInfo),
+                  });
+                },
+              }}
+              rowActions={(row) => [
+                {
+                  disabled: updateLoading || !canUpdate(row.original),
+                  label: row.original.enabled
+                    ? t("action.disable")
+                    : t("action.enable"),
+                  onClick: () => handleToggleApiKey(row.original),
+                },
+                {
+                  disabled: updateLoading || !canUpdate(row.original),
+                  label: t("action.edit"),
+                  onClick: () => navigate({ to: detailPath(row.original.id) }),
+                },
+                {
+                  disabled: deleteLoading || !canDelete(row.original),
+                  label: t("action.delete"),
+                  onClick: () => handleDeleteApiKey(row.original),
+                },
+              ]}
+            />
+          </div>
+        </CardContent>
+      </Card>
     </Page>
   );
 }

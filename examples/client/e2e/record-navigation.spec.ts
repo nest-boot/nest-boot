@@ -218,7 +218,9 @@ test("workspace overview and settings use browser history to restore list search
     .click();
   await expect(page.getByRole("row").nth(1)).toContainText(b.name);
   const original = readSearch(page);
-  await page.getByTestId("user-workspace-create-action").click();
+  await page
+    .getByRole("link", { name: "Create workspace", exact: true })
+    .click();
   await page.reload();
   await backToList(page);
   await expect(page.getByRole("row").nth(1)).toContainText(b.name);
