@@ -202,21 +202,14 @@ function InviteComponent() {
   // 错误处理（只有在查询完成且确实有错误或没有数据时才显示）
   if (!inviteLoading && invitationUnavailableMessage) {
     return (
-      <div
-        className="flex min-h-screen items-center justify-center"
-        data-testid="invite-error-page"
-      >
+      <div className="flex min-h-screen items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>{t("workspace:invite.error.title")}</CardTitle>
             <CardDescription>{invitationUnavailableMessage}</CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button
-              onClick={handleExit}
-              className="w-full"
-              data-testid="invite-error-exit"
-            >
+            <Button onClick={handleExit} className="w-full">
               {t("workspace:invite.error.back_button")}
             </Button>
           </CardFooter>
@@ -245,10 +238,7 @@ function InviteComponent() {
   }
 
   return (
-    <div
-      className="flex min-h-screen items-center justify-center p-4"
-      data-testid="invite-accept-page"
-    >
+    <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>{t("workspace:invite.title")}</CardTitle>
@@ -279,7 +269,6 @@ function InviteComponent() {
             </Button>
             <Button
               type="button"
-              data-testid="invite-accept-submit"
               disabled={!!emailMismatch}
               loading={acceptLoading}
               className="flex-1"

@@ -103,7 +103,6 @@ export function MemberPermissionsForm({
             <Button
               type="submit"
               form={formId}
-              data-testid="member-permissions-save"
               disabled={disabled || !isDirty || !canSubmit}
               loading={isSubmitting}
             >

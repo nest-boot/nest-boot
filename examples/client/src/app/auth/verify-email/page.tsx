@@ -89,7 +89,7 @@ function VerifyEmailComponent() {
 
   return (
     <AuthPageShell>
-      <Card data-testid="verify-email-view">
+      <Card>
         <CardHeader className="text-center">
           <div className="mb-2 flex justify-center">
             {invalid ? (
@@ -121,10 +121,7 @@ function VerifyEmailComponent() {
           <CardContent>
             <div className="flex flex-col gap-4">
               {resent && (
-                <FieldDescription
-                  className="text-center"
-                  data-testid="verify-email-resent"
-                >
+                <FieldDescription className="text-center">
                   {t("auth:emailVerification.resent")}
                 </FieldDescription>
               )}
@@ -136,11 +133,7 @@ function VerifyEmailComponent() {
         )}
         <CardFooter>
           {verified ? (
-            <Button
-              className="w-full"
-              render={<a href={loginUrl} />}
-              data-testid="verify-email-sign-in"
-            >
+            <Button className="w-full" render={<a href={loginUrl} />}>
               {t("auth:emailVerification.signIn")}
             </Button>
           ) : search.email ? (
@@ -150,7 +143,6 @@ function VerifyEmailComponent() {
               className="w-full"
               onClick={resend}
               loading={loading}
-              data-testid="verify-email-resend"
             >
               <RotateCw />
               {t("auth:emailVerification.resend")}

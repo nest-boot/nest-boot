@@ -105,7 +105,6 @@ export function MemberProfileForm({
             <Button
               type="submit"
               form={formId}
-              data-testid="member-profile-save"
               disabled={disabled || !isDirty || !canSubmit}
               loading={isSubmitting}
             >

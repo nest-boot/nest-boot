@@ -225,11 +225,7 @@ export function LoginForm({
   );
 
   return (
-    <div
-      className={cn("flex flex-col gap-6", className)}
-      data-testid="auth-view"
-      {...props}
-    >
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
           <CardTitle>{t("auth:welcomeBack")}</CardTitle>
@@ -247,11 +243,11 @@ export function LoginForm({
             className="w-full"
           >
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login" data-testid="auth-tab-login">
+              <TabsTrigger value="login">
                 <LogIn />
                 {t("auth:form.loginTab")}
               </TabsTrigger>
-              <TabsTrigger value="register" data-testid="auth-tab-register">
+              <TabsTrigger value="register">
                 <UserPlus />
                 {t("auth:form.registerTab")}
               </TabsTrigger>
@@ -276,7 +272,6 @@ export function LoginForm({
                       {(field) => (
                         <Input
                           id="name"
-                          data-testid="auth-name-input"
                           autoComplete="name"
                           label={t("auth:form.name.label")}
                           placeholder={t("auth:form.name.placeholder")}
@@ -296,7 +291,6 @@ export function LoginForm({
                     {(field) => (
                       <Input
                         id="email"
-                        data-testid="auth-email-input"
                         type="email"
                         autoComplete="email"
                         label={t("auth:form.email.label")}
@@ -316,7 +310,6 @@ export function LoginForm({
                     {(field) => (
                       <Input
                         id="password"
-                        data-testid="auth-password-input"
                         type="password"
                         autoComplete={
                           mode === "login" ? "current-password" : "new-password"
@@ -342,7 +335,6 @@ export function LoginForm({
                             {(field) => (
                               <Checkbox
                                 id="remember-me"
-                                data-testid="auth-remember-me"
                                 checked={field.state.value}
                                 onCheckedChange={field.handleChange}
                               />
@@ -357,7 +349,6 @@ export function LoginForm({
                       <Link
                         to="/auth/forgot-password"
                         className="text-primary underline-offset-4 hover:underline"
-                        data-testid="auth-forgot-password-link"
                       >
                         {t("auth:form.forgotPassword")}
                       </Link>
@@ -381,7 +372,6 @@ export function LoginForm({
                 type="submit"
                 form={formId}
                 className="w-full"
-                data-testid="auth-submit"
                 loading={loading}
               >
                 {mode === "login" ? <LogIn /> : <UserPlus />}
@@ -404,7 +394,6 @@ export function LoginForm({
                       onClick={() => handleSocialLogin(provider)}
                       disabled={loading || socialProviderId !== undefined}
                       loading={socialProviderId === provider.id}
-                      data-testid={`auth-social-submit-${provider.id}`}
                     >
                       <ShieldCheck />
                       {t("auth:continueWithProvider", {

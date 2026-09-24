@@ -90,16 +90,12 @@ function AuthenticatedContent() {
   return (
     <div className="flex h-svh flex-col">
       {currentSession?.impersonatedById ? (
-        <div
-          className="bg-secondary text-secondary-foreground z-50 flex min-h-12 shrink-0 items-center justify-center gap-4 px-4 py-2 text-sm shadow"
-          data-testid="impersonation-banner"
-        >
+        <div className="bg-secondary text-secondary-foreground z-50 flex min-h-12 shrink-0 items-center justify-center gap-4 px-4 py-2 text-sm shadow">
           <span>{t("admin:impersonation.active")}</span>
           <Button
             size="sm"
             variant="outline"
             loading={loading}
-            data-testid="stop-impersonating"
             onClick={async () => {
               try {
                 await stopImpersonating();

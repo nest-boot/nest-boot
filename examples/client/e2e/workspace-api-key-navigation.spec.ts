@@ -72,7 +72,7 @@ test("isolates two workspaces' list search, creation returns and detail navigati
     await expect(page.getByRole("row").nth(1)).toContainText(current.name);
     listUrls.push(page.url());
     await page.getByRole("link", { name: current.name, exact: true }).click();
-    await expect(page.getByTestId("api-key-rename-input")).toHaveValue(
+    await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
       current.name,
     );
     await expect(page.getByLabel("Next item", { exact: true })).toHaveAttribute(

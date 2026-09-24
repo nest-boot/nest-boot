@@ -123,7 +123,6 @@ function AdminUsersPage() {
 
   return (
     <Page
-      data-testid="admin-users-page"
       title={t("admin:users.title")}
       description={t("admin:users.description")}
       primaryAction={

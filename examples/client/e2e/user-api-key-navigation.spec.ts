@@ -60,7 +60,7 @@ function readSearch(page: Page) {
 }
 
 async function expectDetails(page: Page, name: string) {
-  await expect(page.getByTestId("api-key-rename-input")).toHaveValue(name);
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(name);
 }
 async function expectNeighbor(
   page: Page,
@@ -278,9 +278,12 @@ test("restores the exact list search from create/cancel and create/success, with
   await page
     .getByRole("button", { name: "Create API Key", exact: true })
     .click();
-  await page.getByTestId("api-key-name-input").fill("Created sample");
-  await page.getByTestId("api-key-create-submit").click();
-  const secret = page.getByTestId("api-key-created-value");
+  await page.getByLabel("Name", { exact: true }).fill("Created sample");
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  const secret = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByText("API Key Created", { exact: true }) })
+    .getByRole("code");
   await expect(secret).toBeVisible();
   const value = await secret.textContent();
   expect(

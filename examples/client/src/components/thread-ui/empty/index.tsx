@@ -17,7 +17,6 @@ export type EmptyActionProps = Omit<
   ComponentProps<typeof Button>,
   "children"
 > & {
-  "data-testid"?: string;
   icon?: ReactNode;
   label: ReactNode;
 };

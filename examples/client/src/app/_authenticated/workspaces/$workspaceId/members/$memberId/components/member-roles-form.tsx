@@ -102,7 +102,6 @@ export function MemberRolesForm({
             <Button
               type="submit"
               form={formId}
-              data-testid="member-roles-save"
               disabled={disabled || !isDirty || !canSubmit}
               loading={isSubmitting}
             >

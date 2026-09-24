@@ -111,7 +111,6 @@ function CreateUserPage() {
   return (
     <Page
       variant="compact"
-      data-testid="admin-create-user-page"
       title={t("admin:users.create.title")}
       description={t("admin:users.create.description")}
       breadcrumbActions={[
@@ -199,7 +198,6 @@ function CreateUserPage() {
               <Button
                 type="submit"
                 form={formId}
-                data-testid="admin-create-user-submit"
                 disabled={!canCreate}
                 loading={creating}
               >

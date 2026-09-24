@@ -415,7 +415,6 @@ function UserSecurityComponent() {
   return (
     <Page
       variant="compact"
-      data-testid="user-security-page"
       title={t("user:security.title")}
       description={t("user:security.description")}
     >
@@ -446,7 +445,6 @@ function UserSecurityComponent() {
                       {(field) => (
                         <Input
                           id="current-password"
-                          data-testid="user-current-password"
                           type="password"
                           autoComplete="current-password"
                           label={t("user:security.form.current_password")}
@@ -464,7 +462,6 @@ function UserSecurityComponent() {
                       {(field) => (
                         <Input
                           id="new-password"
-                          data-testid="user-new-password"
                           type="password"
                           autoComplete="new-password"
                           label={t("user:security.form.new_password")}
@@ -482,7 +479,6 @@ function UserSecurityComponent() {
                       {(field) => (
                         <Input
                           id="confirm-password"
-                          data-testid="user-confirm-password"
                           type="password"
                           autoComplete="new-password"
                           label={t("user:security.form.confirm_password")}
@@ -501,7 +497,6 @@ function UserSecurityComponent() {
                         {(field) => (
                           <Checkbox
                             id="revoke-other-sessions"
-                            data-testid="user-revoke-other-sessions"
                             checked={field.state.value}
                             onCheckedChange={field.handleChange}
                           />
@@ -521,12 +516,7 @@ function UserSecurityComponent() {
               </form>
             </CardContent>
             <CardFooter>
-              <Button
-                type="submit"
-                form="user-password-form"
-                data-testid="user-change-password-submit"
-                loading={loading}
-              >
+              <Button type="submit" form="user-password-form" loading={loading}>
                 {t("user:security.form.submit")}
               </Button>
             </CardFooter>
@@ -534,7 +524,7 @@ function UserSecurityComponent() {
         </PageLayoutSection>
 
         <PageLayoutSection>
-          <Card data-testid="user-sessions-card">
+          <Card>
             <CardHeader>
               <CardTitle>{t("user:security.sessions.title")}</CardTitle>
               <CardDescription>
@@ -551,12 +541,11 @@ function UserSecurityComponent() {
                   {t("user:security.sessions.empty")}
                 </p>
               ) : (
-                <div className="divide-y" data-testid="user-session-list">
+                <ul className="divide-y">
                   {sessions.map((session) => (
-                    <div
+                    <li
                       key={session.id}
                       className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
-                      data-testid="user-session-row"
                     >
                       <div className="flex min-w-0 items-start gap-3">
                         <MonitorSmartphone className="text-muted-foreground mt-0.5 size-5 shrink-0" />
@@ -593,14 +582,13 @@ function UserSecurityComponent() {
                           variant="outline"
                           loading={revokingSessionId === session.id}
                           onClick={() => handleRevokeSession(session.id)}
-                          data-testid="user-revoke-session"
                         >
                           {t("user:security.sessions.revoke")}
                         </Button>
                       )}
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
             </CardContent>
             <CardFooter>
@@ -610,7 +598,6 @@ function UserSecurityComponent() {
                 disabled={otherSessionCount === 0}
                 loading={revokingOthers}
                 onClick={handleRevokeOtherSessions}
-                data-testid="user-revoke-other-session-list"
               >
                 {t("user:security.sessions.revoke_others")}
               </Button>
@@ -650,7 +637,7 @@ function UserSecurityComponent() {
         )}
 
         <PageLayoutSection>
-          <Card data-testid="user-accounts-card">
+          <Card>
             <CardHeader>
               <CardTitle>{t("user:security.accounts.title")}</CardTitle>
               <CardDescription>
@@ -670,7 +657,6 @@ function UserSecurityComponent() {
                       <div
                         key={account.id}
                         className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
-                        data-testid={`user-account-${account.providerId}`}
                       >
                         <div>
                           <p className="font-medium capitalize">
@@ -712,7 +698,6 @@ function UserSecurityComponent() {
                       disabled={linkingProviderId !== undefined}
                       loading={linkingProviderId === provider.id}
                       onClick={() => handleLinkAccount(provider.id)}
-                      data-testid={`user-link-social-account-${provider.id}`}
                     >
                       {t("user:security.accounts.link", {
                         provider: provider.name,
@@ -730,7 +715,6 @@ function UserSecurityComponent() {
             <Button
               variant="outline"
               loading={accountsLoading}
-              data-testid="user-accounts-load-more"
               onClick={() =>
                 fetchMoreAccounts({
                   variables: {
@@ -758,7 +742,7 @@ function UserSecurityComponent() {
         )}
 
         <PageLayoutSection>
-          <Card data-testid="user-delete-card">
+          <Card>
             <CardHeader>
               <CardTitle>{t("user:security.delete.title")}</CardTitle>
               <CardDescription>
@@ -810,7 +794,6 @@ function UserSecurityComponent() {
                 variant="destructive"
                 disabled={!deletePassword}
                 loading={deletingUser}
-                data-testid="user-delete-account"
               >
                 {t("user:security.delete.action")}
               </Button>

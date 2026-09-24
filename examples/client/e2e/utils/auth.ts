@@ -15,15 +15,19 @@ type TestUser = {
 
 export async function registerUser(page: Page, user: TestUser) {
   await page.goto("/auth/register");
-  await page.getByTestId("auth-name-input").fill(user.name);
-  await page.getByTestId("auth-email-input").fill(user.email);
-  await page.getByTestId("auth-password-input").fill(testPassword);
-  await page.getByTestId("auth-submit").click();
+  await page.getByLabel("Name", { exact: true }).fill(user.name);
+  await page.getByLabel("Email", { exact: true }).fill(user.email);
+  await page.getByLabel("Password", { exact: true }).fill(testPassword);
+  await page
+    .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+    .click();
 
   await completeEmailVerification(page, user.email);
 
   await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
-  await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Workspaces", exact: true }),
+  ).toBeVisible();
 }
 
 export async function registerUserByApi(
@@ -85,7 +89,13 @@ export async function signInAsE2eAdministrator(page: Page) {
 
 export async function completeEmailVerification(page: Page, email: string) {
   await expect(page).toHaveURL(/\/auth\/verify-email\?/);
-  await expect(page.getByTestId("verify-email-view")).toBeVisible();
+  await expect(
+    page.locator('[data-slot="card"]').filter({
+      has: page.getByText(
+        /^(Check your email|Email verified|Verification failed)$/,
+      ),
+    }),
+  ).toBeVisible();
 
   const verificationUrl = await waitForEmailUrl(
     page.request,
@@ -94,11 +104,17 @@ export async function completeEmailVerification(page: Page, email: string) {
   );
   await page.goto(verificationUrl);
   await expect(page).toHaveURL(/\/auth\/verify-email\?.*verified=true/);
-  await expect(page.getByTestId("verify-email-sign-in")).toBeVisible();
-  await page.getByTestId("verify-email-sign-in").click();
+  await expect(
+    page.getByRole("link", { name: "Continue to sign in", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("link", { name: "Continue to sign in", exact: true })
+    .click();
 
   await expect(page).toHaveURL(/\/auth\/login/);
-  await page.getByTestId("auth-email-input").fill(email);
-  await page.getByTestId("auth-password-input").fill(testPassword);
-  await page.getByTestId("auth-submit").click();
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(testPassword);
+  await page
+    .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+    .click();
 }

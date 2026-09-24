@@ -18,7 +18,7 @@ test("filters workspaces, preserves pagination state, and opens rows without an 
   const other = await createWorkspaceByApi(page, `${name}-other`);
 
   await page.goto("/user/workspaces");
-  const links = page.locator('[data-testid^="user-workspace-row-"]');
+  const links = page.getByRole("table").getByRole("link");
   const search = page.getByRole("textbox", { name: "Search", exact: true });
   await expect(links).toHaveCount(4);
   await expect(page.getByRole("columnheader")).toHaveCount(3);
@@ -68,7 +68,7 @@ test("filters workspaces, preserves pagination state, and opens rows without an 
   await nameFilter.press("Enter");
   await page.keyboard.press("Escape");
   await expect(links).toHaveCount(1);
-  const target = page.getByTestId(`user-workspace-row-${other.id}`);
+  const target = page.getByRole("link", { name: other.name, exact: true });
   await expect(target).toBeVisible();
 
   const row = page.getByRole("row").filter({ has: target });

@@ -179,7 +179,6 @@ function InviteMemberForm() {
   return (
     <Page
       variant="compact"
-      data-testid="workspace-invite-page"
       title={t("member:invite.title")}
       description={t("member:invite.description")}
       breadcrumbActions={[
@@ -198,7 +197,7 @@ function InviteMemberForm() {
       <PageLayout>
         <PageLayoutSection>
           {inviteLink ? (
-            <Card data-testid="workspace-invite-result">
+            <Card>
               <CardHeader>
                 <CardTitle>{t("member:invite.link_generated")}</CardTitle>
                 <CardDescription>
@@ -207,18 +206,12 @@ function InviteMemberForm() {
               </CardHeader>
               <CardContent>
                 <div className="bg-muted rounded-md p-4">
-                  <code
-                    className="text-sm break-all"
-                    data-testid="workspace-invite-link"
-                  >
-                    {inviteLink}
-                  </code>
+                  <code className="text-sm break-all">{inviteLink}</code>
                 </div>
               </CardContent>
               <CardFooter>
                 <Button
                   variant="outline"
-                  data-testid="workspace-invite-copy"
                   onClick={() => copyInviteLink(inviteLink)}
                 >
                   {copied ? (
@@ -256,7 +249,6 @@ function InviteMemberForm() {
                         {(field) => (
                           <Input
                             type="email"
-                            data-testid="workspace-invite-email-input"
                             label={t("member:invite.email_label")}
                             placeholder={t("member:invite.email_placeholder")}
                             value={field.state.value}
@@ -304,7 +296,6 @@ function InviteMemberForm() {
                 <Button
                   type="submit"
                   form={formId}
-                  data-testid="workspace-invite-confirm"
                   loading={submitting}
                   disabled={!canInvite || grantableOptions.length === 0}
                 >

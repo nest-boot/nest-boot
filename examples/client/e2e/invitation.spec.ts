@@ -72,7 +72,11 @@ test.describe("workspace invitations", () => {
         .toBeGreaterThan(new Date(invitation.expiresAt).getTime());
 
       await inviteePage.goto(`/invite?invitationId=${createInvitation.id}`);
-      await expect(inviteePage.getByTestId("invite-error-page")).toBeVisible();
+      await expect(
+        inviteePage.locator('[data-slot="card"]').filter({
+          has: inviteePage.getByText("Invalid Invitation", { exact: true }),
+        }),
+      ).toBeVisible();
       await expect(
         inviteePage.getByText(
           "This invitation has expired. Ask a workspace administrator to send a new one.",
@@ -82,7 +86,9 @@ test.describe("workspace invitations", () => {
         await inviteePage.evaluate(() => localStorage.getItem("invitation_id")),
       ).toBeNull();
 
-      await inviteePage.getByTestId("invite-error-exit").click();
+      await inviteePage
+        .getByRole("button", { name: "Back to Workspaces", exact: true })
+        .click();
       await expect(inviteePage).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
     } finally {
       await inviteeContext.close();
@@ -123,23 +129,23 @@ test.describe("workspace invitations", () => {
       ).toBeVisible();
 
       await page.getByRole("link", { name: "Invite", exact: true }).click();
-      await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
+      await page.getByLabel("Email", { exact: true }).fill(inviteeEmail);
       await page.getByRole("checkbox", { name: "Member", exact: true }).click();
-      await page.getByTestId("workspace-invite-confirm").click();
-      const inviteLink = (
-        await page.getByTestId("workspace-invite-link").textContent()
-      )?.trim();
+      await page
+        .getByRole("button", { name: "Confirm and Copy Link", exact: true })
+        .click();
+      const inviteLink = (await page.getByRole("code").textContent())?.trim();
       expect(inviteLink).toContain("/invite?invitationId=");
       await page
         .getByRole("navigation", { name: "Breadcrumbs" })
         .getByRole("link", { name: "Members", exact: true })
         .click();
 
-      const invitation = page.getByTestId(`invitation-${inviteeEmail}`);
+      const invitation = page
+        .getByRole("listitem")
+        .filter({ has: page.getByText(inviteeEmail, { exact: true }) });
       await expect(invitation).toBeVisible();
-      await expect(page.getByTestId(`member-row-${inviteeEmail}`)).toHaveCount(
-        0,
-      );
+      await expect(page.getByRole("table").getByRole("row")).toHaveCount(2);
 
       await invitation.getByRole("button", { name: "Cancel" }).click();
       await page
@@ -153,7 +159,11 @@ test.describe("workspace invitations", () => {
         localStorage.setItem("invitation_id", invitationId);
       }, new URL(inviteLink!).searchParams.get("invitationId")!);
       await inviteePage.goto(inviteLink!);
-      await expect(inviteePage.getByTestId("invite-error-page")).toBeVisible();
+      await expect(
+        inviteePage.locator('[data-slot="card"]').filter({
+          has: inviteePage.getByText("Invalid Invitation", { exact: true }),
+        }),
+      ).toBeVisible();
       await expect(
         inviteePage.getByText("This invitation has been canceled."),
       ).toBeVisible();
@@ -164,7 +174,11 @@ test.describe("workspace invitations", () => {
       await inviteePage.goto(
         "/invite?invitationId=00000000-0000-4000-8000-000000000000",
       );
-      await expect(inviteePage.getByTestId("invite-error-page")).toBeVisible();
+      await expect(
+        inviteePage.locator('[data-slot="card"]').filter({
+          has: inviteePage.getByText("Invalid Invitation", { exact: true }),
+        }),
+      ).toBeVisible();
     } finally {
       await inviteeContext.close();
     }
@@ -200,17 +214,21 @@ test.describe("workspace invitations", () => {
     );
     await page.reload();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
+    await page.getByLabel("Email", { exact: true }).fill(inviteeEmail);
     await expect(
       page.getByRole("checkbox", { name: "Owner", exact: true }),
     ).toBeEnabled();
     await page.getByRole("checkbox", { name: "Member", exact: true }).click();
-    await page.getByTestId("workspace-invite-confirm").click();
+    await page
+      .getByRole("button", { name: "Confirm and Copy Link", exact: true })
+      .click();
 
-    const inviteResult = page.getByTestId("workspace-invite-result");
+    const inviteResult = page.locator('[data-slot="card"]').filter({
+      has: page.getByText("Invite Link Generated", { exact: true }),
+    });
     await expect(inviteResult).toBeVisible();
     const inviteLink = (
-      await inviteResult.getByTestId("workspace-invite-link").textContent()
+      await inviteResult.getByRole("code").textContent()
     )?.trim();
     expect(inviteLink).toMatch(
       /\/invite\?invitationId=[0-9a-f]{8}-[0-9a-f-]{27}$/,
@@ -237,17 +255,33 @@ test.describe("workspace invitations", () => {
       await inviteePage.goto(inviteLink!);
       await expect(inviteePage).toHaveURL(/\/auth\/login/);
 
-      await inviteePage.getByTestId("auth-tab-register").click();
-      await inviteePage.getByTestId("auth-name-input").fill("Accepted Member");
-      await inviteePage.getByTestId("auth-email-input").fill(inviteeEmail);
-      await inviteePage.getByTestId("auth-password-input").fill(testPassword);
-      await inviteePage.getByTestId("auth-submit").click();
+      await inviteePage
+        .getByRole("tab", { name: "Register", exact: true })
+        .click();
+      await inviteePage
+        .getByLabel("Name", { exact: true })
+        .fill("Accepted Member");
+      await inviteePage.getByLabel("Email", { exact: true }).fill(inviteeEmail);
+      await inviteePage
+        .getByLabel("Password", { exact: true })
+        .fill(testPassword);
+      await inviteePage
+        .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+        .click();
 
       await completeEmailVerification(inviteePage, inviteeEmail);
 
       await expect(inviteePage).toHaveURL(/\/invite\?invitationId=/);
-      await expect(inviteePage.getByTestId("invite-accept-page")).toBeVisible();
-      await inviteePage.getByTestId("invite-accept-submit").click();
+      await expect(
+        inviteePage.locator('[data-slot="card"]').filter({
+          has: inviteePage.getByText("Accept Workspace Invitation", {
+            exact: true,
+          }),
+        }),
+      ).toBeVisible();
+      await inviteePage
+        .getByRole("button", { name: "Accept Invitation", exact: true })
+        .click();
       await expect(inviteePage).toHaveURL(
         new RegExp(`/workspaces/${workspaceId}$`),
       );
@@ -256,13 +290,15 @@ test.describe("workspace invitations", () => {
     }
 
     await page.goto(`/workspaces/${workspaceId}/members`);
-    await expect(page.getByTestId(`member-row-${inviteeEmail}`)).toBeVisible();
     await expect(
-      page.getByTestId("member-status-active").first(),
+      page.getByRole("cell").getByText("Accepted Member", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: "Active", exact: true }).first(),
     ).toBeVisible();
 
     const memberRow = page.getByRole("row").filter({
-      has: page.getByTestId(`member-row-${inviteeEmail}`),
+      has: page.getByRole("cell").getByText("Accepted Member", { exact: true }),
     });
 
     await memberRow.getByRole("button").click();
@@ -301,14 +337,18 @@ test.describe("workspace invitations", () => {
     );
     await page.reload();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await page.getByTestId("workspace-invite-email-input").fill(inviteeEmail);
+    await page.getByLabel("Email", { exact: true }).fill(inviteeEmail);
     await page.getByRole("checkbox", { name: "Member", exact: true }).click();
-    await page.getByTestId("workspace-invite-confirm").click();
+    await page
+      .getByRole("button", { name: "Confirm and Copy Link", exact: true })
+      .click();
 
-    const inviteResult = page.getByTestId("workspace-invite-result");
+    const inviteResult = page.locator('[data-slot="card"]').filter({
+      has: page.getByText("Invite Link Generated", { exact: true }),
+    });
     await expect(inviteResult).toBeVisible();
     const inviteLink = (
-      await inviteResult.getByTestId("workspace-invite-link").textContent()
+      await inviteResult.getByRole("code").textContent()
     )?.trim();
     expect(inviteLink).toMatch(
       /\/invite\?invitationId=[0-9a-f]{8}-[0-9a-f-]{27}$/,
@@ -328,24 +368,42 @@ test.describe("workspace invitations", () => {
       await inviteePage.goto(inviteLink!);
       await expect(inviteePage).toHaveURL(/\/auth\/login/);
 
-      await inviteePage.getByTestId("auth-tab-register").click();
-      await inviteePage.getByTestId("auth-name-input").fill("Removed Member");
-      await inviteePage.getByTestId("auth-email-input").fill(inviteeEmail);
-      await inviteePage.getByTestId("auth-password-input").fill(testPassword);
-      await inviteePage.getByTestId("auth-submit").click();
+      await inviteePage
+        .getByRole("tab", { name: "Register", exact: true })
+        .click();
+      await inviteePage
+        .getByLabel("Name", { exact: true })
+        .fill("Removed Member");
+      await inviteePage.getByLabel("Email", { exact: true }).fill(inviteeEmail);
+      await inviteePage
+        .getByLabel("Password", { exact: true })
+        .fill(testPassword);
+      await inviteePage
+        .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+        .click();
 
       await completeEmailVerification(inviteePage, inviteeEmail);
 
       await expect(inviteePage).toHaveURL(/\/invite\?invitationId=/);
-      await expect(inviteePage.getByTestId("invite-accept-page")).toBeVisible();
-      await inviteePage.getByTestId("invite-accept-submit").click();
+      await expect(
+        inviteePage.locator('[data-slot="card"]').filter({
+          has: inviteePage.getByText("Accept Workspace Invitation", {
+            exact: true,
+          }),
+        }),
+      ).toBeVisible();
+      await inviteePage
+        .getByRole("button", { name: "Accept Invitation", exact: true })
+        .click();
       await expect(inviteePage).toHaveURL(
         new RegExp(`/workspaces/${workspaceId}$`),
       );
 
       await page.goto(`/workspaces/${workspaceId}/members`);
       const memberRow = page.getByRole("row").filter({
-        has: page.getByTestId(`member-row-${inviteeEmail}`),
+        has: page
+          .getByRole("cell")
+          .getByText("Removed Member", { exact: true }),
       });
 
       await expect(memberRow).toBeVisible();
@@ -355,14 +413,14 @@ test.describe("workspace invitations", () => {
         .getByRole("alertdialog")
         .getByRole("button", { name: "Confirm", exact: true })
         .click();
-      await expect(page.getByTestId(`member-row-${inviteeEmail}`)).toHaveCount(
-        0,
-      );
+      await expect(
+        page.getByRole("cell").getByText("Removed Member", { exact: true }),
+      ).toHaveCount(0);
 
       await inviteePage.reload();
       await expect(inviteePage).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
       await expect(
-        inviteePage.getByTestId("user-workspaces-page"),
+        inviteePage.getByRole("heading", { name: "Workspaces", exact: true }),
       ).toBeVisible();
       await expect(
         inviteePage.getByText(
@@ -418,9 +476,12 @@ test.describe("workspace invitations", () => {
       await expect(memberPage).toHaveURL(
         new RegExp(`/workspaces/${workspaceId}/members(?:\\?.*)?$`),
       );
-      await expect(memberPage.getByTestId("workspace-invite-page")).toHaveCount(
-        0,
-      );
+      await expect(
+        memberPage.getByRole("heading", {
+          name: "Invite Workspace Member",
+          exact: true,
+        }),
+      ).toHaveCount(0);
       await memberPage.goto(
         `/workspaces/${workspaceId}/members/${currentMember.id}`,
       );
@@ -444,12 +505,24 @@ test.describe("workspace invitations", () => {
       ).toBeDisabled();
       await expect(permission).toBeEnabled();
       await permission.click();
-      await memberPage.getByTestId("member-permissions-save").click();
+      await memberPage
+        .locator('[data-slot="card"]')
+        .filter({
+          has: memberPage.getByText("Direct permissions", { exact: true }),
+        })
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
       await expect(
         memberPage.getByText("Member updated successfully"),
       ).toBeVisible();
       await permission.click();
-      await memberPage.getByTestId("member-permissions-save").click();
+      await memberPage
+        .locator('[data-slot="card"]')
+        .filter({
+          has: memberPage.getByText("Direct permissions", { exact: true }),
+        })
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
       await expect(permission).not.toBeChecked();
 
       await graphqlRequest(
@@ -473,15 +546,15 @@ test.describe("workspace invitations", () => {
         memberPage.getByRole("checkbox", { name: "Owner", exact: true }),
       ).toHaveCount(0);
       await memberPage
-        .getByTestId("workspace-invite-email-input")
+        .getByLabel("Email", { exact: true })
         .fill(`${seed}-invited@example.com`);
       await memberPage
         .getByRole("checkbox", { name: "Member", exact: true })
         .click();
-      await memberPage.getByTestId("workspace-invite-confirm").click();
-      await expect(
-        memberPage.getByTestId("workspace-invite-link"),
-      ).toBeVisible();
+      await memberPage
+        .getByRole("button", { name: "Confirm and Copy Link", exact: true })
+        .click();
+      await expect(memberPage.getByRole("code")).toBeVisible();
       await memberPage.goto(
         `/workspaces/${workspaceId}/members/${currentMember.id}`,
       );
@@ -496,8 +569,18 @@ test.describe("workspace invitations", () => {
         .fill("owner-contact@example.com");
       await expect(permission).toBeEnabled();
       await permission.click();
-      await memberPage.getByTestId("member-profile-save").click();
-      await memberPage.getByTestId("member-permissions-save").click();
+      await memberPage
+        .locator('[data-slot="card"]')
+        .filter({ has: memberPage.getByText("Profile", { exact: true }) })
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
+      await memberPage
+        .locator('[data-slot="card"]')
+        .filter({
+          has: memberPage.getByText("Direct permissions", { exact: true }),
+        })
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
       await expect(
         memberPage.getByText("Member updated successfully").first(),
       ).toBeVisible();
@@ -556,14 +639,18 @@ test.describe("workspace invitations", () => {
 
       await memberPage.goto(`/workspaces/${workspaceId}/settings`);
       await memberPage
-        .getByTestId("workspace-settings-name-input")
+        .getByLabel("Name", { exact: true })
         .fill(renamedWorkspace);
       await expect(
-        memberPage.getByTestId("workspace-settings-save"),
+        memberPage.getByRole("button", { name: "Save", exact: true }),
       ).toBeDisabled();
 
       await page.goto(`/workspaces/${workspaceId}/members/${memberId}`);
-      await expect(page.getByTestId("member-detail-page")).toBeVisible();
+      await expect(
+        page.locator('[data-slot="page"]').filter({
+          has: page.getByRole("group", { name: "Profile", exact: true }),
+        }),
+      ).toBeVisible();
       await page.getByRole("checkbox", { name: "Admin", exact: true }).click();
       await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
         "Authorized Member",
@@ -593,7 +680,11 @@ test.describe("workspace invitations", () => {
         if (body.includes("setMemberPermissionsFromMemberRoute"))
           permissionWrites++;
       });
-      await page.getByTestId("member-profile-save").click();
+      await page
+        .locator('[data-slot="card"]')
+        .filter({ has: page.getByText("Profile", { exact: true }) })
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
       await expect(
         page.getByRole("heading", { name: "Workspace Member", exact: true }),
       ).toBeVisible();
@@ -623,7 +714,11 @@ test.describe("workspace invitations", () => {
           },
         });
       });
-      await page.getByTestId("member-roles-save").click();
+      await page
+        .locator('[data-slot="card"]')
+        .filter({ has: page.getByText("Roles", { exact: true }) })
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
       await expect(page.getByText("Role change rejected")).toBeVisible();
       await page.unrouteAll({ behavior: "wait" });
       const unchanged = await graphqlRequest<{
@@ -649,10 +744,18 @@ test.describe("workspace invitations", () => {
       await expect(
         page.getByRole("checkbox", { name: "Update Workspace", exact: true }),
       ).toBeChecked();
-      await page.getByTestId("member-roles-save").click();
+      await page
+        .locator('[data-slot="card"]')
+        .filter({ has: page.getByText("Roles", { exact: true }) })
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
       await expect.poll(() => roleWrites).toBe(2);
       expect(permissionWrites).toBe(0);
-      await page.getByTestId("member-permissions-save").click();
+      await page
+        .locator('[data-slot="card"]')
+        .filter({ has: page.getByText("Direct permissions", { exact: true }) })
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
       await expect.poll(() => permissionWrites).toBe(1);
 
       await expect(
@@ -675,7 +778,11 @@ test.describe("workspace invitations", () => {
       await page
         .getByLabel("Name", { exact: true })
         .fill("Updated Workspace Member");
-      await page.getByTestId("member-profile-save").click();
+      await page
+        .locator('[data-slot="card"]')
+        .filter({ has: page.getByText("Profile", { exact: true }) })
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
       await expect(
         page.getByRole("heading", {
           name: "Updated Workspace Member",
@@ -694,19 +801,25 @@ test.describe("workspace invitations", () => {
             .postData()
             ?.includes("setMemberRolesFromMemberRoute") === true,
       );
-      await page.getByTestId("member-roles-save").click();
+      await page
+        .locator('[data-slot="card"]')
+        .filter({ has: page.getByText("Roles", { exact: true }) })
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
       expect((await (await rolesSaved).json()).errors).toBeUndefined();
 
       await expect.poll(() => roleWrites).toBe(3);
 
       await memberPage.reload();
       await memberPage
-        .getByTestId("workspace-settings-name-input")
+        .getByLabel("Name", { exact: true })
         .fill(renamedWorkspace);
       await expect(
-        memberPage.getByTestId("workspace-settings-save"),
+        memberPage.getByRole("button", { name: "Save", exact: true }),
       ).toBeEnabled();
-      await memberPage.getByTestId("workspace-settings-save").click();
+      await memberPage
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
       await expect(memberPage.getByText("Workspace updated")).toBeVisible();
 
       const { currentMember } = await graphqlRequest<{
@@ -720,9 +833,15 @@ test.describe("workspace invitations", () => {
       await page.goto(`/workspaces/${workspaceId}/members/${currentMember.id}`);
       await page.getByRole("checkbox", { name: "Member", exact: true }).click();
       await page.getByRole("checkbox", { name: "Owner", exact: true }).click();
-      await page.getByTestId("member-roles-save").click();
+      await page
+        .locator('[data-slot="card"]')
+        .filter({ has: page.getByText("Roles", { exact: true }) })
+        .getByRole("button", { name: "Save", exact: true })
+        .click();
       await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
-      await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Workspaces", exact: true }),
+      ).toBeVisible();
     } finally {
       await memberContext.close();
     }

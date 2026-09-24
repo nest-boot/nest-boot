@@ -101,7 +101,6 @@ function CreateWorkspaceComponent() {
                       {(field) => (
                         <Input
                           id="name"
-                          data-testid="workspace-create-name-input"
                           label={t("workspace:create.form.name.label")}
                           placeholder={t(
                             "workspace:create.form.name.placeholder",
@@ -121,7 +120,6 @@ function CreateWorkspaceComponent() {
               <Button
                 type="submit"
                 form="workspace-create-form"
-                data-testid="workspace-create-submit"
                 loading={loading}
               >
                 {t("common:action.create")}

@@ -74,12 +74,14 @@ test.describe("API keys", () => {
         ).not.toBeChecked();
       }
       await issuerPage
-        .getByTestId("api-key-name-input")
+        .getByLabel("Name", { exact: true })
         .fill(`Limited key ${seed}`);
-      await issuerPage.getByTestId("api-key-create-submit").click();
-      await expect(
-        issuerPage.getByTestId("api-key-created-value"),
-      ).toContainText(/^sk[A-Za-z0-9_-]{64}$/);
+      await issuerPage
+        .getByRole("button", { name: "Create", exact: true })
+        .click();
+      await expect(issuerPage.getByRole("code")).toContainText(
+        /^sk[A-Za-z0-9_-]{64}$/,
+      );
     } finally {
       await issuerContext.close();
     }
@@ -98,7 +100,10 @@ test.describe("API keys", () => {
       `API Key 工作空间 ${seed}`,
     );
 
-    await page.getByTestId("workspace-sidebar-api-keys-link").click();
+    await page
+      .locator('[data-slot="sidebar"]')
+      .getByRole("link", { name: "API Keys", exact: true })
+      .click();
     await expect(page).toHaveURL(
       new RegExp(`/workspaces/${workspaceId}/api-keys(\\?.*)?$`),
     );
@@ -118,9 +123,17 @@ test.describe("API keys", () => {
     });
 
     await createFirstWorkspace(page, `个人 Key 工作空间 ${seed}`);
-    await page.getByTestId("topbar-menu-trigger").click();
-    await page.getByTestId("sidebar-user-account-link").click();
-    await page.getByTestId("user-sidebar-api-keys-link").click();
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
+    await page.getByRole("menuitem", { name: /^Open profile:/ }).click();
+    await page
+      .locator('[data-slot="sidebar"]')
+      .filter({ has: page.getByText("Personal", { exact: true }) })
+      .getByRole("link", { name: "API Keys", exact: true })
+      .click();
 
     await expect(page).toHaveURL(/\/user\/api-keys(\?.*)?$/);
 
@@ -162,7 +175,7 @@ test.describe("API keys", () => {
     await page.goto(
       `/workspaces/${workspaceId}/api-keys/${workspaceKey.entity.id}`,
     );
-    await expect(page.getByTestId("api-key-rename-input")).toHaveValue(
+    await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
       "Workspace scoped key",
     );
     await page.goto(
@@ -171,7 +184,7 @@ test.describe("API keys", () => {
     await expect(page).toHaveURL(
       new RegExp(`/workspaces/${otherWorkspace.id}/api-keys(?:\\?.*)?$`),
     );
-    await expect(page.getByTestId("api-key-rename-input")).toHaveCount(0);
+    await expect(page.getByLabel("Name", { exact: true })).toHaveCount(0);
     await page.goto(`/user/api-keys/${workspaceKey.entity.id}`);
     await expect(page).toHaveURL(/\/user\/api-keys(\?.*)?$/);
     await page.goto(`/workspaces/${workspaceId}/api-keys/${userKey.entity.id}`);
@@ -188,7 +201,7 @@ test.describe("API keys", () => {
       });
       await otherPage.goto(`/user/api-keys/${userKey.entity.id}`);
       await expect(otherPage).toHaveURL(/\/user\/api-keys(\?.*)?$/);
-      await expect(otherPage.getByTestId("api-key-rename-input")).toHaveCount(
+      await expect(otherPage.getByLabel("Name", { exact: true })).toHaveCount(
         0,
       );
     } finally {
@@ -222,7 +235,7 @@ async function exerciseApiKeyLifecycle(
       ),
     )
     .toBe(true);
-  await page.getByTestId("api-key-name-input").press("Enter");
+  await page.getByLabel("Name", { exact: true }).press("Enter");
   await expect(
     page.getByText("API key name is required", { exact: true }),
   ).toBeVisible();
@@ -232,7 +245,7 @@ async function exerciseApiKeyLifecycle(
   });
   await expect(invitationPermission).not.toBeChecked();
   await expect(invitationPermission).toBeEnabled();
-  await page.getByTestId("api-key-name-input").fill(names.name);
+  await page.getByLabel("Name", { exact: true }).fill(names.name);
   for (const action of ["read", "write"]) {
     const permission = getPermissionCheckbox(
       page,
@@ -243,9 +256,12 @@ async function exerciseApiKeyLifecycle(
     await permission.click();
     await expect(permission).toBeChecked();
   }
-  await page.getByTestId("api-key-create-submit").click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
 
-  const revealedKey = page.getByTestId("api-key-created-value");
+  const revealedKey = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByText("API Key Created", { exact: true }) })
+    .getByRole("code");
   await expect(revealedKey).toContainText(/^sk[A-Za-z0-9_-]{64}$/);
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.getByRole("button", { name: "Copy API Key", exact: true }).click();
@@ -282,7 +298,7 @@ async function exerciseApiKeyLifecycle(
   await row.getByRole("cell").nth(2).click();
   await expect(page).toHaveURL(new URL(detailPath!, listUrl).href);
   await page.reload();
-  await expect(page.getByTestId("api-key-rename-input")).toHaveValue(
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
     names.name,
   );
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -292,14 +308,14 @@ async function exerciseApiKeyLifecycle(
       getPermissionCheckbox(page, `${scope}_API_KEY__${action.toUpperCase()}`),
     ).toBeChecked();
   }
-  await page.getByTestId("api-key-rename-input").fill(names.renamedName);
+  await page.getByLabel("Name", { exact: true }).fill(names.renamedName);
   await getPermissionCheckbox(page, `${scope}_API_KEY__WRITE`).click();
-  await page.getByTestId("api-key-rename-input").press("Enter");
+  await page.getByLabel("Name", { exact: true }).press("Enter");
   await expect(
     page.getByText("API key updated", { exact: true }),
   ).toBeVisible();
   await page.reload();
-  await expect(page.getByTestId("api-key-rename-input")).toHaveValue(
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
     names.renamedName,
   );
   await expect(
@@ -329,5 +345,5 @@ async function exerciseApiKeyLifecycle(
   await expect(page).toHaveURL((url) => url.pathname === listUrl.pathname);
   await page.goto(`${listUrl}/create`);
   await expect(revealedKey).toHaveCount(0);
-  await expect(page.getByTestId("api-key-name-input")).toHaveValue("");
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue("");
 }

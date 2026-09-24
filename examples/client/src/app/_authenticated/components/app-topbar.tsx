@@ -50,7 +50,7 @@ export function AppTopbar({
           ),
         }}
       >
-        <TopbarMenuTrigger data-testid="topbar-menu-trigger" />
+        <TopbarMenuTrigger />
         <TopbarMenuContent>
           <WorkspaceMenu currentWorkspaceId={currentWorkspace?.id} />
           <TopbarMenuSeparator />

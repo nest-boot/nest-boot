@@ -277,7 +277,6 @@ function MemberDetails({
   return (
     <Page
       variant="compact"
-      data-testid="member-detail-page"
       title={member.name ?? member.id}
       breadcrumbActions={[
         {
@@ -314,7 +313,6 @@ function MemberDetails({
           ? [
               {
                 label: t("member:details.actions.delete_member"),
-                "data-testid": "member-delete-action",
                 destructive: true,
                 disabled: saving || removing,
                 onAction: handleRemove,

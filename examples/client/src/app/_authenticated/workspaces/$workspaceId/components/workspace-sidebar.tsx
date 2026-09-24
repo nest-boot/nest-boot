@@ -24,7 +24,6 @@ type SidebarItem = {
   title: string;
   icon: ComponentType<{ className?: string }>;
   link: LinkProps;
-  testId?: string;
 };
 
 export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
@@ -63,7 +62,6 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
                   to: "/workspaces/$workspaceId/api-keys",
                   params: { workspaceId },
                 }),
-                testId: "workspace-sidebar-api-keys-link",
               },
             ]
           : []),
@@ -106,7 +104,6 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
                       render={
                         <Link
                           {...item.link}
-                          data-testid={item.testId}
                           onClick={() => setOpenMobile(false)}
                         >
                           <item.icon />

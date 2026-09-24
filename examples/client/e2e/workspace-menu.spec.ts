@@ -19,7 +19,11 @@ test("refreshes the workspace menu after changes outside its Apollo cache", asyn
         .postData()
         ?.includes("getWorkspacesFromWorkspaceSwitcher") === true,
   );
-  await page.getByTestId("topbar-menu-trigger").click();
+  await page
+    .getByRole("button", {
+      name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+    })
+    .click();
   await menuResponse;
   await expect(page.getByRole("menuitemradio")).toHaveCount(0);
   await page.keyboard.press("Escape");
@@ -27,7 +31,11 @@ test("refreshes the workspace menu after changes outside its Apollo cache", asyn
 
   // An API request models another tab changing membership, without writing to Apollo.
   const workspace = await createWorkspaceByApi(page, `New workspace ${seed}`);
-  await page.getByTestId("topbar-menu-trigger").click();
+  await page
+    .getByRole("button", {
+      name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+    })
+    .click();
   await expect(
     page.getByRole("menuitemradio", { name: workspace.name, exact: true }),
   ).toBeVisible();
@@ -47,7 +55,11 @@ test("refreshes the workspace menu after changes outside its Apollo cache", asyn
         .postData()
         ?.includes("getWorkspacesFromWorkspaceSwitcher") === true,
   );
-  await page.getByTestId("topbar-menu-trigger").click();
+  await page
+    .getByRole("button", {
+      name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+    })
+    .click();
   await refreshedMenu;
   await expect(
     page.getByText("Loading workspaces…", { exact: true }),
@@ -91,7 +103,11 @@ test("retries menu requests and keeps pagination within the current opening", as
   });
   const pageErrors: Array<string> = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.getByTestId("topbar-menu-trigger").click();
+  await page
+    .getByRole("button", {
+      name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+    })
+    .click();
   await page
     .getByRole("menuitem", { name: "Retry loading workspaces", exact: true })
     .click();
@@ -111,7 +127,11 @@ test("retries menu requests and keeps pagination within the current opening", as
   ).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
-  await page.getByTestId("topbar-menu-trigger").click();
+  await page
+    .getByRole("button", {
+      name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+    })
+    .click();
   await expect(page.getByRole("menuitemradio")).toHaveCount(10);
   await expect(
     page.getByRole("menuitem", { name: "Load more", exact: true }),
@@ -157,7 +177,11 @@ test("ignores a late page from a closed workspace menu", async ({ page }) => {
   const pageErrors: Array<string> = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   try {
-    await page.getByTestId("topbar-menu-trigger").click();
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
     await expect(
       page.getByRole("menuitemradio", { name: "Old workspace", exact: true }),
     ).toBeVisible();
@@ -167,7 +191,11 @@ test("ignores a late page from a closed workspace menu", async ({ page }) => {
     await requestStarted;
     await page.keyboard.press("Escape");
     await expect(page.getByRole("menu")).toHaveCount(0);
-    await page.getByTestId("topbar-menu-trigger").click();
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
     await expect(
       page.getByRole("menuitemradio", {
         name: "Current workspace",

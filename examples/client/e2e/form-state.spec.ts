@@ -26,9 +26,11 @@ test("validates login fields and retries unchanged values after a server failure
     });
   });
   await page.goto("/auth/login");
-  const submit = page.getByTestId("auth-submit");
-  const email = page.getByTestId("auth-email-input");
-  const password = page.getByTestId("auth-password-input");
+  const submit = page.getByRole("button", {
+    name: /^(Loading )?(Sign in|Create account)$/,
+  });
+  const email = page.getByLabel("Email", { exact: true });
+  const password = page.getByLabel("Password", { exact: true });
   await submit.click();
   await expect(email).toHaveAttribute("aria-invalid", "true");
   await expect(password).toHaveAttribute("aria-invalid", "true");
@@ -69,8 +71,8 @@ test("validates matching passwords before submitting a reset and recovers from r
     });
   });
   await page.goto("/auth/reset-password?token=form-regression-token");
-  await page.getByTestId("reset-password-new").fill(testPassword);
-  const confirm = page.getByTestId("reset-password-confirm");
+  await page.getByLabel("New password", { exact: true }).fill(testPassword);
+  const confirm = page.getByLabel("Confirm new password", { exact: true });
   await confirm.fill("a-different-password");
   await confirm.press("Enter");
   await expect(confirm).toHaveAttribute("aria-invalid", "true");
@@ -83,7 +85,9 @@ test("validates matching passwords before submitting a reset and recovers from r
     page.locator("form").getByText("Temporary password reset failure"),
   ).toBeVisible();
   await expect(confirm).toHaveValue(testPassword);
-  await page.getByTestId("reset-password-submit").click();
+  await page
+    .getByRole("button", { name: "Reset password", exact: true })
+    .click();
   await expect(page.getByText("Your password has been reset")).toBeVisible();
   expect(attempts).toBe(2);
 });
@@ -97,7 +101,9 @@ test("submits administrator forms with Enter and preserves drafts in other cards
   await page.getByRole("link", { name: "Create user", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/users\/create$/);
   await page.reload();
-  const createPage = page.getByTestId("admin-create-user-page");
+  const createPage = page.locator('[data-slot="page"]').filter({
+    has: page.getByRole("heading", { name: "Create user", exact: true }),
+  });
   await expect(createPage).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   const breadcrumbs = createPage.getByRole("navigation", {
@@ -118,7 +124,7 @@ test("submits administrator forms with Enter and preserves drafts in other cards
       });
     return route.continue();
   });
-  await page.getByTestId("admin-create-user-submit").click();
+  await page.getByRole("button", { name: "Create user", exact: true }).click();
   await expect(
     createPage.getByText("Enter your name", { exact: true }),
   ).toBeVisible();
@@ -142,7 +148,7 @@ test("submits administrator forms with Enter and preserves drafts in other cards
         .postData()
         ?.includes("createUserFromCreateUserRoute") === true,
   );
-  await page.getByTestId("admin-create-user-submit").click();
+  await page.getByRole("button", { name: "Create user", exact: true }).click();
   const result = await (await created).json();
   expect(result.errors).toBeUndefined();
   const id = result.data.createUser.id;
@@ -151,7 +157,7 @@ test("submits administrator forms with Enter and preserves drafts in other cards
   expect(attempts).toBe(2);
 
   await page.goto(`/admin/users/${id}`);
-  const name = page.getByTestId("admin-user-name");
+  const name = page.getByLabel("Name", { exact: true });
   await expect(name).toHaveValue("Form target");
   await name.fill("Unsaved profile draft");
   await page.getByRole("checkbox", { name: "Admin", exact: true }).check();
@@ -160,9 +166,18 @@ test("submits administrator forms with Enter and preserves drafts in other cards
       response.request().postData()?.includes("setUserRolesFromUserRoute") ===
       true,
   );
-  await page.getByTestId("admin-user-roles-save").click();
+  await page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByText("Roles", { exact: true }) })
+    .getByRole("button", { name: "Save", exact: true })
+    .click();
   await rolesSaved;
-  await expect(page.getByTestId("admin-user-roles-save")).toBeEnabled();
+  await expect(
+    page
+      .locator('[data-slot="card"]')
+      .filter({ has: page.getByText("Roles", { exact: true }) })
+      .getByRole("button", { name: "Save", exact: true }),
+  ).toBeEnabled();
   await expect(name).toHaveValue("Unsaved profile draft");
   await expect(
     page.getByRole("heading", { name: "Form target", exact: true }),
@@ -187,9 +202,14 @@ test("cancels account deletion without losing input and retries after a failed p
     name: "Delete form user",
   });
   await page.goto("/user/security");
-  const card = page.getByTestId("user-delete-card");
+  const card = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByText("Delete account", { exact: true }) });
   const password = card.getByLabel("Current password");
-  const submit = page.getByTestId("user-delete-account");
+  const submit = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByText("Delete account", { exact: true }) })
+    .getByRole("button", { name: "Delete account", exact: true });
   await password.fill("incorrect-password");
   await password.press("Enter");
   await expect(page.getByRole("alertdialog")).toBeVisible();

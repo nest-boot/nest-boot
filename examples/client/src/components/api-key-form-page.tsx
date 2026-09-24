@@ -173,12 +173,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                     </AlertDescription>
                   </Alert>
                   <div className="bg-muted rounded-md p-4">
-                    <code
-                      className="text-sm break-all"
-                      data-testid="api-key-created-value"
-                    >
-                      {createdKey}
-                    </code>
+                    <code className="text-sm break-all">{createdKey}</code>
                   </div>
                 </div>
               </CardContent>
@@ -235,11 +230,6 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                           {(field) => (
                             <Input
                               id={`${formId}-name`}
-                              data-testid={
-                                apiKey
-                                  ? "api-key-rename-input"
-                                  : "api-key-name-input"
-                              }
                               label={t("api-key:form.name.label")}
                               placeholder={t("api-key:form.name.placeholder")}
                               value={field.state.value}
@@ -278,16 +268,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                 </CardContent>
                 {canWrite && (
                   <CardFooter>
-                    <Button
-                      type="submit"
-                      form={formId}
-                      data-testid={
-                        apiKey
-                          ? "api-key-rename-submit"
-                          : "api-key-create-submit"
-                      }
-                      loading={submitting}
-                    >
+                    <Button type="submit" form={formId} loading={submitting}>
                       {t(apiKey ? "action.save" : "action.create")}
                     </Button>
                   </CardFooter>

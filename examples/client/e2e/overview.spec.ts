@@ -86,7 +86,11 @@ test("admin overview is the menu destination and uses exact sidebar matching", a
       response.request().postData()?.includes("query getAdminOverview") ===
       true,
   );
-  await page.getByTestId("topbar-menu-trigger").click();
+  await page
+    .getByRole("button", {
+      name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+    })
+    .click();
   await page
     .getByRole("menuitem", { name: "Administration", exact: true })
     .click();
@@ -151,7 +155,11 @@ test("workspace overviews isolate counts when switching and respect read permiss
       "page",
     );
     await expect(page.locator('[data-slot="page-pagination"]')).toHaveCount(0);
-    await page.getByTestId("topbar-menu-trigger").click();
+    await page
+      .getByRole("button", {
+        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+      })
+      .click();
     await page
       .getByRole("menuitemradio", { name: second.name, exact: true })
       .click();

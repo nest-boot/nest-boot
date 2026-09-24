@@ -43,13 +43,10 @@ export function UserMenu() {
 
   return (
     <>
-      <TopbarMenuUser
-        data-testid="sidebar-user-account-link"
-        render={<Link to="/user/profile" />}
-      />
+      <TopbarMenuUser render={<Link to="/user/profile" />} />
       <TopbarMenuSeparator />
       <TopbarMenuSub>
-        <TopbarMenuSubTrigger data-testid="user-menu-language">
+        <TopbarMenuSubTrigger>
           <Languages />
           {t("thread-ui:topbarMenu.language")}
         </TopbarMenuSubTrigger>
@@ -72,7 +69,7 @@ export function UserMenu() {
         </TopbarMenuSubContent>
       </TopbarMenuSub>
       <TopbarMenuSub>
-        <TopbarMenuSubTrigger data-testid="user-menu-theme">
+        <TopbarMenuSubTrigger>
           <SunMoon />
           {t("thread-ui:topbarMenu.theme")}
         </TopbarMenuSubTrigger>
@@ -100,10 +97,7 @@ export function UserMenu() {
       {ability.can("read", "User") ? (
         <>
           <TopbarMenuSeparator />
-          <TopbarMenuItem
-            data-testid="sidebar-admin-link"
-            onClick={() => navigate({ to: "/admin" })}
-          >
+          <TopbarMenuItem onClick={() => navigate({ to: "/admin" })}>
             <ShieldCheck />
             {t("sidebar:admin.title")}
           </TopbarMenuItem>
@@ -111,7 +105,6 @@ export function UserMenu() {
       ) : null}
       <TopbarMenuSeparator />
       <TopbarMenuItem
-        data-testid="sidebar-user-sign-out"
         onClick={async () => {
           await signOut();
           await apolloClient.clearStore();

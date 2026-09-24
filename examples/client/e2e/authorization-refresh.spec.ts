@@ -65,34 +65,38 @@ for (const scope of ["user", "workspace"] as const) {
         : `/workspaces/${workspace.id}/settings`,
     );
     if (scope === "user") {
-      await page.getByTestId("topbar-menu-trigger").click();
-      await expect(page.getByTestId("sidebar-admin-link")).toBeVisible();
+      await page
+        .getByRole("button", {
+          name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+        })
+        .click();
+      await expect(
+        page.getByRole("menuitem", { name: "Administration", exact: true }),
+      ).toBeVisible();
       await page.keyboard.press("Escape");
     } else
-      await expect(page.getByTestId("workspace-settings-delete")).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Delete Workspace", exact: true }),
+      ).toBeVisible();
     expect(identityReads).toBe(scope === "user" ? 1 : 2);
     identityReads = 0;
-    await page
-      .getByTestId(
-        scope === "user"
-          ? "user-profile-name-input"
-          : "workspace-settings-name-input",
-      )
-      .fill("Updated profile");
-    await page
-      .getByTestId(
-        scope === "user" ? "user-profile-save" : "workspace-settings-save",
-      )
-      .click();
+    await page.getByLabel("Name", { exact: true }).fill("Updated profile");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect.poll(() => refreshedRoute).toBe(true);
     expect(identityReads).toBe(scope === "user" ? 1 : 2);
     if (scope === "user") {
-      await page.getByTestId("topbar-menu-trigger").click();
-      await expect(page.getByTestId("sidebar-admin-link")).toHaveCount(0);
+      await page
+        .getByRole("button", {
+          name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+        })
+        .click();
+      await expect(
+        page.getByRole("menuitem", { name: "Administration", exact: true }),
+      ).toHaveCount(0);
     } else
-      await expect(page.getByTestId("workspace-settings-delete")).toHaveCount(
-        0,
-      );
+      await expect(
+        page.getByRole("button", { name: "Delete Workspace", exact: true }),
+      ).toHaveCount(0);
   });
 }
 
@@ -118,8 +122,12 @@ test("leaves stale impersonation UI after the server revokes a failed restore", 
   }
   await signInAsE2eAdministrator(page);
   await page.goto(`/admin/users/${targetId}`);
-  await page.getByTestId("admin-impersonate-user").click();
-  await expect(page.getByTestId("impersonation-banner")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Impersonate user", exact: true })
+    .click();
+  await expect(
+    page.getByText("You are impersonating another user.", { exact: true }),
+  ).toBeVisible();
   const errors: Array<string> = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.route("**/api/graphql", async (route) => {
@@ -143,8 +151,12 @@ test("leaves stale impersonation UI after the server revokes a failed restore", 
       },
     });
   });
-  await page.getByTestId("stop-impersonating").click();
+  await page
+    .getByRole("button", { name: "Return to administrator", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/auth\/login(?:\?.*)?$/);
-  await expect(page.getByTestId("impersonation-banner")).toHaveCount(0);
+  await expect(
+    page.getByText("You are impersonating another user.", { exact: true }),
+  ).toHaveCount(0);
   expect(errors).toEqual([]);
 });

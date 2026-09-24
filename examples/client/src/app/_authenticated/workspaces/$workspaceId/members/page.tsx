@@ -438,7 +438,6 @@ function MembersComponent() {
                         const member = row.original;
                         return (
                           <div
-                            data-testid={`member-row-${member.email ?? member.id}`}
                             className={cn(
                               "flex flex-col",
                               !canEditMember(member) &&
@@ -483,16 +482,7 @@ function MembersComponent() {
                         const color = status ? statusColorMap[status] : "green";
 
                         return (
-                          <Badge
-                            color={color}
-                            data-testid={
-                              status
-                                ? `member-status-${status.toLowerCase()}`
-                                : undefined
-                            }
-                          >
-                            {getStatusLabel(status)}
-                          </Badge>
+                          <Badge color={color}>{getStatusLabel(status)}</Badge>
                         );
                       },
                     },
@@ -574,16 +564,15 @@ function MembersComponent() {
         invitationPage.after ||
         invitationPage.before ? (
           <PageLayoutSection>
-            <Card data-testid="invitations">
+            <Card>
               <CardHeader>
                 <CardTitle>{t("member:invite.title")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <ul className="space-y-3">
                   {pendingInvitations.map((invitation) => (
-                    <div
+                    <li
                       className="flex flex-col gap-4 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
-                      data-testid={`invitation-${invitation.email}`}
                       key={invitation.id}
                     >
                       <div className="min-w-0">
@@ -618,34 +607,34 @@ function MembersComponent() {
                           </Button>
                         ) : null}
                       </div>
-                    </div>
+                    </li>
                   ))}
-                  <div className="flex justify-center gap-2">
-                    <Button
-                      variant="outline"
-                      disabled={!invitationPageInfo?.hasPreviousPage}
-                      onClick={() =>
-                        setInvitationPage({
-                          last: 20,
-                          before: invitationPageInfo?.startCursor ?? undefined,
-                        })
-                      }
-                    >
-                      {t("thread-ui:dataTable.previousPage")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={!invitationPageInfo?.hasNextPage}
-                      onClick={() =>
-                        setInvitationPage({
-                          first: 20,
-                          after: invitationPageInfo?.endCursor ?? undefined,
-                        })
-                      }
-                    >
-                      {t("thread-ui:dataTable.nextPage")}
-                    </Button>
-                  </div>
+                </ul>
+                <div className="mt-3 flex justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={!invitationPageInfo?.hasPreviousPage}
+                    onClick={() =>
+                      setInvitationPage({
+                        last: 20,
+                        before: invitationPageInfo?.startCursor ?? undefined,
+                      })
+                    }
+                  >
+                    {t("thread-ui:dataTable.previousPage")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={!invitationPageInfo?.hasNextPage}
+                    onClick={() =>
+                      setInvitationPage({
+                        first: 20,
+                        after: invitationPageInfo?.endCursor ?? undefined,
+                      })
+                    }
+                  >
+                    {t("thread-ui:dataTable.nextPage")}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

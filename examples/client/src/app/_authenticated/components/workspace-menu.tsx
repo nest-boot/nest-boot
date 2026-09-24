@@ -119,7 +119,6 @@ export function WorkspaceMenu({
               <Link
                 to="/workspaces/$workspaceId"
                 params={{ workspaceId: workspace.id }}
-                data-testid={`workspace-switcher-workspace-${workspace.id}`}
               />
             }
           />
@@ -141,7 +140,6 @@ export function WorkspaceMenu({
       {connection?.pageInfo.hasNextPage ? (
         <TopbarMenuItem
           disabled={loadingMore}
-          data-testid="workspace-switcher-load-more"
           closeOnClick={false}
           onClick={() => void handleLoadMore()}
         >
@@ -150,10 +148,7 @@ export function WorkspaceMenu({
         </TopbarMenuItem>
       ) : null}
       <TopbarMenuSeparator />
-      <TopbarMenuItem
-        render={<Link to="/user/workspaces" />}
-        data-testid="workspace-switcher-manage"
-      >
+      <TopbarMenuItem render={<Link to="/user/workspaces" />}>
         <Boxes />
         {t("sidebar:switcher.manageWorkspaces")}
       </TopbarMenuItem>

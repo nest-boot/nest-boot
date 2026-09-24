@@ -45,11 +45,7 @@ export const AdminSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   render={
-                    <Link
-                      {...usersLink}
-                      data-testid="admin-sidebar-users-link"
-                      onClick={() => setOpenMobile(false)}
-                    >
+                    <Link {...usersLink} onClick={() => setOpenMobile(false)}>
                       <UsersRound />
                       <span>{t("sidebar:admin.users")}</span>
                     </Link>

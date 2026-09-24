@@ -101,9 +101,9 @@ test("administrator users restore create searches and navigate filtered details 
     `/admin/users/${c.id}`,
   );
   await expect(page.locator('[data-slot="page-pagination"]')).toBeVisible();
-  await page.getByTestId("admin-user-name").fill("Unsaved draft");
+  await page.getByLabel("Name", { exact: true }).fill("Unsaved draft");
   await page.getByLabel("Next item", { exact: true }).click();
-  await expect(page.getByTestId("admin-user-name")).toHaveValue(c.name);
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(c.name);
   await expect(page.getByLabel("Next item", { exact: true })).toBeDisabled();
   await expect(
     page.getByLabel("Previous item", { exact: true }),
@@ -179,11 +179,17 @@ test("member navigation and invitation return searches stay isolated by workspac
   const secondSearch = readSearch(page);
   await page.goto(`${secondList}/invite`);
   await page
-    .getByTestId("workspace-invite-email-input")
+    .getByLabel("Email", { exact: true })
     .fill(`${seed}-invited@example.com`);
   await page.getByRole("checkbox", { name: "Member", exact: true }).check();
-  await page.getByTestId("workspace-invite-confirm").click();
-  await expect(page.getByTestId("workspace-invite-result")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Confirm and Copy Link", exact: true })
+    .click();
+  await expect(
+    page.locator('[data-slot="card"]').filter({
+      has: page.getByText("Invite Link Generated", { exact: true }),
+    }),
+  ).toBeVisible();
   await page
     .getByRole("navigation", { name: "Breadcrumbs" })
     .getByRole("link", { name: "Members", exact: true })
@@ -240,7 +246,9 @@ test("workspace overview and settings use browser history to restore list search
     page.getByRole("link", { name: "Profile", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByTestId("user-sidebar-workspaces-link"),
+    page
+      .locator('[data-slot="sidebar"]')
+      .getByRole("link", { name: "Workspaces", exact: true }),
   ).toHaveAttribute("data-active", "true");
   await expect(
     page.getByRole("heading", { name: "Create Workspace", exact: true }),
@@ -253,8 +261,12 @@ test("workspace overview and settings use browser history to restore list search
       .getByRole("navigation", { name: "Breadcrumbs" })
       .getByRole("link", { name: "Workspaces", exact: true }),
   ).toBeVisible();
-  await page.getByTestId("topbar-menu-trigger").click();
-  await page.getByTestId("user-menu-language").click();
+  await page
+    .getByRole("button", {
+      name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+    })
+    .click();
+  await page.getByRole("menuitem", { name: /^(Language|语言)$/ }).click();
   await page
     .getByRole("menuitemradio", { name: "简体中文", exact: true })
     .click();
@@ -275,8 +287,12 @@ test("workspace overview and settings use browser history to restore list search
       .getByRole("navigation", { name: "面包屑导航" })
       .getByRole("link", { name: "工作空间", exact: true }),
   ).toBeVisible();
-  await page.getByTestId("topbar-menu-trigger").click();
-  await page.getByTestId("user-menu-language").click();
+  await page
+    .getByRole("button", {
+      name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
+    })
+    .click();
+  await page.getByRole("menuitem", { name: /^(Language|语言)$/ }).click();
   await page
     .getByRole("menuitemradio", { name: "English", exact: true })
     .click();
@@ -294,14 +310,10 @@ test("workspace overview and settings use browser history to restore list search
       neighborQueries++;
   });
   await page.getByRole("link", { name: "Settings", exact: true }).click();
-  await expect(page.getByTestId("workspace-settings-name-input")).toHaveValue(
-    b.name,
-  );
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(b.name);
   await expect(page.locator('[data-slot="page-pagination"]')).toHaveCount(0);
   await page.reload();
-  await expect(page.getByTestId("workspace-settings-name-input")).toHaveValue(
-    b.name,
-  );
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(b.name);
   await expect(
     page.getByRole("navigation", { name: "Breadcrumbs" }),
   ).toHaveCount(0);

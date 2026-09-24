@@ -142,14 +142,13 @@ function UserComponent() {
   return (
     <Page
       variant="compact"
-      data-testid="user-profile-page"
       title={t("user:profile.title")}
       description={t("user:profile.description")}
     >
       <PageLayout>
         {emailChangeCompleted && !search.error && (
           <PageLayoutSection>
-            <Alert data-testid="user-email-changed-alert">
+            <Alert>
               <MailCheck />
               <AlertTitle>{t("user:email.changed.title")}</AlertTitle>
               <AlertDescription>
@@ -161,7 +160,7 @@ function UserComponent() {
 
         {emailChangeConfirmed && (
           <PageLayoutSection>
-            <Alert data-testid="user-email-confirmed-alert">
+            <Alert>
               <MailCheck />
               <AlertTitle>{t("user:email.confirmed.title")}</AlertTitle>
               <AlertDescription>
@@ -175,7 +174,7 @@ function UserComponent() {
 
         {search.error && (
           <PageLayoutSection>
-            <Alert variant="destructive" data-testid="user-email-error-alert">
+            <Alert variant="destructive">
               <CircleX />
               <AlertTitle>{t("user:email.error.title")}</AlertTitle>
               <AlertDescription>
@@ -216,7 +215,6 @@ function UserComponent() {
                       {(field) => (
                         <Input
                           id="name"
-                          data-testid="user-profile-name-input"
                           label={t("user:profile.form.name.label")}
                           value={field.state.value}
                           onBlur={field.handleBlur}
@@ -245,7 +243,6 @@ function UserComponent() {
                   <Button
                     type="submit"
                     form="user-profile-form"
-                    data-testid="user-profile-save"
                     disabled={!isDirty || !canSubmit}
                     loading={isSubmitting}
                   >
@@ -278,7 +275,6 @@ function UserComponent() {
                   <FormLayoutItem>
                     <Input
                       id="current-email"
-                      data-testid="user-current-email"
                       label={t("user:email.form.current_email")}
                       value={currentUser.email}
                       disabled
@@ -297,7 +293,6 @@ function UserComponent() {
                       {(field) => (
                         <Input
                           id="new-email"
-                          data-testid="user-new-email-input"
                           type="email"
                           autoComplete="email"
                           label={t("user:email.form.new_email")}
@@ -328,7 +323,6 @@ function UserComponent() {
                   <Button
                     type="submit"
                     form="user-email-form"
-                    data-testid="user-change-email-submit"
                     disabled={!isDirty || !canSubmit}
                     loading={isSubmitting}
                   >

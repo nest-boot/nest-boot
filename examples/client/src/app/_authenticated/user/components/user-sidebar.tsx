@@ -29,7 +29,6 @@ type SidebarItem = {
   title: string;
   icon: ComponentType<{ className?: string }>;
   link: LinkProps;
-  testId?: string;
   visible?: boolean;
 };
 
@@ -47,26 +46,22 @@ export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
       title: t("sidebar:user.account"),
       icon: CircleUserRound,
       link: linkOptions({ to: "/user/profile" }),
-      testId: "user-sidebar-account-link",
     },
     {
       title: t("sidebar:user.api_keys"),
       icon: KeyRound,
       link: linkOptions({ to: "/user/api-keys" }),
-      testId: "user-sidebar-api-keys-link",
       visible: ability.can("read", "UserApiKey"),
     },
     {
       title: t("sidebar:user.security"),
       icon: LockKeyhole,
       link: linkOptions({ to: "/user/security" }),
-      testId: "user-sidebar-security-link",
     },
     {
       title: t("sidebar:user.workspaces"),
       icon: Boxes,
       link: linkOptions({ to: "/user/workspaces" }),
-      testId: "user-sidebar-workspaces-link",
     },
   ];
 
@@ -85,7 +80,6 @@ export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
                       render={
                         <Link
                           {...item.link}
-                          data-testid={item.testId}
                           onClick={() => setOpenMobile(false)}
                         >
                           <item.icon />

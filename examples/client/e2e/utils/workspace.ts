@@ -3,13 +3,15 @@ import { graphqlRequest } from "./graphql";
 import type { Page } from "@playwright/test";
 
 export async function createFirstWorkspace(page: Page, name: string) {
-  await expect(page.getByTestId("user-workspaces-page")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Workspaces", exact: true }),
+  ).toBeVisible();
   await page
     .getByRole("link", { name: "Create workspace", exact: true })
     .click();
   await expect(page).toHaveURL(/\/user\/workspaces\/create$/);
-  await page.getByTestId("workspace-create-name-input").fill(name);
-  await page.getByTestId("workspace-create-submit").click();
+  await page.getByLabel("Name", { exact: true }).fill(name);
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/workspaces\/\d+$/);
 
   return currentWorkspaceId(page);

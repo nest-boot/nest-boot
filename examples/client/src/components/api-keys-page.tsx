@@ -213,7 +213,6 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
                         to={detailPath(apiKey.id)}
                         onClick={(event) => event.stopPropagation()}
                         className="font-medium"
-                        data-testid={`api-key-row-${apiKey.id}`}
                       >
                         {apiKey.name}
                       </Link>

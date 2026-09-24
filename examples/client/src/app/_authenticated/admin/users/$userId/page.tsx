@@ -513,7 +513,6 @@ function AdminUserDetails() {
   return (
     <Page
       variant="compact"
-      data-testid="admin-user-page"
       title={user.name}
       description={user.email}
       breadcrumbActions={[
@@ -543,7 +542,6 @@ function AdminUserDetails() {
               {
                 label: t("admin:impersonation.start"),
                 loading: impersonating,
-                "data-testid": "admin-impersonate-user",
                 onAction: async () => {
                   try {
                     await impersonateUser({ variables: { id: user.id } });
@@ -590,7 +588,6 @@ function AdminUserDetails() {
                       {(field) => (
                         <Input
                           label={t("admin:users.table.name")}
-                          data-testid="admin-user-name"
                           disabled={!canUpdate}
                           value={field.state.value}
                           onChange={(event) =>
@@ -607,7 +604,6 @@ function AdminUserDetails() {
                         <Input
                           type="email"
                           label={t("admin:users.table.email")}
-                          data-testid="admin-user-email"
                           disabled={!canSetEmail}
                           value={field.state.value}
                           onChange={(event) =>
@@ -655,7 +651,6 @@ function AdminUserDetails() {
             <CardFooter>
               <Button
                 loading={updating}
-                data-testid="admin-user-profile-save"
                 disabled={!canUpdate}
                 type="submit"
                 form="admin-user-profile-form"
@@ -721,7 +716,6 @@ function AdminUserDetails() {
             </CardContent>
             <CardFooter>
               <Button
-                data-testid="admin-user-roles-save"
                 disabled={!canSetRoles || !canGrantRoles(roles)}
                 loading={savingRole}
                 type="submit"
@@ -790,7 +784,6 @@ function AdminUserDetails() {
             <CardFooter>
               <Button
                 loading={savingPermissions}
-                data-testid="admin-user-permissions-save"
                 disabled={
                   !canSetPermissions || !canGrantPermissions(permissions)
                 }
@@ -830,7 +823,6 @@ function AdminUserDetails() {
                     <Button
                       size="sm"
                       variant="outline"
-                      data-testid={`admin-user-session-revoke-${session.id}`}
                       loading={revokingSessionId === session.id}
                       disabled={!canRevokeSessions}
                       onClick={async () => {
@@ -886,7 +878,6 @@ function AdminUserDetails() {
             <CardFooter>
               <Button
                 variant="outline"
-                data-testid="admin-user-sessions-revoke"
                 disabled={!canRevokeSessions || sessions.length === 0}
                 loading={revokingSessions}
                 onClick={() =>

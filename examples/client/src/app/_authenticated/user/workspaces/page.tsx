@@ -259,7 +259,6 @@ function UserWorkspacesComponent() {
 
   return (
     <Page
-      data-testid="user-workspaces-page"
       title={t("user:workspaces.title")}
       description={t("user:workspaces.description")}
       primaryAction={{
@@ -273,7 +272,7 @@ function UserWorkspacesComponent() {
         invitationPage.after ||
         invitationPage.before ? (
           <PageLayoutSection>
-            <Card data-testid="user-invitations">
+            <Card>
               <CardHeader>
                 <CardTitle>{t("user:workspaces.invitations.title")}</CardTitle>
                 <CardDescription>
@@ -288,10 +287,7 @@ function UserWorkspacesComponent() {
                       accessorKey: "workspace.name",
                       header: t("user:workspaces.invitations.table.workspace"),
                       cell: ({ row }) => (
-                        <span
-                          className="font-medium"
-                          data-testid={`user-invitation-${row.original.id}`}
-                        >
+                        <span className="font-medium">
                           {row.original.workspace.name}
                         </span>
                       ),
@@ -322,7 +318,6 @@ function UserWorkspacesComponent() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            data-testid={`user-invitation-reject-${row.original.id}`}
                             disabled={invitationActionPending}
                             loading={rejectingInvitationId === row.original.id}
                             onClick={() =>
@@ -335,7 +330,6 @@ function UserWorkspacesComponent() {
                           <Button
                             type="button"
                             size="sm"
-                            data-testid={`user-invitation-accept-${row.original.id}`}
                             disabled={invitationActionPending}
                             loading={acceptingInvitationId === row.original.id}
                             onClick={() =>
@@ -403,7 +397,6 @@ function UserWorkspacesComponent() {
                           params={{ workspaceId: row.original.id }}
                           onClick={(event) => event.stopPropagation()}
                           className="font-medium"
-                          data-testid={`user-workspace-row-${row.original.id}`}
                         >
                           {row.original.name}
                         </Link>

@@ -20,7 +20,7 @@ test("validates and retries invitations on their own page with recoverable copy 
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(path);
-  await page.getByTestId("workspace-invite-email-input").fill(email);
+  await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByRole("checkbox", { name: "Member", exact: true }).check();
   await page
     .getByRole("navigation", { name: "Breadcrumbs" })
@@ -31,9 +31,7 @@ test("validates and retries invitations on their own page with recoverable copy 
   ).toBeVisible();
   await page.goto(path);
   await page.reload();
-  await expect(page.getByTestId("workspace-invite-email-input")).toHaveValue(
-    "",
-  );
+  await expect(page.getByLabel("Email", { exact: true })).toHaveValue("");
   await expect(
     page.getByRole("checkbox", { name: "Member", exact: true }),
   ).not.toBeChecked();
@@ -60,24 +58,25 @@ test("validates and retries invitations on their own page with recoverable copy 
       });
     return route.continue();
   });
-  await page.getByTestId("workspace-invite-email-input").fill("invalid-email");
-  await page.getByTestId("workspace-invite-confirm").click();
+  await page.getByLabel("Email", { exact: true }).fill("invalid-email");
+  await page
+    .getByRole("button", { name: "Confirm and Copy Link", exact: true })
+    .click();
   await expect(
     page.getByText("Select at least one role.", { exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByTestId("workspace-invite-email-input"),
-  ).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByLabel("Email", { exact: true })).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
   expect(attempts).toBe(0);
-  await page.getByTestId("workspace-invite-email-input").fill(email);
+  await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByRole("checkbox", { name: "Member", exact: true }).check();
-  await page.getByTestId("workspace-invite-email-input").press("Enter");
+  await page.getByLabel("Email", { exact: true }).press("Enter");
   await expect(
     page.getByText("Temporary invitation failure", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByTestId("workspace-invite-email-input")).toHaveValue(
-    email,
-  );
+  await expect(page.getByLabel("Email", { exact: true })).toHaveValue(email);
   await expect(
     page.getByRole("checkbox", { name: "Member", exact: true }),
   ).toBeChecked();
@@ -87,11 +86,17 @@ test("validates and retries invitations on their own page with recoverable copy 
       value: () => Promise.reject(new Error("Clipboard unavailable")),
     });
   });
-  await page.getByTestId("workspace-invite-confirm").click();
-  const result = page.getByTestId("workspace-invite-result");
+  await page
+    .getByRole("button", { name: "Confirm and Copy Link", exact: true })
+    .click();
+  const result = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByText("Invite Link Generated", { exact: true }) });
   await expect(result).toBeVisible();
-  await expect(page.getByTestId("workspace-invite-confirm")).toHaveCount(0);
-  const link = await result.getByTestId("workspace-invite-link").textContent();
+  await expect(
+    page.getByRole("button", { name: "Confirm and Copy Link", exact: true }),
+  ).toHaveCount(0);
+  const link = await result.getByRole("code").textContent();
   expect(link).toContain("/invite?invitationId=");
   expect(attempts).toBe(2);
   await expect(
@@ -105,7 +110,9 @@ test("validates and retries invitations on their own page with recoverable copy 
   await page.evaluate(() =>
     Reflect.deleteProperty(navigator.clipboard, "writeText"),
   );
-  await page.getByTestId("workspace-invite-copy").click();
+  await page
+    .getByRole("button", { name: "Copy Invite Link", exact: true })
+    .click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
   await page
     .getByRole("navigation", { name: "Breadcrumbs" })
@@ -114,18 +121,24 @@ test("validates and retries invitations on their own page with recoverable copy 
   await expect(page).toHaveURL(
     new RegExp(`/workspaces/${workspaceId}/members(?:\\?.*)?$`),
   );
-  await expect(page.getByTestId(`invitation-${email}`)).toBeVisible();
+  await expect(
+    page
+      .getByRole("listitem")
+      .filter({ has: page.getByText(email, { exact: true }) }),
+  ).toBeVisible();
   await page.unrouteAll({ behavior: "wait" });
 
   // Another workspace must not inherit the completed invitation or its draft.
   await page.goto(`/workspaces/${otherWorkspace.id}/members/invite`);
-  await expect(page.getByTestId("workspace-invite-email-input")).toHaveValue(
-    "",
-  );
-  await expect(page.getByTestId("workspace-invite-link")).toHaveCount(0);
+  await expect(page.getByLabel("Email", { exact: true })).toHaveValue("");
+  await expect(page.getByRole("code")).toHaveCount(0);
   await page
     .getByRole("navigation", { name: "Breadcrumbs" })
     .getByRole("link", { name: "Members", exact: true })
     .click();
-  await expect(page.getByTestId(`invitation-${email}`)).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("listitem")
+      .filter({ has: page.getByText(email, { exact: true }) }),
+  ).toHaveCount(0);
 });

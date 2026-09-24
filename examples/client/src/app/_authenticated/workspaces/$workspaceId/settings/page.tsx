@@ -216,7 +216,6 @@ function SettingsComponent() {
                       {(field) => (
                         <Input
                           id="name"
-                          data-testid="workspace-settings-name-input"
                           label={t("workspace:settings.form.name.label")}
                           placeholder={t(
                             "workspace:settings.form.name.placeholder",
@@ -254,7 +253,6 @@ function SettingsComponent() {
                   <Button
                     type="submit"
                     form="workspace-settings-form"
-                    data-testid="workspace-settings-save"
                     disabled={!canUpdateWorkspace || !isDirty || !canSubmit}
                     loading={isSubmitting}
                   >
@@ -276,7 +274,6 @@ function SettingsComponent() {
             </CardHeader>
             <CardFooter>
               <Button
-                data-testid="workspace-leave"
                 variant="destructive"
                 loading={leaving}
                 onClick={handleLeaveWorkspace}
@@ -300,7 +297,6 @@ function SettingsComponent() {
               </CardHeader>
               <CardFooter>
                 <Button
-                  data-testid="workspace-settings-delete"
                   disabled={!canDeleteWorkspace}
                   variant="destructive"
                   loading={deleting}

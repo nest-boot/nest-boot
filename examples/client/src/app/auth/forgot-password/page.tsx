@@ -89,7 +89,7 @@ function ForgotPasswordComponent() {
 
   return (
     <AuthPageShell>
-      <Card data-testid="forgot-password-view">
+      <Card>
         <CardHeader className="text-center">
           <CardTitle>{t("auth:passwordReset.forgotTitle")}</CardTitle>
           <CardDescription>
@@ -121,7 +121,6 @@ function ForgotPasswordComponent() {
                     {(field) => (
                       <Input
                         id="forgot-password-email"
-                        data-testid="forgot-password-email"
                         type="email"
                         autoComplete="email"
                         label={t("auth:form.email.label")}
@@ -160,7 +159,6 @@ function ForgotPasswordComponent() {
                   type="submit"
                   form="forgot-password-form"
                   className="w-full"
-                  data-testid="forgot-password-submit"
                   loading={loading}
                 >
                   {t("auth:passwordReset.sendLink")}

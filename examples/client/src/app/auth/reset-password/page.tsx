@@ -91,7 +91,7 @@ function ResetPasswordComponent() {
 
   return (
     <AuthPageShell>
-      <Card data-testid="reset-password-view">
+      <Card>
         <CardHeader className="text-center">
           <CardTitle>{t("auth:passwordReset.resetTitle")}</CardTitle>
           <CardDescription>
@@ -129,7 +129,6 @@ function ResetPasswordComponent() {
                     {(field) => (
                       <Input
                         id="reset-password-new"
-                        data-testid="reset-password-new"
                         type="password"
                         autoComplete="new-password"
                         label={t("auth:passwordReset.newPassword")}
@@ -147,7 +146,6 @@ function ResetPasswordComponent() {
                     {(field) => (
                       <Input
                         id="reset-password-confirm"
-                        data-testid="reset-password-confirm"
                         type="password"
                         autoComplete="new-password"
                         label={t("auth:passwordReset.confirmPassword")}
@@ -190,7 +188,6 @@ function ResetPasswordComponent() {
               type="submit"
               form="reset-password-form"
               className="w-full"
-              data-testid="reset-password-submit"
               loading={loading}
             >
               {t("auth:passwordReset.resetSubmit")}
