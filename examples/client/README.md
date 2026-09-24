@@ -108,6 +108,12 @@ row still opens Profile, and the administrator menu opens `/admin`.
 Top-level pages linked from the sidebar have no back action. Details, creation,
 and invitation pages retain their return-to-list breadcrumbs.
 
+Shared resource search schemas and their inferred types live in `src/schemas`,
+alongside the DataFilter schema builders and their tests. `lib/connection-search.ts`
+provides the common pagination schema factory and previous/next search helpers.
+Resource key constants and factories live in `lib/resource-keys.ts`; callers add
+their user scope. GraphQL variable conversion uses `lib/connection-query-variables.ts`.
+
 API keys, administrator users, members, and workspaces share
 `useResourceNavigation({ key, searchSchema, search?, query? })` for list state and
 optional adjacent-record navigation:

@@ -11,7 +11,7 @@ import type {
   UserApiKey,
   UserApiKeyPermission,
 } from "@/gql/graphql";
-import type { ApiKeySearch } from "@/lib/api-key-search";
+import type { ApiKeySearch } from "@/schemas/api-key-search";
 import type { PageInfo } from "@/lib/connection-search";
 import type { createAbility } from "@/lib/ability";
 import { toast } from "@/components/thread-ui/toast";

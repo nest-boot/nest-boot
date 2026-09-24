@@ -19,7 +19,8 @@ import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-naviga
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { RecordNavigation } from "@/components/record-navigation";
-import { getMembersResourceKey, memberSearchSchema } from "@/lib/member-search";
+import { getMembersResourceKey } from "@/lib/resource-keys";
+import { memberSearchSchema } from "@/schemas/member-search";
 import { createConnectionCursor } from "@/lib/connection-cursor";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { GET_MEMBER_NEIGHBORS } from "@/lib/record-navigation-operations";

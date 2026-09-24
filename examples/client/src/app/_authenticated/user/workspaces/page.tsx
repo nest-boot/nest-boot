@@ -14,10 +14,8 @@ import { isEmpty } from "lodash";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
-import {
-  workspaceSearchSchema,
-  workspacesResourceKey,
-} from "@/lib/workspace-search";
+import { workspaceSearchSchema } from "@/schemas/workspace-search";
+import { workspacesResourceKey } from "@/lib/resource-keys";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { toast } from "@/components/thread-ui/toast";

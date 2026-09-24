@@ -7,7 +7,8 @@ import { useTranslation } from "react-i18next";
 import { Check, Copy } from "lucide-react";
 import z from "zod";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
-import { getMembersResourceKey, memberSearchSchema } from "@/lib/member-search";
+import { getMembersResourceKey } from "@/lib/resource-keys";
+import { memberSearchSchema } from "@/schemas/member-search";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";

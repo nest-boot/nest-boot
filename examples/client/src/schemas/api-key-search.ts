@@ -7,11 +7,7 @@ import {
 import {
   createDataFilterInputSearchSchema,
   dataFilterDateSearchSchema,
-} from "@/lib/data-filter-search-schema";
-import {
-  formatConnectionFilterValue,
-  formatFilterValues,
-} from "@/lib/format-filter-values";
+} from "@/schemas/data-filter-search";
 
 export const apiKeySearchSchema = createConnectionSearchSchema({
   filterSchema: z
@@ -31,22 +27,3 @@ export const apiKeySearchSchema = createConnectionSearchSchema({
   defaultOrderDirection: OrderDirection.DESC,
 });
 export type ApiKeySearch = z.infer<typeof apiKeySearchSchema>;
-
-export const userApiKeysResourceKey = ["user", "api-keys"] as const;
-
-export const getWorkspaceApiKeysResourceKey = (workspaceId: string) =>
-  ["workspaces", workspaceId, "api-keys"] as const;
-
-/** Converts either API-key route's search state into connection variables. */
-export function createApiKeyQueryVariables(search: ApiKeySearch) {
-  const { query, filter, orderBy, ...pagination } = search;
-  return {
-    ...pagination,
-    query: query ?? "",
-    filter: formatFilterValues(
-      (filter ?? {}) as Record<string, unknown>,
-      formatConnectionFilterValue,
-    ),
-    orderBy,
-  };
-}

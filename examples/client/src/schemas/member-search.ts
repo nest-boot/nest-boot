@@ -8,7 +8,7 @@ import {
   createDataFilterInputSearchSchema,
   createDataFilterSelectSearchSchema,
   dataFilterDateSearchSchema,
-} from "@/lib/data-filter-search-schema";
+} from "@/schemas/data-filter-search";
 
 export const memberSearchSchema = createConnectionSearchSchema({
   filterSchema: z
@@ -33,5 +33,3 @@ export const memberSearchSchema = createConnectionSearchSchema({
   defaultOrderField: MemberOrderField.CREATED_AT,
   defaultOrderDirection: OrderDirection.DESC,
 });
-export const getMembersResourceKey = (workspaceId: string) =>
-  ["workspaces", workspaceId, "members"] as const;

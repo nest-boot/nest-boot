@@ -12,11 +12,9 @@ import {
   GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE,
   UPDATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
 } from "@/lib/api-key-operations";
-import {
-  apiKeySearchSchema,
-  createApiKeyQueryVariables,
-  userApiKeysResourceKey,
-} from "@/lib/api-key-search";
+import { apiKeySearchSchema } from "@/schemas/api-key-search";
+import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
+import { userApiKeysResourceKey } from "@/lib/resource-keys";
 
 export const Route = createFileRoute("/_authenticated/user/api-keys/")({
   component: ApiKeysComponent,
@@ -37,7 +35,7 @@ function ApiKeysComponent() {
     GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE,
     {
       fetchPolicy: "network-only",
-      variables: createApiKeyQueryVariables(search),
+      variables: createConnectionQueryVariables(search),
     },
   );
   const [updateApiKey, { loading: updateLoading }] = useMutation(

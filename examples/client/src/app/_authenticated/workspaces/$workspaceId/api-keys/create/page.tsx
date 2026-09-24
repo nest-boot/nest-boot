@@ -5,10 +5,8 @@ import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-use
 
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
-import {
-  apiKeySearchSchema,
-  getWorkspaceApiKeysResourceKey,
-} from "@/lib/api-key-search";
+import { apiKeySearchSchema } from "@/schemas/api-key-search";
+import { getWorkspaceApiKeysResourceKey } from "@/lib/resource-keys";
 import {
   CREATE_API_KEY_FROM_API_KEYS_ROUTE,
   GET_WORKSPACE_API_KEY_OPTIONS,

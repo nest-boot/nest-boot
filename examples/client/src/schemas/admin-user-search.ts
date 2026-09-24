@@ -7,7 +7,7 @@ import {
 import {
   createDataFilterInputSearchSchema,
   dataFilterDateSearchSchema,
-} from "@/lib/data-filter-search-schema";
+} from "@/schemas/data-filter-search";
 
 export const adminUserSearchSchema = createConnectionSearchSchema({
   filterSchema: z
@@ -22,4 +22,3 @@ export const adminUserSearchSchema = createConnectionSearchSchema({
   defaultOrderField: UserOrderField.CREATED_AT,
   defaultOrderDirection: OrderDirection.DESC,
 });
-export const adminUsersResourceKey = ["admin", "users"] as const;

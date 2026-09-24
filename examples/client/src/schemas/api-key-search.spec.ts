@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  apiKeySearchSchema,
-  createApiKeyQueryVariables,
-} from "./api-key-search";
-import { OrderDirection } from "./connection-search";
+import { apiKeySearchSchema } from "./api-key-search";
+import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
+import { OrderDirection } from "@/lib/connection-search";
 import { UserApiKeyOrderField } from "@/gql/graphql";
 
 describe("shared API-key search", () => {
   it("uses the same default pagination and ordering in both owner scopes", () => {
-    expect(createApiKeyQueryVariables(apiKeySearchSchema.parse({}))).toEqual({
+    expect(
+      createConnectionQueryVariables(apiKeySearchSchema.parse({})),
+    ).toEqual({
       first: 20,
       query: "",
       filter: {},
@@ -31,7 +31,7 @@ describe("shared API-key search", () => {
         direction: OrderDirection.ASC,
       },
     });
-    expect(createApiKeyQueryVariables(search)).toEqual({
+    expect(createConnectionQueryVariables(search)).toEqual({
       last: 5,
       before: "cursor",
       query: "automation",

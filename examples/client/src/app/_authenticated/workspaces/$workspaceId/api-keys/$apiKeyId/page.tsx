@@ -16,11 +16,9 @@ import {
   GET_WORKSPACE_API_KEY_NEIGHBORS,
   UPDATE_API_KEY_FROM_API_KEYS_ROUTE,
 } from "@/lib/api-key-operations";
-import {
-  apiKeySearchSchema,
-  createApiKeyQueryVariables,
-  getWorkspaceApiKeysResourceKey,
-} from "@/lib/api-key-search";
+import { apiKeySearchSchema } from "@/schemas/api-key-search";
+import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
+import { getWorkspaceApiKeysResourceKey } from "@/lib/resource-keys";
 import {
   getPermissionOptions,
   workspaceApiKeyPermissionValues,
@@ -82,7 +80,8 @@ function ApiKeyDetailsPage() {
       async ({
         search,
       }: ResourceNavigationQueryOptions<typeof apiKeySearchSchema>) => {
-        const { query, filter, orderBy } = createApiKeyQueryVariables(search);
+        const { query, filter, orderBy } =
+          createConnectionQueryVariables(search);
         const cursor = createConnectionCursor(apiKey, search);
         const { data } = await loadNeighbors({
           variables: {

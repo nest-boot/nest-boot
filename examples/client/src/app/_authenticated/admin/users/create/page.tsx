@@ -6,10 +6,8 @@ import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
-import {
-  adminUserSearchSchema,
-  adminUsersResourceKey,
-} from "@/lib/admin-user-search";
+import { adminUserSearchSchema } from "@/schemas/admin-user-search";
+import { adminUsersResourceKey } from "@/lib/resource-keys";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";

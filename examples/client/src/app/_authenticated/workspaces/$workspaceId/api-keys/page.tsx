@@ -12,11 +12,9 @@ import {
   GET_API_KEYS_FROM_API_KEYS_ROUTE,
   UPDATE_API_KEY_FROM_API_KEYS_ROUTE,
 } from "@/lib/api-key-operations";
-import {
-  apiKeySearchSchema,
-  createApiKeyQueryVariables,
-  getWorkspaceApiKeysResourceKey,
-} from "@/lib/api-key-search";
+import { apiKeySearchSchema } from "@/schemas/api-key-search";
+import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
+import { getWorkspaceApiKeysResourceKey } from "@/lib/resource-keys";
 
 export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/api-keys/",
@@ -43,7 +41,7 @@ function ApiKeysComponent() {
   });
   const { data, refetch } = useQuery(GET_API_KEYS_FROM_API_KEYS_ROUTE, {
     fetchPolicy: "network-only",
-    variables: createApiKeyQueryVariables(search),
+    variables: createConnectionQueryVariables(search),
   });
   const [updateApiKey, { loading: updateLoading }] = useMutation(
     UPDATE_API_KEY_FROM_API_KEYS_ROUTE,

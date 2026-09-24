@@ -5,7 +5,7 @@ import {
   createDataFilterInputSearchSchema,
   createDataFilterSelectSearchSchema,
   dataFilterDateSearchSchema,
-} from "./data-filter-search-schema";
+} from "./data-filter-search";
 
 describe("data filter search schemas", () => {
   it("accepts null equality conditions used by empty input filters", () => {

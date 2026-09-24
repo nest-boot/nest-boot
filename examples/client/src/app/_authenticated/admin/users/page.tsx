@@ -10,10 +10,8 @@ import { isEmpty } from "lodash";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
-import {
-  adminUserSearchSchema,
-  adminUsersResourceKey,
-} from "@/lib/admin-user-search";
+import { adminUserSearchSchema } from "@/schemas/admin-user-search";
+import { adminUsersResourceKey } from "@/lib/resource-keys";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { Link } from "@/components/link";

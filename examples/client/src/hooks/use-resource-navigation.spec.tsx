@@ -9,7 +9,7 @@ import type {
   ResourceNavigationQueryOptions,
   ResourceNavigationQueryResult,
 } from "./use-resource-navigation";
-import { apiKeySearchSchema } from "@/lib/api-key-search";
+import { apiKeySearchSchema } from "@/schemas/api-key-search";
 import { createConnectionCursor } from "@/lib/connection-cursor";
 import { UserApiKeyOrderField } from "@/gql/graphql";
 import {

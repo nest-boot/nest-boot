@@ -16,11 +16,9 @@ import {
   GET_USER_API_KEY_NEIGHBORS,
   UPDATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
 } from "@/lib/api-key-operations";
-import {
-  apiKeySearchSchema,
-  createApiKeyQueryVariables,
-  userApiKeysResourceKey,
-} from "@/lib/api-key-search";
+import { apiKeySearchSchema } from "@/schemas/api-key-search";
+import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
+import { userApiKeysResourceKey } from "@/lib/resource-keys";
 import { authPermissionValues, getPermissionOptions } from "@/lib/permissions";
 import { isAccessDenied } from "@/lib/auth-errors";
 
@@ -72,7 +70,8 @@ function ApiKeyDetailsPage() {
       async ({
         search,
       }: ResourceNavigationQueryOptions<typeof apiKeySearchSchema>) => {
-        const { query, filter, orderBy } = createApiKeyQueryVariables(search);
+        const { query, filter, orderBy } =
+          createConnectionQueryVariables(search);
         const cursor = createConnectionCursor(apiKey, search);
         const { data } = await loadNeighbors({
           variables: {
