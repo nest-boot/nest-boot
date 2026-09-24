@@ -94,7 +94,7 @@ test.describe("user pages", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "zh");
   });
 
-  test("navigates with the mobile drawer, account menu, and page breadcrumbs", async ({
+  test("navigates top-level pages with the mobile drawer, account menu, and browser history", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 500 });
@@ -146,9 +146,13 @@ test.describe("user pages", () => {
 
     await navigation.click();
     await page.getByTestId("user-sidebar-security-link").click();
+    await expect(
+      page.getByRole("navigation", { name: "Breadcrumbs" }),
+    ).toHaveCount(0);
+    await navigation.click();
     await page
-      .getByRole("navigation", { name: "Breadcrumbs" })
-      .getByRole("link")
+      .getByRole("dialog")
+      .getByRole("link", { name: "Overview", exact: true })
       .click();
     await expect(page).toHaveURL(/\/user$/);
     await expect(

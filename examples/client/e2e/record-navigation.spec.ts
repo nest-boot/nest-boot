@@ -195,7 +195,7 @@ test("member navigation and invitation return searches stay isolated by workspac
   expect(readSearch(page)).toEqual(anchoredSearch);
 });
 
-test("workspace overview and settings preserve list search without record pagination", async ({
+test("workspace overview and settings use browser history to restore list search without back actions or record pagination", async ({
   page,
 }) => {
   const seed = uniqueSeed("workspace-navigation");
@@ -247,7 +247,12 @@ test("workspace overview and settings preserve list search without record pagina
   await expect(page.getByTestId("workspace-settings-name-input")).toHaveValue(
     b.name,
   );
-  await page.getByRole("link", { name: "Workspaces", exact: true }).click();
+  await expect(
+    page.getByRole("navigation", { name: "Breadcrumbs" }),
+  ).toHaveCount(0);
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`/workspaces/${b.id}$`));
+  await page.goBack();
   await expect(page.getByRole("row").nth(1)).toContainText(b.name);
   expect(readSearch(page)).toEqual(original);
   expect(neighborQueries).toBe(0);

@@ -19,7 +19,6 @@ import {
 } from "@/lib/workspace-search";
 import { usePageSearch } from "@/hooks/use-page-search";
 import { DataFilter } from "@/components/thread-ui/data-filter";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import { toast } from "@/components/thread-ui/toast";
 
 import { Link } from "@/components/link";
@@ -269,7 +268,6 @@ function UserWorkspacesComponent() {
   return (
     <Page data-testid="user-workspaces-page">
       <PageHeader>
-        <Breadcrumbs />
         <PageTitle>{t("user:workspaces.title")}</PageTitle>
         <PageDescription>{t("user:workspaces.description")}</PageDescription>
         <PageActions>

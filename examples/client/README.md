@@ -102,6 +102,8 @@ Overview sidebar links use `activeOptions={{ exact: true }}`; resource links
 remain active on their detail routes. Workspace list rows, workspace switching,
 and successful workspace creation open the workspace Overview. The identity
 row still opens Profile, and the administrator menu opens `/admin`.
+Top-level pages linked from the sidebar have no back action. Details, creation,
+and invitation pages retain their return-to-list breadcrumbs.
 
 API keys, administrator users, and workspace members share two hooks for
 list/detail navigation. Their lists save search state, create/invite pages
@@ -170,9 +172,9 @@ Administrator users use `["admin", "users"]`, members use
 schema for its list, creation, and detail routes. List and neighbor requests
 use the same normalized query conditions. Member navigation explicitly sends
 the workspace header and checks the returned workspace ID. Workspace management
-uses `["user", "workspaces"]` with `usePageSearch` only: creation and settings
-preserve the saved list search when returning to `/user/workspaces`.
-The workspace Overview is a home page and has no back action.
+uses `["user", "workspaces"]` with `usePageSearch` only: creation return links
+and the redirects after leaving or deleting a workspace preserve the saved
+list search. Browser history restores the original list URL.
 Workspace settings has no previous/next actions or neighbor requests.
 Profile and security remain independent compact forms without record navigation.
 

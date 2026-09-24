@@ -13,7 +13,6 @@ import {
   workspaceSearchSchema,
   workspacesPageKey,
 } from "@/lib/workspace-search";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   PageLayout,
   PageLayoutSection,
@@ -194,15 +193,6 @@ function SettingsComponent() {
   return (
     <Page variant="compact">
       <PageHeader>
-        <Breadcrumbs
-          baseItems={[
-            {
-              title: t("user:workspaces.title"),
-              link: { to: "/user/workspaces" },
-            },
-          ]}
-          searchByPath={{ "/user/workspaces": backSearch }}
-        />
         <PageTitle>{t("workspace:title")}</PageTitle>
         <PageDescription>{t("workspace:settings.description")}</PageDescription>
       </PageHeader>

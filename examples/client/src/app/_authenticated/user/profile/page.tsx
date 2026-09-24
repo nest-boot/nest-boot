@@ -8,7 +8,6 @@ import { CircleX, MailCheck } from "lucide-react";
 import { z } from "zod";
 
 import { useCurrentUserContext } from "../../contexts/current-user-context";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   PageLayout,
   PageLayoutSection,
@@ -149,7 +148,6 @@ function UserComponent() {
   return (
     <Page variant="compact" data-testid="user-profile-page">
       <PageHeader>
-        <Breadcrumbs />
         <PageTitle>{t("user:profile.title")}</PageTitle>
         <PageDescription>{t("user:profile.description")}</PageDescription>
       </PageHeader>

@@ -15,7 +15,6 @@ import {
   FieldLabel,
   FieldSet,
 } from "@/components/ui/field";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   PageLayout,
   PageLayoutSection,
@@ -428,7 +427,6 @@ function UserSecurityComponent() {
   return (
     <Page variant="compact" data-testid="user-security-page">
       <PageHeader>
-        <Breadcrumbs />
         <PageTitle>{t("user:security.title")}</PageTitle>
         <PageDescription>{t("user:security.description")}</PageDescription>
       </PageHeader>

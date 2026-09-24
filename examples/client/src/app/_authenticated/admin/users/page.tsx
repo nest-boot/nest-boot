@@ -16,7 +16,6 @@ import {
 import { usePageSearch } from "@/hooks/use-page-search";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { Link } from "@/components/link";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useAbility } from "@/contexts/ability-context";
 
 import { createAbilitySubject } from "@/lib/ability";
@@ -133,7 +132,6 @@ function AdminUsersPage() {
   return (
     <Page data-testid="admin-users-page">
       <PageHeader>
-        <Breadcrumbs />
         <PageTitle>{t("admin:users.title")}</PageTitle>
         <PageDescription>{t("admin:users.description")}</PageDescription>
         {canCreate ? (

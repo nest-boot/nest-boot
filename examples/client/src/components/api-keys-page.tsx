@@ -14,7 +14,6 @@ import type {
 import type { ApiKeySearch } from "@/lib/api-key-search";
 import type { PageInfo } from "@/lib/connection-search";
 import type { createAbility } from "@/lib/ability";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import { toast } from "@/components/thread-ui/toast";
 import { createAbilitySubject } from "@/lib/ability";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
@@ -182,7 +181,6 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
   return (
     <Page>
       <PageHeader>
-        <Breadcrumbs />
         <PageTitle>{title}</PageTitle>
         <PageDescription>{description}</PageDescription>
         <PageActions>

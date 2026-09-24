@@ -17,7 +17,6 @@ import { createConnectionQueryVariables } from "@/lib/connection-query-variables
 import { getMembersPageKey, memberSearchSchema } from "@/lib/member-search";
 import { usePageSearch } from "@/hooks/use-page-search";
 import { Link } from "@/components/link";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
 import { Button } from "@/components/thread-ui/button";
@@ -396,7 +395,6 @@ function MembersComponent() {
   return (
     <Page>
       <PageHeader>
-        <Breadcrumbs />
         <PageTitle>{t("member:title")}</PageTitle>
         <PageDescription>{t("member:description")}</PageDescription>
         {canCreateInvitation ? (
