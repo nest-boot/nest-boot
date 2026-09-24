@@ -1,3 +1,13 @@
+## 8.0.2-beta.1 (2026-09-24)
+
+### 🚀 Features
+
+- refresh example client and normalize date filters ([#375](https://github.com/nest-boot/nest-boot/pull/375))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.2-beta.0 (2026-09-23)
 
 ### 🧱 Updated Dependencies
