@@ -304,7 +304,9 @@ test("restores the exact list search from create/cancel and create/success, with
     .getByRole("navigation", { name: "Breadcrumbs" })
     .getByRole("link", { name: "API Keys", exact: true })
     .click();
-  await expect(page.getByTestId("api-keys-page")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "API Keys", exact: true }),
+  ).toBeVisible();
   expect(readSearch(page).query).toBeNull();
 });
 

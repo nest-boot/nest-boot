@@ -15,7 +15,7 @@ import {
 } from "@/components/thread-ui/page-layout";
 
 import { Input } from "@/components/thread-ui/input";
-import { FieldGroup, FieldSet } from "@/components/ui/field";
+import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { graphql } from "@/gql";
 
@@ -95,28 +95,26 @@ function CreateWorkspaceComponent() {
                   form.handleSubmit();
                 }}
               >
-                <FieldGroup>
-                  <FieldSet>
-                    <FieldGroup>
-                      <form.Field name="name">
-                        {(field) => (
-                          <Input
-                            id="name"
-                            data-testid="workspace-create-name-input"
-                            label={t("workspace:create.form.name.label")}
-                            placeholder={t(
-                              "workspace:create.form.name.placeholder",
-                            )}
-                            required
-                            value={field.state.value}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                          />
-                        )}
-                      </form.Field>
-                    </FieldGroup>
-                  </FieldSet>
-                </FieldGroup>
+                <FormLayout>
+                  <FormLayoutItem>
+                    <form.Field name="name">
+                      {(field) => (
+                        <Input
+                          id="name"
+                          data-testid="workspace-create-name-input"
+                          label={t("workspace:create.form.name.label")}
+                          placeholder={t(
+                            "workspace:create.form.name.placeholder",
+                          )}
+                          required
+                          value={field.state.value}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          onBlur={field.handleBlur}
+                        />
+                      )}
+                    </form.Field>
+                  </FormLayoutItem>
+                </FormLayout>
               </form>
             </CardContent>
             <CardFooter>

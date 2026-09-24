@@ -183,26 +183,22 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
       <Card>
         <CardContent>
           <div className="space-y-4">
-            <div data-testid="api-keys-page">
-              <DataFilter
-                filters={filters}
-                value={{ filter: filterValues, query }}
-                onChange={(value) => {
-                  navigate({
-                    to: location.pathname,
-                    search: {
-                      ...(value.query ? { query: value.query } : {}),
-                      ...(!isEmpty(value.filter)
-                        ? { filter: value.filter }
-                        : {}),
-                    },
-                  });
-                }}
-                search={{
-                  placeholder: t("api-key:filter.search.placeholder"),
-                }}
-              />
-            </div>
+            <DataFilter
+              filters={filters}
+              value={{ filter: filterValues, query }}
+              onChange={(value) => {
+                navigate({
+                  to: location.pathname,
+                  search: {
+                    ...(value.query ? { query: value.query } : {}),
+                    ...(!isEmpty(value.filter) ? { filter: value.filter } : {}),
+                  },
+                });
+              }}
+              search={{
+                placeholder: t("api-key:filter.search.placeholder"),
+              }}
+            />
 
             <DataTable
               columns={[

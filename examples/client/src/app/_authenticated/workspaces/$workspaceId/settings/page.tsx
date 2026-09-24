@@ -31,7 +31,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FieldGroup, FieldSet } from "@/components/ui/field";
+import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Input } from "@/components/thread-ui/input";
 import { graphql } from "@/gql";
 import { createAbilitySubject } from "@/lib/ability";
@@ -202,8 +202,8 @@ function SettingsComponent() {
                   form.handleSubmit();
                 }}
               >
-                <FieldSet>
-                  <FieldGroup>
+                <FormLayout>
+                  <FormLayoutItem>
                     <form.Field
                       name="name"
                       validators={{
@@ -238,8 +238,8 @@ function SettingsComponent() {
                         />
                       )}
                     </form.Field>
-                  </FieldGroup>
-                </FieldSet>
+                  </FormLayoutItem>
+                </FormLayout>
               </form>
             </CardContent>
             <CardFooter>

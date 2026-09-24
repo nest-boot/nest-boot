@@ -8,13 +8,7 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { getFormErrorMessage } from "@/lib/form-errors";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldSet,
-} from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import {
   PageLayout,
   PageLayoutSection,
@@ -446,8 +440,8 @@ function UserSecurityComponent() {
                   passwordForm.handleSubmit();
                 }}
               >
-                <FieldSet>
-                  <FieldGroup>
+                <FormLayout>
+                  <FormLayoutItem>
                     <passwordForm.Field name="currentPassword">
                       {(field) => (
                         <Input
@@ -464,6 +458,8 @@ function UserSecurityComponent() {
                         />
                       )}
                     </passwordForm.Field>
+                  </FormLayoutItem>
+                  <FormLayoutItem>
                     <passwordForm.Field name="newPassword">
                       {(field) => (
                         <Input
@@ -480,6 +476,8 @@ function UserSecurityComponent() {
                         />
                       )}
                     </passwordForm.Field>
+                  </FormLayoutItem>
+                  <FormLayoutItem>
                     <passwordForm.Field name="confirmPassword">
                       {(field) => (
                         <Input
@@ -496,7 +494,8 @@ function UserSecurityComponent() {
                         />
                       )}
                     </passwordForm.Field>
-
+                  </FormLayoutItem>
+                  <FormLayoutItem>
                     <Field orientation="horizontal">
                       <passwordForm.Field name="revokeOtherSessions">
                         {(field) => (
@@ -512,10 +511,13 @@ function UserSecurityComponent() {
                         {t("user:security.form.revoke_other_sessions")}
                       </FieldLabel>
                     </Field>
-
-                    {error && <FieldError>{error}</FieldError>}
-                  </FieldGroup>
-                </FieldSet>
+                  </FormLayoutItem>
+                  {error && (
+                    <FormLayoutItem>
+                      <FieldError>{error}</FieldError>
+                    </FormLayoutItem>
+                  )}
+                </FormLayout>
               </form>
             </CardContent>
             <CardFooter>
@@ -680,21 +682,19 @@ function UserSecurityComponent() {
                             {account.issuer} · {account.accountId}
                           </p>
                         </div>
-                        <div className="flex gap-2">
-                          {!credential &&
-                          (accountData?.currentUser.accounts.totalCount ?? 0) >
-                            1 ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="destructive"
-                              loading={unlinkingAccountId === account.id}
-                              onClick={() => handleUnlinkAccount(account.id)}
-                            >
-                              {t("user:security.accounts.unlink")}
-                            </Button>
-                          ) : null}
-                        </div>
+                        {!credential &&
+                        (accountData?.currentUser.accounts.totalCount ?? 0) >
+                          1 ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            loading={unlinkingAccountId === account.id}
+                            onClick={() => handleUnlinkAccount(account.id)}
+                          >
+                            {t("user:security.accounts.unlink")}
+                          </Button>
+                        ) : null}
                       </div>
                     );
                   })}

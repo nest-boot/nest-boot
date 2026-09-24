@@ -295,7 +295,9 @@ test.describe("user pages", () => {
 
     await page.getByTestId("user-sidebar-api-keys-link").click();
     await expect(page).toHaveURL(/\/user\/api-keys(?:\?.*)?$/);
-    await expect(page.getByTestId("api-keys-page")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "API Keys", exact: true }),
+    ).toBeVisible();
   });
 
   test("lists active sessions and signs out other devices", async ({

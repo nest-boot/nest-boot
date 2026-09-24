@@ -199,7 +199,9 @@ test("authorizes workspace API-key controls and deletion without an owner role",
       headers,
     );
     await page.goto(`/workspaces/${workspace.id}/api-keys`);
-    await expect(page.getByTestId("api-keys-page")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "API Keys", exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Create API Key", exact: true }),
     ).toBeDisabled();
@@ -283,7 +285,9 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
   });
   try {
     await page.goto("/user/api-keys");
-    await expect(page.getByTestId("api-keys-page")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "API Keys", exact: true }),
+    ).toBeVisible();
     // A class-level write check opens the form; the Service checks the proposed key.
     await expect(
       page.getByRole("button", { name: "Create API Key", exact: true }),

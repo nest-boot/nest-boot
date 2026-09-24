@@ -204,7 +204,9 @@ async function exerciseApiKeyLifecycle(
   const listUrl = new URL(page.url());
   listUrl.search = "";
   const scope = page.url().includes("/workspaces/") ? "WORKSPACE" : "USER";
-  await expect(page.getByTestId("api-keys-page")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "API Keys", exact: true }),
+  ).toBeVisible();
   if (scope === "USER") await page.setViewportSize({ width: 390, height: 844 });
 
   await page

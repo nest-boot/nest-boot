@@ -25,7 +25,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FieldGroup, FieldSet } from "@/components/ui/field";
+import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { graphql } from "@/gql";
 
 const UPDATE_USER_FROM_USER_ROUTE = graphql(`
@@ -202,8 +202,8 @@ function UserComponent() {
                   form.handleSubmit();
                 }}
               >
-                <FieldSet>
-                  <FieldGroup>
+                <FormLayout>
+                  <FormLayoutItem>
                     <form.Field
                       name="name"
                       validators={{
@@ -229,8 +229,8 @@ function UserComponent() {
                         />
                       )}
                     </form.Field>
-                  </FieldGroup>
-                </FieldSet>
+                  </FormLayoutItem>
+                </FormLayout>
               </form>
             </CardContent>
             <CardFooter>
@@ -274,8 +274,8 @@ function UserComponent() {
                   emailForm.handleSubmit();
                 }}
               >
-                <FieldSet>
-                  <FieldGroup>
+                <FormLayout>
+                  <FormLayoutItem>
                     <Input
                       id="current-email"
                       data-testid="user-current-email"
@@ -283,7 +283,8 @@ function UserComponent() {
                       value={currentUser.email}
                       disabled
                     />
-
+                  </FormLayoutItem>
+                  <FormLayoutItem>
                     <emailForm.Field
                       name="newEmail"
                       validators={{
@@ -311,8 +312,8 @@ function UserComponent() {
                         />
                       )}
                     </emailForm.Field>
-                  </FieldGroup>
-                </FieldSet>
+                  </FormLayoutItem>
+                </FormLayout>
               </form>
             </CardContent>
             <CardFooter>
