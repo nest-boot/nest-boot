@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { useLazyQuery, useMutation } from "@apollo/client/react";
+import { t } from "i18next";
+import { useMutation } from "@apollo/client/react";
 import { useForm } from "@tanstack/react-form";
 import {
   createFileRoute,
@@ -8,16 +8,11 @@ import {
 } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useCurrentWorkspaceContext } from "../contexts/current-workspace-context";
-import type { PageNavigationQueryOptions } from "@/hooks/use-page-navigation";
-import { usePageNavigation } from "@/hooks/use-page-navigation";
-import { RecordNavigation } from "@/components/record-navigation";
+import { usePageSearch } from "@/hooks/use-page-search";
 import {
   workspaceSearchSchema,
   workspacesPageKey,
 } from "@/lib/workspace-search";
-import { createConnectionCursor } from "@/lib/connection-cursor";
-import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
-import { GET_WORKSPACE_NEIGHBORS } from "@/lib/record-navigation-operations";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   PageLayout,
@@ -30,7 +25,6 @@ import { useAbility } from "@/contexts/ability-context";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import {
   Page,
-  PageActions,
   PageContent,
   PageDescription,
   PageHeader,
@@ -83,7 +77,7 @@ export const Route = createFileRoute(
   component: ScopedSettingsComponent,
   beforeLoad: () => {
     return {
-      title: "设置",
+      title: t("workspace:title"),
     };
   },
 });
@@ -99,37 +93,10 @@ function SettingsComponent() {
   const navigate = useNavigate();
 
   const workspace = useCurrentWorkspaceContext();
-  const [loadNeighbors] = useLazyQuery(GET_WORKSPACE_NEIGHBORS, {
-    fetchPolicy: "network-only",
-  });
-  const navigation = usePageNavigation({
+  const { pageSearch: backSearch } = usePageSearch({
     key: workspacesPageKey,
     searchSchema: workspaceSearchSchema,
-    query: useCallback(
-      async ({
-        pageSearch,
-      }: PageNavigationQueryOptions<typeof workspaceSearchSchema>) => {
-        const { query, filter, orderBy } =
-          createConnectionQueryVariables(pageSearch);
-        const { data } = await loadNeighbors({
-          variables: {
-            query,
-            filter,
-            orderBy,
-            cursor: createConnectionCursor(workspace, pageSearch),
-          },
-          context: { headers: { "x-workspace-id": workspace.id } },
-        });
-        if (!data?.currentUser) return undefined;
-        return {
-          prevEdge: data.currentUser.previous.edges[0],
-          nextEdge: data.currentUser.next.edges[0],
-        };
-      },
-      [workspace, loadNeighbors],
-    ),
   });
-  const { prevEdge, nextEdge, backSearch } = navigation;
   const ability = useAbility();
   const workspaceSubject = createAbilitySubject("Workspace", workspace);
   const canUpdateWorkspace = ability.can("update", workspaceSubject);
@@ -238,21 +205,6 @@ function SettingsComponent() {
         />
         <PageTitle>{t("workspace:title")}</PageTitle>
         <PageDescription>{t("workspace:settings.description")}</PageDescription>
-        <PageActions>
-          <RecordNavigation
-            testIdPrefix="workspace"
-            previousPath={
-              prevEdge ? `/workspaces/${prevEdge.node.id}/settings` : undefined
-            }
-            nextPath={
-              nextEdge ? `/workspaces/${nextEdge.node.id}/settings` : undefined
-            }
-            failed={Boolean(navigation.error)}
-            onRetry={() => {
-              void navigation.refetch().catch(() => undefined);
-            }}
-          />
-        </PageActions>
       </PageHeader>
       <PageContent>
         <PageLayout>

@@ -138,9 +138,9 @@ test.describe("administrator impersonation", () => {
     await page.getByTestId("admin-impersonate-user").click();
 
     await expect(page).toHaveURL(/\/user$/);
-    await expect(page.getByTestId("user-current-email")).toHaveValue(
-      targetEmail,
-    );
+    await expect(
+      page.getByRole("main").getByText(targetEmail, { exact: true }),
+    ).toBeVisible();
     await expect(page.getByTestId("impersonation-banner")).toBeVisible();
 
     await page.goto("/user/security");

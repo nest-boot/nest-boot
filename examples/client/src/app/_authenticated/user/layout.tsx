@@ -8,7 +8,7 @@ import { Layout, LayoutContent } from "@/components/thread-ui/layout";
 export const Route = createFileRoute("/_authenticated/user")({
   component: UserLayout,
   beforeLoad: () => ({
-    title: t("user:title"),
+    title: t("common:overview.title"),
   }),
 });
 

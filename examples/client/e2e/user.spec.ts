@@ -18,13 +18,13 @@ test.describe("user pages", () => {
     await page.getByTestId("topbar-menu-trigger").click();
     const profileLink = page.getByTestId("sidebar-user-account-link");
     await expect(profileLink).toContainText("Preferences User");
-    await expect(profileLink).toHaveAttribute("href", "/user");
+    await expect(profileLink).toHaveAttribute("href", "/user/profile");
     await expect(page.getByTestId("sidebar-user-workspaces-link")).toHaveCount(
       0,
     );
     await expect(page.getByTestId("sidebar-user-api-keys-link")).toHaveCount(0);
     await profileLink.click();
-    await expect(page).toHaveURL(/\/user$/);
+    await expect(page).toHaveURL(/\/user\/profile$/);
 
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await page.getByTestId("topbar-menu-trigger").click();
@@ -102,7 +102,7 @@ test.describe("user pages", () => {
       email: `${uniqueSeed("mobile-navigation")}@example.com`,
       name: "Mobile navigation",
     });
-    await page.goto("/user");
+    await page.goto("/user/profile");
 
     const viewport = page.getByRole("main");
     await page.getByTestId("user-change-email-submit").scrollIntoViewIfNeeded();
@@ -129,7 +129,7 @@ test.describe("user pages", () => {
     await expect(navigation).toBeInViewport();
     await page.getByTestId("topbar-menu-trigger").click();
     await page.getByTestId("sidebar-user-account-link").click();
-    await expect(page).toHaveURL(/\/user$/);
+    await expect(page).toHaveURL(/\/user\/profile$/);
     await expect
       .poll(() => viewport.evaluate((element) => element.scrollTop))
       .toBe(0);
@@ -139,7 +139,7 @@ test.describe("user pages", () => {
       .poll(() => viewport.evaluate((element) => element.scrollTop))
       .toBe(securityScrollTop);
     await page.goForward();
-    await expect(page).toHaveURL(/\/user$/);
+    await expect(page).toHaveURL(/\/user\/profile$/);
     await expect
       .poll(() => viewport.evaluate((element) => element.scrollTop))
       .toBe(0);
@@ -151,7 +151,9 @@ test.describe("user pages", () => {
       .getByRole("link")
       .click();
     await expect(page).toHaveURL(/\/user$/);
-    await expect(page.getByTestId("user-profile-page")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Overview", exact: true }),
+    ).toBeVisible();
 
     await navigation.click();
     await page.setViewportSize({ width: 1280, height: 800 });
@@ -246,7 +248,7 @@ test.describe("user pages", () => {
     await page.getByTestId("topbar-menu-trigger").click();
     await page.getByTestId("sidebar-user-account-link").click();
 
-    await expect(page).toHaveURL(/\/user$/);
+    await expect(page).toHaveURL(/\/user\/profile$/);
     await expect(page.getByTestId("user-profile-page")).toBeVisible();
 
     const nameInput = page.getByTestId("user-profile-name-input");
@@ -269,7 +271,7 @@ test.describe("user pages", () => {
       "Confirm your email change",
     );
     await page.goto(confirmationUrl);
-    await expect(page).toHaveURL(/\/user\?emailChangeCallback=true/);
+    await expect(page).toHaveURL(/\/user\/profile\?emailChangeCallback=true/);
     await expect(page.getByTestId("user-email-confirmed-alert")).toBeVisible();
 
     const verificationUrl = await waitForEmailUrl(
@@ -278,7 +280,7 @@ test.describe("user pages", () => {
       "Verify your email address",
     );
     await page.goto(verificationUrl);
-    await expect(page).toHaveURL(/\/user\?emailChangeCallback=true/);
+    await expect(page).toHaveURL(/\/user\/profile\?emailChangeCallback=true/);
     await expect(page.getByTestId("user-email-changed-alert")).toBeVisible();
     await expect(page.getByTestId("user-current-email")).toHaveValue(newEmail);
 
@@ -327,7 +329,7 @@ test.describe("user pages", () => {
       await expect(page.getByTestId("user-session-row")).toHaveCount(1);
       await expect(page.getByText("Other sessions signed out")).toBeVisible();
 
-      await otherPage.goto("/user");
+      await otherPage.goto("/user/profile");
       await expect(otherPage).toHaveURL(/\/auth\/login/);
     } finally {
       await otherContext.close();

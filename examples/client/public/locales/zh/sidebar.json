@@ -15,7 +15,7 @@
     "manageWorkspaces": "管理工作空间"
   },
   "user": {
-    "account": "个人账户",
+    "account": "个人资料",
     "api_keys": "API 密钥",
     "logout": "退出登录",
     "security": "安全",

@@ -69,7 +69,7 @@ function CreateWorkspaceComponent() {
 
       if (data?.createWorkspace.id) {
         navigate({
-          to: `/workspaces/$workspaceId/settings`,
+          to: `/workspaces/$workspaceId`,
           params: { workspaceId: data.createWorkspace.id },
           reloadDocument: true,
         });

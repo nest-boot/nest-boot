@@ -74,12 +74,12 @@ test("filters workspaces, preserves pagination state, and opens rows without an 
   const row = page.getByRole("row").filter({ has: target });
   await expect(row.getByRole("button")).toHaveCount(0);
   await row.getByRole("cell").nth(2).click();
-  await expect(page).toHaveURL(new RegExp(`/workspaces/${other.id}/settings$`));
+  await expect(page).toHaveURL(new RegExp(`/workspaces/${other.id}$`));
   await page.goBack();
   await expect(target).toBeVisible();
   await target.focus();
   await target.press("Enter");
-  await expect(page).toHaveURL(new RegExp(`/workspaces/${other.id}/settings$`));
+  await expect(page).toHaveURL(new RegExp(`/workspaces/${other.id}$`));
   await page.goBack();
   await expect(target).toBeVisible();
 

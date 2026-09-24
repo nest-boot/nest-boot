@@ -87,5 +87,10 @@
     "title": "Users",
     "unverified": "Unverified",
     "verified": "Verified"
+  },
+  "overview": {
+    "description": "Manage users and their access to this application.",
+    "users": "User accounts within your authorized scope.",
+    "manage_users": "Manage users"
   }
 }

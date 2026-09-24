@@ -1,4 +1,10 @@
-import { Boxes, CircleUserRound, KeyRound, LockKeyhole } from "lucide-react";
+import {
+  Boxes,
+  CircleUserRound,
+  KeyRound,
+  LayoutDashboard,
+  LockKeyhole,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { linkOptions } from "@tanstack/react-router";
@@ -23,7 +29,7 @@ type SidebarItem = {
   title: string;
   icon: ComponentType<{ className?: string }>;
   link: LinkProps;
-  testId: string;
+  testId?: string;
   visible?: boolean;
 };
 
@@ -33,9 +39,14 @@ export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
   const ability = useAbility();
   const items: Array<SidebarItem> = [
     {
+      title: t("common:overview.title"),
+      icon: LayoutDashboard,
+      link: linkOptions({ to: "/user", activeOptions: { exact: true } }),
+    },
+    {
       title: t("sidebar:user.account"),
       icon: CircleUserRound,
-      link: linkOptions({ to: "/user" }),
+      link: linkOptions({ to: "/user/profile" }),
       testId: "user-sidebar-account-link",
     },
     {

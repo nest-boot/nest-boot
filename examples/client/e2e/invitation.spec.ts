@@ -239,7 +239,7 @@ test.describe("workspace invitations", () => {
       await expect(inviteePage.getByTestId("invite-accept-page")).toBeVisible();
       await inviteePage.getByTestId("invite-accept-submit").click();
       await expect(inviteePage).toHaveURL(
-        new RegExp(`/workspaces/${workspaceId}/settings$`),
+        new RegExp(`/workspaces/${workspaceId}$`),
       );
     } finally {
       await inviteeContext.close();
@@ -325,7 +325,7 @@ test.describe("workspace invitations", () => {
       await expect(inviteePage.getByTestId("invite-accept-page")).toBeVisible();
       await inviteePage.getByTestId("invite-accept-submit").click();
       await expect(inviteePage).toHaveURL(
-        new RegExp(`/workspaces/${workspaceId}/settings$`),
+        new RegExp(`/workspaces/${workspaceId}$`),
       );
 
       await page.goto(`/workspaces/${workspaceId}/members`);

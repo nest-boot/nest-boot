@@ -28,6 +28,7 @@ import { Route as AuthResetPasswordPageRouteImport } from './app/auth/reset-pass
 import { Route as AuthVerifyEmailPageRouteImport } from './app/auth/verify-email/page'
 import { Route as AuthenticatedAdminUsersPageRouteImport } from './app/_authenticated/admin/users/page'
 import { Route as AuthenticatedUserApiKeysPageRouteImport } from './app/_authenticated/user/api-keys/page'
+import { Route as AuthenticatedUserProfilePageRouteImport } from './app/_authenticated/user/profile/page'
 import { Route as AuthenticatedUserSecurityPageRouteImport } from './app/_authenticated/user/security/page'
 import { Route as AuthenticatedUserWorkspacesPageRouteImport } from './app/_authenticated/user/workspaces/page'
 import { Route as AuthenticatedWorkspacesWorkspaceIdPageRouteImport } from './app/_authenticated/workspaces/$workspaceId/page'
@@ -146,6 +147,12 @@ const AuthenticatedUserApiKeysPageRoute =
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedUserApiKeysLayoutRoute,
+  } as any)
+const AuthenticatedUserProfilePageRoute =
+  AuthenticatedUserProfilePageRouteImport.update({
+    id: '/profile/',
+    path: '/profile/',
+    getParentRoute: () => AuthenticatedUserLayoutRoute,
   } as any)
 const AuthenticatedUserSecurityPageRoute =
   AuthenticatedUserSecurityPageRouteImport.update({
@@ -271,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/workspaces/$workspaceId/members': typeof AuthenticatedWorkspacesWorkspaceIdMembersLayoutRouteWithChildren
   '/admin/users/': typeof AuthenticatedAdminUsersPageRoute
   '/user/api-keys/': typeof AuthenticatedUserApiKeysPageRoute
+  '/user/profile/': typeof AuthenticatedUserProfilePageRoute
   '/user/security/': typeof AuthenticatedUserSecurityPageRoute
   '/user/workspaces/': typeof AuthenticatedUserWorkspacesPageRoute
   '/workspaces/$workspaceId/': typeof AuthenticatedWorkspacesWorkspaceIdPageRoute
@@ -301,6 +309,7 @@ export interface FileRoutesByTo {
   '/auth/verify-email': typeof AuthVerifyEmailPageRoute
   '/admin/users': typeof AuthenticatedAdminUsersPageRoute
   '/user/api-keys': typeof AuthenticatedUserApiKeysPageRoute
+  '/user/profile': typeof AuthenticatedUserProfilePageRoute
   '/user/security': typeof AuthenticatedUserSecurityPageRoute
   '/user/workspaces': typeof AuthenticatedUserWorkspacesPageRoute
   '/workspaces/$workspaceId': typeof AuthenticatedWorkspacesWorkspaceIdPageRoute
@@ -340,6 +349,7 @@ export interface FileRoutesById {
   '/_authenticated/workspaces/$workspaceId/members': typeof AuthenticatedWorkspacesWorkspaceIdMembersLayoutRouteWithChildren
   '/_authenticated/admin/users/': typeof AuthenticatedAdminUsersPageRoute
   '/_authenticated/user/api-keys/': typeof AuthenticatedUserApiKeysPageRoute
+  '/_authenticated/user/profile/': typeof AuthenticatedUserProfilePageRoute
   '/_authenticated/user/security/': typeof AuthenticatedUserSecurityPageRoute
   '/_authenticated/user/workspaces/': typeof AuthenticatedUserWorkspacesPageRoute
   '/_authenticated/workspaces/$workspaceId/': typeof AuthenticatedWorkspacesWorkspaceIdPageRoute
@@ -379,6 +389,7 @@ export interface FileRouteTypes {
     | '/workspaces/$workspaceId/members'
     | '/admin/users/'
     | '/user/api-keys/'
+    | '/user/profile/'
     | '/user/security/'
     | '/user/workspaces/'
     | '/workspaces/$workspaceId/'
@@ -409,6 +420,7 @@ export interface FileRouteTypes {
     | '/auth/verify-email'
     | '/admin/users'
     | '/user/api-keys'
+    | '/user/profile'
     | '/user/security'
     | '/user/workspaces'
     | '/workspaces/$workspaceId'
@@ -447,6 +459,7 @@ export interface FileRouteTypes {
     | '/_authenticated/workspaces/$workspaceId/members'
     | '/_authenticated/admin/users/'
     | '/_authenticated/user/api-keys/'
+    | '/_authenticated/user/profile/'
     | '/_authenticated/user/security/'
     | '/_authenticated/user/workspaces/'
     | '/_authenticated/workspaces/$workspaceId/'
@@ -604,6 +617,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/user/api-keys/'
       preLoaderRoute: typeof AuthenticatedUserApiKeysPageRouteImport
       parentRoute: typeof AuthenticatedUserApiKeysLayoutRoute
+    }
+    '/_authenticated/user/profile/': {
+      id: '/_authenticated/user/profile/'
+      path: '/profile'
+      fullPath: '/user/profile/'
+      preLoaderRoute: typeof AuthenticatedUserProfilePageRouteImport
+      parentRoute: typeof AuthenticatedUserLayoutRoute
     }
     '/_authenticated/user/security/': {
       id: '/_authenticated/user/security/'
@@ -787,6 +807,7 @@ const AuthenticatedUserApiKeysLayoutRouteWithChildren =
 interface AuthenticatedUserLayoutRouteChildren {
   AuthenticatedUserApiKeysLayoutRoute: typeof AuthenticatedUserApiKeysLayoutRouteWithChildren
   AuthenticatedUserPageRoute: typeof AuthenticatedUserPageRoute
+  AuthenticatedUserProfilePageRoute: typeof AuthenticatedUserProfilePageRoute
   AuthenticatedUserSecurityPageRoute: typeof AuthenticatedUserSecurityPageRoute
   AuthenticatedUserWorkspacesPageRoute: typeof AuthenticatedUserWorkspacesPageRoute
 }
@@ -796,6 +817,7 @@ const AuthenticatedUserLayoutRouteChildren: AuthenticatedUserLayoutRouteChildren
     AuthenticatedUserApiKeysLayoutRoute:
       AuthenticatedUserApiKeysLayoutRouteWithChildren,
     AuthenticatedUserPageRoute: AuthenticatedUserPageRoute,
+    AuthenticatedUserProfilePageRoute: AuthenticatedUserProfilePageRoute,
     AuthenticatedUserSecurityPageRoute: AuthenticatedUserSecurityPageRoute,
     AuthenticatedUserWorkspacesPageRoute: AuthenticatedUserWorkspacesPageRoute,
   }

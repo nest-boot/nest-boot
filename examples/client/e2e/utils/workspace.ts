@@ -8,7 +8,7 @@ export async function createFirstWorkspace(page: Page, name: string) {
   await expect(page).toHaveURL(/\/workspaces\/create$/);
   await page.getByTestId("workspace-create-name-input").fill(name);
   await page.getByTestId("workspace-create-submit").click();
-  await expect(page).toHaveURL(/\/workspaces\/\d+\/settings$/);
+  await expect(page).toHaveURL(/\/workspaces\/\d+$/);
 
   return currentWorkspaceId(page);
 }

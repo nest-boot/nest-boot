@@ -14,6 +14,7 @@ import { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
+  "\n  query getAdminOverview {\n    users(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n": typeof types.GetAdminOverviewDocument;
   "\n  query getUserFromUserRoute(\n    $id: ID!\n    $sessionsAfter: String\n    $includeSessions: Boolean! = false\n    $includeRoles: Boolean! = false\n    $includePermissions: Boolean! = false\n  ) {\n    user(id: $id) {\n      id\n      name\n      email\n      emailVerified\n      image\n      roles\n      permissions\n      banned\n      banReason\n      banExpiresAt\n      createdAt\n      updatedAt\n      sessions(\n        first: 20\n        after: $sessionsAfter\n        orderBy: { field: CREATED_AT, direction: DESC }\n      ) @include(if: $includeSessions) {\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n        edges {\n          node {\n            id\n            expiresAt\n            ipAddress\n            userAgent\n            createdAt\n          }\n        }\n      }\n    }\n    userRoles @include(if: $includeRoles) {\n      role\n      grantable\n    }\n    userPermissions @include(if: $includePermissions) {\n      permission\n      grantable\n    }\n  }\n": typeof types.GetUserFromUserRouteDocument;
   "\n  mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {\n    updateUser(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateManagedUserFromUserRouteDocument;
   "\n  mutation setUserPermissionsFromUserRoute(\n    $id: ID!\n    $input: SetUserPermissionsInput!\n  ) {\n    setUserPermissions(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.SetUserPermissionsFromUserRouteDocument;
@@ -31,6 +32,7 @@ type Documents = {
   "\n  query getWorkspacesFromWorkspaceSwitcher(\n    $first: Int\n    $after: String\n    $before: String\n    $query: String\n    $orderBy: WorkspaceOrder\n  ) {\n    currentUser {\n      workspaces(\n        first: $first\n        after: $after\n        before: $before\n        query: $query\n        orderBy: $orderBy\n      ) {\n        edges {\n          node {\n            id\n            name\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          startCursor\n          endCursor\n        }\n        totalCount\n      }\n    }\n  }\n": typeof types.GetWorkspacesFromWorkspaceSwitcherDocument;
   "\n  query getCurrentUserFromAuthenticatedRoute {\n    currentUser {\n      id\n      name\n      email\n      permissions\n    }\n    currentSession {\n      impersonatedById\n    }\n    currentAbilityRules {\n      actions\n      subjects\n      fields\n      conditions\n      inverted\n      reason\n    }\n  }\n": typeof types.GetCurrentUserFromAuthenticatedRouteDocument;
   "\n  mutation stopImpersonatingFromAuthenticatedRoute {\n    stopImpersonating {\n      id\n    }\n  }\n": typeof types.StopImpersonatingFromAuthenticatedRouteDocument;
+  "\n  query getUserOverview($includeApiKeys: Boolean!) {\n    currentUser {\n      id\n      workspaces(first: 1) {\n        totalCount\n        totalCountRelation\n      }\n      sessions(first: 1) {\n        totalCount\n        totalCountRelation\n      }\n      apiKeys(first: 1) @include(if: $includeApiKeys) {\n        totalCount\n        totalCountRelation\n      }\n    }\n  }\n": typeof types.GetUserOverviewDocument;
   "\n  mutation updateUserFromUserRoute($input: AuthUpdateUserInput!) {\n    updateCurrentUser(input: $input)\n  }\n": typeof types.UpdateUserFromUserRouteDocument;
   "\n  mutation changeEmailFromUserRoute($input: AuthChangeEmailInput!) {\n    changeCurrentUserEmail(input: $input)\n  }\n": typeof types.ChangeEmailFromUserRouteDocument;
   "\n  mutation changePasswordFromUserSecurity($input: AuthChangePasswordInput!) {\n    changeCurrentUserPassword(input: $input) {\n      token\n    }\n  }\n": typeof types.ChangePasswordFromUserSecurityDocument;
@@ -57,6 +59,7 @@ type Documents = {
   "\n  mutation cancelInvitationFromMembersRoute($id: ID!) {\n    cancelInvitation(id: $id) {\n      id\n    }\n  }\n": typeof types.CancelInvitationFromMembersRouteDocument;
   "\n  mutation removeMemberFromMembersRoute($id: ID!) {\n    removeMember(id: $id) {\n      id\n    }\n  }\n": typeof types.RemoveMemberFromMembersRouteDocument;
   "\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateMemberStatusFromMembersRouteDocument;
+  "\n  query getWorkspaceOverview(\n    $workspaceId: ID!\n    $includeMembers: Boolean!\n    $includeApiKeys: Boolean!\n  ) {\n    workspace(id: $workspaceId) {\n      id\n      members(first: 1) @include(if: $includeMembers) {\n        totalCount\n        totalCountRelation\n      }\n      apiKeys(first: 1) @include(if: $includeApiKeys) {\n        totalCount\n        totalCountRelation\n      }\n    }\n  }\n": typeof types.GetWorkspaceOverviewDocument;
   "\n  mutation updateWorkspaceFromSettingsRoute(\n    $id: ID!\n    $input: UpdateWorkspaceInput!\n  ) {\n    updateWorkspace(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateWorkspaceFromSettingsRouteDocument;
   "\n  mutation deleteWorkspaceFromSettingsRoute($id: ID!) {\n    deleteWorkspace(id: $id) {\n      id\n    }\n  }\n": typeof types.DeleteWorkspaceFromSettingsRouteDocument;
   "\n  mutation leaveWorkspaceFromSettingsRoute {\n    leaveWorkspace {\n      memberId\n    }\n  }\n": typeof types.LeaveWorkspaceFromSettingsRouteDocument;
@@ -89,9 +92,10 @@ type Documents = {
   "\n  query getWorkspaceApiKeyDetails($id: ID!) {\n    workspaceApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n    currentWorkspace {\n      apiKey(id: $id) {\n        workspaceId\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n": typeof types.GetWorkspaceApiKeyDetailsDocument;
   "\n  query getAdminUserNeighbors(\n    $cursor: String!\n    $query: String\n    $filter: UserFilter\n    $orderBy: UserOrder\n  ) {\n    previous: users(\n      last: 1\n      before: $cursor\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        cursor\n        node {\n          id\n        }\n      }\n    }\n    next: users(\n      first: 1\n      after: $cursor\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        cursor\n        node {\n          id\n        }\n      }\n    }\n  }\n": typeof types.GetAdminUserNeighborsDocument;
   "\n  query getMemberNeighbors(\n    $cursor: String!\n    $query: String\n    $filter: MemberFilter\n    $orderBy: MemberOrder\n  ) {\n    currentWorkspace {\n      id\n      previous: members(\n        last: 1\n        before: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n      next: members(\n        first: 1\n        after: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n": typeof types.GetMemberNeighborsDocument;
-  "\n  query getWorkspaceNeighbors(\n    $cursor: String!\n    $query: String\n    $filter: WorkspaceFilter\n    $orderBy: WorkspaceOrder\n  ) {\n    currentUser {\n      id\n      previous: workspaces(\n        last: 1\n        before: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n      next: workspaces(\n        first: 1\n        after: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n": typeof types.GetWorkspaceNeighborsDocument;
 };
 const documents: Documents = {
+  "\n  query getAdminOverview {\n    users(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n":
+    types.GetAdminOverviewDocument,
   "\n  query getUserFromUserRoute(\n    $id: ID!\n    $sessionsAfter: String\n    $includeSessions: Boolean! = false\n    $includeRoles: Boolean! = false\n    $includePermissions: Boolean! = false\n  ) {\n    user(id: $id) {\n      id\n      name\n      email\n      emailVerified\n      image\n      roles\n      permissions\n      banned\n      banReason\n      banExpiresAt\n      createdAt\n      updatedAt\n      sessions(\n        first: 20\n        after: $sessionsAfter\n        orderBy: { field: CREATED_AT, direction: DESC }\n      ) @include(if: $includeSessions) {\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n        edges {\n          node {\n            id\n            expiresAt\n            ipAddress\n            userAgent\n            createdAt\n          }\n        }\n      }\n    }\n    userRoles @include(if: $includeRoles) {\n      role\n      grantable\n    }\n    userPermissions @include(if: $includePermissions) {\n      permission\n      grantable\n    }\n  }\n":
     types.GetUserFromUserRouteDocument,
   "\n  mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {\n    updateUser(id: $id, input: $input) {\n      id\n    }\n  }\n":
@@ -126,6 +130,8 @@ const documents: Documents = {
     types.GetCurrentUserFromAuthenticatedRouteDocument,
   "\n  mutation stopImpersonatingFromAuthenticatedRoute {\n    stopImpersonating {\n      id\n    }\n  }\n":
     types.StopImpersonatingFromAuthenticatedRouteDocument,
+  "\n  query getUserOverview($includeApiKeys: Boolean!) {\n    currentUser {\n      id\n      workspaces(first: 1) {\n        totalCount\n        totalCountRelation\n      }\n      sessions(first: 1) {\n        totalCount\n        totalCountRelation\n      }\n      apiKeys(first: 1) @include(if: $includeApiKeys) {\n        totalCount\n        totalCountRelation\n      }\n    }\n  }\n":
+    types.GetUserOverviewDocument,
   "\n  mutation updateUserFromUserRoute($input: AuthUpdateUserInput!) {\n    updateCurrentUser(input: $input)\n  }\n":
     types.UpdateUserFromUserRouteDocument,
   "\n  mutation changeEmailFromUserRoute($input: AuthChangeEmailInput!) {\n    changeCurrentUserEmail(input: $input)\n  }\n":
@@ -178,6 +184,8 @@ const documents: Documents = {
     types.RemoveMemberFromMembersRouteDocument,
   "\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n":
     types.UpdateMemberStatusFromMembersRouteDocument,
+  "\n  query getWorkspaceOverview(\n    $workspaceId: ID!\n    $includeMembers: Boolean!\n    $includeApiKeys: Boolean!\n  ) {\n    workspace(id: $workspaceId) {\n      id\n      members(first: 1) @include(if: $includeMembers) {\n        totalCount\n        totalCountRelation\n      }\n      apiKeys(first: 1) @include(if: $includeApiKeys) {\n        totalCount\n        totalCountRelation\n      }\n    }\n  }\n":
+    types.GetWorkspaceOverviewDocument,
   "\n  mutation updateWorkspaceFromSettingsRoute(\n    $id: ID!\n    $input: UpdateWorkspaceInput!\n  ) {\n    updateWorkspace(id: $id, input: $input) {\n      id\n    }\n  }\n":
     types.UpdateWorkspaceFromSettingsRouteDocument,
   "\n  mutation deleteWorkspaceFromSettingsRoute($id: ID!) {\n    deleteWorkspace(id: $id) {\n      id\n    }\n  }\n":
@@ -242,8 +250,6 @@ const documents: Documents = {
     types.GetAdminUserNeighborsDocument,
   "\n  query getMemberNeighbors(\n    $cursor: String!\n    $query: String\n    $filter: MemberFilter\n    $orderBy: MemberOrder\n  ) {\n    currentWorkspace {\n      id\n      previous: members(\n        last: 1\n        before: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n      next: members(\n        first: 1\n        after: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n":
     types.GetMemberNeighborsDocument,
-  "\n  query getWorkspaceNeighbors(\n    $cursor: String!\n    $query: String\n    $filter: WorkspaceFilter\n    $orderBy: WorkspaceOrder\n  ) {\n    currentUser {\n      id\n      previous: workspaces(\n        last: 1\n        before: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n      next: workspaces(\n        first: 1\n        after: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n":
-    types.GetWorkspaceNeighborsDocument,
 };
 
 /**
@@ -260,6 +266,12 @@ const documents: Documents = {
  */
 export function graphql(source: string): unknown;
 
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query getAdminOverview {\n    users(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n",
+): (typeof documents)["\n  query getAdminOverview {\n    users(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -362,6 +374,12 @@ export function graphql(
 export function graphql(
   source: "\n  mutation stopImpersonatingFromAuthenticatedRoute {\n    stopImpersonating {\n      id\n    }\n  }\n",
 ): (typeof documents)["\n  mutation stopImpersonatingFromAuthenticatedRoute {\n    stopImpersonating {\n      id\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query getUserOverview($includeApiKeys: Boolean!) {\n    currentUser {\n      id\n      workspaces(first: 1) {\n        totalCount\n        totalCountRelation\n      }\n      sessions(first: 1) {\n        totalCount\n        totalCountRelation\n      }\n      apiKeys(first: 1) @include(if: $includeApiKeys) {\n        totalCount\n        totalCountRelation\n      }\n    }\n  }\n",
+): (typeof documents)["\n  query getUserOverview($includeApiKeys: Boolean!) {\n    currentUser {\n      id\n      workspaces(first: 1) {\n        totalCount\n        totalCountRelation\n      }\n      sessions(first: 1) {\n        totalCount\n        totalCountRelation\n      }\n      apiKeys(first: 1) @include(if: $includeApiKeys) {\n        totalCount\n        totalCountRelation\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -518,6 +536,12 @@ export function graphql(
 export function graphql(
   source: "\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n",
 ): (typeof documents)["\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query getWorkspaceOverview(\n    $workspaceId: ID!\n    $includeMembers: Boolean!\n    $includeApiKeys: Boolean!\n  ) {\n    workspace(id: $workspaceId) {\n      id\n      members(first: 1) @include(if: $includeMembers) {\n        totalCount\n        totalCountRelation\n      }\n      apiKeys(first: 1) @include(if: $includeApiKeys) {\n        totalCount\n        totalCountRelation\n      }\n    }\n  }\n",
+): (typeof documents)["\n  query getWorkspaceOverview(\n    $workspaceId: ID!\n    $includeMembers: Boolean!\n    $includeApiKeys: Boolean!\n  ) {\n    workspace(id: $workspaceId) {\n      id\n      members(first: 1) @include(if: $includeMembers) {\n        totalCount\n        totalCountRelation\n      }\n      apiKeys(first: 1) @include(if: $includeApiKeys) {\n        totalCount\n        totalCountRelation\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -710,12 +734,6 @@ export function graphql(
 export function graphql(
   source: "\n  query getMemberNeighbors(\n    $cursor: String!\n    $query: String\n    $filter: MemberFilter\n    $orderBy: MemberOrder\n  ) {\n    currentWorkspace {\n      id\n      previous: members(\n        last: 1\n        before: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n      next: members(\n        first: 1\n        after: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n",
 ): (typeof documents)["\n  query getMemberNeighbors(\n    $cursor: String!\n    $query: String\n    $filter: MemberFilter\n    $orderBy: MemberOrder\n  ) {\n    currentWorkspace {\n      id\n      previous: members(\n        last: 1\n        before: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n      next: members(\n        first: 1\n        after: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n  query getWorkspaceNeighbors(\n    $cursor: String!\n    $query: String\n    $filter: WorkspaceFilter\n    $orderBy: WorkspaceOrder\n  ) {\n    currentUser {\n      id\n      previous: workspaces(\n        last: 1\n        before: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n      next: workspaces(\n        first: 1\n        after: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n",
-): (typeof documents)["\n  query getWorkspaceNeighbors(\n    $cursor: String!\n    $query: String\n    $filter: WorkspaceFilter\n    $orderBy: WorkspaceOrder\n  ) {\n    currentUser {\n      id\n      previous: workspaces(\n        last: 1\n        before: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n      next: workspaces(\n        first: 1\n        after: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

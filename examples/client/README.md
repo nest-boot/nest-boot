@@ -12,8 +12,8 @@ and browser-session sign-in, enumeration-safe password recovery, reset-token
 handling, registration verification with resend and callback states, and
 authenticated password changes under `/user/security`. The security page also
 lists active sessions and can revoke one or every other session. The personal
-profile page supports a two-stage email change that confirms the current
-address before verifying the new address.
+profile page at `/user/profile` supports a two-stage email change that confirms
+the current address before verifying the new address.
 
 ## Run locally
 
@@ -91,9 +91,21 @@ URLs and persistent storage; the creation mutation does not cache it. Details
 query through the current user/workspace and allow read-only viewing when the
 principal lacks write permission. Enable/disable and delete remain list actions.
 
-API keys, administrator users, workspace members, and workspaces share two
-hooks for list/detail navigation. Their lists save search state, create/invite
-pages restore it when returning, and compact details use `PagePagination`:
+The Overview pages are `/user`, `/admin`, and `/workspaces/$workspaceId`.
+They show live resource counts and authorized management links, using default
+Card sections inside PageLayout. Multi-card summaries use a plain grid wrapper
+for equal-height cards and aligned footer actions, without restyling Card.
+Counts preserve the server's lower-bound indicator, and failed queries expose
+a retry action. Workspace overview queries
+send both the workspace ID variable and header to isolate results when switching.
+Overview sidebar links use `activeOptions={{ exact: true }}`; resource links
+remain active on their detail routes. Workspace list rows, workspace switching,
+and successful workspace creation open the workspace Overview. The identity
+row still opens Profile, and the administrator menu opens `/admin`.
+
+API keys, administrator users, and workspace members share two hooks for
+list/detail navigation. Their lists save search state, create/invite pages
+restore it when returning, and compact details use `PagePagination`:
 
 - `usePageSearch({ key, searchSchema, search? })` returns `pageSearch` and
   `setPageSearch`. Lists pass `search: Route.useSearch()`; the hook applies it
@@ -154,12 +166,13 @@ use schema defaults. Browser history continues to restore its own URLs; no
 cross-tab synchronization or frozen snapshot of changing records is provided.
 
 Administrator users use `["admin", "users"]`, members use
-`["workspaces", workspaceId, "members"]`, and workspace management uses
-`["user", "workspaces"]`. Each resource exports a shared search schema for its
-list, creation, and detail routes. List and neighbor requests use the same
-normalized query conditions. Member navigation explicitly sends the workspace
-header and checks the returned workspace ID. Workspace settings navigate among
-the current user's workspaces and return to `/user/workspaces` with `backSearch`.
+`["workspaces", workspaceId, "members"]`. Each resource exports a shared search
+schema for its list, creation, and detail routes. List and neighbor requests
+use the same normalized query conditions. Member navigation explicitly sends
+the workspace header and checks the returned workspace ID. Workspace management
+uses `["user", "workspaces"]` with `usePageSearch` only: Overview, creation,
+and settings preserve the saved list search when returning to `/user/workspaces`.
+Workspace settings has no previous/next actions or neighbor requests.
 Profile and security remain independent compact forms without record navigation.
 
 Create users at `/admin/users/create` and invite members at

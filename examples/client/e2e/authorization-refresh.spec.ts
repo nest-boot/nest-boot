@@ -60,7 +60,9 @@ for (const scope of ["user", "workspace"] as const) {
       await route.fulfill({ response, json: body });
     });
     await page.goto(
-      scope === "user" ? "/user" : `/workspaces/${workspace.id}/settings`,
+      scope === "user"
+        ? "/user/profile"
+        : `/workspaces/${workspace.id}/settings`,
     );
     if (scope === "user") {
       await page.getByTestId("topbar-menu-trigger").click();

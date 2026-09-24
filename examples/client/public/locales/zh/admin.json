@@ -87,5 +87,10 @@
     "title": "用户",
     "unverified": "未验证",
     "verified": "已验证"
+  },
+  "overview": {
+    "description": "管理应用中的用户及其访问权限。",
+    "users": "您有权查看的用户账户。",
+    "manage_users": "管理用户"
   }
 }

@@ -425,7 +425,7 @@ function UserWorkspacesComponent() {
                         header: t("user:workspaces.table.name"),
                         cell: ({ row }) => (
                           <Link
-                            to="/workspaces/$workspaceId/settings"
+                            to="/workspaces/$workspaceId"
                             params={{ workspaceId: row.original.id }}
                             onClick={(event) => event.stopPropagation()}
                             className="font-medium"
@@ -467,7 +467,7 @@ function UserWorkspacesComponent() {
                     }}
                     onRowClick={(row) => {
                       navigate({
-                        to: "/workspaces/$workspaceId/settings",
+                        to: "/workspaces/$workspaceId",
                         params: { workspaceId: row.original.id },
                       });
                     }}

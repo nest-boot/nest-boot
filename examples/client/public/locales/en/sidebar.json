@@ -15,7 +15,7 @@
     "manageWorkspaces": "Manage workspaces"
   },
   "user": {
-    "account": "Account",
+    "account": "Profile",
     "api_keys": "API Keys",
     "logout": "Log out",
     "security": "Security",

@@ -151,6 +151,7 @@ test.describe("workspace management", () => {
 
     await createFirstWorkspace(page, workspaceName);
 
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
     const nameInput = page.getByTestId("workspace-settings-name-input");
     await expect(nameInput).toHaveValue(workspaceName);
 
@@ -219,7 +220,7 @@ test.describe("workspace management", () => {
 
     const target = workspaces.at(-1)!;
     await page.getByTestId(`workspace-switcher-workspace-${target.id}`).click();
-    await expect(page).toHaveURL(new RegExp(`/workspaces/${target.id}/`));
+    await expect(page).toHaveURL(new RegExp(`/workspaces/${target.id}$`));
 
     await page.getByTestId("topbar-menu-trigger").click();
     await expect(

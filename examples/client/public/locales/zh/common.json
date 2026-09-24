@@ -26,5 +26,12 @@
   "navigation": {
     "failed": "无法加载相邻记录。",
     "retry": "重试"
+  },
+  "overview": {
+    "title": "概览",
+    "workspace": "工作空间",
+    "loading": "正在加载概览…",
+    "failed": "无法加载概览。",
+    "view_api_keys": "查看 API 密钥"
   }
 }

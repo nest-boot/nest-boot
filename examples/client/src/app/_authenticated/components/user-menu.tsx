@@ -45,7 +45,7 @@ export function UserMenu() {
     <>
       <TopbarMenuUser
         data-testid="sidebar-user-account-link"
-        render={<Link to="/user" />}
+        render={<Link to="/user/profile" />}
       />
       <TopbarMenuSeparator />
       <TopbarMenuSub>
@@ -102,7 +102,7 @@ export function UserMenu() {
           <TopbarMenuSeparator />
           <TopbarMenuItem
             data-testid="sidebar-admin-link"
-            onClick={() => navigate({ to: "/admin/users" })}
+            onClick={() => navigate({ to: "/admin" })}
           >
             <ShieldCheck />
             {t("sidebar:admin.title")}

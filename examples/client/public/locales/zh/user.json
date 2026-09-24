@@ -136,5 +136,14 @@
       "created_at": "创建时间",
       "updated_at": "更新时间"
     }
+  },
+  "overview": {
+    "description": "欢迎回来，{{name}}。这里是您的账户概览。",
+    "workspaces": "您可以访问的工作空间。",
+    "api_keys": "您的账户所拥有的 API 密钥。",
+    "sessions": "活跃会话",
+    "security": "查看会话并管理账户安全。",
+    "manage_security": "管理安全设置",
+    "edit_profile": "编辑资料"
   }
 }

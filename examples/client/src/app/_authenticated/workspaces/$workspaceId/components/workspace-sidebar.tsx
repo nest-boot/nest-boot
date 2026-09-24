@@ -1,4 +1,4 @@
-import { KeyRound, Settings, User } from "lucide-react";
+import { KeyRound, LayoutDashboard, Settings, User } from "lucide-react";
 
 import { linkOptions, useParams } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
@@ -43,8 +43,17 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
     items: Array<SidebarItem>;
   }> = [
     {
-      title: t("sidebar:navigation.settings"),
+      title: t("common:overview.workspace"),
       items: [
+        {
+          title: t("common:overview.title"),
+          icon: LayoutDashboard,
+          link: linkOptions({
+            to: "/workspaces/$workspaceId",
+            params: { workspaceId },
+            activeOptions: { exact: true },
+          }),
+        },
         ...(ability.can("read", "WorkspaceApiKey")
           ? [
               {

@@ -1,7 +1,8 @@
-import { Link, linkOptions } from "@tanstack/react-router";
+import { linkOptions } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { UsersRound } from "lucide-react";
+import { LayoutDashboard, UsersRound } from "lucide-react";
 import type { ComponentProps, FC } from "react";
+import { Link } from "@/components/link";
 
 import {
   Sidebar,
@@ -27,6 +28,20 @@ export const AdminSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
           <SidebarGroupLabel>{t("sidebar:admin.title")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={
+                    <Link
+                      to="/admin"
+                      activeOptions={{ exact: true }}
+                      onClick={() => setOpenMobile(false)}
+                    >
+                      <LayoutDashboard />
+                      <span>{t("common:overview.title")}</span>
+                    </Link>
+                  }
+                />
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   render={

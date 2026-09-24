@@ -62,5 +62,11 @@
       "title": "Leave workspace"
     }
   },
-  "title": "Settings"
+  "title": "Settings",
+  "overview": {
+    "description": "An overview of {{name}}.",
+    "members": "Members of this workspace.",
+    "api_keys": "API keys belonging to this workspace.",
+    "manage_members": "Manage members"
+  }
 }

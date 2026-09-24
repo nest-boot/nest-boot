@@ -136,5 +136,14 @@
       "created_at": "Created",
       "updated_at": "Updated"
     }
+  },
+  "overview": {
+    "description": "Welcome back, {{name}}. Here is an overview of your account.",
+    "workspaces": "Workspaces you can access.",
+    "api_keys": "API keys for your account.",
+    "sessions": "Active sessions",
+    "security": "Review your sessions and account security.",
+    "manage_security": "Manage security",
+    "edit_profile": "Edit profile"
   }
 }

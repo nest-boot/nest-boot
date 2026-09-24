@@ -26,5 +26,12 @@
   "navigation": {
     "failed": "Could not load adjacent records.",
     "retry": "Retry"
+  },
+  "overview": {
+    "title": "Overview",
+    "workspace": "Workspace",
+    "loading": "Loading overview…",
+    "failed": "Could not load overview.",
+    "view_api_keys": "View API keys"
   }
 }

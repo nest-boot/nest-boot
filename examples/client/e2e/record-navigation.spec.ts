@@ -30,7 +30,7 @@ function readSearch(page: Page) {
 }
 
 async function backToList(page: Page) {
-  await page.locator('[data-slot="page-breadcrumb-actions"] a').click();
+  await page.locator('[data-slot="page-breadcrumb-actions"] a').last().click();
 }
 
 async function createUsers(page: Page, seed: string) {
@@ -195,7 +195,7 @@ test("member navigation and invitation return searches stay isolated by workspac
   expect(readSearch(page)).toEqual(anchoredSearch);
 });
 
-test("workspace settings navigate the filtered list and create preserves its return search", async ({
+test("workspace overview and settings preserve list search without record pagination", async ({
   page,
 }) => {
   const seed = uniqueSeed("workspace-navigation");
@@ -207,7 +207,7 @@ test("workspace settings navigate the filtered list and create preserves its ret
   for (const letter of ["A", "B", "C"])
     workspaces.push(await createWorkspaceByApi(page, `${seed} ${letter}`));
   await createWorkspaceByApi(page, "Unrelated workspace");
-  const [a, b, c] = workspaces;
+  const [, b, c] = workspaces;
   await page.goto(
     filteredPath(
       "/user/workspaces",
@@ -229,37 +229,26 @@ test("workspace settings navigate the filtered list and create preserves its ret
   await expect(page.getByRole("row").nth(1)).toContainText(b.name);
   expect(readSearch(page)).toEqual(original);
   await page.getByRole("row").nth(1).getByRole("cell").nth(1).click();
+  await expect(page).toHaveURL(new RegExp(`/workspaces/${b.id}$`));
+  await expect(
+    page.getByRole("heading", { name: "Overview", exact: true }),
+  ).toBeVisible();
+  let neighborQueries = 0;
+  page.on("request", (request) => {
+    if (request.postData()?.includes("getWorkspaceNeighbors"))
+      neighborQueries++;
+  });
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page.getByTestId("workspace-settings-name-input")).toHaveValue(
     b.name,
   );
-  await expect(page.getByTestId("workspace-previous")).toHaveAttribute(
-    "href",
-    `/workspaces/${c.id}/settings`,
-  );
-  await expect(page.getByTestId("workspace-next")).toHaveAttribute(
-    "href",
-    `/workspaces/${a.id}/settings`,
-  );
-  await expect(page.locator('[data-slot="page-pagination"]')).toBeVisible();
-  await page
-    .getByTestId("workspace-settings-name-input")
-    .fill("Unsaved workspace draft");
-  await page.getByTestId("workspace-next").click();
+  await expect(page.locator('[data-slot="page-pagination"]')).toHaveCount(0);
+  await page.reload();
   await expect(page.getByTestId("workspace-settings-name-input")).toHaveValue(
-    a.name,
+    b.name,
   );
-  await expect(page.getByTestId("workspace-next")).toBeDisabled();
-  await expect(page.getByTestId("workspace-previous")).toHaveAttribute(
-    "href",
-    `/workspaces/${b.id}/settings`,
-  );
-  await backToList(page);
-  await expect(page.getByRole("row").nth(1)).toContainText(a.name);
-  expect(readSearch(page)).toMatchObject({
-    ...original,
-    after: expect.any(String),
-  });
-  expect(
-    JSON.parse(Buffer.from(readSearch(page).after, "base64").toString()),
-  ).toMatchObject({ id: b.id, value: expect.any(String) });
+  await page.getByRole("link", { name: "Workspaces", exact: true }).click();
+  await expect(page.getByRole("row").nth(1)).toContainText(b.name);
+  expect(readSearch(page)).toEqual(original);
+  expect(neighborQueries).toBe(0);
 });
