@@ -24,7 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const pageVariants = cva(
-  "mx-auto flex min-h-min w-full flex-1 flex-col p-4 @container/page",
+  "mx-auto flex min-h-min w-full min-w-0 flex-1 flex-col @container/page",
   {
     variants: {
       variant: {
@@ -44,7 +44,16 @@ export type PageProps = ComponentProps<"div"> &
 
 export const Page: FC<PageProps> = ({ className, variant, ...props }) => {
   return (
-    <div className={cn(pageVariants({ variant }), className)} {...props} />
+    <div
+      className="flex min-h-min w-full min-w-0 flex-1 flex-col p-4"
+      data-slot="page-wrapper"
+    >
+      <div
+        className={cn(pageVariants({ variant }), className)}
+        data-slot="page"
+        {...props}
+      />
+    </div>
   );
 };
 
@@ -116,7 +125,7 @@ export const PageTitle: FC<PageTitleProps> = ({ className, ...props }) => {
     <h2
       data-slot="page-title"
       className={cn(
-        "col-start-1 row-start-1 min-w-0 truncate py-0.5 text-lg font-semibold tracking-tight group-has-data-[slot=page-breadcrumb-actions]/page-header:col-start-2 sm:text-xl",
+        "col-start-1 row-start-1 min-w-0 truncate py-0.5 text-lg font-semibold tracking-tight group-has-data-[slot=page-breadcrumb-actions]/page-header:col-start-2 @2xl/page:text-xl",
         className,
       )}
       {...props}
@@ -134,7 +143,7 @@ export const PageDescription: FC<PageDescriptionProps> = ({
     <p
       data-slot="page-description"
       className={cn(
-        "text-muted-foreground col-span-full row-start-2 min-w-0 text-sm wrap-anywhere sm:group-has-data-[slot=page-breadcrumb-actions]/page-header:col-start-2",
+        "text-muted-foreground col-span-full row-start-2 min-w-0 text-sm wrap-anywhere @2xl/page:group-has-data-[slot=page-breadcrumb-actions]/page-header:col-start-2",
         className,
       )}
       {...props}
@@ -233,10 +242,10 @@ export const PageActions: FC<PageActionsProps> = ({
           className="order-10 flex items-center gap-2"
           data-slot="page-secondary-actions"
         >
-          <div className="hidden @3xl/page:flex @3xl/page:items-center @3xl/page:gap-2">
+          <div className="hidden @2xl/page:flex @2xl/page:items-center @2xl/page:gap-2">
             {renderSecondaryButtons(inlineSecondaryActions)}
           </div>
-          <div className="@3xl/page:hidden">
+          <div className="@2xl/page:hidden">
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
@@ -255,7 +264,7 @@ export const PageActions: FC<PageActionsProps> = ({
             </DropdownMenu>
           </div>
           {overflowSecondaryActions.length > 0 ? (
-            <div className="hidden @3xl/page:block">
+            <div className="hidden @2xl/page:block">
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={

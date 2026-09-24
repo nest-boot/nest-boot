@@ -20,7 +20,7 @@ export function PagePagination({ className, ...props }: PagePaginationProps) {
     <ButtonGroup
       aria-label={t("page.pagination", "Item navigation")}
       {...props}
-      className={cn("order-last hidden shrink-0 @3xl/page:flex", className)}
+      className={cn("order-last hidden shrink-0 @2xl/page:flex", className)}
       data-slot="page-pagination"
       orientation="horizontal"
     />

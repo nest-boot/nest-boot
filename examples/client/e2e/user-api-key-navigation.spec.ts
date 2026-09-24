@@ -113,12 +113,21 @@ test("browses details across pages, survives back and refresh, then anchors the 
   await expectNeighbor(page, "next", d.id);
   const pagination = page.locator('[data-slot="page-pagination"]');
   await expect(pagination).toBeVisible();
+  // Exercise compact-width behavior without changing the detail route's variant.
+  const pageContainer = page.locator('[data-slot="page"]');
+  await pageContainer.evaluate((element) => {
+    element.style.maxWidth = "42rem";
+  });
+  await expect(pagination).toBeVisible();
   const desktopViewport = page.viewportSize()!;
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(pagination).toBeHidden();
   await expectDetails(page, c.name);
   await page.setViewportSize(desktopViewport);
   await expect(pagination).toBeVisible();
+  await pageContainer.evaluate((element) => {
+    element.style.removeProperty("max-width");
+  });
   await page.getByTestId("api-key-previous").click();
   await expectDetails(page, b.name);
   await expectNeighbor(page, "previous", a.id);

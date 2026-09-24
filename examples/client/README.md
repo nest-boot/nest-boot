@@ -60,7 +60,8 @@ elements so cards stay stacked within the compact page.
 `PagePagination` groups `PagePreviousAction` and `PageNextAction` inside
 `PageActions`, after the primary action. Each action supports `disabled`,
 `onClick`, and `render` for router links. The registry component hides pagination
-below the `@3xl/page` container breakpoint (48rem), including compact pages.
+below the `@2xl/page` container breakpoint (42rem). Page padding belongs to the
+outer wrapper, so a compact page can reach that breakpoint and display pagination.
 Its default accessible labels are translated through the `thread-ui` namespace.
 Use theme color tokens from `src/styles.css` in application code.
 
