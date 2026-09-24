@@ -29,7 +29,7 @@ const end = "2026-09-23T00:00:00.000Z";
 const filterCases = [
   {
     name: "input",
-    schema: createInputFilterItemSearchSchema(),
+    schema: createInputFilterItemSearchSchema(undefined, { fulltext: true }),
     operators: dataFilterDefaultInputOperators,
     value: "name",
     invalid: [{ $gt: "name" }, { $eq: 1 }, "a".repeat(256)],
@@ -93,10 +93,26 @@ describe("DataFilter compatibility", () => {
     },
   );
 
-  it("applies caller constraints and supports disabling fulltext", () => {
-    const input = createInputFilterItemSearchSchema(z.string().max(3), {
-      fulltext: false,
+  it("requires explicit opt-in for fulltext", () => {
+    const condition = { $fulltext: "name" };
+    expect(
+      createInputFilterItemSearchSchema().parse(condition),
+    ).toBeUndefined();
+    for (const options of [{}, { fulltext: undefined }, { fulltext: false }]) {
+      const schema = createInputFilterItemSearchSchema(undefined, options);
+      expect(schema.parse(condition)).toBeUndefined();
+      expect(schema.parse({ $eq: "name" })).toEqual({ $eq: "name" });
+      expect(schema.parse({ $ne: "name" })).toEqual({ $ne: "name" });
+    }
+    const schema = createInputFilterItemSearchSchema(z.string().max(4), {
+      fulltext: true,
     });
+    expect(schema.parse(condition)).toEqual(condition);
+    expect(schema.parse({ $fulltext: "too long" })).toBeUndefined();
+  });
+
+  it("applies caller constraints", () => {
+    const input = createInputFilterItemSearchSchema(z.string().max(3));
     expect(input.parse({ $eq: "abc" })).toEqual({ $eq: "abc" });
     expect(input.parse({ $eq: "abcd" })).toBeUndefined();
     expect(input.parse({ $fulltext: "abc" })).toBeUndefined();

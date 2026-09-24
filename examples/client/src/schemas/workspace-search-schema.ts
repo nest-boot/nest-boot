@@ -10,7 +10,7 @@ import {
 
 export const workspaceSearchSchema = createConnectionSearchSchema({
   filterSchema: createFilterSchema({
-    name: createInputFilterItemSearchSchema(undefined, { fulltext: false }),
+    name: createInputFilterItemSearchSchema(),
     created_at: createDateFilterItemSearchSchema(),
   }),
   pageSize: 20,

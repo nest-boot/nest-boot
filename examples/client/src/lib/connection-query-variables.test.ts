@@ -25,7 +25,7 @@ describe("connection query filters", () => {
       defaultOrderField: "ID",
       defaultOrderDirection: OrderDirection.DESC,
       filterSchema: createFilterSchema({
-        name: createInputFilterItemSearchSchema(),
+        name: createInputFilterItemSearchSchema(undefined, { fulltext: true }),
         status: createSelectFilterItemSearchSchema(z.enum(["ACTIVE"])),
         count: createNumberFilterItemSearchSchema(),
         enabled: createCheckboxFilterItemSearchSchema(),

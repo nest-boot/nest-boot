@@ -12,12 +12,8 @@ import {
 
 export const memberSearchSchema = createConnectionSearchSchema({
   filterSchema: createFilterSchema({
-    name: createInputFilterItemSearchSchema(z.string().max(255), {
-      fulltext: false,
-    }),
-    email: createInputFilterItemSearchSchema(z.string().max(255), {
-      fulltext: false,
-    }),
+    name: createInputFilterItemSearchSchema(z.string().max(255)),
+    email: createInputFilterItemSearchSchema(z.string().max(255)),
     status: createSelectFilterItemSearchSchema(
       z.union([z.nativeEnum(MemberStatus), z.literal("ACTIVE")]),
       Object.values(MemberStatus).length + 1,

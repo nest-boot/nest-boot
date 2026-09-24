@@ -33,6 +33,7 @@ export function createFilterSchema<Shape extends z.ZodRawShape>(shape: Shape) {
   return z.object(shape).optional();
 }
 
+/** Fulltext must be explicitly enabled for fields that support it. */
 export function createInputFilterItemSearchSchema(
   valueSchema: z.ZodString = z.string().max(255),
   options: { fulltext?: boolean } = {},
@@ -42,9 +43,7 @@ export function createInputFilterItemSearchSchema(
     $eq: nullableValueSchema.optional(),
     $ne: nullableValueSchema.optional(),
     $fulltext:
-      options.fulltext === false
-        ? z.never().optional()
-        : valueSchema.optional(),
+      options.fulltext === true ? valueSchema.optional() : z.never().optional(),
   };
 
   return z

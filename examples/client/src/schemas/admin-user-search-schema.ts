@@ -10,8 +10,8 @@ import {
 
 export const adminUserSearchSchema = createConnectionSearchSchema({
   filterSchema: createFilterSchema({
-    name: createInputFilterItemSearchSchema(undefined, { fulltext: false }),
-    email: createInputFilterItemSearchSchema(undefined, { fulltext: false }),
+    name: createInputFilterItemSearchSchema(),
+    email: createInputFilterItemSearchSchema(),
     created_at: createDateFilterItemSearchSchema(),
   }),
   pageSize: 20,
