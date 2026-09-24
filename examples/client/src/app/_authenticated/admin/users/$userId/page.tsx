@@ -258,14 +258,14 @@ function AdminUserDetails() {
         });
         if (!data) return undefined;
         return {
-          prevEdge: data.previous.edges[0],
+          previousEdge: data.previous.edges[0],
           nextEdge: data.next.edges[0],
         };
       },
       [navigationRecord, loadNeighbors],
     ),
   });
-  const { prevEdge, nextEdge, backSearch } = navigation;
+  const { previousEdge, nextEdge, backSearch } = navigation;
   const sessions = data?.user?.sessions?.edges.map(({ node }) => node) ?? [];
   const [revokingSessionId, setRevokingSessionId] = useState<string>();
 
@@ -517,7 +517,7 @@ function AdminUserDetails() {
           <RecordNavigation
             testIdPrefix="admin-user"
             previousPath={
-              prevEdge ? `/admin/users/${prevEdge.node.id}` : undefined
+              previousEdge ? `/admin/users/${previousEdge.node.id}` : undefined
             }
             nextPath={nextEdge ? `/admin/users/${nextEdge.node.id}` : undefined}
             failed={Boolean(navigation.error)}

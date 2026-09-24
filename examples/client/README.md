@@ -143,14 +143,14 @@ pageSearch)` to calculate its cursor. Include the record in the closure's
   List pagination (`after`/`before`) is not the current record's cursor.
   No record or calculated cursor is passed to the navigation hook, and no cursor
   map is persisted.
-  The closure returns `{ prevEdge?: PageNavigationEdge, nextEdge?: PageNavigationEdge }`,
+  The closure returns `{ previousEdge?: PageNavigationEdge, nextEdge?: PageNavigationEdge }`,
   with each edge containing the full `cursor` and a `node.id` of type `string | number`.
   Omit an edge or use `undefined` when there is no record in that direction.
   Detail pages execute Apollo's `useLazyQuery`
   for both adjacent records in one request. GraphQL accepts one `$cursor`, using
   it as `before` with `last: 1` and as `after` with `first: 1`; both directions share
   the search query, filter, and ordering.
-  The hook returns `prevEdge`, `nextEdge`, `loading`, `error`, and `refetch()` for
+  The hook returns `previousEdge`, `nextEdge`, `loading`, `error`, and `refetch()` for
   navigation and retries. It ignores obsolete responses after closure/scope changes
   or retries and hides stale links during loading or errors. A missing query owner
   is an error; `{}` is a valid result when neither adjacent record exists.

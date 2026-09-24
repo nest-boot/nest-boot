@@ -157,14 +157,14 @@ function MemberDetails({
         });
         if (data?.currentWorkspace?.id !== workspaceId) return undefined;
         return {
-          prevEdge: data.currentWorkspace.previous.edges[0],
+          previousEdge: data.currentWorkspace.previous.edges[0],
           nextEdge: data.currentWorkspace.next.edges[0],
         };
       },
       [member, loadNeighbors, workspaceId],
     ),
   });
-  const { prevEdge, nextEdge, backSearch } = navigation;
+  const { previousEdge, nextEdge, backSearch } = navigation;
   const memberSubject = createAbilitySubject("Member", member);
 
   const save: MemberFormProps["onSave"] = async (
@@ -261,8 +261,8 @@ function MemberDetails({
           <RecordNavigation
             testIdPrefix="member"
             previousPath={
-              prevEdge
-                ? `/workspaces/${workspaceId}/members/${prevEdge.node.id}`
+              previousEdge
+                ? `/workspaces/${workspaceId}/members/${previousEdge.node.id}`
                 : undefined
             }
             nextPath={

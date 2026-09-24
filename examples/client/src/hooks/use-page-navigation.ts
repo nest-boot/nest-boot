@@ -30,7 +30,7 @@ export interface PageNavigationEdge {
 }
 
 export interface PageNavigationQueryResult {
-  prevEdge?: PageNavigationEdge;
+  previousEdge?: PageNavigationEdge;
   nextEdge?: PageNavigationEdge;
 }
 
@@ -120,7 +120,7 @@ export function usePageNavigation<Schema extends z.ZodType<CursorPageSearch>>({
   // Also hide stale results during the render before the next effect starts.
   const current = state && isEqual(state.request, request) ? state : undefined;
   const data = current?.data;
-  const prevEdge = data?.prevEdge;
+  const previousEdge = data?.previousEdge;
   const nextEdge = data?.nextEdge;
   const backSearch = useMemo((): z.output<Schema> => {
     if (!savedSearch || !data) return pageSearch;
@@ -134,7 +134,7 @@ export function usePageNavigation<Schema extends z.ZodType<CursorPageSearch>>({
     return searchSchema.parse({
       ...conditions,
       first: first ?? last,
-      after: data.prevEdge?.cursor,
+      after: data.previousEdge?.cursor,
     });
   }, [savedSearch, data, pageSearch, searchSchema]);
 
@@ -151,7 +151,7 @@ export function usePageNavigation<Schema extends z.ZodType<CursorPageSearch>>({
     pageSearch,
     setPageSearch,
     backSearch,
-    prevEdge,
+    previousEdge,
     nextEdge,
     loading: !current || current.loading,
     error: current?.error,

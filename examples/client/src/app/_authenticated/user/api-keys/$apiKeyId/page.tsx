@@ -83,14 +83,14 @@ function ApiKeyDetailsPage() {
         });
         if (!data?.currentUser) return undefined;
         return {
-          prevEdge: data.currentUser.previous.edges[0],
+          previousEdge: data.currentUser.previous.edges[0],
           nextEdge: data.currentUser.next.edges[0],
         };
       },
       [apiKey, loadNeighbors],
     ),
   });
-  const { prevEdge, nextEdge, backSearch, error } = navigation;
+  const { previousEdge, nextEdge, backSearch, error } = navigation;
   return (
     <ApiKeyFormPage
       key={apiKey.id}
@@ -104,7 +104,7 @@ function ApiKeyDetailsPage() {
       navigation={
         <ApiKeyNavigation
           previousPath={
-            prevEdge ? `/user/api-keys/${prevEdge.node.id}` : undefined
+            previousEdge ? `/user/api-keys/${previousEdge.node.id}` : undefined
           }
           nextPath={nextEdge ? `/user/api-keys/${nextEdge.node.id}` : undefined}
           failed={Boolean(error)}

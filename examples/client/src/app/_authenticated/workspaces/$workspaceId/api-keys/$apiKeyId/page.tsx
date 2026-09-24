@@ -94,14 +94,14 @@ function ApiKeyDetailsPage() {
         });
         if (data?.currentWorkspace?.id !== workspaceId) return undefined;
         return {
-          prevEdge: data.currentWorkspace.previous.edges[0],
+          previousEdge: data.currentWorkspace.previous.edges[0],
           nextEdge: data.currentWorkspace.next.edges[0],
         };
       },
       [apiKey, loadNeighbors, workspaceId],
     ),
   });
-  const { prevEdge, nextEdge, backSearch, error } = navigation;
+  const { previousEdge, nextEdge, backSearch, error } = navigation;
   const listPath = `/workspaces/${workspaceId}/api-keys`;
   return (
     <ApiKeyFormPage
@@ -116,7 +116,7 @@ function ApiKeyDetailsPage() {
       navigation={
         <ApiKeyNavigation
           previousPath={
-            prevEdge ? `${listPath}/${prevEdge.node.id}` : undefined
+            previousEdge ? `${listPath}/${previousEdge.node.id}` : undefined
           }
           nextPath={nextEdge ? `${listPath}/${nextEdge.node.id}` : undefined}
           failed={Boolean(error)}

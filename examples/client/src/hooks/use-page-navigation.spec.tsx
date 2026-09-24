@@ -50,7 +50,7 @@ function neighbors(
   next?: string,
 ): PageNavigationQueryResult {
   return {
-    prevEdge: previous
+    previousEdge: previous
       ? { cursor: previous, node: { id: previous } }
       : undefined,
     nextEdge: next ? { cursor: next, node: { id: next } } : undefined,
@@ -109,7 +109,7 @@ describe("usePageNavigation", () => {
       pageSearch: z.output<typeof apiKeySearchSchema>;
     }>();
     expectTypeOf<PageNavigationQueryResult>().toEqualTypeOf<{
-      prevEdge?: PageNavigationEdge;
+      previousEdge?: PageNavigationEdge;
       nextEdge?: PageNavigationEdge;
     }>();
     expectTypeOf<PageNavigationEdge["node"]["id"]>().toEqualTypeOf<
@@ -138,14 +138,14 @@ describe("usePageNavigation", () => {
         after: "B",
       }),
     });
-    expect(result.current.prevEdge?.node.id).toBe("B");
+    expect(result.current.previousEdge?.node.id).toBe("B");
     expect(result.current.nextEdge).toBeUndefined();
   });
 
   it("accepts numeric IDs including zero and retains the complete preceding cursor", async () => {
     const saved = saveSearch({ first: 5, after: "old" });
     const data: PageNavigationQueryResult = {
-      prevEdge: {
+      previousEdge: {
         cursor: btoa(
           JSON.stringify({ id: 0, value: "2026-09-23T10:00:00.000Z" }),
         ),
@@ -169,11 +169,11 @@ describe("usePageNavigation", () => {
       { wrapper },
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.prevEdge).toEqual(data.prevEdge);
+    expect(result.current.previousEdge).toEqual(data.previousEdge);
     expect(result.current.nextEdge).toEqual(data.nextEdge);
     expect(result.current.backSearch).toMatchObject({
       first: 5,
-      after: data.prevEdge?.cursor,
+      after: data.previousEdge?.cursor,
     });
     expect(saved.result.current.pageSearch).toEqual(result.current.backSearch);
   });
@@ -203,7 +203,7 @@ describe("usePageNavigation", () => {
     expect(result.current.backSearch).toEqual(search);
     await waitFor(() => expect(result.current.error).toBe(error));
     expect(result.current.loading).toBe(false);
-    expect(result.current.prevEdge).toBeUndefined();
+    expect(result.current.previousEdge).toBeUndefined();
     expect(result.current.nextEdge).toBeUndefined();
     expect(result.current.backSearch).toEqual(search);
     await act(async () => {
@@ -218,7 +218,7 @@ describe("usePageNavigation", () => {
     });
     expect(result.current.error).toBe(error);
     expect(result.current.backSearch).toMatchObject({ after: "A" });
-    expect(result.current.prevEdge).toBeUndefined();
+    expect(result.current.previousEdge).toBeUndefined();
   });
 
   it("treats a missing query owner as a failure rather than the first record", async () => {
@@ -355,7 +355,7 @@ describe("usePageNavigation", () => {
       after: undefined,
     });
     expect(saved.result.current.pageSearch).toEqual(result.current.backSearch);
-    expect(result.current.prevEdge).toBeUndefined();
+    expect(result.current.previousEdge).toBeUndefined();
     expect(result.current.nextEdge?.node.id).toBe("B");
   });
 
@@ -382,13 +382,13 @@ describe("usePageNavigation", () => {
       initial.resolve(neighbors("A", "C"));
       await initial.promise;
     });
-    expect(result.current.prevEdge?.node.id).toBe("A");
+    expect(result.current.previousEdge?.node.id).toBe("A");
     rerender({ query: otherQuery });
     expect(result.current.loading).toBe(true);
-    expect(result.current.prevEdge).toBeUndefined();
+    expect(result.current.previousEdge).toBeUndefined();
     expect(result.current.backSearch).toMatchObject({ after: "A" });
     rerender({ query: firstQuery });
-    expect(result.current.prevEdge).toBeUndefined();
+    expect(result.current.previousEdge).toBeUndefined();
     await act(async () => {
       returned.resolve(neighbors("A", "C"));
       await returned.promise;
@@ -397,7 +397,7 @@ describe("usePageNavigation", () => {
       switched.resolve(neighbors("B", "D"));
       await switched.promise;
     });
-    expect(result.current.prevEdge?.node.id).toBe("A");
+    expect(result.current.previousEdge?.node.id).toBe("A");
     expect(result.current.nextEdge?.node.id).toBe("C");
     expect(result.current.backSearch).toMatchObject({ after: "A" });
     expect(saved.result.current.pageSearch).toMatchObject({ after: "A" });
@@ -542,7 +542,7 @@ describe("usePageNavigation", () => {
     expect(query).toHaveBeenLastCalledWith({
       pageSearch: result.current.pageSearch,
     });
-    expect(result.current.prevEdge?.node.id).toBe("previous");
+    expect(result.current.previousEdge?.node.id).toBe("previous");
     expect(sessionStorage.length).toBe(0);
   });
 
