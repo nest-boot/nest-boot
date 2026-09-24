@@ -1,12 +1,13 @@
 import { useMutation } from "@apollo/client/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
-import { usePageSearch } from "@/hooks/use-page-search";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import {
   apiKeySearchSchema,
-  getWorkspaceApiKeysPageKey,
+  getWorkspaceApiKeysResourceKey,
 } from "@/lib/api-key-search";
 import {
   CREATE_API_KEY_FROM_API_KEYS_ROUTE,
@@ -49,8 +50,9 @@ export const Route = createFileRoute(
 
 function CreateApiKeyPage() {
   const { workspaceId } = Route.useParams();
-  const { pageSearch } = usePageSearch({
-    key: getWorkspaceApiKeysPageKey(workspaceId),
+  const currentUser = useCurrentUserContext();
+  const { backSearch } = useResourceNavigation({
+    key: [currentUser.id, ...getWorkspaceApiKeysResourceKey(workspaceId)],
     searchSchema: apiKeySearchSchema,
   });
   const { permissionOptions } = Route.useRouteContext();
@@ -62,7 +64,7 @@ function CreateApiKeyPage() {
       key={workspaceId}
       canWrite
       listPath={`/workspaces/${workspaceId}/api-keys`}
-      listSearch={pageSearch}
+      listSearch={backSearch}
       permissionValues={workspaceApiKeyPermissionValues}
       permissionOptions={getPermissionOptions(permissionOptions)}
       defaultPermissions={getDefaultApiKeyPermissions(permissionOptions)}

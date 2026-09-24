@@ -3,15 +3,12 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { z } from "zod";
 import { useCallback } from "react";
-import { usePageSearch } from "./use-page-search";
-import { usePageNavigation } from "./use-page-navigation";
-import type { ReactNode } from "react";
+import { useResourceNavigation } from "./use-resource-navigation";
 import type {
-  PageNavigationEdge,
-  PageNavigationQueryOptions,
-  PageNavigationQueryResult,
-} from "./use-page-navigation";
-import { CurrentUserProvider } from "@/app/_authenticated/contexts/current-user-context";
+  ResourceNavigationEdge,
+  ResourceNavigationQueryOptions,
+  ResourceNavigationQueryResult,
+} from "./use-resource-navigation";
 import { apiKeySearchSchema } from "@/lib/api-key-search";
 import { createConnectionCursor } from "@/lib/connection-cursor";
 import { UserApiKeyOrderField } from "@/gql/graphql";
@@ -20,21 +17,7 @@ import {
   createConnectionSearchSchema,
 } from "@/lib/connection-search";
 
-function wrapper({ children }: { children: ReactNode }) {
-  return (
-    <CurrentUserProvider
-      value={{
-        id: "navigation-user",
-        name: "Test",
-        email: "test@example.com",
-        permissions: [],
-      }}
-    >
-      {children}
-    </CurrentUserProvider>
-  );
-}
-const pageKey = ["api-keys"];
+const resourceKey = ["navigation-user", "api-keys"];
 const record = {
   id: "B",
   createdAt: "2026-01-01T00:00:00.000Z",
@@ -48,7 +31,7 @@ const conditions = {
 function neighbors(
   previous?: string,
   next?: string,
-): PageNavigationQueryResult {
+): ResourceNavigationQueryResult {
   return {
     previousEdge: previous
       ? { cursor: previous, node: { id: previous } }
@@ -56,17 +39,19 @@ function neighbors(
     nextEdge: next ? { cursor: next, node: { id: next } } : undefined,
   };
 }
-function saveSearch(search: z.input<typeof apiKeySearchSchema>, key = pageKey) {
-  const saved = renderHook(
-    () => usePageSearch({ key, searchSchema: apiKeySearchSchema }),
-    { wrapper },
+function saveSearch(
+  search: z.input<typeof apiKeySearchSchema>,
+  key = resourceKey,
+) {
+  const saved = renderHook(() =>
+    useResourceNavigation({ key, searchSchema: apiKeySearchSchema }),
   );
-  act(() => saved.result.current.setPageSearch(search));
+  act(() => saved.result.current.setSearch(search));
   return saved;
 }
 function deferred() {
-  let resolve!: (value: PageNavigationQueryResult) => void;
-  const promise = new Promise<PageNavigationQueryResult>((complete) => {
+  let resolve!: (value: ResourceNavigationQueryResult) => void;
+  const promise = new Promise<ResourceNavigationQueryResult>((complete) => {
     resolve = complete;
   });
   return { promise, resolve };
@@ -76,22 +61,134 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
-describe("usePageNavigation", () => {
-  it("executes the lazy-query closure for changed conditions or closures, but not saved pagination", async () => {
-    const query = vi.fn().mockResolvedValue(neighbors("A", "C"));
+describe("useResourceNavigation", () => {
+  it("reads defaults without querying or recording a list visit when query is omitted", async () => {
+    const { result } = renderHook(() =>
+      useResourceNavigation({
+        key: resourceKey,
+        searchSchema: apiKeySearchSchema,
+      }),
+    );
+    expect(result.current.search).toEqual(apiKeySearchSchema.parse({}));
+    expect(result.current.backSearch).toEqual(result.current.search);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeUndefined();
+    expect(result.current.previousEdge).toBeUndefined();
+    expect(result.current.nextEdge).toBeUndefined();
+    await expect(result.current.refetch()).resolves.toBeUndefined();
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it("queries supplied search immediately and retains schema-defined view metadata", async () => {
+    const searchSchema = apiKeySearchSchema.and(
+      z.object({ savedViewId: z.string().optional() }),
+    );
+    const query = vi.fn().mockResolvedValue(neighbors("previous", "next"));
+    saveSearch({ query: "old" });
     const { result, rerender } = renderHook(
-      ({ execute }) =>
-        usePageNavigation({
-          key: pageKey,
-          searchSchema: apiKeySearchSchema,
-          query: execute,
+      ({ search }) =>
+        useResourceNavigation({
+          key: resourceKey,
+          searchSchema,
+          search,
+          query,
         }),
-      { wrapper, initialProps: { execute: query } },
+      {
+        initialProps: {
+          search: {
+            query: "incoming",
+            savedViewId: "view-one",
+            first: 5,
+            after: "old",
+          },
+        },
+      },
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(query).toHaveBeenCalledTimes(1);
     expect(query).toHaveBeenLastCalledWith({
-      pageSearch: apiKeySearchSchema.parse({}),
+      search: searchSchema.parse({
+        query: "incoming",
+        savedViewId: "view-one",
+        first: 5,
+        after: "old",
+      }),
+    });
+    expect(result.current.backSearch).toMatchObject({
+      savedViewId: "view-one",
+      after: "previous",
+    });
+    rerender({
+      search: {
+        query: "incoming",
+        savedViewId: "view-two",
+        first: 5,
+        after: "old",
+      },
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query).toHaveBeenLastCalledWith({
+      search: searchSchema.parse({
+        query: "incoming",
+        savedViewId: "view-two",
+        first: 5,
+        after: "old",
+      }),
+    });
+    expect(result.current.search).toMatchObject({
+      savedViewId: "view-two",
+      after: "previous",
+    });
+  });
+
+  it("discards a pending result when query is removed and can enable it again", async () => {
+    const saved = saveSearch({ after: "original" });
+    const pending = deferred();
+    const query = vi
+      .fn()
+      .mockReturnValueOnce(pending.promise)
+      .mockResolvedValue(neighbors("fresh"));
+    const { result, rerender } = renderHook(
+      ({ enabled }) =>
+        useResourceNavigation({
+          key: resourceKey,
+          searchSchema: apiKeySearchSchema,
+          query: enabled ? query : undefined,
+        }),
+      { initialProps: { enabled: true } },
+    );
+    rerender({ enabled: false });
+    expect(result.current.loading).toBe(false);
+    await act(async () => {
+      pending.resolve(neighbors("stale"));
+      await pending.promise;
+    });
+    expect(result.current.previousEdge).toBeUndefined();
+    expect(saved.result.current.search).toMatchObject({ after: "original" });
+    rerender({ enabled: true });
+    await waitFor(() =>
+      expect(result.current.previousEdge?.node.id).toBe("fresh"),
+    );
+    expect(saved.result.current.search).toMatchObject({ after: "fresh" });
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
+  it("executes the lazy-query closure for changed conditions or closures, but not saved pagination", async () => {
+    const query = vi.fn().mockResolvedValue(neighbors("A", "C"));
+    const { result, rerender } = renderHook(
+      ({ execute }) =>
+        useResourceNavigation({
+          key: resourceKey,
+          searchSchema: apiKeySearchSchema,
+          query: execute,
+        }),
+      { initialProps: { execute: query } },
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenLastCalledWith({
+      search: apiKeySearchSchema.parse({}),
     });
     // Only the closure receives query arguments; pages consume the final search.
     expect(result.current).not.toHaveProperty("previousSearch");
@@ -99,27 +196,27 @@ describe("usePageNavigation", () => {
     expect(result.current).not.toHaveProperty("getBackSearch");
     expect(result.current).not.toHaveProperty("currentCursor");
     type Options = Parameters<
-      typeof usePageNavigation<typeof apiKeySearchSchema>
+      typeof useResourceNavigation<typeof apiKeySearchSchema>
     >[0];
     expectTypeOf<Pick<Options, "query">>().toEqualTypeOf<
-      Required<Pick<Options, "query">>
+      Partial<Pick<Options, "query">>
     >();
     expectTypeOf<Extract<keyof Options, "record">>().toEqualTypeOf<never>();
-    expectTypeOf<Parameters<Options["query"]>[0]>().toEqualTypeOf<{
-      pageSearch: z.output<typeof apiKeySearchSchema>;
+    expectTypeOf<Parameters<NonNullable<Options["query"]>>[0]>().toEqualTypeOf<{
+      search: z.output<typeof apiKeySearchSchema>;
     }>();
-    expectTypeOf<PageNavigationQueryResult>().toEqualTypeOf<{
-      previousEdge?: PageNavigationEdge;
-      nextEdge?: PageNavigationEdge;
+    expectTypeOf<ResourceNavigationQueryResult>().toEqualTypeOf<{
+      previousEdge?: ResourceNavigationEdge;
+      nextEdge?: ResourceNavigationEdge;
     }>();
-    expectTypeOf<PageNavigationEdge["node"]["id"]>().toEqualTypeOf<
+    expectTypeOf<ResourceNavigationEdge["node"]["id"]>().toEqualTypeOf<
       string | number
     >();
     rerender({ execute: query });
-    act(() => result.current.setPageSearch({ first: 5, after: "saved" }));
+    act(() => result.current.setSearch({ first: 5, after: "saved" }));
     expect(query).toHaveBeenCalledTimes(1);
     act(() =>
-      result.current.setPageSearch((saved) => ({ ...saved, query: "changed" })),
+      result.current.setSearch((saved) => ({ ...saved, query: "changed" })),
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(query).toHaveBeenCalledTimes(2);
@@ -132,7 +229,7 @@ describe("usePageNavigation", () => {
     });
     expect(otherQuery).toHaveBeenCalledTimes(2);
     expect(otherQuery).toHaveBeenLastCalledWith({
-      pageSearch: expect.objectContaining({
+      search: expect.objectContaining({
         query: "changed",
         first: 5,
         after: "B",
@@ -144,7 +241,7 @@ describe("usePageNavigation", () => {
 
   it("accepts numeric IDs including zero and retains the complete preceding cursor", async () => {
     const saved = saveSearch({ first: 5, after: "old" });
-    const data: PageNavigationQueryResult = {
+    const data: ResourceNavigationQueryResult = {
       previousEdge: {
         cursor: btoa(
           JSON.stringify({ id: 0, value: "2026-09-23T10:00:00.000Z" }),
@@ -159,14 +256,12 @@ describe("usePageNavigation", () => {
       },
     };
     const query = vi.fn().mockResolvedValue(data);
-    const { result } = renderHook(
-      () =>
-        usePageNavigation({
-          key: pageKey,
-          searchSchema: apiKeySearchSchema,
-          query,
-        }),
-      { wrapper },
+    const { result } = renderHook(() =>
+      useResourceNavigation({
+        key: resourceKey,
+        searchSchema: apiKeySearchSchema,
+        query,
+      }),
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.previousEdge).toEqual(data.previousEdge);
@@ -175,7 +270,7 @@ describe("usePageNavigation", () => {
       first: 5,
       after: data.previousEdge?.cursor,
     });
-    expect(saved.result.current.pageSearch).toEqual(result.current.backSearch);
+    expect(saved.result.current.search).toEqual(result.current.backSearch);
   });
 
   it("retains saved search during loading and failure, and retries without page-owned query state", async () => {
@@ -190,14 +285,12 @@ describe("usePageNavigation", () => {
       .fn()
       .mockRejectedValueOnce(error)
       .mockResolvedValue(neighbors("A", "C"));
-    const { result } = renderHook(
-      () =>
-        usePageNavigation({
-          key: pageKey,
-          searchSchema: apiKeySearchSchema,
-          query,
-        }),
-      { wrapper },
+    const { result } = renderHook(() =>
+      useResourceNavigation({
+        key: resourceKey,
+        searchSchema: apiKeySearchSchema,
+        query,
+      }),
     );
     expect(result.current.loading).toBe(true);
     expect(result.current.backSearch).toEqual(search);
@@ -224,14 +317,12 @@ describe("usePageNavigation", () => {
   it("treats a missing query owner as a failure rather than the first record", async () => {
     saveSearch({ after: "saved" });
     const query = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(
-      () =>
-        usePageNavigation({
-          key: pageKey,
-          searchSchema: apiKeySearchSchema,
-          query,
-        }),
-      { wrapper },
+    const { result } = renderHook(() =>
+      useResourceNavigation({
+        key: resourceKey,
+        searchSchema: apiKeySearchSchema,
+        query,
+      }),
     );
     await waitFor(() => expect(result.current.error).toBeInstanceOf(Error));
     expect(result.current.backSearch).toMatchObject({ after: "saved" });
@@ -240,18 +331,16 @@ describe("usePageNavigation", () => {
   it("accepts a schema without an orderBy property on direct entry", async () => {
     const searchSchema = z.object({ first: z.number().default(10) });
     const query = vi.fn().mockResolvedValue(neighbors("A", "C"));
-    const { result } = renderHook(
-      () =>
-        usePageNavigation({
-          key: ["id-only"],
-          searchSchema,
-          query,
-        }),
-      { wrapper },
+    const { result } = renderHook(() =>
+      useResourceNavigation({
+        key: ["id-only"],
+        searchSchema,
+        query,
+      }),
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(query).toHaveBeenLastCalledWith({
-      pageSearch: { first: 10 },
+      search: { first: 10 },
     });
     expect(result.current.backSearch).toEqual({ first: 10 });
     expect(sessionStorage.length).toBe(0);
@@ -266,12 +355,11 @@ describe("usePageNavigation", () => {
         query: z.string().optional(),
         orderBy: z.object({ field: z.string() }).nullish(),
       });
-      const saved = renderHook(
-        () => usePageSearch({ key: ["id-only"], searchSchema }),
-        { wrapper },
+      const saved = renderHook(() =>
+        useResourceNavigation({ key: ["id-only"], searchSchema }),
       );
       act(() =>
-        saved.result.current.setPageSearch({
+        saved.result.current.setSearch({
           first: 5,
           after: "old",
           query: "example",
@@ -279,18 +367,16 @@ describe("usePageNavigation", () => {
         }),
       );
       const query = vi.fn().mockResolvedValue(neighbors("previous"));
-      const { result } = renderHook(
-        () =>
-          usePageNavigation({
-            key: ["id-only"],
-            searchSchema,
-            query,
-          }),
-        { wrapper },
+      const { result } = renderHook(() =>
+        useResourceNavigation({
+          key: ["id-only"],
+          searchSchema,
+          query,
+        }),
       );
       await waitFor(() => expect(result.current.loading).toBe(false));
       expect(query).toHaveBeenLastCalledWith({
-        pageSearch: { query: "example", orderBy, first: 5, after: "old" },
+        search: { query: "example", orderBy, first: 5, after: "old" },
       });
       expect(result.current.backSearch).toEqual({
         query: "example",
@@ -298,9 +384,7 @@ describe("usePageNavigation", () => {
         first: 5,
         after: "previous",
       });
-      expect(saved.result.current.pageSearch).toEqual(
-        result.current.backSearch,
-      );
+      expect(saved.result.current.search).toEqual(result.current.backSearch);
     },
   );
 
@@ -312,41 +396,35 @@ describe("usePageNavigation", () => {
     async (pagination) => {
       const saved = saveSearch({ ...conditions, ...pagination });
       const query = vi.fn().mockResolvedValue(neighbors("previous", "next"));
-      const { result } = renderHook(
-        () =>
-          usePageNavigation({
-            key: pageKey,
-            searchSchema: apiKeySearchSchema,
-            query,
-          }),
-        { wrapper },
+      const { result } = renderHook(() =>
+        useResourceNavigation({
+          key: resourceKey,
+          searchSchema: apiKeySearchSchema,
+          query,
+        }),
       );
       await waitFor(() => expect(result.current.loading).toBe(false));
       expect(query).toHaveBeenLastCalledWith({
-        pageSearch: apiKeySearchSchema.parse({ ...conditions, ...pagination }),
+        search: apiKeySearchSchema.parse({ ...conditions, ...pagination }),
       });
       expect(result.current.backSearch).toEqual({
         ...conditions,
         first: 5,
         after: "previous",
       });
-      expect(saved.result.current.pageSearch).toEqual(
-        result.current.backSearch,
-      );
+      expect(saved.result.current.search).toEqual(result.current.backSearch);
     },
   );
 
   it("returns the filtered first page when the current record has no predecessor", async () => {
     const saved = saveSearch({ ...conditions, first: 5, after: "old" });
     const query = vi.fn().mockResolvedValue(neighbors(undefined, "B"));
-    const { result } = renderHook(
-      () =>
-        usePageNavigation({
-          key: pageKey,
-          searchSchema: apiKeySearchSchema,
-          query,
-        }),
-      { wrapper },
+    const { result } = renderHook(() =>
+      useResourceNavigation({
+        key: resourceKey,
+        searchSchema: apiKeySearchSchema,
+        query,
+      }),
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.backSearch).toEqual({
@@ -354,7 +432,7 @@ describe("usePageNavigation", () => {
       first: 5,
       after: undefined,
     });
-    expect(saved.result.current.pageSearch).toEqual(result.current.backSearch);
+    expect(saved.result.current.search).toEqual(result.current.backSearch);
     expect(result.current.previousEdge).toBeUndefined();
     expect(result.current.nextEdge?.node.id).toBe("B");
   });
@@ -371,12 +449,12 @@ describe("usePageNavigation", () => {
     const otherQuery = vi.fn().mockReturnValueOnce(switched.promise);
     const { result, rerender } = renderHook(
       ({ query }) =>
-        usePageNavigation({
-          key: pageKey,
+        useResourceNavigation({
+          key: resourceKey,
           searchSchema: apiKeySearchSchema,
           query,
         }),
-      { wrapper, initialProps: { query: firstQuery } },
+      { initialProps: { query: firstQuery } },
     );
     await act(async () => {
       initial.resolve(neighbors("A", "C"));
@@ -400,7 +478,7 @@ describe("usePageNavigation", () => {
     expect(result.current.previousEdge?.node.id).toBe("A");
     expect(result.current.nextEdge?.node.id).toBe("C");
     expect(result.current.backSearch).toMatchObject({ after: "A" });
-    expect(saved.result.current.pageSearch).toMatchObject({ after: "A" });
+    expect(saved.result.current.search).toMatchObject({ after: "A" });
   });
 
   it("isolates pending requests and saved positions when the workspace key changes", async () => {
@@ -422,12 +500,12 @@ describe("usePageNavigation", () => {
       .mockReturnValueOnce(newRequest.promise);
     const { result, rerender } = renderHook(
       ({ key }) =>
-        usePageNavigation({
+        useResourceNavigation({
           key,
           searchSchema: apiKeySearchSchema,
           query,
         }),
-      { wrapper, initialProps: { key: firstKey } },
+      { initialProps: { key: firstKey } },
     );
     rerender({ key: secondKey });
     expect(result.current.backSearch).toMatchObject({ after: "two-old" });
@@ -443,8 +521,8 @@ describe("usePageNavigation", () => {
       first: 3,
       after: "two-previous",
     });
-    expect(first.result.current.pageSearch).toMatchObject({ after: "one-old" });
-    expect(second.result.current.pageSearch).toMatchObject({
+    expect(first.result.current.search).toMatchObject({ after: "one-old" });
+    expect(second.result.current.search).toMatchObject({
       after: "two-previous",
     });
   });
@@ -453,21 +531,19 @@ describe("usePageNavigation", () => {
     const saved = saveSearch({ first: 5, after: "original" });
     const pending = deferred();
     const query = vi.fn().mockReturnValue(pending.promise);
-    const { unmount } = renderHook(
-      () =>
-        usePageNavigation({
-          key: pageKey,
-          searchSchema: apiKeySearchSchema,
-          query,
-        }),
-      { wrapper },
+    const { unmount } = renderHook(() =>
+      useResourceNavigation({
+        key: resourceKey,
+        searchSchema: apiKeySearchSchema,
+        query,
+      }),
     );
     unmount();
     await act(async () => {
       pending.resolve(neighbors("late"));
       await pending.promise;
     });
-    expect(saved.result.current.pageSearch).toMatchObject({
+    expect(saved.result.current.search).toMatchObject({
       after: "original",
     });
   });
@@ -483,21 +559,21 @@ describe("usePageNavigation", () => {
     const execute = vi.fn().mockResolvedValue(neighbors());
     const { result, rerender } = renderHook(
       ({ item }) =>
-        usePageNavigation({
-          key: pageKey,
+        useResourceNavigation({
+          key: resourceKey,
           searchSchema: apiKeySearchSchema,
           query: useCallback(
             ({
-              pageSearch,
-            }: PageNavigationQueryOptions<typeof apiKeySearchSchema>) =>
+              search,
+            }: ResourceNavigationQueryOptions<typeof apiKeySearchSchema>) =>
               execute({
-                pageSearch,
-                cursor: createConnectionCursor(item, pageSearch),
+                search,
+                cursor: createConnectionCursor(item, search),
               }),
             [item, execute],
           ),
         }),
-      { wrapper, initialProps: { item: record } },
+      { initialProps: { item: record } },
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     const original = btoa(JSON.stringify({ id: "B", value: null }));
@@ -522,14 +598,12 @@ describe("usePageNavigation", () => {
 
   it("uses schema defaults on direct entry even after neighbors load, without writing a fake list visit", async () => {
     const query = vi.fn().mockResolvedValue(neighbors("previous", "next"));
-    const { result } = renderHook(
-      () =>
-        usePageNavigation({
-          key: pageKey,
-          searchSchema: apiKeySearchSchema,
-          query,
-        }),
-      { wrapper },
+    const { result } = renderHook(() =>
+      useResourceNavigation({
+        key: resourceKey,
+        searchSchema: apiKeySearchSchema,
+        query,
+      }),
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.backSearch).toEqual({
@@ -540,7 +614,7 @@ describe("usePageNavigation", () => {
       },
     });
     expect(query).toHaveBeenLastCalledWith({
-      pageSearch: result.current.pageSearch,
+      search: result.current.search,
     });
     expect(result.current.previousEdge?.node.id).toBe("previous");
     expect(sessionStorage.length).toBe(0);
@@ -549,25 +623,23 @@ describe("usePageNavigation", () => {
   it("applies schema sort defaults to an existing saved search without orderBy", async () => {
     const query = vi.fn().mockResolvedValue(neighbors());
     sessionStorage.setItem(
-      'page-search:v1:["navigation-user","api-keys"]',
+      'resource-navigation:["navigation-user","api-keys"]',
       JSON.stringify({ first: 5, query: "example" }),
     );
-    const { result } = renderHook(
-      () =>
-        usePageNavigation({
-          key: pageKey,
-          searchSchema: apiKeySearchSchema,
-          query,
-        }),
-      { wrapper },
+    const { result } = renderHook(() =>
+      useResourceNavigation({
+        key: resourceKey,
+        searchSchema: apiKeySearchSchema,
+        query,
+      }),
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.pageSearch.orderBy.field).toBe(
+    expect(result.current.search.orderBy.field).toBe(
       UserApiKeyOrderField.CREATED_AT,
     );
     expect(result.current.backSearch).toMatchObject({ first: 5 });
     expect(query).toHaveBeenLastCalledWith({
-      pageSearch: result.current.pageSearch,
+      search: result.current.search,
     });
   });
 
@@ -579,18 +651,16 @@ describe("usePageNavigation", () => {
       defaultOrderField: "NAME",
       defaultOrderDirection: OrderDirection.ASC,
     });
-    const { result } = renderHook(
-      () =>
-        usePageNavigation({
-          key: ["other-resource"],
-          searchSchema,
-          query,
-        }),
-      { wrapper },
+    const { result } = renderHook(() =>
+      useResourceNavigation({
+        key: ["other-resource"],
+        searchSchema,
+        query,
+      }),
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(query).toHaveBeenLastCalledWith({
-      pageSearch: result.current.pageSearch,
+      search: result.current.search,
     });
     expect(result.current.backSearch).toMatchObject({
       first: 7,

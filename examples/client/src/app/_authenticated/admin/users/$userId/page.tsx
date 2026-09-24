@@ -8,14 +8,14 @@ import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import { useCurrentUserContext } from "../../../contexts/current-user-context";
-import type { PageNavigationQueryOptions } from "@/hooks/use-page-navigation";
+import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 import type { UserPermission } from "@/lib/permissions";
 import type { UserRole } from "@/gql/graphql";
-import { usePageNavigation } from "@/hooks/use-page-navigation";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { RecordNavigation } from "@/components/record-navigation";
 import {
   adminUserSearchSchema,
-  adminUsersPageKey,
+  adminUsersResourceKey,
 } from "@/lib/admin-user-search";
 import { createConnectionCursor } from "@/lib/connection-cursor";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
@@ -239,21 +239,21 @@ function AdminUserDetails() {
   const [loadNeighbors] = useLazyQuery(GET_ADMIN_USER_NEIGHBORS, {
     fetchPolicy: "network-only",
   });
-  const navigation = usePageNavigation({
-    key: adminUsersPageKey,
+  const navigation = useResourceNavigation({
+    key: [currentUser.id, ...adminUsersResourceKey],
     searchSchema: adminUserSearchSchema,
     query: useCallback(
       async ({
-        pageSearch,
-      }: PageNavigationQueryOptions<typeof adminUserSearchSchema>) => {
+        search,
+      }: ResourceNavigationQueryOptions<typeof adminUserSearchSchema>) => {
         const { query, filter, orderBy } =
-          createConnectionQueryVariables(pageSearch);
+          createConnectionQueryVariables(search);
         const { data } = await loadNeighbors({
           variables: {
             query,
             filter,
             orderBy,
-            cursor: createConnectionCursor(navigationRecord, pageSearch),
+            cursor: createConnectionCursor(navigationRecord, search),
           },
         });
         if (!data) return undefined;

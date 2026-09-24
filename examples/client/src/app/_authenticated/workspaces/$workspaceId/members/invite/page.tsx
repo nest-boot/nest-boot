@@ -6,8 +6,9 @@ import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Check, Copy } from "lucide-react";
 import z from "zod";
-import { getMembersPageKey, memberSearchSchema } from "@/lib/member-search";
-import { usePageSearch } from "@/hooks/use-page-search";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { getMembersResourceKey, memberSearchSchema } from "@/lib/member-search";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Link } from "@/components/link";
@@ -98,8 +99,9 @@ function InviteMemberForm() {
   const { t } = useTranslation();
   const { workspaceId } = Route.useParams();
   const { roleOptions } = Route.useRouteContext();
-  const { pageSearch } = usePageSearch({
-    key: getMembersPageKey(workspaceId),
+  const currentUser = useCurrentUserContext();
+  const { backSearch } = useResourceNavigation({
+    key: [currentUser.id, ...getMembersResourceKey(workspaceId)],
     searchSchema: memberSearchSchema,
   });
   const ability = useAbility();
@@ -184,7 +186,7 @@ function InviteMemberForm() {
     <Page variant="compact" data-testid="workspace-invite-page">
       <PageHeader>
         <Breadcrumbs
-          searchByPath={{ [`/workspaces/${workspaceId}/members`]: pageSearch }}
+          searchByPath={{ [`/workspaces/${workspaceId}/members`]: backSearch }}
         />
         <PageTitle>{t("member:invite.title")}</PageTitle>
         <PageDescription>{t("member:invite.description")}</PageDescription>
@@ -230,7 +232,7 @@ function InviteMemberForm() {
                         <Link
                           to="/workspaces/$workspaceId/members"
                           params={{ workspaceId }}
-                          search={pageSearch}
+                          search={backSearch}
                         />
                       }
                     >
@@ -329,7 +331,7 @@ function InviteMemberForm() {
                         <Link
                           to="/workspaces/$workspaceId/members"
                           params={{ workspaceId }}
-                          search={pageSearch}
+                          search={backSearch}
                         />
                       }
                     >

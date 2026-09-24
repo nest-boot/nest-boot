@@ -79,7 +79,8 @@ async function expectSavedPosition(page: Page, previousId?: string) {
       page.evaluate(() => {
         const entry = Object.entries(sessionStorage).find(
           ([key]) =>
-            key.startsWith("page-search:v1:") && key.endsWith(',"api-keys"]'),
+            key.startsWith("resource-navigation:") &&
+            key.endsWith(',"api-keys"]'),
         );
         if (!entry) return null;
         const search = JSON.parse(entry[1]);
@@ -289,7 +290,7 @@ test("handles invalid storage, direct detail entry and failed neighbor queries",
   await page.evaluate(() => {
     const key = Object.keys(sessionStorage).find(
       (key) =>
-        key.startsWith("page-search:v1:") && key.endsWith(',"api-keys"]'),
+        key.startsWith("resource-navigation:") && key.endsWith(',"api-keys"]'),
     )!;
     sessionStorage.setItem(key, "broken json");
   });
@@ -308,7 +309,8 @@ test("handles invalid storage, direct detail entry and failed neighbor queries",
     await page.evaluate(() =>
       Object.keys(sessionStorage).filter(
         (key) =>
-          key.startsWith("page-search:v1:") && key.endsWith(',"api-keys"]'),
+          key.startsWith("resource-navigation:") &&
+          key.endsWith(',"api-keys"]'),
       ),
     ),
   ).toEqual([]);

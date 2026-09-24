@@ -2,11 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@apollo/client/react";
 import { AppTopbar } from "../../components/app-topbar";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import {
   workspaceSearchSchema,
-  workspacesPageKey,
+  workspacesResourceKey,
 } from "@/lib/workspace-search";
-import { usePageSearch } from "@/hooks/use-page-search";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { Button } from "@/components/thread-ui/button";
 import { Link } from "@/components/link";
 import { Layout, LayoutContent } from "@/components/thread-ui/layout";
@@ -44,8 +45,9 @@ export const Route = createFileRoute("/_authenticated/workspaces/create/")({
 });
 
 function CreateWorkspaceComponent() {
-  const { pageSearch } = usePageSearch({
-    key: workspacesPageKey,
+  const currentUser = useCurrentUserContext();
+  const { backSearch } = useResourceNavigation({
+    key: [currentUser.id, ...workspacesResourceKey],
     searchSchema: workspaceSearchSchema,
   });
   const navigate = Route.useNavigate();
@@ -85,7 +87,7 @@ function CreateWorkspaceComponent() {
           <PageHeader>
             <BreadcrumbActions>
               <BreadcrumbAction
-                render={<Link to="/user/workspaces" search={pageSearch} />}
+                render={<Link to="/user/workspaces" search={backSearch} />}
               >
                 Workspaces
               </BreadcrumbAction>
@@ -146,7 +148,7 @@ function CreateWorkspaceComponent() {
                         variant="outline"
                         type="button"
                         render={
-                          <Link to="/user/workspaces" search={pageSearch} />
+                          <Link to="/user/workspaces" search={backSearch} />
                         }
                       >
                         Back

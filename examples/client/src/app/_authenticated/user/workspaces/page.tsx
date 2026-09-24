@@ -12,12 +12,13 @@ import { useTranslation } from "react-i18next";
 import { Check, Plus, X } from "lucide-react";
 import { isEmpty } from "lodash";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import {
   workspaceSearchSchema,
-  workspacesPageKey,
+  workspacesResourceKey,
 } from "@/lib/workspace-search";
-import { usePageSearch } from "@/hooks/use-page-search";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { toast } from "@/components/thread-ui/toast";
 
@@ -147,8 +148,9 @@ export const Route = createFileRoute("/_authenticated/user/workspaces/")({
 function UserWorkspacesComponent() {
   const { t } = useTranslation();
   const search = Route.useSearch();
-  usePageSearch({
-    key: workspacesPageKey,
+  const currentUser = useCurrentUserContext();
+  useResourceNavigation({
+    key: [currentUser.id, ...workspacesResourceKey],
     searchSchema: workspaceSearchSchema,
     search,
   });

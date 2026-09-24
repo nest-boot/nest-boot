@@ -21,4 +21,4 @@ export const workspaceSearchSchema = createConnectionSearchSchema({
   defaultOrderField: WorkspaceOrderField.CREATED_AT,
   defaultOrderDirection: OrderDirection.DESC,
 });
-export const workspacesPageKey = ["user", "workspaces"] as const;
+export const workspacesResourceKey = ["user", "workspaces"] as const;

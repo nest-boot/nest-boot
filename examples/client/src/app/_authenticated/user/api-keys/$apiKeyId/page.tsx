@@ -3,11 +3,12 @@ import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useCallback } from "react";
 
-import type { PageNavigationQueryOptions } from "@/hooks/use-page-navigation";
+import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import { ApiKeyNavigation } from "@/components/api-key-navigation";
 import { useAbility } from "@/contexts/ability-context";
-import { usePageNavigation } from "@/hooks/use-page-navigation";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { createAbilitySubject } from "@/lib/ability";
 import { createConnectionCursor } from "@/lib/connection-cursor";
 import {
@@ -18,7 +19,7 @@ import {
 import {
   apiKeySearchSchema,
   createApiKeyQueryVariables,
-  userApiKeysPageKey,
+  userApiKeysResourceKey,
 } from "@/lib/api-key-search";
 import { authPermissionValues, getPermissionOptions } from "@/lib/permissions";
 import { isAccessDenied } from "@/lib/auth-errors";
@@ -63,16 +64,16 @@ function ApiKeyDetailsPage() {
   const [loadNeighbors] = useLazyQuery(GET_USER_API_KEY_NEIGHBORS, {
     fetchPolicy: "network-only",
   });
-  const navigation = usePageNavigation({
-    key: userApiKeysPageKey,
+  const currentUser = useCurrentUserContext();
+  const navigation = useResourceNavigation({
+    key: [currentUser.id, ...userApiKeysResourceKey],
     searchSchema: apiKeySearchSchema,
     query: useCallback(
       async ({
-        pageSearch,
-      }: PageNavigationQueryOptions<typeof apiKeySearchSchema>) => {
-        const { query, filter, orderBy } =
-          createApiKeyQueryVariables(pageSearch);
-        const cursor = createConnectionCursor(apiKey, pageSearch);
+        search,
+      }: ResourceNavigationQueryOptions<typeof apiKeySearchSchema>) => {
+        const { query, filter, orderBy } = createApiKeyQueryVariables(search);
+        const cursor = createConnectionCursor(apiKey, search);
         const { data } = await loadNeighbors({
           variables: {
             query,

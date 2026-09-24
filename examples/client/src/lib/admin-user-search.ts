@@ -22,4 +22,4 @@ export const adminUserSearchSchema = createConnectionSearchSchema({
   defaultOrderField: UserOrderField.CREATED_AT,
   defaultOrderDirection: OrderDirection.DESC,
 });
-export const adminUsersPageKey = ["admin", "users"] as const;
+export const adminUsersResourceKey = ["admin", "users"] as const;

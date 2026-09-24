@@ -1,10 +1,14 @@
 import { useMutation } from "@apollo/client/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
-import { usePageSearch } from "@/hooks/use-page-search";
-import { apiKeySearchSchema, userApiKeysPageKey } from "@/lib/api-key-search";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
+import {
+  apiKeySearchSchema,
+  userApiKeysResourceKey,
+} from "@/lib/api-key-search";
 import {
   CREATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
   GET_USER_API_KEY_OPTIONS,
@@ -38,8 +42,9 @@ export const Route = createFileRoute("/_authenticated/user/api-keys/create/")({
 });
 
 function CreateApiKeyPage() {
-  const { pageSearch } = usePageSearch({
-    key: userApiKeysPageKey,
+  const currentUser = useCurrentUserContext();
+  const { backSearch } = useResourceNavigation({
+    key: [currentUser.id, ...userApiKeysResourceKey],
     searchSchema: apiKeySearchSchema,
   });
   const { permissionOptions } = Route.useRouteContext();
@@ -51,7 +56,7 @@ function CreateApiKeyPage() {
     <ApiKeyFormPage
       canWrite
       listPath={"/user/api-keys"}
-      listSearch={pageSearch}
+      listSearch={backSearch}
       permissionValues={authPermissionValues}
       permissionOptions={getPermissionOptions(permissionOptions)}
       defaultPermissions={getDefaultApiKeyPermissions(permissionOptions)}

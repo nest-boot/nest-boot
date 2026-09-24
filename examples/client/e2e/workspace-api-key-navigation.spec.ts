@@ -85,7 +85,8 @@ test("isolates two workspaces' list search, creation returns and detail navigati
     Object.fromEntries(
       Object.entries(sessionStorage).filter(
         ([key]) =>
-          key.startsWith("page-search:v1:") && key.endsWith(',"api-keys"]'),
+          key.startsWith("resource-navigation:") &&
+          key.endsWith(',"api-keys"]'),
       ),
     ),
   );
@@ -112,7 +113,8 @@ test("isolates two workspaces' list search, creation returns and detail navigati
       Object.fromEntries(
         Object.entries(sessionStorage).filter(
           ([key]) =>
-            key.startsWith("page-search:v1:") && key.endsWith(',"api-keys"]'),
+            key.startsWith("resource-navigation:") &&
+            key.endsWith(',"api-keys"]'),
         ),
       ),
     ),
@@ -137,7 +139,7 @@ test("isolates two workspaces' list search, creation returns and detail navigati
       page.evaluate((workspaceId) => {
         const entry = Object.entries(sessionStorage).find(
           ([key]) =>
-            key.startsWith("page-search:v1:") &&
+            key.startsWith("resource-navigation:") &&
             key.endsWith(',"api-keys"]') &&
             key.includes(workspaceId),
         );

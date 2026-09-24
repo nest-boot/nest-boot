@@ -15,10 +15,11 @@ import { MemberRolesForm } from "./components/member-roles-form";
 import { MemberPermissionsForm } from "./components/member-permissions-form";
 import type { MemberFormProps } from "./components/member-form-props";
 import type { GetMemberFromMemberRouteQuery } from "@/gql/graphql";
-import type { PageNavigationQueryOptions } from "@/hooks/use-page-navigation";
-import { usePageNavigation } from "@/hooks/use-page-navigation";
+import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { RecordNavigation } from "@/components/record-navigation";
-import { getMembersPageKey, memberSearchSchema } from "@/lib/member-search";
+import { getMembersResourceKey, memberSearchSchema } from "@/lib/member-search";
 import { createConnectionCursor } from "@/lib/connection-cursor";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { GET_MEMBER_NEIGHBORS } from "@/lib/record-navigation-operations";
@@ -137,21 +138,22 @@ function MemberDetails({
   const [loadNeighbors] = useLazyQuery(GET_MEMBER_NEIGHBORS, {
     fetchPolicy: "network-only",
   });
-  const navigation = usePageNavigation({
-    key: getMembersPageKey(workspaceId),
+  const currentUser = useCurrentUserContext();
+  const navigation = useResourceNavigation({
+    key: [currentUser.id, ...getMembersResourceKey(workspaceId)],
     searchSchema: memberSearchSchema,
     query: useCallback(
       async ({
-        pageSearch,
-      }: PageNavigationQueryOptions<typeof memberSearchSchema>) => {
+        search,
+      }: ResourceNavigationQueryOptions<typeof memberSearchSchema>) => {
         const { query, filter, orderBy } =
-          createConnectionQueryVariables(pageSearch);
+          createConnectionQueryVariables(search);
         const { data } = await loadNeighbors({
           variables: {
             query,
             filter,
             orderBy,
-            cursor: createConnectionCursor(member, pageSearch),
+            cursor: createConnectionCursor(member, search),
           },
           context: { headers: { "x-workspace-id": workspaceId } },
         });

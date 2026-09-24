@@ -2,8 +2,9 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useTranslation } from "react-i18next";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { useAbility } from "@/contexts/ability-context";
-import { usePageSearch } from "@/hooks/use-page-search";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { ApiKeysPage } from "@/components/api-keys-page";
 import {
@@ -14,7 +15,7 @@ import {
 import {
   apiKeySearchSchema,
   createApiKeyQueryVariables,
-  userApiKeysPageKey,
+  userApiKeysResourceKey,
 } from "@/lib/api-key-search";
 
 export const Route = createFileRoute("/_authenticated/user/api-keys/")({
@@ -26,8 +27,9 @@ function ApiKeysComponent() {
   const { t } = useTranslation();
   const ability = useAbility();
   const search = Route.useSearch();
-  usePageSearch({
-    key: userApiKeysPageKey,
+  const currentUser = useCurrentUserContext();
+  useResourceNavigation({
+    key: [currentUser.id, ...userApiKeysResourceKey],
     searchSchema: apiKeySearchSchema,
     search,
   });

@@ -8,12 +8,13 @@ import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 import { isEmpty } from "lodash";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import {
   adminUserSearchSchema,
-  adminUsersPageKey,
+  adminUsersResourceKey,
 } from "@/lib/admin-user-search";
-import { usePageSearch } from "@/hooks/use-page-search";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { Link } from "@/components/link";
 import { useAbility } from "@/contexts/ability-context";
@@ -86,8 +87,9 @@ export const Route = createFileRoute("/_authenticated/admin/users/")({
 function AdminUsersPage() {
   const { t } = useTranslation();
   const search = Route.useSearch();
-  usePageSearch({
-    key: adminUsersPageKey,
+  const currentUser = useCurrentUserContext();
+  useResourceNavigation({
+    key: [currentUser.id, ...adminUsersResourceKey],
     searchSchema: adminUserSearchSchema,
     search,
   });

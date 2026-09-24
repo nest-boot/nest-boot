@@ -108,78 +108,94 @@ row still opens Profile, and the administrator menu opens `/admin`.
 Top-level pages linked from the sidebar have no back action. Details, creation,
 and invitation pages retain their return-to-list breadcrumbs.
 
-API keys, administrator users, and workspace members share two hooks for
-list/detail navigation. Their lists save search state, create/invite pages
-restore it when returning, and compact details use `PagePagination`:
+API keys, administrator users, members, and workspaces share
+`useResourceNavigation({ key, searchSchema, search?, query? })` for list state and
+optional adjacent-record navigation:
 
-- `usePageSearch({ key, searchSchema, search? })` returns `pageSearch` and
-  `setPageSearch`. Lists pass `search: Route.useSearch()`; the hook applies it
-  through the setter in an effect on mount, value changes, or user/page scope
-  changes. Omitting `search` only reads saved state; explicitly passing
-  `search: undefined` clears it. Equal search objects are not reapplied on
-  rerenders, so manual updates are retained until the supplied search changes.
-  The setter accepts a value or a function of the latest shared value;
-  `{}` resets to schema defaults and `undefined` clears storage.
-  Writes are schema-validated; invalid updates throw and preserve the saved value.
-  The current user's ID scopes every key. Personal keys use `["user", "api-keys"]`; workspace keys
-  use `["workspaces", workspaceId, "api-keys"]`. All callers of a key must reuse
-  the same schema. Schemas must normalize JSON-compatible search values
-  idempotently, as the existing connection search schemas do. Invalid stored
-  data is discarded; unavailable storage falls back to memory for that tab.
-- `usePageNavigation({ key, searchSchema, query })` reads those conditions
-  and manages adjacent-record queries. The required, stable `query({ pageSearch })`
-  closure captures the current record and calls `createConnectionCursor(record,
-pageSearch)` to calculate its cursor. Include the record in the closure's
-  `useCallback` dependencies so record changes, including browser back/forward,
-  trigger a new query. The hook reruns it when the user/page scope, filters,
-  sorting, or closure changes; changing only saved pagination does not trigger
-  another request.
-  The cursor utility uses the record ID alone when `orderBy` is absent or `null`,
-  matching the server's default ID ordering. When a list applies its own default
-  ordering, its search schema must normalize that `orderBy`. GraphQL order names
-  map to camelCase record fields (`CREATED_AT` to `createdAt`); include each
-  supported sort field in the detail query. Explicit `null` values are supported,
-  while a missing sort field throws and is handled as a navigation query failure.
-  List pagination (`after`/`before`) is not the current record's cursor.
-  No record or calculated cursor is passed to the navigation hook, and no cursor
-  map is persisted.
-  The closure returns `{ previousEdge?: PageNavigationEdge, nextEdge?: PageNavigationEdge }`,
-  with each edge containing the full `cursor` and a `node.id` of type `string | number`.
-  Omit an edge or use `undefined` when there is no record in that direction.
-  Detail pages execute Apollo's `useLazyQuery`
-  for both adjacent records in one request. GraphQL accepts one `$cursor`, using
-  it as `before` with `last: 1` and as `after` with `first: 1`; both directions share
-  the search query, filter, and ordering.
-  The hook returns `previousEdge`, `nextEdge`, `loading`, `error`, and `refetch()` for
-  navigation and retries. It ignores obsolete responses after closure/scope changes
-  or retries and hides stale links during loading or errors. A missing query owner
-  is an error; `{}` is a valid result when neither adjacent record exists.
-  Pages use `backSearch` directly for both breadcrumb and footer links. While
-  loading or on failure it retains `pageSearch`. After a successful query, saved
-  search is positioned using the preceding cursor so the current record becomes
-  the first list row, retaining filters, sorting, and page size. No predecessor
-  means the filtered first page. The hook calls `setPageSearch` internally to save
-  this position, including after browser back/forward; pages need no separate
-  persistence effect. Without saved search, `backSearch` uses schema defaults and
-  no list visit is written. `pageSearch` and `setPageSearch` remain available for
-  explicit updates. Query closures use list filters and ordering; list pagination
-  is retained for returning to the list and does not drive adjacent-record queries.
+```tsx
+// List: the URL supplies the authoritative search.
+useResourceNavigation({
+  key: [currentUser.id, ...userApiKeysResourceKey],
+  searchSchema: apiKeySearchSchema,
+  search: Route.useSearch(),
+});
 
-The list URL remains authoritative: entering a bare list URL resets its search
-instead of silently restoring storage. Direct detail visits without saved search
-use schema defaults. Browser history continues to restore its own URLs; no
-cross-tab synchronization or frozen snapshot of changing records is provided.
+// Creation: restore the list state for return links, without querying neighbors.
+const { backSearch } = useResourceNavigation({
+  key: [currentUser.id, ...userApiKeysResourceKey],
+  searchSchema: apiKeySearchSchema,
+});
 
-Administrator users use `["admin", "users"]`, members use
-`["workspaces", workspaceId, "members"]`. Each resource exports a shared search
-schema for its list, creation, and detail routes. List and neighbor requests
-use the same normalized query conditions. Member navigation explicitly sends
-the workspace header and checks the returned workspace ID. Workspace management
-uses `["user", "workspaces"]` with `usePageSearch` only: creation return links
-and the redirects after leaving or deleting a workspace preserve the saved
-list search. Browser history restores the original list URL.
-Workspace settings has no previous/next actions or neighbor requests.
-Profile and security remain independent compact forms without record navigation.
+// Detail: a stable closure queries neighbors of the current record.
+const navigation = useResourceNavigation({
+  key: [currentUser.id, ...userApiKeysResourceKey],
+  searchSchema: apiKeySearchSchema,
+  query, // useCallback(({ search }) => ..., [record, loadNeighbors])
+});
+```
+
+The hook returns `search`, `setSearch`, `clearSearch`, `backSearch`,
+`previousEdge`, `nextEdge`, `loading`, `error`, and `refetch()`.
+
+- The storage key is exactly `resource-navigation:${JSON.stringify(key)}`.
+  Callers supply the complete scope: `[currentUser.id, "user", "api-keys"]` for
+  personal keys, or `[currentUser.id, "workspaces", workspaceId, "api-keys"]`
+  for workspace keys. The hook does not depend on authentication context or add
+  key segments.
+- Pass the same `searchSchema` for every caller sharing a key. It must accept
+  `{}` and normalize JSON-compatible search values idempotently, including any
+  client-side default sort. Resource-specific fields such as `savedViewId` stay
+  in this schema. Invalid stored data is discarded; unavailable storage falls
+  back to shared memory for the current tab.
+- Supplied `search` is validated and synchronized on mount, value changes, and
+  key changes. A query in the same hook sees the supplied state immediately.
+  Equal inputs are not reapplied over explicit shared updates. Omitting `search`
+  or passing `undefined` only reads saved state. `setSearch` accepts a value or a
+  function of the latest stored value (possibly `undefined`); `{}` saves schema
+  defaults, while `clearSearch()` or `setSearch(undefined)` removes stored state.
+  Invalid updates throw without replacing a valid value. Public `search` and
+  `backSearch` use schema defaults when storage is empty, without writing a
+  fictitious list visit.
+- Without `query`, the hook only manages search state: no request runs, `loading`
+  is false, edges and errors are absent, and `refetch()` resolves to `undefined`.
+  Details supply a stable `query({ search })` closure that captures the current
+  record and calls `createConnectionCursor(record, search)`. Include the record
+  in `useCallback` dependencies so browser back/forward and record changes
+  trigger new requests. The hook also reruns for key, filter, sort, or other
+  non-pagination search changes. Changing only `first`, `last`, `after`, or
+  `before` does not repeat adjacent-record queries.
+- The cursor utility uses the record ID alone when `orderBy` is absent or null,
+  matching the server's default ID ordering. GraphQL order names map to camelCase
+  record fields (`CREATED_AT` to `createdAt`); include every supported sort field
+  in the detail query. Explicit null values are supported; missing sort fields
+  throw and become navigation errors. List pagination is not a record cursor.
+  No record or cursor is passed to the hook, and no cursor map is persisted.
+- The query returns `{ previousEdge?, nextEdge? }`. Each `ResourceNavigationEdge`
+  contains a full `cursor` and `node.id: string | number`. Omit unavailable edges.
+  Detail pages use Apollo `useLazyQuery` to fetch both directions in one request:
+  the current cursor is `before` with `last: 1` and `after` with `first: 1`, sharing
+  filters and ordering. `{}` is a valid result with no neighbors; a missing owner
+  returns `undefined` and becomes a navigation error. Obsolete responses are
+  ignored; loading and errors hide stale links. `refetch()` supports retrying.
+- Detail links consume `backSearch`. Loading and errors preserve saved search.
+  Success positions saved search after `previousEdge.cursor`, keeping the current
+  record first when returning to the list while retaining filters, sorting, view
+  metadata, and page size. No predecessor means the filtered first page. This
+  position is saved internally; direct visits without saved search use defaults
+  without creating a stored list visit.
+
+The list URL remains authoritative: a bare list URL resets its search instead of
+silently restoring storage. Browser history restores its own URLs; no cross-tab
+synchronization or frozen snapshot of changing records is provided.
+
+Administrator user keys are `[currentUser.id, "admin", "users"]`; member keys
+are `[currentUser.id, "workspaces", workspaceId, "members"]`. List and neighbor
+requests use the same normalized conditions. Member queries explicitly send the
+workspace header and verify the returned workspace ID. Workspace management uses
+`[currentUser.id, "user", "workspaces"]` without `query`; creation return links
+and redirects after leaving or deleting a workspace preserve its saved search.
+Workspace settings has no previous/next actions or neighbor requests. Profile
+and security remain independent compact forms without record navigation.
 
 Create users at `/admin/users/create` and invite members at
 `/workspaces/$workspaceId/members/invite`. Both routes check the relevant creation

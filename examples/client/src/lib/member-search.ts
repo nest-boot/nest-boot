@@ -33,5 +33,5 @@ export const memberSearchSchema = createConnectionSearchSchema({
   defaultOrderField: MemberOrderField.CREATED_AT,
   defaultOrderDirection: OrderDirection.DESC,
 });
-export const getMembersPageKey = (workspaceId: string) =>
+export const getMembersResourceKey = (workspaceId: string) =>
   ["workspaces", workspaceId, "members"] as const;

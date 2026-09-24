@@ -6,9 +6,9 @@ export function createConnectionCursor<
   Search extends object,
 >(
   record: Record,
-  pageSearch: Search & { orderBy?: { field: string } | null },
+  search: Search & { orderBy?: { field: string } | null },
 ): string {
-  const orderField = pageSearch.orderBy?.field;
+  const orderField = search.orderBy?.field;
   if (orderField == null) return encodeConnectionCursor({ id: record.id });
   const field = camelCase(orderField);
   const value: unknown = get(record, field);

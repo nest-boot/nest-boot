@@ -5,11 +5,12 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import {
   adminUserSearchSchema,
-  adminUsersPageKey,
+  adminUsersResourceKey,
 } from "@/lib/admin-user-search";
-import { usePageSearch } from "@/hooks/use-page-search";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Button } from "@/components/thread-ui/button";
@@ -59,8 +60,9 @@ export const Route = createFileRoute("/_authenticated/admin/users/create/")({
 function CreateUserPage() {
   const { t } = useTranslation();
   const formId = useId();
-  const { pageSearch } = usePageSearch({
-    key: adminUsersPageKey,
+  const currentUser = useCurrentUserContext();
+  const { backSearch } = useResourceNavigation({
+    key: [currentUser.id, ...adminUsersResourceKey],
     searchSchema: adminUserSearchSchema,
   });
   const navigate = useNavigate();
@@ -95,7 +97,7 @@ function CreateUserPage() {
           throw new Error(t("admin:users.create.failed"));
         await navigate({
           to: "/admin/users",
-          search: pageSearch,
+          search: backSearch,
           replace: true,
         });
         toast.add({ type: "success", title: t("admin:users.create.success") });
@@ -117,7 +119,7 @@ function CreateUserPage() {
   return (
     <Page variant="compact" data-testid="admin-create-user-page">
       <PageHeader>
-        <Breadcrumbs searchByPath={{ "/admin/users": pageSearch }} />
+        <Breadcrumbs searchByPath={{ "/admin/users": backSearch }} />
         <PageTitle>{t("admin:users.create.title")}</PageTitle>
         <PageDescription>{t("admin:users.create.description")}</PageDescription>
       </PageHeader>

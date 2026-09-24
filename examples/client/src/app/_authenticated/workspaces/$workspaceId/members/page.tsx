@@ -13,9 +13,10 @@ import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
 import { useCurrentMemberContext } from "../contexts/current-member-context";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
-import { getMembersPageKey, memberSearchSchema } from "@/lib/member-search";
-import { usePageSearch } from "@/hooks/use-page-search";
+import { getMembersResourceKey, memberSearchSchema } from "@/lib/member-search";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { Link } from "@/components/link";
 import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
@@ -185,8 +186,9 @@ function MembersComponent() {
   const { t } = useTranslation();
   const search = Route.useSearch();
   const { workspaceId } = Route.useParams();
-  usePageSearch({
-    key: getMembersPageKey(workspaceId),
+  const currentUser = useCurrentUserContext();
+  useResourceNavigation({
+    key: [currentUser.id, ...getMembersResourceKey(workspaceId)],
     searchSchema: memberSearchSchema,
     search,
   });

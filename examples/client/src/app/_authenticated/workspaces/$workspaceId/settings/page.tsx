@@ -8,10 +8,11 @@ import {
 } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useCurrentWorkspaceContext } from "../contexts/current-workspace-context";
-import { usePageSearch } from "@/hooks/use-page-search";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import {
   workspaceSearchSchema,
-  workspacesPageKey,
+  workspacesResourceKey,
 } from "@/lib/workspace-search";
 import {
   PageLayout,
@@ -92,8 +93,9 @@ function SettingsComponent() {
   const navigate = useNavigate();
 
   const workspace = useCurrentWorkspaceContext();
-  const { pageSearch: backSearch } = usePageSearch({
-    key: workspacesPageKey,
+  const currentUser = useCurrentUserContext();
+  const { backSearch } = useResourceNavigation({
+    key: [currentUser.id, ...workspacesResourceKey],
     searchSchema: workspaceSearchSchema,
   });
   const ability = useAbility();
