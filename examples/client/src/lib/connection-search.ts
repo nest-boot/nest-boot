@@ -24,6 +24,72 @@ export interface CreateConnectionSearchSchemaOptions<
   defaultOrderDirection: OrderDirection;
 }
 
+export function createFilterSchema<Shape extends z.ZodRawShape>(shape: Shape) {
+  return z.object(shape).optional();
+}
+
+export function createInputFilterSearchSchema(
+  valueSchema: z.ZodString = z.string().max(255),
+  options: { fulltext?: boolean } = {},
+) {
+  const nullableValueSchema = valueSchema.nullable();
+  const operatorSchema = {
+    $eq: nullableValueSchema.optional(),
+    $ne: nullableValueSchema.optional(),
+    ...(options.fulltext ? { $fulltext: valueSchema.optional() } : {}),
+  };
+
+  return z
+    .union([valueSchema, z.object(operatorSchema).strict()])
+    .optional()
+    .catch(undefined);
+}
+
+export function createSelectFilterSearchSchema<
+  ValueSchema extends z.ZodTypeAny,
+>(valueSchema: ValueSchema, max?: number) {
+  const arraySchema =
+    typeof max === "number"
+      ? z.array(valueSchema).max(max)
+      : z.array(valueSchema);
+
+  return z
+    .union([
+      arraySchema,
+      z
+        .object({
+          $eq: z.null().optional(),
+          $ne: z.null().optional(),
+          $in: arraySchema.optional(),
+          $nin: arraySchema.optional(),
+        })
+        .strict(),
+    ])
+    .optional()
+    .catch(undefined);
+}
+
+export function createDateFilterSearchSchema() {
+  const dateValueSchema = z.string().datetime();
+
+  return z
+    .union([
+      dateValueSchema,
+      z
+        .object({
+          $eq: dateValueSchema.nullable().optional(),
+          $ne: dateValueSchema.nullable().optional(),
+          $gt: dateValueSchema.optional(),
+          $gte: dateValueSchema.optional(),
+          $lt: dateValueSchema.optional(),
+          $lte: dateValueSchema.optional(),
+        })
+        .strict(),
+    ])
+    .optional()
+    .catch(undefined);
+}
+
 export function createConnectionSearchSchema<OrderField extends EnumLike>(
   options: CreateConnectionSearchSchemaOptions<OrderField>,
 ) {
