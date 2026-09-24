@@ -68,5 +68,16 @@
     "members": "Members of this workspace.",
     "api_keys": "API keys belonging to this workspace.",
     "manage_members": "Manage members"
+  },
+  "create": {
+    "title": "Create Workspace",
+    "description": "Create a new workspace to start managing your projects.",
+    "back": "Back to Workspaces",
+    "form": {
+      "name": {
+        "label": "Name",
+        "placeholder": "My Workspace"
+      }
+    }
   }
 }

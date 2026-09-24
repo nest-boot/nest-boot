@@ -221,7 +221,50 @@ test("workspace overview and settings use browser history to restore list search
   await page
     .getByRole("link", { name: "Create workspace", exact: true })
     .click();
+  await expect(page).toHaveURL(/\/user\/workspaces\/create$/);
   await page.reload();
+  await expect(page.getByRole("banner")).toHaveCount(1);
+  await expect(page.getByRole("main")).toHaveCount(1);
+  await expect(
+    page.getByRole("link", { name: "Profile", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByTestId("user-sidebar-workspaces-link"),
+  ).toHaveAttribute("data-active", "true");
+  await expect(
+    page.getByRole("heading", { name: "Create Workspace", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Name", exact: true }),
+  ).toHaveAttribute("placeholder", "My Workspace");
+  await expect(
+    page.getByRole("link", { name: "Back to Workspaces", exact: true }),
+  ).toBeVisible();
+  await page.getByTestId("topbar-menu-trigger").click();
+  await page.getByTestId("user-menu-language").click();
+  await page
+    .getByRole("menuitemradio", { name: "简体中文", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "创建工作空间", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("创建一个新的工作空间，开始管理您的项目。", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "名称", exact: true }),
+  ).toHaveAttribute("placeholder", "我的工作空间");
+  await expect(
+    page.getByRole("button", { name: "创建", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "返回工作空间", exact: true }),
+  ).toBeVisible();
+  await page.getByTestId("topbar-menu-trigger").click();
+  await page.getByTestId("user-menu-language").click();
+  await page
+    .getByRole("menuitemradio", { name: "English", exact: true })
+    .click();
   await backToList(page);
   await expect(page.getByRole("row").nth(1)).toContainText(b.name);
   expect(readSearch(page)).toEqual(original);

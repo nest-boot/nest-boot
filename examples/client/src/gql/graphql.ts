@@ -2030,6 +2030,15 @@ export type DeleteUserFromUserSecurityMutation = {
   };
 };
 
+export type CreateWorkspaceFromCreateWorkspaceRouteMutationVariables = Exact<{
+  input: CreateWorkspaceInput;
+}>;
+
+export type CreateWorkspaceFromCreateWorkspaceRouteMutation = {
+  __typename?: "Mutation";
+  createWorkspace: { __typename?: "CreateWorkspacePayload"; id: string };
+};
+
 export type GetWorkspacesFromUserWorkspacesRouteQueryVariables = Exact<{
   after?: InputMaybe<Scalars["String"]["input"]>;
   before?: InputMaybe<Scalars["String"]["input"]>;
@@ -2578,15 +2587,6 @@ export type LeaveWorkspaceFromSettingsRouteMutationVariables = Exact<{
 export type LeaveWorkspaceFromSettingsRouteMutation = {
   __typename?: "Mutation";
   leaveWorkspace: { __typename?: "LeaveWorkspacePayload"; memberId: string };
-};
-
-export type CreateWorkspaceFromCreateWorkspaceRouteMutationVariables = Exact<{
-  input: CreateWorkspaceInput;
-}>;
-
-export type CreateWorkspaceFromCreateWorkspaceRouteMutation = {
-  __typename?: "Mutation";
-  createWorkspace: { __typename?: "CreateWorkspacePayload"; id: string };
 };
 
 export type GetFirstWorkspaceFromWorkspacesRouteQueryVariables = Exact<{
@@ -5999,6 +5999,60 @@ export const DeleteUserFromUserSecurityDocument = {
   DeleteUserFromUserSecurityMutation,
   DeleteUserFromUserSecurityMutationVariables
 >;
+export const CreateWorkspaceFromCreateWorkspaceRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "createWorkspaceFromCreateWorkspaceRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "CreateWorkspaceInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "createWorkspace" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  CreateWorkspaceFromCreateWorkspaceRouteMutation,
+  CreateWorkspaceFromCreateWorkspaceRouteMutationVariables
+>;
 export const GetWorkspacesFromUserWorkspacesRouteDocument = {
   kind: "Document",
   definitions: [
@@ -8888,60 +8942,6 @@ export const LeaveWorkspaceFromSettingsRouteDocument = {
 } as unknown as DocumentNode<
   LeaveWorkspaceFromSettingsRouteMutation,
   LeaveWorkspaceFromSettingsRouteMutationVariables
->;
-export const CreateWorkspaceFromCreateWorkspaceRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "mutation",
-      name: { kind: "Name", value: "createWorkspaceFromCreateWorkspaceRoute" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "input" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "CreateWorkspaceInput" },
-            },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "createWorkspace" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "input" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "input" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  CreateWorkspaceFromCreateWorkspaceRouteMutation,
-  CreateWorkspaceFromCreateWorkspaceRouteMutationVariables
 >;
 export const GetFirstWorkspaceFromWorkspacesRouteDocument = {
   kind: "Document",

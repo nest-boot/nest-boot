@@ -68,5 +68,16 @@
     "members": "此工作空间中的成员。",
     "api_keys": "此工作空间所拥有的 API 密钥。",
     "manage_members": "管理成员"
+  },
+  "create": {
+    "title": "创建工作空间",
+    "description": "创建一个新的工作空间，开始管理您的项目。",
+    "back": "返回工作空间",
+    "form": {
+      "name": {
+        "label": "名称",
+        "placeholder": "我的工作空间"
+      }
+    }
   }
 }

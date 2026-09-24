@@ -263,7 +263,7 @@ function UserWorkspacesComponent() {
       title={t("user:workspaces.title")}
       description={t("user:workspaces.description")}
       primaryAction={{
-        render: <Link to="/workspaces/create" />,
+        render: <Link to="/user/workspaces/create" />,
         icon: <Plus data-icon="inline-start" />,
         label: t("user:workspaces.create"),
       }}

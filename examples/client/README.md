@@ -82,6 +82,10 @@ outer wrapper, so a compact page can reach that breakpoint and display paginatio
 Its default accessible labels are translated through the `thread-ui` namespace.
 Use theme color tokens from `src/styles.css` in application code.
 
+Workspace creation lives at `/user/workspaces/create`, inherits the User layout
+and sidebar, and returns to the workspace list with its saved search. Successful
+creation opens the new workspace Overview.
+
 API key lists use `DataFilter` and `DataTable`; rows and name links open details.
 Use `DataFilterField` for toolbar filter configurations. `DataFilterItem` is a
 standalone controlled condition; `DataFilterItemProps` describes its component
