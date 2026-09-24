@@ -13,21 +13,21 @@ describe("data filter search schemas", () => {
       fulltext: true,
     });
 
-    expect(schema.safeParse({ $eq: null }).success).toBe(true);
-    expect(schema.safeParse({ $ne: null }).success).toBe(true);
+    expect(schema.parse({ $eq: null })).toEqual({ $eq: null });
+    expect(schema.parse({ $ne: null })).toEqual({ $ne: null });
   });
 
   it("accepts null equality conditions used by empty select filters", () => {
     const schema = createDataFilterSelectSearchSchema(z.enum(["ACTIVE"]));
 
-    expect(schema.safeParse({ $eq: null }).success).toBe(true);
-    expect(schema.safeParse({ $ne: null }).success).toBe(true);
+    expect(schema.parse({ $eq: null })).toEqual({ $eq: null });
+    expect(schema.parse({ $ne: null })).toEqual({ $ne: null });
   });
 
   it("accepts null equality conditions used by empty date filters", () => {
     const schema = createDataFilterDateSearchSchema();
 
-    expect(schema.safeParse({ $eq: null }).success).toBe(true);
-    expect(schema.safeParse({ $ne: null }).success).toBe(true);
+    expect(schema.parse({ $eq: null })).toEqual({ $eq: null });
+    expect(schema.parse({ $ne: null })).toEqual({ $ne: null });
   });
 });

@@ -12,10 +12,8 @@ import {
 export const workspaceSearchSchema = createConnectionSearchSchema({
   filterSchema: z
     .object({
-      name: createDataFilterInputSearchSchema().optional().catch(undefined),
-      created_at: createDataFilterDateSearchSchema()
-        .optional()
-        .catch(undefined),
+      name: createDataFilterInputSearchSchema(),
+      created_at: createDataFilterDateSearchSchema(),
     })
     .optional(),
   pageSize: 20,

@@ -13,21 +13,13 @@ import {
 export const memberSearchSchema = createConnectionSearchSchema({
   filterSchema: z
     .object({
-      name: createDataFilterInputSearchSchema(z.string().max(255))
-        .optional()
-        .catch(undefined),
-      email: createDataFilterInputSearchSchema(z.string().max(255))
-        .optional()
-        .catch(undefined),
+      name: createDataFilterInputSearchSchema(z.string().max(255)),
+      email: createDataFilterInputSearchSchema(z.string().max(255)),
       status: createDataFilterSelectSearchSchema(
         z.union([z.nativeEnum(MemberStatus), z.literal("ACTIVE")]),
         Object.values(MemberStatus).length + 1,
-      )
-        .optional()
-        .catch(undefined),
-      created_at: createDataFilterDateSearchSchema()
-        .optional()
-        .catch(undefined),
+      ),
+      created_at: createDataFilterDateSearchSchema(),
     })
     .optional(),
   pageSize: 20,

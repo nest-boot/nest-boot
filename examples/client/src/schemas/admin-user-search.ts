@@ -12,11 +12,9 @@ import {
 export const adminUserSearchSchema = createConnectionSearchSchema({
   filterSchema: z
     .object({
-      name: createDataFilterInputSearchSchema().optional().catch(undefined),
-      email: createDataFilterInputSearchSchema().optional().catch(undefined),
-      created_at: createDataFilterDateSearchSchema()
-        .optional()
-        .catch(undefined),
+      name: createDataFilterInputSearchSchema(),
+      email: createDataFilterInputSearchSchema(),
+      created_at: createDataFilterDateSearchSchema(),
     })
     .optional(),
   pageSize: 20,

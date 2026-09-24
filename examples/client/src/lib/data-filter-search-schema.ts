@@ -12,7 +12,10 @@ export function createDataFilterInputSearchSchema(
     ...(options.fulltext ? { $fulltext: valueSchema.optional() } : {}),
   };
 
-  return z.union([valueSchema, z.object(operatorSchema).strict()]);
+  return z
+    .union([valueSchema, z.object(operatorSchema).strict()])
+    .optional()
+    .catch(undefined);
 }
 
 export function createDataFilterSelectSearchSchema<
@@ -23,33 +26,39 @@ export function createDataFilterSelectSearchSchema<
       ? z.array(valueSchema).max(max)
       : z.array(valueSchema);
 
-  return z.union([
-    arraySchema,
-    z
-      .object({
-        $eq: z.null().optional(),
-        $ne: z.null().optional(),
-        $in: arraySchema.optional(),
-        $nin: arraySchema.optional(),
-      })
-      .strict(),
-  ]);
+  return z
+    .union([
+      arraySchema,
+      z
+        .object({
+          $eq: z.null().optional(),
+          $ne: z.null().optional(),
+          $in: arraySchema.optional(),
+          $nin: arraySchema.optional(),
+        })
+        .strict(),
+    ])
+    .optional()
+    .catch(undefined);
 }
 
 export function createDataFilterDateSearchSchema() {
   const dateValueSchema = z.string().datetime();
 
-  return z.union([
-    dateValueSchema,
-    z
-      .object({
-        $eq: dateValueSchema.nullable().optional(),
-        $ne: dateValueSchema.nullable().optional(),
-        $gt: dateValueSchema.optional(),
-        $gte: dateValueSchema.optional(),
-        $lt: dateValueSchema.optional(),
-        $lte: dateValueSchema.optional(),
-      })
-      .strict(),
-  ]);
+  return z
+    .union([
+      dateValueSchema,
+      z
+        .object({
+          $eq: dateValueSchema.nullable().optional(),
+          $ne: dateValueSchema.nullable().optional(),
+          $gt: dateValueSchema.optional(),
+          $gte: dateValueSchema.optional(),
+          $lt: dateValueSchema.optional(),
+          $lte: dateValueSchema.optional(),
+        })
+        .strict(),
+    ])
+    .optional()
+    .catch(undefined);
 }
