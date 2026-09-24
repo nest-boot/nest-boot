@@ -1,7 +1,12 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@apollo/client/react";
 import { AppTopbar } from "../../components/app-topbar";
+import {
+  workspaceSearchSchema,
+  workspacesPageKey,
+} from "@/lib/workspace-search";
+import { usePageSearch } from "@/hooks/use-page-search";
 import { Button } from "@/components/thread-ui/button";
 import { Link } from "@/components/link";
 import { Layout, LayoutContent } from "@/components/thread-ui/layout";
@@ -39,7 +44,10 @@ export const Route = createFileRoute("/_authenticated/workspaces/create/")({
 });
 
 function CreateWorkspaceComponent() {
-  const router = useRouter();
+  const { pageSearch } = usePageSearch({
+    key: workspacesPageKey,
+    searchSchema: workspaceSearchSchema,
+  });
   const navigate = Route.useNavigate();
 
   const [createWorkspace, { loading }] = useMutation(
@@ -76,7 +84,9 @@ function CreateWorkspaceComponent() {
         <Page variant="compact">
           <PageHeader>
             <BreadcrumbActions>
-              <BreadcrumbAction render={<Link to="/user/workspaces" />}>
+              <BreadcrumbAction
+                render={<Link to="/user/workspaces" search={pageSearch} />}
+              >
                 Workspaces
               </BreadcrumbAction>
             </BreadcrumbActions>
@@ -135,7 +145,9 @@ function CreateWorkspaceComponent() {
                       <Button
                         variant="outline"
                         type="button"
-                        onClick={() => router.history.back()}
+                        render={
+                          <Link to="/user/workspaces" search={pageSearch} />
+                        }
                       >
                         Back
                       </Button>

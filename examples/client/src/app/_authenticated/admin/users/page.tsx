@@ -6,9 +6,14 @@ import dayjs from "dayjs";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
-import { isEmpty, pick } from "lodash";
-import { z } from "zod";
+import { isEmpty } from "lodash";
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
+import {
+  adminUserSearchSchema,
+  adminUsersPageKey,
+} from "@/lib/admin-user-search";
+import { usePageSearch } from "@/hooks/use-page-search";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { Link } from "@/components/link";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -27,24 +32,11 @@ import {
   PageTitle,
 } from "@/components/thread-ui/page";
 import { graphql } from "@/gql";
-import { UserOrderField } from "@/gql/graphql";
 import {
-  OrderDirection,
-  createConnectionSearchSchema,
   getNextPageSearch,
   getPreviousPageSearch,
 } from "@/lib/connection-search";
-import {
-  createDataFilterInputSearchSchema,
-  dataFilterDateSearchSchema,
-} from "@/lib/data-filter-search-schema";
-import {
-  formatConnectionFilterValue,
-  formatFilterValues,
-} from "@/lib/format-filter-values";
 import { Card, CardContent } from "@/components/ui/card";
-
-const PAGE_SIZE = 20;
 
 const GET_USERS_FROM_USERS_ROUTE = graphql(`
   query getUsersFromUsersRoute(
@@ -89,43 +81,24 @@ const GET_USERS_FROM_USERS_ROUTE = graphql(`
 export const Route = createFileRoute("/_authenticated/admin/users/")({
   component: AdminUsersPage,
   beforeLoad: () => ({ title: t("admin:users.title") }),
-  validateSearch: zodValidator(
-    createConnectionSearchSchema({
-      filterSchema: z
-        .object({
-          name: createDataFilterInputSearchSchema().optional().catch(undefined),
-          email: createDataFilterInputSearchSchema()
-            .optional()
-            .catch(undefined),
-          created_at: dataFilterDateSearchSchema.optional().catch(undefined),
-        })
-        .optional(),
-      pageSize: PAGE_SIZE,
-      orderField: UserOrderField,
-      defaultOrderField: UserOrderField.CREATED_AT,
-      defaultOrderDirection: OrderDirection.DESC,
-    }),
-  ),
+  validateSearch: zodValidator(adminUserSearchSchema),
 });
 
 function AdminUsersPage() {
   const { t } = useTranslation();
   const search = Route.useSearch();
+  usePageSearch({
+    key: adminUsersPageKey,
+    searchSchema: adminUserSearchSchema,
+    search,
+  });
   const navigate = useNavigate();
   const ability = useAbility();
   const query = search.query ?? "";
   const filterValues = (search.filter ?? {}) as Record<string, unknown>;
   const { data, loading } = useQuery(GET_USERS_FROM_USERS_ROUTE, {
     fetchPolicy: "network-only",
-    variables: {
-      ...pick(search, ["after", "before", "first", "last"]),
-      query,
-      filter: formatFilterValues(filterValues, formatConnectionFilterValue),
-      orderBy: {
-        field: search.orderBy?.field ?? UserOrderField.CREATED_AT,
-        direction: search.orderBy?.direction ?? OrderDirection.DESC,
-      },
-    },
+    variables: createConnectionQueryVariables(search),
   });
   const users = data?.users.edges.map(({ node }) => node) ?? [];
   const canCreate = ability.can("create", "User");

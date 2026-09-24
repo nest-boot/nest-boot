@@ -1,6 +1,6 @@
 import { isEqual } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useDeepCompareEffect } from "react-use";
+import { useCustomCompareEffect } from "react-use";
 import { usePageSearch } from "./use-page-search";
 import type z from "zod";
 import type { PageKey } from "./use-page-search";
@@ -105,13 +105,17 @@ export function usePageNavigation<Schema extends z.ZodType<CursorPageSearch>>({
     }
   }
 
-  useDeepCompareEffect(() => {
-    void refetch().catch(() => undefined);
-    return () => {
-      // Ignore completions from an old record, scope, retry, or unmounted page.
-      requestId.current++;
-    };
-  }, [request]);
+  useCustomCompareEffect(
+    () => {
+      void refetch().catch(() => undefined);
+      return () => {
+        // Ignore completions from an old record, scope, retry, or unmounted page.
+        requestId.current++;
+      };
+    },
+    [request],
+    isEqual,
+  );
 
   // Also hide stale results during the render before the next effect starts.
   const current = state && isEqual(state.request, request) ? state : undefined;

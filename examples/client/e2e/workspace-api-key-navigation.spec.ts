@@ -83,8 +83,9 @@ test("isolates two workspaces' list search, creation returns and detail navigati
   // Entering the first row preserves each workspace's page; create remains read-only.
   const saved = await page.evaluate(() =>
     Object.fromEntries(
-      Object.entries(sessionStorage).filter(([key]) =>
-        key.startsWith("page-search:v1:"),
+      Object.entries(sessionStorage).filter(
+        ([key]) =>
+          key.startsWith("page-search:v1:") && key.endsWith(',"api-keys"]'),
       ),
     ),
   );
@@ -109,8 +110,9 @@ test("isolates two workspaces' list search, creation returns and detail navigati
   expect(
     await page.evaluate(() =>
       Object.fromEntries(
-        Object.entries(sessionStorage).filter(([key]) =>
-          key.startsWith("page-search:v1:"),
+        Object.entries(sessionStorage).filter(
+          ([key]) =>
+            key.startsWith("page-search:v1:") && key.endsWith(',"api-keys"]'),
         ),
       ),
     ),
@@ -135,7 +137,9 @@ test("isolates two workspaces' list search, creation returns and detail navigati
       page.evaluate((workspaceId) => {
         const entry = Object.entries(sessionStorage).find(
           ([key]) =>
-            key.startsWith("page-search:v1:") && key.includes(workspaceId),
+            key.startsWith("page-search:v1:") &&
+            key.endsWith(',"api-keys"]') &&
+            key.includes(workspaceId),
         );
         if (!entry) return null;
         const search = JSON.parse(entry[1]);

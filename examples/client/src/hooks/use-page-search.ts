@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
-import { useDeepCompareEffect } from "react-use";
+import { useCustomCompareEffect } from "react-use";
+import { isEqual } from "lodash";
 import type z from "zod";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 
@@ -131,9 +132,14 @@ export function usePageSearch<Schema extends z.ZodType>(
     [storageKey, searchSchema],
   );
 
-  useDeepCompareEffect(() => {
-    if (hasSearch) setPageSearch(search);
-  }, [hasSearch, search, setPageSearch]);
+  // Router search objects can have a null prototype; compare them as data.
+  useCustomCompareEffect(
+    () => {
+      if (hasSearch) setPageSearch(search);
+    },
+    [hasSearch, search, setPageSearch],
+    isEqual,
+  );
 
   useEffect(() => {
     if (raw !== null && pageSearch === undefined && read(storageKey) === raw) {

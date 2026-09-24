@@ -1,50 +1,25 @@
 import { useTranslation } from "react-i18next";
-import { Link } from "@/components/link";
-import { Button } from "@/components/thread-ui/button";
-import {
-  PageNextAction,
-  PagePagination,
-  PagePreviousAction,
-} from "@/components/thread-ui/page";
+import type { RecordNavigationProps } from "@/components/record-navigation";
+import { RecordNavigation } from "@/components/record-navigation";
 
-interface ApiKeyNavigationProps {
-  previousPath?: string;
-  nextPath?: string;
-  failed: boolean;
-  onRetry: () => void;
-}
+type ApiKeyNavigationProps = Omit<
+  RecordNavigationProps,
+  "testIdPrefix" | "labels"
+>;
 
-export function ApiKeyNavigation({
-  previousPath,
-  nextPath,
-  failed,
-  onRetry,
-}: ApiKeyNavigationProps) {
+export function ApiKeyNavigation(props: ApiKeyNavigationProps) {
   const { t } = useTranslation();
   return (
-    <>
-      {failed && (
-        <div role="alert" className="flex flex-wrap items-center gap-2 text-sm">
-          {t("api-key:navigation.failed")}
-          <Button variant="outline" onClick={onRetry}>
-            {t("api-key:navigation.retry")}
-          </Button>
-        </div>
-      )}
-      <PagePagination aria-label={t("api-key:navigation.label")}>
-        <PagePreviousAction
-          aria-label={t("api-key:navigation.previous")}
-          data-testid="api-key-previous"
-          disabled={!previousPath}
-          render={previousPath ? <Link to={previousPath} /> : undefined}
-        />
-        <PageNextAction
-          aria-label={t("api-key:navigation.next")}
-          data-testid="api-key-next"
-          disabled={!nextPath}
-          render={nextPath ? <Link to={nextPath} /> : undefined}
-        />
-      </PagePagination>
-    </>
+    <RecordNavigation
+      {...props}
+      testIdPrefix="api-key"
+      labels={{
+        label: t("api-key:navigation.label"),
+        previous: t("api-key:navigation.previous"),
+        next: t("api-key:navigation.next"),
+        failed: t("api-key:navigation.failed"),
+        retry: t("api-key:navigation.retry"),
+      }}
+    />
   );
 }

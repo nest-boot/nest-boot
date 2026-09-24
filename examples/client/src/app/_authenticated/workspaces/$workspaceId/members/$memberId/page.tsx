@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useMutation } from "@apollo/client/react";
+import { useCallback, useState } from "react";
+import { useLazyQuery, useMutation } from "@apollo/client/react";
 import {
   createFileRoute,
   redirect,
@@ -15,6 +15,13 @@ import { MemberRolesForm } from "./components/member-roles-form";
 import { MemberPermissionsForm } from "./components/member-permissions-form";
 import type { MemberFormProps } from "./components/member-form-props";
 import type { GetMemberFromMemberRouteQuery } from "@/gql/graphql";
+import type { PageNavigationQueryOptions } from "@/hooks/use-page-navigation";
+import { usePageNavigation } from "@/hooks/use-page-navigation";
+import { RecordNavigation } from "@/components/record-navigation";
+import { getMembersPageKey, memberSearchSchema } from "@/lib/member-search";
+import { createConnectionCursor } from "@/lib/connection-cursor";
+import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
+import { GET_MEMBER_NEIGHBORS } from "@/lib/record-navigation-operations";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   PageLayout,
@@ -46,6 +53,7 @@ const GET_MEMBER_FROM_MEMBER_ROUTE = graphql(`
       status
       name
       email
+      createdAt
     }
     workspaceRoles {
       role
@@ -126,6 +134,37 @@ function MemberDetails({
     REMOVE_MEMBER_FROM_MEMBER_ROUTE,
   );
   const member = data.member;
+  const [loadNeighbors] = useLazyQuery(GET_MEMBER_NEIGHBORS, {
+    fetchPolicy: "network-only",
+  });
+  const navigation = usePageNavigation({
+    key: getMembersPageKey(workspaceId),
+    searchSchema: memberSearchSchema,
+    query: useCallback(
+      async ({
+        pageSearch,
+      }: PageNavigationQueryOptions<typeof memberSearchSchema>) => {
+        const { query, filter, orderBy } =
+          createConnectionQueryVariables(pageSearch);
+        const { data } = await loadNeighbors({
+          variables: {
+            query,
+            filter,
+            orderBy,
+            cursor: createConnectionCursor(member, pageSearch),
+          },
+          context: { headers: { "x-workspace-id": workspaceId } },
+        });
+        if (data?.currentWorkspace?.id !== workspaceId) return undefined;
+        return {
+          prevEdge: data.currentWorkspace.previous.edges[0],
+          nextEdge: data.currentWorkspace.next.edges[0],
+        };
+      },
+      [member, loadNeighbors, workspaceId],
+    ),
+  });
+  const { prevEdge, nextEdge, backSearch } = navigation;
   const memberSubject = createAbilitySubject("Member", member);
 
   const save: MemberFormProps["onSave"] = async (
@@ -185,6 +224,7 @@ function MemberDetails({
       await navigate({
         to: "/workspaces/$workspaceId/members",
         params: { workspaceId },
+        search: backSearch,
       });
       toast.add({
         type: "success",
@@ -202,11 +242,13 @@ function MemberDetails({
   return (
     <Page variant="compact" data-testid="member-detail-page">
       <PageHeader>
-        <Breadcrumbs />
+        <Breadcrumbs
+          searchByPath={{ [`/workspaces/${workspaceId}/members`]: backSearch }}
+        />
         <PageTitle>{member.name ?? member.id}</PageTitle>
-        {member.id !== currentMember.id &&
-          ability.can("write", memberSubject) && (
-            <PageActions>
+        <PageActions>
+          {member.id !== currentMember.id &&
+            ability.can("write", memberSubject) && (
               <PageSecondaryAction
                 data-testid="member-delete-action"
                 destructive
@@ -215,8 +257,25 @@ function MemberDetails({
               >
                 {t("member:details.actions.delete_member")}
               </PageSecondaryAction>
-            </PageActions>
-          )}
+            )}
+          <RecordNavigation
+            testIdPrefix="member"
+            previousPath={
+              prevEdge
+                ? `/workspaces/${workspaceId}/members/${prevEdge.node.id}`
+                : undefined
+            }
+            nextPath={
+              nextEdge
+                ? `/workspaces/${workspaceId}/members/${nextEdge.node.id}`
+                : undefined
+            }
+            failed={Boolean(navigation.error)}
+            onRetry={() => {
+              void navigation.refetch().catch(() => undefined);
+            }}
+          />
+        </PageActions>
       </PageHeader>
       <PageContent>
         <PageLayout>

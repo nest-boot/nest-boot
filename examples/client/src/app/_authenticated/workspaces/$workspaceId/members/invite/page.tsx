@@ -6,6 +6,8 @@ import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Check, Copy } from "lucide-react";
 import z from "zod";
+import { getMembersPageKey, memberSearchSchema } from "@/lib/member-search";
+import { usePageSearch } from "@/hooks/use-page-search";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Link } from "@/components/link";
@@ -96,6 +98,10 @@ function InviteMemberForm() {
   const { t } = useTranslation();
   const { workspaceId } = Route.useParams();
   const { roleOptions } = Route.useRouteContext();
+  const { pageSearch } = usePageSearch({
+    key: getMembersPageKey(workspaceId),
+    searchSchema: memberSearchSchema,
+  });
   const ability = useAbility();
   const canInvite = ability.can("write", "Invitation");
   const formId = useId();
@@ -177,7 +183,9 @@ function InviteMemberForm() {
   return (
     <Page variant="compact" data-testid="workspace-invite-page">
       <PageHeader>
-        <Breadcrumbs />
+        <Breadcrumbs
+          searchByPath={{ [`/workspaces/${workspaceId}/members`]: pageSearch }}
+        />
         <PageTitle>{t("member:invite.title")}</PageTitle>
         <PageDescription>{t("member:invite.description")}</PageDescription>
       </PageHeader>
@@ -222,6 +230,7 @@ function InviteMemberForm() {
                         <Link
                           to="/workspaces/$workspaceId/members"
                           params={{ workspaceId }}
+                          search={pageSearch}
                         />
                       }
                     >
@@ -321,6 +330,7 @@ function InviteMemberForm() {
                         <Link
                           to="/workspaces/$workspaceId/members"
                           params={{ workspaceId }}
+                          search={pageSearch}
                         />
                       }
                     >

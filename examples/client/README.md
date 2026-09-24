@@ -77,7 +77,9 @@ URLs and persistent storage; the creation mutation does not cache it. Details
 query through the current user/workspace and allow read-only viewing when the
 principal lacks write permission. Enable/disable and delete remain list actions.
 
-API-key pages also demonstrate two hooks for list/detail navigation:
+API keys, administrator users, workspace members, and workspaces share two
+hooks for list/detail navigation. Their lists save search state, create/invite
+pages restore it when returning, and compact details use `PagePagination`:
 
 - `usePageSearch({ key, searchSchema, search? })` returns `pageSearch` and
   `setPageSearch`. Lists pass `search: Route.useSearch()`; the hook applies it
@@ -113,7 +115,7 @@ pageSearch)` to calculate its cursor. Include the record in the closure's
   The closure returns `{ prevEdge?: PageNavigationEdge, nextEdge?: PageNavigationEdge }`,
   with each edge containing the full `cursor` and a `node.id` of type `string | number`.
   Omit an edge or use `undefined` when there is no record in that direction.
-  API-key pages execute Apollo's `useLazyQuery`
+  Detail pages execute Apollo's `useLazyQuery`
   for both adjacent records in one request. GraphQL accepts one `$cursor`, using
   it as `before` with `last: 1` and as `after` with `first: 1`; both directions share
   the search query, filter, and ordering.
@@ -136,6 +138,15 @@ The list URL remains authoritative: entering a bare list URL resets its search
 instead of silently restoring storage. Direct detail visits without saved search
 use schema defaults. Browser history continues to restore its own URLs; no
 cross-tab synchronization or frozen snapshot of changing records is provided.
+
+Administrator users use `["admin", "users"]`, members use
+`["workspaces", workspaceId, "members"]`, and workspace management uses
+`["user", "workspaces"]`. Each resource exports a shared search schema for its
+list, creation, and detail routes. List and neighbor requests use the same
+normalized query conditions. Member navigation explicitly sends the workspace
+header and checks the returned workspace ID. Workspace settings navigate among
+the current user's workspaces and return to `/user/workspaces` with `backSearch`.
+Profile and security remain independent compact forms without record navigation.
 
 Create users at `/admin/users/create` and invite members at
 `/workspaces/$workspaceId/members/invite`. Both routes check the relevant creation

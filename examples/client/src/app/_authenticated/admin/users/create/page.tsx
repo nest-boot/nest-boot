@@ -5,6 +5,11 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import {
+  adminUserSearchSchema,
+  adminUsersPageKey,
+} from "@/lib/admin-user-search";
+import { usePageSearch } from "@/hooks/use-page-search";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Button } from "@/components/thread-ui/button";
@@ -54,6 +59,10 @@ export const Route = createFileRoute("/_authenticated/admin/users/create/")({
 function CreateUserPage() {
   const { t } = useTranslation();
   const formId = useId();
+  const { pageSearch } = usePageSearch({
+    key: adminUsersPageKey,
+    searchSchema: adminUserSearchSchema,
+  });
   const navigate = useNavigate();
   const ability = useAbility();
   const canCreate = ability.can("create", "User");
@@ -84,7 +93,11 @@ function CreateUserPage() {
         });
         if (!result.data?.createUser.id)
           throw new Error(t("admin:users.create.failed"));
-        await navigate({ to: "/admin/users", replace: true });
+        await navigate({
+          to: "/admin/users",
+          search: pageSearch,
+          replace: true,
+        });
         toast.add({ type: "success", title: t("admin:users.create.success") });
       } catch (error) {
         const message =
@@ -104,7 +117,7 @@ function CreateUserPage() {
   return (
     <Page variant="compact" data-testid="admin-create-user-page">
       <PageHeader>
-        <Breadcrumbs />
+        <Breadcrumbs searchByPath={{ "/admin/users": pageSearch }} />
         <PageTitle>{t("admin:users.create.title")}</PageTitle>
         <PageDescription>{t("admin:users.create.description")}</PageDescription>
       </PageHeader>

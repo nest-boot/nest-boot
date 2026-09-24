@@ -10,9 +10,14 @@ import dayjs from "dayjs";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Check, Plus, X } from "lucide-react";
-import { isEmpty, pick } from "lodash";
-import { z } from "zod";
+import { isEmpty } from "lodash";
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
+import {
+  workspaceSearchSchema,
+  workspacesPageKey,
+} from "@/lib/workspace-search";
+import { usePageSearch } from "@/hooks/use-page-search";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { toast } from "@/components/thread-ui/toast";
@@ -41,22 +46,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { graphql } from "@/gql";
-import { WorkspaceOrderField } from "@/gql/graphql";
 import {
-  OrderDirection,
-  createConnectionSearchSchema,
   getNextPageSearch,
   getPreviousPageSearch,
 } from "@/lib/connection-search";
 import { getRolesLabel } from "@/utils/get-role-label";
-import {
-  createDataFilterInputSearchSchema,
-  dataFilterDateSearchSchema,
-} from "@/lib/data-filter-search-schema";
-import {
-  formatConnectionFilterValue,
-  formatFilterValues,
-} from "@/lib/format-filter-values";
 
 const GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE = graphql(`
   query getWorkspacesFromUserWorkspacesRoute(
@@ -148,25 +142,17 @@ const REJECT_INVITATION_FROM_USER_WORKSPACES_ROUTE = graphql(`
 export const Route = createFileRoute("/_authenticated/user/workspaces/")({
   component: UserWorkspacesComponent,
   beforeLoad: () => ({ title: t("user:workspaces.title") }),
-  validateSearch: zodValidator(
-    createConnectionSearchSchema({
-      filterSchema: z
-        .object({
-          name: createDataFilterInputSearchSchema().optional().catch(undefined),
-          created_at: dataFilterDateSearchSchema.optional().catch(undefined),
-        })
-        .optional(),
-      pageSize: 20,
-      orderField: WorkspaceOrderField,
-      defaultOrderField: WorkspaceOrderField.CREATED_AT,
-      defaultOrderDirection: OrderDirection.DESC,
-    }),
-  ),
+  validateSearch: zodValidator(workspaceSearchSchema),
 });
 
 function UserWorkspacesComponent() {
   const { t } = useTranslation();
   const search = Route.useSearch();
+  usePageSearch({
+    key: workspacesPageKey,
+    searchSchema: workspaceSearchSchema,
+    search,
+  });
   const navigate = useNavigate();
   const location = useLocation();
   const query = search.query ?? "";
@@ -187,18 +173,13 @@ function UserWorkspacesComponent() {
   const { data, loading, refetch } = useQuery(
     GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE,
     {
+      fetchPolicy: "network-only",
       variables: {
         invitationFirst: invitationPage.first,
         invitationLast: invitationPage.last,
         invitationAfter: invitationPage.after,
         invitationBefore: invitationPage.before,
-        ...pick(search, ["after", "before", "first", "last"]),
-        query,
-        filter: formatFilterValues(filterValues, formatConnectionFilterValue),
-        orderBy: {
-          field: search.orderBy?.field ?? WorkspaceOrderField.CREATED_AT,
-          direction: search.orderBy?.direction ?? OrderDirection.DESC,
-        },
+        ...createConnectionQueryVariables(search),
       },
     },
   );

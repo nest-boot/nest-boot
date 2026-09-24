@@ -22,5 +22,9 @@
   "contextualSaveBar": {
     "discard": "Discard",
     "message": "Unsaved changes"
+  },
+  "navigation": {
+    "failed": "Could not load adjacent records.",
+    "retry": "Retry"
   }
 }

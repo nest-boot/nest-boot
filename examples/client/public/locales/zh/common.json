@@ -22,5 +22,9 @@
   "contextualSaveBar": {
     "discard": "丢弃",
     "message": "有未保存的更改"
+  },
+  "navigation": {
+    "failed": "无法加载相邻记录。",
+    "retry": "重试"
   }
 }

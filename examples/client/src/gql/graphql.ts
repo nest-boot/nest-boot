@@ -1967,6 +1967,7 @@ export type GetMemberFromMemberRouteQuery = {
     status: MemberStatus;
     name: string;
     email?: string | null;
+    createdAt: any;
   } | null;
   workspaceRoles: Array<{
     __typename?: "WorkspaceRoleOption";
@@ -2654,6 +2655,95 @@ export type GetWorkspaceApiKeyDetailsQuery = {
       expiresAt?: any | null;
     } | null;
   } | null;
+};
+
+export type GetAdminUserNeighborsQueryVariables = Exact<{
+  cursor: Scalars["String"]["input"];
+  query?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["UserFilter"]["input"]>;
+  orderBy?: InputMaybe<UserOrder>;
+}>;
+
+export type GetAdminUserNeighborsQuery = {
+  __typename?: "Query";
+  previous: {
+    __typename?: "UserConnection";
+    edges: Array<{
+      __typename?: "UserEdge";
+      cursor: string;
+      node: { __typename?: "User"; id: string };
+    }>;
+  };
+  next: {
+    __typename?: "UserConnection";
+    edges: Array<{
+      __typename?: "UserEdge";
+      cursor: string;
+      node: { __typename?: "User"; id: string };
+    }>;
+  };
+};
+
+export type GetMemberNeighborsQueryVariables = Exact<{
+  cursor: Scalars["String"]["input"];
+  query?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["MemberFilter"]["input"]>;
+  orderBy?: InputMaybe<MemberOrder>;
+}>;
+
+export type GetMemberNeighborsQuery = {
+  __typename?: "Query";
+  currentWorkspace?: {
+    __typename?: "Workspace";
+    id: string;
+    previous: {
+      __typename?: "MemberConnection";
+      edges: Array<{
+        __typename?: "MemberEdge";
+        cursor: string;
+        node: { __typename?: "Member"; id: string };
+      }>;
+    };
+    next: {
+      __typename?: "MemberConnection";
+      edges: Array<{
+        __typename?: "MemberEdge";
+        cursor: string;
+        node: { __typename?: "Member"; id: string };
+      }>;
+    };
+  } | null;
+};
+
+export type GetWorkspaceNeighborsQueryVariables = Exact<{
+  cursor: Scalars["String"]["input"];
+  query?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["WorkspaceFilter"]["input"]>;
+  orderBy?: InputMaybe<WorkspaceOrder>;
+}>;
+
+export type GetWorkspaceNeighborsQuery = {
+  __typename?: "Query";
+  currentUser: {
+    __typename?: "User";
+    id: string;
+    previous: {
+      __typename?: "WorkspaceConnection";
+      edges: Array<{
+        __typename?: "WorkspaceEdge";
+        cursor: string;
+        node: { __typename?: "Workspace"; id: string };
+      }>;
+    };
+    next: {
+      __typename?: "WorkspaceConnection";
+      edges: Array<{
+        __typename?: "WorkspaceEdge";
+        cursor: string;
+        node: { __typename?: "Workspace"; id: string };
+      }>;
+    };
+  };
 };
 
 export const GetUserFromUserRouteDocument = {
@@ -5591,6 +5681,7 @@ export const GetMemberFromMemberRouteDocument = {
                 { kind: "Field", name: { kind: "Name", value: "status" } },
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "email" } },
+                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
               ],
             },
           },
@@ -8797,4 +8888,666 @@ export const GetWorkspaceApiKeyDetailsDocument = {
 } as unknown as DocumentNode<
   GetWorkspaceApiKeyDetailsQuery,
   GetWorkspaceApiKeyDetailsQueryVariables
+>;
+export const GetAdminUserNeighborsDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "getAdminUserNeighbors" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "cursor" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "String" },
+            },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "query" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "filter" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "UserFilter" },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "orderBy" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "UserOrder" },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            alias: { kind: "Name", value: "previous" },
+            name: { kind: "Name", value: "users" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "last" },
+                value: { kind: "IntValue", value: "1" },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "before" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "cursor" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "query" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "query" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "filter" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "filter" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "orderBy" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "cursor" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            alias: { kind: "Name", value: "next" },
+            name: { kind: "Name", value: "users" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: { kind: "IntValue", value: "1" },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "after" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "cursor" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "query" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "query" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "filter" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "filter" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "orderBy" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "cursor" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  GetAdminUserNeighborsQuery,
+  GetAdminUserNeighborsQueryVariables
+>;
+export const GetMemberNeighborsDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "getMemberNeighbors" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "cursor" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "String" },
+            },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "query" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "filter" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "MemberFilter" },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "orderBy" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "MemberOrder" },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "currentWorkspace" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                {
+                  kind: "Field",
+                  alias: { kind: "Name", value: "previous" },
+                  name: { kind: "Name", value: "members" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "last" },
+                      value: { kind: "IntValue", value: "1" },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "before" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "cursor" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "query" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "query" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "filter" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "filter" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "orderBy" },
+                      },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "edges" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "cursor" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  alias: { kind: "Name", value: "next" },
+                  name: { kind: "Name", value: "members" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: { kind: "IntValue", value: "1" },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "after" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "cursor" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "query" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "query" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "filter" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "filter" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "orderBy" },
+                      },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "edges" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "cursor" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  GetMemberNeighborsQuery,
+  GetMemberNeighborsQueryVariables
+>;
+export const GetWorkspaceNeighborsDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "getWorkspaceNeighbors" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "cursor" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "String" },
+            },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "query" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "filter" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "WorkspaceFilter" },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "orderBy" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "WorkspaceOrder" },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "currentUser" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                {
+                  kind: "Field",
+                  alias: { kind: "Name", value: "previous" },
+                  name: { kind: "Name", value: "workspaces" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "last" },
+                      value: { kind: "IntValue", value: "1" },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "before" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "cursor" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "query" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "query" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "filter" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "filter" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "orderBy" },
+                      },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "edges" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "cursor" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  alias: { kind: "Name", value: "next" },
+                  name: { kind: "Name", value: "workspaces" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: { kind: "IntValue", value: "1" },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "after" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "cursor" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "query" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "query" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "filter" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "filter" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "orderBy" },
+                      },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "edges" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "cursor" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  GetWorkspaceNeighborsQuery,
+  GetWorkspaceNeighborsQueryVariables
 >;

@@ -1,15 +1,25 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { z } from "zod";
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useLazyQuery, useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import { useCurrentUserContext } from "../../../contexts/current-user-context";
+import type { PageNavigationQueryOptions } from "@/hooks/use-page-navigation";
 import type { UserPermission } from "@/lib/permissions";
 import type { UserRole } from "@/gql/graphql";
+import { usePageNavigation } from "@/hooks/use-page-navigation";
+import { RecordNavigation } from "@/components/record-navigation";
+import {
+  adminUserSearchSchema,
+  adminUsersPageKey,
+} from "@/lib/admin-user-search";
+import { createConnectionCursor } from "@/lib/connection-cursor";
+import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
+import { GET_ADMIN_USER_NEIGHBORS } from "@/lib/record-navigation-operations";
 import { getFormErrorMessage } from "@/lib/form-errors";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -195,7 +205,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/$userId/")({
       !ability.can("read", createAbilitySubject("User", data.user))
     )
       throw redirect({ to: "/admin/users" });
-    return { title: t("admin:user.title") };
+    return { title: t("admin:user.title"), user: data.user };
   },
 });
 
@@ -207,6 +217,7 @@ function AdminUserPage() {
 function AdminUserDetails() {
   const { t } = useTranslation();
   const { userId } = Route.useParams();
+  const { user: initialUser } = Route.useRouteContext();
   const navigate = useNavigate();
   const currentUser = useCurrentUserContext();
   const ability = useAbility();
@@ -224,6 +235,37 @@ function AdminUserDetails() {
     },
   );
   const user = data?.user;
+  const navigationRecord = user ?? initialUser;
+  const [loadNeighbors] = useLazyQuery(GET_ADMIN_USER_NEIGHBORS, {
+    fetchPolicy: "network-only",
+  });
+  const navigation = usePageNavigation({
+    key: adminUsersPageKey,
+    searchSchema: adminUserSearchSchema,
+    query: useCallback(
+      async ({
+        pageSearch,
+      }: PageNavigationQueryOptions<typeof adminUserSearchSchema>) => {
+        const { query, filter, orderBy } =
+          createConnectionQueryVariables(pageSearch);
+        const { data } = await loadNeighbors({
+          variables: {
+            query,
+            filter,
+            orderBy,
+            cursor: createConnectionCursor(navigationRecord, pageSearch),
+          },
+        });
+        if (!data) return undefined;
+        return {
+          prevEdge: data.previous.edges[0],
+          nextEdge: data.next.edges[0],
+        };
+      },
+      [navigationRecord, loadNeighbors],
+    ),
+  });
+  const { prevEdge, nextEdge, backSearch } = navigation;
   const sessions = data?.user?.sessions?.edges.map(({ node }) => node) ?? [];
   const [revokingSessionId, setRevokingSessionId] = useState<string>();
 
@@ -444,12 +486,12 @@ function AdminUserDetails() {
   return (
     <Page variant="compact" data-testid="admin-user-page">
       <PageHeader>
-        <Breadcrumbs />
+        <Breadcrumbs searchByPath={{ "/admin/users": backSearch }} />
         <PageTitle>{user.name}</PageTitle>
         <PageDescription>{user.email}</PageDescription>
-        {user.id !== currentUser.id &&
-        ability.can("impersonate", createAbilitySubject("User", user)) ? (
-          <PageActions>
+        <PageActions>
+          {user.id !== currentUser.id &&
+          ability.can("impersonate", createAbilitySubject("User", user)) ? (
             <Button
               variant="outline"
               loading={impersonating}
@@ -471,8 +513,19 @@ function AdminUserDetails() {
             >
               {t("admin:impersonation.start")}
             </Button>
-          </PageActions>
-        ) : null}
+          ) : null}
+          <RecordNavigation
+            testIdPrefix="admin-user"
+            previousPath={
+              prevEdge ? `/admin/users/${prevEdge.node.id}` : undefined
+            }
+            nextPath={nextEdge ? `/admin/users/${nextEdge.node.id}` : undefined}
+            failed={Boolean(navigation.error)}
+            onRetry={() => {
+              void navigation.refetch().catch(() => undefined);
+            }}
+          />
+        </PageActions>
       </PageHeader>
       <PageContent>
         <PageLayout>
@@ -983,7 +1036,10 @@ function AdminUserDetails() {
                       if (!confirmed) return;
                       await run(async () => {
                         await deleteUser({ variables: { id: userId } });
-                        await navigate({ to: "/admin/users" });
+                        await navigate({
+                          to: "/admin/users",
+                          search: backSearch,
+                        });
                       }, t("admin:user.delete.success"));
                     }}
                   >

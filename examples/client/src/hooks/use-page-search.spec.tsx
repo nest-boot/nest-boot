@@ -44,6 +44,25 @@ afterEach(() => {
 });
 
 describe("usePageSearch", () => {
+  it("accepts null-prototype router filters when search changes", () => {
+    const pageKey = key();
+    const filterSchema = searchSchema.extend({ filter: z.unknown() });
+    const makeSearch = (name: string) => ({
+      query: "users",
+      filter: Object.assign(Object.create(null), { name: { $eq: name } }),
+    });
+    const { result, rerender } = renderHook(
+      ({ search }) =>
+        usePageSearch({ key: pageKey, searchSchema: filterSchema, search }),
+      { wrapper, initialProps: { search: makeSearch("Alice") } },
+    );
+    rerender({ search: makeSearch("Bob") });
+    expect(result.current.pageSearch?.filter).toEqual({ name: { $eq: "Bob" } });
+    act(() => result.current.setPageSearch({ query: "manual", filter: {} }));
+    rerender({ search: makeSearch("Bob") });
+    expect(result.current.pageSearch?.query).toBe("manual");
+  });
+
   it("applies supplied search on mount and changes, using the setter's validation and defaults", () => {
     const pageKey = key();
     sessionStorage.setItem(storageKey(pageKey), "invalid json");

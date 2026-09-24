@@ -10,10 +10,12 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import dayjs from "dayjs";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
-import z from "zod";
-import { isEmpty, pick } from "lodash";
+import { isEmpty } from "lodash";
 import { useCurrentMemberContext } from "../contexts/current-member-context";
 import type { DataFilterItemProps } from "@/components/thread-ui/data-filter";
+import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
+import { getMembersPageKey, memberSearchSchema } from "@/lib/member-search";
+import { usePageSearch } from "@/hooks/use-page-search";
 import { Link } from "@/components/link";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { toast } from "@/components/thread-ui/toast";
@@ -37,23 +39,12 @@ import {
 } from "@/components/thread-ui/page-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { graphql } from "@/gql";
-import { MemberOrderField, MemberStatus } from "@/gql/graphql";
+import { MemberStatus } from "@/gql/graphql";
 import {
-  OrderDirection,
-  createConnectionSearchSchema,
   getNextPageSearch,
   getPreviousPageSearch,
 } from "@/lib/connection-search";
-import {
-  createDataFilterInputSearchSchema,
-  createDataFilterSelectSearchSchema,
-  dataFilterDateSearchSchema,
-} from "@/lib/data-filter-search-schema";
 import { truncateEmail } from "@/utils/truncate-email";
-import {
-  formatConnectionFilterValue,
-  formatFilterValues,
-} from "@/lib/format-filter-values";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/thread-ui/badge";
 import { getRolesLabel } from "@/utils/get-role-label";
@@ -183,31 +174,7 @@ export const Route = createFileRoute(
       throw redirect({ to: "/workspaces/$workspaceId", params });
     }
   },
-  validateSearch: zodValidator(
-    createConnectionSearchSchema({
-      filterSchema: z
-        .object({
-          name: createDataFilterInputSearchSchema(z.string().max(255))
-            .optional()
-            .catch(undefined),
-          email: createDataFilterInputSearchSchema(z.string().max(255))
-            .optional()
-            .catch(undefined),
-          status: createDataFilterSelectSearchSchema(
-            z.union([z.nativeEnum(MemberStatus), z.literal("ACTIVE")]),
-            Object.values(MemberStatus).length + 1,
-          )
-            .optional()
-            .catch(undefined),
-          created_at: dataFilterDateSearchSchema.optional().catch(undefined),
-        })
-        .optional(),
-      pageSize: 20,
-      orderField: MemberOrderField,
-      defaultOrderField: MemberOrderField.CREATED_AT,
-      defaultOrderDirection: OrderDirection.DESC,
-    }),
-  ),
+  validateSearch: zodValidator(memberSearchSchema),
 });
 
 function ScopedMembersComponent() {
@@ -219,6 +186,11 @@ function MembersComponent() {
   const { t } = useTranslation();
   const search = Route.useSearch();
   const { workspaceId } = Route.useParams();
+  usePageSearch({
+    key: getMembersPageKey(workspaceId),
+    searchSchema: memberSearchSchema,
+    search,
+  });
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -256,13 +228,7 @@ function MembersComponent() {
       invitationAfter: invitationPage.after,
       invitationBefore: invitationPage.before,
       invitationFilter: { status: { $eq: "pending" } },
-      ...pick(search, ["after", "before", "first", "last"]),
-      query,
-      filter: formatFilterValues(filterValues, formatConnectionFilterValue),
-      orderBy: {
-        field: search?.orderBy?.field ?? MemberOrderField.CREATED_AT,
-        direction: search?.orderBy?.direction ?? OrderDirection.DESC,
-      },
+      ...createConnectionQueryVariables(search),
     },
   });
 
