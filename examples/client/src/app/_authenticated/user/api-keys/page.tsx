@@ -2,19 +2,76 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useTranslation } from "react-i18next";
+import { graphql } from "@/gql";
+import { UPDATE_USER_API_KEY } from "@/graphql/mutations/update-user-api-key";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { useAbility } from "@/contexts/ability-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { ApiKeysPage } from "@/components/api-keys-page";
-import {
-  DELETE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
-  GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE,
-  UPDATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
-} from "@/lib/api-key-operations";
 import { apiKeySearchSchema } from "@/schemas/api-key-search";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { userApiKeysResourceKey } from "@/lib/resource-keys";
+
+const DELETE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
+  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {
+    deleteUserApiKey(id: $id) {
+      id
+      name
+      start
+      prefix
+      enabled
+      permissions
+      createdAt
+      lastUsedAt
+      expiresAt
+    }
+  }
+`);
+
+const GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE = graphql(`
+  query getUserApiKeysFromUserApiKeysRoute(
+    $after: String
+    $before: String
+    $first: Int
+    $last: Int
+    $filter: UserApiKeyFilter
+    $orderBy: UserApiKeyOrder
+    $query: String
+  ) {
+    currentUser {
+      apiKeys(
+        after: $after
+        before: $before
+        first: $first
+        last: $last
+        orderBy: $orderBy
+        filter: $filter
+        query: $query
+      ) {
+        edges {
+          node {
+            id
+            name
+            start
+            prefix
+            enabled
+            permissions
+            createdAt
+            lastUsedAt
+            expiresAt
+          }
+        }
+        pageInfo {
+          endCursor
+          hasNextPage
+          hasPreviousPage
+          startCursor
+        }
+      }
+    }
+  }
+`);
 
 export const Route = createFileRoute("/_authenticated/user/api-keys/")({
   component: ApiKeysComponent,
@@ -38,9 +95,8 @@ function ApiKeysComponent() {
       variables: createConnectionQueryVariables(search),
     },
   );
-  const [updateApiKey, { loading: updateLoading }] = useMutation(
-    UPDATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
-  );
+  const [updateApiKey, { loading: updateLoading }] =
+    useMutation(UPDATE_USER_API_KEY);
   const [deleteApiKey, { loading: deleteLoading }] = useMutation(
     DELETE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
   );

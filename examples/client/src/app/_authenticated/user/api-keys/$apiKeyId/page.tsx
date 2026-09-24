@@ -4,6 +4,8 @@ import { t } from "i18next";
 import { useCallback } from "react";
 
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
+import { graphql } from "@/gql";
+import { UPDATE_USER_API_KEY } from "@/graphql/mutations/update-user-api-key";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import { ApiKeyNavigation } from "@/components/api-key-navigation";
@@ -11,16 +13,75 @@ import { useAbility } from "@/contexts/ability-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { createAbilitySubject } from "@/lib/ability";
 import { createConnectionCursor } from "@/lib/connection-cursor";
-import {
-  GET_USER_API_KEY,
-  GET_USER_API_KEY_NEIGHBORS,
-  UPDATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
-} from "@/lib/api-key-operations";
 import { apiKeySearchSchema } from "@/schemas/api-key-search";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { userApiKeysResourceKey } from "@/lib/resource-keys";
 import { authPermissionValues, getPermissionOptions } from "@/lib/permissions";
 import { isAccessDenied } from "@/lib/auth-errors";
+
+const GET_USER_API_KEY = graphql(`
+  query getUserApiKeyDetails($id: ID!) {
+    userApiKeyPermissions {
+      permission
+      grantable
+      default
+    }
+    currentUser {
+      apiKey(id: $id) {
+        id
+        name
+        start
+        prefix
+        enabled
+        permissions
+        createdAt
+        lastUsedAt
+        expiresAt
+      }
+    }
+  }
+`);
+
+const GET_USER_API_KEY_NEIGHBORS = graphql(`
+  query getUserApiKeyNeighbors(
+    $cursor: String!
+    $filter: UserApiKeyFilter
+    $orderBy: UserApiKeyOrder
+    $query: String
+  ) {
+    currentUser {
+      id
+      previous: apiKeys(
+        last: 1
+        before: $cursor
+        filter: $filter
+        orderBy: $orderBy
+        query: $query
+      ) {
+        edges {
+          cursor
+          node {
+            id
+          }
+        }
+      }
+      next: apiKeys(
+        first: 1
+        after: $cursor
+        filter: $filter
+        orderBy: $orderBy
+        query: $query
+      ) {
+        edges {
+          cursor
+          node {
+            id
+          }
+        }
+      }
+    }
+  }
+`);
 
 export const Route = createFileRoute(
   "/_authenticated/user/api-keys/$apiKeyId/",
@@ -56,9 +117,7 @@ function ApiKeyDetailsPage() {
   const { apiKey, permissionOptions } = Route.useRouteContext();
   const ability = useAbility();
   const router = useRouter();
-  const [updateApiKey] = useMutation(
-    UPDATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
-  );
+  const [updateApiKey] = useMutation(UPDATE_USER_API_KEY);
   const [loadNeighbors] = useLazyQuery(GET_USER_API_KEY_NEIGHBORS, {
     fetchPolicy: "network-only",
   });

@@ -2,19 +2,78 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useTranslation } from "react-i18next";
+import { graphql } from "@/gql";
+import { UPDATE_WORKSPACE_API_KEY } from "@/graphql/mutations/update-workspace-api-key";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { useAbility } from "@/contexts/ability-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { ApiKeysPage } from "@/components/api-keys-page";
-import {
-  DELETE_API_KEY_FROM_API_KEYS_ROUTE,
-  GET_API_KEYS_FROM_API_KEYS_ROUTE,
-  UPDATE_API_KEY_FROM_API_KEYS_ROUTE,
-} from "@/lib/api-key-operations";
 import { apiKeySearchSchema } from "@/schemas/api-key-search";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { getWorkspaceApiKeysResourceKey } from "@/lib/resource-keys";
+
+const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
+  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {
+    deleteWorkspaceApiKey(id: $id) {
+      workspaceId
+      id
+      name
+      start
+      prefix
+      enabled
+      permissions
+      createdAt
+      lastUsedAt
+      expiresAt
+    }
+  }
+`);
+
+const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
+  query getApiKeysFromApiKeysRoute(
+    $after: String
+    $before: String
+    $first: Int
+    $last: Int
+    $filter: WorkspaceApiKeyFilter
+    $orderBy: WorkspaceApiKeyOrder
+    $query: String
+  ) {
+    currentWorkspace {
+      apiKeys(
+        after: $after
+        before: $before
+        first: $first
+        last: $last
+        orderBy: $orderBy
+        filter: $filter
+        query: $query
+      ) {
+        edges {
+          node {
+            workspaceId
+            id
+            name
+            start
+            prefix
+            enabled
+            permissions
+            createdAt
+            lastUsedAt
+            expiresAt
+          }
+        }
+        pageInfo {
+          endCursor
+          hasNextPage
+          hasPreviousPage
+          startCursor
+        }
+      }
+    }
+  }
+`);
 
 export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/api-keys/",
@@ -44,7 +103,7 @@ function ApiKeysComponent() {
     variables: createConnectionQueryVariables(search),
   });
   const [updateApiKey, { loading: updateLoading }] = useMutation(
-    UPDATE_API_KEY_FROM_API_KEYS_ROUTE,
+    UPDATE_WORKSPACE_API_KEY,
   );
   const [deleteApiKey, { loading: deleteLoading }] = useMutation(
     DELETE_API_KEY_FROM_API_KEYS_ROUTE,

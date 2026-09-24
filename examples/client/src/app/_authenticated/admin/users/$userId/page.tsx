@@ -17,7 +17,6 @@ import { adminUserSearchSchema } from "@/schemas/admin-user-search";
 import { adminUsersResourceKey } from "@/lib/resource-keys";
 import { createConnectionCursor } from "@/lib/connection-cursor";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
-import { GET_ADMIN_USER_NEIGHBORS } from "@/lib/record-navigation-operations";
 import { getFormErrorMessage } from "@/lib/form-errors";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -54,6 +53,44 @@ import {
 import { graphql } from "@/gql";
 import { getPermissionOptions } from "@/lib/permissions";
 import { createAbilitySubject } from "@/lib/ability";
+
+const GET_ADMIN_USER_NEIGHBORS = graphql(`
+  query getAdminUserNeighbors(
+    $cursor: String!
+    $query: String
+    $filter: UserFilter
+    $orderBy: UserOrder
+  ) {
+    previous: users(
+      last: 1
+      before: $cursor
+      query: $query
+      filter: $filter
+      orderBy: $orderBy
+    ) {
+      edges {
+        cursor
+        node {
+          id
+        }
+      }
+    }
+    next: users(
+      first: 1
+      after: $cursor
+      query: $query
+      filter: $filter
+      orderBy: $orderBy
+    ) {
+      edges {
+        cursor
+        node {
+          id
+        }
+      }
+    }
+  }
+`);
 
 const GET_USER_FROM_USER_ROUTE = graphql(`
   query getUserFromUserRoute(

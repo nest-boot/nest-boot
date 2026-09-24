@@ -23,7 +23,6 @@ import { getMembersResourceKey } from "@/lib/resource-keys";
 import { memberSearchSchema } from "@/schemas/member-search";
 import { createConnectionCursor } from "@/lib/connection-cursor";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
-import { GET_MEMBER_NEIGHBORS } from "@/lib/record-navigation-operations";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   PageLayout,
@@ -44,6 +43,47 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { graphql } from "@/gql";
 import { createAbilitySubject } from "@/lib/ability";
 import { isAccessDenied } from "@/lib/auth-errors";
+
+const GET_MEMBER_NEIGHBORS = graphql(`
+  query getMemberNeighbors(
+    $cursor: String!
+    $query: String
+    $filter: MemberFilter
+    $orderBy: MemberOrder
+  ) {
+    currentWorkspace {
+      id
+      previous: members(
+        last: 1
+        before: $cursor
+        query: $query
+        filter: $filter
+        orderBy: $orderBy
+      ) {
+        edges {
+          cursor
+          node {
+            id
+          }
+        }
+      }
+      next: members(
+        first: 1
+        after: $cursor
+        query: $query
+        filter: $filter
+        orderBy: $orderBy
+      ) {
+        edges {
+          cursor
+          node {
+            id
+          }
+        }
+      }
+    }
+  }
+`);
 
 const GET_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   query getMemberFromMemberRoute($id: ID!) {

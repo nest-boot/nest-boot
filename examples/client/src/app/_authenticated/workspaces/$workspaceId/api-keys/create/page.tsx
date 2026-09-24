@@ -1,6 +1,7 @@
 import { useMutation } from "@apollo/client/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
+import { graphql } from "@/gql";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
@@ -8,15 +9,43 @@ import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { apiKeySearchSchema } from "@/schemas/api-key-search";
 import { getWorkspaceApiKeysResourceKey } from "@/lib/resource-keys";
 import {
-  CREATE_API_KEY_FROM_API_KEYS_ROUTE,
-  GET_WORKSPACE_API_KEY_OPTIONS,
-} from "@/lib/api-key-operations";
-import {
   getDefaultApiKeyPermissions,
   getPermissionOptions,
   workspaceApiKeyPermissionValues,
 } from "@/lib/permissions";
 import { isAccessDenied } from "@/lib/auth-errors";
+
+const CREATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
+  mutation createWorkspaceApiKeyFromApiKeysRoute(
+    $input: CreateWorkspaceApiKeyInput!
+  ) {
+    createWorkspaceApiKey(input: $input) {
+      apiKey
+      entity {
+        workspaceId
+        id
+        name
+        start
+        prefix
+        enabled
+        permissions
+        createdAt
+        lastUsedAt
+        expiresAt
+      }
+    }
+  }
+`);
+
+const GET_WORKSPACE_API_KEY_OPTIONS = graphql(`
+  query getWorkspaceApiKeyOptions {
+    workspaceApiKeyPermissions {
+      permission
+      grantable
+      default
+    }
+  }
+`);
 
 export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/api-keys/create/",
