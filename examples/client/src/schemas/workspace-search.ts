@@ -7,7 +7,7 @@ import {
 import {
   createDataFilterInputSearchSchema,
   dataFilterDateSearchSchema,
-} from "@/schemas/data-filter-search";
+} from "@/lib/data-filter-search-schema";
 
 export const workspaceSearchSchema = createConnectionSearchSchema({
   filterSchema: z
