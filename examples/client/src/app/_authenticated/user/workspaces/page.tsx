@@ -13,7 +13,6 @@ import { Check, Plus, X } from "lucide-react";
 import { isEmpty } from "lodash";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
-import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { workspaceSearchSchema } from "@/schemas/workspace-search-schema";
 import { workspacesResourceKey } from "@/lib/resource-keys";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
@@ -170,7 +169,7 @@ function UserWorkspacesComponent() {
         invitationLast: invitationPage.last,
         invitationAfter: invitationPage.after,
         invitationBefore: invitationPage.before,
-        ...createConnectionQueryVariables(search),
+        ...search,
       },
     },
   );

@@ -9,7 +9,6 @@ import { Plus } from "lucide-react";
 import { isEmpty } from "lodash";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
-import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { adminUserSearchSchema } from "@/schemas/admin-user-search-schema";
 import { adminUsersResourceKey } from "@/lib/resource-keys";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
@@ -89,7 +88,7 @@ function AdminUsersPage() {
   const filterValues = (search.filter ?? {}) as Record<string, unknown>;
   const { data, loading } = useQuery(GET_USERS_FROM_USERS_ROUTE, {
     fetchPolicy: "network-only",
-    variables: createConnectionQueryVariables(search),
+    variables: search,
   });
   const users = data?.users.edges.map(({ node }) => node) ?? [];
   const canCreate = ability.can("create", "User");

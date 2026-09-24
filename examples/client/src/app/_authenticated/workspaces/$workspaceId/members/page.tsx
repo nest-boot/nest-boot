@@ -14,7 +14,6 @@ import { isEmpty } from "lodash";
 import { useCurrentMemberContext } from "../contexts/current-member-context";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
-import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { getMembersResourceKey } from "@/lib/resource-keys";
 import { memberSearchSchema } from "@/schemas/member-search-schema";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
@@ -222,7 +221,7 @@ function MembersComponent() {
       invitationAfter: invitationPage.after,
       invitationBefore: invitationPage.before,
       invitationFilter: { status: { $eq: "pending" } },
-      ...createConnectionQueryVariables(search),
+      ...search,
     },
   });
 

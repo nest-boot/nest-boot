@@ -7,6 +7,7 @@ export {
   getDataFilterDateDisabled,
   getDataFilterDateRange,
   getDataFilterDateRangeValue,
+  getDataFilterDateValue,
 } from "./data-filter-date-value";
 export {
   defaultDataFilterValue,

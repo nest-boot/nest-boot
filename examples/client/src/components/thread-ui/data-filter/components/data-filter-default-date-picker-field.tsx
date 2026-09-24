@@ -3,6 +3,7 @@ import {
   getDataFilterDateDisabled,
   getDataFilterDateRange,
   getDataFilterDateRangeValue,
+  getDataFilterDateValue,
 } from "../utils";
 import type { FC } from "react";
 
@@ -64,7 +65,7 @@ export const DataFilterDefaultDatePickerField: FC<
       mode="single"
       selected={selected}
       onSelect={(date) => {
-        onChange(date ? date.toISOString() : undefined);
+        onChange(getDataFilterDateValue(date));
       }}
     />
   );

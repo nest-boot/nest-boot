@@ -10,7 +10,6 @@ import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { ApiKeysPage } from "@/components/api-keys-page";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
-import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { getWorkspaceApiKeysResourceKey } from "@/lib/resource-keys";
 
 const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
@@ -100,7 +99,7 @@ function ApiKeysComponent() {
   });
   const { data, refetch } = useQuery(GET_API_KEYS_FROM_API_KEYS_ROUTE, {
     fetchPolicy: "network-only",
-    variables: createConnectionQueryVariables(search),
+    variables: search,
   });
   const [updateApiKey, { loading: updateLoading }] = useMutation(
     UPDATE_WORKSPACE_API_KEY,

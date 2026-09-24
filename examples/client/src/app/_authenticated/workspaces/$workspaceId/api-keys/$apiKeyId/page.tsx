@@ -14,7 +14,6 @@ import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { createAbilitySubject } from "@/lib/ability";
 import { createConnectionCursor } from "@/lib/connection-cursor";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
-import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { getWorkspaceApiKeysResourceKey } from "@/lib/resource-keys";
 import {
   getPermissionOptions,
@@ -142,8 +141,7 @@ function ApiKeyDetailsPage() {
       async ({
         search,
       }: ResourceNavigationQueryOptions<typeof apiKeySearchSchema>) => {
-        const { query, filter, orderBy } =
-          createConnectionQueryVariables(search);
+        const { query, filter, orderBy } = search;
         const cursor = createConnectionCursor(apiKey, search);
         const { data } = await loadNeighbors({
           variables: {

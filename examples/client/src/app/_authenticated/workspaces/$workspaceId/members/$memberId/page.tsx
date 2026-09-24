@@ -22,7 +22,6 @@ import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { getMembersResourceKey } from "@/lib/resource-keys";
 import { memberSearchSchema } from "@/schemas/member-search-schema";
 import { createConnectionCursor } from "@/lib/connection-cursor";
-import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import {
   PageLayout,
   PageLayoutSection,
@@ -179,8 +178,7 @@ function MemberDetails({
       async ({
         search,
       }: ResourceNavigationQueryOptions<typeof memberSearchSchema>) => {
-        const { query, filter, orderBy } =
-          createConnectionQueryVariables(search);
+        const { query, filter, orderBy } = search;
         const { data } = await loadNeighbors({
           variables: {
             query,

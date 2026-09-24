@@ -1097,6 +1097,9 @@ importers:
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../graphql
+      '@nest-boot/request-context':
+        specifier: workspace:^
+        version: link:../request-context
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig

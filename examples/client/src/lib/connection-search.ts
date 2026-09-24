@@ -99,7 +99,9 @@ function createComparableFilterItemSearchSchema<ValueSchema extends z.ZodType>(
 }
 
 export function createDateFilterItemSearchSchema() {
-  return createComparableFilterItemSearchSchema(z.string().datetime());
+  return createComparableFilterItemSearchSchema(
+    z.union([z.iso.date(), z.string().datetime()]),
+  );
 }
 
 export function createNumberFilterItemSearchSchema(

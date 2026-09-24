@@ -93,6 +93,16 @@ describe("DataFilter compatibility", () => {
     },
   );
 
+  it("accepts date-only calendar values and retains precise timestamps", () => {
+    const schema = createDateFilterItemSearchSchema();
+    expect(schema.parse("2026-09-24")).toBe("2026-09-24");
+    expect(schema.parse({ $between: ["2026-09-01", "2026-09-24"] })).toEqual({
+      $between: ["2026-09-01", "2026-09-24"],
+    });
+    expect(schema.parse(start)).toBe(start);
+    expect(schema.parse("2026-02-30")).toBeUndefined();
+  });
+
   it("requires explicit opt-in for fulltext", () => {
     const condition = { $fulltext: "name" };
     expect(
