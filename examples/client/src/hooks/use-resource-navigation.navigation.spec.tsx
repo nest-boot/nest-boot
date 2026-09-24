@@ -239,6 +239,50 @@ describe("useResourceNavigation", () => {
     expect(result.current.nextEdge).toBeUndefined();
   });
 
+  it("queries changed nested conditions but ignores object key order and new object identities", async () => {
+    const searchSchema = z.object({
+      first: z.number().default(10),
+      filter: z.unknown(),
+    });
+    const query = vi.fn().mockResolvedValue(neighbors());
+    const { result, rerender } = renderHook(
+      ({ filter }: { filter: unknown }) =>
+        useResourceNavigation({
+          key: ["nested-conditions"],
+          searchSchema,
+          search: { filter },
+          query,
+        }),
+      {
+        initialProps: {
+          filter: { enabled: false, roles: ["admin", "user"] } as unknown,
+        },
+      },
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    rerender({ filter: { roles: ["admin", "user"], enabled: false } });
+    expect(query).toHaveBeenCalledTimes(1);
+    rerender({ filter: { roles: ["user", "admin"], enabled: false } });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query).toHaveBeenLastCalledWith({
+      search: {
+        first: 10,
+        filter: { roles: ["user", "admin"], enabled: false },
+      },
+    });
+    rerender({ filter: { roles: ["user", "admin"], enabled: null } });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(query).toHaveBeenCalledTimes(3);
+    act(() =>
+      result.current.setSearch({
+        first: 3,
+        filter: { enabled: null, roles: ["user", "admin"] },
+      }),
+    );
+    expect(query).toHaveBeenCalledTimes(3);
+  });
+
   it("accepts numeric IDs including zero and retains the complete preceding cursor", async () => {
     const saved = saveSearch({ first: 5, after: "old" });
     const data: ResourceNavigationQueryResult = {

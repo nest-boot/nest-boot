@@ -70,6 +70,46 @@ describe("useResourceNavigation", () => {
     expect(result.current.search?.query).toBe("manual");
   });
 
+  it("ignores object key order without losing nested filter changes", () => {
+    const filterSchema = searchSchema.extend({ filter: z.unknown() });
+    const resourceKey = key();
+    const { result, rerender } = renderHook(
+      ({ filter }: { filter: unknown }) =>
+        useResourceNavigation({
+          key: resourceKey,
+          searchSchema: filterSchema,
+          search: { query: "list", filter },
+        }),
+      {
+        wrapper,
+        initialProps: {
+          filter: { enabled: false, roles: ["admin", "user"] } as unknown,
+        },
+      },
+    );
+    act(() => result.current.setSearch({ query: "manual", filter: null }));
+    rerender({
+      filter: Object.assign(Object.create(null), {
+        roles: ["admin", "user"],
+        enabled: false,
+      }),
+    });
+    expect(result.current.search).toMatchObject({
+      query: "manual",
+      filter: null,
+    });
+    rerender({ filter: { roles: ["user", "admin"], enabled: false } });
+    expect(result.current.search).toMatchObject({
+      query: "list",
+      filter: { roles: ["user", "admin"], enabled: false },
+    });
+    rerender({ filter: { roles: ["user"], enabled: null } });
+    expect(result.current.search.filter).toEqual({
+      roles: ["user"],
+      enabled: null,
+    });
+  });
+
   it("applies supplied search on mount and changes, using the setter's validation and defaults", () => {
     const resourceKey = key();
     sessionStorage.setItem(storageKey(resourceKey), "invalid json");

@@ -199,6 +199,11 @@ The hook returns `search`, `setSearch`, `clearSearch`, `backSearch`,
   position is saved internally; direct visits without saved search use defaults
   without creating a stored list visit.
 
+The hook imports only React, Zod types, and `lodash-es` (`isEqual`). Native React
+effects use stable compared values; new object instances or reordered object
+keys do not repeat navigation queries. Changed filters, array order, resource
+scope, and query closures still trigger the appropriate updates.
+
 The list URL remains authoritative: a bare list URL resets its search instead of
 silently restoring storage. Browser history restores its own URLs; no cross-tab
 synchronization or frozen snapshot of changing records is provided.

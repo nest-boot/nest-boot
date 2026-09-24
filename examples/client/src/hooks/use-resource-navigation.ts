@@ -1,4 +1,4 @@
-import { isEqual } from "lodash";
+import { isEqual } from "lodash-es";
 import {
   useCallback,
   useEffect,
@@ -7,8 +7,18 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { useCustomCompareEffect } from "react-use";
 import type z from "zod";
+
+// Conditional render-time state keeps committed comparisons isolated from an
+// interrupted render, without mutating refs or adding an extra effect cycle.
+function useStableSearchValue<Value>(value: Value): Value {
+  const [stable, setStable] = useState(() => value);
+  if (!isEqual(stable, value)) {
+    setStable(() => value);
+    return value;
+  }
+  return stable;
+}
 
 export type ResourceKey = ReadonlyArray<string | number>;
 
@@ -137,26 +147,20 @@ function useStoredResourceSearch<Schema extends z.ZodType>(
     [storageKey, searchSchema],
   );
 
-  const source = { search: incomingSearch, setSearch };
+  const source = useStableSearchValue({ search: incomingSearch, setSearch });
   const [appliedSource, setAppliedSource] = useState<typeof source>();
   // Supplied URL state is immediately available to a query in the same hook.
   // Once applied, an unchanged input must not overwrite explicit shared updates.
-  const pending =
-    incomingSearch !== undefined && !isEqual(source, appliedSource);
+  const pending = incomingSearch !== undefined && source !== appliedSource;
   const search = useMemo(
     () => (pending ? searchSchema.parse(incomingSearch) : storedSearch),
     [pending, incomingSearch, searchSchema, storedSearch],
   );
 
-  // Router search objects can have a null prototype; compare them as data.
-  useCustomCompareEffect(
-    () => {
-      if (incomingSearch !== undefined) setSearch(incomingSearch);
-      setAppliedSource(source);
-    },
-    [source],
-    isEqual,
-  );
+  useEffect(() => {
+    if (source.search !== undefined) source.setSearch(source.search);
+    setAppliedSource(source);
+  }, [source]);
 
   useEffect(() => {
     if (
@@ -244,11 +248,11 @@ export function useResourceNavigation<
     ...conditions
   } = search;
   // A saved list position changes independently of the current record’s neighbors.
-  const request: NavigationRequest<Schema> = {
+  const request = useStableSearchValue<NavigationRequest<Schema>>({
     scope: JSON.stringify(key),
     query,
     conditions,
-  };
+  });
 
   async function refetch() {
     if (!query) return undefined;
@@ -267,21 +271,16 @@ export function useResourceNavigation<
     }
   }
 
-  useCustomCompareEffect(
-    () => {
-      if (query) void refetch().catch(() => undefined);
-      return () => {
-        // Ignore completions from an old record, scope, retry, or unmounted page.
-        requestId.current++;
-      };
-    },
-    [request],
-    isEqual,
-  );
+  useEffect(() => {
+    if (query) void refetch().catch(() => undefined);
+    return () => {
+      // Ignore completions from an old record, scope, retry, or unmounted page.
+      requestId.current++;
+    };
+  }, [request]);
 
   // Also hide stale results during the render before the next effect starts.
-  const current =
-    query && state && isEqual(state.request, request) ? state : undefined;
+  const current = query && state?.request === request ? state : undefined;
   const data = current?.data;
   const previousEdge = data?.previousEdge;
   const nextEdge = data?.nextEdge;
