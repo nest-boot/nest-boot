@@ -9,7 +9,7 @@ import { useAbility } from "@/contexts/ability-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { ApiKeysPage } from "@/components/api-keys-page";
-import { apiKeySearchSchema } from "@/schemas/api-key-search";
+import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { userApiKeysResourceKey } from "@/lib/resource-keys";
 

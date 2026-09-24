@@ -3,7 +3,7 @@ import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@apollo/client/react";
 import { AppTopbar } from "../../components/app-topbar";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
-import { workspaceSearchSchema } from "@/schemas/workspace-search";
+import { workspaceSearchSchema } from "@/schemas/workspace-search-schema";
 import { workspacesResourceKey } from "@/lib/resource-keys";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { Button } from "@/components/thread-ui/button";

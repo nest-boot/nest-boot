@@ -16,7 +16,7 @@ import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { getMembersResourceKey } from "@/lib/resource-keys";
-import { memberSearchSchema } from "@/schemas/member-search";
+import { memberSearchSchema } from "@/schemas/member-search-schema";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { Link } from "@/components/link";
 import { toast } from "@/components/thread-ui/toast";

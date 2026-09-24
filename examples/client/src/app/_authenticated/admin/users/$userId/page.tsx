@@ -13,7 +13,7 @@ import type { UserPermission } from "@/lib/permissions";
 import type { UserRole } from "@/gql/graphql";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { RecordNavigation } from "@/components/record-navigation";
-import { adminUserSearchSchema } from "@/schemas/admin-user-search";
+import { adminUserSearchSchema } from "@/schemas/admin-user-search-schema";
 import { adminUsersResourceKey } from "@/lib/resource-keys";
 import { createConnectionCursor } from "@/lib/connection-cursor";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";

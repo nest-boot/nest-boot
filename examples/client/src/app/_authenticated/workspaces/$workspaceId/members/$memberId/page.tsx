@@ -20,7 +20,7 @@ import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-use
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { RecordNavigation } from "@/components/record-navigation";
 import { getMembersResourceKey } from "@/lib/resource-keys";
-import { memberSearchSchema } from "@/schemas/member-search";
+import { memberSearchSchema } from "@/schemas/member-search-schema";
 import { createConnectionCursor } from "@/lib/connection-cursor";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { Breadcrumbs } from "@/components/breadcrumbs";

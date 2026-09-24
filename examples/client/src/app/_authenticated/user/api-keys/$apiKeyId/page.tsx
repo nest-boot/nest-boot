@@ -13,7 +13,7 @@ import { useAbility } from "@/contexts/ability-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { createAbilitySubject } from "@/lib/ability";
 import { createConnectionCursor } from "@/lib/connection-cursor";
-import { apiKeySearchSchema } from "@/schemas/api-key-search";
+import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
 import { createConnectionQueryVariables } from "@/lib/connection-query-variables";
 import { userApiKeysResourceKey } from "@/lib/resource-keys";
 import { authPermissionValues, getPermissionOptions } from "@/lib/permissions";

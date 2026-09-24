@@ -7,7 +7,7 @@ import z from "zod";
 
 import type { ReactNode } from "react";
 import type { ApiKeyRow } from "@/components/api-keys-page";
-import type { ApiKeySearch } from "@/schemas/api-key-search";
+import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
 import type { UserApiKeyPermission } from "@/gql/graphql";
 import type { PermissionOption } from "@/lib/permissions";
 import { Breadcrumbs } from "@/components/breadcrumbs";

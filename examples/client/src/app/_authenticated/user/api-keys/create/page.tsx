@@ -6,7 +6,7 @@ import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-use
 
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
-import { apiKeySearchSchema } from "@/schemas/api-key-search";
+import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
 import { userApiKeysResourceKey } from "@/lib/resource-keys";
 import {
   authPermissionValues,

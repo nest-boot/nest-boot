@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { useCurrentWorkspaceContext } from "../contexts/current-workspace-context";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
-import { workspaceSearchSchema } from "@/schemas/workspace-search";
+import { workspaceSearchSchema } from "@/schemas/workspace-search-schema";
 import { workspacesResourceKey } from "@/lib/resource-keys";
 import {
   PageLayout,

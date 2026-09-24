@@ -8,7 +8,7 @@ import { Check, Copy } from "lucide-react";
 import z from "zod";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { getMembersResourceKey } from "@/lib/resource-keys";
-import { memberSearchSchema } from "@/schemas/member-search";
+import { memberSearchSchema } from "@/schemas/member-search-schema";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
