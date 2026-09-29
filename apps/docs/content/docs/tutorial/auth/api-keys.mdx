@@ -79,7 +79,10 @@ Create methods return the plaintext key exactly once. The database stores a
 SHA-256 hash of the complete key, the display-safe `start` and `prefix`, enabled
 state, permissions, expiration, and usage timestamps. Successful authenticated
 requests update `lastUsedAt` automatically. A custom prefix must contain 1–32
-lowercase ASCII letters or digits and start with a letter. The default prefix is `sk`.
+lowercase ASCII letters, digits, underscores, or hyphens and start with a letter.
+User keys default to `user_`; workspace keys default to `ws_`.
+
+Prefixes are concatenated directly with the random suffix; separators are not added automatically. Precedence is the creation `prefix` → the scope’s `apiKey.user.defaultPrefix` or `apiKey.workspace.defaultPrefix` → the `API_KEY_PREFIX` environment variable → the built-in default. Configuration changes affect newly created keys only.
 
 ## Permission Values
 
@@ -125,10 +128,12 @@ AuthModule.forRoot({
   // ...other auth options
   apiKey: {
     user: {
+      defaultPrefix: "user_",
       defaultPermissions: ["user:read"],
       allowedPermissions: ["user:read", "workspace:update"],
     },
     workspace: {
+      defaultPrefix: "ws_",
       defaultPermissions: ["workspace:update"],
       allowedPermissions: ["workspace:update", "workspace:delete"],
     },
@@ -184,7 +189,7 @@ other updates, and explicit permission replacements validate permissions normall
 Send API keys with the Bearer scheme:
 
 ```http
-Authorization: Bearer sk4tR9s...
+Authorization: Bearer sk-4tR9s...
 ```
 
 `x-api-key` is not supported. Cookie session resolution runs first. When no

@@ -18,13 +18,13 @@ export class CreateUserApiKeyInput {
   @Field(() => Date, { nullable: true })
   expiresAt?: Date | null;
 
-  /** Plaintext prefix: 1–32 lowercase letters or digits, starting with a letter. Defaults to sk. */
+  /** Plaintext prefix: 1–32 lowercase letters, digits, underscores, or hyphens, starting with a letter. Defaults to user_ unless configured. */
   @ZodField((z) =>
     z
       .string()
       .min(1)
       .max(32)
-      .regex(/^[a-z][a-z0-9]*$/u)
+      .regex(/^[a-z][a-z0-9_-]*$/u)
       .optional(),
   )
   @Field(() => String, { nullable: true })

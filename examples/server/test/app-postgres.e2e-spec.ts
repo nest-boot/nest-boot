@@ -4359,8 +4359,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       '1a',
       'ABC',
       'aB',
-      'sk-',
-      'sk_',
+      '-sk',
+      '_sk',
       'a\n',
       'a\u0000',
       'é',
@@ -4387,7 +4387,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     ).toEqual([]);
     const workspaceKey = await createWorkspaceApiKey(owner, workspace.id, {
       name: 'Custom workspace prefix',
-      prefix: 'abc123',
+      prefix: 'abc123-',
       permissions: ['WORKSPACE__READ'],
     });
     const personalKey = await createUserApiKey(owner, {
@@ -5312,12 +5312,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(response);
     expect(response.body.data.createWorkspaceApiKey.apiKey).toMatch(
-      new RegExp(`^${input.prefix ?? 'sk'}[A-Za-z0-9_-]{64}$`),
+      new RegExp(`^${input.prefix ?? 'ws_'}[A-Za-z0-9_-]{64}$`),
     );
     expect(response.body.data.createWorkspaceApiKey.entity).toMatchObject({
       enabled: true,
       permissions: input.permissions ?? [],
-      prefix: input.prefix ?? 'sk',
+      prefix: input.prefix ?? 'ws_',
       start: response.body.data.createWorkspaceApiKey.apiKey.slice(0, 8),
     });
 
@@ -5367,7 +5367,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(response);
     expect(response.body.data.createUserApiKey.apiKey).toMatch(
-      new RegExp(`^${input.prefix ?? 'sk'}[A-Za-z0-9_-]{64}$`),
+      new RegExp(`^${input.prefix ?? 'user_'}[A-Za-z0-9_-]{64}$`),
     );
     return response.body.data.createUserApiKey as {
       apiKey: string;

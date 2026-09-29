@@ -69,7 +69,7 @@ export interface AuthModuleOptions<
     WorkspaceRole | keyof typeof DEFAULT_WORKSPACE_ROLES
   >;
 
-  /** API-key permission defaults and grant limits. */
+  /** API-key prefix and permission defaults and grant limits. */
   apiKey?: AuthModuleApiKeyOptions<
     NoInfer<UserPermission | (typeof DEFAULT_USER_PERMISSIONS)[number]>,
     NoInfer<

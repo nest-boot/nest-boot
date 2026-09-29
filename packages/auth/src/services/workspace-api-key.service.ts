@@ -178,6 +178,9 @@ export class WorkspaceApiKeyService {
     const { apiKey, data } = ApiKeyLifecycle.prepareCreation(
       options,
       permissions,
+      this.authOptions.apiKey?.workspace?.defaultPrefix ??
+        process.env.API_KEY_PREFIX ??
+        "ws_",
     );
     const entity = await this.em.transactional(
       async (em) => {

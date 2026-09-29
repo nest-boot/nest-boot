@@ -111,7 +111,7 @@ const contracts: InputContract[] = [
     values: {
       name: "Key",
       expiresAt: new Date("2030-01-01T00:00:00Z"),
-      prefix: "sk",
+      prefix: "sk-",
       permissions: ["Custom:Read"],
     },
     required: ["name"],
@@ -122,7 +122,7 @@ const contracts: InputContract[] = [
     values: {
       name: "Key",
       expiresAt: new Date("2030-01-01T00:00:00Z"),
-      prefix: "sk",
+      prefix: "sk-",
       permissions: ["Custom:Read"],
     },
     required: ["name"],
@@ -286,21 +286,29 @@ describe("auth input contracts", () => {
   });
 
   it("validates API-key prefixes before the Service", () => {
-    const schema = toZodSchema(auth.CreateUserApiKeyInput);
-    for (const prefix of [
-      "1key",
-      "UPPER",
-      "with-dash",
-      "trailing\n",
-      "a".repeat(33),
+    for (const input of [
+      auth.CreateUserApiKeyInput,
+      auth.CreateWorkspaceApiKeyInput,
     ]) {
-      expect(schema.safeParse({ name: "Key", prefix }).success, prefix).toBe(
-        false,
-      );
+      const schema = toZodSchema(input);
+      for (const prefix of [
+        "1key",
+        "UPPER",
+        "-leading-dash",
+        "_leading-underscore",
+        "trailing\n",
+        "a".repeat(33),
+      ]) {
+        expect(schema.safeParse({ name: "Key", prefix }).success, prefix).toBe(
+          false,
+        );
+      }
+      for (const prefix of ["a1", "sk-", "user_", "ws_"]) {
+        expect(schema.parse({ name: "Key", prefix })).toEqual({
+          name: "Key",
+          prefix,
+        });
+      }
     }
-    expect(schema.parse({ name: "Key", prefix: "a1" })).toEqual({
-      name: "Key",
-      prefix: "a1",
-    });
   });
 });

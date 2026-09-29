@@ -80,7 +80,7 @@ test.describe("API keys", () => {
         .getByRole("button", { name: "Create", exact: true })
         .click();
       await expect(issuerPage.getByRole("code")).toContainText(
-        /^sk[A-Za-z0-9_-]{64}$/,
+        /^ws_[A-Za-z0-9_-]{64}$/,
       );
     } finally {
       await issuerContext.close();
@@ -264,7 +264,9 @@ async function exerciseApiKeyLifecycle(
     .locator('[data-slot="card"]')
     .filter({ has: page.getByText("API Key Created", { exact: true }) })
     .getByRole("code");
-  await expect(revealedKey).toContainText(/^sk[A-Za-z0-9_-]{64}$/);
+  await expect(revealedKey).toContainText(
+    scope === "USER" ? /^user_[A-Za-z0-9_-]{64}$/ : /^ws_[A-Za-z0-9_-]{64}$/,
+  );
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.getByRole("button", { name: "Copy API Key", exact: true }).click();
   await expect(
@@ -287,7 +289,7 @@ async function exerciseApiKeyLifecycle(
 
   const row = page.getByRole("row").filter({ hasText: names.name });
   await expect(row).toBeVisible();
-  await expect(row).toContainText("sk");
+  await expect(row).toContainText(scope === "USER" ? "user_" : "ws_");
 
   await row.getByRole("button").click();
   await page.getByRole("menuitem", { name: "Disable" }).click();
