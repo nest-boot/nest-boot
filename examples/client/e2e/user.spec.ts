@@ -519,20 +519,12 @@ test.describe("user pages", () => {
           .getByRole("cell", { name: rejectedWorkspaceName, exact: true }),
       ).toHaveText(rejectedWorkspaceName);
 
-      // Prime the switcher before membership changes, without reloading afterward.
-      const menuResponse = page.waitForResponse(
-        (response) =>
-          response
-            .request()
-            .postData()
-            ?.includes("getWorkspacesFromWorkspaceSwitcher") === true,
-      );
+      // Personal menus keep workspace choices hidden before and after membership changes.
       await page
         .getByRole("button", {
           name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
         })
         .click();
-      await menuResponse;
       await expect(page.getByRole("menuitemradio")).toHaveCount(0);
       await page.keyboard.press("Escape");
       await expect(page.getByRole("menu")).toHaveCount(0);
@@ -567,12 +559,7 @@ test.describe("user pages", () => {
           name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
         })
         .click();
-      await expect(
-        page.getByRole("menuitemradio", {
-          name: acceptedWorkspaceName,
-          exact: true,
-        }),
-      ).toBeVisible();
+      await expect(page.getByRole("menuitemradio")).toHaveCount(0);
       await page.keyboard.press("Escape");
       await expect(page.getByRole("menu")).toHaveCount(0);
 
