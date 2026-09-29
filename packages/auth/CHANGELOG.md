@@ -1,3 +1,13 @@
+## 8.0.7-beta.1 (2026-09-29)
+
+### 🚀 Features
+
+- **auth:** configure API key prefixes per owner scope ([#377](https://github.com/nest-boot/nest-boot/pull/377))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.7-beta.0 (2026-09-24)
 
 ### 🧱 Updated Dependencies
