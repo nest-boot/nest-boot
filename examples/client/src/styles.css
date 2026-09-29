@@ -50,9 +50,7 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  /* Typography (font families are supplied by the application) */
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Use Tailwind's default sans and monospace families. */
   --font-heading: var(--font-sans);
 
   /* Radius scale */

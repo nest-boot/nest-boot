@@ -25,6 +25,7 @@ test("user, admin and workspace layouts keep account actions in a collapsible fu
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(path);
     await expect(page.getByRole("main")).toBeVisible();
+    await expect(page.locator("body")).toHaveCSS("font-family", /sans-serif/);
     await expect(page.getByRole("banner")).toHaveCount(0);
     const sidebar = page.locator('[data-slot="sidebar"]');
     const header = sidebar.locator('[data-slot="layout-sidebar-header"]');

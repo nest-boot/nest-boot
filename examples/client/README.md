@@ -70,6 +70,9 @@ package. Keep the Tailwind imports and generated styles in that entry point,
 without a separate local palette. Pages use `bg-canvas` and sidebars use `bg-sidebar`, both supplied by the theme.
 Remove obsolete topbar tokens when refreshing an older installation; the CLI
 merges theme declarations and does not delete retired selectors.
+Retain Tailwind's default sans and monospace families: omit the registry's
+self-referencing `--font-sans` and undefined `--font-geist-mono` alias unless
+the application supplies those fonts. `--font-heading` uses the sans family.
 
 ESLint includes [@shadcn/lint](https://github.com/shadcn-ui/lint) checks for
 component restyling, raw colors, arbitrary values, inline styles, dynamic
