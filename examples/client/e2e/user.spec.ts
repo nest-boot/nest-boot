@@ -525,6 +525,7 @@ test.describe("user pages", () => {
           name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
         })
         .click();
+      await expect(page.getByRole("menu")).toBeVisible();
       await expect(page.getByRole("menuitemradio")).toHaveCount(0);
       await page.keyboard.press("Escape");
       await expect(page.getByRole("menu")).toHaveCount(0);
@@ -559,6 +560,7 @@ test.describe("user pages", () => {
           name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
         })
         .click();
+      await expect(page.getByRole("menu")).toBeVisible();
       await expect(page.getByRole("menuitemradio")).toHaveCount(0);
       await page.keyboard.press("Escape");
       await expect(page.getByRole("menu")).toHaveCount(0);
