@@ -1,6 +1,5 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 
-import { AppTopbar } from "../components/app-topbar";
 import { AdminSidebar } from "./components/admin-sidebar";
 import { Layout, LayoutContent } from "@/components/thread-ui/layout";
 
@@ -16,9 +15,8 @@ export const Route = createFileRoute("/_authenticated/admin")({
 function AdminLayout() {
   return (
     <Layout>
-      <AppTopbar />
       <AdminSidebar />
-      <LayoutContent data-scroll-restoration-id="main-content">
+      <LayoutContent>
         <Outlet />
       </LayoutContent>
     </Layout>

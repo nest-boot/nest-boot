@@ -8,7 +8,7 @@ import { createFirstWorkspace } from "./utils/workspace";
 import type { Page } from "@playwright/test";
 
 test.describe("user pages", () => {
-  test("opens the profile from the user row and persists language and theme preferences", async ({
+  test("opens the personal overview from the user row and persists language and theme preferences", async ({
     page,
   }) => {
     await registerUser(page, {
@@ -20,17 +20,20 @@ test.describe("user pages", () => {
         name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
       })
       .click();
-    const profileLink = page.getByRole("menuitem", { name: /^Open profile:/ });
-    await expect(profileLink).toContainText("Preferences User");
-    await expect(profileLink).toHaveAttribute("href", "/user/profile");
+    const overviewLink = page.getByRole("menuitem", {
+      name: /^Open personal overview:/,
+    });
+    await expect(overviewLink).toContainText("Preferences User");
+    await expect(overviewLink).toHaveAttribute("href", "/user");
     await expect(
       page.getByRole("menuitem", { name: "Workspaces", exact: true }),
     ).toHaveCount(0);
     await expect(
       page.getByRole("menuitem", { name: "API Keys", exact: true }),
     ).toHaveCount(0);
-    await profileLink.click();
-    await expect(page).toHaveURL(/\/user\/profile$/);
+    await overviewLink.click();
+    await expect(page).toHaveURL(/\/user$/);
+    await page.getByRole("link", { name: "Profile", exact: true }).click();
 
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await page
@@ -130,7 +133,7 @@ test.describe("user pages", () => {
     });
     await page.goto("/user/profile");
 
-    const viewport = page.getByRole("main");
+    const viewport = page.locator('[data-slot="layout-content-viewport"]');
     await page
       .getByRole("button", { name: "Send verification email", exact: true })
       .scrollIntoViewIfNeeded();
@@ -156,19 +159,18 @@ test.describe("user pages", () => {
       (element) => element.scrollTop,
     );
     expect(securityScrollTop).toBeGreaterThan(200);
-    await expect(
-      page.getByRole("button", {
-        name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
-      }),
-    ).toBeInViewport();
     await expect(navigation).toBeInViewport();
+    await navigation.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
     await page
       .getByRole("button", {
         name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
       })
       .click();
-    await page.getByRole("menuitem", { name: /^Open profile:/ }).click();
-    await expect(page).toHaveURL(/\/user\/profile$/);
+    await page
+      .getByRole("menuitem", { name: /^Open personal overview:/ })
+      .click();
+    await expect(page).toHaveURL(/\/user$/);
     await expect
       .poll(() => viewport.evaluate((element) => element.scrollTop))
       .toBe(0);
@@ -178,7 +180,7 @@ test.describe("user pages", () => {
       .poll(() => viewport.evaluate((element) => element.scrollTop))
       .toBe(securityScrollTop);
     await page.goForward();
-    await expect(page).toHaveURL(/\/user\/profile$/);
+    await expect(page).toHaveURL(/\/user$/);
     await expect
       .poll(() => viewport.evaluate((element) => element.scrollTop))
       .toBe(0);
@@ -319,9 +321,12 @@ test.describe("user pages", () => {
         name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
       })
       .click();
-    await page.getByRole("menuitem", { name: /^Open profile:/ }).click();
+    await page
+      .getByRole("menuitem", { name: /^Open personal overview:/ })
+      .click();
 
-    await expect(page).toHaveURL(/\/user\/profile$/);
+    await expect(page).toHaveURL(/\/user$/);
+    await page.getByRole("link", { name: "Profile", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: "Profile", exact: true }),
     ).toBeVisible();
@@ -514,20 +519,13 @@ test.describe("user pages", () => {
           .getByRole("cell", { name: rejectedWorkspaceName, exact: true }),
       ).toHaveText(rejectedWorkspaceName);
 
-      // Prime the switcher before membership changes, without reloading afterward.
-      const menuResponse = page.waitForResponse(
-        (response) =>
-          response
-            .request()
-            .postData()
-            ?.includes("getWorkspacesFromWorkspaceSwitcher") === true,
-      );
+      // Personal menus keep workspace choices hidden before and after membership changes.
       await page
         .getByRole("button", {
           name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
         })
         .click();
-      await menuResponse;
+      await expect(page.getByRole("menu")).toBeVisible();
       await expect(page.getByRole("menuitemradio")).toHaveCount(0);
       await page.keyboard.press("Escape");
       await expect(page.getByRole("menu")).toHaveCount(0);
@@ -562,12 +560,8 @@ test.describe("user pages", () => {
           name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
         })
         .click();
-      await expect(
-        page.getByRole("menuitemradio", {
-          name: acceptedWorkspaceName,
-          exact: true,
-        }),
-      ).toBeVisible();
+      await expect(page.getByRole("menu")).toBeVisible();
+      await expect(page.getByRole("menuitemradio")).toHaveCount(0);
       await page.keyboard.press("Escape");
       await expect(page.getByRole("menu")).toHaveCount(0);
 

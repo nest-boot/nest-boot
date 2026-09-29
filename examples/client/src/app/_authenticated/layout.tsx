@@ -110,7 +110,7 @@ function AuthenticatedContent() {
           </Button>
         </div>
       ) : null}
-      <div className="min-h-0 flex-1 [&>[data-slot=layout]]:h-full">
+      <div className="relative min-h-0 flex-1 [&_[data-slot=sidebar-container]]:absolute [&_[data-slot=sidebar-container]]:h-full [&>[data-slot=layout]]:h-full">
         <Outlet />
       </div>
     </div>

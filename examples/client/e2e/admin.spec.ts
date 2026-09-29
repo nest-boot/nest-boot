@@ -173,6 +173,26 @@ test.describe("administrator impersonation", () => {
     await expect(
       page.getByText("You are impersonating another user.", { exact: true }),
     ).toBeVisible();
+    const banner = page
+      .getByText("You are impersonating another user.", { exact: true })
+      .locator("..");
+    const sidebar = page.locator('[data-slot="sidebar-container"]');
+    await expect
+      .poll(async () => {
+        const bannerBox = await banner.boundingBox();
+        const sidebarBox = await sidebar.boundingBox();
+        return bannerBox && sidebarBox
+          ? sidebarBox.y >= bannerBox.y + bannerBox.height
+          : false;
+      })
+      .toBe(true);
+    await expect
+      .poll(() =>
+        sidebar.evaluate((element) =>
+          Math.round(element.getBoundingClientRect().bottom),
+        ),
+      )
+      .toBe(page.viewportSize()!.height);
 
     await page.goto("/user/security");
     await expect(

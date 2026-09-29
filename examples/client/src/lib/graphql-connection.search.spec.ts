@@ -10,13 +10,13 @@ import {
   createInputFilterItemSearchSchema,
   createNumberFilterItemSearchSchema,
   createSelectFilterItemSearchSchema,
-  getNextPageSearch,
-  getPreviousPageSearch,
-} from "./connection-search";
+  getNextSearch,
+  getPreviousSearch,
+} from "./graphql-connection";
 import type {
   ConnectionSearch,
   CreateConnectionSearchSchemaOptions,
-} from "./connection-search";
+} from "./graphql-connection";
 import { serializeDataFilterValueFilter } from "@/components/thread-ui/data-filter/utils/data-filter-value";
 import { dataFilterDefaultCheckboxOperators } from "@/components/thread-ui/data-filter/utils/data-filter-default-checkbox-operators";
 import { dataFilterDefaultDatePickerOperators } from "@/components/thread-ui/data-filter/utils/data-filter-default-date-picker-operators";
@@ -196,8 +196,8 @@ describe("connection search type inference", () => {
     const search = schema.parse({
       filter: { status: { $in: ["ACTIVE"] }, enabled: false },
     });
-    const next = getNextPageSearch(search);
-    const previous = getPreviousPageSearch(search);
+    const next = getNextSearch(search);
+    const previous = getPreviousSearch(search);
     expectTypeOf(next.filter).toEqualTypeOf<Search["filter"]>();
     expectTypeOf(previous.filter).toEqualTypeOf<Search["filter"]>();
     expect(next.filter).toEqual(search.filter);
@@ -255,4 +255,18 @@ describe("connection search type inference", () => {
       schema.parse({ first: 2, after: "next", last: 5, before: "previous" }),
     ).toEqual({ first: 2, after: "next", orderBy });
   });
+});
+
+it("preserves a custom page size when switching direction before schema normalization", () => {
+  const search = createConnectionSearchSchema(options).parse({ first: 5 });
+  const pageInfo = {
+    hasNextPage: true,
+    hasPreviousPage: true,
+    startCursor: "start",
+    endCursor: "end",
+  };
+  const previous = getPreviousSearch(search, pageInfo);
+  const next = getNextSearch(previous, pageInfo);
+  expect(next.first).toBe(5);
+  expect(getPreviousSearch(next, pageInfo).last).toBe(5);
 });

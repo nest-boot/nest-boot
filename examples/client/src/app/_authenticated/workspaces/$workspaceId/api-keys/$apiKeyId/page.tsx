@@ -12,7 +12,7 @@ import { Link } from "@/components/link";
 import { useAbility } from "@/contexts/ability-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { createAbilitySubject } from "@/lib/ability";
-import { createConnectionCursor } from "@/lib/connection-cursor";
+import { createConnectionCursor } from "@/lib/graphql-connection";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
 import { getWorkspaceApiKeysResourceKey } from "@/lib/resource-keys";
 import {

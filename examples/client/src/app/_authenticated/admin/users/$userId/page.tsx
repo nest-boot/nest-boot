@@ -15,7 +15,7 @@ import { Link } from "@/components/link";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { adminUserSearchSchema } from "@/schemas/admin-user-search-schema";
 import { adminUsersResourceKey } from "@/lib/resource-keys";
-import { createConnectionCursor } from "@/lib/connection-cursor";
+import { createConnectionCursor } from "@/lib/graphql-connection";
 import { getFormErrorMessage } from "@/lib/form-errors";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Checkbox } from "@/components/ui/checkbox";

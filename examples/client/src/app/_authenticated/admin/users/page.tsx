@@ -5,7 +5,6 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import dayjs from "dayjs";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
-import { Plus } from "lucide-react";
 import { isEmpty } from "lodash";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
@@ -18,13 +17,13 @@ import { useAbility } from "@/contexts/ability-context";
 
 import { createAbilitySubject } from "@/lib/ability";
 import { Badge } from "@/components/thread-ui/badge";
-import { DataTable } from "@/components/thread-ui/data-table";
+import {
+  DataTable,
+  createDataTableColumnHelper,
+} from "@/components/thread-ui/data-table";
 import { Page } from "@/components/thread-ui/page";
 import { graphql } from "@/gql";
-import {
-  getNextPageSearch,
-  getPreviousPageSearch,
-} from "@/lib/connection-search";
+import { getNextSearch, getPreviousSearch } from "@/lib/graphql-connection";
 import { Card, CardContent } from "@/components/ui/card";
 
 const GET_USERS_FROM_USERS_ROUTE = graphql(`
@@ -74,7 +73,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/")({
 });
 
 function AdminUsersPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const search = Route.useSearch();
   const currentUser = useCurrentUserContext();
   useResourceNavigation({
@@ -92,6 +91,8 @@ function AdminUsersPage() {
   });
   const users = data?.users.edges.map(({ node }) => node) ?? [];
   const canCreate = ability.can("create", "User");
+  const usersColumnHelper =
+    createDataTableColumnHelper<(typeof users)[number]>();
   const filters: Array<DataFilterField> = useMemo(
     () => [
       {
@@ -128,7 +129,6 @@ function AdminUsersPage() {
         canCreate
           ? {
               render: <Link to="/admin/users/create" />,
-              icon: <Plus data-icon="inline-start" />,
               label: t("admin:users.create.action"),
             }
           : undefined
@@ -155,25 +155,25 @@ function AdminUsersPage() {
             />
 
             <DataTable
+              locale={i18n.resolvedLanguage}
               data={users}
-              columns={[
-                {
-                  accessorKey: "name",
+              columns={usersColumnHelper.columns([
+                usersColumnHelper.column("name", {
                   header: t("admin:users.table.name"),
-                  cell: ({ row }) => (
-                    <div>
+                  render: (props, { row }) => (
+                    <div {...props}>
                       <p className="font-medium">{row.original.name}</p>
                       <p className="text-muted-foreground text-xs">
                         {row.original.email}
                       </p>
                     </div>
                   ),
-                },
-                {
-                  accessorKey: "emailVerified",
+                }),
+                usersColumnHelper.column("emailVerified", {
                   header: t("admin:users.table.email_status"),
-                  cell: ({ row }) => (
+                  render: (props, { row }) => (
                     <Badge
+                      {...props}
                       color={row.original.emailVerified ? "green" : "gray"}
                     >
                       {t(
@@ -183,12 +183,14 @@ function AdminUsersPage() {
                       )}
                     </Badge>
                   ),
-                },
-                {
-                  accessorKey: "banned",
+                }),
+                usersColumnHelper.column("banned", {
                   header: t("admin:users.table.status"),
-                  cell: ({ row }) => (
-                    <Badge color={row.original.banned ? "red" : "green"}>
+                  render: (props, { row }) => (
+                    <Badge
+                      {...props}
+                      color={row.original.banned ? "red" : "green"}
+                    >
                       {t(
                         row.original.banned
                           ? "admin:users.banned"
@@ -196,14 +198,12 @@ function AdminUsersPage() {
                       )}
                     </Badge>
                   ),
-                },
-                {
-                  accessorKey: "createdAt",
+                }),
+                usersColumnHelper.column("createdAt", {
                   header: t("admin:users.table.created_at"),
-                  cell: ({ row }) =>
-                    dayjs(row.original.createdAt).format("YYYY-MM-DD"),
-                },
-              ]}
+                  type: "date",
+                }),
+              ])}
               onRowClick={(row) => {
                 if (
                   !ability.can(
@@ -223,12 +223,12 @@ function AdminUsersPage() {
                 onPreviousPage: () =>
                   navigate({
                     to: "/admin/users",
-                    search: getPreviousPageSearch(search, data?.users.pageInfo),
+                    search: getPreviousSearch(search, data?.users.pageInfo),
                   }),
                 onNextPage: () =>
                   navigate({
                     to: "/admin/users",
-                    search: getNextPageSearch(search, data?.users.pageInfo),
+                    search: getNextSearch(search, data?.users.pageInfo),
                   }),
               }}
             />

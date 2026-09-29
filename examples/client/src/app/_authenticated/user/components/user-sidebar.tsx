@@ -8,13 +8,13 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { linkOptions } from "@tanstack/react-router";
+import { AppSidebar } from "../../components/app-sidebar";
 
 import type { ComponentProps, ComponentType, FC } from "react";
 import type { LinkProps } from "@tanstack/react-router";
 import { useAbility } from "@/contexts/ability-context";
 import { Link } from "@/components/link";
 import {
-  Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
@@ -32,7 +32,7 @@ type SidebarItem = {
   visible?: boolean;
 };
 
-export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
+export const UserSidebar: FC<ComponentProps<typeof AppSidebar>> = (props) => {
   const { t } = useTranslation();
   const { setOpenMobile } = useSidebar();
   const ability = useAbility();
@@ -66,7 +66,7 @@ export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
   ];
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <AppSidebar {...props}>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>{t("sidebar:user.title")}</SidebarGroupLabel>
@@ -77,6 +77,7 @@ export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
                 .map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
+                      tooltip={item.title}
                       render={
                         <Link
                           {...item.link}
@@ -93,6 +94,6 @@ export const UserSidebar: FC<ComponentProps<typeof Sidebar>> = (props) => {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-    </Sidebar>
+    </AppSidebar>
   );
 };

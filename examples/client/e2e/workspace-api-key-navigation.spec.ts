@@ -187,3 +187,73 @@ test("isolates two workspaces' list search, creation returns and detail navigati
   );
   await expect(page.getByRole("row").nth(1)).toContainText(two.keys[3].name);
 });
+
+test("retains custom page size and the latest list position after returning from details", async ({
+  page,
+}) => {
+  await registerUser(page, {
+    email: `${uniqueSeed("workspace-pagination")}@example.com`,
+    name: "Workspace pagination",
+  });
+  const workspace = await prepareWorkspace(
+    page,
+    "Pagination workspace",
+    "Paging",
+    2,
+  );
+  await page.goto(workspace.url);
+  await page
+    .getByRole("link", { name: workspace.keys[1].name, exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Previous item", { exact: true }),
+  ).toHaveAttribute("href", `${workspace.path}/${workspace.keys[0].id}`);
+  await page
+    .getByRole("navigation", { name: "Breadcrumbs" })
+    .getByRole("link", { name: "API Keys", exact: true })
+    .click();
+  await expect(page.getByRole("row").nth(1)).toContainText(
+    workspace.keys[1].name,
+  );
+
+  for (const [action, firstIndex, sizeParam] of [
+    ["Next page", 3, "first"],
+    ["Previous page", 1, "last"],
+    ["Next page", 3, "first"],
+  ] as const) {
+    await page.getByRole("button", { name: action, exact: true }).click();
+    await expect(page.getByRole("row").nth(1)).toContainText(
+      workspace.keys[firstIndex].name,
+    );
+    await expect(page.getByRole("row")).toHaveCount(3);
+    expect(new URL(page.url()).searchParams.get(sizeParam)).toBe("2");
+    const params = new URL(page.url()).searchParams;
+    const expected = {
+      [sizeParam]: 2,
+      [sizeParam === "first" ? "after" : "before"]: params.get(
+        sizeParam === "first" ? "after" : "before",
+      ),
+      query: workspace.searchQuery,
+      filter: { prefix: { $eq: "paging" } },
+    };
+    await expect
+      .poll(() =>
+        page.evaluate((workspaceId) => {
+          const entry = Object.entries(sessionStorage).find(
+            ([key]) =>
+              key.startsWith("resource-navigation:") &&
+              key.includes(workspaceId) &&
+              key.endsWith(',"api-keys"]'),
+          );
+          return entry ? JSON.parse(entry[1]) : null;
+        }, workspace.id),
+      )
+      .toMatchObject(expected);
+  }
+  const lastListUrl = page.url();
+  await page.reload();
+  await expect(page.getByRole("row").nth(1)).toContainText(
+    workspace.keys[3].name,
+  );
+  expect(page.url()).toBe(lastListUrl);
+});

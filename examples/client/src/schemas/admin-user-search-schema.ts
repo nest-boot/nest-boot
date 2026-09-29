@@ -6,7 +6,7 @@ import {
   createDateFilterItemSearchSchema,
   createFilterSchema,
   createInputFilterItemSearchSchema,
-} from "@/lib/connection-search";
+} from "@/lib/graphql-connection";
 
 export const adminUserSearchSchema = createConnectionSearchSchema({
   filterSchema: createFilterSchema({

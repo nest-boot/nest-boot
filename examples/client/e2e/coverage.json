@@ -61,7 +61,7 @@
       "domain": "Workspace",
       "scenario": "Workspace DataFilter, pagination persistence, and row navigation",
       "status": "covered",
-      "specs": ["workspace-filter.spec.ts"],
+      "specs": ["workspace-filter.spec.ts", "data-table-format.spec.ts"],
       "notes": "Searches workspace names, applies name and creation-date filters, resets cursors on filter changes, and preserves criteria across pagination and reloads. Opens a workspace from a date cell or the keyboard-accessible name link without an arrow action column."
     },
     {
@@ -123,7 +123,7 @@
         "user-api-key-navigation.spec.ts",
         "workspace-api-key-navigation.spec.ts"
       ],
-      "notes": "Preserves filters, order, page size and cursor through creation and details. Traverses adjacent records across list pages, restores browser history and reloads, and returns the current record as the first row using the preceding cursor. Checks default/direct entry, invalid session data, failed neighbor queries and retry, null sort values, and two workspaces with distinct filters and pagination in the same browser session."
+      "notes": "Preserves filters, order, page size and cursor through creation and details. Traverses adjacent records across list pages, restores browser history and reloads, and returns the current record as the first row using the preceding cursor. Checks default/direct entry, invalid session data, failed neighbor queries and retry, null sort values, and two workspaces with distinct filters and pagination in the same browser session. After returning from details, alternates next/previous/next list pages and verifies the custom page size, saved cursor, and reload position."
     },
     {
       "domain": "Administration",
@@ -136,15 +136,15 @@
       "domain": "Navigation",
       "scenario": "Responsive application layout, unified account menu, and page breadcrumbs",
       "status": "covered",
-      "specs": ["user.spec.ts", "workspace.spec.ts"],
-      "notes": "Navigates with the mobile drawer, closes it after navigation and desktop resize, keeps the topbar visible while content scrolls, and returns through page breadcrumbs. Checks that new routes reset the main viewport to the top while browser back/forward restores each history entry's scroll position. The unified topbar menu provides account actions and paginated workspace switching."
+      "specs": ["user.spec.ts", "workspace.spec.ts", "sidebar-layout.spec.ts"],
+      "notes": "User, Admin, and Workspace use full-height sidebars with collapsible desktop icon rails, footer account actions, and floating mobile navigation. Collapsed headers show the logo and reveal the expand action on hover or keyboard focus. Mobile drawers show branding without a desktop trigger and close after navigation and desktop resize. Independent content viewports reset on new routes and restore browser history scroll positions. The account menu retains workspace pagination, refresh, and retry behavior."
     },
     {
       "domain": "Navigation",
-      "scenario": "Profile navigation and persistent language/theme preferences in the user menu",
+      "scenario": "Personal overview navigation and persistent language/theme preferences in the user menu",
       "status": "covered",
       "specs": ["user.spec.ts"],
-      "notes": "Opens the profile from the user identity row, changes language without losing unsaved form input, persists language and theme across reloads, and follows system color scheme changes."
+      "notes": "Opens the personal overview from the user identity row, follows the sidebar Profile link, changes language without losing unsaved form input, persists language and theme across reloads, and follows system color scheme changes."
     },
     {
       "domain": "Auth",

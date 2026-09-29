@@ -18,6 +18,7 @@
     "loadFailed": "Unable to load workspaces"
   },
   "user": {
+    "openOverview": "Open personal overview: {{name}}",
     "account": "Profile",
     "api_keys": "API Keys",
     "logout": "Log out",

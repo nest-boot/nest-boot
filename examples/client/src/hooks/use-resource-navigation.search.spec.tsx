@@ -473,3 +473,49 @@ describe("useResourceNavigation", () => {
     expect(result.current.search?.query).toBe("one");
   });
 });
+
+it("clears persisted search after a quota error switches writes to memory", () => {
+  const resourceKey = key();
+  const persistedKey = storageKey(resourceKey);
+  sessionStorage.setItem(
+    persistedKey,
+    JSON.stringify({ query: "old", first: 5 }),
+  );
+  const consumer = renderHook(() =>
+    useResourceNavigation({ key: [userId, ...resourceKey], searchSchema }),
+  );
+  vi.spyOn(
+    Object.getPrototypeOf(sessionStorage) as Storage,
+    "setItem",
+  ).mockImplementation(() => {
+    throw new DOMException("Storage quota exceeded", "QuotaExceededError");
+  });
+  act(() => consumer.result.current.setSearch({ query: "memory-only" }));
+  expect(consumer.result.current.search.query).toBe("memory-only");
+  act(() => consumer.result.current.clearSearch());
+  expect(consumer.result.current.search.query).toBe("");
+  expect(sessionStorage.getItem(persistedKey)).toBeNull();
+});
+
+it("retries clearing persisted search after storage removal recovers", () => {
+  const resourceKey = key();
+  const persistedKey = storageKey(resourceKey);
+  sessionStorage.setItem(
+    persistedKey,
+    JSON.stringify({ query: "old", first: 5 }),
+  );
+  const consumer = renderHook(() =>
+    useResourceNavigation({ key: [userId, ...resourceKey], searchSchema }),
+  );
+  const remove = vi
+    .spyOn(Object.getPrototypeOf(sessionStorage) as Storage, "removeItem")
+    .mockImplementationOnce(() => {
+      throw new Error("Storage unavailable");
+    });
+  act(() => consumer.result.current.clearSearch());
+  expect(consumer.result.current.search.query).toBe("");
+  expect(sessionStorage.getItem(persistedKey)).not.toBeNull();
+  act(() => consumer.result.current.clearSearch());
+  expect(remove).toHaveBeenCalledTimes(2);
+  expect(sessionStorage.getItem(persistedKey)).toBeNull();
+});

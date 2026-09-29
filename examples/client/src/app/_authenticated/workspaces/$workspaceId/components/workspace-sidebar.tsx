@@ -2,12 +2,12 @@ import { KeyRound, LayoutDashboard, Settings, User } from "lucide-react";
 
 import { linkOptions, useParams } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { AppSidebar } from "../../../components/app-sidebar";
 
 import type { LinkProps } from "@tanstack/react-router";
 import type { ComponentProps, ComponentType, FC } from "react";
 import { useAbility } from "@/contexts/ability-context";
 import {
-  Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
@@ -26,7 +26,7 @@ type SidebarItem = {
   link: LinkProps;
 };
 
-export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
+export const WorkspaceSidebar: FC<ComponentProps<typeof AppSidebar>> = ({
   ...props
 }) => {
   const { t } = useTranslation();
@@ -90,7 +90,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
   ];
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <AppSidebar {...props}>
       <SidebarContent>
         {sidebarGroups.map((group) => (
           <SidebarGroup key={group.title}>
@@ -101,6 +101,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
                 {group.items.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
+                      tooltip={item.title}
                       render={
                         <Link
                           {...item.link}
@@ -118,6 +119,6 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof Sidebar>> = ({
           </SidebarGroup>
         ))}
       </SidebarContent>
-    </Sidebar>
+    </AppSidebar>
   );
 };

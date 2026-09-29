@@ -258,13 +258,15 @@
   "layout": {
     "navigation": "导航",
     "toggleNavigation": "切换导航",
-    "skipToContent": "跳转到主要内容"
+    "skipToContent": "跳转到主要内容",
+    "expandNavigation": "展开导航",
+    "collapseNavigation": "收起导航"
   },
-  "topbarMenu": {
+  "sidebarAccountMenu": {
     "choose": "选择工作空间",
     "switch": "切换工作空间：{{name}}",
     "recentWorkspaces": "最近的工作空间",
-    "create": "创建工作空间",
+    "workspaces": "工作区",
     "userMenu": "账号：{{name}}",
     "accountMenu": "工作空间与账号：{{name}}",
     "profile": "个人中心：{{name}}",

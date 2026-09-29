@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
-import { KeyRound } from "lucide-react";
 
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import type {
@@ -12,7 +11,7 @@ import type {
   UserApiKeyPermission,
 } from "@/gql/graphql";
 import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
-import type { PageInfo } from "@/lib/connection-search";
+import type { PageInfo } from "@/lib/graphql-connection";
 import type { createAbility } from "@/lib/ability";
 import { toast } from "@/components/thread-ui/toast";
 import { createAbilitySubject } from "@/lib/ability";
@@ -20,13 +19,13 @@ import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { ApiKeyStatusBadge } from "@/components/api-key-status-badge";
 import { Link } from "@/components/link";
 import { DataFilter } from "@/components/thread-ui/data-filter";
-import { DataTable } from "@/components/thread-ui/data-table";
+import {
+  DataTable,
+  createDataTableColumnHelper,
+} from "@/components/thread-ui/data-table";
 import { Page } from "@/components/thread-ui/page";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  getNextPageSearch,
-  getPreviousPageSearch,
-} from "@/lib/connection-search";
+import { getNextSearch, getPreviousSearch } from "@/lib/graphql-connection";
 
 export type ApiKeyRow<Permission extends UserApiKeyPermission> = Omit<
   Pick<
@@ -83,7 +82,9 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
   deleteApiKey,
   refetch,
 }: ApiKeysPageProps<Permission>) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const apiKeysColumnHelper =
+    createDataTableColumnHelper<(typeof apiKeys)[number]>();
   const canCreate = ability.can("write", subject);
   const canUpdate = (apiKey: ApiKeyRow<Permission>) =>
     ability.can("write", createAbilitySubject(subject, apiKey));
@@ -176,7 +177,6 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
       primaryAction={{
         disabled: !canCreate,
         onAction: () => navigate({ to: createPath }),
-        icon: <KeyRound data-icon="inline-start" />,
         label: t("api-key:create.button"),
       }}
     >
@@ -201,15 +201,16 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
             />
 
             <DataTable
-              columns={[
-                {
-                  accessorKey: "name",
+              locale={i18n.resolvedLanguage}
+              columns={apiKeysColumnHelper.columns([
+                apiKeysColumnHelper.column("name", {
                   header: t("api-key:table.name"),
-                  cell: ({ row }) => {
+                  render: (props, { row }) => {
                     const apiKey = row.original;
 
                     return (
                       <Link
+                        {...props}
                         to={detailPath(apiKey.id)}
                         onClick={(event) => event.stopPropagation()}
                         className="font-medium"
@@ -218,50 +219,41 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
                       </Link>
                     );
                   },
-                },
-                {
-                  accessorKey: "status",
+                }),
+                apiKeysColumnHelper.column("status", {
+                  field: null,
                   header: t("api-key:table.status"),
                   size: 80,
-                  cell: ({ row }) => (
-                    <ApiKeyStatusBadge apiKey={row.original} />
+                  render: (props, { row }) => (
+                    <ApiKeyStatusBadge {...props} apiKey={row.original} />
                   ),
-                },
-                {
-                  accessorKey: "start",
+                }),
+                apiKeysColumnHelper.column("start", {
                   header: t("api-key:table.key_start"),
                   size: 100,
-                  cell: ({ row }) => (
-                    <code className="text-xs">
-                      {row.original.start ?? row.original.prefix ?? "—"}
+                  getValue: (row) => row.start ?? row.prefix ?? "—",
+                  render: (props, { getValue }) => (
+                    <code {...props} className="text-xs">
+                      {getValue()}
                     </code>
                   ),
-                },
-                {
-                  accessorKey: "lastUsedAt",
+                }),
+                apiKeysColumnHelper.column("lastUsedAt", {
                   header: t("api-key:table.last_used"),
-                  cell: ({ row }) =>
-                    row.original.lastUsedAt
-                      ? dayjs(row.original.lastUsedAt).format(
-                          "YYYY-MM-DD HH:mm",
-                        )
-                      : t("api-key:never_used"),
-                },
-                {
-                  accessorKey: "expiresAt",
+                  type: "datetime",
+                  getValue: (row) => row.lastUsedAt ?? t("api-key:never_used"),
+                }),
+                apiKeysColumnHelper.column("expiresAt", {
                   header: t("api-key:table.expires_at"),
-                  cell: ({ row }) =>
-                    row.original.expiresAt
-                      ? dayjs(row.original.expiresAt).format("YYYY-MM-DD")
-                      : t("api-key:never_expires"),
-                },
-                {
-                  accessorKey: "createdAt",
+                  type: "date",
+                  getValue: (row) =>
+                    row.expiresAt ?? t("api-key:never_expires"),
+                }),
+                apiKeysColumnHelper.column("createdAt", {
                   header: t("api-key:table.created_at"),
-                  cell: ({ row }) =>
-                    dayjs(row.original.createdAt).format("YYYY-MM-DD"),
-                },
-              ]}
+                  type: "date",
+                }),
+              ])}
               data={apiKeys}
               onRowClick={(row) =>
                 navigate({ to: detailPath(row.original.id) })
@@ -272,13 +264,13 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
                 onPreviousPage: () => {
                   navigate({
                     to: location.pathname,
-                    search: getPreviousPageSearch(search, pageInfo),
+                    search: getPreviousSearch(search, pageInfo),
                   });
                 },
                 onNextPage: () => {
                   navigate({
                     to: location.pathname,
-                    search: getNextPageSearch(search, pageInfo),
+                    search: getNextSearch(search, pageInfo),
                   });
                 },
               }}
