@@ -9,6 +9,8 @@ const config = defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
   return {
+    // Local development and E2E servers run concurrently in this worktree.
+    cacheDir: `node_modules/.vite/${mode}`,
     plugins: [
       devtools(),
       viteTsConfigPaths({

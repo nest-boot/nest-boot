@@ -8,7 +8,7 @@ import {
   createFilterSchema,
   createInputFilterItemSearchSchema,
   createSelectFilterItemSearchSchema,
-} from "@/lib/connection-search";
+} from "@/lib/graphql-connection";
 
 export const memberSearchSchema = createConnectionSearchSchema({
   filterSchema: createFilterSchema({

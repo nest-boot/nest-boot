@@ -9,7 +9,7 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import dayjs from "dayjs";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
-import { Check, Plus, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { isEmpty } from "lodash";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
@@ -20,7 +20,10 @@ import { DataFilter } from "@/components/thread-ui/data-filter";
 import { toast } from "@/components/thread-ui/toast";
 
 import { Link } from "@/components/link";
-import { DataTable } from "@/components/thread-ui/data-table";
+import {
+  DataTable,
+  createDataTableColumnHelper,
+} from "@/components/thread-ui/data-table";
 import { Page } from "@/components/thread-ui/page";
 import { Button } from "@/components/thread-ui/button";
 import {
@@ -35,10 +38,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { graphql } from "@/gql";
-import {
-  getNextPageSearch,
-  getPreviousPageSearch,
-} from "@/lib/connection-search";
+import { getNextSearch, getPreviousSearch } from "@/lib/graphql-connection";
 import { getRolesLabel } from "@/utils/get-role-label";
 
 const GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE = graphql(`
@@ -135,7 +135,7 @@ export const Route = createFileRoute("/_authenticated/user/workspaces/")({
 });
 
 function UserWorkspacesComponent() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const search = Route.useSearch();
   const currentUser = useCurrentUserContext();
   useResourceNavigation({
@@ -235,6 +235,10 @@ function UserWorkspacesComponent() {
   const pageInfo = data?.currentUser.workspaces.pageInfo;
   const invitationActionPending =
     acceptingInvitationId !== null || rejectingInvitationId !== null;
+  const invitationsColumnHelper =
+    createDataTableColumnHelper<(typeof invitations)[number]>();
+  const workspacesColumnHelper =
+    createDataTableColumnHelper<(typeof workspaces)[number]>();
   const filters: Array<DataFilterField> = useMemo(
     () => [
       {
@@ -262,7 +266,6 @@ function UserWorkspacesComponent() {
       description={t("user:workspaces.description")}
       primaryAction={{
         render: <Link to="/user/workspaces/create" />,
-        icon: <Plus data-icon="inline-start" />,
         label: t("user:workspaces.create"),
       }}
     >
@@ -281,35 +284,35 @@ function UserWorkspacesComponent() {
 
               <CardContent>
                 <DataTable
-                  columns={[
-                    {
-                      accessorKey: "workspace.name",
+                  locale={i18n.resolvedLanguage}
+                  columns={invitationsColumnHelper.columns([
+                    invitationsColumnHelper.column("workspace.name", {
                       header: t("user:workspaces.invitations.table.workspace"),
-                      cell: ({ row }) => (
-                        <span className="font-medium">
+                      render: (props, { row }) => (
+                        <span {...props} className="font-medium">
                           {row.original.workspace.name}
                         </span>
                       ),
-                    },
-                    {
-                      accessorKey: "roles",
+                    }),
+                    invitationsColumnHelper.column("roles", {
                       header: t("user:workspaces.invitations.table.role"),
-                      cell: ({ row }) => getRolesLabel(row.original.roles),
-                    },
-                    {
-                      accessorKey: "expiresAt",
+                      render: (props, { row }) => (
+                        <span {...props}>
+                          {getRolesLabel(row.original.roles)}
+                        </span>
+                      ),
+                    }),
+                    invitationsColumnHelper.column("expiresAt", {
                       header: t("user:workspaces.invitations.table.expires_at"),
-                      cell: ({ row }) =>
-                        dayjs(row.original.expiresAt).format(
-                          "YYYY-MM-DD HH:mm",
-                        ),
-                    },
-                    {
-                      id: "actions",
+                      type: "datetime",
+                    }),
+                    invitationsColumnHelper.column("actions", {
+                      field: null,
                       header: "",
                       size: 220,
-                      cell: ({ row }) => (
+                      render: (props, { row }) => (
                         <div
+                          {...props}
                           className="flex justify-end gap-2"
                           onClick={(event) => event.stopPropagation()}
                         >
@@ -340,8 +343,8 @@ function UserWorkspacesComponent() {
                           </Button>
                         </div>
                       ),
-                    },
-                  ]}
+                    }),
+                  ])}
                   data={invitations}
                   pagination={{
                     hasPreviousPage: invitationPageInfo?.hasPreviousPage,
@@ -386,12 +389,13 @@ function UserWorkspacesComponent() {
                   }}
                 />
                 <DataTable
-                  columns={[
-                    {
-                      accessorKey: "name",
+                  locale={i18n.resolvedLanguage}
+                  columns={workspacesColumnHelper.columns([
+                    workspacesColumnHelper.column("name", {
                       header: t("user:workspaces.table.name"),
-                      cell: ({ row }) => (
+                      render: (props, { row }) => (
                         <Link
+                          {...props}
                           to="/workspaces/$workspaceId"
                           params={{ workspaceId: row.original.id }}
                           onClick={(event) => event.stopPropagation()}
@@ -400,20 +404,16 @@ function UserWorkspacesComponent() {
                           {row.original.name}
                         </Link>
                       ),
-                    },
-                    {
-                      accessorKey: "createdAt",
+                    }),
+                    workspacesColumnHelper.column("createdAt", {
                       header: t("user:workspaces.table.created_at"),
-                      cell: ({ row }) =>
-                        dayjs(row.original.createdAt).format("YYYY-MM-DD"),
-                    },
-                    {
-                      accessorKey: "updatedAt",
+                      type: "date",
+                    }),
+                    workspacesColumnHelper.column("updatedAt", {
                       header: t("user:workspaces.table.updated_at"),
-                      cell: ({ row }) =>
-                        dayjs(row.original.updatedAt).format("YYYY-MM-DD"),
-                    },
-                  ]}
+                      type: "date",
+                    }),
+                  ])}
                   data={workspaces}
                   pagination={{
                     hasPreviousPage: pageInfo?.hasPreviousPage,
@@ -421,13 +421,13 @@ function UserWorkspacesComponent() {
                     onPreviousPage: () => {
                       navigate({
                         to: location.pathname,
-                        search: getPreviousPageSearch(search, pageInfo),
+                        search: getPreviousSearch(search, pageInfo),
                       });
                     },
                     onNextPage: () => {
                       navigate({
                         to: location.pathname,
-                        search: getNextPageSearch(search, pageInfo),
+                        search: getNextSearch(search, pageInfo),
                       });
                     },
                   }}

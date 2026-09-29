@@ -18,6 +18,7 @@
     "loadFailed": "无法加载工作空间"
   },
   "user": {
+    "openOverview": "打开个人概览：{{name}}",
     "account": "个人资料",
     "api_keys": "API 密钥",
     "logout": "退出登录",

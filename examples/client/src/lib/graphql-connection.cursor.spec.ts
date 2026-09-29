@@ -3,7 +3,7 @@ import { Cursor } from "../../../../packages/graphql-connection/src/cursor";
 import {
   createConnectionCursor,
   encodeConnectionCursor,
-} from "./connection-cursor";
+} from "./graphql-connection";
 
 describe("browser connection cursor", () => {
   it.each([

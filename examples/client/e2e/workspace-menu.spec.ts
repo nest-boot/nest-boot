@@ -12,6 +12,11 @@ test("refreshes the workspace menu after changes outside its Apollo cache", asyn
     email: `${seed}@example.com`,
     name: "Workspace menu owner",
   });
+  const currentWorkspace = await createWorkspaceByApi(
+    page,
+    `Current workspace ${seed}`,
+  );
+  await page.goto(`/workspaces/${currentWorkspace.id}`);
   const menuResponse = page.waitForResponse(
     (response) =>
       response
@@ -25,7 +30,7 @@ test("refreshes the workspace menu after changes outside its Apollo cache", asyn
     })
     .click();
   await menuResponse;
-  await expect(page.getByRole("menuitemradio")).toHaveCount(0);
+  await expect(page.getByRole("menuitemradio")).toHaveCount(1);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
 
@@ -64,7 +69,10 @@ test("refreshes the workspace menu after changes outside its Apollo cache", asyn
   await expect(
     page.getByText("Loading workspaces…", { exact: true }),
   ).toHaveCount(0);
-  await expect(page.getByRole("menuitemradio")).toHaveCount(0);
+  await expect(page.getByRole("menuitemradio")).toHaveCount(1);
+  await expect(
+    page.getByRole("menuitemradio", { name: workspace.name, exact: true }),
+  ).toHaveCount(0);
 });
 
 test("retries menu requests and keeps pagination within the current opening", async ({
@@ -74,8 +82,10 @@ test("retries menu requests and keeps pagination within the current opening", as
     email: `${uniqueSeed("workspace-menu-retry")}@example.com`,
     name: "Workspace menu retries",
   });
+  const currentWorkspace = await createWorkspaceByApi(page, "Workspace 1");
+  await page.goto(`/workspaces/${currentWorkspace.id}`);
   const workspaces = Array.from({ length: 11 }, (_, index) => ({
-    id: String(index + 1),
+    id: index === 0 ? currentWorkspace.id : String(index + 1),
     name: `Workspace ${index + 1}`,
   }));
   let initialRequests = 0;
@@ -146,6 +156,11 @@ test("ignores a late page from a closed workspace menu", async ({ page }) => {
     email: `${uniqueSeed("workspace-menu-late-page")}@example.com`,
     name: "Workspace menu race",
   });
+  const currentWorkspace = await createWorkspaceByApi(
+    page,
+    "Selected workspace",
+  );
+  await page.goto(`/workspaces/${currentWorkspace.id}`);
   let opening = 0;
   let releasePage!: () => void;
   let pageRequested!: () => void;
@@ -218,7 +233,7 @@ test("ignores a late page from a closed workspace menu", async ({ page }) => {
           requestAnimationFrame(() => requestAnimationFrame(resolve)),
         ),
     );
-    await expect(page.getByRole("menuitemradio")).toHaveCount(1);
+    await expect(page.getByRole("menuitemradio")).toHaveCount(2);
     await expect(
       page.getByRole("menuitemradio", {
         name: "Current workspace",

@@ -12,18 +12,17 @@ import {
   SunMoon,
 } from "lucide-react";
 
-import { Link } from "@/components/link";
+import { useSidebar } from "@/components/ui/sidebar";
 import { useAbility } from "@/contexts/ability-context";
 import {
-  TopbarMenuItem,
-  TopbarMenuRadioGroup,
-  TopbarMenuRadioItem,
-  TopbarMenuSeparator,
-  TopbarMenuSub,
-  TopbarMenuSubContent,
-  TopbarMenuSubTrigger,
-  TopbarMenuUser,
-} from "@/components/thread-ui/topbar";
+  SidebarAccountMenuItem,
+  SidebarAccountMenuRadioGroup,
+  SidebarAccountMenuRadioItem,
+  SidebarAccountMenuSeparator,
+  SidebarAccountMenuSub,
+  SidebarAccountMenuSubContent,
+  SidebarAccountMenuSubTrigger,
+} from "@/components/thread-ui/sidebar-account-menu";
 import { graphql } from "@/gql";
 
 const AUTH_SIGN_OUT_FROM_SIDEBAR_USER = graphql(`
@@ -40,71 +39,76 @@ export function UserMenu() {
   const apolloClient = useApolloClient();
   const [signOut] = useMutation(AUTH_SIGN_OUT_FROM_SIDEBAR_USER);
   const ability = useAbility();
+  const { setOpenMobile } = useSidebar();
 
   return (
     <>
-      <TopbarMenuUser render={<Link to="/user/profile" />} />
-      <TopbarMenuSeparator />
-      <TopbarMenuSub>
-        <TopbarMenuSubTrigger>
+      <SidebarAccountMenuSeparator />
+      <SidebarAccountMenuSub>
+        <SidebarAccountMenuSubTrigger>
           <Languages />
-          {t("thread-ui:topbarMenu.language")}
-        </TopbarMenuSubTrigger>
-        <TopbarMenuSubContent>
-          <TopbarMenuRadioGroup
-            aria-label={t("thread-ui:topbarMenu.language")}
+          {t("thread-ui:sidebarAccountMenu.language")}
+        </SidebarAccountMenuSubTrigger>
+        <SidebarAccountMenuSubContent>
+          <SidebarAccountMenuRadioGroup
+            aria-label={t("thread-ui:sidebarAccountMenu.language")}
             value={i18n.resolvedLanguage ?? "en"}
             onValueChange={async (language) => {
               await i18n.changeLanguage(language);
               await router.invalidate();
             }}
           >
-            <TopbarMenuRadioItem value="zh" closeOnClick>
+            <SidebarAccountMenuRadioItem value="zh" closeOnClick>
               简体中文
-            </TopbarMenuRadioItem>
-            <TopbarMenuRadioItem value="en" closeOnClick>
+            </SidebarAccountMenuRadioItem>
+            <SidebarAccountMenuRadioItem value="en" closeOnClick>
               English
-            </TopbarMenuRadioItem>
-          </TopbarMenuRadioGroup>
-        </TopbarMenuSubContent>
-      </TopbarMenuSub>
-      <TopbarMenuSub>
-        <TopbarMenuSubTrigger>
+            </SidebarAccountMenuRadioItem>
+          </SidebarAccountMenuRadioGroup>
+        </SidebarAccountMenuSubContent>
+      </SidebarAccountMenuSub>
+      <SidebarAccountMenuSub>
+        <SidebarAccountMenuSubTrigger>
           <SunMoon />
-          {t("thread-ui:topbarMenu.theme")}
-        </TopbarMenuSubTrigger>
-        <TopbarMenuSubContent>
-          <TopbarMenuRadioGroup
-            aria-label={t("thread-ui:topbarMenu.theme")}
+          {t("thread-ui:sidebarAccountMenu.theme")}
+        </SidebarAccountMenuSubTrigger>
+        <SidebarAccountMenuSubContent>
+          <SidebarAccountMenuRadioGroup
+            aria-label={t("thread-ui:sidebarAccountMenu.theme")}
             value={theme}
             onValueChange={setTheme}
           >
-            <TopbarMenuRadioItem value="light" closeOnClick>
+            <SidebarAccountMenuRadioItem value="light" closeOnClick>
               <Sun />
               {t("sidebar:user.theme.light")}
-            </TopbarMenuRadioItem>
-            <TopbarMenuRadioItem value="dark" closeOnClick>
+            </SidebarAccountMenuRadioItem>
+            <SidebarAccountMenuRadioItem value="dark" closeOnClick>
               <Moon />
               {t("sidebar:user.theme.dark")}
-            </TopbarMenuRadioItem>
-            <TopbarMenuRadioItem value="system" closeOnClick>
+            </SidebarAccountMenuRadioItem>
+            <SidebarAccountMenuRadioItem value="system" closeOnClick>
               <Monitor />
               {t("sidebar:user.theme.system")}
-            </TopbarMenuRadioItem>
-          </TopbarMenuRadioGroup>
-        </TopbarMenuSubContent>
-      </TopbarMenuSub>
+            </SidebarAccountMenuRadioItem>
+          </SidebarAccountMenuRadioGroup>
+        </SidebarAccountMenuSubContent>
+      </SidebarAccountMenuSub>
       {ability.can("read", "User") ? (
         <>
-          <TopbarMenuSeparator />
-          <TopbarMenuItem onClick={() => navigate({ to: "/admin" })}>
+          <SidebarAccountMenuSeparator />
+          <SidebarAccountMenuItem
+            onClick={() => {
+              setOpenMobile(false);
+              return navigate({ to: "/admin" });
+            }}
+          >
             <ShieldCheck />
             {t("sidebar:admin.title")}
-          </TopbarMenuItem>
+          </SidebarAccountMenuItem>
         </>
       ) : null}
-      <TopbarMenuSeparator />
-      <TopbarMenuItem
+      <SidebarAccountMenuSeparator />
+      <SidebarAccountMenuItem
         onClick={async () => {
           await signOut();
           await apolloClient.clearStore();
@@ -113,7 +117,7 @@ export function UserMenu() {
       >
         <LogOut />
         {t("sidebar:user.logout")}
-      </TopbarMenuItem>
+      </SidebarAccountMenuItem>
     </>
   );
 }

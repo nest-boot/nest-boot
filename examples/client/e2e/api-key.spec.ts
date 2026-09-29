@@ -128,7 +128,9 @@ test.describe("API keys", () => {
         name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
       })
       .click();
-    await page.getByRole("menuitem", { name: /^Open profile:/ }).click();
+    await page
+      .getByRole("menuitem", { name: /^Open personal overview:/ })
+      .click();
     await page
       .locator('[data-slot="sidebar"]')
       .filter({ has: page.getByText("Personal", { exact: true }) })

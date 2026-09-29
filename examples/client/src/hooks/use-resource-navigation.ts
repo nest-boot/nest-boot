@@ -1,7 +1,10 @@
+"use client";
+
 import { isEqual } from "lodash-es";
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -70,10 +73,14 @@ function read(key: string): string | null {
 }
 
 function write(key: string, value: string | null) {
-  if (typeof window === "undefined" || read(key) === value) return;
+  if (typeof window === "undefined") return;
+  const previous = read(key);
+  // A previous storage failure can leave an older persisted value behind.
+  // Clearing must still try to remove it, even when memory is already empty.
+  if (previous === value && value !== null) return;
   const entry = getEntry(key);
   entry.value = value;
-  if (!entry.memoryOnly) {
+  if (!entry.memoryOnly || value === null) {
     try {
       if (value === null) window.sessionStorage.removeItem(key);
       else window.sessionStorage.setItem(key, value);
@@ -81,7 +88,7 @@ function write(key: string, value: string | null) {
       entry.memoryOnly = true;
     }
   }
-  entry.listeners.forEach((listener) => listener());
+  if (previous !== value) entry.listeners.forEach((listener) => listener());
 }
 
 function parse<Schema extends z.ZodType>(
@@ -159,6 +166,8 @@ function useStoredResourceSearch<Schema extends z.ZodType>(
 
   useEffect(() => {
     if (source.search !== undefined) source.setSearch(source.search);
+    // Acknowledge the committed storage write so an unchanged URL value does
+    // not overwrite a later update from another consumer of this key.
     setAppliedSource(source);
   }, [source]);
 
@@ -233,6 +242,7 @@ export function useResourceNavigation<
 >(options: ResourceNavigationOptions<Schema>) {
   const { key, searchSchema, query } = options;
   const requestId = useRef(0);
+  const activeRequest = useRef<NavigationRequest<Schema> | null>(null);
   const [state, setState] = useState<NavigationState<Schema>>();
   const { search: savedSearch, setSearch } = useStoredResourceSearch(options);
   const clearSearch = useCallback(() => setSearch(undefined), [setSearch]);
@@ -255,7 +265,9 @@ export function useResourceNavigation<
   });
 
   async function refetch() {
-    if (!query) return undefined;
+    // Async page actions may retain a refetch from a record that has since
+    // changed or unmounted. It must not replace the active request's state.
+    if (!query || activeRequest.current !== request) return undefined;
     const id = ++requestId.current;
     setState({ request, loading: true });
     try {
@@ -271,13 +283,19 @@ export function useResourceNavigation<
     }
   }
 
-  useEffect(() => {
+  const fetchForRequest = useEffectEvent(() => {
     if (query) void refetch().catch(() => undefined);
-    return () => {
-      // Ignore completions from an old record, scope, retry, or unmounted page.
-      requestId.current++;
-    };
-  }, [request]);
+  });
+  const invalidateRequest = useCallback(() => {
+    // Ignore completions from an old record, scope, retry, or unmounted page.
+    requestId.current++;
+    activeRequest.current = null;
+  }, []);
+  useEffect(() => {
+    activeRequest.current = request;
+    fetchForRequest();
+    return invalidateRequest;
+  }, [request, invalidateRequest]);
 
   // Also hide stale results during the render before the next effect starts.
   const current = query && state?.request === request ? state : undefined;
@@ -300,14 +318,21 @@ export function useResourceNavigation<
     });
   }, [savedSearch, data, search, searchSchema]);
 
-  useEffect(() => {
-    if (!data) return;
-    // Direct entry must not create a saved list visit.
+  const persistBackSearch = useEffectEvent(() => {
+    // Direct entry must not create a saved list visit, and another consumer may
+    // have changed the saved search since this result's render.
     // Search schemas must accept their normalized output, as storage reads do.
     setSearch((saved) =>
-      saved === undefined ? undefined : (backSearch as z.input<Schema>),
+      saved === undefined || !isEqual(saved, savedSearch)
+        ? (saved as z.input<Schema> | undefined)
+        : (backSearch as z.input<Schema>),
     );
-  }, [data, backSearch, setSearch]);
+  });
+  useEffect(() => {
+    // Persist on a new result only. Replaying on shared pagination changes
+    // would override list navigation or compete with another detail consumer.
+    if (current?.data) persistBackSearch();
+  }, [current]);
 
   return {
     search,

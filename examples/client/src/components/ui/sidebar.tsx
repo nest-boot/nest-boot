@@ -1,5 +1,4 @@
-"use client";
-
+import { useTranslation } from "react-i18next";
 import * as React from "react";
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
@@ -256,10 +255,13 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, isMobile, openMobile, open } = useSidebar();
+  const { t } = useTranslation("thread-ui");
 
   return (
     <Button
+      aria-label={t("layout.toggleNavigation")}
+      aria-expanded={isMobile ? openMobile : open}
       data-sidebar="trigger"
       data-slot="sidebar-trigger"
       variant="ghost"
@@ -272,7 +274,7 @@ function SidebarTrigger({
       {...props}
     >
       <PanelLeftIcon />
-      <span className="sr-only">Toggle Sidebar</span>
+      <span className="sr-only">{t("layout.toggleNavigation")}</span>
     </Button>
   );
 }

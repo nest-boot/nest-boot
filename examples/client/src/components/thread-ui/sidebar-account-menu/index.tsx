@@ -1,7 +1,7 @@
 "use client";
 
 import { Building2Icon, ChevronsUpDownIcon } from "lucide-react";
-import { createContext, useContext } from "react";
+import { Children } from "react";
 import { useTranslation } from "react-i18next";
 import type { ComponentProps, ReactNode } from "react";
 import { buttonVariants } from "@/components/ui/button";
@@ -22,22 +22,46 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-export type Workspace = {
+export type Workspace = Pick<
+  ComponentProps<typeof DropdownMenuRadioItem>,
+  "render" | "onClick" | "disabled"
+> & {
   id: string;
   name: string;
   description?: string;
   icon?: ReactNode;
-  disabled?: boolean;
 };
 
-export type TopbarMenuProps = Pick<
+export type SidebarAccountMenuUserConfig = Omit<
+  ComponentProps<typeof DropdownMenuItem>,
+  "children" | "className"
+> & {
+  name: string;
+  email?: string;
+  avatar?: ReactNode;
+  className?: string;
+};
+
+export type SidebarAccountMenuProps = Pick<
   ComponentProps<typeof DropdownMenu>,
   "open" | "defaultOpen" | "onOpenChange" | "onOpenChangeComplete"
 > & {
-  children: ReactNode;
-  currentWorkspace?: Workspace;
-  user?: { name: string; email?: string; avatar?: ReactNode };
+  /** Additional menu items, rendered after workspaces and user identity. */
+  children?: ReactNode;
+  workspace?: Workspace;
+  recentWorkspaces?: ReadonlyArray<Workspace>;
+  /** Maximum visible workspaces, including the current one. Defaults to 3; 0 hides the list. */
+  maxRecentWorkspaces?: number;
+  onWorkspaceChange?: ComponentProps<
+    typeof DropdownMenuRadioGroup
+  >["onValueChange"];
+  /** Defaults to the translated Recent workspaces label; null hides it. */
+  workspaceLabel?: ReactNode;
+  user?: SidebarAccountMenuUserConfig;
+  /** Customize the trigger element using the Base UI render contract. */
+  render?: ComponentProps<typeof DropdownMenuTrigger>["render"];
   disabled?: boolean;
   loading?: boolean;
 };
@@ -75,7 +99,11 @@ function WorkspaceIcon({ workspace }: { workspace?: Workspace }) {
   );
 }
 
-function UserAvatar({ user }: { user: NonNullable<TopbarMenuProps["user"]> }) {
+function UserAvatar({
+  user,
+}: {
+  user: NonNullable<SidebarAccountMenuProps["user"]>;
+}) {
   return (
     <Avatar
       aria-hidden="true"
@@ -103,66 +131,56 @@ function UserAvatar({ user }: { user: NonNullable<TopbarMenuProps["user"]> }) {
   );
 }
 
-type MenuContextValue = {
-  props: TopbarMenuProps;
-  selected?: Workspace;
-};
-const MenuContext = createContext<MenuContextValue | null>(null);
-function useTopbarMenu() {
-  const context = useContext(MenuContext);
-  if (!context) throw new Error("TopbarMenu parts must be inside TopbarMenu.");
-  return context;
-}
-
-/** Composition only: children explicitly declare the trigger and menu. */
-export function TopbarMenu(props: TopbarMenuProps) {
-  const selected = props.currentWorkspace;
+/** Identity uses props; children compose additional menu actions. */
+export function SidebarAccountMenu(props: SidebarAccountMenuProps) {
   return (
-    <MenuContext.Provider value={{ props, selected }}>
-      <DropdownMenu
-        defaultOpen={props.defaultOpen}
-        open={props.open}
-        onOpenChange={props.onOpenChange}
-        onOpenChangeComplete={props.onOpenChangeComplete}
-      >
-        {props.children}
-      </DropdownMenu>
-    </MenuContext.Provider>
+    <DropdownMenu
+      defaultOpen={props.defaultOpen}
+      open={props.open}
+      onOpenChange={props.onOpenChange}
+      onOpenChangeComplete={props.onOpenChangeComplete}
+    >
+      <AccountMenuTrigger config={props} render={props.render} />
+      <AccountMenuContent config={props}>{props.children}</AccountMenuContent>
+    </DropdownMenu>
   );
 }
 
-export type TopbarMenuTriggerProps = Omit<
+type AccountMenuTriggerProps = Omit<
   ComponentProps<typeof DropdownMenuTrigger>,
   "className"
 > & { className?: string };
-export function TopbarMenuTrigger({
+function AccountMenuTrigger({
+  config,
   children,
   className,
   ...props
-}: TopbarMenuTriggerProps) {
+}: AccountMenuTriggerProps & { config: SidebarAccountMenuProps }) {
   const { t } = useTranslation("thread-ui");
-  const { props: config, selected } = useTopbarMenu();
-  const userOnly = !selected && config.user;
+  const selected = config.workspace;
+  const user = config.user;
+  const description = selected ? selected.description : user?.email;
   const label =
     selected?.name ??
     config.user?.name ??
-    t("topbarMenu.choose", "Choose workspace");
+    t("sidebarAccountMenu.choose", "Choose workspace");
   return (
     <DropdownMenuTrigger
       aria-busy={config.loading || undefined}
       aria-haspopup="menu"
       aria-label={t(
-        userOnly
-          ? "topbarMenu.userMenu"
+        !selected && user
+          ? "sidebarAccountMenu.userMenu"
           : config.user
-            ? "topbarMenu.accountMenu"
-            : "topbarMenu.switch",
+            ? "sidebarAccountMenu.accountMenu"
+            : "sidebarAccountMenu.switch",
         {
-          defaultValue: userOnly
-            ? "Account: {{name}}"
-            : config.user
-              ? "Workspace and account: {{name}}"
-              : "Switch workspace: {{name}}",
+          defaultValue:
+            !selected && user
+              ? "Account: {{name}}"
+              : config.user
+                ? "Workspace and account: {{name}}"
+                : "Switch workspace: {{name}}",
           name: label,
         },
       )}
@@ -170,11 +188,8 @@ export function TopbarMenuTrigger({
       data-loading={config.loading}
       disabled={config.disabled || config.loading || props.disabled}
       className={cn(
-        buttonVariants({ variant: "outline" }),
-        "relative h-10 max-w-full gap-2",
-        children === undefined &&
-          "p-1 max-sm:w-10 max-sm:rounded-full max-sm:p-0 sm:pr-2",
-        "border-border bg-topbar text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring aria-expanded:bg-accent aria-expanded:text-accent-foreground dark:bg-topbar dark:hover:bg-accent",
+        buttonVariants({ variant: "ghost" }),
+        "bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground aria-expanded:bg-sidebar-accent aria-expanded:text-sidebar-accent-foreground relative h-12 w-full justify-start gap-2 rounded-lg px-2 text-left group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0",
         className,
       )}
     >
@@ -186,15 +201,22 @@ export function TopbarMenuTrigger({
           children
         ) : (
           <>
-            {userOnly ? (
-              <UserAvatar user={userOnly} />
-            ) : (
+            {selected || !user ? (
               <WorkspaceIcon workspace={selected} />
+            ) : (
+              <UserAvatar user={user} />
             )}
-            <span className="hidden max-w-40 truncate sm:block">{label}</span>
+            <span className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+              <span className="block truncate">{label}</span>
+              {description && (
+                <span className="text-muted-foreground group-hover/button:text-sidebar-accent-foreground group-aria-expanded/button:text-sidebar-accent-foreground block truncate text-xs font-normal">
+                  {description}
+                </span>
+              )}
+            </span>
             <ChevronsUpDownIcon
               aria-hidden="true"
-              className="hidden size-4 shrink-0 sm:block"
+              className="size-4 shrink-0 group-data-[collapsible=icon]:hidden"
             />
           </>
         )}
@@ -203,74 +225,120 @@ export function TopbarMenuTrigger({
   );
 }
 
-export type TopbarMenuContentProps = ComponentProps<typeof DropdownMenuContent>;
-export function TopbarMenuContent({
+type AccountMenuContentProps = ComponentProps<typeof DropdownMenuContent>;
+function AccountMenuContent({
+  config,
+  children,
   className,
   ...props
-}: TopbarMenuContentProps) {
+}: AccountMenuContentProps & { config: SidebarAccountMenuProps }) {
+  const isMobile = useIsMobile();
+  const selected = config.workspace;
+  const recentWorkspaces = [
+    ...new Map(
+      [...(config.recentWorkspaces ?? [])].map((workspace) => [
+        workspace.id,
+        workspace,
+      ]),
+    ).values(),
+  ];
+  const mergedWorkspaces = selected
+    ? [
+        {
+          ...recentWorkspaces.find((workspace) => workspace.id === selected.id),
+          ...selected,
+        },
+        ...recentWorkspaces.filter((workspace) => workspace.id !== selected.id),
+      ]
+    : recentWorkspaces;
+  const limit = config.maxRecentWorkspaces ?? 3;
+  const visibleWorkspaces = mergedWorkspaces.slice(
+    0,
+    Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : 3,
+  );
+  const hasWorkspaces = visibleWorkspaces.length > 0;
+  const hasChildren = Children.toArray(children).length > 0;
   return (
     <DropdownMenuContent
-      align="end"
+      align={isMobile ? "start" : "end"}
+      side={isMobile ? "top" : "right"}
       sideOffset={8}
       {...props}
       className={cn(
         "w-72 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain",
         className,
       )}
-    />
+    >
+      {hasWorkspaces && (
+        <WorkspaceGroup
+          value={selected?.id ?? ""}
+          onValueChange={config.onWorkspaceChange}
+        >
+          <WorkspaceLabel>{config.workspaceLabel}</WorkspaceLabel>
+          {visibleWorkspaces.map((workspace) => (
+            <WorkspaceItem key={workspace.id} workspace={workspace} />
+          ))}
+        </WorkspaceGroup>
+      )}
+      {hasWorkspaces && config.user && <DropdownMenuSeparator />}
+      {config.user && <UserRow {...config.user} />}
+      {(hasWorkspaces || config.user) && hasChildren && (
+        <DropdownMenuSeparator />
+      )}
+      {children}
+    </DropdownMenuContent>
   );
 }
 
 /** Workspace choices use native shadcn radio items as children. */
-export type TopbarMenuWorkspaceGroupProps = ComponentProps<
-  typeof DropdownMenuRadioGroup
->;
-export function TopbarMenuWorkspaceGroup(props: TopbarMenuWorkspaceGroupProps) {
+type WorkspaceGroupProps = ComponentProps<typeof DropdownMenuRadioGroup>;
+function WorkspaceGroup(props: WorkspaceGroupProps) {
   const { t } = useTranslation("thread-ui");
   return (
     <DropdownMenuGroup>
       <DropdownMenuRadioGroup
-        aria-label={t("topbarMenu.recentWorkspaces", "Recent workspaces")}
+        aria-label={t(
+          "sidebarAccountMenu.recentWorkspaces",
+          "Recent workspaces",
+        )}
         {...props}
       />
     </DropdownMenuGroup>
   );
 }
 
-export type TopbarMenuWorkspaceLabelProps = ComponentProps<
-  typeof DropdownMenuLabel
->;
-export function TopbarMenuWorkspaceLabel({
-  children,
-  ...props
-}: TopbarMenuWorkspaceLabelProps) {
+type WorkspaceLabelProps = ComponentProps<typeof DropdownMenuLabel>;
+function WorkspaceLabel({ children, ...props }: WorkspaceLabelProps) {
   const { t } = useTranslation("thread-ui");
+  if (children === null || children === false) return null;
   return (
     <DropdownMenuLabel {...props}>
       {children === undefined
-        ? t("topbarMenu.recentWorkspaces", "Recent workspaces")
+        ? t("sidebarAccountMenu.recentWorkspaces", "Recent workspaces")
         : children}
     </DropdownMenuLabel>
   );
 }
 
-export type TopbarMenuWorkspaceItemProps = Omit<
+type WorkspaceItemProps = Omit<
   ComponentProps<typeof DropdownMenuRadioItem>,
   "value"
 > & {
   workspace: Workspace;
 };
-export function TopbarMenuWorkspaceItem({
+function WorkspaceItem({
   workspace,
   children,
   className,
   disabled,
   ...props
-}: TopbarMenuWorkspaceItemProps) {
+}: WorkspaceItemProps) {
   return (
     <DropdownMenuRadioItem
       closeOnClick
       aria-label={workspace.name}
+      render={workspace.render}
+      onClick={workspace.onClick}
       {...props}
       disabled={workspace.disabled || disabled}
       value={workspace.id}
@@ -296,27 +364,17 @@ export function TopbarMenuWorkspaceItem({
   );
 }
 
-export type TopbarMenuUserProps = Omit<
-  ComponentProps<typeof DropdownMenuItem>,
-  "children" | "className"
-> & {
-  user?: TopbarMenuProps["user"];
-  className?: string;
-};
-export function TopbarMenuUser({
-  user: suppliedUser,
+function UserRow({
+  name,
+  email,
+  avatar,
   className,
   render,
   onClick,
   "aria-label": ariaLabel,
   ...props
-}: TopbarMenuUserProps) {
+}: SidebarAccountMenuUserConfig) {
   const { t } = useTranslation("thread-ui");
-  const {
-    props: { user: contextUser },
-  } = useTopbarMenu();
-  const user = suppliedUser ?? contextUser;
-  if (!user) return null;
   const interactive = Boolean(onClick || render);
   const rowClassName = cn(
     "text-foreground flex min-h-12 items-center gap-2 px-2 py-1.5",
@@ -324,12 +382,12 @@ export function TopbarMenuUser({
   );
   const content = (
     <>
-      <UserAvatar user={user} />
+      <UserAvatar user={{ name, email, avatar }} />
       <span className="min-w-0">
-        <span className="block truncate text-sm font-medium">{user.name}</span>
-        {user.email && (
+        <span className="block truncate text-sm font-medium">{name}</span>
+        {email && (
           <span className="text-muted-foreground block truncate text-xs font-normal">
-            {user.email}
+            {email}
           </span>
         )}
       </span>
@@ -363,9 +421,9 @@ export function TopbarMenuUser({
           render={render}
           aria-label={
             ariaLabel ??
-            t("topbarMenu.profile", {
+            t("sidebarAccountMenu.profile", {
               defaultValue: "Open profile: {{name}}",
-              name: user.name,
+              name: name,
             })
           }
           onClick={onClick}
@@ -385,31 +443,33 @@ export function TopbarMenuUser({
   );
 }
 
-export { DropdownMenuSeparator as TopbarMenuSeparator };
-export type TopbarMenuSeparatorProps = ComponentProps<
+export { DropdownMenuSeparator as SidebarAccountMenuSeparator };
+export type SidebarAccountMenuSeparatorProps = ComponentProps<
   typeof DropdownMenuSeparator
 >;
 
-export { DropdownMenuItem as TopbarMenuItem };
-export type TopbarMenuItemProps = ComponentProps<typeof DropdownMenuItem>;
+export { DropdownMenuItem as SidebarAccountMenuItem };
+export type SidebarAccountMenuItemProps = ComponentProps<
+  typeof DropdownMenuItem
+>;
 
 export {
-  DropdownMenuSub as TopbarMenuSub,
-  DropdownMenuSubTrigger as TopbarMenuSubTrigger,
-  DropdownMenuSubContent as TopbarMenuSubContent,
-  DropdownMenuRadioGroup as TopbarMenuRadioGroup,
-  DropdownMenuRadioItem as TopbarMenuRadioItem,
+  DropdownMenuSub as SidebarAccountMenuSub,
+  DropdownMenuSubTrigger as SidebarAccountMenuSubTrigger,
+  DropdownMenuSubContent as SidebarAccountMenuSubContent,
+  DropdownMenuRadioGroup as SidebarAccountMenuRadioGroup,
+  DropdownMenuRadioItem as SidebarAccountMenuRadioItem,
 };
-export type TopbarMenuSubProps = ComponentProps<typeof DropdownMenuSub>;
-export type TopbarMenuSubTriggerProps = ComponentProps<
+export type SidebarAccountMenuSubProps = ComponentProps<typeof DropdownMenuSub>;
+export type SidebarAccountMenuSubTriggerProps = ComponentProps<
   typeof DropdownMenuSubTrigger
 >;
-export type TopbarMenuSubContentProps = ComponentProps<
+export type SidebarAccountMenuSubContentProps = ComponentProps<
   typeof DropdownMenuSubContent
 >;
-export type TopbarMenuRadioGroupProps = ComponentProps<
+export type SidebarAccountMenuRadioGroupProps = ComponentProps<
   typeof DropdownMenuRadioGroup
 >;
-export type TopbarMenuRadioItemProps = ComponentProps<
+export type SidebarAccountMenuRadioItemProps = ComponentProps<
   typeof DropdownMenuRadioItem
 >;

@@ -46,18 +46,30 @@ registry controls by role and translated accessible name; language preference
 tests also cover Chinese. Resource creation and long permission forms use
 standalone pages; confirmation dialogs retain their viewport bounds.
 
-The theme comes from `@thread-ui/theme`. After refreshing components, refresh
+The shared hook and connection helpers are also installed from the registry:
+
+```bash
+pnpm exec shadcn add @thread-ui/use-resource-navigation @thread-ui/graphql-connection --overwrite
+```
+
+Import them from `@/hooks/use-resource-navigation` and `@/lib/graphql-connection`.
+Use `getPreviousSearch` / `getNextSearch` with connection `pageInfo` for list
+pagination, and `createConnectionCursor` inside detail-query closures.
+Business search schemas remain in `src/schemas`.
+
+The theme comes from `@thread-ui/default-theme` (replacing `@thread-ui/theme`). After refreshing components, refresh
 the theme last from this directory:
 
 ```bash
-pnpm dlx shadcn@latest add @thread-ui/theme --overwrite
+pnpm exec shadcn add @thread-ui/default-theme --overwrite
 ```
 
 This `registry:theme` item writes colors, radii, and base styles into
 `src/styles.css`, as configured in `components.json`; it is not a runtime CSS
 package. Keep the Tailwind imports and generated styles in that entry point,
-without a separate local palette. Pages use `bg-canvas`, sidebars use
-`bg-sidebar`, and the topbar uses `bg-topbar`, all supplied by the theme.
+without a separate local palette. Pages use `bg-canvas` and sidebars use `bg-sidebar`, both supplied by the theme.
+Remove obsolete topbar tokens when refreshing an older installation; the CLI
+merges theme declarations and does not delete retired selectors.
 
 ESLint includes [@shadcn/lint](https://github.com/shadcn-ui/lint) checks for
 component restyling, raw colors, arbitrary values, inline styles, dynamic
@@ -84,11 +96,40 @@ outer wrapper, so a compact page can reach that breakpoint and display paginatio
 Its default accessible labels are translated through the `thread-ui` namespace.
 Use theme color tokens from `src/styles.css` in application code.
 
+User, Admin, and Workspace share `AppSidebar`, which composes `LayoutSidebar`
+with the brand in `LayoutSidebarHeader`, `LayoutSidebarLogo`, and
+`LayoutSidebarTitle`, existing navigation groups in `SidebarContent`,
+and `SidebarAccountMenu` in `SidebarFooter`. Desktop navigation collapses to an
+icon rail with tooltips. The collapsed header shows the logo and reveals its
+expand action on hover or keyboard focus. LayoutSidebarHeader supplies the
+translated desktop toggle; mobile navigation opens from Layout's floating trigger.
+Menu destinations close the mobile drawer. Account identity and workspace rows
+use root props; only additional actions and language/theme submenus are children.
+Recent workspaces are loaded and displayed only within Workspace layouts.
+User and Admin menus retain the Manage workspaces action without querying the list.
+Translations use the `sidebarAccountMenu` namespace. The former Topbar components
+are removed. LayoutContent's outer element is the main landmark; scroll restoration
+and scroll-to-top target its inner `[data-slot="layout-content-viewport"]`.
+
 Workspace creation lives at `/user/workspaces/create`, inherits the User layout
 and sidebar, and returns to the workspace list with its saved search. Successful
 creation opens the new workspace Overview.
 
 API key lists use `DataFilter` and `DataTable`; rows and name links open details.
+Define DataTable columns with `createDataTableColumnHelper<Row>()`,
+`helper.column(id, options)`, and `helper.columns([...])`. Without an explicit
+source, the column ID is a checked field path. Use `field` for a different path,
+`getValue` for computed values, or `field: null` for display-only columns such
+as status badges and actions. `field` and `getValue` are mutually exclusive.
+The former `helper.field()` / `helper.getValue()` methods are replaced by
+`helper.column()`. Custom `render(props, context)` functions forward `props`
+to the rendered element and read the inferred value from `context.getValue()`
+or the complete record from `context.row.original`.
+Use `type: "date"` or `type: "datetime"` for date columns and pass
+`locale={i18n.resolvedLanguage}` to DataTable so formatting follows the UI
+language. Timestamps use the browser time zone; date-only strings retain their
+calendar date. Computed columns use `id` and `getValue`; keep business-specific
+empty labels in the accessor. Use `align` for column alignment.
 Use `DataFilterField` for toolbar filter configurations. `DataFilterItem` is a
 standalone controlled condition; `DataFilterItemProps` describes its component
 props, including `value` and `onChange`.
@@ -118,15 +159,20 @@ Top-level pages linked from the sidebar have no back action. Details, creation,
 and invitation pages retain their return-to-list breadcrumbs.
 
 Shared resource search schemas, their inferred types, and tests live in
-`src/schemas`. `lib/connection-search.ts` provides `createFilterSchema`, the
+`src/schemas`. `lib/graphql-connection.ts` provides `createFilterSchema`, the
 `createInputFilterItemSearchSchema`, `createSelectFilterItemSearchSchema`, and
 `createDateFilterItemSearchSchema` field factories, the pagination schema factory,
-and previous/next search helpers. `createFilterSchema` wraps the field shape in
+previous/next search helpers, and cursor creation/encoding compatible with the
+backend. `createFilterSchema` wraps the field shape in
 an optional object; field factories allow omitted values and normalize invalid
 field values to `undefined`. Keep reusable functions in `lib` and schema
 definitions and inferred types in `schemas`.
 Resource key constants and factories live in `lib/resource-keys.ts`; callers add
-their user scope. GraphQL variable conversion uses `lib/connection-query-variables.ts`.
+their user scope. Validated search parameters are passed directly as GraphQL
+variables; date-only filter boundaries are normalized by the backend.
+Preserve the local DataFilter date-value adapter when refreshing the registry:
+it emits `YYYY-MM-DD` for both individual dates and ranges so the backend can
+apply request-time timezone offsets and whole-day boundaries.
 
 API keys, administrator users, members, and workspaces share
 `useResourceNavigation({ key, searchSchema, search?, query? })` for list state and
@@ -258,11 +304,13 @@ action applies to a row or the whole card still requires review.
 The workspace menu refreshes whenever its popup mounts. It uses Apollo's
 `no-cache` policy so each opening gets current membership without relying on
 other queries invalidating the cache. `fetchMore` merges pages with `updateQuery`
-and deduplicates workspace IDs; there is no separate React copy of connection
-or pagination data. A closed menu's late requests cannot update a new opening.
+and deduplicates workspace IDs. Its result is projected into
+`SidebarAccountMenu.recentWorkspaces`; connection data and pagination remain
+owned by Apollo. `maxRecentWorkspaces` explicitly includes all loaded choices
+so the existing Load more action remains available. A closed menu's late requests cannot update a new opening.
 Loading, initial-query retry, and pagination failures have explicit UI states.
 
-The topbar's user row links to the profile. Its Language and Theme submenus
+The sidebar account menu's user row links to the personal Overview at `/user`. Its Language and Theme submenus
 persist preferences in the browser, with Chinese/English and light/dark/system
 options. Use `useTranslation` in rendered components so text updates when the
 language changes; route metadata can use the shared i18next instance.

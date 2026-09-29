@@ -1,5 +1,4 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
-import { AppTopbar } from "../../components/app-topbar";
 import { CurrentWorkspaceProvider } from "./contexts/current-workspace-context";
 import { CurrentMemberProvider } from "./contexts/current-member-context";
 import { WorkspaceSidebar } from "./components/workspace-sidebar";
@@ -79,10 +78,9 @@ function WorkspaceLayout() {
       <CurrentMemberProvider value={currentMember}>
         <AbilityProvider ability={ability}>
           <Layout>
-            <AppTopbar currentWorkspace={currentWorkspace} />
-            <WorkspaceSidebar />
+            <WorkspaceSidebar workspace={currentWorkspace} />
 
-            <LayoutContent data-scroll-restoration-id="main-content">
+            <LayoutContent>
               <Outlet />
             </LayoutContent>
           </Layout>

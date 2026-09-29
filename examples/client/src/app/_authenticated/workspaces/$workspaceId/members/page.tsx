@@ -24,7 +24,10 @@ import { Button } from "@/components/thread-ui/button";
 import { DataFilter } from "@/components/thread-ui/data-filter";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Page } from "@/components/thread-ui/page";
-import { DataTable } from "@/components/thread-ui/data-table";
+import {
+  DataTable,
+  createDataTableColumnHelper,
+} from "@/components/thread-ui/data-table";
 import {
   PageLayout,
   PageLayoutSection,
@@ -32,10 +35,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { graphql } from "@/gql";
 import { MemberStatus } from "@/gql/graphql";
-import {
-  getNextPageSearch,
-  getPreviousPageSearch,
-} from "@/lib/connection-search";
+import { getNextSearch, getPreviousSearch } from "@/lib/graphql-connection";
 import { truncateEmail } from "@/utils/truncate-email";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/thread-ui/badge";
@@ -175,7 +175,7 @@ function ScopedMembersComponent() {
 }
 
 function MembersComponent() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const search = Route.useSearch();
   const { workspaceId } = Route.useParams();
   const currentUser = useCurrentUserContext();
@@ -232,6 +232,8 @@ function MembersComponent() {
   const invitationPageInfo = data?.currentWorkspace?.invitations?.pageInfo;
   const pageInfo = data?.currentWorkspace?.members.pageInfo;
 
+  const membersColumnHelper =
+    createDataTableColumnHelper<(typeof members)[number]>();
   const filters: Array<DataFilterField> = useMemo(() => {
     return [
       {
@@ -429,14 +431,15 @@ function MembersComponent() {
                 />
 
                 <DataTable
-                  columns={[
-                    {
-                      accessorKey: "name",
+                  locale={i18n.resolvedLanguage}
+                  columns={membersColumnHelper.columns([
+                    membersColumnHelper.column("name", {
                       header: t("member:table.name"),
-                      cell: ({ row }) => {
+                      render: (props, { row }) => {
                         const member = row.original;
                         return (
                           <div
+                            {...props}
                             className={cn(
                               "flex flex-col",
                               !canEditMember(member) &&
@@ -452,22 +455,20 @@ function MembersComponent() {
                           </div>
                         );
                       },
-                    },
-                    {
-                      accessorKey: "roles",
+                    }),
+                    membersColumnHelper.column("roles", {
                       header: t("member:table.role"),
-                      cell: ({ row }) => {
+                      render: (props, { row }) => {
                         return (
-                          <Badge variant="outline">
+                          <Badge {...props} color={undefined} variant="outline">
                             {getRolesLabel(row.original.roles)}
                           </Badge>
                         );
                       },
-                    },
-                    {
-                      accessorKey: "status",
+                    }),
+                    membersColumnHelper.column("status", {
                       header: t("member:table.status"),
-                      cell: ({ row }) => {
+                      render: (props, { row }) => {
                         const status = row.original.status;
 
                         const statusColorMap: Record<
@@ -481,20 +482,17 @@ function MembersComponent() {
                         const color = status ? statusColorMap[status] : "green";
 
                         return (
-                          <Badge color={color}>{getStatusLabel(status)}</Badge>
+                          <Badge {...props} color={color}>
+                            {getStatusLabel(status)}
+                          </Badge>
                         );
                       },
-                    },
-                    {
-                      accessorKey: "createdAt",
+                    }),
+                    membersColumnHelper.column("createdAt", {
                       header: t("member:table.joined"),
-                      cell: ({ row }) => {
-                        return dayjs(row.original.createdAt).format(
-                          "YYYY-MM-DD",
-                        );
-                      },
-                    },
-                  ]}
+                      type: "date",
+                    }),
+                  ])}
                   onRowClick={(row) => {
                     if (!canEditMember(row.original)) return;
                     navigate({
@@ -543,13 +541,13 @@ function MembersComponent() {
                     onPreviousPage: () => {
                       navigate({
                         to: location.pathname,
-                        search: getPreviousPageSearch(search, pageInfo),
+                        search: getPreviousSearch(search, pageInfo),
                       });
                     },
                     onNextPage: () => {
                       navigate({
                         to: location.pathname,
-                        search: getNextPageSearch(search, pageInfo),
+                        search: getNextSearch(search, pageInfo),
                       });
                     },
                   }}

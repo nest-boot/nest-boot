@@ -150,47 +150,50 @@ export const DataFilterProvider: FC<DataFilterProviderProps> = ({
   const [visibleFields, setVisibleFields] = useState(() => {
     return getActiveFields(value.filter);
   });
-  const [filterGroups, setFilterGroups] = useState(() => {
-    return getFilterGroups(filters, value.filter, visibleFields);
-  });
+  const filterGroups = useMemo(
+    () => getFilterGroups(filters, filterValues, visibleFields),
+    [filters, filterValues, visibleFields],
+  );
   const [selectOptionCache, setSelectOptionCache] = useState<
     Record<string, Record<string, DataFilterSelectOption>>
   >({});
   const requestedSelectResolveKeysRef = useRef<Record<string, string>>({});
   const isMountedRef = useRef(false);
 
-  useEffect(() => {
-    if (isFieldControlled) {
-      return;
-    }
+  const [previousInputs, setPreviousInputs] = useState({
+    filters,
+    filter: value.filter,
+    isFieldControlled,
+  });
 
-    const hydratedValues = hydrateDataFilterValueFilter(value.filter);
-
-    setFilterValues((currentValues) => {
-      const mergedValues: Record<string, unknown> = { ...hydratedValues };
-
-      for (const item of filters) {
-        const currentValue = currentValues[item.field];
-
-        if (
-          isIncompleteBetweenValue(currentValue) &&
-          isEmptyDataFilterValue(hydratedValues[item.field])
-        ) {
-          mergedValues[item.field] = currentValue;
+  // Reconcile external values before children render, while retaining partial ranges.
+  if (
+    previousInputs.filters !== filters ||
+    previousInputs.filter !== value.filter ||
+    previousInputs.isFieldControlled !== isFieldControlled
+  ) {
+    setPreviousInputs({ filters, filter: value.filter, isFieldControlled });
+    if (!isFieldControlled) {
+      const hydratedValues = hydrateDataFilterValueFilter(value.filter);
+      setFilterValues((currentValues) => {
+        const mergedValues: Record<string, unknown> = { ...hydratedValues };
+        for (const item of filters) {
+          const currentValue = currentValues[item.field];
+          if (
+            isIncompleteBetweenValue(currentValue) &&
+            isEmptyDataFilterValue(hydratedValues[item.field])
+          ) {
+            mergedValues[item.field] = currentValue;
+          }
         }
-      }
-
-      return mergedValues;
-    });
-
-    setVisibleFields((currentFields) => {
-      return new Set([...currentFields, ...getActiveFields(hydratedValues)]);
-    });
-  }, [filters, isFieldControlled, value.filter]);
-
-  useEffect(() => {
-    setFilterGroups(getFilterGroups(filters, filterValues, visibleFields));
-  }, [filters, filterValues, visibleFields]);
+        return mergedValues;
+      });
+      setVisibleFields(
+        (currentFields) =>
+          new Set([...currentFields, ...getActiveFields(hydratedValues)]),
+      );
+    }
+  }
 
   const emitValueChange = useCallback(
     (nextValue: DataFilterValue) => {

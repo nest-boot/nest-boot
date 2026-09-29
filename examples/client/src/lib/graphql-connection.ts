@@ -1,3 +1,4 @@
+import { camelCase, get } from "lodash-es";
 import { z } from "zod";
 
 type EnumLike = Readonly<Record<string, string | number>>;
@@ -224,26 +225,64 @@ export type ConnectionSearch<
     : ReturnType<typeof createConnectionSearchSchema<OrderField>>
 >;
 
-export function getPreviousPageSearch<
-  Search extends ConnectionSearch<EnumLike> = ConnectionSearch<EnumLike>,
+interface ConnectionPaginationSearch {
+  first?: number;
+  last?: number;
+  after?: string;
+  before?: string;
+}
+
+export function getPreviousSearch<
+  Search extends ConnectionPaginationSearch = ConnectionSearch<EnumLike>,
 >(search: Search, pageInfo?: PageInfo) {
+  const { first, last, after: _after, before: _before, ...conditions } = search;
   return {
-    ...search,
+    ...conditions,
     first: undefined,
-    last: "last" in search ? search.last : search.first,
+    last: last ?? first,
     before: pageInfo?.startCursor ?? undefined,
     after: undefined,
   };
 }
 
-export function getNextPageSearch<
-  Search extends ConnectionSearch<EnumLike> = ConnectionSearch<EnumLike>,
+export function getNextSearch<
+  Search extends ConnectionPaginationSearch = ConnectionSearch<EnumLike>,
 >(search: Search, pageInfo?: PageInfo) {
+  const { first, last, after: _after, before: _before, ...conditions } = search;
   return {
-    ...search,
-    first: "first" in search ? search.first : search.last,
+    ...conditions,
+    first: first ?? last,
     last: undefined,
     before: undefined,
     after: pageInfo?.endCursor ?? undefined,
   };
+}
+
+/** Derives a record cursor using the normalized page search's ordering. */
+export function createConnectionCursor<
+  Record extends { id: string | number },
+  Search extends object,
+>(
+  record: Record,
+  search: Search & { orderBy?: { field: string } | null },
+): string {
+  const orderField = search.orderBy?.field;
+  if (orderField == null) return encodeConnectionCursor({ id: record.id });
+  const field = camelCase(orderField);
+  const value: unknown = get(record, field);
+  if (value === undefined) {
+    throw new Error(
+      `Cannot calculate a cursor: the record is missing the "${field}" sort field.`,
+    );
+  }
+  return encodeConnectionCursor({ id: record.id, value });
+}
+
+/** Browser equivalent of @nest-boot/graphql-connection's base64 JSON cursor. */
+export function encodeConnectionCursor(position: {
+  id: string | number;
+  value?: unknown;
+}): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(position));
+  return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""));
 }

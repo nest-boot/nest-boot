@@ -245,13 +245,15 @@
   "layout": {
     "navigation": "Navigation",
     "toggleNavigation": "Toggle navigation",
-    "skipToContent": "Skip to content"
+    "skipToContent": "Skip to content",
+    "expandNavigation": "Expand navigation",
+    "collapseNavigation": "Collapse navigation"
   },
-  "topbarMenu": {
+  "sidebarAccountMenu": {
     "choose": "Choose workspace",
     "switch": "Switch workspace: {{name}}",
     "recentWorkspaces": "Recent workspaces",
-    "create": "Create workspace",
+    "workspaces": "Workspaces",
     "userMenu": "Account: {{name}}",
     "accountMenu": "Workspace and account: {{name}}",
     "profile": "Open profile: {{name}}",

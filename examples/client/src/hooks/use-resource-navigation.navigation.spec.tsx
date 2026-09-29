@@ -10,12 +10,12 @@ import type {
   ResourceNavigationQueryResult,
 } from "./use-resource-navigation";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
-import { createConnectionCursor } from "@/lib/connection-cursor";
-import { UserApiKeyOrderField } from "@/gql/graphql";
 import {
   OrderDirection,
+  createConnectionCursor,
   createConnectionSearchSchema,
-} from "@/lib/connection-search";
+} from "@/lib/graphql-connection";
+import { UserApiKeyOrderField } from "@/gql/graphql";
 
 const resourceKey = ["navigation-user", "api-keys"];
 const record = {
@@ -711,4 +711,109 @@ describe("useResourceNavigation", () => {
       orderBy: { field: "NAME", direction: OrderDirection.ASC },
     });
   });
+});
+
+it("does not replay a completed detail result over a later list pagination update", async () => {
+  const saved = saveSearch({ first: 5, after: "old" });
+  const query = vi.fn().mockResolvedValue(neighbors("previous", "next"));
+  const detail = renderHook(() =>
+    useResourceNavigation({
+      key: resourceKey,
+      searchSchema: apiKeySearchSchema,
+      query,
+    }),
+  );
+  await waitFor(() => expect(detail.result.current.loading).toBe(false));
+  expect(saved.result.current.search).toMatchObject({ after: "previous" });
+  act(() =>
+    saved.result.current.setSearch({ first: 5, after: "list-page-two" }),
+  );
+  expect(saved.result.current.search).toMatchObject({ after: "list-page-two" });
+  expect(query).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    await detail.result.current.refetch();
+  });
+  expect(saved.result.current.search).toMatchObject({ after: "previous" });
+  expect(query).toHaveBeenCalledTimes(2);
+});
+
+it("does not let two mounted detail consumers fight over the shared return position", async () => {
+  const saved = saveSearch({ first: 5 });
+  const firstRequest = deferred();
+  const secondRequest = deferred();
+  const firstQuery = vi.fn().mockReturnValue(firstRequest.promise);
+  const secondQuery = vi.fn().mockReturnValue(secondRequest.promise);
+  const first = renderHook(() =>
+    useResourceNavigation({
+      key: resourceKey,
+      searchSchema: apiKeySearchSchema,
+      query: firstQuery,
+    }),
+  );
+  const second = renderHook(() =>
+    useResourceNavigation({
+      key: resourceKey,
+      searchSchema: apiKeySearchSchema,
+      query: secondQuery,
+    }),
+  );
+  await act(async () => {
+    firstRequest.resolve(neighbors("first-previous"));
+    await firstRequest.promise;
+  });
+  expect(first.result.current.loading).toBe(false);
+  expect(saved.result.current.search).toMatchObject({
+    after: "first-previous",
+  });
+  await act(async () => {
+    secondRequest.resolve(neighbors("second-previous"));
+    await secondRequest.promise;
+  });
+  expect(second.result.current.loading).toBe(false);
+  expect(saved.result.current.search).toMatchObject({
+    after: "second-previous",
+  });
+  expect(firstQuery).toHaveBeenCalledOnce();
+  expect(secondQuery).toHaveBeenCalledOnce();
+});
+
+it("ignores a retained refetch from an old record after navigation", async () => {
+  const firstQuery = vi.fn().mockResolvedValue(neighbors("first-previous"));
+  const secondQuery = vi.fn().mockResolvedValue(neighbors("second-previous"));
+  const detail = renderHook(
+    ({ query }) =>
+      useResourceNavigation({
+        key: resourceKey,
+        searchSchema: apiKeySearchSchema,
+        query,
+      }),
+    { initialProps: { query: firstQuery } },
+  );
+  await waitFor(() => expect(detail.result.current.loading).toBe(false));
+  // A mutation started on the old record can finish after the route changes.
+  const oldRefetch = detail.result.current.refetch;
+  detail.rerender({ query: secondQuery });
+  await waitFor(() => expect(detail.result.current.loading).toBe(false));
+  await act(async () => {
+    await oldRefetch();
+  });
+  expect(detail.result.current.loading).toBe(false);
+  expect(detail.result.current.previousEdge?.cursor).toBe("second-previous");
+  expect(firstQuery).toHaveBeenCalledOnce();
+});
+
+it("does not launch a retained refetch after its consumer unmounts", async () => {
+  const query = vi.fn().mockResolvedValue(neighbors("previous"));
+  const detail = renderHook(() =>
+    useResourceNavigation({
+      key: resourceKey,
+      searchSchema: apiKeySearchSchema,
+      query,
+    }),
+  );
+  await waitFor(() => expect(detail.result.current.loading).toBe(false));
+  const refetch = detail.result.current.refetch;
+  detail.unmount();
+  await expect(refetch()).resolves.toBeUndefined();
+  expect(query).toHaveBeenCalledOnce();
 });

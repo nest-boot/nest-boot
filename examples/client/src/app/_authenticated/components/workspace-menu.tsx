@@ -1,16 +1,12 @@
-import { Boxes, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useQuery } from "@apollo/client/react";
 import { useTranslation } from "react-i18next";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import type { Workspace } from "@/components/thread-ui/sidebar-account-menu";
+import { useSidebar } from "@/components/ui/sidebar";
 import { Link } from "@/components/link";
-import {
-  TopbarMenuItem,
-  TopbarMenuSeparator,
-  TopbarMenuWorkspaceGroup,
-  TopbarMenuWorkspaceItem,
-  TopbarMenuWorkspaceLabel,
-} from "@/components/thread-ui/topbar";
+import { SidebarAccountMenuItem } from "@/components/thread-ui/sidebar-account-menu";
 import { graphql } from "@/gql";
 import { toast } from "@/components/thread-ui/toast";
 
@@ -49,11 +45,12 @@ const GET_WORKSPACES_FROM_WORKSPACE_SWITCHER = graphql(`
 `);
 
 export function WorkspaceMenu({
-  currentWorkspaceId,
+  onWorkspacesChange,
 }: {
-  currentWorkspaceId?: string;
+  onWorkspacesChange: (workspaces: Array<Workspace>) => void;
 }) {
   const { t } = useTranslation();
+  const { setOpenMobile } = useSidebar();
   const [loadingMore, setLoadingMore] = useState(false);
   // The popup unmounts when closed. Each opening owns a fresh, uncached result,
   // so membership changes and late pages from a previous opening cannot leak in.
@@ -62,6 +59,20 @@ export function WorkspaceMenu({
     { variables: { first: 10 }, fetchPolicy: "no-cache" },
   );
   const connection = data?.currentUser.workspaces;
+  useEffect(() => {
+    onWorkspacesChange(
+      connection?.edges.map(({ node: workspace }) => ({
+        ...workspace,
+        render: (
+          <Link
+            to="/workspaces/$workspaceId"
+            params={{ workspaceId: workspace.id }}
+            onClick={() => setOpenMobile(false)}
+          />
+        ),
+      })) ?? [],
+    );
+  }, [connection, onWorkspacesChange, setOpenMobile]);
 
   const handleLoadMore = async () => {
     if (loadingMore || !connection?.pageInfo.hasNextPage) return;
@@ -109,49 +120,29 @@ export function WorkspaceMenu({
 
   return (
     <>
-      <TopbarMenuWorkspaceGroup value={currentWorkspaceId ?? ""}>
-        <TopbarMenuWorkspaceLabel />
-        {connection?.edges.map(({ node: workspace }) => (
-          <TopbarMenuWorkspaceItem
-            key={workspace.id}
-            workspace={workspace}
-            render={
-              <Link
-                to="/workspaces/$workspaceId"
-                params={{ workspaceId: workspace.id }}
-              />
-            }
-          />
-        ))}
-      </TopbarMenuWorkspaceGroup>
       {loading && !data ? (
-        <TopbarMenuItem disabled>
+        <SidebarAccountMenuItem disabled>
           <Loader2 className="animate-spin" />
           {t("sidebar:switcher.loading")}
-        </TopbarMenuItem>
+        </SidebarAccountMenuItem>
       ) : error && !data ? (
-        <TopbarMenuItem
+        <SidebarAccountMenuItem
           closeOnClick={false}
           onClick={() => void refetch().catch(() => undefined)}
         >
           {t("sidebar:switcher.retry")}
-        </TopbarMenuItem>
+        </SidebarAccountMenuItem>
       ) : null}
       {connection?.pageInfo.hasNextPage ? (
-        <TopbarMenuItem
+        <SidebarAccountMenuItem
           disabled={loadingMore}
           closeOnClick={false}
           onClick={() => void handleLoadMore()}
         >
           {loadingMore ? <Loader2 className="animate-spin" /> : null}
           {t("sidebar:switcher.loadMore")}
-        </TopbarMenuItem>
+        </SidebarAccountMenuItem>
       ) : null}
-      <TopbarMenuSeparator />
-      <TopbarMenuItem render={<Link to="/user/workspaces" />}>
-        <Boxes />
-        {t("sidebar:switcher.manageWorkspaces")}
-      </TopbarMenuItem>
     </>
   );
 }

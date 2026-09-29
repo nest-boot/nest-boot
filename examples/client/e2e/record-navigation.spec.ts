@@ -240,7 +240,7 @@ test("workspace overview and settings use browser history to restore list search
     .click();
   await expect(page).toHaveURL(/\/user\/workspaces\/create$/);
   await page.reload();
-  await expect(page.getByRole("banner")).toHaveCount(1);
+  await expect(page.getByRole("banner")).toHaveCount(0);
   await expect(page.getByRole("main")).toHaveCount(1);
   await expect(
     page.getByRole("link", { name: "Profile", exact: true }),
