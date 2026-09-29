@@ -7,8 +7,8 @@ describe("API-key credentials", () => {
     "",
     "1key",
     "UPPER",
-    "a-b",
-    "a_b",
+    "-sk",
+    "_sk",
     "a b",
     "a\n",
     "a\r\n",
@@ -18,7 +18,19 @@ describe("API-key credentials", () => {
     expect(() => generateApiKey(prefix)).toThrow("API key prefix");
   });
 
-  it.each(["sk", "a", "a1", "a".repeat(32)])(
+  it.each([
+    "sk-",
+    "user_",
+    "ws_",
+    "a_b",
+    `${"a".repeat(31)}_`,
+    "sk",
+    "a-b",
+    "a",
+    "a1",
+    "a".repeat(32),
+    `${"a".repeat(31)}-`,
+  ])(
     "generates high-entropy credentials with prefix %s and hashes the complete value",
     (prefix) => {
       const key = generateApiKey(prefix);

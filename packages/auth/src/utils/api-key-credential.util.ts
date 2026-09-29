@@ -12,10 +12,10 @@ export function generateApiKey(prefix: string): string {
   if (
     prefix.length > 32 ||
     !/^[a-z]/u.test(prefix) ||
-    /[^a-z0-9]/u.test(prefix)
+    /[^a-z0-9_-]/u.test(prefix)
   ) {
     throw new BadRequestException(
-      "API key prefix must contain 1–32 lowercase letters or digits and start with a lowercase letter",
+      "API key prefix must contain 1–32 lowercase letters, digits, underscores, or hyphens and start with a lowercase letter",
     );
   }
   return `${prefix}${randomBytes(48).toString("base64url")}`;

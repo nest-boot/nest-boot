@@ -718,7 +718,7 @@ describe("API-key management services", () => {
   });
 
   it("creates a prefixed key and stores only its SHA-256 hash", async () => {
-    vi.stubEnv("API_KEY_PREFIX", "nb");
+    vi.stubEnv("API_KEY_PREFIX", "nb-");
     const { em, service } = createService();
     const workspace = createTestWorkspace();
     const member = RequestContext.get(Member);
@@ -729,7 +729,7 @@ describe("API-key management services", () => {
       name: "Deploy key",
     });
 
-    expect(result.apiKey).toMatch(/^nb[A-Za-z0-9_-]{64}$/);
+    expect(result.apiKey).toMatch(/^nb-[A-Za-z0-9_-]{64}$/);
     expect(em.create).toHaveBeenCalledWith(
       WorkspaceApiKey,
       expect.objectContaining({
@@ -737,7 +737,7 @@ describe("API-key management services", () => {
         key: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
         name: "Deploy key",
         permissions: [],
-        prefix: "nb",
+        prefix: "nb-",
         start: result.apiKey.slice(0, 8),
         workspace: workspace,
       }),
@@ -1474,7 +1474,7 @@ describe("API-key management services", () => {
         prefix: "bad prefix-",
       }),
     ).rejects.toThrow(
-      "API key prefix must contain 1–32 lowercase letters or digits and start with a lowercase letter",
+      "API key prefix must contain 1–32 lowercase letters, digits, underscores, or hyphens and start with a lowercase letter",
     );
     await expect(
       service.createWorkspaceApiKey(workspace, {
@@ -1485,7 +1485,7 @@ describe("API-key management services", () => {
     expect(em.create).not.toHaveBeenCalled();
   });
 
-  it("rejects every prefix outside lowercase alphanumerics starting with a letter", async () => {
+  it("rejects invalid prefix characters, length, and initial characters", async () => {
     const { em, service } = createService();
     const workspace = createTestWorkspace();
     const user = createTestUser();
@@ -1494,8 +1494,8 @@ describe("API-key management services", () => {
       "1a",
       "ABC",
       "aB",
-      "sk-",
-      "sk_",
+      "-sk",
+      "_sk",
       "a.b",
       "a b",
       " a",
@@ -1527,15 +1527,92 @@ describe("API-key management services", () => {
     expect(em.flush).not.toHaveBeenCalled();
   });
 
-  it("accepts valid prefix boundaries and uses sk by default", async () => {
+  it("isolates configured prefixes and lets explicit prefixes override defaults", async () => {
+    vi.stubEnv("API_KEY_PREFIX", "shared_");
+    const { service } = createService({
+      apiKey: {
+        user: { defaultPrefix: "personal_" },
+        workspace: { defaultPrefix: "team_" },
+      },
+    });
+    const userKey = await service.createUserApiKey(createTestUser(), {
+      name: "User",
+    });
+    const workspaceKey = await service.createWorkspaceApiKey(
+      createTestWorkspace(),
+      { name: "Workspace" },
+    );
+    expect(userKey.apiKey).toMatch(/^personal_[A-Za-z0-9_-]{64}$/u);
+    expect(userKey.entity.prefix).toBe("personal_");
+    expect(workspaceKey.apiKey).toMatch(/^team_[A-Za-z0-9_-]{64}$/u);
+    expect(workspaceKey.entity.prefix).toBe("team_");
+    for (const created of [
+      await service.createUserApiKey(createTestUser(), {
+        name: "Explicit",
+        prefix: "custom_",
+      }),
+      await service.createWorkspaceApiKey(createTestWorkspace(), {
+        name: "Explicit",
+        prefix: "custom_",
+      }),
+    ]) {
+      expect(created.apiKey).toMatch(/^custom_[A-Za-z0-9_-]{64}$/u);
+      expect(created.entity.prefix).toBe("custom_");
+    }
+    const { service: fallback } = createService({
+      apiKey: { user: { defaultPrefix: "personal_" } },
+    });
+    expect(
+      (
+        await fallback.createWorkspaceApiKey(createTestWorkspace(), {
+          name: "Fallback",
+        })
+      ).entity.prefix,
+    ).toBe("shared_");
+  });
+
+  it("rejects invalid configured prefixes before persistence", async () => {
+    const { service, em } = createService({
+      apiKey: {
+        user: { defaultPrefix: "_invalid" },
+        workspace: { defaultPrefix: "invalid prefix" },
+      },
+    });
+    await expect(
+      service.createUserApiKey(createTestUser(), { name: "Invalid" }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.createWorkspaceApiKey(createTestWorkspace(), { name: "Invalid" }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(em.create).not.toHaveBeenCalled();
+  });
+
+  it("accepts valid prefix boundaries and uses owner-specific defaults", async () => {
     vi.stubEnv("API_KEY_PREFIX", undefined);
     const { service } = createService();
     const user = createTestUser();
     const defaultKey = await service.createUserApiKey(user, {
       name: "Default",
     });
-    expect(defaultKey.entity.prefix).toBe("sk");
-    for (const prefix of ["a", "abc123", "a".repeat(32)]) {
+    expect(defaultKey.entity.prefix).toBe("user_");
+    expect(defaultKey.apiKey).toMatch(/^user_[A-Za-z0-9_-]{64}$/u);
+    const workspaceKey = await service.createWorkspaceApiKey(
+      createTestWorkspace(),
+      { name: "Default workspace" },
+    );
+    expect(workspaceKey.entity.prefix).toBe("ws_");
+    expect(workspaceKey.apiKey).toMatch(/^ws_[A-Za-z0-9_-]{64}$/u);
+    for (const prefix of [
+      "sk",
+      "sk-",
+      "a",
+      "abc123-",
+      "user_",
+      "ws_",
+      "a-b",
+      "a".repeat(32),
+      `${"a".repeat(31)}-`,
+    ]) {
       const created = await service.createUserApiKey(user, {
         name: "Valid",
         prefix,
@@ -1546,7 +1623,7 @@ describe("API-key management services", () => {
         /^[A-Za-z0-9_-]{64}$/u,
       );
     }
-    vi.stubEnv("API_KEY_PREFIX", "invalid-");
+    vi.stubEnv("API_KEY_PREFIX", "invalid prefix");
     await expect(
       service.createUserApiKey(user, {
         name: "Explicit override",

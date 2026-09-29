@@ -68,8 +68,10 @@ Service 从持久化记录解析归属，并从请求上下文检查当前用户
 
 创建方法只会返回一次明文 Key。数据库保存完整 Key 的 SHA-256 哈希、可安全展示的
 `start` 与 `prefix`、启用状态、权限、过期时间和使用时间。认证成功的请求会自动更新
-`lastUsedAt`。自定义前缀长度为 1–32 位，只能包含小写英文字母和数字，且首位必须是字母；默认值为 `sk`。生成的 Key 用于
+`lastUsedAt`。自定义前缀长度为 1–32 位，只能包含小写英文字母、数字、下划线和连字符，且首位必须是字母；用户密钥默认前缀为 `user_`，工作空间密钥为 `ws_`。生成的 Key 用于
 Bearer 请求头。
+
+前缀直接与随机字符串拼接，不会自动添加分隔符。优先级为创建参数 `prefix` → 对应 `apiKey.user.defaultPrefix` 或 `apiKey.workspace.defaultPrefix` → `API_KEY_PREFIX` 环境变量 → 内置默认值。修改配置只影响新创建的密钥。
 
 ## 权限值
 
@@ -108,10 +110,12 @@ AuthModule.forRoot({
   // ...other auth options
   apiKey: {
     user: {
+      defaultPrefix: "user_",
       defaultPermissions: ["user:read"],
       allowedPermissions: ["user:read", "workspace:update"],
     },
     workspace: {
+      defaultPrefix: "ws_",
       defaultPermissions: ["workspace:update"],
       allowedPermissions: ["workspace:update", "workspace:delete"],
     },
@@ -154,7 +158,7 @@ Service 仍会校验每次写入，这份列表不能替代授权检查。
 API Key 使用 Bearer 方式发送：
 
 ```http
-Authorization: Bearer sk4tR9s...
+Authorization: Bearer sk-4tR9s...
 ```
 
 不支持 `x-api-key`。模块会优先解析 Cookie Session；没有有效 Cookie Session 时，

@@ -9,6 +9,6 @@ export interface CreateApiKeyOptions {
    * `null` or an empty list creates a key without permissions.
    */
   permissions?: string[] | null;
-  /** 1–32 lowercase letters or digits, starting with a letter. Defaults to `sk`. */
+  /** 1–32 lowercase letters, digits, underscores, or hyphens, starting with a letter. Overrides the owner scope’s default prefix; separators are included verbatim. */
   prefix?: string;
 }

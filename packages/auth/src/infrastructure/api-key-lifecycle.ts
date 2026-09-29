@@ -14,9 +14,13 @@ import { RequestIdentity } from "./request-identity.js";
 /** Persists already-authorized key changes and publishes their committed identity effects. @internal */
 export class ApiKeyLifecycle {
   /** Prepares shared credential fields without choosing an owner or authorizing persistence. */
-  static prepareCreation(options: CreateApiKeyOptions, permissions: string[]) {
+  static prepareCreation(
+    options: CreateApiKeyOptions,
+    permissions: string[],
+    defaultPrefix: string,
+  ) {
     this.assertExpiration(options.expiresAt);
-    const prefix = options.prefix ?? process.env.API_KEY_PREFIX ?? "sk";
+    const prefix = options.prefix ?? defaultPrefix;
     const apiKey = generateApiKey(prefix);
     return {
       apiKey,

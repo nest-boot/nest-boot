@@ -1,6 +1,6 @@
 import type { AuthModuleApiKeyScopeOptions } from "./auth-module-api-key-scope-options.interface.js";
 
-/** Independent permission defaults and ceilings for each API-key owner type. */
+/** Independent credential and permission defaults and ceilings for each API-key owner type. */
 export interface AuthModuleApiKeyOptions<
   UserPermission extends string = string,
   WorkspacePermission extends string = string,

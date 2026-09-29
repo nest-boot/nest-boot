@@ -175,6 +175,9 @@ export class UserApiKeyService {
     const { apiKey, data } = ApiKeyLifecycle.prepareCreation(
       options,
       permissions,
+      this.authOptions.apiKey?.user?.defaultPrefix ??
+        process.env.API_KEY_PREFIX ??
+        "user_",
     );
     const entity = await this.em.transactional(
       async (em) => {
