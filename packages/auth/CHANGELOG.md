@@ -1,3 +1,7 @@
+## 8.0.7-beta.3 (2026-09-30)
+
+This was a version bump only for @nest-boot/auth to align it with other projects, there were no code changes.
+
 ## 8.0.7-beta.2 (2026-09-30)
 
 ### 🩹 Fixes
