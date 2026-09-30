@@ -25,7 +25,7 @@ export class AuthAbility extends Ability<AbilityTuple, MongoQuery> {
   }
 
   /** Throws ForbiddenException unless this ability permits the action, object, or field. */
-  throwUnlessCan(action: string, subject: Subject, field?: string): void {
+  authorize(action: string, subject: Subject, field?: string): void {
     const allowed =
       field === undefined
         ? this.can(action, subject)

@@ -41,7 +41,7 @@ describe("AuthAbility", () => {
   });
 });
 
-describe("AuthAbility.throwUnlessCan", () => {
+describe("AuthAbility.authorize", () => {
   it("checks conditions and fields directly without a request context", () => {
     const builder = new AbilityBuilder(AuthAbility);
     builder.can("update", Post, ["title"], { authorId: "user-1" });
@@ -49,19 +49,19 @@ describe("AuthAbility.throwUnlessCan", () => {
     const ownPost = Object.assign(new Post(), { authorId: "user-1" });
     const otherPost = Object.assign(new Post(), { authorId: "user-2" });
     expect(() => {
-      ability.throwUnlessCan("update", ownPost);
+      ability.authorize("update", ownPost);
     }).not.toThrow();
     expect(() => {
-      ability.throwUnlessCan("update", ownPost, "title");
+      ability.authorize("update", ownPost, "title");
     }).not.toThrow();
     expect(() => {
-      ability.throwUnlessCan("update", ownPost, "secret");
+      ability.authorize("update", ownPost, "secret");
     }).toThrow(ForbiddenException);
     expect(() => {
-      ability.throwUnlessCan("update", otherPost, "title");
+      ability.authorize("update", otherPost, "title");
     }).toThrow(ForbiddenException);
     try {
-      ability.throwUnlessCan("delete", ownPost);
+      ability.authorize("delete", ownPost);
     } catch (error) {
       expect(error).toBeInstanceOf(ForbiddenException);
       expect((error as ForbiddenException).getStatus()).toBe(403);

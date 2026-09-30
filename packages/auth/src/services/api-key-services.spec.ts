@@ -17,7 +17,7 @@ import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { RequestIdentity } from "../infrastructure/request-identity.js";
-import * as abilityHelpers from "../utils/throw-unless-can.util.js";
+import * as abilityHelpers from "../utils/authorize.util.js";
 import { UserApiKeyService } from "./user-api-key.service.js";
 import { WorkspaceApiKeyService } from "./workspace-api-key.service.js";
 
@@ -287,7 +287,7 @@ describe("API-key management services", () => {
         },
       };
       const { service, em, authorization } = createService(options);
-      vi.mocked(authorization.throwUnlessCan).mockRestore();
+      vi.mocked(authorization.authorize).mockRestore();
       const user = Object.assign(createTestUser(), { roles: ["admin"] });
       RequestIdentity.stage({ user });
       RequestIdentity.prepare(options);
@@ -321,7 +321,7 @@ describe("API-key management services", () => {
         },
       };
       const { service, authorization } = createService(options);
-      vi.mocked(authorization.throwUnlessCan).mockRestore();
+      vi.mocked(authorization.authorize).mockRestore();
       const user = Object.assign(createTestUser(), { roles: ["admin"] });
       RequestIdentity.stage({ user });
       RequestIdentity.prepare(options);
@@ -368,7 +368,7 @@ describe("API-key management services", () => {
               }
             : {};
         const { service, em, authorization } = createService(options);
-        vi.mocked(authorization.throwUnlessCan).mockRestore();
+        vi.mocked(authorization.authorize).mockRestore();
         const user = Object.assign(createTestUser(), {
           roles: [reason === "owner" ? "user" : "admin"],
           permissions: ["user-api-key:write"],
@@ -562,9 +562,7 @@ describe("API-key management services", () => {
         );
         em.findOne.mockResolvedValue(key);
         const assertion =
-          scope === "user"
-            ? authorization.throwUnlessCan
-            : authorization.throwUnlessCan;
+          scope === "user" ? authorization.authorize : authorization.authorize;
         vi.mocked(assertion).mockImplementation((_action, subject) => {
           if (subject === key) throw new ForbiddenException();
         });
@@ -670,14 +668,11 @@ describe("API-key management services", () => {
     });
     expect(find.mock.instances[0]).toHaveProperty("em", em);
     expect(authorization.assertCurrentUser).toHaveBeenCalledWith(user);
-    expect(authorization.throwUnlessCan).toHaveBeenCalledWith(
-      "read",
-      UserApiKey,
-    );
+    expect(authorization.authorize).toHaveBeenCalledWith("read", UserApiKey);
     expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
       workspace,
     );
-    expect(authorization.throwUnlessCan).toHaveBeenCalledWith(
+    expect(authorization.authorize).toHaveBeenCalledWith(
       "read",
       WorkspaceApiKey,
     );
@@ -688,10 +683,10 @@ describe("API-key management services", () => {
   it("rejects API-key pagination before creating a connection query", async () => {
     const { service, authorization } = createService();
     const find = vi.spyOn(ConnectionManager.prototype, "find");
-    vi.mocked(authorization.throwUnlessCan).mockImplementation(() => {
+    vi.mocked(authorization.authorize).mockImplementation(() => {
       throw new ForbiddenException();
     });
-    vi.mocked(authorization.throwUnlessCan).mockImplementation(() => {
+    vi.mocked(authorization.authorize).mockImplementation(() => {
       throw new ForbiddenException();
     });
     await expect(
@@ -1663,7 +1658,7 @@ describe("API-key management services", () => {
       name: "Workspace key",
     });
     expect(authorization.assertCurrentMember).toHaveBeenCalledWith(member);
-    expect(authorization.throwUnlessCan).toHaveBeenCalledWith(
+    expect(authorization.authorize).toHaveBeenCalledWith(
       "write",
       WorkspaceApiKey,
     );
@@ -1709,7 +1704,7 @@ describe("API-key management services", () => {
     const { authorization, em, service } = createService();
     const apiKey = createTestApiKey();
     em.findOne.mockResolvedValue(apiKey);
-    vi.mocked(authorization.throwUnlessCan).mockImplementation(() => {
+    vi.mocked(authorization.authorize).mockImplementation(() => {
       throw new ForbiddenException();
     });
 
@@ -1814,8 +1809,8 @@ function createService(
       .mockImplementation(vi.fn()),
     assertCurrentMember: vi.spyOn(RequestIdentity, "assertCurrentMember"),
     assertCurrentWorkspace: vi.spyOn(RequestIdentity, "assertCurrentWorkspace"),
-    throwUnlessCan: vi
-      .spyOn(abilityHelpers, "throwUnlessCan")
+    authorize: vi
+      .spyOn(abilityHelpers, "authorize")
       .mockImplementation(vi.fn()),
   };
   const userService = new UserApiKeyService(em, options);

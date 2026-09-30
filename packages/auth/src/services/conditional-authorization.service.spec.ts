@@ -376,7 +376,7 @@ async function withIdentity(
 function fixture() {
   const result = createWorkspaceServices();
   result.authorization.assertCanGrantPermissions.mockRestore();
-  result.authorization.throwUnlessCan.mockRestore();
+  result.authorization.authorize.mockRestore();
   result.authorization.can.mockRestore();
   const query = {
     select: vi.fn().mockReturnThis(),

@@ -249,7 +249,7 @@ new privileged context is introduced.
 The internal email lookup context moves to `MemberService.getUserForMembership`;
 acceptance/rejection contexts move to `InvitationService`. Ordinary
 member/invitation reads and writes keep request RLS.
-`can()` and `throwUnlessCan()` evaluate the request-scoped
+`can()` and `authorize()` evaluate the request-scoped
 `AuthAbility` directly.
 The internal `RequestIdentity` owns identity checks and publication, while
 `UserDeletionService` coordinates atomic deletion across auth-owned entities.
@@ -432,24 +432,24 @@ fields are nullable and permission sources remain separate.
 Use `can({ user: permission }, action, subject, conditions?)` or
 `can({ workspace: permission }, action, subject, conditions?)` for permission-bound
 business grants and `cannot(action, subject, conditions?)` for restrictions.
-Both support field restrictions. `@Can()`, `can()`, and `throwUnlessCan()`
+Both support field restrictions. `@Can()`, `can()`, and `authorize()`
 evaluate this same ability. The frontend queries `currentAbilityRules` and uses
 `useAbility()` for both personal and workspace pages. Callbacks are synchronous and return nothing.
 They cannot grant operations on built-in auth entities or `all`, access the raw
 builder, or replace the resulting ability. Restrictions take precedence over
 business grants. The frontend consumes the final serialized rules.
 
-The exported `can()` and `throwUnlessCan()` functions read the current request's
+The exported `can()` and `authorize()` functions read the current request's
 `AuthAbility` on every call. Identity and workspace changes take effect on the
 next check. `getAuthAbility()` returns that concrete instance when you need rules
 or the full CASL API; retrieve it again after identity changes and do not cache it
 across requests. Missing request context, identity, or prepared ability throws
 `ForbiddenException`. With a valid ability, `can()` returns a boolean and
-`throwUnlessCan()` throws when permission is denied.
+`authorize()` throws when permission is denied.
 
-`throwUnlessCan()` is also defined on `AuthAbility` itself and works on explicitly
+`authorize()` is also defined on `AuthAbility` itself and works on explicitly
 constructed instances outside a request. The standalone `assertCan` and
-`getAbility` exports are replaced by `throwUnlessCan` and `getAuthAbility` without
+`getAbility` exports are replaced by `authorize` and `getAuthAbility` without
 compatibility aliases. `can` remains available.
 
 The built-in ability denies writing the current member's `status` field, while

@@ -30,6 +30,7 @@ import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
 } from "../utils/api-key-permissions.util.js";
+import { authorize } from "../utils/authorize.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import {
   assertApiKeyPermissionCeiling,
@@ -37,7 +38,6 @@ import {
   canGrantPermissions,
 } from "../utils/permission-grants.util.js";
 import { resolveRequestPermissions } from "../utils/resolve-request-permissions.util.js";
-import { throwUnlessCan } from "../utils/throw-unless-can.util.js";
 
 /** Manages workspace-owned API keys within the current request's authorization scope. */
 @Injectable()
@@ -77,10 +77,10 @@ export class WorkspaceApiKeyService {
     workspace: Workspace,
   ): Promise<WorkspaceApiKey | null> {
     this.assertWorkspacePrincipal(workspace);
-    throwUnlessCan("read", WorkspaceApiKey);
+    authorize("read", WorkspaceApiKey);
     const apiKey = await this.getVisibleApiKey(id, workspace);
     if (apiKey) {
-      throwUnlessCan("read", apiKey);
+      authorize("read", apiKey);
     }
     return apiKey;
   }
@@ -91,7 +91,7 @@ export class WorkspaceApiKeyService {
     args: ConnectionArgsInterface<WorkspaceApiKey>,
   ): Promise<ConnectionInterface<WorkspaceApiKey>> {
     this.assertWorkspacePrincipal(workspace);
-    throwUnlessCan("read", WorkspaceApiKey);
+    authorize("read", WorkspaceApiKey);
     const where = this.getOwnedListFilter(workspace);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
@@ -101,7 +101,7 @@ export class WorkspaceApiKeyService {
     });
     // Reject the whole page rather than silently changing cursor pagination.
     for (const { node } of connection.edges) {
-      throwUnlessCan("read", node);
+      authorize("read", node);
     }
     return connection;
   }
@@ -112,7 +112,7 @@ export class WorkspaceApiKeyService {
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<WorkspaceApiKey>> {
     this.assertWorkspacePrincipal(workspace);
-    throwUnlessCan("write", WorkspaceApiKey);
+    authorize("write", WorkspaceApiKey);
     const permissions = normalizeApiKeyPermissions(
       this.authOptions,
       "workspace",
@@ -127,9 +127,9 @@ export class WorkspaceApiKeyService {
     id: string,
     input: UpdateApiKeyOptions,
   ): Promise<WorkspaceApiKey> {
-    throwUnlessCan("write", WorkspaceApiKey);
+    authorize("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    throwUnlessCan("write", apiKey);
+    authorize("write", apiKey);
     const permissions =
       input.permissions === undefined
         ? undefined
@@ -164,9 +164,9 @@ export class WorkspaceApiKeyService {
 
   /** Deletes a key owned by the authenticated workspace. */
   async deleteWorkspaceApiKey(id: string): Promise<WorkspaceApiKey> {
-    throwUnlessCan("write", WorkspaceApiKey);
+    authorize("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    throwUnlessCan("write", apiKey);
+    authorize("write", apiKey);
     return await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey);
   }
 
@@ -188,7 +188,7 @@ export class WorkspaceApiKeyService {
           ...data,
           workspace,
         });
-        throwUnlessCan("write", entity);
+        authorize("write", entity);
         await em.persist(entity).flush();
         return entity;
       },

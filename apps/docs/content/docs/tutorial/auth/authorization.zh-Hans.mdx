@@ -78,11 +78,11 @@ AuthModule.forRoot({
 也不能只用路由层的类级判断代替对象检查：
 
 ```typescript
-import { throwUnlessCan } from "@nest-boot/auth";
+import { authorize } from "@nest-boot/auth";
 
 async archiveReport(id: string): Promise<Report> {
   const report = await this.loadReport(id);
-  throwUnlessCan("archive", report);
+  authorize("archive", report);
   return await this.repository.archive(report);
 }
 ```
@@ -390,12 +390,12 @@ Service 权限划分与 Better Auth 的 admin、organization 访问控制保持�
 - 工作区 API Key 管理使用 `workspace-api-key:read/write`；
 - 当前用户认证、会话管理、接受邀请和退出工作区使用已认证身份与资源归属校验。
 
-导出的 `can()` 和 `throwUnlessCan()` 每次调用都会读取当前请求的 `AuthAbility`，
+导出的 `can()` 和 `authorize()` 每次调用都会读取当前请求的 `AuthAbility`，
 无需注入授权服务。全局 `AuthGuard` 在受保护操作前准备 Ability，身份或工作区变化
 会在下一次权限检查时生效。
 
 请求上下文、身份或已准备的 Ability 缺失时，抛出 `ForbiddenException`。
-存在有效 Ability 时，`can()` 返回布尔值；`throwUnlessCan()` 在没有权限时抛出异常。
+存在有效 Ability 时，`can()` 返回布尔值；`authorize()` 在没有权限时抛出异常。
 `getAuthAbility()` 返回具体实例，用于读取规则或使用完整 CASL API。
 身份切换后应重新获取，不要跨请求缓存该实例。
 
@@ -411,18 +411,18 @@ Ability 构建与可授予权限判断共用当前请求身份的一份不可变
 请求准备完成后，底层代码也使用统一入口：
 
 ```typescript
-import { can, getAuthAbility, throwUnlessCan } from "@nest-boot/auth";
+import { can, getAuthAbility, authorize } from "@nest-boot/auth";
 
-throwUnlessCan("update", post);
+authorize("update", post);
 const canRead = can("read", post);
 const rules = getAuthAbility().rules;
 ```
 
-`throwUnlessCan()` 直接定义在 `AuthAbility` 类上，操作被拒绝时抛出 NestJS 的
+`authorize()` 直接定义在 `AuthAbility` 类上，操作被拒绝时抛出 NestJS 的
 `ForbiddenException`。显式创建的 `AuthAbility` 实例也可以在请求上下文之外调用该方法。
 `AuthAbility` 仍然是请求上下文 token。
 
-独立的 `assertCan` 和 `getAbility` 导出分别替换为 `throwUnlessCan` 和
+独立的 `assertCan` 和 `getAbility` 导出分别替换为 `authorize` 和
 `getAuthAbility`，不保留兼容别名。`can` 继续保留。
 
 示例前端的个人页与工作区页统一使用 `useAbility()`。Provider 消费当前身份的

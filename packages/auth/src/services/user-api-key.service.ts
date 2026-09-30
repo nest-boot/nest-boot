@@ -28,6 +28,7 @@ import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
 } from "../utils/api-key-permissions.util.js";
+import { authorize } from "../utils/authorize.util.js";
 import {
   assertApiKeyPermissionCeiling,
   assertPermissionCeiling,
@@ -36,7 +37,6 @@ import {
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { resolveUserPermissions } from "../utils/resolve-effective-permissions.util.js";
 import { resolveRequestPermissions } from "../utils/resolve-request-permissions.util.js";
-import { throwUnlessCan } from "../utils/throw-unless-can.util.js";
 
 /** Manages user-owned API keys within the current request's authorization scope. */
 @Injectable()
@@ -77,10 +77,10 @@ export class UserApiKeyService {
   /** Returns a user-owned API key when it belongs to the current user. */
   async getUserApiKey(id: string, user: User): Promise<UserApiKey | null> {
     RequestIdentity.assertCurrentUser(user);
-    throwUnlessCan("read", UserApiKey);
+    authorize("read", UserApiKey);
     const apiKey = await this.getVisibleApiKey(id, user);
     if (apiKey) {
-      throwUnlessCan("read", apiKey);
+      authorize("read", apiKey);
     }
     return apiKey;
   }
@@ -91,7 +91,7 @@ export class UserApiKeyService {
     args: ConnectionArgsInterface<UserApiKey>,
   ): Promise<ConnectionInterface<UserApiKey>> {
     RequestIdentity.assertCurrentUser(user);
-    throwUnlessCan("read", UserApiKey);
+    authorize("read", UserApiKey);
     const where = this.getOwnedListFilter(user);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
@@ -101,7 +101,7 @@ export class UserApiKeyService {
     });
     // Reject the whole page rather than silently changing cursor pagination.
     for (const { node } of connection.edges) {
-      throwUnlessCan("read", node);
+      authorize("read", node);
     }
     return connection;
   }
@@ -112,7 +112,7 @@ export class UserApiKeyService {
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<UserApiKey>> {
     RequestIdentity.assertCurrentUser(user);
-    throwUnlessCan("write", UserApiKey);
+    authorize("write", UserApiKey);
     const permissions = normalizeApiKeyPermissions(
       this.authOptions,
       "user",
@@ -127,9 +127,9 @@ export class UserApiKeyService {
     id: string,
     input: UpdateApiKeyOptions,
   ): Promise<UserApiKey> {
-    throwUnlessCan("write", UserApiKey);
+    authorize("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    throwUnlessCan("write", apiKey);
+    authorize("write", apiKey);
     const user = this.unwrapUser(apiKey);
     const permissions =
       input.permissions === undefined
@@ -161,9 +161,9 @@ export class UserApiKeyService {
 
   /** Deletes an API key owned by the current user. */
   async deleteUserApiKey(id: string): Promise<UserApiKey> {
-    throwUnlessCan("write", UserApiKey);
+    authorize("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    throwUnlessCan("write", apiKey);
+    authorize("write", apiKey);
     return await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey);
   }
 
@@ -185,7 +185,7 @@ export class UserApiKeyService {
           ...data,
           user,
         });
-        throwUnlessCan("write", entity);
+        authorize("write", entity);
         await em.persist(entity).flush();
         return entity;
       },

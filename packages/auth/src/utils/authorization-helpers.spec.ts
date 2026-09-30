@@ -4,9 +4,9 @@ import { ForbiddenException } from "@nestjs/common";
 import { AuthAbility } from "../auth.ability.js";
 import { User } from "../entities/user.entity.js";
 import { RequestIdentity } from "../infrastructure/request-identity.js";
+import { authorize } from "./authorize.util.js";
 import { can } from "./can.util.js";
 import { getAuthAbility } from "./get-auth-ability.util.js";
-import { throwUnlessCan } from "./throw-unless-can.util.js";
 
 class TestSubject {}
 
@@ -17,7 +17,7 @@ describe("request ability helpers", () => {
       const check = () => {
         expect(() => can("read", TestSubject)).toThrow(ForbiddenException);
         expect(() => {
-          throwUnlessCan("read", TestSubject);
+          authorize("read", TestSubject);
         }).toThrow(ForbiddenException);
         expect(() => getAuthAbility().rules).toThrow(ForbiddenException);
       };
@@ -50,10 +50,10 @@ describe("request ability helpers", () => {
       expect(can("update", new TestSubject(), "secret")).toBe(false);
       expect(can("delete", TestSubject)).toBe(false);
       expect(() => {
-        throwUnlessCan("update", new TestSubject(), "name");
+        authorize("update", new TestSubject(), "name");
       }).not.toThrow();
       expect(() => {
-        throwUnlessCan("update", new TestSubject(), "secret");
+        authorize("update", new TestSubject(), "secret");
       }).toThrow(ForbiddenException);
     });
   });
@@ -83,7 +83,7 @@ describe("request identity changes", () => {
           false,
         );
         expect(() => {
-          throwUnlessCan(action, TestSubject);
+          authorize(action, TestSubject);
         }).not.toThrow();
       });
     await Promise.all([
@@ -92,7 +92,7 @@ describe("request identity changes", () => {
     ]);
     expect(() => can("read", TestSubject)).toThrow(ForbiddenException);
     expect(() => {
-      throwUnlessCan("read", TestSubject);
+      authorize("read", TestSubject);
     }).toThrow(ForbiddenException);
   });
 
@@ -111,10 +111,10 @@ describe("request identity changes", () => {
       RequestContext.set(AuthAbility, replacement);
       expect(can("read", TestSubject)).toBe(false);
       expect(() => {
-        throwUnlessCan("read", TestSubject);
+        authorize("read", TestSubject);
       }).toThrow(ForbiddenException);
       expect(() => {
-        throwUnlessCan("write", TestSubject);
+        authorize("write", TestSubject);
       }).not.toThrow();
       expect(getAuthAbility().rules).toBe(replacement.rules);
       RequestIdentity.stage({ user: null, apiKey: null });

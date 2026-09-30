@@ -81,7 +81,7 @@ describe("InvitationService", () => {
   it.each([
     "assertCurrentWorkspace",
     "assertCurrentUser",
-    "throwUnlessCan",
+    "authorize",
   ] as const)(
     "authorizes the isolated login lookup with %s before reading users",
     async (assertion) => {
@@ -169,7 +169,7 @@ describe("InvitationService", () => {
     });
     expect(authorization.can).not.toHaveBeenCalled();
     expect(authorization.assertCurrentWorkspace).not.toHaveBeenCalled();
-    expect(authorization.throwUnlessCan).not.toHaveBeenCalledWith(
+    expect(authorization.authorize).not.toHaveBeenCalledWith(
       "read",
       Invitation,
     );
@@ -194,7 +194,7 @@ describe("InvitationService", () => {
       inviter: { id: "private-inviter" },
     });
     em.findOne.mockResolvedValue(invitation);
-    vi.mocked(authorization.throwUnlessCan).mockImplementation(
+    vi.mocked(authorization.authorize).mockImplementation(
       (_action, subject) => {
         if (subject === User) throw new ForbiddenException();
       },
@@ -228,10 +228,7 @@ describe("InvitationService", () => {
     expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
       invitation.workspace,
     );
-    expect(authorization.throwUnlessCan).toHaveBeenCalledWith(
-      "read",
-      invitation,
-    );
+    expect(authorization.authorize).toHaveBeenCalledWith("read", invitation);
     vi.mocked(authorization.assertCurrentWorkspace).mockImplementation(() => {
       throw new ForbiddenException();
     });

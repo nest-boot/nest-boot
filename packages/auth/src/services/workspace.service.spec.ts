@@ -97,7 +97,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
     const { workspaceService, em, authorization } = createWorkspaceServices();
     const workspace = createTestWorkspace();
     em.findOne.mockResolvedValue(workspace);
-    vi.mocked(authorization.throwUnlessCan).mockImplementation((action) => {
+    vi.mocked(authorization.authorize).mockImplementation((action) => {
       if (action === "read") throw new ForbiddenException();
     });
 
@@ -109,12 +109,12 @@ describe("WorkspaceService and cross-domain coordination", () => {
       { id: workspace.id },
       { refresh: true },
     );
-    expect(authorization.throwUnlessCan).toHaveBeenNthCalledWith(
+    expect(authorization.authorize).toHaveBeenNthCalledWith(
       1,
       "update",
       Workspace,
     );
-    expect(authorization.throwUnlessCan).toHaveBeenNthCalledWith(
+    expect(authorization.authorize).toHaveBeenNthCalledWith(
       2,
       "update",
       workspace,
@@ -122,7 +122,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
     expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
       workspace,
     );
-    expect(authorization.throwUnlessCan).not.toHaveBeenCalledWith(
+    expect(authorization.authorize).not.toHaveBeenCalledWith(
       "read",
       expect.anything(),
     );
@@ -136,7 +136,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
       const { workspaceService, em, authorization } = createWorkspaceServices();
       const workspace = createTestWorkspace();
       em.findOne.mockResolvedValue(failure === "missing" ? null : workspace);
-      vi.mocked(authorization.throwUnlessCan).mockImplementation(
+      vi.mocked(authorization.authorize).mockImplementation(
         (_action, subject) => {
           if (
             (failure === "type" && subject === Workspace) ||
@@ -194,7 +194,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
       expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
         workspace,
       );
-      expect(authorization.throwUnlessCan).toHaveBeenCalledWith("read", Member);
+      expect(authorization.authorize).toHaveBeenCalledWith("read", Member);
       find.mockClear();
       vi.mocked(authorization.assertUserSession).mockImplementation(() => {
         throw new ForbiddenException();
@@ -305,7 +305,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
 
   it("fails before persistence when a service-level permission is denied", async () => {
     const { authorization, em, workspaceService } = createWorkspaceServices();
-    vi.mocked(authorization.throwUnlessCan).mockImplementation(() => {
+    vi.mocked(authorization.authorize).mockImplementation(() => {
       throw new ForbiddenException();
     });
 
@@ -318,7 +318,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
     expect(em.flush).not.toHaveBeenCalled();
   });
 
-  it.each(["assertCurrentUser", "throwUnlessCan"] as const)(
+  it.each(["assertCurrentUser", "authorize"] as const)(
     "checks %s before starting unrestricted workspace creation",
     async (check) => {
       const { authorization, em, workspaceService } = createWorkspaceServices();
@@ -410,7 +410,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
     await expect(workspaceService.deleteWorkspace(workspace)).resolves.toBe(
       workspace,
     );
-    expect(authorization.throwUnlessCan).toHaveBeenLastCalledWith(
+    expect(authorization.authorize).toHaveBeenLastCalledWith(
       "delete",
       workspace,
     );
@@ -438,7 +438,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
   it("rejects workspace deletion without delete ability", async () => {
     const { em, workspaceService, authorization } = createWorkspaceServices();
     const workspace = createTestWorkspace();
-    vi.mocked(authorization.throwUnlessCan).mockImplementation(() => {
+    vi.mocked(authorization.authorize).mockImplementation(() => {
       throw new ForbiddenException();
     });
 
@@ -462,7 +462,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
 
   it("rechecks delete ability after locking and refreshing the workspace", async () => {
     const { em, workspaceService, authorization } = createWorkspaceServices();
-    vi.mocked(authorization.throwUnlessCan)
+    vi.mocked(authorization.authorize)
       .mockImplementationOnce(() => undefined)
       .mockImplementationOnce(() => {
         throw new ForbiddenException();
