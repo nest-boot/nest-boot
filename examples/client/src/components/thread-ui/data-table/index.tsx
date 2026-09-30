@@ -37,6 +37,7 @@ import { Empty } from "@/components/thread-ui/empty";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -133,7 +134,7 @@ const features = tableFeatures({
 });
 
 type InternalColumn<TData extends object> = ColumnDef<typeof features, TData> &
-  Pick<DataTableColumnProps<TData>, "pinned" | "align">;
+  Pick<DataTableColumnProps<TData>, "pinned" | "align" | "hidden">;
 
 function publicRow<TData extends object>(
   row: Row<typeof features, TData>,
@@ -229,6 +230,7 @@ export function DataTable<TData extends object, TValue = unknown>({
           minSize: column.minSize,
           maxSize: column.maxSize,
           pinned: column.pinned,
+          hidden: column.hidden,
           align: getColumnAlign(column),
           header: () =>
             typeof column.header === "function" ? (
@@ -380,6 +382,9 @@ export function DataTable<TData extends object, TValue = unknown>({
     data,
     columns: tableColumns,
     state: {
+      columnVisibility: Object.fromEntries(
+        tableColumns.map((column) => [column.id!, !column.hidden]),
+      ),
       columnPinning: {
         start: tableColumns
           .filter((column) => column.pinned === "left")
@@ -421,8 +426,8 @@ export function DataTable<TData extends object, TValue = unknown>({
   }, []);
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="relative overflow-auto rounded-md">
+    <div className="flex min-w-0 flex-col gap-2">
+      <div className="relative min-w-0 overflow-hidden rounded-md">
         {selectedRowCount > 0 && (
           <div className="bg-card absolute top-0 left-0 z-100 flex h-10 w-full items-center gap-2 px-2">
             <Checkbox
@@ -485,96 +490,99 @@ export function DataTable<TData extends object, TValue = unknown>({
           </div>
         )}
 
-        <Table className="bg-card table-fixed">
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow
-                key={headerGroup.id}
-                className="group bg-card hover:bg-muted"
-              >
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    style={
-                      {
-                        "--column-width": `${header.column.getSize()}px`,
-                        "--column-offset": `${header.column.getIsPinned() === "end" ? header.column.getAfter("end") : header.column.getStart("start")}px`,
-                      } as CSSProperties
-                    }
-                    className={cn(
-                      "bg-card group-hover:bg-muted whitespace-normal",
-                      getColumnClassNames<TData>(header.column),
-                    )}
-                  >
-                    {header.isPlaceholder ? null : (
-                      <TableContent
-                        context={header.getContext()}
-                        render={header.column.columnDef.header}
-                      />
-                    )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
+        <ScrollArea className="w-full [&_[data-slot=table-container]]:overflow-visible">
+          <Table className="bg-card table-fixed">
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() ? "selected" : undefined}
-                  className={cn(
-                    "group bg-card hover:bg-muted",
-                    onRowClick && "cursor-pointer",
-                  )}
-                  {...(onRowClick
-                    ? { onClick: () => onRowClick?.(publicRow(row)) }
-                    : {})}
+                  key={headerGroup.id}
+                  className="group bg-card hover:bg-muted"
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
                       style={
                         {
-                          "--column-width": `${cell.column.getSize()}px`,
-                          "--column-offset": `${cell.column.getIsPinned() === "end" ? cell.column.getAfter("end") : cell.column.getStart("start")}px`,
+                          "--column-width": `${header.column.getSize()}px`,
+                          "--column-offset": `${header.column.getIsPinned() === "end" ? header.column.getAfter("end") : header.column.getStart("start")}px`,
                         } as CSSProperties
                       }
                       className={cn(
                         "bg-card group-hover:bg-muted whitespace-normal",
-                        getColumnClassNames<TData>(cell.column),
+                        getColumnClassNames<TData>(header.column),
                       )}
-                      onClick={
-                        cell.column.id === "$actions"
-                          ? (event) => event.stopPropagation()
-                          : undefined
-                      }
                     >
-                      <TableContent
-                        context={cell.getContext()}
-                        render={cell.column.columnDef.cell}
-                      />
-                    </TableCell>
+                      {header.isPlaceholder ? null : (
+                        <TableContent
+                          context={header.getContext()}
+                          render={header.column.columnDef.header}
+                        />
+                      )}
+                    </TableHead>
                   ))}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  className="bg-card h-24 text-center"
-                  colSpan={tableColumns.length}
-                >
-                  {empty ?? (
-                    <Empty
-                      description={t("dataTable.emptyDescription")}
-                      title={t("dataTable.emptyTitle")}
-                    />
-                  )}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() ? "selected" : undefined}
+                    className={cn(
+                      "group bg-card hover:bg-muted",
+                      onRowClick && "cursor-pointer",
+                    )}
+                    {...(onRowClick
+                      ? { onClick: () => onRowClick?.(publicRow(row)) }
+                      : {})}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        style={
+                          {
+                            "--column-width": `${cell.column.getSize()}px`,
+                            "--column-offset": `${cell.column.getIsPinned() === "end" ? cell.column.getAfter("end") : cell.column.getStart("start")}px`,
+                          } as CSSProperties
+                        }
+                        className={cn(
+                          "bg-card group-hover:bg-muted whitespace-normal",
+                          getColumnClassNames<TData>(cell.column),
+                        )}
+                        onClick={
+                          cell.column.id === "$actions"
+                            ? (event) => event.stopPropagation()
+                            : undefined
+                        }
+                      >
+                        <TableContent
+                          context={cell.getContext()}
+                          render={cell.column.columnDef.cell}
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    className="bg-card h-24 text-center"
+                    colSpan={Math.max(1, table.getVisibleLeafColumns().length)}
+                  >
+                    {empty ?? (
+                      <Empty
+                        description={t("dataTable.emptyDescription")}
+                        title={t("dataTable.emptyTitle")}
+                      />
+                    )}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+          <ScrollBar className="z-10" orientation="horizontal" />
+        </ScrollArea>
       </div>
 
       {pagination && (

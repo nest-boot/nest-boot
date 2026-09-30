@@ -119,6 +119,9 @@ and sidebar, and returns to the workspace list with its saved search. Successful
 creation opens the new workspace Overview.
 
 API key lists use `DataFilter` and `DataTable`; rows and name links open details.
+Wide tables scroll horizontally inside DataTable's `ScrollArea`. Its scrollbar
+stays above pinned columns, while pagination and bulk actions stay outside the
+scrolling content. Do not add another overflow wrapper around the table.
 Define DataTable columns with `createDataTableColumnHelper<Row>()`,
 `helper.column(id, options)`, and `helper.columns([...])`. Without an explicit
 source, the column ID is a checked field path. Use `field` for a different path,
