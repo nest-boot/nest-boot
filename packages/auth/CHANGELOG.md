@@ -1,3 +1,18 @@
+## 8.0.7-beta.4 (2026-09-30)
+
+### 🩹 Fixes
+
+- **auth:** honor password policy and selected connection counts ([#358](https://github.com/nest-boot/nest-boot/pull/358))
+- ⚠️  **auth:** accurately type credential-free query results ([#382](https://github.com/nest-boot/nest-boot/pull/382))
+
+### ⚠️  Breaking Changes
+
+- **auth:** accurately type credential-free query results  ([#382](https://github.com/nest-boot/nest-boot/pull/382))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.7-beta.3 (2026-09-30)
 
 This was a version bump only for @nest-boot/auth to align it with other projects, there were no code changes.
