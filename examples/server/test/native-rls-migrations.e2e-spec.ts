@@ -36,7 +36,7 @@ import {
 } from '@nest-boot/auth';
 import { loadConfigFromEnv } from '@nest-boot/mikro-orm';
 import { REQUEST, RequestContext } from '@nest-boot/request-context';
-import type { FactoryProvider } from '@nestjs/common';
+import { type FactoryProvider, ForbiddenException } from '@nestjs/common';
 import type { Request } from 'express';
 
 import { mikroOrmAdapter } from '../../../packages/auth/dist/adapters/mikro-orm-adapter.js';
@@ -226,7 +226,13 @@ describe('example native RLS migrations with PGlite', () => {
             expect(await admin.count(Session, { user })).toBe(revoke ? 0 : 1);
             expect(RequestContext.get(Session)).toBe(revoke ? null : session);
             expect(RequestContext.get(User)).toBe(revoke ? null : user);
-            expect(can('create', Workspace)).toBe(!revoke);
+            if (revoke) {
+              expect(() => can('create', Workspace)).toThrow(
+                ForbiddenException,
+              );
+            } else {
+              expect(can('create', Workspace)).toBe(true);
+            }
             expect(em.getSessionContext()?.role).toBe(
               revoke ? 'anonymous' : 'authenticated',
             );
@@ -352,7 +358,13 @@ describe('example native RLS migrations with PGlite', () => {
             );
             expect(RequestContext.get(User)).toBe(deleted ? null : user);
             expect(RequestContext.get(Session)).toBe(deleted ? null : session);
-            expect(can('create', Workspace)).toBe(!deleted);
+            if (deleted) {
+              expect(() => can('create', Workspace)).toThrow(
+                ForbiddenException,
+              );
+            } else {
+              expect(can('create', Workspace)).toBe(true);
+            }
             expect(em.getSessionContext()?.role).toBe(
               deleted ? 'anonymous' : 'authenticated',
             );

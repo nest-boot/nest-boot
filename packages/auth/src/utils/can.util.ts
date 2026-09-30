@@ -1,11 +1,10 @@
 import type { Subject } from "@casl/ability";
 
-import { readRequestAbility } from "./get-ability.util.js";
+import { getAuthAbility } from "./get-auth-ability.util.js";
 
-/** Checks an action, object, or field against the current request ability. */
+/** Checks the current request's ability on every call. */
 export function can(action: string, subject: Subject, field?: string): boolean {
-  const ability = readRequestAbility();
-  if (!ability) return false;
+  const ability = getAuthAbility();
   return field === undefined
     ? ability.can(action, subject)
     : ability.can(action, subject, field);

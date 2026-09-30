@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
+import { ForbiddenException } from "@nestjs/common";
 
-import { AuthAbility } from "../abilities/auth.ability.js";
+import { AuthAbility } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
@@ -204,7 +205,11 @@ describe("RequestIdentity", () => {
         expect(RequestContext.get(API_KEY)).toBe(
           Key === UserApiKey ? key : null,
         );
-        expect(can("read", User)).toBe(Key === UserApiKey);
+        if (Key === UserApiKey) {
+          expect(can("read", User)).toBe(true);
+        } else {
+          expect(() => can("read", User)).toThrow(ForbiddenException);
+        }
       });
     },
   );

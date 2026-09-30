@@ -1,6 +1,6 @@
 import { RequestContext } from "@nest-boot/request-context";
 
-import type { AuthAbility } from "../abilities/auth.ability.js";
+import type { AuthAbility } from "../auth.ability.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";

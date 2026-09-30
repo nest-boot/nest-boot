@@ -6,7 +6,7 @@ import {
   type SubjectType,
 } from "@casl/ability";
 
-import { AuthAbility } from "../abilities/auth.ability.js";
+import { AuthAbility } from "../auth.ability.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";

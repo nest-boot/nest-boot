@@ -22,7 +22,7 @@ import {
 import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
 import { can } from "./utils/can.util.js";
-import { readRequestAbility } from "./utils/get-ability.util.js";
+import { getAuthAbility } from "./utils/get-auth-ability.util.js";
 import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
 
 /** Guard that enforces authentication and evaluates route permissions. */
@@ -94,7 +94,8 @@ export class AuthGuard implements CanActivate {
     );
     if (!metadata?.length) return true;
     for (const requirement of metadata) {
-      if (!readRequestAbility()) return false;
+      // Require a prepared identity before resolving a protected subject factory.
+      getAuthAbility();
       const subject = await this.resolveSubject(requirement, context);
       if (!can(requirement.action, subject)) return false;
     }

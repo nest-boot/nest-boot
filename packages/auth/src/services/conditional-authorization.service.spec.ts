@@ -4,7 +4,7 @@ import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
 import { createWorkspaceServices } from "../../test/workspace-service.fixture.js";
-import { AuthAbility } from "../abilities/auth.ability.js";
+import { AuthAbility } from "../auth.ability.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { Session } from "../entities/session.entity.js";
@@ -376,7 +376,7 @@ async function withIdentity(
 function fixture() {
   const result = createWorkspaceServices();
   result.authorization.assertCanGrantPermissions.mockRestore();
-  result.authorization.assertCan.mockRestore();
+  result.authorization.authorize.mockRestore();
   result.authorization.can.mockRestore();
   const query = {
     select: vi.fn().mockReturnThis(),

@@ -23,7 +23,7 @@ import { AuthSignInSocialResultType } from "../objects/auth-sign-in-social-resul
 import { AuthSocialProviderType } from "../objects/auth-social-provider.object.js";
 import { SignUpPayload } from "../objects/sign-up-payload.object.js";
 import { AuthService } from "../services/auth.service.js";
-import { getAbility } from "../utils/get-ability.util.js";
+import { getAuthAbility } from "../utils/get-auth-ability.util.js";
 import { serializeAbilityRules } from "../utils/serialize-ability-rules.util.js";
 
 /** GraphQL transport for application authentication operations. */
@@ -51,7 +51,7 @@ export class AuthResolver {
   /** Returns the unified effective CASL rules for the current request identity. */
   @Query(() => [AuthAbilityRuleType])
   currentAbilityRules(): AuthAbilityRuleType[] {
-    return toAbilityRuleTypes(serializeAbilityRules(getAbility()));
+    return toAbilityRuleTypes(serializeAbilityRules(getAuthAbility()));
   }
 
   /** Registers a user with an email address and password. */

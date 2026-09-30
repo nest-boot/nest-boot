@@ -6,7 +6,9 @@ import {
   type MongoQuery,
   mongoQueryMatcher,
   type RawRuleFrom,
+  type Subject,
 } from "@casl/ability";
+import { ForbiddenException } from "@nestjs/common";
 
 /** CASL ability for the authenticated request and its selected workspace. */
 export class AuthAbility extends Ability<AbilityTuple, MongoQuery> {
@@ -20,5 +22,18 @@ export class AuthAbility extends Ability<AbilityTuple, MongoQuery> {
       fieldMatcher: fieldPatternMatcher,
       ...options,
     });
+  }
+
+  /** Throws ForbiddenException unless this ability permits the action, object, or field. */
+  authorize(action: string, subject: Subject, field?: string): void {
+    const allowed =
+      field === undefined
+        ? this.can(action, subject)
+        : this.can(action, subject, field);
+    if (!allowed) {
+      throw new ForbiddenException(
+        `You are not allowed to ${action} this resource`,
+      );
+    }
   }
 }

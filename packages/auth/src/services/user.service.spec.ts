@@ -13,7 +13,7 @@ import { expectTypeOf, type Mocked } from "vitest";
 
 import { mockAuthorization } from "../../test/mock-authorization.js";
 import { mockRlsContext } from "../../test/mock-rls-context.js";
-import { AuthAbility } from "../abilities/auth.ability.js";
+import { AuthAbility } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
@@ -364,10 +364,10 @@ describe("UserService", () => {
       { id: user.id },
       { refresh: true },
     );
-    expect(authorization.assertCan).not.toHaveBeenCalledWith("read", User);
+    expect(authorization.authorize).not.toHaveBeenCalledWith("read", User);
     expect(em.fork).not.toHaveBeenCalled();
     expect(em.getSessionContext()).toEqual(session);
-    vi.mocked(authorization.assertCan).mockImplementation(() => {
+    vi.mocked(authorization.authorize).mockImplementation(() => {
       throw new ForbiddenException();
     });
     em.findOne.mockClear();
@@ -431,12 +431,12 @@ describe("UserService", () => {
     try {
       const args = { first: 10 };
       await expect(service.getUserConnection(args)).resolves.toBe(connection);
-      expect(authorization.assertCan).toHaveBeenCalledWith("read", User);
+      expect(authorization.authorize).toHaveBeenCalledWith("read", User);
       expect(find).toHaveBeenCalledExactlyOnceWith(UserConnection, args);
       expect(em.fork).not.toHaveBeenCalled();
       expect(em.getSessionContext()).toEqual(context);
       find.mockClear();
-      vi.mocked(authorization.assertCan).mockImplementation(() => {
+      vi.mocked(authorization.authorize).mockImplementation(() => {
         throw new ForbiddenException();
       });
       await expect(service.getUserConnection(args)).rejects.toThrow(
@@ -454,7 +454,7 @@ describe("UserService", () => {
       for (const denyInstance of [false, true]) {
         const { service, authorization, em } = createService();
         const action = `set-${field}`;
-        vi.mocked(authorization.assertCan).mockImplementation(
+        vi.mocked(authorization.authorize).mockImplementation(
           (operation, target) => {
             if (
               operation === action &&
@@ -474,8 +474,8 @@ describe("UserService", () => {
               : { permissions: ["user:read"] }),
           }),
         ).rejects.toThrow(ForbiddenException);
-        expect(authorization.assertCan).toHaveBeenCalledWith(action, User);
-        expect(authorization.assertCan).not.toHaveBeenCalledWith(
+        expect(authorization.authorize).toHaveBeenCalledWith(action, User);
+        expect(authorization.authorize).not.toHaveBeenCalledWith(
           field === "roles" ? "set-permissions" : "set-roles",
           User,
         );
@@ -598,8 +598,8 @@ describe("UserService", () => {
     expect(em.findOne).toHaveBeenCalledWith(User, { id: "user-1" });
     expect(em.assign).toHaveBeenCalledWith(user, { name: "Renamed" });
     expect(user.permissions).toEqual(["user:read"]);
-    expect(authorization.assertCan).toHaveBeenCalledWith("read", User);
-    expect(authorization.assertCan).toHaveBeenCalledWith("update", user);
+    expect(authorization.authorize).toHaveBeenCalledWith("read", User);
+    expect(authorization.authorize).toHaveBeenCalledWith("update", user);
     await expect(
       service.updateUser(user, { roles: ["admin"] } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -615,7 +615,7 @@ describe("UserService", () => {
       email: "new@example.com",
     });
     expect(user.email).toBe("new@example.com");
-    expect(authorization.assertCan).toHaveBeenCalledWith("set-email", user);
+    expect(authorization.authorize).toHaveBeenCalledWith("set-email", user);
   });
 
   it("ignores omitted DTO fields without requiring email permission or clearing profile values", async () => {
@@ -636,7 +636,7 @@ describe("UserService", () => {
     expect(user.email).toBe("original@example.com");
     expect(user.emailVerified).toBe(true);
     expect(user.image).toBe("avatar.png");
-    expect(authorization.assertCan).not.toHaveBeenCalledWith("set-email", user);
+    expect(authorization.authorize).not.toHaveBeenCalledWith("set-email", user);
     await service.updateUser(user, { name: undefined, image: null });
     expect(em.assign).toHaveBeenLastCalledWith(user, { image: null });
     expect(user.name).toBe("Renamed");
@@ -661,7 +661,7 @@ describe("UserService", () => {
     const user = Object.assign(new User(), { emailVerified: false });
 
     await service.updateUser(user, { emailVerified: true });
-    expect(authorization.assertCan).toHaveBeenCalledWith("set-email", user);
+    expect(authorization.authorize).toHaveBeenCalledWith("set-email", user);
   });
 
   it("stores configured permission casing and compares grants exactly", async () => {
@@ -792,7 +792,7 @@ describe("UserService", () => {
         grantable: permission === "user:read",
       })),
     );
-    vi.mocked(authorization.assertCan).mockImplementation(() => {
+    vi.mocked(authorization.authorize).mockImplementation(() => {
       throw new ForbiddenException();
     });
     expect(() => service.listRoles()).toThrow(ForbiddenException);
@@ -822,14 +822,14 @@ describe("UserService", () => {
     em.findOne.mockResolvedValue(user);
     await service.banUser(user.id);
     await service.unbanUser(user.id);
-    expect(authorization.assertCan).toHaveBeenCalledWith("ban", User);
-    expect(authorization.assertCan).not.toHaveBeenCalledWith("read", User);
+    expect(authorization.authorize).toHaveBeenCalledWith("ban", User);
+    expect(authorization.authorize).not.toHaveBeenCalledWith("read", User);
     expect(em.findOne).toHaveBeenCalledWith(
       User,
       { id: user.id },
       { refresh: true },
     );
-    vi.mocked(authorization.assertCan).mockImplementation(() => {
+    vi.mocked(authorization.authorize).mockImplementation(() => {
       throw new ForbiddenException();
     });
     em.findOne.mockClear();
@@ -905,7 +905,7 @@ describe("UserService", () => {
     const administrator = Object.assign(new User(), {
       roles: ["admin"],
     });
-    vi.mocked(authorization.assertCan).mockImplementation((action) => {
+    vi.mocked(authorization.authorize).mockImplementation((action) => {
       if (action === "impersonate-admin") {
         throw new ForbiddenException();
       }
@@ -914,12 +914,12 @@ describe("UserService", () => {
     await expect(
       service.impersonateUser(administrator, target),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(authorization.assertCan).toHaveBeenNthCalledWith(
+    expect(authorization.authorize).toHaveBeenNthCalledWith(
       1,
       "impersonate",
       target,
     );
-    expect(authorization.assertCan).toHaveBeenNthCalledWith(
+    expect(authorization.authorize).toHaveBeenNthCalledWith(
       2,
       "impersonate-admin",
       target,

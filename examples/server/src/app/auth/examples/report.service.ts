@@ -1,4 +1,4 @@
-import { assertCan } from '@nest-boot/auth';
+import { authorize } from '@nest-boot/auth';
 import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { Report } from './report.js';
@@ -11,13 +11,13 @@ export class ReportService {
 
   async getReport(id: string): Promise<Report> {
     const report = await this.loadReport(id);
-    assertCan('read', report);
+    authorize('read', report);
     return report;
   }
 
   async archiveReport(id: string): Promise<Report> {
     const report = await this.loadReport(id);
-    assertCan('archive', report);
+    authorize('archive', report);
     return await this.repository.archive(report);
   }
 

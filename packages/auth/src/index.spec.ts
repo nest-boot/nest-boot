@@ -1,4 +1,4 @@
-import { AuthAbility } from "./abilities/auth.ability.js";
+import { AuthAbility } from "./auth.ability.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
@@ -26,9 +26,9 @@ import { UserService } from "./services/user.service.js";
 import { UserApiKeyService } from "./services/user-api-key.service.js";
 import { WorkspaceService } from "./services/workspace.service.js";
 import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
-import { assertCan } from "./utils/assert-can.util.js";
+import { authorize } from "./utils/authorize.util.js";
 import { can } from "./utils/can.util.js";
-import { getAbility } from "./utils/get-ability.util.js";
+import { getAuthAbility } from "./utils/get-auth-ability.util.js";
 vi.mock("better-auth", () => ({
   betterAuth: vi.fn(),
 }));
@@ -411,8 +411,17 @@ describe("public API", () => {
       expect(publicApi).not.toHaveProperty(name);
     }
     expect(publicApi.can).toBe(can);
-    expect(publicApi.assertCan).toBe(assertCan);
-    expect(publicApi.getAbility).toBe(getAbility);
+    expect(publicApi.getAuthAbility).toBe(getAuthAbility);
+    expect(publicApi.authorize).toBe(authorize);
+    for (const name of [
+      "authAbility",
+      "assertCan",
+      "throwUnlessCan",
+      "getAbility",
+      "readRequestAbility",
+    ]) {
+      expect(publicApi).not.toHaveProperty(name);
+    }
     expect(publicApi.SessionService).toBe(SessionService);
     expect(publicApi.WorkspaceService).toBe(WorkspaceService);
     expect(publicApi.MemberService).toBe(MemberService);
