@@ -1,15 +1,15 @@
 import { afterEach, vi } from "vitest";
 
-import { authAbility } from "../src/auth.ability.js";
+import * as authorization from "../src/auth.ability.js";
 import { RequestIdentity } from "../src/infrastructure/request-identity.js";
 import * as grants from "../src/utils/permission-grants.util.js";
 
 /** Isolates persistence tests from authorization; boundary tests restore the relevant check. */
 export function mockAuthorization() {
   return {
-    can: vi.spyOn(authAbility, "can").mockClear().mockReturnValue(true),
+    can: vi.spyOn(authorization, "can").mockClear().mockReturnValue(true),
     throwUnlessCan: vi
-      .spyOn(authAbility, "throwUnlessCan")
+      .spyOn(authorization, "throwUnlessCan")
       .mockClear()
       .mockImplementation(() => undefined),
     assertCurrentUser: vi
@@ -45,7 +45,7 @@ export function mockAuthorization() {
 /** Restores real checks for integration and authorization-boundary tests. */
 export function restoreAuthorization(): void {
   for (const [target, names] of [
-    [authAbility, ["can", "throwUnlessCan"]],
+    [authorization, ["can", "throwUnlessCan"]],
     [
       RequestIdentity,
       [

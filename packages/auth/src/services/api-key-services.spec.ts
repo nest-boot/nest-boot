@@ -6,7 +6,8 @@ import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { it as baseIt, type Mocked } from "vitest";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
-import { AuthAbility, authAbility } from "../auth.ability.js";
+import { AuthAbility } from "../auth.ability.js";
+import * as abilityHelpers from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
@@ -1814,7 +1815,7 @@ function createService(
     assertCurrentMember: vi.spyOn(RequestIdentity, "assertCurrentMember"),
     assertCurrentWorkspace: vi.spyOn(RequestIdentity, "assertCurrentWorkspace"),
     throwUnlessCan: vi
-      .spyOn(authAbility, "throwUnlessCan")
+      .spyOn(abilityHelpers, "throwUnlessCan")
       .mockImplementation(vi.fn()),
   };
   const userService = new UserApiKeyService(em, options);

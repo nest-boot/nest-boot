@@ -82,11 +82,11 @@ Load the operation target before checking its conditions. Do not trust ownership
 fields supplied by the client or substitute a class-level route check:
 
 ```typescript
-import { authAbility } from "@nest-boot/auth";
+import { throwUnlessCan } from "@nest-boot/auth";
 
 async archiveReport(id: string): Promise<Report> {
   const report = await this.loadReport(id);
-  authAbility.throwUnlessCan("archive", report);
+  throwUnlessCan("archive", report);
   return await this.repository.archive(report);
 }
 ```
@@ -442,19 +442,20 @@ access control:
 - current-user authentication, session management, invitation acceptance, and
   leaving a workspace use authenticated identity and ownership checks.
 
-The exported `authAbility` Proxy reads the request-scoped `AuthAbility` without
-injecting an authorization service. The global `AuthGuard` prepares it before
-protected operations. Each method call resolves the current instance, even when
-methods are destructured; identity or workspace changes do not leave stale bindings.
+The exported `can()` and `throwUnlessCan()` functions read the current request's
+`AuthAbility` on every call without injecting an authorization service. The global
+`AuthGuard` prepares it before protected operations. Identity or workspace changes
+therefore take effect on the next check.
 
-Missing request identity or ability throws `ForbiddenException` for all method
-calls (including `can()` and `cannot()`) and rule access. With a valid ability,
-`can()` and `cannot()` return booleans; `throwUnlessCan()` throws when permission
-is denied.
+Missing request context, identity, or prepared ability throws `ForbiddenException`.
+With a valid ability, `can()` returns a boolean; `throwUnlessCan()` throws when
+permission is denied. `getAuthAbility()` returns the concrete instance for rules
+and the full CASL API. Retrieve it again after identity changes; do not cache it
+across requests.
 
 The Guard, route decorators, and Services all evaluate operations through this
 ability. Identity publication and invalidation remain centralized in the internal
-`RequestIdentity`; the Proxy never builds permissions for a missing identity.
+`RequestIdentity`; these helpers never build permissions for a missing identity.
 
 Ability construction and grantability checks share one immutable effective-permission
 snapshot for the current request identity. Owner permissions remain distinct from
@@ -467,11 +468,11 @@ an operation's `ability.can()` result.
 After `AuthGuard` prepares the request, use the same entry point in lower-level code:
 
 ```typescript
-import { authAbility } from "@nest-boot/auth";
+import { can, getAuthAbility, throwUnlessCan } from "@nest-boot/auth";
 
-authAbility.throwUnlessCan("update", post);
-const canRead = authAbility.can("read", post);
-const rules = authAbility.rules;
+throwUnlessCan("update", post);
+const canRead = can("read", post);
+const rules = getAuthAbility().rules;
 ```
 
 `throwUnlessCan()` is defined directly on `AuthAbility` and throws NestJS
@@ -479,9 +480,9 @@ const rules = authAbility.rules;
 constructed `AuthAbility` without a request context. `AuthAbility` remains the
 request-context token.
 
-The standalone `can`, `assertCan`, and `getAbility` exports were removed. Replace
-them with `authAbility.can(...)`, `authAbility.throwUnlessCan(...)`, and
-`authAbility` respectively; no compatibility aliases are retained.
+The standalone `assertCan` and `getAbility` exports are replaced by
+`throwUnlessCan` and `getAuthAbility`; `can` remains available. No compatibility
+aliases are retained for the renamed helpers.
 
 The example frontend exposes `useAbility()` for both personal and workspace
 pages. Its provider consumes `currentAbilityRules` for the selected identity;
@@ -584,7 +585,7 @@ and reasons. The result is JSON-safe and can be rehydrated with CASL's
 `createMongoAbility()`.
 
 ```typescript
-const rules = serializeAbilityRules(authAbility);
+const rules = serializeAbilityRules(getAuthAbility());
 ```
 
 Treat transported rules as a user-interface capability model only. The server

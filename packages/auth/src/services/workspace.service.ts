@@ -14,7 +14,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import { authAbility } from "../auth.ability.js";
+import { throwUnlessCan } from "../auth.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { WorkspaceConnection } from "../connections/workspace.connection-definition.js";
@@ -49,7 +49,7 @@ export class WorkspaceService {
         "The authenticated user is not a member of this workspace",
       );
     }
-    if (workspace) authAbility.throwUnlessCan("read", workspace);
+    if (workspace) throwUnlessCan("read", workspace);
     return workspace ?? null;
   }
 
@@ -106,11 +106,11 @@ export class WorkspaceService {
       : null;
     if (!current) throw new ForbiddenException("A workspace must be selected");
     RequestIdentity.assertCurrentWorkspace(current);
-    authAbility.throwUnlessCan("read", current);
+    throwUnlessCan("read", current);
     const workspace = await this.em.findOne(Workspace, {
       $and: [where, { id: current.id }],
     });
-    if (workspace) authAbility.throwUnlessCan("read", workspace);
+    if (workspace) throwUnlessCan("read", workspace);
     return workspace;
   }
 
@@ -120,7 +120,7 @@ export class WorkspaceService {
     input: CreateWorkspaceOptions,
   ): Promise<Workspace> {
     RequestIdentity.assertCurrentUser(user);
-    authAbility.throwUnlessCan("create", Workspace);
+    throwUnlessCan("create", Workspace);
     // The new workspace has no request session yet. Only this authorized
     // operation may bootstrap its owner outside the application's RLS scope.
     return await this.em.transactional(
@@ -128,7 +128,7 @@ export class WorkspaceService {
         const workspace = em.create(Workspace, {
           name: input.name,
         });
-        authAbility.throwUnlessCan("create", workspace);
+        throwUnlessCan("create", workspace);
         const member = em.create(Member, {
           name: user.name,
           email: user.email.trim().toLowerCase(),
@@ -151,7 +151,7 @@ export class WorkspaceService {
     action: string,
   ): Promise<Workspace> {
     if (typeof workspace !== "string") return workspace;
-    authAbility.throwUnlessCan(action, Workspace);
+    throwUnlessCan(action, Workspace);
     const entity = await this.em.findOne(
       Workspace,
       { id: workspace },
@@ -168,7 +168,7 @@ export class WorkspaceService {
   ): Promise<Workspace> {
     workspace = await this.resolveWorkspaceForAction(workspace, "update");
     RequestIdentity.assertCurrentWorkspace(workspace);
-    authAbility.throwUnlessCan("update", workspace);
+    throwUnlessCan("update", workspace);
     if (this.em.isInTransaction()) {
       throw new BadRequestException(
         "Change the current workspace outside an active transaction",
@@ -192,7 +192,7 @@ export class WorkspaceService {
   async deleteWorkspace(workspace: Workspace | string): Promise<Workspace> {
     workspace = await this.resolveWorkspaceForAction(workspace, "delete");
     RequestIdentity.assertCurrentWorkspace(workspace);
-    authAbility.throwUnlessCan("delete", workspace);
+    throwUnlessCan("delete", workspace);
     if (this.em.isInTransaction()) {
       throw new BadRequestException(
         "Delete the workspace outside an active transaction",
@@ -202,7 +202,7 @@ export class WorkspaceService {
     await this.em.transactional(
       async (em) => {
         await this.lockWorkspace(em, workspace);
-        authAbility.throwUnlessCan("delete", workspace);
+        throwUnlessCan("delete", workspace);
         const count = await em.nativeDelete(Workspace, {
           id: workspace.id,
         });

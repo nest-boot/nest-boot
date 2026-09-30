@@ -13,7 +13,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import { authAbility } from "../auth.ability.js";
+import { throwUnlessCan } from "../auth.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
@@ -77,10 +77,10 @@ export class UserApiKeyService {
   /** Returns a user-owned API key when it belongs to the current user. */
   async getUserApiKey(id: string, user: User): Promise<UserApiKey | null> {
     RequestIdentity.assertCurrentUser(user);
-    authAbility.throwUnlessCan("read", UserApiKey);
+    throwUnlessCan("read", UserApiKey);
     const apiKey = await this.getVisibleApiKey(id, user);
     if (apiKey) {
-      authAbility.throwUnlessCan("read", apiKey);
+      throwUnlessCan("read", apiKey);
     }
     return apiKey;
   }
@@ -91,7 +91,7 @@ export class UserApiKeyService {
     args: ConnectionArgsInterface<UserApiKey>,
   ): Promise<ConnectionInterface<UserApiKey>> {
     RequestIdentity.assertCurrentUser(user);
-    authAbility.throwUnlessCan("read", UserApiKey);
+    throwUnlessCan("read", UserApiKey);
     const where = this.getOwnedListFilter(user);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
@@ -101,7 +101,7 @@ export class UserApiKeyService {
     });
     // Reject the whole page rather than silently changing cursor pagination.
     for (const { node } of connection.edges) {
-      authAbility.throwUnlessCan("read", node);
+      throwUnlessCan("read", node);
     }
     return connection;
   }
@@ -112,7 +112,7 @@ export class UserApiKeyService {
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<UserApiKey>> {
     RequestIdentity.assertCurrentUser(user);
-    authAbility.throwUnlessCan("write", UserApiKey);
+    throwUnlessCan("write", UserApiKey);
     const permissions = normalizeApiKeyPermissions(
       this.authOptions,
       "user",
@@ -127,9 +127,9 @@ export class UserApiKeyService {
     id: string,
     input: UpdateApiKeyOptions,
   ): Promise<UserApiKey> {
-    authAbility.throwUnlessCan("write", UserApiKey);
+    throwUnlessCan("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    authAbility.throwUnlessCan("write", apiKey);
+    throwUnlessCan("write", apiKey);
     const user = this.unwrapUser(apiKey);
     const permissions =
       input.permissions === undefined
@@ -161,9 +161,9 @@ export class UserApiKeyService {
 
   /** Deletes an API key owned by the current user. */
   async deleteUserApiKey(id: string): Promise<UserApiKey> {
-    authAbility.throwUnlessCan("write", UserApiKey);
+    throwUnlessCan("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    authAbility.throwUnlessCan("write", apiKey);
+    throwUnlessCan("write", apiKey);
     return await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey);
   }
 
@@ -185,7 +185,7 @@ export class UserApiKeyService {
           ...data,
           user,
         });
-        authAbility.throwUnlessCan("write", entity);
+        throwUnlessCan("write", entity);
         await em.persist(entity).flush();
         return entity;
       },

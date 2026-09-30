@@ -3,7 +3,7 @@ import type { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
-import { AuthAbility, authAbility } from "../auth.ability.js";
+import { AuthAbility, can } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
@@ -53,8 +53,8 @@ describe("RequestIdentity", () => {
       expect(resolveRequestPermissions(options).apiKey).toBe(first.apiKey);
       expect(Object.isFrozen(first.apiKey)).toBe(true);
       expect(Object.isFrozen(first.user)).toBe(true);
-      expect(authAbility.can("read", User)).toBe(true);
-      expect(authAbility.can("delete", User)).toBe(false);
+      expect(can("read", User)).toBe(true);
+      expect(can("delete", User)).toBe(false);
       expect(canGrantPermissions(options, "user", ["user:read"])).toBe(true);
       expect(canGrantPermissions(options, "user", ["user:delete"])).toBe(false);
       expect(
@@ -70,7 +70,7 @@ describe("RequestIdentity", () => {
       RequestIdentity.updateUser(manager(), options, user);
       expect(roles).toHaveBeenCalledTimes(2);
       expect(resolveRequestPermissions(options)).not.toBe(first);
-      expect(authAbility.can("read", User)).toBe(false);
+      expect(can("read", User)).toBe(false);
       expect(canGrantPermissions(options, "user", ["user:read"])).toBe(false);
       apiKey.permissions = [];
       expect(resolveRequestPermissions(options).apiKey).toEqual([
@@ -169,8 +169,8 @@ describe("RequestIdentity", () => {
         RequestIdentity.prepare(options);
       }).toThrow("Failed");
 
-      expect(authAbility.can("delete", User)).toBe(false);
-      expect(authAbility.can("read", Workspace)).toBe(false);
+      expect(can("delete", User)).toBe(false);
+      expect(can("read", Workspace)).toBe(false);
     });
   });
 
@@ -205,11 +205,9 @@ describe("RequestIdentity", () => {
           Key === UserApiKey ? key : null,
         );
         if (Key === UserApiKey) {
-          expect(authAbility.can("read", User)).toBe(true);
+          expect(can("read", User)).toBe(true);
         } else {
-          expect(() => authAbility.can("read", User)).toThrow(
-            ForbiddenException,
-          );
+          expect(() => can("read", User)).toThrow(ForbiddenException);
         }
       });
     },

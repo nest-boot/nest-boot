@@ -11,7 +11,7 @@ import {
   createTestWorkspace,
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
-import { AuthAbility, authAbility } from "../auth.ability.js";
+import { AuthAbility, can } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
@@ -255,11 +255,11 @@ describe("MemberService", () => {
       member.user = user as never;
       RequestContext.set(User, user);
       RequestContext.set(AuthAbility, new AuthAbility());
-      expect(authAbility.can("read", workspace)).toBe(false);
+      expect(can("read", workspace)).toBe(false);
       await expect(service.leaveWorkspace(member)).resolves.toBe(lockedMember);
       expect(RequestContext.get(Member)).toBeNull();
       expect(RequestContext.get(Workspace)).toBeNull();
-      expect(authAbility.can("delete", workspace)).toBe(false);
+      expect(can("delete", workspace)).toBe(false);
       expect(em.setSessionContext).toHaveBeenCalledWith(
         expect.objectContaining({
           variables: expect.objectContaining({ "app.workspace.id": "" }),

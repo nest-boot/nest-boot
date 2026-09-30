@@ -1,4 +1,9 @@
-import { AuthAbility, authAbility } from "./auth.ability.js";
+import {
+  AuthAbility,
+  can,
+  getAuthAbility,
+  throwUnlessCan,
+} from "./auth.ability.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
@@ -407,13 +412,14 @@ describe("public API", () => {
     ]) {
       expect(publicApi).not.toHaveProperty(name);
     }
-    expect(publicApi.authAbility).toBe(authAbility);
+    expect(publicApi.can).toBe(can);
+    expect(publicApi.getAuthAbility).toBe(getAuthAbility);
+    expect(publicApi.throwUnlessCan).toBe(throwUnlessCan);
     for (const name of [
-      "can",
+      "authAbility",
       "assertCan",
       "getAbility",
       "readRequestAbility",
-      "getAuthAbility",
     ]) {
       expect(publicApi).not.toHaveProperty(name);
     }

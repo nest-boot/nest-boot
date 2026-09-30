@@ -42,48 +42,28 @@ export class AuthAbility extends Ability<AbilityTuple, MongoQuery> {
   }
 }
 
+/** Checks the current request's ability on every call. */
+export function can(action: string, subject: Subject, field?: string): boolean {
+  const ability = getAuthAbility();
+  return field === undefined
+    ? ability.can(action, subject)
+    : ability.can(action, subject, field);
+}
+
+/** Throws ForbiddenException unless the current request permits the action. */
+export function throwUnlessCan(
+  action: string,
+  subject: Subject,
+  field?: string,
+): void {
+  getAuthAbility().throwUnlessCan(action, subject, field);
+}
+
 /**
- * Forwards ability access to the authenticated request, including after identity changes.
- * Methods resolve their receiver when called, so destructuring never captures a request.
- * Access requires an authenticated ability; otherwise ForbiddenException is thrown.
+ * Returns the current request's prepared ability or throws ForbiddenException.
+ * Retrieve the instance again after identity changes; do not cache it across requests.
  */
-export const authAbility: AuthAbility = new Proxy(new AuthAbility(), {
-  get(target, property) {
-    // Object introspection is independent of the authenticated request.
-    if (Object.hasOwn(Object.prototype, property))
-      return Reflect.get(target, property, target);
-
-    const own = Reflect.getOwnPropertyDescriptor(target, property);
-    if (typeof own?.value === "function") return own.value;
-    if (!Reflect.has(target, property)) return undefined;
-
-    if (typeof Reflect.get(target, property, target) === "function") {
-      const forward = (...args: unknown[]) => {
-        const ability = getAuthAbility();
-        const result = Reflect.apply(
-          Reflect.get(ability, property, ability),
-          ability,
-          args,
-        );
-        // Fluent methods must not expose a receiver that outlives its identity.
-        return result === ability ? authAbility : result;
-      };
-      // Cache only forwarding functions, never a request's ability or bound method.
-      Object.defineProperty(target, property, {
-        value: forward,
-        configurable: true,
-        writable: true,
-      });
-      return forward;
-    }
-
-    const ability = getAuthAbility();
-    return Reflect.get(ability, property, ability);
-  },
-});
-
-/** Reads the prepared ability only while its authenticated identity is available. */
-function getAuthAbility(): AuthAbility {
+export function getAuthAbility(): AuthAbility {
   if (
     !RequestContext.isActive() ||
     (!RequestContext.get(User) && !getCurrentApiKey())

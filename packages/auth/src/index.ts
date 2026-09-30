@@ -1,5 +1,10 @@
 export * from "./api-key-usage.interceptor.js";
-export { AuthAbility, authAbility } from "./auth.ability.js";
+export {
+  AuthAbility,
+  can,
+  getAuthAbility,
+  throwUnlessCan,
+} from "./auth.ability.js";
 export { API_KEY, IS_PUBLIC_KEY } from "./auth.constants.js";
 export * from "./auth.guard.js";
 export * from "./auth.middleware.js";

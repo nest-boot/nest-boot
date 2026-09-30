@@ -14,7 +14,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import { authAbility } from "../auth.ability.js";
+import { throwUnlessCan } from "../auth.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { WorkspaceApiKeyConnection } from "../connections/workspace-api-key.connection-definition.js";
@@ -77,10 +77,10 @@ export class WorkspaceApiKeyService {
     workspace: Workspace,
   ): Promise<WorkspaceApiKey | null> {
     this.assertWorkspacePrincipal(workspace);
-    authAbility.throwUnlessCan("read", WorkspaceApiKey);
+    throwUnlessCan("read", WorkspaceApiKey);
     const apiKey = await this.getVisibleApiKey(id, workspace);
     if (apiKey) {
-      authAbility.throwUnlessCan("read", apiKey);
+      throwUnlessCan("read", apiKey);
     }
     return apiKey;
   }
@@ -91,7 +91,7 @@ export class WorkspaceApiKeyService {
     args: ConnectionArgsInterface<WorkspaceApiKey>,
   ): Promise<ConnectionInterface<WorkspaceApiKey>> {
     this.assertWorkspacePrincipal(workspace);
-    authAbility.throwUnlessCan("read", WorkspaceApiKey);
+    throwUnlessCan("read", WorkspaceApiKey);
     const where = this.getOwnedListFilter(workspace);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
@@ -101,7 +101,7 @@ export class WorkspaceApiKeyService {
     });
     // Reject the whole page rather than silently changing cursor pagination.
     for (const { node } of connection.edges) {
-      authAbility.throwUnlessCan("read", node);
+      throwUnlessCan("read", node);
     }
     return connection;
   }
@@ -112,7 +112,7 @@ export class WorkspaceApiKeyService {
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<WorkspaceApiKey>> {
     this.assertWorkspacePrincipal(workspace);
-    authAbility.throwUnlessCan("write", WorkspaceApiKey);
+    throwUnlessCan("write", WorkspaceApiKey);
     const permissions = normalizeApiKeyPermissions(
       this.authOptions,
       "workspace",
@@ -127,9 +127,9 @@ export class WorkspaceApiKeyService {
     id: string,
     input: UpdateApiKeyOptions,
   ): Promise<WorkspaceApiKey> {
-    authAbility.throwUnlessCan("write", WorkspaceApiKey);
+    throwUnlessCan("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    authAbility.throwUnlessCan("write", apiKey);
+    throwUnlessCan("write", apiKey);
     const permissions =
       input.permissions === undefined
         ? undefined
@@ -164,9 +164,9 @@ export class WorkspaceApiKeyService {
 
   /** Deletes a key owned by the authenticated workspace. */
   async deleteWorkspaceApiKey(id: string): Promise<WorkspaceApiKey> {
-    authAbility.throwUnlessCan("write", WorkspaceApiKey);
+    throwUnlessCan("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
-    authAbility.throwUnlessCan("write", apiKey);
+    throwUnlessCan("write", apiKey);
     return await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey);
   }
 
@@ -188,7 +188,7 @@ export class WorkspaceApiKeyService {
           ...data,
           workspace,
         });
-        authAbility.throwUnlessCan("write", entity);
+        throwUnlessCan("write", entity);
         await em.persist(entity).flush();
         return entity;
       },

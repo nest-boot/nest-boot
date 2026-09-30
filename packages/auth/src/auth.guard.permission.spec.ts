@@ -8,7 +8,7 @@ import type { Request, Response } from "express";
 import type { Mock, MockedFunction } from "vitest";
 import { assert } from "vitest";
 
-import { AuthAbility, authAbility } from "./auth.ability.js";
+import { AuthAbility, can } from "./auth.ability.js";
 import { API_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
@@ -141,7 +141,7 @@ describe("AuthGuard permissions", () => {
       RequestContext.set(BaseUser, user);
       await expect(guard.canActivate(context)).resolves.toBe(true);
       expect(RequestContext.get(AuthAbility)).toBe(ability);
-      expect(authAbility.can("publish", Subject)).toBe(true);
+      expect(can("publish", Subject)).toBe(true);
     });
 
     expect(buildAbility).toHaveBeenCalledWith(

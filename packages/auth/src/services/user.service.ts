@@ -17,7 +17,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import { authAbility } from "../auth.ability.js";
+import { throwUnlessCan } from "../auth.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
@@ -84,12 +84,12 @@ export class UserService {
 
   /** Creates a user and its credential account atomically. */
   async createUser(input: CreateUserOptions): Promise<User> {
-    authAbility.throwUnlessCan("create", User);
+    throwUnlessCan("create", User);
     if (input.roles !== undefined) {
-      authAbility.throwUnlessCan("set-roles", User);
+      throwUnlessCan("set-roles", User);
     }
     if (input.permissions !== undefined) {
-      authAbility.throwUnlessCan("set-permissions", User);
+      throwUnlessCan("set-permissions", User);
     }
     this.assertPasswordLength(input.password);
     const permissions = this.normalizePermissions(input.permissions ?? []);
@@ -112,12 +112,12 @@ export class UserService {
           permissions,
           roles,
         });
-        authAbility.throwUnlessCan("create", user);
+        throwUnlessCan("create", user);
         if (input.roles !== undefined) {
-          authAbility.throwUnlessCan("set-roles", user);
+          throwUnlessCan("set-roles", user);
         }
         if (input.permissions !== undefined) {
-          authAbility.throwUnlessCan("set-permissions", user);
+          throwUnlessCan("set-permissions", user);
         }
         em.persist(user);
         await em.flush();
@@ -140,21 +140,21 @@ export class UserService {
 
   /** Gets a user by identifier within the request's RLS scope. */
   async getUser(userId: string): Promise<User | null> {
-    authAbility.throwUnlessCan("read", User);
+    throwUnlessCan("read", User);
     const user = await this.em.findOne(User, {
       id: userId,
     });
-    if (user) authAbility.throwUnlessCan("read", user);
+    if (user) throwUnlessCan("read", user);
     return user;
   }
 
   /** Gets a user by normalized email within the request's RLS scope. */
   async getUserByEmail(email: string): Promise<User | null> {
-    authAbility.throwUnlessCan("read", User);
+    throwUnlessCan("read", User);
     const user = await this.em.findOne(User, {
       email: email.trim().toLowerCase(),
     });
-    if (user) authAbility.throwUnlessCan("read", user);
+    if (user) throwUnlessCan("read", user);
     return user;
   }
 
@@ -164,10 +164,10 @@ export class UserService {
     input: UpdateUserOptions,
   ): Promise<User> {
     user = await this.resolveUserForAction(user, "update");
-    authAbility.throwUnlessCan("update", user);
+    throwUnlessCan("update", user);
     const data = this.createUserUpdateData(input);
     if (input.email !== undefined || input.emailVerified !== undefined) {
-      authAbility.throwUnlessCan("set-email", user);
+      throwUnlessCan("set-email", user);
     }
     this.assertAuthorizationCanCommit(user);
     const previous = {
@@ -193,7 +193,7 @@ export class UserService {
     permissions: string[],
   ): Promise<User> {
     user = await this.resolveUserForAction(user, "set-permissions");
-    authAbility.throwUnlessCan("set-permissions", user);
+    throwUnlessCan("set-permissions", user);
     const normalized = this.normalizePermissions(permissions);
     assertCanGrantPermissions(this.options, "user", normalized);
     this.assertAuthorizationCanCommit(user);
@@ -215,7 +215,7 @@ export class UserService {
     roleNames: string | readonly string[],
   ): Promise<User> {
     user = await this.resolveUserForAction(user, "set-roles");
-    authAbility.throwUnlessCan("set-roles", user);
+    throwUnlessCan("set-roles", user);
     const roles = this.normalizeRoles(roleNames);
     assertCanGrantPermissions(
       this.options,
@@ -268,7 +268,7 @@ export class UserService {
     action: string,
   ): Promise<User> {
     if (typeof user !== "string") return user;
-    authAbility.throwUnlessCan(action, User);
+    throwUnlessCan(action, User);
     const entity = await this.em.findOne(User, { id: user }, { refresh: true });
     if (!entity) throw new NotFoundException("User not found");
     return entity;
@@ -276,7 +276,7 @@ export class UserService {
 
   /** Lists all configured roles with the current principal's grant availability. */
   listRoles(): UserRoleOption[] {
-    authAbility.throwUnlessCan("set-roles", User);
+    throwUnlessCan("set-roles", User);
     return Object.entries(this.roles).map(([role, permissions]) => ({
       role,
       grantable: canGrantPermissions(this.options, "user", permissions),
@@ -285,7 +285,7 @@ export class UserService {
 
   /** Lists all configured permissions with the current principal's grant availability. */
   listPermissions(): UserPermissionOption[] {
-    authAbility.throwUnlessCan("set-permissions", User);
+    throwUnlessCan("set-permissions", User);
     return listAuthPermissions(this.permissions).map((permission) => ({
       permission,
       grantable: canGrantPermissions(this.options, "user", [permission]),
@@ -301,12 +301,12 @@ export class UserService {
   async getUserConnection(
     args: ConnectionArgsInterface<User>,
   ): Promise<ConnectionInterface<User>> {
-    authAbility.throwUnlessCan("read", User);
+    throwUnlessCan("read", User);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<User>(UserConnection, args);
     for (const { node } of connection.edges) {
-      authAbility.throwUnlessCan("read", node);
+      throwUnlessCan("read", node);
     }
     return connection;
   }
@@ -317,7 +317,7 @@ export class UserService {
     input: BanUserOptions = {},
   ): Promise<User> {
     user = await this.resolveUserForAction(user, "ban");
-    authAbility.throwUnlessCan("ban", user);
+    throwUnlessCan("ban", user);
     this.assertIdentityRevocationCanCommit(user);
     const banExpiresAt =
       input.banExpiresIn === undefined
@@ -376,7 +376,7 @@ export class UserService {
   /** Removes a user's ban. */
   async unbanUser(user: User | string): Promise<User> {
     user = await this.resolveUserForAction(user, "ban");
-    authAbility.throwUnlessCan("ban", user);
+    throwUnlessCan("ban", user);
     this.assertAuthorizationCanCommit(user);
     const previous = {
       banned: user.banned,
@@ -404,9 +404,9 @@ export class UserService {
   ): Promise<AuthenticatedSession> {
     RequestIdentity.assertCurrentUser(administrator);
     user = await this.resolveUserForAction(user, "impersonate");
-    authAbility.throwUnlessCan("impersonate", user);
+    throwUnlessCan("impersonate", user);
     if (this.isAdmin(user)) {
-      authAbility.throwUnlessCan("impersonate-admin", user);
+      throwUnlessCan("impersonate-admin", user);
     }
     if (this.isActivelyBanned(user)) {
       throw new ForbiddenException("Banned users cannot be impersonated");
@@ -475,7 +475,7 @@ export class UserService {
   /** Permanently deletes a user and all dependent authentication records. */
   async deleteUser(user: User | string): Promise<User> {
     user = await this.resolveUserForAction(user, "delete");
-    authAbility.throwUnlessCan("delete", user);
+    throwUnlessCan("delete", user);
     this.assertIdentityRevocationCanCommit(user);
     const deleted = await this.userDeletionService.deleteUser(String(user.id));
     if (deleted === null) throw new NotFoundException("User not found");
@@ -489,7 +489,7 @@ export class UserService {
     newPassword: string,
   ): Promise<void> {
     user = await this.resolveUserForAction(user, "set-password");
-    authAbility.throwUnlessCan("set-password", user);
+    throwUnlessCan("set-password", user);
     this.assertPasswordLength(newPassword);
     const password = await this.hashPassword(newPassword);
     await this.em.transactional(

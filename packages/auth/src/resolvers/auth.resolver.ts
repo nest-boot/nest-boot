@@ -1,6 +1,6 @@
 import { Args, ID, Mutation, Query, Resolver } from "@nest-boot/graphql";
 
-import { authAbility } from "../auth.ability.js";
+import { getAuthAbility } from "../auth.ability.js";
 import { Public } from "../decorators/public.decorator.js";
 import { User } from "../entities/user.entity.js";
 import { AuthChangeEmailInput } from "../inputs/auth-change-email.input.js";
@@ -51,7 +51,7 @@ export class AuthResolver {
   /** Returns the unified effective CASL rules for the current request identity. */
   @Query(() => [AuthAbilityRuleType])
   currentAbilityRules(): AuthAbilityRuleType[] {
-    return toAbilityRuleTypes(serializeAbilityRules(authAbility));
+    return toAbilityRuleTypes(serializeAbilityRules(getAuthAbility()));
   }
 
   /** Registers a user with an email address and password. */

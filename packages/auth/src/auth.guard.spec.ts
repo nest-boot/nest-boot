@@ -10,7 +10,8 @@ import { Test } from "@nestjs/testing";
 import { firstValueFrom, of } from "rxjs";
 import type { Mock } from "vitest";
 
-import { AuthAbility, authAbility } from "./auth.ability.js";
+import { AuthAbility } from "./auth.ability.js";
+import * as authorization from "./auth.ability.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
@@ -353,7 +354,7 @@ async function createGuard<T extends AuthGuard>(
 
   return {
     guard: moduleRef.get(guardType),
-    access: authAbility,
+    access: authorization,
   };
 }
 
