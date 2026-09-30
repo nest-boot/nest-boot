@@ -1,9 +1,12 @@
+import { createMongoAbility, subject } from "@casl/ability";
+
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { serializeAbilityRules } from "../utils/serialize-ability-rules.util.js";
 import { AuthAbilityFactory } from "./auth-ability.factory.js";
 
 const buildUserPermissionAbility = (permissions: readonly string[]) =>
@@ -30,6 +33,39 @@ const buildWorkspacePermissionAbility = (permissions: readonly string[]) =>
   );
 
 describe("permission ability builders", () => {
+  it("denies the current member's status field while preserving profile and other member writes", () => {
+    const workspace = Object.assign(new Workspace(), { id: "workspace-1" });
+    const member = Object.assign(new Member(), { id: "member-1", workspace });
+    const ability = AuthAbilityFactory.createAbility({
+      user: new User(),
+      workspace,
+      member,
+      userPermissions: [],
+      workspacePermissions: ["member:write"],
+    });
+    const other = Object.assign(new Member(), { id: "member-2", workspace });
+    expect(ability.can("write", member)).toBe(true);
+    expect(ability.can("write", member, "status")).toBe(false);
+    expect(ability.can("write", member, "name")).toBe(true);
+    expect(ability.can("write", member, "email")).toBe(true);
+    expect(ability.can("write", other, "status")).toBe(true);
+    const clientAbility = createMongoAbility(serializeAbilityRules(ability));
+    expect(
+      clientAbility.can(
+        "write",
+        subject("Member", { id: member.id, workspaceId: workspace.id }),
+        "status",
+      ),
+    ).toBe(false);
+    expect(
+      clientAbility.can(
+        "write",
+        subject("Member", { id: other.id, workspaceId: workspace.id }),
+        "status",
+      ),
+    ).toBe(true);
+  });
+
   it("matches configured resource prefixes exactly without case aliases", () => {
     const userAbility = buildUserPermissionAbility([
       "User:delete",

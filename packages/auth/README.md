@@ -438,6 +438,11 @@ They cannot grant operations on built-in auth entities or `all`, access the raw
 builder, or replace the resulting ability. Restrictions take precedence over
 business grants. The frontend consumes the final serialized rules.
 
+The built-in ability denies writing the current member's `status` field, while
+preserving permitted profile edits. `MemberService.updateMember` checks each
+supplied field before updating and again under the row lock. Frontends should use
+`ability.can("write", member, "status")` for enable/disable actions.
+
 Personal keys use `user-api-key:read/write`; workspace keys use
 `workspace-api-key:read/write`. Write covers creation, updates, enabling/disabling,
 and deletion without granting reads.

@@ -18,6 +18,7 @@ import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { AuthAbilityFactory } from "../infrastructure/auth-ability.factory.js";
 import { can } from "../utils/can.util.js";
 import {
   DEFAULT_WORKSPACE_PERMISSIONS,
@@ -26,7 +27,7 @@ import {
 import { MemberService } from "./member.service.js";
 
 describe("MemberService", () => {
-  it.each(["roles", "permissions", "status"] as const)(
+  it.each(["roles", "permissions"] as const)(
     "publishes own %s only after commit and revokes stale workspace authorization",
     async (field) => {
       const { memberService, em } = createWorkspaceServices({
@@ -53,9 +54,7 @@ describe("MemberService", () => {
           const update = () =>
             field === "roles"
               ? memberService.setMemberRoles(current, ["member"])
-              : field === "permissions"
-                ? memberService.setMemberPermissions(current, [])
-                : memberService.updateMember(current, { status: "DISABLED" });
+              : memberService.setMemberPermissions(current, []);
           em.isInTransaction.mockReturnValueOnce(true);
           await expect(update()).rejects.toThrow(
             "outside an active transaction",
@@ -70,28 +69,89 @@ describe("MemberService", () => {
           expect(RequestContext.get(AuthAbility)).toBe(ability);
           expect(em.setSessionContext).not.toHaveBeenCalled();
           await update();
-          expect(RequestContext.get(Member)).toBe(
-            field === "status" ? null : locked,
-          );
-          expect(RequestContext.get(Workspace)).toBe(
-            field === "status" ? null : workspace,
-          );
+          expect(RequestContext.get(Member)).toBe(locked);
+          expect(RequestContext.get(Workspace)).toBe(workspace);
           expect(
             RequestContext.get(AuthAbility)?.can("delete", Workspace),
           ).toBe(false);
-          if (field === "status") {
-            expect(em.setSessionContext).toHaveBeenCalledWith(
-              expect.objectContaining({
-                variables: expect.objectContaining({ "app.workspace.id": "" }),
-              }),
-            );
-          } else {
-            expect(em.setSessionContext).not.toHaveBeenCalled();
-          }
+          expect(em.setSessionContext).not.toHaveBeenCalled();
         },
       );
     },
   );
+
+  it.each(["entity", "id"] as const)(
+    "rejects disabling the current member by %s before writing any fields",
+    async (target) => {
+      const { memberService, em } = createWorkspaceServices();
+      const current = Object.assign(createTestMember(), { roles: ["owner"] });
+      const member = Object.assign(createTestMember(), { name: "Original" });
+      em.findOne.mockResolvedValue(member);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          restoreAuthorization();
+          RequestContext.set(User, createTestUser());
+          RequestContext.set(Member, current);
+          const workspace = createTestWorkspace();
+          RequestContext.set(Workspace, workspace);
+          RequestContext.set(
+            AuthAbility,
+            AuthAbilityFactory.createAbility({
+              user: createTestUser(),
+              workspace,
+              member: current,
+              userPermissions: [],
+              workspacePermissions: ["member:write"],
+            }),
+          );
+          await expect(
+            memberService.updateMember(target === "id" ? member.id : member, {
+              status: "DISABLED",
+              name: "Changed",
+            }),
+          ).rejects.toThrow("You are not allowed to write this resource");
+        },
+      );
+      expect(member.status).toBe("ACTIVE");
+      expect(member.name).toBe("Original");
+      expect(em.transactional).not.toHaveBeenCalled();
+      expect(em.assign).not.toHaveBeenCalled();
+      expect(em.flush).not.toHaveBeenCalled();
+    },
+  );
+
+  it("still allows updating the current member's profile and disabling another member", async () => {
+    const { memberService, em } = createWorkspaceServices();
+    mockRlsContext(em);
+    const current = createTestMember();
+    const other = Object.assign(createTestMember(), { id: "other-member" });
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      restoreAuthorization();
+      RequestContext.set(User, createTestUser());
+      const workspace = createTestWorkspace();
+      const ability = AuthAbilityFactory.createAbility({
+        user: createTestUser(),
+        workspace,
+        member: current,
+        userPermissions: [],
+        workspacePermissions: ["member:write"],
+      });
+      RequestContext.set(Member, current);
+      RequestContext.set(Workspace, workspace);
+      RequestContext.set(AuthAbility, ability);
+      em.findOne.mockResolvedValue(current);
+      await memberService.updateMember(current, {
+        name: "Updated",
+      });
+      expect(current.name).toBe("Updated");
+      RequestContext.set(AuthAbility, ability);
+      em.findOne.mockResolvedValue(other);
+      await memberService.updateMember(other, { status: "DISABLED" });
+      expect(other.status).toBe("DISABLED");
+      expect(current.status).toBe("ACTIVE");
+    });
+  });
 
   it("resolves a member ID with write permission and updates only the locked row", async () => {
     const { memberService, em, authorization } = createWorkspaceServices();
@@ -114,7 +174,19 @@ describe("MemberService", () => {
     );
     expect(authorization.assertCan).toHaveBeenNthCalledWith(1, "write", Member);
     expect(authorization.assertCan).toHaveBeenNthCalledWith(2, "write", member);
-    expect(authorization.assertCan).toHaveBeenNthCalledWith(3, "write", locked);
+    expect(authorization.assertCan).toHaveBeenNthCalledWith(
+      3,
+      "write",
+      member,
+      "name",
+    );
+    expect(authorization.assertCan).toHaveBeenNthCalledWith(4, "write", locked);
+    expect(authorization.assertCan).toHaveBeenNthCalledWith(
+      5,
+      "write",
+      locked,
+      "name",
+    );
     expect(member.name).toBe("Original");
     expect(locked.name).toBe("Updated");
     expect(em.flush).toHaveBeenCalledOnce();
@@ -636,7 +708,11 @@ describe("MemberService", () => {
         email: "shared@example.com",
       }),
     ).resolves.toBe(owner);
-    expect(authorization.assertCan).toHaveBeenLastCalledWith("write", owner);
+    expect(authorization.assertCan).toHaveBeenLastCalledWith(
+      "write",
+      owner,
+      "email",
+    );
     expect(authorization.assertCurrentMember).not.toHaveBeenCalled();
     expect(owner.roles).toEqual(["owner"]);
     expect(owner.name).toBe("Shared owner name");
@@ -679,8 +755,9 @@ describe("MemberService", () => {
     });
     em.findOne.mockResolvedValue(promotedMember);
     vi.mocked(authorization.assertCan).mockImplementation(
-      (_action, subject) => {
-        if (subject === promotedMember) throw new ForbiddenException();
+      (_action, subject, field) => {
+        if (subject === promotedMember && field === "status")
+          throw new ForbiddenException();
       },
     );
 

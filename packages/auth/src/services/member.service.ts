@@ -275,7 +275,6 @@ export class MemberService {
     ) {
       throw new BadRequestException("Member name must not be empty");
     }
-    this.assertAuthorizationCanCommit(member);
     const normalizedEmail = input.email?.trim().toLowerCase() ?? null;
     const email =
       input.email === undefined
@@ -283,6 +282,18 @@ export class MemberService {
         : normalizedEmail === ""
           ? null
           : normalizedEmail;
+    const changes = {
+      ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+      ...(email !== undefined ? { email } : {}),
+      ...(input.status !== undefined ? { status: input.status } : {}),
+    };
+    const assertCanUpdateFields = (target: Member) => {
+      for (const field of Object.keys(changes)) {
+        assertCan("write", target, field);
+      }
+    };
+    assertCanUpdateFields(member);
+    this.assertAuthorizationCanCommit(member);
     const updated = await this.em.transactional(
       async (em) => {
         const lockedMember = await em.findOne(
@@ -297,11 +308,8 @@ export class MemberService {
           throw new NotFoundException("Workspace member not found");
         }
         assertCan("write", lockedMember);
-        em.assign(lockedMember, {
-          ...(input.name !== undefined ? { name: input.name.trim() } : {}),
-          ...(email !== undefined ? { email } : {}),
-          ...(input.status !== undefined ? { status: input.status } : {}),
-        });
+        assertCanUpdateFields(lockedMember);
+        em.assign(lockedMember, changes);
         await em.flush();
         return lockedMember;
       },

@@ -96,6 +96,14 @@ export class AuthAbilityFactory {
         },
         (rules) => configure(rules, snapshot),
       );
+    // Members may edit their profile but cannot change their own active state.
+    // Apply after extensions so the same invariant reaches every consumer.
+    if (snapshot.member && snapshot.workspace) {
+      builder.cannot("write", Member, ["status"], {
+        id: snapshot.member.id,
+        workspaceId: snapshot.workspace.id,
+      });
+    }
     this.addSubjectAliases(builder.rules);
     return builder.build();
   }
