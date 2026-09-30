@@ -533,8 +533,8 @@ function AdminUserDetails() {
           ) : undefined,
         },
       }}
-      secondaryActions={
-        user.id !== currentUser.id &&
+      secondaryActions={[
+        ...(user.id !== currentUser.id &&
         ability.can("impersonate", createAbilitySubject("User", user))
           ? [
               {
@@ -556,8 +556,44 @@ function AdminUserDetails() {
                 },
               },
             ]
-          : undefined
-      }
+          : []),
+        ...(canDelete && currentUser.id !== userId
+          ? [
+              {
+                label: t("admin:user.delete.action"),
+                destructive: true,
+                disabled: deleting || banning || unbanning,
+                loading: deleting,
+                onAction: async () => {
+                  const confirmed = await alertDialog({
+                    title: t("admin:user.delete.confirm_title"),
+                    description: t("admin:user.delete.confirm_description"),
+                    confirmText: t("action.delete"),
+                    cancelText: t("action.cancel"),
+                    variant: "destructive",
+                  });
+                  if (!confirmed) return;
+                  try {
+                    await deleteUser({ variables: { id: userId } });
+                    await navigate({ to: "/admin/users", search: backSearch });
+                    toast.add({
+                      type: "success",
+                      title: t("admin:user.delete.success"),
+                    });
+                  } catch (error) {
+                    toast.add({
+                      type: "error",
+                      title:
+                        error instanceof Error
+                          ? error.message
+                          : t("admin:failed"),
+                    });
+                  }
+                },
+              },
+            ]
+          : []),
+      ]}
     >
       <PageLayout>
         <PageLayoutSection>
@@ -1016,56 +1052,30 @@ function AdminUserDetails() {
               </form>
             </CardContent>
             <CardFooter>
-              <div className="flex flex-wrap gap-2">
-                {user.banned ? (
-                  <Button
-                    loading={unbanning}
-                    disabled={!canBan}
-                    onClick={() =>
-                      run(
-                        () => unbanUser({ variables: { id: userId } }),
-                        t("admin:user.ban.unbanned"),
-                      )
-                    }
-                  >
-                    {t("admin:user.ban.unban")}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="destructive"
-                    disabled={!canBan || currentUser.id === userId}
-                    loading={banning}
-                    type="submit"
-                    form="admin-user-ban-form"
-                  >
-                    {t("admin:user.ban.action")}
-                  </Button>
-                )}
+              {user.banned ? (
+                <Button
+                  loading={unbanning}
+                  disabled={!canBan}
+                  onClick={() =>
+                    run(
+                      () => unbanUser({ variables: { id: userId } }),
+                      t("admin:user.ban.unbanned"),
+                    )
+                  }
+                >
+                  {t("admin:user.ban.unban")}
+                </Button>
+              ) : (
                 <Button
                   variant="destructive"
-                  disabled={!canDelete || currentUser.id === userId}
-                  loading={deleting}
-                  onClick={async () => {
-                    const confirmed = await alertDialog({
-                      title: t("admin:user.delete.confirm_title"),
-                      description: t("admin:user.delete.confirm_description"),
-                      confirmText: t("action.delete"),
-                      cancelText: t("action.cancel"),
-                      variant: "destructive",
-                    });
-                    if (!confirmed) return;
-                    await run(async () => {
-                      await deleteUser({ variables: { id: userId } });
-                      await navigate({
-                        to: "/admin/users",
-                        search: backSearch,
-                      });
-                    }, t("admin:user.delete.success"));
-                  }}
+                  disabled={!canBan || currentUser.id === userId}
+                  loading={banning}
+                  type="submit"
+                  form="admin-user-ban-form"
                 >
-                  {t("admin:user.delete.action")}
+                  {t("admin:user.ban.action")}
                 </Button>
-              </div>
+              )}
             </CardFooter>
           </Card>
         </PageLayoutSection>

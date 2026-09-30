@@ -11,7 +11,6 @@ import dayjs from "dayjs";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
-import { useCurrentMemberContext } from "../contexts/current-member-context";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { getMembersResourceKey } from "@/lib/resource-keys";
@@ -125,25 +124,6 @@ const CANCEL_INVITATION_FROM_MEMBERS_ROUTE = graphql(`
   }
 `);
 
-const REMOVE_MEMBER_FROM_MEMBERS_ROUTE = graphql(`
-  mutation removeMemberFromMembersRoute($id: ID!) {
-    removeMember(id: $id) {
-      id
-    }
-  }
-`);
-
-const UPDATE_MEMBER_STATUS_FROM_MEMBERS_ROUTE = graphql(`
-  mutation updateMemberStatusFromMembersRoute(
-    $id: ID!
-    $input: UpdateMemberInput!
-  ) {
-    updateMember(id: $id, input: $input) {
-      id
-    }
-  }
-`);
-
 const getStatusLabel = (status: MemberStatus | null | undefined) => {
   if (!status) return null;
 
@@ -187,15 +167,10 @@ function MembersComponent() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const currentMember = useCurrentMemberContext();
   const ability = useAbility();
   const canReadInvitations = ability.can("read", "Invitation");
   const canCreateInvitation = ability.can("write", "Invitation");
   const canCancelInvitation = ability.can("write", "Invitation");
-  const canUpdateMember = (member: object) =>
-    ability.can("write", createAbilitySubject("Member", member));
-  const canDeleteMember = (member: object) =>
-    ability.can("write", createAbilitySubject("Member", member));
   const canEditMember = (member: object) =>
     ["write", "set-roles", "set-permissions"].some((action) =>
       ability.can(action, createAbilitySubject("Member", member)),
@@ -274,13 +249,6 @@ function MembersComponent() {
     ];
   }, [t]);
 
-  const [removeMember, { loading: removeMemberLoading }] = useMutation(
-    REMOVE_MEMBER_FROM_MEMBERS_ROUTE,
-  );
-
-  const [updateMemberStatus, { loading: updateStatusLoading }] = useMutation(
-    UPDATE_MEMBER_STATUS_FROM_MEMBERS_ROUTE,
-  );
   const [cancelInvitation, { loading: cancelInvitationLoading }] = useMutation(
     CANCEL_INVITATION_FROM_MEMBERS_ROUTE,
   );
@@ -302,90 +270,6 @@ function MembersComponent() {
 
     await cancelInvitation({ variables: { id: invitationId } });
     await refetch();
-  };
-
-  const handleRemoveMemberClick = async (memberId: string) => {
-    const confirmed = await alertDialog({
-      title: t("member:delete.title"),
-      description: t("member:delete.description"),
-      cancelText: t("action.cancel"),
-      confirmText: t("action.confirm"),
-    });
-
-    if (!confirmed) return;
-
-    try {
-      await removeMember({
-        variables: { id: memberId },
-        update(cache, result) {
-          if (result.data?.removeMember) {
-            cache.evict({
-              id: cache.identify({
-                __typename: "Member",
-                id: result.data.removeMember.id,
-              }),
-            });
-            cache.gc();
-          }
-        },
-      });
-
-      toast.add({ type: "success", title: t("member:toast.deleted_success") });
-      refetch();
-    } catch (err) {
-      if (err instanceof Error) {
-        toast.add({ type: "error", title: err.message });
-      }
-    }
-  };
-
-  const handleToggleMemberStatus = async (
-    memberId: string,
-    currentStatus: MemberStatus | null | undefined,
-  ) => {
-    try {
-      // Only toggle between active and disabled memberships.
-      if (
-        currentStatus !== MemberStatus.ACTIVE &&
-        currentStatus !== MemberStatus.DISABLED
-      ) {
-        return;
-      }
-
-      const newStatus =
-        currentStatus === MemberStatus.DISABLED
-          ? MemberStatus.ACTIVE
-          : MemberStatus.DISABLED;
-
-      await updateMemberStatus({
-        variables: {
-          id: memberId,
-          input: {
-            status: newStatus,
-          },
-        },
-      });
-
-      toast.add({
-        type: "success",
-        title:
-          newStatus === MemberStatus.DISABLED
-            ? t("member:toast.disabled_success")
-            : t("member:toast.enabled_success"),
-      });
-      if (
-        memberId === currentMember.id &&
-        newStatus === MemberStatus.DISABLED
-      ) {
-        await navigate({ to: "/user/workspaces" });
-        return;
-      }
-      await refetch();
-    } catch (err) {
-      if (err instanceof Error) {
-        toast.add({ type: "error", title: err.message });
-      }
-    }
   };
 
   return (
@@ -503,37 +387,6 @@ function MembersComponent() {
                       },
                     });
                   }}
-                  rowActions={(row) => [
-                    ...(canUpdateMember(row.original) &&
-                    (row.original.status === MemberStatus.ACTIVE ||
-                      row.original.status === MemberStatus.DISABLED)
-                      ? [
-                          {
-                            disabled: updateStatusLoading,
-                            label:
-                              row.original.status === MemberStatus.DISABLED
-                                ? t("action.enable")
-                                : t("action.disable"),
-                            onClick: () =>
-                              handleToggleMemberStatus(
-                                row.original.id,
-                                row.original.status,
-                              ),
-                          },
-                        ]
-                      : []),
-                    ...(canDeleteMember(row.original) &&
-                    row.original.id !== currentMember.id
-                      ? [
-                          {
-                            disabled: removeMemberLoading,
-                            label: t("action.delete"),
-                            onClick: () =>
-                              handleRemoveMemberClick(row.original.id),
-                          },
-                        ]
-                      : []),
-                  ]}
                   data={members}
                   pagination={{
                     hasPreviousPage: pageInfo?.hasPreviousPage,

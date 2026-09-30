@@ -33,11 +33,11 @@ type Documents = {
   "\n  query getWorkspacesFromWorkspaceSwitcher(\n    $first: Int\n    $after: String\n    $before: String\n    $query: String\n    $orderBy: WorkspaceOrder\n  ) {\n    currentUser {\n      workspaces(\n        first: $first\n        after: $after\n        before: $before\n        query: $query\n        orderBy: $orderBy\n      ) {\n        edges {\n          node {\n            id\n            name\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          startCursor\n          endCursor\n        }\n        totalCount\n      }\n    }\n  }\n": typeof types.GetWorkspacesFromWorkspaceSwitcherDocument;
   "\n  query getCurrentUserFromAuthenticatedRoute {\n    currentUser {\n      id\n      name\n      email\n      permissions\n    }\n    currentSession {\n      impersonatedById\n    }\n    currentAbilityRules {\n      actions\n      subjects\n      fields\n      conditions\n      inverted\n      reason\n    }\n  }\n": typeof types.GetCurrentUserFromAuthenticatedRouteDocument;
   "\n  mutation stopImpersonatingFromAuthenticatedRoute {\n    stopImpersonating {\n      id\n    }\n  }\n": typeof types.StopImpersonatingFromAuthenticatedRouteDocument;
+  "\n  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {\n    deleteUserApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.DeleteUserApiKeyFromUserApiKeysRouteDocument;
   "\n  query getUserApiKeyDetails($id: ID!) {\n    userApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n    currentUser {\n      apiKey(id: $id) {\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n": typeof types.GetUserApiKeyDetailsDocument;
   "\n  query getUserApiKeyNeighbors(\n    $cursor: String!\n    $filter: UserApiKeyFilter\n    $orderBy: UserApiKeyOrder\n    $query: String\n  ) {\n    currentUser {\n      id\n      previous: apiKeys(\n        last: 1\n        before: $cursor\n        filter: $filter\n        orderBy: $orderBy\n        query: $query\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n      next: apiKeys(\n        first: 1\n        after: $cursor\n        filter: $filter\n        orderBy: $orderBy\n        query: $query\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n": typeof types.GetUserApiKeyNeighborsDocument;
   "\n  mutation createUserApiKeyFromUserApiKeysRoute(\n    $input: CreateUserApiKeyInput!\n  ) {\n    createUserApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n": typeof types.CreateUserApiKeyFromUserApiKeysRouteDocument;
   "\n  query getUserApiKeyOptions {\n    userApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n": typeof types.GetUserApiKeyOptionsDocument;
-  "\n  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {\n    deleteUserApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.DeleteUserApiKeyFromUserApiKeysRouteDocument;
   "\n  query getUserApiKeysFromUserApiKeysRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: UserApiKeyFilter\n    $orderBy: UserApiKeyOrder\n    $query: String\n  ) {\n    currentUser {\n      apiKeys(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        filter: $filter\n        query: $query\n      ) {\n        edges {\n          node {\n            id\n            name\n            start\n            prefix\n            enabled\n            permissions\n            createdAt\n            lastUsedAt\n            expiresAt\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n      }\n    }\n  }\n": typeof types.GetUserApiKeysFromUserApiKeysRouteDocument;
   "\n  query getUserOverview($includeApiKeys: Boolean!) {\n    currentUser {\n      id\n      workspaces(first: 1) {\n        totalCount\n        totalCountRelation\n      }\n      sessions(first: 1) {\n        totalCount\n        totalCountRelation\n      }\n      apiKeys(first: 1) @include(if: $includeApiKeys) {\n        totalCount\n        totalCountRelation\n      }\n    }\n  }\n": typeof types.GetUserOverviewDocument;
   "\n  mutation updateUserFromUserRoute($input: AuthUpdateUserInput!) {\n    updateCurrentUser(input: $input)\n  }\n": typeof types.UpdateUserFromUserRouteDocument;
@@ -55,11 +55,11 @@ type Documents = {
   "\n  query getWorkspacesFromUserWorkspacesRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $orderBy: WorkspaceOrder\n    $query: String\n    $filter: WorkspaceFilter\n    $invitationFirst: Int\n    $invitationLast: Int\n    $invitationAfter: String\n    $invitationBefore: String\n  ) {\n    currentUser {\n      workspaces(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        query: $query\n        filter: $filter\n      ) {\n        edges {\n          node {\n            id\n            name\n            createdAt\n            updatedAt\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n      }\n    }\n    currentUser {\n      invitations(\n        first: $invitationFirst\n        last: $invitationLast\n        after: $invitationAfter\n        before: $invitationBefore\n        orderBy: { field: CREATED_AT, direction: DESC }\n      ) {\n        edges {\n          node {\n            workspaceId\n            id\n            roles\n            expiresAt\n            workspace {\n              id\n              name\n            }\n          }\n        }\n        pageInfo {\n          endCursor\n          startCursor\n          hasNextPage\n          hasPreviousPage\n        }\n      }\n    }\n  }\n": typeof types.GetWorkspacesFromUserWorkspacesRouteDocument;
   "\n  mutation acceptInvitationFromUserWorkspacesRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      id\n    }\n  }\n": typeof types.AcceptInvitationFromUserWorkspacesRouteDocument;
   "\n  mutation rejectInvitationFromUserWorkspacesRoute($id: ID!) {\n    rejectInvitation(id: $id) {\n      id\n    }\n  }\n": typeof types.RejectInvitationFromUserWorkspacesRouteDocument;
+  "\n  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      workspaceId\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.DeleteWorkspaceApiKeyFromApiKeysRouteDocument;
   "\n  query getWorkspaceApiKeyDetails($id: ID!) {\n    workspaceApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n    currentWorkspace {\n      apiKey(id: $id) {\n        workspaceId\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n": typeof types.GetWorkspaceApiKeyDetailsDocument;
   "\n  query getWorkspaceApiKeyNeighbors(\n    $cursor: String!\n    $filter: WorkspaceApiKeyFilter\n    $orderBy: WorkspaceApiKeyOrder\n    $query: String\n  ) {\n    currentWorkspace {\n      id\n      previous: apiKeys(\n        last: 1\n        before: $cursor\n        filter: $filter\n        orderBy: $orderBy\n        query: $query\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n      next: apiKeys(\n        first: 1\n        after: $cursor\n        filter: $filter\n        orderBy: $orderBy\n        query: $query\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n": typeof types.GetWorkspaceApiKeyNeighborsDocument;
   "\n  mutation createWorkspaceApiKeyFromApiKeysRoute(\n    $input: CreateWorkspaceApiKeyInput!\n  ) {\n    createWorkspaceApiKey(input: $input) {\n      apiKey\n      entity {\n        workspaceId\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n": typeof types.CreateWorkspaceApiKeyFromApiKeysRouteDocument;
   "\n  query getWorkspaceApiKeyOptions {\n    workspaceApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n": typeof types.GetWorkspaceApiKeyOptionsDocument;
-  "\n  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      workspaceId\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.DeleteWorkspaceApiKeyFromApiKeysRouteDocument;
   "\n  query getApiKeysFromApiKeysRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceApiKeyFilter\n    $orderBy: WorkspaceApiKeyOrder\n    $query: String\n  ) {\n    currentWorkspace {\n      apiKeys(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        filter: $filter\n        query: $query\n      ) {\n        edges {\n          node {\n            workspaceId\n            id\n            name\n            start\n            prefix\n            enabled\n            permissions\n            createdAt\n            lastUsedAt\n            expiresAt\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n      }\n    }\n  }\n": typeof types.GetApiKeysFromApiKeysRouteDocument;
   "\n  query getCurrentWorkspaceFromWorkspaceLayout($workspaceId: ID!) {\n    workspace(id: $workspaceId) {\n      id\n      name\n      createdAt\n      updatedAt\n    }\n    currentMember {\n      workspaceId\n      id\n      roles\n      permissions\n      status\n      name\n      email\n    }\n    currentAbilityRules {\n      actions\n      subjects\n      fields\n      conditions\n      inverted\n      reason\n    }\n  }\n": typeof types.GetCurrentWorkspaceFromWorkspaceLayoutDocument;
   "\n  mutation setMemberPermissionsFromMemberRoute(\n    $id: ID!\n    $input: SetMemberPermissionsInput!\n  ) {\n    setMemberPermissions(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.SetMemberPermissionsFromMemberRouteDocument;
@@ -68,12 +68,11 @@ type Documents = {
   "\n  query getMemberNeighbors(\n    $cursor: String!\n    $query: String\n    $filter: MemberFilter\n    $orderBy: MemberOrder\n  ) {\n    currentWorkspace {\n      id\n      previous: members(\n        last: 1\n        before: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n      next: members(\n        first: 1\n        after: $cursor\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n": typeof types.GetMemberNeighborsDocument;
   "\n  query getMemberFromMemberRoute($id: ID!) {\n    member(id: $id) {\n      workspaceId\n      id\n      roles\n      permissions\n      status\n      name\n      email\n      createdAt\n    }\n    workspaceRoles {\n      role\n      grantable\n    }\n    workspacePermissions {\n      permission\n      grantable\n    }\n  }\n": typeof types.GetMemberFromMemberRouteDocument;
   "\n  mutation removeMemberFromMemberRoute($id: ID!) {\n    removeMember(id: $id) {\n      id\n    }\n  }\n": typeof types.RemoveMemberFromMemberRouteDocument;
+  "\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateMemberStatusFromMembersRouteDocument;
   "\n  query getRolesFromInviteMemberRoute {\n    workspaceRoles {\n      role\n      grantable\n    }\n  }\n": typeof types.GetRolesFromInviteMemberRouteDocument;
   "\n  mutation createInvitationFromInviteMemberRoute(\n    $input: CreateInvitationInput!\n  ) {\n    createInvitation(input: $input) {\n      id\n    }\n  }\n": typeof types.CreateInvitationFromInviteMemberRouteDocument;
   "\n  query getMembersFromMembersRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: MemberFilter\n    $orderBy: MemberOrder\n    $query: String\n    $invitationFirst: Int\n    $invitationLast: Int\n    $invitationAfter: String\n    $invitationBefore: String\n    $invitationFilter: InvitationFilter\n    $includeInvitations: Boolean! = false\n  ) {\n    currentWorkspace {\n      members(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        filter: $filter\n        query: $query\n      ) {\n        edges {\n          node {\n            workspaceId\n            id\n            roles\n            status\n            createdAt\n            name\n            email\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n      }\n    }\n    currentWorkspace {\n      invitations(\n        first: $invitationFirst\n        last: $invitationLast\n        after: $invitationAfter\n        before: $invitationBefore\n        filter: $invitationFilter\n        orderBy: { field: CREATED_AT, direction: DESC }\n      ) @include(if: $includeInvitations) {\n        edges {\n          node {\n            workspaceId\n            id\n            email\n            roles\n            status\n            expiresAt\n          }\n        }\n        pageInfo {\n          endCursor\n          startCursor\n          hasNextPage\n          hasPreviousPage\n        }\n      }\n    }\n  }\n": typeof types.GetMembersFromMembersRouteDocument;
   "\n  mutation cancelInvitationFromMembersRoute($id: ID!) {\n    cancelInvitation(id: $id) {\n      id\n    }\n  }\n": typeof types.CancelInvitationFromMembersRouteDocument;
-  "\n  mutation removeMemberFromMembersRoute($id: ID!) {\n    removeMember(id: $id) {\n      id\n    }\n  }\n": typeof types.RemoveMemberFromMembersRouteDocument;
-  "\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateMemberStatusFromMembersRouteDocument;
   "\n  query getWorkspaceOverview(\n    $workspaceId: ID!\n    $includeMembers: Boolean!\n    $includeApiKeys: Boolean!\n  ) {\n    workspace(id: $workspaceId) {\n      id\n      members(first: 1) @include(if: $includeMembers) {\n        totalCount\n        totalCountRelation\n      }\n      apiKeys(first: 1) @include(if: $includeApiKeys) {\n        totalCount\n        totalCountRelation\n      }\n    }\n  }\n": typeof types.GetWorkspaceOverviewDocument;
   "\n  mutation updateWorkspaceFromSettingsRoute(\n    $id: ID!\n    $input: UpdateWorkspaceInput!\n  ) {\n    updateWorkspace(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateWorkspaceFromSettingsRouteDocument;
   "\n  mutation deleteWorkspaceFromSettingsRoute($id: ID!) {\n    deleteWorkspace(id: $id) {\n      id\n    }\n  }\n": typeof types.DeleteWorkspaceFromSettingsRouteDocument;
@@ -132,6 +131,8 @@ const documents: Documents = {
     types.GetCurrentUserFromAuthenticatedRouteDocument,
   "\n  mutation stopImpersonatingFromAuthenticatedRoute {\n    stopImpersonating {\n      id\n    }\n  }\n":
     types.StopImpersonatingFromAuthenticatedRouteDocument,
+  "\n  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {\n    deleteUserApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
+    types.DeleteUserApiKeyFromUserApiKeysRouteDocument,
   "\n  query getUserApiKeyDetails($id: ID!) {\n    userApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n    currentUser {\n      apiKey(id: $id) {\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n":
     types.GetUserApiKeyDetailsDocument,
   "\n  query getUserApiKeyNeighbors(\n    $cursor: String!\n    $filter: UserApiKeyFilter\n    $orderBy: UserApiKeyOrder\n    $query: String\n  ) {\n    currentUser {\n      id\n      previous: apiKeys(\n        last: 1\n        before: $cursor\n        filter: $filter\n        orderBy: $orderBy\n        query: $query\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n      next: apiKeys(\n        first: 1\n        after: $cursor\n        filter: $filter\n        orderBy: $orderBy\n        query: $query\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n":
@@ -140,8 +141,6 @@ const documents: Documents = {
     types.CreateUserApiKeyFromUserApiKeysRouteDocument,
   "\n  query getUserApiKeyOptions {\n    userApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n":
     types.GetUserApiKeyOptionsDocument,
-  "\n  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {\n    deleteUserApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
-    types.DeleteUserApiKeyFromUserApiKeysRouteDocument,
   "\n  query getUserApiKeysFromUserApiKeysRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: UserApiKeyFilter\n    $orderBy: UserApiKeyOrder\n    $query: String\n  ) {\n    currentUser {\n      apiKeys(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        filter: $filter\n        query: $query\n      ) {\n        edges {\n          node {\n            id\n            name\n            start\n            prefix\n            enabled\n            permissions\n            createdAt\n            lastUsedAt\n            expiresAt\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n      }\n    }\n  }\n":
     types.GetUserApiKeysFromUserApiKeysRouteDocument,
   "\n  query getUserOverview($includeApiKeys: Boolean!) {\n    currentUser {\n      id\n      workspaces(first: 1) {\n        totalCount\n        totalCountRelation\n      }\n      sessions(first: 1) {\n        totalCount\n        totalCountRelation\n      }\n      apiKeys(first: 1) @include(if: $includeApiKeys) {\n        totalCount\n        totalCountRelation\n      }\n    }\n  }\n":
@@ -176,6 +175,8 @@ const documents: Documents = {
     types.AcceptInvitationFromUserWorkspacesRouteDocument,
   "\n  mutation rejectInvitationFromUserWorkspacesRoute($id: ID!) {\n    rejectInvitation(id: $id) {\n      id\n    }\n  }\n":
     types.RejectInvitationFromUserWorkspacesRouteDocument,
+  "\n  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      workspaceId\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
+    types.DeleteWorkspaceApiKeyFromApiKeysRouteDocument,
   "\n  query getWorkspaceApiKeyDetails($id: ID!) {\n    workspaceApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n    currentWorkspace {\n      apiKey(id: $id) {\n        workspaceId\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n":
     types.GetWorkspaceApiKeyDetailsDocument,
   "\n  query getWorkspaceApiKeyNeighbors(\n    $cursor: String!\n    $filter: WorkspaceApiKeyFilter\n    $orderBy: WorkspaceApiKeyOrder\n    $query: String\n  ) {\n    currentWorkspace {\n      id\n      previous: apiKeys(\n        last: 1\n        before: $cursor\n        filter: $filter\n        orderBy: $orderBy\n        query: $query\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n      next: apiKeys(\n        first: 1\n        after: $cursor\n        filter: $filter\n        orderBy: $orderBy\n        query: $query\n      ) {\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n      }\n    }\n  }\n":
@@ -184,8 +185,6 @@ const documents: Documents = {
     types.CreateWorkspaceApiKeyFromApiKeysRouteDocument,
   "\n  query getWorkspaceApiKeyOptions {\n    workspaceApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n":
     types.GetWorkspaceApiKeyOptionsDocument,
-  "\n  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      workspaceId\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
-    types.DeleteWorkspaceApiKeyFromApiKeysRouteDocument,
   "\n  query getApiKeysFromApiKeysRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceApiKeyFilter\n    $orderBy: WorkspaceApiKeyOrder\n    $query: String\n  ) {\n    currentWorkspace {\n      apiKeys(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        filter: $filter\n        query: $query\n      ) {\n        edges {\n          node {\n            workspaceId\n            id\n            name\n            start\n            prefix\n            enabled\n            permissions\n            createdAt\n            lastUsedAt\n            expiresAt\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n      }\n    }\n  }\n":
     types.GetApiKeysFromApiKeysRouteDocument,
   "\n  query getCurrentWorkspaceFromWorkspaceLayout($workspaceId: ID!) {\n    workspace(id: $workspaceId) {\n      id\n      name\n      createdAt\n      updatedAt\n    }\n    currentMember {\n      workspaceId\n      id\n      roles\n      permissions\n      status\n      name\n      email\n    }\n    currentAbilityRules {\n      actions\n      subjects\n      fields\n      conditions\n      inverted\n      reason\n    }\n  }\n":
@@ -202,6 +201,8 @@ const documents: Documents = {
     types.GetMemberFromMemberRouteDocument,
   "\n  mutation removeMemberFromMemberRoute($id: ID!) {\n    removeMember(id: $id) {\n      id\n    }\n  }\n":
     types.RemoveMemberFromMemberRouteDocument,
+  "\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n":
+    types.UpdateMemberStatusFromMembersRouteDocument,
   "\n  query getRolesFromInviteMemberRoute {\n    workspaceRoles {\n      role\n      grantable\n    }\n  }\n":
     types.GetRolesFromInviteMemberRouteDocument,
   "\n  mutation createInvitationFromInviteMemberRoute(\n    $input: CreateInvitationInput!\n  ) {\n    createInvitation(input: $input) {\n      id\n    }\n  }\n":
@@ -210,10 +211,6 @@ const documents: Documents = {
     types.GetMembersFromMembersRouteDocument,
   "\n  mutation cancelInvitationFromMembersRoute($id: ID!) {\n    cancelInvitation(id: $id) {\n      id\n    }\n  }\n":
     types.CancelInvitationFromMembersRouteDocument,
-  "\n  mutation removeMemberFromMembersRoute($id: ID!) {\n    removeMember(id: $id) {\n      id\n    }\n  }\n":
-    types.RemoveMemberFromMembersRouteDocument,
-  "\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n":
-    types.UpdateMemberStatusFromMembersRouteDocument,
   "\n  query getWorkspaceOverview(\n    $workspaceId: ID!\n    $includeMembers: Boolean!\n    $includeApiKeys: Boolean!\n  ) {\n    workspace(id: $workspaceId) {\n      id\n      members(first: 1) @include(if: $includeMembers) {\n        totalCount\n        totalCountRelation\n      }\n      apiKeys(first: 1) @include(if: $includeApiKeys) {\n        totalCount\n        totalCountRelation\n      }\n    }\n  }\n":
     types.GetWorkspaceOverviewDocument,
   "\n  mutation updateWorkspaceFromSettingsRoute(\n    $id: ID!\n    $input: UpdateWorkspaceInput!\n  ) {\n    updateWorkspace(id: $id, input: $input) {\n      id\n    }\n  }\n":
@@ -384,6 +381,12 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
+  source: "\n  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {\n    deleteUserApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n",
+): (typeof documents)["\n  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {\n    deleteUserApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
   source: "\n  query getUserApiKeyDetails($id: ID!) {\n    userApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n    currentUser {\n      apiKey(id: $id) {\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n",
 ): (typeof documents)["\n  query getUserApiKeyDetails($id: ID!) {\n    userApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n    currentUser {\n      apiKey(id: $id) {\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n"];
 /**
@@ -404,12 +407,6 @@ export function graphql(
 export function graphql(
   source: "\n  query getUserApiKeyOptions {\n    userApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n",
 ): (typeof documents)["\n  query getUserApiKeyOptions {\n    userApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {\n    deleteUserApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n",
-): (typeof documents)["\n  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {\n    deleteUserApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -516,6 +513,12 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
+  source: "\n  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      workspaceId\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n",
+): (typeof documents)["\n  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      workspaceId\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
   source: "\n  query getWorkspaceApiKeyDetails($id: ID!) {\n    workspaceApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n    currentWorkspace {\n      apiKey(id: $id) {\n        workspaceId\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n",
 ): (typeof documents)["\n  query getWorkspaceApiKeyDetails($id: ID!) {\n    workspaceApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n    currentWorkspace {\n      apiKey(id: $id) {\n        workspaceId\n        id\n        name\n        start\n        prefix\n        enabled\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n"];
 /**
@@ -536,12 +539,6 @@ export function graphql(
 export function graphql(
   source: "\n  query getWorkspaceApiKeyOptions {\n    workspaceApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n",
 ): (typeof documents)["\n  query getWorkspaceApiKeyOptions {\n    workspaceApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      workspaceId\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n",
-): (typeof documents)["\n  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      workspaceId\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -594,6 +591,12 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
+  source: "\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
   source: "\n  query getRolesFromInviteMemberRoute {\n    workspaceRoles {\n      role\n      grantable\n    }\n  }\n",
 ): (typeof documents)["\n  query getRolesFromInviteMemberRoute {\n    workspaceRoles {\n      role\n      grantable\n    }\n  }\n"];
 /**
@@ -614,18 +617,6 @@ export function graphql(
 export function graphql(
   source: "\n  mutation cancelInvitationFromMembersRoute($id: ID!) {\n    cancelInvitation(id: $id) {\n      id\n    }\n  }\n",
 ): (typeof documents)["\n  mutation cancelInvitationFromMembersRoute($id: ID!) {\n    cancelInvitation(id: $id) {\n      id\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n  mutation removeMemberFromMembersRoute($id: ID!) {\n    removeMember(id: $id) {\n      id\n    }\n  }\n",
-): (typeof documents)["\n  mutation removeMemberFromMembersRoute($id: ID!) {\n    removeMember(id: $id) {\n      id\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n",
-): (typeof documents)["\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

@@ -11,45 +11,59 @@ import { uniqueSeed } from "./utils/unique";
 import type { Page } from "@playwright/test";
 
 test.describe("workspace management", () => {
-  test("leaves the workspace page after disabling the current member without refetching protected fields", async ({
+  test("prevents disabling the current member in the UI and through GraphQL", async ({
     page,
   }) => {
-    const seed = uniqueSeed("self-disabled-member");
-    const email = `${seed}@example.com`;
-    await registerUser(page, { email, name: "Self-disabling owner" });
+    const seed = uniqueSeed("self-disable-member");
+    await registerUser(page, {
+      email: `${seed}@example.com`,
+      name: "Workspace owner",
+    });
     const workspace = await createWorkspaceByApi(page, seed);
-    await page.goto(`/workspaces/${workspace.id}/members`);
-    const row = page.getByRole("row").filter({
-      has: page
-        .getByRole("cell")
-        .getByText("Self-disabling owner", { exact: true }),
-    });
-    await row.getByRole("button").click();
-    const pageErrors: Array<string> = [];
-    const refetches: Array<string> = [];
-    page.on("pageerror", (error) => pageErrors.push(error.message));
-    page.on("request", (request) => {
-      const body = request.postData() ?? "";
-      if (body.includes("getMembersFromMembersRoute")) refetches.push(body);
-    });
-    const updated = page.waitForResponse(
-      (response) =>
-        response.url().endsWith("/api/graphql") &&
-        response
-          .request()
-          .postData()
-          ?.includes("updateMemberStatusFromMembersRoute") === true,
-    );
-    await page.getByRole("menuitem", { name: "Disable", exact: true }).click();
-    expect((await (await updated).json()).errors).toBeUndefined();
-    await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
+    const headers = { "x-workspace-id": workspace.id };
+    const { currentMember } = await graphqlRequest<{
+      currentMember: { id: string };
+    }>(page.request, "query { currentMember { id } }", {}, headers);
+    await page.goto(`/workspaces/${workspace.id}/members/${currentMember.id}`);
     await expect(
-      page.getByRole("heading", { name: "Workspaces", exact: true }),
+      page.getByRole("heading", { name: "Workspace owner", exact: true }),
     ).toBeVisible();
-    const workspaces = await listWorkspaces(page, { first: 10 });
-    expect(workspaces.edges).toEqual([]);
-    expect(refetches).toEqual([]);
-    expect(pageErrors).toEqual([]);
+    await expect(
+      page.getByRole("button", { name: "Disable", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "More actions", exact: true }),
+    ).toHaveCount(0);
+    const response = await page.request.post("/api/graphql", {
+      headers,
+      data: {
+        query:
+          "mutation($id: ID!, $input: UpdateMemberInput!) { updateMember(id: $id, input: $input) { id } }",
+        variables: {
+          id: currentMember.id,
+          input: { status: "DISABLED", name: "Should not be saved" },
+        },
+      },
+    });
+    const body = await response.json();
+    expect(body.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: "You are not allowed to write this resource",
+        }),
+      ]),
+    );
+    const result = await graphqlRequest<{
+      currentMember: { name: string; status: string };
+    }>(page.request, "query { currentMember { name status } }", {}, headers);
+    expect(result.currentMember).toMatchObject({
+      name: "Workspace owner",
+      status: "ACTIVE",
+    });
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { name: "Workspace owner", exact: true }),
+    ).toBeVisible();
   });
 
   test("supports multiple owners through member roles and lets an owner leave", async ({

@@ -10,6 +10,7 @@ import type { ApiKeyRow } from "@/components/api-keys-page";
 import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
 import type { UserApiKeyPermission } from "@/gql/graphql";
 import type { PermissionOption } from "@/lib/permissions";
+import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-context";
 import { Link } from "@/components/link";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import { ApiKeyStatusBadge } from "@/components/api-key-status-badge";
@@ -21,15 +22,17 @@ import {
   PageLayout,
   PageLayoutSection,
 } from "@/components/thread-ui/page-layout";
+import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { toast } from "@/components/thread-ui/toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Field, FieldLabel } from "@/components/ui/field";
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { getFormErrorMessage } from "@/lib/form-errors";
 
 interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
@@ -41,10 +44,12 @@ interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
   permissionValues: ReadonlyArray<Permission>;
   permissionOptions: ReadonlyArray<PermissionOption<Permission>>;
   defaultPermissions?: ReadonlyArray<Permission>;
+  onToggle?: () => Promise<void>;
+  onDelete?: () => Promise<void>;
   onSave: (input: {
     name: string;
     permissions: Array<Permission>;
-  }) => Promise<string | undefined>;
+  }) => Promise<void>;
 }
 
 /** Both scopes use the same editor; only creation can reveal the full secret. */
@@ -58,11 +63,16 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
   permissionOptions,
   defaultPermissions = [],
   onSave,
+  onToggle,
+  onDelete,
 }: ApiKeyFormPageProps<Permission>) {
   const { t } = useTranslation();
   const formId = useId();
-  const [createdKey, setCreatedKey] = useState<string>();
+  const { secret } = useCreatedApiKey();
+  const createdKey = apiKey ? secret : undefined;
+  const [pendingAction, setPendingAction] = useState<"toggle" | "delete">();
   const [copied, setCopied] = useState(false);
+  const keyStart = apiKey?.start || apiKey?.prefix;
   const isPermission = (value: UserApiKeyPermission): value is Permission =>
     permissionValues.some((permission) => permission === value);
   const form = useForm({
@@ -90,19 +100,14 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
       onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
     },
     onSubmit: async ({ value, formApi }) => {
-      if (!canWrite || createdKey) return;
+      if (!canWrite || pendingAction) return;
       const input = {
         name: value.name.trim(),
         permissions: value.permissions.filter(isPermission),
       };
       try {
-        const secret = await onSave(input);
-        if (!apiKey) {
-          if (!secret) throw new Error(t("api-key:form.save_failed"));
-          setCreatedKey(secret);
-        } else {
-          formApi.reset(input);
-        }
+        await onSave(input);
+        if (apiKey) formApi.reset(input);
         toast.add({
           type: "success",
           title: t(
@@ -129,25 +134,54 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
     getFormErrorMessage(state.errors),
   );
 
+  const handleAction = async (action: "toggle" | "delete") => {
+    if (!apiKey || !canWrite || submitting || pendingAction) return;
+    const operation = action === "delete" ? onDelete : onToggle;
+    if (!operation) return;
+    setPendingAction(action);
+    try {
+      if (
+        action === "delete" &&
+        !(await alertDialog({
+          title: t("api-key:delete.title"),
+          description: t("api-key:delete.description", { name: apiKey.name }),
+          cancelText: t("action.cancel"),
+          confirmText: t("action.delete"),
+          variant: "destructive",
+        }))
+      )
+        return;
+      await operation();
+      toast.add({
+        type: "success",
+        title: t(
+          action === "delete"
+            ? "api-key:toast.deleted_success"
+            : apiKey.enabled
+              ? "api-key:toast.disabled_success"
+              : "api-key:toast.enabled_success",
+        ),
+      });
+    } catch (error) {
+      toast.add({
+        type: "error",
+        title:
+          error instanceof Error
+            ? error.message
+            : t("api-key:form.save_failed"),
+      });
+    } finally {
+      setPendingAction(undefined);
+    }
+  };
+
   return (
     <Page
       variant="compact"
-      title={t(
-        createdKey
-          ? "api-key:created.title"
-          : apiKey
-            ? "api-key:edit.title"
-            : "api-key:create.title",
+      title={t(apiKey ? "api-key:edit.title" : "api-key:create.title")}
+      description={t(
+        apiKey ? "api-key:edit.description" : "api-key:create.description",
       )}
-      description={
-        createdKey
-          ? undefined
-          : t(
-              apiKey
-                ? "api-key:edit.description"
-                : "api-key:create.description",
-            )
-      }
       breadcrumbActions={[
         {
           label: t("api-key:title"),
@@ -155,188 +189,215 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
         },
       ]}
       paginationActions={createdKey ? undefined : paginationActions}
+      secondaryActions={
+        apiKey && canWrite
+          ? [
+              ...(onToggle
+                ? [
+                    {
+                      label: t(
+                        apiKey.enabled ? "action.disable" : "action.enable",
+                      ),
+                      disabled: submitting || !!pendingAction,
+                      loading: pendingAction === "toggle",
+                      onAction: () => handleAction("toggle"),
+                    },
+                  ]
+                : []),
+              ...(onDelete
+                ? [
+                    {
+                      label: t("action.delete"),
+                      destructive: true,
+                      disabled: submitting || !!pendingAction,
+                      loading: pendingAction === "delete",
+                      onAction: () => handleAction("delete"),
+                    },
+                  ]
+                : []),
+            ]
+          : undefined
+      }
     >
-      <PageLayout>
-        {createdKey ? (
+      <form
+        id={formId}
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (form.state.isSubmitting || pendingAction || !canWrite) return;
+          form.setErrorMap({ onSubmit: undefined });
+          form.handleSubmit();
+        }}
+      >
+        <PageLayout>
           <PageLayoutSection>
             <Card>
-              <CardHeader>
-                <CardTitle>{t("api-key:created.title")}</CardTitle>
-              </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <Alert>
-                    <AlertTriangle />
-                    <AlertTitle>{t("api-key:created.warning")}</AlertTitle>
-                    <AlertDescription>
-                      {t("api-key:created.description")}
-                    </AlertDescription>
-                  </Alert>
-                  <div className="bg-muted rounded-md p-4">
-                    <code className="text-sm break-all">{createdKey}</code>
-                  </div>
-                </div>
+                <FormLayout>
+                  {createdKey && (
+                    <FormLayoutItem>
+                      <Alert>
+                        <AlertTriangle />
+                        <AlertTitle>{t("api-key:created.warning")}</AlertTitle>
+                        <AlertDescription>
+                          {t("api-key:created.description")}
+                        </AlertDescription>
+                      </Alert>
+                    </FormLayoutItem>
+                  )}
+                  <FormLayoutItem>
+                    <form.Field name="name">
+                      {(field) => (
+                        <Input
+                          id={`${formId}-name`}
+                          label={t("api-key:form.name.label")}
+                          placeholder={t("api-key:form.name.placeholder")}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          disabled={!canWrite || submitting || !!pendingAction}
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                        />
+                      )}
+                    </form.Field>
+                  </FormLayoutItem>
+                  {apiKey && (
+                    <FormLayoutItem>
+                      <Field data-disabled={!createdKey}>
+                        <FieldLabel htmlFor={`${formId}-key`}>
+                          {t("api-key:table.key_start")}
+                        </FieldLabel>
+                        <InputGroup>
+                          <InputGroupInput
+                            id={`${formId}-key`}
+                            value={
+                              createdKey ?? (keyStart ? `${keyStart}...` : "—")
+                            }
+                            disabled={!createdKey}
+                            readOnly
+                          />
+                          {createdKey && (
+                            <InputGroupAddon align="inline-end">
+                              <InputGroupButton
+                                size="icon-xs"
+                                aria-label={t(
+                                  copied
+                                    ? "api-key:created.copied"
+                                    : "api-key:created.copy",
+                                )}
+                                onClick={async () => {
+                                  try {
+                                    await navigator.clipboard.writeText(
+                                      createdKey,
+                                    );
+                                    setCopied(true);
+                                  } catch {
+                                    toast.add({
+                                      type: "error",
+                                      title: t("api-key:created.copy_failed"),
+                                    });
+                                  }
+                                }}
+                              >
+                                {copied ? <Check /> : <Copy />}
+                              </InputGroupButton>
+                            </InputGroupAddon>
+                          )}
+                        </InputGroup>
+                      </Field>
+                    </FormLayoutItem>
+                  )}
+                  {apiKey && (
+                    <FormLayoutItem>
+                      <dl className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <dt className="text-muted-foreground text-sm">
+                            {t("api-key:table.status")}
+                          </dt>
+                          <dd>
+                            <ApiKeyStatusBadge apiKey={apiKey} />
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted-foreground text-sm">
+                            {t("api-key:table.created_at")}
+                          </dt>
+                          <dd>
+                            {dayjs(apiKey.createdAt).format("YYYY-MM-DD HH:mm")}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted-foreground text-sm">
+                            {t("api-key:table.last_used")}
+                          </dt>
+                          <dd>
+                            {apiKey.lastUsedAt
+                              ? dayjs(apiKey.lastUsedAt).format(
+                                  "YYYY-MM-DD HH:mm",
+                                )
+                              : t("api-key:never_used")}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted-foreground text-sm">
+                            {t("api-key:table.expires_at")}
+                          </dt>
+                          <dd>
+                            {apiKey.expiresAt
+                              ? dayjs(apiKey.expiresAt).format("YYYY-MM-DD")
+                              : t("api-key:never_expires")}
+                          </dd>
+                        </div>
+                      </dl>
+                    </FormLayoutItem>
+                  )}
+                </FormLayout>
               </CardContent>
-              <CardFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(createdKey);
-                      setCopied(true);
-                    } catch {
-                      toast.add({
-                        type: "error",
-                        title: t("api-key:created.copy_failed"),
-                      });
-                    }
-                  }}
-                >
-                  {copied ? (
-                    <Check data-icon="inline-start" />
-                  ) : (
-                    <Copy data-icon="inline-start" />
-                  )}
-                  {t(
-                    copied ? "api-key:created.copied" : "api-key:created.copy",
-                  )}
-                </Button>
-              </CardFooter>
             </Card>
           </PageLayoutSection>
-        ) : (
-          <>
-            <PageLayoutSection>
-              <Card>
-                <CardHeader>
-                  <CardTitle>{apiKey?.name ?? t("api-key:details")}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form
-                    id={formId}
-                    noValidate
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      if (form.state.isSubmitting || !canWrite) return;
-                      form.setErrorMap({ onSubmit: undefined });
-                      form.handleSubmit();
-                    }}
-                  >
-                    <FormLayout>
-                      <FormLayoutItem>
-                        <form.Field name="name">
-                          {(field) => (
-                            <Input
-                              id={`${formId}-name`}
-                              label={t("api-key:form.name.label")}
-                              placeholder={t("api-key:form.name.placeholder")}
-                              value={field.state.value}
-                              onChange={(event) =>
-                                field.handleChange(event.target.value)
-                              }
-                              disabled={!canWrite || submitting}
-                              error={getFormErrorMessage(
-                                field.state.meta.errors,
-                              )}
-                            />
-                          )}
-                        </form.Field>
-                      </FormLayoutItem>
-                      <FormLayoutItem>
-                        <form.Field name="permissions">
-                          {(field) => (
-                            <PermissionCheckboxGroup
-                              options={permissionOptions}
-                              value={field.state.value}
-                              onChange={field.handleChange}
-                              disabled={!canWrite || submitting}
-                            />
-                          )}
-                        </form.Field>
-                      </FormLayoutItem>
-                      {error && (
-                        <FormLayoutItem>
-                          <Alert variant="destructive">
-                            <AlertDescription>{error}</AlertDescription>
-                          </Alert>
-                        </FormLayoutItem>
+          <PageLayoutSection>
+            <Card>
+              <CardContent>
+                <FormLayout>
+                  <FormLayoutItem>
+                    <form.Field name="permissions">
+                      {(field) => (
+                        <PermissionCheckboxGroup
+                          options={permissionOptions}
+                          value={field.state.value}
+                          onChange={field.handleChange}
+                          disabled={!canWrite || submitting || !!pendingAction}
+                        />
                       )}
-                    </FormLayout>
-                  </form>
-                </CardContent>
-                {canWrite && (
-                  <CardFooter>
-                    <Button type="submit" form={formId} loading={submitting}>
-                      {t(apiKey ? "action.save" : "action.create")}
-                    </Button>
-                  </CardFooter>
-                )}
-              </Card>
-            </PageLayoutSection>
-            {apiKey && (
-              <PageLayoutSection>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t("api-key:usage")}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <dl className="grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <dt className="text-muted-foreground text-sm">
-                          {t("api-key:table.status")}
-                        </dt>
-                        <dd>
-                          <ApiKeyStatusBadge apiKey={apiKey} />
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted-foreground text-sm">
-                          {t("api-key:table.key_start")}
-                        </dt>
-                        <dd>
-                          <code>{apiKey.start ?? apiKey.prefix ?? "—"}</code>
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted-foreground text-sm">
-                          {t("api-key:table.created_at")}
-                        </dt>
-                        <dd>
-                          {dayjs(apiKey.createdAt).format("YYYY-MM-DD HH:mm")}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted-foreground text-sm">
-                          {t("api-key:table.last_used")}
-                        </dt>
-                        <dd>
-                          {apiKey.lastUsedAt
-                            ? dayjs(apiKey.lastUsedAt).format(
-                                "YYYY-MM-DD HH:mm",
-                              )
-                            : t("api-key:never_used")}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted-foreground text-sm">
-                          {t("api-key:table.expires_at")}
-                        </dt>
-                        <dd>
-                          {apiKey.expiresAt
-                            ? dayjs(apiKey.expiresAt).format("YYYY-MM-DD")
-                            : t("api-key:never_expires")}
-                        </dd>
-                      </div>
-                    </dl>
-                  </CardContent>
-                </Card>
-              </PageLayoutSection>
-            )}
-          </>
-        )}
-      </PageLayout>
+                    </form.Field>
+                  </FormLayoutItem>
+                  {error && (
+                    <FormLayoutItem>
+                      <Alert variant="destructive">
+                        <AlertDescription>{error}</AlertDescription>
+                      </Alert>
+                    </FormLayoutItem>
+                  )}
+                </FormLayout>
+              </CardContent>
+              {canWrite && (
+                <CardFooter>
+                  <Button
+                    type="submit"
+                    form={formId}
+                    loading={submitting}
+                    disabled={!!pendingAction}
+                  >
+                    {t(apiKey ? "action.save" : "action.create")}
+                  </Button>
+                </CardFooter>
+              )}
+            </Card>
+          </PageLayoutSection>
+        </PageLayout>
+      </form>
     </Page>
   );
 }
