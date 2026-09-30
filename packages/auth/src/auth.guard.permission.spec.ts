@@ -107,7 +107,7 @@ describe("AuthGuard permissions", () => {
     const { guard, reflector, buildAbility } = await createGuard();
     setCanMetadata(reflector, {
       action: "read",
-      subject: Subject,
+      subjectCallback: () => Subject,
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
@@ -129,7 +129,7 @@ describe("AuthGuard permissions", () => {
 
     setCanMetadata(reflector, {
       action: "publish",
-      subject: Subject,
+      subjectCallback: () => Subject,
     });
 
     const context = createContext(req, res);
@@ -163,7 +163,7 @@ describe("AuthGuard permissions", () => {
     setCanMetadata(reflector, {
       action: "read",
 
-      subject: Subject,
+      subjectCallback: () => Subject,
     });
 
     const workspace = Object.assign(new BaseWorkspace(), { id: "workspace-1" });
@@ -206,7 +206,7 @@ describe("AuthGuard permissions", () => {
     setCanMetadata(reflector, {
       action: "read",
 
-      subject: Subject,
+      subjectCallback: () => Subject,
     });
 
     const workspace = Object.assign(new BaseWorkspace(), { id: "workspace-1" });
@@ -270,13 +270,13 @@ describe("AuthGuard permissions", () => {
       setCanMetadata(reflector, {
         action: "read",
 
-        subject: Subject,
+        subjectCallback: () => Subject,
       });
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
       setCanMetadata(reflector, {
         action: "read",
 
-        subject: Workspace,
+        subjectCallback: () => Workspace,
       });
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
@@ -304,7 +304,7 @@ describe("AuthGuard permissions", () => {
 
     setCanMetadata(reflector, {
       action: "read",
-      subject: Subject,
+      subjectCallback: () => Subject,
     });
     const context = createContext(
       undefined,
@@ -362,7 +362,7 @@ describe("AuthGuard permissions", () => {
 
     setCanMetadata(reflector, {
       action: "read",
-      subject: Subject,
+      subjectCallback: () => Subject,
     });
 
     await RequestContext.run(createAuthRequestContext("http"), () => {
@@ -375,6 +375,58 @@ describe("AuthGuard permissions", () => {
     expect(canMock).toHaveBeenCalledWith("read", Subject);
   });
 
+  it.each(["arrow", "ordinary", "async", "bound class result"])(
+    "evaluates the %s callback once and passes its class result directly to can",
+    async (kind) => {
+      const expectedSubject =
+        kind === "bound class result" ? Subject.bind(null) : Subject;
+      const callback =
+        kind === "ordinary"
+          ? function () {
+              return expectedSubject;
+            }
+          : kind === "async"
+            ? () => Promise.resolve(expectedSubject)
+            : () => expectedSubject;
+      const subjectCallback = vi.fn(callback);
+      const canMock = vi.fn(() => true);
+      const { guard, reflector } = await createGuard({
+        can: canMock,
+      } as unknown as TestAbility);
+      setCanMetadata(reflector, { action: "read", subjectCallback });
+
+      await RequestContext.run(createAuthRequestContext("http"), async () => {
+        await expect(guard.canActivate(createContext())).resolves.toBe(true);
+      });
+
+      expect(subjectCallback).toHaveBeenCalledOnce();
+      expect(canMock).toHaveBeenCalledExactlyOnceWith("read", expectedSubject);
+    },
+  );
+
+  it.each(["throw", "reject"])(
+    "propagates callback errors (%s) without checking a subject",
+    async (kind) => {
+      const error = new Error("Subject lookup failed");
+      const subjectCallback = vi.fn(() => {
+        if (kind === "throw") throw error;
+        return Promise.reject(error);
+      });
+      const canMock = vi.fn(() => true);
+      const { guard, reflector } = await createGuard({
+        can: canMock,
+      } as unknown as TestAbility);
+      setCanMetadata(reflector, { action: "read", subjectCallback });
+
+      await RequestContext.run(createAuthRequestContext("http"), async () => {
+        await expect(guard.canActivate(createContext())).rejects.toBe(error);
+      });
+
+      expect(subjectCallback).toHaveBeenCalledOnce();
+      expect(canMock).not.toHaveBeenCalled();
+    },
+  );
+
   it("checks ability against subject resolved from self and decorated method args", async () => {
     const subjectInstance = new Subject();
     const input = { id: 123 };
@@ -383,7 +435,7 @@ describe("AuthGuard permissions", () => {
         findOne: vi.fn((_id: number) => Promise.resolve(subjectInstance)),
       },
     };
-    const subjectFactory = vi.fn(
+    const subjectCallback = vi.fn(
       (
         self: typeof handlerThis,
         params: {
@@ -407,7 +459,7 @@ describe("AuthGuard permissions", () => {
     });
     setCanMetadata(reflector, {
       action: "read",
-      subject: subjectFactory,
+      subjectCallback,
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
@@ -427,8 +479,8 @@ describe("AuthGuard permissions", () => {
       expect.any(Object),
       { strict: false },
     );
-    expect(subjectFactory.mock.contexts[0]).toBeUndefined();
-    expect(subjectFactory).toHaveBeenCalledWith(handlerThis, { input });
+    expect(subjectCallback.mock.contexts[0]).toBeUndefined();
+    expect(subjectCallback).toHaveBeenCalledWith(handlerThis, { input });
     expect(handlerThis.memberService.findOne).toHaveBeenCalledWith(123);
     expect(canMock).toHaveBeenCalledWith("read", subjectInstance);
   });
@@ -443,7 +495,7 @@ describe("AuthGuard permissions", () => {
         ),
       },
     };
-    const subjectFactory = vi.fn(
+    const subjectCallback = vi.fn(
       (self: typeof handlerThis, id: string, params: typeof input) =>
         self.postService.findOneOrFail(id, params),
     );
@@ -468,7 +520,7 @@ describe("AuthGuard permissions", () => {
     });
     setCanMetadata(reflector, {
       action: "read",
-      subject: subjectFactory,
+      subjectCallback,
     });
 
     await RequestContext.run(createAuthRequestContext("graphql"), async () => {
@@ -484,19 +536,19 @@ describe("AuthGuard permissions", () => {
       ).resolves.toBe(true);
     });
 
-    expect(subjectFactory).toHaveBeenCalledWith(handlerThis, "post-1", input);
+    expect(subjectCallback).toHaveBeenCalledWith(handlerThis, "post-1", input);
     expect(handlerThis.postService.findOneOrFail).toHaveBeenCalledWith(
       "post-1",
       input,
     );
   });
 
-  it("passes every GraphQL route argument source to subject factories", async () => {
+  it("passes every GraphQL route argument source to subject callbacks", async () => {
     const root = { root: true };
     const info = { fieldName: "post" };
     const subjectInstance = new Subject();
     const handlerThis = {};
-    const subjectFactory = vi.fn(() => subjectInstance);
+    const subjectCallback = vi.fn(() => subjectInstance);
     const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
@@ -527,7 +579,7 @@ describe("AuthGuard permissions", () => {
     });
     setCanMetadata(reflector, {
       action: "read",
-      subject: subjectFactory,
+      subjectCallback,
     });
 
     await RequestContext.run(createAuthRequestContext("graphql"), async () => {
@@ -543,7 +595,7 @@ describe("AuthGuard permissions", () => {
       ).resolves.toBe(true);
     });
 
-    expect(subjectFactory).toHaveBeenCalledWith(
+    expect(subjectCallback).toHaveBeenCalledWith(
       handlerThis,
       root,
       "post-1",
@@ -564,7 +616,7 @@ describe("AuthGuard permissions", () => {
         ),
       },
     };
-    const subjectFactory = vi.fn(
+    const subjectCallback = vi.fn(
       (self: typeof handlerThis, id: string, params: typeof input) =>
         self.postService.findOneOrFail(id, params),
     );
@@ -589,7 +641,7 @@ describe("AuthGuard permissions", () => {
     });
     setCanMetadata(reflector, {
       action: "read",
-      subject: subjectFactory,
+      subjectCallback,
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
@@ -608,14 +660,14 @@ describe("AuthGuard permissions", () => {
       ).resolves.toBe(true);
     });
 
-    expect(subjectFactory).toHaveBeenCalledWith(handlerThis, "post-1", input);
+    expect(subjectCallback).toHaveBeenCalledWith(handlerThis, "post-1", input);
     expect(handlerThis.postService.findOneOrFail).toHaveBeenCalledWith(
       "post-1",
       input,
     );
   });
 
-  it("passes every HTTP route argument source to subject factories", async () => {
+  it("passes every HTTP route argument source to subject callbacks", async () => {
     const req = {
       body: { input: { title: "Draft" } },
       files: ["first-file"],
@@ -634,7 +686,7 @@ describe("AuthGuard permissions", () => {
     const next = vi.fn();
     const subjectInstance = new Subject();
     const handlerThis = {};
-    const subjectFactory = vi.fn(() => subjectInstance);
+    const subjectCallback = vi.fn(() => subjectInstance);
     const canMock = vi.fn(() => true);
     const ability = {
       can: canMock,
@@ -698,7 +750,7 @@ describe("AuthGuard permissions", () => {
     });
     setCanMetadata(reflector, {
       action: "read",
-      subject: subjectFactory,
+      subjectCallback,
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
@@ -709,7 +761,7 @@ describe("AuthGuard permissions", () => {
       ).resolves.toBe(true);
     });
 
-    expect(subjectFactory).toHaveBeenCalledWith(
+    expect(subjectCallback).toHaveBeenCalledWith(
       handlerThis,
       req,
       res,
@@ -730,7 +782,7 @@ describe("AuthGuard permissions", () => {
     expect(canMock).toHaveBeenCalledWith("read", subjectInstance);
   });
 
-  it("passes custom HTTP controller arguments to subject factories", async () => {
+  it("passes custom HTTP controller arguments to subject callbacks", async () => {
     const workspace = Object.assign(new BaseWorkspace(), { id: "workspace-1" });
     const subjectInstance = new Subject();
     const customFactory = vi.fn((_data: unknown, context: ExecutionContext) =>
@@ -746,7 +798,7 @@ describe("AuthGuard permissions", () => {
         ),
       },
     };
-    const subjectFactory = vi.fn(
+    const subjectCallback = vi.fn(
       (
         self: typeof handlerThis,
         currentWorkspace: typeof workspace,
@@ -775,7 +827,7 @@ describe("AuthGuard permissions", () => {
     });
     setCanMetadata(reflector, {
       action: "read",
-      subject: subjectFactory,
+      subjectCallback,
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
@@ -794,7 +846,7 @@ describe("AuthGuard permissions", () => {
     });
 
     expect(customFactory).toHaveBeenCalledWith("workspace", expect.any(Object));
-    expect(subjectFactory).toHaveBeenCalledWith(
+    expect(subjectCallback).toHaveBeenCalledWith(
       handlerThis,
       workspace,
       "post-1",
@@ -806,7 +858,7 @@ describe("AuthGuard permissions", () => {
     expect(canMock).toHaveBeenCalledWith("read", subjectInstance);
   });
 
-  it("awaits async custom controller arguments before invoking subject factories", async () => {
+  it("awaits async custom controller arguments before invoking subject callbacks", async () => {
     const workspace = Object.assign(new BaseWorkspace(), { id: "workspace-1" });
     const subjectInstance = new Subject();
     const customFactory = vi.fn(() => Promise.resolve(workspace));
@@ -817,7 +869,7 @@ describe("AuthGuard permissions", () => {
         ),
       },
     };
-    const subjectFactory = vi.fn(
+    const subjectCallback = vi.fn(
       (
         self: typeof handlerThis,
         currentWorkspace: typeof workspace,
@@ -846,7 +898,7 @@ describe("AuthGuard permissions", () => {
     });
     setCanMetadata(reflector, {
       action: "read",
-      subject: subjectFactory,
+      subjectCallback,
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
@@ -864,7 +916,7 @@ describe("AuthGuard permissions", () => {
       ).resolves.toBe(true);
     });
 
-    expect(subjectFactory).toHaveBeenCalledWith(
+    expect(subjectCallback).toHaveBeenCalledWith(
       handlerThis,
       workspace,
       "post-1",
@@ -885,7 +937,7 @@ describe("AuthGuard permissions", () => {
     );
     setCanMetadata(reflector, {
       action: "read",
-      subject: Subject,
+      subjectCallback: () => Subject,
     });
 
     await RequestContext.run(createAuthRequestContext("graphql"), async () => {
@@ -899,10 +951,10 @@ describe("AuthGuard permissions", () => {
     expect(canMock).toHaveBeenCalledTimes(2);
   });
 
-  it("passes no subject factory args when route metadata is missing", async () => {
+  it("passes no subject callback args when route metadata is missing", async () => {
     const subjectInstance = new Subject();
     const handlerThis = {};
-    const subjectFactory = vi.fn(() => subjectInstance);
+    const subjectCallback = vi.fn(() => subjectInstance);
     const canMock = vi.fn(() => true);
     const { guard, reflector, moduleRef } = await createGuard(
       {
@@ -913,7 +965,7 @@ describe("AuthGuard permissions", () => {
 
     setCanMetadata(reflector, {
       action: "read",
-      subject: subjectFactory,
+      subjectCallback,
     });
 
     await RequestContext.run(createAuthRequestContext("rpc"), async () => {
@@ -925,13 +977,13 @@ describe("AuthGuard permissions", () => {
     expect(moduleRef.resolve).toHaveBeenCalledWith(Controller, undefined, {
       strict: false,
     });
-    expect(subjectFactory).toHaveBeenCalledWith(handlerThis);
+    expect(subjectCallback).toHaveBeenCalledWith(handlerThis);
   });
 
   it("falls back to prototype lookup and null when handler names are unavailable", async () => {
     const subjectInstance = new Subject();
     const handlerThis = {};
-    const subjectFactory = vi.fn(() => subjectInstance);
+    const subjectCallback = vi.fn(() => subjectInstance);
     const canMock = vi.fn(() => true);
     const { guard, reflector } = await createGuard(
       {
@@ -959,7 +1011,7 @@ describe("AuthGuard permissions", () => {
     );
     setCanMetadata(reflector, {
       action: "read",
-      subject: subjectFactory,
+      subjectCallback,
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
@@ -990,10 +1042,10 @@ describe("AuthGuard permissions", () => {
       await expect(guard.canActivate(unmatchedContext)).resolves.toBe(true);
     });
 
-    expect(subjectFactory).toHaveBeenNthCalledWith(1, handlerThis, {
+    expect(subjectCallback).toHaveBeenNthCalledWith(1, handlerThis, {
       input: true,
     });
-    expect(subjectFactory).toHaveBeenNthCalledWith(2, handlerThis);
+    expect(subjectCallback).toHaveBeenNthCalledWith(2, handlerThis);
 
     Reflect.deleteMetadata(ROUTE_ARGS_METADATA, Controller, "matched");
     delete (Controller.prototype as Record<string, unknown>).matched;
@@ -1007,7 +1059,7 @@ describe("AuthGuard permissions", () => {
 
     setCanMetadata(reflector, {
       action: "delete",
-      subject: Subject,
+      subjectCallback: () => Subject,
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
@@ -1023,8 +1075,8 @@ describe("AuthGuard permissions", () => {
     reflector.getAllAndMerge.mockImplementation((key) => {
       if (key === CAN_METADATA) {
         return [
-          { action: "read", subject: User },
-          { action: "update", subject: Workspace },
+          { action: "read", subjectCallback: () => User },
+          { action: "update", subjectCallback: () => Workspace },
         ];
       }
       return undefined;
@@ -1049,8 +1101,8 @@ describe("AuthGuard permissions", () => {
     reflector.getAllAndMerge.mockImplementation((key) =>
       key === CAN_METADATA
         ? [
-            { action: "read", subject: User },
-            { action: "update", subject: User },
+            { action: "read", subjectCallback: () => User },
+            { action: "update", subjectCallback: () => User },
           ]
         : undefined,
     );
@@ -1072,8 +1124,8 @@ describe("AuthGuard permissions", () => {
     reflector.getAllAndMerge.mockImplementation((key) =>
       key === CAN_METADATA
         ? [
-            { action: "read", subject: Workspace },
-            { action: "update", subject: Workspace },
+            { action: "read", subjectCallback: () => Workspace },
+            { action: "update", subjectCallback: () => Workspace },
           ]
         : undefined,
     );
@@ -1091,7 +1143,7 @@ describe("AuthGuard permissions", () => {
 
     setCanMetadata(reflector, {
       action: "read",
-      subject: User,
+      subjectCallback: () => User,
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
@@ -1114,7 +1166,7 @@ describe("AuthGuard permissions", () => {
 
       setCanMetadata(reflector, {
         action: "update",
-        subject: User,
+        subjectCallback: () => User,
       });
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
     });
@@ -1125,7 +1177,7 @@ describe("AuthGuard permissions", () => {
 
     setCanMetadata(reflector, {
       action: "delete",
-      subject: User,
+      subjectCallback: () => User,
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
@@ -1160,7 +1212,7 @@ describe("AuthGuard permissions", () => {
     setCanMetadata(reflector, {
       action: "update",
 
-      subject: Workspace,
+      subjectCallback: () => Workspace,
     });
 
     await RequestContext.run(createWorkspaceRequestContext(), async () => {
@@ -1176,7 +1228,7 @@ describe("AuthGuard permissions", () => {
       setCanMetadata(reflector, {
         action: "update",
 
-        subject: Workspace,
+        subjectCallback: () => Workspace,
       });
       await expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
@@ -1194,7 +1246,7 @@ describe("AuthGuard permissions", () => {
     setCanMetadata(reflector, {
       action: "read",
 
-      subject: () => post,
+      subjectCallback: () => post,
     });
 
     await RequestContext.run(createWorkspaceRequestContext(), async () => {
@@ -1216,7 +1268,7 @@ describe("AuthGuard permissions", () => {
     setCanMetadata(reflector, {
       action: "update",
 
-      subject: Workspace,
+      subjectCallback: () => Workspace,
     });
 
     await RequestContext.run(createUserWorkspaceRequestContext(), async () => {
@@ -1289,7 +1341,7 @@ describe("AuthGuard permissions", () => {
     setCanMetadata(reflector, {
       action: "read",
 
-      subject: User,
+      subjectCallback: () => User,
     });
 
     await RequestContext.run(createAuthRequestContext("http"), async () => {
@@ -1568,7 +1620,7 @@ function setCanMetadata(
   },
   metadata: {
     action: string;
-    subject: unknown;
+    subjectCallback: unknown;
   },
 ): void {
   reflector.getAllAndMerge.mockImplementation((key) =>

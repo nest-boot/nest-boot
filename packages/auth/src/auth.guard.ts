@@ -1,6 +1,6 @@
 import type { Subject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
-import type { CanActivate, ExecutionContext, Type } from "@nestjs/common";
+import type { CanActivate, ExecutionContext } from "@nestjs/common";
 import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
 import type { Request } from "express";
@@ -19,7 +19,7 @@ import {
   ROUTE_ARGS_METADATA,
   ROUTE_PARAM_TYPES,
 } from "./permission.constants.js";
-import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
+import type { CanSubjectCallback } from "./types/can-subject-callback.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
 import { can } from "./utils/can.util.js";
 import { getAuthAbility } from "./utils/get-auth-ability.util.js";
@@ -28,10 +28,6 @@ import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
 /** Guard that enforces authentication and evaluates route permissions. */
 @Injectable()
 export class AuthGuard implements CanActivate {
-  /** Rebuilds the ability after an explicit sign-in changes the request identity. */
-  refreshAbility(): void {
-    RequestIdentity.refresh(this.options);
-  }
   /**
    * Creates the authentication and permission guard.
    *
@@ -47,32 +43,6 @@ export class AuthGuard implements CanActivate {
   ) {}
 
   /**
-   * Determines whether the current route is marked as public.
-   *
-   * @param context - Current Nest execution context.
-   * @returns `true` when session authentication should be skipped.
-   */
-  protected isPublic(context: ExecutionContext): boolean {
-    return !!this.reflector.getAllAndOverride(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-  }
-
-  /**
-   * Determines whether the request has an authenticated session.
-   *
-   * @returns `true` when the request is authenticated.
-   */
-  protected isAuthenticated(): boolean {
-    try {
-      return !!RequestContext.get(Session) || !!getCurrentApiKey();
-    } catch {
-      return false;
-    }
-  }
-
-  /**
    * Checks authentication and route permission metadata.
    *
    * @param context - Current Nest execution context.
@@ -84,9 +54,7 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException("Authentication is required");
     }
 
-    if (RequestContext.isActive()) {
-      RequestIdentity.prepare(this.options);
-    }
+    RequestIdentity.prepare(this.options);
 
     const metadata = this.reflector.getAllAndMerge<CanMetadata[]>(
       CAN_METADATA,
@@ -94,56 +62,57 @@ export class AuthGuard implements CanActivate {
     );
     if (!metadata?.length) return true;
     for (const requirement of metadata) {
-      // Require a prepared identity before resolving a protected subject factory.
+      // Require a prepared identity before resolving a protected subject callback.
       getAuthAbility();
-      const subject = await this.resolveSubject(requirement, context);
+      const subject = await this.resolveSubject(
+        requirement.subjectCallback,
+        context,
+      );
       if (!can(requirement.action, subject)) return false;
     }
     return true;
   }
 
+  /** Rebuilds the ability after an explicit sign-in changes the request identity. */
+  refreshAbility(): void {
+    RequestIdentity.refresh(this.options);
+  }
+
+  /**
+   * Determines whether the current route is marked as public.
+   *
+   * @param context - Current Nest execution context.
+   * @returns `true` when authentication is not required.
+   */
+  protected isPublic(context: ExecutionContext): boolean {
+    return !!this.reflector.getAllAndOverride(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+  }
+
+  /**
+   * Determines whether the request has a session or an API key.
+   *
+   * @returns `true` when the request is authenticated.
+   */
+  protected isAuthenticated(): boolean {
+    if (!RequestContext.isActive()) return false;
+    return !!RequestContext.get(Session) || !!getCurrentApiKey();
+  }
+
   private async resolveSubject(
-    canOptions: CanMetadata,
+    subjectCallback: CanSubjectCallback,
     context: ExecutionContext,
   ): Promise<Subject> {
-    const { subject } = canOptions;
+    const handlerSelf = await this.moduleRef.resolve<unknown>(
+      context.getClass(),
+      this.getContextId(context),
+      { strict: false },
+    );
+    const args = await this.getSubjectCallbackArgs(context);
 
-    if (this.isSubjectType(subject)) {
-      return subject;
-    }
-
-    return await this.resolveSubjectFactory(subject, context);
-  }
-
-  private isSubjectType(
-    subject: CanMetadata["subject"],
-  ): subject is Type<Subject> {
-    return Function.prototype.toString.call(subject).startsWith("class ");
-  }
-
-  private async resolveProvider<T>(
-    provider: Type<T>,
-    context: ExecutionContext,
-  ): Promise<T> {
-    return await this.moduleRef.resolve(provider, this.getContextId(context), {
-      strict: false,
-    });
-  }
-
-  private async resolveSubjectFactory(
-    subjectFactory: CanSubjectFactory,
-    context: ExecutionContext,
-  ): Promise<Subject> {
-    const handlerSelf = await this.resolveHandlerSelf(context);
-    const args = await this.getSubjectFactoryArgs(context);
-
-    return await subjectFactory(handlerSelf, ...args);
-  }
-
-  private async resolveHandlerSelf(
-    context: ExecutionContext,
-  ): Promise<unknown> {
-    return await this.resolveProvider(context.getClass(), context);
+    return await subjectCallback(handlerSelf, ...args);
   }
 
   private getContextId(context: ExecutionContext): { id: number } | undefined {
@@ -163,7 +132,7 @@ export class AuthGuard implements CanActivate {
     }
   }
 
-  private async getSubjectFactoryArgs(
+  private async getSubjectCallbackArgs(
     context: ExecutionContext,
   ): Promise<unknown[]> {
     const routeArgsMetadata = this.getRouteArgsMetadata(context);
