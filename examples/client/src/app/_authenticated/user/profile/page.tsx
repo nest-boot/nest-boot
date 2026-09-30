@@ -8,6 +8,7 @@ import { CircleX, MailCheck } from "lucide-react";
 import { z } from "zod";
 
 import { useCurrentUserContext } from "../../contexts/current-user-context";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import {
   PageLayout,
   PageLayoutSection,
@@ -82,7 +83,7 @@ function UserComponent() {
 
       try {
         await updateUser({ variables: { input: { name } } });
-        await router.invalidate();
+        await refreshAfterMutation(() => router.invalidate());
         form.reset({ name });
         toast.add({ type: "success", title: t("user:profile.toast.updated") });
       } catch (error) {

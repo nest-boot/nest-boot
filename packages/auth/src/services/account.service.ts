@@ -2,10 +2,11 @@ import { EntityManager } from "@mikro-orm/core";
 import type { SqlEntityManager } from "@mikro-orm/sql";
 import {
   type ConnectionArgsInterface,
-  type ConnectionInterface,
   ConnectionManager,
+  type ConnectionResult,
 } from "@nest-boot/graphql-connection";
 import { ForbiddenException, Injectable } from "@nestjs/common";
+import type { GraphQLResolveInfo } from "graphql";
 
 import { AccountConnection } from "../connections/account.connection-definition.js";
 import { type Account } from "../entities/account.entity.js";
@@ -24,8 +25,9 @@ export class AccountService {
   async getAccountConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<Account>,
+    info?: GraphQLResolveInfo,
   ): Promise<
-    ConnectionInterface<
+    ConnectionResult<
       Omit<Account, "password" | "accessToken" | "refreshToken" | "idToken">
     >
   > {
@@ -38,6 +40,7 @@ export class AccountService {
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find(AccountConnection, args, {
+      ...(info && { info }),
       where: { user: String(user.id) },
       exclude: ["password", "accessToken", "refreshToken", "idToken"],
     });

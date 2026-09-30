@@ -6,6 +6,71 @@ import { waitForEmailUrl } from "./utils/mailpit";
 import { uniqueSeed } from "./utils/unique";
 
 test.describe("email authentication", () => {
+  test("sends short existing passwords to the server instead of enforcing registration limits", async ({
+    page,
+  }) => {
+    let password: string | undefined;
+    await page.route("**/graphql", async (route) => {
+      const request = route.request().postDataJSON();
+      if (request.operationName === "signInFromLoginForm") {
+        password = request.variables.input.password;
+        await route.fulfill({
+          json: { errors: [{ message: "Invalid credentials" }] },
+        });
+      } else await route.continue();
+    });
+    await page.goto("/auth/login");
+    await page.getByLabel("Email", { exact: true }).fill("short@example.com");
+    await page.getByLabel("Password", { exact: true }).fill("short");
+    await page
+      .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+      .click();
+    await expect.poll(() => password).toBe("short");
+    await expect(page.getByText("Invalid credentials").first()).toBeVisible();
+  });
+
+  test("validates registration using the server's minimum and maximum", async ({
+    page,
+  }) => {
+    let submissions = 0;
+    await page.route("**/graphql", async (route) => {
+      const request = route.request().postDataJSON();
+      if (request.operationName === "getPasswordPolicy") {
+        await route.fulfill({
+          json: { data: { passwordPolicy: { minLength: 6, maxLength: 10 } } },
+        });
+      } else if (request.operationName === "signUpFromLoginForm") {
+        submissions++;
+        await route.fulfill({
+          json: { errors: [{ message: "Registration intercepted" }] },
+        });
+      } else await route.continue();
+    });
+    await page.goto("/auth/register");
+    await page.getByLabel("Name", { exact: true }).fill("Policy test");
+    await page.getByLabel("Email", { exact: true }).fill("policy@example.com");
+    await page.getByLabel("Password", { exact: true }).fill("12345");
+    await page
+      .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+      .click();
+    await expect(
+      page.getByText("Password must contain at least 6 characters."),
+    ).toBeVisible();
+    await page.getByLabel("Password", { exact: true }).fill("12345678901");
+    await page
+      .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+      .click();
+    await expect(
+      page.getByText("Password must contain at most 10 characters."),
+    ).toBeVisible();
+    expect(submissions).toBe(0);
+    await page.getByLabel("Password", { exact: true }).fill("123456");
+    await page
+      .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
+      .click();
+    await expect.poll(() => submissions).toBe(1);
+  });
+
   test("registers and logs in with email and password", async ({
     context,
     page,

@@ -9,6 +9,7 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
 import { AuthPageShell } from "../components/auth-page-shell";
+import { usePasswordPolicy } from "@/hooks/use-password-policy";
 import { getFormErrorMessage } from "@/lib/form-errors";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { FieldError } from "@/components/ui/field";
@@ -42,6 +43,7 @@ export const Route = createFileRoute("/auth/reset-password/")({
 });
 
 function ResetPasswordComponent() {
+  const { passwordSchema } = usePasswordPolicy();
   const { t } = useTranslation();
   const search = useSearch({ from: "/auth/reset-password/" });
   const [resetPassword] = useMutation(RESET_PASSWORD_FROM_RESET_PASSWORD);
@@ -50,7 +52,7 @@ function ResetPasswordComponent() {
 
   const form = useForm({
     defaultValues: { newPassword: "", confirmPassword: "" },
-    validators: { onSubmit: createResetPasswordSchema() },
+    validators: { onSubmit: createResetPasswordSchema(passwordSchema) },
     listeners: {
       onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
     },
@@ -199,10 +201,10 @@ function ResetPasswordComponent() {
   );
 }
 
-function createResetPasswordSchema() {
+function createResetPasswordSchema(passwordSchema: z.ZodType<string, string>) {
   return z
     .object({
-      newPassword: z.string().min(8, t("auth:form.password.min")),
+      newPassword: passwordSchema,
       confirmPassword: z.string(),
     })
     .refine((value) => value.newPassword === value.confirmPassword, {

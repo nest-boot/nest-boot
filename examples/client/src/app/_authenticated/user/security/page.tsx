@@ -6,6 +6,8 @@ import { MonitorSmartphone } from "lucide-react";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import { usePasswordPolicy } from "@/hooks/use-password-policy";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { getFormErrorMessage } from "@/lib/form-errors";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -147,6 +149,7 @@ export const Route = createFileRoute("/_authenticated/user/security/")({
 });
 
 function UserSecurityComponent() {
+  const { passwordSchema } = usePasswordPolicy();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const {
@@ -199,7 +202,7 @@ function UserSecurityComponent() {
       if (!result.data?.revokeCurrentUserSession) {
         throw new Error(t("user:security.sessions.toast.revoke_failed"));
       }
-      await refetch();
+      await refreshAfterMutation(() => refetch());
       toast.add({
         type: "success",
         title: t("user:security.sessions.toast.revoked"),
@@ -224,7 +227,7 @@ function UserSecurityComponent() {
       if (!result.data?.revokeCurrentUserOtherSessions) {
         throw new Error(t("user:security.sessions.toast.revoke_failed"));
       }
-      await refetch();
+      await refreshAfterMutation(() => refetch());
       toast.add({
         type: "success",
         title: t("user:security.sessions.toast.others_revoked"),
@@ -249,7 +252,7 @@ function UserSecurityComponent() {
       confirmPassword: "",
       revokeOtherSessions: true,
     },
-    validators: { onSubmit: createChangePasswordSchema() },
+    validators: { onSubmit: createChangePasswordSchema(passwordSchema) },
     listeners: {
       onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
     },
@@ -269,7 +272,7 @@ function UserSecurityComponent() {
           throw new Error(t("user:security.toast.update_failed"));
         }
 
-        await refetch({ after: undefined });
+        await refreshAfterMutation(() => refetch({ after: undefined }));
         formApi.reset({
           ...value,
           currentPassword: "",
@@ -308,7 +311,7 @@ function UserSecurityComponent() {
       if (!result.data?.unlinkCurrentUserAccount) {
         throw new Error(t("user:security.accounts.unlink_failed"));
       }
-      await refetchAccounts();
+      await refreshAfterMutation(() => refetchAccounts());
       toast.add({
         type: "success",
         title: t("user:security.accounts.unlinked"),
@@ -812,13 +815,13 @@ function formatSessionDate(value: string | Date): string {
   }).format(new Date(value));
 }
 
-function createChangePasswordSchema() {
+function createChangePasswordSchema(passwordSchema: z.ZodType<string, string>) {
   return z
     .object({
       currentPassword: z
         .string()
         .min(1, t("user:security.form.current_required")),
-      newPassword: z.string().min(8, t("auth:form.password.min")),
+      newPassword: passwordSchema,
       confirmPassword: z.string(),
       revokeOtherSessions: z.boolean(),
     })

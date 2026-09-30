@@ -60,7 +60,11 @@ describe("UserResolver", () => {
       { getAccountConnectionByUser } as unknown as AccountService,
     );
     await expect(resolver.accounts(user, args)).resolves.toBe(result);
-    expect(getAccountConnectionByUser).toHaveBeenCalledWith(user, args);
+    expect(getAccountConnectionByUser).toHaveBeenCalledWith(
+      user,
+      args,
+      undefined,
+    );
     const denied = new Error("Account access denied");
     getAccountConnectionByUser.mockRejectedValueOnce(denied);
     await expect(resolver.accounts(user, args)).rejects.toBe(denied);
@@ -73,9 +77,11 @@ describe("UserResolver", () => {
     await expect(resolver.sessions(user, { first: 10 })).resolves.toBe(
       sessions,
     );
-    expect(getSessionConnectionByUser).toHaveBeenCalledWith(user, {
-      first: 10,
-    });
+    expect(getSessionConnectionByUser).toHaveBeenCalledWith(
+      user,
+      { first: 10 },
+      undefined,
+    );
     const denied = new Error("session access denied");
     getSessionConnectionByUser.mockRejectedValueOnce(denied);
     await expect(resolver.sessions(user, { first: 10 })).rejects.toBe(denied);
@@ -96,7 +102,11 @@ describe("UserResolver", () => {
       {} as never,
     );
     await expect(resolver.invitations(user, args)).resolves.toBe(connection);
-    expect(getInvitationConnectionByUser).toHaveBeenCalledWith(user, args);
+    expect(getInvitationConnectionByUser).toHaveBeenCalledWith(
+      user,
+      args,
+      undefined,
+    );
   });
   it("delegates deletion to UserService.deleteUser", async () => {
     const user = { id: "user-1", name: "Deleted user" } as BaseUser;
@@ -131,7 +141,7 @@ describe("UserResolver", () => {
     });
     const args = { first: 10, after: "cursor", query: "alice" };
     await expect(resolver.users(args)).resolves.toBe(connection);
-    expect(service.getUserConnection).toHaveBeenCalledWith(args);
+    expect(service.getUserConnection).toHaveBeenCalledWith(args, undefined);
   });
 
   it("updates permissions through UserService", async () => {

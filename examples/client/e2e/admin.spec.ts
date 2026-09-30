@@ -283,3 +283,51 @@ test("deletes a user from PageActions and returns to the filtered list", async (
   );
   await expect(page.getByRole("row").filter({ hasText: seed })).toHaveCount(0);
 });
+
+test("keeps a committed profile save successful when refresh fails and retries only the read", async ({
+  page,
+}) => {
+  await signInAsE2eAdministrator(page);
+  const { createUser } = await graphqlRequest<{ createUser: { id: string } }>(
+    page.request,
+    "mutation($input: CreateUserInput!) { createUser(input: $input) { id } }",
+    {
+      input: {
+        name: "Refresh test",
+        email: `${uniqueSeed("refresh")}@example.com`,
+        password: testPassword,
+      },
+    },
+  );
+  await page.goto(`/admin/users/${createUser.id}`);
+  await page.getByLabel("Name", { exact: true }).fill("Committed profile");
+  let mutations = 0;
+  let reads = 0;
+  await page.route("**/graphql", async (route) => {
+    const request = route.request().postDataJSON();
+    if (request.operationName === "updateManagedUserFromUserRoute") mutations++;
+    if (request.operationName === "getUserFromUserRoute") {
+      reads++;
+      if (reads === 1) {
+        await route.fulfill({
+          json: { errors: [{ message: "Refresh unavailable" }] },
+        });
+        return;
+      }
+    }
+    await route.continue();
+  });
+  await page.locator('button[form="admin-user-profile-form"]').click();
+  await expect(
+    page.getByText(
+      "Saved successfully, but the latest data could not be loaded.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText("User updated", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Committed profile", exact: true }),
+  ).toBeVisible();
+  expect(mutations).toBe(1);
+  expect(reads).toBe(2);
+});

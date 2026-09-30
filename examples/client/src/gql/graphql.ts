@@ -725,6 +725,12 @@ export type PageInfo = {
   startCursor?: Maybe<Scalars["String"]["output"]>;
 };
 
+export type PasswordPolicy = {
+  __typename?: "PasswordPolicy";
+  maxLength: Scalars["Int"]["output"];
+  minLength: Scalars["Int"]["output"];
+};
+
 export type Query = {
   __typename?: "Query";
   currentAbilityRules: Array<AuthAbilityRuleType>;
@@ -734,6 +740,7 @@ export type Query = {
   currentWorkspace?: Maybe<Workspace>;
   invitation?: Maybe<Invitation>;
   member?: Maybe<Member>;
+  passwordPolicy: PasswordPolicy;
   socialProviders: Array<AuthSocialProviderType>;
   user?: Maybe<User>;
   userApiKeyPermissions: Array<UserApiKeyPermissionOption>;
@@ -2765,6 +2772,17 @@ export type UpdateWorkspaceApiKeyFromApiKeysRouteMutation = {
     createdAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
+  };
+};
+
+export type GetPasswordPolicyQueryVariables = Exact<{ [key: string]: never }>;
+
+export type GetPasswordPolicyQuery = {
+  __typename?: "Query";
+  passwordPolicy: {
+    __typename?: "PasswordPolicy";
+    minLength: number;
+    maxLength: number;
   };
 };
 
@@ -9630,4 +9648,33 @@ export const UpdateWorkspaceApiKeyFromApiKeysRouteDocument = {
 } as unknown as DocumentNode<
   UpdateWorkspaceApiKeyFromApiKeysRouteMutation,
   UpdateWorkspaceApiKeyFromApiKeysRouteMutationVariables
+>;
+export const GetPasswordPolicyDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "getPasswordPolicy" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "passwordPolicy" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "minLength" } },
+                { kind: "Field", name: { kind: "Name", value: "maxLength" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  GetPasswordPolicyQuery,
+  GetPasswordPolicyQueryVariables
 >;

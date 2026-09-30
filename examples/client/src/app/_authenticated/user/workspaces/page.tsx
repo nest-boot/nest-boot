@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { Check, X } from "lucide-react";
 import { isEmpty } from "lodash";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { workspaceSearchSchema } from "@/schemas/workspace-search-schema";
 import { workspacesResourceKey } from "@/lib/resource-keys";
@@ -186,7 +187,7 @@ function UserWorkspacesComponent() {
 
     try {
       await acceptInvitation({ variables: { id: invitationId } });
-      await refetch();
+      await refreshAfterMutation(() => refetch());
       toast.add({
         type: "success",
         title: t("user:workspaces.invitations.toast.accepted"),
@@ -209,7 +210,7 @@ function UserWorkspacesComponent() {
 
     try {
       await rejectInvitation({ variables: { id: invitationId } });
-      await refetch();
+      await refreshAfterMutation(() => refetch());
       toast.add({
         type: "success",
         title: t("user:workspaces.invitations.toast.rejected"),

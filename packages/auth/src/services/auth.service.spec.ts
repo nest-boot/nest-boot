@@ -63,7 +63,11 @@ async function createService(
       em.findOneOrFail(User, { id }),
     ),
   };
-  const userService = { impersonateUser: vi.fn(), stopImpersonating: vi.fn() };
+  const userService = {
+    getPasswordPolicy: vi.fn(),
+    impersonateUser: vi.fn(),
+    stopImpersonating: vi.fn(),
+  };
   const sessionService = { setSessionCookie: vi.fn() };
   const moduleRef = await Test.createTestingModule({
     providers: [
@@ -97,6 +101,29 @@ async function createService(
     service: moduleRef.get(AuthService),
   };
 }
+
+describe("password policy", () => {
+  it.each([
+    { minLength: 8, maxLength: 128 },
+    { minLength: 6, maxLength: 16 },
+  ])(
+    "exposes the configured policy without authentication: %j",
+    async (policy) => {
+      const { service, userService, authMiddleware, api } =
+        await createService();
+      userService.getPasswordPolicy.mockReturnValue(policy);
+
+      expect(service.getPasswordPolicy()).toBe(policy);
+      expect(userService.getPasswordPolicy).toHaveBeenCalledExactlyOnceWith();
+      expect(
+        authMiddleware.assertAuthenticationCanChange,
+      ).not.toHaveBeenCalled();
+      expect(authMiddleware.authenticateSession).not.toHaveBeenCalled();
+      for (const method of Object.values(api))
+        expect(method).not.toHaveBeenCalled();
+    },
+  );
+});
 
 describe("current user identity", () => {
   it.each(["signOut", "updateCurrentUser", "changeCurrentUserEmail"] as const)(
