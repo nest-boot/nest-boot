@@ -447,9 +447,10 @@ injecting an authorization service. The global `AuthGuard` prepares it before
 protected operations. Each method call resolves the current instance, even when
 methods are destructured; identity or workspace changes do not leave stale bindings.
 
-Missing request identity or ability denies access: `authAbility.can()` returns
-`false`, `authAbility.cannot()` returns `true`, and `authAbility.throwUnlessCan()`
-or reading `authAbility.rules` throws `ForbiddenException`.
+Missing request identity or ability throws `ForbiddenException` for all method
+calls (including `can()` and `cannot()`) and rule access. With a valid ability,
+`can()` and `cannot()` return booleans; `throwUnlessCan()` throws when permission
+is denied.
 
 The Guard, route decorators, and Services all evaluate operations through this
 ability. Identity publication and invalidation remain centralized in the internal

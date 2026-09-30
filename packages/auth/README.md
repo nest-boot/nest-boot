@@ -442,10 +442,11 @@ business grants. The frontend consumes the final serialized rules.
 The exported `authAbility` Proxy resolves the current authenticated request's
 `AuthAbility` for each property access or method call, including destructured
 methods. Identity and workspace changes therefore take effect on the next call.
-Without a prepared authenticated ability, `can()` returns `false`, `cannot()`
-returns `true`, and `throwUnlessCan()` or reading `rules` throws
-`ForbiddenException`. `throwUnlessCan()` is defined on `AuthAbility` itself and
-also works on explicitly constructed instances outside a request.
+Without a prepared authenticated ability, all method calls (including `can()`
+and `cannot()`) and reading `rules` throw `ForbiddenException`. With a valid
+ability, `can()` and `cannot()` still return booleans for permission decisions.
+`throwUnlessCan()` is defined on `AuthAbility` itself and also works on explicitly
+constructed instances outside a request.
 
 The standalone `can`, `assertCan`, and `getAbility` exports have been removed.
 Migrate to `authAbility.can(...)`, `authAbility.throwUnlessCan(...)`, and

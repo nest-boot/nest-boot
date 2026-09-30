@@ -45,7 +45,7 @@ export class AuthAbility extends Ability<AbilityTuple, MongoQuery> {
 /**
  * Forwards ability access to the authenticated request, including after identity changes.
  * Methods resolve their receiver when called, so destructuring never captures a request.
- * Without an authenticated ability, can/cannot return false/true; other access throws.
+ * Access requires an authenticated ability; otherwise ForbiddenException is thrown.
  */
 export const authAbility: AuthAbility = new Proxy(new AuthAbility(), {
   get(target, property) {
@@ -55,12 +55,7 @@ export const authAbility: AuthAbility = new Proxy(new AuthAbility(), {
 
     if (typeof Reflect.get(target, property, target) === "function") {
       const forward = (...args: unknown[]) => {
-        const ability = readRequestAbility();
-        if (!ability) {
-          if (property === "can") return false;
-          if (property === "cannot") return true;
-          throw new ForbiddenException("Permission ability is not available");
-        }
+        const ability = getAuthAbility();
         return Reflect.apply(
           Reflect.get(ability, property, ability),
           ability,
@@ -76,19 +71,20 @@ export const authAbility: AuthAbility = new Proxy(new AuthAbility(), {
       return forward;
     }
 
-    const ability = readRequestAbility();
-    if (!ability)
-      throw new ForbiddenException("Permission ability is not available");
+    const ability = getAuthAbility();
     return Reflect.get(ability, property, ability);
   },
 });
 
-/** Reads the prepared ability only while its authenticated identity is available. @internal */
-export function readRequestAbility(): AuthAbility | null {
+/** Reads the prepared ability only while its authenticated identity is available. */
+function getAuthAbility(): AuthAbility {
   if (
     !RequestContext.isActive() ||
     (!RequestContext.get(User) && !getCurrentApiKey())
   )
-    return null;
-  return RequestContext.get(AuthAbility) ?? null;
+    throw new ForbiddenException("Permission ability is not available");
+  const ability = RequestContext.get(AuthAbility);
+  if (!ability)
+    throw new ForbiddenException("Permission ability is not available");
+  return ability;
 }

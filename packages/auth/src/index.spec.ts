@@ -408,7 +408,13 @@ describe("public API", () => {
       expect(publicApi).not.toHaveProperty(name);
     }
     expect(publicApi.authAbility).toBe(authAbility);
-    for (const name of ["can", "assertCan", "getAbility"]) {
+    for (const name of [
+      "can",
+      "assertCan",
+      "getAbility",
+      "readRequestAbility",
+      "getAuthAbility",
+    ]) {
       expect(publicApi).not.toHaveProperty(name);
     }
     expect(publicApi.SessionService).toBe(SessionService);

@@ -394,9 +394,9 @@ Service 权限划分与 Better Auth 的 admin、organization 访问控制保持�
 全局 `AuthGuard` 在受保护操作前准备 Ability。每次方法调用都会解析当前实例，
 即使解构方法也不会绑定旧请求；身份或工作区变化会在下一次调用时生效。
 
-请求身份或 Ability 缺失时默认拒绝：`authAbility.can()` 返回 `false`，
-`authAbility.cannot()` 返回 `true`，`authAbility.throwUnlessCan()` 或读取
-`authAbility.rules` 则抛出 `ForbiddenException`。
+请求身份或 Ability 缺失时，所有方法调用（包括 `can()`、`cannot()`）及读取
+`authAbility.rules` 都抛出 `ForbiddenException`。存在有效 Ability 时，`can()` 和
+`cannot()` 返回布尔值；`throwUnlessCan()` 在没有权限时抛出异常。
 
 Guard、路由装饰器和 Service 统一通过该 Ability 判断操作权限。身份发布和授权失效
 仍由内部 `RequestIdentity` 集中管理；Proxy 不会为缺失的身份构建权限。

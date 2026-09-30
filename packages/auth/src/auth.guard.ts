@@ -5,7 +5,7 @@ import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
 import type { Request } from "express";
 
-import { authAbility, readRequestAbility } from "./auth.ability.js";
+import { authAbility } from "./auth.ability.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
@@ -93,7 +93,8 @@ export class AuthGuard implements CanActivate {
     );
     if (!metadata?.length) return true;
     for (const requirement of metadata) {
-      if (!readRequestAbility()) return false;
+      // Require a prepared identity before resolving a protected subject factory.
+      void authAbility.rules;
       const subject = await this.resolveSubject(requirement, context);
       if (!authAbility.can(requirement.action, subject)) return false;
     }

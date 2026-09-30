@@ -1,6 +1,7 @@
 import { RequestContext } from "@nest-boot/request-context";
 import {
   type ExecutionContext,
+  ForbiddenException,
   type Type,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -51,7 +52,9 @@ describe("AuthGuard", () => {
       ),
     );
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+      await expect(guard.canActivate(createContext())).rejects.toThrow(
+        ForbiddenException,
+      );
       expect(subjectFactory).not.toHaveBeenCalled();
     });
   });

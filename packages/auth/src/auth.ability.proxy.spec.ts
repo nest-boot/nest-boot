@@ -6,16 +6,36 @@ import { User } from "./entities/user.entity.js";
 import { RequestIdentity } from "./infrastructure/request-identity.js";
 class TestSubject {}
 describe("authAbility", () => {
-  it("fails closed without a request identity", async () => {
-    expect(authAbility.can("read", TestSubject)).toBe(false);
-    await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestContext.set(
-        AuthAbility,
-        new AuthAbility([{ action: "read", subject: TestSubject }]),
-      );
-      expect(authAbility.can("read", TestSubject)).toBe(false);
-    });
-  });
+  it.each(["context", "identity", "ability"])(
+    "throws when %s is missing",
+    async (missing) => {
+      const check = () => {
+        expect(() => authAbility.can("read", TestSubject)).toThrow(
+          ForbiddenException,
+        );
+        expect(() => authAbility.cannot("read", TestSubject)).toThrow(
+          ForbiddenException,
+        );
+        expect(() => {
+          authAbility.throwUnlessCan("read", TestSubject);
+        }).toThrow(ForbiddenException);
+        expect(() => authAbility.rules).toThrow(ForbiddenException);
+      };
+      if (missing === "context") {
+        check();
+        return;
+      }
+      await RequestContext.run(new RequestContext({ type: "test" }), () => {
+        if (missing !== "identity") RequestContext.set(User, new User());
+        if (missing !== "ability")
+          RequestContext.set(
+            AuthAbility,
+            new AuthAbility([{ action: "read", subject: TestSubject }]),
+          );
+        check();
+      });
+    },
+  );
   it("evaluates object and field checks with the prepared ability", async () => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(User, new User());
@@ -68,8 +88,8 @@ describe("request forwarding", () => {
       run("read", secondReady, releaseFirst),
       run("write", firstReady, releaseSecond),
     ]);
-    expect(can("read", TestSubject)).toBe(false);
-    expect(cannot("read", TestSubject)).toBe(true);
+    expect(() => can("read", TestSubject)).toThrow(ForbiddenException);
+    expect(() => cannot("read", TestSubject)).toThrow(ForbiddenException);
     expect(() => {
       throwUnlessCan("read", TestSubject);
     }).toThrow(ForbiddenException);
@@ -101,7 +121,7 @@ describe("request forwarding", () => {
       RequestIdentity.stage({ user: null, apiKey: null });
       // A stale ability alone must not grant access after sign-out.
       RequestContext.set(AuthAbility, replacement);
-      expect(can("write", TestSubject)).toBe(false);
+      expect(() => can("write", TestSubject)).toThrow(ForbiddenException);
       expect(() => authAbility.rules).toThrow(ForbiddenException);
     });
   });
