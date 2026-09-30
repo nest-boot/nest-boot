@@ -4,7 +4,7 @@ import { BadRequestException } from "@nestjs/common";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
-import type { ApiKey } from "../types/api-key.type.js";
+import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import {
   generateApiKey,
   hashApiKey,
@@ -44,7 +44,7 @@ export class ApiKeyLifecycle {
   }
 
   /** Restores managed fields on persistence failure; never publishes an uncommitted credential. */
-  static async update<Key extends ApiKey>(
+  static async update<Key extends ApiKeyMetadata>(
     em: EntityManager,
     options: AuthModuleOptions,
     apiKey: Key,
@@ -78,7 +78,7 @@ export class ApiKeyLifecycle {
   }
 
   /** Revokes the request identity only after deletion succeeds. */
-  static async delete<Key extends ApiKey>(
+  static async delete<Key extends ApiKeyMetadata>(
     em: EntityManager,
     options: AuthModuleOptions,
     apiKey: Key,

@@ -23,18 +23,24 @@ export class AccountService {
   async getAccountConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<Account>,
-  ): Promise<ConnectionInterface<Account>> {
+  ): Promise<
+    ConnectionInterface<
+      Omit<Account, "password" | "accessToken" | "refreshToken" | "idToken">
+    >
+  > {
     RequestIdentity.assertCurrentUser(user);
     if (getCurrentApiKey()) {
       throw new ForbiddenException(
         "Account inspection requires a user session",
       );
     }
-    return await new ConnectionManager(
-      this.em as SqlEntityManager,
-    ).find<Account>(AccountConnection, args, {
-      where: { user: String(user.id) },
-      exclude: ["password", "accessToken", "refreshToken", "idToken"] as never,
-    });
+    return await new ConnectionManager(this.em as SqlEntityManager).find(
+      AccountConnection,
+      args,
+      {
+        where: { user: String(user.id) },
+        exclude: ["password", "accessToken", "refreshToken", "idToken"],
+      },
+    );
   }
 }

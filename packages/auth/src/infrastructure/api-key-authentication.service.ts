@@ -3,7 +3,7 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
-import type { ApiKey } from "../types/api-key.type.js";
+import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import type { ApiKeyValidation } from "../types/api-key-validation.type.js";
 import { hashApiKey } from "../utils/api-key-credential.util.js";
 
@@ -50,7 +50,7 @@ export class ApiKeyAuthenticationService {
   }
 
   /** Captures the authenticating key's RLS scope before a handler can replace it. */
-  captureUsage(apiKey: ApiKey): () => Promise<ApiKey> {
+  captureUsage(apiKey: ApiKeyMetadata): () => Promise<ApiKeyMetadata> {
     // Forking copies the session context without changing the request identity.
     // An existing transaction remains attached; unrelated pending writes do not.
     const recorder = new ApiKeyAuthenticationService(
@@ -60,7 +60,7 @@ export class ApiKeyAuthenticationService {
   }
 
   /** Records successful use in the credential's own table. Deleted keys remain deleted. */
-  async recordUsage(apiKey: ApiKey): Promise<ApiKey> {
+  async recordUsage(apiKey: ApiKeyMetadata): Promise<ApiKeyMetadata> {
     const now = new Date();
     apiKey.lastUsedAt = now;
     apiKey.updatedAt = now;

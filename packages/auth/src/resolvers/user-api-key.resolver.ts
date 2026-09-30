@@ -8,6 +8,7 @@ import { UpdateUserApiKeyInput } from "../inputs/update-user-api-key.input.js";
 import { CreateUserApiKeyResult } from "../objects/create-user-api-key-result.object.js";
 import { UserApiKeyPermissionOption } from "../objects/user-api-key-permission-option.object.js";
 import { UserApiKeyService } from "../services/user-api-key.service.js";
+import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
 /** GraphQL mutations for user-owned API keys. */
 @Resolver(() => UserApiKey)
@@ -40,7 +41,7 @@ export class UserApiKeyResolver {
   async updateUserApiKey(
     @Args("id", { type: () => ID }) id: string,
     @Args("input") input: UpdateUserApiKeyInput,
-  ): Promise<UserApiKey> {
+  ): Promise<ApiKeyMetadata<UserApiKey>> {
     return await this.apiKeyService.updateUserApiKey(id, input);
   }
 
@@ -48,7 +49,7 @@ export class UserApiKeyResolver {
   @Mutation(() => UserApiKey)
   async deleteUserApiKey(
     @Args("id", { type: () => ID }) id: string,
-  ): Promise<UserApiKey> {
+  ): Promise<ApiKeyMetadata<UserApiKey>> {
     return await this.apiKeyService.deleteUserApiKey(id);
   }
 }

@@ -38,6 +38,7 @@ import { UpdateWorkspacePayload } from "../objects/update-workspace-payload.obje
 import { MemberService } from "../services/member.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
 import { WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
+import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
 /**
  * GraphQL operations for querying, creating, updating, and deleting workspaces.
@@ -77,7 +78,7 @@ export class WorkspaceResolver {
   async apiKey(
     @Parent() workspace: Workspace,
     @Args("id", { type: () => ID }) id: string,
-  ): Promise<WorkspaceApiKey | null> {
+  ): Promise<ApiKeyMetadata<WorkspaceApiKey> | null> {
     return await this.apiKeyService.getWorkspaceApiKey(id, workspace);
   }
 

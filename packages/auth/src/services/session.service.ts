@@ -55,12 +55,12 @@ export class SessionService {
   async getSessionConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<Session>,
-  ): Promise<ConnectionInterface<Session>> {
+  ): Promise<ConnectionInterface<Omit<Session, "token">>> {
     this.assertCanListSessions(user);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
-    ).find<Session>(SessionConnection, args, {
-      exclude: ["token"] as never,
+    ).find(SessionConnection, args, {
+      exclude: ["token"],
       where: {
         user: String(user.id),
         expiresAt: { $gt: new Date() },
