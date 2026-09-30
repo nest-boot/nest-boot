@@ -11,16 +11,20 @@ import { firstValueFrom, of } from "rxjs";
 import type { Mock } from "vitest";
 
 import { AuthAbility } from "./auth.ability.js";
-import { IS_PUBLIC_KEY } from "./auth.constants.js";
+import { API_KEY, IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import { Member } from "./entities/member.entity.js";
 import { Session as BaseSession } from "./entities/session.entity.js";
 import { User as BaseUser } from "./entities/user.entity.js";
+import { UserApiKey } from "./entities/user-api-key.entity.js";
 import { Workspace } from "./entities/workspace.entity.js";
+import { WorkspaceApiKey } from "./entities/workspace-api-key.entity.js";
 import { CAN_METADATA } from "./permission.constants.js";
 import * as authorization from "./utils/can.util.js";
+class TestController {}
+
 class PromiseAuthGuard extends AuthGuard {
   override canActivate(_context: ExecutionContext): Promise<boolean> {
     return Promise.resolve(true);
@@ -41,22 +45,20 @@ class PublicAwareAuthGuard extends AuthGuard {
 
 describe("AuthGuard", () => {
   it("does not resolve protected subjects when the required identity is missing", async () => {
-    const subjectFactory = vi.fn(() => new BaseUser());
+    const subjectCallback = vi.fn(() => new BaseUser());
     const { guard } = await createGuard(
       AuthGuard,
       vi.fn(() => true),
       {},
       vi.fn((key) =>
-        key === CAN_METADATA
-          ? [{ action: "read", subject: subjectFactory }]
-          : [],
+        key === CAN_METADATA ? [{ action: "read", subjectCallback }] : [],
       ),
     );
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       await expect(guard.canActivate(createContext())).rejects.toThrow(
         ForbiddenException,
       );
-      expect(subjectFactory).not.toHaveBeenCalled();
+      expect(subjectCallback).not.toHaveBeenCalled();
     });
   });
   it("uses the shared ability check for decorator decisions", async () => {
@@ -65,7 +67,9 @@ describe("AuthGuard", () => {
       vi.fn(() => false),
       {},
       vi.fn((key) =>
-        key === CAN_METADATA ? [{ action: "read", subject: BaseUser }] : [],
+        key === CAN_METADATA
+          ? [{ action: "read", subjectCallback: () => BaseUser }]
+          : [],
       ),
     );
     const check = vi.spyOn(access, "can").mockReturnValue(false);
@@ -195,25 +199,61 @@ describe("AuthGuard", () => {
     await expect(guard.canActivate(context)).resolves.toBe(true);
   });
 
-  it("throws an unauthorized exception for unauthenticated protected routes", async () => {
+  it("rejects protected routes outside a request context without reading identity", async () => {
     const { guard } = await createGuard(
       AuthGuard,
       vi.fn(() => false),
     );
-    const context = {
-      getClass: vi.fn(),
-      getHandler: vi.fn(),
-    } as unknown as ExecutionContext;
     const get = vi.spyOn(RequestContext, "get");
+    await expect(guard.canActivate(createContext())).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(get).not.toHaveBeenCalled();
+  });
 
-    get.mockReturnValue(undefined);
-    await expect(guard.canActivate(context)).rejects.toMatchObject({
-      status: 401,
+  it("requires a session or API key inside an active request context", async () => {
+    const { guard } = await createGuard(
+      AuthGuard,
+      vi.fn(() => false),
+    );
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      await expect(guard.canActivate(createContext())).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+      RequestContext.set(BaseSession, new BaseSession());
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
-    expect(get).toHaveBeenCalledWith(BaseSession);
+  });
 
-    get.mockReturnValue(new BaseSession());
-    await expect(guard.canActivate(context)).resolves.toBe(true);
+  it.each([UserApiKey, WorkspaceApiKey])(
+    "accepts an API key without a session (%s)",
+    async (ApiKey) => {
+      const { guard } = await createGuard(
+        AuthGuard,
+        vi.fn(() => false),
+      );
+      await RequestContext.run(
+        new RequestContext({ type: "http" }),
+        async () => {
+          RequestContext.set(API_KEY, new ApiKey());
+          await expect(guard.canActivate(createContext())).resolves.toBe(true);
+        },
+      );
+    },
+  );
+
+  it("propagates unexpected identity lookup errors", async () => {
+    const { guard } = await createGuard(
+      AuthGuard,
+      vi.fn(() => false),
+    );
+    const error = new Error("Identity lookup failed");
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      vi.spyOn(RequestContext, "get").mockImplementation(() => {
+        throw error;
+      });
+      await expect(guard.canActivate(createContext())).rejects.toBe(error);
+    });
   });
 
   it("does not build an ability for unauthenticated protected routes", async () => {
@@ -226,7 +266,7 @@ describe("AuthGuard", () => {
           ? [
               {
                 action: "read",
-                subject: Subject,
+                subjectCallback: () => Subject,
               },
             ]
           : false,
@@ -259,7 +299,7 @@ describe("AuthGuard", () => {
           return [
             {
               action: "read",
-              subject: Subject,
+              subjectCallback: () => Subject,
             },
           ];
         }
@@ -285,14 +325,14 @@ describe("AuthGuard", () => {
     const getAllAndOverride = vi.fn((key) => {
       if (key === IS_PUBLIC_KEY) return false;
       return key === CAN_METADATA
-        ? [{ action: "read", subject: Subject }]
+        ? [{ action: "read", subjectCallback: () => Subject }]
         : undefined;
     });
     const getAllAndMerge = vi.fn((key) =>
       key === CAN_METADATA
         ? [
-            { action: "read", subject: Subject },
-            { action: "update", subject: Subject },
+            { action: "read", subjectCallback: () => Subject },
+            { action: "update", subjectCallback: () => Subject },
           ]
         : undefined,
     );
@@ -338,6 +378,7 @@ async function createGuard<T extends AuthGuard>(
   const moduleRef = await Test.createTestingModule({
     providers: [
       guardType,
+      TestController,
       {
         provide: Reflector,
         useValue: {
@@ -359,8 +400,11 @@ async function createGuard<T extends AuthGuard>(
 }
 
 function createContext() {
+  const handler = vi.fn();
   return {
-    getClass: vi.fn(),
-    getHandler: vi.fn(),
+    getClass: vi.fn(() => TestController),
+    getHandler: vi.fn(() => handler),
+    getType: vi.fn(() => "http"),
+    switchToHttp: vi.fn(() => ({ getRequest: vi.fn() })),
   } as unknown as ExecutionContext;
 }

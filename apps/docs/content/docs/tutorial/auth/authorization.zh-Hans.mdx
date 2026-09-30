@@ -323,17 +323,17 @@ mutation 的 Service 仍检查目标对象能力和授予上限；独立的 `wor
 
 ## 保护路由
 
-用户和工作区操作统一使用 `@Can(action, subject)`。`AuthGuard` 与 Service 检查
+用户和工作区操作统一使用 `@Can(action, subjectCallback)`。`AuthGuard` 与 Service 检查
 同一个 Ability，装饰器无需指定 scope。
 
 ```typescript
-@Can("read", Post)
+@Can("read", () => Post)
 @Query(() => [Post])
 posts() {
   return this.postService.findAll();
 }
 
-@Can("read", User)
+@Can("read", () => User)
 @Query(() => User)
 me(@CurrentUser() user: User) {
   return user;
@@ -344,16 +344,17 @@ me(@CurrentUser() user: User) {
 类级与方法级要求合并，不会互相覆盖。
 
 ```typescript
-@Can("read", Post)
-@Can("update", Post)
+@Can("read", () => Post)
+@Can("update", () => Post)
 @Mutation(() => Post)
 updatePost() {
   // 必须同时拥有 post:read 与 post:update。
 }
 ```
 
-权限取决于具体对象时，使用 subject factory。factory 的第一个参数是 Controller 或
-Resolver 实例，后续参数是被装饰方法的参数。
+所有 subjectCallback 都可以同步或异步返回实体类或具体对象。每条权限要求在请求期间
+执行一次回调，不会在声明装饰器时执行。回调的第一个参数是 Controller 或 Resolver 实例，
+后续参数是被装饰方法的参数。
 
 ```typescript
 @Can("update", (self: PostResolver, id: string) =>
