@@ -150,6 +150,7 @@ export * from "./objects/create-workspace-payload.object.js";
 export * from "./objects/delete-user-payload.object.js";
 export * from "./objects/delete-workspace-payload.object.js";
 export * from "./objects/leave-workspace-payload.object.js";
+export * from "./objects/password-policy.object.js";
 export * from "./objects/remove-member-payload.object.js";
 export * from "./objects/set-member-permissions-payload.object.js";
 export * from "./objects/set-member-roles-payload.object.js";

@@ -91,6 +91,7 @@ type Documents = {
   "\n  mutation acceptInvitationFromInviteRoute($id: ID!) {\n    acceptInvitation(id: $id) {\n      id\n      memberId\n      workspaceId\n    }\n  }\n": typeof types.AcceptInvitationFromInviteRouteDocument;
   "\n  mutation updateUserApiKeyFromUserApiKeysRoute(\n    $id: ID!\n    $input: UpdateUserApiKeyInput!\n  ) {\n    updateUserApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.UpdateUserApiKeyFromUserApiKeysRouteDocument;
   "\n  mutation updateWorkspaceApiKeyFromApiKeysRoute(\n    $id: ID!\n    $input: UpdateWorkspaceApiKeyInput!\n  ) {\n    updateWorkspaceApiKey(id: $id, input: $input) {\n      workspaceId\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.UpdateWorkspaceApiKeyFromApiKeysRouteDocument;
+  "\n  query getPasswordPolicy {\n    passwordPolicy {\n      minLength\n      maxLength\n    }\n  }\n": typeof types.GetPasswordPolicyDocument;
 };
 const documents: Documents = {
   "\n  query getAdminOverview {\n    users(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n":
@@ -247,6 +248,8 @@ const documents: Documents = {
     types.UpdateUserApiKeyFromUserApiKeysRouteDocument,
   "\n  mutation updateWorkspaceApiKeyFromApiKeysRoute(\n    $id: ID!\n    $input: UpdateWorkspaceApiKeyInput!\n  ) {\n    updateWorkspaceApiKey(id: $id, input: $input) {\n      workspaceId\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
     types.UpdateWorkspaceApiKeyFromApiKeysRouteDocument,
+  "\n  query getPasswordPolicy {\n    passwordPolicy {\n      minLength\n      maxLength\n    }\n  }\n":
+    types.GetPasswordPolicyDocument,
 };
 
 /**
@@ -725,6 +728,12 @@ export function graphql(
 export function graphql(
   source: "\n  mutation updateWorkspaceApiKeyFromApiKeysRoute(\n    $id: ID!\n    $input: UpdateWorkspaceApiKeyInput!\n  ) {\n    updateWorkspaceApiKey(id: $id, input: $input) {\n      workspaceId\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n",
 ): (typeof documents)["\n  mutation updateWorkspaceApiKeyFromApiKeysRoute(\n    $id: ID!\n    $input: UpdateWorkspaceApiKeyInput!\n  ) {\n    updateWorkspaceApiKey(id: $id, input: $input) {\n      workspaceId\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query getPasswordPolicy {\n    passwordPolicy {\n      minLength\n      maxLength\n    }\n  }\n",
+): (typeof documents)["\n  query getPasswordPolicy {\n    passwordPolicy {\n      minLength\n      maxLength\n    }\n  }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

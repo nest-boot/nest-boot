@@ -2,8 +2,8 @@ import { EntityManager, type FilterQuery, Reference } from "@mikro-orm/core";
 import type { SqlEntityManager } from "@mikro-orm/sql";
 import {
   type ConnectionArgsInterface,
-  type ConnectionInterface,
   ConnectionManager,
+  type ConnectionResult,
 } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 import {
@@ -13,6 +13,7 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import type { GraphQLResolveInfo } from "graphql";
 
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
@@ -91,13 +92,15 @@ export class WorkspaceApiKeyService {
   async getWorkspaceApiKeyConnection(
     workspace: Workspace,
     args: ConnectionArgsInterface<WorkspaceApiKey>,
-  ): Promise<ConnectionInterface<ApiKeyMetadata<WorkspaceApiKey>>> {
+    info?: GraphQLResolveInfo,
+  ): Promise<ConnectionResult<ApiKeyMetadata<WorkspaceApiKey>>> {
     this.assertWorkspacePrincipal(workspace);
     authorize("read", WorkspaceApiKey);
     const where = this.getOwnedListFilter(workspace);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find(WorkspaceApiKeyConnection, args, {
+      ...(info && { info }),
       where,
       exclude: ["key"],
     });

@@ -29,6 +29,7 @@ describe("WorkspaceResolver", () => {
     expect(getInvitationConnectionByWorkspace).toHaveBeenCalledWith(
       workspace,
       args,
+      undefined,
     );
     await expect(resolver.invitations(workspace, args)).rejects.toBeInstanceOf(
       ForbiddenException,

@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useCurrentWorkspaceContext } from "../contexts/current-workspace-context";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { workspaceSearchSchema } from "@/schemas/workspace-search-schema";
@@ -116,7 +117,7 @@ function SettingsComponent() {
             },
           },
         });
-        await router.invalidate();
+        await refreshAfterMutation(() => router.invalidate());
         form.reset({ name: value.name.trim() });
         toast.add({ type: "success", title: t("workspace:settings.saved") });
       } catch (error) {

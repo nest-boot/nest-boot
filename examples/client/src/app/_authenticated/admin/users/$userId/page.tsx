@@ -11,6 +11,8 @@ import { useCurrentUserContext } from "../../../contexts/current-user-context";
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 import type { UserPermission } from "@/lib/permissions";
 import type { UserRole } from "@/gql/graphql";
+import { usePasswordPolicy } from "@/hooks/use-password-policy";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { Link } from "@/components/link";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { adminUserSearchSchema } from "@/schemas/admin-user-search-schema";
@@ -241,6 +243,7 @@ function AdminUserPage() {
 }
 
 function AdminUserDetails() {
+  const { passwordSchema } = usePasswordPolicy();
   const { t } = useTranslation();
   const { userId } = Route.useParams();
   const { user: initialUser } = Route.useRouteContext();
@@ -336,7 +339,7 @@ function AdminUserDetails() {
         window.location.assign("/user/workspaces");
         return;
       }
-      await refetch();
+      await refreshAfterMutation(() => refetch());
       toast.add({ type: "success", title: message });
     } catch (error) {
       const message =
@@ -443,7 +446,7 @@ function AdminUserDetails() {
     defaultValues: { password: "" },
     validators: {
       onSubmit: z.object({
-        password: z.string().min(8, t("auth:form.password.min")),
+        password: passwordSchema,
       }),
     },
     listeners: {
@@ -980,7 +983,10 @@ function AdminUserDetails() {
             </CardContent>
             <CardFooter>
               <Button
-                disabled={!canSetPassword || newPassword.length < 8}
+                disabled={
+                  !canSetPassword ||
+                  !passwordSchema.safeParse(newPassword).success
+                }
                 loading={settingPassword}
                 type="submit"
                 form="admin-user-password-form"

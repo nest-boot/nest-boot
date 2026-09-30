@@ -16,6 +16,7 @@ import { MemberPermissionsForm } from "./components/member-permissions-form";
 import type { MemberFormProps } from "./components/member-form-props";
 import type { GetMemberFromMemberRouteQuery } from "@/gql/graphql";
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { Link } from "@/components/link";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
@@ -227,7 +228,7 @@ function MemberDetails({
         window.location.assign("/user/workspaces");
         return false;
       }
-      await router.invalidate();
+      await refreshAfterMutation(() => router.invalidate());
       toast.add({
         type: "success",
         title: t("member:details.toast.updated_success"),

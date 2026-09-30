@@ -7,6 +7,8 @@ import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import type { ComponentProps } from "react";
+import { createExistingPasswordSchema } from "@/lib/password-schema";
+import { usePasswordPolicy } from "@/hooks/use-password-policy";
 import { getFormErrorMessage } from "@/lib/form-errors";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import {
@@ -146,10 +148,11 @@ export function LoginForm({
     }
   };
 
+  const { passwordSchema } = usePasswordPolicy(mode === "login");
   const schema =
     mode === "login"
       ? createLoginSchema()
-      : createRegisterSchema(createLoginSchema());
+      : createRegisterSchema(createLoginSchema(), passwordSchema);
   const form = useForm({
     defaultValues: { email: "", name: "", password: "", rememberMe: true },
     validators: { onSubmit: schema },
@@ -174,7 +177,10 @@ export function LoginForm({
             throw new Error(t("auth:form.authFailed"));
           }
         } else {
-          const input = createRegisterSchema(createLoginSchema()).parse(value);
+          const input = createRegisterSchema(
+            createLoginSchema(),
+            passwordSchema,
+          ).parse(value);
           const postAuthPath = resolvePostAuthUrl(redirect);
           const result = await signUp({
             variables: {
@@ -422,15 +428,17 @@ function createLoginSchema() {
   return z.object({
     name: z.string(),
     email: z.string().email(t("auth:form.email.invalid")),
-    password: z.string().min(8, t("auth:form.password.min")),
+    password: createExistingPasswordSchema(),
     rememberMe: z.boolean(),
   });
 }
 
 function createRegisterSchema(
   loginSchema: ReturnType<typeof createLoginSchema>,
+  passwordSchema: z.ZodType<string, string>,
 ) {
   return loginSchema.extend({
+    password: passwordSchema,
     name: z.string().trim().min(1, t("auth:form.name.required")),
   });
 }

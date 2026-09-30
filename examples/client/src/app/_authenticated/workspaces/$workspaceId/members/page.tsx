@@ -12,6 +12,7 @@ import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
+import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { getMembersResourceKey } from "@/lib/resource-keys";
 import { memberSearchSchema } from "@/schemas/member-search-schema";
@@ -269,7 +270,7 @@ function MembersComponent() {
     if (!confirmed) return;
 
     await cancelInvitation({ variables: { id: invitationId } });
-    await refetch();
+    await refreshAfterMutation(() => refetch());
   };
 
   return (
