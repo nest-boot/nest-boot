@@ -32,6 +32,60 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
+## Injecting Context Values
+
+Use `RequestContextModule.forFeature(token)` when a context value should be
+available through regular NestJS dependency injection. Register it in the
+module whose providers inject the token; the root module must still import
+`RequestContextModule` once to initialize request contexts.
+
+```typescript
+import {
+  RequestContext,
+  RequestContextModule,
+} from "@nest-boot/request-context";
+import { Injectable, Module } from "@nestjs/common";
+
+export class CurrentUser {
+  constructor(
+    readonly id: string,
+    readonly email: string,
+  ) {}
+}
+
+@Injectable()
+export class ProfileService {
+  constructor(private readonly currentUser: CurrentUser) {}
+
+  getEmail(): string {
+    return this.currentUser.email;
+  }
+}
+
+@Module({
+  imports: [RequestContextModule.forFeature(CurrentUser)],
+  providers: [ProfileService],
+})
+export class ProfileModule {}
+
+// Populate the value earlier in the same request lifecycle.
+RequestContext.set(CurrentUser, new CurrentUser("user-1", "user@example.com"));
+```
+
+`forFeature()` accepts only the token. It provides and exports a singleton
+proxy under that same token. Each property read, method call, or property write
+is forwarded to `RequestContext.get(token)` for the active context, so injecting
+the proxy does not make the consuming provider request-scoped. Outside an
+active context, or when the token has no context value, property reads return
+`undefined`.
+
+The proxied context value must be an object. A class token infers its type;
+string and symbol tokens can provide it explicitly:
+
+```typescript
+RequestContextModule.forFeature<Tenant>(CURRENT_TENANT);
+```
+
 ## Storing and Reading Values
 
 Use a class, symbol, or string as the token. Classes and exported symbols are
