@@ -49,6 +49,10 @@ export class AuthAbility extends Ability<AbilityTuple, MongoQuery> {
  */
 export const authAbility: AuthAbility = new Proxy(new AuthAbility(), {
   get(target, property) {
+    // Object introspection is independent of the authenticated request.
+    if (Object.hasOwn(Object.prototype, property))
+      return Reflect.get(target, property, target);
+
     const own = Reflect.getOwnPropertyDescriptor(target, property);
     if (typeof own?.value === "function") return own.value;
     if (!Reflect.has(target, property)) return undefined;
@@ -56,11 +60,13 @@ export const authAbility: AuthAbility = new Proxy(new AuthAbility(), {
     if (typeof Reflect.get(target, property, target) === "function") {
       const forward = (...args: unknown[]) => {
         const ability = getAuthAbility();
-        return Reflect.apply(
+        const result = Reflect.apply(
           Reflect.get(ability, property, ability),
           ability,
           args,
         );
+        // Fluent methods must not expose a receiver that outlives its identity.
+        return result === ability ? authAbility : result;
       };
       // Cache only forwarding functions, never a request's ability or bound method.
       Object.defineProperty(target, property, {

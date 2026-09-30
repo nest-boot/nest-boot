@@ -6,6 +6,17 @@ import { User } from "./entities/user.entity.js";
 import { RequestIdentity } from "./infrastructure/request-identity.js";
 class TestSubject {}
 describe("authAbility", () => {
+  it("preserves ordinary object behavior without a request", () => {
+    /* eslint-disable @typescript-eslint/no-base-to-string, no-prototype-builtins -- Exercise native object operations through the Proxy rather than bypassing its get trap. */
+    expect(authAbility.constructor).toBe(AuthAbility);
+    expect(authAbility instanceof AuthAbility).toBe(true);
+    expect(String(authAbility)).toBe("[object Object]");
+    expect(authAbility.valueOf()).toBe(authAbility);
+    expect(authAbility.hasOwnProperty("constructor")).toBe(false);
+    expect(authAbility.isPrototypeOf(new AuthAbility())).toBe(false);
+    expect(authAbility.propertyIsEnumerable("constructor")).toBe(false);
+    /* eslint-enable @typescript-eslint/no-base-to-string, no-prototype-builtins */
+  });
   it.each(["context", "identity", "ability"])(
     "throws when %s is missing",
     async (missing) => {
@@ -56,6 +67,34 @@ describe("authAbility", () => {
 });
 
 describe("request forwarding", () => {
+  it("keeps fluent results request-aware after replacement and sign-out", async () => {
+    const result = await RequestContext.run(
+      new RequestContext({ type: "test" }),
+      () => {
+        RequestContext.set(User, new User());
+        RequestContext.set(AuthAbility, new AuthAbility());
+        const updated = authAbility.update([
+          { action: "read", subject: TestSubject },
+        ]);
+        expect(updated).toBe(authAbility);
+        expect(updated.can("read", TestSubject)).toBe(true);
+
+        RequestContext.set(
+          AuthAbility,
+          new AuthAbility([{ action: "write", subject: TestSubject }]),
+        );
+        expect(updated.can("read", TestSubject)).toBe(false);
+        expect(updated.can("write", TestSubject)).toBe(true);
+
+        RequestIdentity.stage({ user: null, apiKey: null });
+        expect(() => updated.can("write", TestSubject)).toThrow(
+          ForbiddenException,
+        );
+        return updated;
+      },
+    );
+    expect(() => result.can("read", TestSubject)).toThrow(ForbiddenException);
+  });
   it("keeps destructured methods request-local across overlapping requests", async () => {
     // eslint-disable-next-line @typescript-eslint/unbound-method -- Verify the Proxy supports destructured calls.
     const { can, cannot, throwUnlessCan } = authAbility;
