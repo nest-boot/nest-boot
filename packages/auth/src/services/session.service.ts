@@ -20,6 +20,7 @@ import {
 import { makeSignature } from "better-auth/crypto";
 import type { BetterAuthCookies } from "better-auth/types";
 
+import { authAbility } from "../auth.ability.js";
 import { AUTH_TOKEN } from "../auth.constants.js";
 import { SessionConnection } from "../connections/session.connection-definition.js";
 import { Session } from "../entities/session.entity.js";
@@ -30,7 +31,6 @@ import {
 } from "../infrastructure/better-auth-adapter.js";
 import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
-import { assertCan } from "../utils/assert-can.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 
 /** Application-facing session management operations. */
@@ -78,11 +78,11 @@ export class SessionService {
     const current = RequestContext.isActive() ? RequestContext.get(User) : null;
     const self =
       !getCurrentApiKey() && current?.id === session.impersonatedBy.id;
-    if (!self) assertCan("read", User);
+    if (!self) authAbility.throwUnlessCan("read", User);
     const user = await this.em.findOne(User, {
       id: String(session.impersonatedBy.id),
     });
-    if (user && !self) assertCan("read", user);
+    if (user && !self) authAbility.throwUnlessCan("read", user);
     return user;
   }
 
@@ -92,14 +92,14 @@ export class SessionService {
       : undefined;
     const apiKey = RequestContext.isActive() ? getCurrentApiKey() : undefined;
     if (!current || String(current.id) !== String(user.id) || apiKey) {
-      assertCan("read", session ?? Session);
+      authAbility.throwUnlessCan("read", session ?? Session);
     }
   }
 
   /** Revokes one session by ID when it belongs to the supplied user. */
   async revokeSession(user: User | string, id: string): Promise<boolean> {
     user = await this.resolveUserForRevocation(user);
-    assertCan("revoke", Session);
+    authAbility.throwUnlessCan("revoke", Session);
     const current = RequestContext.isActive()
       ? RequestContext.get(Session)
       : null;
@@ -116,7 +116,7 @@ export class SessionService {
           { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
         );
         if (!session) return false;
-        assertCan("revoke", session);
+        authAbility.throwUnlessCan("revoke", session);
         await em.remove(session).flush();
         return true;
       },
@@ -129,7 +129,7 @@ export class SessionService {
   /** Revokes the user's sessions, including impersonation sessions they started. */
   async revokeUserSessions(user: User | string): Promise<number> {
     user = await this.resolveUserForRevocation(user);
-    assertCan("revoke", Session);
+    authAbility.throwUnlessCan("revoke", Session);
     const current = RequestContext.isActive()
       ? RequestContext.get(Session)
       : null;
@@ -145,7 +145,8 @@ export class SessionService {
           },
           { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
         );
-        for (const session of sessions) assertCan("revoke", session);
+        for (const session of sessions)
+          authAbility.throwUnlessCan("revoke", session);
         if (sessions.length === 0) return 0;
         // Delete only the locked, authorized snapshot; never include unchecked new sessions.
         return await em.nativeDelete(Session, {
@@ -160,7 +161,7 @@ export class SessionService {
 
   private async resolveUserForRevocation(user: User | string): Promise<User> {
     if (typeof user !== "string") return user;
-    assertCan("revoke", Session);
+    authAbility.throwUnlessCan("revoke", Session);
     const entity = await this.em.findOne(User, { id: user }, { refresh: true });
     if (!entity) throw new NotFoundException("User not found");
     return entity;

@@ -11,7 +11,7 @@ import {
   createTestWorkspace,
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
-import { AuthAbility } from "../abilities/auth.ability.js";
+import { AuthAbility, authAbility } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
@@ -19,7 +19,6 @@ import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { AuthAbilityFactory } from "../infrastructure/auth-ability.factory.js";
-import { can } from "../utils/can.util.js";
 import {
   DEFAULT_WORKSPACE_PERMISSIONS,
   DEFAULT_WORKSPACE_ROLES,
@@ -160,7 +159,7 @@ describe("MemberService", () => {
       name: "Concurrent edit",
     });
     em.findOne.mockResolvedValueOnce(member).mockResolvedValueOnce(locked);
-    vi.mocked(authorization.assertCan).mockImplementation((action) => {
+    vi.mocked(authorization.throwUnlessCan).mockImplementation((action) => {
       if (action === "read") throw new ForbiddenException();
     });
     await expect(
@@ -172,16 +171,28 @@ describe("MemberService", () => {
       { id: member.id },
       { populate: ["workspace"], refresh: true },
     );
-    expect(authorization.assertCan).toHaveBeenNthCalledWith(1, "write", Member);
-    expect(authorization.assertCan).toHaveBeenNthCalledWith(2, "write", member);
-    expect(authorization.assertCan).toHaveBeenNthCalledWith(
+    expect(authorization.throwUnlessCan).toHaveBeenNthCalledWith(
+      1,
+      "write",
+      Member,
+    );
+    expect(authorization.throwUnlessCan).toHaveBeenNthCalledWith(
+      2,
+      "write",
+      member,
+    );
+    expect(authorization.throwUnlessCan).toHaveBeenNthCalledWith(
       3,
       "write",
       member,
       "name",
     );
-    expect(authorization.assertCan).toHaveBeenNthCalledWith(4, "write", locked);
-    expect(authorization.assertCan).toHaveBeenNthCalledWith(
+    expect(authorization.throwUnlessCan).toHaveBeenNthCalledWith(
+      4,
+      "write",
+      locked,
+    );
+    expect(authorization.throwUnlessCan).toHaveBeenNthCalledWith(
       5,
       "write",
       locked,
@@ -244,11 +255,11 @@ describe("MemberService", () => {
       member.user = user as never;
       RequestContext.set(User, user);
       RequestContext.set(AuthAbility, new AuthAbility());
-      expect(can("read", workspace)).toBe(false);
+      expect(authAbility.can("read", workspace)).toBe(false);
       await expect(service.leaveWorkspace(member)).resolves.toBe(lockedMember);
       expect(RequestContext.get(Member)).toBeNull();
       expect(RequestContext.get(Workspace)).toBeNull();
-      expect(can("delete", workspace)).toBe(false);
+      expect(authAbility.can("delete", workspace)).toBe(false);
       expect(em.setSessionContext).toHaveBeenCalledWith(
         expect.objectContaining({
           variables: expect.objectContaining({ "app.workspace.id": "" }),
@@ -382,7 +393,7 @@ describe("MemberService", () => {
     expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
       member.workspace,
     );
-    expect(authorization.assertCan).toHaveBeenCalledWith("read", User);
+    expect(authorization.throwUnlessCan).toHaveBeenCalledWith("read", User);
     expect(em.findOne).toHaveBeenLastCalledWith(
       User,
       { id: user.id },
@@ -391,7 +402,7 @@ describe("MemberService", () => {
     expect(member.user.loadOrFail).not.toHaveBeenCalled();
     expect(em.getSessionContext()).toEqual(session);
     expect(em.fork).not.toHaveBeenCalled();
-    vi.mocked(authorization.assertCan).mockImplementation(() => {
+    vi.mocked(authorization.throwUnlessCan).mockImplementation(() => {
       throw new ForbiddenException();
     });
     em.findOne.mockClear();
@@ -417,7 +428,7 @@ describe("MemberService", () => {
         { refresh: true },
       );
       expect(authorization.assertCurrentWorkspace).not.toHaveBeenCalled();
-      expect(authorization.assertCan).not.toHaveBeenCalled();
+      expect(authorization.throwUnlessCan).not.toHaveBeenCalled();
       RequestContext.set(API_KEY, new WorkspaceApiKey());
       RequestContext.set(
         User,
@@ -462,8 +473,8 @@ describe("MemberService", () => {
     expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
       workspace,
     );
-    expect(authorization.assertCan).toHaveBeenCalledWith("read", Member);
-    vi.mocked(authorization.assertCan).mockImplementation(() => {
+    expect(authorization.throwUnlessCan).toHaveBeenCalledWith("read", Member);
+    vi.mocked(authorization.throwUnlessCan).mockImplementation(() => {
       throw new ForbiddenException();
     });
     expect(() => memberService.getMemberListFilter(workspace)).toThrow(
@@ -492,7 +503,7 @@ describe("MemberService", () => {
 
   it("checks workspace read ability before querying a member", async () => {
     const { memberService, em, authorization } = createWorkspaceServices();
-    vi.mocked(authorization.assertCan).mockImplementation(() => {
+    vi.mocked(authorization.throwUnlessCan).mockImplementation(() => {
       throw new ForbiddenException();
     });
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
@@ -622,7 +633,7 @@ describe("MemberService", () => {
       { email: "alice@example.com" },
       { filters: false },
     );
-    expect(authorization.assertCan).toHaveBeenCalledWith("write", Member);
+    expect(authorization.throwUnlessCan).toHaveBeenCalledWith("write", Member);
   });
 
   it("rejects workspace resources outside the selected request context", async () => {
@@ -708,7 +719,7 @@ describe("MemberService", () => {
         email: "shared@example.com",
       }),
     ).resolves.toBe(owner);
-    expect(authorization.assertCan).toHaveBeenLastCalledWith(
+    expect(authorization.throwUnlessCan).toHaveBeenLastCalledWith(
       "write",
       owner,
       "email",
@@ -721,7 +732,7 @@ describe("MemberService", () => {
 
   it("does not edit owner contact fields without update ability", async () => {
     const { memberService, em, authorization } = createWorkspaceServices();
-    vi.mocked(authorization.assertCan).mockImplementation(() => {
+    vi.mocked(authorization.throwUnlessCan).mockImplementation(() => {
       throw new ForbiddenException();
     });
 
@@ -754,7 +765,7 @@ describe("MemberService", () => {
       workspace,
     });
     em.findOne.mockResolvedValue(promotedMember);
-    vi.mocked(authorization.assertCan).mockImplementation(
+    vi.mocked(authorization.throwUnlessCan).mockImplementation(
       (_action, subject, field) => {
         if (subject === promotedMember && field === "status")
           throw new ForbiddenException();
@@ -907,7 +918,7 @@ describe("MemberService", () => {
       { filters: false },
     );
     em.findOne.mockClear();
-    vi.mocked(authorization.assertCan).mockImplementation(() => {
+    vi.mocked(authorization.throwUnlessCan).mockImplementation(() => {
       throw new ForbiddenException();
     });
     await expect(
@@ -972,7 +983,7 @@ describe("MemberService", () => {
       { id: detached.id, workspace: detached.workspace },
       { lockMode: LockMode.PESSIMISTIC_WRITE, refresh: true },
     );
-    expect(authorization.assertCan).toHaveBeenLastCalledWith(
+    expect(authorization.throwUnlessCan).toHaveBeenLastCalledWith(
       "set-permissions",
       managed,
     );
@@ -1001,7 +1012,7 @@ describe("MemberService", () => {
     const detached = createTestMember();
     const managed = createTestMember();
     em.findOne.mockResolvedValue(managed);
-    vi.mocked(authorization.assertCan).mockImplementation(
+    vi.mocked(authorization.throwUnlessCan).mockImplementation(
       (_action, subject) => {
         if (subject === managed) throw new ForbiddenException();
       },
@@ -1090,7 +1101,7 @@ describe("MemberService", () => {
       workspace,
     });
     em.findOne.mockResolvedValue(promotedMember);
-    vi.mocked(authorization.assertCan).mockImplementation(
+    vi.mocked(authorization.throwUnlessCan).mockImplementation(
       (_action, subject) => {
         if (subject === promotedMember) throw new ForbiddenException();
       },
@@ -1142,7 +1153,7 @@ describe("MemberService", () => {
     expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
       workspace,
     );
-    expect(authorization.assertCan).toHaveBeenCalledWith("read", Member);
+    expect(authorization.throwUnlessCan).toHaveBeenCalledWith("read", Member);
     expect(em.findOne).toHaveBeenCalledWith(Member, {
       id: member.id,
       workspace,
@@ -1162,7 +1173,7 @@ describe("MemberService", () => {
       workspace,
     });
     em.findOne.mockResolvedValue(promotedMember);
-    vi.mocked(authorization.assertCan).mockImplementation(
+    vi.mocked(authorization.throwUnlessCan).mockImplementation(
       (_action, subject) => {
         if (subject === promotedMember) throw new ForbiddenException();
       },

@@ -3,7 +3,7 @@ import { ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { assert } from "vitest";
 
-import { AuthAbility } from "../abilities/auth.ability.js";
+import { AuthAbility } from "../auth.ability.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import {
   Invitation,

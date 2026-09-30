@@ -5,7 +5,7 @@ import { NextFunction, Request } from "express";
 import type { Mock } from "vitest";
 
 import { mockRlsContext } from "../test/mock-rls-context.js";
-import { AuthAbility } from "./abilities/auth.ability.js";
+import { AuthAbility } from "./auth.ability.js";
 import { API_KEY } from "./auth.constants.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";

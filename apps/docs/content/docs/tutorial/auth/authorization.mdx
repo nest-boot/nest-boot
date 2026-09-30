@@ -82,11 +82,11 @@ Load the operation target before checking its conditions. Do not trust ownership
 fields supplied by the client or substitute a class-level route check:
 
 ```typescript
-import { assertCan } from "@nest-boot/auth";
+import { authAbility } from "@nest-boot/auth";
 
 async archiveReport(id: string): Promise<Report> {
   const report = await this.loadReport(id);
-  assertCan("archive", report);
+  authAbility.throwUnlessCan("archive", report);
   return await this.repository.archive(report);
 }
 ```
@@ -442,16 +442,18 @@ access control:
 - current-user authentication, session management, invitation acceptance, and
   leaving a workspace use authenticated identity and ownership checks.
 
-`can()`, `assertCan()`, and `getAbility()` read the same request-scoped
-`AuthAbility` without injecting an authorization service. The global `AuthGuard`
-prepares it before protected operations. Missing request identity or ability
-denies access: `can()` returns `false`; `assertCan()` and `getAbility()` throw
-`ForbiddenException`.
+The exported `authAbility` Proxy reads the request-scoped `AuthAbility` without
+injecting an authorization service. The global `AuthGuard` prepares it before
+protected operations. Each method call resolves the current instance, even when
+methods are destructured; identity or workspace changes do not leave stale bindings.
 
-The Guard, route decorators, Services, and helpers all evaluate operations
-through this ability's `can()` checks. Identity publication and invalidation remain
-centralized in the internal `RequestIdentity`; helpers never construct a fallback
-ability.
+Missing request identity or ability denies access: `authAbility.can()` returns
+`false`, `authAbility.cannot()` returns `true`, and `authAbility.throwUnlessCan()`
+or reading `authAbility.rules` throws `ForbiddenException`.
+
+The Guard, route decorators, and Services all evaluate operations through this
+ability. Identity publication and invalidation remain centralized in the internal
+`RequestIdentity`; the Proxy never builds permissions for a missing identity.
 
 Ability construction and grantability checks share one immutable effective-permission
 snapshot for the current request identity. Owner permissions remain distinct from
@@ -461,21 +463,24 @@ an operation's `ability.can()` result.
 
 ## Lower-Level Checks
 
-After `AuthGuard` prepares the request, use the same helpers in lower-level code:
+After `AuthGuard` prepares the request, use the same entry point in lower-level code:
 
 ```typescript
-import { can, getAbility } from "@nest-boot/auth";
+import { authAbility } from "@nest-boot/auth";
 
-if (!can("update", post)) {
-  throw new ForbiddenException();
-}
-const ability = getAbility();
-ability.can("read", post);
+authAbility.throwUnlessCan("update", post);
+const canRead = authAbility.can("read", post);
+const rules = authAbility.rules;
 ```
 
-`can()` returns `false` when authorization context is unavailable.
-`getAbility()` throws `ForbiddenException` instead. `AuthAbility` is also the
-request-context token, but use the helpers for fail-closed access.
+`throwUnlessCan()` is defined directly on `AuthAbility` and throws NestJS
+`ForbiddenException` when the operation is denied. It also works on an explicitly
+constructed `AuthAbility` without a request context. `AuthAbility` remains the
+request-context token.
+
+The standalone `can`, `assertCan`, and `getAbility` exports were removed. Replace
+them with `authAbility.can(...)`, `authAbility.throwUnlessCan(...)`, and
+`authAbility` respectively; no compatibility aliases are retained.
 
 The example frontend exposes `useAbility()` for both personal and workspace
 pages. Its provider consumes `currentAbilityRules` for the selected identity;
@@ -578,7 +583,7 @@ and reasons. The result is JSON-safe and can be rehydrated with CASL's
 `createMongoAbility()`.
 
 ```typescript
-const rules = serializeAbilityRules(getAbility());
+const rules = serializeAbilityRules(authAbility);
 ```
 
 Treat transported rules as a user-interface capability model only. The server

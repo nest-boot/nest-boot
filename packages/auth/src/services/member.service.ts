@@ -20,6 +20,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
+import { authAbility } from "../auth.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { MemberConnection } from "../connections/member.connection-definition.js";
@@ -34,14 +35,12 @@ import type { WorkspaceHasPermissionsOptions } from "../interfaces/workspace-has
 import type { WorkspacePermissionOption } from "../objects/workspace-permission-option.object.js";
 import type { WorkspaceRoleOption } from "../objects/workspace-role-option.object.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
-import { assertCan } from "../utils/assert-can.util.js";
 import {
   listAuthPermissions,
   normalizeAuthPermissions,
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../utils/auth-role.util.js";
-import { can } from "../utils/can.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import {
   assertCanGrantPermissions,
@@ -71,14 +70,14 @@ export class MemberService {
         "The API key owner is not a member of this workspace",
       );
     }
-    if (member) assertCan("read", member);
+    if (member) authAbility.throwUnlessCan("read", member);
     return member ?? null;
   }
 
   /** Authorizes member pagination and scopes it to the selected workspace. */
   getMemberListFilter(workspace: Workspace): FilterQuery<Member> {
     RequestIdentity.assertCurrentWorkspace(workspace);
-    assertCan("read", Member);
+    authAbility.throwUnlessCan("read", Member);
     return { workspace };
   }
 
@@ -92,7 +91,7 @@ export class MemberService {
       this.em as SqlEntityManager,
     ).find<Member>(MemberConnection, args, { where });
     for (const { node } of connection.edges) {
-      assertCan("read", node);
+      authAbility.throwUnlessCan("read", node);
     }
     return connection;
   }
@@ -120,12 +119,12 @@ export class MemberService {
       throw new ForbiddenException("A workspace must be selected");
     }
     RequestIdentity.assertCurrentWorkspace(workspace);
-    assertCan("read", Member);
+    authAbility.throwUnlessCan("read", Member);
     const member = await this.em.findOne(Member, {
       id,
       workspace,
     });
-    if (member) assertCan("read", member);
+    if (member) authAbility.throwUnlessCan("read", member);
     return member;
   }
 
@@ -140,7 +139,7 @@ export class MemberService {
       member.user?.id === actorId;
     if (!ownMember) {
       RequestIdentity.assertCurrentWorkspace(workspace);
-      assertCan("read", User);
+      authAbility.throwUnlessCan("read", User);
     }
     const current = await this.em.findOne(
       Member,
@@ -157,7 +156,7 @@ export class MemberService {
       { id: current.user.id },
       { refresh: true },
     );
-    if (user && !ownMember) assertCan("read", user);
+    if (user && !ownMember) authAbility.throwUnlessCan("read", user);
     return user;
   }
 
@@ -168,7 +167,7 @@ export class MemberService {
     input: AddMemberOptions = {},
   ): Promise<Member> {
     RequestIdentity.assertCurrentWorkspace(workspace);
-    assertCan("write", Member);
+    authAbility.throwUnlessCan("write", Member);
     const permissions = this.normalizePermissions(input.permissions ?? []);
     assertCanGrantPermissions(this.authOptions, "workspace", permissions);
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
@@ -190,7 +189,7 @@ export class MemberService {
           user,
           workspace,
         });
-        assertCan("write", member);
+        authAbility.throwUnlessCan("write", member);
         await em.persist(member).flush();
         await em.nativeUpdate(
           Invitation,
@@ -214,7 +213,7 @@ export class MemberService {
     input: AddMemberOptions = {},
   ): Promise<Member> {
     RequestIdentity.assertCurrentWorkspace(workspace);
-    assertCan("write", Member);
+    authAbility.throwUnlessCan("write", Member);
     const user = await this.getUserForMembership(workspace, email);
 
     return await this.addMember(workspace, user, input);
@@ -230,7 +229,7 @@ export class MemberService {
     email: string,
   ): Promise<User> {
     RequestIdentity.assertCurrentWorkspace(workspace);
-    assertCan("write", Member);
+    authAbility.throwUnlessCan("write", Member);
     const user = await this.em.findOne(
       User,
       { email: email.trim().toLowerCase() },
@@ -245,7 +244,7 @@ export class MemberService {
     action: string,
   ): Promise<Member> {
     if (typeof member !== "string") return member;
-    assertCan(action, Member);
+    authAbility.throwUnlessCan(action, Member);
     const entity = await this.em.findOne(
       Member,
       { id: member },
@@ -263,7 +262,7 @@ export class MemberService {
     member = await this.resolveMemberForAction(member, "write");
     const workspace = this.unwrapWorkspace(member);
     RequestIdentity.assertCurrentWorkspace(workspace);
-    assertCan("write", member);
+    authAbility.throwUnlessCan("write", member);
     if ("roles" in input || "permissions" in input) {
       throw new BadRequestException(
         "Use setMemberRoles or setMemberPermissions to update authorization fields",
@@ -289,7 +288,7 @@ export class MemberService {
     };
     const assertCanUpdateFields = (target: Member) => {
       for (const field of Object.keys(changes)) {
-        assertCan("write", target, field);
+        authAbility.throwUnlessCan("write", target, field);
       }
     };
     assertCanUpdateFields(member);
@@ -307,7 +306,7 @@ export class MemberService {
         if (!lockedMember) {
           throw new NotFoundException("Workspace member not found");
         }
-        assertCan("write", lockedMember);
+        authAbility.throwUnlessCan("write", lockedMember);
         assertCanUpdateFields(lockedMember);
         em.assign(lockedMember, changes);
         await em.flush();
@@ -327,7 +326,7 @@ export class MemberService {
     member = await this.resolveMemberForAction(member, "set-roles");
     const workspace = this.unwrapWorkspace(member);
     RequestIdentity.assertCurrentWorkspace(workspace);
-    assertCan("set-roles", member);
+    authAbility.throwUnlessCan("set-roles", member);
     const roles = this.normalizeGrantedRoles(roleNames);
     this.assertAuthorizationCanCommit(member);
 
@@ -341,7 +340,7 @@ export class MemberService {
         if (!lockedMember) {
           throw new NotFoundException("Workspace member not found");
         }
-        assertCan("set-roles", lockedMember);
+        authAbility.throwUnlessCan("set-roles", lockedMember);
 
         lockedMember.roles = roles;
         await em.flush();
@@ -361,7 +360,7 @@ export class MemberService {
     member = await this.resolveMemberForAction(member, "set-permissions");
     const workspace = this.unwrapWorkspace(member);
     RequestIdentity.assertCurrentWorkspace(workspace);
-    assertCan("set-permissions", member);
+    authAbility.throwUnlessCan("set-permissions", member);
     const normalizedPermissions = this.normalizePermissions(permissions);
     assertCanGrantPermissions(
       this.authOptions,
@@ -382,7 +381,7 @@ export class MemberService {
         if (!lockedMember) {
           throw new NotFoundException("Workspace member not found");
         }
-        assertCan("set-permissions", lockedMember);
+        authAbility.throwUnlessCan("set-permissions", lockedMember);
         lockedMember.permissions = normalizedPermissions;
         await em.flush();
         return lockedMember;
@@ -413,12 +412,12 @@ export class MemberService {
     member = await this.resolveMemberForAction(member, "write");
     const workspace = this.unwrapWorkspace(member);
     RequestIdentity.assertCurrentWorkspace(workspace);
-    assertCan("write", member);
+    authAbility.throwUnlessCan("write", member);
     if (this.isCurrentMember(member)) {
       throw new ForbiddenException("You are not allowed to remove yourself");
     }
     return await this.removeMemberRecord(workspace, member, (lockedMember) => {
-      assertCan("write", lockedMember);
+      authAbility.throwUnlessCan("write", lockedMember);
     });
   }
 
@@ -462,8 +461,10 @@ export class MemberService {
 
   /** Lists all roles with grant availability; mutations still authorize their targets. */
   listRoles(): WorkspaceRoleOption[] {
-    const canAssign = can("write", Invitation) || can("set-roles", Member);
-    if (!canAssign) assertCan("read", Member);
+    const canAssign =
+      authAbility.can("write", Invitation) ||
+      authAbility.can("set-roles", Member);
+    if (!canAssign) authAbility.throwUnlessCan("read", Member);
     return Object.entries(this.roles).map(([role, permissions]) => ({
       role,
       grantable:
@@ -474,8 +475,8 @@ export class MemberService {
 
   /** Lists all direct-permission options without authorizing a particular member. */
   listPermissions(): WorkspacePermissionOption[] {
-    const canAssign = can("set-permissions", Member);
-    if (!canAssign) assertCan("read", Member);
+    const canAssign = authAbility.can("set-permissions", Member);
+    if (!canAssign) authAbility.throwUnlessCan("read", Member);
     return listAuthPermissions(this.permissions).map((permission) => ({
       permission,
       grantable:

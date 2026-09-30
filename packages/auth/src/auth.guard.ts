@@ -5,6 +5,7 @@ import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
 import type { Request } from "express";
 
+import { authAbility, readRequestAbility } from "./auth.ability.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
@@ -21,8 +22,6 @@ import {
 } from "./permission.constants.js";
 import type { CanSubjectFactory } from "./types/can-subject-factory.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
-import { can } from "./utils/can.util.js";
-import { readRequestAbility } from "./utils/get-ability.util.js";
 import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
 
 /** Guard that enforces authentication and evaluates route permissions. */
@@ -96,7 +95,7 @@ export class AuthGuard implements CanActivate {
     for (const requirement of metadata) {
       if (!readRequestAbility()) return false;
       const subject = await this.resolveSubject(requirement, context);
-      if (!can(requirement.action, subject)) return false;
+      if (!authAbility.can(requirement.action, subject)) return false;
     }
     return true;
   }

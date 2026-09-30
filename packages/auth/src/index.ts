@@ -1,5 +1,5 @@
-export * from "./abilities/index.js";
 export * from "./api-key-usage.interceptor.js";
+export { AuthAbility, authAbility } from "./auth.ability.js";
 export { API_KEY, IS_PUBLIC_KEY } from "./auth.constants.js";
 export * from "./auth.guard.js";
 export * from "./auth.middleware.js";
@@ -200,9 +200,6 @@ export * from "./types/permission-name.type.js";
 export * from "./types/role-name.type.js";
 export * from "./types/route-argument-metadata.type.js";
 export * from "./user.constants.js";
-export { assertCan } from "./utils/assert-can.util.js";
-export * from "./utils/can.util.js";
 export * from "./utils/extract-api-key.util.js";
-export { getAbility } from "./utils/get-ability.util.js";
 export * from "./utils/serialize-ability-rules.util.js";
 export * from "./workspace.constants.js";

@@ -1,6 +1,6 @@
 import { AbilityBuilder } from "@casl/ability";
 
-import { AuthAbility } from "../abilities/auth.ability.js";
+import { AuthAbility } from "../auth.ability.js";
 import { serializeAbilityRules } from "./serialize-ability-rules.util.js";
 
 class Project {}

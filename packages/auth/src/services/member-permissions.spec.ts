@@ -10,7 +10,7 @@ import {
   createTestWorkspace,
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
-import { AuthAbility } from "../abilities/auth.ability.js";
+import { AuthAbility } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";

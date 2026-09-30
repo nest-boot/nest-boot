@@ -249,7 +249,8 @@ new privileged context is introduced.
 The internal email lookup context moves to `MemberService.getUserForMembership`;
 acceptance/rejection contexts move to `InvitationService`. Ordinary
 member/invitation reads and writes keep request RLS.
-`can()` and `assertCan()` evaluate the request-scoped `AuthAbility` directly.
+`authAbility.can()` and `authAbility.throwUnlessCan()` evaluate the request-scoped
+`AuthAbility` directly.
 The internal `RequestIdentity` owns identity checks and publication, while
 `UserDeletionService` coordinates atomic deletion across auth-owned entities.
 The impersonator relation checks User profile authorization in SessionService;
@@ -431,12 +432,25 @@ fields are nullable and permission sources remain separate.
 Use `can({ user: permission }, action, subject, conditions?)` or
 `can({ workspace: permission }, action, subject, conditions?)` for permission-bound
 business grants and `cannot(action, subject, conditions?)` for restrictions.
-Both support field restrictions. `@Can()`, `can()`, and `assertCan()`
+Both support field restrictions. `@Can()`, `authAbility.can()`, and `authAbility.throwUnlessCan()`
 evaluate this same ability. The frontend queries `currentAbilityRules` and uses
 `useAbility()` for both personal and workspace pages. Callbacks are synchronous and return nothing.
 They cannot grant operations on built-in auth entities or `all`, access the raw
 builder, or replace the resulting ability. Restrictions take precedence over
 business grants. The frontend consumes the final serialized rules.
+
+The exported `authAbility` Proxy resolves the current authenticated request's
+`AuthAbility` for each property access or method call, including destructured
+methods. Identity and workspace changes therefore take effect on the next call.
+Without a prepared authenticated ability, `can()` returns `false`, `cannot()`
+returns `true`, and `throwUnlessCan()` or reading `rules` throws
+`ForbiddenException`. `throwUnlessCan()` is defined on `AuthAbility` itself and
+also works on explicitly constructed instances outside a request.
+
+The standalone `can`, `assertCan`, and `getAbility` exports have been removed.
+Migrate to `authAbility.can(...)`, `authAbility.throwUnlessCan(...)`, and
+`authAbility` respectively. This is a breaking public API change; no aliases
+are retained.
 
 The built-in ability denies writing the current member's `status` field, while
 preserving permitted profile edits. `MemberService.updateMember` checks each

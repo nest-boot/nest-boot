@@ -20,6 +20,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
+import { authAbility } from "../../auth.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../../auth.module-definition.js";
 import type { AuthModuleOptions } from "../../auth-module-options.interface.js";
 import { Invitation } from "../../entities/invitation.entity.js";
@@ -28,12 +29,10 @@ import { User } from "../../entities/user.entity.js";
 import { Workspace } from "../../entities/workspace.entity.js";
 import { RequestIdentity } from "../../infrastructure/request-identity.js";
 import type { AuthModuleRoles } from "../../types/auth-module-roles.type.js";
-import { assertCan } from "../../utils/assert-can.util.js";
 import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../../utils/auth-role.util.js";
-import { can } from "../../utils/can.util.js";
 import { getCurrentApiKey } from "../../utils/get-current-api-key.util.js";
 import { assertCanGrantPermissions } from "../../utils/permission-grants.util.js";
 import { resolveAuthCatalog } from "../../utils/resolve-auth-catalog.util.js";
@@ -62,7 +61,7 @@ export class InvitationService {
   ): Promise<Invitation> {
     RequestIdentity.assertCurrentWorkspace(workspace);
     RequestIdentity.assertCurrentUser(inviter);
-    assertCan("write", Invitation);
+    authAbility.throwUnlessCan("write", Invitation);
     const email = input.email.trim().toLowerCase();
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
     const expiresIn = input.expiresIn ?? 60 * 60 * 48;
@@ -148,7 +147,7 @@ export class InvitationService {
             status: "pending",
             workspace,
           });
-          assertCan("write", created);
+          authAbility.throwUnlessCan("write", created);
           await em.persist(created).flush();
           return { created, inviterMember };
         },
@@ -213,7 +212,7 @@ export class InvitationService {
   ): Promise<string | null> {
     RequestIdentity.assertCurrentWorkspace(workspace);
     RequestIdentity.assertCurrentUser(inviter);
-    assertCan("write", Invitation);
+    authAbility.throwUnlessCan("write", Invitation);
     const user = await this.em.findOne(
       User,
       { email: email.trim().toLowerCase() },
@@ -228,7 +227,7 @@ export class InvitationService {
       RequestContext.isActive() &&
       RequestContext.get(User) &&
       !getCurrentApiKey();
-    if (!recipientSession && !can("read", Invitation)) {
+    if (!recipientSession && !authAbility.can("read", Invitation)) {
       throw new ForbiddenException("Invitation read access denied");
     }
     const invitation = await this.em.findOne(
@@ -245,14 +244,14 @@ export class InvitationService {
     const current = await this.getInvitationForRelation(invitation);
     const actor = RequestContext.isActive() ? RequestContext.get(User) : null;
     const self = !getCurrentApiKey() && actor?.id === current.inviter.id;
-    if (!self) assertCan("read", User);
+    if (!self) authAbility.throwUnlessCan("read", User);
     const user = await this.em.findOne(
       User,
       { id: current.inviter.id },
       { refresh: true },
     );
     if (!user) throw new NotFoundException("Invitation inviter not found");
-    if (!self) assertCan("read", user);
+    if (!self) authAbility.throwUnlessCan("read", user);
     return user;
   }
 
@@ -296,7 +295,7 @@ export class InvitationService {
     RequestIdentity.assertCurrentWorkspace(
       this.unwrapInvitationWorkspace(invitation),
     );
-    assertCan("read", invitation);
+    authAbility.throwUnlessCan("read", invitation);
   }
 
   /** Finds an invitation when it is addressed to the supplied user. */
@@ -318,12 +317,12 @@ export class InvitationService {
     workspace: Workspace,
   ): Promise<Invitation | null> {
     RequestIdentity.assertCurrentWorkspace(workspace);
-    assertCan("read", Invitation);
+    authAbility.throwUnlessCan("read", Invitation);
     const invitation = await this.em.findOne(Invitation, {
       id,
       workspace,
     });
-    if (invitation) assertCan("read", invitation);
+    if (invitation) authAbility.throwUnlessCan("read", invitation);
     return invitation;
   }
 
@@ -333,14 +332,14 @@ export class InvitationService {
     args: ConnectionArgsInterface<Invitation>,
   ): Promise<ConnectionInterface<Invitation>> {
     RequestIdentity.assertCurrentWorkspace(workspace);
-    assertCan("read", Invitation);
+    authAbility.throwUnlessCan("read", Invitation);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<Invitation>(InvitationConnection, args, {
       where: { workspace },
     });
     for (const { node } of connection.edges) {
-      assertCan("read", node);
+      authAbility.throwUnlessCan("read", node);
     }
     return connection;
   }
@@ -434,11 +433,11 @@ export class InvitationService {
 
   /** Cancels a pending invitation. */
   async cancelInvitation(invitation: Invitation | string): Promise<Invitation> {
-    assertCan("write", Invitation);
+    authAbility.throwUnlessCan("write", Invitation);
     invitation = await this.resolveInvitationForAction(invitation);
     const workspace = this.unwrapInvitationWorkspace(invitation);
     RequestIdentity.assertCurrentWorkspace(workspace);
-    assertCan("write", invitation);
+    authAbility.throwUnlessCan("write", invitation);
     if (invitation.status !== "pending") {
       throw new BadRequestException("Workspace invitation is not pending");
     }

@@ -78,11 +78,11 @@ AuthModule.forRoot({
 也不能只用路由层的类级判断代替对象检查：
 
 ```typescript
-import { assertCan } from "@nest-boot/auth";
+import { authAbility } from "@nest-boot/auth";
 
 async archiveReport(id: string): Promise<Report> {
   const report = await this.loadReport(id);
-  assertCan("archive", report);
+  authAbility.throwUnlessCan("archive", report);
   return await this.repository.archive(report);
 }
 ```
@@ -390,13 +390,16 @@ Service 权限划分与 Better Auth 的 admin、organization 访问控制保持�
 - 工作区 API Key 管理使用 `workspace-api-key:read/write`；
 - 当前用户认证、会话管理、接受邀请和退出工作区使用已认证身份与资源归属校验。
 
-`can()`、`assertCan()` 和 `getAbility()` 直接读取当前请求的同一个 `AuthAbility`，
-无需注入授权服务。全局 `AuthGuard` 在受保护操作前准备 Ability。请求身份或 Ability
-缺失时默认拒绝：`can()` 返回 `false`，`assertCan()` 和 `getAbility()` 抛出
-`ForbiddenException`。
+导出的 `authAbility` Proxy 读取当前请求的 `AuthAbility`，无需注入授权服务。
+全局 `AuthGuard` 在受保护操作前准备 Ability。每次方法调用都会解析当前实例，
+即使解构方法也不会绑定旧请求；身份或工作区变化会在下一次调用时生效。
 
-Guard、路由装饰器、Service 和辅助函数统一通过该 Ability 的 `can()` 判断操作权限。
-身份发布和授权失效仍由内部 `RequestIdentity` 集中管理；辅助函数不会自行构建备用 Ability。
+请求身份或 Ability 缺失时默认拒绝：`authAbility.can()` 返回 `false`，
+`authAbility.cannot()` 返回 `true`，`authAbility.throwUnlessCan()` 或读取
+`authAbility.rules` 则抛出 `ForbiddenException`。
+
+Guard、路由装饰器和 Service 统一通过该 Ability 判断操作权限。身份发布和授权失效
+仍由内部 `RequestIdentity` 集中管理；Proxy 不会为缺失的身份构建权限。
 
 Ability 构建与可授予权限判断共用当前请求身份的一份不可变有效权限快照。
 所有者权限与凭证限制后的权限仍有区别：API Key 管理同时检查所有者授权和调用凭证的权限上限。
@@ -407,17 +410,19 @@ Ability 构建与可授予权限判断共用当前请求身份的一份不可变
 请求准备完成后，底层代码也使用统一入口：
 
 ```typescript
-import { can, getAbility } from "@nest-boot/auth";
+import { authAbility } from "@nest-boot/auth";
 
-if (!can("update", post)) {
-  throw new ForbiddenException();
-}
-const ability = getAbility();
-ability.can("read", post);
+authAbility.throwUnlessCan("update", post);
+const canRead = authAbility.can("read", post);
+const rules = authAbility.rules;
 ```
 
-授权上下文不可用时，`can()` 返回 `false`，`getAbility()` 抛出 `ForbiddenException`。
-`AuthAbility` 也是请求上下文 token，但建议通过上述辅助函数执行默认拒绝的访问。
+`throwUnlessCan()` 直接定义在 `AuthAbility` 类上，操作被拒绝时抛出 NestJS 的
+`ForbiddenException`。显式创建的 `AuthAbility` 实例也可以在请求上下文之外调用该方法。
+`AuthAbility` 仍然是请求上下文 token。
+
+独立的 `can`、`assertCan` 和 `getAbility` 导出已移除，分别替换为
+`authAbility.can(...)`、`authAbility.throwUnlessCan(...)` 和 `authAbility`，不保留兼容别名。
 
 示例前端的个人页与工作区页统一使用 `useAbility()`。Provider 消费当前身份的
 `currentAbilityRules`，不在前端合并或重新计算权限。
@@ -500,7 +505,7 @@ session context。写入失败时不更新请求授权。修改其他用户或�
 `createMongoAbility()` 还原。
 
 ```typescript
-const rules = serializeAbilityRules(getAbility());
+const rules = serializeAbilityRules(authAbility);
 ```
 
 客户端 rules 只用于界面能力展示。每次请求仍必须以服务端 Guard 与 Service 权限检查

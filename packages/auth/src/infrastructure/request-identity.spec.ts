@@ -2,7 +2,7 @@
 import type { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 
-import { AuthAbility } from "../abilities/auth.ability.js";
+import { AuthAbility, authAbility } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
@@ -11,7 +11,6 @@ import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
-import { can } from "../utils/can.util.js";
 import { assertApiKeyPermissionCeiling } from "../utils/permission-grants.util.js";
 import { canGrantPermissions } from "../utils/permission-grants.util.js";
 import { resolveRequestPermissions } from "../utils/resolve-request-permissions.util.js";
@@ -53,8 +52,8 @@ describe("RequestIdentity", () => {
       expect(resolveRequestPermissions(options).apiKey).toBe(first.apiKey);
       expect(Object.isFrozen(first.apiKey)).toBe(true);
       expect(Object.isFrozen(first.user)).toBe(true);
-      expect(can("read", User)).toBe(true);
-      expect(can("delete", User)).toBe(false);
+      expect(authAbility.can("read", User)).toBe(true);
+      expect(authAbility.can("delete", User)).toBe(false);
       expect(canGrantPermissions(options, "user", ["user:read"])).toBe(true);
       expect(canGrantPermissions(options, "user", ["user:delete"])).toBe(false);
       expect(
@@ -70,7 +69,7 @@ describe("RequestIdentity", () => {
       RequestIdentity.updateUser(manager(), options, user);
       expect(roles).toHaveBeenCalledTimes(2);
       expect(resolveRequestPermissions(options)).not.toBe(first);
-      expect(can("read", User)).toBe(false);
+      expect(authAbility.can("read", User)).toBe(false);
       expect(canGrantPermissions(options, "user", ["user:read"])).toBe(false);
       apiKey.permissions = [];
       expect(resolveRequestPermissions(options).apiKey).toEqual([
@@ -169,8 +168,8 @@ describe("RequestIdentity", () => {
         RequestIdentity.prepare(options);
       }).toThrow("Failed");
 
-      expect(can("delete", User)).toBe(false);
-      expect(can("read", Workspace)).toBe(false);
+      expect(authAbility.can("delete", User)).toBe(false);
+      expect(authAbility.can("read", Workspace)).toBe(false);
     });
   });
 
@@ -204,7 +203,7 @@ describe("RequestIdentity", () => {
         expect(RequestContext.get(API_KEY)).toBe(
           Key === UserApiKey ? key : null,
         );
-        expect(can("read", User)).toBe(Key === UserApiKey);
+        expect(authAbility.can("read", User)).toBe(Key === UserApiKey);
       });
     },
   );
