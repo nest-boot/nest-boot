@@ -1,3 +1,13 @@
+## 8.0.7-beta.2 (2026-09-30)
+
+### 🩹 Fixes
+
+- **auth:** prevent members from changing their own status ([#379](https://github.com/nest-boot/nest-boot/pull/379))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.7-beta.1 (2026-09-29)
 
 ### 🚀 Features
