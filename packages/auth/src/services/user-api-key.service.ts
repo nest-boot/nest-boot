@@ -24,11 +24,13 @@ import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.i
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
 import type { UserApiKeyPermissionOption } from "../objects/user-api-key-permission-option.object.js";
+import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
 } from "../utils/api-key-permissions.util.js";
 import { authorize } from "../utils/authorize.util.js";
+import { omitCredentials } from "../utils/omit-credentials.util.js";
 import {
   assertApiKeyPermissionCeiling,
   assertPermissionCeiling,
@@ -75,35 +77,44 @@ export class UserApiKeyService {
   }
 
   /** Returns a user-owned API key when it belongs to the current user. */
-  async getUserApiKey(id: string, user: User): Promise<UserApiKey | null> {
+  async getUserApiKey(
+    id: string,
+    user: User,
+  ): Promise<ApiKeyMetadata<UserApiKey> | null> {
     RequestIdentity.assertCurrentUser(user);
     authorize("read", UserApiKey);
     const apiKey = await this.getVisibleApiKey(id, user);
     if (apiKey) {
       authorize("read", apiKey);
     }
-    return apiKey;
+    return apiKey ? omitCredentials(apiKey, ["key"]) : null;
   }
 
   /** Paginates current-user keys after applying ownership and permission ceilings. */
   async getUserApiKeyConnection(
     user: User,
     args: ConnectionArgsInterface<UserApiKey>,
-  ): Promise<ConnectionInterface<UserApiKey>> {
+  ): Promise<ConnectionInterface<ApiKeyMetadata<UserApiKey>>> {
     RequestIdentity.assertCurrentUser(user);
     authorize("read", UserApiKey);
     const where = this.getOwnedListFilter(user);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
-    ).find<UserApiKey>(UserApiKeyConnection, args, {
+    ).find(UserApiKeyConnection, args, {
       where,
-      exclude: ["key"] as never,
+      exclude: ["key"],
     });
     // Reject the whole page rather than silently changing cursor pagination.
     for (const { node } of connection.edges) {
       authorize("read", node);
     }
-    return connection;
+    return {
+      ...connection,
+      edges: connection.edges.map((edge) => ({
+        ...edge,
+        node: omitCredentials(edge.node, ["key"]),
+      })),
+    };
   }
 
   /** Creates an API key owned by a user. */
@@ -126,7 +137,7 @@ export class UserApiKeyService {
   async updateUserApiKey(
     id: string,
     input: UpdateApiKeyOptions,
-  ): Promise<UserApiKey> {
+  ): Promise<ApiKeyMetadata<UserApiKey>> {
     authorize("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
     authorize("write", apiKey);
@@ -150,21 +161,27 @@ export class UserApiKeyService {
         );
       this.assertUserPermissionCeiling(user, finalPermissions);
     }
-    return await ApiKeyLifecycle.update(
-      this.em,
-      this.authOptions,
-      apiKey,
-      input,
-      permissions,
+    return omitCredentials(
+      await ApiKeyLifecycle.update(
+        this.em,
+        this.authOptions,
+        apiKey,
+        input,
+        permissions,
+      ),
+      ["key"],
     );
   }
 
   /** Deletes an API key owned by the current user. */
-  async deleteUserApiKey(id: string): Promise<UserApiKey> {
+  async deleteUserApiKey(id: string): Promise<ApiKeyMetadata<UserApiKey>> {
     authorize("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
     authorize("write", apiKey);
-    return await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey);
+    return omitCredentials(
+      await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey),
+      ["key"],
+    );
   }
 
   private async createKey(
@@ -202,13 +219,13 @@ export class UserApiKeyService {
   private async getVisibleApiKey(
     id: string,
     user: User,
-  ): Promise<UserApiKey | null> {
+  ): Promise<ApiKeyMetadata<UserApiKey> | null> {
     const apiKey = await this.em.findOne(
       UserApiKey,
       {
         $and: [{ id }, this.getOwnedListFilter(user)],
       },
-      { populate: ["user"], exclude: ["key"] as never },
+      { populate: ["user"], exclude: ["key"] },
     );
     if (apiKey) {
       this.assertUser(apiKey, user);
@@ -217,13 +234,15 @@ export class UserApiKeyService {
     return apiKey;
   }
 
-  private async findWritableApiKey(id: string): Promise<UserApiKey> {
+  private async findWritableApiKey(
+    id: string,
+  ): Promise<ApiKeyMetadata<UserApiKey>> {
     const apiKey = await this.em.findOne(
       UserApiKey,
       { id },
       {
         populate: ["user"],
-        exclude: ["key"] as never,
+        exclude: ["key"],
         refresh: true,
       },
     );
@@ -243,7 +262,10 @@ export class UserApiKeyService {
     };
   }
 
-  private assertUser(apiKey: UserApiKey, expectedUser: User): void {
+  private assertUser(
+    apiKey: ApiKeyMetadata<UserApiKey>,
+    expectedUser: User,
+  ): void {
     const user = this.unwrapUser(apiKey);
     if (user.id !== expectedUser.id) {
       throw new ForbiddenException(
@@ -252,7 +274,7 @@ export class UserApiKeyService {
     }
   }
 
-  private unwrapUser(apiKey: UserApiKey): User {
+  private unwrapUser(apiKey: ApiKeyMetadata<UserApiKey>): User {
     if (!apiKey.user) throw new ForbiddenException("API key owner is missing");
     return Reference.unwrapReference(apiKey.user);
   }

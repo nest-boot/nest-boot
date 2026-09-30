@@ -12,6 +12,7 @@ import { type Account } from "../entities/account.entity.js";
 import { type User } from "../entities/user.entity.js";
 import { RequestIdentity } from "../infrastructure/request-identity.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { omitCredentials } from "../utils/omit-credentials.util.js";
 
 /** Safe account queries scoped to the current user session and application RLS. */
 @Injectable()
@@ -23,18 +24,34 @@ export class AccountService {
   async getAccountConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<Account>,
-  ): Promise<ConnectionInterface<Account>> {
+  ): Promise<
+    ConnectionInterface<
+      Omit<Account, "password" | "accessToken" | "refreshToken" | "idToken">
+    >
+  > {
     RequestIdentity.assertCurrentUser(user);
     if (getCurrentApiKey()) {
       throw new ForbiddenException(
         "Account inspection requires a user session",
       );
     }
-    return await new ConnectionManager(
+    const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
-    ).find<Account>(AccountConnection, args, {
+    ).find(AccountConnection, args, {
       where: { user: String(user.id) },
-      exclude: ["password", "accessToken", "refreshToken", "idToken"] as never,
+      exclude: ["password", "accessToken", "refreshToken", "idToken"],
     });
+    return {
+      ...connection,
+      edges: connection.edges.map((edge) => ({
+        ...edge,
+        node: omitCredentials(edge.node, [
+          "password",
+          "accessToken",
+          "refreshToken",
+          "idToken",
+        ]),
+      })),
+    };
   }
 }

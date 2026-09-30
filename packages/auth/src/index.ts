@@ -184,6 +184,7 @@ export * from "./services/user-api-key.service.js";
 export * from "./services/workspace.service.js";
 export * from "./services/workspace-api-key.service.js";
 export type { ApiKey } from "./types/api-key.type.js";
+export type { ApiKeyMetadata } from "./types/api-key-metadata.type.js";
 export * from "./types/api-key-validation.type.js";
 export * from "./types/auth-account-selector.type.js";
 export * from "./types/auth-maybe-promise.type.js";

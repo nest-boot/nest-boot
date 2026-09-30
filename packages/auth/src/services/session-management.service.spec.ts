@@ -168,7 +168,14 @@ describe("SessionService management", () => {
     const { service, em, authorization } = createService();
     const user = Object.assign(new User(), { id: "self" });
     const context = mockRlsContext(em);
-    const result = { edges: [], pageInfo: {} };
+    const session = Object.assign(new Session(), {
+      token: "already-hydrated-token",
+      user,
+    });
+    const result = {
+      edges: [{ cursor: "cursor", node: session }],
+      pageInfo: {},
+    };
     const find = vi
       .spyOn(ConnectionManager.prototype, "find")
       .mockResolvedValue(result as never);
@@ -177,9 +184,13 @@ describe("SessionService management", () => {
         new RequestContext({ type: "test" }),
         async () => {
           RequestContext.set(User, user);
-          await expect(
-            service.getSessionConnectionByUser(user, { first: 2 }),
-          ).resolves.toBe(result);
+          const connection = await service.getSessionConnectionByUser(user, {
+            first: 2,
+          });
+          expect(connection.edges[0].node).not.toHaveProperty("token");
+          expect(connection.edges[0].node).toBeInstanceOf(Session);
+          expect(session.token).toBe("already-hydrated-token");
+          expect(connection.pageInfo).toBe(result.pageInfo);
           expect(authorization.authorize).not.toHaveBeenCalled();
           expect(find).toHaveBeenCalledWith(
             SessionConnection,

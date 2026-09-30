@@ -8,6 +8,7 @@ import { UpdateWorkspaceApiKeyInput } from "../inputs/update-workspace-api-key.i
 import { CreateWorkspaceApiKeyResult } from "../objects/create-workspace-api-key-result.object.js";
 import { WorkspaceApiKeyPermissionOption } from "../objects/workspace-api-key-permission-option.object.js";
 import { WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
+import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
 /** GraphQL mutations for workspace-owned API keys. */
 @Resolver(() => WorkspaceApiKey)
@@ -40,7 +41,7 @@ export class WorkspaceApiKeyResolver {
   async updateWorkspaceApiKey(
     @Args("id", { type: () => ID }) id: string,
     @Args("input") input: UpdateWorkspaceApiKeyInput,
-  ): Promise<WorkspaceApiKey> {
+  ): Promise<ApiKeyMetadata<WorkspaceApiKey>> {
     return await this.apiKeyService.updateWorkspaceApiKey(id, input);
   }
 
@@ -48,7 +49,7 @@ export class WorkspaceApiKeyResolver {
   @Mutation(() => WorkspaceApiKey)
   async deleteWorkspaceApiKey(
     @Args("id", { type: () => ID }) id: string,
-  ): Promise<WorkspaceApiKey> {
+  ): Promise<ApiKeyMetadata<WorkspaceApiKey>> {
     return await this.apiKeyService.deleteWorkspaceApiKey(id);
   }
 }

@@ -26,12 +26,14 @@ import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.i
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
 import type { WorkspaceApiKeyPermissionOption } from "../objects/workspace-api-key-permission-option.object.js";
+import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
 } from "../utils/api-key-permissions.util.js";
 import { authorize } from "../utils/authorize.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { omitCredentials } from "../utils/omit-credentials.util.js";
 import {
   assertApiKeyPermissionCeiling,
   assertCanGrantPermissions,
@@ -75,35 +77,41 @@ export class WorkspaceApiKeyService {
   async getWorkspaceApiKey(
     id: string,
     workspace: Workspace,
-  ): Promise<WorkspaceApiKey | null> {
+  ): Promise<ApiKeyMetadata<WorkspaceApiKey> | null> {
     this.assertWorkspacePrincipal(workspace);
     authorize("read", WorkspaceApiKey);
     const apiKey = await this.getVisibleApiKey(id, workspace);
     if (apiKey) {
       authorize("read", apiKey);
     }
-    return apiKey;
+    return apiKey ? omitCredentials(apiKey, ["key"]) : null;
   }
 
   /** Paginates selected-workspace keys after applying ownership and permission ceilings. */
   async getWorkspaceApiKeyConnection(
     workspace: Workspace,
     args: ConnectionArgsInterface<WorkspaceApiKey>,
-  ): Promise<ConnectionInterface<WorkspaceApiKey>> {
+  ): Promise<ConnectionInterface<ApiKeyMetadata<WorkspaceApiKey>>> {
     this.assertWorkspacePrincipal(workspace);
     authorize("read", WorkspaceApiKey);
     const where = this.getOwnedListFilter(workspace);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
-    ).find<WorkspaceApiKey>(WorkspaceApiKeyConnection, args, {
+    ).find(WorkspaceApiKeyConnection, args, {
       where,
-      exclude: ["key"] as never,
+      exclude: ["key"],
     });
     // Reject the whole page rather than silently changing cursor pagination.
     for (const { node } of connection.edges) {
       authorize("read", node);
     }
-    return connection;
+    return {
+      ...connection,
+      edges: connection.edges.map((edge) => ({
+        ...edge,
+        node: omitCredentials(edge.node, ["key"]),
+      })),
+    };
   }
 
   /** Creates an API key owned by a workspace. */
@@ -126,7 +134,7 @@ export class WorkspaceApiKeyService {
   async updateWorkspaceApiKey(
     id: string,
     input: UpdateApiKeyOptions,
-  ): Promise<WorkspaceApiKey> {
+  ): Promise<ApiKeyMetadata<WorkspaceApiKey>> {
     authorize("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
     authorize("write", apiKey);
@@ -153,21 +161,29 @@ export class WorkspaceApiKeyService {
         finalPermissions,
       );
     }
-    return await ApiKeyLifecycle.update(
-      this.em,
-      this.authOptions,
-      apiKey,
-      input,
-      permissions,
+    return omitCredentials(
+      await ApiKeyLifecycle.update(
+        this.em,
+        this.authOptions,
+        apiKey,
+        input,
+        permissions,
+      ),
+      ["key"],
     );
   }
 
   /** Deletes a key owned by the authenticated workspace. */
-  async deleteWorkspaceApiKey(id: string): Promise<WorkspaceApiKey> {
+  async deleteWorkspaceApiKey(
+    id: string,
+  ): Promise<ApiKeyMetadata<WorkspaceApiKey>> {
     authorize("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
     authorize("write", apiKey);
-    return await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey);
+    return omitCredentials(
+      await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey),
+      ["key"],
+    );
   }
 
   private async createKey(
@@ -205,13 +221,13 @@ export class WorkspaceApiKeyService {
   private async getVisibleApiKey(
     id: string,
     workspace: Workspace,
-  ): Promise<WorkspaceApiKey | null> {
+  ): Promise<ApiKeyMetadata<WorkspaceApiKey> | null> {
     const apiKey = await this.em.findOne(
       WorkspaceApiKey,
       {
         $and: [{ id }, this.getOwnedListFilter(workspace)],
       },
-      { populate: ["workspace"], exclude: ["key"] as never },
+      { populate: ["workspace"], exclude: ["key"] },
     );
     if (apiKey) {
       this.assertWorkspace(apiKey, workspace);
@@ -220,13 +236,15 @@ export class WorkspaceApiKeyService {
     return apiKey;
   }
 
-  private async findWritableApiKey(id: string): Promise<WorkspaceApiKey> {
+  private async findWritableApiKey(
+    id: string,
+  ): Promise<ApiKeyMetadata<WorkspaceApiKey>> {
     const apiKey = await this.em.findOne(
       WorkspaceApiKey,
       { id },
       {
         populate: ["workspace"],
-        exclude: ["key"] as never,
+        exclude: ["key"],
         refresh: true,
       },
     );
@@ -268,7 +286,7 @@ export class WorkspaceApiKeyService {
   }
 
   private assertWorkspace(
-    apiKey: WorkspaceApiKey,
+    apiKey: ApiKeyMetadata<WorkspaceApiKey>,
     expectedWorkspace: Workspace,
   ): void {
     const workspace = this.unwrapWorkspace(apiKey);
@@ -279,7 +297,7 @@ export class WorkspaceApiKeyService {
     }
   }
 
-  private unwrapWorkspace(apiKey: WorkspaceApiKey): Workspace {
+  private unwrapWorkspace(apiKey: ApiKeyMetadata<WorkspaceApiKey>): Workspace {
     if (!apiKey.workspace)
       throw new ForbiddenException("API key owner is missing");
     return Reference.unwrapReference(apiKey.workspace);

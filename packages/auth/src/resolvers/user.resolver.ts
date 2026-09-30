@@ -60,6 +60,7 @@ import { SessionService } from "../services/session.service.js";
 import { UserService } from "../services/user.service.js";
 import { UserApiKeyService } from "../services/user-api-key.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
+import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
 /** GraphQL transport for user administration. */
 @Resolver(() => User)
@@ -109,7 +110,7 @@ export class UserResolver {
   async apiKey(
     @Parent() user: User,
     @Args("id", { type: () => ID }) id: string,
-  ): Promise<UserApiKey | null> {
+  ): Promise<ApiKeyMetadata<UserApiKey> | null> {
     return await this.apiKeyService.getUserApiKey(id, user);
   }
 

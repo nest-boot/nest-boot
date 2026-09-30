@@ -11,7 +11,7 @@ import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import type { RequestIdentityPatch } from "../interfaces/request-identity-patch.interface.js";
-import type { ApiKey } from "../types/api-key.type.js";
+import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import { buildRequestAbility } from "../utils/build-request-ability.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { invalidateRequestPermissions } from "../utils/resolve-request-permissions.util.js";
@@ -84,7 +84,7 @@ export class RequestIdentity {
   }
 
   /** Matches credentials by both table and ID. */
-  static isCurrentApiKey(apiKey: ApiKey): boolean {
+  static isCurrentApiKey(apiKey: ApiKeyMetadata): boolean {
     const current = getCurrentApiKey();
     return (
       !!current &&
@@ -94,7 +94,10 @@ export class RequestIdentity {
   }
 
   /** Rejects publishing an authenticating credential before its outer transaction commits. */
-  static assertApiKeyCanCommit(em: EntityManager, apiKey: ApiKey): void {
+  static assertApiKeyCanCommit(
+    em: EntityManager,
+    apiKey: ApiKeyMetadata,
+  ): void {
     if (this.isCurrentApiKey(apiKey) && em.isInTransaction()) {
       throw new BadRequestException(
         "Change the authenticating API key outside an active transaction",
@@ -132,7 +135,7 @@ export class RequestIdentity {
   static updateApiKey(
     em: EntityManager,
     options: AuthModuleOptions,
-    apiKey: ApiKey,
+    apiKey: ApiKeyMetadata,
     deleted = false,
   ): void {
     if (!this.isCurrentApiKey(apiKey)) return;
@@ -160,7 +163,7 @@ export class RequestIdentity {
       RequestContext.set(Workspace, patch.workspace ?? null);
     if ("session" in patch) RequestContext.set(Session, patch.session ?? null);
     if ("apiKey" in patch)
-      RequestContext.set<ApiKey | null>(API_KEY, patch.apiKey ?? null);
+      RequestContext.set<ApiKeyMetadata | null>(API_KEY, patch.apiKey ?? null);
     invalidateRequestPermissions();
     RequestContext.set(AuthAbility, null);
   }

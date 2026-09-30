@@ -18,6 +18,7 @@ import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { RequestIdentity } from "../infrastructure/request-identity.js";
 import * as abilityHelpers from "../utils/authorize.util.js";
+import { omitCredentials } from "../utils/omit-credentials.util.js";
 import { UserApiKeyService } from "./user-api-key.service.js";
 import { WorkspaceApiKeyService } from "./workspace-api-key.service.js";
 
@@ -295,6 +296,7 @@ describe("API-key management services", () => {
         scope === "user" ? new UserApiKey() : new WorkspaceApiKey(),
         {
           id: "conditional-key",
+          key: "already-hydrated-key-hash",
           enabled: true,
           permissions: [],
           user: ref(User, user),
@@ -306,7 +308,9 @@ describe("API-key management services", () => {
           ? service.getUserApiKey(key.id, user)
           : service.getWorkspaceApiKey(key.id, createTestWorkspace());
       em.findOne.mockResolvedValue(key);
-      await expect(read()).resolves.toBe(key);
+      expect(await read()).toEqual(omitCredentials(key, ["key"]));
+      expect(await read()).not.toHaveProperty("key");
+      expect(key.key).toBe("already-hydrated-key-hash");
       key.enabled = false;
       await expect(read()).rejects.toThrow(ForbiddenException);
       em.findOne.mockResolvedValue(null);
@@ -343,7 +347,20 @@ describe("API-key management services", () => {
           : service.getWorkspaceApiKeyConnection(createTestWorkspace(), {
               first: 1,
             });
-      await expect(read()).resolves.toBe(result);
+      await expect(read()).resolves.toEqual({
+        ...result,
+        edges: result.edges.map((edge) => ({
+          ...edge,
+          node: omitCredentials(edge.node, [
+            "key",
+            "token",
+            "password",
+            "accessToken",
+            "refreshToken",
+            "idToken",
+          ]),
+        })),
+      });
       key.enabled = false;
       await expect(read()).rejects.toThrow(ForbiddenException);
       expect(result.edges).toHaveLength(1);
@@ -397,7 +414,9 @@ describe("API-key management services", () => {
           scope === "user"
             ? service.updateUserApiKey
             : service.updateWorkspaceApiKey;
-        await expect(update(key.id, { enabled: false })).resolves.toBe(key);
+        expect(await update(key.id, { enabled: false })).toEqual(
+          omitCredentials(key, ["key"]),
+        );
         expect(key.enabled).toBe(false);
         expect(key.permissions).toEqual(permissions);
         expect(em.flush).toHaveBeenCalledOnce();
@@ -647,21 +666,48 @@ describe("API-key management services", () => {
     const user = createTestUser();
     const workspace = createTestWorkspace();
     const args = { first: 10, after: "cursor" };
-    const result = { edges: [], pageInfo: {} };
+    const result = {
+      edges: [] as { cursor: string; node: object }[],
+      pageInfo: {},
+    };
     const find = vi
       .spyOn(ConnectionManager.prototype, "find")
       .mockResolvedValue(result as never);
     const session = mockRlsContext(em);
-    await expect(service.getUserApiKeyConnection(user, args)).resolves.toBe(
-      result,
-    );
+    await expect(service.getUserApiKeyConnection(user, args)).resolves.toEqual({
+      ...result,
+      edges: result.edges.map((edge) => ({
+        ...edge,
+        node: omitCredentials(edge.node, [
+          "key",
+          "token",
+          "password",
+          "accessToken",
+          "refreshToken",
+          "idToken",
+        ]),
+      })),
+    });
     expect(find).toHaveBeenLastCalledWith(UserApiKeyConnection, args, {
       where: { user: user },
       exclude: ["key"],
     });
     await expect(
       service.getWorkspaceApiKeyConnection(workspace, args),
-    ).resolves.toBe(result);
+    ).resolves.toEqual({
+      ...result,
+      edges: result.edges.map((edge) => ({
+        ...edge,
+        node: omitCredentials(edge.node, [
+          "key",
+          "token",
+          "password",
+          "accessToken",
+          "refreshToken",
+          "idToken",
+        ]),
+      })),
+    });
     expect(find).toHaveBeenLastCalledWith(WorkspaceApiKeyConnection, args, {
       where: { workspace: workspace },
       exclude: ["key"],
@@ -951,14 +997,14 @@ describe("API-key management services", () => {
     );
 
     em.findOne.mockResolvedValue(created.entity);
-    await expect(service.getUserApiKey(created.entity.id, user)).resolves.toBe(
-      created.entity,
+    expect(await service.getUserApiKey(created.entity.id, user)).toEqual(
+      omitCredentials(created.entity, ["key"]),
     );
-    await expect(
-      service.updateUserApiKey(created.entity.id, { name: "Renamed" }),
-    ).resolves.toBe(created.entity);
-    await expect(service.deleteUserApiKey(created.entity.id)).resolves.toBe(
-      created.entity,
+    expect(
+      await service.updateUserApiKey(created.entity.id, { name: "Renamed" }),
+    ).toEqual(omitCredentials(created.entity, ["key"]));
+    expect(await service.deleteUserApiKey(created.entity.id)).toEqual(
+      omitCredentials(created.entity, ["key"]),
     );
   });
 
@@ -1110,11 +1156,11 @@ describe("API-key management services", () => {
       user: ref(User, user),
     });
     em.findOne.mockResolvedValue(userKey);
-    await expect(
-      service.updateUserApiKey(userKey.id, {
+    expect(
+      await service.updateUserApiKey(userKey.id, {
         permissions: ["workspace:update"],
       }),
-    ).resolves.toBe(userKey);
+    ).toEqual(omitCredentials(userKey, ["key"]));
     expect(userKey.permissions).toEqual(["workspace:update"]);
   });
 
@@ -1319,9 +1365,9 @@ describe("API-key management services", () => {
         exclude: ["key"],
       },
     );
-    await expect(
-      service.getWorkspaceApiKey(target.id, workspace),
-    ).resolves.toBe(target);
+    expect(await service.getWorkspaceApiKey(target.id, workspace)).toEqual(
+      omitCredentials(target, ["key"]),
+    );
     await expect(
       service.createWorkspaceApiKey(workspace, {
         name: "Bounded",
@@ -1334,13 +1380,13 @@ describe("API-key management services", () => {
         permissions: ["workspace:delete"],
       }),
     ).rejects.toThrow(ForbiddenException);
-    await expect(
-      service.updateWorkspaceApiKey(target.id, {
+    expect(
+      await service.updateWorkspaceApiKey(target.id, {
         permissions: ["workspace:update"],
       }),
-    ).resolves.toBe(target);
-    await expect(service.deleteWorkspaceApiKey(target.id)).resolves.toBe(
-      target,
+    ).toEqual(omitCredentials(target, ["key"]));
+    expect(await service.deleteWorkspaceApiKey(target.id)).toEqual(
+      omitCredentials(target, ["key"]),
     );
     expect(authorization.assertCurrentMember).not.toHaveBeenCalled();
   });
@@ -1746,16 +1792,16 @@ describe("API-key management services", () => {
     em.findOne.mockResolvedValue(apiKey);
     const expiresAt = new Date(Date.now() + 60000);
     const permissions = ["workspace:update"];
-    await expect(
-      service.updateWorkspaceApiKey(apiKey.id, {
+    expect(
+      await service.updateWorkspaceApiKey(apiKey.id, {
         enabled: false,
         expiresAt,
         name: "Renamed",
         permissions,
       }),
-    ).resolves.toBe(apiKey);
-    await expect(service.deleteWorkspaceApiKey(apiKey.id)).resolves.toBe(
-      apiKey,
+    ).toEqual(omitCredentials(apiKey, ["key"]));
+    expect(await service.deleteWorkspaceApiKey(apiKey.id)).toEqual(
+      omitCredentials(apiKey, ["key"]),
     );
 
     expect(apiKey.name).toBe("Renamed");

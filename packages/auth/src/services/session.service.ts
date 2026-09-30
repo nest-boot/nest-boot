@@ -32,6 +32,7 @@ import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
 import { authorize } from "../utils/authorize.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { omitCredentials } from "../utils/omit-credentials.util.js";
 
 /** Application-facing session management operations. */
 @Injectable()
@@ -55,12 +56,12 @@ export class SessionService {
   async getSessionConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<Session>,
-  ): Promise<ConnectionInterface<Session>> {
+  ): Promise<ConnectionInterface<Omit<Session, "token">>> {
     this.assertCanListSessions(user);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
-    ).find<Session>(SessionConnection, args, {
-      exclude: ["token"] as never,
+    ).find(SessionConnection, args, {
+      exclude: ["token"],
       where: {
         user: String(user.id),
         expiresAt: { $gt: new Date() },
@@ -68,7 +69,13 @@ export class SessionService {
     });
     for (const { node } of connection.edges)
       this.assertCanListSessions(user, node);
-    return connection;
+    return {
+      ...connection,
+      edges: connection.edges.map((edge) => ({
+        ...edge,
+        node: omitCredentials(edge.node, ["token"]),
+      })),
+    };
   }
 
   /** Authorizes both the parent session and the impersonator's private profile. */
