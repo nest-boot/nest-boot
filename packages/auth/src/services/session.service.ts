@@ -20,7 +20,6 @@ import {
 import { makeSignature } from "better-auth/crypto";
 import type { BetterAuthCookies } from "better-auth/types";
 
-import { throwUnlessCan } from "../auth.ability.js";
 import { AUTH_TOKEN } from "../auth.constants.js";
 import { SessionConnection } from "../connections/session.connection-definition.js";
 import { Session } from "../entities/session.entity.js";
@@ -32,6 +31,7 @@ import {
 import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { throwUnlessCan } from "../utils/throw-unless-can.util.js";
 
 /** Application-facing session management operations. */
 @Injectable()

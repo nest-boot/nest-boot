@@ -1,6 +1,5 @@
 import { Args, ID, Mutation, Query, Resolver } from "@nest-boot/graphql";
 
-import { getAuthAbility } from "../auth.ability.js";
 import { Public } from "../decorators/public.decorator.js";
 import { User } from "../entities/user.entity.js";
 import { AuthChangeEmailInput } from "../inputs/auth-change-email.input.js";
@@ -24,6 +23,7 @@ import { AuthSignInSocialResultType } from "../objects/auth-sign-in-social-resul
 import { AuthSocialProviderType } from "../objects/auth-social-provider.object.js";
 import { SignUpPayload } from "../objects/sign-up-payload.object.js";
 import { AuthService } from "../services/auth.service.js";
+import { getAuthAbility } from "../utils/get-auth-ability.util.js";
 import { serializeAbilityRules } from "../utils/serialize-ability-rules.util.js";
 
 /** GraphQL transport for application authentication operations. */

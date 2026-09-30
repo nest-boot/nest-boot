@@ -1,9 +1,10 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
-import { AuthAbility, getAuthAbility } from "./auth.ability.js";
-import { User, WorkspaceApiKey } from "./entities/index.js";
-import { RequestIdentity } from "./infrastructure/request-identity.js";
+import { AuthAbility } from "../auth.ability.js";
+import { User, WorkspaceApiKey } from "../entities/index.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
+import { getAuthAbility } from "./get-auth-ability.util.js";
 
 describe("getAuthAbility().rules", () => {
   it("rejects access outside a request", () => {

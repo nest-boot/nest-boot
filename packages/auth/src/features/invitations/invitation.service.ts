@@ -20,7 +20,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import { can, throwUnlessCan } from "../../auth.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../../auth.module-definition.js";
 import type { AuthModuleOptions } from "../../auth-module-options.interface.js";
 import { Invitation } from "../../entities/invitation.entity.js";
@@ -33,9 +32,11 @@ import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../../utils/auth-role.util.js";
+import { can } from "../../utils/can.util.js";
 import { getCurrentApiKey } from "../../utils/get-current-api-key.util.js";
 import { assertCanGrantPermissions } from "../../utils/permission-grants.util.js";
 import { resolveAuthCatalog } from "../../utils/resolve-auth-catalog.util.js";
+import { throwUnlessCan } from "../../utils/throw-unless-can.util.js";
 import { DEFAULT_WORKSPACE_ROLE } from "../../workspace.constants.js";
 import type { AcceptInvitationResult } from "./accept-invitation-result.interface.js";
 import type { CreateInvitationOptions } from "./create-invitation-options.interface.js";

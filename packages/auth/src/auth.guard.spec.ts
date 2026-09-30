@@ -11,7 +11,6 @@ import { firstValueFrom, of } from "rxjs";
 import type { Mock } from "vitest";
 
 import { AuthAbility } from "./auth.ability.js";
-import * as authorization from "./auth.ability.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
@@ -21,6 +20,7 @@ import { Session as BaseSession } from "./entities/session.entity.js";
 import { User as BaseUser } from "./entities/user.entity.js";
 import { Workspace } from "./entities/workspace.entity.js";
 import { CAN_METADATA } from "./permission.constants.js";
+import * as authorization from "./utils/can.util.js";
 class PromiseAuthGuard extends AuthGuard {
   override canActivate(_context: ExecutionContext): Promise<boolean> {
     return Promise.resolve(true);

@@ -7,7 +7,6 @@ import { it as baseIt, type Mocked } from "vitest";
 
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { AuthAbility } from "../auth.ability.js";
-import * as abilityHelpers from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
@@ -18,6 +17,7 @@ import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { RequestIdentity } from "../infrastructure/request-identity.js";
+import * as abilityHelpers from "../utils/throw-unless-can.util.js";
 import { UserApiKeyService } from "./user-api-key.service.js";
 import { WorkspaceApiKeyService } from "./workspace-api-key.service.js";
 

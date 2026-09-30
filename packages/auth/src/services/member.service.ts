@@ -20,7 +20,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import { can, throwUnlessCan } from "../auth.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { MemberConnection } from "../connections/member.connection-definition.js";
@@ -41,6 +40,7 @@ import {
   normalizeAuthRoles,
   resolveAuthPermissions,
 } from "../utils/auth-role.util.js";
+import { can } from "../utils/can.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import {
   assertCanGrantPermissions,
@@ -48,6 +48,7 @@ import {
 } from "../utils/permission-grants.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { resolveMemberPermissions } from "../utils/resolve-effective-permissions.util.js";
+import { throwUnlessCan } from "../utils/throw-unless-can.util.js";
 import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
 
 /** Workspace membership queries, profile management, and authorization. */

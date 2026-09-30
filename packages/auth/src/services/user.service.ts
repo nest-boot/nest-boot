@@ -17,7 +17,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import { throwUnlessCan } from "../auth.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
@@ -53,6 +52,7 @@ import {
 } from "../utils/permission-grants.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { resolveUserPermissions } from "../utils/resolve-effective-permissions.util.js";
+import { throwUnlessCan } from "../utils/throw-unless-can.util.js";
 import { UserDeletionService } from "./user-deletion.service.js";
 const CREDENTIAL_ISSUER = "local:credential";
 const CREDENTIAL_PROVIDER_ID = "credential";

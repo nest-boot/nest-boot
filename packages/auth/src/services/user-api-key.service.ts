@@ -13,7 +13,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import { throwUnlessCan } from "../auth.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
@@ -37,6 +36,7 @@ import {
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { resolveUserPermissions } from "../utils/resolve-effective-permissions.util.js";
 import { resolveRequestPermissions } from "../utils/resolve-request-permissions.util.js";
+import { throwUnlessCan } from "../utils/throw-unless-can.util.js";
 
 /** Manages user-owned API keys within the current request's authorization scope. */
 @Injectable()

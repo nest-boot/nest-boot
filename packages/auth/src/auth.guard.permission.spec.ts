@@ -8,7 +8,7 @@ import type { Request, Response } from "express";
 import type { Mock, MockedFunction } from "vitest";
 import { assert } from "vitest";
 
-import { AuthAbility, can } from "./auth.ability.js";
+import { AuthAbility } from "./auth.ability.js";
 import { API_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
@@ -26,6 +26,7 @@ import {
 } from "./permission.constants.js";
 import type { AuthModuleRoles } from "./types/auth-module-roles.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
+import { can } from "./utils/can.util.js";
 
 class Subject {}
 const User = BaseUser;

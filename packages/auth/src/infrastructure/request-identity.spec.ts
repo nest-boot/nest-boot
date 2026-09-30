@@ -3,7 +3,7 @@ import type { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
-import { AuthAbility, can } from "../auth.ability.js";
+import { AuthAbility } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
@@ -12,6 +12,7 @@ import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { can } from "../utils/can.util.js";
 import { assertApiKeyPermissionCeiling } from "../utils/permission-grants.util.js";
 import { canGrantPermissions } from "../utils/permission-grants.util.js";
 import { resolveRequestPermissions } from "../utils/resolve-request-permissions.util.js";

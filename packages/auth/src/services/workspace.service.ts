@@ -14,7 +14,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import { throwUnlessCan } from "../auth.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { WorkspaceConnection } from "../connections/workspace.connection-definition.js";
@@ -25,6 +24,7 @@ import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { CreateWorkspaceOptions } from "../interfaces/create-workspace-options.interface.js";
 import type { UpdateWorkspaceOptions } from "../interfaces/update-workspace-options.interface.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { throwUnlessCan } from "../utils/throw-unless-can.util.js";
 import { DEFAULT_WORKSPACE_CREATOR_ROLE } from "../workspace.constants.js";
 
 /** Workspace queries and lifecycle operations. */

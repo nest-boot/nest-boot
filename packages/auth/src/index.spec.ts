@@ -1,9 +1,4 @@
-import {
-  AuthAbility,
-  can,
-  getAuthAbility,
-  throwUnlessCan,
-} from "./auth.ability.js";
+import { AuthAbility } from "./auth.ability.js";
 import { IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
@@ -31,6 +26,9 @@ import { UserService } from "./services/user.service.js";
 import { UserApiKeyService } from "./services/user-api-key.service.js";
 import { WorkspaceService } from "./services/workspace.service.js";
 import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
+import { can } from "./utils/can.util.js";
+import { getAuthAbility } from "./utils/get-auth-ability.util.js";
+import { throwUnlessCan } from "./utils/throw-unless-can.util.js";
 vi.mock("better-auth", () => ({
   betterAuth: vi.fn(),
 }));

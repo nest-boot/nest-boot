@@ -14,7 +14,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import { throwUnlessCan } from "../auth.ability.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { WorkspaceApiKeyConnection } from "../connections/workspace-api-key.connection-definition.js";
@@ -38,6 +37,7 @@ import {
   canGrantPermissions,
 } from "../utils/permission-grants.util.js";
 import { resolveRequestPermissions } from "../utils/resolve-request-permissions.util.js";
+import { throwUnlessCan } from "../utils/throw-unless-can.util.js";
 
 /** Manages workspace-owned API keys within the current request's authorization scope. */
 @Injectable()
