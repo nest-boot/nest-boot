@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { clickPageAction } from "./utils/page-actions";
 
 import {
   completeEmailVerification,
@@ -301,8 +302,15 @@ test.describe("workspace invitations", () => {
       has: page.getByRole("cell").getByText("Accepted Member", { exact: true }),
     });
 
-    await memberRow.getByRole("button").click();
-    await page.getByRole("menuitem", { name: "Disable" }).click();
+    await memberRow.getByRole("cell").first().click();
+    await clickPageAction(page, "Disable");
+    await expect(
+      page.getByText("Member updated successfully", { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("navigation", { name: "Breadcrumbs" })
+      .getByRole("link", { name: "Members", exact: true })
+      .click();
     await expect(page).toHaveURL(
       new RegExp(`/workspaces/${workspaceId}/members(?:\\?.*)?$`),
     );
@@ -407,8 +415,8 @@ test.describe("workspace invitations", () => {
       });
 
       await expect(memberRow).toBeVisible();
-      await memberRow.getByRole("button").click();
-      await page.getByRole("menuitem", { name: "Delete" }).click();
+      await memberRow.getByRole("cell").first().click();
+      await clickPageAction(page, "Delete");
       await page
         .getByRole("alertdialog")
         .getByRole("button", { name: "Confirm", exact: true })

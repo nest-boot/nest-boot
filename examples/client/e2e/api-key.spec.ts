@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { clickPageAction } from "./utils/page-actions";
 import { getPermissionCheckbox } from "./utils/permissions";
 
 import { registerUser } from "./utils/auth";
@@ -79,7 +80,7 @@ test.describe("API keys", () => {
       await issuerPage
         .getByRole("button", { name: "Create", exact: true })
         .click();
-      await expect(issuerPage.getByRole("code")).toContainText(
+      await expect(issuerPage.getByLabel("Key", { exact: true })).toHaveValue(
         /^ws_[A-Za-z0-9_-]{64}$/,
       );
     } finally {
@@ -260,11 +261,16 @@ async function exerciseApiKeyLifecycle(
   }
   await page.getByRole("button", { name: "Create", exact: true }).click();
 
-  const revealedKey = page
-    .locator('[data-slot="card"]')
-    .filter({ has: page.getByText("API Key Created", { exact: true }) })
-    .getByRole("code");
-  await expect(revealedKey).toContainText(
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname.startsWith(`${listUrl.pathname}/`) &&
+      !url.pathname.endsWith("/create"),
+  );
+  await expect(
+    page.getByRole("heading", { name: "API Key Details", exact: true }),
+  ).toBeVisible();
+  const revealedKey = page.getByLabel("Key", { exact: true });
+  await expect(revealedKey).toHaveValue(
     scope === "USER" ? /^user_[A-Za-z0-9_-]{64}$/ : /^ws_[A-Za-z0-9_-]{64}$/,
   );
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -272,28 +278,55 @@ async function exerciseApiKeyLifecycle(
   await expect(
     page.getByRole("button", { name: "Copied", exact: true }),
   ).toBeVisible();
-  const secret = await revealedKey.textContent();
+  const secret = await revealedKey.inputValue();
   expect(
     await page.evaluate(
       async (value) => (await navigator.clipboard.readText()) === value,
       secret,
     ),
   ).toBe(true);
-  expect(page.url()).not.toContain(secret!);
+  expect(page.url()).not.toContain(secret);
+  expect(
+    await page.evaluate(
+      (value) =>
+        JSON.stringify([sessionStorage, localStorage, history.state]).includes(
+          value,
+        ),
+      secret,
+    ),
+  ).toBe(false);
+  if (scope === "WORKSPACE") {
+    await page.reload();
+    await expect(revealedKey).toBeDisabled();
+    await expect(revealedKey).toHaveValue(`${secret.slice(0, 8)}...`);
+    await expect(
+      page.getByRole("button", { name: "Copy API Key", exact: true }),
+    ).toHaveCount(0);
+  }
   await page
     .getByRole("navigation", { name: "Breadcrumbs" })
     .getByRole("link", { name: "API Keys", exact: true })
     .click();
   await expect(page).toHaveURL((url) => url.pathname === listUrl.pathname);
   await expect(revealedKey).toHaveCount(0);
+  if (scope === "USER") {
+    await page.goBack();
+    await expect(revealedKey).toBeDisabled();
+    await expect(revealedKey).toHaveValue(`${secret.slice(0, 8)}...`);
+    await expect(
+      page.getByRole("button", { name: "Copy API Key", exact: true }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("navigation", { name: "Breadcrumbs" })
+      .getByRole("link", { name: "API Keys", exact: true })
+      .click();
+  }
 
   const row = page.getByRole("row").filter({ hasText: names.name });
   await expect(row).toBeVisible();
   await expect(row).toContainText(scope === "USER" ? "user_" : "ws_");
 
-  await row.getByRole("button").click();
-  await page.getByRole("menuitem", { name: "Disable" }).click();
-  await expect(row).toContainText("Disabled");
+  await expect(row.getByRole("button")).toHaveCount(0);
 
   const detailPath = await row
     .getByRole("link", { name: names.name, exact: true })
@@ -301,12 +334,18 @@ async function exerciseApiKeyLifecycle(
   // A non-link cell opens the same detail route as the name link.
   await row.getByRole("cell").nth(2).click();
   await expect(page).toHaveURL(new URL(detailPath!, listUrl).href);
+  await clickPageAction(page, "Disable");
+  await expect(page.getByText("Disabled", { exact: true })).toBeVisible();
+  await clickPageAction(page, "Enable");
+  await expect(page.getByText("Active", { exact: true })).toBeVisible();
+
   await page.reload();
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
     names.name,
   );
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(revealedKey).toHaveCount(0);
+  await expect(revealedKey).toBeDisabled();
+  await expect(revealedKey).toHaveValue(`${secret.slice(0, 8)}...`);
   for (const action of ["read", "write"]) {
     await expect(
       getPermissionCheckbox(page, `${scope}_API_KEY__${action.toUpperCase()}`),
@@ -335,12 +374,21 @@ async function exerciseApiKeyLifecycle(
     .filter({ hasText: names.renamedName });
   await expect(renamedRow).toBeVisible();
 
-  await renamedRow.getByRole("button").click();
-  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await renamedRow
+    .getByRole("link", { name: names.renamedName, exact: true })
+    .click();
+  await clickPageAction(page, "Delete");
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(page).toHaveURL(new URL(detailPath!, listUrl).href);
+  await clickPageAction(page, "Delete");
   await page
     .getByRole("alertdialog")
     .getByRole("button", { name: "Delete", exact: true })
     .click();
+  await expect(page).toHaveURL((url) => url.pathname === listUrl.pathname);
   await expect(renamedRow).not.toBeVisible();
   // Deleted and invalid IDs do not render an editor or stale cached data.
   await page.goto(detailPath!);

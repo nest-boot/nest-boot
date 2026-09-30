@@ -3,6 +3,7 @@ import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { CurrentUserProvider } from "./contexts/current-user-context";
+import { CreatedApiKeyProvider } from "./contexts/created-api-key-context";
 import { Button } from "@/components/thread-ui/button";
 import { graphql } from "@/gql";
 import { createAbility } from "@/lib/ability";
@@ -74,7 +75,9 @@ function AuthenticatedLayout() {
   return (
     <CurrentUserProvider value={currentUser}>
       <AbilityProvider ability={ability}>
-        <AuthenticatedContent />
+        <CreatedApiKeyProvider key={currentUser.id}>
+          <AuthenticatedContent />
+        </CreatedApiKeyProvider>
       </AbilityProvider>
     </CurrentUserProvider>
   );

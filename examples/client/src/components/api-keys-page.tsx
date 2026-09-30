@@ -5,17 +5,10 @@ import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
 
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
-import type {
-  UpdateUserApiKeyInput,
-  UserApiKey,
-  UserApiKeyPermission,
-} from "@/gql/graphql";
+import type { UserApiKey, UserApiKeyPermission } from "@/gql/graphql";
 import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
 import type { PageInfo } from "@/lib/graphql-connection";
 import type { createAbility } from "@/lib/ability";
-import { toast } from "@/components/thread-ui/toast";
-import { createAbilitySubject } from "@/lib/ability";
-import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { ApiKeyStatusBadge } from "@/components/api-key-status-badge";
 import { Link } from "@/components/link";
 import { DataFilter } from "@/components/thread-ui/data-filter";
@@ -53,19 +46,9 @@ interface ApiKeysPageProps<Permission extends UserApiKeyPermission> {
   pageInfo?: PageInfo;
   createPath: string;
   detailPath: (id: string) => string;
-  updateLoading: boolean;
-  deleteLoading: boolean;
-  updateApiKey: (
-    id: string,
-    input: Omit<UpdateUserApiKeyInput, "permissions"> & {
-      permissions?: Array<Permission> | null;
-    },
-  ) => Promise<unknown>;
-  deleteApiKey: (id: string) => Promise<unknown>;
-  refetch: () => Promise<unknown>;
 }
 
-/** Shared API-key management UI; routes supply authorization, data, and mutations. */
+/** Shared API-key management UI; routes supply authorization and data. */
 export function ApiKeysPage<Permission extends UserApiKeyPermission>({
   subject,
   ability,
@@ -76,20 +59,11 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
   pageInfo,
   createPath,
   detailPath,
-  updateLoading,
-  deleteLoading,
-  updateApiKey,
-  deleteApiKey,
-  refetch,
 }: ApiKeysPageProps<Permission>) {
   const { t, i18n } = useTranslation();
   const apiKeysColumnHelper =
     createDataTableColumnHelper<(typeof apiKeys)[number]>();
   const canCreate = ability.can("write", subject);
-  const canUpdate = (apiKey: ApiKeyRow<Permission>) =>
-    ability.can("write", createAbilitySubject(subject, apiKey));
-  const canDelete = (apiKey: ApiKeyRow<Permission>) =>
-    ability.can("write", createAbilitySubject(subject, apiKey));
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -124,51 +98,6 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
       },
     ];
   }, [t]);
-
-  const handleDeleteApiKey = async (apiKey: ApiKeyRow<Permission>) => {
-    if (!canDelete(apiKey)) return;
-    const confirmed = await alertDialog({
-      title: t("api-key:delete.title"),
-      description: t("api-key:delete.description", {
-        name: apiKey.name,
-      }),
-      cancelText: t("action.cancel"),
-      confirmText: t("action.delete"),
-      variant: "destructive",
-    });
-
-    if (!confirmed) return;
-
-    try {
-      await deleteApiKey(apiKey.id);
-
-      await refetch();
-      toast.add({ type: "success", title: t("api-key:toast.deleted_success") });
-    } catch (err) {
-      if (err instanceof Error) {
-        toast.add({ type: "error", title: err.message });
-      }
-    }
-  };
-
-  const handleToggleApiKey = async (apiKey: ApiKeyRow<Permission>) => {
-    if (!canUpdate(apiKey)) return;
-    try {
-      await updateApiKey(apiKey.id, { enabled: !apiKey.enabled });
-      toast.add({
-        type: "success",
-        title: t(
-          apiKey.enabled
-            ? "api-key:toast.disabled_success"
-            : "api-key:toast.enabled_success",
-        ),
-      });
-    } catch (err) {
-      if (err instanceof Error) {
-        toast.add({ type: "error", title: err.message });
-      }
-    }
-  };
 
   return (
     <Page
@@ -231,7 +160,10 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
                 apiKeysColumnHelper.column("start", {
                   header: t("api-key:table.key_start"),
                   size: 100,
-                  getValue: (row) => row.start ?? row.prefix ?? "—",
+                  getValue: (row) => {
+                    const keyStart = row.start || row.prefix;
+                    return keyStart ? `${keyStart}...` : "—";
+                  },
                   render: (props, { getValue }) => (
                     <code {...props} className="text-xs">
                       {getValue()}
@@ -274,25 +206,6 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
                   });
                 },
               }}
-              rowActions={(row) => [
-                {
-                  disabled: updateLoading || !canUpdate(row.original),
-                  label: row.original.enabled
-                    ? t("action.disable")
-                    : t("action.enable"),
-                  onClick: () => handleToggleApiKey(row.original),
-                },
-                {
-                  disabled: updateLoading || !canUpdate(row.original),
-                  label: t("action.edit"),
-                  onClick: () => navigate({ to: detailPath(row.original.id) }),
-                },
-                {
-                  disabled: deleteLoading || !canDelete(row.original),
-                  label: t("action.delete"),
-                  onClick: () => handleDeleteApiKey(row.original),
-                },
-              ]}
             />
           </div>
         </CardContent>

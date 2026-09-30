@@ -280,15 +280,12 @@ test("restores the exact list search from create/cancel and create/success, with
     .click();
   await page.getByLabel("Name", { exact: true }).fill("Created sample");
   await page.getByRole("button", { name: "Create", exact: true }).click();
-  const secret = page
-    .locator('[data-slot="card"]')
-    .filter({ has: page.getByText("API Key Created", { exact: true }) })
-    .getByRole("code");
-  await expect(secret).toBeVisible();
-  const value = await secret.textContent();
+  const secret = page.getByLabel("Key", { exact: true });
+  await expect(secret).toHaveValue(/^user_[A-Za-z0-9_-]{64}$/);
+  const value = await secret.inputValue();
   expect(
     await page.evaluate(
-      (secretValue) => JSON.stringify(sessionStorage).includes(secretValue!),
+      (secretValue) => JSON.stringify(sessionStorage).includes(secretValue),
       value,
     ),
   ).toBe(false);

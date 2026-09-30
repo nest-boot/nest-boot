@@ -1682,6 +1682,26 @@ export type StopImpersonatingFromAuthenticatedRouteMutation = {
   stopImpersonating?: { __typename?: "User"; id: string } | null;
 };
 
+export type DeleteUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
+
+export type DeleteUserApiKeyFromUserApiKeysRouteMutation = {
+  __typename?: "Mutation";
+  deleteUserApiKey: {
+    __typename?: "UserApiKey";
+    id: string;
+    name: string;
+    start?: string | null;
+    prefix?: string | null;
+    enabled: boolean;
+    permissions: Array<UserApiKeyPermission>;
+    createdAt: any;
+    lastUsedAt?: any | null;
+    expiresAt?: any | null;
+  };
+};
+
 export type GetUserApiKeyDetailsQueryVariables = Exact<{
   id: Scalars["ID"]["input"];
 }>;
@@ -1778,26 +1798,6 @@ export type GetUserApiKeyOptionsQuery = {
     grantable: boolean;
     default: boolean;
   }>;
-};
-
-export type DeleteUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
-  id: Scalars["ID"]["input"];
-}>;
-
-export type DeleteUserApiKeyFromUserApiKeysRouteMutation = {
-  __typename?: "Mutation";
-  deleteUserApiKey: {
-    __typename?: "UserApiKey";
-    id: string;
-    name: string;
-    start?: string | null;
-    prefix?: string | null;
-    enabled: boolean;
-    permissions: Array<UserApiKeyPermission>;
-    createdAt: any;
-    lastUsedAt?: any | null;
-    expiresAt?: any | null;
-  };
 };
 
 export type GetUserApiKeysFromUserApiKeysRouteQueryVariables = Exact<{
@@ -2119,6 +2119,27 @@ export type RejectInvitationFromUserWorkspacesRouteMutation = {
   rejectInvitation: { __typename?: "RejectInvitationPayload"; id: string };
 };
 
+export type DeleteWorkspaceApiKeyFromApiKeysRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
+
+export type DeleteWorkspaceApiKeyFromApiKeysRouteMutation = {
+  __typename?: "Mutation";
+  deleteWorkspaceApiKey: {
+    __typename?: "WorkspaceApiKey";
+    workspaceId: string;
+    id: string;
+    name: string;
+    start?: string | null;
+    prefix?: string | null;
+    enabled: boolean;
+    permissions: Array<WorkspaceApiKeyPermission>;
+    createdAt: any;
+    lastUsedAt?: any | null;
+    expiresAt?: any | null;
+  };
+};
+
 export type GetWorkspaceApiKeyDetailsQueryVariables = Exact<{
   id: Scalars["ID"]["input"];
 }>;
@@ -2217,27 +2238,6 @@ export type GetWorkspaceApiKeyOptionsQuery = {
     grantable: boolean;
     default: boolean;
   }>;
-};
-
-export type DeleteWorkspaceApiKeyFromApiKeysRouteMutationVariables = Exact<{
-  id: Scalars["ID"]["input"];
-}>;
-
-export type DeleteWorkspaceApiKeyFromApiKeysRouteMutation = {
-  __typename?: "Mutation";
-  deleteWorkspaceApiKey: {
-    __typename?: "WorkspaceApiKey";
-    workspaceId: string;
-    id: string;
-    name: string;
-    start?: string | null;
-    prefix?: string | null;
-    enabled: boolean;
-    permissions: Array<WorkspaceApiKeyPermission>;
-    createdAt: any;
-    lastUsedAt?: any | null;
-    expiresAt?: any | null;
-  };
 };
 
 export type GetApiKeysFromApiKeysRouteQueryVariables = Exact<{
@@ -2419,6 +2419,16 @@ export type RemoveMemberFromMemberRouteMutation = {
   removeMember: { __typename?: "RemoveMemberPayload"; id: string };
 };
 
+export type UpdateMemberStatusFromMembersRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  input: UpdateMemberInput;
+}>;
+
+export type UpdateMemberStatusFromMembersRouteMutation = {
+  __typename?: "Mutation";
+  updateMember?: { __typename?: "UpdateMemberPayload"; id: string } | null;
+};
+
 export type GetRolesFromInviteMemberRouteQueryVariables = Exact<{
   [key: string]: never;
 }>;
@@ -2516,25 +2526,6 @@ export type CancelInvitationFromMembersRouteMutationVariables = Exact<{
 export type CancelInvitationFromMembersRouteMutation = {
   __typename?: "Mutation";
   cancelInvitation: { __typename?: "CancelInvitationPayload"; id: string };
-};
-
-export type RemoveMemberFromMembersRouteMutationVariables = Exact<{
-  id: Scalars["ID"]["input"];
-}>;
-
-export type RemoveMemberFromMembersRouteMutation = {
-  __typename?: "Mutation";
-  removeMember: { __typename?: "RemoveMemberPayload"; id: string };
-};
-
-export type UpdateMemberStatusFromMembersRouteMutationVariables = Exact<{
-  id: Scalars["ID"]["input"];
-  input: UpdateMemberInput;
-}>;
-
-export type UpdateMemberStatusFromMembersRouteMutation = {
-  __typename?: "Mutation";
-  updateMember?: { __typename?: "UpdateMemberPayload"; id: string } | null;
 };
 
 export type GetWorkspaceOverviewQueryVariables = Exact<{
@@ -4459,6 +4450,62 @@ export const StopImpersonatingFromAuthenticatedRouteDocument = {
   StopImpersonatingFromAuthenticatedRouteMutation,
   StopImpersonatingFromAuthenticatedRouteMutationVariables
 >;
+export const DeleteUserApiKeyFromUserApiKeysRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "deleteUserApiKeyFromUserApiKeysRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "deleteUserApiKey" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "start" } },
+                { kind: "Field", name: { kind: "Name", value: "prefix" } },
+                { kind: "Field", name: { kind: "Name", value: "enabled" } },
+                { kind: "Field", name: { kind: "Name", value: "permissions" } },
+                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
+                { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  DeleteUserApiKeyFromUserApiKeysRouteMutation,
+  DeleteUserApiKeyFromUserApiKeysRouteMutationVariables
+>;
 export const GetUserApiKeyDetailsDocument = {
   kind: "Document",
   definitions: [
@@ -4897,62 +4944,6 @@ export const GetUserApiKeyOptionsDocument = {
 } as unknown as DocumentNode<
   GetUserApiKeyOptionsQuery,
   GetUserApiKeyOptionsQueryVariables
->;
-export const DeleteUserApiKeyFromUserApiKeysRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "mutation",
-      name: { kind: "Name", value: "deleteUserApiKeyFromUserApiKeysRoute" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "deleteUserApiKey" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "id" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "id" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "start" } },
-                { kind: "Field", name: { kind: "Name", value: "prefix" } },
-                { kind: "Field", name: { kind: "Name", value: "enabled" } },
-                { kind: "Field", name: { kind: "Name", value: "permissions" } },
-                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
-                { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
-                { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  DeleteUserApiKeyFromUserApiKeysRouteMutation,
-  DeleteUserApiKeyFromUserApiKeysRouteMutationVariables
 >;
 export const GetUserApiKeysFromUserApiKeysRouteDocument = {
   kind: "Document",
@@ -6545,6 +6536,63 @@ export const RejectInvitationFromUserWorkspacesRouteDocument = {
   RejectInvitationFromUserWorkspacesRouteMutation,
   RejectInvitationFromUserWorkspacesRouteMutationVariables
 >;
+export const DeleteWorkspaceApiKeyFromApiKeysRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "deleteWorkspaceApiKeyFromApiKeysRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "deleteWorkspaceApiKey" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "start" } },
+                { kind: "Field", name: { kind: "Name", value: "prefix" } },
+                { kind: "Field", name: { kind: "Name", value: "enabled" } },
+                { kind: "Field", name: { kind: "Name", value: "permissions" } },
+                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
+                { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  DeleteWorkspaceApiKeyFromApiKeysRouteMutation,
+  DeleteWorkspaceApiKeyFromApiKeysRouteMutationVariables
+>;
 export const GetWorkspaceApiKeyDetailsDocument = {
   kind: "Document",
   definitions: [
@@ -6991,63 +7039,6 @@ export const GetWorkspaceApiKeyOptionsDocument = {
 } as unknown as DocumentNode<
   GetWorkspaceApiKeyOptionsQuery,
   GetWorkspaceApiKeyOptionsQueryVariables
->;
-export const DeleteWorkspaceApiKeyFromApiKeysRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "mutation",
-      name: { kind: "Name", value: "deleteWorkspaceApiKeyFromApiKeysRoute" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "deleteWorkspaceApiKey" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "id" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "id" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "start" } },
-                { kind: "Field", name: { kind: "Name", value: "prefix" } },
-                { kind: "Field", name: { kind: "Name", value: "enabled" } },
-                { kind: "Field", name: { kind: "Name", value: "permissions" } },
-                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
-                { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
-                { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  DeleteWorkspaceApiKeyFromApiKeysRouteMutation,
-  DeleteWorkspaceApiKeyFromApiKeysRouteMutationVariables
 >;
 export const GetApiKeysFromApiKeysRouteDocument = {
   kind: "Document",
@@ -7937,6 +7928,76 @@ export const RemoveMemberFromMemberRouteDocument = {
   RemoveMemberFromMemberRouteMutation,
   RemoveMemberFromMemberRouteMutationVariables
 >;
+export const UpdateMemberStatusFromMembersRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "updateMemberStatusFromMembersRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "UpdateMemberInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "updateMember" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  UpdateMemberStatusFromMembersRouteMutation,
+  UpdateMemberStatusFromMembersRouteMutationVariables
+>;
 export const GetRolesFromInviteMemberRouteDocument = {
   kind: "Document",
   definitions: [
@@ -8519,124 +8580,6 @@ export const CancelInvitationFromMembersRouteDocument = {
 } as unknown as DocumentNode<
   CancelInvitationFromMembersRouteMutation,
   CancelInvitationFromMembersRouteMutationVariables
->;
-export const RemoveMemberFromMembersRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "mutation",
-      name: { kind: "Name", value: "removeMemberFromMembersRoute" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "removeMember" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "id" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "id" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  RemoveMemberFromMembersRouteMutation,
-  RemoveMemberFromMembersRouteMutationVariables
->;
-export const UpdateMemberStatusFromMembersRouteDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "mutation",
-      name: { kind: "Name", value: "updateMemberStatusFromMembersRoute" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "input" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "UpdateMemberInput" },
-            },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "updateMember" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "id" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "id" },
-                },
-              },
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "input" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "input" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  UpdateMemberStatusFromMembersRouteMutation,
-  UpdateMemberStatusFromMembersRouteMutationVariables
 >;
 export const GetWorkspaceOverviewDocument = {
   kind: "Document",

@@ -5,8 +5,10 @@ import {
   e2eAdministratorEmail,
   registerUser,
   signInAsE2eAdministrator,
+  testPassword,
 } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
+import { clickPageAction } from "./utils/page-actions";
 import { uniqueSeed } from "./utils/unique";
 
 for (const change of [
@@ -242,4 +244,42 @@ test.describe("administrator impersonation", () => {
       currentSession: { impersonatedById: null },
     });
   });
+});
+
+test("deletes a user from PageActions and returns to the filtered list", async ({
+  page,
+}) => {
+  const seed = uniqueSeed("delete-user-action");
+  await signInAsE2eAdministrator(page);
+  const { createUser } = await graphqlRequest<{ createUser: { id: string } }>(
+    page.request,
+    "mutation($input: CreateUserInput!) { createUser(input: $input) { id } }",
+    {
+      input: {
+        name: seed,
+        email: `${seed}@example.com`,
+        password: testPassword,
+      },
+    },
+  );
+  await page.goto(`/admin/users?query=${seed}`);
+  await page.getByRole("cell").getByText(seed, { exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/users/${createUser.id}$`));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await clickPageAction(page, "Delete user");
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(page).toHaveURL(new RegExp(`/admin/users/${createUser.id}$`));
+  await clickPageAction(page, "Delete user");
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === "/admin/users" && url.searchParams.get("query") === seed,
+  );
+  await expect(page.getByRole("row").filter({ hasText: seed })).toHaveCount(0);
 });

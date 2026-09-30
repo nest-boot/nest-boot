@@ -7,6 +7,7 @@ import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-naviga
 import { graphql } from "@/gql";
 import { UPDATE_USER_API_KEY } from "@/graphql/mutations/update-user-api-key";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-context";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import { Link } from "@/components/link";
 import { useAbility } from "@/contexts/ability-context";
@@ -17,6 +18,22 @@ import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
 import { userApiKeysResourceKey } from "@/lib/resource-keys";
 import { authPermissionValues, getPermissionOptions } from "@/lib/permissions";
 import { isAccessDenied } from "@/lib/auth-errors";
+
+const DELETE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
+  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {
+    deleteUserApiKey(id: $id) {
+      id
+      name
+      start
+      prefix
+      enabled
+      permissions
+      createdAt
+      lastUsedAt
+      expiresAt
+    }
+  }
+`);
 
 const GET_USER_API_KEY = graphql(`
   query getUserApiKeyDetails($id: ID!) {
@@ -113,39 +130,46 @@ export const Route = createFileRoute(
 });
 
 function ApiKeyDetailsPage() {
+  const { secret } = useCreatedApiKey();
   const { apiKey, permissionOptions } = Route.useRouteContext();
   const ability = useAbility();
   const router = useRouter();
+  const navigate = Route.useNavigate();
+  const [deleteApiKey] = useMutation(
+    DELETE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
+  );
   const [updateApiKey] = useMutation(UPDATE_USER_API_KEY);
   const [loadNeighbors] = useLazyQuery(GET_USER_API_KEY_NEIGHBORS, {
     fetchPolicy: "network-only",
   });
   const currentUser = useCurrentUserContext();
+  const query = useCallback(
+    async ({
+      search,
+    }: ResourceNavigationQueryOptions<typeof apiKeySearchSchema>) => {
+      const { query, filter, orderBy } = search;
+      const cursor = createConnectionCursor(apiKey, search);
+      const { data } = await loadNeighbors({
+        variables: {
+          query,
+          filter,
+          orderBy,
+          cursor,
+        },
+      });
+      if (!data?.currentUser) return undefined;
+      return {
+        previousEdge: data.currentUser.previous.edges[0],
+        nextEdge: data.currentUser.next.edges[0],
+      };
+    },
+    [apiKey, loadNeighbors],
+  );
   const navigation = useResourceNavigation({
     key: [currentUser.id, ...userApiKeysResourceKey],
     searchSchema: apiKeySearchSchema,
-    query: useCallback(
-      async ({
-        search,
-      }: ResourceNavigationQueryOptions<typeof apiKeySearchSchema>) => {
-        const { query, filter, orderBy } = search;
-        const cursor = createConnectionCursor(apiKey, search);
-        const { data } = await loadNeighbors({
-          variables: {
-            query,
-            filter,
-            orderBy,
-            cursor,
-          },
-        });
-        if (!data?.currentUser) return undefined;
-        return {
-          previousEdge: data.currentUser.previous.edges[0],
-          nextEdge: data.currentUser.next.edges[0],
-        };
-      },
-      [apiKey, loadNeighbors],
-    ),
+    // Keep the saved return position while revealing a newly created key.
+    query: secret ? undefined : query,
   });
   const { previousEdge, nextEdge, backSearch } = navigation;
   return (
@@ -174,6 +198,16 @@ function ApiKeyDetailsPage() {
       }}
       permissionValues={authPermissionValues}
       permissionOptions={getPermissionOptions(permissionOptions)}
+      onToggle={async () => {
+        await updateApiKey({
+          variables: { id: apiKey.id, input: { enabled: !apiKey.enabled } },
+        });
+        await router.invalidate();
+      }}
+      onDelete={async () => {
+        await deleteApiKey({ variables: { id: apiKey.id } });
+        await navigate({ to: "/user/api-keys", search: backSearch });
+      }}
       onSave={async (input) => {
         await updateApiKey({ variables: { id: apiKey.id, input } });
         await router.invalidate();

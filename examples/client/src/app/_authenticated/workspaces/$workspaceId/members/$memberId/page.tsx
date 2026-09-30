@@ -31,6 +31,7 @@ import { useAbility } from "@/contexts/ability-context";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Page } from "@/components/thread-ui/page";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { MemberStatus } from "@/gql/graphql";
 import { graphql } from "@/gql";
 import { createAbilitySubject } from "@/lib/ability";
 import { isAccessDenied } from "@/lib/auth-errors";
@@ -107,6 +108,17 @@ const REMOVE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   }
 `);
 
+const UPDATE_MEMBER_STATUS_FROM_MEMBERS_ROUTE = graphql(`
+  mutation updateMemberStatusFromMembersRoute(
+    $id: ID!
+    $input: UpdateMemberInput!
+  ) {
+    updateMember(id: $id, input: $input) {
+      id
+    }
+  }
+`);
+
 export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/members/$memberId/",
 )({
@@ -162,6 +174,9 @@ function MemberDetails({
   const { workspaceId } = Route.useParams();
   const currentMember = useCurrentMemberContext();
   const ability = useAbility();
+  const [updateMemberStatus] = useMutation(
+    UPDATE_MEMBER_STATUS_FROM_MEMBERS_ROUTE,
+  );
   const [saving, setSaving] = useState(false);
   const [removeMember, { loading: removing }] = useMutation(
     REMOVE_MEMBER_FROM_MEMBER_ROUTE,
@@ -307,14 +322,49 @@ function MemberDetails({
         },
       }}
       secondaryActions={
-        member.id !== currentMember.id && ability.can("write", memberSubject)
+        ability.can("write", memberSubject)
           ? [
-              {
-                label: t("member:details.actions.delete_member"),
-                destructive: true,
-                disabled: saving || removing,
-                onAction: handleRemove,
-              },
+              ...(ability.can("write", memberSubject, "status") &&
+              [MemberStatus.ACTIVE, MemberStatus.DISABLED].includes(
+                member.status,
+              )
+                ? [
+                    {
+                      label: t(
+                        member.status === MemberStatus.DISABLED
+                          ? "action.enable"
+                          : "action.disable",
+                      ),
+                      disabled: saving || removing,
+                      onAction: () =>
+                        save(
+                          () =>
+                            updateMemberStatus({
+                              variables: {
+                                id: member.id,
+                                input: {
+                                  status:
+                                    member.status === MemberStatus.DISABLED
+                                      ? MemberStatus.ACTIVE
+                                      : MemberStatus.DISABLED,
+                                },
+                              },
+                            }),
+                          true,
+                        ),
+                    },
+                  ]
+                : []),
+              ...(member.id !== currentMember.id
+                ? [
+                    {
+                      label: t("member:details.actions.delete_member"),
+                      destructive: true,
+                      disabled: saving || removing,
+                      onAction: handleRemove,
+                    },
+                  ]
+                : []),
             ]
           : undefined
       }

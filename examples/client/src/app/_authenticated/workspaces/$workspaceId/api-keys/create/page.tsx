@@ -4,6 +4,7 @@ import { t } from "i18next";
 import { graphql } from "@/gql";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 
+import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-context";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
@@ -76,6 +77,8 @@ export const Route = createFileRoute(
 });
 
 function CreateApiKeyPage() {
+  const navigate = Route.useNavigate();
+  const { setCreatedKey } = useCreatedApiKey();
   const { workspaceId } = Route.useParams();
   const currentUser = useCurrentUserContext();
   const { backSearch } = useResourceNavigation({
@@ -97,7 +100,17 @@ function CreateApiKeyPage() {
       defaultPermissions={getDefaultApiKeyPermissions(permissionOptions)}
       onSave={async (input) => {
         const result = await createApiKey({ variables: { input } });
-        return result.data?.createWorkspaceApiKey.apiKey;
+        const created = result.data?.createWorkspaceApiKey;
+        if (!created) throw new Error(t("api-key:form.save_failed"));
+        setCreatedKey({
+          pathname: `/workspaces/${workspaceId}/api-keys/${created.entity.id}`,
+          secret: created.apiKey,
+        });
+        await navigate({
+          to: "/workspaces/$workspaceId/api-keys/$apiKeyId",
+          params: { workspaceId, apiKeyId: created.entity.id },
+          replace: true,
+        });
       }}
     />
   );
