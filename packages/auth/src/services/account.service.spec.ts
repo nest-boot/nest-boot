@@ -6,6 +6,7 @@ import { ForbiddenException } from "@nestjs/common";
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { API_KEY } from "../auth.constants.js";
 import { AccountConnection } from "../connections/account.connection-definition.js";
+import { Account } from "../entities/account.entity.js";
 import { User } from "../entities/user.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { AccountService } from "./account.service.js";
@@ -16,16 +17,33 @@ describe("AccountService", () => {
   it("paginates only the current user's accounts, excluding credentials and preserving RLS", async () => {
     const { service, em, user, fork } = createService();
     const context = mockRlsContext(em);
-    const result = { edges: [], pageInfo: {} };
+    const account = Object.assign(new Account(), {
+      password: "hash",
+      accessToken: "access",
+      refreshToken: "refresh",
+      idToken: "id-secret",
+    });
+    const result = {
+      edges: [{ cursor: "cursor", node: account }],
+      pageInfo: {},
+    };
     const find = vi
       .spyOn(ConnectionManager.prototype, "find")
       .mockResolvedValue(result as never);
     const args = { first: 10, after: "cursor" };
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(User, user);
-      await expect(
-        service.getAccountConnectionByUser(user, args),
-      ).resolves.toBe(result);
+      const connection = await service.getAccountConnectionByUser(user, args);
+      for (const key of [
+        "password",
+        "accessToken",
+        "refreshToken",
+        "idToken",
+      ]) {
+        expect(connection.edges[0].node).not.toHaveProperty(key);
+        expect(Reflect.get(account, key)).toBeTruthy();
+      }
+      expect(connection.pageInfo).toBe(result.pageInfo);
     });
     expect(find).toHaveBeenCalledWith(AccountConnection, args, {
       where: { user: "self" },

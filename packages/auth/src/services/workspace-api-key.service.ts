@@ -33,6 +33,7 @@ import {
 } from "../utils/api-key-permissions.util.js";
 import { authorize } from "../utils/authorize.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { omitCredentials } from "../utils/omit-credentials.util.js";
 import {
   assertApiKeyPermissionCeiling,
   assertCanGrantPermissions,
@@ -83,7 +84,7 @@ export class WorkspaceApiKeyService {
     if (apiKey) {
       authorize("read", apiKey);
     }
-    return apiKey;
+    return apiKey ? omitCredentials(apiKey, ["key"]) : null;
   }
 
   /** Paginates selected-workspace keys after applying ownership and permission ceilings. */
@@ -104,7 +105,13 @@ export class WorkspaceApiKeyService {
     for (const { node } of connection.edges) {
       authorize("read", node);
     }
-    return connection;
+    return {
+      ...connection,
+      edges: connection.edges.map((edge) => ({
+        ...edge,
+        node: omitCredentials(edge.node, ["key"]),
+      })),
+    };
   }
 
   /** Creates an API key owned by a workspace. */
@@ -154,12 +161,15 @@ export class WorkspaceApiKeyService {
         finalPermissions,
       );
     }
-    return await ApiKeyLifecycle.update(
-      this.em,
-      this.authOptions,
-      apiKey,
-      input,
-      permissions,
+    return omitCredentials(
+      await ApiKeyLifecycle.update(
+        this.em,
+        this.authOptions,
+        apiKey,
+        input,
+        permissions,
+      ),
+      ["key"],
     );
   }
 
@@ -170,7 +180,10 @@ export class WorkspaceApiKeyService {
     authorize("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
     authorize("write", apiKey);
-    return await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey);
+    return omitCredentials(
+      await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey),
+      ["key"],
+    );
   }
 
   private async createKey(

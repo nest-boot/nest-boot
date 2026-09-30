@@ -10,6 +10,7 @@ import { Member } from "../entities/member.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { omitCredentials } from "../utils/omit-credentials.util.js";
 import { SessionService } from "./session.service.js";
 import { UserService } from "./user.service.js";
 import { UserApiKeyService } from "./user-api-key.service.js";
@@ -65,7 +66,9 @@ describe("conditional service authorization", () => {
         status: "ACTIVE",
       });
       em.findOne.mockResolvedValue(target);
-      await expect(memberService.removeMember(target)).resolves.toBe(target);
+      await expect(memberService.removeMember(target)).resolves.toEqual(
+        omitCredentials(target, ["key"]),
+      );
       expect(() => memberService.getCurrentMember()).toThrow(
         ForbiddenException,
       );
@@ -216,10 +219,36 @@ describe("conditional service authorization", () => {
                           workspace,
                           { first: 1 },
                         );
-          await expect(read()).resolves.toBe(result);
+          await expect(read()).resolves.toEqual({
+            ...result,
+            edges: result.edges.map((edge) => ({
+              ...edge,
+              node: omitCredentials(edge.node, [
+                "key",
+                "token",
+                "password",
+                "accessToken",
+                "refreshToken",
+                "idToken",
+              ]),
+            })),
+          });
           node.id = "blocked";
           if (kind === "workspace") {
-            await expect(read()).resolves.toBe(result);
+            await expect(read()).resolves.toEqual({
+              ...result,
+              edges: result.edges.map((edge) => ({
+                ...edge,
+                node: omitCredentials(edge.node, [
+                  "key",
+                  "token",
+                  "password",
+                  "accessToken",
+                  "refreshToken",
+                  "idToken",
+                ]),
+              })),
+            });
             expect(ConnectionManager.prototype.find).toHaveBeenLastCalledWith(
               expect.anything(),
               { first: 1 },
@@ -228,7 +257,20 @@ describe("conditional service authorization", () => {
               }),
             );
           } else if (kind === "user-invitation") {
-            await expect(read()).resolves.toBe(result);
+            await expect(read()).resolves.toEqual({
+              ...result,
+              edges: result.edges.map((edge) => ({
+                ...edge,
+                node: omitCredentials(edge.node, [
+                  "key",
+                  "token",
+                  "password",
+                  "accessToken",
+                  "refreshToken",
+                  "idToken",
+                ]),
+              })),
+            });
             expect(ConnectionManager.prototype.find).toHaveBeenLastCalledWith(
               expect.anything(),
               { first: 1 },

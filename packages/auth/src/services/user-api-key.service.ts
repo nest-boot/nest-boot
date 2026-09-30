@@ -30,6 +30,7 @@ import {
   resolveApiKeyPermissionCatalog,
 } from "../utils/api-key-permissions.util.js";
 import { authorize } from "../utils/authorize.util.js";
+import { omitCredentials } from "../utils/omit-credentials.util.js";
 import {
   assertApiKeyPermissionCeiling,
   assertPermissionCeiling,
@@ -86,7 +87,7 @@ export class UserApiKeyService {
     if (apiKey) {
       authorize("read", apiKey);
     }
-    return apiKey;
+    return apiKey ? omitCredentials(apiKey, ["key"]) : null;
   }
 
   /** Paginates current-user keys after applying ownership and permission ceilings. */
@@ -107,7 +108,13 @@ export class UserApiKeyService {
     for (const { node } of connection.edges) {
       authorize("read", node);
     }
-    return connection;
+    return {
+      ...connection,
+      edges: connection.edges.map((edge) => ({
+        ...edge,
+        node: omitCredentials(edge.node, ["key"]),
+      })),
+    };
   }
 
   /** Creates an API key owned by a user. */
@@ -154,12 +161,15 @@ export class UserApiKeyService {
         );
       this.assertUserPermissionCeiling(user, finalPermissions);
     }
-    return await ApiKeyLifecycle.update(
-      this.em,
-      this.authOptions,
-      apiKey,
-      input,
-      permissions,
+    return omitCredentials(
+      await ApiKeyLifecycle.update(
+        this.em,
+        this.authOptions,
+        apiKey,
+        input,
+        permissions,
+      ),
+      ["key"],
     );
   }
 
@@ -168,7 +178,10 @@ export class UserApiKeyService {
     authorize("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
     authorize("write", apiKey);
-    return await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey);
+    return omitCredentials(
+      await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey),
+      ["key"],
+    );
   }
 
   private async createKey(
