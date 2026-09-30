@@ -61,7 +61,11 @@
       "domain": "Workspace",
       "scenario": "Workspace DataFilter, pagination persistence, and row navigation",
       "status": "covered",
-      "specs": ["workspace-filter.spec.ts", "data-table-format.spec.ts"],
+      "specs": [
+        "workspace-filter.spec.ts",
+        "data-table-format.spec.ts",
+        "data-table-scroll.spec.ts"
+      ],
       "notes": "Searches workspace names, applies name and creation-date filters, resets cursors on filter changes, and preserves criteria across pagination and reloads. Opens a workspace from a date cell or the keyboard-accessible name link without an arrow action column."
     },
     {

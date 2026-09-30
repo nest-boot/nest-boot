@@ -118,6 +118,8 @@ export type DataTableBaseColumnProps<TData extends object, TValue = unknown> = {
   minSize?: number;
   maxSize?: number;
   pinned?: "left" | "right" | false;
+  /** Hides the header and cells without removing the column definition. Defaults to false. */
+  hidden?: boolean;
 } & (
   | {
       /** Object key or dotted path. Defaults to id; null disables field access. */
