@@ -5,6 +5,16 @@ import { execFileSync } from "node:child_process";
 const v8Version =
   /^8\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-beta\.(?:0|[1-9]\d*))?$/;
 
+export function getReleaseConfig(branch) {
+  if (branch === "main") return {};
+  if (branch !== "beta")
+    throw new Error(`Unsupported release branch: ${branch}`);
+  // Nx's conventionalCommits shorthand forces the git-tag resolver. Beta uses
+  // an explicit prerelease increment from validated manifests, whose v8 baseline
+  // can be newer than the last tag when a package is restored from an older major.
+  return { version: { conventionalCommits: false } };
+}
+
 export function getReleaseSpecifier(branch, manifests, tags = []) {
   if (branch === "main") return null;
   if (branch !== "beta") {
@@ -41,8 +51,8 @@ if (import.meta.main) {
     .map((entry) => join("packages", entry.name, "package.json"))
     .filter((path) => existsSync(path))
     .map((path) => JSON.parse(readFileSync(path, "utf8")));
-  // Nx resolves current versions from tags. A stale v9 tag must not silently
-  // override a corrected v8 manifest in a checkout that has cached old tags.
+  // Keep stale v9 release tags out of the v8 history as well as validating
+  // the manifest versions used by Nx's disk resolver.
   const tags = execFileSync(
     "git",
     ["tag", "--merged", "HEAD", "--list", "@nest-boot/*"],
