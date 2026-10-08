@@ -192,6 +192,11 @@ function createServerEnv() {
   delete env.VITEST_WORKER_ID;
   env.NODE_ENV = 'testing';
   env.DATABASE_URL = databaseUrl;
+  env.REDIS_URL =
+    process.env.SERVER_E2E_REDIS_URL ??
+    process.env.REDIS_URL ??
+    'redis://127.0.0.1:36379/0';
+  env.BULLMQ_PREFIX = databaseName;
   env.APP_URL = appUrl;
   env.AUTH_URL = authUrl;
   env.APP_SECRET = '1oAdy3zpD3S0t1AdAqPTlj4Hhkyx83pT2UlNGfS4P2c';

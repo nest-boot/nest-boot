@@ -437,6 +437,12 @@ importers:
       '@nest-boot/auth':
         specifier: workspace:^
         version: link:../../packages/auth
+      '@nest-boot/bullmq':
+        specifier: workspace:^
+        version: link:../../packages/bullmq
+      '@nest-boot/bullmq-mikro-orm':
+        specifier: workspace:^
+        version: link:../../packages/bullmq-mikro-orm
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../../packages/graphql
@@ -458,12 +464,18 @@ importers:
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../../packages/request-context
+      '@nest-boot/schedule':
+        specifier: workspace:^
+        version: link:../../packages/schedule
       '@nest-boot/validator':
         specifier: workspace:^
         version: link:../../packages/validator
       '@nestjs/apollo':
         specifier: ^14.0.0
         version: 14.0.0
+      '@nestjs/bullmq':
+        specifier: ^12.0.0
+        version: 12.0.0
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1
@@ -482,6 +494,9 @@ importers:
       '@node-rs/jieba':
         specifier: ^2.0.1
         version: 2.0.2
+      bullmq:
+        specifier: ^5.61.0
+        version: 5.66.1
       dayjs:
         specifier: ^1.11.18
         version: 1.11.19

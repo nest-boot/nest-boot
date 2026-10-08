@@ -44,6 +44,8 @@ const envKeys = [
   'NODE_ENV',
   'DB_URL',
   'DATABASE_URL',
+  'REDIS_URL',
+  'BULLMQ_PREFIX',
   'APP_URL',
   'AUTH_URL',
   'APP_SECRET',
@@ -5619,6 +5621,11 @@ function setTestEnv() {
   process.env.NODE_ENV = 'testing';
   delete process.env.DB_URL;
   process.env.DATABASE_URL = databaseUrl;
+  process.env.REDIS_URL =
+    process.env.SERVER_E2E_REDIS_URL ??
+    process.env.REDIS_URL ??
+    'redis://127.0.0.1:36379/0';
+  process.env.BULLMQ_PREFIX = databaseName;
   process.env.APP_URL = 'http://127.0.0.1';
   process.env.AUTH_URL = 'http://127.0.0.1';
   process.env.APP_SECRET = '1oAdy3zpD3S0t1AdAqPTlj4Hhkyx83pT2UlNGfS4P2c';
