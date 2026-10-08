@@ -733,6 +733,9 @@ importers:
 
   packages/bullmq:
     dependencies:
+      '@nest-boot/health-check':
+        specifier: workspace:^
+        version: link:../health-check
       '@nest-boot/redis':
         specifier: workspace:^
         version: link:../redis
@@ -756,6 +759,9 @@ importers:
         specifier: ^12.0.1
         version: 12.0.1
       '@nestjs/core':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/platform-express':
         specifier: ^12.0.1
         version: 12.0.1
       '@nestjs/testing':
