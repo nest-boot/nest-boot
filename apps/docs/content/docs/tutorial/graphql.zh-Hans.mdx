@@ -376,26 +376,31 @@ export class CommonModule {}
 ### 安装
 
 ```bash
-pnpm add @nest-boot/graphql-rate-limit graphql-query-complexity
+pnpm add @nest-boot/graphql-rate-limit @nest-boot/redis ioredis graphql-query-complexity
 ```
 
 ### 注册
 
 ```typescript
 import { GraphQLRateLimitModule } from "@nest-boot/graphql-rate-limit";
+import { RedisModule } from "@nest-boot/redis";
 
 @Module({
-  imports: [GraphQLRateLimitModule],
+  imports: [RedisModule.register({}), GraphQLRateLimitModule],
 })
 export class CommonModule {}
 ```
 
-无需动态注册即可直接导入该模块。模块会根据环境变量自动选择驱动：
+无需动态注册即可直接导入限流模块。默认复用 `RedisModule` 提供的 Redis 实例，连接配置和 `REDIS_URL` 解析统一由 `@nest-boot/redis` 处理。共享连接由 `RedisModule` 负责关闭，限流驱动不会关闭它。
 
-- 配置 `REDIS_URL` 时，解析该 URL 并使用分布式 Redis 驱动。
-- 未配置 `REDIS_URL` 时，使用进程内 memory 驱动。
+驱动选择按以下优先级执行：
 
-通过 `forRoot()` 或 `forRootAsync()` 显式传入 Redis `connection` 配置时，即使没有环境变量也会选择 Redis 驱动，以兼容编程式 Redis 配置。显式自定义 `driver` 的优先级高于两种 Redis 选择方式。
+1. 显式自定义 `driver`。
+2. 显式 `connection`，使用该配置创建独立连接，并由限流驱动负责关闭。
+3. 已注册的 `RedisModule` 提供的共享实例。
+4. 没有共享实例时使用进程内 memory 驱动。
+
+**迁移说明：** 限流模块不再读取 `REDIS_URL`。原来仅设置该环境变量的应用需要注册 `RedisModule` 才能继续使用 Redis 限流。显式 `connection` 也不再与环境变量配置合并；如需使用环境变量或共享配置，请将连接配置移至 `RedisModule.register()` 或 `registerAsync()`，并省略限流模块的 `connection`。
 
 Memory 驱动适合本地开发和单进程应用，但不同进程或副本之间不会共享限流桶。如果配额需要全局共享，请使用 Redis 或自定义分布式驱动。
 
@@ -423,6 +428,8 @@ export class CommonModule {}
 ```
 
 自定义驱动需要继承 `GraphQLRateLimitDriver`，并实现具备原子性的 `update()` 方法。正数 `points` 消耗容量，负数则恢复容量。如果创建驱动需要注入其他依赖，可以使用 `forRootAsync()`。
+
+如需传入由外部管理的自定义 Redis 实例，可将 `new RedisGraphQLRateLimitDriver(redis, false)` 作为 `driver`。第二个参数表示驱动不拥有连接，由调用方负责关闭。省略该参数时，驱动仍默认负责关闭传入的客户端。
 
 ### 自定义复杂度
 

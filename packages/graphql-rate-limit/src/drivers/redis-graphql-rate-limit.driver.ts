@@ -21,9 +21,13 @@ interface RedisRateLimitClient {
 export class RedisGraphQLRateLimitDriver extends GraphQLRateLimitDriver {
   /**
    * Creates a Redis-backed driver and registers its atomic Lua command.
-   * @param redis - Redis client owned by this driver
+   * @param redis - Redis client used by this driver
+   * @param ownsConnection - Whether closing this driver also closes the client
    */
-  constructor(private readonly redis: Redis) {
+  constructor(
+    private readonly redis: Redis,
+    private readonly ownsConnection = true,
+  ) {
     super();
     this.redis.defineCommand(REDIS_COMMAND, {
       numberOfKeys: 1,
@@ -96,6 +100,8 @@ export class RedisGraphQLRateLimitDriver extends GraphQLRateLimitDriver {
 
   /** Gracefully closes the Redis connection owned by this driver. */
   override async close(): Promise<void> {
-    await this.redis.quit();
+    if (this.ownsConnection) {
+      await this.redis.quit();
+    }
   }
 }

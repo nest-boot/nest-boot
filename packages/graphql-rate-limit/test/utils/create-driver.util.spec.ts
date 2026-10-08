@@ -40,63 +40,80 @@ describe("createGraphQLRateLimitDriver", () => {
     process.env = originalEnvironment;
   });
 
-  it("uses memory when Redis environment configuration is absent", () => {
+  it("uses memory when no shared client or connection is configured", () => {
     expect(createGraphQLRateLimitDriver(options)).toBeInstanceOf(
       MemoryGraphQLRateLimitDriver,
     );
     expect(Redis).not.toHaveBeenCalled();
   });
 
-  it("uses Redis when REDIS_URL is present", () => {
-    process.env.REDIS_URL =
-      "rediss://user%40example.com:p%40ss%2Fword@redis.local:6380/2";
+  it("reuses the shared client without creating or closing a connection", async () => {
+    const redis = {
+      defineCommand: jest.fn(),
+      quit: jest.fn(),
+    };
+    process.env.REDIS_URL = "invalid-url";
+
+    const driver = createGraphQLRateLimitDriver(
+      options,
+      redis as unknown as Redis,
+    );
+    expect(driver).toBeInstanceOf(RedisGraphQLRateLimitDriver);
+    expect(redis.defineCommand).toHaveBeenCalledTimes(1);
+    expect(Redis).not.toHaveBeenCalled();
+    await driver.close();
+    expect(redis.quit).not.toHaveBeenCalled();
+  });
+
+  it("does not select Redis from REDIS_URL without a shared client", () => {
+    process.env.REDIS_URL = "invalid-url";
 
     expect(createGraphQLRateLimitDriver(options)).toBeInstanceOf(
-      RedisGraphQLRateLimitDriver,
+      MemoryGraphQLRateLimitDriver,
     );
-    expect(Redis).toHaveBeenCalledWith({
-      host: "redis.local",
-      port: 6380,
-      db: 2,
-      username: "user@example.com",
-      password: "p@ss/word",
-      tls: {},
-    });
+    expect(Redis).not.toHaveBeenCalled();
   });
 
-  it("strips brackets from an IPv6 Redis URL hostname", () => {
-    process.env.REDIS_URL = "redis://[2001:db8::1]:6379/0";
-
-    createGraphQLRateLimitDriver(options);
-
-    expect(Redis).toHaveBeenCalledWith(
-      expect.objectContaining({
-        host: "2001:db8::1",
-        port: 6379,
-      }),
-    );
-  });
-
-  it("uses Redis when connection options are provided without endpoint env", () => {
+  it("lets explicit connection options override the shared client without merging env", async () => {
     const connection = {
       host: "configured.redis",
       port: 6380,
     };
+    const redis = {
+      defineCommand: jest.fn(),
+      quit: jest.fn(),
+    };
+    process.env.REDIS_URL = "redis://env.redis:6379/5";
 
-    expect(
-      createGraphQLRateLimitDriver({ ...options, connection }),
-    ).toBeInstanceOf(RedisGraphQLRateLimitDriver);
-    expect(Redis).toHaveBeenCalledWith(expect.objectContaining(connection));
+    const driver = createGraphQLRateLimitDriver(
+      { ...options, connection },
+      redis as unknown as Redis,
+    );
+    expect(driver).toBeInstanceOf(RedisGraphQLRateLimitDriver);
+    expect(Redis).toHaveBeenCalledWith(connection);
+    expect(redis.defineCommand).not.toHaveBeenCalled();
+    await driver.close();
+    const client = jest.mocked(Redis).mock.results[0].value as {
+      quit: jest.Mock;
+    };
+    expect(client.quit).toHaveBeenCalledTimes(1);
+    expect(redis.quit).not.toHaveBeenCalled();
   });
 
-  it("lets an explicit custom driver override Redis environment config", () => {
-    process.env.REDIS_URL = "redis://redis.local";
+  it("lets an explicit custom driver override the shared client and connection", () => {
+    const redis = { defineCommand: jest.fn() };
     const driver = {
       update: jest.fn(),
       close: jest.fn(),
     } as unknown as GraphQLRateLimitDriver;
 
-    expect(createGraphQLRateLimitDriver({ ...options, driver })).toBe(driver);
+    expect(
+      createGraphQLRateLimitDriver(
+        { ...options, driver, connection: {} },
+        redis as unknown as Redis,
+      ),
+    ).toBe(driver);
     expect(Redis).not.toHaveBeenCalled();
+    expect(redis.defineCommand).not.toHaveBeenCalled();
   });
 });

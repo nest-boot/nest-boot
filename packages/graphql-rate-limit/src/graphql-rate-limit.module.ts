@@ -6,6 +6,7 @@ import {
   type OnApplicationShutdown,
 } from "@nestjs/common";
 import { Request } from "express";
+import Redis from "ioredis";
 
 import { GraphQLRateLimitDriver } from "./drivers";
 import {
@@ -28,13 +29,14 @@ import { createGraphQLRateLimitDriver } from "./utils/create-driver.util";
  *
  * @remarks
  * Provides query complexity analysis and rate limiting for GraphQL operations.
- * Uses process-local memory by default, Redis when `REDIS_URL` is set, and
- * supports explicit custom drivers and ID extraction.
+ * Reuses the Redis client provided by `@nest-boot/redis` by default and falls
+ * back to process-local memory when no Redis client is available.
  *
  * The module can be imported directly without dynamic registration. It selects
- * Redis when an environment-driven Redis endpoint is present and memory otherwise.
- * An explicit Redis `connection` also selects Redis, while an explicit `driver`
- * overrides all automatic selection.
+ * a shared Redis client when RedisModule is registered and memory otherwise.
+ * An explicit Redis `connection` creates a separate owned client, while an
+ * explicit `driver` overrides all automatic selection. Configure `REDIS_URL`
+ * through RedisModule; this module does not read environment connection options.
  */
 @Global()
 @Module({
@@ -43,7 +45,7 @@ import { createGraphQLRateLimitDriver } from "./utils/create-driver.util";
     GraphQLRateLimitStorage,
     {
       provide: GraphQLRateLimitDriver,
-      inject: [OPTIONS_TOKEN],
+      inject: [OPTIONS_TOKEN, { token: Redis, optional: true }],
       useFactory: createGraphQLRateLimitDriver,
     },
     {
