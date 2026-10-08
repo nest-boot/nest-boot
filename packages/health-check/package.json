@@ -28,11 +28,11 @@
     "dev": "tsc -w -p tsconfig.build.json",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
-    "test": "vitest run",
-    "test:cov": "vitest run --coverage",
-    "test:watch": "vitest",
-    "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.ts --coverage"
+    "test": "pnpm build && vitest run",
+    "test:cov": "pnpm build && vitest run --coverage",
+    "test:watch": "pnpm build && vitest",
+    "test:debug": "pnpm build && vitest --inspect-brk --no-file-parallelism",
+    "test:e2e": "pnpm build && vitest run --config ./vitest.config.e2e.ts --coverage"
   },
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:^",

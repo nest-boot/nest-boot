@@ -1,11 +1,7 @@
 import { MiddlewareManager } from "@nest-boot/middleware";
 import { RequestMethod, ServiceUnavailableException } from "@nestjs/common";
 import { HttpAdapterHost } from "@nestjs/core";
-import {
-  HealthCheckService as TerminusHealthCheckService,
-  type HealthIndicatorFunction,
-  TerminusModule,
-} from "@nestjs/terminus";
+import { type HealthIndicatorFunction, TerminusModule } from "@nestjs/terminus";
 import { Test, type TestingModule } from "@nestjs/testing";
 
 import {
@@ -13,7 +9,7 @@ import {
   HealthCheckModule,
   HealthCheckRegistry,
   HealthCheckService,
-} from "./index.js";
+} from "../dist/index.js";
 
 describe("registered health checks", () => {
   let module: TestingModule;
@@ -23,19 +19,7 @@ describe("registered health checks", () => {
   beforeEach(async () => {
     module = await Test.createTestingModule({
       imports: [TerminusModule],
-      providers: [
-        HealthCheckRegistry,
-        {
-          provide: HealthCheckService,
-          inject: [TerminusHealthCheckService, HealthCheckRegistry],
-          // Vitest does not emit constructor type metadata. The HTTP suite
-          // checks the compiled module's actual dependency injection separately.
-          useFactory: (
-            terminus: TerminusHealthCheckService,
-            registry: HealthCheckRegistry,
-          ) => new HealthCheckService(terminus, registry),
-        },
-      ],
+      providers: [HealthCheckRegistry, HealthCheckService],
     })
       .setLogger({ log: vi.fn(), warn: vi.fn(), error: vi.fn() })
       .compile();

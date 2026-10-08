@@ -85,3 +85,10 @@ package imports. The old `DatabaseNotConnectedError`, `checkPackages`,
 `promiseTimeout`, and `PromiseTimeoutError` internal re-exports are therefore not
 restored. Custom indicators can return health results directly or use Terminus's
 `HealthIndicatorService`.
+
+## Package tests
+
+Unit and HTTP tests use the compiled ESM entry so Nest constructor metadata and
+coverage describe the published code. Test commands build the package first.
+When using `test:watch`, run `pnpm dev` in a second terminal to rebuild source
+changes. Source maps keep both coverage reports associated with TypeScript files.
