@@ -84,4 +84,28 @@ describe("RedisHealthIndicator", () => {
       redis: { status: "up" },
     });
   });
+
+  it("shares a stalled command across timed-out probes and starts fresh after it settles", async () => {
+    const { client, indicator } = setup();
+    let complete!: (value: string) => void;
+    const pending = new Promise<string>((resolve) => {
+      complete = resolve;
+    });
+    client.ping.mockReturnValueOnce(pending);
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        expect(await indicator.pingCheck("redis", 10)).toMatchObject({
+          redis: { status: "down" },
+        });
+      }
+      expect(client.ping).toHaveBeenCalledOnce();
+    } finally {
+      complete("PONG");
+      await pending;
+    }
+    expect(await indicator.pingCheck()).toMatchObject({
+      redis: { status: "up" },
+    });
+    expect(client.ping).toHaveBeenCalledTimes(2);
+  });
 });

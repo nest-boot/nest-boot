@@ -17,6 +17,8 @@ to return `PONG` within 1000 ms. Connection errors, unexpected replies, and time
 report `down`; the next health request checks again and can report recovery.
 Reconnecting or lazily disconnected clients report `down` without queueing more
 commands. Timeout does not close or reconfigure the application's connection.
+If a timed-out PING is still pending, later probes share that command until it
+settles, so repeated health requests cannot accumulate PING commands.
 
 Without `HealthCheckModule`, no check is registered or run. `RedisModule` does not
 import it or create a health endpoint. The exported `RedisHealthIndicator` can

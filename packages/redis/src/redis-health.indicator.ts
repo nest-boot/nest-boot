@@ -10,6 +10,7 @@ import { Redis } from "ioredis";
 @Injectable()
 export class RedisHealthIndicator implements OnModuleInit {
   private readonly healthIndicator = new HealthIndicatorService();
+  private pendingPing?: Promise<string>;
 
   /**
    * Creates a Redis health indicator without opening another connection.
@@ -42,7 +43,11 @@ export class RedisHealthIndicator implements OnModuleInit {
         if (this.redis.status !== "ready") {
           throw new Error("Redis connection is not ready");
         }
-        if ((await this.redis.ping()) !== "PONG") {
+        // A timeout cannot cancel an ioredis command on the shared connection.
+        const ping = (this.pendingPing ??= this.redis.ping().finally(() => {
+          this.pendingPing = undefined;
+        }));
+        if ((await ping) !== "PONG") {
           throw new Error("Redis returned an unexpected PING response");
         }
       })
