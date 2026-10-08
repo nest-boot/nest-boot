@@ -10,8 +10,10 @@ export default defineConfig({
     root: "./",
     include: ["**/*.spec.ts"],
     coverage: {
-      include: ["src/**/*.ts"],
-      exclude: ["src/**/*.spec.ts"],
+      // Use the same TypeScript output as the E2E suite, including Nest metadata.
+      // Source maps retain TS locations without Vite's synthetic decorator branches.
+      include: ["dist/**/*.js"],
+      exclude: [],
       reportsDirectory: "coverage/unit",
       reporter: ["text", "lcov", "json-summary"],
     },
