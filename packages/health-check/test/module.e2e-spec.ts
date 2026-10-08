@@ -1,10 +1,17 @@
 import {
+  type MiddlewareFunction,
+  MiddlewareManager,
+} from "@nest-boot/middleware";
+import {
+  Controller,
+  Get,
   type INestApplication,
   Inject,
   Injectable,
   Module,
   type OnModuleInit,
   RequestMethod,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
@@ -30,6 +37,14 @@ class FeatureChecks implements OnModuleInit {
 @Module({ providers: [FeatureChecks], exports: [FeatureChecks] })
 class FeatureModule {}
 
+@Controller("private")
+class PrivateController {
+  @Get()
+  get() {
+    return { private: true };
+  }
+}
+
 describe("HealthCheckModule HTTP integration", () => {
   const apps: INestApplication[] = [];
 
@@ -43,6 +58,7 @@ describe("HealthCheckModule HTTP integration", () => {
 
     const response = await request(app.getHttpServer())
       .get("/api/health")
+      .expect("Cache-Control", "no-cache, no-store, must-revalidate")
       .expect(200);
     expect(response.body).toEqual({
       status: "ok",
@@ -60,6 +76,7 @@ describe("HealthCheckModule HTTP integration", () => {
 
     const failed = await request(app.getHttpServer())
       .get("/api/health")
+      .expect("Cache-Control", "no-cache, no-store, must-revalidate")
       .expect(503);
     expect(failed.body).toEqual({
       status: "error",
@@ -111,18 +128,92 @@ describe("HealthCheckModule HTTP integration", () => {
     });
   });
 
+  it.each([false, true])(
+    "bypasses managed auth middleware and global guards (global prefix: %s)",
+    async (withPrefix) => {
+      const authentication = vi.fn<MiddlewareFunction>((_req, _res, next) => {
+        next();
+      });
+      const canActivate = vi.fn(() => {
+        throw new UnauthorizedException();
+      });
+      const app = await createApp(
+        (app) => {
+          app.useGlobalGuards({ canActivate });
+          if (withPrefix) {
+            app.setGlobalPrefix("api", {
+              exclude: [{ path: "api/health", method: RequestMethod.GET }],
+            });
+          }
+        },
+        true,
+        authentication,
+      );
+
+      await request(app.getHttpServer()).get("/api/health").expect(200);
+      expect(authentication).not.toHaveBeenCalled();
+      expect(canActivate).not.toHaveBeenCalled();
+
+      app.get(FeatureChecks).healthy = false;
+      await request(app.getHttpServer()).get("/api/health").expect(503);
+      expect(authentication).not.toHaveBeenCalled();
+      expect(canActivate).not.toHaveBeenCalled();
+
+      await request(app.getHttpServer())
+        .get(withPrefix ? "/api/private" : "/private")
+        .expect(401);
+      expect(authentication).toHaveBeenCalledOnce();
+      expect(canActivate).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("does not treat other methods or child paths as health requests", async () => {
+    const authentication = vi.fn<MiddlewareFunction>((_req, _res, next) => {
+      next();
+    });
+    const app = await createApp(undefined, true, authentication);
+
+    await request(app.getHttpServer()).post("/api/health").expect(404);
+    await request(app.getHttpServer()).get("/api/health/extra").expect(404);
+    expect(authentication).toHaveBeenCalledTimes(2);
+  });
+
+  it("passes unexpected failures through Nest's exception handling", async () => {
+    const app = await createApp();
+    app.get(HealthCheckRegistry).register(() => {
+      throw new Error("internal indicator failure");
+    });
+
+    const response = await request(app.getHttpServer())
+      .get("/api/health")
+      .expect("Cache-Control", "no-cache, no-store, must-revalidate")
+      .expect(500);
+    expect(response.body).toEqual({
+      statusCode: 500,
+      message: "Internal server error",
+    });
+  });
+
   async function createApp(
     configure?: (app: INestApplication) => void,
     withFeatureChecks = true,
+    authentication?: MiddlewareFunction,
   ) {
-    const module = await Test.createTestingModule({
+    const builder = Test.createTestingModule({
+      controllers: [PrivateController],
       imports: [
         HealthCheckModule,
         ...(withFeatureChecks ? [FeatureModule] : []),
       ],
-    })
-      .setLogger({ log: vi.fn(), warn: vi.fn(), error: vi.fn() })
-      .compile();
+    }).setLogger({ log: vi.fn(), warn: vi.fn(), error: vi.fn() });
+    if (authentication) {
+      // Register auth before HealthCheckModule so only the route exclusion
+      // can prevent it from running before the health middleware.
+      const manager = new MiddlewareManager();
+      manager.apply(authentication).forRoutes("*");
+      builder.overrideProvider(MiddlewareManager).useValue(manager);
+    }
+    const module = await builder.compile();
     const app = module.createNestApplication();
     apps.push(app);
     configure?.(app);

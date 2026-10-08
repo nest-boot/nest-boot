@@ -2,7 +2,7 @@
 
 Restores the original Nest Boot health check design on NestJS 12 and Terminus 12:
 application modules register indicators, and one service executes all registered
-checks through Terminus. A built-in controller exposes `GET /api/health`.
+checks through Terminus. Built-in middleware exposes `GET /api/health`.
 
 Import `HealthCheckModule` once in the application root. Its registry and check
 service are global providers available to other application modules. Importing the
@@ -50,8 +50,8 @@ checks return HTTP 503. With no registered indicators, Terminus returns an empty
 healthy result. `HealthCheckService.check()` remains available for programmatic
 checks.
 
-The controller follows Nest's normal routing and global guard behavior. If your
-application sets a global prefix, exclude this route to keep `/api/health` and
+The middleware follows Nest's route prefix configuration. If your application
+sets a global prefix, exclude this route to keep `/api/health` and
 avoid an extra prefix (for example, `/api/api/health`):
 
 ```ts
@@ -62,33 +62,20 @@ app.setGlobalPrefix("api", {
 });
 ```
 
-When using `@nest-boot/auth` with a global `AuthGuard`, mark the exported
-controller as public in application startup code, before creating the Nest app:
+Health requests are public: the middleware ends the response before Nest's guards,
+interceptors, pipes, and controller handling. Responses include
+`Cache-Control: no-cache, no-store, must-revalidate`. Failed checks use Nest's
+exception handling, preserving Terminus's 503 response; unexpected failures use
+the application's global exception handling.
 
-```ts
-import { Public } from "@nest-boot/auth";
-import { HealthCheckController } from "@nest-boot/health-check";
-
-Public()(HealthCheckController);
-```
-
-This applies the same metadata as `@Public()` on a controller and lets the
-existing guard accept anonymous health requests. The health check package itself
-does not depend on auth or bypass application guards.
-
-To also skip session, API key, and workspace resolution for health requests, add
-the route to your existing `AuthModule` options (preserving other exclusions):
-
-```ts
-middleware: {
-  excludeRoutes: [{ path: "api/health", method: RequestMethod.GET }],
-},
-```
-
-`RequestMethod` comes from `@nestjs/common`. Middleware exclusion alone does not
-bypass `AuthGuard`; keep the public controller metadata as well. If you use a
-global prefix, retain the prefix exclusion shown above so both configurations
-refer to the same route.
+`HealthCheckModule` imports `@nest-boot/middleware` and globally excludes the
+health route from middleware registered through `MiddlewareManager`. This skips
+`@nest-boot/auth` session, API key, and workspace resolution without needing
+`@Public()` or an application-level auth exclusion. The health middleware opts out
+of global exclusions so it still runs. Other middleware that explicitly disables
+global exclusions, such as request-context middleware, retains its registration.
+Middleware registered outside `MiddlewareManager` is unaffected and may run
+before the health handler.
 
 The module does not automatically register Redis or database checks, deduplicate
 registrations, or add readiness/liveness groups, caching, or timeout configuration.

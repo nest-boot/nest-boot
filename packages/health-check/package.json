@@ -37,6 +37,7 @@
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:^",
     "@nest-boot/eslint-plugin": "workspace:^",
+    "@nest-boot/middleware": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
@@ -55,6 +56,7 @@
     "vitest": "^4.1.11"
   },
   "peerDependencies": {
+    "@nest-boot/middleware": "workspace:^",
     "@nestjs/common": "^12.0.0",
     "@nestjs/core": "^12.0.0",
     "@nestjs/terminus": "^12.0.0",
