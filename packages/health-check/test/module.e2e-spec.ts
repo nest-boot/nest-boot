@@ -1,22 +1,16 @@
 import {
-  Controller,
-  Get,
   type INestApplication,
   Inject,
   Injectable,
   Module,
   type OnModuleInit,
+  RequestMethod,
 } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 
 // Exercise the published ESM entry and TypeScript's constructor metadata.
-import {
-  HealthCheck,
-  HealthCheckModule,
-  HealthCheckRegistry,
-  HealthCheckService,
-} from "../dist/index.js";
+import { HealthCheckModule, HealthCheckRegistry } from "../dist/index.js";
 
 @Injectable()
 class FeatureChecks implements OnModuleInit {
@@ -36,22 +30,6 @@ class FeatureChecks implements OnModuleInit {
 @Module({ providers: [FeatureChecks], exports: [FeatureChecks] })
 class FeatureModule {}
 
-@Controller("status")
-class StatusController {
-  constructor(
-    @Inject(HealthCheckService) private readonly health: HealthCheckService,
-  ) {}
-
-  @Get()
-  @HealthCheck()
-  check() {
-    return this.health.check();
-  }
-}
-
-@Module({ controllers: [StatusController] })
-class StatusModule {}
-
 describe("HealthCheckModule HTTP integration", () => {
   const apps: INestApplication[] = [];
 
@@ -59,12 +37,12 @@ describe("HealthCheckModule HTTP integration", () => {
     await Promise.all(apps.splice(0).map((app) => app.close()));
   });
 
-  it("shares the registry with sibling modules and supports an application-owned endpoint", async () => {
+  it("exposes the built-in endpoint using indicators from sibling modules", async () => {
     const app = await createApp();
     expect(app.get(FeatureChecks).registry).toBe(app.get(HealthCheckRegistry));
 
     const response = await request(app.getHttpServer())
-      .get("/status")
+      .get("/api/health")
       .expect(200);
     expect(response.body).toEqual({
       status: "ok",
@@ -81,7 +59,7 @@ describe("HealthCheckModule HTTP integration", () => {
     checks.healthy = false;
 
     const failed = await request(app.getHttpServer())
-      .get("/status")
+      .get("/api/health")
       .expect(503);
     expect(failed.body).toEqual({
       status: "error",
@@ -91,7 +69,7 @@ describe("HealthCheckModule HTTP integration", () => {
     });
 
     checks.healthy = true;
-    await request(app.getHttpServer()).get("/status").expect(200);
+    await request(app.getHttpServer()).get("/api/health").expect(200);
   });
 
   it("keeps independently bootstrapped application registries isolated", async () => {
@@ -101,21 +79,53 @@ describe("HealthCheckModule HTTP integration", () => {
       .get(HealthCheckRegistry)
       .register(() => ({ extra: { status: "down" } }));
 
-    await request(first.getHttpServer()).get("/status").expect(503);
+    await request(first.getHttpServer()).get("/api/health").expect(503);
     const response = await request(second.getHttpServer())
-      .get("/status")
+      .get("/api/health")
       .expect(200);
     expect(response.body.details).toEqual({ feature: { status: "up" } });
   });
 
-  async function createApp() {
+  it("keeps /api/health with a global prefix when excluded as documented", async () => {
+    const app = await createApp((app) => {
+      app.setGlobalPrefix("api", {
+        exclude: [{ path: "api/health", method: RequestMethod.GET }],
+      });
+    });
+
+    await request(app.getHttpServer()).get("/api/health").expect(200);
+    await request(app.getHttpServer()).get("/api/api/health").expect(404);
+  });
+
+  it("returns a healthy result when no indicators are registered", async () => {
+    const app = await createApp(undefined, false);
+
+    const response = await request(app.getHttpServer())
+      .get("/api/health")
+      .expect(200);
+    expect(response.body).toEqual({
+      status: "ok",
+      info: {},
+      error: {},
+      details: {},
+    });
+  });
+
+  async function createApp(
+    configure?: (app: INestApplication) => void,
+    withFeatureChecks = true,
+  ) {
     const module = await Test.createTestingModule({
-      imports: [HealthCheckModule, FeatureModule, StatusModule],
+      imports: [
+        HealthCheckModule,
+        ...(withFeatureChecks ? [FeatureModule] : []),
+      ],
     })
       .setLogger({ log: vi.fn(), warn: vi.fn(), error: vi.fn() })
       .compile();
     const app = module.createNestApplication();
     apps.push(app);
+    configure?.(app);
     await app.init();
     return app;
   }

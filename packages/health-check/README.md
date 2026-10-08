@@ -2,10 +2,11 @@
 
 Restores the original Nest Boot health check design on NestJS 12 and Terminus 12:
 application modules register indicators, and one service executes all registered
-checks through Terminus.
+checks through Terminus. A built-in controller exposes `GET /api/health`.
 
 Import `HealthCheckModule` once in the application root. Its registry and check
-service are global providers available to other application modules.
+service are global providers available to other application modules. Importing the
+module also registers the health endpoint; no application controller is required.
 
 ```ts
 import { HealthCheckModule } from "@nest-boot/health-check";
@@ -43,32 +44,26 @@ Register the feature provider in its module. Indicators may instead call Terminu
 built-in checks; their providers are configured through `TerminusModule` in the
 feature module as usual.
 
-The application defines the route and its decorators:
+`GET /api/health` reads the current registry on every request and preserves
+Terminus's result and exceptions: healthy checks return HTTP 200, and unhealthy
+checks return HTTP 503. With no registered indicators, Terminus returns an empty
+healthy result. `HealthCheckService.check()` remains available for programmatic
+checks.
+
+The controller follows Nest's normal routing and global guard behavior. If your
+application sets a global prefix, exclude this route to keep `/api/health` and
+avoid an extra prefix (for example, `/api/api/health`):
 
 ```ts
-import { HealthCheck, HealthCheckService } from "@nest-boot/health-check";
-import { Controller, Get } from "@nestjs/common";
+import { RequestMethod } from "@nestjs/common";
 
-@Controller("health")
-export class HealthController {
-  constructor(private readonly health: HealthCheckService) {}
-
-  @Get()
-  @HealthCheck()
-  check() {
-    return this.health.check();
-  }
-}
+app.setGlobalPrefix("api", {
+  exclude: [{ path: "api/health", method: RequestMethod.GET }],
+});
 ```
 
-Register the controller in an application module. `check()` reads the current
-registry on every call and preserves Terminus's result and exceptions: healthy
-checks return HTTP 200, and unhealthy checks return HTTP 503. With no registered
-indicators, Terminus returns an empty healthy result.
-
-As in the last version before removal, the module defines no controller. It does
-not automatically register Redis or database checks, deduplicate registrations,
-or add readiness/liveness groups, caching, or timeout configuration.
+The module does not automatically register Redis or database checks, deduplicate
+registrations, or add readiness/liveness groups, caching, or timeout configuration.
 
 The package re-exports the health decorator, result types, and built-in indicators
 from Terminus's public entry point. Terminus 12 removed the legacy
