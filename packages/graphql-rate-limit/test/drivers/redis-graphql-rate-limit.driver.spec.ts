@@ -64,4 +64,19 @@ describe("RedisGraphQLRateLimitDriver", () => {
 
     expect(quit).toHaveBeenCalledTimes(1);
   });
+
+  it("leaves a shared Redis client open", async () => {
+    const redis = {
+      defineCommand: vi.fn(),
+      quit: vi.fn(),
+    };
+    const driver = new RedisGraphQLRateLimitDriver(
+      redis as unknown as Redis,
+      false,
+    );
+
+    await driver.close();
+
+    expect(redis.quit).not.toHaveBeenCalled();
+  });
 });

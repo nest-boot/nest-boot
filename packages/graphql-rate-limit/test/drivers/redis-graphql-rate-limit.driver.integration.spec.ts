@@ -1,6 +1,11 @@
-import Redis from "ioredis";
+import { RedisModule } from "@nest-boot/redis";
+import { Test } from "@nestjs/testing";
+import { Redis } from "ioredis";
 
+import { GraphQLRateLimitDriver } from "../../src/drivers/index.js";
 import { RedisGraphQLRateLimitDriver } from "../../src/drivers/redis-graphql-rate-limit.driver.js";
+import { GraphQLRateLimitModule } from "../../src/graphql-rate-limit.module.js";
+import { GraphQLRateLimitPlugin } from "../../src/graphql-rate-limit.plugin.js";
 
 const redisUrl = process.env.REDIS_URL;
 const describeWithRedis = redisUrl ? describe : describe.skip;
@@ -41,7 +46,7 @@ describeWithRedis("RedisGraphQLRateLimitDriver integration", () => {
       await redis.del(key);
     } else {
       const [timestamp] = await redis.time();
-      await redis.hset(key, "updatedTimestamp", Number(timestamp) - elapsed);
+      await redis.hset(key, "updatedTimestamp", timestamp - elapsed);
     }
 
     const refunds = await Promise.all([
@@ -81,5 +86,41 @@ describeWithRedis("RedisGraphQLRateLimitDriver integration", () => {
     expect(restored.blocked).toBe(false);
     expect(restored.currentlyAvailable).toBeGreaterThanOrEqual(700_000);
     expect(restored.currentlyAvailable).toBeLessThan(700_010);
+  });
+
+  it("shares RedisModule's connection and lets only RedisModule close it", async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [RedisModule.register({}), GraphQLRateLimitModule],
+    })
+      .overrideProvider(GraphQLRateLimitPlugin)
+      .useValue({})
+      .compile();
+    const sharedRedis = moduleRef.get(Redis);
+    const sharedDriver = moduleRef.get(GraphQLRateLimitDriver);
+    const quit = vi.spyOn(sharedRedis, "quit");
+    const sharedKey = `${key}:shared`;
+
+    try {
+      expect(sharedDriver).toBeInstanceOf(RedisGraphQLRateLimitDriver);
+      await sharedRedis.del(sharedKey);
+      const result = await sharedDriver.update({
+        key: sharedKey,
+        maximumAvailable: 100,
+        restoreRate: 1,
+        points: 60,
+      });
+      expect(result).toEqual({ blocked: false, currentlyAvailable: 40 });
+      expect(await sharedRedis.hget(sharedKey, "currentlyAvailable")).toBe(
+        "40",
+      );
+      await sharedDriver.close();
+      expect(quit).not.toHaveBeenCalled();
+      await expect(sharedRedis.ping()).resolves.toBe("PONG");
+    } finally {
+      await sharedRedis.del(sharedKey);
+      await moduleRef.close();
+    }
+
+    expect(quit).toHaveBeenCalledTimes(1);
   });
 });
