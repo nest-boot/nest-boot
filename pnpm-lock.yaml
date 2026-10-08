@@ -2030,6 +2030,10 @@ importers:
         version: 4.1.11
 
   packages/redis:
+    dependencies:
+      '@nest-boot/health-check':
+        specifier: workspace:^
+        version: link:../health-check
     devDependencies:
       '@nest-boot/eslint-config':
         specifier: workspace:^
