@@ -136,7 +136,7 @@ jobs:
         run: |
           pnpm --filter @nest-boot/example-server exec tsc --noEmit -p tsconfig.json
           pnpm --filter @nest-boot/example-server test
-          pnpm --filter @nest-boot/example-server exec vitest run --config vitest.config.e2e.ts test/connection-manager.e2e-spec.ts test/native-rls-migrations.e2e-spec.ts test/job-history.e2e-spec.ts
+          pnpm --filter @nest-boot/example-server exec vitest run --config vitest.config.e2e.ts test/connection-manager.e2e-spec.ts test/native-rls-migrations.e2e-spec.ts test/job-history.e2e-spec.ts test/job-graphql.e2e-spec.ts
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v7

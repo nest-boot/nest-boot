@@ -152,6 +152,72 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
   });
 
+  it('queries Job history with user OR workspace identity through sessions and workspace API keys', async () => {
+    const user = await createAuthenticatedUser('Job viewer');
+    const other = await createAuthenticatedUser('Other job viewer');
+    const workspace = await createWorkspace(user, 'Job workspace');
+    const otherWorkspace = await createWorkspace(other, 'Other job workspace');
+    const payloads = {
+      own: {
+        userId: user.user.id,
+        workspaceId: otherWorkspace.id,
+        format: 'csv',
+      },
+      shared: { userId: other.user.id, workspaceId: workspace.id },
+      foreign: { userId: other.user.id, workspaceId: otherWorkspace.id },
+      background: {},
+    };
+    for (const [name, data] of Object.entries(payloads)) {
+      await migrationOrm.em.execute(
+        `insert into job (id, queue_name, name, data, priority, progress, status) values (?, 'graphql-history', 'generate-report', ?::jsonb, 0, '0'::jsonb, 'waiting')`,
+        [`graphql-history:${name}`, JSON.stringify(data)],
+      );
+    }
+    const source = `query {
+      own: job(id: "graphql-history:own") { id data status progress }
+      shared: job(id: "graphql-history:shared") { id data }
+      foreign: job(id: "graphql-history:foreign") { id }
+      jobs(first: 10, filter: { queue_name: "graphql-history" }, orderBy: {field: ID, direction: ASC}) {
+        totalCount edges { node { id } }
+      }
+    }`;
+    const response = await gql(source, {
+      cookies: user.cookies,
+      workspaceId: workspace.id,
+    });
+    expectNoGraphQLErrors(response);
+    expect(response.body.data.own).toEqual({
+      id: 'graphql-history:own',
+      data: payloads.own,
+      status: 'WAITING',
+      progress: 0,
+    });
+    expect(response.body.data.shared.data).toEqual(payloads.shared);
+    expect(response.body.data.foreign).toBeNull();
+    expect(response.body.data.jobs.totalCount).toBe(2);
+    expect(response.body.data.jobs.edges.map(({ node }) => node.id)).toEqual([
+      'graphql-history:own',
+      'graphql-history:shared',
+    ]);
+
+    const key = await createWorkspaceApiKey(user, workspace.id, {
+      name: 'Job history key',
+    });
+    const keyed = await gql(source, { bearerToken: key.apiKey });
+    expectNoGraphQLErrors(keyed);
+    expect(keyed.body.data.own).toBeNull();
+    expect(keyed.body.data.shared.data).toEqual(payloads.shared);
+    expect(keyed.body.data.foreign).toBeNull();
+    expect(keyed.body.data.jobs.totalCount).toBe(1);
+    expect(keyed.body.data.jobs.edges.map(({ node }) => node.id)).toEqual([
+      'graphql-history:shared',
+    ]);
+
+    const anonymous = await gql('query { jobs(first: 10) { totalCount } }');
+    expectGraphQLError(anonymous);
+    expect(anonymous.body.errors[0].extensions.code).toBe('UNAUTHORIZED');
+  });
+
   it('exposes only social providers enabled by the server', async () => {
     const result = await gql(/* GraphQL */ `
       query {
