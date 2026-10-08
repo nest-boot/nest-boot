@@ -2030,6 +2030,10 @@ importers:
         version: 4.1.11
 
   packages/redis:
+    dependencies:
+      '@nest-boot/health-check':
+        specifier: workspace:^
+        version: link:../health-check
     devDependencies:
       '@nest-boot/eslint-config':
         specifier: workspace:^
@@ -2047,6 +2051,9 @@ importers:
         specifier: ^12.0.0
         version: 12.0.0
       '@nestjs/core':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/platform-express':
         specifier: ^12.0.1
         version: 12.0.1
       '@nestjs/testing':

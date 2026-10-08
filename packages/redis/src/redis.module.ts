@@ -12,6 +12,7 @@ import {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./redis.module-definition.js";
+import { RedisHealthIndicator } from "./redis-health.indicator.js";
 import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 
 /**
@@ -54,6 +55,7 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 @Global()
 @Module({
   providers: [
+    RedisHealthIndicator,
     {
       provide: Redis,
       inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
@@ -64,7 +66,7 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
         }),
     },
   ],
-  exports: [Redis],
+  exports: [Redis, RedisHealthIndicator],
 })
 export class RedisModule
   extends ConfigurableModuleClass
