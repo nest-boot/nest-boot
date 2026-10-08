@@ -1,5 +1,6 @@
 import { BullModule as BaseBullModule } from "@nestjs/bullmq";
 import { type DynamicModule, Global, Module } from "@nestjs/common";
+import { DiscoveryModule } from "@nestjs/core";
 
 import {
   ASYNC_OPTIONS_TYPE,
@@ -8,6 +9,7 @@ import {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./bullmq.module-definition.js";
+import { BullMQHealthIndicator } from "./bullmq-health.indicator.js";
 import { BullModuleOptions } from "./bullmq-module-options.interface.js";
 import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 
@@ -21,6 +23,7 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 @Global()
 @Module({
   imports: [
+    DiscoveryModule,
     BaseBullModule.forRootAsync({
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: (options: BullModuleOptions) => {
@@ -32,13 +35,14 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
     }),
   ],
   providers: [
+    BullMQHealthIndicator,
     {
       provide: MODULE_OPTIONS_TOKEN,
       inject: [{ token: BASE_MODULE_OPTIONS_TOKEN, optional: true }],
       useFactory: (options?: BullModuleOptions) => options ?? {},
     },
   ],
-  exports: [MODULE_OPTIONS_TOKEN],
+  exports: [MODULE_OPTIONS_TOKEN, BullMQHealthIndicator],
 })
 export class BullModule extends ConfigurableModuleClass {
   /**

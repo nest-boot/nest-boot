@@ -1,4 +1,5 @@
 import { MODULE_METADATA } from "@nestjs/common/constants";
+import { DiscoveryModule } from "@nestjs/core";
 
 const { mockBaseBullModule, mockState } = vi.hoisted(() => {
   const mockState = {
@@ -130,6 +131,7 @@ describe("BullModule", () => {
     });
     expect(loadConfigFromEnv).toHaveBeenCalledTimes(1);
     expect(imports).toEqual([
+      DiscoveryModule,
       {
         module: expect.any(Function),
       },

@@ -84,6 +84,7 @@
     "./package.json": "./package.json"
   },
   "dependencies": {
+    "@nest-boot/health-check": "workspace:^",
     "@nest-boot/redis": "workspace:^"
   }
 }
