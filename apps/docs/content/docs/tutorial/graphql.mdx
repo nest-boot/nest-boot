@@ -432,26 +432,31 @@ The `@nest-boot/graphql-rate-limit` module provides Shopify-style query complexi
 ### Installation
 
 ```bash
-pnpm add @nest-boot/graphql-rate-limit graphql-query-complexity
+pnpm add @nest-boot/graphql-rate-limit @nest-boot/redis ioredis graphql-query-complexity
 ```
 
 ### Registration
 
 ```typescript
 import { GraphQLRateLimitModule } from "@nest-boot/graphql-rate-limit";
+import { RedisModule } from "@nest-boot/redis";
 
 @Module({
-  imports: [GraphQLRateLimitModule],
+  imports: [RedisModule.register({}), GraphQLRateLimitModule],
 })
 export class CommonModule {}
 ```
 
-The module is directly importable without dynamic registration. It selects a driver from the environment:
+The rate limit module is directly importable without dynamic registration. By default, it reuses the Redis client provided by `RedisModule`; `@nest-boot/redis` handles connection configuration and `REDIS_URL` parsing. `RedisModule` closes the shared connection, and the rate limit driver leaves it open.
 
-- When `REDIS_URL` is set, it parses the URL and uses the distributed Redis driver.
-- When `REDIS_URL` is not set, it uses the process-local memory driver.
+Driver selection follows this order:
 
-Passing explicit Redis `connection` options to `forRoot()` or `forRootAsync()` also selects the Redis driver, preserving programmatic Redis configuration without environment variables. An explicit custom `driver` takes precedence over both Redis selection paths.
+1. An explicit custom `driver`.
+2. Explicit `connection` options, which create a separate connection owned and closed by the rate limit driver.
+3. The shared client from a registered `RedisModule`.
+4. Process-local memory when no shared client is available.
+
+**Migration:** The rate limit module no longer reads `REDIS_URL`. Applications that previously set only this variable must register `RedisModule` to keep Redis-backed rate limiting. Explicit `connection` options are also no longer merged with environment configuration. To use environment or shared configuration, move connection options to `RedisModule.register()` or `registerAsync()` and omit the rate limit module's `connection`.
 
 The memory driver is convenient for local development and single-process applications, but its buckets are not shared across processes or replicas. Use Redis or a custom distributed driver when limits must be global.
 
@@ -479,6 +484,8 @@ export class CommonModule {}
 ```
 
 Custom drivers extend `GraphQLRateLimitDriver` and implement its atomic `update()` method. Positive `points` consume capacity and negative `points` restore it. `forRootAsync()` can be used when creating a driver requires injected dependencies.
+
+To supply a custom Redis instance managed outside the rate limit module, pass `new RedisGraphQLRateLimitDriver(redis, false)` as the `driver`. The second argument disables connection ownership, so the caller is responsible for closing it. Omitting that argument preserves the driver's default behavior of closing its client.
 
 ### Custom Complexity
 
