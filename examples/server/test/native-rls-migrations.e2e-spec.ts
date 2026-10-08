@@ -45,8 +45,10 @@ import { ApiKeyAuthenticationService } from '../../../packages/auth/dist/infrast
 import { createContextualAuthService } from '../../../packages/auth/dist/infrastructure/create-contextual-auth-service.js';
 import { RequestIdentity } from '../../../packages/auth/dist/infrastructure/request-identity.js';
 import { UserDeletionService } from '../../../packages/auth/dist/services/user-deletion.service.js';
+import { Job } from '../src/app/jobs/entities/job.entity.js';
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
 import { Migration20260918091003 } from '../src/database/migrations/Migration20260918091003.js';
+import { Migration20261008073016 } from '../src/database/migrations/Migration20261008073016.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
@@ -58,6 +60,7 @@ describe('example native RLS migrations with PGlite', () => {
       instance.getMetadata(Workspace),
       instance.getMetadata(Member),
       instance.getMetadata(Invitation),
+      instance.getMetadata(Job),
     ].map((metadata) => metadata.policies);
   let originalPolicies: ReturnType<typeof readPolicies>;
 
@@ -80,12 +83,14 @@ describe('example native RLS migrations with PGlite', () => {
           Invitation,
           UserApiKey,
           WorkspaceApiKey,
+          Job,
         ],
         extensions: [Migrator],
         migrations: {
           migrationsList: [
             Migration00000000000000_Initial,
             Migration20260918091003,
+            Migration20261008073016,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',
@@ -981,7 +986,7 @@ describe('example native RLS migrations with PGlite', () => {
 
   it('creates the complete baseline through the official Migrator', async () => {
     expect(await orm.migrator.getPending()).toEqual([]);
-    expect(await orm.migrator.getExecuted()).toHaveLength(2);
+    expect(await orm.migrator.getExecuted()).toHaveLength(3);
     const policies = await orm.em.execute<
       {
         policyname: string;
@@ -991,7 +996,7 @@ describe('example native RLS migrations with PGlite', () => {
     >(
       "select policyname, qual, with_check from pg_policies where qual like '%app.workspace.id%'",
     );
-    expect(policies).toHaveLength(5);
+    expect(policies).toHaveLength(6);
     for (const policy of policies) {
       expect(policy.qual).toContain('app.workspace.id');
       expect(policy.qual).not.toContain('app.workspace_id');

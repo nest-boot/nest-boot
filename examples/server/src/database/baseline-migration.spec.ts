@@ -4,8 +4,13 @@ import type { Migration } from '@mikro-orm/migrations';
 
 import { Migration00000000000000_Initial } from './migrations/Migration00000000000000_Initial.js';
 import { Migration20260918091003 } from './migrations/Migration20260918091003.js';
+import { Migration20261008073016 } from './migrations/Migration20261008073016.js';
 
-const migrations = [Migration00000000000000_Initial, Migration20260918091003];
+const migrations = [
+  Migration00000000000000_Initial,
+  Migration20260918091003,
+  Migration20261008073016,
+];
 async function sqlFor(
   MigrationClass: (typeof migrations)[number],
   direction: 'up' | 'down' = 'up',
