@@ -15,6 +15,7 @@ import { Queue } from "bullmq";
 @Injectable()
 export class BullMQHealthIndicator implements OnApplicationBootstrap {
   private readonly healthIndicator = new HealthIndicatorService();
+  private readonly pendingReads = new WeakMap<Queue, Promise<boolean>>();
 
   /**
    * Creates a queue health indicator without creating queues or Redis connections.
@@ -58,7 +59,15 @@ export class BullMQHealthIndicator implements OnApplicationBootstrap {
         signal.throwIfAborted();
         if (client.status !== "ready")
           throw new Error("Queue connection is not ready");
-        return { paused: await queue.isPaused() };
+        // Share commands that outlive a timeout instead of queueing more reads.
+        let read = this.pendingReads.get(queue);
+        if (!read) {
+          read = queue
+            .isPaused()
+            .finally(() => this.pendingReads.delete(queue));
+          this.pendingReads.set(queue, read);
+        }
+        return { paused: await read };
       })
       .withTimeout(timeout);
   }

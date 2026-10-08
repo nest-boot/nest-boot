@@ -29,6 +29,8 @@ Closing queues, unavailable connections, read failures, and timeouts report
 `down`; later checks can recover. A paused queue reports `up` with `paused: true`.
 The probe checks queue access, not worker availability, processing throughput,
 backlog, or historical failed jobs. It does not create jobs or change queue state.
+Repeated probes share any still-pending read for the same queue, including after
+a timeout; separate queues continue to be checked independently.
 
 Without `HealthCheckModule`, no queues are discovered for health checks and no
 checks run. The module does not import it or add a health endpoint. The exported

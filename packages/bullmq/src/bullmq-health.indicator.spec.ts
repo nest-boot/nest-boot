@@ -124,4 +124,33 @@ describe("BullMQHealthIndicator", () => {
       resolvePause(false);
     }
   });
+
+  it("shares a stalled read across probes while checking other queues independently", async () => {
+    const queue = createQueue();
+    const other = createQueue("upload");
+    const { indicator } = setup();
+    let complete!: (value: boolean) => void;
+    const pending = new Promise<boolean>((resolve) => {
+      complete = resolve;
+    });
+    vi.mocked(queue.isPaused).mockReturnValueOnce(pending);
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        expect(await indicator.check("queue.email", queue, 10)).toMatchObject({
+          "queue.email": { status: "down" },
+        });
+      }
+      expect(queue.isPaused).toHaveBeenCalledOnce();
+      expect(await indicator.check("queue.upload", other)).toMatchObject({
+        "queue.upload": { status: "up" },
+      });
+    } finally {
+      complete(false);
+      await pending;
+    }
+    expect(await indicator.check("queue.email", queue)).toMatchObject({
+      "queue.email": { status: "up" },
+    });
+    expect(queue.isPaused).toHaveBeenCalledTimes(2);
+  });
 });
