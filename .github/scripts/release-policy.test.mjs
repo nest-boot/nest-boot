@@ -2,13 +2,35 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { getReleaseSpecifier } from "./release-policy.mjs";
+import { getReleaseConfig, getReleaseSpecifier } from "./release-policy.mjs";
 
 test("Nx also keeps implicitly bumped dependents on the prerelease channel", () => {
   const config = JSON.parse(
     readFileSync(new URL("../../nx.json", import.meta.url), "utf8"),
   );
   assert.equal(config.release.version.applyPreidToDependents, true);
+});
+
+test("Nx uses validated manifest versions when restored packages still have legacy tags", () => {
+  assert.deepEqual(getReleaseConfig("beta"), {
+    version: { conventionalCommits: false },
+  });
+  assert.equal(
+    getReleaseSpecifier(
+      "beta",
+      [{ name: "@nest-boot/health-check", version: "8.0.0-beta.0" }],
+      ["@nest-boot/health-check@7.0.0-beta.3"],
+    ),
+    "prerelease",
+  );
+});
+
+test("main keeps its existing Nx version resolver and other branches are rejected", () => {
+  assert.deepEqual(getReleaseConfig("main"), {});
+  assert.throws(
+    () => getReleaseConfig("feature"),
+    /Unsupported release branch/,
+  );
 });
 
 test("beta explicitly increments prereleases instead of interpreting breaking commits", () => {

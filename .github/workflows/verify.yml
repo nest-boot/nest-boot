@@ -152,13 +152,7 @@ jobs:
       - name: Release packages
         if: inputs.release
         run: |
-          release_args=(--skip-publish)
-          release_specifier=()
           npm_tag="latest"
-          release_specifier_value="$(node .github/scripts/release-policy.mjs "$GITHUB_REF_NAME")"
-          if [ -n "$release_specifier_value" ]; then
-            release_specifier=("$release_specifier_value")
-          fi
 
           release_projects="$(
             node --input-type=module <<'NODE'
@@ -208,14 +202,11 @@ jobs:
             exit 0
           fi
 
-          release_args+=(--projects "$release_projects")
-
           if [ "${GITHUB_REF_NAME}" = "beta" ]; then
-            release_args+=(--preid beta)
             npm_tag="beta"
           fi
 
-          pnpm exec nx release "${release_specifier[@]}" "${release_args[@]}"
+          node .github/scripts/release.mjs "$GITHUB_REF_NAME" "$release_projects"
 
           missing_projects="$(
             node --input-type=module <<'NODE'
