@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/unified-signatures */
 
-import { RequestContext } from "@nest-boot/request-context";
 import {
-  JOB_REF,
   Processor as BaseProcessor,
   type ProcessorOptions,
   type WorkerHost,
@@ -13,6 +11,8 @@ import type {
   Worker,
   WorkerOptions,
 } from "bullmq";
+
+import { runInQueueContext } from "./utils/run-in-queue-context.util.js";
 
 /** Worker options accepted by Nest's BullMQ processor decorator. */
 export type NestWorkerOptions = Omit<WorkerOptions, "connection"> &
@@ -26,7 +26,7 @@ export type NestWorkerOptions = Omit<WorkerOptions, "connection"> &
  *
  * @remarks
  * Wraps the `@nestjs/bullmq` `Processor` decorator to automatically
- * create a {@link RequestContext} for each processed job.
+ * create a request context for each processed job.
  *
  * @param queueName - The name of the queue to process
  */
@@ -72,14 +72,7 @@ export function Processor<T extends Worker = Worker>(
         ...args: Parameters<BullMQProcessor>
       ) {
         const [job] = args;
-        const ctx = new RequestContext({
-          id: job.id,
-          type: "queue",
-        });
-
-        ctx.set(JOB_REF, job);
-
-        return await RequestContext.run(ctx, () =>
+        return await runInQueueContext({ job }, () =>
           originalProcess.apply(this, args),
         );
       };
