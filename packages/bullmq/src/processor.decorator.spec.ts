@@ -96,4 +96,20 @@ describe("Processor", () => {
     );
     expect(mockBaseProcessorDecorator).toHaveBeenCalledWith(EmptyProcessor);
   });
+
+  it("should propagate processing failures to BullMQ", async () => {
+    const error = new Error("retry this job");
+    class FailingProcessor {
+      async process(_job: { id: string }) {
+        await Promise.resolve();
+        throw error;
+      }
+    }
+
+    Processor("email")(FailingProcessor as never);
+    await expect(
+      new FailingProcessor().process({ id: "failed-job" }),
+    ).rejects.toBe(error);
+    expect(RequestContext.isActive()).toBe(false);
+  });
 });

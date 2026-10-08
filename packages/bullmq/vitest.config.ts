@@ -6,6 +6,8 @@ export default defineConfig({
   // added by `nest g library`.
   plugins: [tsconfigPaths()],
   test: {
+    // Allow the registration test to replace Redis transports inside Nest's explorer.
+    server: { deps: { inline: ["@nestjs/bullmq"] } },
     globals: true,
     root: "./",
     include: ["**/*.spec.ts"],

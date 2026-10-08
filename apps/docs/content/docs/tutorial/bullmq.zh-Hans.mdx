@@ -87,7 +87,7 @@ export class EmailService {
 使用 `@Processor()` 装饰器继承 `WorkerHost` 创建处理器：
 
 ```typescript
-import { Processor, WorkerHost } from "@nest-boot/bullmq";
+import { OnWorkerEvent, Processor, WorkerHost } from "@nest-boot/bullmq";
 import { Logger } from "@nest-boot/logger";
 import { Job } from "bullmq";
 import { NotificationService } from "./notification.service";
@@ -112,10 +112,60 @@ export class EmailProcessor extends WorkerHost {
 
     this.logger.log("Email sent successfully");
   }
+
+  @OnWorkerEvent("completed")
+  onCompleted(job: Job<EmailJobData>): void {
+    this.logger.log(`Email job ${job.id} completed`);
+  }
 }
 ```
 
 Nest Boot 的 `@Processor()` 会为每个任务创建 `RequestContext`、写入 BullMQ `JOB_REF`，再调用正常的 `@nestjs/bullmq` processor。
+
+## 队列事件
+
+从 `@nest-boot/bullmq` 导入 `OnWorkerEvent` 和 `OnQueueEvent`，即可为每次事件回调创建独立的 `RequestContext`，并执行已注册的上下文中间件。即使事件在另一个上下文中触发，也不会继承其中的 EntityManager 或其他上下文数据。
+
+`@OnWorkerEvent()` 放在 `@Processor()` 标记的 `WorkerHost` 中，监听当前 worker 的事件，例如上面示例中的 `onCompleted()`。`@OnQueueEvent()` 则放在独立的 `QueueEventsHost` 中，监听整个队列的事件：
+
+```typescript
+import {
+  BullModule,
+  OnQueueEvent,
+  QueueEventsHost,
+  QueueEventsListener,
+} from "@nest-boot/bullmq";
+import { RequestContext } from "@nest-boot/request-context";
+import { Logger, Module } from "@nestjs/common";
+
+@QueueEventsListener("email-queue")
+export class EmailQueueEvents extends QueueEventsHost {
+  private readonly logger = new Logger(EmailQueueEvents.name);
+
+  @OnQueueEvent("completed")
+  onCompleted(event: { jobId: string }, eventId: string): void {
+    this.logger.log({
+      jobId: event.jobId,
+      eventId,
+      contextId: RequestContext.id,
+    });
+  }
+}
+
+@Module({
+  imports: [BullModule.registerQueue({ name: "email-queue" })],
+  providers: [EmailQueueEvents],
+})
+export class EmailEventsModule {}
+```
+
+两类监听器都必须注册为 provider，并保持单例作用域；Nest 不会为请求作用域的 provider 注册事件监听器。
+
+所有这些上下文的 `type` 都是 `"queue"`。Worker 的 `active`、`completed`、`progress` 事件，以及携带 Job 的 `failed` 事件，会绑定 `JOB_REF` 并使用 Job ID 作为上下文 ID。`stalled` 事件只有 Job ID；QueueEvents 事件也只有事件数据，使用其中的 `jobId` 作为上下文 ID，不绑定 `JOB_REF`。没有 Job ID 的事件会生成上下文 ID，不会额外查询 Redis 来获取 Job。
+
+事件回调和上下文中间件的异常会被捕获并记录，避免未处理的 Promise 拒绝。BullMQ 不会等待异步监听器完成，也不会因为监听器失败而重试任务；`process()` 的异常仍正常交给 BullMQ 处理。上下文中间件可以是异步的，因此不要依赖事件回调的同步副作用。
+
+这些行为仅适用于从 `@nest-boot/bullmq` 导入的装饰器。直接使用 `worker.on()`、`queue.on()` 或 `queueEvents.on()` 注册的回调，需要显式通过 `RequestContext.run()` 等方式包装，并处理异步异常。
 
 ## BullMQ MikroORM 集成
 
@@ -153,6 +203,8 @@ export class JobsModule {}
 ```
 
 `Job` 必须是继承导出基类 `JobEntity` 的具体 MikroORM 实体，并被实体发现配置纳入。集成会发现已注册的 queue 和 worker、upsert 状态变化，并通过每小时任务删除超过 `jobTTL` 的历史记录（默认 30 天）。可通过 `includeQueues` 和 `excludeQueues` 控制持久化范围；`convertJobToEntityData` 用于映射额外的实体字段。
+
+历史持久化直接监听本地 Queue 和 Worker 事件，未使用 QueueEvents 或事件装饰器。每次写入都会 fork 一个 EntityManager；持久化失败会记录日志，不会导致 worker 失败。
 
 ## 最佳实践
 
