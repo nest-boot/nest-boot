@@ -2248,7 +2248,48 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     ).toEqual([{ name: 'Updated profile' }]);
   });
 
-  it.each(['roles', 'permissions', 'status'] as const)(
+  it('rejects disabling the current member without changing their profile or workspace access', async () => {
+    const owner = await createAuthenticatedUser('Active member');
+    const workspace = await createWorkspace(owner, 'Retained workspace');
+    const [member] = await migrationOrm.em.execute<
+      { id: string; name: string }[]
+    >('select id, name from member where user_id = ? and workspace_id = ?', [
+      owner.user.id,
+      workspace.id,
+    ]);
+    const options = {
+      cookies: owner.cookies,
+      workspaceId: workspace.id,
+    };
+    const response = await gql(
+      'mutation ($id: ID!) { updateMember(id: $id, input: { status: DISABLED, name: "Must not change" }) { id } }',
+      {
+        ...options,
+        variables: { id: member.id },
+      },
+    );
+    expectGraphQLError(response);
+    expect(response.body.errors[0].path).toEqual(['updateMember']);
+    expect(response.body.errors[0].extensions.code).toBe('FORBIDDEN');
+    expect(
+      await migrationOrm.em.execute(
+        'select name, status from member where id = ?',
+        [member.id],
+      ),
+    ).toEqual([{ name: member.name, status: 'ACTIVE' }]);
+
+    const current = await gql(
+      'query { currentWorkspace { id } currentMember { id name status } }',
+      options,
+    );
+    expectNoGraphQLErrors(current);
+    expect(current.body.data).toEqual({
+      currentWorkspace: { id: workspace.id },
+      currentMember: { ...member, status: 'ACTIVE' },
+    });
+  });
+
+  it.each(['roles', 'permissions'] as const)(
     'refreshes workspace authorization after changing own %s between serial mutations',
     async (field) => {
       const owner = await createAuthenticatedUser('Demoting member');
@@ -2266,9 +2307,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       const first =
         field === 'roles'
           ? 'setMemberRoles(id: $memberId, input: { roles: [MEMBER] })'
-          : field === 'permissions'
-            ? 'setMemberPermissions(id: $memberId, input: { permissions: [] })'
-            : 'updateMember(id: $memberId, input: { status: DISABLED })';
+          : 'setMemberPermissions(id: $memberId, input: { permissions: [] })';
       const response = await gql(
         `mutation ($memberId: ID!, $id: ID!) { first: ${first} { id } deleteWorkspace(id: $id) { id } }`,
         {
@@ -2289,13 +2328,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         'select roles, permissions, status from member where id = ?',
         [member.id],
       );
-      expect(updated[field]).toEqual(
-        field === 'roles'
-          ? ['member']
-          : field === 'permissions'
-            ? []
-            : 'DISABLED',
-      );
+      expect(updated[field]).toEqual(field === 'roles' ? ['member'] : []);
     },
   );
 
