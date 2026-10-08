@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { EntityManager } from '@mikro-orm/core';
 import { MikroORM } from '@mikro-orm/pglite';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
+import { JobStatus } from '@nest-boot/bullmq-mikro-orm';
 import { RequestContext } from '@nest-boot/request-context';
 import { DiscoveryService } from '@nestjs/core';
 import type { Job as BullJob } from 'bullmq';
@@ -126,7 +127,7 @@ describe('example job history RLS', () => {
           data,
           priority: 0,
           progress: 0,
-          status: 'waiting',
+          status: JobStatus.WAITING,
         });
       if (allowed) await insert();
       else await expect(insert()).rejects.toThrow(/row.level security/i);

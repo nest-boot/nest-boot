@@ -66,6 +66,74 @@ roles. The integration copies `data` directly; no extra owner columns or custom
 default. `includeQueues` and `excludeQueues` can limit which registered queues are
 persisted.
 
+### GraphQL queries
+
+The authenticated `/api/graphql` endpoint exposes `job(id: ID!)` and the `jobs`
+connection. Both use the current request's EntityManager, so the same
+`data.userId OR data.workspaceId` RLS rule applies to returned rows and counts.
+An inaccessible or missing job returns `null`. Anonymous requests are rejected
+by the application's global `AuthGuard`. Workspace API keys use their workspace
+scope when reading history.
+
+```graphql
+query JobHistory($id: ID!, $after: String, $filter: JobFilter) {
+  job(id: $id) {
+    id
+    queueName
+    name
+    status
+    data
+    progress
+    returnValue
+    failedReason
+    startedAt
+    finishedAt
+    createdAt
+    updatedAt
+  }
+  jobs(
+    first: 20
+    after: $after
+    filter: $filter
+    orderBy: { field: CREATED_AT, direction: DESC }
+  ) {
+    edges {
+      cursor
+      node {
+        id
+        queueName
+        name
+        status
+        progress
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+    totalCount
+  }
+}
+```
+
+Example variables:
+
+```json
+{
+  "id": "reports:42",
+  "filter": { "queue_name": "reports", "status": "completed" }
+}
+```
+
+IDs use the persisted `queueName:jobId` form. `data`, `progress` and `returnValue`
+are JSON scalars and do not take GraphQL subfields. Output status uses the
+`JobStatus` enum (for example `COMPLETED`); status filters use stored values
+(for example `completed`). Filters and sorting support `queue_name`, `name`,
+`status`, `created_at` and `updated_at`; sorting also supports `ID`. The connection
+supports `first`/`after`, `last`/`before`, and search syntax such as
+`query: "name:generate-report"`. These queries read the persisted history;
+changes become visible after BullMQ events have been synchronized.
+
 ## Member profiles and User privacy
 
 `Member.name` and `email` are independently stored workspace-visible

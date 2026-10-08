@@ -376,9 +376,111 @@ enum InvitationStatus {
 }
 
 """
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSON
+
+"""
 The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
 scalar JSONObject
+
+type Job {
+  createdAt: DateTime!
+  data: JSON!
+  failedReason: String
+  finishedAt: DateTime
+  id: ID!
+  name: String!
+  priority: Int!
+  progress: JSON!
+  queueName: String!
+  returnValue: JSON
+  startedAt: DateTime
+  status: JobStatus!
+  updatedAt: DateTime!
+}
+
+type JobConnection {
+  """
+  A list of edges.
+  """
+  edges: [JobEdge!]!
+
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
+  """
+  totalCount: Int!
+
+  """
+  Indicates whether totalCount is exact or a lower bound.
+  """
+  totalCountRelation: TotalCountRelation!
+}
+
+"""
+An auto-generated type which holds one Job and a cursor during pagination.
+"""
+type JobEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of JobEdge.
+  """
+  node: Job!
+}
+
+"""
+A filter for Job that accepts MongoDB query syntax.
+Supported fields: queue_name, name, status, created_at, updated_at
+"""
+scalar JobFilter
+
+"""
+Ordering options for job connections
+"""
+input JobOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection!
+
+  """
+  The field to order jobs by.
+  """
+  field: JobOrderField!
+}
+
+"""
+Properties by which job connections can be ordered.
+"""
+enum JobOrderField {
+  CREATED_AT
+  ID
+  NAME
+  QUEUE_NAME
+  STATUS
+  UPDATED_AT
+}
+
+enum JobStatus {
+  ACTIVE
+  COMPLETED
+  DELAYED
+  FAILED
+  PRIORITIZED
+  UNKNOWN
+  WAITING
+  WAITING_CHILDREN
+}
 
 type LeaveWorkspacePayload {
   memberId: ID!
@@ -574,6 +676,45 @@ type Query {
   currentUser: User!
   currentWorkspace: Workspace
   invitation(id: ID!): Invitation
+  job(id: ID!): Job
+  jobs(
+    """
+    Returns the elements that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the elements that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Filter jobs using MongoDB query syntax.
+    """
+    filter: JobFilter
+
+    """
+    Returns up to the first `n` elements from the list.
+    """
+    first: Int
+
+    """
+    Returns up to the last `n` elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for the returned jobs.
+    """
+    orderBy: JobOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `queue_name`, `name`, `status`, `created_at`, `updated_at`
+    """
+    query: String
+  ): JobConnection!
   member(id: ID!): Member
   passwordPolicy: PasswordPolicy!
   socialProviders: [AuthSocialProviderType!]!
