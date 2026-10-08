@@ -1,3 +1,7 @@
+## 8.0.3-beta.1 (2026-10-08)
+
+This was a version bump only for @nest-boot/graphql-rate-limit to align it with other projects, there were no code changes.
+
 ## 8.0.3-beta.0 (2026-09-23)
 
 ### 🧱 Updated Dependencies
