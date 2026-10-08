@@ -620,6 +620,9 @@ importers:
       '@types/node':
         specifier: ^24.12.4
         version: 24.12.4
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
       eslint:
         specifier: ^9.39.3
         version: 9.39.3

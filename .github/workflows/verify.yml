@@ -91,10 +91,8 @@ jobs:
 
       - name: Prepare MinIO bucket
         run: |
-          wget -O "$RUNNER_TEMP/mc" https://dl.min.io/client/mc/release/linux-amd64/mc
-          chmod +x "$RUNNER_TEMP/mc"
-          "$RUNNER_TEMP/mc" alias set minio http://localhost:9000 minio password
-          "$RUNNER_TEMP/mc" mb minio/test-bucket
+          docker exec "${{ job.services.minio.id }}" mc alias set test http://localhost:9000 minio password
+          docker exec "${{ job.services.minio.id }}" mc mb --ignore-existing test/test-bucket
 
       - name: Test
         run: pnpm test:cov
