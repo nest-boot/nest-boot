@@ -62,6 +62,34 @@ app.setGlobalPrefix("api", {
 });
 ```
 
+When using `@nest-boot/auth` with a global `AuthGuard`, mark the exported
+controller as public in application startup code, before creating the Nest app:
+
+```ts
+import { Public } from "@nest-boot/auth";
+import { HealthCheckController } from "@nest-boot/health-check";
+
+Public()(HealthCheckController);
+```
+
+This applies the same metadata as `@Public()` on a controller and lets the
+existing guard accept anonymous health requests. The health check package itself
+does not depend on auth or bypass application guards.
+
+To also skip session, API key, and workspace resolution for health requests, add
+the route to your existing `AuthModule` options (preserving other exclusions):
+
+```ts
+middleware: {
+  excludeRoutes: [{ path: "api/health", method: RequestMethod.GET }],
+},
+```
+
+`RequestMethod` comes from `@nestjs/common`. Middleware exclusion alone does not
+bypass `AuthGuard`; keep the public controller metadata as well. If you use a
+global prefix, retain the prefix exclusion shown above so both configurations
+refer to the same route.
+
 The module does not automatically register Redis or database checks, deduplicate
 registrations, or add readiness/liveness groups, caching, or timeout configuration.
 
