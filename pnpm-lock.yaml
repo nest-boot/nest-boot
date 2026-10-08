@@ -1490,6 +1490,63 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11
 
+  packages/health-check:
+    devDependencies:
+      '@nest-boot/eslint-config':
+        specifier: workspace:^
+        version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:^
+        version: link:../eslint-plugin
+      '@nest-boot/tsconfig':
+        specifier: workspace:^
+        version: link:../tsconfig
+      '@nestjs/common':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/core':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/platform-express':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/terminus':
+        specifier: ^12.1.0
+        version: 12.1.0
+      '@nestjs/testing':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.19.0
+      '@types/supertest':
+        specifier: ^7.2.1
+        version: 7.2.1
+      '@vitest/coverage-v8':
+        specifier: ^4.1.11
+        version: 4.1.11
+      eslint:
+        specifier: ^9.39.3
+        version: 9.39.3
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      supertest:
+        specifier: ^7.2.2
+        version: 7.2.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11
+
   packages/i18n:
     devDependencies:
       '@nest-boot/eslint-config':
@@ -4258,6 +4315,10 @@ packages:
   '@nestjs/schematics@12.0.0':
     resolution: {integrity: sha512-ilsxam7i+SWd2psr12faLVSk86FYKnxRUGO6jAGNi1P9+O0kRaYVOScyrKeIj97W9T9UJoJF38fg+7KgjY/nOg==}
     engines: {node: '>=22.12.0'}
+
+  '@nestjs/terminus@12.1.0':
+    resolution: {integrity: sha512-bag1KT1Pk2KpDhXh6fhf3F7IpRGs8IMSdPaD1+9hclP3hSAIkCYN/YUhkAY+2G7OuoUmyDuKVb7MgNw+L5ZBbQ==}
+    engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
 
   '@nestjs/testing@12.0.1':
     resolution: {integrity: sha512-prf3fsUaoKS6t04XcQt5aSTp68Po1GxUcbEBPv+3iqAef07hKQEO15r0jmmwA+rWZfONYT1UcV3YIylR++/tCg==}
@@ -13975,6 +14036,8 @@ snapshots:
       comment-json: 5.0.0
       jsonc-parser: 3.3.1
       pluralize: 8.0.0
+
+  '@nestjs/terminus@12.1.0': {}
 
   '@nestjs/testing@12.0.1':
     dependencies:

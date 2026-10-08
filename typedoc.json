@@ -98,6 +98,7 @@
     "@nest-boot/graphql-rate-limit",
     "@nest-boot/graphql-staged-upload",
     "@nest-boot/hash",
+    "@nest-boot/health-check",
     "@nest-boot/i18n",
     "@nest-boot/logger",
     "@nest-boot/mailer",
