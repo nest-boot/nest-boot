@@ -62,20 +62,18 @@ app.setGlobalPrefix("api", {
 });
 ```
 
-Health requests are public: the middleware ends the response before Nest's guards,
+The health middleware ends the response before Nest's guards,
 interceptors, pipes, and controller handling. Responses include
 `Cache-Control: no-cache, no-store, must-revalidate`. Failed checks use Nest's
 exception handling, preserving Terminus's 503 response; unexpected failures use
 the application's global exception handling.
 
-`HealthCheckModule` imports `@nest-boot/middleware` and globally excludes the
-health route from middleware registered through `MiddlewareManager`. This skips
-`@nest-boot/auth` session, API key, and workspace resolution without needing
-`@Public()` or an application-level auth exclusion. The health middleware opts out
-of global exclusions so it still runs. Other middleware that explicitly disables
-global exclusions, such as request-context middleware, retains its registration.
-Middleware registered outside `MiddlewareManager` is unaffected and may run
-before the health handler.
+`HealthCheckModule` imports `@nest-boot/middleware` and registers the handler
+through `MiddlewareManager`, following its normal ordering and route exclusions.
+Earlier middleware, including auth middleware, still runs and must allow the
+request to reach the health handler. Once reached, the handler responds without
+entering `AuthGuard`, so no `@Public()` marker is required. The package does not
+depend on `@nest-boot/auth`.
 
 The module does not automatically register Redis or database checks, deduplicate
 registrations, or add readiness/liveness groups, caching, or timeout configuration.

@@ -129,7 +129,7 @@ describe("HealthCheckModule HTTP integration", () => {
   });
 
   it.each([false, true])(
-    "bypasses managed auth middleware and global guards (global prefix: %s)",
+    "runs earlier middleware and bypasses global guards (global prefix: %s)",
     async (withPrefix) => {
       const authentication = vi.fn<MiddlewareFunction>((_req, _res, next) => {
         next();
@@ -151,14 +151,16 @@ describe("HealthCheckModule HTTP integration", () => {
       );
 
       await request(app.getHttpServer()).get("/api/health").expect(200);
-      expect(authentication).not.toHaveBeenCalled();
+      expect(authentication).toHaveBeenCalled();
       expect(canActivate).not.toHaveBeenCalled();
 
+      authentication.mockClear();
       app.get(FeatureChecks).healthy = false;
       await request(app.getHttpServer()).get("/api/health").expect(503);
-      expect(authentication).not.toHaveBeenCalled();
+      expect(authentication).toHaveBeenCalled();
       expect(canActivate).not.toHaveBeenCalled();
 
+      authentication.mockClear();
       await request(app.getHttpServer())
         .get(withPrefix ? "/api/private" : "/private")
         .expect(401);
@@ -207,8 +209,7 @@ describe("HealthCheckModule HTTP integration", () => {
       ],
     }).setLogger({ log: vi.fn(), warn: vi.fn(), error: vi.fn() });
     if (authentication) {
-      // Register auth before HealthCheckModule so only the route exclusion
-      // can prevent it from running before the health middleware.
+      // Register auth first to verify that it still runs before health requests.
       const manager = new MiddlewareManager();
       manager.apply(authentication).forRoutes("*");
       builder.overrideProvider(MiddlewareManager).useValue(manager);

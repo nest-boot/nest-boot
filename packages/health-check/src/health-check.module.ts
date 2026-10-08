@@ -6,7 +6,7 @@ import { HealthCheckMiddleware } from "./health-check.middleware.js";
 import { HealthCheckService } from "./health-check.service.js";
 import { HealthCheckRegistry } from "./health-check-registry.service.js";
 
-/** Provides a shared health check registry, service, and public GET /api/health middleware. */
+/** Provides a shared health check registry, service, and GET /api/health middleware. */
 @Global()
 @Module({
   imports: [TerminusModule, MiddlewareModule],
@@ -15,7 +15,7 @@ import { HealthCheckRegistry } from "./health-check-registry.service.js";
 })
 export class HealthCheckModule {
   /**
-   * Registers the health endpoint independently of managed business middleware.
+   * Registers the health endpoint through the shared middleware manager.
    * @param middlewareManager - Shared middleware registry
    * @param healthCheckMiddleware - Handler for health requests
    */
@@ -23,11 +23,8 @@ export class HealthCheckModule {
     middlewareManager: MiddlewareManager,
     healthCheckMiddleware: HealthCheckMiddleware,
   ) {
-    const route = { path: "api/health", method: RequestMethod.GET };
-    middlewareManager.globalExclude(route);
     middlewareManager
       .apply(healthCheckMiddleware)
-      .disableGlobalExcludeRoutes()
-      .forRoutes(route);
+      .forRoutes({ path: "api/health", method: RequestMethod.GET });
   }
 }
