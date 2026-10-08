@@ -1,4 +1,6 @@
-import { ServiceUnavailableException } from "@nestjs/common";
+import { MiddlewareManager } from "@nest-boot/middleware";
+import { RequestMethod, ServiceUnavailableException } from "@nestjs/common";
+import { HttpAdapterHost } from "@nestjs/core";
 import {
   HealthCheckService as TerminusHealthCheckService,
   type HealthIndicatorFunction,
@@ -6,7 +8,12 @@ import {
 } from "@nestjs/terminus";
 import { Test, type TestingModule } from "@nestjs/testing";
 
-import { HealthCheckRegistry, HealthCheckService } from "./index.js";
+import {
+  HealthCheckMiddleware,
+  HealthCheckModule,
+  HealthCheckRegistry,
+  HealthCheckService,
+} from "./index.js";
 
 describe("registered health checks", () => {
   let module: TestingModule;
@@ -124,5 +131,75 @@ describe("registered health checks", () => {
     });
 
     await expect(service.check()).rejects.toBe(failure);
+  });
+
+  function createMiddleware() {
+    const adapter = { setHeader: vi.fn(), reply: vi.fn() };
+    const host = new HttpAdapterHost();
+    host.httpAdapter = adapter as unknown as HttpAdapterHost["httpAdapter"];
+    return { adapter, middleware: new HealthCheckMiddleware(service, host) };
+  }
+
+  it("disables caching before awaiting checks and replies only after they finish", async () => {
+    let complete!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      complete = resolve;
+    });
+    registry.register(async () => {
+      await ready;
+      return { cache: { status: "up" } };
+    });
+    const { adapter, middleware } = createMiddleware();
+    const response = {};
+    const pending = middleware.use({}, response);
+    expect(adapter.setHeader).toHaveBeenCalledWith(
+      response,
+      "Cache-Control",
+      "no-cache, no-store, must-revalidate",
+    );
+    expect(adapter.reply).not.toHaveBeenCalled();
+    complete();
+    await pending;
+    expect(adapter.reply).toHaveBeenCalledExactlyOnceWith(
+      response,
+      {
+        status: "ok",
+        info: { cache: { status: "up" } },
+        error: {},
+        details: { cache: { status: "up" } },
+      },
+      200,
+    );
+  });
+
+  it.each(["unhealthy", "unexpected"])(
+    "propagates %s checks without sending a successful response",
+    async (kind) => {
+      const failure = new Error("unexpected failure");
+      registry.register(() => {
+        if (kind === "unexpected") throw failure;
+        return { cache: { status: "down" } };
+      });
+      const { adapter, middleware } = createMiddleware();
+      await expect(middleware.use({}, {})).rejects.toBeInstanceOf(
+        kind === "unexpected" ? Error : ServiceUnavailableException,
+      );
+      expect(adapter.setHeader).toHaveBeenCalledOnce();
+      expect(adapter.reply).not.toHaveBeenCalled();
+    },
+  );
+
+  it("registers the health handler for GET through the shared middleware manager", async () => {
+    const manager = new MiddlewareManager();
+    const { adapter, middleware } = createMiddleware();
+    new HealthCheckModule(manager, middleware);
+    const configuration = manager.middlewareConfigMap.get(middleware);
+    expect(configuration?.routes).toEqual([
+      { path: "api/health", method: RequestMethod.GET },
+    ]);
+    const next = vi.fn();
+    await configuration?.middleware({}, {}, next);
+    expect(adapter.reply).toHaveBeenCalledOnce();
+    expect(next).not.toHaveBeenCalled();
   });
 });

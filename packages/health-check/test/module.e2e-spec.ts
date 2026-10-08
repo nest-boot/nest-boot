@@ -196,6 +196,17 @@ describe("HealthCheckModule HTTP integration", () => {
     });
   });
 
+  it("honors rejection by earlier middleware without running health probes", async () => {
+    const app = await createApp(undefined, true, (_req, _res, next) => {
+      next(new UnauthorizedException());
+    });
+    const check = vi.fn(() => ({ extra: { status: "up" as const } }));
+    app.get(HealthCheckRegistry).register(check);
+
+    await request(app.getHttpServer()).get("/api/health").expect(401);
+    expect(check).not.toHaveBeenCalled();
+  });
+
   async function createApp(
     configure?: (app: INestApplication) => void,
     withFeatureChecks = true,
