@@ -46,7 +46,14 @@
       "auto_create": "不选择时，保存将按 API key 名称创建新的服务账号。",
       "required": "请选择服务账号；自动创建需要服务账号写权限。"
     },
-    "permissions_hint": "未勾选权限时，继承所属用户或成员的完整权限。"
+    "permissions_hint": "未勾选权限时，继承所属用户或成员的完整权限。",
+    "owner": {
+      "label": "归属",
+      "you": "你",
+      "service_account": "服务账号",
+      "you_description": "此密钥属于你在当前工作空间的成员身份。停用或移除该成员后，密钥将无法使用。",
+      "service_account_description": "此密钥属于服务账号，使用该账号的权限访问当前工作空间。"
+    }
   },
   "never_expires": "永不过期",
   "never_used": "从未使用",

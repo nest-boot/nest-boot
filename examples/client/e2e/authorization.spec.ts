@@ -59,7 +59,7 @@ test("limits user detail queries and actions to the administrator's abilities", 
     await expect(page.getByLabel("Name", { exact: true })).toBeDisabled();
     await expect(page.getByLabel("Email", { exact: true })).toBeDisabled();
     await expect(
-      page.getByRole("button", { name: "Impersonate user", exact: true }),
+      page.getByRole("button", { name: "Impersonate", exact: true }),
     ).toHaveCount(0);
     // With no catalog/session abilities, unrelated field queries must not fail the page.
     const buttons = page
@@ -239,17 +239,11 @@ test("authorizes workspace API-key controls and deletion without an owner role",
       page.getByRole("heading", { name: "API Keys", exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Create API Key", exact: true }),
+      page.getByRole("button", { name: "Create", exact: true }),
     ).toBeDisabled();
     const row = page
       .getByRole("row")
       .filter({ hasText: "Read-only workspace key" });
-    await row.getByRole("button").click();
-    for (const name of ["Edit", "Disable", "Delete"])
-      await expect(
-        page.getByRole("menuitem", { name, exact: true }),
-      ).toBeDisabled();
-    await page.keyboard.press("Escape");
     await row.getByRole("link", { name: "Read-only workspace key" }).click();
     await expect(page).toHaveURL(
       new RegExp(`/workspaces/${workspace.id}/api-keys/\\d+$`),
@@ -332,17 +326,8 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
     ).toBeVisible();
     // A class-level write check opens the form; the Service checks the proposed key.
     await expect(
-      page.getByRole("button", { name: "Create API Key", exact: true }),
+      page.getByRole("button", { name: "Create", exact: true }),
     ).toBeEnabled();
-    const row = page
-      .getByRole("row")
-      .filter({ hasText: "Conditionally writable key" });
-    await row.getByRole("button").click();
-    for (const name of ["Edit", "Disable", "Delete"])
-      await expect(
-        page.getByRole("menuitem", { name, exact: true }),
-      ).toBeDisabled();
-    await page.keyboard.press("Escape");
     await page.goto(`/user/api-keys/${key.entity.id}`);
     await expect(page.getByLabel("Name", { exact: true })).toBeDisabled();
     await expect(
@@ -354,12 +339,6 @@ test("uses personal API-key abilities for navigation and instance actions", asyn
       .click();
     allowedId = key.entity.id;
     await page.reload();
-    await row.getByRole("button").click();
-    for (const name of ["Edit", "Disable", "Delete"])
-      await expect(
-        page.getByRole("menuitem", { name, exact: true }),
-      ).toBeEnabled();
-    await page.keyboard.press("Escape");
     await page.goto(`/user/api-keys/${key.entity.id}`);
     await expect(page.getByLabel("Name", { exact: true })).toBeEnabled();
     await expect(

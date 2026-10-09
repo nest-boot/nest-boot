@@ -1,6 +1,7 @@
 import { useMutation } from "@apollo/client/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
+import { useCurrentMemberContext } from "../../contexts/current-member-context";
 import { MemberType } from "@/gql/graphql";
 import { createAbilitySubject } from "@/lib/ability";
 import { graphql } from "@/gql";
@@ -150,6 +151,7 @@ function CreateApiKeyPage() {
   const { setCreatedKey } = useCreatedApiKey();
   const { workspaceId } = Route.useParams();
   const currentUser = useCurrentUserContext();
+  const currentMember = useCurrentMemberContext();
   const { backSearch } = useResourceNavigation({
     key: [currentUser.id, ...getMemberApiKeysResourceKey(workspaceId)],
     searchSchema: apiKeySearchSchema,
@@ -166,6 +168,7 @@ function CreateApiKeyPage() {
     <ApiKeyFormPage
       key={workspaceId}
       canWrite
+      currentMemberId={currentMember.id}
       memberOptions={memberOptions}
       canCreateServiceAccount={canCreateServiceAccount}
       listPath={`/workspaces/${workspaceId}/api-keys`}

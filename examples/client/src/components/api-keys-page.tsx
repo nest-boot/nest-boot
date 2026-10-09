@@ -106,7 +106,7 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
       primaryAction={{
         disabled: !canCreate,
         onAction: () => navigate({ to: createPath }),
-        label: t("api-key:create.button"),
+        label: t("action.create"),
       }}
     >
       <Card>

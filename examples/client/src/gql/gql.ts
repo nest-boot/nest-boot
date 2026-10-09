@@ -70,6 +70,7 @@ type Documents = {
   "\n  query getMemberFromMemberRoute($id: ID!) {\n    member(id: $id) {\n      workspaceId\n      id\n      roles\n      permissions\n      type\n      status\n      name\n      email\n      createdAt\n    }\n    workspaceRoles {\n      role\n      grantable\n    }\n    workspacePermissions {\n      permission\n      grantable\n    }\n  }\n": typeof types.GetMemberFromMemberRouteDocument;
   "\n  mutation removeMemberFromMemberRoute($id: ID!) {\n    removeMember(id: $id) {\n      id\n    }\n  }\n": typeof types.RemoveMemberFromMemberRouteDocument;
   "\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateMemberStatusFromMembersRouteDocument;
+  "\n  query getServiceAccountGrantsFromCreateMemberRoute {\n    workspaceRoles {\n      role\n      grantable\n    }\n    workspacePermissions {\n      permission\n      grantable\n    }\n  }\n": typeof types.GetServiceAccountGrantsFromCreateMemberRouteDocument;
   "\n  query getRolesFromInviteMemberRoute {\n    workspaceRoles {\n      role\n      grantable\n    }\n  }\n": typeof types.GetRolesFromInviteMemberRouteDocument;
   "\n  mutation createInvitationFromInviteMemberRoute(\n    $input: CreateInvitationInput!\n  ) {\n    createInvitation(input: $input) {\n      id\n    }\n  }\n": typeof types.CreateInvitationFromInviteMemberRouteDocument;
   "\n  query getMembersFromMembersRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: MemberFilter\n    $orderBy: MemberOrder\n    $query: String\n    $invitationFirst: Int\n    $invitationLast: Int\n    $invitationAfter: String\n    $invitationBefore: String\n    $invitationFilter: InvitationFilter\n    $includeInvitations: Boolean! = false\n  ) {\n    currentWorkspace {\n      members(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        filter: $filter\n        query: $query\n      ) {\n        edges {\n          node {\n            workspaceId\n            id\n            roles\n            status\n            type\n            createdAt\n            name\n            email\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n      }\n    }\n    currentWorkspace {\n      invitations(\n        first: $invitationFirst\n        last: $invitationLast\n        after: $invitationAfter\n        before: $invitationBefore\n        filter: $invitationFilter\n        orderBy: { field: CREATED_AT, direction: DESC }\n      ) @include(if: $includeInvitations) {\n        edges {\n          node {\n            workspaceId\n            id\n            email\n            roles\n            status\n            expiresAt\n          }\n        }\n        pageInfo {\n          endCursor\n          startCursor\n          hasNextPage\n          hasPreviousPage\n        }\n      }\n    }\n  }\n": typeof types.GetMembersFromMembersRouteDocument;
@@ -208,6 +209,8 @@ const documents: Documents = {
     types.RemoveMemberFromMemberRouteDocument,
   "\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n":
     types.UpdateMemberStatusFromMembersRouteDocument,
+  "\n  query getServiceAccountGrantsFromCreateMemberRoute {\n    workspaceRoles {\n      role\n      grantable\n    }\n    workspacePermissions {\n      permission\n      grantable\n    }\n  }\n":
+    types.GetServiceAccountGrantsFromCreateMemberRouteDocument,
   "\n  query getRolesFromInviteMemberRoute {\n    workspaceRoles {\n      role\n      grantable\n    }\n  }\n":
     types.GetRolesFromInviteMemberRouteDocument,
   "\n  mutation createInvitationFromInviteMemberRoute(\n    $input: CreateInvitationInput!\n  ) {\n    createInvitation(input: $input) {\n      id\n    }\n  }\n":
@@ -608,6 +611,12 @@ export function graphql(
 export function graphql(
   source: "\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n",
 ): (typeof documents)["\n  mutation updateMemberStatusFromMembersRoute(\n    $id: ID!\n    $input: UpdateMemberInput!\n  ) {\n    updateMember(id: $id, input: $input) {\n      id\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query getServiceAccountGrantsFromCreateMemberRoute {\n    workspaceRoles {\n      role\n      grantable\n    }\n    workspacePermissions {\n      permission\n      grantable\n    }\n  }\n",
+): (typeof documents)["\n  query getServiceAccountGrantsFromCreateMemberRoute {\n    workspaceRoles {\n      role\n      grantable\n    }\n    workspacePermissions {\n      permission\n      grantable\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

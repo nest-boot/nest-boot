@@ -265,9 +265,7 @@ test("restores the exact list search from create/cancel and create/success, with
   await page.getByRole("button", { name: "Next page", exact: true }).click();
   await expect(page.getByRole("row").nth(1)).toContainText("Navigation C");
   const original = readSearch(page);
-  await page
-    .getByRole("button", { name: "Create API Key", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   await page.reload();
   await page
     .getByRole("navigation", { name: "Breadcrumbs" })
@@ -275,9 +273,7 @@ test("restores the exact list search from create/cancel and create/success, with
     .click();
   await expect(page.getByRole("row").nth(1)).toContainText("Navigation C");
   expect(readSearch(page)).toEqual(original);
-  await page
-    .getByRole("button", { name: "Create API Key", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   await page.getByLabel("Name", { exact: true }).fill("Created sample");
   await page.getByRole("button", { name: "Create", exact: true }).click();
   const secret = page.getByLabel("Key", { exact: true });
@@ -297,9 +293,7 @@ test("restores the exact list search from create/cancel and create/success, with
   expect(readSearch(page)).toEqual(original);
   // An explicit bare list URL is authoritative; it resets saved filters.
   await page.goto("/user/api-keys");
-  await page
-    .getByRole("button", { name: "Create API Key", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   await page
     .getByRole("navigation", { name: "Breadcrumbs" })
     .getByRole("link", { name: "API Keys", exact: true })

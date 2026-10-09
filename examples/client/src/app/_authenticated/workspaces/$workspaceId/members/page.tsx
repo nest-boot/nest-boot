@@ -17,7 +17,6 @@ import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-use
 import { getMembersResourceKey } from "@/lib/resource-keys";
 import { memberSearchSchema } from "@/schemas/member-search-schema";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
-import { ServiceAccountForm } from "@/components/service-account-form";
 import { Link } from "@/components/link";
 import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
@@ -173,6 +172,13 @@ function MembersComponent() {
   const ability = useAbility();
   const canReadInvitations = ability.can("read", "Invitation");
   const canCreateInvitation = ability.can("write", "Invitation");
+  const canCreateServiceAccount = ability.can(
+    "write",
+    createAbilitySubject("Member", {
+      workspaceId,
+      type: MemberType.SERVICE_ACCOUNT,
+    }),
+  );
   const canCancelInvitation = ability.can("write", "Invitation");
   const canEditMember = (member: object) =>
     ["write", "set-roles", "set-permissions"].some((action) =>
@@ -306,16 +312,24 @@ function MembersComponent() {
             }
           : undefined
       }
+      secondaryActions={
+        canCreateServiceAccount
+          ? [
+              {
+                label: t("action.create"),
+                render: (
+                  <Link
+                    to="/workspaces/$workspaceId/members/create-service-account"
+                    params={{ workspaceId }}
+                  />
+                ),
+              },
+            ]
+          : undefined
+      }
     >
       <PageLayout>
         <PageLayoutSection>
-          {ability.can(
-            "write",
-            createAbilitySubject("Member", {
-              workspaceId,
-              type: MemberType.SERVICE_ACCOUNT,
-            }),
-          ) && <ServiceAccountForm workspaceId={workspaceId} />}
           <Card>
             <CardContent>
               <div className="space-y-4">
@@ -341,16 +355,6 @@ function MembersComponent() {
                 <DataTable
                   locale={i18n.resolvedLanguage}
                   columns={membersColumnHelper.columns([
-                    membersColumnHelper.column("type", {
-                      header: t("member:table.type"),
-                      render: (props, { row }) => (
-                        <span {...props}>
-                          {row.original.type === MemberType.SERVICE_ACCOUNT
-                            ? t("member:type.service_account")
-                            : t("member:type.user")}
-                        </span>
-                      ),
-                    }),
                     membersColumnHelper.column("name", {
                       header: t("member:table.name"),
                       render: (props, { row }) => {
@@ -367,16 +371,30 @@ function MembersComponent() {
                             <span className="font-medium">
                               {member.name ?? member.id}
                             </span>
-                            <span className="text-muted-foreground text-xs">
-                              {truncateEmail(member.email ?? "") ?? "-"}
-                            </span>
+                            {member.type === MemberType.USER && (
+                              <span className="text-muted-foreground text-xs">
+                                {truncateEmail(member.email ?? "") ?? "-"}
+                              </span>
+                            )}
                           </div>
                         );
                       },
                     }),
+                    membersColumnHelper.column("type", {
+                      header: t("member:table.type"),
+                      render: (props, { row }) => (
+                        <Badge {...props} color={undefined} variant="outline">
+                          {row.original.type === MemberType.SERVICE_ACCOUNT
+                            ? t("member:type.service_account")
+                            : t("member:type.user")}
+                        </Badge>
+                      ),
+                    }),
                     membersColumnHelper.column("roles", {
                       header: t("member:table.role"),
                       render: (props, { row }) => {
+                        if (!row.original.roles.length)
+                          return <span {...props}>-</span>;
                         return (
                           <Badge {...props} color={undefined} variant="outline">
                             {getRolesLabel(row.original.roles)}

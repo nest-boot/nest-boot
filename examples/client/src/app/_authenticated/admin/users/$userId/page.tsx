@@ -563,7 +563,7 @@ function AdminUserDetails() {
         ...(canDelete && currentUser.id !== userId
           ? [
               {
-                label: t("admin:user.delete.action"),
+                label: t("action.delete"),
                 destructive: true,
                 disabled: deleting || banning || unbanning,
                 loading: deleting,

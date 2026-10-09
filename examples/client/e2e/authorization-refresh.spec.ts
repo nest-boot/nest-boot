@@ -122,9 +122,7 @@ test("leaves stale impersonation UI after the server revokes a failed restore", 
   }
   await signInAsE2eAdministrator(page);
   await page.goto(`/admin/users/${targetId}`);
-  await page
-    .getByRole("button", { name: "Impersonate user", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Impersonate", exact: true }).click();
   await expect(
     page.getByText("You are impersonating another user.", { exact: true }),
   ).toBeVisible();

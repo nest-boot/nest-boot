@@ -129,7 +129,7 @@ function AdminUsersPage() {
         canCreate
           ? {
               render: <Link to="/admin/users/create" />,
-              label: t("admin:users.create.action"),
+              label: t("action.create"),
             }
           : undefined
       }

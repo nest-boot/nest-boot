@@ -31,7 +31,7 @@ import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Page } from "@/components/thread-ui/page";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { MemberStatus } from "@/gql/graphql";
 import { graphql } from "@/gql";
 import { createAbilitySubject } from "@/lib/ability";
@@ -360,7 +360,7 @@ function MemberDetails({
               ...(member.id !== currentMember.id
                 ? [
                     {
-                      label: t("member:details.actions.delete_member"),
+                      label: t("action.delete"),
                       destructive: true,
                       disabled: saving || removing,
                       onAction: handleRemove,
@@ -374,9 +374,6 @@ function MemberDetails({
       <PageLayout>
         <PageLayoutSection>
           <Card>
-            <CardHeader>
-              <CardTitle>{t("member:details.sections.profile")}</CardTitle>
-            </CardHeader>
             <MemberProfileForm
               member={member}
               onSave={save}
@@ -388,9 +385,6 @@ function MemberDetails({
         </PageLayoutSection>
         <PageLayoutSection>
           <Card>
-            <CardHeader>
-              <CardTitle>{t("member:details.sections.roles")}</CardTitle>
-            </CardHeader>
             <MemberRolesForm
               member={member}
               onSave={save}
@@ -403,9 +397,6 @@ function MemberDetails({
         </PageLayoutSection>
         <PageLayoutSection>
           <Card>
-            <CardHeader>
-              <CardTitle>{t("member:details.sections.permissions")}</CardTitle>
-            </CardHeader>
             <MemberPermissionsForm
               member={member}
               onSave={save}
