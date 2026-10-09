@@ -22,6 +22,16 @@ tester.run("import-database", rule, {
   ],
   invalid: [
     {
+      code: 'import { MikroOrmModule as MikroOrmModule } from "@mikro-orm/nestjs";',
+      output: 'import { DatabaseModule as MikroOrmModule } from "@nest-boot/database";',
+      errors: [{ messageId: "replaceMikroOrmImport" }],
+    },
+    {
+      code: 'import Integration from "@mikro-orm/nestjs";',
+      output: null,
+      errors: [{ messageId: "replaceMikroOrmImport" }],
+    },
+    {
       code: 'import { "MikroOrmModule" as ORM } from "@mikro-orm/nestjs";',
       output: 'import { DatabaseModule as ORM } from "@nest-boot/database";',
       errors: [{ messageId: "replaceMikroOrmImport" }],

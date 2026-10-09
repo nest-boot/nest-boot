@@ -11,17 +11,9 @@ export function fixRenamedImport(
   source: string,
   names: Record<string, string>,
 ): TSESLint.RuleFix[] | null {
-  if (
-    node.specifiers.some(
-      (specifier) => specifier.type === AST_NODE_TYPES.ImportNamespaceSpecifier,
-    )
-  ) {
-    return null;
-  }
-
   const fixes = [fixer.replaceText(node.source, JSON.stringify(source))];
   for (const specifier of node.specifiers) {
-    if (specifier.type !== AST_NODE_TYPES.ImportSpecifier) continue;
+    if (specifier.type !== AST_NODE_TYPES.ImportSpecifier) return null;
     const imported =
       specifier.imported.type === AST_NODE_TYPES.Identifier
         ? specifier.imported.name
@@ -31,7 +23,7 @@ export function fixRenamedImport(
     fixes.push(
       fixer.replaceText(
         specifier.imported,
-        imported === specifier.local.name
+        specifier.imported.range[0] === specifier.local.range[0]
           ? `${replacement} as ${specifier.local.name}`
           : replacement,
       ),
