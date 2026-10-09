@@ -1,3 +1,21 @@
+## 8.0.2-beta.2 (2026-10-09)
+
+### 🚀 Features
+
+- ⚠️  **queue:** rename queue integration packages and APIs ([#398](https://github.com/nest-boot/nest-boot/pull/398))
+
+### ⚠️  Breaking Changes
+
+- **queue:** rename queue integration packages and APIs  ([#398](https://github.com/nest-boot/nest-boot/pull/398))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.3
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.2-beta.1 (2026-10-09)
 
 ### 🚀 Features

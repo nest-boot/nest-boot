@@ -437,12 +437,6 @@ importers:
       '@nest-boot/auth':
         specifier: workspace:^
         version: link:../../packages/auth
-      '@nest-boot/queue':
-        specifier: workspace:^
-        version: link:../../packages/queue
-      '@nest-boot/queue-database':
-        specifier: workspace:^
-        version: link:../../packages/queue-database
       '@nest-boot/database':
         specifier: workspace:^
         version: link:../../packages/database
@@ -461,6 +455,12 @@ importers:
       '@nest-boot/mailer':
         specifier: workspace:^
         version: link:../../packages/mailer
+      '@nest-boot/queue':
+        specifier: workspace:^
+        version: link:../../packages/queue
+      '@nest-boot/queue-database':
+        specifier: workspace:^
+        version: link:../../packages/queue-database
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../../packages/request-context
@@ -730,142 +730,6 @@ importers:
       zod:
         specifier: 4.6.5
         version: 4.6.5
-
-  packages/queue:
-    dependencies:
-      '@nest-boot/health-check':
-        specifier: workspace:^
-        version: link:../health-check
-      '@nest-boot/redis':
-        specifier: workspace:^
-        version: link:../redis
-    devDependencies:
-      '@nest-boot/eslint-config':
-        specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
-      '@nest-boot/request-context':
-        specifier: workspace:^
-        version: link:../request-context
-      '@nest-boot/tsconfig':
-        specifier: workspace:^
-        version: link:../tsconfig
-      '@nestjs/bullmq':
-        specifier: ^12.0.0
-        version: 12.0.0
-      '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/platform-express':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@types/node':
-        specifier: ^24.0.0
-        version: 24.13.3
-      '@vitest/coverage-v8':
-        specifier: ^4.1.11
-        version: 4.1.11
-      bullmq:
-        specifier: ^5.61.0
-        version: 5.66.1
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
-      eslint:
-        specifier: ^9.39.3
-        version: 9.39.3
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite-tsconfig-paths:
-        specifier: ^5.1.4
-        version: 5.1.4
-      vitest:
-        specifier: ^4.1.11
-        version: 4.1.11
-
-  packages/queue-database:
-    devDependencies:
-      '@mikro-orm/core':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@mikro-orm/decorators':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@nest-boot/queue':
-        specifier: workspace:^
-        version: link:../queue
-      '@nest-boot/eslint-config':
-        specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
-      '@nest-boot/request-context':
-        specifier: workspace:^
-        version: link:../request-context
-      '@nest-boot/schedule':
-        specifier: workspace:^
-        version: link:../schedule
-      '@nest-boot/tsconfig':
-        specifier: workspace:^
-        version: link:../tsconfig
-      '@nestjs/bullmq':
-        specifier: ^12.0.0
-        version: 12.0.0
-      '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@types/node':
-        specifier: ^24.0.0
-        version: 24.13.3
-      '@vitest/coverage-v8':
-        specifier: ^4.1.11
-        version: 4.1.11
-      bullmq:
-        specifier: ^5.61.0
-        version: 5.66.1
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
-      eslint:
-        specifier: ^9.39.3
-        version: 9.39.3
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite-tsconfig-paths:
-        specifier: ^5.1.4
-        version: 5.1.4
-      vitest:
-        specifier: ^4.1.11
-        version: 4.1.11
 
   packages/crypt:
     devDependencies:
@@ -1948,6 +1812,142 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11
 
+  packages/queue:
+    dependencies:
+      '@nest-boot/health-check':
+        specifier: workspace:^
+        version: link:../health-check
+      '@nest-boot/redis':
+        specifier: workspace:^
+        version: link:../redis
+    devDependencies:
+      '@nest-boot/eslint-config':
+        specifier: workspace:^
+        version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:^
+        version: link:../eslint-plugin
+      '@nest-boot/request-context':
+        specifier: workspace:^
+        version: link:../request-context
+      '@nest-boot/tsconfig':
+        specifier: workspace:^
+        version: link:../tsconfig
+      '@nestjs/bullmq':
+        specifier: ^12.0.0
+        version: 12.0.0
+      '@nestjs/common':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/core':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/platform-express':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/testing':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
+      '@vitest/coverage-v8':
+        specifier: ^4.1.11
+        version: 4.1.11
+      bullmq:
+        specifier: ^5.61.0
+        version: 5.66.1
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
+      eslint:
+        specifier: ^9.39.3
+        version: 9.39.3
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11
+
+  packages/queue-database:
+    devDependencies:
+      '@mikro-orm/core':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/decorators':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@nest-boot/eslint-config':
+        specifier: workspace:^
+        version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:^
+        version: link:../eslint-plugin
+      '@nest-boot/queue':
+        specifier: workspace:^
+        version: link:../queue
+      '@nest-boot/request-context':
+        specifier: workspace:^
+        version: link:../request-context
+      '@nest-boot/schedule':
+        specifier: workspace:^
+        version: link:../schedule
+      '@nest-boot/tsconfig':
+        specifier: workspace:^
+        version: link:../tsconfig
+      '@nestjs/bullmq':
+        specifier: ^12.0.0
+        version: 12.0.0
+      '@nestjs/common':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/core':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/testing':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
+      '@vitest/coverage-v8':
+        specifier: ^4.1.11
+        version: 4.1.11
+      bullmq:
+        specifier: ^5.61.0
+        version: 5.66.1
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
+      eslint:
+        specifier: ^9.39.3
+        version: 9.39.3
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11
+
   packages/redis:
     dependencies:
       '@nest-boot/health-check':
@@ -2063,15 +2063,15 @@ importers:
 
   packages/schedule:
     devDependencies:
-      '@nest-boot/queue':
-        specifier: workspace:^
-        version: link:../queue
       '@nest-boot/eslint-config':
         specifier: workspace:^
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^
         version: link:../eslint-plugin
+      '@nest-boot/queue':
+        specifier: workspace:^
+        version: link:../queue
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig

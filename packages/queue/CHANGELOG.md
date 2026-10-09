@@ -1,3 +1,32 @@
+## 8.0.6-beta.1 (2026-10-09)
+
+### 🚀 Features
+
+- ⚠️  **queue:** rename queue integration packages and APIs ([#398](https://github.com/nest-boot/nest-boot/pull/398))
+- mikro-orm, schedule, bullmq 非动态模块也能直接使用 ([81fae6e4](https://github.com/nest-boot/nest-boot/commit/81fae6e4))
+
+### 🩹 Fixes
+
+- 重构 eslint-plugin 和移除 queue 模块 ([20f32628](https://github.com/nest-boot/nest-boot/commit/20f32628))
+- 添加 @nestjs/platform-express 依赖并更新 pnpm-lock.yaml ([fd8a32f7](https://github.com/nest-boot/nest-boot/commit/fd8a32f7))
+- 升级依赖 ([528189ef](https://github.com/nest-boot/nest-boot/commit/528189ef))
+
+### ⚠️  Breaking Changes
+
+- **queue:** rename queue integration packages and APIs  ([#398](https://github.com/nest-boot/nest-boot/pull/398))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.4-beta.0
+- Updated @nest-boot/eslint-config to 8.0.2-beta.2
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.3
+- Updated @nest-boot/health-check to 8.0.2-beta.0
+- Updated @nest-boot/redis to 8.0.4-beta.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.6-beta.0 (2026-10-09)
 
 ### 🧱 Updated Dependencies
