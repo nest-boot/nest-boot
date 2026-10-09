@@ -45,8 +45,15 @@ describe("Database health HTTP integration", () => {
       .compile();
     app = module.createNestApplication();
     const orm = app.get<MikroORM<PgliteDriver>>(MikroORM);
-    if (connect) await orm.connect();
     const connection = orm.em.getConnection();
+    if (connect) {
+      await orm.connect();
+      // connect() creates the client while PGlite's WASM initializes in the
+      // background. Healthy-response assertions need a ready test database.
+      await (
+        await connection.getNativeClient()
+      ).waitReady;
+    }
     const probe = vi.spyOn(connection, "checkConnection");
     await app.listen(0, "127.0.0.1");
     return { orm, connection, probe };
@@ -98,6 +105,9 @@ describe("Database health HTTP integration", () => {
     });
     expect(connect).not.toHaveBeenCalled();
     await orm.connect();
+    await (
+      await connection.getNativeClient()
+    ).waitReady;
     expect((await health()).status).toBe(200);
     expect(await connection.isConnected()).toBe(true);
   });
@@ -116,6 +126,9 @@ describe("Database health HTTP integration", () => {
         body: { error: { database: { status: "down" } } },
       });
       await orm.reconnect();
+      await (
+        await connection.getNativeClient()
+      ).waitReady;
       expect((await health()).status).toBe(200);
     },
   );
