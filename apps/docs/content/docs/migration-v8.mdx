@@ -49,10 +49,13 @@ provide a CommonJS `require` entry.
   `@mikro-orm/sqlite`.
 - Replace `@nest-boot/file-upload` with `@nest-boot/staged-upload`. The core
   module is now global and transport-independent. GraphQL applications must
-  also install and import `@nest-boot/graphql-staged-upload` to keep the
+  also install and import `@nest-boot/staged-upload-graphql` to keep the
   `createStagedUploads` mutation. Import `StagedUploadInput`, `StagedUpload`,
   and `StagedUploadField` from the GraphQL package; use `StagedUploadRequest`
   and `StagedUploadResult` for transport-independent service types.
+- If you already use the v8 beta GraphQL adapter, replace
+  `@nest-boot/graphql-staged-upload` with `@nest-boot/staged-upload-graphql`
+  and rename `GraphQLStagedUploadModule` to `StagedUploadGraphQLModule`.
 - Remove `@nest-boot/row-level-security`. Use the upstream PostgreSQL or PGlite
   driver, `@Entity({ policies })`, and `em.setSessionContext()` instead of the
   custom drivers, decorators, runtime state, and `AuthTransactionContext`.
@@ -107,6 +110,7 @@ provide a CommonJS `require` entry.
   Omitted defaults are empty; an omitted allowlist permits the scope catalog,
   while `allowedPermissions: []` permits no grants. Defaults must fit the
   corresponding allowlist. See [API keys](./tutorial/auth/api-keys).
+
 - Rebuild generated files and migrations after switching TypeScript module
   resolution so generated imports include valid ESM extensions.
 
