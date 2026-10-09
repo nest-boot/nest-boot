@@ -3,10 +3,10 @@ import { ForbiddenException } from "@nestjs/common";
 
 import {
   Member,
+  MemberApiKey,
   User,
   UserApiKey,
   Workspace,
-  WorkspaceApiKey,
 } from "../entities/index.js";
 import { RequestIdentity } from "../infrastructure/request-identity.js";
 import {
@@ -35,11 +35,14 @@ describe("permission delegation", () => {
           roles: ["reader"],
           permissions: ["report:write"],
         });
+        const workspace = new Workspace();
         const member = Object.assign(new Member(), {
+          user,
+          workspace,
           roles: ["reader"],
           permissions: ["report:write"],
         });
-        RequestIdentity.stage({ user, member, workspace: new Workspace() });
+        RequestIdentity.stage({ user, member, workspace });
         expect(
           canGrantPermissions(options, scope, ["report:read", "report:write"]),
         ).toBe(true);
@@ -71,14 +74,23 @@ describe("permission delegation", () => {
     },
   );
 
-  it("keeps workspace keys out of user grants and enforces credential ceilings", async () => {
+  it("keeps member keys out of user grants and enforces credential ceilings", async () => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       expect(() => {
         assertApiKeyPermissionCeiling({}, ["report:write"]);
       }).not.toThrow();
+      const workspace = new Workspace();
+      const member = Object.assign(new Member(), {
+        workspace,
+        type: "SERVICE_ACCOUNT",
+        roles: [],
+        permissions: ["report:read"],
+      });
       RequestIdentity.stage({
-        workspace: new Workspace(),
-        apiKey: Object.assign(new WorkspaceApiKey(), {
+        workspace,
+        member,
+        apiKey: Object.assign(new MemberApiKey(), {
+          member,
           permissions: ["report:read"],
         }),
       });
@@ -91,11 +103,12 @@ describe("permission delegation", () => {
         assertApiKeyPermissionCeiling({}, ["report:write"]);
       }).toThrow("authenticating API key permissions: report:write");
       RequestIdentity.stage({
-        apiKey: Object.assign(new WorkspaceApiKey(), { permissions: [] }),
+        apiKey: Object.assign(new MemberApiKey(), { member, permissions: [] }),
       });
       expect(() => {
         assertApiKeyPermissionCeiling({}, ["report:read"]);
-      }).toThrow(ForbiddenException);
+      }).not.toThrow();
+      expect(canGrantPermissions({}, "workspace", ["report:read"])).toBe(true);
     });
   });
 

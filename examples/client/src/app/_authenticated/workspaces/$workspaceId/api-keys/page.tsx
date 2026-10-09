@@ -9,7 +9,7 @@ import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { ApiKeysPage } from "@/components/api-keys-page";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
-import { getWorkspaceApiKeysResourceKey } from "@/lib/resource-keys";
+import { getMemberApiKeysResourceKey } from "@/lib/resource-keys";
 
 const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
   query getApiKeysFromApiKeysRoute(
@@ -17,8 +17,8 @@ const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
     $before: String
     $first: Int
     $last: Int
-    $filter: WorkspaceApiKeyFilter
-    $orderBy: WorkspaceApiKeyOrder
+    $filter: MemberApiKeyFilter
+    $orderBy: MemberApiKeyOrder
     $query: String
   ) {
     currentWorkspace {
@@ -75,7 +75,7 @@ function ApiKeysComponent() {
   const search = Route.useSearch();
   const currentUser = useCurrentUserContext();
   useResourceNavigation({
-    key: [currentUser.id, ...getWorkspaceApiKeysResourceKey(workspaceId)],
+    key: [currentUser.id, ...getMemberApiKeysResourceKey(workspaceId)],
     searchSchema: apiKeySearchSchema,
     search,
   });
@@ -87,7 +87,7 @@ function ApiKeysComponent() {
 
   return (
     <ApiKeysPage
-      subject="WorkspaceApiKey"
+      subject="MemberApiKey"
       ability={ability}
       title={t("api-key:title")}
       description={t("api-key:description")}

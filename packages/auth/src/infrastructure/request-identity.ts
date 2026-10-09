@@ -6,18 +6,30 @@ import { AuthAbility } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import type { RequestIdentityPatch } from "../interfaces/request-identity-patch.interface.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import { buildRequestAbility } from "../utils/build-request-ability.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { resolveRequestMember } from "../utils/resolve-request-member.util.js";
 import { invalidateRequestPermissions } from "../utils/resolve-request-permissions.util.js";
 
 /** Owns request identity publication, authorization invalidation, and database scope. @internal */
 export class RequestIdentity {
+  /** Returns the active request member, rejecting user API keys outside their membership. */
+  static getCurrentMember(): Member | null {
+    const member = resolveRequestMember();
+    if (getCurrentApiKey() && RequestContext.get(User) && !member) {
+      throw new ForbiddenException(
+        "The API key owner is not a member of this workspace",
+      );
+    }
+    return member;
+  }
+
   /** Throws unless the supplied user is the authenticated user. */
   static assertCurrentUser(user: User): void {
     const currentUser = RequestContext.isActive()
@@ -183,14 +195,19 @@ export class RequestIdentity {
     patch: RequestIdentityPatch,
   ): void {
     if (!RequestContext.isActive()) return;
-    const previousScope = JSON.stringify(this.databaseScope());
     this.stage(patch);
     try {
+      const currentScope = em.getSessionContext();
+      const scope = this.databaseScope();
+      // Compare with the published scope: ORM entities may already be mutated.
       if (
-        em.getSessionContext() &&
-        previousScope !== JSON.stringify(this.databaseScope())
+        currentScope &&
+        (currentScope.role !== scope.role ||
+          Object.entries(scope.variables).some(
+            ([key, value]) => currentScope.variables?.[key] !== value,
+          ))
       )
-        this.syncDatabase(em);
+        em.setSessionContext(scope);
       this.refresh(options);
     } catch (error) {
       this.clear(em);
@@ -213,13 +230,17 @@ export class RequestIdentity {
     if (em.getSessionContext())
       em.setSessionContext({
         role: "anonymous",
-        variables: { "app.user.id": "", "app.workspace.id": "" },
+        variables: {
+          "app.user.id": "",
+          "app.workspace.id": "",
+          "app.member.id": "",
+        },
       });
   }
 
   /** Revokes workspace rules and rebuilds the remaining user ability after a committed change. */
   static clearWorkspace(em: EntityManager, options: AuthModuleOptions): void {
-    if (getCurrentApiKey() instanceof WorkspaceApiKey) {
+    if (getCurrentApiKey() instanceof MemberApiKey) {
       this.clear(em);
       return;
     }
@@ -235,15 +256,15 @@ export class RequestIdentity {
     const user = RequestContext.get(User);
     const apiKey = getCurrentApiKey();
     const workspace = RequestContext.get(Workspace);
-    const member = RequestContext.get(Member);
+    const member = resolveRequestMember();
     const authenticated = Boolean(user ?? apiKey);
-    const canUseWorkspace = Boolean(member ?? (apiKey && !user));
     return {
       role: authenticated ? "authenticated" : "anonymous",
       variables: {
         "app.user.id": user?.id ?? "",
         "app.workspace.id":
-          !authenticated || canUseWorkspace ? (workspace?.id ?? "") : "",
+          !authenticated || member ? (workspace?.id ?? "") : "",
+        "app.member.id": member?.id ?? "",
       },
     };
   }

@@ -22,14 +22,14 @@ async function prepareWorkspace(
   const keys: Array<{ id: string; name: string }> = [];
   for (let index = 0; index < 5; index++) {
     const data = await graphqlRequest<{
-      createWorkspaceApiKey: { entity: { id: string; name: string } };
+      createMemberApiKey: { entity: { id: string; name: string } };
     }>(
       page.request,
-      `mutation ($name: String!, $prefix: String!) { createWorkspaceApiKey(input: { name: $name, prefix: $prefix, permissions: [] }) { entity { id name } } }`,
+      `mutation ($name: String!, $prefix: String!) { createMemberApiKey(input: { name: $name, prefix: $prefix, permissions: [] }) { entity { id name } } }`,
       { name: `${query} ${index + 1}`, prefix: query.toLowerCase() },
       { "x-workspace-id": workspace.id },
     );
-    keys.push(data.createWorkspaceApiKey.entity);
+    keys.push(data.createMemberApiKey.entity);
   }
   const path = `/workspaces/${workspace.id}/api-keys`;
   const searchQuery = keys.map(({ name }) => JSON.stringify(name)).join(" OR ");

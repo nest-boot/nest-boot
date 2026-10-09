@@ -20,17 +20,18 @@ description: "使用 AuthGuard 与用户、工作区两类权限保护路由。"
 
 ## 内置权限目录
 
-目录共 26 项，以 `资源:动作` 组成完整权限名：
+目录共 28 项，以 `资源:动作` 组成完整权限名：
 
-| 作用域 | 资源                | 动作                                                                                                                                         |
-| ------ | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| 用户   | `user`              | `create`、`read`、`update`、`delete`、`set-roles`、`set-permissions`、`set-email`、`set-password`、`ban`、`impersonate`、`impersonate-admin` |
-| 用户   | `session`           | `read`、`revoke`                                                                                                                             |
-| 用户   | `user-api-key`      | `read`、`write`                                                                                                                              |
-| 用户   | `workspace`         | `create`                                                                                                                                     |
-| 工作区 | `workspace`         | `read`、`update`、`delete`                                                                                                                   |
-| 工作区 | `member`            | `read`、`write`、`set-roles`、`set-permissions`、`invite`                                                                                    |
-| 工作区 | `workspace-api-key` | `read`、`write`                                                                                                                              |
+| 作用域 | 资源              | 动作                                                                                                                                         |
+| ------ | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 用户   | `user`            | `create`、`read`、`update`、`delete`、`set-roles`、`set-permissions`、`set-email`、`set-password`、`ban`、`impersonate`、`impersonate-admin` |
+| 用户   | `session`         | `read`、`revoke`                                                                                                                             |
+| 用户   | `user-api-key`    | `read`、`write`                                                                                                                              |
+| 用户   | `workspace`       | `create`                                                                                                                                     |
+| 工作区 | `workspace`       | `read`、`update`、`delete`                                                                                                                   |
+| 工作区 | `member`          | `read`、`write`、`set-roles`、`set-permissions`、`invite`                                                                                    |
+| 工作区 | `service-account` | `read`、`write`                                                                                                                              |
+| 工作区 | `member-api-key`  | `read`、`write`                                                                                                                              |
 
 `read` 包含单条和连接查询。`write` 包含普通创建、更新和删除，但不隐含读取或角色、权限设置。
 `member:invite` 映射为 `Invitation` 的 `read` 与 `write`，独立于成员写入权限。
@@ -139,8 +140,8 @@ health(): string {
 
 在模块顶层配置一个 `buildAbility` 回调。`AuthGuard` 即使没有权限装饰器，也会为
 当前身份准备一个 `AuthAbility`。回调上下文包含 `user`、`workspace`、`member`、
-`userPermissions` 和 `workspacePermissions`。身份字段可能为 null：Workspace API Key
-没有 user/member；工作区上下文要求有效成员关系或匹配的工作区 Key。构建条件前先检查身份。
+`userPermissions` 和 `workspacePermissions`。身份字段可能为 null：Member API Key
+会恢复活动 member；服务账号没有登录 user。工作区上下文要求所选工作区中的活动成员关系。构建条件前先检查身份。
 
 内置权限映射由 auth 维护，无需回调。回调对每份身份快照同步执行一次且不返回值。
 Ability 缓存在 `RequestContext` 中，身份或授权变化后统一重建。
@@ -248,14 +249,14 @@ const permission: PermissionName<"user-api-key:read"> = "user-api-key:read";
 ```
 
 GraphQL 根据配置生成 `UserRole`、`WorkspaceRole`、`UserPermission`、
-`WorkspacePermission` 、`UserApiKeyPermission` 和 `WorkspaceApiKeyPermission`。枚举名称转大写，中划线转 `_`，
+`WorkspacePermission` 、`UserApiKeyPermission` 和 `MemberApiKeyPermission`。枚举名称转大写，中划线转 `_`，
 权限分隔符 `:` 转 `__`。例如 `super-admin` 对应 `SUPER_ADMIN`，
 `user-api-key:read` 对应 `USER_API_KEY__READ`。GraphQL 变量和响应使用枚举名称；
 Service、Ability 构建器和数据库继续使用原始值。修改目录后需要重新生成客户端类型，
 已有数据中的角色和权限也必须保留在配置目录中，才能由 GraphQL 正常序列化。
 
-`UserApiKeyPermission` 取用户与工作区权限目录的并集；`WorkspaceApiKeyPermission` 使用工作区目录。
-这两个枚举不会随相应的 `apiKey.user.allowedPermissions` 或 `apiKey.workspace.allowedPermissions`
+`UserApiKeyPermission` 取用户与工作区权限目录的并集；`MemberApiKeyPermission` 使用工作区目录。
+这两个枚举不会随相应的 `apiKey.user.allowedPermissions` 或 `apiKey.member.allowedPermissions`
 缩小，确保收紧允许列表后仍能读取已有授权。
 Service 在写入时校验允许列表。用户与工作区权限目录追加到内置默认目录；省略配置，
 或显式配置 `user.permissions: []`、`workspace.permissions: []`，都会保留默认目录。
@@ -366,9 +367,9 @@ updatePost(@Args("id") id: string) {
 }
 ```
 
-Workspace API Key 仅贡献工作区授权。User API Key 贡献用户授权，并在成员关系有效时
+Member API Key 仅贡献工作区授权。User API Key 贡献用户授权，并在成员关系有效时
 贡献工作区授权；调用回调前，各来源都已受凭证权限上限约束。守卫检查最终的 `AuthAbility`。
-内置工作区规则匹配当前工作区 ID；前端对 Member、Invitation、WorkspaceApiKey 做实例
+内置工作区规则匹配当前工作区 ID；前端对 Member、Invitation、MemberApiKey 做实例
 检查时，应查询 `workspaceId`。自定义业务规则需要使用回调上下文显式声明对象条件。
 
 Auth 自动映射内置权限。业务扩展显式绑定权限，例如 `can({ user: "post:read" }, "read", Post)`。
@@ -378,7 +379,7 @@ Auth 自动映射内置权限。业务扩展显式绑定权限，例如 `can({ u
 ## Service 授权边界
 
 `UserService`、`SessionService`、`WorkspaceService`、`MemberService`、
-`InvitationService` 与 `UserApiKeyService` 和 `WorkspaceApiKeyService` 会在读取或修改认证数据前强制校验
+`InvitationService` 与 `UserApiKeyService` 和 `MemberApiKeyService` 会在读取或修改认证数据前强制校验
 权限。Resolver 和 Controller 上的装饰器用于提前拒绝并声明接口意图，但不是安全边界；
 即使遗漏装饰器，受保护的 Service 操作也不会变成公开操作。
 
@@ -388,7 +389,7 @@ Service 权限划分与 Better Auth 的 admin、organization 访问控制保持�
 - 工作区操作使用 `workspace:*` 与 `member:*` 权限；
 - `member:invite` 统一管理邀请查询、创建和取消，与 `member:write` 独立；
   接受或拒绝自己的邀请使用收件人身份校验；
-- 工作区 API Key 管理使用 `workspace-api-key:read/write`；
+- 成员 API Key 管理使用 `member-api-key:read/write`；
 - 当前用户认证、会话管理、接受邀请和退出工作区使用已认证身份与资源归属校验。
 
 导出的 `can()` 和 `authorize()` 每次调用都会读取当前请求的 `AuthAbility`，
@@ -468,12 +469,14 @@ export class Member extends Member {}
 这些是允许型策略，同一操作的多条策略按 OR 合并；不查询工作区生命周期，也不替代
 Service 授权。数据库角色、表权限及可信 session 变量仍需单独配置。
 
-Auth 只传递身份变量 `app.user.id` 和 `app.workspace.id`，不向数据库传递应用权限列表。
+Auth 只传递身份变量 `app.user.id`、`app.workspace.id` 和 `app.member.id`，不向数据库传递应用权限列表。
 Service 负责 Ability、自定义权限与 API Key 权限上限检查；RLS 保留归属和工作区隔离。
 authenticated 角色的 User 读写及 Session 读取由 Service 授权，不能通过直接 ORM/SQL
 访问替代 Service 的权限检查。旧身份变量不再支持。
 
-示例 `UserApiKey` 和 `WorkspaceApiKey` 使用两张表，各自只有一个必填归属外键，无需二选一 CHECK 约束。RLS 分别将 `user_id` 与 `app.user.id`、`workspace_id` 与 `app.workspace.id` 比较，即使两类 ID 相同也不会串权。删除归属对象时级联删除 Key，工作区采用永久删除。数据库使用默认表权限；两个管理 Service 排除密钥哈希、禁止修改归属，并保留授权检查。
+`app.member.id` 是已认证请求在当前工作区中的有效成员 ID，也适用于服务账号。匿名请求或没有有效成员时为空；撤销工作区访问或清空认证身份时会清空该变量。
+
+示例 `UserApiKey` 和 `MemberApiKey` 使用两张表，各自只有一个必填归属外键。RLS 将个人 Key 的 `user_id` 与 `app.user.id` 比较；成员 Key 关联 `member_id`，通过成员解析所属工作区并与 `app.workspace.id` 比较。删除归属对象时级联删除 Key，工作区采用永久删除。数据库使用默认表权限；两个管理 Service 排除密钥哈希、禁止修改归属，并保留授权检查。
 
 这几个函数不是 Filter 或装饰器，运行时与 CLI 都不需要额外 discovery 钩子。
 修改策略后需要生成并执行迁移；使用策略回调时保持元数据缓存关闭。

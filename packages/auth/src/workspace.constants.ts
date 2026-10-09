@@ -16,8 +16,10 @@ export const DEFAULT_WORKSPACE_PERMISSIONS = [
   "member:set-roles",
   "member:set-permissions",
   "member:invite",
-  "workspace-api-key:read",
-  "workspace-api-key:write",
+  "service-account:read",
+  "service-account:write",
+  "member-api-key:read",
+  "member-api-key:write",
 ] as const;
 
 /** Explicit grants for workspace administration and ordinary membership. */
@@ -33,6 +35,8 @@ export const DEFAULT_WORKSPACE_ROLES = {
     "member:set-roles",
     "member:set-permissions",
     "member:invite",
+    "service-account:read",
+    "service-account:write",
   ],
   /** Allows members to read workspace and member profiles, but not invitations. */
   member: ["workspace:read", "member:read"],

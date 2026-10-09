@@ -141,7 +141,11 @@ describe("auth service execution boundaries", () => {
             );
             expect(em.setSessionContext).toHaveBeenCalledWith({
               role: "anonymous",
-              variables: { "app.user.id": "", "app.workspace.id": "" },
+              variables: {
+                "app.user.id": "",
+                "app.workspace.id": "",
+                "app.member.id": "",
+              },
             });
           }
         },

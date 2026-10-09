@@ -37,7 +37,7 @@ export type ApiKeyRow<Permission extends UserApiKeyPermission> = Omit<
 > & { permissions: Array<Permission> };
 
 interface ApiKeysPageProps<Permission extends UserApiKeyPermission> {
-  subject: "UserApiKey" | "WorkspaceApiKey";
+  subject: "UserApiKey" | "MemberApiKey";
   ability: ReturnType<typeof createAbility>;
   title: string;
   description: string;

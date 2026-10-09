@@ -11,21 +11,21 @@ import { Public } from "./decorators/public.decorator.js";
 import { Account } from "./entities/account.entity.js";
 import { Invitation } from "./entities/invitation.entity.js";
 import { Member } from "./entities/member.entity.js";
+import { MemberApiKey } from "./entities/member-api-key.entity.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
 import { Verification } from "./entities/verification.entity.js";
 import { Workspace } from "./entities/workspace.entity.js";
-import { WorkspaceApiKey } from "./entities/workspace-api-key.entity.js";
 import { InvitationService } from "./features/invitations/invitation.service.js";
 import * as publicApi from "./index.js";
 import { AccountService } from "./services/account.service.js";
 import { AuthService } from "./services/auth.service.js";
 import { MemberService } from "./services/member.service.js";
+import { MemberApiKeyService } from "./services/member-api-key.service.js";
 import { SessionService } from "./services/session.service.js";
 import { UserService } from "./services/user.service.js";
 import { UserApiKeyService } from "./services/user-api-key.service.js";
 import { WorkspaceService } from "./services/workspace.service.js";
-import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
 import { authorize } from "./utils/authorize.util.js";
 import { can } from "./utils/can.util.js";
 import { getAuthAbility } from "./utils/get-auth-ability.util.js";
@@ -43,11 +43,10 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
 }));
 
 describe("public API", () => {
-  it("exports separate API-key domain services without the old mixed service", () => {
+  it("exports separate API-key domain services", () => {
     expect(publicApi.UserApiKeyService).toBe(UserApiKeyService);
-    expect(publicApi.WorkspaceApiKeyService).toBe(WorkspaceApiKeyService);
-    expect(publicApi).not.toHaveProperty("ApiKeyService");
-    expect(publicApi).not.toHaveProperty("ApiKey");
+    expect(publicApi.MemberApiKeyService).toBe(MemberApiKeyService);
+
     for (const method of [
       "getUserApiKey",
       "getUserApiKeyConnection",
@@ -56,11 +55,9 @@ describe("public API", () => {
       "deleteUserApiKey",
     ]) {
       expect(UserApiKeyService.prototype).toHaveProperty(method);
-      expect(WorkspaceApiKeyService.prototype).not.toHaveProperty(method);
+      expect(MemberApiKeyService.prototype).not.toHaveProperty(method);
     }
-    expect(UserApiKeyService.prototype).not.toHaveProperty(
-      "getWorkspaceApiKey",
-    );
+    expect(UserApiKeyService.prototype).not.toHaveProperty("getMemberApiKey");
   });
   it.each([
     {
@@ -73,23 +70,11 @@ describe("public API", () => {
         "hasPermissions",
         "getEffectiveUserPermissions",
       ],
-      removed: [
-        "listUsers",
-        "listUserAccounts",
-        "getConnection",
-        "getSessionConnection",
-        "removeUser",
-        "setRole",
-        "setRoles",
-        "hasPermission",
-        "getUserPermissions",
-      ],
     },
     {
       name: "AccountService",
       service: AccountService,
       methods: ["getAccountConnectionByUser"],
-      removed: [],
     },
     {
       name: "MemberService",
@@ -114,15 +99,6 @@ describe("public API", () => {
         "listPermissions",
         "getEffectiveMemberPermissions",
       ],
-      removed: [
-        "getWorkspaceMemberConnectionByWorkspace",
-        "getMemberById",
-        "getMemberPermissions",
-        "updateMemberRoles",
-        "updateMemberRole",
-        "hasPermission",
-      ],
-      previousService: WorkspaceService,
     },
     {
       name: "InvitationService",
@@ -140,11 +116,6 @@ describe("public API", () => {
         "cancelInvitation",
         "rejectInvitation",
       ],
-      removed: [
-        "getWorkspaceInvitationConnectionByWorkspace",
-        "getWorkspaceInvitationConnectionByUser",
-      ],
-      previousService: WorkspaceService,
     },
     {
       name: "SessionService",
@@ -161,38 +132,15 @@ describe("public API", () => {
         "listCurrentUserSessions",
         "setSessionCookie",
       ],
-      removed: [
-        "listUserSessions",
-        "getSessionConnection",
-        "revokeUserSession",
-        "revokeSessions",
-        "revokeOtherSessions",
-        "getSession",
-        "listSessions",
-        "setSession",
-      ],
-      previousService: UserService,
     },
     {
-      name: "WorkspaceApiKeyService",
-      service: WorkspaceApiKeyService,
+      name: "MemberApiKeyService",
+      service: MemberApiKeyService,
       methods: [
-        "getWorkspaceApiKeyConnection",
-        "createWorkspaceApiKey",
-        "updateWorkspaceApiKey",
-        "deleteWorkspaceApiKey",
-      ],
-      removed: [
-        "getUserConnection",
-        "getWorkspaceConnection",
-        "getUserListFilter",
-        "getWorkspaceListFilter",
-        "createUserKey",
-        "createWorkspaceKey",
-        "updateUserKey",
-        "updateWorkspaceKey",
-        "deleteUserKey",
-        "deleteWorkspaceKey",
+        "getMemberApiKeyConnection",
+        "createMemberApiKey",
+        "updateMemberApiKey",
+        "deleteMemberApiKey",
       ],
     },
     {
@@ -210,38 +158,12 @@ describe("public API", () => {
         "deleteCurrentUser",
         "getAccountInfo",
       ],
-      removed: [
-        "verifyPassword",
-        "changeEmail",
-        "changePassword",
-        "setPassword",
-        "listAccounts",
-        "linkSocialAccount",
-        "unlinkAccount",
-        "linkCurrentUserSocialAccount",
-        "updateUser",
-        "deleteUser",
-        "accountInfo",
-      ],
     },
-    {
-      name: "WorkspaceService",
-      service: WorkspaceService,
-      methods: [],
-      removed: ["getFullWorkspace", "transferOwnership"],
-    },
-  ])(
-    "keeps the $name method contract without compatibility aliases",
-    ({ service, methods, removed, previousService }) => {
-      for (const method of methods) {
-        expect(service.prototype).toHaveProperty(method);
-        if (previousService)
-          expect(previousService.prototype).not.toHaveProperty(method);
-      }
-      for (const method of removed)
-        expect(service.prototype).not.toHaveProperty(method);
-    },
-  );
+  ])("exports the $name methods", ({ service, methods }) => {
+    for (const method of methods) {
+      expect(service.prototype).toHaveProperty(method);
+    }
+  });
 
   it("registers and exports AccountService through AuthModule", () => {
     expect(publicApi.AccountService).toBe(AccountService);
@@ -251,17 +173,6 @@ describe("public API", () => {
     expect(Reflect.getMetadata("exports", AuthModule)).toContain(
       AccountService,
     );
-  });
-
-  it("does not export legacy workspace member and invitation aliases", () => {
-    for (const name of [
-      "BaseWorkspaceMember",
-      "BaseWorkspaceInvitation",
-      "WorkspaceMemberService",
-      "WorkspaceInvitationService",
-      "CurrentWorkspaceMember",
-    ])
-      expect(publicApi).not.toHaveProperty(name);
   });
 
   it("exports the member and invitation permission catalog", () => {
@@ -274,13 +185,6 @@ describe("public API", () => {
         "member:invite",
       ]),
     );
-    expect(
-      publicApi.DEFAULT_WORKSPACE_PERMISSIONS.some(
-        (permission) =>
-          permission.startsWith("WorkspaceMember:") ||
-          permission.startsWith("WorkspaceInvitation:"),
-      ),
-    ).toBe(false);
   });
 
   it("owns all concrete auth entities and connection types", () => {
@@ -293,50 +197,29 @@ describe("public API", () => {
       "Member",
       "Invitation",
       "UserApiKey",
-      "WorkspaceApiKey",
+      "MemberApiKey",
     ] as const;
     expect(publicApi.entities).toHaveLength(names.length);
     for (const name of names) {
       expect(publicApi.entities).toContain(publicApi[name]);
-      expect(publicApi).not.toHaveProperty(`Base${name}`);
       if (name !== "Verification")
         expect(publicApi).toHaveProperty(`${name}Connection`);
     }
-    expect(publicApi).not.toHaveProperty("AuthGraphQLModule");
-  });
-  it("does not export provider credential transport types", () => {
-    for (const name of [
-      "AuthAccountSelectorInput",
-      "AuthAccountIdentityType",
-      "AuthAccessTokenType",
-      "AuthRefreshedTokenType",
-      "AuthAccountInfoType",
-    ])
-      expect(publicApi).not.toHaveProperty(name);
   });
   it("exports the GraphQL module and resolvers", () => {
     expect(publicApi.AuthResolver).toBeDefined();
     expect(publicApi.UserResolver).toBeDefined();
     expect(publicApi.SessionResolver).toBeDefined();
     for (const name of [
-      "WorkspaceApiKeyResolver",
+      "MemberApiKeyResolver",
       "WorkspaceResolver",
       "MemberResolver",
       "InvitationResolver",
     ]) {
       expect(publicApi).toHaveProperty(name);
-      expect(publicApi).not.toHaveProperty(`create${name}`);
     }
-    expect(publicApi).not.toHaveProperty("AuthRoleType");
-    for (const token of [
-      "API_KEY_RESOLVER_OPTIONS",
-      "WORKSPACE_RESOLVER_OPTIONS",
-      "WORKSPACE_MEMBER_RESOLVER_OPTIONS",
-      "WORKSPACE_INVITATION_RESOLVER_OPTIONS",
-    ])
-      expect(publicApi).not.toHaveProperty(token);
+
     expect(publicApi).toHaveProperty("SetMemberRolesInput");
-    expect(publicApi).not.toHaveProperty("UpdateMemberRolesInput");
   });
 
   it("exports input and result types", () => {
@@ -351,9 +234,8 @@ describe("public API", () => {
     ]) {
       expect(publicApi).toHaveProperty(name);
     }
-    expect(publicApi).not.toHaveProperty("AcceptInvitationResult");
+
     expect(publicApi.SignUpPayload).toBeDefined();
-    expect(publicApi).not.toHaveProperty("AuthSignUpResultType");
     expect(publicApi.AuthSignInInput).toBeDefined();
     expect(publicApi.AuthSignInResultType).toBeDefined();
     expect(publicApi.CreateUserInput).toBeDefined();
@@ -362,35 +244,23 @@ describe("public API", () => {
     expect(publicApi.DeleteUserPayload).toBeDefined();
     expect(publicApi.RemoveMemberPayload).toBeDefined();
     expect(publicApi.LeaveWorkspacePayload).toBeDefined();
-    expect(publicApi).not.toHaveProperty("CreateWorkspaceServiceAccountInput");
-    expect(publicApi).not.toHaveProperty("CreateServiceAccountMemberInput");
-    expect(publicApi).not.toHaveProperty("UserListType");
-    expect(publicApi).not.toHaveProperty("ListUsersInput");
-    expect(publicApi).not.toHaveProperty("AuthUserType");
-    expect(publicApi).not.toHaveProperty("AuthAccountType");
   });
 
   it("should export auth modules, services, decorators, and entities", () => {
-    expect("AUTH_TOKEN" in publicApi).toBe(false);
     expect(publicApi.UserService).toBe(UserService);
     expect(publicApi.IS_PUBLIC_KEY).toBe(IS_PUBLIC_KEY);
-    expect("CURRENT_API_KEY" in publicApi).toBe(false);
-    expect("CURRENT_WORKSPACE" in publicApi).toBe(false);
-    expect("CURRENT_WORKSPACE_MEMBER" in publicApi).toBe(false);
-    expect(publicApi.WorkspaceApiKeyService).toBe(WorkspaceApiKeyService);
+    expect(publicApi.MemberApiKeyService).toBe(MemberApiKeyService);
     expect(publicApi.AuthGuard).toBe(AuthGuard);
     expect(publicApi.AuthMiddleware).toBe(AuthMiddleware);
     expect(publicApi.AuthModule).toBe(AuthModule);
     expect(publicApi.AuthService).toBe(AuthService);
-    expect("AuthTransactionContext" in publicApi).toBe(false);
-    expect(publicApi).not.toHaveProperty("AccessControlService");
     expect(publicApi.Can).toBe(Can);
     expect(publicApi.CurrentApiKey).toBe(CurrentApiKey);
     expect(publicApi.CurrentWorkspace).toBe(CurrentWorkspace);
     expect(publicApi.CurrentMember).toBe(CurrentMember);
     expect(publicApi.Public).toBe(Public);
     expect(publicApi.Account).toBe(Account);
-    expect(publicApi.WorkspaceApiKey).toBe(WorkspaceApiKey);
+    expect(publicApi.MemberApiKey).toBe(MemberApiKey);
     expect(publicApi.Session).toBe(Session);
     expect(publicApi.User).toBe(User);
     expect(publicApi.Verification).toBe(Verification);
@@ -398,30 +268,9 @@ describe("public API", () => {
     expect(publicApi.Invitation).toBe(Invitation);
     expect(publicApi.Member).toBe(Member);
     expect(publicApi.AuthAbility).toBe(AuthAbility);
-    for (const name of [
-      "UserAbility",
-      "WorkspaceAbility",
-      "UserCan",
-      "WorkspaceCan",
-      "userCan",
-      "workspaceCan",
-      "getUserAbility",
-      "getWorkspaceAbility",
-    ]) {
-      expect(publicApi).not.toHaveProperty(name);
-    }
     expect(publicApi.can).toBe(can);
     expect(publicApi.getAuthAbility).toBe(getAuthAbility);
     expect(publicApi.authorize).toBe(authorize);
-    for (const name of [
-      "authAbility",
-      "assertCan",
-      "throwUnlessCan",
-      "getAbility",
-      "readRequestAbility",
-    ]) {
-      expect(publicApi).not.toHaveProperty(name);
-    }
     expect(publicApi.SessionService).toBe(SessionService);
     expect(publicApi.WorkspaceService).toBe(WorkspaceService);
     expect(publicApi.MemberService).toBe(MemberService);

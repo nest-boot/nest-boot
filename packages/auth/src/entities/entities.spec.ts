@@ -4,12 +4,12 @@ import { Account } from "./account.entity.js";
 import { entities } from "./index.js";
 import { Invitation } from "./invitation.entity.js";
 import { Member } from "./member.entity.js";
+import { MemberApiKey } from "./member-api-key.entity.js";
 import { Session } from "./session.entity.js";
 import { User } from "./user.entity.js";
 import { UserApiKey } from "./user-api-key.entity.js";
 import { Verification } from "./verification.entity.js";
 import { Workspace } from "./workspace.entity.js";
-import { WorkspaceApiKey } from "./workspace-api-key.entity.js";
 
 describe("auth entities", () => {
   it("keeps role and permission columns as arrays, independent of GraphQL enums", () => {
@@ -18,7 +18,7 @@ describe("auth entities", () => {
       [Member, ["roles", "permissions"]],
       [Invitation, ["roles"]],
       [UserApiKey, ["permissions"]],
-      [WorkspaceApiKey, ["permissions"]],
+      [MemberApiKey, ["permissions"]],
     ] as const) {
       const metadata = Object.values(MetadataStorage.getMetadata()).find(
         (meta) => meta.class === entity,
@@ -41,7 +41,7 @@ describe("auth entities", () => {
 
   it("should initialize generated ids and timestamps", () => {
     const account = new Account();
-    const apiKey = new WorkspaceApiKey();
+    const apiKey = new MemberApiKey();
     const session = new Session();
     const user = new User();
     const verification = new Verification();
@@ -66,7 +66,7 @@ describe("auth entities", () => {
       }
     }
     expect(apiKey).not.toHaveProperty("user");
-    expect(apiKey.workspace).toBeUndefined();
+    expect(apiKey.member).toBeUndefined();
     expect(apiKey).not.toHaveProperty("owner");
     expect(apiKey.enabled).toBe(true);
     expect(apiKey.permissions).toEqual([]);
@@ -81,7 +81,7 @@ describe("auth entities", () => {
     expect(member.roles).toEqual(["member"]);
     expect(member.status).toBe("ACTIVE");
     expect(member.email).toBeNull();
-    expect(member).not.toHaveProperty("type");
+    expect(member.type).toBe("USER");
     expect(user.members).toBeInstanceOf(Collection);
     expect(workspace.members).toBeInstanceOf(Collection);
     expect(workspace).not.toHaveProperty("features");
@@ -103,7 +103,7 @@ describe("auth entities", () => {
 
   it.each([
     [UserApiKey, "user", "workspace"],
-    [WorkspaceApiKey, "workspace", "user"],
+    [MemberApiKey, "member", "workspace"],
   ] as const)(
     "gives %s only its required owner relation",
     (entity, owner, other) => {
@@ -119,7 +119,7 @@ describe("auth entities", () => {
   it.each([
     Account,
     UserApiKey,
-    WorkspaceApiKey,
+    MemberApiKey,
     Member,
     Session,
     User,
@@ -148,12 +148,7 @@ describe("built-in auth entity field ownership", () => {
     [Invitation, "inviter", User, { deleteRule: "cascade" }],
     [Invitation, "workspace", Workspace, { deleteRule: "cascade" }],
     [UserApiKey, "user", User, { ref: true, deleteRule: "cascade" }],
-    [
-      WorkspaceApiKey,
-      "workspace",
-      Workspace,
-      { ref: true, deleteRule: "cascade" },
-    ],
+    [MemberApiKey, "member", Member, { ref: true, deleteRule: "cascade" }],
     [Account, "user", User, { ref: true, deleteRule: "cascade" }],
     [Session, "user", User, { ref: true, deleteRule: "cascade" }],
     [
@@ -179,7 +174,7 @@ describe("built-in auth entity field ownership", () => {
   it.each([
     [Account, ["issuer", "accountId", "user"]],
     [UserApiKey, ["user", "permissions"]],
-    [WorkspaceApiKey, ["workspace", "permissions"]],
+    [MemberApiKey, ["member", "permissions"]],
     [Session, ["user", "token", "expiresAt"]],
     [User, ["name", "email", "members"]],
     [Verification, ["identifier", "value"]],

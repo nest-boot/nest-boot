@@ -1,8 +1,8 @@
 import { EntityManager, Reference } from "@mikro-orm/core";
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import type { ApiKeyValidation } from "../types/api-key-validation.type.js";
 import { hashApiKey } from "../utils/api-key-credential.util.js";
@@ -21,15 +21,15 @@ export class ApiKeyAuthenticationService {
       { key },
       { populate: ["user"] },
     );
-    const workspaceKey = await this.em.findOne(
-      WorkspaceApiKey,
+    const memberKey = await this.em.findOne(
+      MemberApiKey,
       { key },
-      { populate: ["workspace"] },
+      { populate: ["member.workspace", "member.user"] },
     );
-    if ((!userKey && !workspaceKey) || (userKey && workspaceKey)) {
+    if ((!userKey && !memberKey) || (userKey && memberKey)) {
       throw new UnauthorizedException("Invalid API key");
     }
-    const apiKey = userKey ?? workspaceKey;
+    const apiKey = userKey ?? memberKey;
     if (!apiKey) throw new UnauthorizedException("Invalid API key");
     if (!apiKey.enabled) throw new UnauthorizedException("API key is disabled");
     if (apiKey.expiresAt && apiKey.expiresAt <= new Date())
@@ -44,9 +44,27 @@ export class ApiKeyAuthenticationService {
       }
       return { apiKey: userKey, ownerType: "user", user };
     }
-    if (!workspaceKey) throw new UnauthorizedException("Invalid API key");
-    const workspace = Reference.unwrapReference(workspaceKey.workspace);
-    return { apiKey: workspaceKey, ownerType: "workspace", workspace };
+    if (!memberKey) throw new UnauthorizedException("Invalid API key");
+    if (!memberKey.member) throw new UnauthorizedException("Invalid API key");
+    const member = Reference.unwrapReference(memberKey.member);
+    const user = member.user ? Reference.unwrapReference(member.user) : null;
+    if (
+      member.status !== "ACTIVE" ||
+      !member.workspace ||
+      (member.type === "USER" && !user) ||
+      (member.type === "SERVICE_ACCOUNT" && user) ||
+      (user?.banned && (!user.banExpiresAt || user.banExpiresAt > new Date()))
+    ) {
+      throw new UnauthorizedException("Invalid API key");
+    }
+    const workspace = Reference.unwrapReference(member.workspace);
+    return {
+      apiKey: memberKey,
+      ownerType: "member",
+      workspace,
+      member,
+      user,
+    };
   }
 
   /** Captures the authenticating key's RLS scope before a handler can replace it. */
@@ -72,7 +90,7 @@ export class ApiKeyAuthenticationService {
       );
     } else {
       await this.em.nativeUpdate(
-        WorkspaceApiKey,
+        MemberApiKey,
         { id: apiKey.id },
         { lastUsedAt: now, updatedAt: now },
       );

@@ -20,17 +20,18 @@ assignments at runtime. API-key ceilings apply before business rules are built.
 
 ## Built-in permission catalog
 
-The catalog contains 26 permissions. Compose each name as `resource:action`:
+The catalog contains 28 permissions. Compose each name as `resource:action`:
 
-| Scope     | Resource            | Actions                                                                                                                                      |
-| --------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| User      | `user`              | `create`, `read`, `update`, `delete`, `set-roles`, `set-permissions`, `set-email`, `set-password`, `ban`, `impersonate`, `impersonate-admin` |
-| User      | `session`           | `read`, `revoke`                                                                                                                             |
-| User      | `user-api-key`      | `read`, `write`                                                                                                                              |
-| User      | `workspace`         | `create`                                                                                                                                     |
-| Workspace | `workspace`         | `read`, `update`, `delete`                                                                                                                   |
-| Workspace | `member`            | `read`, `write`, `set-roles`, `set-permissions`, `invite`                                                                                    |
-| Workspace | `workspace-api-key` | `read`, `write`                                                                                                                              |
+| Scope     | Resource          | Actions                                                                                                                                      |
+| --------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| User      | `user`            | `create`, `read`, `update`, `delete`, `set-roles`, `set-permissions`, `set-email`, `set-password`, `ban`, `impersonate`, `impersonate-admin` |
+| User      | `session`         | `read`, `revoke`                                                                                                                             |
+| User      | `user-api-key`    | `read`, `write`                                                                                                                              |
+| User      | `workspace`       | `create`                                                                                                                                     |
+| Workspace | `workspace`       | `read`, `update`, `delete`                                                                                                                   |
+| Workspace | `member`          | `read`, `write`, `set-roles`, `set-permissions`, `invite`                                                                                    |
+| Workspace | `service-account` | `read`, `write`                                                                                                                              |
+| Workspace | `member-api-key`  | `read`, `write`                                                                                                                              |
 
 `read` covers single and connection queries. `write` covers ordinary creation,
 updates, and deletion, but does not imply `read` or role/permission changes.
@@ -148,9 +149,9 @@ health(): string {
 Configure one top-level `buildAbility` callback. `AuthGuard` prepares a single
 `AuthAbility` for the current identity, even without a permission decorator.
 Its context contains `user`, `workspace`, `member`, `userPermissions`, and
-`workspacePermissions`. Identity fields are nullable: workspace API keys have
-no user or member; workspace context requires an active membership or a matching
-workspace key. Check identity fields before using them in conditions.
+`workspacePermissions`. Identity fields are nullable: member-owned member API keys restore an
+active member, and service accounts have no login user. Workspace context requires
+an active member in the selected workspace. Check identity fields before using them in conditions.
 
 Auth owns built-in mappings; no callback is required for built-in operations.
 The callback runs once per identity snapshot, synchronously, and returns nothing.
@@ -271,7 +272,7 @@ const permission: PermissionName<"user-api-key:read"> = "user-api-key:read";
 ```
 
 GraphQL generates `UserRole`, `WorkspaceRole`, `UserPermission`,
-`WorkspacePermission`, `UserApiKeyPermission`, and `WorkspaceApiKeyPermission` from the configuration.
+`WorkspacePermission`, `UserApiKeyPermission`, and `MemberApiKeyPermission` from the configuration.
 Enum names are uppercase: hyphens become `_` and the permission separator `:`
 becomes `__`. For example, `super-admin` is exposed as `SUPER_ADMIN` and
 `user-api-key:read` as `USER_API_KEY__READ`. GraphQL variables and responses use these enum
@@ -280,8 +281,8 @@ Regenerate client types after changing a catalog. Existing stored assignments
 must remain in the configured catalog to be serialized by GraphQL.
 
 `UserApiKeyPermission` uses the combined user and workspace catalogs;
-`WorkspaceApiKeyPermission` uses the workspace catalog. Neither enum narrows with
-the corresponding `apiKey.user.allowedPermissions` or `apiKey.workspace.allowedPermissions`,
+`MemberApiKeyPermission` uses the workspace catalog. Neither enum narrows with
+the corresponding `apiKey.user.allowedPermissions` or `apiKey.member.allowedPermissions`,
 so previously stored grants remain readable after
 the allowlist changes. Services enforce the allowlist on writes.
 User and workspace permission catalogs extend the built-in defaults. Omitting
@@ -409,11 +410,11 @@ updatePost(@Args("id") id: string) {
 }
 ```
 
-Workspace API keys contribute only workspace grants. User API keys contribute
+Member API keys contribute only workspace grants. User API keys contribute
 user grants and, with a live membership, workspace grants. Each source is
 limited by the credential before `buildAbility` runs. The Guard checks the
 resulting `AuthAbility`. Built-in workspace rules match the selected workspace's
-ID; select `workspaceId` on Member, Invitation, and WorkspaceApiKey when checking
+ID; select `workspaceId` on Member, Invitation, and MemberApiKey when checking
 their instances in the client. Business rules must declare their own object
 conditions using the callback context.
 
@@ -426,7 +427,7 @@ final serialized rules instead of maintaining a separate permission mapping.
 ## Service Authorization Boundary
 
 `UserService`, `SessionService`, `WorkspaceService`, `MemberService`,
-`InvitationService`, and `UserApiKeyService` and `WorkspaceApiKeyService` enforce their permissions
+`InvitationService`, and `UserApiKeyService` and `MemberApiKeyService` enforce their permissions
 before reading or mutating authentication data. Resolver and controller
 decorators provide early rejection and declare intent, but they are not the
 security boundary: omitting one does not make a protected service operation
@@ -439,7 +440,7 @@ access control:
 - workspace operations use `workspace:*` and `member:*` permissions;
 - `member:invite` manages invitation queries, creation, and cancellation, separately
   from `member:write`; accepting or rejecting one's own invitation checks recipient identity;
-- workspace API-key management uses `workspace-api-key:read/write`;
+- member API-key management uses `member-api-key:read/write`;
 - current-user authentication, session management, invitation acceptance, and
   leaving a workspace use authenticated identity and ownership checks.
 
@@ -536,14 +537,16 @@ OR. They do not check workspace lifecycle or replace Service authorization.
 Continue to configure database roles, table privileges and trusted session
 variables separately.
 
-Auth stages identity variables `app.user.id` and `app.workspace.id`, but does not
+Auth stages identity variables `app.user.id`, `app.workspace.id`, and `app.member.id`, but does not
 pass application permissions to the database. Services enforce Ability rules,
 custom permissions and API-key ceilings; RLS handles ownership, workspace
 isolation. Authenticated User reads/writes and Session reads
 rely on Service authorization. Do not expose direct ORM/SQL access to these
 records as an alternative to Services. Old identity keys are no longer supported.
 
-The example `UserApiKey` and `WorkspaceApiKey` use separate tables, each with one required owner foreign key, so no exclusive-owner CHECK is needed. RLS compares `user_id` with `app.user.id` and `workspace_id` with `app.workspace.id` independently, including when IDs coincide. Deleting an owner cascades to its keys; workspace deletion is permanent. Default privileges authorize table operations; both management services hide credential hashes, prevent ownership changes, and enforce authorization.
+`app.member.id` identifies the authenticated active member in the selected workspace, including service accounts. It is empty for anonymous requests or when no active member is available, and is cleared when workspace access or authentication is revoked.
+
+The example `UserApiKey` and `MemberApiKey` use separate tables, each with one required owner foreign key. RLS compares `UserApiKey.user_id` with `app.user.id`; member keys belong to `member_id` and resolve their workspace through the member to compare with `app.workspace.id`. Deleting an owner cascades to its keys; workspace deletion is permanent. Default privileges authorize table operations; both management services hide credential hashes, prevent ownership changes, and enforce authorization.
 
 These are plain factories, not filters or decorators. Neither runtime nor CLI
 needs a custom discovery hook. Generate and apply migrations after changing

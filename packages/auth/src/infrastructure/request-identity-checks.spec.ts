@@ -3,11 +3,11 @@ import { ForbiddenException } from "@nestjs/common";
 
 import {
   Member,
+  MemberApiKey,
   Session,
   User,
   UserApiKey,
   Workspace,
-  WorkspaceApiKey,
 } from "../entities/index.js";
 import { RequestIdentity } from "./request-identity.js";
 
@@ -52,7 +52,7 @@ describe("request identity checks", () => {
       RequestIdentity.assertCurrentMember(undefined);
     }).toThrow(ForbiddenException);
   });
-  it.each([UserApiKey, WorkspaceApiKey])(
+  it.each([UserApiKey, MemberApiKey])(
     "keeps self-service unavailable to %s",
     async (Key) => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {

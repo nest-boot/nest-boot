@@ -30,7 +30,7 @@ export function resolveMemberPermissions(
   );
 }
 
-/** Applies a credential ceiling without treating an empty list as unrestricted. @internal */
+/** Returns only permissions present in both inputs. @internal */
 export function intersectPermissions(
   permissions: readonly string[],
   ceiling: readonly string[],

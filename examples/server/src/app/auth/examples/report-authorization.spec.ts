@@ -5,10 +5,10 @@ import {
   AuthResolver,
   type AuthService,
   Member,
+  MemberApiKeyService,
   User,
   UserApiKey,
   Workspace,
-  WorkspaceApiKeyService,
 } from '@nest-boot/auth';
 import { RequestContext } from '@nest-boot/request-context';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
@@ -39,7 +39,7 @@ describe('business authorization recipe', () => {
       archive: true,
     },
     { role: 'owner', direct: [], key: ['report:read'], archive: false },
-    { role: 'owner', direct: [], key: [], archive: false },
+    { role: 'owner', direct: [], key: [], archive: true },
   ])(
     'keeps frontend and Service decisions aligned for $role with key $key',
     async ({ role, direct, key, archive }) => {
@@ -97,7 +97,9 @@ describe('business authorization recipe', () => {
           ).toBe(archive);
           const canRead =
             role !== 'member' &&
-            (key === undefined || key.includes('report:read'));
+            (key === undefined ||
+              key.length === 0 ||
+              key.includes('report:read'));
           expect(
             frontend.can('read', createAbilitySubject('Report', report)),
           ).toBe(canRead);
@@ -155,17 +157,19 @@ describe('business authorization recipe', () => {
             NotFoundException,
           );
 
-          const catalog = new WorkspaceApiKeyService(
+          const catalog = new MemberApiKeyService(
             {} as EntityManager,
             reportAuthOptions,
-          ).getWorkspaceApiKeyPermissions(workspace);
+          ).getMemberApiKeyPermissions(workspace);
           const read = catalog.find(
             (option) => option.permission === 'report:read',
           );
           expect(read?.default).toBe(true);
           expect(read?.grantable).toBe(
             role !== 'member' &&
-              (key === undefined || key.includes('report:read')),
+              (key === undefined ||
+                key.length === 0 ||
+                key.includes('report:read')),
           );
         },
       );

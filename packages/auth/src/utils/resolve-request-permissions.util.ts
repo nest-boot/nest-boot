@@ -1,10 +1,8 @@
 import { RequestContext } from "@nest-boot/request-context";
 
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
-import { Member } from "../entities/member.entity.js";
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
-import { Workspace } from "../entities/workspace.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import type { RequestPermissions } from "../interfaces/request-permissions.interface.js";
 import { getCurrentApiKey } from "./get-current-api-key.util.js";
 import {
@@ -12,6 +10,7 @@ import {
   resolveMemberPermissions,
   resolveUserPermissions,
 } from "./resolve-effective-permissions.util.js";
+import { resolveRequestMember } from "./resolve-request-member.util.js";
 
 const REQUEST_PERMISSIONS = Symbol("auth.requestPermissions");
 
@@ -32,28 +31,25 @@ export function resolveRequestPermissions(
   }>(REQUEST_PERMISSIONS);
   if (cached?.options === options) return cached.permissions;
   const user = RequestContext.get(User);
-  const member = RequestContext.get(Member);
-  const workspace = RequestContext.get(Workspace);
+  const member = resolveRequestMember();
   const apiKey = getCurrentApiKey();
   const keyPermissions = Array.isArray(apiKey?.permissions)
     ? apiKey.permissions
     : [];
-  const workspaceKey = apiKey instanceof WorkspaceApiKey;
+  const memberKey = apiKey instanceof MemberApiKey;
+  const unrestricted =
+    !apiKey || (Array.isArray(apiKey.permissions) && !keyPermissions.length);
   const limit = (permissions: readonly string[]) =>
-    apiKey ? intersectPermissions(permissions, keyPermissions) : permissions;
+    unrestricted
+      ? permissions
+      : intersectPermissions(permissions, keyPermissions);
   const permissions = Object.freeze({
-    apiKey: apiKey ? Object.freeze([...new Set(keyPermissions)]) : null,
+    apiKey: unrestricted ? null : Object.freeze([...new Set(keyPermissions)]),
     user: Object.freeze(
-      user && !workspaceKey ? limit(resolveUserPermissions(options, user)) : [],
+      user && !memberKey ? limit(resolveUserPermissions(options, user)) : [],
     ),
     workspace: Object.freeze(
-      !workspace
-        ? []
-        : workspaceKey
-          ? [...new Set(keyPermissions)]
-          : member
-            ? limit(resolveMemberPermissions(options, member))
-            : [],
+      member ? limit(resolveMemberPermissions(options, member)) : [],
     ),
   });
   RequestContext.set(REQUEST_PERMISSIONS, { options, permissions });

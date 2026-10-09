@@ -6,7 +6,7 @@ export interface CreateApiKeyOptions {
   expiresAt?: Date | null;
   /**
    * Operations granted to the key. Omission uses the configured defaults;
-   * `null` or an empty list creates a key without permissions.
+   * `null` or an empty list inherits all owner permissions.
    */
   permissions?: string[] | null;
   /** 1–32 lowercase letters, digits, underscores, or hyphens, starting with a letter. Overrides the owner scope’s default prefix; separators are included verbatim. */

@@ -12,8 +12,14 @@ interface InputContract {
 const contracts: InputContract[] = [
   {
     name: "AddMemberInput",
-    values: { email: "member@example.com" },
-    required: ["email"],
+    values: {
+      email: "member@example.com",
+      type: "USER",
+      name: "Account",
+      roles: ["member"],
+      permissions: ["workspace:read"],
+    },
+    required: [],
   },
   {
     name: "AuthChangeEmailInput",
@@ -118,8 +124,9 @@ const contracts: InputContract[] = [
     nullable: ["expiresAt", "permissions"],
   },
   {
-    name: "CreateWorkspaceApiKeyInput",
+    name: "CreateMemberApiKeyInput",
     values: {
+      memberId: "123",
       name: "Key",
       expiresAt: new Date("2030-01-01T00:00:00Z"),
       prefix: "sk-",
@@ -182,7 +189,7 @@ const contracts: InputContract[] = [
     nullable: ["expiresAt", "permissions"],
   },
   {
-    name: "UpdateWorkspaceApiKeyInput",
+    name: "UpdateMemberApiKeyInput",
     values: {
       name: "Key",
       enabled: false,
@@ -288,7 +295,7 @@ describe("auth input contracts", () => {
   it("validates API-key prefixes before the Service", () => {
     for (const input of [
       auth.CreateUserApiKeyInput,
-      auth.CreateWorkspaceApiKeyInput,
+      auth.CreateMemberApiKeyInput,
     ]) {
       const schema = toZodSchema(input);
       for (const prefix of [

@@ -4,11 +4,11 @@ import {
   entities,
   Invitation,
   Member,
+  MemberApiKey,
   Session,
   User,
   UserApiKey,
   Workspace,
-  WorkspaceApiKey,
 } from '@nest-boot/auth';
 
 describe('built-in auth entity discovery', () => {
@@ -35,7 +35,7 @@ describe('built-in auth entity discovery', () => {
         [Session, 'user', User],
         [Session, 'impersonatedBy', User],
         [UserApiKey, 'user', User],
-        [WorkspaceApiKey, 'workspace', Workspace],
+        [MemberApiKey, 'member', Member],
       ] as const) {
         expect(
           orm.getMetadata<object>(entity).properties[property].targetMeta

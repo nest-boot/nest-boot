@@ -9,9 +9,9 @@ import { mockAuthorization } from "../../test/mock-authorization.js";
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { API_KEY } from "../auth.constants.js";
 import { SessionConnection } from "../connections/session.connection-definition.js";
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { SessionService } from "./session.service.js";
 
 describe("SessionService management", () => {
@@ -61,7 +61,11 @@ describe("SessionService management", () => {
           expect(RequestContext.get(Session)).toBeNull();
           expect(em.setSessionContext).toHaveBeenCalledWith({
             role: "anonymous",
-            variables: { "app.user.id": "", "app.workspace.id": "" },
+            variables: {
+              "app.user.id": "",
+              "app.workspace.id": "",
+              "app.member.id": "",
+            },
           });
         },
       );
@@ -151,7 +155,7 @@ describe("SessionService management", () => {
         ),
       ).resolves.toBeNull();
       expect(em.findOne).not.toHaveBeenCalled();
-      RequestContext.set(API_KEY, new WorkspaceApiKey());
+      RequestContext.set(API_KEY, new MemberApiKey());
       authorization.authorize.mockImplementation(() => {
         throw new ForbiddenException();
       });
@@ -211,7 +215,7 @@ describe("SessionService management", () => {
               { first: 2 },
             ),
           ).rejects.toThrow(ForbiddenException);
-          RequestContext.set(API_KEY, new WorkspaceApiKey());
+          RequestContext.set(API_KEY, new MemberApiKey());
           await expect(
             service.getSessionConnectionByUser(user, { first: 2 }),
           ).rejects.toThrow(ForbiddenException);

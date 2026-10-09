@@ -212,7 +212,7 @@ The hook returns `search`, `setSearch`, `clearSearch`, `backSearch`,
 - The storage key is exactly `resource-navigation:${JSON.stringify(key)}`.
   Callers supply the complete scope: `[currentUser.id, "user", "api-keys"]` for
   personal keys, or `[currentUser.id, "workspaces", workspaceId, "api-keys"]`
-  for workspace keys. The hook does not depend on authentication context or add
+  for member keys. The hook does not depend on authentication context or add
   key segments.
 - Pass the same `searchSchema` for every caller sharing a key. It must accept
   `{}` and normalize JSON-compatible search values idempotently, including any

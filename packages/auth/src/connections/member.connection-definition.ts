@@ -18,6 +18,7 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(Member)
     prefix: true,
     type: "string",
   })
+  .addField({ field: "type", filterable: true, type: "string" })
   .addField({
     field: "status",
     filterable: true,

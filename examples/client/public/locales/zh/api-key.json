@@ -38,7 +38,15 @@
       "required": "API 密钥名称是必填的",
       "too_long": "API 密钥名称过长"
     },
-    "save_failed": "无法保存此 API 密钥，请重试。"
+    "save_failed": "无法保存此 API 密钥，请重试。",
+    "member": {
+      "label": "服务账号",
+      "search": "搜索服务账号",
+      "empty": "没有匹配的服务账号",
+      "auto_create": "不选择时，保存将按 API key 名称创建新的服务账号。",
+      "required": "请选择服务账号；自动创建需要服务账号写权限。"
+    },
+    "permissions_hint": "未勾选权限时，继承所属用户或成员的完整权限。"
   },
   "never_expires": "永不过期",
   "never_used": "从未使用",

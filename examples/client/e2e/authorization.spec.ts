@@ -199,7 +199,7 @@ test("authorizes workspace API-key controls and deletion without an owner role",
     const headers = { "x-workspace-id": workspace.id };
     await graphqlRequest(
       ownerPage.request,
-      "mutation ($input: CreateWorkspaceApiKeyInput!) { createWorkspaceApiKey(input: $input) { entity { id } } }",
+      "mutation ($input: CreateMemberApiKeyInput!) { createMemberApiKey(input: $input) { entity { id } } }",
       { input: { name: "Read-only workspace key", permissions: [] } },
       headers,
     );
@@ -229,7 +229,7 @@ test("authorizes workspace API-key controls and deletion without an owner role",
       {
         id: memberId,
         input: {
-          permissions: ["WORKSPACE_API_KEY__READ", "WORKSPACE__DELETE"],
+          permissions: ["MEMBER_API_KEY__READ", "WORKSPACE__DELETE"],
         },
       },
       headers,

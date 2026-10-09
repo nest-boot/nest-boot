@@ -2,10 +2,10 @@ import { createMongoAbility, subject } from "@casl/ability";
 
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { serializeAbilityRules } from "../utils/serialize-ability-rules.util.js";
 import { AuthAbilityFactory } from "./auth-ability.factory.js";
 
@@ -53,18 +53,111 @@ describe("permission ability builders", () => {
     expect(
       clientAbility.can(
         "write",
-        subject("Member", { id: member.id, workspaceId: workspace.id }),
+        subject("Member", {
+          id: member.id,
+          workspaceId: workspace.id,
+          type: "USER",
+        }),
         "status",
       ),
     ).toBe(false);
     expect(
       clientAbility.can(
         "write",
-        subject("Member", { id: other.id, workspaceId: workspace.id }),
+        subject("Member", {
+          id: other.id,
+          workspaceId: workspace.id,
+          type: "USER",
+        }),
         "status",
       ),
     ).toBe(true);
   });
+
+  it.each(["read", "write"])(
+    "separates service account %s from user membership",
+    (action) => {
+      const workspace = Object.assign(new Workspace(), { id: "workspace-1" });
+      const userMember = Object.assign(new Member(), { workspace });
+      const serviceAccount = Object.assign(new Member(), {
+        workspace,
+        type: "SERVICE_ACCOUNT",
+      });
+      const outside = Object.assign(new Member(), {
+        workspace: Object.assign(new Workspace(), { id: "workspace-2" }),
+        type: "SERVICE_ACCOUNT",
+      });
+      const build = (permissions: string[]) =>
+        AuthAbilityFactory.createAbility({
+          user: null,
+          member: null,
+          workspace,
+          userPermissions: [],
+          workspacePermissions: permissions,
+        });
+      const memberAbility = build([`member:${action}`]);
+      expect(memberAbility.can(action, userMember)).toBe(true);
+      expect(memberAbility.can(action, serviceAccount)).toBe(false);
+      const serviceAbility = build([`service-account:${action}`]);
+      expect(serviceAbility.can(action, serviceAccount)).toBe(true);
+      expect(serviceAbility.can(action, userMember)).toBe(false);
+      expect(serviceAbility.can(action, outside)).toBe(false);
+      expect(
+        serviceAbility.can(
+          action === "read" ? "write" : "read",
+          serviceAccount,
+        ),
+      ).toBe(false);
+      const clientAbility = createMongoAbility(
+        serializeAbilityRules(serviceAbility),
+      );
+      expect(
+        clientAbility.can(
+          action,
+          subject("Member", {
+            workspaceId: workspace.id,
+            type: "SERVICE_ACCOUNT",
+          }),
+        ),
+      ).toBe(true);
+      expect(
+        clientAbility.can(
+          action,
+          subject("Member", {
+            workspaceId: workspace.id,
+            type: "USER",
+          }),
+        ),
+      ).toBe(false);
+    },
+  );
+
+  it.each(["set-roles", "set-permissions"])(
+    "requires service writes and member:%s to change service authorization",
+    (action) => {
+      const workspace = new Workspace();
+      const serviceAccount = Object.assign(new Member(), {
+        workspace,
+        type: "SERVICE_ACCOUNT",
+      });
+      for (const permissions of [
+        [`member:${action}`],
+        ["service-account:write"],
+        [`member:${action}`, "service-account:write"],
+      ]) {
+        const ability = AuthAbilityFactory.createAbility({
+          user: null,
+          member: null,
+          workspace,
+          userPermissions: [],
+          workspacePermissions: permissions,
+        });
+        expect(ability.can(action, serviceAccount)).toBe(
+          permissions.length === 2,
+        );
+      }
+    },
+  );
 
   it("matches configured resource prefixes exactly without case aliases", () => {
     const userAbility = buildUserPermissionAbility([
@@ -78,7 +171,7 @@ describe("permission ability builders", () => {
     expect(userAbility.can("delete", User)).toBe(false);
     expect(userAbility.can("write", UserApiKey)).toBe(false);
     expect(workspaceAbility.can("delete", Workspace)).toBe(false);
-    expect(workspaceAbility.can("write", WorkspaceApiKey)).toBe(false);
+    expect(workspaceAbility.can("write", MemberApiKey)).toBe(false);
   });
   it("does not grant private user reads from ordinary membership or workspace permissions", () => {
     expect(buildUserPermissionAbility([]).can("read", User)).toBe(false);
@@ -101,7 +194,7 @@ describe("permission ability builders", () => {
         const ability =
           build === buildUserPermissionAbility
             ? buildUserPermissionAbility([`user-api-key:${action}`])
-            : buildWorkspacePermissionAbility([`workspace-api-key:${action}`]);
+            : buildWorkspacePermissionAbility([`member-api-key:${action}`]);
         for (const candidate of [
           "read",
           "write",
@@ -112,9 +205,7 @@ describe("permission ability builders", () => {
           expect(
             ability.can(
               candidate,
-              build === buildUserPermissionAbility
-                ? UserApiKey
-                : WorkspaceApiKey,
+              build === buildUserPermissionAbility ? UserApiKey : MemberApiKey,
             ),
           ).toBe(candidate === action);
         }
@@ -149,11 +240,11 @@ describe("permission ability builders", () => {
     const ability = buildWorkspacePermissionAbility([
       "workspace:update",
       "workspace:delete",
-      "workspace-api-key:write",
+      "member-api-key:write",
     ]);
 
-    expect(ability.can("write", WorkspaceApiKey)).toBe(true);
-    expect(ability.can("read", WorkspaceApiKey)).toBe(false);
+    expect(ability.can("write", MemberApiKey)).toBe(true);
+    expect(ability.can("read", MemberApiKey)).toBe(false);
     expect(ability.can("delete", Workspace)).toBe(true);
     expect(ability.can("read", Invitation)).toBe(false);
     expect(ability.can("update", Workspace)).toBe(true);

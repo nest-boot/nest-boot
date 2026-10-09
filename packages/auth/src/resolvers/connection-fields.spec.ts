@@ -4,10 +4,10 @@ import type { GraphQLResolveInfo } from "graphql";
 import { User as BaseUser } from "../entities/user.entity.js";
 import { Workspace as BaseWorkspace } from "../entities/workspace.entity.js";
 import { type MemberService } from "../services/member.service.js";
+import { type MemberApiKeyService } from "../services/member-api-key.service.js";
 import { type UserService } from "../services/user.service.js";
 import type { UserApiKeyService } from "../services/user-api-key.service.js";
 import { type WorkspaceService } from "../services/workspace.service.js";
-import { type WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
 import { UserResolver } from "./user.resolver.js";
 import { WorkspaceResolver } from "./workspace.resolver.js";
 
@@ -17,7 +17,7 @@ describe("connection field delegation", () => {
     const getWorkspaceConnectionByUser = vi.fn().mockResolvedValue(result);
     const getMemberConnectionByWorkspace = vi.fn().mockResolvedValue(result);
     const getUserApiKeyConnection = vi.fn().mockResolvedValue(result);
-    const getWorkspaceApiKeyConnection = vi.fn().mockResolvedValue(result);
+    const getMemberApiKeyConnection = vi.fn().mockResolvedValue(result);
     const workspaceService = {
       getWorkspaceConnectionByUser,
     } as unknown as WorkspaceService;
@@ -26,8 +26,8 @@ describe("connection field delegation", () => {
     } as unknown as MemberService;
     const apiKeyService = {
       getUserApiKeyConnection,
-      getWorkspaceApiKeyConnection,
-    } as unknown as WorkspaceApiKeyService;
+      getMemberApiKeyConnection,
+    } as unknown as MemberApiKeyService;
     const userResolver = new UserResolver(
       {} as UserService,
       workspaceService,
@@ -64,7 +64,7 @@ describe("connection field delegation", () => {
       args,
       info,
     );
-    expect(getWorkspaceApiKeyConnection).toHaveBeenCalledWith(
+    expect(getMemberApiKeyConnection).toHaveBeenCalledWith(
       workspace,
       args,
       info,
@@ -74,7 +74,7 @@ describe("connection field delegation", () => {
       getWorkspaceConnectionByUser,
       getMemberConnectionByWorkspace,
       getUserApiKeyConnection,
-      getWorkspaceApiKeyConnection,
+      getMemberApiKeyConnection,
     ])
       mock.mockRejectedValue(new ForbiddenException());
     await expect(

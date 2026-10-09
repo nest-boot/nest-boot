@@ -2,6 +2,6 @@
 export interface RequestPermissions {
   readonly user: readonly string[];
   readonly workspace: readonly string[];
-  /** Null means a session credential; an empty array is an API key with no grants. */
+  /** Null means no credential ceiling: a session or an API key inheriting owner permissions. */
   readonly apiKey: readonly string[] | null;
 }

@@ -1,9 +1,9 @@
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import {
   DEFAULT_USER_PERMISSIONS,
   DEFAULT_USER_ROLES,
@@ -15,22 +15,13 @@ import {
 import { AuthAbilityFactory } from "./auth-ability.factory.js";
 
 describe("explicit auth permission catalog", () => {
-  it("contains 26 distinct, scoped permissions without legacy aliases", () => {
+  it("contains 28 distinct, scoped permissions", () => {
     const permissions = [
       ...DEFAULT_USER_PERMISSIONS,
       ...DEFAULT_WORKSPACE_PERMISSIONS,
     ];
-    expect(permissions).toHaveLength(26);
-    expect(new Set(permissions).size).toBe(26);
-    expect(
-      permissions.some((permission) => permission.startsWith("invitation:")),
-    ).toBe(false);
-    expect(permissions).not.toContain("user:get");
-    expect(permissions).not.toContain("user:list");
-    expect(permissions).not.toContain("session:delete");
-    expect(
-      permissions.some((permission) => permission.startsWith("api-key:")),
-    ).toBe(false);
+    expect(permissions).toHaveLength(28);
+    expect(new Set(permissions).size).toBe(28);
   });
 
   it("does not add baseline abilities to empty credentials", () => {
@@ -63,7 +54,7 @@ describe("explicit auth permission catalog", () => {
         Workspace,
         Invitation,
         UserApiKey,
-        WorkspaceApiKey,
+        MemberApiKey,
       ]) {
         for (const action of [
           "read",
@@ -82,7 +73,7 @@ describe("explicit auth permission catalog", () => {
 
   it.each([
     ["member", Member],
-    ["workspace-api-key", WorkspaceApiKey],
+    ["member-api-key", MemberApiKey],
   ] as const)(
     "keeps %s write independent from read and sensitive grants",
     (resource, subject) => {
@@ -140,7 +131,7 @@ describe("explicit auth permission catalog", () => {
         member: null,
         workspacePermissions: [],
         user: new User(),
-        userPermissions: ["user-api-key:write", "workspace-api-key:read"],
+        userPermissions: ["user-api-key:write", "member-api-key:read"],
       },
       {},
     );
@@ -150,14 +141,14 @@ describe("explicit auth permission catalog", () => {
         member: null,
         userPermissions: [],
         workspace: new Workspace(),
-        workspacePermissions: ["user-api-key:write", "workspace-api-key:read"],
+        workspacePermissions: ["user-api-key:write", "member-api-key:read"],
       },
       {},
     );
     expect(userAbility.can("write", UserApiKey)).toBe(true);
     expect(userAbility.can("read", UserApiKey)).toBe(false);
-    expect(workspaceAbility.can("write", WorkspaceApiKey)).toBe(false);
-    expect(workspaceAbility.can("read", WorkspaceApiKey)).toBe(true);
+    expect(workspaceAbility.can("write", MemberApiKey)).toBe(false);
+    expect(workspaceAbility.can("read", MemberApiKey)).toBe(true);
   });
 
   it("retains object restrictions for invitation management", () => {

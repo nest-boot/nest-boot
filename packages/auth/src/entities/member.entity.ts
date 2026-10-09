@@ -1,6 +1,7 @@
 /* eslint-disable @nest-boot/graphql-field-config-from-types -- MikroORM Opt/Ref markers require explicit GraphQL metadata. */
 import { BaseEntity, type Opt, type Ref, t } from "@mikro-orm/core";
 import {
+  Check,
   Entity,
   Enum,
   Index,
@@ -13,6 +14,7 @@ import { Field, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
 import { MemberStatus } from "../enums/member-status.enum.js";
+import { MemberType } from "../enums/member-type.enum.js";
 import { WorkspacePermission } from "../enums/workspace-permission.enum.js";
 import { WorkspaceRole } from "../enums/workspace-role.enum.js";
 import { userScopePolicy } from "../policies/user-scope.policy.js";
@@ -23,6 +25,9 @@ import { Workspace } from "./workspace.entity.js";
 /** Workspace-member states understood by the built-in authentication services. */
 export type AuthMemberStatus = "ACTIVE" | "DISABLED";
 
+/** Identity kinds supported by workspace members. */
+export type AuthMemberType = "USER" | "SERVICE_ACCOUNT";
+
 /** Built-in Member entity with authentication persistence and access policies. */
 @ObjectType()
 @Entity({
@@ -31,6 +36,11 @@ export type AuthMemberStatus = "ACTIVE" | "DISABLED";
     userScopePolicy({ command: "select" }),
     workspaceScopePolicy(),
   ],
+})
+@Check<typeof Member>({
+  name: "member_type_user_check",
+  expression: (columns) =>
+    `("${columns.type}" = 'USER' AND "${columns.user}" IS NOT NULL) OR ("${columns.type}" = 'SERVICE_ACCOUNT' AND "${columns.user}" IS NULL)`,
 })
 @Unique({ properties: ["user", "workspace"] })
 @Index({ properties: ["createdAt"] })
@@ -58,6 +68,11 @@ export class Member extends BaseEntity {
   @Property({ type: t.array, defaultRaw: "'{member}'" })
   @Field(() => [WorkspaceRole])
   roles: Opt<string[]> = ["member"];
+
+  /** Whether this member represents a login user or a service account. */
+  @Field(() => MemberType)
+  @Enum({ items: () => MemberType, default: MemberType.USER })
+  type: Opt<AuthMemberType> = MemberType.USER;
 
   /** Member lifecycle status. */
   @Field(() => MemberStatus)
@@ -89,12 +104,13 @@ export class Member extends BaseEntity {
   @Field(() => Date)
   updatedAt: Opt<Date> = new Date();
 
-  /** User associated with this membership. */
+  /** Login user; service accounts have no user. */
   @ManyToOne(() => User, {
+    nullable: true,
     updateRule: "cascade",
     deleteRule: "cascade",
   })
-  user!: Ref<User>;
+  user?: Ref<User> | null;
 
   /** Workspace that owns this member. */
   @ManyToOne(() => Workspace, {

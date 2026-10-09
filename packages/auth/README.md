@@ -43,7 +43,7 @@ contexts are preserved.
 ## Built-in entities
 
 Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
-`Workspace`, `Member`, `Invitation`, `UserApiKey` and `WorkspaceApiKey` entities, their GraphQL
+`Workspace`, `Member`, `Invitation`, `UserApiKey` and `MemberApiKey` entities, their GraphQL
 metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 
@@ -77,7 +77,7 @@ Service methods use explicit domain names without deprecated aliases:
 - `UserService.setUserRoles` replaces roles, while `setUserPermissions` replaces
   direct grants. `getEffectiveUserPermissions` and
   `MemberService.getEffectiveMemberPermissions` include role-derived grants.
-- `UserApiKeyService` and `WorkspaceApiKeyService` uses `createUserApiKey`, `updateUserApiKey`, `deleteUserApiKey`
+- `UserApiKeyService` and `MemberApiKeyService` uses `createUserApiKey`, `updateUserApiKey`, `deleteUserApiKey`
   and their workspace counterparts, matching its existing lookup names.
 - `MemberService.getMemberByUser(workspace, user)` finds only active
   memberships; `getMember(id)` reads a member in the request's selected workspace.
@@ -107,7 +107,7 @@ pagination behavior are unchanged.
 
 Use `WorkspaceService.getWorkspaceConnectionByUser(user, args)` and
 `MemberService.getMemberConnectionByWorkspace(workspace, args)` for workspace/member connections, and
-`UserApiKeyService.getUserApiKeyConnection(user, args)` / `WorkspaceApiKeyService.getWorkspaceApiKeyConnection(workspace, args)`
+`UserApiKeyService.getUserApiKeyConnection(user, args)` / `MemberApiKeyService.getMemberApiKeyConnection(workspace, args)`
 for API-key connections. Services own authorization, query scopes and
 `ConnectionManager` execution. User, session, workspace, member, API-key and
 invitation connection reads retain the request's native RLS scope. API-key ownership and credential permission ceilings still apply.
@@ -131,7 +131,7 @@ Reading another inviter's User additionally requires global user-read permission
 `InvitationService.getInvitation(id)` is the RLS-backed single-invitation lookup.
 It allows the recipient's session or the selected workspace's `member:invite`
 permission, then checks recipient ownership or workspace ownership and instance-level ability.
-Workspace API keys can use the workspace path without a user identity; failing
+Member API keys can use the workspace path without a user identity; failing
 recipient authorization does not prevent independently authorized workspace access.
 It uses the request manager without clearing its native session or disabling filters.
 Applications must define recipient SELECT policies
@@ -161,27 +161,27 @@ connection definition is required. Its GraphQL transport exposes these connectio
 
 - [x] Restrict the permissions supplied to configured user and workspace
       Ability builders: User Keys use the intersection with their principal's
-      effective permissions, while Workspace Keys use their own permissions.
+      effective permissions; Member Keys likewise intersect with their member's current grants. Empty key permissions inherit the owner's full grants.
 - [x] Add one shared permission normalizer and validator for configured user and
       workspace permission catalogs. Reject empty, duplicate, and unknown
       permission values at service boundaries.
 - [x] Apply permission-catalog validation when creating users and workspace
       members and when calling `setUserPermissions()` or
       `setMemberPermissions()`.
-- [x] Validate API-key permissions by owner type: Workspace Keys may contain
+- [x] Validate API-key permissions by owner type: Member Keys may contain
       workspace permissions only; User Keys may contain configured user and
       workspace permissions.
 - [x] Prevent API-key privilege escalation on creation and update. User-scoped
       permissions must not exceed the owning user's effective permissions;
-      Workspace Key permissions must not exceed the issuing member's effective
-      workspace permissions. User Key access to a workspace must continue to be
+      Member Key permissions must not exceed both the owning member's and the issuer's
+      effective workspace permissions. User Key access to a workspace must continue to be
       intersected with the user's current membership permissions at request
       time.
 - [x] Add module-level API-key defaults and grant limits, and prevent an
       authenticating API key from delegating permissions it does not have.
 - [x] Enforce user and workspace abilities inside authorization-sensitive
       `UserService`, `WorkspaceService`, `MemberService`,
-      `InvitationService`, and `UserApiKeyService` and `WorkspaceApiKeyService` operations, so
+      `InvitationService`, and `UserApiKeyService` and `MemberApiKeyService` operations, so
       direct service injection cannot bypass Resolver or Controller metadata.
       Authentication middleware primitives remain internal identity-resolution
       paths rather than privileged business operations.
@@ -264,6 +264,44 @@ GraphQL registration uses `AuthService.signUpPayload` and returns only
 the registered entity or grant authentication. The original DTO-returning
 AuthService methods remain available.
 
+## Member API-key creation
+
+`MemberApiKeyService.createMemberApiKey(workspace, { member, ...options })`
+accepts an existing member entity or ID. GraphQL accepts `input.memberId`.
+Only the caller's own USER member or an active SERVICE_ACCOUNT member in the
+selected workspace may own the new key.
+
+Omitting the owner uses the current member. The example form defaults to **You**,
+passing the current member ID. Choosing **Service account** displays a searchable
+account dropdown. If no account is selected, the frontend first calls `addMember`
+to create a service account named after the key, then calls `createMemberApiKey`
+with its `memberId`. Account creation requires `service-account:write`; key creation
+requires `member-api-key:write`. These are separate operations. With selected
+permissions, `addMember` receives `roles: []` and those direct permissions. With
+no selection, it omits roles and permissions to use the configured default
+workspace role (MEMBER by default).
+
+Empty API-key permissions (`[]`, including explicit `null` normalized to `[]`)
+inherit the owning user's or member's complete current permissions. Non-empty
+key permissions intersect with the owner's grants. Existing empty-permission
+keys follow the same rule. Configured `allowedPermissions` limits explicit
+selections; it does not cap inherited owner grants. Restricted credentials
+cannot create, read, change, or delete keys that inherit all owner permissions;
+their connection queries also exclude inherited keys.
+
+## Service account permissions
+
+`member:read` and `member:write` apply to USER members. SERVICE_ACCOUNT members
+use `service-account:read` and `service-account:write` for profile reads and
+creation, update, and deletion. The default OWNER and ADMIN workspace roles
+include both service account permissions; MEMBER does not. Member pagination
+and lookup only include types the caller can read.
+
+Changing service account roles or direct permissions also requires
+`member:set-roles` or `member:set-permissions`, respectively, together with
+`service-account:write`. Grant ceilings still apply. API-key management keeps
+its separate `member-api-key:read` and `member-api-key:write` permissions.
+
 ## Scoped management writes
 
 Ordinary API-key update/delete, user update/delete and role/permission setters,
@@ -285,8 +323,8 @@ dedicated ownership-transfer operation is provided. API-key update/delete checks
 type and the loaded instance so conditional abilities remain enforced.
 
 API-key writes use `updateUserApiKey(id, input)`,
-`updateWorkspaceApiKey(id, input)`, `deleteUserApiKey(id)` and
-`deleteWorkspaceApiKey(id)`. The stored owner determines authorization and
+`updateMemberApiKey(id, input)`, `deleteUserApiKey(id)` and
+`deleteMemberApiKey(id)`. The stored owner determines authorization and
 permission normalization. User and member management methods accept either an
 ID or an entity; `updateWorkspace(id, input)` and `deleteWorkspace(id)`
 also accept their existing entity arguments. Passing an ID does not require an
@@ -296,14 +334,16 @@ Apply the example's `Initial → generated schema migrations` before using
 these write paths. Custom applications must supply equivalent grants and RLS
 policies for their own data-isolation requirements. Default table privileges do not protect individual columns; Services exclude credential hashes and reject API-key ownership changes.
 Workspace deletion permanently removes the selected workspace through the request's
-RLS-scoped manager. Foreign keys cascade to members, invitations and workspace API
+RLS-scoped manager. Foreign keys cascade to members, invitations and member API
 keys; users and personal credentials remain. There is no deletion-specific database
 context or restore operation. Successful deletion clears the request's workspace
 identity and ability. Deleted keys no longer retain usage timestamps; durable
 deletion auditing belongs in a separate application audit log.
 
-Database request contexts use `app.user.id` and `app.workspace.id`; the previous
-`app.user` and `app.workspace` keys are no longer consumed by scope policies.
+Database request contexts use `app.user.id`, `app.workspace.id`, and `app.member.id`.
+`app.member.id` identifies the active member in the selected workspace for authenticated
+requests, including service accounts; it is empty when no active member is present
+and is cleared when workspace access or authentication is revoked.
 Application permissions are not passed to the database. Services enforce Ability
 checks, custom permission names and API-key ceilings. RLS retains identity-based
 ownership and workspace isolation, not permission-name
@@ -313,15 +353,15 @@ direct ORM/SQL access does not enforce those application authorization rules.
 Permission identifiers use lowercase `resource:action` names. Catalog membership,
 grant ceilings and API-key intersections use exact string equality; invalid
 names are rejected rather than case-converted. Auth owns the mappings for
-`user:*`, `session:*`, `workspace:*`, `member:*`, and scoped API-key
+`user:*`, `session:*`, `workspace:*`, `member:*`, `service-account:*`, and scoped API-key
 permissions. Custom permission names only grant business abilities through
 explicit permission-bound rules; they cannot redefine built-in auth operations.
 
 Scoped user deletion authorizes the root DELETE with Service checks and RLS;
 auth dependants are cleaned up atomically by database foreign-key cascades.
-`UserApiKey` and `WorkspaceApiKey` have separate tables and required `user` or `workspace` foreign keys, respectively. Accounts, sessions (including impersonation sessions),
+`UserApiKey` and `MemberApiKey` have separate tables and required `user` or `member` foreign keys, respectively. Accounts, sessions (including impersonation sessions),
 personal keys, memberships and sent invitations cascade from the deleted user.
-Workspaces and workspace-owned keys survive, even if no owner remains.
+Deleting memberships also removes their member keys. Workspaces and other members' keys survive.
 Generate and apply these constraints; child deletes can be silently filtered by RLS.
 Authentication bootstrap,
 creation, invitation acceptance, impersonation and credential administration
@@ -413,7 +453,7 @@ field resolvers may target these classes without replacing built-in fields.
 
 ## Native query migration
 
-- Single-key queries move from root `userApiKey(id)` to `User.apiKey(id)` and from root `apiKey(id)` to `Workspace.apiKey(id)`. They resolve `UserApiKey` and `WorkspaceApiKey`, respectively, with nullable field results and pass their parent to `UserApiKeyService` and `WorkspaceApiKeyService`; mutation authorization is unchanged (see the operation naming migration below). Query through `currentUser { apiKey(id: ...) { id } }` or `currentWorkspace { apiKey(id: ...) { id } }`. Service authorization, ownership filters, permission ceilings and request RLS remain in effect.
+- Single-key queries move from root `userApiKey(id)` to `User.apiKey(id)` and from root `apiKey(id)` to `Workspace.apiKey(id)`. They resolve `UserApiKey` and `MemberApiKey`, respectively, with nullable field results and pass their parent to `UserApiKeyService` and `MemberApiKeyService`; mutation authorization is unchanged (see the operation naming migration below). Query through `currentUser { apiKey(id: ...) { id } }` or `currentWorkspace { apiKey(id: ...) { id } }`. Service authorization, ownership filters, permission ceilings and request RLS remain in effect.
 - `users` uses `UserConnectionArgs` / `UserConnection` (first/after or last/before, query/filter/orderBy). `ListUsersInput` and `UserListType` are removed.
 - `User.accounts` now returns `AccountConnection!` through `AccountService.getAccountConnectionByUser(user, args)`: use `currentUser { accounts(first: 20) { edges { node { id providerId scopes } } pageInfo { hasNextPage endCursor } } }`. The array shape and `UserService.listUserAccounts` are removed. Account inspection requires the owning browser session; API keys are rejected and credentials are excluded.
 - Registration/sign-in payloads reference the built-in `User`, not `AuthUserType`. The entity-oriented AuthService methods establish the newly issued session and refresh RLS and abilities before resolving nested fields. Registration without a session does not authenticate the request; protected nested fields still require authentication.
@@ -465,8 +505,8 @@ preserving permitted profile edits. `MemberService.updateMember` checks each
 supplied field before updating and again under the row lock. Frontends should use
 `ability.can("write", member, "status")` for enable/disable actions.
 
-Personal keys use `user-api-key:read/write`; workspace keys use
-`workspace-api-key:read/write`. Write covers creation, updates, enabling/disabling,
+Personal keys use `user-api-key:read/write`; member keys use
+`member-api-key:read/write`. Write covers creation, updates, enabling/disabling,
 and deletion without granting reads.
 User administrators and workspace owners inherit them; ordinary users and
 workspace administrators require explicit role or direct grants. Existing
@@ -474,7 +514,7 @@ ownership checks and self-service operations remain enforced by Services.
 
 The `userRoles` and `workspaceRoles` queries return `{ role, grantable }` objects;
 `userPermissions` and `workspacePermissions` return `{ permission, grantable }`.
-`userApiKeyPermissions` and `workspaceApiKeyPermissions` also return
+`userApiKeyPermissions` and `memberApiKeyPermissions` also return
 `{ permission, grantable, default }` entries. `grantable` includes the API-key
 allowlist and issuer's grant ceiling; `default` reflects configured defaults.
 Editors preselect only `default && grantable`. `member:invite` allows querying,
@@ -482,10 +522,10 @@ creating, and canceling workspace invitations; it does not grant member writes.
 Accepting or rejecting one's own invitation requires the recipient's user session,
 not invitation management permission.
 
-Configure these independently with `apiKey.user` and `apiKey.workspace`, each
+Configure these independently with `apiKey.user` and `apiKey.member`, each
 containing `defaultPermissions` and `allowedPermissions`. Defaults are empty;
-omitted allowlists permit the scope's catalog, while `[]` permits no grants.
-User keys support both catalogs; workspace keys only support workspace grants.
+omitted allowlists permit the scope's catalog, while `allowedPermissions: []` permits no explicit selections. Empty key `permissions` inherit the owner's complete grants.
+User keys support both catalogs; member keys only support workspace grants.
 The former flat API-key settings are rejected with a migration message.
 
 Module permission catalogs and role maps extend built-in defaults. Same-name
@@ -526,7 +566,7 @@ removing actor arguments does not remove Service authorization.
 `updateWorkspace(id: ID!, input: UpdateWorkspaceInput!)`,
 and `deleteWorkspace(id: ID!)`
 now require an explicit workspace ID, which must match the selected workspace.
-User management mutation names and inputs are unchanged; see the naming migration below for workspace API keys.
+User management mutation names and inputs are unchanged; see the naming migration below for member API keys.
 API-key update/delete Service methods no longer take user/workspace arguments.
 
 `createWorkspace` returns `CreateWorkspacePayload { id: ID! }` and
@@ -617,19 +657,19 @@ and usage tracking.
 
 This is a breaking schema change; no deprecated aliases are retained:
 
-| Removed name         | Replacement             |
-| -------------------- | ----------------------- |
-| `createApiKey`       | `createWorkspaceApiKey` |
-| `updateApiKey`       | `updateWorkspaceApiKey` |
-| `deleteApiKey`       | `deleteWorkspaceApiKey` |
-| `currentAuthSession` | `currentSession`        |
-| `removeWorkspace`    | `deleteWorkspace`       |
+| Removed name         | Replacement          |
+| -------------------- | -------------------- |
+| `createApiKey`       | `createMemberApiKey` |
+| `updateApiKey`       | `updateMemberApiKey` |
+| `deleteApiKey`       | `deleteMemberApiKey` |
+| `currentAuthSession` | `currentSession`     |
+| `removeWorkspace`    | `deleteWorkspace`    |
 
-API-key entities, services, resolvers, connections, inputs, and creation results are split into `UserApiKey` and `WorkspaceApiKey` variants. Use `CreateUserApiKeyInput`, `UpdateUserApiKeyInput`, `CreateUserApiKeyResult`, and their `Workspace` counterparts. Permissions use separate `UserApiKeyPermission` and `WorkspaceApiKeyPermission` GraphQL enums; stored values stay unchanged.
+API-key entities, services, resolvers, connections, inputs, and creation results are split into `UserApiKey` and `MemberApiKey` variants. Use `CreateUserApiKeyInput`, `UpdateUserApiKeyInput`, `CreateUserApiKeyResult`, and their `Workspace` counterparts. Permissions use separate `UserApiKeyPermission` and `MemberApiKeyPermission` GraphQL enums; stored values stay unchanged.
 
 API-key enums cover the full scope catalogs, independently of the current grant
 allowlist, so existing keys remain readable after the allowlist is tightened.
-Workspace keys may carry `member:invite` to read and cancel invitations.
+Member keys may carry `member:invite` to read and cancel invitations.
 Creating an invitation also requires a user as sender; use a personal API key
 for invitation creation.
 

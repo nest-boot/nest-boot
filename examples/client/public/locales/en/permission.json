@@ -82,11 +82,11 @@
   },
   "member_read": {
     "name": "Read Members",
-    "description": "View workspace member profiles"
+    "description": "View workspace user member profiles"
   },
   "member_write": {
     "name": "Manage Members",
-    "description": "Add, update, disable, and remove members; excludes changing roles and permissions"
+    "description": "Add, update, disable, and remove user members; excludes changing roles and permissions"
   },
   "member_set_roles": {
     "name": "Set Member Roles",
@@ -100,12 +100,20 @@
     "name": "Manage Member Invitations",
     "description": "View, create, and cancel workspace invitations"
   },
-  "workspace_api_key_read": {
-    "name": "Read Workspace API Keys",
+  "member_api_key_read": {
+    "name": "Read Member API Keys",
     "description": "View API keys in the selected workspace"
   },
-  "workspace_api_key_write": {
-    "name": "Manage Workspace API Keys",
-    "description": "Create, update, enable, disable, and delete workspace API keys"
+  "member_api_key_write": {
+    "name": "Manage Member API Keys",
+    "description": "Create, update, enable, disable, and delete member API keys"
+  },
+  "service_account_read": {
+    "name": "Read Service Accounts",
+    "description": "View service account profiles in the selected workspace"
+  },
+  "service_account_write": {
+    "name": "Manage Service Accounts",
+    "description": "Create, update, disable, and remove service accounts; changing roles or permissions also requires the corresponding member permission"
   }
 }

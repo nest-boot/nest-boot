@@ -261,7 +261,9 @@ export class UserApiKeyService {
     const ceiling = resolveRequestPermissions(this.authOptions).apiKey;
     return {
       user,
-      ...(ceiling !== null ? { permissions: { $contained: ceiling } } : {}),
+      ...(ceiling !== null
+        ? { permissions: { $contained: ceiling, $ne: [] } }
+        : {}),
     };
   }
 

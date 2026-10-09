@@ -85,6 +85,7 @@ const GET_MEMBER_FROM_MEMBER_ROUTE = graphql(`
       id
       roles
       permissions
+      type
       status
       name
       email

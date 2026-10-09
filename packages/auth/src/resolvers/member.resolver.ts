@@ -7,11 +7,13 @@ import {
   ResolveField,
   Resolver,
 } from "@nest-boot/graphql";
+import { BadRequestException } from "@nestjs/common";
 
 import { CurrentWorkspace } from "../decorators/current-workspace.decorator.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { MemberType } from "../enums/member-type.enum.js";
 import { AddMemberInput } from "../inputs/add-member.input.js";
 import { SetMemberPermissionsInput } from "../inputs/set-member-permissions.input.js";
 import { SetMemberRolesInput } from "../inputs/set-member-roles.input.js";
@@ -90,9 +92,24 @@ export class MemberResolver {
     @CurrentWorkspace() workspace: Workspace,
     @Args("input") input: AddMemberInput,
   ): Promise<AddMemberPayload> {
+    if (input.type === MemberType.SERVICE_ACCOUNT) {
+      if (!input.name || input.email !== undefined)
+        throw new BadRequestException(
+          "Service accounts require a name and cannot link a login email",
+        );
+      const member = await this.memberService.addServiceAccount(
+        workspace,
+        input.name,
+        { roles: input.roles, permissions: input.permissions },
+      );
+      return { id: member.id };
+    }
+    if (!input.email)
+      throw new BadRequestException("User members require an email");
     const member = await this.memberService.addMemberByEmail(
       workspace,
       input.email,
+      { roles: input.roles, permissions: input.permissions },
     );
     return { id: member.id };
   }

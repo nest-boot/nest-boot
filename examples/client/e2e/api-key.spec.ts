@@ -13,11 +13,11 @@ import {
 import type { Page } from "@playwright/test";
 
 test.describe("API keys", () => {
-  test("limits workspace-key selections and defaults to the issuer's grants", async ({
+  test("limits member-key selections and defaults to the issuer's grants", async ({
     page,
     browser,
   }) => {
-    const seed = uniqueSeed("limited-workspace-key");
+    const seed = uniqueSeed("limited-member-key");
     await registerUser(page, {
       email: `${seed}-owner@example.com`,
       name: "Key Owner",
@@ -41,8 +41,10 @@ test.describe("API keys", () => {
           id,
           input: {
             permissions: [
-              "WORKSPACE_API_KEY__READ",
-              "WORKSPACE_API_KEY__WRITE",
+              "MEMBER_API_KEY__READ",
+              "MEMBER_API_KEY__WRITE",
+              "SERVICE_ACCOUNT__READ",
+              "SERVICE_ACCOUNT__WRITE",
               "WORKSPACE__UPDATE",
             ],
           },
@@ -88,8 +90,126 @@ test.describe("API keys", () => {
     }
   });
 
-  test("manages a workspace-owned API key", async ({ page }) => {
-    const seed = uniqueSeed("workspace-api-key");
+  test("searches service accounts and creates a default account when cleared", async ({
+    page,
+  }) => {
+    const seed = uniqueSeed("service-account-key");
+    await registerUser(page, {
+      email: `${seed}@example.com`,
+      name: "Key Owner",
+    });
+    const workspaceId = await createFirstWorkspace(page, seed);
+    const headers = { "x-workspace-id": workspaceId };
+    const { addMember } = await graphqlRequest<{ addMember: { id: string } }>(
+      page.request,
+      `mutation { addMember(input: { type: SERVICE_ACCOUNT, name: "Build automation" }) { id } }`,
+      {},
+      headers,
+    );
+    await graphqlRequest(
+      page.request,
+      `mutation { addMember(input: { type: SERVICE_ACCOUNT, name: "Deploy automation" }) { id } }`,
+      {},
+      headers,
+    );
+    const creationOperations: Array<string> = [];
+    page.on("request", (request) => {
+      if (
+        request.method() !== "POST" ||
+        !request.url().endsWith("/api/graphql")
+      )
+        return;
+      const payload = request.postDataJSON() as { operationName?: string };
+      const operation = payload?.operationName;
+      if (
+        operation &&
+        [
+          "addServiceAccountForApiKey",
+          "createMemberApiKeyFromApiKeysRoute",
+        ].includes(operation)
+      )
+        creationOperations.push(operation);
+    });
+    const readKey = (id: string) =>
+      graphqlRequest<{
+        currentWorkspace: {
+          apiKey: { memberId: string; permissions: Array<string> };
+        };
+      }>(
+        page.request,
+        `query ($id: ID!) { currentWorkspace { apiKey(id: $id) { memberId permissions } } }`,
+        { id },
+        headers,
+      );
+    await page.goto(`/workspaces/${workspaceId}/api-keys/create`);
+    const serviceAccount = page.getByRole("combobox", {
+      name: "Service account",
+      exact: true,
+    });
+    await serviceAccount.fill("Build");
+    await expect(
+      page.getByRole("option", { name: "Deploy automation" }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("option", { name: "Build automation", exact: true })
+      .click();
+    await page.getByLabel("Name", { exact: true }).fill(`Existing ${seed}`);
+    await page.getByRole("button", { name: "Create", exact: true }).click();
+    await expect(page.getByLabel("Key", { exact: true })).toHaveValue(
+      /^ws_[A-Za-z0-9_-]{64}$/,
+    );
+    expect(creationOperations).toEqual(["createMemberApiKeyFromApiKeysRoute"]);
+    const existingId = new URL(page.url()).pathname.split("/").at(-1)!;
+    expect((await readKey(existingId)).currentWorkspace.apiKey).toEqual({
+      memberId: addMember.id,
+      permissions: [],
+    });
+
+    await page.goto(`/workspaces/${workspaceId}/api-keys/create`);
+    await serviceAccount.fill("Build");
+    await page
+      .getByRole("option", { name: "Build automation", exact: true })
+      .click();
+    await page.locator('[data-slot="combobox-clear"]').click();
+    await expect(serviceAccount).toHaveValue("");
+    const name = `Automatic ${seed}`;
+    await page.getByLabel("Name", { exact: true }).fill(name);
+    await page.getByRole("button", { name: "Create", exact: true }).click();
+    await expect(page.getByLabel("Key", { exact: true })).toHaveValue(
+      /^ws_[A-Za-z0-9_-]{64}$/,
+    );
+    expect(creationOperations).toEqual([
+      "createMemberApiKeyFromApiKeysRoute",
+      "addServiceAccountForApiKey",
+      "createMemberApiKeyFromApiKeysRoute",
+    ]);
+    const automaticId = new URL(page.url()).pathname.split("/").at(-1)!;
+    const key = (await readKey(automaticId)).currentWorkspace.apiKey;
+    expect(key.memberId).not.toBe(addMember.id);
+    expect(key.permissions).toEqual([]);
+    const { member } = await graphqlRequest<{
+      member: {
+        name: string;
+        type: string;
+        roles: Array<string>;
+        permissions: Array<string>;
+      };
+    }>(
+      page.request,
+      `query ($id: ID!) { member(id: $id) { name type roles permissions } }`,
+      { id: key.memberId },
+      headers,
+    );
+    expect(member).toEqual({
+      name,
+      type: "SERVICE_ACCOUNT",
+      roles: ["MEMBER"],
+      permissions: [],
+    });
+  });
+
+  test("manages a member-owned API key", async ({ page }) => {
+    const seed = uniqueSeed("member-api-key");
 
     await registerUser(page, {
       email: `${seed}@example.com`,
@@ -157,12 +277,12 @@ test.describe("API keys", () => {
     });
     const workspaceId = await createFirstWorkspace(page, seed);
     const otherWorkspace = await createWorkspaceByApi(page, `${seed}-other`);
-    const { createWorkspaceApiKey: workspaceKey } = await graphqlRequest<{
-      createWorkspaceApiKey: { entity: { id: string } };
+    const { createMemberApiKey: memberKey } = await graphqlRequest<{
+      createMemberApiKey: { entity: { id: string } };
     }>(
       page.request,
       `mutation {
-      createWorkspaceApiKey(input: { name: "Workspace scoped key", permissions: [] }) { entity { id } }
+      createMemberApiKey(input: { name: "Workspace scoped key", permissions: [] }) { entity { id } }
     }`,
       {},
       { "x-workspace-id": workspaceId },
@@ -176,19 +296,19 @@ test.describe("API keys", () => {
     }`,
     );
     await page.goto(
-      `/workspaces/${workspaceId}/api-keys/${workspaceKey.entity.id}`,
+      `/workspaces/${workspaceId}/api-keys/${memberKey.entity.id}`,
     );
     await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
       "Workspace scoped key",
     );
     await page.goto(
-      `/workspaces/${otherWorkspace.id}/api-keys/${workspaceKey.entity.id}`,
+      `/workspaces/${otherWorkspace.id}/api-keys/${memberKey.entity.id}`,
     );
     await expect(page).toHaveURL(
       new RegExp(`/workspaces/${otherWorkspace.id}/api-keys(?:\\?.*)?$`),
     );
     await expect(page.getByLabel("Name", { exact: true })).toHaveCount(0);
-    await page.goto(`/user/api-keys/${workspaceKey.entity.id}`);
+    await page.goto(`/user/api-keys/${memberKey.entity.id}`);
     await expect(page).toHaveURL(/\/user\/api-keys(\?.*)?$/);
     await page.goto(`/workspaces/${workspaceId}/api-keys/${userKey.entity.id}`);
     await expect(page).toHaveURL(
@@ -252,7 +372,7 @@ async function exerciseApiKeyLifecycle(
   for (const action of ["read", "write"]) {
     const permission = getPermissionCheckbox(
       page,
-      `${scope}_API_KEY__${action.toUpperCase()}`,
+      `${scope === "WORKSPACE" ? "MEMBER" : "USER"}_API_KEY__${action.toUpperCase()}`,
     );
     await expect(permission).toBeVisible();
     await expect(permission).not.toBeChecked();
@@ -348,11 +468,17 @@ async function exerciseApiKeyLifecycle(
   await expect(revealedKey).toHaveValue(`${secret.slice(0, 8)}...`);
   for (const action of ["read", "write"]) {
     await expect(
-      getPermissionCheckbox(page, `${scope}_API_KEY__${action.toUpperCase()}`),
+      getPermissionCheckbox(
+        page,
+        `${scope === "WORKSPACE" ? "MEMBER" : "USER"}_API_KEY__${action.toUpperCase()}`,
+      ),
     ).toBeChecked();
   }
   await page.getByLabel("Name", { exact: true }).fill(names.renamedName);
-  await getPermissionCheckbox(page, `${scope}_API_KEY__WRITE`).click();
+  await getPermissionCheckbox(
+    page,
+    `${scope === "WORKSPACE" ? "MEMBER" : "USER"}_API_KEY__WRITE`,
+  ).click();
   await page.getByLabel("Name", { exact: true }).press("Enter");
   await expect(
     page.getByText("API key updated", { exact: true }),
@@ -362,7 +488,10 @@ async function exerciseApiKeyLifecycle(
     names.renamedName,
   );
   await expect(
-    getPermissionCheckbox(page, `${scope}_API_KEY__WRITE`),
+    getPermissionCheckbox(
+      page,
+      `${scope === "WORKSPACE" ? "MEMBER" : "USER"}_API_KEY__WRITE`,
+    ),
   ).not.toBeChecked();
   await page
     .getByRole("navigation", { name: "Breadcrumbs" })

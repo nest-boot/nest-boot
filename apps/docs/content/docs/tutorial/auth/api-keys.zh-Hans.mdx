@@ -3,24 +3,61 @@ title: "API Key"
 description: "使用带权限范围的 API Key 认证个人和工作区自动化任务。"
 ---
 
-`UserApiKeyService` 和 `WorkspaceApiKeyService` 管理由用户或工作区拥有的 API Key。
+`UserApiKeyService` 和 `MemberApiKeyService` 管理归属于用户的个人 Key 和归属于 member 的工作区范围 Key。
 
 - **User Key** 会恢复所属用户；只有该用户仍是所选工作区的活动成员时，才能访问工作区资源。
-- **Workspace Key** 是独立服务身份；它会恢复所属工作区，但不会创建当前用户或工作区成员。
+- **Member Key** 会恢复所属 member 和工作区。用户成员还会恢复登录用户；服务账号没有登录用户。停用成员或封禁其登录用户后，Key 不能继续认证。
 
 个人 Key 管理使用 `user-api-key:read` 和 `user-api-key:write`；
-工作区 Key 管理使用 `workspace-api-key:read` 和 `workspace-api-key:write`。
+成员 Key 管理使用 `member-api-key:read` 和 `member-api-key:write`。
 `read` 允许查询，`write` 允许创建、更新、启停和删除，二者不互相隐含。
 资源归属与可授予权限上限检查仍然生效。
 示例的两个用户角色均包含个人 Key 管理权限。API Key 请求只会获得权限取交集后明确
 授予的操作，不再无条件继承 `manage` 规则。
 前端消费服务端权限选项，只预选同时满足 `default` 与 `grantable` 的项。
 
+## Member 归属与服务账号
+
+`Member.type` 区分 `USER`（默认）和 `SERVICE_ACCOUNT`。用户成员必须关联登录用户，
+服务账号的 `user` 必须为 null；服务账号使用现有的角色、权限、状态、资料编辑及删除操作。
+可调用 `MemberService.addServiceAccount(workspace, name, options)`，或通过 GraphQL 创建：
+
+```graphql
+mutation {
+  addMember(input: { type: SERVICE_ACCOUNT, name: "CI deployer" }) {
+    id
+  }
+}
+```
+
+Service 的 `createMemberApiKey(workspace, { member, ...options })` 可传成员实体或 ID；
+GraphQL 接口接收 `input.memberId`。用户只能为自己的 USER 成员或所选工作区的活动
+服务账号创建 Key。省略归属时使用当前 member。
+前端默认选择「你」，传入当前 member ID；选择「服务账号」后显示可搜索的下拉框。
+此时未选择具体账号，先调用 `addMember`，按 Key 名称
+创建 `SERVICE_ACCOUNT`，再把返回的 `memberId` 传给 `createMemberApiKey`。
+这是两个独立 API 调用，分别需要 `service-account:write` 和 `member-api-key:write`。
+勾选权限时，创建账号传入 `roles: []` 和对应直接权限；未勾选时省略角色和权限，
+使用配置的默认工作区角色（默认 MEMBER）。
+
+创建和更新不能超出目标成员的有效权限或签发者授权范围。非空 Key 权限在运行时与
+所属成员当前权限取交集；`permissions: []` 则不额外限制，继承成员的完整当前权限。
+角色及权限后续变化同样会影响 Key。
+具备 `member-api-key:read` 或 `member-api-key:write` 时，可分别查看或删除同工作区
+其他成员的 Key，仍受对象权限和当前凭证权限上限约束。明文只在创建时返回。
+
+`MemberApiKey.member` 是唯一持久化归属关联；`memberId` 与派生的 `workspaceId`
+用于客户端和授权条件。删除 member 会级联删除其 Key；停用 member 后 Key 无法认证。
+角色和直接权限变更会在 Key 的下一次请求中生效。
+
+beta 示例保留 init，其余迁移按最终模型重新生成为 `Migration20261009070926`，
+直接创建成员 Key 与服务账号约束，不再保留旧表转换迁移。业务项目的已有数据需单独迁移。
+
 ## 服务 API
 
 - `getUserApiKey`、`createUserApiKey`、`updateUserApiKey` 与 `deleteUserApiKey`；
-- `getWorkspaceApiKey`、`createWorkspaceApiKey`、`updateWorkspaceApiKey` 与 `deleteWorkspaceApiKey`；
-- `UserApiKeyService.getUserApiKeyConnection(user, args)` 与 `WorkspaceApiKeyService.getWorkspaceApiKeyConnection(workspace, args)` 返回连接分页；
+- `getMemberApiKey`、`createMemberApiKey`、`updateMemberApiKey` 与 `deleteMemberApiKey`；
+- `UserApiKeyService.getUserApiKeyConnection(user, args)` 与 `MemberApiKeyService.getMemberApiKeyConnection(workspace, args)` 返回连接分页；
   认证和使用时间更新由内部基础设施负责；业务代码使用两个管理 Service。
 
 GraphQL 连接字段为 `User.apiKeys` 和 `Workspace.apiKeys`，通常通过 `currentUser`
@@ -37,7 +74,7 @@ GraphQL 连接字段为 `User.apiKeys` 和 `Workspace.apiKeys`，通常通过 `c
 被规则拒绝时返回授权错误。
 
 ```graphql
-query Keys($userKeyId: ID!, $workspaceKeyId: ID!) {
+query Keys($userKeyId: ID!, $memberKeyId: ID!) {
   currentUser {
     apiKey(id: $userKeyId) {
       id
@@ -45,7 +82,7 @@ query Keys($userKeyId: ID!, $workspaceKeyId: ID!) {
     }
   }
   currentWorkspace {
-    apiKey(id: $workspaceKeyId) {
+    apiKey(id: $memberKeyId) {
       id
       name
     }
@@ -54,13 +91,13 @@ query Keys($userKeyId: ID!, $workspaceKeyId: ID!) {
 ```
 
 创建和父字段查询仍显式传入所属用户或工作区；更新与删除只传资源 ID：
-`updateUserApiKey(id, input)`、`updateWorkspaceApiKey(id, input)`、
-`deleteUserApiKey(id)`、`deleteWorkspaceApiKey(id)`。
+`updateUserApiKey(id, input)`、`updateMemberApiKey(id, input)`、
+`deleteUserApiKey(id)`、`deleteMemberApiKey(id)`。
 Service 从持久化记录解析归属，并从请求上下文检查当前用户、工作区、操作权限及授权上限，
 同时保留请求的原生 RLS。即使数据库返回了其他用户或工作区的记录，Service 仍会拒绝；
 被 RLS 隐藏的记录按不存在处理。工作区 mutation 统一命名为
-`createWorkspaceApiKey`、`updateWorkspaceApiKey`、`deleteWorkspaceApiKey`，
-与 `*UserApiKey` 对称。旧的无作用域名称已移除，输入和返回类型分别为 `CreateUserApiKeyInput`、`UpdateUserApiKeyInput`、`CreateUserApiKeyResult` 及对应的 `Workspace` 类型；连接节点分别返回 `UserApiKey`、`WorkspaceApiKey`。
+`createMemberApiKey`、`updateMemberApiKey`、`deleteMemberApiKey`，
+与 `*UserApiKey` 对称。旧的无作用域名称已移除，输入和返回类型分别为 `CreateUserApiKeyInput`、`UpdateUserApiKeyInput`、`CreateUserApiKeyResult` 及对应的 `Workspace` 类型；连接节点分别返回 `UserApiKey`、`MemberApiKey`。
 
 示例数据库需执行 `Initial → generated schema migrations`。
 它统一授予默认表权限，不再提供列级保护；Service 限制可更新字段并从普通读取结果中排除 Key 哈希。
@@ -71,19 +108,19 @@ Service 从持久化记录解析归属，并从请求上下文检查当前用户
 `lastUsedAt`。自定义前缀长度为 1–32 位，只能包含小写英文字母、数字、下划线和连字符，且首位必须是字母；用户密钥默认前缀为 `user_`，工作空间密钥为 `ws_`。生成的 Key 用于
 Bearer 请求头。
 
-前缀直接与随机字符串拼接，不会自动添加分隔符。优先级为创建参数 `prefix` → 对应 `apiKey.user.defaultPrefix` 或 `apiKey.workspace.defaultPrefix` → `API_KEY_PREFIX` 环境变量 → 内置默认值。修改配置只影响新创建的密钥。
+前缀直接与随机字符串拼接，不会自动添加分隔符。优先级为创建参数 `prefix` → 对应 `apiKey.user.defaultPrefix` 或 `apiKey.member.defaultPrefix` → `API_KEY_PREFIX` 环境变量 → 内置默认值。修改配置只影响新创建的密钥。
 
 ## 权限值
 
 auth 包以 `string[]` 存储和判断权限。应用负责定义封闭的用户与工作区权限目录；
-`UserApiKeyService` 和 `WorkspaceApiKeyService` 会在创建和更新 Key 时依据这些目录校验权限值。
+`UserApiKeyService` 和 `MemberApiKeyService` 会在创建和更新 Key 时依据这些目录校验权限值。
 权限标识使用小写 `resource:action`，每段以字母开头，可包含小写字母、数字和中划线。
 启动时拒绝下划线、连续中划线和混合大小写。权限目录、授权上限与
 Key 权限交集只做精确字符串匹配，不做规范化转换。
-GraphQL 使用独立的 `UserApiKeyPermission`、`WorkspaceApiKeyPermission` 枚举，将 `user-api-key:read` 映射为
+GraphQL 使用独立的 `UserApiKeyPermission`、`MemberApiKeyPermission` 枚举，将 `user-api-key:read` 映射为
 `USER_API_KEY__READ`，内部仍使用原值。
-Auth 将 `user-api-key:*` 在用户能力中映射到 `UserApiKey`，将 `workspace-api-key:*`
-在工作区能力中映射到 `WorkspaceApiKey`。业务扩展通过受约束的 `AbilityRules.can` 显式绑定自定义权限。
+Auth 将 `user-api-key:*` 在用户能力中映射到 `UserApiKey`，将 `member-api-key:*`
+在工作区能力中映射到 `MemberApiKey`。业务扩展通过受约束的 `AbilityRules.can` 显式绑定自定义权限。
 
 ```typescript
 const workspacePermissions = ["workspace:update", "member:write"] as const;
@@ -93,17 +130,17 @@ type WorkspacePermission = (typeof workspacePermissions)[number];
 const userKeyPermissions = ["user:read", ...workspacePermissions] as const;
 ```
 
-实体属性和数据库列保留原始字符串；GraphQL 输入与输出使用作用域枚举，前端从生成的枚举派生表单选项和 TypeScript 类型。Workspace Key 只接受配置的工作区权限；
+实体属性和数据库列保留原始字符串；GraphQL 输入与输出使用作用域枚举，前端从生成的枚举派生表单选项和 TypeScript 类型。Member Key 只接受配置的工作区权限；
 User Key 接受用户与工作区权限目录的并集。格式错误、重复和未知权限都会被拒绝。
 PostgreSQL 使用 `text[]` 列持久化这些值。
 
 创建和更新还会检查权限上限。User Key 中的用户作用域权限不能超过所属用户当前由角色
-与直接授权得到的权限；Workspace Key 不能超过签发成员当前由角色与直接授权得到的
-权限；由 Workspace Key 签发时，则不能超过当前 Key 的权限。
+与直接授权得到的权限；Member Key 不能超过所属成员当前的角色及直接权限，
+也不能超过签发者的有效工作区权限；使用 API Key 签发时还受当前 Key 的权限上限限制。
 User Key 中的工作区权限会在每次请求时再次与所选工作区的成员权限取交集，因此
 一个 Key 可以跨工作区使用，但不会固化或复制成员权限。
 
-分别配置用户 Key 和工作区 Key 的默认权限与授予白名单：
+分别配置用户 Key 和成员 Key 的默认权限与授予白名单：
 
 ```typescript
 AuthModule.forRoot({
@@ -114,7 +151,7 @@ AuthModule.forRoot({
       defaultPermissions: ["user:read"],
       allowedPermissions: ["user:read", "workspace:update"],
     },
-    workspace: {
+    member: {
       defaultPrefix: "ws_",
       defaultPermissions: ["workspace:update"],
       allowedPermissions: ["workspace:update", "workspace:delete"],
@@ -124,28 +161,29 @@ AuthModule.forRoot({
 ```
 
 `defaultPermissions` 默认为 `[]`，仅在创建时省略 `permissions` 字段的情况下生效；
-显式传入 `null` 或 `[]` 会创建无权限 Key。用户 Key 省略 `allowedPermissions` 时使用
-用户与工作区目录的并集；工作区 Key 仅使用工作区目录。显式 `[]` 表示不允许授予任何权限。
+显式传入 `null` 或 `[]` 不额外限制 Key，继承 owner 完整当前权限。用户 Key 省略 `allowedPermissions` 时使用
+用户与工作区目录的并集；成员 Key 仅使用工作区目录。`allowedPermissions: []` 表示不能显式选择权限；白名单不限制空 Key 权限继承的 owner 权限。
 模块在启动时分别验证两个作用域，并要求默认权限属于相应白名单。用户 Key 可以默认授予
-`user:read` 或 `member:invite`；工作区 Key 没有用户身份，因此不能发送邀请。
+`user:read` 或 `member:invite`；用户成员的成员 Key 在成员与 Key 权限允许时可以发送邀请；服务账号没有邀请人用户。
 
 旧的 `apiKey.defaultPermissions`、`apiKey.allowedPermissions` 已移除。请将列表迁移到
-`apiKey.user` 和／或 `apiKey.workspace`，并从工作区列表中删除用户专属权限。
+`apiKey.user` 和／或 `apiKey.member`，并从工作区列表中删除用户专属权限。
 省略某一作用域时使用该作用域的默认配置，不会继承另一作用域。
 
-Key 编辑界面使用 `userApiKeyPermissions` 与 `workspaceApiKeyPermissions` 获取
+Key 编辑界面使用 `userApiKeyPermissions` 与 `memberApiKeyPermissions` 获取
 `{ permission, grantable, default }` 列表，权限字段使用对应的 API Key 权限枚举。
-可授予状态综合配置白名单、签发者授权上限与当前 Key 的权限。工作区 Key 可以获得
+可授予状态综合配置白名单、签发者授权上限与当前 Key 的权限。成员 Key 可以获得
 `member:invite` 来查看和取消邀请；创建邀请仍要求用户身份。不可授予项仍可展示，但不能用于新选项或默认勾选。
 Service 仍会校验每次写入，这份列表不能替代授权检查。
 `default` 独立表示配置中的默认权限；前端仅预选 `default && grantable` 的项，
 不要根据枚举值自行推断默认权限。
 
-白名单只是额外上限，不会自动授予权限。请求权限仍必须符合 Key 所有者类型，并且不能
+白名单限制显式选择的权限，不会自动授予权限。请求权限仍必须符合 Key 所有者类型，并且不能
 超过签发者的有效权限。如果当前请求本身使用 API Key 认证，新建或更新的 Key 也不能
 获得当前 Key 没有的权限。读取、更新和删除现有 Key 时，其**已存储权限**也必须在
 当前 Key 的权限范围内，不能通过将权限改成空数组绕过检查。列表在数据库查询阶段
-应用相同限制，分页总数也只计算范围内的 Key。浏览器 Session 在常规 Ability 检查
+应用相同限制，分页总数也只计算范围内的 Key。受限凭证不能创建、读取、修改或删除
+继承完整 owner 权限的 Key，列表也会排除这些 Key。浏览器 Session 在常规 Ability 检查
 通过后，仍可管理所属范围内的全部 Key。
 更新时省略 `permissions` 会保留原值，传入 `null` 则会清空。
 
@@ -174,9 +212,9 @@ audit(@CurrentApiKey() apiKey: ApiKey | null) {
 }
 ```
 
-调用配置的构建器前，User Key 权限会与所属用户的有效权限取交集；访问工作区路由时则
-与当前成员的有效权限取交集。Workspace Key 是服务身份，校验后的权限填入
-`workspacePermissions`，没有 user/member。顶层构建器接收两个作用域的权限数组，
+Key 权限非空时，调用配置的构建器前，User Key 权限会与所属用户的有效权限取交集；访问工作区路由时则
+与当前成员的有效权限取交集。Member Key 权限与所属 member 当前角色和直接授权取交集后填入
+`workspacePermissions`；不会获得用户范围权限，builder 会收到当前 member。顶层构建器接收两个作用域的权限数组，
 守卫检查最终生成的同一个 `AuthAbility`。
 
 示例基线 `Initial → generated schema migrations` 还包含：
@@ -186,4 +224,4 @@ Service 在普通读取中排除密钥哈希，限制更新字段，不允许修
 
 ## 持久化
 
-`UserApiKey` 与 `WorkspaceApiKey` 分别存入 `user_api_key`、`workspace_api_key`，只包含各自必填的归属外键，并使用独立的 RLS 策略。认证查询两张表；如果同一凭据在两表重复，认证失败，不会选择其中一个身份。
+`UserApiKey` 与 `MemberApiKey` 分别存入 `user_api_key`、`member_api_key`，只包含各自必填的归属外键，并使用独立的 RLS 策略。认证查询两张表；如果同一凭据在两表重复，认证失败，不会选择其中一个身份。

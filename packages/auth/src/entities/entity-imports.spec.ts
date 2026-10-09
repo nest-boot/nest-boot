@@ -4,7 +4,7 @@ it("should load entities in an isolated module", async () => {
 
   expect((await import("./account.entity.js")).Account).toBeDefined();
   expect(
-    (await import("./workspace-api-key.entity.js")).WorkspaceApiKey,
+    (await import("./member-api-key.entity.js")).MemberApiKey,
   ).toBeDefined();
   expect((await import("./session.entity.js")).Session).toBeDefined();
   expect((await import("./user.entity.js")).User).toBeDefined();

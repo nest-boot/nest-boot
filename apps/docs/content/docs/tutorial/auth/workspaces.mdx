@@ -39,7 +39,7 @@ different workspaces.
 
 Creating a workspace also creates its active owner membership. Deletion is
 permanent and requires delete ability for the selected workspace. Foreign keys
-cascade to its members, invitations and workspace API keys; users and their
+cascade to its members, invitations and member API keys; users and their
 personal credentials remain. Workspaces have no `deletedAt` field or restore operation.
 Deletion, member creation, and invitation creation/acceptance
 lock the workspace row and verify that it still exists inside their transaction.
@@ -54,6 +54,7 @@ after the deletion commits.
 - `getMember(id)` — requires the current workspace and checks read ability;
 - `getMemberConnectionByWorkspace(workspace, args)`;
 - `addMember(workspace, user, input)`;
+- `addServiceAccount(workspace, name, input)`;
 - `addMemberByEmail(workspace, email, input)`;
 - `updateMember(id, input)`;
 - `setMemberRoles(id, roles)`;
@@ -61,7 +62,13 @@ after the deletion commits.
 - `removeMember(id)`;
 - `leaveWorkspace(member)`.
 
-Member disable/remove operations check `member:write` regardless of role.
+USER member reads and writes require `member:read` and `member:write`.
+SERVICE_ACCOUNT members require separate `service-account:read` and
+`service-account:write` permissions. The default OWNER and ADMIN roles have both;
+MEMBER does not. Lists and ID lookups only include readable member types.
+Changing service account roles or direct permissions additionally requires
+`member:set-roles` or `member:set-permissions`, respectively, together with
+`service-account:write` and the existing grant ceiling checks.
 Any current member may leave, including an owner; the workspace may remain without owners.
 Administrative removal still rejects self-removal; use `leaveWorkspace` instead.
 Member status and role changes lock the affected memberships
@@ -130,10 +137,14 @@ authorization in the Service; workspace roles alone do not grant it.
 The same boundary applies to `Invitation.inviter`: access to an invitation
 does not grant access to the inviter's private profile.
 
-Service-account creation and its options/input exports remain removed without
-aliases; there is no member type enum. The example now has a two-step fresh-database
-baseline, `Initial → generated schema migrations`, which creates required member user
-relations and independent name/email fields directly, without historical columns.
+`MemberType` distinguishes `USER` and `SERVICE_ACCOUNT`. User members require a
+login user; service accounts require a null user and share the normal profile,
+role, permission, and status operations. Create service accounts with
+`MemberService.addServiceAccount(workspace, name, options)` or
+`addMember(input: { type: SERVICE_ACCOUNT, name: "CI deployer" })`. Creation
+requires member write permission and checks role/permission grant ceilings.
+The member-owned API-key migration extends the example baseline; see
+[API keys](./api-keys) for migration and credential ownership details.
 
 The generated baseline User SELECT policy allows authenticated database roles to
 read User rows. Services enforce profile visibility through Ability, including

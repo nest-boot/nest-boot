@@ -114,7 +114,7 @@
     },
     {
       "domain": "API keys",
-      "scenario": "User and workspace API key lifecycle",
+      "scenario": "User and member API key lifecycle",
       "status": "covered",
       "specs": ["api-key.spec.ts"],
       "notes": "Uses four standalone create/detail routes, checks reloads and direct links, validates names, copies the once-only secret, and disables, edits, and deletes both owner types. Checks mobile layout, read-only controls, creation guards, and rejection of missing, deleted, cross-workspace, and foreign-owner detail IDs. Bearer authentication and privilege ceilings are covered by server PostgreSQL E2E."
@@ -125,7 +125,7 @@
       "status": "covered",
       "specs": [
         "user-api-key-navigation.spec.ts",
-        "workspace-api-key-navigation.spec.ts"
+        "member-api-key-navigation.spec.ts"
       ],
       "notes": "Preserves filters, order, page size and cursor through creation and details. Traverses adjacent records across list pages, restores browser history and reloads, and returns the current record as the first row using the preceding cursor. Checks default/direct entry, invalid session data, failed neighbor queries and retry, null sort values, and two workspaces with distinct filters and pagination in the same browser session. After returning from details, alternates next/previous/next list pages and verifies the custom page size, saved cursor, and reload position."
     },

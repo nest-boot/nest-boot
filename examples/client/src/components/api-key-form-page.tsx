@@ -14,6 +14,14 @@ import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-
 import { Link } from "@/components/link";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import { ApiKeyStatusBadge } from "@/components/api-key-status-badge";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
 import { Button } from "@/components/thread-ui/button";
 import { Input } from "@/components/thread-ui/input";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
@@ -43,11 +51,14 @@ interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
   paginationActions?: PagePaginationActionsConfig;
   permissionValues: ReadonlyArray<Permission>;
   permissionOptions: ReadonlyArray<PermissionOption<Permission>>;
+  memberOptions?: Array<{ value: string; label: string }>;
+  canCreateServiceAccount?: boolean;
   defaultPermissions?: ReadonlyArray<Permission>;
   onToggle?: () => Promise<void>;
   onDelete?: () => Promise<void>;
   onSave: (input: {
     name: string;
+    memberId?: string;
     permissions: Array<Permission>;
   }) => Promise<void>;
 }
@@ -62,6 +73,8 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
   permissionValues,
   permissionOptions,
   defaultPermissions = [],
+  memberOptions,
+  canCreateServiceAccount = true,
   onSave,
   onToggle,
   onDelete,
@@ -78,6 +91,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
   const form = useForm({
     defaultValues: {
       name: apiKey?.name ?? "",
+      memberId: "",
       permissions: (apiKey?.permissions ??
         defaultPermissions.filter((permission) =>
           permissionOptions.some(
@@ -93,6 +107,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
           .trim()
           .min(1, t("api-key:form.name.required"))
           .max(255, t("api-key:form.name.too_long")),
+        memberId: z.string(),
         permissions: z.array(z.enum(permissionValues)),
       }),
     },
@@ -101,13 +116,22 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
     },
     onSubmit: async ({ value, formApi }) => {
       if (!canWrite || pendingAction) return;
+      if (memberOptions && !value.memberId && !canCreateServiceAccount) {
+        formApi.setErrorMap({
+          onSubmit: { form: t("api-key:form.member.required"), fields: {} },
+        });
+        return;
+      }
       const input = {
         name: value.name.trim(),
+        ...(memberOptions && value.memberId
+          ? { memberId: value.memberId }
+          : {}),
         permissions: value.permissions.filter(isPermission),
       };
       try {
         await onSave(input);
-        if (apiKey) formApi.reset(input);
+        if (apiKey) formApi.reset({ ...input, memberId: value.memberId });
         toast.add({
           type: "success",
           title: t(
@@ -246,6 +270,68 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                       </Alert>
                     </FormLayoutItem>
                   )}
+                  {memberOptions && !apiKey && (
+                    <FormLayoutItem>
+                      <form.Field name="memberId">
+                        {(field) => (
+                          <Field>
+                            <FieldLabel htmlFor={`${formId}-member`}>
+                              {t("api-key:form.member.label")}
+                            </FieldLabel>
+                            <Combobox
+                              items={memberOptions}
+                              value={
+                                memberOptions.find(
+                                  (option) =>
+                                    option.value === field.state.value,
+                                ) ?? null
+                              }
+                              onValueChange={(option) =>
+                                field.handleChange(option?.value ?? "")
+                              }
+                              disabled={
+                                !canWrite || submitting || !!pendingAction
+                              }
+                            >
+                              <ComboboxInput
+                                disabled={
+                                  !canWrite || submitting || !!pendingAction
+                                }
+                                id={`${formId}-member`}
+                                placeholder={t("api-key:form.member.search")}
+                                showClear
+                              />
+                              <ComboboxContent>
+                                <ComboboxEmpty>
+                                  {t("api-key:form.member.empty")}
+                                </ComboboxEmpty>
+                                <ComboboxList>
+                                  {(option: {
+                                    value: string;
+                                    label: string;
+                                  }) => (
+                                    <ComboboxItem
+                                      key={option.value}
+                                      value={option}
+                                    >
+                                      {option.label}
+                                    </ComboboxItem>
+                                  )}
+                                </ComboboxList>
+                              </ComboboxContent>
+                            </Combobox>
+                            <p className="text-muted-foreground text-sm">
+                              {t(
+                                canCreateServiceAccount
+                                  ? "api-key:form.member.auto_create"
+                                  : "api-key:form.member.required",
+                              )}
+                            </p>
+                          </Field>
+                        )}
+                      </form.Field>
+                    </FormLayoutItem>
+                  )}
                   <FormLayoutItem>
                     <form.Field name="name">
                       {(field) => (
@@ -372,6 +458,9 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                         />
                       )}
                     </form.Field>
+                    <p className="text-muted-foreground text-sm">
+                      {t("api-key:form.permissions_hint")}
+                    </p>
                   </FormLayoutItem>
                   {error && (
                     <FormLayoutItem>

@@ -37,7 +37,7 @@ currentWorkspace(
 - `deleteWorkspace(id)`。
 
 创建工作区会同时创建已激活的所有者成员。删除采用硬删除，需要具备所选工作区的
-删除能力。数据库外键级联删除成员、邀请和工作区 API Key，用户及个人凭证保留。
+删除能力。数据库外键级联删除成员、邀请和成员 API Key，用户及个人凭证保留。
 工作区不再有 `deletedAt` 字段，也不提供恢复操作。
 
 删除工作区、添加成员、创建或接受邀请时，会在事务内锁定工作区记录并重新
@@ -51,6 +51,7 @@ currentWorkspace(
 - `getMember(id)` — 从请求上下文获取当前工作区，并检查读取能力；
 - `getMemberConnectionByWorkspace(workspace, args)`；
 - `addMember(workspace, user, input)`；
+- `addServiceAccount(workspace, name, input)`；
 - `addMemberByEmail(workspace, email, input)`；
 - `updateMember(id, input)`；
 - `setMemberRoles(id, roles)`；
@@ -58,7 +59,11 @@ currentWorkspace(
 - `removeMember(id)`；
 - `leaveWorkspace(member)`。
 
-禁用和移除成员按 `member:write` 授权，不再针对所有者角色做特殊限制。当前成员可主动
+USER 成员的读写分别需要 `member:read` 与 `member:write`；SERVICE_ACCOUNT 成员
+使用独立的 `service-account:read` 与 `service-account:write`。默认 OWNER 和 ADMIN
+拥有这两项服务账号权限，MEMBER 没有。列表和按 ID 查询只包含有读取权限的类型。
+服务账号角色、直接权限修改还需分别拥有 `member:set-roles`、`member:set-permissions`，
+同时要求 `service-account:write`，并保留授权上限检查。当前成员可主动
 退出，包括所有者；工作区允许没有所有者。管理删除接口仍禁止删除本人，应使用退出接口。
 成员状态与角色更新会锁定相关
 成员记录，并在同一事务内重新检查状态。GraphQL Resolver 与 HTTP Controller 应只
@@ -114,9 +119,12 @@ User 的姓名或登录邮箱，修改 User 也不会改变成员资料。具有
 工作区角色不会授予此权限。`Invitation.inviter` 同样遵循此边界，
 持有邀请并不意味着可以读取邀请人的个人资料。
 
-服务账号创建方法、Options、Input 导出及成员类型枚举仍然移除，不保留别名。
-示例现仅保留新库基线 `Initial → generated schema migrations`，直接创建必填用户关联和
-独立的成员姓名、邮箱，不再包含历史成员类型或搜索向量列。
+`MemberType` 区分 `USER` 与 `SERVICE_ACCOUNT`。用户成员必须关联登录用户，服务账号的
+user 必须为空；两类成员共用资料、角色、权限和状态操作。可通过
+`MemberService.addServiceAccount(workspace, name, options)` 或
+`addMember(input: { type: SERVICE_ACCOUNT, name: "CI deployer" })` 创建服务账号，
+仍需成员写入权限，并检查角色和权限的授予上限。示例基线增加了 member 归属 Key 的迁移，
+详见 [API Key](./api-keys)。
 
 生成基线中的 User SELECT 策略允许 authenticated 数据库角色读取 User 行，匿名仍不可读。
 个人资料可见性由 Service 的 Ability 检查限制，支持自定义权限名并保留 API Key 权限上限。

@@ -18,7 +18,6 @@ import { Workspace } from "./entities/workspace.entity.js";
 import { ApiKeyAuthenticationService } from "./infrastructure/api-key-authentication.service.js";
 import { RequestIdentity } from "./infrastructure/request-identity.js";
 import { SessionService } from "./services/session.service.js";
-import type { ApiKey } from "./types/api-key.type.js";
 import { extractApiKey } from "./utils/extract-api-key.util.js";
 import { runAuthQuery } from "./utils/run-auth-query.js";
 
@@ -111,7 +110,7 @@ export class AuthMiddleware implements NestMiddleware {
         session: data.session,
       });
       await this.resolveMember();
-      this.updateSessionContext();
+      RequestIdentity.syncDatabase(this.em);
       RequestIdentity.refresh(this.options);
     } catch (error) {
       RequestIdentity.clear(this.em);
@@ -140,7 +139,7 @@ export class AuthMiddleware implements NestMiddleware {
       const hasSession = await this.resolveSession();
       if (!hasSession) await this.resolveApiKey(req);
       await this.resolveMember();
-      this.updateSessionContext();
+      RequestIdentity.syncDatabase(this.em);
       next();
     } catch (error) {
       try {
@@ -165,15 +164,14 @@ export class AuthMiddleware implements NestMiddleware {
     const workspace = await this.em.findOne(Workspace, {
       id: workspaceId,
     });
-    if (workspace) this.setWorkspace(workspace);
+    if (workspace) RequestIdentity.stage({ workspace });
   }
 
   private async resolveSession(): Promise<boolean> {
     const data = await this.sessionService.getCurrentAuthenticatedSession();
     if (!data) return false;
 
-    this.setUser(data.user);
-    RequestIdentity.stage({ session: data.session });
+    RequestIdentity.stage({ user: data.user, session: data.session });
     return true;
   }
 
@@ -182,22 +180,30 @@ export class AuthMiddleware implements NestMiddleware {
     if (!plaintextApiKey) return;
 
     const validation = await this.apiKeyService.validate(plaintextApiKey);
-    this.setApiKey(validation.apiKey);
     if (validation.ownerType === "user") {
-      this.setUser(validation.user);
+      RequestIdentity.stage({
+        apiKey: validation.apiKey,
+        user: validation.user,
+      });
       return;
     }
 
     const selectedWorkspace = RequestContext.get(Workspace);
     if (selectedWorkspace && selectedWorkspace.id !== validation.workspace.id) {
       throw new UnauthorizedException(
-        "Workspace API key does not belong to the selected workspace",
+        "Member API key does not belong to the selected workspace",
       );
     }
-    this.setWorkspace(validation.workspace);
+    RequestIdentity.stage({
+      apiKey: validation.apiKey,
+      user: validation.user,
+      member: validation.member,
+      workspace: validation.workspace,
+    });
   }
 
   private async resolveMember(): Promise<void> {
+    if (RequestContext.get(Member)) return;
     const user = RequestContext.get(User);
     const workspace = RequestContext.get(Workspace);
     if (!user || !workspace) return;
@@ -214,21 +220,5 @@ export class AuthMiddleware implements NestMiddleware {
     if (!member) return;
 
     RequestIdentity.stage({ member });
-  }
-
-  private setApiKey(apiKey: ApiKey): void {
-    RequestIdentity.stage({ apiKey });
-  }
-
-  private updateSessionContext(): void {
-    RequestIdentity.syncDatabase(this.em);
-  }
-
-  private setUser(user: User): void {
-    RequestIdentity.stage({ user });
-  }
-
-  private setWorkspace(workspace: Workspace): void {
-    RequestIdentity.stage({ workspace });
   }
 }

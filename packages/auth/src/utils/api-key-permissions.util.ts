@@ -6,17 +6,14 @@ import { resolveAuthCatalog } from "./resolve-auth-catalog.util.js";
 const catalogs = new WeakMap<
   AuthModuleOptions,
   Partial<
-    Record<
-      "user" | "workspace",
-      ReturnType<typeof resolveApiKeyPermissionCatalog>
-    >
+    Record<"user" | "member", ReturnType<typeof resolveApiKeyPermissionCatalog>>
   >
 >();
 
 /** Returns the owner's complete enum catalog and the subset configurable on API keys. */
 export function resolveApiKeyPermissionCatalog(
   options: AuthModuleOptions,
-  scope: "user" | "workspace",
+  scope: "user" | "member",
 ): {
   readonly permissions: readonly string[];
   readonly allowed: readonly string[];
@@ -50,7 +47,7 @@ export function resolveApiKeyPermissionCatalog(
 /** Applies scope defaults, validates catalog values, and enforces the configured key ceiling. @internal */
 export function normalizeApiKeyPermissions(
   options: AuthModuleOptions,
-  scope: "user" | "workspace",
+  scope: "user" | "member",
   requested: readonly string[] | null | undefined,
 ): string[] {
   const { permissions, allowed, defaults } = resolveApiKeyPermissionCatalog(
@@ -60,7 +57,7 @@ export function normalizeApiKeyPermissions(
   const normalized = normalizeAuthPermissions(
     requested === undefined ? defaults : (requested ?? []),
     permissions,
-    scope === "user" ? "User API key" : "Workspace API key",
+    scope === "user" ? "User API key" : "Member API key",
   );
   assertPermissionCeiling(
     normalized,

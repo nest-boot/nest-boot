@@ -4,7 +4,7 @@ import {
 } from "./api-key-permissions.util.js";
 
 describe("API key catalog snapshots", () => {
-  it.each(["user", "workspace"] as const)(
+  it.each(["user", "member"] as const)(
     "normalizes %s grants with defaults and explicit empty values",
     (scope) => {
       const permission = scope === "user" ? "user:read" : "workspace:update";
@@ -37,17 +37,15 @@ describe("API key catalog snapshots", () => {
     const options = {
       apiKey: {
         user: { allowedPermissions: [], defaultPermissions: [] },
-        workspace: {
+        member: {
           allowedPermissions: ["workspace:update"],
           defaultPermissions: ["workspace:update"],
         },
       },
     };
     const user = resolveApiKeyPermissionCatalog(options, "user");
-    const workspace = resolveApiKeyPermissionCatalog(options, "workspace");
-    expect(resolveApiKeyPermissionCatalog(options, "workspace")).toBe(
-      workspace,
-    );
+    const workspace = resolveApiKeyPermissionCatalog(options, "member");
+    expect(resolveApiKeyPermissionCatalog(options, "member")).toBe(workspace);
     expect(user.allowed).toEqual([]);
     expect(workspace.allowed).toEqual(["workspace:update"]);
     expect(workspace.defaults).toEqual(["workspace:update"]);
@@ -59,7 +57,7 @@ describe("API key catalog snapshots", () => {
     ]) {
       expect(Object.isFrozen(value)).toBe(true);
     }
-    options.apiKey.workspace.defaultPermissions.push("workspace:delete");
+    options.apiKey.member.defaultPermissions.push("workspace:delete");
     expect(workspace.defaults).toEqual(["workspace:update"]);
     expect(resolveApiKeyPermissionCatalog({}, "user").allowed).toContain(
       "user:read",

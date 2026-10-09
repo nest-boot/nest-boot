@@ -1,12 +1,12 @@
 import { ForbiddenException } from "@nestjs/common";
 
+import { MemberApiKey as BaseApiKey } from "../entities/member-api-key.entity.js";
 import { User as BaseUser } from "../entities/user.entity.js";
 import { Workspace as BaseWorkspace } from "../entities/workspace.entity.js";
-import { WorkspaceApiKey as BaseApiKey } from "../entities/workspace-api-key.entity.js";
+import { type MemberApiKeyService } from "../services/member-api-key.service.js";
 import { type UserService } from "../services/user.service.js";
 import type { UserApiKeyService } from "../services/user-api-key.service.js";
 import { type WorkspaceService } from "../services/workspace.service.js";
-import { type WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
 import { UserResolver } from "./user.resolver.js";
 import { WorkspaceResolver } from "./workspace.resolver.js";
 
@@ -18,8 +18,8 @@ describe("API-key field delegation", () => {
       const getKey = vi.fn().mockResolvedValue(key);
       const service = {
         getUserApiKey: getKey,
-        getWorkspaceApiKey: getKey,
-      } as unknown as WorkspaceApiKeyService;
+        getMemberApiKey: getKey,
+      } as unknown as MemberApiKeyService;
       const user = new BaseUser();
       const workspace = new BaseWorkspace();
       const resolve =

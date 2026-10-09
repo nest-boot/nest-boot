@@ -3,10 +3,10 @@ import { RequestContext } from "@nest-boot/request-context";
 import { assert } from "vitest";
 
 import { Member } from "../entities/member.entity.js";
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { AbilityRules } from "../interfaces/ability-rules.interface.js";
 import { buildRequestAbility } from "./build-request-ability.util.js";
@@ -102,6 +102,38 @@ describe("framework-owned request abilities", () => {
     expect(buildRequestAbility({})?.can("delete", Workspace)).toBe(false);
   });
 
+  it.each(["USER", "SERVICE_ACCOUNT"] as const)(
+    "intersects oversized member keys with the current %s owner's role and direct grants",
+    (type) => {
+      const workspace = new Workspace();
+      const user =
+        type === "USER"
+          ? Object.assign(new User(), { roles: ["admin"] })
+          : null;
+      const member = Object.assign(new Member(), {
+        type,
+        user,
+        workspace,
+        roles: ["member"],
+        permissions: ["workspace:update"],
+      });
+      const apiKey = Object.assign(new MemberApiKey(), {
+        member,
+        permissions: ["workspace:read", "workspace:update", "workspace:delete"],
+      });
+      RequestIdentity.stage({ user, member, workspace, apiKey });
+      const ability = buildRequestAbility({});
+      expect(ability?.can("read", Workspace)).toBe(true);
+      expect(ability?.can("update", Workspace)).toBe(true);
+      expect(ability?.can("delete", Workspace)).toBe(false);
+      expect(ability?.can("read", Member)).toBe(false);
+      expect(ability?.can("read", User)).toBe(false);
+      member.permissions = [];
+      RequestIdentity.stage({ member });
+      expect(buildRequestAbility({})?.can("update", Workspace)).toBe(false);
+    },
+  );
+
   it("binds custom conditional grants to effective permissions and retains restrictions", () => {
     RequestContext.set(
       User,
@@ -133,10 +165,10 @@ describe("framework-owned request abilities", () => {
     RequestIdentity.stage({
       apiKey: Object.assign(new UserApiKey(), { permissions: [] }),
     });
-    expect(buildRequestAbility(options)?.can("read", "Article")).toBe(false);
+    expect(buildRequestAbility(options)?.can("read", "Article")).toBe(true);
   });
 
-  it.each([User, "User", WorkspaceApiKey, "all", ["Article", User]])(
+  it.each([User, "User", MemberApiKey, "all", ["Article", User]])(
     "rejects custom grants on reserved subjects: %s",
     (target) => {
       RequestContext.set(User, new User());

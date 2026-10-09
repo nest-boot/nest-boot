@@ -55,10 +55,10 @@ GraphQL, REST, or another transport. The sender receives an optional Fetch
 GraphQL `createInvitation`, `rejectInvitation` and `cancelInvitation` return
 dedicated ID-only payloads. Read invitation details separately; these writes do
 not grant access to the inviter's private user profile. Creating invitations
-requires a user identity: use a user API key, not a workspace API key.
+requires a user identity: use a user API key, not a member API key.
 
 `member:invite` authorizes invitation queries, creation, and cancellation,
-independently of `member:write`. Workspace keys may use it to read and cancel
+independently of `member:write`. Member keys may use it to read and cancel
 invitations. Accepting or rejecting one's own invitation checks the recipient's
 user session and does not require `member:invite`.
 

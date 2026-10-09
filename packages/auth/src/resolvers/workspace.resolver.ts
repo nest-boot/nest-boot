@@ -16,16 +16,16 @@ import {
   MemberConnectionArgs,
 } from "../connections/member.connection-definition.js";
 import {
-  WorkspaceApiKeyConnection,
-  WorkspaceApiKeyConnectionArgs,
-} from "../connections/workspace-api-key.connection-definition.js";
+  MemberApiKeyConnection,
+  MemberApiKeyConnectionArgs,
+} from "../connections/member-api-key.connection-definition.js";
 import { CurrentMember } from "../decorators/current-member.decorator.js";
 import { CurrentUser } from "../decorators/current-user.decorator.js";
 import { type Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import {
   InvitationConnection,
   InvitationConnectionArgs,
@@ -38,8 +38,8 @@ import { DeleteWorkspacePayload } from "../objects/delete-workspace-payload.obje
 import { LeaveWorkspacePayload } from "../objects/leave-workspace-payload.object.js";
 import { UpdateWorkspacePayload } from "../objects/update-workspace-payload.object.js";
 import { MemberService } from "../services/member.service.js";
+import { MemberApiKeyService } from "../services/member-api-key.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
-import { WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
 /**
@@ -57,7 +57,7 @@ export class WorkspaceResolver {
    */
   constructor(
     readonly workspaceService: WorkspaceService,
-    readonly apiKeyService: WorkspaceApiKeyService,
+    readonly apiKeyService: MemberApiKeyService,
     readonly memberService: MemberService,
     readonly invitationService: InvitationService,
   ) {}
@@ -78,23 +78,23 @@ export class WorkspaceResolver {
   }
 
   /** Returns an accessible API key owned by the parent workspace. */
-  @ResolveField(() => WorkspaceApiKey, { nullable: true })
+  @ResolveField(() => MemberApiKey, { nullable: true })
   async apiKey(
     @Parent() workspace: Workspace,
     @Args("id", { type: () => ID }) id: string,
-  ): Promise<ApiKeyMetadata<WorkspaceApiKey> | null> {
-    return await this.apiKeyService.getWorkspaceApiKey(id, workspace);
+  ): Promise<ApiKeyMetadata<MemberApiKey> | null> {
+    return await this.apiKeyService.getMemberApiKey(id, workspace);
   }
 
   /** Paginates API keys owned by the parent workspace. */
-  @ResolveField(() => WorkspaceApiKeyConnection)
+  @ResolveField(() => MemberApiKeyConnection)
   async apiKeys(
     @Parent() workspace: Workspace,
-    @Args({ type: () => WorkspaceApiKeyConnectionArgs })
-    args: ConnectionArgsInterface<WorkspaceApiKey>,
+    @Args({ type: () => MemberApiKeyConnectionArgs })
+    args: ConnectionArgsInterface<MemberApiKey>,
     @Info() info?: GraphQLResolveInfo,
   ) {
-    return await this.apiKeyService.getWorkspaceApiKeyConnection(
+    return await this.apiKeyService.getMemberApiKeyConnection(
       workspace,
       args,
       info,

@@ -16,11 +16,11 @@ import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import type { AuthModuleOptions } from "./auth-module-options.interface.js";
 import { Member } from "./entities/member.entity.js";
+import { MemberApiKey } from "./entities/member-api-key.entity.js";
 import { Session as BaseSession } from "./entities/session.entity.js";
 import { User as BaseUser } from "./entities/user.entity.js";
 import { UserApiKey } from "./entities/user-api-key.entity.js";
 import { Workspace } from "./entities/workspace.entity.js";
-import { WorkspaceApiKey } from "./entities/workspace-api-key.entity.js";
 import { CAN_METADATA } from "./permission.constants.js";
 import * as authorization from "./utils/can.util.js";
 class TestController {}
@@ -225,7 +225,7 @@ describe("AuthGuard", () => {
     });
   });
 
-  it.each([UserApiKey, WorkspaceApiKey])(
+  it.each([UserApiKey, MemberApiKey])(
     "accepts an API key without a session (%s)",
     async (ApiKey) => {
       const { guard } = await createGuard(

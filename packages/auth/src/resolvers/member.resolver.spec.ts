@@ -4,10 +4,46 @@ import type { Mocked } from "vitest";
 import { Member } from "../entities/member.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { MemberStatus } from "../enums/member-status.enum.js";
+import { MemberType } from "../enums/member-type.enum.js";
 import { type MemberService } from "../services/member.service.js";
 import { MemberResolver } from "./member.resolver.js";
 
 describe("MemberResolver", () => {
+  it("requires the appropriate identity fields when adding user members and service accounts", async () => {
+    const workspace = new Workspace();
+    const { resolver, memberService } = createResolver({
+      memberService: {
+        addServiceAccount: vi.fn().mockResolvedValue({ id: "service-member" }),
+      },
+    });
+    await expect(
+      resolver.addMember(workspace, {
+        type: MemberType.SERVICE_ACCOUNT,
+        name: "Bot",
+        roles: [],
+        permissions: ["workspace:update"],
+      }),
+    ).resolves.toEqual({ id: "service-member" });
+    expect(memberService.addServiceAccount).toHaveBeenCalledWith(
+      workspace,
+      "Bot",
+      { roles: [], permissions: ["workspace:update"] },
+    );
+    for (const input of [
+      {},
+      { type: MemberType.SERVICE_ACCOUNT },
+      {
+        type: MemberType.SERVICE_ACCOUNT,
+        name: "Bot",
+        email: "login@example.test",
+      },
+    ]) {
+      await expect(resolver.addMember(workspace, input)).rejects.toThrow();
+    }
+    expect(memberService.addMemberByEmail).not.toHaveBeenCalled();
+    expect(memberService.addServiceAccount).toHaveBeenCalledOnce();
+  });
+
   it("returns the current workspace member from request context", () => {
     const member = { id: "member_1" } as Member;
     const { resolver } = createResolver({
@@ -54,6 +90,7 @@ describe("MemberResolver", () => {
     expect(memberService.addMemberByEmail).toHaveBeenCalledWith(
       workspace,
       "alice@example.com",
+      { roles: undefined, permissions: undefined },
     );
   });
   it("forwards permission changes and propagates service errors", async () => {
@@ -168,6 +205,7 @@ function createResolver(overrides?: {
 }) {
   const memberService = {
     addMemberByEmail: vi.fn(),
+    addServiceAccount: vi.fn(),
     getMember: vi.fn(),
     getCurrentMember: vi.fn(() => null),
     getMemberListFilter: vi.fn((workspace) => ({ workspace })),

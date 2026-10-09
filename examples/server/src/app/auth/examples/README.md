@@ -15,7 +15,7 @@ It does not add an auth entity, database table, GraphQL resolver, or route.
 5. Query `currentAbilityRules` and hydrate them with the client example's
    `createAbility()`. Include `workspaceId` and `archived` in report selections and
    check `createAbilitySubject('Report', report)` to preserve object conditions.
-6. Build key editors from `workspaceApiKeyPermissions`, preselecting only entries
+6. Build key editors from `memberApiKeyPermissions`, preselecting only entries
    with `default && grantable`. This does not authorize archiving a specific report.
 
 `permissions` declares vocabulary; it grants nothing on its own. `roles` assigns

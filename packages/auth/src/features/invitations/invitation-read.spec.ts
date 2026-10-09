@@ -14,9 +14,9 @@ import { AuthAbility } from "../../auth.ability.js";
 import { API_KEY } from "../../auth.constants.js";
 import { Invitation } from "../../entities/invitation.entity.js";
 import { Member } from "../../entities/member.entity.js";
+import { MemberApiKey } from "../../entities/member-api-key.entity.js";
 import { User } from "../../entities/user.entity.js";
 import { Workspace } from "../../entities/workspace.entity.js";
-import { WorkspaceApiKey } from "../../entities/workspace-api-key.entity.js";
 import { InvitationService } from "./invitation.service.js";
 
 describe("InvitationService read authorization", () => {
@@ -145,7 +145,7 @@ describe("InvitationService read authorization", () => {
 
   it.each([
     {
-      name: "workspace API key",
+      name: "member API key",
       key: true,
       recipient: false,
       selected: "workspace-1",
@@ -234,7 +234,7 @@ describe("InvitationService read authorization", () => {
       if (scenario.key) {
         RequestContext.set(
           API_KEY,
-          Object.assign(new WorkspaceApiKey(), {
+          Object.assign(new MemberApiKey(), {
             user: null,
             workspace: ref(Workspace, workspace),
           }),

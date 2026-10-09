@@ -30,7 +30,7 @@ export class CreateUserApiKeyInput {
   @Field(() => String, { nullable: true })
   prefix?: string;
 
-  /** API key permissions; null creates a key without permissions. */
+  /** API key permissions; null inherits all owner permissions. */
   @ZodField((z) => z.array(z.string()).nullish())
   @Field(() => [UserApiKeyPermission], { nullable: true })
   permissions?: UserApiKeyPermission[] | null;

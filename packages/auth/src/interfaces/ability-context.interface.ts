@@ -7,11 +7,11 @@ export interface AbilityContext<
   UserPermission extends string = string,
   WorkspacePermission extends string = string,
 > {
-  /** Authenticated user; absent for anonymous and workspace API-key requests. */
+  /** Authenticated user; absent for anonymous and member API-key requests. */
   readonly user: User | null;
-  /** Selected workspace with a valid membership or workspace API key. */
+  /** Selected workspace with an active membership matching the credential owner. */
   readonly workspace: Workspace | null;
-  /** Active membership; absent outside a workspace or for workspace API keys. */
+  /** Active user or service-account membership; absent outside an authorized workspace. */
   readonly member: Member | null;
   /** Effective user grants after applying the authenticating credential's ceiling. */
   readonly userPermissions: readonly UserPermission[];

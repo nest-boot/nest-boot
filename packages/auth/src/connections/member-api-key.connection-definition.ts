@@ -1,9 +1,9 @@
 import { ArgsType, ObjectType } from "@nest-boot/graphql";
 import { ConnectionBuilder } from "@nest-boot/graphql-connection";
 
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
 
-const { Connection, ConnectionArgs } = new ConnectionBuilder(WorkspaceApiKey)
+const { Connection, ConnectionArgs } = new ConnectionBuilder(MemberApiKey)
   .addField({
     field: "name",
     searchable: true,
@@ -40,10 +40,10 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(WorkspaceApiKey)
  * API key pagination arguments.
  */
 @ArgsType()
-export class WorkspaceApiKeyConnectionArgs extends ConnectionArgs {}
+export class MemberApiKeyConnectionArgs extends ConnectionArgs {}
 
 /**
  * A page of visible API keys.
  */
 @ObjectType()
-export class WorkspaceApiKeyConnection extends Connection {}
+export class MemberApiKeyConnection extends Connection {}
