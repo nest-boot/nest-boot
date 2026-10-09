@@ -1,3 +1,17 @@
+## 8.0.9-beta.1 (2026-10-09)
+
+### 🚀 Features
+
+- ⚠️  **auth:** introduce member-owned API keys and service accounts ([#401](https://github.com/nest-boot/nest-boot/pull/401))
+
+### ⚠️  Breaking Changes
+
+- **auth:** introduce member-owned API keys and service accounts  ([#401](https://github.com/nest-boot/nest-boot/pull/401))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.9-beta.0 (2026-10-09)
 
 ### 🧱 Updated Dependencies

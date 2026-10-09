@@ -1,3 +1,9 @@
+## 8.0.5-beta.0 (2026-10-09)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/health-check to 8.0.2-beta.1
+
 ## 8.0.4-beta.0 (2026-10-09)
 
 ### 🧱 Updated Dependencies

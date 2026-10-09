@@ -1,3 +1,10 @@
+## 8.0.7-beta.0 (2026-10-09)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/health-check to 8.0.2-beta.1
+- Updated @nest-boot/redis to 8.0.5-beta.0
+
 ## 8.0.6-beta.1 (2026-10-09)
 
 ### 🚀 Features

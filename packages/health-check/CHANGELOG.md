@@ -1,3 +1,13 @@
+## 8.0.2-beta.1 (2026-10-09)
+
+### 🚀 Features
+
+- **database:** add automatic database health checks ([#400](https://github.com/nest-boot/nest-boot/pull/400))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.2-beta.0 (2026-10-09)
 
 ### 🧱 Updated Dependencies
