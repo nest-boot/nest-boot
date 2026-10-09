@@ -1,3 +1,21 @@
+## 8.0.2-beta.1 (2026-10-09)
+
+### 🚀 Features
+
+- ⚠️  **database:** rename database integration packages and APIs ([#397](https://github.com/nest-boot/nest-boot/pull/397))
+
+### ⚠️  Breaking Changes
+
+- **database:** rename database integration packages and APIs  ([#397](https://github.com/nest-boot/nest-boot/pull/397))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.2
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.2-beta.0 (2026-09-23)
 
 ### 🧱 Updated Dependencies

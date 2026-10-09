@@ -1,3 +1,13 @@
+## 8.0.9-beta.0 (2026-10-09)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.3-beta.0
+- Updated @nest-boot/eslint-config to 8.0.2-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.2
+- Updated @nest-boot/schedule to 8.0.9-beta.0
+- Updated @nest-boot/bullmq to 8.0.6-beta.0
+
 ## 8.0.8-beta.0 (2026-10-09)
 
 ### 🧱 Updated Dependencies

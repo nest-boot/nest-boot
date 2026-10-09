@@ -443,6 +443,9 @@ importers:
       '@nest-boot/bullmq-mikro-orm':
         specifier: workspace:^
         version: link:../../packages/bullmq-mikro-orm
+      '@nest-boot/database':
+        specifier: workspace:^
+        version: link:../../packages/database
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../../packages/graphql
@@ -458,9 +461,6 @@ importers:
       '@nest-boot/mailer':
         specifier: workspace:^
         version: link:../../packages/mailer
-      '@nest-boot/database':
-        specifier: workspace:^
-        version: link:../../packages/database
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../../packages/request-context
@@ -905,6 +905,178 @@ importers:
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11
+
+  packages/database:
+    dependencies:
+      dataloader:
+        specifier: ^2.2.3
+        version: 2.2.3
+      lodash-es:
+        specifier: ^4.17.21
+        version: 4.17.22
+      pgvector:
+        specifier: ^0.2.1
+        version: 0.2.1
+      prettier:
+        specifier: ^3.6.2
+        version: 3.7.4
+      sql-formatter:
+        specifier: ^15.6.9
+        version: 15.6.12
+    devDependencies:
+      '@mikro-orm/core':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/decorators':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/nestjs':
+        specifier: ^7.0.2
+        version: 7.0.2
+      '@mikro-orm/pglite':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/postgresql':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/reflection':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@nest-boot/eslint-config':
+        specifier: workspace:^
+        version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:^
+        version: link:../eslint-plugin
+      '@nest-boot/request-context':
+        specifier: workspace:^
+        version: link:../request-context
+      '@nest-boot/tsconfig':
+        specifier: workspace:^
+        version: link:../tsconfig
+      '@nestjs/common':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/core':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@nestjs/testing':
+        specifier: ^12.0.1
+        version: 12.0.1
+      '@types/lodash-es':
+        specifier: ^4.17.12
+        version: 4.17.12
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
+      '@vitest/coverage-v8':
+        specifier: ^4.1.11
+        version: 4.1.11
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
+      eslint:
+        specifier: ^9.39.3
+        version: 9.39.3
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11
+
+  packages/database-crypt:
+    devDependencies:
+      '@mikro-orm/core':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/decorators':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/pglite':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@nest-boot/crypt':
+        specifier: workspace:^
+        version: link:../crypt
+      '@nest-boot/eslint-config':
+        specifier: workspace:^
+        version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:^
+        version: link:../eslint-plugin
+      '@nest-boot/tsconfig':
+        specifier: workspace:^
+        version: link:../tsconfig
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
+      '@vitest/coverage-v8':
+        specifier: ^4.1.11
+        version: 4.1.11
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11
+
+  packages/database-hash:
+    devDependencies:
+      '@mikro-orm/core':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/decorators':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/pglite':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@nest-boot/eslint-config':
+        specifier: workspace:^
+        version: link:../eslint-config
+      '@nest-boot/eslint-plugin':
+        specifier: workspace:^
+        version: link:../eslint-plugin
+      '@nest-boot/hash':
+        specifier: workspace:^
+        version: link:../hash
+      '@nest-boot/tsconfig':
+        specifier: workspace:^
+        version: link:../tsconfig
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
+      '@vitest/coverage-v8':
+        specifier: ^4.1.11
+        version: 4.1.11
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -1766,178 +1938,6 @@ importers:
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite-tsconfig-paths:
-        specifier: ^5.1.4
-        version: 5.1.4
-      vitest:
-        specifier: ^4.1.11
-        version: 4.1.11
-
-  packages/database:
-    dependencies:
-      dataloader:
-        specifier: ^2.2.3
-        version: 2.2.3
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.22
-      pgvector:
-        specifier: ^0.2.1
-        version: 0.2.1
-      prettier:
-        specifier: ^3.6.2
-        version: 3.7.4
-      sql-formatter:
-        specifier: ^15.6.9
-        version: 15.6.12
-    devDependencies:
-      '@mikro-orm/core':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@mikro-orm/decorators':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@mikro-orm/nestjs':
-        specifier: ^7.0.2
-        version: 7.0.2
-      '@mikro-orm/pglite':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@mikro-orm/postgresql':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@mikro-orm/reflection':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@nest-boot/eslint-config':
-        specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
-      '@nest-boot/request-context':
-        specifier: workspace:^
-        version: link:../request-context
-      '@nest-boot/tsconfig':
-        specifier: workspace:^
-        version: link:../tsconfig
-      '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@types/lodash-es':
-        specifier: ^4.17.12
-        version: 4.17.12
-      '@types/node':
-        specifier: ^24.0.0
-        version: 24.13.3
-      '@vitest/coverage-v8':
-        specifier: ^4.1.11
-        version: 4.1.11
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
-      eslint:
-        specifier: ^9.39.3
-        version: 9.39.3
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite-tsconfig-paths:
-        specifier: ^5.1.4
-        version: 5.1.4
-      vitest:
-        specifier: ^4.1.11
-        version: 4.1.11
-
-  packages/database-crypt:
-    devDependencies:
-      '@mikro-orm/core':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@mikro-orm/decorators':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@mikro-orm/pglite':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@nest-boot/crypt':
-        specifier: workspace:^
-        version: link:../crypt
-      '@nest-boot/eslint-config':
-        specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
-      '@nest-boot/tsconfig':
-        specifier: workspace:^
-        version: link:../tsconfig
-      '@types/node':
-        specifier: ^24.0.0
-        version: 24.13.3
-      '@vitest/coverage-v8':
-        specifier: ^4.1.11
-        version: 4.1.11
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite-tsconfig-paths:
-        specifier: ^5.1.4
-        version: 5.1.4
-      vitest:
-        specifier: ^4.1.11
-        version: 4.1.11
-
-  packages/database-hash:
-    devDependencies:
-      '@mikro-orm/core':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@mikro-orm/decorators':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@mikro-orm/pglite':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@nest-boot/eslint-config':
-        specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
-      '@nest-boot/hash':
-        specifier: workspace:^
-        version: link:../hash
-      '@nest-boot/tsconfig':
-        specifier: workspace:^
-        version: link:../tsconfig
-      '@types/node':
-        specifier: ^24.0.0
-        version: 24.13.3
-      '@vitest/coverage-v8':
-        specifier: ^4.1.11
-        version: 4.1.11
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
