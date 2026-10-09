@@ -3,7 +3,7 @@
   "pages": [
     "hash",
     "crypt",
-    "mikro-orm",
+    "database",
     "middleware",
     "redis",
     "request-context",

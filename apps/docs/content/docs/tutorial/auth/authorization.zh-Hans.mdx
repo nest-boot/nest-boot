@@ -478,7 +478,7 @@ authenticated 角色的 User 读写及 Session 读取由 Service 授权，不能
 这几个函数不是 Filter 或装饰器，运行时与 CLI 都不需要额外 discovery 钩子。
 修改策略后需要生成并执行迁移；使用策略回调时保持元数据缓存关闭。
 自定义业务实体如果需要数据库层的软删除限制，可组合使用
-[`softDeletePolicies()`](/docs/tutorial/mikro-orm#软删除-rls-策略)。
+[`softDeletePolicies()`](/docs/tutorial/database#软删除-rls-策略)。
 
 ## 同一请求内的授权变更
 

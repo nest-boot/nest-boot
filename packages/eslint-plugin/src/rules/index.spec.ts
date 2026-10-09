@@ -8,8 +8,8 @@ describe("rules", () => {
       "graphql-field-config-from-types",
       "graphql-field-definite-assignment",
       "import-bullmq",
+      "import-database",
       "import-graphql",
-      "import-mikro-orm",
     ]);
   });
 });

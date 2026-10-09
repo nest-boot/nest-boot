@@ -2,13 +2,13 @@ import { EntityManager, EntitySchema, MikroORM } from '@mikro-orm/core';
 import { PgliteDriver } from '@mikro-orm/pglite';
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { SqlEntityManager } from '@mikro-orm/sql';
+import { DatabaseModule } from '@nest-boot/database';
 import {
   ConnectionBuilder,
   ConnectionManager,
   GraphQLConnectionModule,
   OrderDirection,
 } from '@nest-boot/graphql-connection';
-import { MikroOrmModule } from '@nest-boot/mikro-orm';
 import { Test } from '@nestjs/testing';
 
 class ConnectionBook {
@@ -92,7 +92,7 @@ describe('GraphQL connection and official SQL driver integration', () => {
     async ({ driver }) => {
       const module = await Test.createTestingModule({
         imports: [
-          MikroOrmModule.forRoot({
+          DatabaseModule.forRoot({
             driver,
             dbName: 'connection_manager_di_test',
             entities: [BookSchema],
@@ -115,7 +115,7 @@ describe('GraphQL connection and official SQL driver integration', () => {
   it('executes paginated queries through the injected PGlite entity manager', async () => {
     const module = await Test.createTestingModule({
       imports: [
-        MikroOrmModule.forRoot({
+        DatabaseModule.forRoot({
           driver: PgliteDriver,
           dbName: 'memory://',
           entities: [BookSchema],

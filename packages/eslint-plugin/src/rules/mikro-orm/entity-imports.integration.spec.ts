@@ -17,8 +17,8 @@ afterAll(() => {
 });
 writeFileSync(
   path.join(fixtureRoot, "orm-barrel.ts"),
-  `export { EncryptedProperty } from "../../../mikro-orm-crypt/dist/index.js";
-export { HashedProperty } from "../../../mikro-orm-hash/dist/index.js";
+  `export { EncryptedProperty } from "../../../database-crypt/dist/index.js";
+export { HashedProperty } from "../../../database-hash/dist/index.js";
 export { type Opt,t } from "@mikro-orm/core";
 export { Entity, Property } from "@mikro-orm/decorators/legacy";
 `,
@@ -123,7 +123,7 @@ const cases = [
   {
     name: "custom property decorator binding remains unchanged",
     imports:
-      'import { Entity } from "@mikro-orm/decorators/legacy"; import { EncryptedProperty as SecureColumn } from "@nest-boot/mikro-orm-crypt";',
+      'import { Entity } from "@mikro-orm/decorators/legacy"; import { EncryptedProperty as SecureColumn } from "@nest-boot/database-crypt";',
     property: "@SecureColumn() name!: string;",
   },
   {
@@ -436,7 +436,7 @@ it.each([
   },
   {
     name: "relative custom decorator import",
-    code: 'import { Entity } from "@mikro-orm/decorators/legacy"; import { t } from "@mikro-orm/core"; import { EncryptedProperty as Secret } from "../mikro-orm-crypt/dist/index.js"; @Entity() class Thing { @Secret({ type: t.string }) name!: string; }',
+    code: 'import { Entity } from "@mikro-orm/decorators/legacy"; import { t } from "@mikro-orm/core"; import { EncryptedProperty as Secret } from "../database-crypt/dist/index.js"; @Entity() class Thing { @Secret({ type: t.string }) name!: string; }',
   },
 ])("preserves $name", ({ code }) => {
   const result = linter.verifyAndFix(code, config, { filename });
@@ -504,8 +504,8 @@ function compileDiagnostics(code: string): string[] {
     skipLibCheck: true,
     types: [],
     paths: {
-      "@nest-boot/mikro-orm-crypt": [
-        path.resolve(packageRoot, "../mikro-orm-crypt/dist/index.d.ts"),
+      "@nest-boot/database-crypt": [
+        path.resolve(packageRoot, "../database-crypt/dist/index.d.ts"),
       ],
     },
   };
@@ -610,8 +610,8 @@ it.each([
 });
 
 it.each([
-  ["mikro-orm-crypt", "EncryptedProperty"],
-  ["mikro-orm-hash", "HashedProperty"],
+  ["database-crypt", "EncryptedProperty"],
+  ["database-hash", "HashedProperty"],
 ])(
   "preserves %s decorators imported from workspace source",
   (packageName, decorator) => {

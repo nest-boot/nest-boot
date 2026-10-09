@@ -1,11 +1,11 @@
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { entities as authEntities } from '@nest-boot/auth';
+import { DatabaseModule } from '@nest-boot/database';
 import { GraphQLModule } from '@nest-boot/graphql';
 import { GraphQLConnectionModule } from '@nest-boot/graphql-connection';
 import { HashModule } from '@nest-boot/hash';
 import { LoggerModule } from '@nest-boot/logger';
 import { MailerModule } from '@nest-boot/mailer';
-import { MikroOrmModule } from '@nest-boot/mikro-orm';
 import { RequestContextModule } from '@nest-boot/request-context';
 import { Global, Module } from '@nestjs/common';
 import type { Request, Response } from 'express';
@@ -17,7 +17,7 @@ const GraphQLDynamicModule = GraphQLModule.forRoot({
   context: ({ req, res }: { req: Request; res: Response }) => ({ req, res }),
 });
 
-const MikroORMDynamicModule = MikroOrmModule.forRoot({
+const MikroORMDynamicModule = DatabaseModule.forRoot({
   driver: PostgreSqlDriver,
   entities: [...authEntities, 'dist/**/*.entity.js'],
   entitiesTs: [...authEntities, 'src/**/*.entity.ts'],

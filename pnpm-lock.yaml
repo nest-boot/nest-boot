@@ -458,9 +458,9 @@ importers:
       '@nest-boot/mailer':
         specifier: workspace:^
         version: link:../../packages/mailer
-      '@nest-boot/mikro-orm':
+      '@nest-boot/database':
         specifier: workspace:^
-        version: link:../../packages/mikro-orm
+        version: link:../../packages/database
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../../packages/request-context
@@ -1857,7 +1857,7 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11
 
-  packages/mikro-orm:
+  packages/database:
     dependencies:
       dataloader:
         specifier: ^2.2.3
@@ -1945,7 +1945,7 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11
 
-  packages/mikro-orm-crypt:
+  packages/database-crypt:
     devDependencies:
       '@mikro-orm/core':
         specifier: 7.2.0
@@ -1987,7 +1987,7 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11
 
-  packages/mikro-orm-hash:
+  packages/database-hash:
     devDependencies:
       '@mikro-orm/core':
         specifier: 7.2.0
