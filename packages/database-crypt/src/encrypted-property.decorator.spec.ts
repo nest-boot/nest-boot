@@ -1,7 +1,7 @@
 import "reflect-metadata";
 
 import { type EventArgs, t, wrap } from "@mikro-orm/core";
-import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
+import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
 import { MikroORM } from "@mikro-orm/pglite";
 import { CryptService } from "@nest-boot/crypt";
 
@@ -18,7 +18,6 @@ class User {
   @PrimaryKey({ type: t.integer })
   id!: number;
 
-  @Property({ type: t.string })
   @EncryptedProperty({ type: t.string })
   ssn!: string;
 }
@@ -28,11 +27,9 @@ class UserWithMultipleEncryptedFields {
   @PrimaryKey({ type: t.integer })
   id!: number;
 
-  @Property({ type: t.string })
   @EncryptedProperty({ type: t.string })
   ssn!: string;
 
-  @Property({ type: t.string })
   @EncryptedProperty({ type: t.string })
   creditCard!: string;
 }
@@ -42,14 +39,12 @@ class ParentEntity {
   @PrimaryKey({ type: t.integer })
   id!: number;
 
-  @Property({ type: t.string })
   @EncryptedProperty({ type: t.string })
   parentSecret!: string;
 }
 
 @Entity()
 class ChildEntity extends ParentEntity {
-  @Property({ type: t.string })
   @EncryptedProperty({ type: t.string })
   childSecret!: string;
 }
@@ -59,7 +54,6 @@ class UserWithNullableEncryptedField {
   @PrimaryKey({ type: t.integer })
   id!: number;
 
-  @Property({ type: t.string, nullable: true })
   @EncryptedProperty({ type: t.string, nullable: true })
   ssn?: string | null;
 }
@@ -108,8 +102,7 @@ describe("EncryptedProperty", () => {
         @PrimaryKey({ type: t.integer })
         id!: number;
 
-        @Property({ type: t.string })
-  @EncryptedProperty({ type: t.string })
+        @EncryptedProperty({ type: t.string })
         @EncryptedProperty() // Applied twice
         ssn!: string;
       }
@@ -146,8 +139,7 @@ describe("EncryptedProperty", () => {
         @PrimaryKey({ type: t.integer })
         id!: number;
 
-        @Property({ type: t.string })
-  @EncryptedProperty({ type: t.string })
+        @EncryptedProperty({ type: t.string })
         optionalSsn!: string;
       }
 
