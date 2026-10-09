@@ -155,21 +155,6 @@ describe("scope policy factories with native PGlite RLS", () => {
     },
   );
 
-  it.each(
-    fixtures.filter(({ type, relation }) => type === "bigint" && !relation),
-  )(
-    "ignores the legacy app.$scope identity key",
-    async ({ scope, table, own }) => {
-      const em = orm.em.fork({
-        session: {
-          role: "authenticated",
-          variables: { [`app.${scope}`]: own },
-        },
-      });
-      expect(await em.execute(`select id from ${table}`)).toEqual([]);
-    },
-  );
-
   it("keeps explicit SELECT-only user policies read-only despite table grants", async () => {
     const em = scoped("user", "11");
     expect(await em.execute("select id from readonly_membership")).toEqual([

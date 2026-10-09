@@ -15,9 +15,10 @@ import { AuthAbility } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { MemberType } from "../enums/member-type.enum.js";
 import { AuthAbilityFactory } from "../infrastructure/auth-ability.factory.js";
 import { can } from "../utils/can.util.js";
 import {
@@ -27,6 +28,150 @@ import {
 import { MemberService } from "./member.service.js";
 
 describe("MemberService", () => {
+  it.each([
+    { roles: undefined, permissions: [], expectedRoles: ["member"] },
+    { roles: [], permissions: ["workspace:update"], expectedRoles: [] },
+  ])(
+    "creates service accounts with workspace grants and no login user ($permissions)",
+    async ({ roles, permissions, expectedRoles }) => {
+      const { memberService, em } = createWorkspaceServices();
+      const workspace = createTestWorkspace();
+      const member = await memberService.addServiceAccount(
+        workspace,
+        " CI deployer ",
+        { roles, permissions },
+      );
+      expect(member).toMatchObject({
+        name: "CI deployer",
+        type: MemberType.SERVICE_ACCOUNT,
+        user: null,
+        email: null,
+        workspace,
+        roles: expectedRoles,
+        permissions,
+        status: "ACTIVE",
+      });
+      expect(em.persist).toHaveBeenCalledWith(member);
+      expect(em.nativeUpdate).not.toHaveBeenCalled();
+      await expect(memberService.getMemberUser(member)).resolves.toBeNull();
+    },
+  );
+
+  it.each([
+    ["member:read", MemberType.USER],
+    ["service-account:read", MemberType.SERVICE_ACCOUNT],
+  ] as const)(
+    "scopes member pagination and lookup for %s",
+    async (permission, type) => {
+      const { memberService, em } = createWorkspaceServices();
+      const workspace = createTestWorkspace();
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          restoreAuthorization();
+          RequestContext.set(User, createTestUser());
+          RequestContext.set(Workspace, workspace);
+          RequestContext.set(
+            AuthAbility,
+            AuthAbilityFactory.createAbility({
+              user: createTestUser(),
+              member: null,
+              workspace,
+              userPermissions: [],
+              workspacePermissions: [permission],
+            }),
+          );
+          expect(memberService.getMemberListFilter(workspace)).toEqual({
+            workspace,
+            type: { $in: [type] },
+          });
+          await memberService.getMember("target-member");
+          expect(em.findOne).toHaveBeenCalledWith(Member, {
+            id: "target-member",
+            workspace,
+            type: { $in: [type] },
+          });
+        },
+      );
+    },
+  );
+
+  it("rejects service account creation with only ordinary member write permission", async () => {
+    const { memberService, em } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      restoreAuthorization();
+      RequestContext.set(User, createTestUser());
+      RequestContext.set(Workspace, workspace);
+      RequestContext.set(
+        AuthAbility,
+        AuthAbilityFactory.createAbility({
+          user: createTestUser(),
+          member: null,
+          workspace,
+          userPermissions: [],
+          workspacePermissions: ["member:write"],
+        }),
+      );
+      await expect(
+        memberService.addServiceAccount(workspace, "CI"),
+      ).rejects.toThrow(ForbiddenException);
+    });
+    expect(em.transactional).not.toHaveBeenCalled();
+    expect(em.persist).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["member:write", MemberType.SERVICE_ACCOUNT],
+    ["service-account:write", MemberType.USER],
+  ] as const)(
+    "rejects updates and removals of %s's excluded member type",
+    async (permission, type) => {
+      const { memberService, em } = createWorkspaceServices();
+      const workspace = createTestWorkspace();
+      const target = Object.assign(createTestMember(), {
+        id: "other-member",
+        type,
+      });
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          restoreAuthorization();
+          RequestContext.set(User, createTestUser());
+          RequestContext.set(Workspace, workspace);
+          RequestContext.set(
+            AuthAbility,
+            AuthAbilityFactory.createAbility({
+              user: createTestUser(),
+              member: null,
+              workspace,
+              userPermissions: [],
+              workspacePermissions: [permission],
+            }),
+          );
+          await expect(
+            memberService.updateMember(target, { name: "Changed" }),
+          ).rejects.toThrow(ForbiddenException);
+          await expect(memberService.removeMember(target)).rejects.toThrow(
+            ForbiddenException,
+          );
+        },
+      );
+      expect(em.transactional).not.toHaveBeenCalled();
+      expect(em.remove).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects invalid service account names before persistence", async () => {
+    const { memberService, em } = createWorkspaceServices();
+    for (const name of [" ", "x".repeat(256)]) {
+      await expect(
+        memberService.addServiceAccount(createTestWorkspace(), name),
+      ).rejects.toThrow("service account name");
+    }
+    expect(em.persist).not.toHaveBeenCalled();
+  });
+
   it.each(["roles", "permissions"] as const)(
     "publishes own %s only after commit and revokes stale workspace authorization",
     async (field) => {
@@ -35,12 +180,21 @@ describe("MemberService", () => {
         roles: { owner: ["workspace:delete"], member: [] },
       });
       const workspace = createTestWorkspace();
-      const current = Object.assign(createTestMember(), { roles: ["owner"] });
+      const user = createTestUser();
+      const current = Object.assign(createTestMember(), {
+        user,
+        roles: ["owner"],
+      });
       const locked = Object.assign(createTestMember(), {
+        user,
         roles: field === "permissions" ? ["member"] : ["owner"],
         permissions: field === "permissions" ? ["workspace:delete"] : [],
       });
-      mockRlsContext(em);
+      mockRlsContext(em).variables = {
+        "app.user.id": user.id,
+        "app.workspace.id": workspace.id,
+        "app.member.id": current.id,
+      };
       em.findOne.mockResolvedValue(locked);
       await RequestContext.run(
         new RequestContext({ type: "test" }),
@@ -48,6 +202,7 @@ describe("MemberService", () => {
           const ability = new AuthAbility([
             { action: "delete", subject: Workspace },
           ]);
+          RequestContext.set(User, user);
           RequestContext.set(Member, current);
           RequestContext.set(Workspace, workspace);
           RequestContext.set(AuthAbility, ability);
@@ -418,7 +573,7 @@ describe("MemberService", () => {
       );
       expect(authorization.assertCurrentWorkspace).not.toHaveBeenCalled();
       expect(authorization.authorize).not.toHaveBeenCalled();
-      RequestContext.set(API_KEY, new WorkspaceApiKey());
+      RequestContext.set(API_KEY, new MemberApiKey());
       RequestContext.set(
         User,
         Object.assign(createTestUser(), { id: "other" }),
@@ -622,7 +777,13 @@ describe("MemberService", () => {
       { email: "alice@example.com" },
       { filters: false },
     );
-    expect(authorization.authorize).toHaveBeenCalledWith("write", Member);
+    expect(authorization.authorize).toHaveBeenCalledWith(
+      "write",
+      expect.objectContaining({
+        workspaceId: workspace.id,
+        type: MemberType.USER,
+      }),
+    );
   });
 
   it("rejects workspace resources outside the selected request context", async () => {

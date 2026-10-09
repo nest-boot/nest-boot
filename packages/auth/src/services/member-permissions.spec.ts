@@ -14,10 +14,10 @@ import { AuthAbility } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { canGrantPermissions } from "../utils/permission-grants.util.js";
 import { assertCanGrantPermissions } from "../utils/permission-grants.util.js";
 import {
@@ -73,12 +73,14 @@ describe("MemberService direct permission authorization", () => {
       const service = new MemberService(em, options);
       const workspace = createTestWorkspace();
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
-        RequestContext.set(User, createTestUser());
+        const user = createTestUser();
+        RequestContext.set(User, user);
         RequestContext.set(Workspace, workspace);
         if (key !== "workspace")
           RequestContext.set(
             Member,
             Object.assign(createTestMember(), {
+              user: ref(User, user),
               roles: [role],
               permissions: direct,
             }),
@@ -87,11 +89,9 @@ describe("MemberService direct permission authorization", () => {
           RequestContext.set(
             API_KEY,
             Object.assign(
-              key === "user" ? new UserApiKey() : new WorkspaceApiKey(),
+              key === "user" ? new UserApiKey() : new MemberApiKey(),
               {
-                user: key === "user" ? ref(User, createTestUser()) : null,
-                workspace:
-                  key === "workspace" ? ref(Workspace, workspace) : null,
+                user: key === "user" ? ref(User, user) : null,
                 permissions:
                   key === "user"
                     ? ["member:write"]
@@ -191,7 +191,7 @@ describe("MemberService direct permission authorization", () => {
       allowed: false,
     },
     {
-      name: "workspace API key within its grants",
+      name: "member API key within its grants",
       role: "admin",
       canUpdate: true,
       grant: "workspace:update",
@@ -199,7 +199,7 @@ describe("MemberService direct permission authorization", () => {
       allowed: true,
     },
     {
-      name: "workspace API key exceeding its grants",
+      name: "member API key exceeding its grants",
       role: "admin",
       canUpdate: true,
       grant: "workspace:delete",
@@ -217,8 +217,10 @@ describe("MemberService direct permission authorization", () => {
         workspace: ref(Workspace, workspace),
       });
       em.findOne.mockResolvedValue(target);
+      const user = createTestUser();
       const actor = Object.assign(createTestMember(), {
         id: "actor",
+        user: ref(User, user),
         workspace: ref(Workspace, workspace),
         roles: [scenario.role],
         permissions:
@@ -230,25 +232,18 @@ describe("MemberService direct permission authorization", () => {
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
-          RequestContext.set(User, createTestUser());
+          RequestContext.set(User, user);
           RequestContext.set(Workspace, workspace);
-          if (scenario.key !== "workspace") RequestContext.set(Member, actor);
+          RequestContext.set(Member, actor);
           if (scenario.key) {
             RequestContext.set(
               API_KEY,
               Object.assign(
-                scenario.key === "user"
-                  ? new UserApiKey()
-                  : new WorkspaceApiKey(),
+                scenario.key === "user" ? new UserApiKey() : new MemberApiKey(),
                 {
-                  user:
-                    scenario.key === "user"
-                      ? ref(User, createTestUser())
-                      : null,
-                  workspace:
-                    scenario.key === "workspace"
-                      ? ref(Workspace, workspace)
-                      : null,
+                  user: scenario.key === "user" ? ref(User, user) : null,
+                  member:
+                    scenario.key === "workspace" ? ref(Member, actor) : null,
                   permissions:
                     scenario.key === "workspace"
                       ? ["member:write", "workspace:update"]

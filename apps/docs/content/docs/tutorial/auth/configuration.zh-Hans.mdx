@@ -22,7 +22,7 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 - **`buildAbility`** — 统一构建当前请求的 Ability；上下文包含 user、workspace、member 和两个来源的有效权限数组。
 - **`workspace.sendInvitationEmail`** — 发送已持久化的工作区邀请；
 - **`apiKey.user`** — 用户 Key 的默认权限与授予上限；
-- **`apiKey.workspace`** — 工作区 Key 的默认权限与授予上限；
+- **`apiKey.member`** — 成员 Key 的默认权限与授予上限；
 - **`middleware`** — 控制认证中间件的注册和路由范围；
 - **`basePath`** — 修改默认的 `/api/auth/` 认证端点路径；
 - **`trustedOrigins`** — 配置允许的浏览器来源；
@@ -36,8 +36,8 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 管理员身份，包括模拟时需要额外 `user:impersonate-admin` 权限的目标用户。
 
 `workspace.permissions` 默认为标准工作区权限目录。`workspace.roles` 默认包含
-`owner`、`admin` 与 `member`。`owner` 拥有完整默认权限目录，包括工作区 API Key 管理；
-`admin` 拥有除 `workspace:delete` 外的工作区、成员和邀请管理权限，默认不授予 API Key 管理；
+`owner`、`admin` 与 `member`。`owner` 拥有完整默认权限目录，包括成员 API Key 管理；
+`admin` 拥有除 `workspace:delete` 外的工作区、成员、服务账号和邀请管理权限，默认不授予 API Key 管理；
 `member` 授予 `workspace:read` 与 `member:read`，不拥有写入或邀请管理权限。显式配置权限数组
 或角色映射时，同样追加到内置配置。`workspace.defaultRole` 默认为 `member`，用于
 新增成员和邀请；`workspace.creatorRole` 默认为 `owner`，指定工作区创建者的初始角色。
@@ -46,7 +46,7 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 授权合并去重。自定义权限不会自动授予内置管理员或所有者，需要显式追加到对应角色。
 若需要受限权限集合，应定义新角色；设置 `admin: []` 不会清除内置授权。
 `setUserRoles`、`setMemberPermissions` 等实体修改方法仍然替换存储值。
-API Key 的 `allowedPermissions` 仍是上限而非追加目录；`[]` 不允许授予任何权限，
+API Key 的 `allowedPermissions` 仍是上限而非追加目录；`allowedPermissions: []` 不允许显式选择权限，
 但输出枚举仍保留完整目录。
 
 配置角色授予的每项权限都必须存在于对应权限目录中。`forRoot()` 会推导权限字面量
@@ -61,9 +61,11 @@ API Key 的 `allowedPermissions` 仍是上限而非追加目录；`[]` 不允许
 用户、工作区成员与 API Key 的直接权限写入也会在运行时依据相应目录进行校验。
 
 两类 Key 分别配置 `defaultPermissions`（默认 `[]`）和 `allowedPermissions`。
-省略允许列表表示使用相应完整目录，显式 `[]` 表示不能授予任何权限。用户 Key 支持用户与
-工作区目录的并集；工作区 Key 仅支持工作区权限且不能发送邀请。默认权限必须属于相应允许
-列表，启动时分别校验。创建和更新仍会检查签发者与当前认证 Key 的权限上限。
+省略允许列表表示使用相应完整目录，`allowedPermissions: []` 表示不能显式选择权限。
+Key 的 `permissions: []` 继承 owner 完整权限，不受该白名单限制。用户 Key 支持用户与
+工作区目录的并集；成员 Key 仅支持工作区权限。用户成员可发送邀请，服务账号没有邀请人用户。
+默认权限必须属于相应允许列表，启动时分别校验。创建和更新还会检查目标成员、签发者
+与当前认证 Key 的权限上限。
 配置与迁移示例见 [API keys](./api-keys)。
 
 ## 环境变量
@@ -73,16 +75,16 @@ API Key 的 `allowedPermissions` 仍是上限而非追加目录；`[]` 不允许
 
 ### 通用
 
-| 变量                   | 用途                                                                                                                                            | 默认值                                           |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `AUTH_SECRET`          | 用于签名和加密认证数据的密钥。未设置时回退到 `APP_SECRET`；应至少包含 32 个高熵字符。                                                           | 必填                                             |
-| `HASH_SECRET`          | `HashModule` 使用的 pepper。未设置时回退到 `APP_SECRET`；应至少包含 32 个高熵字符。                                                             | `APP_SECRET` 未设置时必填                        |
-| `APP_SECRET`           | auth 或 hash 专用密钥缺失时使用的共享备用密钥。                                                                                                 | `AUTH_SECRET` 未设置时必填                       |
-| `APP_NAME`             | 传给 Better Auth 的应用名称。                                                                                                                   | 未设置                                           |
-| `AUTH_URL`             | 公开的认证基础 URL，未设置时回退到 `APP_URL`。                                                                                                  | 未设置                                           |
-| `APP_URL`              | 应用公开 URL，同时作为 `AUTH_URL` 的备用值。                                                                                                    | 未设置                                           |
-| `AUTH_DISABLE_SIGN_UP` | 禁止所有已配置认证方式的新用户注册，但不影响已有用户登录。                                                                                      | 允许注册                                         |
-| `API_KEY_PREFIX`       | 未设置对应 `apiKey.user.defaultPrefix` / `apiKey.workspace.defaultPrefix` 时使用的公共前缀；1–32 位小写字母、数字、下划线或连字符，首位为字母。 | 未设置；用户密钥用 `user_`，工作空间密钥用 `ws_` |
+| 变量                   | 用途                                                                                                                                         | 默认值                                           |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `AUTH_SECRET`          | 用于签名和加密认证数据的密钥。未设置时回退到 `APP_SECRET`；应至少包含 32 个高熵字符。                                                        | 必填                                             |
+| `HASH_SECRET`          | `HashModule` 使用的 pepper。未设置时回退到 `APP_SECRET`；应至少包含 32 个高熵字符。                                                          | `APP_SECRET` 未设置时必填                        |
+| `APP_SECRET`           | auth 或 hash 专用密钥缺失时使用的共享备用密钥。                                                                                              | `AUTH_SECRET` 未设置时必填                       |
+| `APP_NAME`             | 传给 Better Auth 的应用名称。                                                                                                                | 未设置                                           |
+| `AUTH_URL`             | 公开的认证基础 URL，未设置时回退到 `APP_URL`。                                                                                               | 未设置                                           |
+| `APP_URL`              | 应用公开 URL，同时作为 `AUTH_URL` 的备用值。                                                                                                 | 未设置                                           |
+| `AUTH_DISABLE_SIGN_UP` | 禁止所有已配置认证方式的新用户注册，但不影响已有用户登录。                                                                                   | 允许注册                                         |
+| `API_KEY_PREFIX`       | 未设置对应 `apiKey.user.defaultPrefix` / `apiKey.member.defaultPrefix` 时使用的公共前缀；1–32 位小写字母、数字、下划线或连字符，首位为字母。 | 未设置；用户密钥用 `user_`，工作空间密钥用 `ws_` |
 
 ### Email
 
@@ -164,7 +166,7 @@ AuthModule.forRoot({
 ## 实体设置
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation`、`UserApiKey` 和 `WorkspaceApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`Member`、`Invitation`、`UserApiKey` 和 `MemberApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 在运行时和迁移 CLI 的 MikroORM 配置中注册导出的 `entities` 数组；CLI 不会启动 Nest 模块：

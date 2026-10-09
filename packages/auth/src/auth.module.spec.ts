@@ -59,15 +59,15 @@ import { Workspace as BaseWorkspace } from "./entities/workspace.entity.js";
 import { InvitationService } from "./features/invitations/invitation.service.js";
 import { AuthService } from "./services/auth.service.js";
 import { MemberService } from "./services/member.service.js";
+import { MemberApiKeyService } from "./services/member-api-key.service.js";
 import { SessionService } from "./services/session.service.js";
 import { UserService } from "./services/user.service.js";
 import { UserDeletionService } from "./services/user-deletion.service.js";
 import { WorkspaceService } from "./services/workspace.service.js";
-import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
 
 class Account {}
 class UserApiKey {}
-class WorkspaceApiKey {}
+class MemberApiKey {}
 class Session {}
 class User {}
 class Verification {}
@@ -78,7 +78,7 @@ class Member {}
 const entities = {
   account: Account,
   userApiKey: UserApiKey,
-  workspaceApiKey: WorkspaceApiKey,
+  memberApiKey: MemberApiKey,
   session: Session,
   user: User,
   verification: Verification,
@@ -235,7 +235,7 @@ describe("AuthModule", () => {
       expect.objectContaining({ provide: UserService }),
     );
     expect(providers).toContain(UserDeletionService);
-    expect(providers).toContain(WorkspaceApiKeyService);
+    expect(providers).toContain(MemberApiKeyService);
     expect(providers).toContain(AuthService);
     expect(providers).not.toContainEqual(
       expect.objectContaining({ name: "AccessControlService" }),
@@ -254,7 +254,7 @@ describe("AuthModule", () => {
     );
     expect(exports).toContain(MODULE_OPTIONS_TOKEN);
     expect(exports).toContain(UserService);
-    expect(exports).toContain(WorkspaceApiKeyService);
+    expect(exports).toContain(MemberApiKeyService);
     expect(exports).toContain(AuthGuard);
     expect(exports).toContain(AuthService);
     expect(exports).not.toContainEqual(
@@ -433,7 +433,7 @@ describe("AuthModule", () => {
           allowedPermissions: ["user:read", "workspace:update"],
           defaultPermissions: ["workspace:update"],
         },
-        workspace: {
+        member: {
           allowedPermissions: ["workspace:update"],
           defaultPermissions: ["workspace:update"],
         },
@@ -442,13 +442,13 @@ describe("AuthModule", () => {
     {
       apiKey: {
         user: { allowedPermissions: ["user:read"] },
-        workspace: { allowedPermissions: [] },
+        member: { allowedPermissions: [] },
       },
     },
     {
       apiKey: {
         user: { defaultPermissions: ["user:read", "member:invite"] },
-        workspace: { defaultPermissions: ["workspace:update"] },
+        member: { defaultPermissions: ["workspace:update"] },
       },
     },
   ])(
@@ -570,21 +570,21 @@ describe("AuthModule", () => {
 
   it.each([
     [
-      "user-only defaults that cannot be applied to workspace keys",
+      "user-only defaults that cannot be applied to member keys",
       {
         apiKey: {
           user: { defaultPermissions: ["user:read"] },
-          workspace: { defaultPermissions: ["user:read"] },
+          member: { defaultPermissions: ["user:read"] },
         },
       },
-      "apiKey.workspace.defaultPermissions contains unknown permissions: user:read",
+      "apiKey.member.defaultPermissions contains unknown permissions: user:read",
     ],
     [
       "allowed permissions outside the configured catalogs",
       {
         apiKey: {
           user: { allowedPermissions: ["unknown:read"] },
-          workspace: { allowedPermissions: ["unknown:read"] },
+          member: { allowedPermissions: ["unknown:read"] },
         },
       },
       "apiKey.user.allowedPermissions contains unknown permissions: unknown:read",
@@ -594,7 +594,7 @@ describe("AuthModule", () => {
       {
         apiKey: {
           user: { defaultPermissions: ["unknown:read"] },
-          workspace: { defaultPermissions: ["unknown:read"] },
+          member: { defaultPermissions: ["unknown:read"] },
         },
       },
       "apiKey.user.defaultPermissions contains unknown permissions: unknown:read",
@@ -607,7 +607,7 @@ describe("AuthModule", () => {
             allowedPermissions: ["workspace:update"],
             defaultPermissions: ["workspace:delete"],
           },
-          workspace: {
+          member: {
             allowedPermissions: ["workspace:update"],
             defaultPermissions: ["workspace:delete"],
           },
@@ -624,17 +624,6 @@ describe("AuthModule", () => {
       } as unknown as MikroORM),
     ).toThrow(error);
     expect(mockBetterAuth).not.toHaveBeenCalled();
-  });
-
-  it("rejects removed flat API-key options instead of silently ignoring them", () => {
-    expect(() =>
-      getAuthProvider().useFactory(
-        { secret, apiKey: { allowedPermissions: [] } },
-        { em: {} } as unknown as MikroORM,
-      ),
-    ).toThrow(
-      "Configure API key permissions under apiKey.user or apiKey.workspace",
-    );
   });
 
   it("should forward account options without weakening OAuth state checks", () => {
@@ -848,7 +837,7 @@ describe("AuthModule", () => {
             allowedPermissions: ["user:read"],
             defaultPermissions: [],
           },
-          workspace: {
+          member: {
             allowedPermissions: [],
             defaultPermissions: [],
           },

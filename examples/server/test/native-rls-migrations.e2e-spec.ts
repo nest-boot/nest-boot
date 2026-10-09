@@ -15,8 +15,10 @@ import {
   AuthService,
   InvitationService,
   Member as BaseMember,
+  MemberApiKeyService,
   MemberService,
   MemberStatus,
+  MemberType,
   SessionService,
   UserService,
   Workspace as BaseWorkspace,
@@ -27,12 +29,12 @@ import {
   type ApiKey,
   Invitation,
   Member,
+  MemberApiKey,
   Session,
   User,
   UserApiKey,
   Verification,
   Workspace,
-  WorkspaceApiKey,
 } from '@nest-boot/auth';
 import { loadConfigFromEnv } from '@nest-boot/database';
 import { REQUEST, RequestContext } from '@nest-boot/request-context';
@@ -47,8 +49,7 @@ import { RequestIdentity } from '../../../packages/auth/dist/infrastructure/requ
 import { UserDeletionService } from '../../../packages/auth/dist/services/user-deletion.service.js';
 import { Job } from '../src/app/jobs/entities/job.entity.js';
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20260918091003 } from '../src/database/migrations/Migration20260918091003.js';
-import { Migration20261008073016 } from '../src/database/migrations/Migration20261008073016.js';
+import { Migration20261009070926 } from '../src/database/migrations/Migration20261009070926.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
@@ -56,7 +57,7 @@ describe('example native RLS migrations with PGlite', () => {
     [
       instance.getMetadata(User),
       instance.getMetadata(UserApiKey),
-      instance.getMetadata(WorkspaceApiKey),
+      instance.getMetadata(MemberApiKey),
       instance.getMetadata(Workspace),
       instance.getMetadata(Member),
       instance.getMetadata(Invitation),
@@ -82,15 +83,14 @@ describe('example native RLS migrations with PGlite', () => {
           Member,
           Invitation,
           UserApiKey,
-          WorkspaceApiKey,
+          MemberApiKey,
           Job,
         ],
         extensions: [Migrator],
         migrations: {
           migrationsList: [
             Migration00000000000000_Initial,
-            Migration20260918091003,
-            Migration20261008073016,
+            Migration20261009070926,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',
@@ -782,8 +782,8 @@ describe('example native RLS migrations with PGlite', () => {
       token: randomUUID(),
       expiresAt: new Date(Date.now() + 60000),
     });
-    const workspaceKey = admin.create(WorkspaceApiKey, {
-      workspace,
+    const memberKey = admin.create(MemberApiKey, {
+      member,
       name: 'Workspace key',
       key: randomUUID(),
     });
@@ -806,7 +806,7 @@ describe('example native RLS migrations with PGlite', () => {
         session,
         impersonation,
         unrelatedSession,
-        workspaceKey,
+        memberKey,
         key,
         otherKey,
       ])
@@ -890,7 +890,7 @@ describe('example native RLS migrations with PGlite', () => {
         ).toBe(0);
       }
       expect(await admin.count(UserApiKey, otherKey.id)).toBe(1);
-      expect(await admin.count(WorkspaceApiKey, workspaceKey.id)).toBe(1);
+      expect(await admin.count(MemberApiKey, memberKey.id)).toBe(0);
       expect(await admin.count(Session, unrelatedSession.id)).toBe(1);
       const retainedWorkspace = await admin.findOneOrFail(
         Workspace,
@@ -953,6 +953,7 @@ describe('example native RLS migrations with PGlite', () => {
         const [values] = await em.execute(`select
           current_setting('app.user.id', true) as user_id,
           current_setting('app.workspace.id', true) as workspace_id,
+          current_setting('app.member.id', true) as member_id,
           nullif(current_setting('app.user.permissions', true), '') as user_permissions,
           nullif(current_setting('app.workspace.permissions', true), '') as workspace_permissions`);
         return values;
@@ -962,12 +963,14 @@ describe('example native RLS migrations with PGlite', () => {
       expect(await readContext(true)).toEqual({
         user_id: user.id,
         workspace_id: workspace.id,
+        member_id: member.id,
         user_permissions: null,
         workspace_permissions: null,
       });
       expect(await readContext(false)).toEqual({
         user_id: '',
         workspace_id: workspace.id,
+        member_id: '',
         user_permissions: null,
         workspace_permissions: null,
       });
@@ -986,7 +989,7 @@ describe('example native RLS migrations with PGlite', () => {
 
   it('creates the complete baseline through the official Migrator', async () => {
     expect(await orm.migrator.getPending()).toEqual([]);
-    expect(await orm.migrator.getExecuted()).toHaveLength(3);
+    expect(await orm.migrator.getExecuted()).toHaveLength(2);
     const policies = await orm.em.execute<
       {
         policyname: string;
@@ -1099,7 +1102,7 @@ describe('example native RLS migrations with PGlite', () => {
     'anonymous',
     'session',
     'user-key',
-    'workspace-key',
+    'member-key',
     'non-member',
     'unconfigured-session',
   ] as const)(
@@ -1119,12 +1122,18 @@ describe('example native RLS migrations with PGlite', () => {
         kind === 'session' ||
         kind === 'user-key' ||
         kind === 'unconfigured-session';
-      if (isMember) {
-        await admin.insert(Member, {
-          user,
+      let member: Member | undefined;
+      if (isMember || kind === 'member-key') {
+        member = admin.create(Member, {
+          type:
+            kind === 'member-key'
+              ? MemberType.SERVICE_ACCOUNT
+              : MemberType.USER,
+          user: kind === 'member-key' ? null : user,
           workspace,
           name: 'Member profile',
         });
+        await admin.persist(member).flush();
       }
       const hasUser = isMember || kind === 'non-member';
       const em = orm.em.fork(
@@ -1151,9 +1160,13 @@ describe('example native RLS migrations with PGlite', () => {
         } as unknown as SessionService,
         {
           validate: vi.fn().mockResolvedValue({
-            apiKey: new WorkspaceApiKey(),
-            ownerType: kind === 'user-key' ? 'user' : 'workspace',
-            user,
+            apiKey:
+              kind === 'member-key'
+                ? Object.assign(new MemberApiKey(), { member })
+                : Object.assign(new UserApiKey(), { user }),
+            ownerType: kind === 'user-key' ? 'user' : 'member',
+            user: kind === 'member-key' ? null : user,
+            member: kind === 'member-key' ? member : null,
             workspace,
           }),
         } as unknown as ApiKeyAuthenticationService,
@@ -1161,7 +1174,7 @@ describe('example native RLS migrations with PGlite', () => {
       );
       const request = {
         headers: {
-          ...(kind === 'workspace-key' ? {} : { 'x-workspace-id': '1' }),
+          ...(kind === 'member-key' ? {} : { 'x-workspace-id': '1' }),
           ...(kind.endsWith('key') ? { authorization: 'Bearer sk-key' } : {}),
         },
       } as Request;
@@ -1173,13 +1186,14 @@ describe('example native RLS migrations with PGlite', () => {
         expect(next).toHaveBeenCalledExactlyOnceWith();
         expect(
           await em.execute(
-            "select current_user as role, current_setting('app.user.id', true) as app_user, current_setting('app.workspace.id', true) as app_workspace",
+            "select current_user as role, current_setting('app.user.id', true) as app_user, current_setting('app.workspace.id', true) as app_workspace, current_setting('app.member.id', true) as app_member",
           ),
         ).toEqual([
           {
             role: kind === 'anonymous' ? 'anonymous' : 'authenticated',
             app_user: hasUser ? user.id : '',
             app_workspace: kind === 'non-member' ? '' : '1',
+            app_member: member?.id ?? '',
           },
         ]);
         if (kind === 'anonymous') {
@@ -1199,6 +1213,292 @@ describe('example native RLS migrations with PGlite', () => {
       });
     },
   );
+
+  it.each([
+    ['member:read', MemberType.USER],
+    ['service-account:read', MemberType.SERVICE_ACCOUNT],
+  ] as const)(
+    'filters member pages and counts by %s under RLS',
+    async (permission, type) => {
+      const admin = orm.em.fork();
+      const workspace = admin.create(Workspace, {
+        name: 'Member type permissions',
+      });
+      const user = admin.create(User, {
+        name: 'Reader',
+        email: `${randomUUID()}@example.test`,
+        emailVerified: true,
+      });
+      const actor = admin.create(Member, {
+        workspace,
+        user,
+        name: 'Reader',
+        roles: [],
+        permissions: [permission],
+      });
+      const serviceAccount = admin.create(Member, {
+        workspace,
+        user: null,
+        name: 'Service',
+        type: MemberType.SERVICE_ACCOUNT,
+        roles: [],
+        permissions: [],
+      });
+      await admin.persist([actor, serviceAccount]).flush();
+      const em = orm.em.fork({
+        session: {
+          role: 'authenticated',
+          variables: {
+            'app.workspace.id': workspace.id,
+            'app.user.id': user.id,
+            'app.member.id': actor.id,
+          },
+        },
+      });
+      const service = new MemberService(em, {});
+      await RequestContext.run(
+        new RequestContext({ type: 'test' }),
+        async () => {
+          RequestContext.set(EntityManager, em);
+          RequestIdentity.stage({ user, workspace, member: actor });
+          RequestIdentity.prepare({});
+          const page = await service.getMemberConnectionByWorkspace(workspace, {
+            first: 10,
+          });
+          expect(page.edges.map(({ node }) => node.id)).toEqual([
+            type === MemberType.USER ? actor.id : serviceAccount.id,
+          ]);
+          expect(page.totalCount).toBe(1);
+          const forbidden = type === MemberType.USER ? serviceAccount : actor;
+          expect(await service.getMember(forbidden.id)).toBeNull();
+          const filtered = await service.getMemberConnectionByWorkspace(
+            workspace,
+            {
+              first: 10,
+              filter: { type: { $eq: forbidden.type } },
+            },
+          );
+          expect(filtered.edges).toEqual([]);
+          expect(filtered.totalCount).toBe(0);
+        },
+      );
+      await admin.nativeDelete(Workspace, workspace.id);
+      await admin.nativeDelete(User, user.id);
+    },
+  );
+
+  it.each([
+    { permissions: [], role: 'member' },
+    { permissions: ['workspace:update'], role: null },
+    { permissions: [], role: 'automation' },
+  ])(
+    'creates a service account before issuing its key with role $role and grants $permissions',
+    async ({ permissions, role }) => {
+      const admin = orm.em.fork();
+      const user = admin.create(User, {
+        name: 'Key issuer',
+        email: `${randomUUID()}@example.test`,
+        emailVerified: true,
+      });
+      const workspace = admin.create(Workspace, {
+        name: 'Automatic service account',
+      });
+      const actor = admin.create(Member, {
+        user,
+        workspace,
+        name: 'Owner',
+        roles: ['owner'],
+      });
+      await admin.persist(actor).flush();
+      const options: AuthModuleOptions =
+        role === 'automation'
+          ? {
+              workspace: {
+                defaultRole: 'automation',
+                roles: { automation: ['workspace:read'] },
+              },
+            }
+          : {};
+      const em = orm.em.fork({
+        session: {
+          role: 'authenticated',
+          variables: {
+            'app.user.id': user.id,
+            'app.workspace.id': workspace.id,
+            'app.member.id': actor.id,
+          },
+        },
+      });
+      await RequestContext.run(
+        new RequestContext({ type: 'test' }),
+        async () => {
+          RequestContext.set(EntityManager, em);
+          RequestIdentity.stage({ user, workspace, member: actor });
+          RequestIdentity.prepare(options);
+          const members = new MemberService(em, options);
+          const serviceAccount = await members.addServiceAccount(
+            workspace,
+            'Deploy',
+            {
+              permissions,
+              ...(permissions.length ? { roles: [] } : {}),
+            },
+          );
+          const service = new MemberApiKeyService(em, options);
+          const created = await service.createMemberApiKey(workspace, {
+            name: 'Deploy',
+            member: serviceAccount,
+            permissions,
+          });
+          const owner = await admin.findOneOrFail(
+            Member,
+            created.entity.member.id,
+          );
+          expect(owner.type).toBe(MemberType.SERVICE_ACCOUNT);
+          expect(owner.name).toBe('Deploy');
+          expect(owner.user).toBeNull();
+          expect(owner.roles).toEqual(role ? [role] : []);
+          expect(owner.permissions).toEqual(permissions);
+          expect(
+            (await admin.findOneOrFail(MemberApiKey, created.entity.id))
+              .permissions,
+          ).toEqual(permissions);
+          RequestIdentity.stage({
+            user: null,
+            member: owner,
+            workspace,
+            apiKey: created.entity,
+          });
+          RequestIdentity.prepare(options);
+          expect(can('read', Workspace)).toBe(permissions.length === 0);
+          expect(can('update', Workspace)).toBe(permissions.length > 0);
+          RequestIdentity.stage({
+            user,
+            member: actor,
+            workspace,
+            apiKey: null,
+          });
+          RequestIdentity.prepare(options);
+          const retainedAccount = await members.addServiceAccount(
+            workspace,
+            'Retained account',
+            {
+              permissions,
+              ...(permissions.length ? { roles: [] } : {}),
+            },
+          );
+          const transaction = em.transactional.bind(em);
+          vi.spyOn(em, 'transactional').mockImplementation(
+            async (callback, transactionOptions) =>
+              await transaction(async (manager) => {
+                await callback(manager);
+                throw new Error('Commit failure');
+              }, transactionOptions),
+          );
+          RequestIdentity.stage({
+            user,
+            member: actor,
+            workspace,
+            apiKey: null,
+          });
+          RequestIdentity.prepare(options);
+          await expect(
+            service.createMemberApiKey(workspace, {
+              name: 'Rolled back',
+              member: retainedAccount,
+              permissions,
+            }),
+          ).rejects.toThrow('Commit failure');
+          expect(
+            await admin.count(Member, { workspace, name: 'Retained account' }),
+          ).toBe(1);
+          expect(
+            await admin.count(MemberApiKey, {
+              name: 'Rolled back',
+              member: { workspace },
+            }),
+          ).toBe(0);
+          vi.restoreAllMocks();
+        },
+      );
+      await admin.nativeDelete(Workspace, workspace.id);
+      await admin.nativeDelete(User, user.id);
+    },
+  );
+
+  it('excludes inherited keys from restricted credential pagination and mutation under RLS', async () => {
+    const admin = orm.em.fork();
+    const user = admin.create(User, {
+      name: 'Key issuer',
+      email: `${randomUUID()}@example.test`,
+      emailVerified: true,
+    });
+    const workspace = admin.create(Workspace, {
+      name: 'Inherited key boundary',
+    });
+    const actor = admin.create(Member, {
+      user,
+      workspace,
+      name: 'Owner',
+      roles: ['owner'],
+    });
+    const inherited = admin.create(MemberApiKey, {
+      member: actor,
+      name: 'Full owner grants',
+      key: randomUUID(),
+      permissions: [],
+    });
+    const limited = admin.create(MemberApiKey, {
+      member: actor,
+      name: 'Limited',
+      key: randomUUID(),
+      permissions: ['member-api-key:read', 'member-api-key:write'],
+    });
+    await admin.persist([inherited, limited]).flush();
+    const em = orm.em.fork({
+      session: {
+        role: 'authenticated',
+        variables: {
+          'app.user.id': user.id,
+          'app.workspace.id': workspace.id,
+          'app.member.id': actor.id,
+        },
+      },
+    });
+    await RequestContext.run(new RequestContext({ type: 'test' }), async () => {
+      RequestContext.set(EntityManager, em);
+      RequestIdentity.stage({
+        user,
+        member: actor,
+        workspace,
+        apiKey: limited,
+      });
+      RequestIdentity.prepare({});
+      const service = new MemberApiKeyService(em, {});
+      const page = await service.getMemberApiKeyConnection(workspace, {
+        first: 10,
+      });
+      expect(page.edges.map(({ node }) => node.id)).toEqual([limited.id]);
+      expect(page.totalCount).toBe(1);
+      expect(await service.getMemberApiKey(inherited.id, workspace)).toBeNull();
+      await expect(
+        service.updateMemberApiKey(inherited.id, {
+          permissions: ['member-api-key:read'],
+        }),
+      ).rejects.toThrow('Unrestricted API keys');
+      await expect(service.deleteMemberApiKey(inherited.id)).rejects.toThrow(
+        'Unrestricted API keys',
+      );
+      RequestIdentity.stage({ apiKey: inherited });
+      RequestIdentity.prepare({});
+      const fullPage = await service.getMemberApiKeyConnection(workspace, {
+        first: 10,
+      });
+      expect(fullPage.totalCount).toBe(2);
+    });
+    await admin.nativeDelete(Workspace, workspace.id);
+    await admin.nativeDelete(User, user.id);
+  });
 
   it('persists member permissions across isolated auth forks without flushing unrelated changes', async () => {
     const admin = orm.em.fork();
@@ -1273,7 +1573,7 @@ describe('example native RLS migrations with PGlite', () => {
       ownerId: string,
     ) =>
       em.execute(
-        `insert into ${ownerType}_api_key (id, ${ownerType}_id, name, key) values (?, ?, ?, ?)`,
+        `insert into ${ownerType}_api_key (id, ${ownerType === 'user' ? 'user' : 'member'}_id, name, key) values (?, ?, ?, ?)`,
         [id, ownerId, 'Policy probe', randomUUID()],
       );
 
@@ -1311,8 +1611,14 @@ describe('example native RLS migrations with PGlite', () => {
               name: 'Owner boundary fixture',
               key: randomUUID(),
             })
-          : admin.create(WorkspaceApiKey, {
-              workspace: owner,
+          : admin.create(MemberApiKey, {
+              member: admin.create(Member, {
+                id: owner.id,
+                workspace: owner,
+                type: MemberType.SERVICE_ACCOUNT,
+                user: null,
+                name: 'Service account',
+              }),
               name: 'Owner boundary fixture',
               key: randomUUID(),
             }),
@@ -1329,25 +1635,25 @@ describe('example native RLS migrations with PGlite', () => {
         `grant ${probeRole}, ${anonymousProbeRole} to current_user`,
       );
       await admin.execute(
-        `grant select, insert, update, delete on user_api_key, workspace_api_key to ${probeRole}, ${anonymousProbeRole}`,
+        `grant select, insert, update, delete on user_api_key, member_api_key to ${probeRole}, ${anonymousProbeRole}`,
       );
     });
 
     afterAll(async () => {
       const admin = orm.em.fork();
       await admin.execute(
-        `revoke all on user_api_key, workspace_api_key from ${probeRole}, ${anonymousProbeRole}`,
+        `revoke all on user_api_key, member_api_key from ${probeRole}, ${anonymousProbeRole}`,
       );
       await admin.execute(`drop role ${probeRole}, ${anonymousProbeRole}`);
       await admin.nativeDelete(UserApiKey, { id: keys.map((key) => key.id) });
-      await admin.nativeDelete(WorkspaceApiKey, {
+      await admin.nativeDelete(MemberApiKey, {
         id: keys.map((key) => key.id),
       });
       await admin.nativeDelete(User, { id: [userId, foreignId] });
       await admin.nativeDelete(Workspace, { id: [userId, foreignId] });
     });
 
-    it.each(['user', 'workspace'])(
+    it.each(['user', 'member'])(
       'combines default grants with %s-key RLS and a required foreign key',
       async (ownerType) => {
         const table = ownerType + '_api_key';
@@ -1377,7 +1683,7 @@ describe('example native RLS migrations with PGlite', () => {
         await expect(
           insertKey(em, '900199', ownerType, '999999999'),
         ).rejects.toThrow(/foreign key constraint/i);
-        const otherType = ownerType === 'user' ? 'workspace' : 'user';
+        const otherType = ownerType === 'user' ? 'member' : 'user';
         expect(
           await em.execute(
             'select column_name from information_schema.columns where table_name = ? and column_name = ?',
@@ -1387,18 +1693,23 @@ describe('example native RLS migrations with PGlite', () => {
       },
     );
 
-    it('cascades workspace keys on workspace deletion', async () => {
+    it('cascades member keys on workspace deletion', async () => {
       const em = orm.em.fork();
       const workspace = em.create(Workspace, { name: 'Cascade workspace' });
-      const key = em.create(WorkspaceApiKey, {
-        workspace,
+      const key = em.create(MemberApiKey, {
+        member: em.create(Member, {
+          workspace,
+          name: 'Cascade member',
+          type: MemberType.SERVICE_ACCOUNT,
+          user: null,
+        }),
         name: 'Cascade key',
         key: randomUUID(),
       });
       await em.persist(key).flush();
-      expect(await em.count(WorkspaceApiKey, key.id)).toBe(1);
+      expect(await em.count(MemberApiKey, key.id)).toBe(1);
       await em.nativeDelete(Workspace, workspace.id, { filters: false });
-      expect(await em.count(WorkspaceApiKey, key.id)).toBe(0);
+      expect(await em.count(MemberApiKey, key.id)).toBe(0);
     });
 
     it.each([
@@ -1424,7 +1735,7 @@ describe('example native RLS migrations with PGlite', () => {
         expect(
           [
             ...(await em.find(UserApiKey, {})),
-            ...(await em.find(WorkspaceApiKey, {})),
+            ...(await em.find(MemberApiKey, {})),
           ]
             .map((key) => key.id)
             .sort(),
@@ -1432,7 +1743,7 @@ describe('example native RLS migrations with PGlite', () => {
         for (const key of keys) {
           expect(
             await em.nativeUpdate<ApiKey>(
-              key instanceof UserApiKey ? UserApiKey : WorkspaceApiKey,
+              key instanceof UserApiKey ? UserApiKey : MemberApiKey,
               key.id,
               { name: identity.name },
             ),
@@ -1440,7 +1751,7 @@ describe('example native RLS migrations with PGlite', () => {
           if (!visibleIds.includes(key.id)) {
             expect(
               await em.nativeDelete<ApiKey>(
-                key instanceof UserApiKey ? UserApiKey : WorkspaceApiKey,
+                key instanceof UserApiKey ? UserApiKey : MemberApiKey,
                 key.id,
               ),
             ).toBe(0);
@@ -1451,13 +1762,13 @@ describe('example native RLS migrations with PGlite', () => {
 
     it('denies missing identity and anonymous access even with table privileges', async () => {
       expect(await scoped().find(UserApiKey, {})).toEqual([]);
-      expect(await scoped().find(WorkspaceApiKey, {})).toEqual([]);
+      expect(await scoped().find(MemberApiKey, {})).toEqual([]);
       const anonymous = scoped(
         { 'app.user.id': userId, 'app.workspace.id': userId },
         anonymousProbeRole,
       );
       expect(await anonymous.find(UserApiKey, {})).toEqual([]);
-      expect(await anonymous.find(WorkspaceApiKey, {})).toEqual([]);
+      expect(await anonymous.find(MemberApiKey, {})).toEqual([]);
       expect(
         await anonymous.nativeUpdate(UserApiKey, keys[0].id, {
           name: 'Denied',
@@ -1469,14 +1780,14 @@ describe('example native RLS migrations with PGlite', () => {
       ).rejects.toThrow(/row.level security/i);
     });
 
-    it.each(['user', 'workspace'] as const)(
+    it.each(['user', 'member'] as const)(
       'checks the required owner on insert and update for %s keys',
       async (ownerType) => {
         const em = scoped({
           'app.user.id': ownerType === 'user' ? userId : '',
-          'app.workspace.id': ownerType === 'workspace' ? userId : '',
+          'app.workspace.id': ownerType === 'member' ? userId : '',
         });
-        const otherType = ownerType === 'user' ? 'workspace' : 'user';
+        const otherType = ownerType === 'user' ? 'member' : 'user';
         const id = ownerType === 'user' ? '900101' : '900102';
         try {
           await expect(insertKey(em, id, otherType, userId)).rejects.toThrow(
@@ -1488,26 +1799,26 @@ describe('example native RLS migrations with PGlite', () => {
           await insertKey(em, id, ownerType, userId);
           await expect(
             em.execute(
-              `update ${ownerType}_api_key set ${ownerType}_id = ? where id = ?`,
+              `update ${ownerType}_api_key set ${ownerType === 'user' ? 'user' : 'member'}_id = ? where id = ?`,
               [foreignId, id],
             ),
           ).rejects.toThrow(/row.level security/i);
           const stored = await em.findOneOrFail<ApiKey>(
-            ownerType === 'user' ? UserApiKey : WorkspaceApiKey,
+            ownerType === 'user' ? UserApiKey : MemberApiKey,
             id,
           );
           expect(
-            (stored instanceof UserApiKey ? stored.user : stored.workspace)?.id,
+            (stored instanceof UserApiKey ? stored.user : stored.member)?.id,
           ).toBe(userId);
           expect(
             (stored instanceof UserApiKey
               ? stored.user
-              : stored.workspace
+              : stored.member
             )?.unwrap(),
-          ).toBeInstanceOf(ownerType === 'user' ? User : Workspace);
+          ).toBeInstanceOf(ownerType === 'user' ? User : Member);
           expect(
             await em.nativeDelete<ApiKey>(
-              ownerType === 'user' ? UserApiKey : WorkspaceApiKey,
+              ownerType === 'user' ? UserApiKey : MemberApiKey,
               id,
             ),
           ).toBe(1);
@@ -1515,7 +1826,7 @@ describe('example native RLS migrations with PGlite', () => {
           await orm.em
             .fork()
             .nativeDelete<ApiKey>(
-              ownerType === 'user' ? UserApiKey : WorkspaceApiKey,
+              ownerType === 'user' ? UserApiKey : MemberApiKey,
               id,
             );
         }
@@ -1614,7 +1925,7 @@ describe('example native RLS migrations with PGlite', () => {
       },
     );
 
-    it.each(['user', 'workspace-key'] as const)(
+    it.each(['user', 'member-key'] as const)(
       'rejects cross-workspace member inserts and moves for a %s identity',
       async (identity) => {
         const em = scoped(current.id, identity === 'user' ? user.id : '');
@@ -1638,7 +1949,7 @@ describe('example native RLS migrations with PGlite', () => {
       },
     );
 
-    it.each(['user', 'workspace-key'] as const)(
+    it.each(['user', 'member-key'] as const)(
       'isolates invitation reads and writes for a %s identity',
       async (identity) => {
         const em = scoped(current.id, identity === 'user' ? user.id : '');
@@ -1793,7 +2104,7 @@ describe('example native RLS migrations with PGlite', () => {
     });
 
     const accessMatrix = (
-      ['anonymous', 'self', 'other-member', 'workspace-key'] as const
+      ['anonymous', 'self', 'other-member', 'member-key'] as const
     ).flatMap((identity) =>
       (['current', 'foreign', 'deleted'] as const).flatMap((scope) =>
         (['member', 'invitation'] as const).map((table) => ({
@@ -1835,9 +2146,7 @@ describe('example native RLS migrations with PGlite', () => {
 
         const em = scoped(
           scope === 'foreign' ? current.id : targetWorkspace.id,
-          identity === 'anonymous' || identity === 'workspace-key'
-            ? ''
-            : user.id,
+          identity === 'anonymous' || identity === 'member-key' ? '' : user.id,
         );
         if (identity === 'anonymous')
           em.setSessionContext({ role: 'anonymous' });
@@ -2219,14 +2528,14 @@ describe('example native RLS migrations with PGlite', () => {
       ],
     ] as const) {
       await expect(admin.execute(sql, [...params])).rejects.toThrow(
-        /not-null constraint/i,
+        /not-null constraint|check constraint/i,
       );
     }
     expect(
       await admin.execute(
         "select column_name from information_schema.columns where table_schema = 'public' and table_name = 'member' and column_name in ('type', 'searchable_name')",
       ),
-    ).toEqual([]);
+    ).toEqual([{ column_name: 'type' }]);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
   });
 
@@ -2241,7 +2550,7 @@ describe('example native RLS migrations with PGlite', () => {
     expect(await orm.migrator.getExecuted()).toEqual([]);
     expect(
       await orm.em.execute(
-        "select to_regclass('public.user_api_key') as user_key, to_regclass('public.workspace_api_key') as workspace_key",
+        "select to_regclass('public.user_api_key') as user_key, to_regclass('public.member_api_key') as workspace_key",
       ),
     ).toEqual([{ user_key: null, workspace_key: null }]);
     expect(await readDefaultPrivileges()).toEqual(defaults);

@@ -21,6 +21,7 @@ const GET_CURRENT_WORKSPACE_FROM_WORKSPACE_LAYOUT = graphql(`
       id
       roles
       permissions
+      type
       status
       name
       email

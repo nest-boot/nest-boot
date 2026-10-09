@@ -32,6 +32,10 @@ export function assertApiKeyPermissionCeiling(
   requested: readonly string[],
 ): void {
   const ceiling = resolveRequestPermissions(options).apiKey;
+  if (ceiling !== null && !requested.length)
+    throw new ForbiddenException(
+      "Unrestricted API keys exceed authenticating API key permissions",
+    );
   if (ceiling !== null)
     assertPermissionCeiling(
       requested,

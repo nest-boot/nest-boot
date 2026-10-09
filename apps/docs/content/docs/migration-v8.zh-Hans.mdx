@@ -109,22 +109,22 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 - 用户与工作区的权限目录、角色映射现在追加到内置默认值。同名角色的权限合并去重，
   空配置不会移除默认值，自定义权限仍需显式授予角色。需要受限授权时请定义新角色。
   实体 `set*` 方法仍替换存储值；API Key 的 `allowedPermissions` 仍是上限而非追加列表。
-- 数据库请求身份变量改为 `app.user.id` 和 `app.workspace.id`。不再向数据库传递
+- 数据库请求身份变量改为 `app.user.id` 和 `app.workspace.id`，并新增 `app.member.id` 表示当前有效成员。不再向数据库传递
   应用权限列表；Service 负责 Ability 检查与 API Key 权限上限。RLS 保留归属、
   工作区隔离，不再检查应用权限名。
 - 认证 Session 现在只使用主数据库；请移除 `AuthModuleOptions.secondaryStorage` 配置。
 - 将 API Key 的 `defaultPermissions` 与 `allowedPermissions` 移到 `apiKey.user`
-  和 `apiKey.workspace` 下。旧的扁平配置会在启动时报错，两个作用域互不继承。
-  用户 Key 可使用用户和工作区权限；工作区 Key 仅接受工作区权限，且不能授予
-  `invitation:create`。例如：
+  和 `apiKey.member` 下。旧的扁平配置会在启动时报错，两个作用域互不继承。
+  用户 Key 可使用用户和工作区权限；成员 Key 仅接受工作区权限，通过
+  `member:invite` 管理邀请。授予权限同时受目标成员和签发者限制，运行时再与成员权限取交集。例如：
 
   ```ts
   apiKey: {
     user: {
-      defaultPermissions: ["user:get"],
-      allowedPermissions: ["user:get", "workspace:update"],
+      defaultPermissions: ["user:read"],
+      allowedPermissions: ["user:read", "workspace:update"],
     },
-    workspace: {
+    member: {
       defaultPermissions: ["workspace:update"],
       allowedPermissions: ["workspace:update", "workspace:delete"],
     },
@@ -148,7 +148,7 @@ Nest Boot 版本 8 使用基于 SWC 的 Vitest 替代 Jest。贡献者可以通�
 ### API Key 归属与数据库级联
 
 先执行 `Migration00000000000000_Initial`，再执行 MikroORM 生成的
-`Migration20260918091003`。初始化迁移向 `anonymous` 和 `authenticated`
+`Migration20261009070926`。初始化迁移向 `anonymous` 和 `authenticated`
 授予 schema `USAGE`，并为 `public` 中的表、函数和序列统一配置默认 `ALL` 权限。
 这些默认权限只适用于同一迁移角色以后创建的对象，不会修改现有对象或其他角色创建的对象的权限。
 
@@ -162,10 +162,11 @@ RLS 不保护 `TRUNCATE` 或 `REFERENCES`，表策略也不限制序列操作。
 所有业务表必须启用 RLS 并声明策略；`Verification` 明确拒绝普通请求访问。
 凭证字段与可更新属性由 Service 和 GraphQL 控制，数据库不再提供列级保护。
 
-`BaseApiKey.owner` 已移除。`UserApiKey` 与 `WorkspaceApiKey` 使用独立的表，
-各自只有一个必填归属外键（`user` 或 `workspace`），无需二选一 CHECK 约束。
-实体导入、查询过滤器和测试需同步适配两类密钥。
-用户删除由外键级联清理关联记录，不再使用自定义删除函数或触发器；工作区和工作区密钥保留。
+`BaseApiKey.owner` 已移除。`UserApiKey` 与 `MemberApiKey` 使用独立的表，
+各自只有一个必填归属外键（`user` 或 `member`），无需二选一 CHECK 约束。
+实体导入、查询过滤器和测试需同步适配两类密钥。beta 示例保留 init，并按最终模型
+重新生成其余迁移，直接创建 `member_api_key` 与服务账号约束，不再保留旧表转换迁移。
+用户删除由外键级联清理关联记录，不再使用自定义删除函数或触发器；删除的成员所属 Key 也会级联删除；工作区和其他成员的 Key 保留。
 User SELECT 允许 authenticated 角色读取，个人资料访问由 Service 的 Ability 检查限制，支持自定义读取权限名。
 User 写入及 Session 读取同样由 Service 授权；数据库请求上下文不再传递应用权限。
 不要绕过 Service 授权暴露直接 User 查询。
@@ -182,7 +183,7 @@ User 写入及 Session 读取同样由 Service 授权；数据库请求上下文
 输入、Payload、Resolver 和连接全部改从 `@nest-boot/auth` 导入。
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation`、`UserApiKey` 和 `WorkspaceApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`Member`、`Invitation`、`UserApiKey` 和 `MemberApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 在运行时和迁移 CLI 的 MikroORM 配置中注册导出的 `entities` 数组；CLI 不会启动 Nest 模块：

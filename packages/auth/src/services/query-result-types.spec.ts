@@ -1,13 +1,13 @@
 import { expectTypeOf } from "vitest";
 
+import type { MemberApiKey } from "../entities/member-api-key.entity.js";
 import type { UserApiKey } from "../entities/user-api-key.entity.js";
-import type { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import type { ApiKey } from "../types/api-key.type.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import type { AccountService } from "./account.service.js";
+import type { MemberApiKeyService } from "./member-api-key.service.js";
 import type { SessionService } from "./session.service.js";
 import type { UserApiKeyService } from "./user-api-key.service.js";
-import type { WorkspaceApiKeyService } from "./workspace-api-key.service.js";
 
 describe("Credential-free query result types", () => {
   it("omits session tokens and account credentials from list result types", () => {
@@ -45,41 +45,37 @@ describe("Credential-free query result types", () => {
     expectTypeOf<Result["user"]>().toEqualTypeOf<UserApiKey["user"]>();
   });
 
-  it("omits credential hashes from workspace-key reads and mutations", () => {
-    type Service = WorkspaceApiKeyService;
-    type Result = ApiKeyMetadata<WorkspaceApiKey>;
+  it("omits credential hashes from member-key reads and mutations", () => {
+    type Service = MemberApiKeyService;
+    type Result = ApiKeyMetadata<MemberApiKey>;
     expectTypeOf<
-      Awaited<ReturnType<Service["getWorkspaceApiKey"]>>
+      Awaited<ReturnType<Service["getMemberApiKey"]>>
     >().toEqualTypeOf<Result | null>();
     expectTypeOf<
-      Awaited<ReturnType<Service["updateWorkspaceApiKey"]>>
+      Awaited<ReturnType<Service["updateMemberApiKey"]>>
     >().toEqualTypeOf<Result>();
     expectTypeOf<
-      Awaited<ReturnType<Service["deleteWorkspaceApiKey"]>>
+      Awaited<ReturnType<Service["deleteMemberApiKey"]>>
     >().toEqualTypeOf<Result>();
     expectTypeOf<
       Awaited<
-        ReturnType<Service["getWorkspaceApiKeyConnection"]>
+        ReturnType<Service["getMemberApiKeyConnection"]>
       >["edges"][number]["node"]
     >().toEqualTypeOf<Result>();
     expectTypeOf<Result>().not.toHaveProperty("key");
-    expectTypeOf<Result["workspace"]>().toEqualTypeOf<
-      WorkspaceApiKey["workspace"]
-    >();
+    expectTypeOf<Result["member"]>().toEqualTypeOf<MemberApiKey["member"]>();
   });
 
   it("preserves both ownership variants and accepts full authenticated entities", () => {
     expectTypeOf<ApiKeyMetadata>().toEqualTypeOf<
-      Omit<UserApiKey, "key"> | Omit<WorkspaceApiKey, "key">
+      Omit<UserApiKey, "key"> | Omit<MemberApiKey, "key">
     >();
     expectTypeOf<ApiKey>().toExtend<ApiKeyMetadata>();
     expectTypeOf<
       Awaited<ReturnType<UserApiKeyService["createUserApiKey"]>>["entity"]
     >().toEqualTypeOf<UserApiKey>();
     expectTypeOf<
-      Awaited<
-        ReturnType<WorkspaceApiKeyService["createWorkspaceApiKey"]>
-      >["entity"]
-    >().toEqualTypeOf<WorkspaceApiKey>();
+      Awaited<ReturnType<MemberApiKeyService["createMemberApiKey"]>>["entity"]
+    >().toEqualTypeOf<MemberApiKey>();
   });
 });

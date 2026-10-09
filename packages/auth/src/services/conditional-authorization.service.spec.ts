@@ -11,10 +11,10 @@ import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { omitCredentials } from "../utils/omit-credentials.util.js";
+import { MemberApiKeyService } from "./member-api-key.service.js";
 import { SessionService } from "./session.service.js";
 import { UserService } from "./user.service.js";
 import { UserApiKeyService } from "./user-api-key.service.js";
-import { WorkspaceApiKeyService } from "./workspace-api-key.service.js";
 
 describe("conditional service authorization", () => {
   it.each(["member", "workspace"] as const)(
@@ -317,7 +317,7 @@ describe("conditional service authorization", () => {
     "member",
     "invitation",
     "user-key",
-    "workspace-key",
+    "member-key",
   ] as const)("checks proposed %s fields before creation", async (kind) => {
     await withIdentity(
       async ({
@@ -329,7 +329,7 @@ describe("conditional service authorization", () => {
         workspaceService,
         userService,
         userApiKeyService,
-        workspaceApiKeyService,
+        memberApiKeyService,
       }) => {
         em.findOne.mockResolvedValue(null);
         const create = () =>
@@ -358,7 +358,7 @@ describe("conditional service authorization", () => {
                     ? userApiKeyService.createUserApiKey(user, {
                         name: "blocked",
                       })
-                    : workspaceApiKeyService.createWorkspaceApiKey(workspace, {
+                    : memberApiKeyService.createMemberApiKey(workspace, {
                         name: "blocked",
                       });
         await expect(create()).rejects.toThrow(ForbiddenException);
@@ -379,6 +379,7 @@ async function withIdentity(
       Member,
       Object.assign(new Member(), {
         id: "member",
+        user: data.user,
         workspace: data.workspace,
         status: "ACTIVE",
       }),
@@ -393,13 +394,7 @@ async function withIdentity(
       },
       {
         action: ["create", "write"],
-        subject: [
-          "User",
-          "Workspace",
-          "Member",
-          "UserApiKey",
-          "WorkspaceApiKey",
-        ],
+        subject: ["User", "Workspace", "Member", "UserApiKey", "MemberApiKey"],
         inverted: true,
         conditions: { name: "blocked" },
       },
@@ -445,6 +440,6 @@ function fixture() {
     ),
     sessionService: new SessionService({}, result.em),
     userApiKeyService: new UserApiKeyService(result.em, {}),
-    workspaceApiKeyService: new WorkspaceApiKeyService(result.em, {}),
+    memberApiKeyService: new MemberApiKeyService(result.em, {}),
   };
 }

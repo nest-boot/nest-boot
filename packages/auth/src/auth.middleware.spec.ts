@@ -23,6 +23,11 @@ import {
   Member as BaseMember,
   Member as MemberEntity,
 } from "./entities/member.entity.js";
+import { MemberApiKey } from "./entities/member-api-key.entity.js";
+import {
+  MemberApiKey as ApiKeyEntity,
+  MemberApiKey as BaseApiKey,
+} from "./entities/member-api-key.entity.js";
 import {
   Session as BaseSession,
   Session as SessionEntity,
@@ -40,11 +45,6 @@ import {
   Workspace as BaseWorkspace,
   Workspace as WorkspaceEntity,
 } from "./entities/workspace.entity.js";
-import { WorkspaceApiKey } from "./entities/workspace-api-key.entity.js";
-import {
-  WorkspaceApiKey as ApiKeyEntity,
-  WorkspaceApiKey as BaseApiKey,
-} from "./entities/workspace-api-key.entity.js";
 import { ApiKeyAuthenticationService } from "./infrastructure/api-key-authentication.service.js";
 import { SessionService } from "./services/session.service.js";
 const TestApiKey = BaseApiKey;
@@ -61,7 +61,7 @@ type TestMember = BaseMember;
 const testEntities = {
   account: AccountEntity,
   userApiKey: UserApiKey,
-  workspaceApiKey: ApiKeyEntity,
+  memberApiKey: ApiKeyEntity,
   session: SessionEntity,
   user: UserEntity,
   verification: VerificationEntity,
@@ -182,7 +182,11 @@ describe("AuthMiddleware", () => {
             );
             expect(em.setSessionContext).toHaveBeenCalledWith({
               role: "anonymous",
-              variables: { "app.user.id": "", "app.workspace.id": "" },
+              variables: {
+                "app.user.id": "",
+                "app.workspace.id": "",
+                "app.member.id": "",
+              },
             });
           }
         },
@@ -235,7 +239,11 @@ describe("AuthMiddleware", () => {
       expect(RequestContext.get(AuthAbility)?.rules).toEqual([]);
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "anonymous",
-        variables: { "app.user.id": "", "app.workspace.id": "" },
+        variables: {
+          "app.user.id": "",
+          "app.workspace.id": "",
+          "app.member.id": "",
+        },
       });
     });
   });
@@ -274,7 +282,7 @@ describe("AuthMiddleware", () => {
       RequestContext.set(SessionEntity, new TestSession());
       RequestContext.set(WorkspaceEntity, new TestWorkspace());
       RequestContext.set(MemberEntity, new TestMember());
-      RequestContext.set(API_KEY, new WorkspaceApiKey());
+      RequestContext.set(API_KEY, new MemberApiKey());
       RequestContext.set(
         AuthAbility,
         new AuthAbility([
@@ -301,7 +309,11 @@ describe("AuthMiddleware", () => {
       ).toBe(false);
       expect(em.setSessionContext).toHaveBeenCalledExactlyOnceWith({
         role: "anonymous",
-        variables: { "app.user.id": "", "app.workspace.id": "" },
+        variables: {
+          "app.user.id": "",
+          "app.workspace.id": "",
+          "app.member.id": "",
+        },
       });
     });
   });
@@ -358,6 +370,7 @@ describe("AuthMiddleware", () => {
         variables: {
           "app.user.id": user.id,
           "app.workspace.id": workspace.id,
+          "app.member.id": member.id,
         },
       });
     },
@@ -369,7 +382,7 @@ describe("AuthMiddleware", () => {
     ["session", false],
     ["user-key", true],
     ["user-key", false],
-    ["workspace-key", false],
+    ["member-key", true],
   ] as const)(
     "stages only identities for %s (membership: %s)",
     async (kind, hasMember) => {
@@ -384,16 +397,17 @@ describe("AuthMiddleware", () => {
       const member = Object.assign(new TestMember(), {
         roles: ["manager"],
         permissions: ["member:invite", "workspace:update"],
-        user,
+        type: kind === "member-key" ? "SERVICE_ACCOUNT" : "USER",
+        user: kind === "member-key" ? null : user,
         workspace,
       });
       const apiKey = Object.assign(
-        kind === "workspace-key" ? new WorkspaceApiKey() : new UserApiKey(),
+        kind === "member-key" ? new MemberApiKey() : new UserApiKey(),
         {
-          user: kind === "workspace-key" ? null : user,
-          workspace: kind === "workspace-key" ? workspace : null,
+          user: kind === "member-key" ? null : user,
+          member: kind === "member-key" ? member : null,
           permissions:
-            kind === "workspace-key"
+            kind === "member-key"
               ? ["workspace:update"]
               : ["user:read", "workspace:update", "session:read"],
         },
@@ -410,9 +424,10 @@ describe("AuthMiddleware", () => {
           .mockResolvedValueOnce(hasMember ? member : null),
         vi.fn().mockResolvedValue({
           apiKey,
-          user,
+          user: kind === "member-key" ? null : user,
+          member: kind === "member-key" ? member : null,
           workspace,
-          ownerType: kind === "workspace-key" ? "workspace" : "user",
+          ownerType: kind === "member-key" ? "member" : "user",
         }),
         testEntities,
         {
@@ -439,8 +454,12 @@ describe("AuthMiddleware", () => {
           "app.user.id":
             kind === "session" || kind === "user-key" ? user.id : "",
           "app.workspace.id":
-            kind === "anonymous" || kind === "workspace-key" || hasMember
+            kind === "anonymous" || kind === "member-key" || hasMember
               ? workspace.id
+              : "",
+          "app.member.id":
+            kind !== "anonymous" && (kind === "member-key" || hasMember)
+              ? member.id
               : "",
         },
       });
@@ -462,7 +481,11 @@ describe("AuthMiddleware", () => {
       testEntities,
       {},
     );
-    mockRlsContext(em);
+    mockRlsContext(em).variables = {
+      "app.user.id": user.id,
+      "app.workspace.id": "",
+      "app.member.id": "",
+    };
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(
         BaseUser,
@@ -493,6 +516,7 @@ describe("AuthMiddleware", () => {
         variables: {
           "app.user.id": "",
           "app.workspace.id": "",
+          "app.member.id": "",
         },
       });
     });
@@ -547,6 +571,7 @@ describe("AuthMiddleware", () => {
         variables: {
           "app.user.id": "new-user",
           "app.workspace.id": "",
+          "app.member.id": "",
         },
       });
     });
@@ -580,7 +605,7 @@ describe("AuthMiddleware", () => {
     ["session", true, false, ""],
     ["user-key", true, true, "workspace-1"],
     ["user-key", true, false, ""],
-    ["workspace-key", false, false, "workspace-1"],
+    ["member-key", false, true, "workspace-1"],
   ] as const)(
     "updates a staged session after %s authentication (user=%s, member=%s)",
     async (kind, hasUser, hasMember, expectedWorkspace) => {
@@ -590,6 +615,9 @@ describe("AuthMiddleware", () => {
       });
       const member = Object.assign(new TestMember(), {
         id: "member-1",
+        type: kind === "member-key" ? "SERVICE_ACCOUNT" : "USER",
+        user: kind === "member-key" ? null : user,
+        workspace,
       });
       const findOne = vi
         .fn()
@@ -601,9 +629,13 @@ describe("AuthMiddleware", () => {
           kind === "session" ? { user, session: new TestSession() } : null,
         );
       const validate = vi.fn().mockResolvedValue({
-        apiKey: new TestApiKey(),
-        ownerType: kind === "user-key" ? "user" : "workspace",
-        user,
+        apiKey:
+          kind === "member-key"
+            ? Object.assign(new MemberApiKey(), { member })
+            : Object.assign(new UserApiKey(), { user }),
+        ownerType: kind === "user-key" ? "user" : "member",
+        user: kind === "member-key" ? null : user,
+        member: kind === "member-key" ? member : null,
         workspace,
       });
       const { middleware, em } = await createMiddleware(
@@ -624,6 +656,7 @@ describe("AuthMiddleware", () => {
           variables: {
             "app.user.id": hasUser ? "user-1" : "",
             "app.workspace.id": expectedWorkspace,
+            "app.member.id": hasMember ? member.id : "",
           },
         });
       });
@@ -657,6 +690,7 @@ describe("AuthMiddleware", () => {
       variables: {
         "app.user.id": expect.any(String),
         "app.workspace.id": "",
+        "app.member.id": "",
       },
     });
     expect(next).toHaveBeenCalledExactlyOnceWith();
@@ -679,6 +713,7 @@ describe("AuthMiddleware", () => {
       variables: {
         "app.user.id": "",
         "app.workspace.id": "",
+        "app.member.id": "",
       },
     });
   });
@@ -735,7 +770,7 @@ describe("AuthMiddleware", () => {
       {
         account: BaseAccount,
         userApiKey: UserApiKey,
-        workspaceApiKey: BaseApiKey,
+        memberApiKey: BaseApiKey,
         session: BaseSession,
         user: BaseUser,
         verification: BaseVerification,
@@ -924,7 +959,7 @@ describe("AuthMiddleware", () => {
     });
     const validate = vi.fn().mockResolvedValue({
       apiKey: { id: "key-1" },
-      ownerType: "workspace",
+      ownerType: "member",
       workspace: ownerWorkspace,
     });
     const { middleware } = await createMiddleware(

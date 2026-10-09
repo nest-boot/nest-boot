@@ -8,10 +8,10 @@ import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import {
   Invitation,
   Member,
+  MemberApiKey,
   User,
   UserApiKey,
   Workspace,
-  WorkspaceApiKey,
 } from "../entities/index.js";
 import { buildRequestAbility } from "../utils/build-request-ability.util.js";
 import { serializeAbilityRules } from "../utils/serialize-ability-rules.util.js";
@@ -29,6 +29,27 @@ function identity() {
 }
 
 describe("unified request ability", () => {
+  it("intersects member permissions with workspace key grants and revokes disabled membership", async () => {
+    await RequestContext.run(new RequestContext({ type: "test" }), () => {
+      const current = identity();
+      current.member.roles = [];
+      current.member.permissions = ["member:read"];
+      const apiKey = Object.assign(new MemberApiKey(), {
+        member: ref(Member, current.member),
+        permissions: ["member:read", "member:write"],
+      });
+      RequestIdentity.stage({ ...current, apiKey });
+      expect(buildRequestAbility({}).can("read", current.member)).toBe(true);
+      expect(buildRequestAbility({}).can("write", current.member)).toBe(false);
+      current.member.permissions = [];
+      RequestIdentity.stage({ member: current.member });
+      expect(buildRequestAbility({}).can("read", current.member)).toBe(false);
+      current.member.status = "DISABLED";
+      RequestIdentity.stage({ member: current.member });
+      expect(buildRequestAbility({}).can("read", Member)).toBe(false);
+    });
+  });
+
   it("applies shared restrictions after grants from either permission source", async () => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       const current = identity();
@@ -81,6 +102,7 @@ describe("unified request ability", () => {
         variables: {
           "app.user.id": first.user.id,
           "app.workspace.id": second.workspace.id,
+          "app.member.id": second.member.id,
         },
       });
     });
@@ -113,12 +135,19 @@ describe("unified request ability", () => {
       RequestIdentity.stage(current);
       const ability = buildRequestAbility({});
       const restored = createMongoAbility(serializeAbilityRules(ability));
-      for (const Entity of [Member, Invitation, WorkspaceApiKey]) {
+      for (const Entity of [Member, Invitation, MemberApiKey]) {
         const own = Object.assign(new Entity(), {
           workspace: ref(Workspace, current.workspace),
+          member: ref(Member, current.member),
         });
         const other = Object.assign(new Entity(), {
           workspace: ref(Workspace, new Workspace()),
+          member: ref(
+            Member,
+            Object.assign(new Member(), {
+              workspace: ref(Workspace, new Workspace()),
+            }),
+          ),
         });
         expect(ability.can("write", Entity)).toBe(true);
         expect(ability.can("write", own)).toBe(true);
@@ -126,7 +155,10 @@ describe("unified request ability", () => {
         expect(
           restored.can(
             "write",
-            subject(Entity.name, { workspaceId: own.workspaceId }),
+            subject(Entity.name, {
+              workspaceId: own.workspaceId,
+              type: "USER",
+            }),
           ),
         ).toBe(true);
         expect(
@@ -194,7 +226,7 @@ describe("unified request ability", () => {
     },
   );
 
-  it.each([UserApiKey, WorkspaceApiKey])(
+  it.each([UserApiKey, MemberApiKey])(
     "bounds combined rules by %s credentials",
     async (Entity) => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
@@ -203,6 +235,7 @@ describe("unified request ability", () => {
           permissions: ["member:read"],
           user: ref(User, current.user),
           workspace: ref(Workspace, current.workspace),
+          member: ref(Member, current.member),
         });
         RequestIdentity.stage({ ...current, apiKey });
         const configure = vi.fn();
@@ -210,10 +243,10 @@ describe("unified request ability", () => {
         expect(ability.can("read", User)).toBe(false);
         expect(ability.can("read", current.member)).toBe(true);
         expect(ability.can("write", current.member)).toBe(false);
-        if (Entity === WorkspaceApiKey)
+        if (Entity === MemberApiKey)
           expect(configure.mock.calls[0][1]).toMatchObject({
             user: null,
-            member: null,
+            member: current.member,
             userPermissions: [],
           });
       });

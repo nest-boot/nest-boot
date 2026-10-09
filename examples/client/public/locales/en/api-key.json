@@ -38,7 +38,15 @@
       "required": "API key name is required",
       "too_long": "API key name is too long"
     },
-    "save_failed": "Unable to save this API key. Please try again."
+    "save_failed": "Unable to save this API key. Please try again.",
+    "member": {
+      "label": "Service account",
+      "search": "Search service accounts",
+      "empty": "No matching service accounts",
+      "auto_create": "Leave unselected to create a service account with the key name when saving.",
+      "required": "Select a service account; creating one requires service account write permission."
+    },
+    "permissions_hint": "No permissions selected: inherit all owner permissions."
   },
   "never_expires": "Never expires",
   "never_used": "Never used",

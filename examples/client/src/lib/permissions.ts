@@ -1,7 +1,7 @@
 import {
+  MemberApiKeyPermission,
   UserApiKeyPermission,
   UserPermission,
-  WorkspaceApiKeyPermission,
   WorkspacePermission,
 } from "@/gql/graphql";
 
@@ -12,8 +12,8 @@ export type AuthPermission = UserApiKeyPermission;
 export const userPermissionValues = Object.values(UserPermission);
 export const workspacePermissionValues = Object.values(WorkspacePermission);
 export const authPermissionValues = Object.values(UserApiKeyPermission);
-export const workspaceApiKeyPermissionValues = Object.values(
-  WorkspaceApiKeyPermission,
+export const memberApiKeyPermissionValues = Object.values(
+  MemberApiKeyPermission,
 );
 
 export function isAuthPermission(value: string): value is AuthPermission {

@@ -44,7 +44,7 @@ export class WorkspaceService {
     if (!RequestContext.isActive()) return null;
     const workspace = RequestContext.get(Workspace);
     const user = RequestContext.get(User);
-    const member = this.resolveCurrentMember();
+    const member = RequestIdentity.getCurrentMember();
     if (user && workspace && !member) {
       throw new ForbiddenException(
         "The authenticated user is not a member of this workspace",
@@ -52,18 +52,6 @@ export class WorkspaceService {
     }
     if (workspace) authorize("read", workspace);
     return workspace ?? null;
-  }
-
-  /** Returns the current member, rejecting user API keys outside their membership. */
-  private resolveCurrentMember(): Member | null {
-    if (!RequestContext.isActive()) return null;
-    const member = RequestContext.get(Member);
-    if (getCurrentApiKey() && RequestContext.get(User) && !member) {
-      throw new ForbiddenException(
-        "The API key owner is not a member of this workspace",
-      );
-    }
-    return member ?? null;
   }
 
   /** Finds a workspace only when the current user is an active member. */

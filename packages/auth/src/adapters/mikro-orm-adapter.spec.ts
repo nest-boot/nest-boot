@@ -30,11 +30,11 @@ import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { Account as BaseAccount } from "../entities/account.entity.js";
 import { Invitation as BaseInvitation } from "../entities/invitation.entity.js";
 import { Member as BaseMember } from "../entities/member.entity.js";
+import { MemberApiKey as BaseApiKey } from "../entities/member-api-key.entity.js";
 import { Session as BaseSession } from "../entities/session.entity.js";
 import { User as BaseUser } from "../entities/user.entity.js";
 import { Verification as BaseVerification } from "../entities/verification.entity.js";
 import { Workspace as BaseWorkspace } from "../entities/workspace.entity.js";
-import { WorkspaceApiKey as BaseApiKey } from "../entities/workspace-api-key.entity.js";
 import {
   convertWhereToMikroOrm,
   mikroOrmAdapter,
@@ -331,7 +331,7 @@ type TestInvitation = BaseInvitation;
 const entities = {
   account: TestAccount,
   userApiKey: UserApiKey,
-  workspaceApiKey: TestApiKey,
+  memberApiKey: TestApiKey,
   session: TestSession,
   user: TestUser,
   verification: TestVerification,
@@ -557,7 +557,7 @@ describe("mikroOrmAdapter", () => {
     const adapter = createAdapter(orm);
 
     await adapter.create({ data: { name: "Workspace" }, model: "workspace" });
-    await adapter.create({ data: { name: "Key" }, model: "workspaceApiKey" });
+    await adapter.create({ data: { name: "Key" }, model: "memberApiKey" });
 
     expect(em.create).toHaveBeenNthCalledWith(1, TestWorkspace, {
       name: "Workspace",

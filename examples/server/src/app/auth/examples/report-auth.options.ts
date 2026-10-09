@@ -29,7 +29,7 @@ export const reportAuthOptions = {
       defaultPermissions: ['report:read'],
       allowedPermissions: reportPermissions,
     },
-    workspace: {
+    member: {
       defaultPermissions: ['report:read'],
       allowedPermissions: reportPermissions,
     },

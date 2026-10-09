@@ -1,13 +1,13 @@
 import { MetadataStorage } from "@mikro-orm/core";
 
 import { Member } from "./member.entity.js";
+import { MemberApiKey } from "./member-api-key.entity.js";
 import { Workspace } from "./workspace.entity.js";
-import { WorkspaceApiKey } from "./workspace-api-key.entity.js";
 
 describe("auth entity policies and uniqueness", () => {
   it("uses the same owner-scope predicate for reads and writes", () => {
     const policies = Object.values(MetadataStorage.getMetadata()).find(
-      (meta) => meta.class === WorkspaceApiKey,
+      (meta) => meta.class === MemberApiKey,
     )?.policies;
 
     expect(policies).toEqual([

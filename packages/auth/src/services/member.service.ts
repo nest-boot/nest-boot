@@ -1,6 +1,7 @@
+import { subject } from "@casl/ability";
 import {
   EntityManager,
-  type FilterQuery,
+  type FilterObject,
   LockMode,
   Reference,
 } from "@mikro-orm/core";
@@ -28,6 +29,7 @@ import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { MemberType } from "../enums/member-type.enum.js";
 import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { AddMemberOptions } from "../interfaces/add-member-options.interface.js";
 import type { UpdateMemberOptions } from "../interfaces/update-member-options.interface.js";
@@ -65,22 +67,21 @@ export class MemberService {
 
   /** Returns the current member after membership and instance read checks. */
   getCurrentMember(): Member | null {
-    if (!RequestContext.isActive()) return null;
-    const member = RequestContext.get(Member);
-    if (getCurrentApiKey() && RequestContext.get(User) && !member) {
-      throw new ForbiddenException(
-        "The API key owner is not a member of this workspace",
-      );
-    }
+    const member = RequestIdentity.getCurrentMember();
     if (member) authorize("read", member);
-    return member ?? null;
+    return member;
   }
 
   /** Authorizes member pagination and scopes it to the selected workspace. */
-  getMemberListFilter(workspace: Workspace): FilterQuery<Member> {
+  getMemberListFilter(workspace: Workspace): FilterObject<Member> {
     RequestIdentity.assertCurrentWorkspace(workspace);
     authorize("read", Member);
-    return { workspace };
+    const types = Object.values(MemberType).filter((type) =>
+      can("read", subject("Member", { workspaceId: workspace.id, type })),
+    );
+    return types.length === Object.values(MemberType).length
+      ? { workspace }
+      : { workspace, type: { $in: types } };
   }
 
   /** Paginates members within the selected workspace and its RLS scope. */
@@ -121,18 +122,15 @@ export class MemberService {
     if (!workspace) {
       throw new ForbiddenException("A workspace must be selected");
     }
-    RequestIdentity.assertCurrentWorkspace(workspace);
-    authorize("read", Member);
-    const member = await this.em.findOne(Member, {
-      id,
-      workspace,
-    });
+    const where = this.getMemberListFilter(workspace);
+    const member = await this.em.findOne(Member, { ...where, id });
     if (member) authorize("read", member);
     return member;
   }
 
   /** Resolves a member's user with workspace authorization and request RLS. */
   async getMemberUser(member: Member): Promise<User | null> {
+    if (member.type === "SERVICE_ACCOUNT") return null;
     const workspace = this.unwrapWorkspace(member);
     const actor = RequestContext.isActive() ? RequestContext.get(User) : null;
     const actorId = actor?.id;
@@ -170,7 +168,10 @@ export class MemberService {
     input: AddMemberOptions = {},
   ): Promise<Member> {
     RequestIdentity.assertCurrentWorkspace(workspace);
-    authorize("write", Member);
+    authorize(
+      "write",
+      subject("Member", { workspaceId: workspace.id, type: MemberType.USER }),
+    );
     const permissions = this.normalizePermissions(input.permissions ?? []);
     assertCanGrantPermissions(this.authOptions, "workspace", permissions);
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
@@ -209,6 +210,51 @@ export class MemberService {
     );
   }
 
+  /** Adds a service account without creating a login user. */
+  async addServiceAccount(
+    workspace: Workspace,
+    name: string,
+    input: AddMemberOptions = {},
+  ): Promise<Member> {
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    authorize(
+      "write",
+      subject("Member", {
+        workspaceId: workspace.id,
+        type: MemberType.SERVICE_ACCOUNT,
+      }),
+    );
+    if (!name.trim() || name.trim().length > 255)
+      throw new BadRequestException(
+        "A service account name is required (maximum 255 characters)",
+      );
+    const permissions = this.normalizePermissions(input.permissions ?? []);
+    assertCanGrantPermissions(this.authOptions, "workspace", permissions);
+    const roles =
+      input.roles?.length === 0
+        ? []
+        : this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
+    return await this.em.transactional(
+      async (em) => {
+        await this.lockWorkspace(em, workspace);
+        const member = em.create(Member, {
+          name: name.trim(),
+          type: MemberType.SERVICE_ACCOUNT,
+          user: null,
+          email: null,
+          roles,
+          permissions,
+          status: "ACTIVE",
+          workspace,
+        });
+        authorize("write", member);
+        await em.persist(member).flush();
+        return member;
+      },
+      { clear: true },
+    );
+  }
+
   /** Adds an existing user to a workspace by normalized email address. */
   async addMemberByEmail(
     workspace: Workspace,
@@ -216,7 +262,10 @@ export class MemberService {
     input: AddMemberOptions = {},
   ): Promise<Member> {
     RequestIdentity.assertCurrentWorkspace(workspace);
-    authorize("write", Member);
+    authorize(
+      "write",
+      subject("Member", { workspaceId: workspace.id, type: MemberType.USER }),
+    );
     const user = await this.getUserForMembership(workspace, email);
 
     return await this.addMember(workspace, user, input);
@@ -232,7 +281,10 @@ export class MemberService {
     email: string,
   ): Promise<User> {
     RequestIdentity.assertCurrentWorkspace(workspace);
-    authorize("write", Member);
+    authorize(
+      "write",
+      subject("Member", { workspaceId: workspace.id, type: MemberType.USER }),
+    );
     const user = await this.em.findOne(
       User,
       { email: email.trim().toLowerCase() },

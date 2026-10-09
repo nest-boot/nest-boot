@@ -82,11 +82,11 @@
   },
   "member_read": {
     "name": "查看成员",
-    "description": "查看工作区成员资料"
+    "description": "查看工作区用户成员资料"
   },
   "member_write": {
     "name": "管理成员",
-    "description": "添加、更新、禁用和移除成员，不含角色和权限修改"
+    "description": "添加、更新、禁用和移除用户成员，不含角色和权限修改"
   },
   "member_set_roles": {
     "name": "设置成员角色",
@@ -100,12 +100,20 @@
     "name": "管理成员邀请",
     "description": "查看、创建和取消工作区邀请"
   },
-  "workspace_api_key_read": {
-    "name": "查看工作区 API Key",
+  "member_api_key_read": {
+    "name": "查看成员 API Key",
     "description": "查看当前工作区的 API Key"
   },
-  "workspace_api_key_write": {
-    "name": "管理工作区 API Key",
-    "description": "创建、更新、启用、禁用和删除工作区 API Key"
+  "member_api_key_write": {
+    "name": "管理成员 API Key",
+    "description": "创建、更新、启用、禁用和删除成员 API Key"
+  },
+  "service_account_read": {
+    "name": "查看服务账号",
+    "description": "查看当前工作区的服务账号资料"
+  },
+  "service_account_write": {
+    "name": "管理服务账号",
+    "description": "创建、更新、禁用和移除服务账号；修改角色或权限还需对应的成员权限"
   }
 }

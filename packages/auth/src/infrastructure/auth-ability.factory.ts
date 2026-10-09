@@ -10,11 +10,12 @@ import { AuthAbility } from "../auth.ability.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { MemberType } from "../enums/member-type.enum.js";
 import type { AbilityContext } from "../interfaces/ability-context.interface.js";
 import { DEFAULT_USER_PERMISSIONS } from "../user.constants.js";
 import { extendAbility } from "../utils/extend-ability.util.js";
@@ -53,7 +54,8 @@ export class AuthAbilityFactory {
     const workspaceSubjects = {
       workspace: Workspace,
       member: Member,
-      "workspace-api-key": WorkspaceApiKey,
+      "service-account": Member,
+      "member-api-key": MemberApiKey,
     };
     for (const permission of DEFAULT_WORKSPACE_PERMISSIONS) {
       if (
@@ -73,6 +75,20 @@ export class AuthAbilityFactory {
         resource === "workspace"
           ? { id: snapshot.workspace.id }
           : { workspaceId: snapshot.workspace.id };
+      if (resource === "member") {
+        conditions.type = MemberType.USER;
+        if (
+          ["set-roles", "set-permissions"].includes(action) &&
+          snapshot.workspacePermissions.includes("service-account:write")
+        ) {
+          builder.can(action, Member, {
+            workspaceId: snapshot.workspace.id,
+            type: MemberType.SERVICE_ACCOUNT,
+          });
+        }
+      } else if (resource === "service-account") {
+        conditions.type = MemberType.SERVICE_ACCOUNT;
+      }
       builder.can(
         action,
         workspaceSubjects[

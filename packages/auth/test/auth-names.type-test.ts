@@ -37,7 +37,7 @@ type ValidPermissions =
   | "user:read"
   | "user-api-key:read"
   | "user:set-roles"
-  | "workspace-api-key:write"
+  | "member-api-key:write"
   | "member:set-roles"
   | "resource2:action3"
   | "true:false"
@@ -109,18 +109,14 @@ AuthModule.forRoot({
     adminRoles: ["super-admin"],
   },
   workspace: {
-    permissions: ["workspace-api-key:write"],
-    roles: { "team-owner": ["workspace-api-key:write", "workspace:update"] },
+    permissions: ["member-api-key:write"],
+    roles: { "team-owner": ["member-api-key:write", "workspace:update"] },
     creatorRole: "team-owner",
     defaultRole: "team-owner",
   },
   apiKey: {
     user: {
-      allowedPermissions: [
-        "report:read",
-        "workspace-api-key:write",
-        "user:read",
-      ],
+      allowedPermissions: ["report:read", "member-api-key:write", "user:read"],
     },
   },
 });
@@ -198,14 +194,14 @@ AuthModule.forRoot({
   workspace: { permissions: ["project:read"] },
   apiKey: {
     user: { defaultPermissions: ["user:read", "report:read", "project:read"] },
-    workspace: { defaultPermissions: ["project:read"] },
+    member: { defaultPermissions: ["project:read"] },
   },
 });
 AuthModule.forRoot({
   user: { permissions: ["report:read"] },
   apiKey: {
-    workspace: {
-      // @ts-expect-error Workspace keys cannot carry user-only permissions.
+    member: {
+      // @ts-expect-error Member keys cannot carry user-only permissions.
       defaultPermissions: ["report:read"],
     },
   },

@@ -13,11 +13,12 @@ import { API_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { Member as BaseMember } from "./entities/member.entity.js";
+import { MemberApiKey } from "./entities/member-api-key.entity.js";
 import { User as BaseUser } from "./entities/user.entity.js";
 import { UserApiKey } from "./entities/user-api-key.entity.js";
 import { Workspace as BaseWorkspace } from "./entities/workspace.entity.js";
-import { WorkspaceApiKey } from "./entities/workspace-api-key.entity.js";
 import { AuthAbilityFactory } from "./infrastructure/auth-ability.factory.js";
+import { RequestIdentity } from "./infrastructure/request-identity.js";
 import type { AbilityRules } from "./interfaces/ability-rules.interface.js";
 import {
   CAN_METADATA,
@@ -234,8 +235,10 @@ describe("AuthGuard permissions", () => {
         "member:set-roles",
         "member:set-permissions",
         "member:invite",
-        "workspace-api-key:read",
-        "workspace-api-key:write",
+        "service-account:read",
+        "service-account:write",
+        "member-api-key:read",
+        "member-api-key:write",
         "project:create",
         "project:read",
         "project:share",
@@ -1172,7 +1175,7 @@ describe("AuthGuard permissions", () => {
     });
   });
 
-  it("rejects missing API-key permissions", async () => {
+  it("rejects malformed permissions while empty API-key permissions inherit owner grants", async () => {
     const { guard, reflector } = await createPermissionAwareGuard();
 
     setCanMetadata(reflector, {
@@ -1194,19 +1197,18 @@ describe("AuthGuard permissions", () => {
       );
       await expect(guard.canActivate(createContext())).resolves.toBe(false);
 
-      RequestContext.set(
-        API_KEY,
-        Object.assign(new UserApiKey(), {
+      RequestIdentity.stage({
+        apiKey: Object.assign(new UserApiKey(), {
           workspace: null,
           user: ref(UserOwner, new UserOwner()),
           permissions: [],
         }),
-      );
-      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+      });
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
     });
   });
 
-  it("authorizes workspace keys directly from key permissions", async () => {
+  it("authorizes member keys within their member permissions", async () => {
     const { guard, reflector, configureWorkspaceRules } =
       await createPermissionAwareGuard();
     setCanMetadata(reflector, {
@@ -1217,9 +1219,15 @@ describe("AuthGuard permissions", () => {
 
     await RequestContext.run(createWorkspaceRequestContext(), async () => {
       RequestContext.set(
+        BaseMember,
+        Object.assign(createRequestMember(), {
+          permissions: ["workspace:update", "post:read"],
+        }),
+      );
+      RequestContext.set(
         API_KEY,
-        Object.assign(new WorkspaceApiKey(), {
-          workspace: ref(BaseWorkspace, requireWorkspace()),
+        Object.assign(new MemberApiKey(), {
+          member: ref(BaseMember, requireMember()),
           permissions: ["workspace:update"],
         }),
       );
@@ -1251,9 +1259,15 @@ describe("AuthGuard permissions", () => {
 
     await RequestContext.run(createWorkspaceRequestContext(), async () => {
       RequestContext.set(
+        BaseMember,
+        Object.assign(createRequestMember(), {
+          permissions: ["workspace:update", "post:read"],
+        }),
+      );
+      RequestContext.set(
         API_KEY,
-        Object.assign(new WorkspaceApiKey(), {
-          workspace: ref(BaseWorkspace, requireWorkspace()),
+        Object.assign(new MemberApiKey(), {
+          member: ref(BaseMember, requireMember()),
           permissions: ["post:read"],
         }),
       );
@@ -1641,4 +1655,10 @@ function requireWorkspace(): BaseWorkspace {
   const workspace = RequestContext.get(BaseWorkspace);
   assert(workspace);
   return workspace;
+}
+
+function requireMember(): BaseMember {
+  const member = RequestContext.get(BaseMember);
+  assert(member);
+  return member;
 }

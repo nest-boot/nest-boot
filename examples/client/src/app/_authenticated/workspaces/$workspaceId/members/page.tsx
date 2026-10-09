@@ -17,6 +17,7 @@ import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-use
 import { getMembersResourceKey } from "@/lib/resource-keys";
 import { memberSearchSchema } from "@/schemas/member-search-schema";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
+import { ServiceAccountForm } from "@/components/service-account-form";
 import { Link } from "@/components/link";
 import { toast } from "@/components/thread-ui/toast";
 import { useAbility } from "@/contexts/ability-context";
@@ -34,7 +35,7 @@ import {
 } from "@/components/thread-ui/page-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { graphql } from "@/gql";
-import { MemberStatus } from "@/gql/graphql";
+import { MemberStatus, MemberType } from "@/gql/graphql";
 import { getNextSearch, getPreviousSearch } from "@/lib/graphql-connection";
 import { truncateEmail } from "@/utils/truncate-email";
 import { cn } from "@/lib/utils";
@@ -74,6 +75,7 @@ const GET_MEMBERS_FROM_MEMBERS_ROUTE = graphql(`
             id
             roles
             status
+            type
             createdAt
             name
             email
@@ -229,6 +231,20 @@ function MembersComponent() {
         defaultOperator: "$eq",
       },
       {
+        label: t("member:table.type"),
+        field: "type",
+        type: "select",
+        options: Object.values(MemberType).map((type) => ({
+          value: type,
+          label:
+            type === MemberType.SERVICE_ACCOUNT
+              ? t("member:type.service_account")
+              : t("member:type.user"),
+        })),
+        operators: ["$in"],
+        defaultOperator: "$in",
+      },
+      {
         label: t("member:filter.items.status.label"),
         field: "status",
         type: "select",
@@ -293,6 +309,13 @@ function MembersComponent() {
     >
       <PageLayout>
         <PageLayoutSection>
+          {ability.can(
+            "write",
+            createAbilitySubject("Member", {
+              workspaceId,
+              type: MemberType.SERVICE_ACCOUNT,
+            }),
+          ) && <ServiceAccountForm workspaceId={workspaceId} />}
           <Card>
             <CardContent>
               <div className="space-y-4">
@@ -318,6 +341,16 @@ function MembersComponent() {
                 <DataTable
                   locale={i18n.resolvedLanguage}
                   columns={membersColumnHelper.columns([
+                    membersColumnHelper.column("type", {
+                      header: t("member:table.type"),
+                      render: (props, { row }) => (
+                        <span {...props}>
+                          {row.original.type === MemberType.SERVICE_ACCOUNT
+                            ? t("member:type.service_account")
+                            : t("member:type.user")}
+                        </span>
+                      ),
+                    }),
                     membersColumnHelper.column("name", {
                       header: t("member:table.name"),
                       render: (props, { row }) => {

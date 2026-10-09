@@ -37,20 +37,20 @@ import { authServiceProviders } from "./infrastructure/auth-service.providers.js
 import { createAuthInstance } from "./infrastructure/create-auth-instance.js";
 import { AuthResolver } from "./resolvers/auth.resolver.js";
 import { MemberResolver } from "./resolvers/member.resolver.js";
+import { MemberApiKeyResolver } from "./resolvers/member-api-key.resolver.js";
 import { SessionResolver } from "./resolvers/session.resolver.js";
 import { UserResolver } from "./resolvers/user.resolver.js";
 import { UserApiKeyResolver } from "./resolvers/user-api-key.resolver.js";
 import { WorkspaceResolver } from "./resolvers/workspace.resolver.js";
-import { WorkspaceApiKeyResolver } from "./resolvers/workspace-api-key.resolver.js";
 import { AccountService } from "./services/account.service.js";
 import { AuthService } from "./services/auth.service.js";
 import { MemberService } from "./services/member.service.js";
+import { MemberApiKeyService } from "./services/member-api-key.service.js";
 import { SessionService } from "./services/session.service.js";
 import { UserService } from "./services/user.service.js";
 import { UserApiKeyService } from "./services/user-api-key.service.js";
 import { UserDeletionService } from "./services/user-deletion.service.js";
 import { WorkspaceService } from "./services/workspace.service.js";
-import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
 import {
   DEFAULT_USER_PERMISSIONS,
   DEFAULT_USER_ROLES,
@@ -80,13 +80,13 @@ import {
     UserResolver,
     SessionResolver,
     UserApiKeyResolver,
-    WorkspaceApiKeyResolver,
+    MemberApiKeyResolver,
     WorkspaceResolver,
     MemberResolver,
     InvitationResolver,
     ...authServiceProviders,
     UserApiKeyService,
-    WorkspaceApiKeyService,
+    MemberApiKeyService,
     AccountService,
     ApiKeyUsageInterceptor,
     AuthService,
@@ -115,7 +115,7 @@ import {
     MODULE_OPTIONS_TOKEN,
     UserService,
     UserApiKeyService,
-    WorkspaceApiKeyService,
+    MemberApiKeyService,
     AuthGuard,
     AuthService,
     SessionService,

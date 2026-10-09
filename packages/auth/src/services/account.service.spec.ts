@@ -8,8 +8,8 @@ import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { API_KEY } from "../auth.constants.js";
 import { AccountConnection } from "../connections/account.connection-definition.js";
 import { Account } from "../entities/account.entity.js";
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { AccountService } from "./account.service.js";
 
 describe("AccountService", () => {
@@ -90,7 +90,7 @@ describe("AccountService", () => {
                   : user,
               );
             if (identity === "api-key")
-              RequestContext.set(API_KEY, new WorkspaceApiKey());
+              RequestContext.set(API_KEY, new MemberApiKey());
             await check();
           },
         );

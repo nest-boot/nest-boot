@@ -17,14 +17,14 @@ import { API_KEY } from "../auth.constants.js";
 import { MemberConnection } from "../connections/member.connection-definition.js";
 import { WorkspaceConnection } from "../connections/workspace.connection-definition.js";
 import { Member } from "../entities/member.entity.js";
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 
 describe("WorkspaceService and cross-domain coordination", () => {
-  it.each(["member", "workspace-key"] as const)(
+  it.each(["member", "member-key"] as const)(
     "refreshes workspace-profile-dependent abilities after commit for a %s",
     async (principal) => {
       const { workspaceService, em } = createWorkspaceServices({
@@ -51,7 +51,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
           } else {
             RequestContext.set(
               API_KEY,
-              Object.assign(new WorkspaceApiKey(), {
+              Object.assign(new MemberApiKey(), {
                 permissions: ["workspace:update", "workspace:delete"],
               }),
             );
@@ -247,17 +247,26 @@ describe("WorkspaceService and cross-domain coordination", () => {
       expect(() => workspaceService.getCurrentWorkspace()).toThrow(
         ForbiddenException,
       );
-      RequestContext.set(API_KEY, new WorkspaceApiKey());
+      const apiKey = new MemberApiKey();
+      RequestContext.set(API_KEY, apiKey);
       expect(() => workspaceService.getCurrentWorkspace()).toThrow(
         "The API key owner is not a member of this workspace",
       );
       expect(() => memberService.getCurrentMember()).toThrow(
         ForbiddenException,
       );
-      const member = createTestMember();
+      const member = Object.assign(createTestMember(), { user });
+      Object.assign(apiKey, { member });
       RequestContext.set(Member, member);
       expect(memberService.getCurrentMember()).toBe(member);
       expect(workspaceService.getCurrentWorkspace()).toBe(workspace);
+      member.status = "DISABLED";
+      expect(() => memberService.getCurrentMember()).toThrow(
+        ForbiddenException,
+      );
+      expect(() => workspaceService.getCurrentWorkspace()).toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -475,7 +484,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
     expect(em.nativeDelete).not.toHaveBeenCalled();
   });
 
-  it.each(["session", "user-key", "workspace-key"])(
+  it.each(["session", "user-key", "member-key"])(
     "clears only the revoked scope after workspace deletion with %s",
     async (kind) => {
       const { em, workspaceService } = createWorkspaceServices();
@@ -487,13 +496,13 @@ describe("WorkspaceService and cross-domain coordination", () => {
           const user = createTestUser();
           const session = new Session();
           const key =
-            kind === "workspace-key"
-              ? new WorkspaceApiKey()
+            kind === "member-key"
+              ? new MemberApiKey()
               : kind === "user-key"
                 ? new UserApiKey()
                 : null;
           RequestContext.set(API_KEY, key);
-          if (kind !== "workspace-key") RequestContext.set(User, user);
+          if (kind !== "member-key") RequestContext.set(User, user);
           if (kind === "session") RequestContext.set(Session, session);
           RequestContext.set(Workspace, workspace);
           RequestContext.set(Member, createTestMember());
@@ -507,14 +516,18 @@ describe("WorkspaceService and cross-domain coordination", () => {
           ).resolves.toBe(workspace);
           expect(RequestContext.get(Workspace)).toBeNull();
           expect(RequestContext.get(Member)).toBeNull();
-          if (kind === "workspace-key") {
+          if (kind === "member-key") {
             expect(RequestContext.get(API_KEY)).toBeNull();
             expect(RequestContext.get(User)).toBeNull();
             expect(RequestContext.get(Session)).toBeNull();
             expect(RequestContext.get(AuthAbility)?.rules).toEqual([]);
             expect(em.setSessionContext).toHaveBeenCalledWith({
               role: "anonymous",
-              variables: { "app.user.id": "", "app.workspace.id": "" },
+              variables: {
+                "app.user.id": "",
+                "app.workspace.id": "",
+                "app.member.id": "",
+              },
             });
           } else {
             expect(RequestContext.get(API_KEY)).toBe(key);
@@ -543,7 +556,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
     const workspace = createTestWorkspace();
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(Workspace, workspace);
-      const key = new WorkspaceApiKey();
+      const key = new MemberApiKey();
       RequestContext.set(API_KEY, key);
       em.isInTransaction.mockReturnValueOnce(true);
       await expect(workspaceService.deleteWorkspace(workspace)).rejects.toThrow(

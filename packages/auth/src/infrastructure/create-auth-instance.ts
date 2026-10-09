@@ -149,10 +149,10 @@ function validateAuthOptions(options: AuthModuleOptions): void {
       "allowedPermissions" in options.apiKey)
   ) {
     throw new Error(
-      "Configure API key permissions under apiKey.user or apiKey.workspace",
+      "Configure API key permissions under apiKey.user or apiKey.member",
     );
   }
-  for (const scope of ["user", "workspace"] as const) {
+  for (const scope of ["user", "member"] as const) {
     const { permissions: catalog, defaults } = resolveApiKeyPermissionCatalog(
       options,
       scope,

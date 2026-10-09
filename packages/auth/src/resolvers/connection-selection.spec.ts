@@ -16,7 +16,7 @@ describe("auth connection selections", () => {
       getInvitationConnectionByWorkspace: vi.fn(),
       getMemberConnectionByWorkspace: vi.fn(),
       getUserApiKeyConnection: vi.fn(),
-      getWorkspaceApiKeyConnection: vi.fn(),
+      getMemberApiKeyConnection: vi.fn(),
     };
     const userResolver = new UserResolver(
       services as never,
@@ -65,7 +65,7 @@ describe("auth connection selections", () => {
     for (const name of [
       "getMemberConnectionByWorkspace",
       "getInvitationConnectionByWorkspace",
-      "getWorkspaceApiKeyConnection",
+      "getMemberApiKeyConnection",
     ] as const) {
       expect(services[name]).toHaveBeenCalledExactlyOnceWith(
         workspace,

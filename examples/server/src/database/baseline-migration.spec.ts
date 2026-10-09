@@ -3,14 +3,9 @@ import { readdir } from 'node:fs/promises';
 import type { Migration } from '@mikro-orm/migrations';
 
 import { Migration00000000000000_Initial } from './migrations/Migration00000000000000_Initial.js';
-import { Migration20260918091003 } from './migrations/Migration20260918091003.js';
-import { Migration20261008073016 } from './migrations/Migration20261008073016.js';
+import { Migration20261009070926 } from './migrations/Migration20261009070926.js';
 
-const migrations = [
-  Migration00000000000000_Initial,
-  Migration20260918091003,
-  Migration20261008073016,
-];
+const migrations = [Migration00000000000000_Initial, Migration20261009070926];
 async function sqlFor(
   MigrationClass: (typeof migrations)[number],
   direction: 'up' | 'down' = 'up',
@@ -25,7 +20,7 @@ async function sqlFor(
 
 describe('ordered auth migrations', () => {
   it('allows shared member contact emails in the generated baseline', async () => {
-    expect(await sqlFor(Migration20260918091003)).not.toContain(
+    expect(await sqlFor(Migration20261009070926)).not.toContain(
       'member_email_workspace_id_unique',
     );
   });
@@ -62,8 +57,8 @@ describe('ordered auth migrations', () => {
     );
   });
   it('leaves entity DDL, policies and cascades entirely to the generated schema', async () => {
-    expect(Migration20260918091003.name).toMatch(/^Migration\d{14}$/);
-    const sql = await sqlFor(Migration20260918091003);
+    expect(Migration20261009070926.name).toMatch(/^Migration\d{14}$/);
+    const sql = await sqlFor(Migration20261009070926);
     expect(sql).toContain('create table "member"');
     expect(sql).toContain('create table "invitation"');
     expect(sql).toContain('member_user_id_workspace_id_unique');
@@ -77,7 +72,12 @@ describe('ordered auth migrations', () => {
     expect(sql).not.toMatch(/deleted_at|workspace_active_|app\.operation/);
     expect(sql).toContain('create policy "workspace_delete_policy"');
     expect(sql).toContain('create table "user_api_key"');
-    expect(sql).toContain('create table "workspace_api_key"');
+    expect(sql).toContain('create table "member_api_key"');
+    expect(sql).toContain('create table "job"');
+    expect(sql).toContain(
+      'foreign key ("member_id") references "member" ("id") on delete cascade',
+    );
+    expect(sql).not.toContain('create table "workspace_api_key"');
     expect(sql).not.toContain('create table "api_key"');
     for (const column of ['user_id', 'impersonated_by_id']) {
       expect(sql).toContain(
@@ -85,14 +85,15 @@ describe('ordered auth migrations', () => {
       );
     }
     expect(sql).toContain(
-      'foreign key ("workspace_id") references "workspace" ("id") on delete cascade',
+      'foreign key ("workspace_id") references "workspace" ("id") on update cascade on delete cascade',
     );
     expect(sql).not.toMatch(
       /\b(grant|revoke|create function|create role|alter policy)\b/i,
     );
     expect(sql).not.toContain('workspace_member');
     expect(sql).not.toContain('workspace_invitation');
-    expect(sql).not.toContain('SERVICE_ACCOUNT');
+    expect(sql).toContain('SERVICE_ACCOUNT');
+    expect(sql).toContain('member_type_user_check');
     expect(sql).not.toContain('searchable_name');
   });
   it('sets default table, function and sequence privileges before creating tables', async () => {
@@ -113,7 +114,7 @@ describe('ordered auth migrations', () => {
   it('leaves initialization unchanged when rolling back the generated tables', async () => {
     const sql = await sqlFor(Migration00000000000000_Initial, 'down');
     expect(sql).toBe('');
-    const schemaDown = await sqlFor(Migration20260918091003, 'down');
+    const schemaDown = await sqlFor(Migration20261009070926, 'down');
     expect(schemaDown).toContain('drop table if exists "member"');
     expect(schemaDown).toContain('drop table if exists "invitation"');
   });

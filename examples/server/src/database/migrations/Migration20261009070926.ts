@@ -1,9 +1,17 @@
 import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20260918091003 extends Migration {
-  override name = 'Migration20260918091003';
+export class Migration20261009070926 extends Migration {
+  override name = 'Migration20261009070926';
 
   override up(): void | Promise<void> {
+    this.addSql(
+      `create table "job" ("id" varchar(255) not null, "queue_name" varchar(255) not null, "name" varchar(255) not null, "data" jsonb not null, "return_value" jsonb null, "failed_reason" varchar(255) null, "priority" int not null, "progress" jsonb not null, "status" text not null, "started_at" timestamptz null, "finished_at" timestamptz null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), primary key ("id"));`,
+    );
+    this.addSql(`create index "job_name_index" on "job" ("name");`);
+    this.addSql(`create index "job_status_index" on "job" ("status");`);
+    this.addSql(`create index "job_created_at_index" on "job" ("created_at");`);
+    this.addSql(`create index "job_updated_at_index" on "job" ("updated_at");`);
+
     this.addSql(
       `create table "user" ("id" bigserial primary key, "name" varchar(255) not null, "email" varchar(255) not null, "email_verified" boolean not null, "image" varchar(255) null, "roles" text[] not null, "permissions" text[] not null, "banned" boolean not null default false, "ban_reason" varchar(255) null, "ban_expires_at" timestamptz null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
     );
@@ -68,7 +76,7 @@ export class Migration20260918091003 extends Migration {
     );
 
     this.addSql(
-      `create table "member" ("id" bigserial primary key, "name" varchar(255) not null, "email" varchar(255) null, "roles" text[] not null default '{member}', "status" text not null default 'ACTIVE', "permissions" text[] not null default '{}', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "user_id" bigint not null, "workspace_id" bigint not null);`,
+      `create table "member" ("id" bigserial primary key, "name" varchar(255) not null, "email" varchar(255) null, "roles" text[] not null default '{member}', "type" text not null default 'USER', "status" text not null default 'ACTIVE', "permissions" text[] not null default '{}', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "user_id" bigint null, "workspace_id" bigint not null);`,
     );
     this.addSql(
       `create index "member_workspace_id_index" on "member" ("workspace_id");`,
@@ -79,6 +87,25 @@ export class Migration20260918091003 extends Migration {
     );
     this.addSql(
       `alter table "member" add constraint "member_user_id_workspace_id_unique" unique ("user_id", "workspace_id");`,
+    );
+
+    this.addSql(
+      `create table "member_api_key" ("id" bigserial primary key, "name" varchar(255) not null, "start" varchar(255) null, "prefix" varchar(255) null, "key" text not null, "enabled" boolean not null default true, "permissions" text[] not null default '{}', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "last_used_at" timestamptz null, "expires_at" timestamptz null, "member_id" bigint not null);`,
+    );
+    this.addSql(
+      `alter table "member_api_key" add constraint "member_api_key_key_unique" unique ("key");`,
+    );
+    this.addSql(
+      `create index "member_api_key_member_id_index" on "member_api_key" ("member_id");`,
+    );
+    this.addSql(
+      `create index "member_api_key_created_at_index" on "member_api_key" ("created_at");`,
+    );
+    this.addSql(
+      `create index "member_api_key_prefix_index" on "member_api_key" ("prefix");`,
+    );
+    this.addSql(
+      `create index "member_api_key_key_index" on "member_api_key" ("key");`,
     );
 
     this.addSql(
@@ -101,22 +128,11 @@ export class Migration20260918091003 extends Migration {
     );
 
     this.addSql(
-      `create table "workspace_api_key" ("id" bigserial primary key, "name" varchar(255) not null, "start" varchar(255) null, "prefix" varchar(255) null, "key" text not null, "enabled" boolean not null default true, "permissions" text[] not null default '{}', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "last_used_at" timestamptz null, "expires_at" timestamptz null, "workspace_id" bigint not null);`,
+      `alter table "job" add constraint "job_status_check" check ("status" in ('active', 'completed', 'delayed', 'failed', 'prioritized', 'unknown', 'waiting', 'waiting-children'));`,
     );
+    this.addSql(`alter table "job" enable row level security;`);
     this.addSql(
-      `alter table "workspace_api_key" add constraint "workspace_api_key_key_unique" unique ("key");`,
-    );
-    this.addSql(
-      `create index "workspace_api_key_workspace_id_index" on "workspace_api_key" ("workspace_id");`,
-    );
-    this.addSql(
-      `create index "workspace_api_key_created_at_index" on "workspace_api_key" ("created_at");`,
-    );
-    this.addSql(
-      `create index "workspace_api_key_prefix_index" on "workspace_api_key" ("prefix");`,
-    );
-    this.addSql(
-      `create index "workspace_api_key_key_index" on "workspace_api_key" ("key");`,
+      `create policy "job_all_policy" on "job" to "authenticated" using (("data" ->> 'userId' = nullif(current_setting('app.user.id', true), '') OR "data" ->> 'workspaceId' = nullif(current_setting('app.workspace.id', true), ''))) with check (("data" ->> 'userId' = nullif(current_setting('app.user.id', true), '') OR "data" ->> 'workspaceId' = nullif(current_setting('app.workspace.id', true), '')));`,
     );
 
     this.addSql(`alter table "user" enable row level security;`);
@@ -180,6 +196,12 @@ export class Migration20260918091003 extends Migration {
       `alter table "member" add constraint "member_workspace_id_foreign" foreign key ("workspace_id") references "workspace" ("id") on update cascade on delete cascade;`,
     );
     this.addSql(
+      `alter table "member" add constraint "member_type_user_check" check (("type" = 'USER' AND "user_id" IS NOT NULL) OR ("type" = 'SERVICE_ACCOUNT' AND "user_id" IS NULL));`,
+    );
+    this.addSql(
+      `alter table "member" add constraint "member_type_check" check ("type" in ('USER', 'SERVICE_ACCOUNT'));`,
+    );
+    this.addSql(
       `alter table "member" add constraint "member_status_check" check ("status" in ('ACTIVE', 'DISABLED'));`,
     );
     this.addSql(`alter table "member" enable row level security;`);
@@ -188,6 +210,14 @@ export class Migration20260918091003 extends Migration {
     );
     this.addSql(
       `create policy "member_all_policy" on "member" to "authenticated" using ("workspace_id" = nullif(current_setting('app.workspace.id', true), '')::bigint) with check ("workspace_id" = nullif(current_setting('app.workspace.id', true), '')::bigint);`,
+    );
+
+    this.addSql(
+      `alter table "member_api_key" add constraint "member_api_key_member_id_foreign" foreign key ("member_id") references "member" ("id") on delete cascade;`,
+    );
+    this.addSql(`alter table "member_api_key" enable row level security;`);
+    this.addSql(
+      `create policy "member_api_key_all_policy" on "member_api_key" to "authenticated" using ((EXISTS (SELECT 1 FROM "member" WHERE "member"."id" = "member_id" AND "member"."workspace_id" = nullif(current_setting('app.workspace.id', true), '')::bigint))) with check ((EXISTS (SELECT 1 FROM "member" WHERE "member"."id" = "member_id" AND "member"."workspace_id" = nullif(current_setting('app.workspace.id', true), '')::bigint)));`,
     );
 
     this.addSql(
@@ -205,14 +235,6 @@ export class Migration20260918091003 extends Migration {
     );
     this.addSql(
       `create policy "invitation_recipient_select_policy" on "invitation" for select to "authenticated" using ("email" = (select lower("recipient"."email") from "user" as "recipient" where "recipient"."id" = nullif(current_setting('app.user.id', true), '')::bigint));`,
-    );
-
-    this.addSql(
-      `alter table "workspace_api_key" add constraint "workspace_api_key_workspace_id_foreign" foreign key ("workspace_id") references "workspace" ("id") on delete cascade;`,
-    );
-    this.addSql(`alter table "workspace_api_key" enable row level security;`);
-    this.addSql(
-      `create policy "workspace_api_key_all_policy" on "workspace_api_key" to "authenticated" using (("workspace_id" = nullif(current_setting('app.workspace.id', true), '')::bigint)) with check (("workspace_id" = nullif(current_setting('app.workspace.id', true), '')::bigint));`,
     );
   }
 
@@ -242,9 +264,10 @@ export class Migration20260918091003 extends Migration {
       `alter table "invitation" drop constraint "invitation_workspace_id_foreign";`,
     );
     this.addSql(
-      `alter table "workspace_api_key" drop constraint "workspace_api_key_workspace_id_foreign";`,
+      `alter table "member_api_key" drop constraint "member_api_key_member_id_foreign";`,
     );
 
+    this.addSql(`drop table if exists "job" cascade;`);
     this.addSql(`drop table if exists "user" cascade;`);
     this.addSql(`drop table if exists "session" cascade;`);
     this.addSql(`drop table if exists "account" cascade;`);
@@ -252,7 +275,7 @@ export class Migration20260918091003 extends Migration {
     this.addSql(`drop table if exists "verification" cascade;`);
     this.addSql(`drop table if exists "workspace" cascade;`);
     this.addSql(`drop table if exists "member" cascade;`);
+    this.addSql(`drop table if exists "member_api_key" cascade;`);
     this.addSql(`drop table if exists "invitation" cascade;`);
-    this.addSql(`drop table if exists "workspace_api_key" cascade;`);
   }
 }

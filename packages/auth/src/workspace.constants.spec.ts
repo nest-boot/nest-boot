@@ -29,8 +29,10 @@ describe("DEFAULT_WORKSPACE_ROLES", () => {
         "member:set-roles",
         "member:set-permissions",
         "member:invite",
-        "workspace-api-key:read",
-        "workspace-api-key:write",
+        "service-account:read",
+        "service-account:write",
+        "member-api-key:read",
+        "member-api-key:write",
       ],
       admin: [
         "workspace:read",
@@ -40,6 +42,8 @@ describe("DEFAULT_WORKSPACE_ROLES", () => {
         "member:set-roles",
         "member:set-permissions",
         "member:invite",
+        "service-account:read",
+        "service-account:write",
       ],
       member: ["workspace:read", "member:read"],
     });

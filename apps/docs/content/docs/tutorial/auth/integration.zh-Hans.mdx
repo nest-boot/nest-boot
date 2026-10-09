@@ -14,7 +14,7 @@ description: "将 Auth 服务接入传输适配器与 RequestContext。"
 | `WorkspaceService`                              | 工作区查询与生命周期管理                               |
 | `MemberService`                                 | 成员查询、分页、资料、角色、权限及加入/退出            |
 | `InvitationService`                             | 邀请查询、分页、创建、接受、拒绝及取消                 |
-| `UserApiKeyService` 和 `WorkspaceApiKeyService` | 各自作用域的 API Key 生命周期和连接查询                |
+| `UserApiKeyService` 和 `MemberApiKeyService` | 各自作用域的 API Key 生命周期和连接查询                |
 
 `UserService`、`AccountService`、`WorkspaceService`、`MemberService` 和 `InvitationService` 直接操作 `AuthModule` 内置的 MikroORM 实体，
 不依赖 Better Auth 的 admin 或 organization 插件。
@@ -31,7 +31,7 @@ export class AccountApplicationService {
     private readonly memberService: MemberService,
     private readonly invitationService: InvitationService,
     private readonly userApiKeyService: UserApiKeyService,
-    private readonly workspaceApiKeyService: WorkspaceApiKeyService,
+    private readonly memberApiKeyService: MemberApiKeyService,
   ) {}
 }
 ```
@@ -43,7 +43,7 @@ export class AccountApplicationService {
 应用只需配置 GraphQL 模块和 `AuthModule.forRoot()`，无需重新定义认证实体或注册命名连接。
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation`、`UserApiKey` 和 `WorkspaceApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`Member`、`Invitation`、`UserApiKey` 和 `MemberApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 在运行时和迁移 CLI 的 MikroORM 配置中注册导出的 `entities` 数组；CLI 不会启动 Nest 模块：
@@ -138,7 +138,7 @@ GraphQL 验证错误使用 `BAD_USER_INPUT`，字段详情位于
 ### 操作命名调整
 
 使用 `currentSession`、
-`createWorkspaceApiKey`、`updateWorkspaceApiKey`、`deleteWorkspaceApiKey`。
+`createMemberApiKey`、`updateMemberApiKey`、`deleteMemberApiKey`。
 旧名称不保留别名；删除工作区只使用 `deleteWorkspace`，`removeWorkspace` 已移除。
 客户端需同步更新 GraphQL 文档、返回字段访问与生成类型。
 

@@ -959,6 +959,23 @@
           "enumItems": ["ACTIVE", "DISABLED"],
           "mappedType": "enum"
         },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "'USER'",
+          "comment": null,
+          "collation": null,
+          "enumItems": ["USER", "SERVICE_ACCOUNT"],
+          "mappedType": "enum"
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamptz(6)",
@@ -982,7 +999,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": false,
+          "nullable": true,
           "unique": true,
           "length": null,
           "precision": null,
@@ -1059,6 +1076,17 @@
           "expression": "\"status\" in ('ACTIVE', 'DISABLED')",
           "definition": "check (\"status\" in ('ACTIVE', 'DISABLED'))",
           "columnName": "status"
+        },
+        {
+          "name": "member_type_check",
+          "expression": "\"type\" in ('USER', 'SERVICE_ACCOUNT')",
+          "definition": "check (\"type\" in ('USER', 'SERVICE_ACCOUNT'))",
+          "columnName": "type"
+        },
+        {
+          "name": "member_type_user_check",
+          "expression": "(\"type\" = 'USER' AND \"user_id\" IS NOT NULL) OR (\"type\" = 'SERVICE_ACCOUNT' AND \"user_id\" IS NULL)",
+          "definition": "check ((\"type\" = 'USER' AND \"user_id\" IS NOT NULL) OR (\"type\" = 'SERVICE_ACCOUNT' AND \"user_id\" IS NULL))"
         }
       ],
       "triggers": [],
@@ -2130,7 +2158,7 @@
       "rlsEnabled": true
     },
     {
-      "name": "workspace_api_key",
+      "name": "member_api_key",
       "schema": "public",
       "columns": {
         "created_at": {
@@ -2235,6 +2263,23 @@
           "enumItems": [],
           "mappedType": "datetime"
         },
+        "member_id": {
+          "name": "member_id",
+          "type": "bigint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "bigint"
+        },
         "name": {
           "name": "name",
           "type": "varchar(255)",
@@ -2319,23 +2364,6 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "datetime"
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "bigint",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "bigint"
         }
       },
       "indexes": [
@@ -2343,7 +2371,7 @@
           "columnNames": ["created_at"],
           "composite": false,
           "constraint": false,
-          "keyName": "workspace_api_key_created_at_index",
+          "keyName": "member_api_key_created_at_index",
           "primary": false,
           "unique": false
         },
@@ -2351,7 +2379,7 @@
           "columnNames": ["key"],
           "composite": false,
           "constraint": false,
-          "keyName": "workspace_api_key_key_index",
+          "keyName": "member_api_key_key_index",
           "primary": false,
           "unique": false
         },
@@ -2359,15 +2387,23 @@
           "columnNames": ["key"],
           "composite": false,
           "constraint": true,
-          "keyName": "workspace_api_key_key_unique",
+          "keyName": "member_api_key_key_unique",
           "primary": false,
           "unique": true
+        },
+        {
+          "columnNames": ["member_id"],
+          "composite": false,
+          "constraint": false,
+          "keyName": "member_api_key_member_id_index",
+          "primary": false,
+          "unique": false
         },
         {
           "columnNames": ["id"],
           "composite": false,
           "constraint": true,
-          "keyName": "workspace_api_key_pkey",
+          "keyName": "member_api_key_pkey",
           "primary": true,
           "unique": true
         },
@@ -2375,15 +2411,7 @@
           "columnNames": ["prefix"],
           "composite": false,
           "constraint": false,
-          "keyName": "workspace_api_key_prefix_index",
-          "primary": false,
-          "unique": false
-        },
-        {
-          "columnNames": ["workspace_id"],
-          "composite": false,
-          "constraint": false,
-          "keyName": "workspace_api_key_workspace_id_index",
+          "keyName": "member_api_key_prefix_index",
           "primary": false,
           "unique": false
         }
@@ -2391,24 +2419,24 @@
       "checks": [],
       "triggers": [],
       "foreignKeys": {
-        "workspace_api_key_workspace_id_foreign": {
-          "columnNames": ["workspace_id"],
-          "constraintName": "workspace_api_key_workspace_id_foreign",
-          "localTableName": "public.workspace_api_key",
+        "member_api_key_member_id_foreign": {
+          "columnNames": ["member_id"],
+          "constraintName": "member_api_key_member_id_foreign",
+          "localTableName": "public.member_api_key",
           "referencedColumnNames": ["id"],
-          "referencedTableName": "public.workspace",
+          "referencedTableName": "public.member",
           "deleteRule": "cascade"
         }
       },
       "comment": null,
       "policies": [
         {
-          "name": "workspace_api_key_all_policy",
+          "name": "member_api_key_all_policy",
           "command": "all",
           "type": "permissive",
           "roles": ["authenticated"],
-          "using": "(\"workspace_id\" = nullif(current_setting('app.workspace.id', true), '')::bigint)",
-          "check": "(\"workspace_id\" = nullif(current_setting('app.workspace.id', true), '')::bigint)"
+          "using": "(EXISTS (SELECT 1 FROM \"member\" WHERE \"member\".\"id\" = \"member_id\" AND \"member\".\"workspace_id\" = nullif(current_setting('app.workspace.id', true), '')::bigint))",
+          "check": "(EXISTS (SELECT 1 FROM \"member\" WHERE \"member\".\"id\" = \"member_id\" AND \"member\".\"workspace_id\" = nullif(current_setting('app.workspace.id', true), '')::bigint))"
         }
       ],
       "rlsEnabled": true

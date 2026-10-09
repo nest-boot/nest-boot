@@ -99,12 +99,21 @@
     "joined": "Joined",
     "name": "Name",
     "role": "Role",
-    "status": "Status"
+    "status": "Status",
+    "type": "Type"
   },
   "title": "Members",
   "toast": {
     "deleted_success": "Member deleted successfully",
     "disabled_success": "Member disabled successfully",
     "enabled_success": "Member enabled successfully"
+  },
+  "type": {
+    "user": "User",
+    "service_account": "Service account"
+  },
+  "service_account": {
+    "create": "Create service account",
+    "failed": "Failed to create service account"
   }
 }
