@@ -20,6 +20,7 @@ import {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./database.module-definition.js";
+import { DatabaseHealthIndicator } from "./database-health.indicator.js";
 import type { DatabaseModuleOptions } from "./interfaces/database-module-options.interface.js";
 import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 import { loadDefaultConfig } from "./utils/load-default-config.util.js";
@@ -52,18 +53,21 @@ function hasExplicitConnectionTarget(options: DatabaseModuleOptions): boolean {
  * Automatic `DATABASE_URL` loading is skipped when an explicit URL or
  * host-style connection target is registered, so ambient connection fields
  * cannot be merged into it.
+ * Importing `HealthCheckModule` also registers the existing database connection
+ * under the `database` health check key using `DatabaseHealthIndicator`.
  */
 @Global()
 @Module({
   imports: [RequestContextModule],
   providers: [
+    DatabaseHealthIndicator,
     {
       provide: MODULE_OPTIONS_TOKEN,
       inject: [{ token: BASE_MODULE_OPTIONS_TOKEN, optional: true }],
       useFactory: (options?: DatabaseModuleOptions) => options ?? {},
     },
   ],
-  exports: [MODULE_OPTIONS_TOKEN],
+  exports: [MODULE_OPTIONS_TOKEN, DatabaseHealthIndicator],
 })
 export class DatabaseModule
   extends ConfigurableModuleClass

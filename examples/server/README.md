@@ -28,6 +28,19 @@ abilities and delivery callbacks; it does not redeclare authentication entities.
 Workspace invitations are delivered through `workspace.sendInvitationEmail`;
 the example sends acceptance links with the globally configured Mailer.
 
+## Health checks
+
+`CommonModule` imports `HealthCheckModule`, exposing `GET /api/health` through
+the framework's middleware manager. `DatabaseModule` automatically registers
+the existing ORM connection as `database` using `DatabaseHealthIndicator`.
+The indicator initializes MikroORM's lazy
+connection during startup. Runtime probes report a closed connection as unhealthy
+until the application restores it; the example needs no custom indicator code.
+Registered queues also appear as `queue.<name>`, including `queue.schedule`.
+Healthy checks return HTTP 200; a failed or timed-out check returns HTTP 503.
+The middleware responds before the global auth guard, so the health endpoint
+does not require a login.
+
 ## Job history
 
 `JobsModule` registers `QueueDatabaseModule` with a concrete `Job` entity,

@@ -104,6 +104,49 @@ if (existsSync(".env")) {
 export default loadConfigFromEnv();
 ```
 
+## Health Checks
+
+Import `HealthCheckModule` alongside `DatabaseModule.forRoot()` or
+`DatabaseModule.forRootAsync()`. The database module automatically registers
+the existing ORM connection under the `database` key using `DatabaseHealthIndicator`.
+It calls MikroORM's `checkConnection()` and uses Terminus's `HealthIndicatorService`
+for results and timeouts. It does not create another ORM instance or require a controller.
+
+```bash
+pnpm add @nest-boot/health-check
+```
+
+```typescript
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
+import { DatabaseModule } from "@nest-boot/database";
+import { HealthCheckModule } from "@nest-boot/health-check";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [
+    DatabaseModule.forRoot({ driver: PostgreSqlDriver }),
+    HealthCheckModule,
+  ],
+})
+export class AppModule {}
+```
+
+`GET /api/health` returns HTTP 200 with `details.database.status: "up"` when
+the connection responds, or HTTP 503 when it fails or exceeds the indicator's
+default 1,000 ms timeout. Pending automatic probes are shared across requests
+until the database operation settles. Subsequent requests perform a new probe,
+so connection recovery is reported without restarting the application.
+
+Without `HealthCheckModule`, no automatic database health probe is registered.
+MikroORM 7 connects lazily, so the indicator initializes its existing connection
+once during application startup when health checks are enabled. Probes do not
+initialize or reconnect a closed connection: they report it as unhealthy until
+the application restores it.
+
+For manual checks, inject `DatabaseHealthIndicator` imported from
+`@nest-boot/database` and call `pingCheck(key = "database", timeout = 1000)`,
+for example `await indicator.pingCheck("primary", 1500)`.
+
 ## Request-Scoped Entity Manager
 
 The module automatically forks the entity manager for each request via `RequestContext`, ensuring proper isolation. You can inject `EntityManager` anywhere:
