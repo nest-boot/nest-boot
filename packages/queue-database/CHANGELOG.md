@@ -1,3 +1,10 @@
+## 8.0.8-beta.0 (2026-10-09)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/schedule to 8.0.8-beta.0
+- Updated @nest-boot/bullmq to 8.0.5-beta.2
+
 ## 8.0.7-beta.0 (2026-10-08)
 
 ### 🧱 Updated Dependencies

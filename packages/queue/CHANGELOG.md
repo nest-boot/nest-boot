@@ -1,3 +1,18 @@
+## 8.0.5-beta.2 (2026-10-09)
+
+### 🚀 Features
+
+- **bullmq:** register queue health indicators automatically ([#394](https://github.com/nest-boot/nest-boot/pull/394))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/health-check to 8.0.0-beta.2
+- Updated @nest-boot/redis to 8.0.2-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.5-beta.1 (2026-10-08)
 
 ### 🚀 Features

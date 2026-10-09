@@ -20,16 +20,16 @@ import { StorageModule } from "@nest-boot/storage";
 import { MODULE_METADATA } from "@nestjs/common/constants.js";
 import { Test } from "@nestjs/testing";
 
-import { GraphQLStagedUploadModule } from "./graphql-staged-upload.module.js";
 import { StagedUploadResolver } from "./staged-upload.resolver.js";
+import { StagedUploadGraphQLModule } from "./staged-upload-graphql.module.js";
 
-describe("GraphQLStagedUploadModule", () => {
+describe("StagedUploadGraphQLModule", () => {
   it("uses the globally registered staged upload service", async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         StorageModule.register({ bucket: "test-bucket" }),
         StagedUploadModule.register({}),
-        GraphQLStagedUploadModule,
+        StagedUploadGraphQLModule,
       ],
     }).compile();
 
@@ -45,7 +45,7 @@ describe("GraphQLStagedUploadModule", () => {
 
   it("does not import the configurable core module", () => {
     expect(
-      Reflect.getMetadata(MODULE_METADATA.IMPORTS, GraphQLStagedUploadModule),
+      Reflect.getMetadata(MODULE_METADATA.IMPORTS, StagedUploadGraphQLModule),
     ).toBeUndefined();
   });
 });

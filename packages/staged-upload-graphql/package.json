@@ -1,10 +1,10 @@
 {
-  "name": "@nest-boot/graphql-staged-upload",
-  "version": "8.0.5-beta.0",
+  "name": "@nest-boot/staged-upload-graphql",
+  "version": "8.0.5-beta.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/nest-boot/nest-boot.git",
-    "directory": "packages/graphql-staged-upload"
+    "directory": "packages/staged-upload-graphql"
   },
   "description": "GraphQL API for @nest-boot/staged-upload.",
   "author": {

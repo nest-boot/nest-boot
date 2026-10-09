@@ -1,3 +1,17 @@
+## 8.0.5-beta.1 (2026-10-09)
+
+### 🚀 Features
+
+- ⚠️  **staged-upload:** rename GraphQL adapter package and module ([#399](https://github.com/nest-boot/nest-boot/pull/399))
+
+### ⚠️  Breaking Changes
+
+- **staged-upload:** rename GraphQL adapter package and module  ([#399](https://github.com/nest-boot/nest-boot/pull/399))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.5-beta.0 (2026-09-23)
 
 ### 🧱 Updated Dependencies
