@@ -5,7 +5,7 @@ import { type INestApplication, Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 
-import { GraphQLStagedUploadModule } from "../src/index.js";
+import { StagedUploadGraphQLModule } from "../src/index.js";
 
 @Resolver()
 class TestResolver {
@@ -33,7 +33,7 @@ class TestResolver {
       graphiql: false,
       path: "/graphql",
     }),
-    GraphQLStagedUploadModule,
+    StagedUploadGraphQLModule,
   ],
   providers: [TestResolver],
 })
@@ -49,7 +49,7 @@ interface StagedUploadResponse {
   errors?: { message: string }[];
 }
 
-describe("GraphQLStagedUploadModule - e2e", () => {
+describe("StagedUploadGraphQLModule - e2e", () => {
   let app: INestApplication;
 
   afterEach(async () => {

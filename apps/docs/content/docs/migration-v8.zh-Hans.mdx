@@ -46,9 +46,12 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   `@mikro-orm/sql` 和 `@mikro-orm/sqlite`）导入 SQL 类型与驱动。
 - 将 `@nest-boot/file-upload` 替换为 `@nest-boot/staged-upload`。核心模块现在是
   与传输层无关的全局模块；GraphQL 应用还必须安装并导入
-  `@nest-boot/graphql-staged-upload`，才能继续使用 `createStagedUploads` Mutation。
+  `@nest-boot/staged-upload-graphql`，才能继续使用 `createStagedUploads` Mutation。
   `StagedUploadInput`、`StagedUpload` 与 `StagedUploadField` 改从 GraphQL 包导入；
   与传输层无关的服务类型使用 `StagedUploadRequest` 与 `StagedUploadResult`。
+- 已使用 v8 beta GraphQL 适配包的应用，将 `@nest-boot/graphql-staged-upload`
+  改为 `@nest-boot/staged-upload-graphql`，模块类从 `GraphQLStagedUploadModule`
+  改为 `StagedUploadGraphQLModule`。
 - 移除 `@nest-boot/row-level-security`，使用 MikroORM 7.2 的官方 PostgreSQL 或
   PGlite 驱动、`@Entity({ policies })` 和 `em.setSessionContext()`，替代自定义
   驱动、装饰器、运行时状态和 `AuthTransactionContext`。迁移类改用官方
@@ -91,6 +94,7 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 
   默认权限省略时为空；上限省略时允许该作用域目录，`allowedPermissions: []`
   则不允许授予任何权限。默认权限必须属于对应上限，详见 [API Key](./tutorial/auth/api-keys)。
+
 - 切换 TypeScript 模块解析后，重新生成文件和迁移，确保生成的导入带有有效的
   ESM 扩展名。
 

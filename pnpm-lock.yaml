@@ -1366,7 +1366,7 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11
 
-  packages/graphql-staged-upload:
+  packages/staged-upload-graphql:
     devDependencies:
       '@apollo/server':
         specifier: ^5.2.0
