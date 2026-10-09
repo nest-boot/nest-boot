@@ -3,17 +3,17 @@ import { randomUUID } from 'node:crypto';
 import { EntityManager } from '@mikro-orm/core';
 import { MikroORM } from '@mikro-orm/pglite';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
-import { JobStatus } from '@nest-boot/bullmq-mikro-orm';
+import { JobStatus } from '@nest-boot/queue-database';
 import { RequestContext } from '@nest-boot/request-context';
 import { DiscoveryService } from '@nestjs/core';
 import type { Job as BullJob } from 'bullmq';
 
-import { BullMQMikroORMService } from '../../../packages/bullmq-mikro-orm/dist/bullmq-mikro-orm.service.js';
+import { QueueDatabaseService } from '../../../packages/queue-database/dist/queue-database.service.js';
 import { Job } from '../src/app/jobs/entities/job.entity.js';
 
 describe('example job history RLS', () => {
   let orm: MikroORM;
-  let history: BullMQMikroORMService;
+  let history: QueueDatabaseService;
 
   beforeAll(async () => {
     orm = await MikroORM.init({
@@ -30,7 +30,7 @@ describe('example job history RLS', () => {
     await orm.em.execute('create role authenticated nologin');
     await orm.schema.create();
     await orm.em.execute('grant all on job to anonymous, authenticated');
-    history = new BullMQMikroORMService(
+    history = new QueueDatabaseService(
       { getProviders: () => [] } as unknown as DiscoveryService,
       orm.em,
       { jobEntity: Job },

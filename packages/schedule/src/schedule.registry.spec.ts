@@ -1,6 +1,6 @@
 import "reflect-metadata";
 
-vi.mock("@nest-boot/bullmq", () => ({
+vi.mock("@nest-boot/queue", () => ({
   InjectQueue: vi.fn(() => vi.fn()),
 }));
 
@@ -209,7 +209,7 @@ describe("ScheduleRegistry", () => {
 
   it("should load decorator metadata fallback branches", async () => {
     vi.resetModules();
-    vi.doMock("@nest-boot/bullmq", () => ({
+    vi.doMock("@nest-boot/queue", () => ({
       InjectQueue: vi.fn(() => vi.fn()),
     }));
     vi.doMock("bullmq", () => ({
@@ -224,7 +224,7 @@ describe("ScheduleRegistry", () => {
     expect(
       (await import("./schedule.registry.js")).ScheduleRegistry,
     ).toBeDefined();
-    vi.doUnmock("@nest-boot/bullmq");
+    vi.doUnmock("@nest-boot/queue");
     vi.doUnmock("bullmq");
     vi.doUnmock("@nestjs/core");
   });

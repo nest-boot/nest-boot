@@ -1,4 +1,4 @@
-import { Processor, WorkerHost } from "@nest-boot/bullmq";
+import { Processor, WorkerHost } from "@nest-boot/queue";
 import {
   Inject,
   Logger,

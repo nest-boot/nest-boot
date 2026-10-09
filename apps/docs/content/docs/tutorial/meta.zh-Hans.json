@@ -9,7 +9,7 @@
     "request-context",
     "temporary-directory",
     "auth",
-    "bullmq",
+    "queue",
     "schedule",
     "graphql",
     "i18n",

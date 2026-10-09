@@ -7,9 +7,9 @@ describe("rules", () => {
       "entity-property-config-from-types",
       "graphql-field-config-from-types",
       "graphql-field-definite-assignment",
-      "import-bullmq",
       "import-database",
       "import-graphql",
+      "import-queue",
     ]);
   });
 });

@@ -1,0 +1,83 @@
+/* eslint-disable @typescript-eslint/unified-signatures */
+
+import {
+  Processor as BaseProcessor,
+  type ProcessorOptions,
+  type WorkerHost,
+} from "@nestjs/bullmq";
+import type { Type } from "@nestjs/common";
+import type {
+  Processor as QueueProcessor,
+  Worker,
+  WorkerOptions,
+} from "bullmq";
+
+import { runInQueueContext } from "./utils/run-in-queue-context.util.js";
+
+/** Worker options accepted by Nest's BullMQ processor decorator. */
+export type NestWorkerOptions = Omit<WorkerOptions, "connection"> &
+  Partial<Pick<WorkerOptions, "connection">> & {
+    /** @deprecated BullMQ no longer supports shared connections. */
+    sharedConnection?: boolean;
+  };
+
+/**
+ * Decorator that marks a class as a BullMQ queue processor.
+ *
+ * @remarks
+ * Wraps the `@nestjs/bullmq` `Processor` decorator to automatically
+ * create a request context for each processed job.
+ *
+ * @param queueName - The name of the queue to process
+ */
+export function Processor(queueName: string): ClassDecorator;
+
+/**
+ * Decorator that marks a class as a BullMQ queue processor with worker options.
+ *
+ * @param queueName - The name of the queue to process
+ * @param workerOptions - Worker configuration options
+ */
+export function Processor(
+  queueName: string,
+  workerOptions: NestWorkerOptions,
+): ClassDecorator;
+
+/**
+ * Decorator that marks a class as a BullMQ queue processor with processor options.
+ *
+ * @param processorOptions - Processor configuration options
+ */
+export function Processor(processorOptions: ProcessorOptions): ClassDecorator;
+
+/**
+ * Decorator that marks a class as a BullMQ queue processor with processor and worker options.
+ *
+ * @param processorOptions - Processor configuration options
+ * @param workerOptions - Worker configuration options
+ */
+export function Processor(
+  processorOptions: ProcessorOptions,
+  workerOptions: NestWorkerOptions,
+): ClassDecorator;
+
+export function Processor<T extends Worker = Worker>(
+  queueNameOrOptions?: string | ProcessorOptions,
+  maybeWorkerOptions?: NestWorkerOptions,
+) {
+  return (target: Type<WorkerHost<T>>) => {
+    const originalProcess = target.prototype.process as QueueProcessor;
+    if (originalProcess) {
+      target.prototype.process = async function (
+        ...args: Parameters<QueueProcessor>
+      ) {
+        const [job] = args;
+        return await runInQueueContext({ job }, () =>
+          originalProcess.apply(this, args),
+        );
+      };
+    }
+
+    BaseProcessor(queueNameOrOptions as any, maybeWorkerOptions as any)(target);
+  };
+}

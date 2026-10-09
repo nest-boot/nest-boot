@@ -25,8 +25,8 @@ const { mockProcessor, mockQueueModule, mockRegisterQueueAsync, mockState } =
     };
   });
 
-vi.mock("@nest-boot/bullmq", () => ({
-  BullModule: {
+vi.mock("@nest-boot/queue", () => ({
+  QueueModule: {
     registerQueueAsync: mockRegisterQueueAsync,
   },
   InjectQueue: vi.fn(() => vi.fn()),

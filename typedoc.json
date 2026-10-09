@@ -88,8 +88,8 @@
 
   "packagesRequiringDocumentation": [
     "@nest-boot/auth",
-    "@nest-boot/bullmq",
-    "@nest-boot/bullmq-mikro-orm",
+    "@nest-boot/queue",
+    "@nest-boot/queue-database",
     "@nest-boot/crypt",
     "@nest-boot/staged-upload",
     "@nest-boot/graphql",

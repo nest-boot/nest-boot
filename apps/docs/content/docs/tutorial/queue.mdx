@@ -1,0 +1,221 @@
+---
+title: "Queue"
+description: "Distributed job queues and background workers with BullMQ, Redis-backed processing, and optional MikroORM integration."
+---
+
+The `@nest-boot/queue` module wraps [`@nestjs/bullmq`](https://docs.nestjs.com/techniques/queues) for distributed job processing with Redis-backed queues. The companion `@nest-boot/queue-database` module provides optional job persistence to MikroORM entities.
+
+## Installation
+
+```bash
+pnpm add @nest-boot/queue @nest-boot/request-context @nestjs/bullmq bullmq
+```
+
+## Module Registration
+
+Register `QueueModule` in your `CommonModule` to configure the Redis connection:
+
+```typescript
+import { QueueModule } from "@nest-boot/queue";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [QueueModule],
+})
+export class AppModule {}
+```
+
+The module reads and parses `REDIS_URL` automatically. You can also call `QueueModule.forRoot()` or `forRootAsync()` with an explicit BullMQ `connection`.
+
+## Defining Queues
+
+Register named queues in feature modules:
+
+```typescript
+import { QueueModule } from "@nest-boot/queue";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [
+    QueueModule.registerQueue({
+      name: "file-ops-queue",
+      defaultJobOptions: {
+        removeOnComplete: { age: 60 * 60 },
+        removeOnFail: { age: 60 * 60 },
+      },
+    }),
+  ],
+  providers: [FileService, FileOpsProcessor],
+})
+export class FileModule {}
+```
+
+## Adding Jobs
+
+Inject `Queue` using `@InjectQueue()` to add jobs:
+
+```typescript
+import { InjectQueue } from "@nest-boot/queue";
+import { Injectable } from "@nestjs/common";
+import { Queue } from "bullmq";
+
+interface EmailJobData {
+  to: string;
+  subject: string;
+  body: string;
+}
+
+@Injectable()
+export class EmailService {
+  constructor(
+    @InjectQueue("email-queue")
+    private readonly emailQueue: Queue<EmailJobData>,
+  ) {}
+
+  async sendEmail(data: EmailJobData): Promise<string> {
+    const job = await this.emailQueue.add("send", data, {
+      jobId: `email-${Date.now()}`,
+    });
+
+    return job.id!;
+  }
+}
+```
+
+## Processing Jobs
+
+Create a processor by extending `WorkerHost` with the `@Processor()` decorator:
+
+```typescript
+import { OnWorkerEvent, Processor, WorkerHost } from "@nest-boot/queue";
+import { Logger } from "@nest-boot/logger";
+import { Job } from "bullmq";
+import { NotificationService } from "./notification.service";
+
+@Processor("email-queue", { concurrency: 5 })
+export class EmailProcessor extends WorkerHost {
+  constructor(
+    private readonly logger: Logger,
+    private readonly notificationService: NotificationService,
+  ) {
+    super();
+    this.logger.setContext(EmailProcessor.name);
+  }
+
+  async process(job: Job<EmailJobData>): Promise<void> {
+    const { to, subject, body } = job.data;
+
+    this.logger.assign({ jobId: job.id, to });
+    this.logger.log("Processing email job");
+
+    await this.notificationService.sendEmail({ to, subject, body });
+
+    this.logger.log("Email sent successfully");
+  }
+
+  @OnWorkerEvent("completed")
+  onCompleted(job: Job<EmailJobData>): void {
+    this.logger.log(`Email job ${job.id} completed`);
+  }
+}
+```
+
+Nest Boot's `@Processor()` wraps each job in a `RequestContext`, stores BullMQ's `JOB_REF`, and then invokes the normal `@nestjs/bullmq` processor.
+
+## Queue Events
+
+Import `OnWorkerEvent` and `OnQueueEvent` from `@nest-boot/queue` to give each event callback an independent `RequestContext` and run registered context middleware. An event emitted inside another context does not inherit its EntityManager or other contextual values.
+
+Use `@OnWorkerEvent()` on a `WorkerHost` marked with `@Processor()` to observe that worker, as in `onCompleted()` above. Use `@OnQueueEvent()` on a separate `QueueEventsHost` to observe events across the queue:
+
+```typescript
+import {
+  QueueModule,
+  OnQueueEvent,
+  QueueEventsHost,
+  QueueEventsListener,
+} from "@nest-boot/queue";
+import { RequestContext } from "@nest-boot/request-context";
+import { Logger, Module } from "@nestjs/common";
+
+@QueueEventsListener("email-queue")
+export class EmailQueueEvents extends QueueEventsHost {
+  private readonly logger = new Logger(EmailQueueEvents.name);
+
+  @OnQueueEvent("completed")
+  onCompleted(event: { jobId: string }, eventId: string): void {
+    this.logger.log({
+      jobId: event.jobId,
+      eventId,
+      contextId: RequestContext.id,
+    });
+  }
+}
+
+@Module({
+  imports: [QueueModule.registerQueue({ name: "email-queue" })],
+  providers: [EmailQueueEvents],
+})
+export class EmailEventsModule {}
+```
+
+Register both kinds of listeners as providers and keep them singleton-scoped; Nest does not register event listeners on request-scoped providers.
+
+All these contexts use type `"queue"`. Worker `active`, `completed`, `progress`, and job-bearing `failed` events bind `JOB_REF` and use the Job ID as the context ID. A `stalled` event supplies only a Job ID. QueueEvents payloads supply event data rather than Jobs: their `jobId` becomes the context ID, but `JOB_REF` is not bound. Events without a Job ID get a generated context ID. No Redis lookup is performed to fetch a Job.
+
+Handler and context middleware failures are caught and logged to prevent unhandled promise rejections. BullMQ does not wait for asynchronous listeners or retry jobs when a listener fails; errors from `process()` still propagate to BullMQ normally. Context middleware can be asynchronous, so do not depend on synchronous listener side effects.
+
+These behaviors apply only to decorators imported from `@nest-boot/queue`. Callbacks registered directly with `worker.on()`, `queue.on()`, or `queueEvents.on()` need explicit wrapping, such as `RequestContext.run()`, and asynchronous error handling.
+
+## Queue Database Integration
+
+The `@nest-boot/queue-database` module persists BullMQ jobs as MikroORM entities, enabling you to query job history via the database:
+
+```bash
+pnpm add @nest-boot/queue-database @nest-boot/schedule @mikro-orm/core
+```
+
+```typescript
+import { ref } from "@mikro-orm/core";
+import { QueueDatabaseModule } from "@nest-boot/queue-database";
+import { Module } from "@nestjs/common";
+
+import { Job } from "./job.entity";
+import { Workspace } from "./workspace.entity";
+
+const QueueDatabaseDynamicModule = QueueDatabaseModule.forRoot({
+  jobEntity: Job,
+  convertJobToEntityData: (job) => {
+    const workspaceId = job.data.workspaceId;
+
+    return {
+      ...(typeof workspaceId === "string"
+        ? { workspace: ref(Workspace, workspaceId) }
+        : {}),
+    };
+  },
+});
+
+@Module({
+  imports: [QueueDatabaseDynamicModule],
+})
+export class JobsModule {}
+```
+
+`Job` must be a concrete MikroORM entity extending the exported `JobEntity` base class and must be included in entity discovery. The integration discovers registered queues and workers, upserts state changes, and deletes history older than `jobTTL` (30 days by default) with an hourly schedule. Use `includeQueues` and `excludeQueues` to control which queues are persisted. `convertJobToEntityData` maps BullMQ job data to your additional entity fields.
+
+History persistence subscribes directly to local Queue and Worker events, rather than using QueueEvents or the event decorators. Each write forks an EntityManager, and persistence failures are logged without failing the worker.
+
+## Best Practices
+
+1. **Separate Queues** — Use dedicated queues for different job types (email, file-ops, etc.) with appropriate concurrency settings.
+
+2. **Job IDs** — Use deterministic or Sonyflake-based job IDs for idempotency and traceability.
+
+3. **Structured Logging** — Use `Logger.assign()` in processors to attach job context to log entries.
+
+4. **Cleanup** — Set `removeOnComplete` and `removeOnFail` to auto-clean old jobs.
+
+## API Reference
+
+For detailed API documentation, see the [Queue API Reference](/docs/api/queue) and [Queue Database API Reference](/docs/api/queue-database).
