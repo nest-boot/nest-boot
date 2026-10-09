@@ -1,4 +1,4 @@
-import { BullModule as BaseBullModule } from "@nestjs/bullmq";
+import { BullModule as BaseQueueModule } from "@nestjs/bullmq";
 import { type DynamicModule, Global, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
@@ -24,7 +24,7 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 @Module({
   imports: [
     DiscoveryModule,
-    BaseBullModule.forRootAsync({
+    BaseQueueModule.forRootAsync({
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: (options: QueueModuleOptions) => {
         return {
@@ -71,9 +71,9 @@ export class QueueModule extends ConfigurableModuleClass {
    * @returns Dynamic module configuration
    */
   static registerQueue(
-    ...args: Parameters<typeof BaseBullModule.registerQueue>
+    ...args: Parameters<typeof BaseQueueModule.registerQueue>
   ): DynamicModule {
-    return BaseBullModule.registerQueue(...args);
+    return BaseQueueModule.registerQueue(...args);
   }
 
   /**
@@ -82,8 +82,8 @@ export class QueueModule extends ConfigurableModuleClass {
    * @returns Dynamic module configuration
    */
   static registerQueueAsync(
-    ...args: Parameters<typeof BaseBullModule.registerQueueAsync>
+    ...args: Parameters<typeof BaseQueueModule.registerQueueAsync>
   ): DynamicModule {
-    return BaseBullModule.registerQueueAsync(...args);
+    return BaseQueueModule.registerQueueAsync(...args);
   }
 }

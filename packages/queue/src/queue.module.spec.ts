@@ -1,11 +1,11 @@
 import { MODULE_METADATA } from "@nestjs/common/constants";
 import { DiscoveryModule } from "@nestjs/core";
 
-const { mockBaseBullModule, mockState } = vi.hoisted(() => {
+const { mockBaseQueueModule, mockState } = vi.hoisted(() => {
   const mockState = {
     forRootAsyncOptions: undefined as any,
   };
-  const mockBaseBullModule = {
+  const mockBaseQueueModule = {
     forRootAsync: vi.fn((options) => {
       mockState.forRootAsyncOptions = options;
       return {
@@ -16,11 +16,11 @@ const { mockBaseBullModule, mockState } = vi.hoisted(() => {
     registerQueueAsync: vi.fn(),
   };
 
-  return { mockBaseBullModule, mockState };
+  return { mockBaseQueueModule, mockState };
 });
 
 vi.mock("@nestjs/bullmq", () => ({
-  BullModule: mockBaseBullModule,
+  BullModule: mockBaseQueueModule,
   QueueEventsListener: class QueueEventsListener {},
 }));
 
@@ -145,8 +145,8 @@ describe("QueueModule", () => {
     const asyncQueueModule = {
       module: class AsyncQueueModule {},
     };
-    mockBaseBullModule.registerQueue.mockReturnValue(queueModule);
-    mockBaseBullModule.registerQueueAsync.mockReturnValue(asyncQueueModule);
+    mockBaseQueueModule.registerQueue.mockReturnValue(queueModule);
+    mockBaseQueueModule.registerQueueAsync.mockReturnValue(asyncQueueModule);
 
     expect(QueueModule.registerQueue({ name: "email" })).toBe(queueModule);
     expect(

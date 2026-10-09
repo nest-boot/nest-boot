@@ -7,7 +7,7 @@ import {
 } from "@nestjs/bullmq";
 import type { Type } from "@nestjs/common";
 import type {
-  Processor as BullMQProcessor,
+  Processor as QueueProcessor,
   Worker,
   WorkerOptions,
 } from "bullmq";
@@ -66,10 +66,10 @@ export function Processor<T extends Worker = Worker>(
   maybeWorkerOptions?: NestWorkerOptions,
 ) {
   return (target: Type<WorkerHost<T>>) => {
-    const originalProcess = target.prototype.process as BullMQProcessor;
+    const originalProcess = target.prototype.process as QueueProcessor;
     if (originalProcess) {
       target.prototype.process = async function (
-        ...args: Parameters<BullMQProcessor>
+        ...args: Parameters<QueueProcessor>
       ) {
         const [job] = args;
         return await runInQueueContext({ job }, () =>

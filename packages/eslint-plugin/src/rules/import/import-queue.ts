@@ -12,7 +12,7 @@ export default createRule({
     fixable: "code",
     schema: [],
     messages: {
-      replaceBullmqImport:
+      replaceQueueImport:
         "Should import from @nest-boot/queue instead of @nestjs/bullmq",
     },
   },
@@ -26,7 +26,7 @@ export default createRule({
         ) {
           context.report({
             node,
-            messageId: "replaceBullmqImport",
+            messageId: "replaceQueueImport",
             fix(fixer) {
               return fixRenamedImport(fixer, node, "@nest-boot/queue", {
                 BullModule: "QueueModule",

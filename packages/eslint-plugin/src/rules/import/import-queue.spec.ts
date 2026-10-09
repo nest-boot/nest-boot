@@ -28,34 +28,34 @@ tester.run("import-queue", rule, {
     {
       code: 'import { BullModule as BullModule } from "@nestjs/bullmq";',
       output: 'import { QueueModule as BullModule } from "@nest-boot/queue";',
-      errors: [{ messageId: "replaceBullmqImport" }],
+      errors: [{ messageId: "replaceQueueImport" }],
     },
     {
       code: 'import Integration from "@nestjs/bullmq";',
       output: null,
-      errors: [{ messageId: "replaceBullmqImport" }],
+      errors: [{ messageId: "replaceQueueImport" }],
     },
     {
       code: 'import { BullModule as Tasks } from "@nestjs/bullmq"; Tasks.forRoot({});',
       output:
         'import { QueueModule as Tasks } from "@nest-boot/queue"; Tasks.forRoot({});',
-      errors: [{ messageId: "replaceBullmqImport" }],
+      errors: [{ messageId: "replaceQueueImport" }],
     },
     {
       code: 'import { type BullModuleOptions, BullMQHealthIndicator } from "@nest-boot/bullmq";',
       output:
         'import { type QueueModuleOptions as BullModuleOptions, QueueHealthIndicator as BullMQHealthIndicator } from "@nest-boot/queue";',
-      errors: [{ messageId: "replaceBullmqImport" }],
+      errors: [{ messageId: "replaceQueueImport" }],
     },
     {
       code: 'import * as Bull from "@nestjs/bullmq"; Bull.BullModule.forRoot({});',
       output: null,
-      errors: [{ messageId: "replaceBullmqImport" }],
+      errors: [{ messageId: "replaceQueueImport" }],
     },
     {
       code: 'import { "BullModule" as Tasks } from "@nestjs/bullmq";',
       output: 'import { QueueModule as Tasks } from "@nest-boot/queue";',
-      errors: [{ messageId: "replaceBullmqImport" }],
+      errors: [{ messageId: "replaceQueueImport" }],
     },
     // Importing from @nestjs/bullmq, should be replaced with @nest-boot/queue
     {
@@ -65,7 +65,7 @@ tester.run("import-queue", rule, {
       output: /* typescript */ `
         import { QueueModule as BullModule } from "@nest-boot/queue";
       `,
-      errors: [{ messageId: "replaceBullmqImport" }],
+      errors: [{ messageId: "replaceQueueImport" }],
     },
     // Processor related imports
     {
@@ -75,7 +75,7 @@ tester.run("import-queue", rule, {
       output: /* typescript */ `
         import { Processor, InjectQueue } from "@nest-boot/queue";
       `,
-      errors: [{ messageId: "replaceBullmqImport" }],
+      errors: [{ messageId: "replaceQueueImport" }],
     },
     // Type import
     {
@@ -85,7 +85,7 @@ tester.run("import-queue", rule, {
       output: /* typescript */ `
         import type { QueueModuleOptions as BullModuleOptions } from "@nest-boot/queue";
       `,
-      errors: [{ messageId: "replaceBullmqImport" }],
+      errors: [{ messageId: "replaceQueueImport" }],
     },
     // Decorator imports
     {
@@ -95,7 +95,7 @@ tester.run("import-queue", rule, {
       output: /* typescript */ `
         import { OnQueueActive, OnQueueCompleted } from "@nest-boot/queue";
       `,
-      errors: [{ messageId: "replaceBullmqImport" }],
+      errors: [{ messageId: "replaceQueueImport" }],
     },
   ],
 });

@@ -50,7 +50,7 @@ vi.mock("bullmq", async (importOriginal) => {
   return { ...actual, Queue, Worker, QueueEvents: Queue };
 });
 
-describe("Nest BullMQ event registration", () => {
+describe("Nest queue event registration", () => {
   it("discovers inherited handlers and binds both event types with independent contexts", async () => {
     const contexts: RequestContext[] = [];
     const argumentsSeen: unknown[][] = [];

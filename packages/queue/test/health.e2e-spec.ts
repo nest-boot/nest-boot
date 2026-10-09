@@ -11,7 +11,7 @@ import { Queue } from "bullmq";
 
 import { QueueHealthIndicator, QueueModule } from "../dist/index.js";
 
-describe("BullMQ health HTTP integration", () => {
+describe("Queue health HTTP integration", () => {
   let app: INestApplication;
 
   afterEach(async () => {

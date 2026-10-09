@@ -27,7 +27,7 @@ export function createContextEventDecorator(
         // unhandled rejections or turn an already completed job into a failure.
         const message = error instanceof Error ? error.message : String(error);
         logger.error(
-          `BullMQ event handler failed (${eventName}): ${message}`,
+          `Queue event handler failed (${eventName}): ${message}`,
           error instanceof Error ? error.stack : undefined,
         );
       }

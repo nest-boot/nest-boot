@@ -6,7 +6,7 @@ import { Logger, SetMetadata } from "@nestjs/common";
 
 import { OnQueueEvent, OnWorkerEvent } from "./index.js";
 
-describe("BullMQ event request contexts", () => {
+describe("Queue event request contexts", () => {
   const middlewareToken = Symbol("middleware");
   const middlewareContexts: RequestContext[] = [];
   const completedContexts: RequestContext[] = [];
@@ -14,7 +14,7 @@ describe("BullMQ event request contexts", () => {
 
   beforeAll(() => {
     RequestContext.registerMiddleware(
-      "bullmq-event-tests",
+      "queue-event-tests",
       async (ctx, next) => {
         middlewareContexts.push(ctx);
         if (middlewareError) throw middlewareError;
@@ -38,7 +38,7 @@ describe("BullMQ event request contexts", () => {
 
   afterAll(() => {
     RequestContext.registerMiddleware(
-      "bullmq-event-tests",
+      "queue-event-tests",
       async (_ctx, next) => await next(),
     );
   });
@@ -291,11 +291,11 @@ describe("BullMQ event request contexts", () => {
         expect(log).toHaveBeenCalledTimes(2);
       });
       expect(log).toHaveBeenCalledWith(
-        "BullMQ event handler failed (completed): synchronous failure",
+        "Queue event handler failed (completed): synchronous failure",
         expect.any(String),
       );
       expect(log).toHaveBeenCalledWith(
-        "BullMQ event handler failed (error): asynchronous failure",
+        "Queue event handler failed (error): asynchronous failure",
         undefined,
       );
       expect(RequestContext.isActive()).toBe(false);
@@ -319,7 +319,7 @@ describe("BullMQ event request contexts", () => {
     await expect(new Listener().handle()).resolves.toBeUndefined();
     expect(called).not.toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith(
-      "BullMQ event handler failed (completed): middleware failure",
+      "Queue event handler failed (completed): middleware failure",
       expect.any(String),
     );
     expect(RequestContext.isActive()).toBe(false);
