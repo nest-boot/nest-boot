@@ -1,3 +1,12 @@
+## 8.0.3-beta.0 (2026-10-09)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.3-beta.0
+- Updated @nest-boot/eslint-config to 8.0.2-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.2
+- Updated @nest-boot/graphql to 8.0.3-beta.0
+
 ## 8.0.2-beta.1 (2026-09-24)
 
 ### 🚀 Features

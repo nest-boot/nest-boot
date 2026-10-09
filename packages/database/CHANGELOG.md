@@ -1,3 +1,28 @@
+## 8.0.4-beta.1 (2026-10-09)
+
+### 🚀 Features
+
+- ⚠️  **database:** rename database integration packages and APIs ([#397](https://github.com/nest-boot/nest-boot/pull/397))
+
+### 🩹 Fixes
+
+- 移除 database 和 health-check 模块并格式化代码 ([49659ef9](https://github.com/nest-boot/nest-boot/commit/49659ef9))
+- 升级依赖 ([528189ef](https://github.com/nest-boot/nest-boot/commit/528189ef))
+
+### ⚠️  Breaking Changes
+
+- **database:** rename database integration packages and APIs  ([#397](https://github.com/nest-boot/nest-boot/pull/397))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.3-beta.0
+- Updated @nest-boot/eslint-config to 8.0.2-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.2
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.4-beta.0 (2026-09-23)
 
 ### 🩹 Fixes
