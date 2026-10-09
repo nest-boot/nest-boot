@@ -41,6 +41,25 @@ CommonJS `require()` and `module.exports` usage with ESM imports and exports.
 Version 8 package exports intentionally provide an `import` entry and do not
 provide a CommonJS `require` entry.
 
+## Rename queue packages
+
+| Previous package              | Version 8 package           |
+| ----------------------------- | --------------------------- |
+| `@nest-boot/bullmq`           | `@nest-boot/queue`          |
+| `@nest-boot/bullmq-mikro-orm` | `@nest-boot/queue-database` |
+
+Use `QueueModule`, `QueueModuleOptions`, and `QueueHealthIndicator` in place of
+`BullModule`, `BullModuleOptions`, and `BullMQHealthIndicator`. Job persistence
+uses `QueueDatabaseModule` and `QueueDatabaseModuleOptions` instead of
+`BullMQMikroORMModule` and `BullMQMikroORMModuleOptions`.
+
+BullMQ and MikroORM remain the implementations; retain upstream dependencies
+such as `bullmq`, `@nestjs/bullmq`, and `@mikro-orm/core`.
+
+Custom ESLint configurations should use `@nest-boot/import-queue` instead of
+`@nest-boot/import-bullmq`. Its autofix migrates named imports and preserves
+local aliases. Namespace imports require manual migration.
+
 ## Update related integrations
 
 - Replace Apollo Playground configuration with `graphiql`.
@@ -107,6 +126,7 @@ provide a CommonJS `require` entry.
   Omitted defaults are empty; an omitted allowlist permits the scope catalog,
   while `allowedPermissions: []` permits no grants. Defaults must fit the
   corresponding allowlist. See [API keys](./tutorial/auth/api-keys).
+
 - Rebuild generated files and migrations after switching TypeScript module
   resolution so generated imports include valid ESM extensions.
 

@@ -1,7 +1,6 @@
 /* eslint-disable @nest-boot/entity-property-config-from-types -- ORM mappings are inherited from JobEntity; these declarations only add GraphQL fields. */
 import type { Opt, PolicyCallback } from '@mikro-orm/core';
 import { Entity } from '@mikro-orm/decorators/legacy';
-import { JobEntity, JobStatus } from '@nest-boot/bullmq-mikro-orm';
 import {
   Field,
   ID,
@@ -9,6 +8,7 @@ import {
   ObjectType,
   registerEnumType,
 } from '@nest-boot/graphql';
+import { JobEntity, JobStatus } from '@nest-boot/queue-database';
 import type { JobProgress } from 'bullmq';
 import { GraphQLJSON } from 'graphql-type-json';
 

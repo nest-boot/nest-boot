@@ -437,12 +437,12 @@ importers:
       '@nest-boot/auth':
         specifier: workspace:^
         version: link:../../packages/auth
-      '@nest-boot/bullmq':
+      '@nest-boot/queue':
         specifier: workspace:^
-        version: link:../../packages/bullmq
-      '@nest-boot/bullmq-mikro-orm':
+        version: link:../../packages/queue
+      '@nest-boot/queue-database':
         specifier: workspace:^
-        version: link:../../packages/bullmq-mikro-orm
+        version: link:../../packages/queue-database
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../../packages/graphql
@@ -731,7 +731,7 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
 
-  packages/bullmq:
+  packages/queue:
     dependencies:
       '@nest-boot/health-check':
         specifier: workspace:^
@@ -798,7 +798,7 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11
 
-  packages/bullmq-mikro-orm:
+  packages/queue-database:
     devDependencies:
       '@mikro-orm/core':
         specifier: 7.2.0
@@ -806,9 +806,9 @@ importers:
       '@mikro-orm/decorators':
         specifier: 7.2.0
         version: 7.2.0
-      '@nest-boot/bullmq':
+      '@nest-boot/queue':
         specifier: workspace:^
-        version: link:../bullmq
+        version: link:../queue
       '@nest-boot/eslint-config':
         specifier: workspace:^
         version: link:../eslint-config
@@ -2144,9 +2144,9 @@ importers:
 
   packages/schedule:
     devDependencies:
-      '@nest-boot/bullmq':
+      '@nest-boot/queue':
         specifier: workspace:^
-        version: link:../bullmq
+        version: link:../queue
       '@nest-boot/eslint-config':
         specifier: workspace:^
         version: link:../eslint-config

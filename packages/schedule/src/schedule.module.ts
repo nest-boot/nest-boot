@@ -1,4 +1,4 @@
-import { BullModule } from "@nest-boot/bullmq";
+import { QueueModule } from "@nest-boot/queue";
 import { type DynamicModule, Global, Logger, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
@@ -24,7 +24,7 @@ import { type ScheduleModuleOptions } from "./schedule-module-options.interface.
 @Module({
   imports: [
     DiscoveryModule,
-    BullModule.registerQueueAsync({
+    QueueModule.registerQueueAsync({
       name: "schedule",
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: (options: ScheduleModuleOptions) => options,

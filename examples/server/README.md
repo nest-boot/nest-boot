@@ -30,8 +30,8 @@ the example sends acceptance links with the globally configured Mailer.
 
 ## Job history
 
-`JobsModule` registers `BullMQMikroORMModule` with a concrete `Job` entity,
-plus `BullModule` and `ScheduleModule` for Redis connections and hourly history
+`JobsModule` registers `QueueDatabaseModule` with a concrete `Job` entity,
+plus `QueueModule` and `ScheduleModule` for Redis connections and hourly history
 cleanup. Redis/Valkey must be running at `REDIS_URL`; `BULLMQ_PREFIX` separates
 this application's queues from other applications using the same Redis database.
 Both the application and the migration CLI discover `Job` through their entity

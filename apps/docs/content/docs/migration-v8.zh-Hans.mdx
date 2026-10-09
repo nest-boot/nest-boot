@@ -39,6 +39,24 @@ TypeScript 源码中的相对导入需要显式添加 `.js` 扩展名。请将 C
 `require()` 与 `module.exports` 改为 ESM import/export。版本 8 的 package
 exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 
+## 队列包改名
+
+| 原包名                        | 版本 8 包名                 |
+| ----------------------------- | --------------------------- |
+| `@nest-boot/bullmq`           | `@nest-boot/queue`          |
+| `@nest-boot/bullmq-mikro-orm` | `@nest-boot/queue-database` |
+
+`BullModule`、`BullModuleOptions`、`BullMQHealthIndicator` 分别改为
+`QueueModule`、`QueueModuleOptions`、`QueueHealthIndicator`。任务持久化模块和配置类型
+分别从 `BullMQMikroORMModule`、`BullMQMikroORMModuleOptions` 改为
+`QueueDatabaseModule`、`QueueDatabaseModuleOptions`。
+
+底层继续使用 BullMQ 和 MikroORM，保留 `bullmq`、`@nestjs/bullmq`、`@mikro-orm/core`
+等上游依赖。
+
+自定义 ESLint 配置中的 `@nest-boot/import-bullmq` 改为 `@nest-boot/import-queue`。
+自动修复会迁移具名导入并保留本地别名；命名空间导入需要手动迁移。
+
 ## 更新相关集成
 
 - 将 Apollo Playground 配置替换为 `graphiql`。
@@ -91,6 +109,7 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 
   默认权限省略时为空；上限省略时允许该作用域目录，`allowedPermissions: []`
   则不允许授予任何权限。默认权限必须属于对应上限，详见 [API Key](./tutorial/auth/api-keys)。
+
 - 切换 TypeScript 模块解析后，重新生成文件和迁移，确保生成的导入带有有效的
   ESM 扩展名。
 

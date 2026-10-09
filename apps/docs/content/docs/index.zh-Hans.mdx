@@ -19,7 +19,7 @@ Nest Boot 提供以下模块：
 | 模块                                                                 | 描述                             |
 | -------------------------------------------------------------------- | -------------------------------- |
 | [@nest-boot/auth](/docs/tutorial/auth)                               | 身份验证、工作区、API Key 和授权 |
-| [@nest-boot/bullmq](/docs/tutorial/bullmq)                           | 使用 BullMQ 的作业队列管理       |
+| [@nest-boot/queue](/docs/tutorial/queue)                             | 使用 BullMQ 的作业队列管理       |
 | [@nest-boot/crypt](/docs/tutorial/crypt)                             | 加密和解密工具                   |
 | [@nest-boot/staged-upload](/docs/tutorial/staged-upload)             | 分阶段上传                       |
 | [@nest-boot/graphql](/docs/tutorial/graphql)                         | GraphQL 集成                     |
@@ -42,13 +42,13 @@ Nest Boot 提供以下模块：
 
 以下配套包在 API 参考中提供文档：
 
-| 包                                                            | 用途                                          |
-| ------------------------------------------------------------- | --------------------------------------------- |
-| [@nest-boot/bullmq-mikro-orm](/docs/api/bullmq-mikro-orm)     | 在 MikroORM 请求上下文中运行 BullMQ processor |
-| [@nest-boot/graphql-logger](/docs/api/graphql-logger)         | 将 GraphQL operation 元数据加入请求日志       |
-| [@nest-boot/graphql-rate-limit](/docs/api/graphql-rate-limit) | 拒绝超过复杂度上限的 GraphQL operation        |
-| [@nest-boot/mikro-orm-crypt](/docs/api/mikro-orm-crypt)       | 加密 MikroORM 实体属性                        |
-| [@nest-boot/mikro-orm-hash](/docs/api/mikro-orm-hash)         | 哈希 MikroORM 实体属性                        |
+| 包                                                            | 用途                                    |
+| ------------------------------------------------------------- | --------------------------------------- |
+| [@nest-boot/queue-database](/docs/api/queue-database)         | 将队列任务历史持久化到数据库实体        |
+| [@nest-boot/graphql-logger](/docs/api/graphql-logger)         | 将 GraphQL operation 元数据加入请求日志 |
+| [@nest-boot/graphql-rate-limit](/docs/api/graphql-rate-limit) | 拒绝超过复杂度上限的 GraphQL operation  |
+| [@nest-boot/mikro-orm-crypt](/docs/api/mikro-orm-crypt)       | 加密 MikroORM 实体属性                  |
+| [@nest-boot/mikro-orm-hash](/docs/api/mikro-orm-hash)         | 哈希 MikroORM 实体属性                  |
 
 ## 快速开始
 

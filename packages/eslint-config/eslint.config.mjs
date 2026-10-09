@@ -74,7 +74,7 @@ const config = [
       "@nest-boot/entity-property-config-from-types": "error",
       "@nest-boot/graphql-field-definite-assignment": "error",
       "@nest-boot/graphql-field-config-from-types": "error",
-      "@nest-boot/import-bullmq": "error",
+      "@nest-boot/import-queue": "error",
       "@nest-boot/import-graphql": "error",
       "@nest-boot/import-mikro-orm": "error",
     },

@@ -8,7 +8,7 @@ const { mockProcessor, mockProcessorDecorator } = vi.hoisted(() => {
   };
 });
 
-vi.mock("@nest-boot/bullmq", () => ({
+vi.mock("@nest-boot/queue", () => ({
   InjectQueue: vi.fn(() => vi.fn()),
   Processor: mockProcessor,
   WorkerHost: class WorkerHost {
@@ -140,7 +140,7 @@ describe("ScheduleProcessor", () => {
 
   it("should load decorator metadata fallback branches", async () => {
     vi.resetModules();
-    vi.doMock("@nest-boot/bullmq", () => ({
+    vi.doMock("@nest-boot/queue", () => ({
       InjectQueue: vi.fn(() => vi.fn()),
       Processor: vi.fn(() => vi.fn()),
       WorkerHost: class WorkerHost {
@@ -160,7 +160,7 @@ describe("ScheduleProcessor", () => {
 
     vi.doUnmock("./schedule.registry.js");
     vi.resetModules();
-    vi.doMock("@nest-boot/bullmq", () => ({
+    vi.doMock("@nest-boot/queue", () => ({
       InjectQueue: vi.fn(() => vi.fn()),
       Processor: vi.fn(() => vi.fn()),
       WorkerHost: class WorkerHost {
@@ -178,7 +178,7 @@ describe("ScheduleProcessor", () => {
       (await import("./schedule.processor.js")).ScheduleProcessor,
     ).toBeDefined();
     vi.doUnmock("./schedule-module-options.interface.js");
-    vi.doUnmock("@nest-boot/bullmq");
+    vi.doUnmock("@nest-boot/queue");
   });
 });
 
