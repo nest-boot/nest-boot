@@ -36,6 +36,11 @@ Import `DatabaseModule` and `DatabaseModuleOptions` instead of
 using MikroORM; its upstream dependencies and CLI configuration stay named
 `@mikro-orm/*` and `mikro-orm.config.ts`.
 
+Custom request-context middleware must depend on `"database"` instead of
+`"mikro-orm"`. Update dependency strings passed to
+`RequestContext.registerMiddleware()` to preserve EntityManager initialization
+order.
+
 Custom ESLint configurations should use `@nest-boot/import-database` instead of
 `@nest-boot/import-mikro-orm`. Its autofix migrates named imports and preserves
 local aliases. Namespace imports require manual migration.

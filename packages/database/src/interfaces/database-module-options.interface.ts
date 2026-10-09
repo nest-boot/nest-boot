@@ -1,9 +1,9 @@
 import type { ForkOptions } from "@mikro-orm/core";
-import { MikroOrmModuleOptions as BaseMikroOrmModuleOptions } from "@mikro-orm/nestjs";
+import { MikroOrmModuleOptions as BaseDatabaseModuleOptions } from "@mikro-orm/nestjs";
 
 /** Configuration options for the MikroORM module (excludes context management handled internally). */
 export type DatabaseModuleOptions = Omit<
-  BaseMikroOrmModuleOptions,
+  BaseDatabaseModuleOptions,
   "registerRequestContext" | "context"
 > & {
   /**

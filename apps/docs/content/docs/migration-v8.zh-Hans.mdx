@@ -34,6 +34,9 @@ BullMQ 应用应使用 `@nestjs/bullmq@^12`。集成 MikroORM 的包要求 Mikro
 `MikroOrmModule`、`MikroOrmModuleOptions`。数据库集成仍使用 MikroORM；上游依赖和
 CLI 配置继续使用 `@mikro-orm/*`、`mikro-orm.config.ts`。
 
+自定义请求上下文中间件的依赖名称从 `"mikro-orm"` 改为 `"database"`。请更新
+`RequestContext.registerMiddleware()` 的依赖参数，确保实体管理器先完成初始化。
+
 自定义 ESLint 配置中的 `@nest-boot/import-mikro-orm` 改为
 `@nest-boot/import-database`。自动修复会迁移具名导入并保留本地别名；命名空间导入
 需要手动迁移。

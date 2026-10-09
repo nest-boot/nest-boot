@@ -12,7 +12,7 @@ export default createRule({
     fixable: "code",
     schema: [],
     messages: {
-      replaceMikroOrmImport:
+      replaceDatabaseImport:
         "Should import from @nest-boot/database instead of @mikro-orm/nestjs",
     },
   },
@@ -26,7 +26,7 @@ export default createRule({
         ) {
           context.report({
             node,
-            messageId: "replaceMikroOrmImport",
+            messageId: "replaceDatabaseImport",
             fix(fixer) {
               return fixRenamedImport(fixer, node, "@nest-boot/database", {
                 MikroOrmModule: "DatabaseModule",

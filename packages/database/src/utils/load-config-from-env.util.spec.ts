@@ -20,7 +20,7 @@ interface TlsFilePaths {
 async function withTlsFiles(
   callback: (paths: TlsFilePaths) => Promise<void>,
 ): Promise<void> {
-  const directory = await mkdtemp(join(tmpdir(), "nest-boot-mikro-orm-"));
+  const directory = await mkdtemp(join(tmpdir(), "nest-boot-database-"));
   const paths = {
     clientCert: join(directory, "client.crt"),
     clientKey: join(directory, "client.key"),

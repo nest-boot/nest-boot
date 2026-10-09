@@ -1,5 +1,5 @@
 import { EntityManager, MikroORM } from "@mikro-orm/core";
-import { MikroOrmModule as BaseMikroOrmModule } from "@mikro-orm/nestjs";
+import { MikroOrmModule as BaseDatabaseModule } from "@mikro-orm/nestjs";
 import {
   RequestContext,
   RequestContextModule,
@@ -120,14 +120,14 @@ export class DatabaseModule
     optionsModule: DynamicModule,
     driver?: DatabaseModuleOptions["driver"],
   ) {
-    return BaseMikroOrmModule.forRootAsync({
+    return BaseDatabaseModule.forRootAsync({
       driver,
       imports: [optionsModule],
       inject: [BASE_MODULE_OPTIONS_TOKEN],
       useFactory: async (options: DatabaseModuleOptions) => {
         const ormOptions = { ...options };
         delete ormOptions.session;
-        const logger = new Logger("MikroORM");
+        const logger = new Logger("Database");
         const envOptions = hasExplicitConnectionTarget(options)
           ? loadDefaultConfig()
           : await loadConfigFromEnv();
@@ -183,8 +183,8 @@ export class DatabaseModule
    * @param args - forFeature arguments (entity classes, options)
    * @returns Dynamic module configuration
    */
-  static forFeature(...args: Parameters<typeof BaseMikroOrmModule.forFeature>) {
-    return BaseMikroOrmModule.forFeature(...args);
+  static forFeature(...args: Parameters<typeof BaseDatabaseModule.forFeature>) {
+    return BaseDatabaseModule.forFeature(...args);
   }
 
   /**
@@ -193,9 +193,9 @@ export class DatabaseModule
    * @returns Dynamic module configuration
    */
   static forMiddleware(
-    ...args: Parameters<typeof BaseMikroOrmModule.forMiddleware>
+    ...args: Parameters<typeof BaseDatabaseModule.forMiddleware>
   ) {
-    return BaseMikroOrmModule.forMiddleware(...args);
+    return BaseDatabaseModule.forMiddleware(...args);
   }
 
   /**
@@ -203,10 +203,10 @@ export class DatabaseModule
    * @param args - clearStorage arguments
    */
   static clearStorage(
-    ...args: Parameters<typeof BaseMikroOrmModule.clearStorage>
+    ...args: Parameters<typeof BaseDatabaseModule.clearStorage>
   ) {
     // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
-    return BaseMikroOrmModule.clearStorage(...args);
+    return BaseDatabaseModule.clearStorage(...args);
   }
 
   /** Registers the MikroORM entity manager fork middleware in the request context. */

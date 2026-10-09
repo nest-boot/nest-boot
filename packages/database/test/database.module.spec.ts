@@ -12,7 +12,7 @@ vi.mock("@mikro-orm/nestjs", () => ({
   },
 }));
 
-import { MikroOrmModule as BaseMikroOrmModule } from "@mikro-orm/nestjs";
+import { MikroOrmModule as BaseDatabaseModule } from "@mikro-orm/nestjs";
 import { RequestContext } from "@nest-boot/request-context";
 import type { DynamicModule } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
@@ -29,7 +29,7 @@ type RootOptionsFactory = (
 ) => Promise<Record<string, unknown>>;
 
 function getRootOptionsFactory(): RootOptionsFactory {
-  const baseModule = vi.mocked(BaseMikroOrmModule);
+  const baseModule = vi.mocked(BaseDatabaseModule);
   const [rootOptions] = baseModule.forRootAsync.mock.calls[0] as unknown as [
     { useFactory: RootOptionsFactory },
   ];
@@ -202,14 +202,14 @@ describe("DatabaseModule", () => {
     const middlewareModule = {
       module: class MiddlewareModule {},
     };
-    vi.spyOn(BaseMikroOrmModule, "forFeature").mockReturnValue(
+    vi.spyOn(BaseDatabaseModule, "forFeature").mockReturnValue(
       featureModule as never,
     );
-    vi.spyOn(BaseMikroOrmModule, "forMiddleware").mockReturnValue(
+    vi.spyOn(BaseDatabaseModule, "forMiddleware").mockReturnValue(
       middlewareModule as never,
     );
     const clearStorage = vi
-      .spyOn(BaseMikroOrmModule, "clearStorage")
+      .spyOn(BaseDatabaseModule, "clearStorage")
       .mockReturnValue();
 
     expect(DatabaseModule.forFeature([TestEntity])).toBe(featureModule);

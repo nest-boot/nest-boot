@@ -23,35 +23,36 @@ tester.run("import-database", rule, {
   invalid: [
     {
       code: 'import { MikroOrmModule as MikroOrmModule } from "@mikro-orm/nestjs";',
-      output: 'import { DatabaseModule as MikroOrmModule } from "@nest-boot/database";',
-      errors: [{ messageId: "replaceMikroOrmImport" }],
+      output:
+        'import { DatabaseModule as MikroOrmModule } from "@nest-boot/database";',
+      errors: [{ messageId: "replaceDatabaseImport" }],
     },
     {
       code: 'import Integration from "@mikro-orm/nestjs";',
       output: null,
-      errors: [{ messageId: "replaceMikroOrmImport" }],
+      errors: [{ messageId: "replaceDatabaseImport" }],
     },
     {
       code: 'import { "MikroOrmModule" as ORM } from "@mikro-orm/nestjs";',
       output: 'import { DatabaseModule as ORM } from "@nest-boot/database";',
-      errors: [{ messageId: "replaceMikroOrmImport" }],
+      errors: [{ messageId: "replaceDatabaseImport" }],
     },
     {
       code: 'import { MikroOrmModule as ORM } from "@mikro-orm/nestjs"; ORM.forRoot({});',
       output:
         'import { DatabaseModule as ORM } from "@nest-boot/database"; ORM.forRoot({});',
-      errors: [{ messageId: "replaceMikroOrmImport" }],
+      errors: [{ messageId: "replaceDatabaseImport" }],
     },
     {
       code: 'import { type MikroOrmModuleOptions, MikroOrmModule } from "@nest-boot/mikro-orm";',
       output:
         'import { type DatabaseModuleOptions as MikroOrmModuleOptions, DatabaseModule as MikroOrmModule } from "@nest-boot/database";',
-      errors: [{ messageId: "replaceMikroOrmImport" }],
+      errors: [{ messageId: "replaceDatabaseImport" }],
     },
     {
       code: 'import * as ORM from "@mikro-orm/nestjs"; ORM.MikroOrmModule.forRoot({});',
       output: null,
-      errors: [{ messageId: "replaceMikroOrmImport" }],
+      errors: [{ messageId: "replaceDatabaseImport" }],
     },
     // Importing from @mikro-orm/nestjs, should be replaced with @nest-boot/database
     {
@@ -61,7 +62,7 @@ tester.run("import-database", rule, {
       output: /* typescript */ `
         import { DatabaseModule as MikroOrmModule } from "@nest-boot/database";
       `,
-      errors: [{ messageId: "replaceMikroOrmImport" }],
+      errors: [{ messageId: "replaceDatabaseImport" }],
     },
     // InjectRepository import
     {
@@ -71,7 +72,7 @@ tester.run("import-database", rule, {
       output: /* typescript */ `
         import { InjectRepository } from "@nest-boot/database";
       `,
-      errors: [{ messageId: "replaceMikroOrmImport" }],
+      errors: [{ messageId: "replaceDatabaseImport" }],
     },
     // Type import
     {
@@ -81,7 +82,7 @@ tester.run("import-database", rule, {
       output: /* typescript */ `
         import type { DatabaseModuleOptions as MikroOrmModuleOptions } from "@nest-boot/database";
       `,
-      errors: [{ messageId: "replaceMikroOrmImport" }],
+      errors: [{ messageId: "replaceDatabaseImport" }],
     },
     // Mixed imports
     {
@@ -91,7 +92,7 @@ tester.run("import-database", rule, {
       output: /* typescript */ `
         import { DatabaseModule as MikroOrmModule, InjectRepository } from "@nest-boot/database";
       `,
-      errors: [{ messageId: "replaceMikroOrmImport" }],
+      errors: [{ messageId: "replaceDatabaseImport" }],
     },
   ],
 });
