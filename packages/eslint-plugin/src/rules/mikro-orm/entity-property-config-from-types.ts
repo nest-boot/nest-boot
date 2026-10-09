@@ -105,8 +105,8 @@ export default createRule<
       importedBindingName(source, coreModule, local);
     const decoratorModules = [
       decoratorsModule,
-      "@nest-boot/mikro-orm-crypt",
-      "@nest-boot/mikro-orm-hash",
+      "@nest-boot/database-crypt",
+      "@nest-boot/database-hash",
     ];
     const decoratorName = (local: TSESTree.Node) =>
       importedBindingName(source, decoratorModules, local);

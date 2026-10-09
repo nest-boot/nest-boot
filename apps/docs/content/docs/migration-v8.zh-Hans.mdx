@@ -20,6 +20,27 @@ BullMQ 应用应使用 `@nestjs/bullmq@^12`。集成 MikroORM 的包要求 Mikro
 应用层面的 NestJS 破坏性变更请参考上游
 [NestJS 迁移指南](https://docs.nestjs.com/migration-guide)。
 
+## 数据库包改名
+
+替换以下依赖及其导入路径：
+
+| 原包名                       | 版本 8 包名                 |
+| ---------------------------- | --------------------------- |
+| `@nest-boot/mikro-orm`       | `@nest-boot/database`       |
+| `@nest-boot/mikro-orm-crypt` | `@nest-boot/database-crypt` |
+| `@nest-boot/mikro-orm-hash`  | `@nest-boot/database-hash`  |
+
+模块类和配置类型分别改为 `DatabaseModule`、`DatabaseModuleOptions`，替代
+`MikroOrmModule`、`MikroOrmModuleOptions`。数据库集成仍使用 MikroORM；上游依赖和
+CLI 配置继续使用 `@mikro-orm/*`、`mikro-orm.config.ts`。
+
+自定义请求上下文中间件的依赖名称从 `"mikro-orm"` 改为 `"database"`。请更新
+`RequestContext.registerMiddleware()` 的依赖参数，确保实体管理器先完成初始化。
+
+自定义 ESLint 配置中的 `@nest-boot/import-mikro-orm` 改为
+`@nest-boot/import-database`。自动修复会迁移具名导入并保留本地别名；命名空间导入
+需要手动迁移。
+
 ## 启用 ESM
 
 在应用的 `package.json` 中加入 `"type": "module"`。将 `module` 和
@@ -74,7 +95,7 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   PGlite 驱动、`@Entity({ policies })` 和 `em.setSessionContext()`，替代自定义
   驱动、装饰器、运行时状态和 `AuthTransactionContext`。迁移类改用官方
   `Migration` / `Migrator`。执行 schema diff 前，先将已有策略声明到实体元数据；
-  数据库角色与权限仍需显式创建和授权。通过 `MikroOrmModuleOptions.session`
+  数据库角色与权限仍需显式创建和授权。通过 `DatabaseModuleOptions.session`
   初始化请求 session，并在业务事务开始前更新。详见 [MikroORM RLS 文档](https://mikro-orm.io/docs/row-level-security)。
 - 认证权限标识由应用定义，是区分大小写的字符串，与 CASL subject type 分离。
   权限目录、授权上限和 API Key 权限交集只做精确字符串匹配，不转换大小写。

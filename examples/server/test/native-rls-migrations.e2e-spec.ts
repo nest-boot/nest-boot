@@ -34,7 +34,7 @@ import {
   Workspace,
   WorkspaceApiKey,
 } from '@nest-boot/auth';
-import { loadConfigFromEnv } from '@nest-boot/mikro-orm';
+import { loadConfigFromEnv } from '@nest-boot/database';
 import { REQUEST, RequestContext } from '@nest-boot/request-context';
 import { type FactoryProvider, ForbiddenException } from '@nestjs/common';
 import type { Request } from 'express';

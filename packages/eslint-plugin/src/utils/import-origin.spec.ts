@@ -22,7 +22,7 @@ const rule = createRule<[], "recognized">({
         if (node.callee.type !== AST_NODE_TYPES.Identifier) return;
         const name = importedBindingName(
           context.sourceCode,
-          "@nest-boot/mikro-orm-crypt",
+          "@nest-boot/database-crypt",
           node.callee,
         );
         if (name === "EncryptedProperty")
@@ -38,7 +38,7 @@ tester.run("import-origin", rule, {
     'import { EncryptedProperty } from "./unknown-package.js"; EncryptedProperty();',
   ],
   invalid: ["src", "dist"].map((directory) => ({
-    code: `import { EncryptedProperty as Secret } from "../mikro-orm-crypt/${directory}/index.js"; Secret();`,
+    code: `import { EncryptedProperty as Secret } from "../database-crypt/${directory}/index.js"; Secret();`,
     errors: [{ messageId: "recognized", data: { name: "EncryptedProperty" } }],
   })),
 });

@@ -54,7 +54,7 @@
     "@nest-boot/hash": "workspace:^",
     "@nest-boot/logger": "workspace:^",
     "@nest-boot/mailer": "workspace:^",
-    "@nest-boot/mikro-orm": "workspace:^",
+    "@nest-boot/database": "workspace:^",
     "@nest-boot/request-context": "workspace:^",
     "@nest-boot/schedule": "workspace:^",
     "@nest-boot/validator": "workspace:^",
