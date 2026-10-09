@@ -17,7 +17,7 @@ const GraphQLDynamicModule = GraphQLModule.forRoot({
   context: ({ req, res }: { req: Request; res: Response }) => ({ req, res }),
 });
 
-const MikroORMDynamicModule = DatabaseModule.forRoot({
+const DatabaseDynamicModule = DatabaseModule.forRoot({
   driver: PostgreSqlDriver,
   entities: [...authEntities, 'dist/**/*.entity.js'],
   entitiesTs: [...authEntities, 'src/**/*.entity.ts'],
@@ -32,7 +32,7 @@ const MikroORMDynamicModule = DatabaseModule.forRoot({
     ConfigModule,
     HashModule,
     MailerModule,
-    MikroORMDynamicModule,
+    DatabaseDynamicModule,
     GraphQLDynamicModule,
     GraphQLConnectionModule,
     LoggerModule,
