@@ -11,7 +11,7 @@ Both paths are configurable.
 The transport-independent service creates constrained presigned POST uploads,
 promotes accepted objects, and supports uploads initiated directly by the
 application. Applications can optionally expose upload creation through
-GraphQL with the `@nest-boot/graphql-staged-upload` adapter described below.
+GraphQL with the `@nest-boot/staged-upload-graphql` adapter described below.
 
 ## Installation
 
@@ -141,7 +141,7 @@ const url = await stagedUploadService.upload(
 
 ## GraphQL Integration
 
-`@nest-boot/graphql-staged-upload` exposes staged upload creation through
+`@nest-boot/staged-upload-graphql` exposes staged upload creation through
 GraphQL. It provides the input and object types plus the
 `createStagedUploads` mutation; storage operations and upload policy remain in
 `@nest-boot/staged-upload`.
@@ -149,7 +149,7 @@ GraphQL. It provides the input and object types plus the
 ### Installation
 
 ```bash
-pnpm add @nest-boot/graphql-staged-upload @nest-boot/graphql
+pnpm add @nest-boot/staged-upload-graphql @nest-boot/graphql
 ```
 
 ### Module Registration
@@ -159,7 +159,7 @@ GraphQL module and adapter:
 
 ```typescript
 import { GraphQLModule } from "@nest-boot/graphql";
-import { GraphQLStagedUploadModule } from "@nest-boot/graphql-staged-upload";
+import { StagedUploadGraphQLModule } from "@nest-boot/staged-upload-graphql";
 import { StagedUploadModule } from "@nest-boot/staged-upload";
 import { StorageModule } from "@nest-boot/storage";
 import { Module } from "@nestjs/common";
@@ -178,13 +178,13 @@ import { Module } from "@nestjs/common";
       ],
     }),
     GraphQLModule,
-    GraphQLStagedUploadModule,
+    StagedUploadGraphQLModule,
   ],
 })
 export class AppModule {}
 ```
 
-`GraphQLStagedUploadModule` has no configuration of its own and does not import
+`StagedUploadGraphQLModule` has no configuration of its own and does not import
 an unconfigured `StagedUploadModule`. The application must register
 `StagedUploadModule.register()` or `registerAsync()` once before the resolver
 can use its globally exported service.
@@ -209,7 +209,7 @@ with the file. Validation, expiry, and object paths use the options registered
 with `StagedUploadModule`.
 
 See the
-[GraphQL Staged Upload API Reference](/docs/api/graphql-staged-upload) for the
+[GraphQL Staged Upload API Reference](/docs/api/staged-upload-graphql) for the
 adapter's schema and resolver APIs.
 
 ## Best Practices
