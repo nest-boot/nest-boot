@@ -75,8 +75,20 @@ request to reach the health handler. Once reached, the handler responds without
 entering `AuthGuard`, so no `@Public()` marker is required. The package does not
 depend on `@nest-boot/auth`.
 
-The module does not automatically register Redis or database checks, deduplicate
-registrations, or add readiness/liveness groups, caching, or timeout configuration.
+Infrastructure modules register their own checks when this module is imported:
+`DatabaseModule` registers `database` using `DatabaseHealthIndicator`,
+`RedisModule` registers `redis`, and `QueueModule` registers `queue.<name>` for
+each discovered queue. They reuse their existing connections. Each automatic
+probe has a 1,000 ms timeout and shares an unfinished database or Redis operation
+across requests until it settles. Without `HealthCheckModule`, these modules do
+not register automatic health checks.
+
+The database indicator initializes its existing lazy connection during application
+startup when health checks are enabled. Runtime probes report a closed connection
+as unhealthy and do not initialize or reconnect it.
+
+The health module itself does not deduplicate registrations or add
+readiness/liveness groups, caching, or timeout configuration.
 
 The package re-exports the health decorator, result types, and built-in indicators
 from Terminus's public entry point. Terminus 12 removed the legacy

@@ -4,6 +4,7 @@ import { DatabaseModule } from '@nest-boot/database';
 import { GraphQLModule } from '@nest-boot/graphql';
 import { GraphQLConnectionModule } from '@nest-boot/graphql-connection';
 import { HashModule } from '@nest-boot/hash';
+import { HealthCheckModule } from '@nest-boot/health-check';
 import { LoggerModule } from '@nest-boot/logger';
 import { MailerModule } from '@nest-boot/mailer';
 import { RequestContextModule } from '@nest-boot/request-context';
@@ -33,6 +34,7 @@ const DatabaseDynamicModule = DatabaseModule.forRoot({
     HashModule,
     MailerModule,
     DatabaseDynamicModule,
+    HealthCheckModule,
     GraphQLDynamicModule,
     GraphQLConnectionModule,
     LoggerModule,

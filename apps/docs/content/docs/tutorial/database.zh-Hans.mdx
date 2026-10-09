@@ -101,6 +101,46 @@ if (existsSync(".env")) {
 export default loadConfigFromEnv();
 ```
 
+## 健康检查
+
+同时导入 `HealthCheckModule` 和 `DatabaseModule.forRoot()` 或
+`DatabaseModule.forRootAsync()` 后，数据库模块会使用 `DatabaseHealthIndicator`，
+自动将现有 ORM 连接注册为 `database` 指示器。该类调用 MikroORM 的
+`checkConnection()`，并使用 Terminus 的 `HealthIndicatorService` 处理结果与超时，
+无需创建其他 ORM 实例或编写控制器。
+
+```bash
+pnpm add @nest-boot/health-check
+```
+
+```typescript
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
+import { DatabaseModule } from "@nest-boot/database";
+import { HealthCheckModule } from "@nest-boot/health-check";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [
+    DatabaseModule.forRoot({ driver: PostgreSqlDriver }),
+    HealthCheckModule,
+  ],
+})
+export class AppModule {}
+```
+
+连接正常时，`GET /api/health` 返回 HTTP 200，且
+`details.database.status` 为 `"up"`；连接异常或超过默认 1,000 ms 超时后
+返回 HTTP 503。尚未完成的自动探测会在多次请求间复用，待数据库操作结束后
+重新探测，因此连接恢复无需重启应用。
+
+未导入 `HealthCheckModule` 时，不注册自动数据库探测。MikroORM 7 默认延迟连接，
+因此启用健康检查后，指示器会在应用启动生命周期中初始化现有连接。
+运行中的探测不会主动初始化或重新连接已关闭的连接：连接恢复前会保持异常状态。
+
+需要手动检查时，可以从 `@nest-boot/database` 导入并注入 `DatabaseHealthIndicator`，
+调用 `pingCheck(key = "database", timeout = 1000)`，例如
+`await indicator.pingCheck("primary", 1500)`。
+
 ## 请求作用域实体管理器
 
 模块通过 `RequestContext` 自动为每个请求分支实体管理器，确保正确隔离。可以在任何地方注入 `EntityManager`：

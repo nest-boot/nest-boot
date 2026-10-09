@@ -52,6 +52,7 @@
     "@nest-boot/graphql": "workspace:^",
     "@nest-boot/graphql-connection": "workspace:^",
     "@nest-boot/hash": "workspace:^",
+    "@nest-boot/health-check": "workspace:^",
     "@nest-boot/logger": "workspace:^",
     "@nest-boot/mailer": "workspace:^",
     "@nest-boot/database": "workspace:^",

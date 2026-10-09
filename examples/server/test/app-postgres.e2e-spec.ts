@@ -141,6 +141,17 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     restoreEnv();
   }, 30_000);
 
+  it('exposes database and queue health without authentication', async () => {
+    const response = await request(baseUrl).get('/api/health').expect(200);
+    expect(response.body).toMatchObject({
+      status: 'ok',
+      details: {
+        database: { status: 'up' },
+        'queue.schedule': { status: 'up' },
+      },
+    });
+  });
+
   it('exposes the password policy without authentication', async () => {
     const result = await gql(
       'query { passwordPolicy { minLength maxLength } }',
