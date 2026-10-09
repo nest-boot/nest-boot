@@ -1,6 +1,6 @@
 import { defineConfig } from '@mikro-orm/postgresql';
 import { entities as authEntities } from '@nest-boot/auth';
-import { loadConfigFromEnv } from '@nest-boot/mikro-orm';
+import { loadConfigFromEnv } from '@nest-boot/database';
 
 /** MikroORM 配置工厂。 */
 export default async () => {

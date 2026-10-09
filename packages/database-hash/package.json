@@ -1,0 +1,77 @@
+{
+  "name": "@nest-boot/database-hash",
+  "version": "8.0.1-beta.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/database-hash"
+  },
+  "description": "Hashed database entity properties for Nest Boot",
+  "author": {
+    "name": "Xudong Huang",
+    "email": "me@huangxudong.com",
+    "url": "https://www.huangxudong.com/"
+  },
+  "homepage": "",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "directories": {
+    "lib": "dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf .nx && rm -rf node_modules && rm -rf dist",
+    "dev": "tsc -w -p tsconfig.build.json",
+    "lint": "eslint \"{src,test}/**/*.ts\"",
+    "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:debug": "vitest --inspect-brk --no-file-parallelism"
+  },
+  "devDependencies": {
+    "@mikro-orm/core": "7.2.0",
+    "@mikro-orm/decorators": "7.2.0",
+    "@mikro-orm/pglite": "7.2.0",
+    "@nest-boot/eslint-config": "workspace:^",
+    "@nest-boot/eslint-plugin": "workspace:^",
+    "@nest-boot/hash": "workspace:^",
+    "@nest-boot/tsconfig": "workspace:^",
+    "@types/node": "^24.0.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "reflect-metadata": "^0.2.2",
+    "typescript": "^6.0.3",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.1.11"
+  },
+  "peerDependencies": {
+    "@mikro-orm/core": "^7.0.0",
+    "@mikro-orm/decorators": "^7.0.0",
+    "@nest-boot/hash": "workspace:^",
+    "reflect-metadata": "^0.2.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "prettier --write",
+      "eslint --fix"
+    ]
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24.4.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  }
+}
