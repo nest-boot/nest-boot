@@ -2,7 +2,7 @@
   "impersonation": {
     "active": "You are impersonating another user.",
     "failed": "Unable to impersonate this user",
-    "start": "Impersonate user",
+    "start": "Impersonate",
     "stop": "Return to administrator"
   },
   "failed": "The operation failed",

@@ -46,7 +46,14 @@
       "auto_create": "Leave unselected to create a service account with the key name when saving.",
       "required": "Select a service account; creating one requires service account write permission."
     },
-    "permissions_hint": "No permissions selected: inherit all owner permissions."
+    "permissions_hint": "No permissions selected: inherit all owner permissions.",
+    "owner": {
+      "label": "Owned by",
+      "you": "You",
+      "service_account": "Service account",
+      "you_description": "This key belongs to your membership in this workspace. Disabling or removing your membership prevents the key from being used.",
+      "service_account_description": "This key belongs to a service account and uses that account's permissions in this workspace."
+    }
   },
   "never_expires": "Never expires",
   "never_used": "Never used",

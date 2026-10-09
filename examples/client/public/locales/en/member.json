@@ -114,6 +114,7 @@
   },
   "service_account": {
     "create": "Create service account",
+    "default_grants": "Leave roles and permissions unselected to use the default role. Select only permissions to create an account without roles.",
     "failed": "Failed to create service account"
   }
 }

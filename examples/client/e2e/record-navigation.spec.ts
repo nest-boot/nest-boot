@@ -69,12 +69,12 @@ test("administrator users restore create searches and navigate filtered details 
   await page.getByRole("button", { name: "Next page", exact: true }).click();
   await expect(page.getByRole("row").nth(1)).toContainText(b.name);
   const original = readSearch(page);
-  await page.getByRole("link", { name: "Create user", exact: true }).click();
+  await page.getByRole("link", { name: "Create", exact: true }).click();
   await page.reload();
   await backToList(page);
   await expect(page.getByRole("row").nth(1)).toContainText(b.name);
   expect(readSearch(page)).toEqual(original);
-  await page.getByRole("link", { name: "Create user", exact: true }).click();
+  await page.getByRole("link", { name: "Create", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Name", exact: true })
     .fill("Unrelated created user");
@@ -235,9 +235,7 @@ test("workspace overview and settings use browser history to restore list search
     .click();
   await expect(page.getByRole("row").nth(1)).toContainText(b.name);
   const original = readSearch(page);
-  await page
-    .getByRole("link", { name: "Create workspace", exact: true })
-    .click();
+  await page.getByRole("link", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/user\/workspaces\/create$/);
   await page.reload();
   await expect(page.getByRole("banner")).toHaveCount(0);

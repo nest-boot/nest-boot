@@ -8,6 +8,7 @@ import type { MemberFormProps } from "./member-form-props";
 import { CardContent, CardFooter } from "@/components/ui/card";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { graphql } from "@/gql";
+import { MemberType } from "@/gql/graphql";
 import { Button } from "@/components/thread-ui/button";
 import { Input } from "@/components/thread-ui/input";
 import { FieldSet } from "@/components/ui/field";
@@ -27,6 +28,10 @@ export function MemberProfileForm({
 }: MemberFormProps) {
   const { t } = useTranslation();
   const formId = useId();
+  const isServiceAccount = member.type === MemberType.SERVICE_ACCOUNT;
+  const fields = isServiceAccount
+    ? (["name"] as const)
+    : (["name", "email"] as const);
   const [updateMember] = useMutation(UPDATE_MEMBER);
   const form = useForm({
     defaultValues: { name: member.name, email: member.email ?? "" },
@@ -41,7 +46,10 @@ export function MemberProfileForm({
         updateMember({
           variables: {
             id: member.id,
-            input: { name: value.name.trim(), email: value.email || null },
+            input: {
+              name: value.name.trim(),
+              ...(!isServiceAccount ? { email: value.email || null } : {}),
+            },
           },
         }),
       );
@@ -64,16 +72,18 @@ export function MemberProfileForm({
             aria-label={t("member:details.sections.profile")}
           >
             <FormLayout>
-              {(["name", "email"] as const).map((name) => (
+              {fields.map((name) => (
                 <FormLayoutItem key={name}>
                   <form.Field name={name}>
                     {(field) => (
                       <Input
                         id={`member-${name}`}
                         label={t(`member:details.form.${name}.label`)}
-                        description={t(
-                          `member:details.form.${name}.description`,
-                        )}
+                        description={
+                          isServiceAccount
+                            ? undefined
+                            : t(`member:details.form.${name}.description`)
+                        }
                         disabled={disabled}
                         error={field.state.meta.errors
                           .map((error) => error?.message)

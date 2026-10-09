@@ -13,6 +13,76 @@ import {
 import type { Page } from "@playwright/test";
 
 test.describe("API keys", () => {
+  test("creates a You key without service account permissions", async ({
+    page,
+    browser,
+  }) => {
+    const seed = uniqueSeed("you-api-key");
+    await registerUser(page, {
+      email: `${seed}-owner@example.com`,
+      name: "Workspace Owner",
+    });
+    const workspaceId = await createFirstWorkspace(page, seed);
+    const context = await browser.newContext();
+    try {
+      const issuer = await context.newPage();
+      const email = `${seed}-issuer@example.com`;
+      await registerUser(issuer, { email, name: "Key Issuer" });
+      const memberId = await addMemberByApi(page, workspaceId, email);
+      const headers = { "x-workspace-id": workspaceId };
+      await graphqlRequest(
+        page.request,
+        `mutation ($id: ID!, $input: SetMemberPermissionsInput!) {
+        setMemberPermissions(id: $id, input: $input) { id }
+      }`,
+        {
+          id: memberId,
+          input: {
+            permissions: ["MEMBER_API_KEY__READ", "MEMBER_API_KEY__WRITE"],
+          },
+        },
+        headers,
+      );
+      await issuer.goto(`/workspaces/${workspaceId}/api-keys/create`);
+      await expect(
+        issuer.getByRole("tab", { name: "You", exact: true }),
+      ).toHaveAttribute("aria-selected", "true");
+      await expect(
+        issuer.getByRole("tab", { name: "Service account", exact: true }),
+      ).toBeDisabled();
+      await expect(
+        issuer.getByRole("combobox", { name: "Service account", exact: true }),
+      ).toHaveCount(0);
+      await issuer.getByLabel("Name", { exact: true }).fill(`My key ${seed}`);
+      await issuer.getByRole("button", { name: "Create", exact: true }).click();
+      await expect(issuer.getByLabel("Key", { exact: true })).toHaveValue(
+        /^ws_[A-Za-z0-9_-]{64}$/,
+      );
+      const id = new URL(issuer.url()).pathname.split("/").at(-1)!;
+      const data = await graphqlRequest<{
+        currentWorkspace: {
+          apiKey: { memberId: string; permissions: Array<string> };
+          members: { totalCount: number };
+        };
+      }>(
+        page.request,
+        `query ($id: ID!, $memberFilter: MemberFilter) { currentWorkspace {
+        apiKey(id: $id) { memberId permissions }
+        members(first: 10, filter: $memberFilter) { totalCount }
+      } }`,
+        { id, memberFilter: { type: { $eq: "SERVICE_ACCOUNT" } } },
+        headers,
+      );
+      expect(data.currentWorkspace.apiKey).toEqual({
+        memberId,
+        permissions: [],
+      });
+      expect(data.currentWorkspace.members.totalCount).toBe(0);
+    } finally {
+      await context.close();
+    }
+  });
+
   test("limits member-key selections and defaults to the issuer's grants", async ({
     page,
     browser,
@@ -53,7 +123,7 @@ test.describe("API keys", () => {
       );
       await issuerPage.goto(`/workspaces/${workspaceId}/api-keys`);
       await issuerPage
-        .getByRole("button", { name: "Create API Key", exact: true })
+        .getByRole("button", { name: "Create", exact: true })
         .click();
       await expect(
         issuerPage.getByRole("checkbox", {
@@ -76,6 +146,9 @@ test.describe("API keys", () => {
           getPermissionCheckbox(issuerPage, permission),
         ).not.toBeChecked();
       }
+      await issuerPage
+        .getByRole("tab", { name: "Service account", exact: true })
+        .click();
       await issuerPage
         .getByLabel("Name", { exact: true })
         .fill(`Limited key ${seed}`);
@@ -142,6 +215,9 @@ test.describe("API keys", () => {
         headers,
       );
     await page.goto(`/workspaces/${workspaceId}/api-keys/create`);
+    await page
+      .getByRole("tab", { name: "Service account", exact: true })
+      .click();
     const serviceAccount = page.getByRole("combobox", {
       name: "Service account",
       exact: true,
@@ -166,6 +242,9 @@ test.describe("API keys", () => {
     });
 
     await page.goto(`/workspaces/${workspaceId}/api-keys/create`);
+    await page
+      .getByRole("tab", { name: "Service account", exact: true })
+      .click();
     await serviceAccount.fill("Build");
     await page
       .getByRole("option", { name: "Build automation", exact: true })
@@ -206,6 +285,34 @@ test.describe("API keys", () => {
       roles: ["MEMBER"],
       permissions: [],
     });
+    await page.goto(`/workspaces/${workspaceId}/api-keys/create`);
+    await page
+      .getByRole("tab", { name: "Service account", exact: true })
+      .click();
+    await serviceAccount.fill("Build");
+    await page
+      .getByRole("option", { name: "Build automation", exact: true })
+      .click();
+    await page.getByRole("tab", { name: "You", exact: true }).click();
+    await expect(serviceAccount).toHaveCount(0);
+    await page.getByLabel("Name", { exact: true }).fill(`You ${seed}`);
+    await page.getByRole("button", { name: "Create", exact: true }).click();
+    await expect(page.getByLabel("Key", { exact: true })).toHaveValue(
+      /^ws_[A-Za-z0-9_-]{64}$/,
+    );
+    const youId = new URL(page.url()).pathname.split("/").at(-1)!;
+    const { currentMember } = await graphqlRequest<{
+      currentMember: { id: string };
+    }>(page.request, "query { currentMember { id } }", {}, headers);
+    expect((await readKey(youId)).currentWorkspace.apiKey.memberId).toBe(
+      currentMember.id,
+    );
+    expect(creationOperations).toEqual([
+      "createMemberApiKeyFromApiKeysRoute",
+      "addServiceAccountForApiKey",
+      "createMemberApiKeyFromApiKeysRoute",
+      "createMemberApiKeyFromApiKeysRoute",
+    ]);
   });
 
   test("manages a member-owned API key", async ({ page }) => {
@@ -345,9 +452,7 @@ async function exerciseApiKeyLifecycle(
   ).toBeVisible();
   if (scope === "USER") await page.setViewportSize({ width: 390, height: 844 });
 
-  await page
-    .getByRole("button", { name: "Create API Key", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(`${listUrl}/create`);
   await page.reload();
   await expect(page.getByRole("dialog")).toHaveCount(0);

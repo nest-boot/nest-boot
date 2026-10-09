@@ -267,7 +267,7 @@ function UserWorkspacesComponent() {
       description={t("user:workspaces.description")}
       primaryAction={{
         render: <Link to="/user/workspaces/create" />,
-        label: t("user:workspaces.create"),
+        label: t("action.create"),
       }}
     >
       <PageLayout>

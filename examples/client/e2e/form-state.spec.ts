@@ -98,7 +98,7 @@ test("submits administrator forms with Enter and preserves drafts in other cards
   const email = `${uniqueSeed("admin-form")}@example.com`;
   await signInAsE2eAdministrator(page);
   await page.goto("/admin/users");
-  await page.getByRole("link", { name: "Create user", exact: true }).click();
+  await page.getByRole("link", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/users\/create$/);
   await page.reload();
   const createPage = page.locator('[data-slot="page"]').filter({

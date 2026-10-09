@@ -165,7 +165,7 @@ test.describe("administrator impersonation", () => {
         .filter({ has: page.getByLabel("Email", { exact: true }) }),
     ).toBeVisible();
     await page
-      .getByRole("button", { name: "Impersonate user", exact: true })
+      .getByRole("button", { name: "Impersonate", exact: true })
       .click();
 
     await expect(page).toHaveURL(/\/user$/);
@@ -266,13 +266,13 @@ test("deletes a user from PageActions and returns to the filtered list", async (
   await page.getByRole("cell").getByText(seed, { exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/users/${createUser.id}$`));
   await page.setViewportSize({ width: 390, height: 844 });
-  await clickPageAction(page, "Delete user");
+  await clickPageAction(page, "Delete");
   await page
     .getByRole("alertdialog")
     .getByRole("button", { name: "Cancel", exact: true })
     .click();
   await expect(page).toHaveURL(new RegExp(`/admin/users/${createUser.id}$`));
-  await clickPageAction(page, "Delete user");
+  await clickPageAction(page, "Delete");
   await page
     .getByRole("alertdialog")
     .getByRole("button", { name: "Delete", exact: true })

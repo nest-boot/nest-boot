@@ -97,7 +97,9 @@ test.describe("workspace management", () => {
       await page.getByRole("checkbox", { name: "Member", exact: true }).click();
       await page
         .locator('[data-slot="card"]')
-        .filter({ has: page.getByText("Roles", { exact: true }) })
+        .filter({
+          has: page.getByRole("group", { name: "Roles", exact: true }),
+        })
         .getByRole("button", { name: "Save", exact: true })
         .click();
       await expect(page.getByText("Member updated successfully")).toBeVisible();
@@ -303,9 +305,7 @@ test.describe("workspace management", () => {
       .getByRole("menuitem", { name: "Manage workspaces", exact: true })
       .click();
     await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);
-    await page
-      .getByRole("link", { name: "Create workspace", exact: true })
-      .click();
+    await page.getByRole("link", { name: "Create", exact: true }).click();
     await expect(page).toHaveURL(/\/user\/workspaces\/create$/);
     await expect(
       page.getByRole("button", { name: "Create", exact: true }),

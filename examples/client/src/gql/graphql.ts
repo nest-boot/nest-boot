@@ -2575,6 +2575,24 @@ export type UpdateMemberStatusFromMembersRouteMutation = {
   updateMember?: { __typename?: "UpdateMemberPayload"; id: string } | null;
 };
 
+export type GetServiceAccountGrantsFromCreateMemberRouteQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GetServiceAccountGrantsFromCreateMemberRouteQuery = {
+  __typename?: "Query";
+  workspaceRoles: Array<{
+    __typename?: "WorkspaceRoleOption";
+    role: WorkspaceRole;
+    grantable: boolean;
+  }>;
+  workspacePermissions: Array<{
+    __typename?: "WorkspacePermissionOption";
+    permission: WorkspacePermission;
+    grantable: boolean;
+  }>;
+};
+
 export type GetRolesFromInviteMemberRouteQueryVariables = Exact<{
   [key: string]: never;
 }>;
@@ -8356,6 +8374,49 @@ export const UpdateMemberStatusFromMembersRouteDocument = {
 } as unknown as DocumentNode<
   UpdateMemberStatusFromMembersRouteMutation,
   UpdateMemberStatusFromMembersRouteMutationVariables
+>;
+export const GetServiceAccountGrantsFromCreateMemberRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: {
+        kind: "Name",
+        value: "getServiceAccountGrantsFromCreateMemberRoute",
+      },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "workspaceRoles" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "role" } },
+                { kind: "Field", name: { kind: "Name", value: "grantable" } },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "workspacePermissions" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "permission" } },
+                { kind: "Field", name: { kind: "Name", value: "grantable" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  GetServiceAccountGrantsFromCreateMemberRouteQuery,
+  GetServiceAccountGrantsFromCreateMemberRouteQueryVariables
 >;
 export const GetRolesFromInviteMemberRouteDocument = {
   kind: "Document",
