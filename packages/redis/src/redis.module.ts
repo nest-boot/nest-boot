@@ -6,13 +6,13 @@ import {
 } from "@nestjs/common";
 import { Redis, type RedisOptions } from "ioredis";
 
+import { RedisHealthIndicator } from "./redis.health-indicator.js";
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./redis.module-definition.js";
-import { RedisHealthIndicator } from "./redis-health.indicator.js";
 import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 
 /**

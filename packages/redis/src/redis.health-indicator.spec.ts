@@ -1,7 +1,7 @@
 import { HealthCheckRegistry } from "@nest-boot/health-check";
 import type { Redis } from "ioredis";
 
-import { RedisHealthIndicator } from "./redis-health.indicator.js";
+import { RedisHealthIndicator } from "./redis.health-indicator.js";
 
 describe("RedisHealthIndicator", () => {
   /**

@@ -1,7 +1,7 @@
 import type { MikroORM } from "@mikro-orm/core";
 import { HealthCheckRegistry } from "@nest-boot/health-check";
 
-import { DatabaseHealthIndicator } from "../src/database-health.indicator.js";
+import { DatabaseHealthIndicator } from "../src/database.health-indicator.js";
 
 describe("DatabaseHealthIndicator", () => {
   /**
