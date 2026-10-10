@@ -1,3 +1,17 @@
+## 8.0.2-beta.3 (2026-10-10)
+
+### 🚀 Features
+
+- **eslint-config:** adopt JSDoc and retire TypeDoc ([#404](https://github.com/nest-boot/nest-boot/pull/404))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.4
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.2-beta.2 (2026-10-09)
 
 ### 🚀 Features

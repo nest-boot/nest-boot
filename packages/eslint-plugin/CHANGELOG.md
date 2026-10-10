@@ -1,3 +1,13 @@
+## 8.0.1-beta.4 (2026-10-10)
+
+### 🚀 Features
+
+- **eslint-config:** adopt JSDoc and retire TypeDoc ([#404](https://github.com/nest-boot/nest-boot/pull/404))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.1-beta.3 (2026-10-09)
 
 ### 🚀 Features
