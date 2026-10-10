@@ -13,6 +13,7 @@ import {
 } from "@nest-boot/request-context";
 import { Controller, Get, Module } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import type { JSONSentMessageInfo } from "nodemailer/lib/json-transport/index.js";
 
 @Controller()
 class ConsumerController {
@@ -56,7 +57,8 @@ try {
   });
   assert.equal(health.status, 200);
   assert.equal((await health.json()).status, "ok");
-  const mail = await app.get(Mailer).sendMail({
+  const mailer = app.get<Mailer<JSONSentMessageInfo>>(Mailer);
+  const mail = await mailer.sendMail({
     from: "sender@example.com",
     to: "recipient@example.com",
     subject: "Packed consumer",
