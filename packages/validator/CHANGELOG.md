@@ -1,3 +1,23 @@
+## 8.0.7-beta.2 (2026-10-10)
+
+### 🚀 Features
+
+- ⚠️  **runtime:** require Node 24.21 and validate packed consumers ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### ⚠️  Breaking Changes
+
+- **runtime:** require Node 24.21 and validate packed consumers  ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.4
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.5
+- Updated @nest-boot/tsconfig to 8.0.0-beta.5
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.7-beta.1 (2026-10-10)
 
 ### 🚀 Features
