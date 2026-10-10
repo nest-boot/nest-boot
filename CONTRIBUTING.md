@@ -81,6 +81,20 @@ pnpm release:dry-run
 
 Run `git diff --check` and inspect `git status --short` before committing. Do not include `.env` files, caches, build artifacts, coverage output, production data, or unrelated lockfile changes.
 
+## Example end-to-end tests
+
+CI also runs the complete example server E2E suite and the Chromium browser suite:
+
+```bash
+pnpm --filter @nest-boot/example-server test:e2e
+pnpm --filter @nest-boot/example-client exec playwright install --with-deps chromium
+pnpm --filter @nest-boot/example-client test:e2e
+```
+
+Both suites require PostgreSQL and Redis. The authentication flows also use Mailpit for SMTP delivery and reading verification messages. Configure `SERVER_E2E_DATABASE_URL`, `SERVER_E2E_REDIS_URL`, and `SERVER_E2E_SMTP_URL`; set `SERVER_E2E_MAILPIT_URL` for the server suite and `CLIENT_E2E_MAILPIT_URL` for the browser suite. The PostgreSQL account must be able to create and drop the temporary databases used by the suites.
+
+Playwright starts its own application servers. Use `CLIENT_E2E_URL` and `SERVER_E2E_URL` with available local ports when the default ports 3100 and 4100 are occupied. CI uploads the HTML report, failure screenshots, and traces as the `playwright-failure` artifact when browser tests fail.
+
 ## Commits and pull requests
 
 Use Conventional Commit syntax for commits and the PR title. GitHub CI validates the PR title with commitlint. Examples:

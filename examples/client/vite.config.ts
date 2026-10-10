@@ -12,7 +12,7 @@ const config = defineConfig(({ mode }) => {
     // Local development and E2E servers run concurrently in this worktree.
     cacheDir: `node_modules/.vite/${mode}`,
     plugins: [
-      devtools(),
+      mode === "development" && devtools(),
       viteTsConfigPaths({
         projects: ["./tsconfig.json"],
       }),

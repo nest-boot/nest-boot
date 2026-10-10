@@ -57,8 +57,7 @@ const envKeys = [
   'AUTH_OIDC_CLIENT_ID',
   'AUTH_OIDC_CLIENT_SECRET',
   'AUTH_OIDC_DISCOVERY_URL',
-  'SMTP_HOST',
-  'SMTP_PORT',
+  'SMTP_URL',
   'PORT',
 ] as const;
 const oldEnv = new Map<string, string | undefined>();
@@ -5991,8 +5990,8 @@ function setTestEnv() {
   process.env.AUTH_GITHUB_CLIENT_ID = 'github-client-id';
   process.env.AUTH_GITHUB_CLIENT_SECRET = 'github-client-secret';
   process.env.AUTH_OIDC_ENABLED = 'false';
-  process.env.SMTP_HOST = '127.0.0.1';
-  process.env.SMTP_PORT = '31025';
+  process.env.SMTP_URL =
+    process.env.SERVER_E2E_SMTP_URL ?? 'smtp://127.0.0.1:31025';
 }
 
 /**
