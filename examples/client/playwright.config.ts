@@ -4,8 +4,10 @@ import { defineConfig, devices } from "@playwright/test";
 
 const clientUrl = process.env.CLIENT_E2E_URL ?? "http://127.0.0.1:3100";
 const serverUrl = process.env.SERVER_E2E_URL ?? "http://127.0.0.1:4100";
-const clientHealthUrl = "http://[::1]:3100";
-const serverHealthUrl = "http://[::1]:4100";
+const clientPort = new URL(clientUrl).port || "80";
+const serverPort = new URL(serverUrl).port || "80";
+const clientHealthUrl = `http://[::1]:${clientPort}`;
+const serverHealthUrl = `http://[::1]:${serverPort}`;
 const browserChannel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
 const clientDir = fileURLToPath(new URL(".", import.meta.url));
 const workspaceRoot = resolve(clientDir, "../..");
@@ -20,13 +22,13 @@ export default defineConfig({
   expect: {
     timeout: 15_000,
   },
-  reporter: process.env.CI ? "github" : "list",
+  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: clientUrl,
     locale: "en-US",
     screenshot: "only-on-failure",
     timezoneId: "Asia/Shanghai",
-    trace: "on-first-retry",
+    trace: "retain-on-failure",
     video: "off",
   },
   projects: [
@@ -40,8 +42,10 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: `pnpm --filter @nest-boot/example-server build && PORT=4100 APP_URL=${clientUrl} AUTH_URL=${serverUrl} pnpm --filter @nest-boot/example-server start:e2e`,
+      command:
+        "pnpm --filter @nest-boot/example-server build && pnpm --filter @nest-boot/example-server start:e2e",
       cwd: workspaceRoot,
+      env: { PORT: serverPort, APP_URL: clientUrl, AUTH_URL: serverUrl },
       gracefulShutdown: {
         signal: "SIGTERM",
         timeout: 30_000,
@@ -51,9 +55,9 @@ export default defineConfig({
       url: `${serverHealthUrl}/api/auth/ok`,
     },
     {
-      command:
-        "pnpm --filter @nest-boot/example-client codegen && pnpm --filter @nest-boot/example-client dev:e2e",
+      command: `pnpm --filter @nest-boot/example-client codegen && pnpm --filter @nest-boot/example-client exec vite dev --mode e2e --host :: --port ${clientPort} --strictPort`,
       cwd: workspaceRoot,
+      env: { APP_URL: clientUrl, API_URL: serverUrl },
       gracefulShutdown: {
         signal: "SIGTERM",
         timeout: 30_000,

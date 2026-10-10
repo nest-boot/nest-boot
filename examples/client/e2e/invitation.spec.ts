@@ -516,7 +516,10 @@ test.describe("workspace invitations", () => {
       await memberPage
         .locator('[data-slot="card"]')
         .filter({
-          has: memberPage.getByText("Direct permissions", { exact: true }),
+          has: memberPage.getByRole("group", {
+            name: "Direct permissions",
+            exact: true,
+          }),
         })
         .getByRole("button", { name: "Save", exact: true })
         .click();
@@ -527,7 +530,10 @@ test.describe("workspace invitations", () => {
       await memberPage
         .locator('[data-slot="card"]')
         .filter({
-          has: memberPage.getByText("Direct permissions", { exact: true }),
+          has: memberPage.getByRole("group", {
+            name: "Direct permissions",
+            exact: true,
+          }),
         })
         .getByRole("button", { name: "Save", exact: true })
         .click();
@@ -579,13 +585,18 @@ test.describe("workspace invitations", () => {
       await permission.click();
       await memberPage
         .locator('[data-slot="card"]')
-        .filter({ has: memberPage.getByText("Profile", { exact: true }) })
+        .filter({
+          has: memberPage.getByRole("group", { name: "Profile", exact: true }),
+        })
         .getByRole("button", { name: "Save", exact: true })
         .click();
       await memberPage
         .locator('[data-slot="card"]')
         .filter({
-          has: memberPage.getByText("Direct permissions", { exact: true }),
+          has: memberPage.getByRole("group", {
+            name: "Direct permissions",
+            exact: true,
+          }),
         })
         .getByRole("button", { name: "Save", exact: true })
         .click();
@@ -690,7 +701,9 @@ test.describe("workspace invitations", () => {
       });
       await page
         .locator('[data-slot="card"]')
-        .filter({ has: page.getByText("Profile", { exact: true }) })
+        .filter({
+          has: page.getByRole("group", { name: "Profile", exact: true }),
+        })
         .getByRole("button", { name: "Save", exact: true })
         .click();
       await expect(
@@ -724,7 +737,9 @@ test.describe("workspace invitations", () => {
       });
       await page
         .locator('[data-slot="card"]')
-        .filter({ has: page.getByText("Roles", { exact: true }) })
+        .filter({
+          has: page.getByRole("group", { name: "Roles", exact: true }),
+        })
         .getByRole("button", { name: "Save", exact: true })
         .click();
       await expect(page.getByText("Role change rejected")).toBeVisible();
@@ -754,14 +769,21 @@ test.describe("workspace invitations", () => {
       ).toBeChecked();
       await page
         .locator('[data-slot="card"]')
-        .filter({ has: page.getByText("Roles", { exact: true }) })
+        .filter({
+          has: page.getByRole("group", { name: "Roles", exact: true }),
+        })
         .getByRole("button", { name: "Save", exact: true })
         .click();
       await expect.poll(() => roleWrites).toBe(2);
       expect(permissionWrites).toBe(0);
       await page
         .locator('[data-slot="card"]')
-        .filter({ has: page.getByText("Direct permissions", { exact: true }) })
+        .filter({
+          has: page.getByRole("group", {
+            name: "Direct permissions",
+            exact: true,
+          }),
+        })
         .getByRole("button", { name: "Save", exact: true })
         .click();
       await expect.poll(() => permissionWrites).toBe(1);
@@ -788,7 +810,9 @@ test.describe("workspace invitations", () => {
         .fill("Updated Workspace Member");
       await page
         .locator('[data-slot="card"]')
-        .filter({ has: page.getByText("Profile", { exact: true }) })
+        .filter({
+          has: page.getByRole("group", { name: "Profile", exact: true }),
+        })
         .getByRole("button", { name: "Save", exact: true })
         .click();
       await expect(
@@ -811,7 +835,9 @@ test.describe("workspace invitations", () => {
       );
       await page
         .locator('[data-slot="card"]')
-        .filter({ has: page.getByText("Roles", { exact: true }) })
+        .filter({
+          has: page.getByRole("group", { name: "Roles", exact: true }),
+        })
         .getByRole("button", { name: "Save", exact: true })
         .click();
       expect((await (await rolesSaved).json()).errors).toBeUndefined();
@@ -843,7 +869,9 @@ test.describe("workspace invitations", () => {
       await page.getByRole("checkbox", { name: "Owner", exact: true }).click();
       await page
         .locator('[data-slot="card"]')
-        .filter({ has: page.getByText("Roles", { exact: true }) })
+        .filter({
+          has: page.getByRole("group", { name: "Roles", exact: true }),
+        })
         .getByRole("button", { name: "Save", exact: true })
         .click();
       await expect(page).toHaveURL(/\/user\/workspaces(?:\?.*)?$/);

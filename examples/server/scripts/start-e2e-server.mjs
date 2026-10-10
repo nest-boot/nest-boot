@@ -206,7 +206,8 @@ function createServerEnv() {
   env.AUTH_GITHUB_CLIENT_ID = 'github-client-id';
   env.AUTH_GITHUB_CLIENT_SECRET = 'github-client-secret';
   env.AUTH_OIDC_ENABLED = 'false';
-  env.SMTP_URL = 'smtp://127.0.0.1:31025';
+  env.SMTP_URL =
+    process.env.SERVER_E2E_SMTP_URL ?? 'smtp://127.0.0.1:31025';
   env.SMTP_FROM = 'Nest Boot Example <no-reply@example.com>';
   env.PORT = port;
 

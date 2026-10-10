@@ -48,6 +48,7 @@ jobs:
     name: Verify
     needs: consumer
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     services:
       postgres:
@@ -71,6 +72,17 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
+
+      mailpit:
+        image: axllent/mailpit:v1.31.4
+        options: >-
+          --health-cmd "wget --quiet --spider http://localhost:8025/livez"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 31025:1025
+          - 38025:8025
 
       rustfs:
         image: rustfs/rustfs:1.0.0-rc.4
@@ -160,11 +172,39 @@ jobs:
           STORAGE_ACCESS_KEY_ID: rustfs
           STORAGE_SECRET_ACCESS_KEY: secretsecret
 
-      - name: Verify example SQL driver and native RLS integration
+      - name: Verify full example server integration
         run: |
           pnpm --filter @nest-boot/example-server exec tsc --noEmit -p tsconfig.json
           pnpm --filter @nest-boot/example-server test
-          pnpm --filter @nest-boot/example-server exec vitest run --config vitest.config.e2e.ts test/connection-manager.e2e-spec.ts test/native-rls-migrations.e2e-spec.ts test/job-history.e2e-spec.ts test/job-graphql.e2e-spec.ts
+          pnpm --filter @nest-boot/example-server test:e2e
+        env:
+          SERVER_E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+          SERVER_E2E_REDIS_URL: redis://localhost:6379
+          SERVER_E2E_MAILPIT_URL: http://127.0.0.1:38025
+          SERVER_E2E_SMTP_URL: smtp://127.0.0.1:31025
+
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @nest-boot/example-client exec playwright install --with-deps chromium
+
+      - name: Verify browser flows
+        id: browser-e2e
+        run: pnpm --filter @nest-boot/example-client test:e2e
+        env:
+          SERVER_E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+          SERVER_E2E_REDIS_URL: redis://localhost:6379
+          SERVER_E2E_SMTP_URL: smtp://127.0.0.1:31025
+          CLIENT_E2E_MAILPIT_URL: http://127.0.0.1:38025
+
+      - name: Upload failed browser test evidence
+        if: ${{ !cancelled() && steps.browser-e2e.outcome == 'failure' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-failure
+          path: |
+            examples/client/playwright-report/
+            examples/client/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v7
