@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ["24.4.0", "24"]
+        node: ["24.21.0", "24"]
     steps:
       - name: Checkout
         uses: actions/checkout@v6

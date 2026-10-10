@@ -21,7 +21,7 @@ Use the Bug form for a reproducible contract violation. Use the Improvement form
 
 ## Development setup
 
-The authoritative versions are declared in the root `package.json`. At the time of writing, the repository requires Node.js 24.4+ and pnpm 10.30.3.
+The authoritative versions are declared in the root `package.json`. At the time of writing, the repository requires Node.js 24.21.0+ and pnpm 10.30.3.
 
 ```bash
 corepack enable
@@ -85,7 +85,7 @@ check uses strict peer and engine validation without `.pnpmfile.cjs` or reposito
 overrides. It compiles an application with the published TypeScript preset,
 imports package entry points, starts Nest, and checks HTTP request context,
 health, password hashing, mail generation, and the published ESLint config.
-CI runs it on Node 24.4.0 and the current Node 24 release before permitting release.
+CI runs it on Node 24.21.0 and the current Node 24 release before permitting release.
 
 Applications extending `@nest-boot/tsconfig` must install its compiler and global
 type peers: `typescript@^6`, `@types/node@^24`, and `vitest@^4.1.11`.

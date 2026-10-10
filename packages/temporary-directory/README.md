@@ -7,7 +7,7 @@ context finishes.
 
 ## Requirements
 
-- Node.js `>=24.4.0`
+- Node.js `>=24.21.0`
 - NestJS 12
 - `@nest-boot/request-context` 8
 
