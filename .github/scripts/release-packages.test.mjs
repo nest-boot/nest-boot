@@ -247,6 +247,34 @@ test("main graduates every prerelease even with no changes since the beta releas
   assert.equal(calls.at(-1)[1].at(-1), "latest");
 });
 
+for (const stableProject of ["changed", "explicit", "dependent"]) {
+  test(`graduation rejects a stable ${stableProject} before invoking release commands`, (t) => {
+    const { cwd, manifest, commit } = fixture(t);
+    manifest("stable", {
+      version: "8.0.5",
+      ...(stableProject === "dependent"
+        ? { dependencies: { "@nest-boot/example": "^8.0.0-beta.0" } }
+        : {}),
+    });
+    commit("chore(release): publish");
+    if (stableProject === "changed") {
+      manifest("stable", { version: "8.0.5", description: "New feature" });
+      commit("feat(stable): add a feature");
+    }
+    assert.throws(
+      () =>
+        releasePackages("main", {
+          cwd,
+          projects: stableProject === "explicit" ? ["@nest-boot/stable"] : [],
+          exec() {
+            assert.fail("Mixed graduation must stop before release commands");
+          },
+        }),
+      /graduation requires all public packages to be prereleases/,
+    );
+  });
+}
+
 test("an occupied stable target stops graduation before any version or publication writes", (t) => {
   const { cwd } = fixture(t);
   assert.throws(

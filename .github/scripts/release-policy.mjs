@@ -39,6 +39,14 @@ export function getReleaseSpecifier(
         `${manifest.name}: beta releases and graduation must stay on v8; invalid baseline ${manifest.version}`,
       );
     }
+    // Graduation uses one patch specifier for the whole public release line.
+    // Stable projects (including implicit dependents) need normal versioning;
+    // reject mixed workspaces before any target is written or published.
+    if (graduate && !manifest.version.includes("-")) {
+      throw new Error(
+        `${manifest.name}: graduation requires all public packages to be prereleases; mixed stable/prerelease workspaces are not supported`,
+      );
+    }
     const staleTag = tags.find(
       (tag) =>
         tag.startsWith(`${manifest.name}@`) &&

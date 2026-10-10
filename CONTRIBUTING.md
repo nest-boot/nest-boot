@@ -141,6 +141,11 @@ commit and tags. Stable publication refuses any remaining prerelease manifest.
 Once all manifests are stable, ordinary `main` releases resume Conventional
 Commits versioning. Beta releases continue to use the `beta` npm dist-tag.
 
+Graduation requires every public package to be a v8 prerelease. A mixed stable
+and prerelease workspace stops before release commands run: stable packages and
+their dependent bumps must not inherit the graduation specifier. Prepare a
+consistent prerelease baseline before promoting the release line.
+
 If a stable target already exists on npm, stop and choose a new v8 prerelease
 baseline before promotion. Do not overwrite or silently reuse the existing
 version. If publication fails after the stable release commit, rerun Release on

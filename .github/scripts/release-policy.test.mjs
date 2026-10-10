@@ -68,6 +68,26 @@ test("graduation is limited to main and the validated v8 release line", () => {
   );
 });
 
+test("graduation rejects stable public projects but ignores private versions", () => {
+  const manifests = [
+    { name: "@nest-boot/database", version: "8.0.5-beta.0" },
+    { name: "@nest-boot/auth", version: "8.0.11" },
+  ];
+  assert.throws(
+    () => getReleaseSpecifier("main", manifests, [], { graduate: true }),
+    /@nest-boot\/auth: graduation requires all public packages to be prereleases/,
+  );
+  assert.equal(
+    getReleaseSpecifier(
+      "main",
+      [manifests[0], { ...manifests[1], private: true }],
+      [],
+      { graduate: true },
+    ),
+    "patch",
+  );
+});
+
 test("beta explicitly increments prereleases instead of interpreting breaking commits", () => {
   assert.equal(
     getReleaseSpecifier("beta", [
