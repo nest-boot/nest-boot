@@ -1,3 +1,13 @@
+## 8.0.4-beta.4 (2026-10-10)
+
+### 🩹 Fixes
+
+- **graphql-connection:** upgrade search-syntax to v4 ([#408](https://github.com/nest-boot/nest-boot/pull/408))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.4-beta.3 (2026-10-10)
 
 ### 🚀 Features
