@@ -2384,14 +2384,10 @@ importers:
         version: 4.1.11
 
   packages/tsconfig:
-    dependencies:
+    devDependencies:
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
-      vitest:
-        specifier: ^4.1.11
-        version: 4.1.11
-    devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.11
         version: 4.1.11
@@ -2401,6 +2397,9 @@ importers:
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11
 
   packages/validator:
     devDependencies:

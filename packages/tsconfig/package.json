@@ -22,18 +22,17 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "@types/node": "^24.0.0",
-    "vitest": "^4.1.11"
-  },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^4.1.11",
     "typescript": "^6.0.3",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
-    "typescript": "^6.0.0"
+    "@types/node": "^24.0.0",
+    "typescript": "^6.0.0",
+    "vitest": "^4.1.11"
   },
   "type": "module",
   "engines": {

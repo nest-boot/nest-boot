@@ -79,6 +79,17 @@ pnpm --filter @nest-boot/<package> pack --dry-run
 pnpm release:dry-run
 ```
 
+After building packages, run `pnpm test:consumer` to install all public tarballs
+and their declared peers in a temporary project outside the workspace. This
+check uses strict peer and engine validation without `.pnpmfile.cjs` or repository
+overrides. It compiles an application with the published TypeScript preset,
+imports package entry points, starts Nest, and checks HTTP request context,
+health, password hashing, mail generation, and the published ESLint config.
+CI runs it on Node 24.4.0 and the current Node 24 release before permitting release.
+
+Applications extending `@nest-boot/tsconfig` must install its compiler and global
+type peers: `typescript@^6`, `@types/node@^24`, and `vitest@^4.1.11`.
+
 Run `git diff --check` and inspect `git status --short` before committing. Do not include `.env` files, caches, build artifacts, coverage output, production data, or unrelated lockfile changes.
 
 ## Commits and pull requests

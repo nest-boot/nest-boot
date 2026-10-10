@@ -28,7 +28,8 @@
     "lint": "nx run-many -t lint",
     "lint:fix": "nx run-many -t lint:fix",
     "release:dry-run": "nx release --dry-run --skip-publish",
-    "test:e2e": "pnpm -r --filter './packages/**' --if-present test:e2e"
+    "test:e2e": "pnpm -r --filter './packages/**' --if-present test:e2e",
+    "test:consumer": "node .github/scripts/verify-consumer.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
