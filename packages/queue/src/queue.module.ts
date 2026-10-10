@@ -16,7 +16,6 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 /**
  * BullMQ integration module for job queue processing.
  *
- * @remarks
  * Wraps `@nestjs/bullmq` with automatic Redis connection configuration
  * from `REDIS_URL`. Supports registering queues and flow producers.
  */

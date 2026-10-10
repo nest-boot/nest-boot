@@ -5,7 +5,14 @@ import {
   runInQueueContext,
 } from "./run-in-queue-context.util.js";
 
-/** Wraps an event callback while preserving Nest's discovery metadata. @internal */
+/**
+ * Wraps an event callback while preserving Nest's discovery metadata.
+ * @param eventName - Event whose handler should run in a request context.
+ * @param baseDecorator - Underlying BullMQ event decorator.
+ * @param getContextOptions - Builds request context options from event arguments.
+ * @returns Decorator that runs the event handler in a queue request context.
+ * @internal
+ */
 export function createContextEventDecorator(
   eventName: string,
   baseDecorator: MethodDecorator,

@@ -10,6 +10,14 @@ type EmailAndPasswordConfig = NonNullable<
 >;
 type EmailAndPasswordOptions = AuthModuleOptions["emailAndPassword"];
 
+/**
+ * Returns email and password options with hashing and reset-email hooks.
+ * @param disableSignUp - Whether provider-based registration is disabled.
+ * @param mailer - Mailer used to deliver authentication emails.
+ * @param hashService - Service for hashing and verifying passwords.
+ * @param options - Configuration for this operation.
+ * @returns Email and password options with hashing and reset-email hooks.
+ */
 export function createEmailAndPasswordConfig(
   disableSignUp: boolean,
   mailer: Mailer,

@@ -31,6 +31,11 @@ class BuilderBookEntity implements BuilderBook {
   publishedAt!: Date;
 }
 
+/**
+ * Returns field names after evaluating their lazy type functions.
+ * @param metadata - Metadata to attach or inspect.
+ * @returns Field names after evaluating their lazy type functions.
+ */
 function fieldNamesAndInvokeTypeFns(
   metadata:
     | { properties?: { name: string; typeFn?: () => unknown }[] }

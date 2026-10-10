@@ -49,7 +49,6 @@ import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 export class WorkspaceResolver {
   /**
    * Creates the workspace resolver.
-   *
    * @param workspaceService - Workspace domain service.
    * @param apiKeyService - API key domain service.
    * @param memberService - Workspace member domain service.
@@ -62,7 +61,13 @@ export class WorkspaceResolver {
     readonly invitationService: InvitationService,
   ) {}
 
-  /** Paginates members of the parent workspace. */
+  /**
+   * Paginates members of the parent workspace.
+   * @param workspace - The workspace that scopes this operation.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated members visible in the workspace.
+   */
   @ResolveField(() => MemberConnection)
   async members(
     @Parent() workspace: Workspace,
@@ -77,7 +82,12 @@ export class WorkspaceResolver {
     );
   }
 
-  /** Returns an accessible API key owned by the parent workspace. */
+  /**
+   * Returns an accessible API key owned by the parent workspace.
+   * @param workspace - The workspace that scopes this operation.
+   * @param id - Identifier of the record to access.
+   * @returns Accessible API key metadata, or null if unavailable.
+   */
   @ResolveField(() => MemberApiKey, { nullable: true })
   async apiKey(
     @Parent() workspace: Workspace,
@@ -86,7 +96,13 @@ export class WorkspaceResolver {
     return await this.apiKeyService.getMemberApiKey(id, workspace);
   }
 
-  /** Paginates API keys owned by the parent workspace. */
+  /**
+   * Paginates API keys owned by the parent workspace.
+   * @param workspace - The workspace that scopes this operation.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated API key metadata with credential hashes omitted.
+   */
   @ResolveField(() => MemberApiKeyConnection)
   async apiKeys(
     @Parent() workspace: Workspace,
@@ -101,7 +117,13 @@ export class WorkspaceResolver {
     );
   }
 
-  /** Paginates workspace invitations with authorization and querying handled by the service. */
+  /**
+   * Paginates workspace invitations with authorization and querying handled by the service.
+   * @param workspace - The workspace that scopes this operation.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated invitations visible to the current principal.
+   */
   @ResolveField(() => InvitationConnection)
   async invitations(
     @Parent() workspace: Workspace,
@@ -118,7 +140,6 @@ export class WorkspaceResolver {
 
   /**
    * Returns the workspace selected for the current request.
-   *
    * @returns Current workspace, or null when none is selected.
    */
   @Query(() => Workspace, { nullable: true })
@@ -128,8 +149,8 @@ export class WorkspaceResolver {
 
   /**
    * Returns a workspace by ID.
-   *
    * @param id - Workspace identifier.
+   * @param user - The user whose account is being accessed.
    * @returns Matching workspace, or null when not found.
    */
   @Query(() => Workspace, { nullable: true })
@@ -142,7 +163,6 @@ export class WorkspaceResolver {
 
   /**
    * Creates a workspace for the current user.
-   *
    * @param user - Currently authenticated user.
    * @param input - Workspace creation input.
    * @returns Created workspace identifier; subsequent requests must explicitly select it.
@@ -158,7 +178,6 @@ export class WorkspaceResolver {
 
   /**
    * Updates the current workspace.
-   *
    * @param id - Current workspace identifier.
    * @param input - Workspace update input.
    * @returns Updated workspace identifier.
@@ -174,7 +193,6 @@ export class WorkspaceResolver {
 
   /**
    * Soft-deletes the current workspace.
-   *
    * @param id - Current workspace identifier.
    * @returns Identifier of the permanently deleted workspace.
    */
@@ -186,7 +204,11 @@ export class WorkspaceResolver {
     return { id: workspace.id };
   }
 
-  /** Leaves the workspace and returns the removed member's ID. */
+  /**
+   * Leaves the workspace and returns the removed member's ID.
+   * @param member - The workspace membership to inspect or change.
+   * @returns Identifier of the removed membership.
+   */
   @Mutation(() => LeaveWorkspacePayload)
   async leaveWorkspace(
     @CurrentMember() member: Member,

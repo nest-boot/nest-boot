@@ -2,7 +2,10 @@ import type { createAuthInstance } from "./create-auth-instance.js";
 
 type AuthInstance = ReturnType<typeof createAuthInstance>;
 
-/** The upstream API surface consumed by application services. @internal */
+/**
+ * The upstream API surface consumed by application services.
+ * @internal
+ */
 export type BetterAuthAdapter = Pick<AuthInstance, "$context"> & {
   api: Pick<
     AuthInstance["api"],
@@ -36,6 +39,8 @@ export type BetterAuthAdapter = Pick<AuthInstance, "$context"> & {
 /**
  * Adapts the untyped Nest injection boundary once, using the factory's upstream types.
  * Domain result normalization and response cookies remain in services and applyAuthResponseCookies.
+ * @param auth - Configured Better Auth instance.
+ * @returns Better Auth instance viewed through the internal adapter interface.
  * @internal
  */
 export function adaptBetterAuth(auth: unknown): BetterAuthAdapter {

@@ -7,6 +7,10 @@ import { HashService } from "@nest-boot/hash";
 
 import { HashedProperty } from "./index.js";
 
+/**
+ * Returns unique in-memory database name for this test.
+ * @returns Unique in-memory database name for this test.
+ */
 function nextDbName() {
   return `memory://${String(process.pid)}-${String(Date.now())}-${String(Math.random())}`;
 }

@@ -6,7 +6,10 @@ import { User } from "../entities/user.entity.js";
 /** Coordinates transactional deletion of users and auth-owned dependants. */
 @Injectable()
 export class UserDeletionService {
-  /** Creates the internal user-deletion coordinator. */
+  /**
+   * Creates the internal user-deletion coordinator.
+   * @param em - Entity manager used for persistence.
+   */
   constructor(private readonly em: EntityManager) {}
 
   /**
@@ -14,6 +17,9 @@ export class UserDeletionService {
    * Workspaces survive user deletion, even when no owner remains.
    * When the injected manager has a session, root deletion retains RLS and the
    * built-in foreign keys cascade deletion to auth dependants.
+   * @param userId - Identifier of the user that owns the resource.
+   * @param beforeDelete - Hook invoked before the user is deleted.
+   * @returns Metadata of the deleted user.
    */
   async deleteUser(
     userId: string,

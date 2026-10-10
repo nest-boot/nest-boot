@@ -34,7 +34,6 @@ const RegistryProvider: Provider<Registry<RegistryContentType>> = {
 /**
  * Prometheus metrics module.
  *
- * @remarks
  * Provides a prom-client Registry with default metrics collection
  * and exposes a `/metrics` endpoint for Prometheus scraping.
  */

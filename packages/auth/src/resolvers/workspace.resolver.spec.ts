@@ -119,6 +119,13 @@ describe("WorkspaceResolver", () => {
   });
 });
 
+/**
+ * Returns test resolver and its mocked dependencies.
+ * @param overrides - Fixture values that replace the defaults.
+ * @param memberOverrides - Member service methods replaced for this test.
+ * @param invitationOverrides - Invitation service methods replaced for this test.
+ * @returns Test resolver and its mocked dependencies.
+ */
 function createResolver(
   overrides: Partial<WorkspaceService> = {},
   memberOverrides: Partial<MemberService> = {},

@@ -676,7 +676,7 @@ describe("UserService", () => {
 
     for (const field of ["id", "createdAt", "banned", "locale"]) {
       await expect(
-        service.updateUser(user, { [field]: "overwritten" } as never),
+        service.updateUser(user, { [field]: "overwritten" }),
       ).rejects.toThrow(`User update contains unsupported fields: ${field}`);
     }
     expect(user.id).toBe("user-1");
@@ -1135,6 +1135,13 @@ describe("UserService", () => {
   });
 });
 
+/**
+ * Returns test service and its mocked dependencies.
+ * @param useCustomHash - Whether to use the fixture's custom password hash.
+ * @param user - User role and permission configuration for the fixture.
+ * @param emailAndPassword - Email and password authentication options.
+ * @returns Test service and its mocked dependencies.
+ */
 function createService(
   useCustomHash = true,
   user: NonNullable<AuthModuleOptions["user"]> &

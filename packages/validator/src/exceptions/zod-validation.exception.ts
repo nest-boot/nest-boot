@@ -27,7 +27,6 @@ export interface ZodValidationErrorResponse {
 export class ZodValidationException extends BadRequestException {
   /**
    * Creates a validation exception.
-   *
    * @param zodError - The original Zod error
    */
   constructor(private readonly zodError: ZodError) {
@@ -47,7 +46,10 @@ export class ZodValidationException extends BadRequestException {
     super(response);
   }
 
-  /** Returns the original Zod error for logging or custom exception filters. */
+  /**
+   * Returns the original Zod error for logging or custom exception filters.
+   * @returns Underlying Zod validation error.
+   */
   getZodError(): ZodError {
     return this.zodError;
   }

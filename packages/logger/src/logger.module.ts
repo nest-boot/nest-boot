@@ -43,7 +43,6 @@ const pinoHttpProvider: Provider<PinoHttpLogger> = {
 /**
  * Structured logging module powered by Pino.
  *
- * @remarks
  * Provides request-scoped structured logging with automatic request correlation,
  * HTTP logging via pino-http, and a global logging interceptor.
  */
@@ -67,7 +66,10 @@ export class LoggerModule
   /** Complete options passed to the internal pino-http implementation. */
   private readonly options: Options;
 
-  /** Configured pino-http middleware shared by all logger paths. @internal */
+  /**
+   * Configured pino-http middleware shared by all logger paths.
+   * @internal
+   */
   @Optional()
   @Inject(PINO_HTTP)
   private loggerMiddleware?: PinoHttpLogger;
@@ -92,7 +94,8 @@ export class LoggerModule
     return super.registerAsync(options);
   }
 
-  /** Creates a new LoggerModule instance.
+  /**
+   * Creates a new LoggerModule instance.
    * @param options - Supported logger configuration options
    */
   constructor(
@@ -135,10 +138,20 @@ export class LoggerModule
   }
 }
 
+/**
+ * Returns pino HTTP middleware configured for request logging.
+ * @param options - Configuration for this operation.
+ * @returns Pino HTTP middleware configured for request logging.
+ */
 function createLoggerMiddleware(options?: LoggerModuleOptions): PinoHttpLogger {
   return pinoHttp(createLoggerOptions(options));
 }
 
+/**
+ * Returns pino options merged with Nest Boot logging defaults.
+ * @param options - Configuration for this operation.
+ * @returns Pino options merged with Nest Boot logging defaults.
+ */
 function createLoggerOptions(options: LoggerModuleOptions = {}): Options {
   const {
     autoLogging,

@@ -11,12 +11,12 @@ import { EdgeInterface } from "../interfaces/index.js";
  * - `node`: The actual entity item
  * - `cursor`: A string cursor for pagination
  *
- * @typeParam Entity - The entity type for the edge
+ * Used by ConnectionBuilder.build()
+ * @template Entity - The entity type for the edge
  * @param entityClass - The MikroORM entity class (used as the node type)
  * @param entityName - The name to use for the GraphQL type
  * @returns A class implementing EdgeInterface
- *
- * @internal Used by ConnectionBuilder.build()
+ * @internal
  */
 export function createEdge<Entity extends object>(
   entityClass: EntityClass<Entity>,

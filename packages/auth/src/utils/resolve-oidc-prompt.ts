@@ -4,6 +4,10 @@ import {
 } from "./generic-oauth-provider-config.type.js";
 import { OIDC_PROMPTS } from "./oidc.constants.js";
 
+/**
+ * Returns validated OIDC prompt, or undefined when not configured.
+ * @returns Validated OIDC prompt, or undefined when not configured.
+ */
 export function resolveOidcPrompt(): GenericOAuthProviderConfig["prompt"] {
   const prompt = process.env.AUTH_OIDC_PROMPT;
 

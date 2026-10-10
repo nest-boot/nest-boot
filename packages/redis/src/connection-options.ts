@@ -2,7 +2,6 @@ import type { RedisOptions } from "ioredis";
 
 /**
  * Parses a Redis URL into connection options without reading the environment or opening a connection.
- *
  * @param connectionUrl - A Redis connection URL, including optional credentials, port and database
  * @returns Options shared by Redis clients, queues and rate limiters
  */

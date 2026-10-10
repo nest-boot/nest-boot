@@ -10,7 +10,11 @@ import { getCurrentApiKey } from "./get-current-api-key.util.js";
 import { resolveRequestMember } from "./resolve-request-member.util.js";
 import { resolveRequestPermissions } from "./resolve-request-permissions.util.js";
 
-/** Builds one ability from the current identity and credential-limited permission snapshot. */
+/**
+ * Builds one ability from the current identity and credential-limited permission snapshot.
+ * @param options - Authentication module configuration.
+ * @returns Ability for the supplied identity and resolved request permissions.
+ */
 export function buildRequestAbility(options: AuthModuleOptions): AuthAbility {
   const apiKey = getCurrentApiKey();
   const memberKey = apiKey instanceof MemberApiKey;

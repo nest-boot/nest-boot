@@ -68,7 +68,14 @@ const MUTABLE_USER_FIELDS = new Set([
 /** User management implemented with the built-in MikroORM entities. */
 @Injectable()
 export class UserService {
-  /** Creates a new UserService instance. */
+  /**
+   * Creates a new UserService instance.
+   * @param em - Entity manager used for persistence.
+   * @param options - Authentication module configuration.
+   * @param hashService - Service for hashing and verifying passwords.
+   * @param userDeletionService - Service that deletes users and their related records.
+   * @param userDeletionService.deleteUser - Callback that deletes the user and related records.
+   */
   constructor(
     /** MikroORM entity manager used for authentication persistence. */
     private readonly em: EntityManager,
@@ -84,7 +91,10 @@ export class UserService {
     },
   ) {}
 
-  /** Returns the configured credential password length limits. */
+  /**
+   * Returns the configured credential password length limits.
+   * @returns Configured minimum and maximum password lengths.
+   */
   getPasswordPolicy(): PasswordPolicy {
     return {
       minLength: this.options.emailAndPassword?.minPasswordLength ?? 8,
@@ -92,7 +102,11 @@ export class UserService {
     };
   }
 
-  /** Creates a user and its credential account atomically. */
+  /**
+   * Creates a user and its credential account atomically.
+   * @param input - Requested field values for the operation.
+   * @returns Persisted user.
+   */
   async createUser(input: CreateUserOptions): Promise<User> {
     authorize("create", User);
     if (input.roles !== undefined) {
@@ -148,7 +162,11 @@ export class UserService {
     );
   }
 
-  /** Gets a user by identifier within the request's RLS scope. */
+  /**
+   * Gets a user by identifier within the request's RLS scope.
+   * @param userId - Identifier of the user that owns the resource.
+   * @returns Matching user, or null if no user has that identifier.
+   */
   async getUser(userId: string): Promise<User | null> {
     authorize("read", User);
     const user = await this.em.findOne(User, {
@@ -158,7 +176,11 @@ export class UserService {
     return user;
   }
 
-  /** Gets a user by normalized email within the request's RLS scope. */
+  /**
+   * Gets a user by normalized email within the request's RLS scope.
+   * @param email - Email address used to identify the user.
+   * @returns Matching user, or null if no user has that email.
+   */
   async getUserByEmail(email: string): Promise<User | null> {
     authorize("read", User);
     const user = await this.em.findOne(User, {
@@ -168,7 +190,12 @@ export class UserService {
     return user;
   }
 
-  /** Updates mutable user fields. */
+  /**
+   * Updates mutable user fields.
+   * @param user - The user whose account is being accessed.
+   * @param input - Requested field values for the operation.
+   * @returns User after the requested profile changes.
+   */
   async updateUser(
     user: User | string,
     input: UpdateUserOptions,
@@ -197,7 +224,12 @@ export class UserService {
     return user;
   }
 
-  /** Replaces a user's application permissions. */
+  /**
+   * Replaces a user's application permissions.
+   * @param user - The user whose account is being accessed.
+   * @param permissions - Permission names to apply.
+   * @returns User after replacing direct permissions.
+   */
   async setUserPermissions(
     user: User | string,
     permissions: string[],
@@ -219,7 +251,12 @@ export class UserService {
     return user;
   }
 
-  /** Replaces the roles assigned to a user. */
+  /**
+   * Replaces the roles assigned to a user.
+   * @param user - The user whose account is being accessed.
+   * @param roleNames - Role names to validate.
+   * @returns User after replacing assigned roles.
+   */
   async setUserRoles(
     user: User | string,
     roleNames: string | readonly string[],
@@ -284,7 +321,10 @@ export class UserService {
     return entity;
   }
 
-  /** Lists all configured roles with the current principal's grant availability. */
+  /**
+   * Lists all configured roles with the current principal's grant availability.
+   * @returns Role choices and whether each is within the caller's grant ceiling.
+   */
   listRoles(): UserRoleOption[] {
     authorize("set-roles", User);
     return Object.entries(this.roles).map(([role, permissions]) => ({
@@ -293,7 +333,10 @@ export class UserService {
     }));
   }
 
-  /** Lists all configured permissions with the current principal's grant availability. */
+  /**
+   * Lists all configured permissions with the current principal's grant availability.
+   * @returns Permission choices and whether each is within the caller's grant ceiling.
+   */
   listPermissions(): UserPermissionOption[] {
     authorize("set-permissions", User);
     return listAuthPermissions(this.permissions).map((permission) => ({
@@ -302,12 +345,21 @@ export class UserService {
     }));
   }
 
-  /** Resolves permissions inherited from roles plus direct user permissions. */
+  /**
+   * Resolves permissions inherited from roles plus direct user permissions.
+   * @param user - The user whose account is being accessed.
+   * @returns Union of the user's role permissions and direct permissions.
+   */
   getEffectiveUserPermissions(user: User): string[] {
     return resolveUserPermissions(this.options, user);
   }
 
-  /** Paginates users without bypassing application RLS. */
+  /**
+   * Paginates users without bypassing application RLS.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated users matching the supplied query.
+   */
   async getUserConnection(
     args: ConnectionArgsInterface<User>,
     info?: GraphQLResolveInfo,
@@ -323,7 +375,12 @@ export class UserService {
     return connection;
   }
 
-  /** Bans a user and immediately revokes all of their sessions. */
+  /**
+   * Bans a user and immediately revokes all of their sessions.
+   * @param user - The user whose account is being accessed.
+   * @param input - Requested field values for the operation.
+   * @returns Banned user.
+   */
   async banUser(
     user: User | string,
     input: BanUserOptions = {},
@@ -385,7 +442,11 @@ export class UserService {
     return user;
   }
 
-  /** Removes a user's ban. */
+  /**
+   * Removes a user's ban.
+   * @param user - The user whose account is being accessed.
+   * @returns User after clearing the ban.
+   */
   async unbanUser(user: User | string): Promise<User> {
     user = await this.resolveUserForAction(user, "ban");
     authorize("ban", user);
@@ -408,7 +469,13 @@ export class UserService {
     return user;
   }
 
-  /** Creates a session that impersonates another user. */
+  /**
+   * Creates a session that impersonates another user.
+   * @param administrator - Administrator starting the impersonation session.
+   * @param user - The user whose account is being accessed.
+   * @param input - Requested field values for the operation.
+   * @returns Impersonation session and the user it represents.
+   */
   async impersonateUser(
     administrator: User,
     user: User | string,
@@ -437,7 +504,12 @@ export class UserService {
     return { session, user };
   }
 
-  /** Ends impersonation and creates a replacement administrator session. */
+  /**
+   * Ends impersonation and creates a replacement administrator session.
+   * @param currentSession - Session represented by the current request.
+   * @param input - Requested field values for the operation.
+   * @returns Restored administrator session and user, or null.
+   */
   async stopImpersonating(
     currentSession: Session,
     input: ImpersonationOptions = {},
@@ -451,9 +523,9 @@ export class UserService {
 
     const result = await this.em.transactional(
       async (em) => {
-        const impersonatedBy = Reference.unwrapReference(
+        const impersonatedBy = Reference.unwrapReference<User>(
           impersonatedByReference,
-        ) as User;
+        );
         const administrator = await em.findOne(
           User,
           { id: String(impersonatedBy.id) },
@@ -484,7 +556,11 @@ export class UserService {
     return result;
   }
 
-  /** Permanently deletes a user and all dependent authentication records. */
+  /**
+   * Permanently deletes a user and all dependent authentication records.
+   * @param user - The user whose account is being accessed.
+   * @returns Metadata of the deleted user.
+   */
   async deleteUser(user: User | string): Promise<User> {
     user = await this.resolveUserForAction(user, "delete");
     authorize("delete", user);
@@ -495,7 +571,11 @@ export class UserService {
     return user;
   }
 
-  /** Sets or replaces a user's credential password. */
+  /**
+   * Sets or replaces a user's credential password.
+   * @param user - The user whose account is being accessed.
+   * @param newPassword - New plaintext password to validate and store.
+   */
   async setUserPassword(
     user: User | string,
     newPassword: string,
@@ -536,7 +616,12 @@ export class UserService {
     );
   }
 
-  /** Checks flattened `subject:action` values against a user's permissions. */
+  /**
+   * Checks flattened `subject:action` values against a user's permissions.
+   * @param user - The user whose account is being accessed.
+   * @param input - Requested field values for the operation.
+   * @returns Whether every requested permission is effective for the principal.
+   */
   hasPermissions(user: User, input: UserHasPermissionsOptions): boolean {
     const permissions = new Set(this.getEffectiveUserPermissions(user));
     return Object.entries(input.permissions).every(([subject, actions]) =>
@@ -544,7 +629,11 @@ export class UserService {
     );
   }
 
-  /** Returns whether any assigned role is classified as administrative. */
+  /**
+   * Returns whether any assigned role is classified as administrative.
+   * @param user - The user whose account is being accessed.
+   * @returns Whether the user has a configured administrator role.
+   */
   isAdmin(user: User): boolean {
     const adminRoles = new Set(
       this.options.user?.adminRoles ?? DEFAULT_USER_ADMIN_ROLES,

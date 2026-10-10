@@ -12,7 +12,6 @@ import {
  *
  * This module is global and provides the {@link ConnectionManager} service for
  * executing paginated queries following the Relay connection specification.
- *
  * @example Basic usage
  * ```typescript
  * import { Module } from "@nestjs/common";
@@ -23,7 +22,6 @@ import {
  * })
  * export class AppModule {}
  * ```
- *
  * @see {@link ConnectionManager} for executing paginated queries
  * @see {@link ConnectionBuilder} for building connection types
  */

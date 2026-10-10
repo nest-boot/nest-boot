@@ -7,6 +7,10 @@ import { Logger } from "./logger.js";
 
 describe("LoggingInterceptor", () => {
   it("should assign route bindings for HTTP requests", async () => {
+    /**
+     * Returns undefined, representing a handler without a response body.
+     * @returns Undefined, representing a handler without a response body.
+     */
     function handler() {
       return undefined;
     }
@@ -60,6 +64,11 @@ describe("LoggingInterceptor", () => {
   });
 });
 
+/**
+ * Returns interceptor configured for the test.
+ * @param assign - Mock that records request logger bindings.
+ * @returns Interceptor configured for the test.
+ */
 async function createInterceptor(assign: Mock) {
   const moduleRef = await Test.createTestingModule({
     providers: [

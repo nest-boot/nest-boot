@@ -19,6 +19,10 @@ const describeIfS3Configured = requiredS3Env.every((name) => process.env[name])
   ? describe
   : describe.skip;
 
+/**
+ * Returns bucket configured for storage integration tests.
+ * @returns Bucket configured for storage integration tests.
+ */
 function getS3Bucket() {
   const bucket = process.env.STORAGE_BUCKET;
 
@@ -31,6 +35,11 @@ function getS3Bucket() {
   return bucket;
 }
 
+/**
+ * Creates the test bucket when it is not already available.
+ * @param client - Client used to communicate with the backing service.
+ * @param bucket - S3 bucket used for the operation.
+ */
 async function ensureBucketExists(client: S3Client, bucket: string) {
   try {
     await client.send(
@@ -49,6 +58,10 @@ async function ensureBucketExists(client: S3Client, bucket: string) {
   }
 }
 
+/**
+ * Returns s3 client used to prepare integration test resources.
+ * @returns S3 client used to prepare integration test resources.
+ */
 function createSetupClient(): S3Client {
   const bucketEndpoint =
     process.env.STORAGE_BUCKET_ENDPOINT?.toLowerCase() === "true";
@@ -70,12 +83,21 @@ function createSetupClient(): S3Client {
   });
 }
 
+/**
+ * Returns bucket name or bucket endpoint used by setup operations.
+ * @returns Bucket name or bucket endpoint used by setup operations.
+ */
 function getSetupBucket(): string {
   return process.env.STORAGE_BUCKET_ENDPOINT?.toLowerCase() === "true"
     ? requiredStorageEnv("STORAGE_ENDPOINT_URL")
     : getS3Bucket();
 }
 
+/**
+ * Returns nonempty value of the required storage setting.
+ * @param name - Name used to identify the resource.
+ * @returns Nonempty value of the required storage setting.
+ */
 function requiredStorageEnv(name: string): string {
   const value = process.env[name];
   if (!value) {

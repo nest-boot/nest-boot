@@ -32,26 +32,36 @@ import { MemberService } from "../services/member.service.js";
 export class MemberResolver {
   /**
    * Creates the workspace member resolver.
-   *
+   * @param memberService - Service for workspace memberships and service accounts.
    */
   constructor(
     /** Auth-owned workspace role and permission operations. */
     readonly memberService: MemberService,
   ) {}
 
-  /** Resolves the user associated with a workspace member. */
+  /**
+   * Resolves the user associated with a workspace member.
+   * @param member - The workspace membership to inspect or change.
+   * @returns Matching user, or null if unavailable.
+   */
   @ResolveField(() => User, { nullable: true })
   async user(@Parent() member: Member): Promise<User | null> {
     return await this.memberService.getMemberUser(member);
   }
 
-  /** Lists configured workspace roles with the current principal's grant availability. */
+  /**
+   * Lists configured workspace roles with the current principal's grant availability.
+   * @returns Workspace role choices and whether each may be granted.
+   */
   @Query(() => [WorkspaceRoleOption])
   workspaceRoles(): WorkspaceRoleOption[] {
     return this.memberService.listRoles();
   }
 
-  /** Lists configured workspace permissions with the current principal's grant availability. */
+  /**
+   * Lists configured workspace permissions with the current principal's grant availability.
+   * @returns Workspace permission choices and whether each may be granted.
+   */
   @Query(() => [WorkspacePermissionOption])
   workspacePermissions(): WorkspacePermissionOption[] {
     return this.memberService.listPermissions();
@@ -59,7 +69,6 @@ export class MemberResolver {
 
   /**
    * Returns the workspace member selected for the current request.
-   *
    * @returns Current workspace member, or null when no member was resolved.
    */
   @Query(() => Member, { nullable: true })
@@ -69,7 +78,6 @@ export class MemberResolver {
 
   /**
    * Returns a workspace member by ID.
-   *
    * @param id - Workspace member ID.
    * @returns Matching workspace member, or null when not found.
    */
@@ -82,7 +90,6 @@ export class MemberResolver {
 
   /**
    * Adds an existing user to the workspace by email.
-   *
    * @param workspace - Current workspace.
    * @param input - Input for adding a member.
    * @returns Newly created member identifier.
@@ -116,7 +123,6 @@ export class MemberResolver {
 
   /**
    * Updates workspace member details.
-   *
    * @param id - ID of the workspace member to update.
    * @param input - Member update input.
    * @returns Updated member identifier.
@@ -130,7 +136,12 @@ export class MemberResolver {
     return member ? { id: member.id } : null;
   }
 
-  /** Replaces roles assigned to a workspace member. */
+  /**
+   * Replaces roles assigned to a workspace member.
+   * @param id - Identifier of the record to access.
+   * @param input - Requested field values for the operation.
+   * @returns Identifier of the member whose roles were replaced.
+   */
   @Mutation(() => SetMemberRolesPayload)
   async setMemberRoles(
     @Args("id", { type: () => ID }) id: string,
@@ -140,7 +151,12 @@ export class MemberResolver {
     return { id: member.id };
   }
 
-  /** Replaces direct permissions assigned to a workspace member. */
+  /**
+   * Replaces direct permissions assigned to a workspace member.
+   * @param id - Identifier of the record to access.
+   * @param input - Requested field values for the operation.
+   * @returns Identifier of the member whose permissions were replaced.
+   */
   @Mutation(() => SetMemberPermissionsPayload)
   async setMemberPermissions(
     @Args("id", { type: () => ID }) id: string,
@@ -155,7 +171,6 @@ export class MemberResolver {
 
   /**
    * Removes a workspace member.
-   *
    * @param id - ID of the workspace member to remove.
    * @returns Identifier of the removed workspace member.
    */

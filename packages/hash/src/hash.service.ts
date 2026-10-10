@@ -2,7 +2,6 @@ import { hash, hashSync, verify, verifySync } from "@node-rs/argon2";
 
 /**
  * Service that provides password hashing and verification using Argon2 algorithm.
- *
  * @example
  * ```typescript
  * import { HashService } from '@nest-boot/hash';
@@ -16,12 +15,15 @@ import { hash, hashSync, verify, verifySync } from "@node-rs/argon2";
  * ```
  */
 export class HashService {
-  /** Singleton instance. @internal */
+  /**
+   * Singleton instance.
+   * @internal
+   */
   private static _instance?: HashService;
 
   /**
    * Gets the static HashService instance.
-   * @throws Error if HashService has not been initialized via `init()`
+   * @throws {Error} if HashService has not been initialized via `init()`
    * @returns The HashService instance
    */
   static get instance(): HashService {
@@ -35,9 +37,7 @@ export class HashService {
   /**
    * Initializes the static HashService instance with the given secret.
    * Call this method at application startup to configure the default secret.
-   *
    * @param secret - The secret key to use for hashing
-   *
    * @example
    * ```typescript
    * // In your application bootstrap
@@ -53,7 +53,7 @@ export class HashService {
    * @param value - The value to hash (password or other sensitive data)
    * @param secret - Optional secret key to use instead of the default
    * @returns The hashed string
-   * @throws Error if HashService has not been initialized via `init()`
+   * @throws {Error} if HashService has not been initialized via `init()`
    */
   static hash(value: string | Buffer, secret?: string): Promise<string> {
     return this.instance.hash(value, secret);
@@ -64,7 +64,7 @@ export class HashService {
    * @param value - The value to hash (password or other sensitive data)
    * @param secret - Optional secret key to use instead of the default
    * @returns The hashed string
-   * @throws Error if HashService has not been initialized via `init()`
+   * @throws {Error} if HashService has not been initialized via `init()`
    */
   static hashSync(value: string | Buffer, secret?: string): string {
     return this.instance.hashSync(value, secret);
@@ -76,7 +76,7 @@ export class HashService {
    * @param value - The value to verify
    * @param secret - Optional secret key to use instead of the default
    * @returns True if the value matches the hash, false otherwise
-   * @throws Error if HashService has not been initialized via `init()`
+   * @throws {Error} if HashService has not been initialized via `init()`
    */
   static verify(
     hashed: string | Buffer,
@@ -92,7 +92,7 @@ export class HashService {
    * @param value - The value to verify
    * @param secret - Optional secret key to use instead of the default
    * @returns True if the value matches the hash, false otherwise
-   * @throws Error if HashService has not been initialized via `init()`
+   * @throws {Error} if HashService has not been initialized via `init()`
    */
   static verifySync(
     hashed: string | Buffer,
@@ -102,10 +102,14 @@ export class HashService {
     return this.instance.verifySync(hashed, value, secret);
   }
 
-  /** Secret key buffer used for hashing. @internal */
+  /**
+   * Secret key buffer used for hashing.
+   * @internal
+   */
   private readonly secret?: Buffer;
 
-  /** Creates a new HashService instance.
+  /**
+   * Creates a new HashService instance.
    * @param secret - Optional secret key to use for hashing
    */
   constructor(secret?: string) {

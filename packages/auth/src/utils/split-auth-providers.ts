@@ -12,7 +12,11 @@ interface SplitAuthProvidersResult {
   socialProviders: SocialProvidersConfig | undefined;
 }
 
-/** Splits the unified public provider list into Better Auth configurations. */
+/**
+ * Splits the unified public provider list into Better Auth configurations.
+ * @param providers - Dependency injection providers to register.
+ * @returns Providers separated into built-in social and generic OAuth configurations.
+ */
 export function splitAuthProviders(
   providers: readonly AuthModuleProvider[] = [],
 ): SplitAuthProvidersResult {
@@ -46,8 +50,6 @@ export function splitAuthProviders(
   return {
     genericOAuthProviders,
     socialProviders:
-      Object.keys(socialProviders).length > 0
-        ? (socialProviders as SocialProvidersConfig)
-        : undefined,
+      Object.keys(socialProviders).length > 0 ? socialProviders : undefined,
   };
 }

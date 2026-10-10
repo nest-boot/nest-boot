@@ -18,6 +18,11 @@ export interface SearchablePropertyOptions<
  */
 const jieba = Jieba.withDict(dict);
 
+/**
+ * Returns whitespace-separated searchable tokens, or undefined for non-string input.
+ * @param text - Value to segment when it is a string.
+ * @returns Whitespace-separated searchable tokens, or undefined for non-string input.
+ */
 function segmentText(text: unknown): string | undefined {
   if (typeof text !== 'string' || text.trim().length === 0) {
     return undefined;
@@ -31,6 +36,8 @@ function segmentText(text: unknown): string | undefined {
 
 /**
  * 对对象中的每个属性值进行分词。
+ * @param obj - Object whose field values should be tokenized.
+ * @returns Object with each field converted to searchable tokens.
  */
 function segmentValues<T extends object>(
   obj: Partial<T>,
@@ -40,8 +47,8 @@ function segmentValues<T extends object>(
 
 /**
  * 将一个隐藏字段声明为由其他文本字段派生的全文搜索字段。
- *
  * @param options - 可搜索字段配置。
+ * @param options.properties - 参与全文搜索的实体属性。
  * @returns MikroORM 属性装饰器。
  */
 export function SearchableProperty<T extends object>({

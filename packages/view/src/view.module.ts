@@ -26,7 +26,6 @@ const liquidProvider: Provider<Liquid> = {
 /**
  * Template rendering module powered by LiquidJS.
  *
- * @remarks
  * Provides a configured `Liquid` instance. Import the module directly
  * to use the default `views/` paths, or use {@link ViewModule.register} and
  * {@link ViewModule.registerAsync} to pass any LiquidJS options.

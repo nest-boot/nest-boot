@@ -1,4 +1,7 @@
-/** @internal Injection token for the private better-auth instance. */
+/**
+ * Injection token for the private better-auth instance.
+ * @internal
+ */
 export const AUTH_TOKEN = Symbol("AUTH");
 
 /** Metadata key used by the {@link Public} decorator to mark public routes. */

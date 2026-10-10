@@ -1,6 +1,12 @@
 import type { GenericOAuthProviderConfig } from "./generic-oauth-provider-config.type.js";
 
-/** Combines custom Generic OAuth providers with the environment OIDC provider. */
+/**
+ * Combines custom Generic OAuth providers with the environment OIDC provider.
+ * @param disableSignUp - Whether provider-based registration is disabled.
+ * @param configuredProviders - Providers configured by the application.
+ * @param oidcConfig - OIDC provider configuration.
+ * @returns Generic OAuth providers with environment defaults and sign-up policy applied.
+ */
 export function createGenericOAuthConfig(
   disableSignUp: boolean,
   configuredProviders: readonly GenericOAuthProviderConfig[] = [],

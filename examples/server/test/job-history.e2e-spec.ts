@@ -56,6 +56,12 @@ describe('example job history RLS', () => {
       },
     });
 
+  /**
+   * Returns persisted job and its queue-qualified identifier.
+   * @param data - Data used to construct the result.
+   * @param queueName - Queue that owns the persisted job.
+   * @returns Persisted job and its queue-qualified identifier.
+   */
   async function persist(data: Record<string, unknown>, queueName = 'reports') {
     const job = {
       id: randomUUID(),

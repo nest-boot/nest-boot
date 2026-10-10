@@ -4,6 +4,11 @@ import type { Redis } from "ioredis";
 import { RedisHealthIndicator } from "./redis-health.indicator.js";
 
 describe("RedisHealthIndicator", () => {
+  /**
+   * Returns test setup and its mocked dependencies.
+   * @param registry - Registry that owns the configured entries.
+   * @returns Test setup and its mocked dependencies.
+   */
   function setup(registry?: HealthCheckRegistry) {
     const client = {
       status: "ready",

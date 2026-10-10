@@ -1407,10 +1407,24 @@ describe("AuthGuard permissions", () => {
   });
 });
 
+/**
+ * Returns permission aware guard configured for the test.
+ * @returns Permission aware guard configured for the test.
+ */
 async function createPermissionAwareGuard() {
   return await createGuard(null, {}, {}, true);
 }
 
+/**
+ * Returns test guard and its mocked dependencies.
+ * @param ability - Ability used to evaluate permissions.
+ * @param handlerThis - Receiver used when invoking the handler.
+ * @param roles - Role names and their associated permissions.
+ * @param roles.user - Application user roles and their permissions.
+ * @param roles.workspace - Workspace roles and their permissions.
+ * @param buildFromPermissions - Whether the fixture derives rules from permissions.
+ * @returns Test guard and its mocked dependencies.
+ */
 async function createGuard(
   ability: TestAbility | null = null,
   handlerThis: unknown = {},
@@ -1492,7 +1506,7 @@ async function createGuard(
   ];
   const moduleRefMock = {
     resolve: vi.fn(() => Promise.resolve(handlerThis)),
-  } as unknown as ModuleRef & {
+  } as unknown as Omit<ModuleRef, "resolve"> & {
     resolve: Mock;
   };
   const req = {
@@ -1541,6 +1555,11 @@ async function createGuard(
   };
 }
 
+/**
+ * Returns permission subject associated with the resource name.
+ * @param resource - Resource name to resolve to a permission subject.
+ * @returns Permission subject associated with the resource name.
+ */
 function resolveTestPermissionSubject(resource: string) {
   switch (resource) {
     case "post":
@@ -1556,6 +1575,14 @@ function resolveTestPermissionSubject(resource: string) {
   }
 }
 
+/**
+ * Returns nest execution context for the test request and handler.
+ * @param req - Incoming HTTP request.
+ * @param res - Outgoing HTTP response.
+ * @param args - Arguments supplied to the route handler.
+ * @param type - Type used to interpret the value.
+ * @returns Nest execution context for the test request and handler.
+ */
 function createContext(
   req?: Request,
   res?: Response,
@@ -1584,6 +1611,11 @@ function createContext(
   } as unknown as ExecutionContext;
 }
 
+/**
+ * Returns request context containing the test identity.
+ * @param type - Type used to interpret the value.
+ * @returns Request context containing the test identity.
+ */
 function createAuthRequestContext(type: string): RequestContext {
   const context = new RequestContext({ type });
   const user = new BaseUser();
@@ -1602,6 +1634,10 @@ function createAuthRequestContext(type: string): RequestContext {
   return context;
 }
 
+/**
+ * Returns request context containing the test workspace.
+ * @returns Request context containing the test workspace.
+ */
 function createWorkspaceRequestContext(): RequestContext {
   const context = new RequestContext({ type: "http" });
   context.set(BaseUser, new BaseUser());
@@ -1612,22 +1648,41 @@ function createWorkspaceRequestContext(): RequestContext {
   return context;
 }
 
+/**
+ * Returns request context containing the test user and workspace.
+ * @returns Request context containing the test user and workspace.
+ */
 function createUserWorkspaceRequestContext(): RequestContext {
   const context = createWorkspaceRequestContext();
   context.set(BaseUser, new BaseUser());
   return context;
 }
 
+/**
+ * Registers the route argument metadata used by the guard test.
+ * @param metadata - Metadata to attach or inspect.
+ */
 function setRouteArgsMetadata(metadata: RouteArgumentMetadata) {
   Reflect.defineMetadata(ROUTE_ARGS_METADATA, metadata, Controller, "handler");
 }
 
+/**
+ * Returns anonymous handler used to exercise missing method names.
+ * @returns Anonymous handler used to exercise missing method names.
+ */
 function createUnnamedHandler() {
   return function () {
     return undefined;
   };
 }
 
+/**
+ * Configures the guard fixture's authorization metadata.
+ * @param reflector - Reflector whose route metadata is mocked.
+ * @param metadata - Metadata to attach or inspect.
+ * @param metadata.action - Required permission action.
+ * @param metadata.subjectCallback - Callback that resolves the permission subject.
+ */
 function setCanMetadata(
   reflector: Reflector & {
     getAllAndMerge: Mock;
@@ -1641,6 +1696,10 @@ function setCanMetadata(
     key === CAN_METADATA ? [metadata] : undefined,
   );
 }
+/**
+ * Returns request member configured for the test.
+ * @returns Request member configured for the test.
+ */
 function createRequestMember(): BaseMember {
   const member = new BaseMember();
   const user = RequestContext.isActive() ? RequestContext.get(BaseUser) : null;
@@ -1651,12 +1710,20 @@ function createRequestMember(): BaseMember {
   if (workspace) member.workspace = ref(BaseWorkspace, workspace);
   return member;
 }
+/**
+ * Returns workspace stored in the current test context.
+ * @returns Workspace stored in the current test context.
+ */
 function requireWorkspace(): BaseWorkspace {
   const workspace = RequestContext.get(BaseWorkspace);
   assert(workspace);
   return workspace;
 }
 
+/**
+ * Returns member stored in the current test context.
+ * @returns Member stored in the current test context.
+ */
 function requireMember(): BaseMember {
   const member = RequestContext.get(BaseMember);
   assert(member);

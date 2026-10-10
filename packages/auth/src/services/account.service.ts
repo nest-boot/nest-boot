@@ -18,10 +18,19 @@ import { omitCredentials } from "../utils/omit-credentials.util.js";
 /** Safe account queries scoped to the current user session and application RLS. */
 @Injectable()
 export class AccountService {
-  /** Creates the account query service. */
+  /**
+   * Creates the account query service.
+   * @param em - Entity manager used for persistence.
+   */
   constructor(private readonly em: EntityManager) {}
 
-  /** Paginates the current session user's accounts without loading credentials. */
+  /**
+   * Paginates the current session user's accounts without loading credentials.
+   * @param user - The user whose account is being accessed.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated provider accounts with credentials omitted.
+   */
   async getAccountConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<Account>,

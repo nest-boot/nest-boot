@@ -24,7 +24,6 @@ i18next.use(Backend).use(LanguageDetector);
 /**
  * Module that provides i18n (internationalization) support via i18next.
  *
- * @remarks
  * Initializes i18next with file-system backend and HTTP language detection,
  * and makes the i18n instance available through dependency injection and
  * the request context.
@@ -56,7 +55,13 @@ export class I18nModule extends ConfigurableModuleClass {
     };
   }
 
-  /** Merges i18next init options with defaults. @internal */
+  /**
+   * Merges i18next init options with defaults.
+   * @param options - Configuration for this operation.
+   * @param dynamicModule - Configured Nest dynamic module.
+   * @returns Dynamic module exposing the supplied provider.
+   * @internal
+   */
   private static with(
     options: typeof OPTIONS_TYPE | typeof ASYNC_OPTIONS_TYPE,
     dynamicModule: DynamicModule,
@@ -87,7 +92,11 @@ export class I18nModule extends ConfigurableModuleClass {
     };
   }
 
-  /** Registers i18n middleware after request context initialization. */
+  /**
+   * Registers i18n middleware after request context initialization.
+   * @param middlewareManager - Manager that registers request middleware.
+   * @param i18nMiddleware - Middleware that resolves the request language.
+   */
   constructor(
     middlewareManager: MiddlewareManager,
     i18nMiddleware: I18nMiddleware,

@@ -86,6 +86,11 @@ describe("I18nModule", () => {
   });
 });
 
+/**
+ * Returns factory provider that creates the internationalization options.
+ * @param providers - Dependency injection providers to register.
+ * @returns Factory provider that creates the internationalization options.
+ */
 function getI18nProvider(
   providers: DynamicModule["providers"] | undefined,
 ): FactoryProvider<I18nModuleOptions> {

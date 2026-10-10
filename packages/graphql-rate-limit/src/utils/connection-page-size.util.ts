@@ -1,6 +1,11 @@
 import { GraphQLError } from "graphql";
 
-/** Validates pagination before any field can contribute to the operation cost. */
+/**
+ * Validates pagination before any field can contribute to the operation cost.
+ * @param args - Connection arguments containing an optional first or last limit.
+ * @param fallback - Page size used when no limit is supplied.
+ * @returns Requested connection limit or the fallback page size.
+ */
 export function connectionPageSize(
   args: Record<string, unknown>,
   fallback: number,

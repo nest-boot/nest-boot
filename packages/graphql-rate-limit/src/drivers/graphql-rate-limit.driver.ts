@@ -21,7 +21,6 @@ export interface GraphQLRateLimitDriverResult {
 /**
  * Storage backend contract for GraphQL rate limit buckets.
  *
- * @remarks
  * Implementations must update a bucket atomically so concurrent requests cannot
  * consume the same points.
  */
@@ -35,7 +34,10 @@ export abstract class GraphQLRateLimitDriver {
     input: GraphQLRateLimitDriverInput,
   ): Promise<GraphQLRateLimitDriverResult>;
 
-  /** Releases resources owned by the driver during application shutdown. */
+  /**
+   * Releases resources owned by the driver during application shutdown.
+   * @returns Value returned by the optional app close hook.
+   */
   close(): Promise<void> | void {
     return undefined;
   }

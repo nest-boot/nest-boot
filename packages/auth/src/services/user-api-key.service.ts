@@ -46,7 +46,11 @@ import { resolveRequestPermissions } from "../utils/resolve-request-permissions.
 export class UserApiKeyService {
   private readonly logger = new Logger(UserApiKeyService.name);
 
-  /** Creates an API-key domain service. */
+  /**
+   * Creates an API-key domain service.
+   * @param em - Entity manager used for persistence.
+   * @param authOptions - Authentication module configuration.
+   */
   constructor(
     /** MikroORM entity manager used for API-key persistence. */
     protected readonly em: EntityManager,
@@ -54,7 +58,11 @@ export class UserApiKeyService {
     private readonly authOptions: AuthModuleOptions,
   ) {}
 
-  /** Lists user-key grants subject to configuration and the current credential's ceiling. */
+  /**
+   * Lists user-key grants subject to configuration and the current credential's ceiling.
+   * @param user - The user whose account is being accessed.
+   * @returns User API key permission choices with defaults and grant availability.
+   */
   getUserApiKeyPermissions(user: User): UserApiKeyPermissionOption[] {
     RequestIdentity.assertCurrentUser(user);
     const { permissions, allowed, defaults } = resolveApiKeyPermissionCatalog(
@@ -77,7 +85,12 @@ export class UserApiKeyService {
     }));
   }
 
-  /** Returns a user-owned API key when it belongs to the current user. */
+  /**
+   * Returns a user-owned API key when it belongs to the current user.
+   * @param id - Identifier of the record to access.
+   * @param user - The user whose account is being accessed.
+   * @returns Matching API key metadata with the credential hash omitted, or null.
+   */
   async getUserApiKey(
     id: string,
     user: User,
@@ -91,7 +104,13 @@ export class UserApiKeyService {
     return apiKey ? omitCredentials(apiKey, ["key"]) : null;
   }
 
-  /** Paginates current-user keys after applying ownership and permission ceilings. */
+  /**
+   * Paginates current-user keys after applying ownership and permission ceilings.
+   * @param user - The user whose account is being accessed.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated user API key metadata with credential hashes omitted.
+   */
   async getUserApiKeyConnection(
     user: User,
     args: ConnectionArgsInterface<UserApiKey>,
@@ -120,7 +139,12 @@ export class UserApiKeyService {
     };
   }
 
-  /** Creates an API key owned by a user. */
+  /**
+   * Creates an API key owned by a user.
+   * @param user - The user whose account is being accessed.
+   * @param options - Configuration for this operation.
+   * @returns Created key metadata and its one-time plaintext credential.
+   */
   async createUserApiKey(
     user: User,
     options: CreateApiKeyOptions,
@@ -136,7 +160,12 @@ export class UserApiKeyService {
     return await this.createKey(user, options, permissions);
   }
 
-  /** Updates an API key owned by the current user. */
+  /**
+   * Updates an API key owned by the current user.
+   * @param id - Identifier of the record to access.
+   * @param input - Requested field values for the operation.
+   * @returns Updated API key metadata without the stored credential hash.
+   */
   async updateUserApiKey(
     id: string,
     input: UpdateApiKeyOptions,
@@ -176,7 +205,11 @@ export class UserApiKeyService {
     );
   }
 
-  /** Deletes an API key owned by the current user. */
+  /**
+   * Deletes an API key owned by the current user.
+   * @param id - Identifier of the record to access.
+   * @returns Deleted API key metadata without the stored credential hash.
+   */
   async deleteUserApiKey(id: string): Promise<ApiKeyMetadata<UserApiKey>> {
     authorize("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);

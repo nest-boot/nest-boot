@@ -181,6 +181,12 @@ describe("UserResolver", () => {
   });
 });
 
+/**
+ * Returns test resolver and its mocked dependencies.
+ * @param overrides - Fixture values that replace the defaults.
+ * @param sessionOverrides - Session service methods replaced for this test.
+ * @returns Test resolver and its mocked dependencies.
+ */
 function createResolver(
   overrides: Partial<UserService> = {},
   sessionOverrides: Partial<SessionService> = {},

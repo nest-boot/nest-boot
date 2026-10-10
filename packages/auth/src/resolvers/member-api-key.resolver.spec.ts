@@ -76,6 +76,11 @@ describe("MemberApiKeyResolver", () => {
   });
 });
 
+/**
+ * Returns test resolver and its mocked dependencies.
+ * @param overrides - Fixture values that replace the defaults.
+ * @returns Test resolver and its mocked dependencies.
+ */
 function createResolver(overrides: Partial<MemberApiKeyService> = {}) {
   const apiKeyService = {
     createMemberApiKey: vi.fn(),

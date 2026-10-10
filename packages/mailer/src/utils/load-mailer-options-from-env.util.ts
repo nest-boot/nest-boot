@@ -2,7 +2,11 @@ import type SMTPTransport from "nodemailer/lib/smtp-transport/index.js";
 
 import { type MailerModuleOptions } from "../mailer-module-options.interface.js";
 
-/** Loads SMTP environment configuration with explicit options taking precedence. */
+/**
+ * Loads SMTP environment configuration with explicit options taking precedence.
+ * @param options - Configuration for this operation.
+ * @returns Mailer options derived from environment variables.
+ */
 export function loadMailerOptionsFromEnv(
   options?: MailerModuleOptions,
 ): MailerModuleOptions {
@@ -30,12 +34,20 @@ export function loadMailerOptionsFromEnv(
   return environmentOptions;
 }
 
-/** Loads the default sender independently from SMTP connection options. */
+/**
+ * Loads the default sender independently from SMTP connection options.
+ * @returns Default sender options, or undefined when no sender is configured.
+ */
 export function loadMailerDefaultsFromEnv(): SMTPTransport.Options | undefined {
   const from = process.env.SMTP_FROM?.trim();
   return from ? { from } : undefined;
 }
 
+/**
+ * Returns validated SMTP port, or undefined when absent.
+ * @param value - Value to inspect or transform.
+ * @returns Validated SMTP port, or undefined when absent.
+ */
 function parsePort(value?: string): number | undefined {
   if (!value) return undefined;
   const port = Number(value);
@@ -45,6 +57,12 @@ function parsePort(value?: string): number | undefined {
   return port;
 }
 
+/**
+ * Returns parsed boolean, or undefined when no value is configured.
+ * @param value - Value to inspect or transform.
+ * @param name - Name used to identify the resource.
+ * @returns Parsed boolean, or undefined when no value is configured.
+ */
 function parseBoolean(
   value: string | undefined,
   name: string,

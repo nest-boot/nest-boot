@@ -696,6 +696,13 @@ export class Storage {
   }
 }
 
+/**
+ * Returns s3 client options with credentials, endpoint, and bucket addressing settings.
+ * @param options - Configuration for this operation.
+ * @param endpointUrl - Configured S3 endpoint URL.
+ * @param bucketEndpoint - Whether the endpoint already identifies the bucket.
+ * @returns S3 client options with credentials, endpoint, and bucket addressing settings.
+ */
 function createS3ClientConfig(
   options: StorageModuleOptions,
   endpointUrl: string | undefined,
@@ -716,12 +723,23 @@ function createS3ClientConfig(
   };
 }
 
+/**
+ * Returns endpoint URL ending with a slash.
+ * @param endpointUrl - Configured S3 endpoint URL.
+ * @returns Endpoint URL ending with a slash.
+ */
 function ensureTrailingSlash(endpointUrl: string): string {
   const url = new URL(endpointUrl);
   url.pathname = `${url.pathname.replace(/\/$/, "")}/`;
   return url.toString();
 }
 
+/**
+ * Returns normalized endpoint URL, or undefined when no endpoint is supplied.
+ * @param endpointUrl - Configured S3 endpoint URL.
+ * @param bucketEndpoint - Whether the endpoint already identifies the bucket.
+ * @returns Normalized endpoint URL, or undefined when no endpoint is supplied.
+ */
 function normalizeBucketEndpointUrl(
   endpointUrl: string | undefined,
   bucketEndpoint: boolean,
@@ -735,6 +753,11 @@ function normalizeBucketEndpointUrl(
   return url.toString();
 }
 
+/**
+ * Returns storage path with redundant separators and dot segments normalized.
+ * @param path - Path to normalize or access.
+ * @returns Storage path with redundant separators and dot segments normalized.
+ */
 function normalizePath(path: string): string {
   const parts = path.replaceAll("\\", "/").split("/");
   const normalized: string[] = [];
@@ -752,10 +775,20 @@ function normalizePath(path: string): string {
   return normalized.join("/");
 }
 
+/**
+ * Returns path with each component percent-encoded.
+ * @param path - Path to normalize or access.
+ * @returns Path with each component percent-encoded.
+ */
 function encodePath(path: string): string {
   return path.split("/").map(encodeURIComponent).join("/");
 }
 
+/**
+ * Returns resolved flag, or undefined when no value is configured.
+ * @param value - Value to inspect or transform.
+ * @returns Resolved flag, or undefined when no value is configured.
+ */
 async function resolveOptionalBoolean(
   value:
     | boolean
@@ -765,6 +798,12 @@ async function resolveOptionalBoolean(
   return typeof value === "function" ? await value() : value;
 }
 
+/**
+ * Returns hTTP byte-range value, or undefined when no range is requested.
+ * @param start - Inclusive starting byte offset.
+ * @param end - Inclusive ending byte offset.
+ * @returns HTTP byte-range value, or undefined when no range is requested.
+ */
 function byteRange(start?: number, end?: number): string | undefined {
   for (const [name, offset] of [
     ["start", start],
@@ -788,6 +827,11 @@ function byteRange(start?: number, end?: number): string | undefined {
   return `bytes=${String(resolvedStart)}-${end === undefined ? "" : String(end)}`;
 }
 
+/**
+ * Returns abort controller linked to the signal and a listener cleanup callback.
+ * @param signal - Abort signal to propagate to the operation.
+ * @returns Abort controller linked to the signal and a listener cleanup callback.
+ */
 function linkedAbortController(signal?: AbortSignal): {
   controller: AbortController;
   dispose: () => void;
@@ -809,6 +853,12 @@ function linkedAbortController(signal?: AbortSignal): {
   };
 }
 
+/**
+ * Returns body representation suitable for an S3 upload.
+ * @param data - Data used to construct the result.
+ * @param encoding - Encoding used to convert text chunks to bytes.
+ * @returns Body representation suitable for an S3 upload.
+ */
 function uploadBody(
   data: StorageFileData,
   encoding?: BufferEncoding,
@@ -823,6 +873,12 @@ function uploadBody(
   return Readable.from(uploadChunks(data, encoding));
 }
 
+/**
+ * Converts iterable upload data into byte chunks.
+ * @yields {Buffer} Each upload chunk encoded as bytes.
+ * @param data - Data used to construct the result.
+ * @param encoding - Encoding used to convert text chunks to bytes.
+ */
 async function* uploadChunks(
   data:
     | Iterable<string | NodeJS.ArrayBufferView>
@@ -836,12 +892,22 @@ async function* uploadChunks(
   }
 }
 
+/**
+ * Returns buffer covering only the input view's byte range.
+ * @param data - Data used to construct the result.
+ * @returns Buffer covering only the input view's byte range.
+ */
 function arrayBufferView(data: NodeJS.ArrayBufferView): Buffer {
   return Buffer.from(
     new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
   );
 }
 
+/**
+ * Returns original Error instance or an Error wrapping the failure value.
+ * @param error - Failure value to inspect.
+ * @returns Original Error instance or an Error wrapping the failure value.
+ */
 function asError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }

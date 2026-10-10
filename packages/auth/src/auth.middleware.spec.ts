@@ -70,6 +70,15 @@ const testEntities = {
   member: MemberEntity,
 };
 
+/**
+ * Returns test middleware and its mocked dependencies.
+ * @param getCurrentAuthenticatedSession - Mock for resolving the authenticated session.
+ * @param findOne - Mock for the entity lookup.
+ * @param validate - Mock for API key authentication.
+ * @param entities - Entity classes registered for the operation.
+ * @param options - Authentication module configuration.
+ * @returns Test middleware and its mocked dependencies.
+ */
 async function createMiddleware(
   getCurrentAuthenticatedSession: Mock,
   findOne: Mock,
@@ -120,6 +129,12 @@ async function createMiddleware(
   };
 }
 
+/**
+ * Returns result of the callback within the request context.
+ * @param request - HTTP request to expose through the test context.
+ * @param callback - Work to execute in the supplied context.
+ * @returns Result of the callback within the request context.
+ */
 async function runInRequestContext<T>(
   request: Request,
   callback: () => Promise<T>,

@@ -32,7 +32,6 @@ export const ZOD_VALIDATION_PIPE_OPTIONS = Symbol(
 export class ZodValidationPipe implements PipeTransform {
   /**
    * Creates a Zod validation pipe.
-   *
    * @param options - Exception customization options
    */
   constructor(
@@ -43,7 +42,6 @@ export class ZodValidationPipe implements PipeTransform {
 
   /**
    * Validates a handler argument and returns Zod's parsed output.
-   *
    * @param value - Incoming handler argument
    * @param metadata - NestJS argument metadata
    * @returns Parsed output, or the original value for an undecorated class

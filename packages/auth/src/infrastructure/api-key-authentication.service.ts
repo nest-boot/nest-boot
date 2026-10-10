@@ -7,12 +7,20 @@ import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import type { ApiKeyValidation } from "../types/api-key-validation.type.js";
 import { hashApiKey } from "../utils/api-key-credential.util.js";
 
-/** Authenticates both credential kinds; management stays in their domain services. @internal */
+/**
+ * Authenticates both credential kinds; management stays in their domain services.
+ * @internal
+ */
 @Injectable()
 export class ApiKeyAuthenticationService {
   constructor(private readonly em: EntityManager) {}
 
-  /** Resolves one unambiguous, active credential and its owner. */
+  /**
+   * Resolves one unambiguous, active credential and its owner.
+   * @param plaintext - Unhashed API key presented by the caller.
+   * @returns Validated credential and its owning identity.
+   * @throws {UnauthorizedException} When the credential or its owner is invalid.
+   */
   async validate(plaintext: string): Promise<ApiKeyValidation> {
     if (!plaintext) throw new UnauthorizedException("Missing API key");
     const key = hashApiKey(plaintext);
@@ -67,7 +75,11 @@ export class ApiKeyAuthenticationService {
     };
   }
 
-  /** Captures the authenticating key's RLS scope before a handler can replace it. */
+  /**
+   * Captures the authenticating key's RLS scope before a handler can replace it.
+   * @param apiKey - API key whose metadata is being accessed.
+   * @returns Callback that records usage for the captured key.
+   */
   captureUsage(apiKey: ApiKeyMetadata): () => Promise<ApiKeyMetadata> {
     // Forking copies the session context without changing the request identity.
     // An existing transaction remains attached; unrelated pending writes do not.
@@ -77,7 +89,11 @@ export class ApiKeyAuthenticationService {
     return () => recorder.recordUsage(apiKey);
   }
 
-  /** Records successful use in the credential's own table. Deleted keys remain deleted. */
+  /**
+   * Records successful use in the credential's own table. Deleted keys remain deleted.
+   * @param apiKey - API key whose metadata is being accessed.
+   * @returns Key metadata after recording its last-used timestamp.
+   */
   async recordUsage(apiKey: ApiKeyMetadata): Promise<ApiKeyMetadata> {
     const now = new Date();
     apiKey.lastUsedAt = now;

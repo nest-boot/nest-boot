@@ -41,6 +41,11 @@ describe("StagedUploadResolver", () => {
   });
 });
 
+/**
+ * Returns test resolver and its mocked dependencies.
+ * @param create - Mock implementation of the create operation.
+ * @returns Test resolver and its mocked dependencies.
+ */
 async function createResolver(create: Mock) {
   const moduleRef = await Test.createTestingModule({
     providers: [

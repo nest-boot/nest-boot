@@ -23,10 +23,8 @@ import { RequestContext } from "./request-context.js";
  * - Runs within a request context of type 'repl'
  * - Has access to all NestJS providers
  * - Maintains context across async operations
- *
  * @param module - The NestJS module (class or DynamicModule) to create the context from
  * @returns A promise that resolves to the REPL server instance
- *
  * @example
  * ```typescript
  * // repl.ts
@@ -39,12 +37,10 @@ import { RequestContext } from "./request-context.js";
  *
  * bootstrap();
  * ```
- *
  * @example Running the REPL
  * ```bash
  * npx ts-node -r tsconfig-paths/register repl.ts
  * ```
- *
  * @example Using services in REPL
  * ```typescript
  * // In the REPL session:

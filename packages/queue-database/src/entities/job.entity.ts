@@ -13,7 +13,6 @@ import { JobStatus } from "../enums/job-status.enum.js";
 /**
  * Abstract base entity for persisting BullMQ job data in the database.
  *
- * @remarks
  * Extend this entity in your application to create a concrete job table.
  * Automatically populated by the BullMQ-MikroORM subscriber.
  */

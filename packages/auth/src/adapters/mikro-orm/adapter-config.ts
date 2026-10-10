@@ -1,5 +1,10 @@
 import type { DBAdapterDebugLogOption } from "better-auth/adapters";
 
+/**
+ * Returns adapter capabilities and debug logging settings.
+ * @param debugLogs - Adapter debug logging configuration.
+ * @returns Adapter capabilities and debug logging settings.
+ */
 export function createMikroOrmAdapterConfig(
   debugLogs: DBAdapterDebugLogOption | undefined,
 ) {

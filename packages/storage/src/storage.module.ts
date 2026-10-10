@@ -25,7 +25,6 @@ const storageProvider: Provider<Storage> = {
 /**
  * Global module that provides an S3-backed {@link Storage} service.
  *
- * @remarks
  * Import the module directly to read the supported S3 environment variables,
  * or use {@link StorageModule.register} and {@link StorageModule.registerAsync}
  * for explicit configuration. The AWS SDK clients are private implementation

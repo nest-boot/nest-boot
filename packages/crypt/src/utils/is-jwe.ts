@@ -7,7 +7,6 @@
  * BASE64URL(JWE Initialization Vector) || '.' ||
  * BASE64URL(JWE Ciphertext) || '.' ||
  * BASE64URL(JWE Authentication Tag)
- *
  * @param value - The string to check
  * @returns true if the string appears to be a valid JWE
  */

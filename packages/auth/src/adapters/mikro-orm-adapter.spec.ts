@@ -40,7 +40,15 @@ import {
   mikroOrmAdapter,
 } from "./mikro-orm-adapter.js";
 
-/** Helper to construct a Where condition */
+/**
+ * Helper to construct a Where condition
+ * @param field - Field name to inspect.
+ * @param operator - Comparison operator to apply.
+ * @param value - Value to inspect or transform.
+ * @param connector - Logical connector between conditions.
+ * @param mode - Case-sensitivity mode for string comparisons.
+ * @returns A Better Auth condition with the supplied comparison settings.
+ */
 function makeWhere(
   field: string,
   operator: string,
@@ -305,7 +313,7 @@ describe("convertWhereToMikroOrm", () => {
   describe("unsupported operator", () => {
     it("should throw on unknown operator", () => {
       expect(() =>
-        convertWhereToMikroOrm([makeWhere("f", "unknown_op" as never, "x")]),
+        convertWhereToMikroOrm([makeWhere("f", "unknown_op", "x")]),
       ).toThrow("Unsupported operator: unknown_op");
     });
   });
@@ -340,6 +348,10 @@ const entities = {
   member: TestMember,
 };
 
+/**
+ * Returns mock ORM, entity manager, and persistence spies.
+ * @returns Mock ORM, entity manager, and persistence spies.
+ */
 function createOrm() {
   const flush = vi.fn();
   const em = {
@@ -380,6 +392,17 @@ function createOrm() {
   };
 }
 
+/**
+ * Returns adapter instance using the fixture metadata and entity manager.
+ * @param orm - MikroORM instance used for persistence.
+ * @param context - Context used to resolve this operation.
+ * @param context.getDefaultFieldName - Maps an adapter field to its default schema name.
+ * @param context.getDefaultModelName - Maps an adapter model to its default schema name.
+ * @param context.getFieldName - Resolves a configured field name.
+ * @param context.schema - Better Auth schema metadata.
+ * @param defaultUserRole - Role assigned to newly created users.
+ * @returns Adapter instance using the fixture metadata and entity manager.
+ */
 function createAdapter(
   orm: MikroORM,
   context: {
@@ -390,7 +413,7 @@ function createAdapter(
   } = {},
   defaultUserRole?: string,
 ) {
-  mikroOrmAdapter({ defaultUserRole, entities, orm })({} as never);
+  mikroOrmAdapter({ defaultUserRole, entities, orm })({});
   const adapterOptions = mockCreateAdapterFactory.mock.calls.at(-1)?.[0] as {
     adapter: (
       context: unknown,
@@ -400,6 +423,15 @@ function createAdapter(
   return adapterOptions.adapter(createAdapterContext(context));
 }
 
+/**
+ * Returns adapter context with default mappings and the supplied overrides.
+ * @param context - Context used to resolve this operation.
+ * @param context.getDefaultFieldName - Maps an adapter field to its default schema name.
+ * @param context.getDefaultModelName - Maps an adapter model to its default schema name.
+ * @param context.getFieldName - Resolves a configured field name.
+ * @param context.schema - Better Auth schema metadata.
+ * @returns Adapter context with default mappings and the supplied overrides.
+ */
 function createAdapterContext(
   context: {
     getDefaultFieldName?: (input: { field: string; model: string }) => string;
@@ -429,7 +461,7 @@ describe("mikroOrmAdapter", () => {
       debugLogs: true,
       entities,
       orm,
-    })({} as never);
+    })({});
 
     expect(mockCreateAdapterFactory).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -454,7 +486,7 @@ describe("mikroOrmAdapter", () => {
     const verification = { id: "verification-1", value: "one-time-token" };
     em.findOne.mockResolvedValue(verification);
     const factory = mikroOrmAdapter({ entities, orm });
-    factory({} as never);
+    factory({});
     const rootAdapterOptions = mockCreateAdapterFactory.mock.calls[0][0] as {
       config: {
         transaction: <T>(

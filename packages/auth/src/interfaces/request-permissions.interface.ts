@@ -1,4 +1,7 @@
-/** Shared permission snapshot for one request identity. @internal */
+/**
+ * Shared permission snapshot for one request identity.
+ * @internal
+ */
 export interface RequestPermissions {
   readonly user: readonly string[];
   readonly workspace: readonly string[];

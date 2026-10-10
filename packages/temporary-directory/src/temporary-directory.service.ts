@@ -15,9 +15,9 @@ const INVALID_NAMESPACE_MESSAGE =
 export class TemporaryDirectoryService {
   /**
    * Creates an isolated child directory removed when its request context ends.
-   *
    * @param namespace - Optional namespace containing only letters, numbers,
    *   hyphens, and underscores, up to 64 characters.
+   * @returns Path of the newly created temporary directory.
    */
   async create(namespace?: string): Promise<string> {
     if (!RequestContext.isActive()) {

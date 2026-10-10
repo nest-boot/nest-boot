@@ -327,12 +327,22 @@ describe("LoggerModule - e2e", () => {
     await app.close();
   });
 
+  /**
+   * Returns logger resolved from the configured test module.
+   * @param options - Configuration for this operation.
+   * @returns Logger resolved from the configured test module.
+   */
   async function createConfiguredLogger(
     options: LoggerModuleOptions,
   ): Promise<Logger> {
     return await createLoggerFromModule(LoggerModule.register(options));
   }
 
+  /**
+   * Returns logger injected into the test consumer.
+   * @param loggerModule - Logger module registration to test.
+   * @returns Logger injected into the test consumer.
+   */
   async function createLoggerFromModule(
     loggerModule: DynamicModule,
   ): Promise<Logger> {
@@ -351,6 +361,11 @@ describe("LoggerModule - e2e", () => {
   }
 });
 
+/**
+ * Returns writable stream that captures output chunks.
+ * @param output - Captured output chunks.
+ * @returns Writable stream that captures output chunks.
+ */
 function createOutputStream(output: string[]): Writable {
   return new Writable({
     write(chunk, _encoding, callback) {
@@ -360,6 +375,11 @@ function createOutputStream(output: string[]): Writable {
   });
 }
 
+/**
+ * Returns structured log records parsed from the captured output.
+ * @param output - Captured output chunks.
+ * @returns Structured log records parsed from the captured output.
+ */
 function parseRecords(output: string[]): Record<string, unknown>[] {
   return output
     .join("")

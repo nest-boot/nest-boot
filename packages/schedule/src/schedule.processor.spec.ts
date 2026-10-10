@@ -182,6 +182,12 @@ describe("ScheduleProcessor", () => {
   });
 });
 
+/**
+ * Returns processor configured for the test.
+ * @param registry - Registry that owns the configured entries.
+ * @param options - Configuration for this operation.
+ * @returns Processor configured for the test.
+ */
 async function createProcessor(
   registry: ScheduleRegistry,
   options?: ScheduleModuleOptions,

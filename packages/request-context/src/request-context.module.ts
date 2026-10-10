@@ -14,7 +14,6 @@ import { RequestContextMiddleware } from "./request-context.middleware.js";
  * them available throughout the request lifecycle.
  *
  * The module is global, so it only needs to be imported once in the root module.
- *
  * @example
  * ```typescript
  * import { Module } from '@nestjs/common';
@@ -25,7 +24,6 @@ import { RequestContextMiddleware } from "./request-context.middleware.js";
  * })
  * export class AppModule {}
  * ```
- *
  * @example Using in a service
  * ```typescript
  * import { Injectable } from '@nestjs/common';

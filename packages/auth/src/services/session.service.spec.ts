@@ -17,6 +17,10 @@ vi.mock("@nest-boot/request-context", async (importOriginal) => ({
   headers: () => requestHeaders,
 }));
 
+/**
+ * Returns mock Better Auth API methods.
+ * @returns Mock Better Auth API methods.
+ */
 function createApi() {
   return {
     getSession: vi.fn(),
@@ -54,6 +58,14 @@ const authContext = {
   secret: "R4vWrEDXeeor7VzGzQsdbQobOFtv2nRrlhOVTGpOteA",
 };
 
+/**
+ * Returns test service and its mocked dependencies.
+ * @param api - Better Auth API implementation.
+ * @param em - Entity manager used for persistence.
+ * @param em.find - Mock for retrieving matching entities.
+ * @param em.findOne - Mock for retrieving one matching entity.
+ * @returns Test service and its mocked dependencies.
+ */
 async function createService(
   api = createApi(),
   em: {

@@ -448,6 +448,10 @@ describe("StagedUploadService", () => {
   });
 });
 
+/**
+ * Returns storage fixture and its mocked file operations.
+ * @returns Storage fixture and its mocked file operations.
+ */
 function createStorage() {
   const copyFile = vi.fn().mockResolvedValue(undefined);
   const createTemporaryUploadUrl = vi.fn().mockResolvedValue({
@@ -479,6 +483,12 @@ function createStorage() {
   };
 }
 
+/**
+ * Returns test service and its mocked dependencies.
+ * @param options - Configuration for this operation.
+ * @param storage - Storage service used for file operations.
+ * @returns Test service and its mocked dependencies.
+ */
 async function createService(
   options: StagedUploadModuleOptions,
   storage: Storage,

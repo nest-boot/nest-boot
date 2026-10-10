@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-generated-empty-object-type -- MikroORM QueryOrderMap resolves its fields only after the entity generic is supplied. */
 import {
   type FilterQuery,
   type FindOptions,
@@ -36,12 +37,12 @@ const TOTAL_COUNT_LIMIT = 10_000;
  * - Filter query construction from multiple sources (args, options, query string)
  * - Cursor encoding/decoding for stable pagination
  *
- * @typeParam Entity - The entity type being queried
- * @typeParam Hint - Type hints for population
- * @typeParam Fields - Fields to select
- * @typeParam Excludes - Fields to exclude
- *
- * @internal This class is used internally by ConnectionManager
+ * This class is used internally by ConnectionManager
+ * @template Entity - The entity type being queried
+ * @template Hint - Type hints for population
+ * @template Fields - Fields to select
+ * @template Excludes - Fields to exclude
+ * @internal
  */
 export class ConnectionQueryBuilder<
   Entity extends object,
@@ -192,11 +193,7 @@ export class ConnectionQueryBuilder<
     }
 
     const queryOrderMap: QueryOrderMap<Entity>[] = [
-      set(
-        {},
-        this.args.orderBy.field,
-        this.queryOrder,
-      ) as QueryOrderMap<Entity>,
+      set({}, this.args.orderBy.field, this.queryOrder),
     ];
 
     if ((this.args.orderBy.field as string) !== "id") {
@@ -330,7 +327,6 @@ export class ConnectionQueryBuilder<
 
   /**
    * Executes the paginated query and returns the connection result.
-   *
    * @returns A promise that resolves to the connection with edges, pageInfo,
    * totalCount, and totalCountRelation
    */
@@ -375,7 +371,7 @@ export class ConnectionQueryBuilder<
           : sortedEntities.slice(1)
         : sortedEntities
     ).map<EdgeInterface<Entity>>((node) => ({
-      node: node as Entity,
+      node: node,
       cursor: new Cursor({
         id: (node as any)?.id,
         ...(this.args.orderBy != null

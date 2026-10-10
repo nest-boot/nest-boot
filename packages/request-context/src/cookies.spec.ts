@@ -281,6 +281,11 @@ interface TestResponse {
   setHeader(name: string, value: string | string[]): void;
 }
 
+/**
+ * Returns writable HTTP response fixture with captured headers.
+ * @param headers - HTTP headers associated with the request or response.
+ * @returns Writable HTTP response fixture with captured headers.
+ */
 function createResponse(
   headers: Record<string, string | string[]> = {},
 ): TestResponse {
@@ -296,6 +301,12 @@ function createResponse(
   };
 }
 
+/**
+ * Runs a callback with the supplied HTTP request and response.
+ * @param request - Incoming HTTP request.
+ * @param response - HTTP response to inspect or update.
+ * @param callback - Work to execute in the supplied context.
+ */
 async function runWithHttpContext(
   request: TestRequest,
   response: unknown,

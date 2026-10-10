@@ -37,7 +37,10 @@ type ValidTail<
     ? ValidTail<Rest, Separator>
     : false;
 
-/** @internal Validates an ASCII identifier without changing its value. */
+/**
+ * Validates an ASCII identifier without changing its value.
+ * @internal
+ */
 export type LowercaseIdentifier<
   Value extends string,
   Separator extends string,

@@ -207,6 +207,13 @@ describe("HealthCheckModule HTTP integration", () => {
     expect(check).not.toHaveBeenCalled();
   });
 
+  /**
+   * Returns initialized test application and its exposed dependencies.
+   * @param configure - Callback that configures the instance before use.
+   * @param withFeatureChecks - Whether to include feature health indicators.
+   * @param authentication - Authentication middleware registered by the fixture.
+   * @returns Initialized test application and its exposed dependencies.
+   */
   async function createApp(
     configure?: (app: INestApplication) => void,
     withFeatureChecks = true,

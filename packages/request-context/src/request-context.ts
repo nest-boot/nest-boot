@@ -5,8 +5,7 @@ import { randomUUID } from "crypto";
 /**
  * Middleware function type for request context.
  * Middlewares are executed in order when running a request context.
- *
- * @typeParam T - The return type of the middleware chain
+ * @template T - The return type of the middleware chain
  * @param ctx - The current request context
  * @param next - Function to call the next middleware in the chain
  * @returns A promise resolving to the result of the middleware chain
@@ -18,8 +17,7 @@ export type RequestContextMiddlewareType = <T>(
 
 /**
  * Nest-compatible token used to store, resolve, or alias a request-context value.
- *
- * @typeParam T - The value associated with the token
+ * @template T - The value associated with the token
  */
 export type RequestContextToken<T = unknown> = InjectionToken<T>;
 
@@ -67,7 +65,6 @@ export interface RequestContextCreateOptions {
  * This is useful for storing data like the current user, request ID,
  * database transactions, and other request-specific information that
  * needs to be accessed across different parts of the application.
- *
  * @example Basic usage
  * ```typescript
  * import { RequestContext } from '@nest-boot/request-context';
@@ -81,7 +78,6 @@ export interface RequestContextCreateOptions {
  * // Retrieve a value from the context
  * const userId = RequestContext.get<number>('userId');
  * ```
- *
  * @example Running code in a new context
  * ```typescript
  * await RequestContext.run(
@@ -92,7 +88,6 @@ export interface RequestContextCreateOptions {
  *   }
  * );
  * ```
- *
  * @example Creating a child context
  * ```typescript
  * await RequestContext.child(async (childCtx) => {
@@ -125,34 +120,56 @@ export class RequestContext {
    */
   readonly parent?: RequestContext;
 
-  /** Application dependency resolver used after contextual lookup. @internal */
+  /**
+   * Application dependency resolver used after contextual lookup.
+   * @internal
+   */
   private readonly dependencyResolver?: RequestContextDependencyResolver;
 
-  /** Internal storage map for context values. @internal */
+  /**
+   * Internal storage map for context values.
+   * @internal
+   */
   private readonly container = new Map();
 
-  /** Token aliases registered directly on this context. @internal */
+  /**
+   * Token aliases registered directly on this context.
+   * @internal
+   */
   private readonly aliases = new Map<
     RequestContextToken,
     RequestContextToken
   >();
 
-  /** Async local storage backing the request context. @internal */
+  /**
+   * Async local storage backing the request context.
+   * @internal
+   */
   private static readonly storage = new AsyncLocalStorage<RequestContext>();
 
-  /** Registered middleware map keyed by name. @internal */
+  /**
+   * Registered middleware map keyed by name.
+   * @internal
+   */
   private static readonly middlewares = new Map<
     string,
     RequestContextMiddlewareType
   >();
 
-  /** Dependency graph for middleware ordering. @internal */
+  /**
+   * Dependency graph for middleware ordering.
+   * @internal
+   */
   private static readonly middlewareDependencies = new Map<string, string[]>();
 
-  /** Topologically-sorted middleware execution stack. @internal */
+  /**
+   * Topologically-sorted middleware execution stack.
+   * @internal
+   */
   private static middlewaresStack: RequestContextMiddlewareType[] = [];
 
-  /** Creates a new RequestContext instance.
+  /**
+   * Creates a new RequestContext instance.
    * @param options - Options for creating the request context (id, type, parent)
    */
   constructor(options: RequestContextCreateOptions) {
@@ -172,11 +189,9 @@ export class RequestContext {
    * Gets a value from the context by its token.
    * Alias tokens are resolved to their final canonical token. If no value is
    * found in this context, the parent context and dependency resolver are used.
-   *
-   * @typeParam T - The expected type of the value
+   * @template T - The expected type of the value
    * @param token - The key to look up (string, symbol, function, or class)
    * @returns The value if found, otherwise undefined
-   *
    * @example
    * ```typescript
    * const ctx = RequestContext.current();
@@ -195,7 +210,11 @@ export class RequestContext {
     return this.resolveDependency(resolvedToken) as T | undefined;
   }
 
-  /** Finds an explicitly stored value without resolving aliases or providers. */
+  /**
+   * Finds an explicitly stored value without resolving aliases or providers.
+   * @param token - Token used to identify the requested value.
+   * @returns Lookup result distinguishing an absent token from an undefined value.
+   */
   private findContextValue(token: RequestContextToken): {
     found: boolean;
     value: unknown;
@@ -215,7 +234,11 @@ export class RequestContext {
     );
   }
 
-  /** Resolves a dependency through parent resolvers before the local resolver. */
+  /**
+   * Resolves a dependency through parent resolvers before the local resolver.
+   * @param token - Token used to identify the requested value.
+   * @returns Value resolved by the configured dependency resolver, if available.
+   */
   private resolveDependency(token: RequestContextToken): unknown {
     const parentValue = this.parent?.resolveDependency(token);
 
@@ -226,14 +249,22 @@ export class RequestContext {
     return this.dependencyResolver?.(token);
   }
 
-  /** Gets the effective alias target for a token in this context hierarchy. */
+  /**
+   * Gets the effective alias target for a token in this context hierarchy.
+   * @param aliasToken - Alias whose target should be resolved.
+   * @returns Target token of the alias, or undefined when the alias is unknown.
+   */
   private getAliasTarget(
     aliasToken: RequestContextToken,
   ): RequestContextToken | undefined {
     return this.aliases.get(aliasToken);
   }
 
-  /** Resolves an alias chain and rejects circular aliases. */
+  /**
+   * Resolves an alias chain and rejects circular aliases.
+   * @param aliasToken - Alias whose target should be resolved.
+   * @returns Final token after following the alias chain.
+   */
   private resolveToken(aliasToken: RequestContextToken): RequestContextToken {
     const path = [aliasToken];
     const seen = new Map<RequestContextToken, number>([[aliasToken, 0]]);
@@ -264,7 +295,11 @@ export class RequestContext {
     }
   }
 
-  /** Formats a token for use in alias validation errors. */
+  /**
+   * Formats a token for use in alias validation errors.
+   * @param token - Token used to identify the requested value.
+   * @returns Readable token label used in diagnostics.
+   */
   private static formatToken(token: RequestContextToken): string {
     if (typeof token === "string") {
       return JSON.stringify(token);
@@ -280,11 +315,9 @@ export class RequestContext {
   /**
    * Sets a value in the context.
    * Alias tokens are resolved to their final canonical token before storage.
-   *
-   * @typeParam T - The type of the value
+   * @template T - The type of the value
    * @param typeOrToken - The token to resolve and store the value under
    * @param value - The value to store
-   *
    * @example
    * ```typescript
    * const ctx = RequestContext.current();
@@ -301,11 +334,9 @@ export class RequestContext {
    * The alias token is resolved to the canonical target token. Child contexts
    * snapshot inherited aliases when they are created and may override them
    * without modifying their parent.
-   *
    * @param aliasToken - The token consumers use to request the value
    * @param targetToken - The canonical token that provides the value
-   * @throws Error if the alias would create a circular alias chain
-   *
+   * @throws {Error} if the alias would create a circular alias chain
    * @example
    * ```typescript
    * context.alias(BaseUser, User);
@@ -339,9 +370,7 @@ export class RequestContext {
    * Cancels an alias in this context.
    * An inherited alias is removed only from this context; existing parent and
    * child snapshots remain unchanged. Registering the alias again re-enables it.
-   *
    * @param aliasToken - The alias token to cancel
-   *
    * @example
    * ```typescript
    * context.unalias(BaseUser);
@@ -354,12 +383,10 @@ export class RequestContext {
   /**
    * Gets a value from the context, or sets it if not present.
    * Alias tokens are resolved to the same canonical token for both operations.
-   *
-   * @typeParam T - The type of the value
+   * @template T - The type of the value
    * @param typeOrToken - The key to look up or store under
    * @param value - The value to set if not already present
    * @returns The existing value or the newly set value
-   *
    * @example
    * ```typescript
    * const ctx = RequestContext.current();
@@ -381,12 +408,10 @@ export class RequestContext {
   /**
    * Gets a value from the current context by its key.
    * Static method that accesses the current context automatically.
-   *
-   * @typeParam T - The expected type of the value
+   * @template T - The expected type of the value
    * @param key - The key to look up
    * @returns The value if found, otherwise undefined
-   * @throws Error if no request context is active
-   *
+   * @throws {Error} if no request context is active
    * @example
    * ```typescript
    * const userId = RequestContext.get<number>('userId');
@@ -401,12 +426,10 @@ export class RequestContext {
   /**
    * Sets a value in the current context.
    * Static method that accesses the current context automatically.
-   *
-   * @typeParam T - The type of the value
+   * @template T - The type of the value
    * @param key - The key to store the value under
    * @param value - The value to store
-   * @throws Error if no request context is active
-   *
+   * @throws {Error} if no request context is active
    * @example
    * ```typescript
    * RequestContext.set('userId', 123);
@@ -422,11 +445,9 @@ export class RequestContext {
 
   /**
    * Registers a token alias in the current context.
-   *
    * @param aliasToken - The token consumers use to request the value
    * @param targetToken - The canonical token that provides the value
-   * @throws Error if no request context is active or the alias creates a cycle
-   *
+   * @throws {Error} if no request context is active or the alias creates a cycle
    * @example
    * ```typescript
    * RequestContext.alias(BaseUser, User);
@@ -441,10 +462,8 @@ export class RequestContext {
 
   /**
    * Cancels a token alias in the current context.
-   *
    * @param aliasToken - The alias token to cancel
-   * @throws Error if no request context is active
-   *
+   * @throws {Error} if no request context is active
    * @example
    * ```typescript
    * RequestContext.unalias(BaseUser);
@@ -457,13 +476,11 @@ export class RequestContext {
   /**
    * Gets a value from the current context, or sets it if not present.
    * Static method that accesses the current context automatically.
-   *
-   * @typeParam T - The type of the value
+   * @template T - The type of the value
    * @param key - The key to look up or store under
    * @param value - The value to set if not already present
    * @returns The existing value or the newly set value
-   * @throws Error if no request context is active
-   *
+   * @throws {Error} if no request context is active
    * @example
    * ```typescript
    * const cache = RequestContext.getOrSet('cache', new Map());
@@ -477,10 +494,8 @@ export class RequestContext {
 
   /**
    * Gets the ID of the current request context.
-   *
    * @returns The unique identifier of the current context
-   * @throws Error if no request context is active
-   *
+   * @throws {Error} if no request context is active
    * @example
    * ```typescript
    * console.log(`Processing request ${RequestContext.id}`);
@@ -492,10 +507,8 @@ export class RequestContext {
 
   /**
    * Gets the current request context.
-   *
    * @returns The current RequestContext instance
-   * @throws Error if no request context is active
-   *
+   * @throws {Error} if no request context is active
    * @example
    * ```typescript
    * const ctx = RequestContext.current();
@@ -514,9 +527,7 @@ export class RequestContext {
 
   /**
    * Checks if a request context is currently active.
-   *
    * @returns true if a context is active, false otherwise
-   *
    * @example
    * ```typescript
    * if (RequestContext.isActive()) {
@@ -531,12 +542,10 @@ export class RequestContext {
   /**
    * Runs a callback within a request context.
    * All registered middlewares are executed before the callback.
-   *
-   * @typeParam T - The return type of the callback
+   * @template T - The return type of the callback
    * @param ctx - The request context to run within
    * @param callback - The function to execute within the context
    * @returns A promise resolving to the callback's return value
-   *
    * @example
    * ```typescript
    * const result = await RequestContext.run(
@@ -568,12 +577,10 @@ export class RequestContext {
    * Creates and runs a child context that inherits from the current context.
    * Child contexts can read values from parent contexts but modifications
    * are isolated to the child.
-   *
-   * @typeParam T - The return type of the callback
+   * @template T - The return type of the callback
    * @param callback - The function to execute within the child context
    * @returns A promise resolving to the callback's return value
-   * @throws Error if no request context is active
-   *
+   * @throws {Error} if no request context is active
    * @example
    * ```typescript
    * // In parent context
@@ -612,11 +619,9 @@ export class RequestContext {
   /**
    * Registers a middleware to be executed when running a request context.
    * Middlewares are executed in dependency order.
-   *
    * @param name - Unique name for the middleware
    * @param middleware - The middleware function to register
    * @param dependencies - Names of middlewares that must run before this one
-   *
    * @example
    * ```typescript
    * RequestContext.registerMiddleware(
@@ -649,7 +654,13 @@ export class RequestContext {
     this.generateMiddlewaresStack();
   }
 
-  /** Resolves middleware dependencies via topological sort. @internal */
+  /**
+   * Resolves middleware dependencies via topological sort.
+   * @param name - Name used to identify the resource.
+   * @param resolved - Dependency value resolved for the token.
+   * @param seen - Tokens already visited while resolving aliases.
+   * @internal
+   */
   private static resolveDependencies(
     name: string,
     resolved: Set<string>,
@@ -670,7 +681,10 @@ export class RequestContext {
     resolved.add(name);
   }
 
-  /** Rebuilds the middleware execution stack after registration changes. @internal */
+  /**
+   * Rebuilds the middleware execution stack after registration changes.
+   * @internal
+   */
   private static generateMiddlewaresStack(): void {
     const resolved = new Set<string>();
     const seen = new Set<string>();

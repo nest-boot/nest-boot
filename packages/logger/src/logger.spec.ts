@@ -286,6 +286,11 @@ describe("Logger", () => {
   });
 });
 
+/**
+ * Returns logger configured for the test.
+ * @param configured - Whether to include an explicit logger configuration.
+ * @returns Logger configured for the test.
+ */
 async function createLogger(configured = false) {
   const providers: Parameters<typeof Test.createTestingModule>[0]["providers"] =
     [Logger, ParentService];

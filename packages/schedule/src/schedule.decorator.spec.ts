@@ -3,6 +3,12 @@ import "reflect-metadata";
 import { Cron, Interval, Schedule } from "./schedule.decorator.js";
 import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition.js";
 
+/**
+ * Returns method implementation stored on the prototype.
+ * @param prototype - Prototype containing the method.
+ * @param name - Name used to identify the resource.
+ * @returns Method implementation stored on the prototype.
+ */
 function getMethod(prototype: object, name: string) {
   return Object.getOwnPropertyDescriptor(prototype, name)?.value;
 }

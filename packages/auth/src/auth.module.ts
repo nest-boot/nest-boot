@@ -63,7 +63,6 @@ import {
 /**
  * Authentication module based on better-auth.
  *
- * @remarks
  * Provides authentication services including session management, middleware registration,
  * and MikroORM-based persistence via the better-auth adapter.
  */

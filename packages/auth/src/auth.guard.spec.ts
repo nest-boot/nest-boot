@@ -369,6 +369,14 @@ describe("AuthGuard", () => {
   });
 });
 
+/**
+ * Returns test guard and its mocked dependencies.
+ * @param guardType - Guard class to instantiate.
+ * @param getAllAndOverride - Mock for resolving overridden route metadata.
+ * @param options - Authentication module configuration.
+ * @param getAllAndMerge - Mock for merging route metadata.
+ * @returns Test guard and its mocked dependencies.
+ */
 async function createGuard<T extends AuthGuard>(
   guardType: Type<T>,
   getAllAndOverride: Mock,
@@ -399,6 +407,10 @@ async function createGuard<T extends AuthGuard>(
   };
 }
 
+/**
+ * Returns nest execution context for the test request and handler.
+ * @returns Nest execution context for the test request and handler.
+ */
 function createContext() {
   const handler = vi.fn();
   return {

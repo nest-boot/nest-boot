@@ -167,6 +167,12 @@ describe("SessionResolver", () => {
   });
 });
 
+/**
+ * Returns test resolver and its mocked dependencies.
+ * @param sessionOverrides - Session service methods replaced for this test.
+ * @param authOverrides - Authentication service methods replaced for this test.
+ * @returns Test resolver and its mocked dependencies.
+ */
 function createResolver(
   sessionOverrides: Partial<SessionService> = {},
   authOverrides: Partial<AuthService> = {},

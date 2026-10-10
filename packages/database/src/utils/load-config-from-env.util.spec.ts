@@ -17,6 +17,10 @@ interface TlsFilePaths {
   rootCert: string;
 }
 
+/**
+ * Runs the callback with temporary TLS fixture files.
+ * @param callback - Work to execute in the supplied context.
+ */
 async function withTlsFiles(
   callback: (paths: TlsFilePaths) => Promise<void>,
 ): Promise<void> {

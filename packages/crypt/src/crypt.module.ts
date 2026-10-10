@@ -14,7 +14,6 @@ import { estimateEntropy } from "./utils/estimate-entropy.js";
  * Module that provides encryption and decryption services using JWE (A256GCMKW + A256GCM).
  *
  * Uses HKDF to derive a 32-byte key from the secret, so secrets of any length are accepted.
- *
  * @example
  * ```typescript
  * import { CryptModule } from '@nest-boot/crypt';

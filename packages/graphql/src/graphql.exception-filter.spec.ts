@@ -14,6 +14,11 @@ import { z } from "zod";
 
 import { GraphQLExceptionFilter } from "./graphql.exception-filter.js";
 
+/**
+ * Returns host configured for the test.
+ * @param type - Type used to interpret the value.
+ * @returns Host configured for the test.
+ */
 function createHost(type: "graphql" | "http") {
   return {
     getType: vi.fn(() => type),
@@ -237,6 +242,10 @@ describe("GraphQLExceptionFilter", () => {
   });
 });
 
+/**
+ * Returns filter configured for the test.
+ * @returns Filter configured for the test.
+ */
 async function createFilter() {
   const errorLog = vi.fn();
   const moduleRef = await Test.createTestingModule({

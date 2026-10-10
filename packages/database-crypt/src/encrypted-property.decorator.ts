@@ -11,7 +11,8 @@ const ENCRYPTED_PROPERTIES_KEY = Symbol("encryptedProperties");
 /**
  * Decorator that marks a property as an encrypted field.
  * The property value will be automatically encrypted before create and update operations.
- *
+ * @param options - Configuration for this operation.
+ * @returns Property decorator that encrypts values before persistence.
  * @example
  * ```typescript
  * import { t } from '@mikro-orm/core';

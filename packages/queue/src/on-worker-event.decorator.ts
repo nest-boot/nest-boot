@@ -6,12 +6,10 @@ import { createContextEventDecorator } from "./utils/create-context-event-decora
 /**
  * Listens to a worker event in an independent queue request context.
  *
- * @remarks
  * Use on a method of a singleton `WorkerHost` registered with `@Processor()`.
  * Job-bearing events bind `JOB_REF`; `stalled` supplies only the context ID.
  * Events without a job ID use a generated context ID. Handler and middleware
  * failures are logged and suppressed because BullMQ does not await listeners.
- *
  * @param eventName - The worker event to observe
  * @returns A method decorator compatible with Nest's worker event discovery
  */

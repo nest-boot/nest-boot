@@ -63,4 +63,64 @@ describe("eslint config consumer integration", () => {
       ]),
     );
   });
+
+  it("accepts JSDoc with TypeScript-inferred types and template tags", async () => {
+    const file = join(fixtureDirectory, "documented.ts");
+    await writeFile(
+      file,
+      `/**
+ * Returns the supplied value unchanged.
+ * @template T - The value type.
+ * @param value - The value to return.
+ * @returns The original value.
+ */
+export function identity<T>(value: T): T {
+  return value;
+}
+`,
+    );
+    const eslint = new ESLint({
+      cwd: fixtureDirectory,
+      overrideConfig: config,
+      overrideConfigFile: true,
+    });
+
+    const results = await eslint.lintFiles([file]);
+
+    expect(results[0]?.messages).toEqual([]);
+  });
+
+  it.each([
+    ["@typeParam T - The value type.", "jsdoc/check-tag-names"],
+    ["@param {T} value - The value to return.", "jsdoc/no-types"],
+    ["@param other - The value to return.", "jsdoc/check-param-names"],
+    ["@throws When the value is invalid.", "jsdoc/require-throws-type"],
+  ])("rejects nonstandard documentation: %s", async (tag, ruleId) => {
+    const file = join(fixtureDirectory, "invalid-docs.ts");
+    await writeFile(
+      file,
+      `/**
+ * Returns the supplied value unchanged.
+ * ${tag}
+ * @returns The original value.
+ */
+export function identity<T>(value: T): T {
+  return value;
+}
+`,
+    );
+    const eslint = new ESLint({
+      cwd: fixtureDirectory,
+      overrideConfig: config,
+      overrideConfigFile: true,
+    });
+
+    const results = await eslint.lintFiles([file]);
+
+    expect(results[0]?.messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ ruleId, severity: 2 }),
+      ]),
+    );
+  });
 });

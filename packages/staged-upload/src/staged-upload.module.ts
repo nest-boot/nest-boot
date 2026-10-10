@@ -10,7 +10,6 @@ import { StagedUploadService } from "./staged-upload.service.js";
 /**
  * Module for staging temporary uploads and promoting accepted objects.
  *
- * @remarks
  * Registers and globally exports {@link StagedUploadService}.
  */
 @Global()

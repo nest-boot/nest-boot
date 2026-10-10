@@ -33,7 +33,7 @@ describe("request identity checks", () => {
           expect(() => {
             invoke(target);
           }).toThrow(ForbiddenException);
-          context.set(Entity as never, target);
+          context.set<InstanceType<typeof Entity>>(Entity, target);
           expect(() => {
             invoke(target);
           }).not.toThrow();

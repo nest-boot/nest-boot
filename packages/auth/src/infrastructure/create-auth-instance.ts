@@ -38,7 +38,16 @@ import {
 } from "../workspace.constants.js";
 import { RequestIdentity } from "./request-identity.js";
 
-/** Resolves framework configuration before constructing the upstream instance. @internal */
+/**
+ * Resolves framework configuration before constructing the upstream instance.
+ * @param options - Authentication module configuration.
+ * @param orm - MikroORM instance used for persistence.
+ * @param mailer - Mailer used to deliver authentication emails.
+ * @param hashService - Service for hashing and verifying passwords.
+ * @param userDeletionService - Service that deletes users and their related records.
+ * @returns Better Auth options assembled from the module configuration.
+ * @internal
+ */
 export function resolveBetterAuthOptions(
   options: AuthModuleOptions,
   orm: MikroORM,
@@ -114,7 +123,16 @@ export function resolveBetterAuthOptions(
   return betterAuthOptions;
 }
 
-/** Constructs the single BetterAuth instance used by Nest providers. @internal */
+/**
+ * Constructs the single BetterAuth instance used by Nest providers.
+ * @param options - Authentication module configuration.
+ * @param orm - MikroORM instance used for persistence.
+ * @param mailer - Mailer used to deliver authentication emails.
+ * @param hashService - Service for hashing and verifying passwords.
+ * @param userDeletionService - Service that deletes users and their related records.
+ * @returns Configured Better Auth instance.
+ * @internal
+ */
 export function createAuthInstance(
   options: AuthModuleOptions,
   orm: MikroORM,
@@ -133,6 +151,10 @@ export function createAuthInstance(
   );
 }
 
+/**
+ * Validates authentication options before constructing Better Auth.
+ * @param options - Authentication module configuration.
+ */
 function validateAuthOptions(options: AuthModuleOptions): void {
   const { roles: userRoles, permissions: userPermissions } = resolveAuthCatalog(
     options,
@@ -198,6 +220,11 @@ function validateAuthOptions(options: AuthModuleOptions): void {
   );
 }
 
+/**
+ * Copies supported module options into the Better Auth configuration.
+ * @param target - Object that receives the configuration.
+ * @param source - Source value to read from.
+ */
 function copyBetterAuthOptions(
   target: BetterAuthOptions,
   source: AuthModuleOptions,

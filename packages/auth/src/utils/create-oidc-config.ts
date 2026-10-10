@@ -4,6 +4,11 @@ import { resolveOidcPrompt } from "./resolve-oidc-prompt.js";
 import { resolveOidcScopes } from "./resolve-oidc-scopes.js";
 import { resolveRequiredOidcEnv } from "./resolve-required-oidc-env.js";
 
+/**
+ * Returns environment-derived OIDC configuration, or undefined when disabled.
+ * @param disableSignUp - Whether provider-based registration is disabled.
+ * @returns Environment-derived OIDC configuration, or undefined when disabled.
+ */
 export function createOidcConfig(
   disableSignUp: boolean,
 ): GenericOAuthProviderConfig | undefined {

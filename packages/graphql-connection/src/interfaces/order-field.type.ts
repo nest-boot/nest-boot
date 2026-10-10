@@ -14,8 +14,7 @@ export type DotToUnderscore<S extends string> =
  *
  * Converts entity field paths to uppercase with underscores.
  * For example, "createdAt" becomes "CREATED_AT", and "user.name" becomes "USER_NAME".
- *
- * @typeParam T - The entity type
+ * @template T - The entity type
  */
 export type OrderFieldKey<T> = Uppercase<
   DotToUnderscore<Extract<AutoPath<T, string>, string>>
@@ -23,8 +22,7 @@ export type OrderFieldKey<T> = Uppercase<
 
 /**
  * The value type for order fields (the actual field path in the entity).
- *
- * @typeParam T - The entity type
+ * @template T - The entity type
  */
 export type OrderFieldValue<T> = Extract<AutoPath<T, string>, string>;
 
@@ -32,7 +30,6 @@ export type OrderFieldValue<T> = Extract<AutoPath<T, string>, string>;
  * A record mapping order field keys to their actual field paths.
  *
  * Used to create the GraphQL enum for sortable fields.
- *
- * @typeParam T - The entity type
+ * @template T - The entity type
  */
 export type OrderFieldType<T> = Record<OrderFieldKey<T>, OrderFieldValue<T>>;

@@ -53,7 +53,13 @@ export class SessionService {
 
   private readonly auth: BetterAuthAdapter;
 
-  /** Paginates active sessions visible to the caller for the parent user. */
+  /**
+   * Paginates active sessions visible to the caller for the parent user.
+   * @param user - The user whose account is being accessed.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated active sessions with session tokens omitted.
+   */
   async getSessionConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<Session>,
@@ -81,7 +87,11 @@ export class SessionService {
     };
   }
 
-  /** Authorizes both the parent session and the impersonator's private profile. */
+  /**
+   * Authorizes both the parent session and the impersonator's private profile.
+   * @param session - Session whose metadata is being accessed.
+   * @returns Administrator who started the session, or null.
+   */
   async getSessionImpersonator(session: Session): Promise<User | null> {
     this.assertCanListSessions({ id: session.user.id } as User, session);
     if (!session.impersonatedBy) return null;
@@ -106,7 +116,12 @@ export class SessionService {
     }
   }
 
-  /** Revokes one session by ID when it belongs to the supplied user. */
+  /**
+   * Revokes one session by ID when it belongs to the supplied user.
+   * @param user - The user whose account is being accessed.
+   * @param id - Identifier of the record to access.
+   * @returns Whether the selected session was revoked.
+   */
   async revokeSession(user: User | string, id: string): Promise<boolean> {
     user = await this.resolveUserForRevocation(user);
     authorize("revoke", Session);
@@ -136,7 +151,11 @@ export class SessionService {
     return revoked;
   }
 
-  /** Revokes the user's sessions, including impersonation sessions they started. */
+  /**
+   * Revokes the user's sessions, including impersonation sessions they started.
+   * @param user - The user whose account is being accessed.
+   * @returns Number of sessions revoked.
+   */
   async revokeUserSessions(user: User | string): Promise<number> {
     user = await this.resolveUserForRevocation(user);
     authorize("revoke", Session);
@@ -178,7 +197,6 @@ export class SessionService {
 
   /**
    * Resolves the persisted user and session represented by the current request.
-   *
    * @returns Application entities for a valid session, otherwise `null`.
    */
   async getCurrentAuthenticatedSession(): Promise<AuthenticatedSession | null> {
@@ -220,14 +238,13 @@ export class SessionService {
     }
 
     return {
-      session: session as Session,
-      user: user as User,
+      session: session,
+      user: user,
     };
   }
 
   /**
    * Lists the persisted active sessions belonging to the authenticated user.
-   *
    * @returns Active session entities in the order returned by the auth backend.
    */
   async listCurrentUserSessions(): Promise<Session[]> {
@@ -245,11 +262,15 @@ export class SessionService {
 
     return data.flatMap(({ token }) => {
       const session = sessionsByToken.get(token);
-      return session ? [session as Session] : [];
+      return session ? [session] : [];
     });
   }
 
-  /** Revokes one session owned by the authenticated user by its public ID. */
+  /**
+   * Revokes one session owned by the authenticated user by its public ID.
+   * @param id - Identifier of the record to access.
+   * @returns Whether the selected session was revoked successfully.
+   */
   async revokeCurrentUserSession(id: string): Promise<boolean> {
     const session = (await this.listCurrentUserSessions()).find(
       (candidate) => String(candidate.id) === id,
@@ -270,7 +291,10 @@ export class SessionService {
     return result.status;
   }
 
-  /** Revokes every session except the authenticated user's current session. */
+  /**
+   * Revokes every session except the authenticated user's current session.
+   * @returns Whether the other sessions were revoked successfully.
+   */
   async revokeCurrentUserOtherSessions(): Promise<boolean> {
     const result = await this.auth.api.revokeOtherSessions({
       headers: headers(),
@@ -278,7 +302,10 @@ export class SessionService {
     return result.status;
   }
 
-  /** Revokes every session belonging to the authenticated user. */
+  /**
+   * Revokes every session belonging to the authenticated user.
+   * @returns Whether the user's sessions were revoked successfully.
+   */
   async revokeCurrentUserSessions(): Promise<boolean> {
     this.assertRevocationCanCommit();
     const result = await this.auth.api.revokeSessions({ headers: headers() });
@@ -297,10 +324,10 @@ export class SessionService {
   /**
    * Writes a persisted session's signed cookie to the current browser response.
    *
-   * @remarks
    * The session cookie is intentionally browser-session scoped. Cached session
    * and account cookies are expired so the next request resolves fresh data.
    * This does not change the current request's identity, abilities, or RLS scope.
+   * @param sessionToken - Token of the session to adopt.
    */
   async setSessionCookie(sessionToken: string): Promise<void> {
     const { authCookies, secret } = await this.auth.$context;
@@ -326,6 +353,12 @@ interface AuthCookie {
   attributes: BetterAuthCookies[keyof BetterAuthCookies]["attributes"];
 }
 
+/**
+ * Returns cookie value with its HMAC signature appended.
+ * @param value - Value to inspect or transform.
+ * @param secret - Secret used to sign authentication data.
+ * @returns Cookie value with its HMAC signature appended.
+ */
 async function createSignedCookieValue(
   value: string,
   secret: string,
@@ -334,12 +367,22 @@ async function createSignedCookieValue(
   return `${value}.${signature}`;
 }
 
+/**
+ * Returns cookie attributes with expiration derived from the session configuration.
+ * @param cookie - Cookie definition and its attributes.
+ * @returns Cookie attributes with expiration derived from the session configuration.
+ */
 function createSessionCookieOptions(cookie: AuthCookie): CookieOptions {
   const options = createCookieOptions(cookie);
   delete options.maxAge;
   return options;
 }
 
+/**
+ * Returns cookie attributes that remove the cookie immediately.
+ * @param cookie - Cookie definition and its attributes.
+ * @returns Cookie attributes that remove the cookie immediately.
+ */
 function createExpiredCookieOptions(cookie: AuthCookie): CookieOptions {
   return {
     ...createCookieOptions(cookie),
@@ -348,6 +391,11 @@ function createExpiredCookieOptions(cookie: AuthCookie): CookieOptions {
   };
 }
 
+/**
+ * Expires the session cookie and all of its numbered chunks.
+ * @param cookieStore - Response cookie store to update.
+ * @param cookie - Cookie definition and its attributes.
+ */
 function expireCookieAndChunks(
   cookieStore: ReturnType<typeof cookies>,
   cookie: AuthCookie,
@@ -362,6 +410,12 @@ function expireCookieAndChunks(
   }
 }
 
+/**
+ * Returns whether the name identifies a numbered chunk of the base cookie.
+ * @param name - Name used to identify the resource.
+ * @param cookieName - Base name of the cookie whose chunks are matched.
+ * @returns Whether the name identifies a numbered chunk of the base cookie.
+ */
 function isCookieChunk(name: string, cookieName: string): boolean {
   const prefix = `${cookieName}.`;
   if (!name.startsWith(prefix)) return false;
@@ -371,6 +425,11 @@ function isCookieChunk(name: string, cookieName: string): boolean {
   return Number.isSafeInteger(index) && index >= 0 && String(index) === suffix;
 }
 
+/**
+ * Returns hTTP cookie options copied from the auth cookie definition.
+ * @param cookie - Cookie definition and its attributes.
+ * @returns HTTP cookie options copied from the auth cookie definition.
+ */
 function createCookieOptions(cookie: AuthCookie): CookieOptions {
   const { attributes } = cookie;
   return {

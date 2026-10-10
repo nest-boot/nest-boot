@@ -15,16 +15,28 @@ import { JobService } from './job.service.js';
 /** 由应用全局 AuthGuard 保护的任务历史查询入口。 */
 @Resolver(() => Job)
 export class JobResolver {
-  /** 创建任务查询解析器。 */
+  /**
+   * 创建任务查询解析器。
+   * @param jobService - Service for reading persisted queue jobs.
+   */
   constructor(private readonly jobService: JobService) {}
 
-  /** 按完整任务 ID 查询当前身份可访问的任务。 */
+  /**
+   * 按完整任务 ID 查询当前身份可访问的任务。
+   * @param id - Identifier of the record to access.
+   * @returns Requested queue job, or null if it does not exist.
+   */
   @Query(() => Job, { nullable: true })
   async job(@Args('id', { type: () => ID }) id: string): Promise<Job | null> {
     return await this.jobService.getJob(id);
   }
 
-  /** 跨队列分页查询当前身份可访问的任务。 */
+  /**
+   * 跨队列分页查询当前身份可访问的任务。
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated queue jobs matching the query.
+   */
   @Query(() => JobConnection)
   async jobs(
     @Args({ type: () => JobConnectionArgs }) args: ConnectionArgsInterface<Job>,

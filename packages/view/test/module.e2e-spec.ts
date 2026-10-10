@@ -109,6 +109,11 @@ describe("ViewModule HTTP integration", () => {
       .expect(200, "<main>Hello, ASYNC!</main>");
   });
 
+  /**
+   * Returns initialized test application and its exposed dependencies.
+   * @param viewModule - View module registration to test.
+   * @returns Initialized test application and its exposed dependencies.
+   */
   async function createApp(
     viewModule: DynamicModule | Type,
   ): Promise<INestApplication> {
@@ -122,6 +127,14 @@ describe("ViewModule HTTP integration", () => {
     return app;
   }
 
+  /**
+   * Writes the template fixtures used by the rendering tests.
+   * @param options - Configuration for this operation.
+   * @param options.root - Directory containing root templates.
+   * @param options.partials - Directory containing partial templates.
+   * @param options.layouts - Directory containing layout templates.
+   * @param options.extname - Template file extension.
+   */
   async function writeTemplates(options: {
     root: string;
     partials: string;

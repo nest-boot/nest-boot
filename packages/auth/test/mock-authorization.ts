@@ -5,7 +5,10 @@ import * as authorizeUtil from "../src/utils/authorize.util.js";
 import * as canUtil from "../src/utils/can.util.js";
 import * as grants from "../src/utils/permission-grants.util.js";
 
-/** Isolates persistence tests from authorization; boundary tests restore the relevant check. */
+/**
+ * Isolates persistence tests from authorization; boundary tests restore the relevant check.
+ * @returns Spies for permission checks and authorization enforcement.
+ */
 export function mockAuthorization() {
   return {
     can: vi.spyOn(canUtil, "can").mockClear().mockReturnValue(true),

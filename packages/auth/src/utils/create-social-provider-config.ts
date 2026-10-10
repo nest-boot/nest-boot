@@ -18,6 +18,13 @@ type ResolvedSocialProviderConfig<T extends SocialProviderId> = Exclude<
   (...args: never[]) => unknown
 >;
 
+/**
+ * Returns provider options with environment credentials, or undefined when disabled.
+ * @param provider - Authentication provider identifier.
+ * @param disableSignUp - Whether provider-based registration is disabled.
+ * @param options - Configuration for this operation.
+ * @returns Provider options with environment credentials, or undefined when disabled.
+ */
 export function createSocialProviderConfig<T extends SocialProviderId>(
   provider: T,
   disableSignUp: boolean,
@@ -67,5 +74,5 @@ export function createSocialProviderConfig<T extends SocialProviderId>(
     clientSecret: resolveRequiredSocialProviderEnv(provider, "clientSecret"),
     ...(hasEnabledEnv ? { enabled } : {}),
     disableSignUp: shouldDisableSignUp || options?.disableSignUp === true,
-  } as SocialProviderConfig<T>;
+  };
 }

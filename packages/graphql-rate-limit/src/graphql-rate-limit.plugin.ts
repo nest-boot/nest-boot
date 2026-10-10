@@ -44,6 +44,12 @@ const {
   graphqlQueryComplexity as unknown as typeof import("graphql-query-complexity");
 
 // https://shopify.engineering/rate-limiting-graphql-apis-calculating-query-complexity
+/**
+ * Returns estimated field cost, or undefined when no estimate applies.
+ * @param args - Pagination, filtering, and ordering arguments.
+ * @param type - Type used to interpret the value.
+ * @returns Estimated field cost, or undefined when no estimate applies.
+ */
 function shopifyEstimator(
   args: ComplexityEstimatorArgs,
   type?: GraphQLType,

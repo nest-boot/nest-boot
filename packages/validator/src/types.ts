@@ -40,7 +40,7 @@ export type ZodDtoShape<T extends object> = {
 /**
  * A decorated DTO schema, statically modeled by its data properties.
  *
- * @remarks Its runtime shape contains only properties registered with
+ * Its runtime shape contains only properties registered with
  * {@link ZodField}.
  */
 export type DecoratedZodObject<T extends object = Record<string, unknown>> =

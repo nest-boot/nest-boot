@@ -23,12 +23,18 @@ interface TestWorker {
   on: Mock;
 }
 
-type WorkerHostWithMock = TestWorkerHost & {
+type WorkerHostWithMock = Omit<TestWorkerHost, "worker"> & {
   readonly worker: TestWorker;
 };
 
 type WorkerEventCall = [string, (job?: Job) => void];
 
+/**
+ * Returns job configured for the test.
+ * @param state - Queue job state reported by the fixture.
+ * @param overrides - Fixture values that replace the defaults.
+ * @returns Job configured for the test.
+ */
 function createJob(
   state: JobState | "unknown",
   overrides: Partial<Job> = {},
@@ -50,6 +56,12 @@ function createJob(
   } as unknown as Job;
 }
 
+/**
+ * Returns test service and its mocked dependencies.
+ * @param options - Configuration for this operation.
+ * @param providers - Dependency injection providers to register.
+ * @returns Test service and its mocked dependencies.
+ */
 async function createService(
   options: Partial<QueueDatabaseModuleOptions> = {},
   providers: unknown[] = [],
@@ -97,8 +109,13 @@ async function createService(
   };
 }
 
+/**
+ * Returns queue configured for the test.
+ * @param name - Name used to identify the resource.
+ * @returns Queue configured for the test.
+ */
 function createQueue(name: string) {
-  const queue = Object.create(Queue.prototype) as Queue & {
+  const queue = Object.create(Queue.prototype) as Omit<Queue, "name" | "on"> & {
     name: string;
     on: Mock;
   };
@@ -108,6 +125,11 @@ function createQueue(name: string) {
   return queue;
 }
 
+/**
+ * Returns worker host configured for the test.
+ * @param name - Name used to identify the resource.
+ * @returns Worker host configured for the test.
+ */
 function createWorkerHost(name: string): WorkerHostWithMock {
   const workerHost = new TestWorkerHost();
   const worker: TestWorker = {

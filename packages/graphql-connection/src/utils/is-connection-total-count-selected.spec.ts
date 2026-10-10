@@ -2,6 +2,12 @@ import { type GraphQLResolveInfo, Kind, parse } from "graphql";
 
 import { isConnectionTotalCountSelected } from "./is-connection-total-count-selected.js";
 
+/**
+ * Returns graphQL resolve information parsed from the document.
+ * @param source - Source value to read from.
+ * @param variableValues - Values of variables referenced by the GraphQL document.
+ * @returns GraphQL resolve information parsed from the document.
+ */
 function createResolveInfo(
   source: string,
   variableValues: Record<string, unknown> = {},

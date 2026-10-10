@@ -7,24 +7,38 @@ import { MiddlewareInstanceOrFunction } from "./types/index.js";
 /**
  * Fluent configurator for applying middlewares to routes.
  *
- * @remarks
  * Provides a chainable API for specifying route patterns, exclusions,
  * and dependency ordering when registering middleware.
  */
 export class MiddlewareConfigurator {
-  /** Whether global route exclusions are disabled for these middlewares. @internal */
+  /**
+   * Whether global route exclusions are disabled for these middlewares.
+   * @internal
+   */
   private disabledGlobalExcludeRoutes = false;
 
-  /** Routes excluded from middleware processing. @internal */
+  /**
+   * Routes excluded from middleware processing.
+   * @internal
+   */
   private readonly excludeRoutes: (string | RouteInfo)[] = [];
 
-  /** Middleware types that must run before this middleware. @internal */
+  /**
+   * Middleware types that must run before this middleware.
+   * @internal
+   */
   private readonly dependencyMiddlewares: Type<NestMiddleware>[] = [];
 
-  /** Middleware types that should run before this middleware when registered. @internal */
+  /**
+   * Middleware types that should run before this middleware when registered.
+   * @internal
+   */
   private readonly afterMiddlewares: Type<NestMiddleware>[] = [];
 
-  /** Middleware types that should run after this middleware when registered. @internal */
+  /**
+   * Middleware types that should run after this middleware when registered.
+   * @internal
+   */
   private readonly beforeMiddlewares: Type<NestMiddleware>[] = [];
 
   /**
@@ -59,9 +73,7 @@ export class MiddlewareConfigurator {
   /**
    * Declares middlewares that should run after this middleware when registered.
    *
-   * @remarks
    * This is a soft ordering hint. Unregistered middleware types are ignored.
-   *
    * @param beforeMiddlewares - Middleware types that should run after this middleware
    * @returns This configurator for chaining
    */
@@ -73,9 +85,7 @@ export class MiddlewareConfigurator {
   /**
    * Declares middlewares that should run before this middleware when registered.
    *
-   * @remarks
    * This is a soft ordering hint. Unregistered middleware types are ignored.
-   *
    * @param afterMiddlewares - Middleware types that should run before this middleware
    * @returns This configurator for chaining
    */
@@ -88,10 +98,8 @@ export class MiddlewareConfigurator {
    * Declares middleware dependencies for ordering. Dependencies must be registered
    * and must run before this middleware.
    *
-   * @remarks
    * This is a hard prerequisite. An unregistered dependency throws during
    * middleware configuration.
-   *
    * @param dependencyMiddlewares - Middleware types that must run before this middleware
    * @returns This configurator for chaining
    */

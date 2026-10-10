@@ -6,8 +6,6 @@
     "node": ">=24.4.0"
   },
   "scripts": {
-    "docs:generate": "cd ../.. && pnpm build:packages && pnpm docs:generate",
-    "prebuild": "pnpm run docs:generate",
     "build": "next build",
     "dev": "next dev",
     "start": "next start",

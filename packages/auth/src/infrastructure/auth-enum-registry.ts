@@ -16,7 +16,10 @@ import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 let activeSignature: string | undefined;
 let activeApplications = 0;
 
-/** @internal Initializes Nest's process-wide enum metadata before schema generation. */
+/**
+ * Initializes Nest's process-wide enum metadata before schema generation.
+ * @internal
+ */
 export class AuthEnumRegistry implements OnModuleDestroy {
   private released = false;
 

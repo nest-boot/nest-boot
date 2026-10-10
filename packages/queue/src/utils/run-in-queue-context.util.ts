@@ -2,13 +2,22 @@ import { RequestContext } from "@nest-boot/request-context";
 import { JOB_REF } from "@nestjs/bullmq";
 import type { Job } from "bullmq";
 
-/** Values available when entering a job processor or event handler. @internal */
+/**
+ * Values available when entering a job processor or event handler.
+ * @internal
+ */
 export interface QueueContextOptions {
   id?: string;
   job?: Job;
 }
 
-/** Runs one callback and its middleware in an independent queue context. @internal */
+/**
+ * Runs one callback and its middleware in an independent queue context.
+ * @param options - Configuration for this operation.
+ * @param callback - Work to execute in the supplied context.
+ * @returns Handler result within the queue request context.
+ * @internal
+ */
 export async function runInQueueContext<T>(
   options: QueueContextOptions,
   callback: () => T | Promise<T>,

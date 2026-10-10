@@ -32,7 +32,6 @@ const mailerProvider: Provider<Mailer> = {
 /**
  * Global email sending module powered by Nodemailer.
  *
- * @remarks
  * Import the module directly to configure SMTP from environment variables, or
  * use {@link MailerModule.register} and {@link MailerModule.registerAsync} for
  * explicit Nodemailer transport options.

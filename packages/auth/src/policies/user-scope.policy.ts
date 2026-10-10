@@ -10,6 +10,8 @@ import { createScopePolicy } from "./create-scope-policy.js";
  * Missing/empty session identifiers match no rows. The property must map to a
  * single column; type is the explicit SQL cast, not an inferred TypeScript type.
  * Compose in Entity.policies; no Filter or discovery hook is required.
+ * @param options - Configuration for this operation.
+ * @returns Native policy scoped to the current user identifier.
  */
 export function userScopePolicy(options: ScopePolicyOptions = {}): PolicyDef {
   return createScopePolicy("user", options);

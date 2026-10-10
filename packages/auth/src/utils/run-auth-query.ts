@@ -10,6 +10,9 @@ import { getCurrentApiKey } from "./get-current-api-key.util.js";
 /**
  * Runs service-authorized persistence without the application's database session.
  * Never changes the caller's EntityManager or detaches an active transaction.
+ * @param em - Entity manager used for persistence.
+ * @param callback - Work to execute in the supplied context.
+ * @returns Callback result from the authentication persistence context.
  */
 export async function runAuthQuery<T>(
   em: EntityManager,

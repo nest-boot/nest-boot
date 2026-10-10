@@ -21,6 +21,11 @@ export type WritableHttpResponseLike =
       setHeader(name: string, value: string | string[]): unknown;
     };
 
+/**
+ * Returns hTTP request from the active request context.
+ * @param helper - HTTP helper whose context is required.
+ * @returns HTTP request from the active request context.
+ */
 export function getHttpRequest(helper: "cookies" | "headers"): HttpRequestLike {
   if (!RequestContext.isActive() || RequestContext.current().type !== "http") {
     throw unavailableError(helper);
@@ -35,6 +40,10 @@ export function getHttpRequest(helper: "cookies" | "headers"): HttpRequestLike {
   return request;
 }
 
+/**
+ * Returns hTTP response that can accept cookie header changes.
+ * @returns HTTP response that can accept cookie header changes.
+ */
 export function getWritableHttpResponse(): WritableHttpResponseLike {
   if (!RequestContext.isActive() || RequestContext.current().type !== "http") {
     throw new Error("Cookie writes require a writable HTTP response context");
@@ -63,6 +72,11 @@ export function getWritableHttpResponse(): WritableHttpResponseLike {
   return response as WritableHttpResponseLike;
 }
 
+/**
+ * Returns error explaining that the helper requires an HTTP request context.
+ * @param helper - HTTP helper whose context is required.
+ * @returns Error explaining that the helper requires an HTTP request context.
+ */
 function unavailableError(helper: "cookies" | "headers"): Error {
   return new Error(
     `${helper}() is only available within an HTTP request context`,

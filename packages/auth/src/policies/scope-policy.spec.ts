@@ -3,6 +3,12 @@ import type { PolicyCallback, PolicyDef } from "@mikro-orm/core";
 import { userScopePolicy } from "./user-scope.policy.js";
 import { workspaceScopePolicy } from "./workspace-scope.policy.js";
 
+/**
+ * Returns sQL expression produced by the policy callback.
+ * @param value - Value to inspect or transform.
+ * @param columns - Mapped database columns available to the policy.
+ * @returns SQL expression produced by the policy callback.
+ */
 function resolve(value: PolicyDef["using"], columns: Record<string, string>) {
   return (value as PolicyCallback<Record<string, unknown>>)(
     columns as never,

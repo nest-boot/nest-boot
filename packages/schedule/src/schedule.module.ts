@@ -16,7 +16,6 @@ import { type ScheduleModuleOptions } from "./schedule-module-options.interface.
 /**
  * Job scheduling module powered by BullMQ.
  *
- * @remarks
  * Provides cron-like job scheduling using BullMQ queues.
  * Supports decorator-based schedule registration and configurable concurrency.
  */

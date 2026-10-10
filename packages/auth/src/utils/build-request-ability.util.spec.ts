@@ -201,13 +201,17 @@ describe("framework-owned request abilities", () => {
     expect(ability?.can("delete", User)).toBe(false);
     expect(() =>
       buildRequestAbility({
-        buildAbility: (() => ({ can: () => true })) as never,
+        buildAbility: () => ({ can: () => true }),
 
         user: {},
       }),
     ).toThrow("must not return");
   });
 });
+/**
+ * Returns member stored in the current test context.
+ * @returns Member stored in the current test context.
+ */
 function requireMember(): Member {
   const member = RequestContext.get(Member);
   assert(member);

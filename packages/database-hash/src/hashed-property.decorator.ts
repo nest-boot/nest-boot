@@ -11,7 +11,8 @@ const HASH_PROPERTIES_KEY = Symbol("hashProperties");
 /**
  * Decorator that marks a property as a hashed field.
  * The property value will be automatically hashed before create and update operations.
- *
+ * @param options - Configuration for this operation.
+ * @returns Property decorator that hashes values before persistence.
  * @example
  * ```typescript
  * import { t } from '@mikro-orm/core';

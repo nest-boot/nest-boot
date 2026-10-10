@@ -79,7 +79,11 @@ export class QueueDatabaseService implements OnApplicationBootstrap {
       );
   }
 
-  /** Records history without turning an observer failure into a worker failure. */
+  /**
+   * Records history without turning an observer failure into a worker failure.
+   * @param job - Queue job whose context is captured.
+   * @param state - Queue job state reported by the fixture.
+   */
   private recordJobEvent(job: Job, state: JobState): void {
     void this.upsertJob(job, state).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);

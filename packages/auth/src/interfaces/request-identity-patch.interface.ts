@@ -4,7 +4,10 @@ import type { User } from "../entities/user.entity.js";
 import type { Workspace } from "../entities/workspace.entity.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
-/** Identity values staged together by the auth infrastructure. @internal */
+/**
+ * Identity values staged together by the auth infrastructure.
+ * @internal
+ */
 export interface RequestIdentityPatch {
   user?: User | null;
   member?: Member | null;

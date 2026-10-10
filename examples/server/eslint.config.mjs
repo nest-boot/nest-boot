@@ -37,7 +37,6 @@ export default defineConfig([
       '@typescript-eslint/restrict-plus-operands': 'off',
       '@typescript-eslint/unbound-method': 'off',
       'prefer-const': 'off',
-      'tsdoc/syntax': 'off',
     },
   },
 ]);

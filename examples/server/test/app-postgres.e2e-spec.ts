@@ -4806,6 +4806,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     },
   );
 
+  /**
+   * Returns responses from the concurrent operations after releasing the workspace lock.
+   * @param workspaceId - Identifier of the workspace that scopes the operation.
+   * @param operations - Concurrent operations to execute.
+   * @returns Responses from the concurrent operations after releasing the workspace lock.
+   */
   async function raceWithWorkspaceLock(
     workspaceId: string,
     operations: (() => PromiseLike<request.Response>)[],
@@ -4839,6 +4845,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     }
   }
 
+  /**
+   * Returns registered user with credentials and authenticated cookies.
+   * @param name - Name used to identify the resource.
+   * @param email - Email address used to identify the user.
+   * @returns Registered user with credentials and authenticated cookies.
+   */
   async function createAuthenticatedUser(
     name: string,
     email = uniqueEmail(name),
@@ -4911,6 +4923,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     },
   );
 
+  /**
+   * Returns identifier and name of the created workspace.
+   * @param user - The user whose account is being accessed.
+   * @param name - Name used to identify the resource.
+   * @returns Identifier and name of the created workspace.
+   */
   async function createWorkspace(
     user: AuthenticatedUser,
     name: string,
@@ -5313,6 +5331,13 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     ).toEqual([{ banned: true }]);
   });
 
+  /**
+   * Returns created workspace membership.
+   * @param user - The user whose account is being accessed.
+   * @param workspaceId - Identifier of the workspace that scopes the operation.
+   * @param email - Email address used to identify the user.
+   * @returns Created workspace membership.
+   */
   async function addMember(
     user: AuthenticatedUser,
     workspaceId: string,
@@ -5342,6 +5367,13 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     return await readMember(user, workspaceId, response.body.data.addMember.id);
   }
 
+  /**
+   * Returns member data returned by the GraphQL query.
+   * @param user - The user whose account is being accessed.
+   * @param workspaceId - Identifier of the workspace that scopes the operation.
+   * @param id - Identifier of the record to access.
+   * @returns Member data returned by the GraphQL query.
+   */
   async function readMember(
     user: AuthenticatedUser,
     workspaceId: string,
@@ -5362,6 +5394,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     };
   }
 
+  /**
+   * Returns member data after the role update.
+   * @param user - The user whose account is being accessed.
+   * @param workspaceId - Identifier of the workspace that scopes the operation.
+   * @param id - Identifier of the record to access.
+   * @param roles - Role names to assign.
+   * @returns Member data after the role update.
+   */
   async function setMemberRoles(
     user: AuthenticatedUser,
     workspaceId: string,
@@ -5387,6 +5427,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     return await readMember(user, workspaceId, id);
   }
 
+  /**
+   * Returns member data after the permission update.
+   * @param user - The user whose account is being accessed.
+   * @param workspaceId - Identifier of the workspace that scopes the operation.
+   * @param id - Identifier of the record to access.
+   * @param permissions - Permission names to apply.
+   * @returns Member data after the permission update.
+   */
   async function setMemberPermissions(
     user: AuthenticatedUser,
     workspaceId: string,
@@ -5415,6 +5463,15 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     return await readMember(user, workspaceId, id);
   }
 
+  /**
+   * Returns created invitation as returned by the follow-up query.
+   * @param user - The user whose account is being accessed.
+   * @param workspaceId - Identifier of the workspace that scopes the operation.
+   * @param input - Requested field values for the operation.
+   * @param input.email - Email address that receives the invitation.
+   * @param input.roles - Roles to grant when the invitation is accepted.
+   * @returns Created invitation as returned by the follow-up query.
+   */
   async function createInvitation(
     user: AuthenticatedUser,
     workspaceId: string,
@@ -5457,6 +5514,18 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     };
   }
 
+  /**
+   * Returns created key metadata and its one-time plaintext credential.
+   * @param user - The user whose account is being accessed.
+   * @param workspaceId - Identifier of the workspace that scopes the operation.
+   * @param input - Requested field values for the operation.
+   * @param input.expiresAt - Expiration time for the new API key.
+   * @param input.memberId - Member that will own the API key.
+   * @param input.name - Display name for the new API key.
+   * @param input.permissions - Permissions requested for the API key.
+   * @param input.prefix - Prefix for the generated API key.
+   * @returns Created key metadata and its one-time plaintext credential.
+   */
   async function createMemberApiKey(
     user: AuthenticatedUser,
     workspaceId: string,
@@ -5548,6 +5617,16 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     };
   }
 
+  /**
+   * Returns created key metadata and its one-time plaintext credential.
+   * @param user - The user whose account is being accessed.
+   * @param input - Requested field values for the operation.
+   * @param input.expiresAt - Expiration time for the new API key.
+   * @param input.name - Display name for the new API key.
+   * @param input.permissions - Permissions requested for the API key.
+   * @param input.prefix - Prefix for the generated API key.
+   * @returns Created key metadata and its one-time plaintext credential.
+   */
   async function createUserApiKey(
     user: AuthenticatedUser,
     input: {
@@ -5592,6 +5671,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     };
   }
 
+  /**
+   * Returns graphQL HTTP request with authentication and workspace headers applied.
+   * @param query - GraphQL operation to execute.
+   * @param options - Configuration for this operation.
+   * @returns GraphQL HTTP request with authentication and workspace headers applied.
+   */
   function gql(query: string, options: GraphQLRequestOptions = {}) {
     const req = request(baseUrl)
       .post('/api/graphql')
@@ -5615,14 +5700,28 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     return req;
   }
 
+  /**
+   * Returns hTTP request that registers the supplied credentials.
+   * @param input - Requested field values for the operation.
+   * @returns HTTP request that registers the supplied credentials.
+   */
   function signUpWithEmail(input: EmailSignUpInput) {
     return request(baseUrl).post('/api/auth/sign-up/email').send(input);
   }
 
+  /**
+   * Returns hTTP request that authenticates the supplied credentials.
+   * @param input - Requested field values for the operation.
+   * @returns HTTP request that authenticates the supplied credentials.
+   */
   function signInWithEmail(input: EmailSignInInput) {
     return request(baseUrl).post('/api/auth/sign-in/email').send(input);
   }
 
+  /**
+   * Follows the verification URL sent to the test user.
+   * @param email - Address whose verification email is awaited.
+   */
   async function verifyEmail(email: string): Promise<void> {
     const verificationUrl = await waitForEmailUrl(
       email,
@@ -5667,6 +5766,11 @@ interface MailpitMessage {
   Text: string;
 }
 
+/**
+ * Returns email address unique to this test process and invocation.
+ * @param seed - Label used to generate a unique test email address.
+ * @returns Email address unique to this test process and invocation.
+ */
 function uniqueEmail(seed: string) {
   const normalizedSeed = seed.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
@@ -5675,6 +5779,12 @@ function uniqueEmail(seed: string) {
   return `${normalizedSeed}-${process.pid}-${Date.now()}-${uniqueCounter}@example.com`;
 }
 
+/**
+ * Returns uRL extracted from the matching delivered email.
+ * @param email - Email address used to identify the user.
+ * @param subject - Resource instance or type to authorize.
+ * @returns URL extracted from the matching delivered email.
+ */
 async function waitForEmailUrl(
   email: string,
   subject: string,
@@ -5714,28 +5824,55 @@ async function waitForEmailUrl(
   throw new Error(`${subject} email was not received for ${email}`);
 }
 
+/**
+ * Returns cookie name-value pairs returned by the response.
+ * @param response - HTTP response to inspect or update.
+ * @returns Cookie name-value pairs returned by the response.
+ */
 function collectSetCookies(response: request.Response) {
   return collectRawSetCookies(response).map((cookie) => cookie.split(';')[0]);
 }
 
+/**
+ * Returns unmodified Set-Cookie header values.
+ * @param response - HTTP response to inspect or update.
+ * @returns Unmodified Set-Cookie header values.
+ */
 function collectRawSetCookies(response: request.Response): string[] {
   const header = response.headers['set-cookie'];
   return header ? (Array.isArray(header) ? header : [header]) : [];
 }
 
+/**
+ * Asserts that the GraphQL response completed without errors.
+ * @param response - HTTP response to inspect or update.
+ */
 function expectNoGraphQLErrors(response: request.Response) {
   expect(response.body.errors).toBeUndefined();
 }
 
+/**
+ * Asserts that the GraphQL response contains an error.
+ * @param response - HTTP response to inspect or update.
+ */
 function expectGraphQLError(response: request.Response) {
   expect(response.body.errors).toEqual(expect.any(Array));
   expect(response.body.errors.length).toBeGreaterThan(0);
 }
 
+/**
+ * Returns cookie request header assembled from the collected values.
+ * @param cookies - Cookie values collected from HTTP responses.
+ * @returns Cookie request header assembled from the collected values.
+ */
 function toCookieHeader(cookies: string[]) {
   return cookies.map((cookie) => cookie.split(';')[0]).join('; ');
 }
 
+/**
+ * Applies the integration test database migrations.
+ * @param orm - MikroORM instance used for persistence.
+ */
 async function applyMigrations(orm: AdminOrm) {
   const migrationFiles = (
     await readdir(`${process.cwd()}/src/database/migrations`)
@@ -5766,6 +5903,9 @@ async function applyMigrations(orm: AdminOrm) {
   }
 }
 
+/**
+ * Creates the isolated integration test database.
+ */
 async function createDatabase() {
   const orm = await adminOrm(adminDatabaseUrl);
 
@@ -5778,6 +5918,9 @@ async function createDatabase() {
   }
 }
 
+/**
+ * Drops the isolated integration test database.
+ */
 async function dropDatabase() {
   const orm = await adminOrm(adminDatabaseUrl);
 
@@ -5798,6 +5941,11 @@ async function dropDatabase() {
   }
 }
 
+/**
+ * Returns database connection used to manage the integration test database.
+ * @param clientUrl - Database connection URL.
+ * @returns Database connection used to manage the integration test database.
+ */
 function adminOrm(clientUrl: string) {
   return MikroORM.init({
     driver: PostgreSqlDriver,
@@ -5807,6 +5955,11 @@ function adminOrm(clientUrl: string) {
   });
 }
 
+/**
+ * Returns connection URL targeting the named database.
+ * @param name - Name used to identify the resource.
+ * @returns Connection URL targeting the named database.
+ */
 function databaseUrlFor(name: string) {
   const url = new URL(adminDatabaseUrl);
   url.pathname = `/${name}`;
@@ -5814,6 +5967,9 @@ function databaseUrlFor(name: string) {
   return url.toString();
 }
 
+/**
+ * Configures environment variables for the integration test server.
+ */
 function setTestEnv() {
   for (const key of envKeys) {
     oldEnv.set(key, process.env[key]);
@@ -5839,6 +5995,9 @@ function setTestEnv() {
   process.env.SMTP_PORT = '31025';
 }
 
+/**
+ * Restores environment variables changed by the test.
+ */
 function restoreEnv() {
   for (const [key, value] of oldEnv.entries()) {
     if (value === undefined) {
@@ -5851,6 +6010,10 @@ function restoreEnv() {
   oldEnv.clear();
 }
 
+/**
+ * Returns environment variables used to start the test server.
+ * @returns Environment variables used to start the test server.
+ */
 function createServerEnv() {
   const env = { ...process.env };
 
@@ -5866,6 +6029,10 @@ function createServerEnv() {
   return env;
 }
 
+/**
+ * Returns unused local TCP port.
+ * @returns Unused local TCP port.
+ */
 async function getFreePort() {
   return await new Promise<number>((resolve, reject) => {
     const server = createServer();
@@ -5889,6 +6056,12 @@ async function getFreePort() {
   });
 }
 
+/**
+ * Waits for the test server to accept requests or fail startup.
+ * @param baseUrl - Base URL of the test server.
+ * @param serverProcess - Child process running the test server.
+ * @param getServerOutput - Callback that retrieves captured server output.
+ */
 async function waitForServer(
   baseUrl: string,
   serverProcess: ChildProcessWithoutNullStreams,
@@ -5922,6 +6095,11 @@ async function waitForServer(
   );
 }
 
+/**
+ * Returns readable representation of the failure.
+ * @param error - Failure value to inspect.
+ * @returns Readable representation of the failure.
+ */
 function formatUnknownError(error: unknown) {
   if (error instanceof Error) {
     return error.stack ?? error.message;
@@ -5934,6 +6112,10 @@ function formatUnknownError(error: unknown) {
   return JSON.stringify(error) ?? 'unknown error';
 }
 
+/**
+ * Stops the child process running the integration test server.
+ * @param serverProcess - Child process running the test server.
+ */
 async function stopServer(serverProcess: ChildProcessWithoutNullStreams) {
   if (serverProcess.exitCode !== null || serverProcess.signalCode !== null) {
     return;

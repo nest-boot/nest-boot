@@ -84,7 +84,10 @@ function findImport(
   );
 }
 
-/** Resolves an existing alias or allocates a name without capturing another binding. @internal */
+/**
+ * Resolves an existing alias or allocates a name without capturing another binding.
+ * @internal
+ */
 export function namedImportBinding(
   source: Readonly<SourceCode>,
   modules: Modules,
@@ -211,7 +214,10 @@ function referenceImports(
   );
 }
 
-/** Resolves named and namespace imports through their lexical references. @internal */
+/**
+ * Resolves named and namespace imports through their lexical references.
+ * @internal
+ */
 export function importedBindingName(
   source: Readonly<SourceCode>,
   modules: Modules,
@@ -285,7 +291,10 @@ export function importedBindingName(
   return null;
 }
 
-/** Whether the actual reference points to an erased import. @internal */
+/**
+ * Whether the actual reference points to an erased import.
+ * @internal
+ */
 export function isTypeOnlyImportReference(
   source: Readonly<SourceCode>,
   node: TSESTree.Node,
@@ -298,7 +307,10 @@ export function isTypeOnlyImportReference(
   );
 }
 
-/** Checks the binding used by generated code, including aliases and type-only imports. @internal */
+/**
+ * Checks the binding used by generated code, including aliases and type-only imports.
+ * @internal
+ */
 export function hasNamedImport(
   source: Readonly<SourceCode>,
   modules: Modules,
@@ -315,7 +327,10 @@ export function hasNamedImport(
   );
 }
 
-/** Adds or promotes the bindings returned by namedImportBinding. @internal */
+/**
+ * Adds or promotes the bindings returned by namedImportBinding.
+ * @internal
+ */
 export function namedImportEdits(
   source: Readonly<SourceCode>,
   modules: Modules,
@@ -437,7 +452,10 @@ function promotionEdits(
   return edits;
 }
 
-/** Promotes exactly the erased imports referenced at runtime, including namespaces. @internal */
+/**
+ * Promotes exactly the erased imports referenced at runtime, including namespaces.
+ * @internal
+ */
 export function promoteImportReferences(
   source: Readonly<SourceCode>,
   nodes: readonly TSESTree.Node[],

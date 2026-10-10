@@ -38,8 +38,9 @@ describe('built-in auth entity discovery', () => {
         [MemberApiKey, 'member', Member],
       ] as const) {
         expect(
-          orm.getMetadata<object>(entity).properties[property].targetMeta
-            ?.class,
+          orm
+            .getMetadata<object>(entity)
+            .props.find((entry) => entry.name === property)?.targetMeta?.class,
         ).toBe(target);
       }
     } finally {

@@ -192,9 +192,6 @@ mutation CreateStagedUploads($input: [StagedUploadInput!]!) {
 客户端随文件一并提交的全部表单字段。验证规则、有效期与对象路径均来自
 `StagedUploadModule` 的配置。
 
-适配包的 schema 与 resolver API 请参阅
-[GraphQL 分阶段上传 API 参考](/docs/api/staged-upload-graphql)。
-
 ## 最佳实践
 
 1. **严格 MIME 类型** — 只允许应用实际需要的 MIME 类型。
@@ -202,8 +199,3 @@ mutation CreateStagedUploads($input: [StagedUploadInput!]!) {
 2. **合理的大小限制** — 定义一个或多个 `limits` 条目，把最大字节数与 MIME glob pattern 配对。
 
 3. **清理临时对象** — `persist()` 会复制但不会删除源对象；请为最终的 `<rootPath>/<temporaryPath>/` 前缀配置 S3 生命周期规则。
-
-## API 参考
-
-完整的方法签名与选项类型请参阅
-[分阶段上传 API 参考](/docs/api/staged-upload)。

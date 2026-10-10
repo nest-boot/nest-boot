@@ -125,13 +125,19 @@ export class MemberApiKey extends BaseEntity {
   @HideField()
   member!: Ref<Member>;
 
-  /** Member identifier available to clients and authorization conditions. */
+  /**
+   * Member identifier available to clients and authorization conditions.
+   * @returns Identifier of the member that owns the API key.
+   */
   @Field(() => ID)
   get memberId(): Opt<string> {
     return this.member.id;
   }
 
-  /** Workspace identifier available to serialized authorization conditions. */
+  /**
+   * Workspace identifier available to serialized authorization conditions.
+   * @returns Identifier of the associated workspace.
+   */
   @Field(() => ID)
   get workspaceId(): Opt<string> {
     return Reference.unwrapReference(this.member).workspace.id;

@@ -20,6 +20,11 @@ class ManagerBookEntity implements ManagerBook {
   title!: string;
 }
 
+/**
+ * Returns graphQL resolve information parsed from the document.
+ * @param source - Source value to read from.
+ * @returns GraphQL resolve information parsed from the document.
+ */
 function createResolveInfo(source: string): GraphQLResolveInfo {
   const document = parse(source);
   const operation = document.definitions.find(

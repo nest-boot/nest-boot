@@ -18,6 +18,10 @@ import { canGrantPermissions } from "../utils/permission-grants.util.js";
 import { resolveRequestPermissions } from "../utils/resolve-request-permissions.util.js";
 import { RequestIdentity } from "./request-identity.js";
 
+/**
+ * Returns entity manager mock that tracks the active session context.
+ * @returns Entity manager mock that tracks the active session context.
+ */
 function manager() {
   let context: SessionContext = { role: "authenticated" };
   return {

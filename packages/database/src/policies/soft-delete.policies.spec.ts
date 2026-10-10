@@ -36,8 +36,8 @@ describe("softDeletePolicies", () => {
       resolve("removedOn")({ removedOn: 'Removed"Date' } as never, {} as never),
     ).toBe('"Removed""Date" is null');
     expect(() => softDeletePolicies({ property: "" })).toThrow(/property/i);
-    expect(() => resolve()({} as never, {} as never)).toThrow(/mapped column/i);
-    expect(() => resolve("constructor")({} as never, {} as never)).toThrow(
+    expect(() => resolve()({}, {} as never)).toThrow(/mapped column/i);
+    expect(() => resolve("constructor")({}, {} as never)).toThrow(
       /mapped column/i,
     );
     expect(softDeletePolicies()).not.toBe(softDeletePolicies());

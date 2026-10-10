@@ -24,25 +24,40 @@ import { RejectInvitationPayload } from "./reject-invitation-payload.object.js";
 /** GraphQL resolver for workspace invitations. */
 @Resolver(() => Invitation)
 export class InvitationResolver {
-  /** Creates the workspace invitation resolver. */
+  /**
+   * Creates the workspace invitation resolver.
+   * @param invitationService - Service for invitation queries and mutations.
+   */
   constructor(
     /** Invitation domain service provided by the auth module. */
     readonly invitationService: InvitationService,
   ) {}
 
-  /** Resolves the invitation's sender through the authorized service. */
+  /**
+   * Resolves the invitation's sender through the authorized service.
+   * @param invitation - Invitation being inspected or changed.
+   * @returns User who sent the invitation.
+   */
   @ResolveField(() => User)
   async inviter(@Parent() invitation: Invitation): Promise<User> {
     return await this.invitationService.getInvitationInviter(invitation);
   }
 
-  /** Resolves the invitation's workspace, including for recipients before joining. */
+  /**
+   * Resolves the invitation's workspace, including for recipients before joining.
+   * @param invitation - Invitation being inspected or changed.
+   * @returns Workspace associated with the invitation.
+   */
   @ResolveField(() => Workspace)
   async workspace(@Parent() invitation: Invitation): Promise<Workspace> {
     return await this.invitationService.getInvitationWorkspace(invitation);
   }
 
-  /** Returns an invitation by ID. */
+  /**
+   * Returns an invitation by ID.
+   * @param id - Identifier of the record to access.
+   * @returns Accessible invitation, or null if it does not exist.
+   */
   @Query(() => Invitation, { nullable: true })
   async invitation(
     @Args("id", { type: () => ID }) id: string,
@@ -50,7 +65,13 @@ export class InvitationResolver {
     return await this.invitationService.getInvitation(id);
   }
 
-  /** Creates an invitation for the current workspace. */
+  /**
+   * Creates an invitation for the current workspace.
+   * @param workspace - The workspace that scopes this operation.
+   * @param user - The user whose account is being accessed.
+   * @param input - Requested field values for the operation.
+   * @returns Identifier of the created invitation.
+   */
   @Mutation(() => CreateInvitationPayload)
   async createInvitation(
     @CurrentWorkspace() workspace: Workspace,
@@ -65,7 +86,12 @@ export class InvitationResolver {
     return { id: invitation.id };
   }
 
-  /** Accepts an invitation addressed to the current user. */
+  /**
+   * Accepts an invitation addressed to the current user.
+   * @param id - Identifier of the record to access.
+   * @param user - The user whose account is being accessed.
+   * @returns Accepted invitation, membership, and workspace identifiers.
+   */
   @Mutation(() => AcceptInvitationPayload)
   async acceptInvitation(
     @Args("id", { type: () => ID }) id: string,
@@ -80,7 +106,12 @@ export class InvitationResolver {
     };
   }
 
-  /** Rejects an invitation addressed to the current user. */
+  /**
+   * Rejects an invitation addressed to the current user.
+   * @param id - Identifier of the record to access.
+   * @param user - The user whose account is being accessed.
+   * @returns Identifier of the rejected invitation.
+   */
   @Mutation(() => RejectInvitationPayload)
   async rejectInvitation(
     @Args("id", { type: () => ID }) id: string,
@@ -90,7 +121,11 @@ export class InvitationResolver {
     return { id: invitation.id };
   }
 
-  /** Cancels an invitation in the current workspace. */
+  /**
+   * Cancels an invitation in the current workspace.
+   * @param id - Identifier of the record to access.
+   * @returns Identifier of the canceled invitation.
+   */
   @Mutation(() => CancelInvitationPayload)
   async cancelInvitation(
     @Args("id", { type: () => ID }) id: string,

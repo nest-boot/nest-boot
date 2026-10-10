@@ -23,32 +23,44 @@ import { type PinoHttpLogger } from "./pino-http.js";
 /**
  * Request-scoped structured logger built on top of pino.
  *
- * @remarks
  * Implements the NestJS {@link LoggerService} interface. Each request
  * gets its own logger context via {@link RequestContext}, supporting
  * request-scoped bindings and automatic context propagation.
  */
 @Injectable({ scope: Scope.TRANSIENT })
 export class Logger implements LoggerService {
-  /** Configured pino-http middleware supplied by LoggerModule. @internal */
+  /**
+   * Configured pino-http middleware supplied by LoggerModule.
+   * @internal
+   */
   @Optional()
   @Inject(PINO_HTTP)
   private readonly loggerMiddleware?: PinoHttpLogger;
 
-  /** Current logging context name. @internal */
+  /**
+   * Current logging context name.
+   * @internal
+   */
   private context?: string;
 
-  /** Fallback pino logger when no request context is active. @internal */
+  /**
+   * Fallback pino logger when no request context is active.
+   * @internal
+   */
   private globalLogger?: PinoLogger;
 
-  /** Creates a new Logger instance.
+  /**
+   * Creates a new Logger instance.
    * @param parentClass - The parent class that owns this logger instance
    */
   constructor(@Inject(INQUIRER) private parentClass: object) {
     this.setContext(this.parentClass?.constructor?.name);
   }
 
-  /** Returns the current logger context name. */
+  /**
+   * Returns the current logger context name.
+   * @returns Context label associated with this logger.
+   */
   getContext(): string | undefined {
     return this.context;
   }
@@ -150,7 +162,11 @@ export class Logger implements LoggerService {
     });
   }
 
-  /** Gets the current pino logger from request context or falls back to global. @internal */
+  /**
+   * Gets the current pino logger from request context or falls back to global.
+   * @returns Pino instance bound to the current request or configured fallback.
+   * @internal
+   */
   private get pinoLogger(): PinoLogger {
     let pinoLogger: PinoLogger | undefined;
 
@@ -171,7 +187,13 @@ export class Logger implements LoggerService {
     return pinoLogger;
   }
 
-  /** Dispatches a log message at the given level. @internal */
+  /**
+   * Dispatches a log message at the given level.
+   * @param level - Logging severity for the message.
+   * @param message - Message to log.
+   * @param optionalParams - Additional logging arguments.
+   * @internal
+   */
   private call(
     level: Level,
     message: string,

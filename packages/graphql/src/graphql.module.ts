@@ -16,7 +16,6 @@ import { type GraphQLModuleOptions } from "./graphql-module-options.interface.js
 /**
  * GraphQL module powered by Apollo Server.
  *
- * @remarks
  * Wraps `@nestjs/graphql` with Apollo driver, providing schema-first
  * auto-generation, GraphiQL support, and global exception filtering.
  */

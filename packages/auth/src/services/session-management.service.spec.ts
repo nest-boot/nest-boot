@@ -268,6 +268,10 @@ describe("SessionService management", () => {
     expect(em.nativeDelete).not.toHaveBeenCalled();
   });
 });
+/**
+ * Returns test service and its mocked dependencies.
+ * @returns Test service and its mocked dependencies.
+ */
 function createService() {
   const em = {
     getContext: vi.fn().mockReturnThis(),

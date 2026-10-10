@@ -71,6 +71,11 @@ describe("UserDeletionService", () => {
   });
 });
 
+/**
+ * Returns test service and its mocked dependencies.
+ * @param scoped - Whether the fixture enforces request-scoped persistence.
+ * @returns Test service and its mocked dependencies.
+ */
 function createService(scoped = false) {
   const em = {
     getContext: vi.fn().mockReturnThis(),

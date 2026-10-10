@@ -4,11 +4,8 @@ packages:
   - examples/**
   - packages/**
 
-overrides:
-  zod@^4: 4.6.5
-
 onlyBuiltDependencies:
-  - '@swc/core'
+  - "@swc/core"
 
 packageExtensions:
   ajv-draft-04@*:

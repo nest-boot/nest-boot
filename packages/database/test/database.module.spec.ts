@@ -28,6 +28,10 @@ type RootOptionsFactory = (
   options: Parameters<typeof DatabaseModule.forRoot>[0],
 ) => Promise<Record<string, unknown>>;
 
+/**
+ * Returns factory that resolves root database options in the fixture.
+ * @returns Factory that resolves root database options in the fixture.
+ */
 function getRootOptionsFactory(): RootOptionsFactory {
   const baseModule = vi.mocked(BaseDatabaseModule);
   const [rootOptions] = baseModule.forRootAsync.mock.calls[0] as unknown as [
@@ -37,6 +41,11 @@ function getRootOptionsFactory(): RootOptionsFactory {
   return rootOptions.useFactory;
 }
 
+/**
+ * Returns dynamic module that provides the registered options.
+ * @param dynamicModule - Configured Nest dynamic module.
+ * @returns Dynamic module that provides the registered options.
+ */
 function getOptionsModule(dynamicModule: DynamicModule): DynamicModule {
   return dynamicModule.imports?.[0] as DynamicModule;
 }
@@ -202,11 +211,9 @@ describe("DatabaseModule", () => {
     const middlewareModule = {
       module: class MiddlewareModule {},
     };
-    vi.spyOn(BaseDatabaseModule, "forFeature").mockReturnValue(
-      featureModule as never,
-    );
+    vi.spyOn(BaseDatabaseModule, "forFeature").mockReturnValue(featureModule);
     vi.spyOn(BaseDatabaseModule, "forMiddleware").mockReturnValue(
-      middlewareModule as never,
+      middlewareModule,
     );
     const clearStorage = vi
       .spyOn(BaseDatabaseModule, "clearStorage")

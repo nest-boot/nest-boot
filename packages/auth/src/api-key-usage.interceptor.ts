@@ -12,10 +12,18 @@ import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
 /** Records successful requests authenticated with an API key. */
 @Injectable()
 export class ApiKeyUsageInterceptor implements NestInterceptor {
-  /** Creates the API-key usage interceptor. */
+  /**
+   * Creates the API-key usage interceptor.
+   * @param apiKeyService - Service for validating or managing API keys.
+   */
   constructor(private readonly apiKeyService: ApiKeyAuthenticationService) {}
 
-  /** Updates the usage timestamp after a successful handler result. */
+  /**
+   * Updates the usage timestamp after a successful handler result.
+   * @param _context - Nest execution context for the intercepted request.
+   * @param next - Next handler in the Nest execution chain.
+   * @returns Observable that records usage after a successful handler result.
+   */
   intercept(
     _context: ExecutionContext,
     next: CallHandler,

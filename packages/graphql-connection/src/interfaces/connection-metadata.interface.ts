@@ -9,8 +9,7 @@ import { ConnectionFieldOptions } from "../types/field-options.type.js";
  * This metadata is attached to connection classes using the
  * GRAPHQL_CONNECTION_METADATA symbol and is used by the
  * ConnectionQueryBuilder to construct queries.
- *
- * @typeParam Entity - The entity type for the connection
+ * @template Entity - The entity type for the connection
  * @internal
  */
 export interface ConnectionMetadata<Entity extends object> {

@@ -106,6 +106,11 @@ describe("ViewModule", () => {
     expect(publicApi).not.toHaveProperty("ViewService");
   });
 
+  /**
+   * Returns compiled Nest testing module.
+   * @param viewModule - View module registration to test.
+   * @returns Compiled Nest testing module.
+   */
   async function compile(
     viewModule: typeof ViewModule | ReturnType<typeof ViewModule.register>,
   ): Promise<TestingModule> {

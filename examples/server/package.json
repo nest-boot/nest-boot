@@ -22,7 +22,6 @@
     "start:e2e": "node scripts/start-e2e-server.mjs",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
-    "typedoc:check": "typedoc --treatValidationWarningsAsErrors --emit none",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
@@ -106,7 +105,6 @@
     "supertest": "^7.0.0",
     "ts-morph": "^27.0.2",
     "ts-node": "^10.9.2",
-    "typedoc": "^0.28.19",
     "typescript": "^6.0.3",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.11"

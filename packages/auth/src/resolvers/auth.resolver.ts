@@ -36,40 +36,60 @@ export class AuthResolver {
    */
   constructor(private readonly authService: AuthService) {}
 
-  /** Returns password limits without requiring a session. */
+  /**
+   * Returns password limits without requiring a session.
+   * @returns Configured password length limits.
+   */
   @Public()
   @Query(() => PasswordPolicy)
   passwordPolicy(): PasswordPolicy {
     return this.authService.getPasswordPolicy();
   }
 
-  /** Returns the currently authenticated user. */
+  /**
+   * Returns the currently authenticated user.
+   * @returns Authenticated user from the current request.
+   */
   @Query(() => User)
   currentUser(): User {
     return this.authService.getCurrentUser();
   }
 
-  /** Returns the social and generic OAuth providers enabled by the server. */
+  /**
+   * Returns the social and generic OAuth providers enabled by the server.
+   * @returns Available social authentication providers.
+   */
   @Public()
   @Query(() => [AuthSocialProviderType])
   async socialProviders(): Promise<AuthSocialProviderType[]> {
     return await this.authService.listSocialProviders();
   }
 
-  /** Returns the unified effective CASL rules for the current request identity. */
+  /**
+   * Returns the unified effective CASL rules for the current request identity.
+   * @returns Serializable authorization rules for the current request.
+   */
   @Query(() => [AuthAbilityRuleType])
   currentAbilityRules(): AuthAbilityRuleType[] {
     return toAbilityRuleTypes(serializeAbilityRules(getAuthAbility()));
   }
 
-  /** Registers a user with an email address and password. */
+  /**
+   * Registers a user with an email address and password.
+   * @param input - Requested field values for the operation.
+   * @returns Created user identifier and optional session token.
+   */
   @Public()
   @Mutation(() => SignUpPayload)
   async signUp(@Args("input") input: AuthSignUpInput): Promise<SignUpPayload> {
     return await this.authService.signUpPayload({ ...input });
   }
 
-  /** Signs in with an email address and password. */
+  /**
+   * Signs in with an email address and password.
+   * @param input - Requested field values for the operation.
+   * @returns Sign-in response with the authenticated user.
+   */
   @Public()
   @Mutation(() => AuthSignInResultType)
   async signIn(
@@ -78,7 +98,11 @@ export class AuthResolver {
     return await this.authService.signInEntity(input);
   }
 
-  /** Starts a social or generic OAuth sign-in flow. */
+  /**
+   * Starts a social or generic OAuth sign-in flow.
+   * @param input - Requested field values for the operation.
+   * @returns Social sign-in result and any redirect information.
+   */
   @Public()
   @Mutation(() => AuthSignInSocialResultType)
   async signInSocial(
@@ -90,14 +114,21 @@ export class AuthResolver {
     });
   }
 
-  /** Signs out and forwards the session-cookie removal header. */
+  /**
+   * Signs out and forwards the session-cookie removal header.
+   * @returns Whether the current session was signed out successfully.
+   */
   @Public()
   @Mutation(() => Boolean)
   async signOut(): Promise<boolean> {
     return await this.authService.signOut();
   }
 
-  /** Sends an email-verification message. */
+  /**
+   * Sends an email-verification message.
+   * @param input - Requested field values for the operation.
+   * @returns Whether the verification email request succeeded.
+   */
   @Public()
   @Mutation(() => Boolean)
   async sendVerificationEmail(
@@ -106,7 +137,11 @@ export class AuthResolver {
     return await this.authService.sendVerificationEmail(input);
   }
 
-  /** Requests an enumeration-safe password-reset message. */
+  /**
+   * Requests an enumeration-safe password-reset message.
+   * @param input - Requested field values for the operation.
+   * @returns Password reset request status and message.
+   */
   @Public()
   @Mutation(() => AuthRequestPasswordResetResultType)
   async requestPasswordReset(
@@ -115,7 +150,11 @@ export class AuthResolver {
     return await this.authService.requestPasswordReset(input);
   }
 
-  /** Resets a password with a password-reset token. */
+  /**
+   * Resets a password with a password-reset token.
+   * @param input - Requested field values for the operation.
+   * @returns Whether the password was reset successfully.
+   */
   @Public()
   @Mutation(() => Boolean)
   async resetPassword(
@@ -124,7 +163,11 @@ export class AuthResolver {
     return await this.authService.resetPassword(input);
   }
 
-  /** Updates the authenticated user's profile. */
+  /**
+   * Updates the authenticated user's profile.
+   * @param input - Requested field values for the operation.
+   * @returns Whether the profile update succeeded.
+   */
   @Mutation(() => Boolean)
   async updateCurrentUser(
     @Args("input") input: AuthUpdateUserInput,
@@ -132,7 +175,11 @@ export class AuthResolver {
     return await this.authService.updateCurrentUser({ ...input });
   }
 
-  /** Starts or completes an authenticated email change. */
+  /**
+   * Starts or completes an authenticated email change.
+   * @param input - Requested field values for the operation.
+   * @returns Whether the email change request succeeded.
+   */
   @Mutation(() => Boolean)
   async changeCurrentUserEmail(
     @Args("input") input: AuthChangeEmailInput,
@@ -140,7 +187,11 @@ export class AuthResolver {
     return await this.authService.changeCurrentUserEmail(input);
   }
 
-  /** Changes the authenticated user's password. */
+  /**
+   * Changes the authenticated user's password.
+   * @param input - Requested field values for the operation.
+   * @returns Replacement session token, when the password change issues one.
+   */
   @Mutation(() => AuthChangePasswordResultType)
   async changeCurrentUserPassword(
     @Args("input") input: AuthChangePasswordInput,
@@ -148,7 +199,11 @@ export class AuthResolver {
     return await this.authService.changeCurrentUserPassword(input);
   }
 
-  /** Adds a credential password to the authenticated account. */
+  /**
+   * Adds a credential password to the authenticated account.
+   * @param newPassword - New plaintext password to validate and store.
+   * @returns Whether the credential password was set successfully.
+   */
   @Mutation(() => Boolean)
   async setCurrentUserPassword(
     @Args("newPassword") newPassword: string,
@@ -156,7 +211,11 @@ export class AuthResolver {
     return await this.authService.setCurrentUserPassword(newPassword);
   }
 
-  /** Requests deletion of the authenticated user. */
+  /**
+   * Requests deletion of the authenticated user.
+   * @param input - Requested field values for the operation.
+   * @returns Account deletion status and any redirect information.
+   */
   @Mutation(() => AuthDeleteUserResultType)
   async deleteCurrentUser(
     @Args("input", { nullable: true, defaultValue: {} })
@@ -165,7 +224,11 @@ export class AuthResolver {
     return await this.authService.deleteCurrentUser(input ?? {});
   }
 
-  /** Starts a social or OpenID Connect account-linking flow. */
+  /**
+   * Starts a social or OpenID Connect account-linking flow.
+   * @param input - Requested field values for the operation.
+   * @returns Account linking response and any provider redirect URL.
+   */
   @Mutation(() => AuthLinkSocialAccountResultType)
   async linkCurrentUserAccount(
     @Args("input") input: AuthLinkSocialAccountInput,
@@ -176,7 +239,11 @@ export class AuthResolver {
     });
   }
 
-  /** Unlinks an authentication account from the current user. */
+  /**
+   * Unlinks an authentication account from the current user.
+   * @param id - Identifier of the record to access.
+   * @returns Whether the provider account was unlinked successfully.
+   */
   @Mutation(() => Boolean)
   async unlinkCurrentUserAccount(
     @Args("id", { type: () => ID }) id: string,
@@ -187,6 +254,11 @@ export class AuthResolver {
   }
 }
 
+/**
+ * Returns graphQL rule objects with actions and subjects normalized to arrays.
+ * @param rules - Authorization rules to apply.
+ * @returns GraphQL rule objects with actions and subjects normalized to arrays.
+ */
 function toAbilityRuleTypes(
   rules: ReturnType<typeof serializeAbilityRules>,
 ): AuthAbilityRuleType[] {

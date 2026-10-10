@@ -20,7 +20,6 @@ describe("eslint config", () => {
       "@nest-boot/import-database": "error",
       "simple-import-sort/exports": "error",
       "simple-import-sort/imports": "error",
-      "tsdoc/syntax": "error",
     });
   });
 

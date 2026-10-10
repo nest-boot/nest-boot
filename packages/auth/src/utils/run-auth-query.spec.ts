@@ -81,6 +81,11 @@ describe("runAuthQuery with native RLS", () => {
     await orm?.close();
   });
 
+  /**
+   * Returns callback result within the test request context.
+   * @param callback - Work to execute in the supplied context.
+   * @returns Callback result within the test request context.
+   */
   async function inRequest<T>(callback: (em: typeof orm.em) => Promise<T>) {
     const em = orm.em.fork({ session });
     const ctx = new RequestContext({ type: "test" });

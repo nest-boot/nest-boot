@@ -5,19 +5,34 @@ import { Queue } from "bullmq";
 import { QueueHealthIndicator } from "./queue-health.indicator.js";
 
 describe("QueueHealthIndicator", () => {
+  /**
+   * Returns queue configured for the test.
+   * @param name - Name used to identify the resource.
+   * @param client - Client used to communicate with the backing service.
+   * @returns Queue configured for the test.
+   */
   function createQueue(
     name = "email",
     client = Promise.resolve({ status: "ready" }),
   ) {
-    const queue = Object.assign(Object.create(Queue.prototype) as Queue, {
-      name,
-      qualifiedName: `bull:${name}`,
-      isPaused: vi.fn(() => Promise.resolve(false)),
-    });
+    const queue = Object.assign(
+      Object.create(Queue.prototype) as Omit<Queue, "isPaused">,
+      {
+        name,
+        qualifiedName: `bull:${name}`,
+        isPaused: vi.fn(() => Promise.resolve(false)),
+      },
+    );
     Object.defineProperty(queue, "client", { value: client });
     return queue;
   }
 
+  /**
+   * Returns test setup and its mocked dependencies.
+   * @param instances - Provider instances discovered by the fixture.
+   * @param registry - Registry that owns the configured entries.
+   * @returns Test setup and its mocked dependencies.
+   */
   function setup(instances: unknown[] = [], registry?: HealthCheckRegistry) {
     const discovery = {
       getProviders: vi.fn(() => instances.map((instance) => ({ instance }))),

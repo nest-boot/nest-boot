@@ -10,6 +10,8 @@ import { createScopePolicy } from "./create-scope-policy.js";
  * service authorization. Missing/empty session identifiers match no rows.
  * Requires a single-column mapping and a matching explicit SQL type.
  * Compose in Entity.policies; no Filter or discovery hook is required.
+ * @param options - Configuration for this operation.
+ * @returns Native policy scoped to the current workspace identifier.
  */
 export function workspaceScopePolicy(
   options: ScopePolicyOptions = {},

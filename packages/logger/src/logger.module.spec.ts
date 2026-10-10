@@ -328,6 +328,11 @@ describe("LoggerModule", () => {
   });
 });
 
+/**
+ * Returns logger module configured for the test.
+ * @param options - Configuration for this operation.
+ * @returns Logger module configured for the test.
+ */
 async function createLoggerModule(options?: LoggerModuleOptions) {
   const providers: Parameters<typeof Test.createTestingModule>[0]["providers"] =
     [LoggerModule];
