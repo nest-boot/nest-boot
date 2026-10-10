@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import {
   cpSync,
+  existsSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
@@ -36,9 +37,10 @@ try {
   let packedPackages = 0;
   for (const directory of readdirSync(join(repository, "packages")).sort()) {
     const cwd = join(repository, "packages", directory);
-    const manifest = JSON.parse(
-      readFileSync(join(cwd, "package.json"), "utf8"),
-    );
+    const manifestPath = join(cwd, "package.json");
+    // Removed packages may leave ignored node_modules or build directories.
+    if (!existsSync(manifestPath)) continue;
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     if (manifest.private) continue;
     console.log(`Packing ${manifest.name}@${manifest.version}`);
     pnpm(["pack", "--pack-destination", consumer], cwd, "pipe");
