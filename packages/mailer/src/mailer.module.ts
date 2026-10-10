@@ -7,13 +7,13 @@ import {
 import { createTransport } from "nodemailer";
 import Mailer from "nodemailer/lib/mailer/index.js";
 
+import { MailerHealthIndicator } from "./mailer.health-indicator.js";
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./mailer.module-definition.js";
-import { MailerHealthIndicator } from "./mailer-health.indicator.js";
 import { type MailerModuleOptions } from "./mailer-module-options.interface.js";
 import {
   loadMailerDefaultsFromEnv,

@@ -1,7 +1,7 @@
 import { createTransport } from "nodemailer";
 import type Mailer from "nodemailer/lib/mailer/index.js";
 
-import { MailerHealthIndicator } from "./mailer-health.indicator.js";
+import { MailerHealthIndicator } from "./mailer.health-indicator.js";
 
 describe("MailerHealthIndicator", () => {
   const mailers: Mailer[] = [];
