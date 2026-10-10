@@ -7,5 +7,11 @@ export default defineConfig({
     globals: true,
     root: "./",
     include: ["**/*.e2e-spec.ts"],
+    coverage: {
+      include: ["dist/**/*.js"],
+      exclude: [],
+      reportsDirectory: "coverage/e2e",
+      reporter: ["text", "lcov", "json-summary"],
+    },
   },
 });

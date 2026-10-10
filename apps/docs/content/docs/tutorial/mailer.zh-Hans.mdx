@@ -75,6 +75,57 @@ export class NotificationService {
 }
 ```
 
+## SMTP 健康检查
+
+`MailerModule` 提供 `MailerHealthIndicator`，默认不注册或执行检查。
+如果 SMTP 可用性应影响应用的就绪状态，导入 `HealthCheckModule` 并显式注册：
+
+```typescript
+import {
+  HealthCheckModule,
+  HealthCheckRegistry,
+} from "@nest-boot/health-check";
+import { MailerHealthIndicator, MailerModule } from "@nest-boot/mailer";
+import { Injectable, Module, type OnModuleInit } from "@nestjs/common";
+
+@Injectable()
+class SmtpReadiness implements OnModuleInit {
+  constructor(
+    private readonly registry: HealthCheckRegistry,
+    private readonly mailerHealth: MailerHealthIndicator,
+  ) {}
+
+  onModuleInit(): void {
+    if (this.mailerHealth.isSupported()) {
+      this.registry.register(() => this.mailerHealth.check("mailer", 3000));
+    }
+  }
+}
+
+@Module({
+  imports: [MailerModule, HealthCheckModule],
+  providers: [SmtpReadiness],
+})
+export class AppModule {}
+```
+
+应用需声明与 Nest Boot 版本匹配的 `@nest-boot/health-check`，以及
+`@nestjs/terminus@^12`。注册后，`GET /api/health` 包含 `mailer` 状态：
+检查成功返回 HTTP 200，任一已注册检查失败返回 HTTP 503。
+是否让 SMTP 故障影响就绪状态由应用决定；仅导入这两个模块不会改变现有检查。
+
+`check(key = "mailer", timeout = 3000)` 调用 Nodemailer 的 `verify()`，
+检查 DNS、连接建立、已配置的 TLS 和认证。它不发送邮件，也不验证发件人是否被接受或
+邮件是否最终送达。支持普通 SMTP 和 SMTP 连接池。对于 JSON、Stream、Sendmail、
+SES 和自定义 transport，`isSupported()` 返回 false；直接调用 `check()` 会返回
+down，且不会执行验证。
+
+超时仅限制健康检查的响应时间。Nodemailer 的验证不接受 abort signal，因此并发请求
+以及超时后的探测会共用同一个未完成的验证，直到它结束。底层网络操作的时限由
+Nodemailer 的连接、问候和 socket 超时配置控制。指示器不会关闭应用发送邮件使用的
+transport。验证成功或失败后，下一次检查会重新验证，以便报告故障恢复。SMTP 错误
+使用通用失败消息，避免通过健康接口暴露服务器回复或连接详情。
+
 ## 特性
 
 - **Nodemailer 集成** - 通过 NestJS 依赖注入使用完整 Nodemailer API

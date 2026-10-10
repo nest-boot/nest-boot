@@ -13,6 +13,7 @@ import {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./mailer.module-definition.js";
+import { MailerHealthIndicator } from "./mailer-health.indicator.js";
 import { type MailerModuleOptions } from "./mailer-module-options.interface.js";
 import {
   loadMailerDefaultsFromEnv,
@@ -37,7 +38,10 @@ const mailerProvider: Provider<Mailer> = {
  * explicit Nodemailer transport options.
  */
 @Global()
-@Module({ providers: [mailerProvider], exports: [mailerProvider] })
+@Module({
+  providers: [mailerProvider, MailerHealthIndicator],
+  exports: [mailerProvider, MailerHealthIndicator],
+})
 export class MailerModule extends ConfigurableModuleClass {
   /**
    * Registers the MailerModule with the given options.
