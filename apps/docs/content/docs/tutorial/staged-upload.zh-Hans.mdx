@@ -60,7 +60,7 @@ Endpoint 和 Bucket Endpoint 请参阅 [Storage 教程](/docs/tutorial/storage)�
 | `expires`       | presigned POST 的有效秒数，默认为 `3600`                                               |
 | `temporaryPath` | 临时对象路径，默认为 `/tmp`                                                            |
 | `permanentPath` | 持久化后的对象路径，默认为 `/files`                                                    |
-| `limits`        | 可接受的 `{ fileSize, mimeTypes }` 组合；MIME pattern 使用 micromatch 的 glob 匹配语义 |
+| `limits`        | 可接受的 `{ fileSize, mimeTypes }` 组合；MIME pattern 使用 picomatch 的 glob 匹配语义 |
 
 `temporaryPath` 与 `permanentPath` 的前后斜杠会被规范化。每个路径必须至少包含一个
 有效路径段，并且不能使用 `.` 或 `..` 路径段。
