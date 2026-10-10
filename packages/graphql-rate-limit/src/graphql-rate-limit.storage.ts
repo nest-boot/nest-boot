@@ -1,9 +1,12 @@
-import { BaseContext, GraphQLRequestContext } from "@apollo/server";
+import type { BaseContext, GraphQLRequestContext } from "@apollo/server";
 import { Inject, Injectable } from "@nestjs/common";
 
-import { GraphQLRateLimitDriver } from "./drivers";
-import { OPTIONS_TOKEN } from "./graphql-rate-limit.module-definition";
-import { CostThrottleStatus, GraphQLRateLimitOptions } from "./interfaces";
+import { GraphQLRateLimitDriver } from "./drivers/index.js";
+import { OPTIONS_TOKEN } from "./graphql-rate-limit.module-definition.js";
+import type {
+  CostThrottleStatus,
+  GraphQLRateLimitOptions,
+} from "./interfaces/index.js";
 
 @Injectable()
 export class GraphQLRateLimitStorage {

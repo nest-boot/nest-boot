@@ -1,0 +1,175 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "domain": "Auth",
+      "scenario": "Email/password registration on the canonical register route",
+      "status": "covered",
+      "specs": ["auth.spec.ts"],
+      "notes": "Registers at /auth/register, verifies the email address, and lands on the workspace empty state."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Email/password login and remember-me",
+      "status": "covered",
+      "specs": ["auth.spec.ts"],
+      "notes": "Clears cookies, signs in at /auth/login, and exercises the remember-me control."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Password reset and authenticated password change",
+      "status": "covered",
+      "specs": ["auth.spec.ts"],
+      "notes": "Completes the email reset flow and then changes the password through GraphQL."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Current-user session list and remote-session revocation",
+      "status": "covered",
+      "specs": ["user.spec.ts", "admin.spec.ts"],
+      "notes": "Creates two browser sessions, revokes the other session, and verifies it can no longer access the application. Administrator self-session and all-session revocation reload authentication and leave the protected page."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Social and generic OAuth sign-in, linking, and unlinking",
+      "status": "partial",
+      "specs": ["auth.spec.ts", "user.spec.ts"],
+      "notes": "Dynamic provider rendering, GraphQL authorization initiation, and account-linking availability are covered; the external provider callback and unlinking a real social identity remain outside Playwright."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Administrator impersonation and global status banner",
+      "status": "covered",
+      "specs": ["admin.spec.ts"],
+      "notes": "Starts impersonation from the administrator user page, verifies the global banner across personal routes, stops impersonation, and confirms that the administrator session is restored."
+    },
+    {
+      "domain": "Workspace",
+      "scenario": "First workspace creation, rename persistence, and deletion",
+      "status": "covered",
+      "specs": ["workspace.spec.ts"],
+      "notes": "Creates the first workspace, reloads after rename, then deletes it and returns to the empty state."
+    },
+    {
+      "domain": "Workspace",
+      "scenario": "Multiple workspace creation and switcher navigation",
+      "status": "covered",
+      "specs": ["workspace.spec.ts"],
+      "notes": "Creates more than one cursor page of workspaces, loads the next page in the switcher, switches workspaces, and opens the create path."
+    },
+    {
+      "domain": "Workspace",
+      "scenario": "Workspace DataFilter, pagination persistence, and row navigation",
+      "status": "covered",
+      "specs": [
+        "workspace-filter.spec.ts",
+        "data-table-format.spec.ts",
+        "data-table-scroll.spec.ts"
+      ],
+      "notes": "Searches workspace names, applies name and creation-date filters, resets cursors on filter changes, and preserves criteria across pagination and reloads. Opens a workspace from a date cell or the keyboard-accessible name link without an arrow action column."
+    },
+    {
+      "domain": "Workspace",
+      "scenario": "Multiple owner role assignment and member exit",
+      "status": "covered",
+      "specs": ["workspace.spec.ts"],
+      "notes": "Assigns owner through member roles, verifies two concurrent owners, and allows an owner to leave without changing roles first."
+    },
+    {
+      "domain": "Invitations",
+      "scenario": "Create, cancel, register through, accept, and reject invitations",
+      "status": "covered",
+      "specs": [
+        "invitation.spec.ts",
+        "user.spec.ts",
+        "invitation-create.spec.ts"
+      ],
+      "notes": "Covers owner and recipient flows, including the personal pending-invitation list. The standalone invite route supports direct navigation/reload, cancellation, mobile layout, email/role validation, unchanged-value retries after a failed request, copy failure recovery, and workspace isolation. Unauthorized creation links redirect and available roles respect the issuer grants."
+    },
+    {
+      "domain": "Invitations",
+      "scenario": "Invalid and expired invitation states",
+      "status": "covered",
+      "specs": ["invitation.spec.ts"],
+      "notes": "Covers invalid, canceled, and expired invitation states, including cleanup of the pending invitation redirect."
+    },
+    {
+      "domain": "Members",
+      "scenario": "Member status actions, removal, role changes, and direct permissions",
+      "status": "covered",
+      "specs": ["invitation.spec.ts", "workspace.spec.ts"],
+      "notes": "Covers status and removal actions, role editing, direct permission editing, persistence after reload, and resulting UI authorization. Self-disabling navigates away without refetching protected fields. Direct permission editing denies members without update ability and allows administrators to update even an owner's direct permissions without enabling protected role edits."
+    },
+    {
+      "domain": "Authorization",
+      "scenario": "Transported CASL rules control user and workspace UI",
+      "status": "covered",
+      "specs": [
+        "api-key.spec.ts",
+        "invitation.spec.ts",
+        "workspace.spec.ts",
+        "admin.spec.ts"
+      ],
+      "notes": "Serialized conditional rules have unit coverage; browser tests cover role denial and direct-permission authorization paths, including global ability refresh after removing one's own administrator role or permissions."
+    },
+    {
+      "domain": "API keys",
+      "scenario": "User and member API key lifecycle",
+      "status": "covered",
+      "specs": ["api-key.spec.ts"],
+      "notes": "Uses four standalone create/detail routes, checks reloads and direct links, validates names, copies the once-only secret, and disables, edits, and deletes both owner types. Checks mobile layout, read-only controls, creation guards, and rejection of missing, deleted, cross-workspace, and foreign-owner detail IDs. Bearer authentication and privilege ceilings are covered by server PostgreSQL E2E."
+    },
+    {
+      "domain": "API keys",
+      "scenario": "List search restoration and adjacent detail navigation with workspace isolation",
+      "status": "covered",
+      "specs": [
+        "user-api-key-navigation.spec.ts",
+        "member-api-key-navigation.spec.ts"
+      ],
+      "notes": "Preserves filters, order, page size and cursor through creation and details. Traverses adjacent records across list pages, restores browser history and reloads, and returns the current record as the first row using the preceding cursor. Checks default/direct entry, invalid session data, failed neighbor queries and retry, null sort values, and two workspaces with distinct filters and pagination in the same browser session. After returning from details, alternates next/previous/next list pages and verifies the custom page size, saved cursor, and reload position."
+    },
+    {
+      "domain": "Administration",
+      "scenario": "User search and DataFilter conditions with persistent pagination state",
+      "status": "covered",
+      "specs": ["admin-user-filter.spec.ts"],
+      "notes": "Searches by email prefix, filters by name, email, and creation date, resets the cursor when filters change, and preserves search and filters across next/previous pages and reloads."
+    },
+    {
+      "domain": "Navigation",
+      "scenario": "Responsive application layout, unified account menu, and page breadcrumbs",
+      "status": "covered",
+      "specs": ["user.spec.ts", "workspace.spec.ts", "sidebar-layout.spec.ts"],
+      "notes": "User, Admin, and Workspace use full-height sidebars with collapsible desktop icon rails, footer account actions, and floating mobile navigation. Collapsed headers show the logo and reveal the expand action on hover or keyboard focus. Mobile drawers show branding without a desktop trigger and close after navigation and desktop resize. Independent content viewports reset on new routes and restore browser history scroll positions. The account menu retains workspace pagination, refresh, and retry behavior."
+    },
+    {
+      "domain": "Navigation",
+      "scenario": "Personal overview navigation and persistent language/theme preferences in the user menu",
+      "status": "covered",
+      "specs": ["user.spec.ts"],
+      "notes": "Opens the personal overview from the user identity row, follows the sidebar Profile link, changes language without losing unsaved form input, persists language and theme across reloads, and follows system color scheme changes."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Form validation, pending submissions, and server-error retries",
+      "status": "covered",
+      "specs": ["form-state.spec.ts"],
+      "notes": "Rejects invalid login fields and mismatched reset passwords before any mutation, prevents duplicate pending submissions, preserves inputs after server errors, and retries unchanged values."
+    },
+    {
+      "domain": "Administration",
+      "scenario": "Independent user detail forms and keyboard submission",
+      "status": "covered",
+      "specs": ["form-state.spec.ts"],
+      "notes": "Opens and reloads the standalone user creation route, returns to the list on cancellation/success, validates before mutation, retries a failed creation without losing fields, initializes asynchronous profile fields, preserves an unsaved profile draft while saving roles, and saves the profile with Enter. Direct user creation URLs reject read-only administrators."
+    },
+    {
+      "domain": "Auth",
+      "scenario": "Password-confirmed account deletion form",
+      "status": "covered",
+      "specs": ["form-state.spec.ts"],
+      "notes": "Cancels confirmation without losing the password, recovers from an incorrect password, and deletes a disposable test account after correction."
+    }
+  ]
+}

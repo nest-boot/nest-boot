@@ -1,3 +1,63 @@
+## 8.0.0-beta.5 (2026-10-10)
+
+### 🚀 Features
+
+- ⚠️  **runtime:** require Node 24.21 and validate packed consumers ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### ⚠️  Breaking Changes
+
+- **runtime:** require Node 24.21 and validate packed consumers  ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.4 (2026-09-19)
+
+### 🚀 Features
+
+- ⚠️  **auth:** unify auth entities, services and GraphQL APIs ([#331](https://github.com/nest-boot/nest-boot/pull/331))
+
+### ⚠️  Breaking Changes
+
+- **auth:** unify auth entities, services and GraphQL APIs  ([#331](https://github.com/nest-boot/nest-boot/pull/331))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.3 (2026-09-08)
+
+### 🚀 Features
+
+- ⚠️  **auth:** rebuild authentication and authorization ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### ⚠️  Breaking Changes
+
+- **auth:** rebuild authentication and authorization  ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.2 (2026-08-31)
+
+This was a version bump only for @nest-boot/tsconfig to align it with other projects, there were no code changes.
+
+## 8.0.0-beta.1 (2026-08-31)
+
+### 🚀 Features
+
+- ⚠️ migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ⚠️ Breaking Changes
+
+- migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.3.5 (2026-08-31)
 
 This was a version bump only for @nest-boot/tsconfig to align it with other projects, there were no code changes.

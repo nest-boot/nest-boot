@@ -1,0 +1,40 @@
+{
+  "action": {
+    "load_more": "加载更多",
+    "cancel": "取消",
+    "close": "关闭",
+    "confirm": "确认",
+    "create": "创建",
+    "creating": "创建中...",
+    "delete": "删除",
+    "deleting": "删除中...",
+    "disable": "禁用",
+    "edit": "编辑",
+    "rename": "重命名",
+    "revoke": "撤销",
+    "enable": "启用",
+    "save": "保存",
+    "saving": "保存中...",
+    "retry": "重试"
+  },
+  "app": {
+    "name": "Nest Boot"
+  },
+  "contextualSaveBar": {
+    "discard": "丢弃",
+    "message": "有未保存的更改"
+  },
+  "navigation": {
+    "retry": "重试"
+  },
+  "overview": {
+    "title": "概览",
+    "workspace": "工作空间",
+    "loading": "正在加载概览…",
+    "failed": "无法加载概览。",
+    "view_api_keys": "查看 API 密钥"
+  },
+  "mutation": {
+    "refresh_failed": "已保存成功，但未能加载最新数据。"
+  }
+}

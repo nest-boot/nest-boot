@@ -1,4 +1,4 @@
-import { hasSocialProviderCredentialEnvConfig } from "./has-social-provider-credential-env-config";
+import { hasSocialProviderCredentialEnvConfig } from "./has-social-provider-credential-env-config.js";
 
 describe("hasSocialProviderCredentialEnvConfig", () => {
   beforeEach(() => {

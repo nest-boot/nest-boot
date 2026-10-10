@@ -2,8 +2,8 @@ import { MiddlewareManager, MiddlewareModule } from "@nest-boot/middleware";
 import { Global, Module } from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 
-import { RequestContextInterceptor } from "./request-context.interceptor";
-import { RequestContextMiddleware } from "./request-context.middleware";
+import { RequestContextInterceptor } from "./request-context.interceptor.js";
+import { RequestContextMiddleware } from "./request-context.middleware.js";
 
 /**
  * NestJS module that provides request context functionality.
@@ -14,7 +14,6 @@ import { RequestContextMiddleware } from "./request-context.middleware";
  * them available throughout the request lifecycle.
  *
  * The module is global, so it only needs to be imported once in the root module.
- *
  * @example
  * ```typescript
  * import { Module } from '@nestjs/common';
@@ -25,7 +24,6 @@ import { RequestContextMiddleware } from "./request-context.middleware";
  * })
  * export class AppModule {}
  * ```
- *
  * @example Using in a service
  * ```typescript
  * import { Injectable } from '@nestjs/common';

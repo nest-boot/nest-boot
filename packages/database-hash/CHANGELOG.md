@@ -1,0 +1,275 @@
+## 8.0.2-beta.3 (2026-10-10)
+
+### 🚀 Features
+
+- ⚠️  **runtime:** require Node 24.21 and validate packed consumers ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### ⚠️  Breaking Changes
+
+- **runtime:** require Node 24.21 and validate packed consumers  ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.4
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.5
+- Updated @nest-boot/tsconfig to 8.0.0-beta.5
+- Updated @nest-boot/hash to 8.0.4-beta.2
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.2-beta.2 (2026-10-10)
+
+### 🚀 Features
+
+- **eslint-config:** adopt JSDoc and retire TypeDoc ([#404](https://github.com/nest-boot/nest-boot/pull/404))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.3
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.4
+- Updated @nest-boot/hash to 8.0.4-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.2-beta.1 (2026-10-10)
+
+This was a version bump only for @nest-boot/database-hash to align it with other projects, there were no code changes.
+
+## 8.0.2-beta.0 (2026-10-09)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.2
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.3
+- Updated @nest-boot/hash to 8.0.4-beta.0
+
+## 8.0.1-beta.2 (2026-10-09)
+
+### 🚀 Features
+
+- ⚠️  **database:** rename database integration packages and APIs ([#397](https://github.com/nest-boot/nest-boot/pull/397))
+
+### ⚠️  Breaking Changes
+
+- **database:** rename database integration packages and APIs  ([#397](https://github.com/nest-boot/nest-boot/pull/397))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.2
+- Updated @nest-boot/hash to 8.0.3-beta.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.1-beta.1 (2026-09-23)
+
+### 🩹 Fixes
+
+- **eslint-plugin:** generate valid MikroORM 7 decorator imports ([#370](https://github.com/nest-boot/nest-boot/pull/370))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.1
+- Updated @nest-boot/hash to 8.0.2-beta.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.1-beta.0 (2026-09-19)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.1-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.0
+- Updated @nest-boot/tsconfig to 8.0.0-beta.4
+- Updated @nest-boot/hash to 8.0.1-beta.0
+
+## 8.0.0-beta.5 (2026-09-16)
+
+### 🚀 Features
+
+- ⚠️  **mikro-orm:** adopt native RLS and remove the custom RLS package ([#329](https://github.com/nest-boot/nest-boot/pull/329))
+
+### ⚠️  Breaking Changes
+
+- **mikro-orm:** adopt native RLS and remove the custom RLS package  ([#329](https://github.com/nest-boot/nest-boot/pull/329))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.4 (2026-09-08)
+
+### 🚀 Features
+
+- ⚠️  **auth:** rebuild authentication and authorization ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### ⚠️  Breaking Changes
+
+- **auth:** rebuild authentication and authorization  ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.0-beta.3
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.3
+- Updated @nest-boot/tsconfig to 8.0.0-beta.3
+- Updated @nest-boot/hash to 8.0.0-beta.3
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.3 (2026-09-07)
+
+### 🚀 Features
+
+- ⚠️  **mikro-orm:** replace MySQL and SQLite with PGlite ([#326](https://github.com/nest-boot/nest-boot/pull/326))
+
+### ⚠️  Breaking Changes
+
+- **mikro-orm:** replace MySQL and SQLite with PGlite  ([#326](https://github.com/nest-boot/nest-boot/pull/326))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.2 (2026-08-31)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.0-beta.2
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.2
+- Updated @nest-boot/tsconfig to 8.0.0-beta.2
+- Updated @nest-boot/hash to 8.0.0-beta.2
+
+## 8.0.0-beta.1 (2026-08-31)
+
+### 🚀 Features
+
+- ⚠️  migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ⚠️  Breaking Changes
+
+- migrate to NestJS 12 and ESM  ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.0-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.1
+- Updated @nest-boot/tsconfig to 8.0.0-beta.1
+- Updated @nest-boot/hash to 8.0.0-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 7.4.5 (2026-08-31)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.5
+- Updated @nest-boot/eslint-plugin to 7.2.5
+- Updated @nest-boot/tsconfig to 7.3.5
+- Updated @nest-boot/hash to 7.5.5
+
+## 7.4.4 (2026-08-29)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.4
+- Updated @nest-boot/eslint-plugin to 7.2.4
+- Updated @nest-boot/tsconfig to 7.3.4
+- Updated @nest-boot/hash to 7.5.4
+
+## 7.4.3 (2026-08-29)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.3
+- Updated @nest-boot/eslint-plugin to 7.2.3
+- Updated @nest-boot/tsconfig to 7.3.3
+- Updated @nest-boot/hash to 7.5.3
+
+## 7.4.2 (2026-08-28)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.2
+- Updated @nest-boot/eslint-plugin to 7.2.2
+- Updated @nest-boot/tsconfig to 7.3.2
+- Updated @nest-boot/hash to 7.5.2
+
+## 7.4.1 (2026-08-27)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.1
+- Updated @nest-boot/eslint-plugin to 7.2.1
+- Updated @nest-boot/tsconfig to 7.3.1
+- Updated @nest-boot/hash to 7.5.1
+
+## 7.4.0 (2026-08-12)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.0
+- Updated @nest-boot/eslint-plugin to 7.2.0
+- Updated @nest-boot/tsconfig to 7.3.0
+- Updated @nest-boot/hash to 7.5.0
+
+## 7.3.1 (2026-06-17)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.2.1
+- Updated @nest-boot/eslint-plugin to 7.1.1
+- Updated @nest-boot/tsconfig to 7.2.1
+- Updated @nest-boot/hash to 7.4.1
+
+## 7.3.0 (2026-06-17)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.2.0
+- Updated @nest-boot/eslint-plugin to 7.1.0
+- Updated @nest-boot/tsconfig to 7.2.0
+- Updated @nest-boot/hash to 7.4.0
+
+## 7.2.0 (2026-06-07)
+
+### 🚀 Features
+
+- add row level security driver ([#236](https://github.com/nest-boot/nest-boot/pull/236))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.1.0
+- Updated @nest-boot/eslint-plugin to 7.0.8
+- Updated @nest-boot/tsconfig to 7.1.0
+- Updated @nest-boot/hash to 7.3.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+# @nest-boot/mikro-orm-hash
+
+## 7.1.1
+
+### Patch Changes
+
+- 3f47640: fix(mikro-orm-hash): skip hashing for non-string values and existing Argon2 hashes
+
+## 7.1.0
+
+### Minor Changes
+
+- c12e9ef: feat: add @nest-boot/mikro-orm-hash package with HashProperty decorator

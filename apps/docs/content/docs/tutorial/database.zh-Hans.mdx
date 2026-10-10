@@ -1,0 +1,350 @@
+---
+title: "数据库"
+description: "MikroORM 集成，支持请求作用域实体管理器、EntityService 基类和加密/哈希属性。"
+---
+
+`@nest-boot/database` 模块封装 [`@mikro-orm/nestjs`](https://mikro-orm.io/docs/usage-with-nestjs)，提供基于环境变量的自动配置和请求上下文集成，支持每个请求独立的实体管理器分支。配套模块提供[加密属性](#加密属性)和[哈希属性](#哈希属性)。
+
+## 安装
+
+```bash
+pnpm add @nest-boot/database @mikro-orm/core @mikro-orm/decorators @mikro-orm/nestjs @mikro-orm/reflection @mikro-orm/migrations
+
+# 安装与 DATABASE_URL 匹配的驱动
+pnpm add @mikro-orm/postgresql
+# 或：pnpm add @mikro-orm/pglite
+```
+
+`t`、`Opt`、`Ref` 和 `Collection` 统一从 `@mikro-orm/core` 导入；`Entity`、`Property`、`Enum` 等实体装饰器从 `@mikro-orm/decorators/legacy` 导入。`PostgreSqlDriver` 和 SQL `EntityManager` 等驱动专属 API 仍从驱动包导入。实体 ESLint 自动修复会迁移这些具名工具和旧装饰器导入，并保留别名与 type-only 修饰。
+
+从 MikroORM v6 升级时，原先转导出 core 或驱动的 barrel 还需要转导出 legacy 装饰器。ESLint 可以补全普通 `export *`。如果使用 `export * as orm`，先新建兼容 barrel，再将该 namespace 转导出指向它，以保留 `orm.Entity()` 等运行时成员和 `orm.Ref<T>` 等类型成员：
+
+```ts
+// orm-compat.ts
+export * from "@mikro-orm/core";
+export * from "@mikro-orm/decorators/legacy";
+
+// index.ts
+export * as orm from "./orm-compat.js";
+```
+
+如果原 barrel 转导出的是驱动，请在兼容 barrel 中保留该驱动入口。namespace 转导出不会自动替换成展开对象，因为这会丢失其类型命名空间；ESLint 的单文件修复也不能替你创建兼容文件。
+
+## 模块注册
+
+### 基本注册
+
+```typescript
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
+import { DatabaseModule } from "@nest-boot/database";
+
+@Global()
+@Module({
+  imports: [DatabaseModule.forRoot({ driver: PostgreSqlDriver })],
+})
+export class CommonModule {}
+```
+
+显式驱动使 MikroORM 7 能够为依赖注入注册驱动专用的 `EntityManager`。
+其他连接选项可以省略；模块会通过 `loadConfigFromEnv()` 自动加载。它读取
+`DATABASE_URL`，并解析为结构化 MikroORM 选项，而不会把 URL 交给数据库客户端
+解析。PostgreSQL 接受其文档定义的 `postgresql:` 和 `postgres:` URI 形式。
+PGlite 使用 `file:` 进行持久化存储，使用 `memory:` 创建内存数据库；其他协议名
+和驱动兼容形式会被拒绝。持久化 PGlite 请使用
+`file:///var/lib/app/pgdata` 这样的绝对 URL，临时数据库请使用 `memory://`。
+未设置 `DATABASE_URL` 时保持未配置状态，不会静默回退到临时存储。
+
+PostgreSQL 的 TLS 文件参数使用 `sslrootcert`、`sslcert` 和 `sslkey`，支持的 `sslmode` 为 `disable`、`require`、`verify-ca` 和 `verify-full`。需要失败后回退到明文连接的模式无法用单份结构化驱动配置准确表达，因此会被拒绝。
+
+显式 `clientUrl` 或 `host`、`dbName` 等 host-style 连接目标会完整优先，并阻止环境中的 `DATABASE_URL` 混入该连接。`driver`、`schema`、`pool` 或 `debug` 等补充选项仍可叠加在自动环境配置上。
+
+默认配置从 `dist/**/*.entity.js` 发现运行时实体，从 `src/**/*.entity.ts` 发现 TypeScript 实体，使用 `TsMorphMetadataProvider`，启用 MikroORM DataLoader，并把 migration 与 seeder 放在 `src/database`（构建后为 `dist/database`）下。
+
+元数据缓存默认关闭（`metadataCache: { enabled: false }`），模块注册与 `loadConfigFromEnv()` 的 CLI 配置保持一致。每次 ORM 初始化都会重新发现实体元数据，启动可能稍慢，但不会在每次请求时重新发现，也不影响查询结果缓存。需要时可显式设置 `metadataCache: { enabled: true }`；仅设置缓存目录或格式不会开启缓存。
+
+MikroORM 7.2.0 的 JSON 元数据缓存不能完整保留策略回调；实体使用 `policies.using` 或 `policies.check` 函数时，请保持缓存关闭。
+
+### 异步注册
+
+```typescript
+import { loadConfigFromEnv, DatabaseModule } from "@nest-boot/database";
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
+
+@Module({
+  imports: [
+    DatabaseModule.forRootAsync({
+      driverHint: PostgreSqlDriver,
+      useFactory: async () => ({
+        ...(await loadConfigFromEnv()),
+        debug: true,
+      }),
+    }),
+  ],
+})
+export class CommonModule {}
+```
+
+### CLI 配置
+
+用于 MikroORM CLI（迁移、Schema 生成），创建 `mikro-orm.config.ts`：
+
+```typescript
+import { existsSync } from "node:fs";
+import { loadEnvFile } from "node:process";
+
+import { loadConfigFromEnv } from "@nest-boot/database";
+
+if (existsSync(".env")) {
+  loadEnvFile();
+}
+
+export default loadConfigFromEnv();
+```
+
+## 健康检查
+
+同时导入 `HealthCheckModule` 和 `DatabaseModule.forRoot()` 或
+`DatabaseModule.forRootAsync()` 后，数据库模块会使用 `DatabaseHealthIndicator`，
+自动将现有 ORM 连接注册为 `database` 指示器。该类调用 MikroORM 的
+`checkConnection()`，并使用 Terminus 的 `HealthIndicatorService` 处理结果与超时，
+无需创建其他 ORM 实例或编写控制器。
+
+```bash
+pnpm add @nest-boot/health-check
+```
+
+```typescript
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
+import { DatabaseModule } from "@nest-boot/database";
+import { HealthCheckModule } from "@nest-boot/health-check";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [
+    DatabaseModule.forRoot({ driver: PostgreSqlDriver }),
+    HealthCheckModule,
+  ],
+})
+export class AppModule {}
+```
+
+连接正常时，`GET /api/health` 返回 HTTP 200，且
+`details.database.status` 为 `"up"`；连接异常或超过默认 1,000 ms 超时后
+返回 HTTP 503。尚未完成的自动探测会在多次请求间复用，待数据库操作结束后
+重新探测，因此连接恢复无需重启应用。
+
+未导入 `HealthCheckModule` 时，不注册自动数据库探测。MikroORM 7 默认延迟连接，
+因此启用健康检查后，指示器会在应用启动生命周期中初始化现有连接。
+运行中的探测不会主动初始化或重新连接已关闭的连接：连接恢复前会保持异常状态。
+
+需要手动检查时，可以从 `@nest-boot/database` 导入并注入 `DatabaseHealthIndicator`，
+调用 `pingCheck(key = "database", timeout = 1000)`，例如
+`await indicator.pingCheck("primary", 1500)`。
+
+## 请求作用域实体管理器
+
+模块通过 `RequestContext` 自动为每个请求分支实体管理器，确保正确隔离。可以在任何地方注入 `EntityManager`：
+
+```typescript
+import { EntityManager } from "@mikro-orm/postgresql";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class UserService {
+  constructor(private readonly em: EntityManager) {}
+
+  async findAll() {
+    return this.em.findAll(User);
+  }
+}
+```
+
+### 数据库 session 工厂
+
+通过 `session: () => ({ role: "anonymous", variables: { "app.workspace.id": "..." } })`
+为每个请求 EntityManager 初始化原生 session。同步回调返回 `ForkOptions["session"]`，
+在 `RequestContext` 内、认证之前执行，`forRoot()` 和 `forRootAsync()` 均支持。
+默认不配置工厂。应用负责创建和授权数据库角色，并在认证后、业务事务开始前更新 session。
+
+## EntityService
+
+`EntityService` 是通用的 CRUD 基类，内置 DataLoader 批处理，自动防止 N+1 查询：
+
+```typescript
+import { EntityManager, FilterQuery } from "@mikro-orm/postgresql";
+import { EntityService } from "@nest-boot/database";
+import { Injectable } from "@nestjs/common";
+
+import { User } from "./user.entity.js";
+
+@Injectable()
+export class UserService extends EntityService<User> {
+  constructor(protected readonly em: EntityManager) {
+    super(User, em);
+  }
+}
+```
+
+### 可用方法
+
+| 方法                                  | 描述                                                    |
+| ------------------------------------- | ------------------------------------------------------- |
+| `create(data)`                        | 创建并持久化新实体                                      |
+| `findOne(idOrEntity)`                 | 按 ID、实体引用或过滤查询查找（通过 DataLoader 批处理） |
+| `findOneOrFail(idOrEntity)`           | 同 `findOne`，未找到时抛出 `NotFoundException`          |
+| `findAll(where, options?)`            | 查找所有匹配过滤条件的实体                              |
+| `count(where, options?)`              | 统计匹配的实体数量                                      |
+| `update(idOrEntity, data)`            | 更新实体                                                |
+| `remove(idOrEntity, softDelete?)`     | 删除实体（支持软删除）                                  |
+| `chunkById(where, options, callback)` | 按块迭代实体，用于批量处理                              |
+
+### 软删除
+
+配置 `softDeleteKey` 后 `EntityService` 支持软删除：
+
+```typescript
+@Injectable()
+export class FileService extends EntityService<File> {
+  constructor(protected readonly em: EntityManager) {
+    super(File, em, { softDeleteKey: "deletedAt" });
+  }
+}
+
+// 软删除（设置 deletedAt = new Date()）
+await this.fileService.remove(fileId);
+
+// 硬删除
+await this.fileService.remove(fileId, false);
+```
+
+#### 软删除 RLS 策略
+
+对于 PostgreSQL 和 PGlite，`softDeletePolicies()` 为包含可空 `deletedAt` 属性的实体
+添加数据库层限制。需要显式加入实体，并与应用自己的允许型策略组合：
+
+```typescript
+import { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
+import { softDeletePolicies } from "@nest-boot/database";
+
+@Entity({
+  policies: [
+    {
+      command: "select",
+      roles: ["app_reader"],
+      using: () => "true",
+    },
+    ...softDeletePolicies(),
+  ],
+})
+export class Article {
+  @PrimaryKey({ type: t.integer })
+  id!: number;
+
+  @Property({ type: t.datetime, nullable: true })
+  deletedAt?: Date | null;
+}
+```
+
+在迁移中单独创建 `app_reader` 并授予表权限。此工具只包含限制型策略，本身不授予
+任何访问权限，也不初始化数据库角色或 session。策略回调使用映射后的数据库列名，
+因此支持自定义 `fieldName`。
+
+所有参数均可省略：`softDeletePolicies()` 默认使用 `property: "deletedAt"`。
+属性名不同时可传入 `softDeletePolicies({ property: "removedAt" })`。每次调用返回
+独立的策略定义，不需要额外 discovery 钩子或 Filter；由 MikroORM 解析列名并生成迁移。
+
+对于受 RLS 约束的角色，已删除记录不可见，插入和更新都必须保持 `deletedAt` 为空，
+并禁止物理删除。因此，直接软删除和恢复也会被阻止，包括通过 `EntityService.remove()`
+执行的删除。此类操作应由独立授权的 Service 路径负责，使用允许绕过这些限制的
+数据库角色执行。使用这些策略回调时，请保持元数据缓存关闭。
+
+### 分块处理
+
+批量处理大数据集：
+
+```typescript
+await this.userService.chunkById(
+  { isActive: true },
+  { limit: 100 },
+  async (users) => {
+    for (const user of users) {
+      await this.sendEmail(user);
+    }
+  },
+);
+```
+
+## 加密属性
+
+`@nest-boot/database-crypt` 模块提供 `@EncryptedProperty()` 装饰器，使用 `@nest-boot/crypt` 实现透明字段加密：
+
+```bash
+pnpm add @nest-boot/database-crypt @nest-boot/crypt
+```
+
+```typescript
+import { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
+import { EncryptedProperty } from "@nest-boot/database-crypt";
+
+@Entity()
+export class CloudProviderAccount {
+  @PrimaryKey({ type: t.bigint })
+  id!: string;
+
+  @EncryptedProperty()
+  apiKey!: string;
+
+  @EncryptedProperty()
+  apiSecret!: string;
+}
+```
+
+值在写入时自动加密，读取时自动解密。需要注册 `CryptModule`：
+
+```typescript
+import { CryptModule } from "@nest-boot/crypt";
+
+const CryptDynamicModule = CryptModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    secret: configService.getOrThrow("CRYPT_SECRET"),
+  }),
+});
+```
+
+`CryptModule` 会验证 secret 至少包含 32 个字符并具有足够熵值。`@EncryptedProperty()` 默认把列标记为 hidden 和 lazy，并在 create/update 前加密字符串值。
+
+## 哈希属性
+
+`@nest-boot/database-hash` 模块提供 `@HashedProperty()` 装饰器，使用 `@nest-boot/hash` 实现透明字段哈希：
+
+```bash
+pnpm add @nest-boot/database-hash @nest-boot/hash
+```
+
+```typescript
+import { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
+import { HashedProperty } from "@nest-boot/database-hash";
+
+@Entity()
+export class User {
+  @PrimaryKey({ type: t.bigint })
+  id!: string;
+
+  @HashedProperty()
+  password!: string;
+}
+```
+
+值会在 create/update 前自动哈希。装饰器默认把列标记为 hidden 和 lazy，遇到已有 Argon2 值时不会重复哈希。实体 hook 运行前必须初始化 `HashModule`。
+
+## 最佳实践
+
+1. **环境配置** — 运行时和 CLI 都使用 `loadConfigFromEnv()` 保持配置同步。
+
+2. **EntityService 作为基类** — 所有领域服务都继承 `EntityService`，开箱即获得 CRUD + DataLoader 批处理。
+
+3. **软删除** — 对支持软删除的实体在 `EntityService` 中配置 `softDeleteKey`。

@@ -1,1 +1,1 @@
-export * from "./complexity.decorator";
+export * from "./complexity.decorator.js";

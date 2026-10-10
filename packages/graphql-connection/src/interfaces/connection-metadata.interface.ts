@@ -1,7 +1,7 @@
 import { EntityClass, FilterQuery } from "@mikro-orm/core";
 import type { ZodType } from "zod";
 
-import { ConnectionFieldOptions } from "../types/field-options.type";
+import { ConnectionFieldOptions } from "../types/field-options.type.js";
 
 /**
  * Metadata stored on connection classes for query building.
@@ -9,8 +9,7 @@ import { ConnectionFieldOptions } from "../types/field-options.type";
  * This metadata is attached to connection classes using the
  * GRAPHQL_CONNECTION_METADATA symbol and is used by the
  * ConnectionQueryBuilder to construct queries.
- *
- * @typeParam Entity - The entity type for the connection
+ * @template Entity - The entity type for the connection
  * @internal
  */
 export interface ConnectionMetadata<Entity extends object> {

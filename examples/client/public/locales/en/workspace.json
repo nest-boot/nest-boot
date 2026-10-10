@@ -1,0 +1,82 @@
+{
+  "deleteWorkspace": {
+    "confirmHint": "Please type {{name}} to confirm.",
+    "confirmLabel": "Workspace Name",
+    "description": "Permanently delete workspace {{name}}, its memberships, invitations and member API keys? This cannot be undone. User accounts will be retained.",
+    "title": "Delete Workspace"
+  },
+  "invite": {
+    "description": "Please fill in your information to join the workspace",
+    "error": {
+      "accept_failed": "Failed to accept invitation",
+      "back_button": "Back to Workspaces",
+      "expired": "This invitation has expired. Ask a workspace administrator to send a new one.",
+      "invalid_token": "Invalid or expired invitation token",
+      "status": {
+        "ACCEPTED": "This invitation has already been accepted.",
+        "CANCELED": "This invitation has been canceled.",
+        "REJECTED": "This invitation has already been rejected."
+      },
+      "title": "Invalid Invitation"
+    },
+    "form": {
+      "email": {
+        "invalid": "Please enter a valid email address",
+        "label": "Email",
+        "mismatch_error": "This invitation was limited to another email address. Please ask the inviter to send a new invitation.",
+        "required": "Email is required"
+      },
+      "name": {
+        "description": "Your display name in the workspace",
+        "label": "Name"
+      },
+      "submit": "Accept Invitation"
+    },
+    "loading": "Loading...",
+    "success": "Successfully joined the workspace",
+    "title": "Accept Workspace Invitation"
+  },
+  "settings": {
+    "saved": "Workspace updated",
+    "save_failed": "Unable to save the workspace. Please try again.",
+    "dangerZone": {
+      "deleteButton": "Delete Workspace",
+      "description": "Permanently delete this workspace, its memberships, invitations and member API keys. This cannot be undone. User accounts will be retained.",
+      "title": "Danger Zone"
+    },
+    "description": "Update your workspace name and other settings.",
+    "form": {
+      "name": {
+        "label": "Name",
+        "placeholder": "My Workspace",
+        "required": "Workspace name is required"
+      }
+    },
+    "leave": {
+      "action": "Leave workspace",
+      "confirm_description": "You will lose access to this workspace. You must be invited again to return.",
+      "confirm_title": "Leave this workspace?",
+      "description": "Remove your membership from this workspace.",
+      "failed": "Failed to leave the workspace",
+      "success": "You left the workspace",
+      "title": "Leave workspace"
+    }
+  },
+  "title": "Settings",
+  "overview": {
+    "description": "An overview of {{name}}.",
+    "members": "Members of this workspace.",
+    "api_keys": "API keys belonging to this workspace.",
+    "manage_members": "Manage members"
+  },
+  "create": {
+    "title": "Create Workspace",
+    "description": "Create a new workspace to start managing your projects.",
+    "form": {
+      "name": {
+        "label": "Name",
+        "placeholder": "My Workspace"
+      }
+    }
+  }
+}

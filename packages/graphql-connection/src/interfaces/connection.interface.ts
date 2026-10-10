@@ -1,15 +1,13 @@
-import { type TotalCountRelation } from "../enums";
-import { type PageInfo } from "../objects";
-import { type EdgeInterface } from "./edge.interface";
+import { type TotalCountRelation } from "../enums/index.js";
+import { type PageInfo } from "../objects/index.js";
+import { type EdgeInterface } from "./edge.interface.js";
 
 /**
  * Represents a paginated connection following the Relay specification.
  *
  * A connection contains a list of edges (items with cursors), pagination info,
  * and the total count of items matching the query.
- *
- * @typeParam T - The type of entities in the connection
- *
+ * @template T - The type of entities in the connection
  * @see {@link https://relay.dev/graphql/connections.htm | Relay Connection Specification}
  */
 export interface ConnectionInterface<T> {
@@ -42,8 +40,7 @@ export interface ConnectionInterface<T> {
  * Count fields are omitted when neither field is selected by the GraphQL
  * operation. They remain non-null in the GraphQL schema and are populated
  * whenever either count field is selected.
- *
- * @typeParam T - The type of entities in the connection
+ * @template T - The type of entities in the connection
  */
 export type ConnectionResult<T> = Omit<
   ConnectionInterface<T>,

@@ -1,18 +1,30 @@
-import { AuthModuleOptions } from "../auth-module-options.interface";
-import { hasSocialProviderCredentialEnvConfig } from "./has-social-provider-credential-env-config";
-import { isEnvTrue } from "./is-env-true";
-import { resolveRequiredSocialProviderEnv } from "./resolve-required-social-provider-env";
-import { resolveSocialProviderEnabled } from "./resolve-social-provider-enabled";
+import type { BetterAuthOptions } from "better-auth";
+
+import { hasSocialProviderCredentialEnvConfig } from "./has-social-provider-credential-env-config.js";
+import { isEnvTrue } from "./is-env-true.js";
+import { resolveRequiredSocialProviderEnv } from "./resolve-required-social-provider-env.js";
+import { resolveSocialProviderEnabled } from "./resolve-social-provider-enabled.js";
 import {
   SOCIAL_PROVIDER_ENV_CONFIGS,
   SocialProviderId,
-} from "./social-provider.constants";
+} from "./social-provider.constants.js";
 
-type SocialProvidersConfig = NonNullable<AuthModuleOptions["socialProviders"]>;
+type SocialProvidersConfig = NonNullable<BetterAuthOptions["socialProviders"]>;
 type SocialProviderConfig<T extends SocialProviderId> = NonNullable<
   SocialProvidersConfig[T]
 >;
+type ResolvedSocialProviderConfig<T extends SocialProviderId> = Exclude<
+  SocialProviderConfig<T>,
+  (...args: never[]) => unknown
+>;
 
+/**
+ * Returns provider options with environment credentials, or undefined when disabled.
+ * @param provider - Authentication provider identifier.
+ * @param disableSignUp - Whether provider-based registration is disabled.
+ * @param options - Configuration for this operation.
+ * @returns Provider options with environment credentials, or undefined when disabled.
+ */
 export function createSocialProviderConfig<T extends SocialProviderId>(
   provider: T,
   disableSignUp: boolean,
@@ -29,6 +41,17 @@ export function createSocialProviderConfig<T extends SocialProviderId>(
 
   if (!shouldCreateProvider) {
     return undefined;
+  }
+
+  if (typeof options === "function") {
+    return (async () => {
+      const resolvedOptions = (await options()) as SocialProviderConfig<T>;
+      return createSocialProviderConfig(
+        provider,
+        disableSignUp,
+        resolvedOptions,
+      ) as ResolvedSocialProviderConfig<T>;
+    }) as SocialProviderConfig<T>;
   }
 
   if (!shouldUseCredentialEnv) {
@@ -51,5 +74,5 @@ export function createSocialProviderConfig<T extends SocialProviderId>(
     clientSecret: resolveRequiredSocialProviderEnv(provider, "clientSecret"),
     ...(hasEnabledEnv ? { enabled } : {}),
     disableSignUp: shouldDisableSignUp || options?.disableSignUp === true,
-  } as SocialProviderConfig<T>;
+  };
 }

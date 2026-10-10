@@ -1,0 +1,92 @@
+import { useQuery } from "@apollo/client/react";
+import { createFileRoute } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { useTranslation } from "react-i18next";
+import { graphql } from "@/gql";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAbility } from "@/contexts/ability-context";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
+
+import { ApiKeysPage } from "@/components/api-keys-page";
+import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
+import { userApiKeysResourceKey } from "@/lib/resource-keys";
+
+const GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE = graphql(`
+  query getUserApiKeysFromUserApiKeysRoute(
+    $after: String
+    $before: String
+    $first: Int
+    $last: Int
+    $filter: UserApiKeyFilter
+    $orderBy: UserApiKeyOrder
+    $query: String
+  ) {
+    currentUser {
+      apiKeys(
+        after: $after
+        before: $before
+        first: $first
+        last: $last
+        orderBy: $orderBy
+        filter: $filter
+        query: $query
+      ) {
+        edges {
+          node {
+            id
+            name
+            start
+            prefix
+            enabled
+            permissions
+            createdAt
+            lastUsedAt
+            expiresAt
+          }
+        }
+        pageInfo {
+          endCursor
+          hasNextPage
+          hasPreviousPage
+          startCursor
+        }
+      }
+    }
+  }
+`);
+
+export const Route = createFileRoute("/_authenticated/user/api-keys/")({
+  component: ApiKeysComponent,
+  validateSearch: zodValidator(apiKeySearchSchema),
+});
+
+function ApiKeysComponent() {
+  const { t } = useTranslation();
+  const ability = useAbility();
+  const search = Route.useSearch();
+  const currentUser = useCurrentUserContext();
+  useResourceNavigation({
+    key: [currentUser.id, ...userApiKeysResourceKey],
+    searchSchema: apiKeySearchSchema,
+    search,
+  });
+  const { data } = useQuery(GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE, {
+    fetchPolicy: "network-only",
+    variables: search,
+  });
+  const connection = data?.currentUser.apiKeys;
+
+  return (
+    <ApiKeysPage
+      subject="UserApiKey"
+      ability={ability}
+      title={t("api-key:user.title")}
+      description={t("api-key:user.description")}
+      createPath={"/user/api-keys/create"}
+      detailPath={(id) => `/user/api-keys/${id}`}
+      search={search}
+      apiKeys={connection?.edges.map((edge) => edge.node) ?? []}
+      pageInfo={connection?.pageInfo}
+    />
+  );
+}

@@ -13,7 +13,7 @@ pnpm add @nest-boot/temporary-directory @nest-boot/request-context
 
 ## 运行要求
 
-模块要求 Node.js `>=24.4.0`，因为清理生命周期使用了 Node.js 的异步可释放临时目录。
+模块遵循统一的 Node.js `>=24.21.0` 版本要求。清理生命周期使用了 Node.js 的异步可释放临时目录。
 
 ## 模块注册
 
@@ -149,7 +149,3 @@ await RequestContext.run(new RequestContext({ type: "job" }), async () => {
 2. **使用命名空间分组** — 需要改善目录辨识度时，选择 `image`、`archive` 或 `report-output` 等简短的用途名称。
 3. **保留生成的名称** — 在返回的目录中写入文件，不要重命名或移动可释放的请求根目录。
 4. **有意识地持久化** — 在上下文结束前将需要保留的结果复制到永久存储；不要把临时路径写入数据库或交给稍后运行的后台任务。
-
-## API 参考
-
-详细的 API 文档请参阅[临时目录 API 参考](/docs/api/temporary-directory)。

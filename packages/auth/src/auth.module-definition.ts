@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { type AuthModuleOptions } from "./auth-module-options.interface";
+import { type AuthModuleOptions } from "./auth-module-options.interface.js";
 
 export const {
   ConfigurableModuleClass,

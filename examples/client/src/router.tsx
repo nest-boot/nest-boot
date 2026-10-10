@@ -1,0 +1,94 @@
+import {
+  ApolloClient,
+  InMemoryCache,
+  routerWithApolloClient,
+} from "@apollo/client-integration-tanstack-start";
+import {
+  ApolloLink,
+  CombinedGraphQLErrors,
+  HttpLink,
+  ServerError,
+  UnconventionalError,
+} from "@apollo/client";
+import { createRouter } from "@tanstack/react-router";
+import { ErrorLink } from "@apollo/client/link/error";
+
+import { routeTree } from "./routeTree.gen";
+import { NotFoundPage } from "./components/route-page-template/not-found-page";
+import i18next from "@/lib/i18n";
+
+export const getRouter = () => {
+  const apolloClient = new ApolloClient({
+    cache: new InMemoryCache(),
+    link: ApolloLink.from([
+      new ErrorLink(({ error }) => {
+        if (CombinedGraphQLErrors.is(error)) {
+          const hasAuthError = error.errors.some(({ message, extensions }) => {
+            console.log(`GraphQL error: ${message}`);
+            return (
+              extensions?.code &&
+              ["UNAUTHORIZED", "UNAUTHENTICATED"].includes(
+                extensions.code as string,
+              )
+            );
+          });
+
+          const isPublicAuthFlow =
+            location.pathname.startsWith("/auth/") ||
+            location.pathname === "/invite" ||
+            location.pathname === "/invite/";
+          if (hasAuthError && !isPublicAuthFlow) {
+            const redirect = `${location.pathname}${location.search}${location.hash}`;
+            const loginUrl = new URL("/auth/login", location.origin);
+            loginUrl.searchParams.set("redirect", redirect);
+            window.location.assign(loginUrl);
+          }
+        } else if (ServerError.is(error)) {
+          console.log(`Server error: ${error.message}`);
+        } else if (UnconventionalError.is(error)) {
+          console.log(`Other error: ${error.message}`);
+        }
+      }),
+      new ApolloLink((operation, forward) => {
+        operation.setContext(({ headers = {} }) => {
+          const workspaceId =
+            location.pathname.match(/^\/workspaces\/(\d+)/)?.[1];
+
+          if (workspaceId) {
+            document.cookie = `workspace_id=${encodeURIComponent(workspaceId)}; path=/; max-age=31536000; samesite=lax`;
+          }
+
+          return {
+            headers: {
+              ...headers,
+              ...(workspaceId && !("x-workspace-id" in headers)
+                ? { "x-workspace-id": workspaceId }
+                : {}),
+              "X-Timezone-Offset": String(new Date().getTimezoneOffset()),
+            },
+          };
+        });
+
+        return forward(operation);
+      }),
+      new HttpLink({ uri: "/api/graphql", credentials: "include" }),
+    ]),
+    dataMasking: true,
+  });
+
+  const router = createRouter({
+    routeTree,
+    scrollRestoration: true,
+    scrollToTopSelectors: ['[data-slot="layout-content-viewport"]'],
+    defaultPreloadStaleTime: 0,
+    defaultNotFoundComponent: NotFoundPage,
+    notFoundMode: "root",
+    defaultPreload: "intent",
+    context: {
+      ...routerWithApolloClient.defaultContext,
+      i18n: i18next,
+    },
+  });
+
+  return routerWithApolloClient(router, apolloClient);
+};

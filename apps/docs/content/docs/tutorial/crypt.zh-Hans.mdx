@@ -30,7 +30,7 @@ const CryptDynamicModule = CryptModule.registerAsync({
 最终解析出的 secret 必须至少包含 32 个字符，并具有至少 120 bit 的估算熵。可使用以下命令生成：
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+node --input-type=module -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))"
 ```
 
 ## 用法
@@ -57,8 +57,4 @@ export class SecretService {
 
 ## MikroORM 集成
 
-使用 `@nest-boot/mikro-orm-crypt` 的 `@EncryptedProperty()` 装饰器实现自动字段加密。详见 [MikroORM 教程](/docs/tutorial/mikro-orm#加密属性)。
-
-## API 参考
-
-详细的 API 文档请参阅[加密 API 参考](/docs/api/crypt)。
+使用 `@nest-boot/database-crypt` 的 `@EncryptedProperty()` 装饰器实现自动字段加密。详见 [MikroORM 教程](/docs/tutorial/database#加密属性)。

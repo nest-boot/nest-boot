@@ -73,14 +73,28 @@ The logger context is automatically set to the injecting class name (e.g., `User
 
 ### Key Methods
 
-| Method                   | Description                                                              |
-| ------------------------ | ------------------------------------------------------------------------ |
-| `setContext(name)`       | Override the logger context (auto-set to the injecting class name)       |
-| `assign(metadata)`       | Attach structured metadata to all subsequent log entries in this request |
-| `log(message)`           | Log at INFO level                                                        |
-| `warn(message)`          | Log at WARN level                                                        |
-| `error(message, trace?)` | Log at ERROR level with optional stack trace                             |
-| `debug(message)`         | Log at DEBUG level                                                       |
+| Method                             | Description                                                              |
+| ---------------------------------- | ------------------------------------------------------------------------ |
+| `setContext(name)`                 | Override the logger context (auto-set to the injecting class name)       |
+| `assign(metadata)`                 | Attach structured metadata to all subsequent log entries in this request |
+| `log(message)`                     | Log at INFO level                                                        |
+| `warn(message)`                    | Log at WARN level                                                        |
+| `error(message, trace?, context?)` | Log at ERROR level with optional stack trace                             |
+| `debug(message)`                   | Log at DEBUG level                                                       |
+
+Pass an `Error` directly or in structured bindings (`{ err: error }`) to retain its message and stack under `err`. Explicit stack strings are emitted as `stack`. A single plain string after the message remains a context override; a stack-looking string retains the logger's current context.
+
+```typescript
+this.logger.error(error);
+this.logger.error("Operation failed", error.stack, "OrdersService");
+this.logger.error(
+  "Operation failed",
+  { orderId },
+  error.stack,
+  "OrdersService",
+);
+this.logger.error("Operation failed", { err: error, orderId });
+```
 
 ### Structured Output
 
@@ -104,7 +118,3 @@ All logs are output as JSON with structured metadata:
 2. **Automatic Context** — The logger automatically uses the injecting class name as the context. Only call `setContext()` if you need to override it (e.g., in BullMQ processors).
 
 3. **Assign Metadata** — Use `assign()` to attach request-level data (user ID, job ID, etc.) rather than including it in every log message string.
-
-## API Reference
-
-For detailed API documentation, see the [Logger API Reference](/docs/api/logger).

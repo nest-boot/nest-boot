@@ -4,7 +4,7 @@ import { join, sep } from "node:path";
 import { RequestContext } from "@nest-boot/request-context";
 import { Injectable } from "@nestjs/common";
 
-import { TEMPORARY_DIRECTORY_ROOT } from "./temporary-directory.constants";
+import { TEMPORARY_DIRECTORY_ROOT } from "./temporary-directory.constants.js";
 
 const NAMESPACE_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 const INVALID_NAMESPACE_MESSAGE =
@@ -15,9 +15,9 @@ const INVALID_NAMESPACE_MESSAGE =
 export class TemporaryDirectoryService {
   /**
    * Creates an isolated child directory removed when its request context ends.
-   *
    * @param namespace - Optional namespace containing only letters, numbers,
    *   hyphens, and underscores, up to 64 characters.
+   * @returns Path of the newly created temporary directory.
    */
   async create(namespace?: string): Promise<string> {
     if (!RequestContext.isActive()) {

@@ -1,4 +1,4 @@
-import { Processor, WorkerHost } from "@nest-boot/bullmq";
+import { Processor, WorkerHost } from "@nest-boot/queue";
 import {
   Inject,
   Logger,
@@ -7,16 +7,19 @@ import {
 } from "@nestjs/common";
 import { Job } from "bullmq";
 
-import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition";
-import { ScheduleRegistry } from "./schedule.registry";
-import { ScheduleModuleOptions } from "./schedule-module-options.interface";
+import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition.js";
+import { ScheduleRegistry } from "./schedule.registry.js";
+import { type ScheduleModuleOptions } from "./schedule-module-options.interface.js";
 
 @Processor("schedule", { autorun: false })
 export class ScheduleProcessor
   extends WorkerHost
   implements OnApplicationBootstrap
 {
-  /** Logger for worker lifecycle failures. @internal */
+  /**
+   * Logger for worker lifecycle failures.
+   * @internal
+   */
   private readonly logger = new Logger(ScheduleProcessor.name);
 
   constructor(

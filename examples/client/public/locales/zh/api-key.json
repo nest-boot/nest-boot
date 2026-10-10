@@ -1,0 +1,95 @@
+{
+  "create": {
+    "button": "创建 API 密钥",
+    "description": "创建用于 API 访问的密钥。完整密钥只会显示一次。",
+    "title": "创建 API 密钥"
+  },
+  "created": {
+    "copied": "已复制",
+    "copy": "复制 API 密钥",
+    "description": "请立即复制并妥善保管此密钥。离开或刷新此页面后，将无法再次查看完整密钥。",
+    "title": "API 密钥已创建",
+    "warning": "请注意：此密钥只显示一次！",
+    "copy_failed": "复制失败，请手动选择并复制密钥。"
+  },
+  "description": "创建和管理此工作空间的 API 密钥。",
+  "filter": {
+    "items": {
+      "created_at": {
+        "label": "创建时间"
+      },
+      "prefix": {
+        "label": "密钥前缀",
+        "placeholder": "搜索密钥前缀"
+      },
+      "name": {
+        "label": "名称",
+        "placeholder": "搜索 API 密钥名称"
+      }
+    },
+    "search": {
+      "placeholder": "搜索 API 密钥"
+    }
+  },
+  "form": {
+    "name": {
+      "label": "名称",
+      "placeholder": "为此 API 密钥输入名称",
+      "required": "API 密钥名称是必填的",
+      "too_long": "API 密钥名称过长"
+    },
+    "save_failed": "无法保存此 API 密钥，请重试。",
+    "member": {
+      "label": "服务账号",
+      "search": "搜索服务账号",
+      "empty": "没有匹配的服务账号",
+      "auto_create": "不选择时，保存将按 API key 名称创建新的服务账号。",
+      "required": "请选择服务账号；自动创建需要服务账号写权限。"
+    },
+    "permissions_hint": "未勾选权限时，继承所属用户或成员的完整权限。",
+    "owner": {
+      "label": "归属",
+      "you": "你",
+      "service_account": "服务账号",
+      "you_description": "此密钥属于你在当前工作空间的成员身份。停用或移除该成员后，密钥将无法使用。",
+      "service_account_description": "此密钥属于服务账号，使用该账号的权限访问当前工作空间。"
+    }
+  },
+  "never_expires": "永不过期",
+  "never_used": "从未使用",
+  "edit": {
+    "description": "更新此 API 密钥的显示名称和权限。",
+    "title": "API 密钥详情"
+  },
+  "delete": {
+    "description": "删除 {{name}}？此操作无法撤销。",
+    "title": "删除 API 密钥"
+  },
+  "status": {
+    "active": "活跃",
+    "disabled": "已禁用",
+    "expired": "已过期"
+  },
+  "table": {
+    "created_at": "创建时间",
+    "expires_at": "过期时间",
+    "key_start": "密钥",
+    "last_used": "最近使用",
+    "name": "名称",
+    "status": "状态"
+  },
+  "title": "API 密钥",
+  "user": {
+    "description": "创建和管理属于当前用户账号的 API 密钥。",
+    "title": "API 密钥"
+  },
+  "toast": {
+    "created_success": "API 密钥创建成功",
+    "disabled_success": "API 密钥已禁用",
+    "enabled_success": "API 密钥已启用",
+    "updated_success": "API 密钥更新成功",
+    "deleted_success": "API 密钥删除成功"
+  },
+  "details": "API 密钥",
+  "usage": "使用情况"
+}

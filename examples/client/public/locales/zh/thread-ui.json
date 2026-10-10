@@ -1,0 +1,278 @@
+{
+  "alertDialog": {
+    "cancel": "取消",
+    "confirm": "确认"
+  },
+  "complexFilter": {
+    "operators": {
+      "$eq": "等于",
+      "$ne": "不等于",
+      "$gt": "大于",
+      "$gte": "大于等于",
+      "$lt": "小于",
+      "$lte": "小于等于",
+      "$in": "包含",
+      "$nin": "不包含",
+      "$fulltext": "包含"
+    },
+    "logicals": {
+      "$and": "且",
+      "$or": "或"
+    },
+    "addCondition": "添加条件",
+    "addGroup": "添加分组",
+    "clearAll": "清除全部",
+    "selectField": "选择字段",
+    "selectOperator": "选择操作符",
+    "selectValue": "选择值",
+    "removeCondition": "删除条件",
+    "removeGroup": "删除条件组"
+  },
+  "dataFilter": {
+    "loading": "加载中",
+    "loadFailed": "无法加载选项",
+    "noOptions": "没有找到选项",
+    "addFilter": "添加筛选",
+    "removeFilter": "移除筛选",
+    "empty": "空",
+    "isEmpty": "为空",
+    "isNotEmpty": "不为空",
+    "checked": "已选中",
+    "unchecked": "未选中",
+    "operators": {
+      "$eq": "等于",
+      "$ne": "不等于",
+      "$gt": "大于",
+      "$gte": "大于等于",
+      "$lt": "小于",
+      "$lte": "小于等于",
+      "$between": "介于",
+      "$fulltext": "包含",
+      "$in": "包含",
+      "$nin": "不包含"
+    },
+    "minimumAriaLabel": "{{label}} 最小值",
+    "maximumAriaLabel": "{{label}} 最大值",
+    "search": "搜索",
+    "sort": "排序",
+    "sortField": "排序字段"
+  },
+  "dataTable": {
+    "allSelected": "已全选",
+    "emptyDescription": "调整筛选或搜索条件后重试。",
+    "emptyTitle": "没有找到项目",
+    "nextPage": "下一页",
+    "openRowActions": "打开行操作",
+    "previousPage": "上一页",
+    "selectAll": "选择全部",
+    "selectAllRows": "选择所有行",
+    "selectAllRowsOnPage": "选择本页全部 {{count}} 行",
+    "selectedRows": "已选择 {{count}} 行",
+    "selectRow": "选择行",
+    "unselectAll": "取消全选"
+  },
+  "calendar": {
+    "code": "zh",
+    "options": {
+      "weekStartsOn": 1,
+      "firstWeekContainsDate": 4
+    },
+    "ordinalNumber": "第 {{number}}",
+    "eras": {
+      "narrow": ["前", "公元"],
+      "abbreviated": ["前", "公元"],
+      "wide": ["公元前", "公元"]
+    },
+    "quarters": {
+      "narrow": ["1", "2", "3", "4"],
+      "abbreviated": ["第一季", "第二季", "第三季", "第四季"],
+      "wide": ["第一季度", "第二季度", "第三季度", "第四季度"]
+    },
+    "months": {
+      "narrow": [
+        "一",
+        "二",
+        "三",
+        "四",
+        "五",
+        "六",
+        "七",
+        "八",
+        "九",
+        "十",
+        "十一",
+        "十二"
+      ],
+      "abbreviated": [
+        "1月",
+        "2月",
+        "3月",
+        "4月",
+        "5月",
+        "6月",
+        "7月",
+        "8月",
+        "9月",
+        "10月",
+        "11月",
+        "12月"
+      ],
+      "wide": [
+        "一月",
+        "二月",
+        "三月",
+        "四月",
+        "五月",
+        "六月",
+        "七月",
+        "八月",
+        "九月",
+        "十月",
+        "十一月",
+        "十二月"
+      ]
+    },
+    "weekdays": {
+      "narrow": ["日", "一", "二", "三", "四", "五", "六"],
+      "short": ["日", "一", "二", "三", "四", "五", "六"],
+      "abbreviated": ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
+      "wide": [
+        "星期日",
+        "星期一",
+        "星期二",
+        "星期三",
+        "星期四",
+        "星期五",
+        "星期六"
+      ]
+    },
+    "dayPeriods": {
+      "narrow": {
+        "am": "上",
+        "pm": "下",
+        "midnight": "凌晨",
+        "noon": "午",
+        "morning": "早",
+        "afternoon": "下午",
+        "evening": "晚",
+        "night": "夜"
+      },
+      "abbreviated": {
+        "am": "上午",
+        "pm": "下午",
+        "midnight": "凌晨",
+        "noon": "中午",
+        "morning": "早晨",
+        "afternoon": "中午",
+        "evening": "晚上",
+        "night": "夜间"
+      },
+      "wide": {
+        "am": "上午",
+        "pm": "下午",
+        "midnight": "凌晨",
+        "noon": "中午",
+        "morning": "早晨",
+        "afternoon": "中午",
+        "evening": "晚上",
+        "night": "夜间"
+      }
+    },
+    "formattingDayPeriods": {
+      "narrow": {
+        "am": "上",
+        "pm": "下",
+        "midnight": "凌晨",
+        "noon": "午",
+        "morning": "早",
+        "afternoon": "下午",
+        "evening": "晚",
+        "night": "夜"
+      },
+      "abbreviated": {
+        "am": "上午",
+        "pm": "下午",
+        "midnight": "凌晨",
+        "noon": "中午",
+        "morning": "早晨",
+        "afternoon": "中午",
+        "evening": "晚上",
+        "night": "夜间"
+      },
+      "wide": {
+        "am": "上午",
+        "pm": "下午",
+        "midnight": "凌晨",
+        "noon": "中午",
+        "morning": "早晨",
+        "afternoon": "中午",
+        "evening": "晚上",
+        "night": "夜间"
+      }
+    },
+    "labels": {
+      "today": "今天，{{label}}",
+      "selected": "{{label}}，已选择",
+      "monthDropdown": "选择月份",
+      "next": "前往下个月",
+      "previous": "前往上个月",
+      "weekNumber": "第 {{weekNumber}} 周",
+      "yearDropdown": "选择年份",
+      "grid": "{{year}}年{{month}}",
+      "nav": "导航栏",
+      "weekNumberHeader": "周数"
+    }
+  },
+  "fileUpload": {
+    "title": "上传文件",
+    "browseFiles": "浏览文件",
+    "placeholder": "点击上传、拖放文件到此处或粘贴文件",
+    "removeFile": "移除 {{name}}",
+    "uploadFile": "上传 {{name}}",
+    "cancelFile": "取消上传 {{name}}",
+    "retryFile": "重新上传 {{name}}",
+    "status": {
+      "idle": "等待上传",
+      "queued": "排队中",
+      "uploading": "上传中",
+      "done": "已上传",
+      "error": "上传失败",
+      "canceled": "已取消"
+    }
+  },
+  "common": {
+    "copy": "复制"
+  },
+  "page": {
+    "pagination": "项目导航",
+    "previousItem": "上一项",
+    "nextItem": "下一项",
+    "breadcrumbs": "面包屑导航",
+    "parentPages": "上级页面",
+    "moreActions": "更多操作"
+  },
+  "codeBlock": {
+    "copy": "复制代码",
+    "selectLanguage": "选择代码语言"
+  },
+  "layout": {
+    "navigation": "导航",
+    "toggleNavigation": "切换导航",
+    "skipToContent": "跳转到主要内容",
+    "expandNavigation": "展开导航",
+    "collapseNavigation": "收起导航"
+  },
+  "sidebarAccountMenu": {
+    "choose": "选择工作空间",
+    "switch": "切换工作空间：{{name}}",
+    "recentWorkspaces": "最近的工作空间",
+    "workspaces": "工作区",
+    "userMenu": "账号：{{name}}",
+    "accountMenu": "工作空间与账号：{{name}}",
+    "profile": "个人中心：{{name}}",
+    "language": "语言",
+    "theme": "主题",
+    "help": "帮助中心",
+    "signOut": "退出登录"
+  }
+}

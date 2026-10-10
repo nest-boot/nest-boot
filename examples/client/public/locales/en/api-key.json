@@ -1,0 +1,95 @@
+{
+  "create": {
+    "button": "Create API Key",
+    "description": "Create a key for API access. The full key is shown only once.",
+    "title": "Create API Key"
+  },
+  "created": {
+    "copied": "Copied",
+    "copy": "Copy API Key",
+    "description": "Copy and store this key securely now. After leaving or refreshing this page, you will not be able to view the full key again.",
+    "title": "API Key Created",
+    "warning": "Attention: This key will only be shown once!",
+    "copy_failed": "Could not copy the key. Please select and copy it manually."
+  },
+  "description": "Create and manage API keys for this workspace.",
+  "filter": {
+    "items": {
+      "created_at": {
+        "label": "Created"
+      },
+      "prefix": {
+        "label": "Key Prefix",
+        "placeholder": "Search key prefix"
+      },
+      "name": {
+        "label": "Name",
+        "placeholder": "Search API key name"
+      }
+    },
+    "search": {
+      "placeholder": "Search API keys"
+    }
+  },
+  "form": {
+    "name": {
+      "label": "Name",
+      "placeholder": "Enter a name for this API key",
+      "required": "API key name is required",
+      "too_long": "API key name is too long"
+    },
+    "save_failed": "Unable to save this API key. Please try again.",
+    "member": {
+      "label": "Service account",
+      "search": "Search service accounts",
+      "empty": "No matching service accounts",
+      "auto_create": "Leave unselected to create a service account with the key name when saving.",
+      "required": "Select a service account; creating one requires service account write permission."
+    },
+    "permissions_hint": "No permissions selected: inherit all owner permissions.",
+    "owner": {
+      "label": "Owned by",
+      "you": "You",
+      "service_account": "Service account",
+      "you_description": "This key belongs to your membership in this workspace. Disabling or removing your membership prevents the key from being used.",
+      "service_account_description": "This key belongs to a service account and uses that account's permissions in this workspace."
+    }
+  },
+  "never_expires": "Never expires",
+  "never_used": "Never used",
+  "edit": {
+    "description": "Update the display name and permissions for this API key.",
+    "title": "API Key Details"
+  },
+  "delete": {
+    "description": "Delete {{name}}? This action cannot be undone.",
+    "title": "Delete API Key"
+  },
+  "status": {
+    "active": "Active",
+    "disabled": "Disabled",
+    "expired": "Expired"
+  },
+  "table": {
+    "created_at": "Created",
+    "expires_at": "Expires",
+    "key_start": "Key",
+    "last_used": "Last Used",
+    "name": "Name",
+    "status": "Status"
+  },
+  "title": "API Keys",
+  "user": {
+    "description": "Create and manage API keys owned by your user account.",
+    "title": "API Keys"
+  },
+  "toast": {
+    "created_success": "API key created",
+    "disabled_success": "API key disabled",
+    "enabled_success": "API key enabled",
+    "updated_success": "API key updated",
+    "deleted_success": "API key deleted"
+  },
+  "details": "API Key",
+  "usage": "Usage"
+}

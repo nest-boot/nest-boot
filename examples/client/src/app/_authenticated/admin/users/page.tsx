@@ -1,0 +1,245 @@
+import { useMemo } from "react";
+import { useQuery } from "@apollo/client/react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import dayjs from "dayjs";
+import { t } from "i18next";
+import { useTranslation } from "react-i18next";
+import { isEmpty } from "lodash";
+import type { DataFilterField } from "@/components/thread-ui/data-filter";
+import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { adminUserSearchSchema } from "@/schemas/admin-user-search-schema";
+import { adminUsersResourceKey } from "@/lib/resource-keys";
+import { useResourceNavigation } from "@/hooks/use-resource-navigation";
+import { DataFilter } from "@/components/thread-ui/data-filter";
+import { Link } from "@/components/link";
+import { useAbility } from "@/contexts/ability-context";
+
+import { createAbilitySubject } from "@/lib/ability";
+import { Badge } from "@/components/thread-ui/badge";
+import {
+  DataTable,
+  createDataTableColumnHelper,
+} from "@/components/thread-ui/data-table";
+import { Page } from "@/components/thread-ui/page";
+import { graphql } from "@/gql";
+import { getNextSearch, getPreviousSearch } from "@/lib/graphql-connection";
+import { Card, CardContent } from "@/components/ui/card";
+
+const GET_USERS_FROM_USERS_ROUTE = graphql(`
+  query getUsersFromUsersRoute(
+    $first: Int
+    $last: Int
+    $after: String
+    $before: String
+    $filter: UserFilter
+    $query: String
+    $orderBy: UserOrder
+  ) {
+    users(
+      first: $first
+      last: $last
+      after: $after
+      before: $before
+      filter: $filter
+      query: $query
+      orderBy: $orderBy
+    ) {
+      edges {
+        node {
+          id
+          name
+          email
+          emailVerified
+          banned
+          createdAt
+        }
+      }
+      totalCount
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        startCursor
+        endCursor
+      }
+    }
+  }
+`);
+
+export const Route = createFileRoute("/_authenticated/admin/users/")({
+  component: AdminUsersPage,
+  beforeLoad: () => ({ title: t("admin:users.title") }),
+  validateSearch: zodValidator(adminUserSearchSchema),
+});
+
+function AdminUsersPage() {
+  const { t, i18n } = useTranslation();
+  const search = Route.useSearch();
+  const currentUser = useCurrentUserContext();
+  useResourceNavigation({
+    key: [currentUser.id, ...adminUsersResourceKey],
+    searchSchema: adminUserSearchSchema,
+    search,
+  });
+  const navigate = useNavigate();
+  const ability = useAbility();
+  const query = search.query ?? "";
+  const filterValues = (search.filter ?? {}) as Record<string, unknown>;
+  const { data, loading } = useQuery(GET_USERS_FROM_USERS_ROUTE, {
+    fetchPolicy: "network-only",
+    variables: search,
+  });
+  const users = data?.users.edges.map(({ node }) => node) ?? [];
+  const canCreate = ability.can("create", "User");
+  const usersColumnHelper =
+    createDataTableColumnHelper<(typeof users)[number]>();
+  const filters: Array<DataFilterField> = useMemo(
+    () => [
+      {
+        label: t("admin:users.table.name"),
+        field: "name",
+        type: "input",
+        operators: ["$eq", "$ne"],
+        defaultOperator: "$eq",
+      },
+      {
+        label: t("admin:users.table.email"),
+        field: "email",
+        type: "input",
+        operators: ["$eq", "$ne"],
+        defaultOperator: "$eq",
+      },
+      {
+        label: t("admin:users.table.created_at"),
+        field: "created_at",
+        type: "date-picker",
+        max: dayjs().toISOString(),
+        operators: ["$gte", "$lte"],
+        defaultOperator: "$gte",
+      },
+    ],
+    [t],
+  );
+
+  return (
+    <Page
+      title={t("admin:users.title")}
+      description={t("admin:users.description")}
+      primaryAction={
+        canCreate
+          ? {
+              render: <Link to="/admin/users/create" />,
+              label: t("action.create"),
+            }
+          : undefined
+      }
+    >
+      <Card>
+        <CardContent>
+          <div className="space-y-4">
+            <DataFilter
+              filters={filters}
+              loading={loading}
+              value={{ filter: filterValues, query }}
+              search={{ placeholder: t("admin:users.search") }}
+              onChange={(value) => {
+                navigate({
+                  to: "/admin/users",
+                  search: {
+                    query: value.query || undefined,
+                    filter: isEmpty(value.filter) ? undefined : value.filter,
+                    orderBy: search.orderBy,
+                  },
+                });
+              }}
+            />
+
+            <DataTable
+              locale={i18n.resolvedLanguage}
+              data={users}
+              columns={usersColumnHelper.columns([
+                usersColumnHelper.column("name", {
+                  header: t("admin:users.table.name"),
+                  render: (props, { row }) => (
+                    <div {...props}>
+                      <p className="font-medium">{row.original.name}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {row.original.email}
+                      </p>
+                    </div>
+                  ),
+                }),
+                usersColumnHelper.column("emailVerified", {
+                  header: t("admin:users.table.email_status"),
+                  render: (props, { row }) => (
+                    <Badge
+                      {...props}
+                      color={row.original.emailVerified ? "green" : "gray"}
+                    >
+                      {t(
+                        row.original.emailVerified
+                          ? "admin:users.verified"
+                          : "admin:users.unverified",
+                      )}
+                    </Badge>
+                  ),
+                }),
+                usersColumnHelper.column("banned", {
+                  header: t("admin:users.table.status"),
+                  render: (props, { row }) => (
+                    <Badge
+                      {...props}
+                      color={row.original.banned ? "red" : "green"}
+                    >
+                      {t(
+                        row.original.banned
+                          ? "admin:users.banned"
+                          : "admin:users.active",
+                      )}
+                    </Badge>
+                  ),
+                }),
+                usersColumnHelper.column("createdAt", {
+                  header: t("admin:users.table.created_at"),
+                  type: "date",
+                }),
+              ])}
+              onRowClick={(row) => {
+                if (
+                  !ability.can(
+                    "read",
+                    createAbilitySubject("User", row.original),
+                  )
+                )
+                  return;
+                navigate({
+                  to: "/admin/users/$userId",
+                  params: { userId: row.original.id },
+                });
+              }}
+              pagination={{
+                hasPreviousPage: data?.users.pageInfo.hasPreviousPage ?? false,
+                hasNextPage: data?.users.pageInfo.hasNextPage ?? false,
+                onPreviousPage: () =>
+                  navigate({
+                    to: "/admin/users",
+                    search: getPreviousSearch(search, data?.users.pageInfo),
+                  }),
+                onNextPage: () =>
+                  navigate({
+                    to: "/admin/users",
+                    search: getNextSearch(search, data?.users.pageInfo),
+                  }),
+              }}
+            />
+            {loading ? (
+              <p className="text-muted-foreground mt-3 text-sm">
+                {t("admin:users.loading")}
+              </p>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
+    </Page>
+  );
+}

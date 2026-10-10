@@ -1,6 +1,11 @@
-import { AuthModuleOptions } from "../auth-module-options.interface";
-import { estimateEntropy } from "./estimate-entropy";
+import { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { estimateEntropy } from "./estimate-entropy.js";
 
+/**
+ * Returns configured authentication secret.
+ * @param options - Authentication module configuration.
+ * @returns Configured authentication secret.
+ */
 export function resolveSecret(options: AuthModuleOptions): string {
   const secret =
     options.secret ?? process.env.AUTH_SECRET ?? process.env.APP_SECRET;
@@ -10,7 +15,7 @@ export function resolveSecret(options: AuthModuleOptions): string {
       "Auth secret is required.\n" +
         "Set AUTH_SECRET or APP_SECRET environment variable, or pass a secret option.\n" +
         "Generate a secure secret with:\n" +
-        "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
+        "  node --input-type=module -e \"import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))\"",
     );
   }
 
@@ -19,7 +24,7 @@ export function resolveSecret(options: AuthModuleOptions): string {
       "Auth secret must be at least 32 characters long.\n" +
         "Set AUTH_SECRET or APP_SECRET environment variable, or pass a secret option.\n" +
         "Generate a secure secret with:\n" +
-        "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
+        "  node --input-type=module -e \"import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))\"",
     );
   }
 
@@ -28,7 +33,7 @@ export function resolveSecret(options: AuthModuleOptions): string {
       "Auth secret appears low-entropy.\n" +
         "Use a randomly generated secret for production.\n" +
         "Generate a secure secret with:\n" +
-        "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
+        "  node --input-type=module -e \"import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))\"",
     );
   }
 

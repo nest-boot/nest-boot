@@ -3,8 +3,8 @@ import { basename, dirname, join } from "node:path";
 
 import { RequestContext } from "@nest-boot/request-context";
 
-import { TemporaryDirectoryModule } from "./temporary-directory.module";
-import { TemporaryDirectoryService } from "./temporary-directory.service";
+import { TemporaryDirectoryModule } from "./temporary-directory.module.js";
+import { TemporaryDirectoryService } from "./temporary-directory.service.js";
 
 describe("TemporaryDirectoryService", () => {
   const service = new TemporaryDirectoryService();

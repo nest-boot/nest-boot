@@ -1,6 +1,9 @@
 import { Inject } from "@nestjs/common";
 
-import { I18N } from "../i18n.constants";
+import { I18N } from "../i18n.constants.js";
 
-/** Decorator that injects the i18next instance into a constructor parameter or property. */
+/**
+ * Decorator that injects the i18next instance into a constructor parameter or property.
+ * @returns Nest dependency injection decorator for the i18next instance.
+ */
 export const InjectI18n = (): ReturnType<typeof Inject> => Inject(I18N);

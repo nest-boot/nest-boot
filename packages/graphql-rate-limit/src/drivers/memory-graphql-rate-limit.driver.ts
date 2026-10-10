@@ -4,7 +4,7 @@ import {
   GraphQLRateLimitDriver,
   GraphQLRateLimitDriverInput,
   GraphQLRateLimitDriverResult,
-} from "./graphql-rate-limit.driver";
+} from "./graphql-rate-limit.driver.js";
 
 interface MemoryBucket {
   currentlyAvailable: number;
@@ -14,7 +14,6 @@ interface MemoryBucket {
 /**
  * Process-local in-memory GraphQL rate limit driver.
  *
- * @remarks
  * Buckets are isolated to one process and are not shared across replicas. Use
  * the Redis driver or a custom distributed driver when limits must be global.
  */
@@ -54,7 +53,10 @@ export class MemoryGraphQLRateLimitDriver extends GraphQLRateLimitDriver {
     const nextAvailable = bucket.currentlyAvailable - input.points;
     const blocked = nextAvailable < 0;
     if (!blocked) {
-      bucket.currentlyAvailable = nextAvailable;
+      bucket.currentlyAvailable = Math.min(
+        input.maximumAvailable,
+        nextAvailable,
+      );
     }
 
     this.buckets.set(input.key, bucket, {

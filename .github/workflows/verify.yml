@@ -9,14 +9,46 @@ on:
       release:
         type: boolean
         default: false
+      release-projects:
+        type: string
+        default: ""
     secrets:
       CODECOV_TOKEN:
         required: false
 
 jobs:
+  consumer:
+    name: Packed consumer (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["24.21.0", "24"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build packages
+        run: pnpm build:packages --skip-nx-cache
+      - name: Verify independent consumer
+        run: pnpm test:consumer
+
   verify:
     name: Verify
+    needs: consumer
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     services:
       postgres:
@@ -41,16 +73,33 @@ jobs:
         ports:
           - 6379:6379
 
-      minio:
-        image: bitnamilegacy/minio
+      mailpit:
+        image: axllent/mailpit:v1.31.4
+        options: >-
+          --health-cmd "wget --quiet --spider http://localhost:8025/livez"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 31025:1025
+          - 38025:8025
+
+      rustfs:
+        image: rustfs/rustfs:1.0.0-rc.4
         ports:
           - 9000:9000
         env:
-          MINIO_ROOT_USER: minio
-          MINIO_ROOT_PASSWORD: password
+          RUSTFS_ACCESS_KEY: rustfs
+          RUSTFS_SECRET_KEY: secretsecret
+          RUSTFS_VOLUMES: /data
+          RUSTFS_ADDRESS: 0.0.0.0:9000
+          RUSTFS_CONSOLE_ENABLE: "false"
         options: >-
-          --name=minio
-          --health-cmd "curl http://localhost:9000/minio/health/live"
+          --health-cmd "curl --fail http://localhost:9000/health"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 10s
 
     steps:
       - name: Checkout
@@ -66,12 +115,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           cache: pnpm
           registry-url: https://registry.npmjs.org/
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check release policy
+        run: |
+          node --test .github/scripts/release-*.test.mjs
+          node .github/scripts/release-policy.mjs "${GITHUB_BASE_REF:-$GITHUB_REF_NAME}"
 
       - name: Commitlint latest commit
         if: inputs.release
@@ -80,36 +134,80 @@ jobs:
       - name: Build packages
         run: pnpm build:packages --skip-nx-cache
 
+      - name: Build examples
+        run: pnpm build:examples --skip-nx-cache
+
+      - name: Typecheck Auth source and tests
+        run: pnpm --filter @nest-boot/auth typecheck
+
       - name: Format
         run: pnpm format:check
 
       - name: Lint
         run: pnpm lint
 
-      - name: TypeDoc
-        run: pnpm typedoc:check
-
-      - name: Prepare MinIO bucket
-        run: |
-          wget -O "$RUNNER_TEMP/mc" https://dl.min.io/client/mc/release/linux-amd64/mc
-          chmod +x "$RUNNER_TEMP/mc"
-          "$RUNNER_TEMP/mc" alias set minio http://localhost:9000 minio password
-          "$RUNNER_TEMP/mc" mb minio/test-bucket
-
+      # Storage e2e suites create their buckets through the AWS SDK.
       - name: Test
         run: pnpm test:cov
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
           REDIS_URL: redis://localhost:6379
-          S3_ENDPOINT: http://localhost:9000
-          S3_REGION: us-east-1
-          S3_BUCKET: test-bucket
-          S3_FORCE_PATH_STYLE: true
-          S3_ACCESS_KEY_ID: minio
-          S3_SECRET_ACCESS_KEY: password
+          STORAGE_ENDPOINT_URL: http://localhost:9000
+          STORAGE_REGION: us-east-1
+          STORAGE_BUCKET: test-bucket
+          STORAGE_FORCE_PATH_STYLE: true
+          STORAGE_ACCESS_KEY_ID: rustfs
+          STORAGE_SECRET_ACCESS_KEY: secretsecret
+
+      - name: End-to-end test
+        run: pnpm test:e2e
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+          REDIS_URL: redis://localhost:6379
+          STORAGE_ENDPOINT_URL: http://localhost:9000
+          STORAGE_REGION: us-east-1
+          STORAGE_BUCKET: test-bucket
+          STORAGE_FORCE_PATH_STYLE: true
+          STORAGE_ROOT_PATH: tmp/tenant
+          STORAGE_ACCESS_KEY_ID: rustfs
+          STORAGE_SECRET_ACCESS_KEY: secretsecret
+
+      - name: Verify full example server integration
+        run: |
+          pnpm --filter @nest-boot/example-server exec tsc --noEmit -p tsconfig.json
+          pnpm --filter @nest-boot/example-server test
+          pnpm --filter @nest-boot/example-server test:e2e
+        env:
+          SERVER_E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+          SERVER_E2E_REDIS_URL: redis://localhost:6379
+          SERVER_E2E_MAILPIT_URL: http://127.0.0.1:38025
+          SERVER_E2E_SMTP_URL: smtp://127.0.0.1:31025
+
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @nest-boot/example-client exec playwright install --with-deps chromium
+
+      - name: Verify browser flows
+        id: browser-e2e
+        run: pnpm --filter @nest-boot/example-client test:e2e
+        env:
+          SERVER_E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+          SERVER_E2E_REDIS_URL: redis://localhost:6379
+          SERVER_E2E_SMTP_URL: smtp://127.0.0.1:31025
+          CLIENT_E2E_MAILPIT_URL: http://127.0.0.1:38025
+
+      - name: Upload failed browser test evidence
+        if: ${{ !cancelled() && steps.browser-e2e.outcome == 'failure' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-failure
+          path: |
+            examples/client/playwright-report/
+            examples/client/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -121,42 +219,8 @@ jobs:
 
       - name: Release packages
         if: inputs.release
-        run: |
-          pnpm exec nx release --yes
-
-          missing_projects="$(
-            node <<'NODE'
-          const { execFileSync } = require('node:child_process');
-          const { existsSync, readdirSync, readFileSync } = require('node:fs');
-          const { join } = require('node:path');
-
-          const projects = [];
-
-          for (const entry of readdirSync('packages', { withFileTypes: true })) {
-            if (!entry.isDirectory()) continue;
-
-            const manifestPath = join('packages', entry.name, 'package.json');
-            if (!existsSync(manifestPath)) continue;
-
-            const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-            if (manifest.private || !manifest.name || !manifest.version) continue;
-
-            try {
-              execFileSync('npm', ['view', `${manifest.name}@${manifest.version}`, 'version'], {
-                stdio: 'ignore',
-              });
-            } catch {
-              projects.push(manifest.name);
-            }
-          }
-
-          process.stdout.write(projects.join(','));
-          NODE
-          )"
-
-          if [ -n "$missing_projects" ]; then
-            pnpm exec nx release publish --projects "$missing_projects" --yes
-          fi
+        run: node .github/scripts/release-packages.mjs "$GITHUB_REF_NAME"
         env:
           GITHUB_TOKEN: ${{ github.token }}
           NPM_CONFIG_PROVENANCE: true
+          RELEASE_PROJECTS: ${{ inputs.release-projects }}

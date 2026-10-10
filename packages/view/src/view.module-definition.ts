@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { type ViewModuleOptions } from "./view-module-options.interface";
+import { type ViewModuleOptions } from "./view-module-options.interface.js";
 
 export const {
   ConfigurableModuleClass,

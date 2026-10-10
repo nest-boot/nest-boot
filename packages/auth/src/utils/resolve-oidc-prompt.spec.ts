@@ -1,4 +1,4 @@
-import { resolveOidcPrompt } from "./resolve-oidc-prompt";
+import { resolveOidcPrompt } from "./resolve-oidc-prompt.js";
 
 describe("resolveOidcPrompt", () => {
   beforeEach(() => {

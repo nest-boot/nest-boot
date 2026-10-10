@@ -30,7 +30,7 @@ const CryptDynamicModule = CryptModule.registerAsync({
 The resolved secret must be at least 32 characters and have at least 120 bits of estimated entropy. Generate one with:
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+node --input-type=module -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))"
 ```
 
 ## Usage
@@ -57,8 +57,4 @@ Both operations are asynchronous. `encrypt()` returns a five-part compact JWE st
 
 ## MikroORM Integration
 
-Use the `@EncryptedProperty()` decorator from `@nest-boot/mikro-orm-crypt` for automatic field encryption. See the [MikroORM tutorial](/docs/tutorial/mikro-orm#encrypted-properties) for details.
-
-## API Reference
-
-For detailed API documentation, see the [Crypt API Reference](/docs/api/crypt).
+Use the `@EncryptedProperty()` decorator from `@nest-boot/database-crypt` for automatic field encryption. See the [MikroORM tutorial](/docs/tutorial/database#encrypted-properties) for details.

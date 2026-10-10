@@ -2,19 +2,18 @@ import { Field, InputType, registerEnumType } from "@nest-boot/graphql";
 import { type Type } from "@nestjs/common";
 import { humanize, pluralize, underscore } from "inflection";
 
-import { OrderDirection } from "../enums";
-import {
+import { OrderDirection } from "../enums/index.js";
+import type {
   ConnectionFieldOptions,
   OrderFieldKey,
   OrderFieldType,
   OrderInterface,
   SortableFieldOptions,
-} from "../interfaces";
+} from "../interfaces/index.js";
 
 /**
  * The result of creating order types.
- *
- * @typeParam Entity - The entity type for ordering
+ * @template Entity - The entity type for ordering
  */
 export interface CreateOrderResult<Entity extends object> {
   /**
@@ -37,12 +36,12 @@ export interface CreateOrderResult<Entity extends object> {
  *
  * Only fields marked as `sortable: true` in field options are included.
  *
- * @typeParam Entity - The entity type being ordered
+ * Used by ConnectionBuilder.build()
+ * @template Entity - The entity type being ordered
  * @param entityName - The name to use for the GraphQL types
  * @param fieldOptionsMap - Map of field configurations
  * @returns An object containing the Order class and OrderField enum
- *
- * @internal Used by ConnectionBuilder.build()
+ * @internal
  */
 export function createOrder<Entity extends object>(
   entityName: string,

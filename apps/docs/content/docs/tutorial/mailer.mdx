@@ -5,35 +5,55 @@ description: "The @nest-boot/mailer module provides email sending functionality 
 
 The `@nest-boot/mailer` module provides email sending functionality powered by [Nodemailer](https://nodemailer.com/).
 
+Nodemailer 10 includes its own TypeScript declarations; `@types/nodemailer` is not needed.
+
 ## Installation
 
 ```bash
-npm install @nest-boot/mailer nodemailer
+npm install @nest-boot/mailer nodemailer@^10.0.16
 # or
-pnpm add @nest-boot/mailer nodemailer
+pnpm add @nest-boot/mailer nodemailer@^10.0.16
 ```
 
 ## Basic Usage
+
+Configure the SMTP transport with environment variables:
+
+```dotenv
+SMTP_URL=smtp://user:password@smtp.example.com
+SMTP_FROM="Example <no-reply@example.com>"
+```
+
+`SMTP_URL` takes precedence over the split connection variables below. The
+port is optional: Nodemailer uses its native defaults of `587` for `smtp://`
+and `465` for `smtps://`.
+
+```dotenv
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USERNAME=user@example.com
+SMTP_PASSWORD=password
+SMTP_FROM="Example <no-reply@example.com>"
+```
+
+Import `MailerModule` once. It is global, so feature modules can inject
+`Mailer` without importing it again.
 
 ```typescript
 import { Module } from "@nestjs/common";
 import { MailerModule } from "@nest-boot/mailer";
 
 @Module({
-  imports: [
-    MailerModule.register({
-      host: "smtp.example.com",
-      port: 587,
-      secure: false,
-      auth: {
-        user: "user@example.com",
-        pass: "password",
-      },
-    }),
-  ],
+  imports: [MailerModule],
 })
 export class AppModule {}
 ```
+
+For explicit connection configuration, use `MailerModule.register()` or
+`MailerModule.registerAsync()`; explicit options take precedence over all
+connection environment variables. `SMTP_FROM` remains the default sender and
+can be overridden by `sendMail({ from })`.
 
 ## Sending Emails
 
@@ -47,7 +67,6 @@ export class NotificationService {
 
   async sendWelcomeEmail(to: string, name: string) {
     await this.mailer.sendMail({
-      from: '"App" <noreply@example.com>',
       to,
       subject: `Welcome, ${name}!`,
       text: `Hi ${name}, thanks for signing up.`,
@@ -56,13 +75,67 @@ export class NotificationService {
 }
 ```
 
+## SMTP health checks
+
+`MailerModule` provides `MailerHealthIndicator` without registering or running
+checks automatically. To make SMTP availability part of your application's
+readiness, import `HealthCheckModule` and explicitly register the indicator:
+
+```typescript
+import {
+  HealthCheckModule,
+  HealthCheckRegistry,
+} from "@nest-boot/health-check";
+import { MailerHealthIndicator, MailerModule } from "@nest-boot/mailer";
+import { Injectable, Module, type OnModuleInit } from "@nestjs/common";
+
+@Injectable()
+class SmtpReadiness implements OnModuleInit {
+  constructor(
+    private readonly registry: HealthCheckRegistry,
+    private readonly mailerHealth: MailerHealthIndicator,
+  ) {}
+
+  onModuleInit(): void {
+    if (this.mailerHealth.isSupported()) {
+      this.registry.register(() => this.mailerHealth.check("mailer", 3000));
+    }
+  }
+}
+
+@Module({
+  imports: [MailerModule, HealthCheckModule],
+  providers: [SmtpReadiness],
+})
+export class AppModule {}
+```
+
+Declare `@nest-boot/health-check` at the matching Nest Boot version and
+`@nestjs/terminus@^12` in the application. `GET /api/health` then includes the
+`mailer` result: HTTP 200 when checks succeed, or HTTP 503 when a registered check
+fails. Register SMTP only when email availability should affect readiness;
+importing the two modules alone leaves the existing checks unchanged.
+
+`check(key = "mailer", timeout = 3000)` uses Nodemailer's `verify()` to check DNS,
+connection establishment, configured TLS, and authentication. It does not send a
+message or verify sender acceptance or final delivery. Normal and pooled SMTP
+transports are supported. `isSupported()` returns false for JSON, Stream,
+Sendmail, SES, and custom transports; calling `check()` for them returns a down
+result without invoking verification.
+
+The timeout bounds the health response. Nodemailer's verification does not accept
+an abort signal, so concurrent checks and subsequent probes after a timeout share
+the same pending verification until it settles. Configure Nodemailer's connection,
+greeting, and socket timeouts to bound the underlying network operation. The
+indicator never closes the application's sending transport. A later check starts
+a fresh verification after completion or failure, allowing recovery. SMTP errors
+return a generic failure message instead of exposing server replies or connection
+details through the health endpoint.
+
 ## Features
 
 - **Nodemailer Integration** - Full Nodemailer API with NestJS DI
+- **Environment Configuration** - Static import with `SMTP_*` variables
 - **SMTP Support** - Standard SMTP transport configuration
 - **Template Support** - Combine with ViewModule for HTML templates
 - **Async Config** - Factory-based configuration from environment or config service
-
-## API Reference
-
-For detailed API documentation, see the [Mailer API Reference](/docs/api/mailer).

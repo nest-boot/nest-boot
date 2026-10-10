@@ -5,8 +5,8 @@ import { basename, dirname, join } from "node:path";
 import { RequestContext } from "@nest-boot/request-context";
 import { Test, type TestingModule } from "@nestjs/testing";
 
-import { TEMPORARY_DIRECTORY_ROOT } from "./temporary-directory.constants";
-import { TemporaryDirectoryModule } from "./temporary-directory.module";
+import { TEMPORARY_DIRECTORY_ROOT } from "./temporary-directory.constants.js";
+import { TemporaryDirectoryModule } from "./temporary-directory.module.js";
 
 describe("TemporaryDirectoryModule", () => {
   const modules: TestingModule[] = [];
@@ -58,6 +58,10 @@ describe("TemporaryDirectoryModule", () => {
     await expect(stat(root)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
+  /**
+   * Returns compiled Nest testing module.
+   * @returns Compiled Nest testing module.
+   */
   async function compile(): Promise<TestingModule> {
     const module = await Test.createTestingModule({
       imports: [TemporaryDirectoryModule],
@@ -66,6 +70,10 @@ describe("TemporaryDirectoryModule", () => {
     return module;
   }
 
+  /**
+   * Returns temporary directory root created for the test.
+   * @returns Temporary directory root created for the test.
+   */
   function requireRoot(): string {
     const root = RequestContext.get<string>(TEMPORARY_DIRECTORY_ROOT);
     if (!root) {

@@ -1,43 +1,55 @@
+/* eslint-disable @nest-boot/graphql-field-config-from-types -- MikroORM Opt/Ref markers require explicit GraphQL metadata. */
+import { BaseEntity, type Opt, type Ref, t } from "@mikro-orm/core";
 import {
-  BaseEntity,
-  Cascade,
   Entity,
+  Index,
   ManyToOne,
-  Opt,
   PrimaryKey,
   Property,
-  t,
-} from "@mikro-orm/core";
+  Unique,
+} from "@mikro-orm/decorators/legacy";
+import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 import { randomUUID } from "crypto";
 
-/**
- * Abstract base entity for OAuth/credential account records.
- *
- * @remarks
- * Maps to the better-auth `account` model. Each account links a provider
- * (e.g. Google, GitHub, credentials) to a {@link BaseUser}.
- */
-@Entity({ abstract: true })
-export abstract class BaseAccount extends BaseEntity {
+import { userScopePolicy } from "../policies/user-scope.policy.js";
+import { User } from "./user.entity.js";
+
+/** Built-in Account entity with authentication persistence and access policies. */
+@Entity({
+  policies: [userScopePolicy({ property: "user", command: "select" })],
+})
+@ObjectType()
+@Unique({ properties: ["issuer", "accountId"] })
+export class Account extends BaseEntity {
   /** Primary key (UUID v4, auto-generated). */
   @PrimaryKey({ type: t.uuid })
+  @Field(() => ID)
   id: Opt<string> = randomUUID();
 
   /** Provider-scoped account identifier. */
   @Property({ type: t.text })
+  @Field(() => ID)
   accountId!: string;
+
+  /** Stable issuer namespace used together with {@link accountId}. */
+  @Property({ type: t.text })
+  @Field(() => String)
+  issuer!: string;
 
   /** Authentication provider identifier (e.g. `"google"`, `"credential"`). */
   @Property({ type: t.text })
+  @Field(() => ID)
   providerId!: string;
 
-  /** Foreign key referencing the owning {@link BaseUser}. */
-  @ManyToOne(() => "User", {
+  /** User that owns this record. */
+  @Index()
+  @ManyToOne(() => User, {
     fieldName: "user_id",
-    mapToPk: true,
-    cascade: [Cascade.REMOVE],
+    ref: true,
+    deleteRule: "cascade",
   })
-  userId!: string;
+  @HideField()
+  user!: Ref<User>;
 
   /** OAuth access token, if available. */
   @Property({ type: t.text, nullable: true })
@@ -68,7 +80,11 @@ export abstract class BaseAccount extends BaseEntity {
   password?: Opt<string>;
 
   /** Timestamp when the account was created. */
-  @Property({ type: t.datetime, defaultRaw: "now()" })
+  @Property({
+    type: t.datetime,
+    defaultRaw: "now()",
+  })
+  @Field(() => Date)
   createdAt: Opt<Date> = new Date();
 
   /** Timestamp of the last update. */
@@ -77,5 +93,15 @@ export abstract class BaseAccount extends BaseEntity {
     defaultRaw: "now()",
     onUpdate: () => new Date(),
   })
+  @Field(() => Date)
   updatedAt: Opt<Date> = new Date();
+
+  /**
+   * Granted OAuth scopes; credentials are intentionally not GraphQL fields.
+   * @returns Nonempty scopes parsed from the provider's scope string.
+   */
+  @Field(() => [String])
+  get scopes(): Opt<string[]> {
+    return this.scope?.split(/[,\s]+/).filter(Boolean) ?? [];
+  }
 }

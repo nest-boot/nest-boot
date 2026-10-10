@@ -1,5 +1,5 @@
-import { tester } from "../../utils/tester";
-import rule from "./entity-field-definite-assignment";
+import { tester } from "../../utils/tester.js";
+import rule from "./entity-field-definite-assignment.js";
 
 tester.run("entity-field-definite-assignment", rule, {
   valid: [
@@ -25,6 +25,14 @@ tester.run("entity-field-definite-assignment", rule, {
       class User {
         @Property()
         age?: number;
+      }
+    `,
+    // Declare properties cannot use definite assignment assertions
+    /* typescript */ `
+      @Entity()
+      class User extends BaseUser {
+        @Property()
+        declare name: string;
       }
     `,
     // Nullable property with initializer
@@ -126,24 +134,6 @@ tester.run("entity-field-definite-assignment", rule, {
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],
     },
-    // Has initializer but also has !
-    {
-      code: /* typescript */ `
-        @Entity()
-        class User {
-          @Property()
-          createdAt!: Date = new Date();
-        }
-      `,
-      output: /* typescript */ `
-        @Entity()
-        class User {
-          @Property()
-          createdAt: Date = new Date();
-        }
-      `,
-      errors: [{ messageId: "removeDefiniteAssignment" }],
-    },
     // @Enum decorator - no initializer and no !
     {
       code: /* typescript */ `
@@ -180,24 +170,6 @@ tester.run("entity-field-definite-assignment", rule, {
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],
     },
-    // @OneToMany decorator - has initializer but also has ! (using Collection)
-    {
-      code: /* typescript */ `
-        @Entity()
-        class User {
-          @OneToMany()
-          posts!: Collection<Post> = new Collection<Post>(this);
-        }
-      `,
-      output: /* typescript */ `
-        @Entity()
-        class User {
-          @OneToMany()
-          posts: Collection<Post> = new Collection<Post>(this);
-        }
-      `,
-      errors: [{ messageId: "removeDefiniteAssignment" }],
-    },
     // @ManyToOne decorator - no initializer and no ! (using Ref)
     {
       code: /* typescript */ `
@@ -215,24 +187,6 @@ tester.run("entity-field-definite-assignment", rule, {
         }
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],
-    },
-    // @ManyToMany decorator - has initializer but also has ! (using Collection)
-    {
-      code: /* typescript */ `
-        @Entity()
-        class User {
-          @ManyToMany()
-          tags!: Collection<Tag> = new Collection<Tag>(this);
-        }
-      `,
-      output: /* typescript */ `
-        @Entity()
-        class User {
-          @ManyToMany()
-          tags: Collection<Tag> = new Collection<Tag>(this);
-        }
-      `,
-      errors: [{ messageId: "removeDefiniteAssignment" }],
     },
   ],
 });

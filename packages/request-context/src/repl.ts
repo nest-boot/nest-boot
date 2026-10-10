@@ -10,7 +10,7 @@ import { AsyncResource } from "async_hooks";
 import type { REPLServer } from "repl";
 import { Transform } from "stream";
 
-import { RequestContext } from "./request-context";
+import { RequestContext } from "./request-context.js";
 
 /**
  * Starts a REPL (Read-Eval-Print Loop) session with request context support.
@@ -23,15 +23,13 @@ import { RequestContext } from "./request-context";
  * - Runs within a request context of type 'repl'
  * - Has access to all NestJS providers
  * - Maintains context across async operations
- *
  * @param module - The NestJS module (class or DynamicModule) to create the context from
  * @returns A promise that resolves to the REPL server instance
- *
  * @example
  * ```typescript
  * // repl.ts
  * import { repl } from '@nest-boot/request-context';
- * import { AppModule } from './app.module';
+ * import { AppModule } from './app.module.js';
  *
  * async function bootstrap() {
  *   await repl(AppModule);
@@ -39,12 +37,10 @@ import { RequestContext } from "./request-context";
  *
  * bootstrap();
  * ```
- *
  * @example Running the REPL
  * ```bash
  * npx ts-node -r tsconfig-paths/register repl.ts
  * ```
- *
  * @example Using services in REPL
  * ```typescript
  * // In the REPL session:

@@ -1,0 +1,279 @@
+import { EntityManager, type FilterQuery, LockMode } from "@mikro-orm/core";
+import type { SqlEntityManager } from "@mikro-orm/sql";
+import {
+  type ConnectionArgsInterface,
+  ConnectionManager,
+  type ConnectionResult,
+} from "@nest-boot/graphql-connection";
+import { RequestContext } from "@nest-boot/request-context";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import type { GraphQLResolveInfo } from "graphql";
+
+import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
+import type { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { WorkspaceConnection } from "../connections/workspace.connection-definition.js";
+import { Member } from "../entities/member.entity.js";
+import { User } from "../entities/user.entity.js";
+import { Workspace } from "../entities/workspace.entity.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
+import type { CreateWorkspaceOptions } from "../interfaces/create-workspace-options.interface.js";
+import type { UpdateWorkspaceOptions } from "../interfaces/update-workspace-options.interface.js";
+import { authorize } from "../utils/authorize.util.js";
+import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { DEFAULT_WORKSPACE_CREATOR_ROLE } from "../workspace.constants.js";
+
+/** Workspace queries and lifecycle operations. */
+@Injectable()
+export class WorkspaceService {
+  /**
+   * Creates a workspace domain service.
+   * @param em - Entity manager used for persistence.
+   * @param authOptions - Authentication module configuration.
+   */
+  constructor(
+    /** MikroORM entity manager used for workspace persistence. */
+    protected readonly em: EntityManager,
+    @Inject(MODULE_OPTIONS_TOKEN)
+    private readonly authOptions: AuthModuleOptions,
+  ) {}
+
+  /**
+   * Returns the selected workspace after membership and instance read checks.
+   * @returns Selected workspace, or null when none is available.
+   */
+  getCurrentWorkspace(): Workspace | null {
+    if (!RequestContext.isActive()) return null;
+    const workspace = RequestContext.get(Workspace);
+    const user = RequestContext.get(User);
+    const member = RequestIdentity.getCurrentMember();
+    if (user && workspace && !member) {
+      throw new ForbiddenException(
+        "The authenticated user is not a member of this workspace",
+      );
+    }
+    if (workspace) authorize("read", workspace);
+    return workspace ?? null;
+  }
+
+  /**
+   * Finds a workspace only when the current user is an active member.
+   * @param id - Identifier of the record to access.
+   * @param user - The user whose account is being accessed.
+   * @returns Workspace when the user has an active membership, otherwise null.
+   */
+  async getUserWorkspace(id: string, user: User): Promise<Workspace | null> {
+    RequestIdentity.assertCurrentUser(user);
+    if (getCurrentApiKey()) return await this.findOne({ id });
+    RequestIdentity.assertUserSession(user);
+    const workspace = await this.em.findOne(Workspace, {
+      id,
+    });
+    if (!workspace) return null;
+    return (await this.findActiveMemberByUser(workspace, user))
+      ? workspace
+      : null;
+  }
+
+  /**
+   * Paginates workspaces belonging to the current user's active memberships.
+   * @param user - The user whose account is being accessed.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated workspaces joined by the user.
+   */
+  async getWorkspaceConnectionByUser(
+    user: User,
+    args: ConnectionArgsInterface<Workspace>,
+    info?: GraphQLResolveInfo,
+  ): Promise<ConnectionResult<Workspace>> {
+    RequestIdentity.assertUserSession(user);
+    const memberships = (this.em as SqlEntityManager)
+      .createQueryBuilder<Member>(Member)
+      .select("workspace")
+      .where({ status: "ACTIVE", user: user.id });
+    const connection = await new ConnectionManager(
+      this.em as SqlEntityManager,
+    ).find<Workspace>(WorkspaceConnection, args, {
+      ...(info && { info }),
+      where: {
+        id: { $in: memberships.toRaw() },
+      },
+    });
+    return connection;
+  }
+
+  /**
+   * Finds the selected workspace matching the supplied filter and read ability.
+   * @param where - Conditions to translate into a database filter.
+   * @returns Accessible workspace, or null if it is unavailable.
+   */
+  async findOne(where: FilterQuery<Workspace>): Promise<Workspace | null> {
+    const current = RequestContext.isActive()
+      ? RequestContext.get(Workspace)
+      : null;
+    if (!current) throw new ForbiddenException("A workspace must be selected");
+    RequestIdentity.assertCurrentWorkspace(current);
+    authorize("read", current);
+    const workspace = await this.em.findOne(Workspace, {
+      $and: [where, { id: current.id }],
+    });
+    if (workspace) authorize("read", workspace);
+    return workspace;
+  }
+
+  /**
+   * Creates a workspace and its owner membership atomically.
+   * @param user - The user whose account is being accessed.
+   * @param input - Requested field values for the operation.
+   * @returns Persisted workspace.
+   */
+  async createWorkspace(
+    user: User,
+    input: CreateWorkspaceOptions,
+  ): Promise<Workspace> {
+    RequestIdentity.assertCurrentUser(user);
+    authorize("create", Workspace);
+    // The new workspace has no request session yet. Only this authorized
+    // operation may bootstrap its owner outside the application's RLS scope.
+    return await this.em.transactional(
+      async (em) => {
+        const workspace = em.create(Workspace, {
+          name: input.name,
+        });
+        authorize("create", workspace);
+        const member = em.create(Member, {
+          name: user.name,
+          email: user.email.trim().toLowerCase(),
+          roles: [this.creatorRole],
+          status: "ACTIVE",
+          // Do not attach the caller's potentially dirty user to this fork.
+          user: user.id,
+          workspace,
+        });
+
+        await em.persist(workspace).persist(member).flush();
+        return workspace;
+      },
+      { clear: true },
+    );
+  }
+
+  private async resolveWorkspaceForAction(
+    workspace: Workspace | string,
+    action: string,
+  ): Promise<Workspace> {
+    if (typeof workspace !== "string") return workspace;
+    authorize(action, Workspace);
+    const entity = await this.em.findOne(
+      Workspace,
+      { id: workspace },
+      { refresh: true },
+    );
+    if (!entity) throw new NotFoundException("Workspace not found");
+    return entity;
+  }
+
+  /**
+   * Updates mutable workspace fields.
+   * @param workspace - The workspace that scopes this operation.
+   * @param input - Requested field values for the operation.
+   * @returns Workspace after the requested changes.
+   */
+  async updateWorkspace(
+    workspace: Workspace | string,
+    input: UpdateWorkspaceOptions,
+  ): Promise<Workspace> {
+    workspace = await this.resolveWorkspaceForAction(workspace, "update");
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    authorize("update", workspace);
+    if (this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Change the current workspace outside an active transaction",
+      );
+    }
+    const previousName = workspace.name;
+    try {
+      this.em.assign(workspace, input, { ignoreUndefined: true });
+      await this.em.flush();
+    } catch (error) {
+      workspace.name = previousName;
+      throw error;
+    }
+    if (RequestContext.isActive()) {
+      RequestIdentity.update(this.em, this.authOptions, { workspace });
+    }
+    return workspace;
+  }
+
+  /**
+   * Permanently deletes a workspace and cascades its dependent authentication records.
+   * @param workspace - The workspace that scopes this operation.
+   * @returns Metadata of the deleted workspace.
+   */
+  async deleteWorkspace(workspace: Workspace | string): Promise<Workspace> {
+    workspace = await this.resolveWorkspaceForAction(workspace, "delete");
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    authorize("delete", workspace);
+    if (this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Delete the workspace outside an active transaction",
+      );
+    }
+
+    await this.em.transactional(
+      async (em) => {
+        await this.lockWorkspace(em, workspace);
+        authorize("delete", workspace);
+        const count = await em.nativeDelete(Workspace, {
+          id: workspace.id,
+        });
+        if (count !== 1) throw new NotFoundException("Workspace not found");
+      },
+      { clear: true },
+    );
+    RequestIdentity.clearWorkspace(this.em, this.authOptions);
+    return workspace;
+  }
+
+  /**
+   * Finds the active membership linking a user and workspace.
+   * @param workspace - The workspace that scopes this operation.
+   * @param user - The user whose account is being accessed.
+   * @returns Active membership for the user and workspace, or null.
+   */
+  private async findActiveMemberByUser(
+    workspace: Workspace,
+    user: User,
+  ): Promise<Member | null> {
+    RequestIdentity.assertUserSession(user);
+    return await this.em.findOne(Member, {
+      status: "ACTIVE",
+      user,
+      workspace,
+    });
+  }
+
+  private async lockWorkspace(
+    em: EntityManager,
+    workspace: Workspace,
+  ): Promise<void> {
+    await em.refreshOrFail(workspace, {
+      filters: false,
+      lockMode: LockMode.PESSIMISTIC_WRITE,
+      populate: [],
+      failHandler: () => new NotFoundException("Workspace not found"),
+    });
+  }
+
+  private get creatorRole(): string {
+    return (
+      this.authOptions.workspace?.creatorRole ?? DEFAULT_WORKSPACE_CREATOR_ROLE
+    );
+  }
+}

@@ -1,0 +1,517 @@
+---
+title: "权限授权"
+description: "使用 AuthGuard 与用户、工作区两类权限保护路由。"
+---
+
+## 权限与能力各自负责什么
+
+| 配置或结果                    | 含义                                                  |
+| ----------------------------- | ----------------------------------------------------- |
+| `permissions`                 | 声明可用权限名称，本身不会授予权限。                  |
+| `roles`                       | 为角色分配权限，同名角色追加到内置授权。              |
+| `buildAbility`                | 将有效权限映射为操作和对象条件。                      |
+| `ability.can(action, object)` | 判断能否对具体对象执行操作。                          |
+| `grantable`                   | 当前调用者能否授予该权限，不代表有权操作具体对象。    |
+| API Key 选项 `default`        | 配置是否默认选中，界面仅预选 `default && grantable`。 |
+
+模块配置追加内置目录；User/Member 的 `set*` 方法则替换已存储的分配。
+静态选项在启动前配置，运行时通过 Service 修改角色或直接权限。
+构建业务规则前，系统已应用 API Key 权限上限。
+
+## 内置权限目录
+
+目录共 28 项，以 `资源:动作` 组成完整权限名：
+
+| 作用域 | 资源              | 动作                                                                                                                                         |
+| ------ | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 用户   | `user`            | `create`、`read`、`update`、`delete`、`set-roles`、`set-permissions`、`set-email`、`set-password`、`ban`、`impersonate`、`impersonate-admin` |
+| 用户   | `session`         | `read`、`revoke`                                                                                                                             |
+| 用户   | `user-api-key`    | `read`、`write`                                                                                                                              |
+| 用户   | `workspace`       | `create`                                                                                                                                     |
+| 工作区 | `workspace`       | `read`、`update`、`delete`                                                                                                                   |
+| 工作区 | `member`          | `read`、`write`、`set-roles`、`set-permissions`、`invite`                                                                                    |
+| 工作区 | `service-account` | `read`、`write`                                                                                                                              |
+| 工作区 | `member-api-key`  | `read`、`write`                                                                                                                              |
+
+`read` 包含单条和连接查询。`write` 包含普通创建、更新和删除，但不隐含读取或角色、权限设置。
+`member:invite` 映射为 `Invitation` 的 `read` 与 `write`，独立于成员写入权限。
+角色和直接权限设置还要检查调用者的可授予上限。`user:ban` 包含封禁和解禁；
+模拟管理员需要同时拥有 `user:impersonate` 与 `user:impersonate-admin`。
+
+不再无条件附加基础能力。默认 `user` 角色显式授予 `workspace:create`，
+默认 `member` 角色授予 `workspace:read` 和 `member:read`。
+会话专属自助操作（例如查询自己的工作区成员关系、接受或拒绝自己的邀请）单独校验身份和归属，
+API Key 不继承这些会话专属入口。
+
+## 完整业务示例
+
+[可运行测试的 Report 示例](https://github.com/nest-boot/nest-boot/tree/beta/examples/server/src/app/auth/examples)
+串联了配置、Service 和示例前端实际使用的能力工具。该示例是可选配方，
+不会自动注册到演示应用，也不会创建数据库表。
+
+```typescript
+AuthModule.forRoot({
+  workspace: {
+    permissions: ["report:read", "report:archive"],
+    roles: {
+      owner: ["report:read", "report:archive"],
+      "report-reader": ["report:read"],
+    },
+  },
+  buildAbility: ({ can }, { workspace }) => {
+    if (!workspace) return;
+    can({ workspace: "report:read" }, "read", Report, {
+      workspaceId: workspace.id,
+    });
+    can({ workspace: "report:archive" }, "archive", Report, {
+      workspaceId: workspace.id,
+      archived: false,
+    });
+  },
+});
+```
+
+回调中的 `can` 是 auth 提供的权限绑定工具，不是原始 CASL `can`。
+只有调用者拥有第一个参数对应的权限时才会生成规则，无需重复写
+`permissions.includes(...)`。只读角色不能归档；owner 使用只读 API Key 时同样不能归档。
+
+先加载操作对象，再验证对象条件。不能信任客户端提交的归属字段，
+也不能只用路由层的类级判断代替对象检查：
+
+```typescript
+import { authorize } from "@nest-boot/auth";
+
+async archiveReport(id: string): Promise<Report> {
+  const report = await this.loadReport(id);
+  authorize("archive", report);
+  return await this.repository.archive(report);
+}
+```
+
+前端查询 `currentAbilityRules { actions subjects conditions fields inverted reason }`，
+使用现有工具恢复服务端规则：
+
+```typescript
+const ability = createAbility(data.currentAbilityRules);
+const canArchive = ability.can(
+  "archive",
+  createAbilitySubject("Report", report),
+);
+```
+
+Report 查询应包含条件所需的 `workspaceId` 和 `archived`。前端不要再维护一套角色权限映射：
+授予编辑器消费权限选项，操作按钮检查具体对象的 Ability，最终授权仍由 Service 执行。
+API Key 编辑器使用服务端对应作用域的默认权限，不根据枚举自行预选。参见 [API keys](./api-keys)。
+
+此示例使用操作级和对象级检查。内置 auth Service 不会自动执行 CASL 字段级规则；
+业务若需要字段限制，必须在 Service 中显式检查，仅声明字段规则是不够的。
+这里不会新增“管理员不能编辑姓名”的规则。
+
+## 全局守卫
+
+将已配置模块的 `AuthGuard` 注册为全局守卫。它接受有效的 Cookie Session 或 API Key，
+并使用同一个守卫检查路由权限。
+
+```typescript
+import { AuthGuard } from "@nest-boot/auth";
+import { APP_GUARD } from "@nestjs/core";
+
+@Global()
+@Module({
+  imports: [AuthDynamicModule],
+  providers: [{ provide: APP_GUARD, useExisting: AuthGuard }],
+})
+export class CommonModule {}
+```
+
+不需要认证的路由使用 `@Public()`。如果公开路由同时声明权限装饰器，权限检查仍会执行。
+未认证访问受保护路由会返回 `401 Unauthorized`；已认证但权限检查失败会返回
+`403 Forbidden`。
+
+```typescript
+@Public()
+@Query(() => String)
+health(): string {
+  return "ok";
+}
+```
+
+## 构建 Ability
+
+在模块顶层配置一个 `buildAbility` 回调。`AuthGuard` 即使没有权限装饰器，也会为
+当前身份准备一个 `AuthAbility`。回调上下文包含 `user`、`workspace`、`member`、
+`userPermissions` 和 `workspacePermissions`。身份字段可能为 null：Member API Key
+会恢复活动 member；服务账号没有登录 user。工作区上下文要求所选工作区中的活动成员关系。构建条件前先检查身份。
+
+内置权限映射由 auth 维护，无需回调。回调对每份身份快照同步执行一次且不返回值。
+Ability 缓存在 `RequestContext` 中，身份或授权变化后统一重建。
+
+类型级检查只用于操作准入；条件规则还会对加载出的实体及创建前的待写入实体进行判断。
+`currentMember` 和 `currentWorkspace` 同样检查当前实例的工作区读取规则，
+不会因为实体已在请求上下文中就绕过授权。
+由 CASL 授权的连接会检查每个返回节点，任一节点被拒绝就拒绝整页，不在分页后静默
+过滤节点以免改变分页结果。管理接口批量撤销会话时，会先锁定并授权所有目标，再执行
+删除。基于归属的个人会话操作仍独立于管理权限 `session:read` 和 `session:revoke`。
+
+密码重置成功后，auth 会重新查询数据库中的当前会话。如果重置已撤销该会话，则在后续
+mutation 执行前清除请求身份、Ability 和数据库身份上下文；无关会话及 API Key 身份保留。
+
+登录、注册和身份模拟流程会在签发替代会话或 Cookie 之前拒绝活动中的外层事务。
+删除当前用户在数据库提交后、执行 `afterDelete` 之前立即撤销请求身份，
+后置回调失败不会让已删除的身份继续获得授权。
+
+```typescript
+import { AuthModule } from "@nest-boot/auth";
+
+const userRoles = {
+  admin: ["post:create"],
+  user: ["post:read", "post:update"],
+} as const;
+const userPermissions = [
+  "post:create",
+  "post:archive",
+  "post:read",
+  "post:update",
+] as const;
+
+const workspaceRoles = {
+  owner: ["post:create", "post:delete"],
+  member: ["post:create"],
+} as const;
+const workspacePermissions = [
+  "post:create",
+  "post:delete",
+  "post:archive",
+] as const;
+
+AuthModule.forRoot({
+  workspace: {
+    permissions: workspacePermissions,
+    roles: workspaceRoles,
+  },
+  user: {
+    permissions: userPermissions,
+    roles: userRoles,
+  },
+  buildAbility: ({ can }, { user, workspace, member }) => {
+    if (user) {
+      can({ user: "post:read" }, "read", Post);
+      can({ user: "post:update" }, "update", Post, { authorId: user.id });
+    }
+    if (workspace) {
+      can({ workspace: "post:create" }, "create", Post, {
+        workspaceId: workspace.id,
+      });
+      can({ workspace: "post:delete" }, "delete", Post, {
+        workspaceId: workspace.id,
+      });
+      if (member) {
+        can({ workspace: "post:archive" }, "archive", Post, {
+          workspaceId: workspace.id,
+          assignedMemberId: member.id,
+        });
+      }
+    }
+  },
+});
+```
+
+用户与工作区仍分别维护权限目录和角色注册表；角色引用的权限必须属于对应目录。
+上下文中的两个权限数组不可变、已去重，并已应用 API Key 权限上限。保留两个来源，
+避免同名自定义权限混淆作用域。
+
+首个参数是受约束的 `AbilityRules`，不是 CASL builder。每条授权明确绑定一个来源：
+`can({ user: permission }, action, subject, conditions?)` 或
+`can({ workspace: permission }, action, subject, conditions?)`。
+仅当对应作用域的有效权限包含该名称时才生成规则；字段规则使用
+`can(binding, action, subject, fields, conditions?)`。
+未知权限、针对内置 auth 实体（类或字符串名称）的额外授权，以及针对 `all` 的授权均被拒绝。
+内置操作必须使用内置权限，自定义权限名不能重新定义其映射。
+`cannot(action, subject, conditions?)` 可以限制业务和内置操作，也支持字段限制；
+拒绝规则始终优先于扩展授权，不受回调中的声明顺序影响。回调不提供可变规则数组或
+`build()`。它仍属于受信任的应用代码，不是 JavaScript 沙箱。
+
+## 管理角色
+
+角色名遵循 `^[a-z][a-z0-9-]*$`；权限名使用 `resource:action`，两段分别遵循同一规则。
+启动时拒绝下划线、大写字母、空白和连续中划线（`--` 及以上），不做自动转换。
+Resource 与 Action 都允许单个中划线，例如 `member:set-roles`。
+角色名 `true`、`false`、`null` 为保留值。
+`RoleName<T>` 与 `PermissionName<T>` 在编译期校验字符串字面量；
+`AuthModule.forRoot()` 与 `forRootAsync()` 会推导权限目录、角色键和生命周期角色引用。
+动态字符串仍由启动校验保护。
+
+```typescript
+import type { PermissionName, RoleName } from "@nest-boot/auth";
+
+const role: RoleName<"super-admin"> = "super-admin";
+const permission: PermissionName<"user-api-key:read"> = "user-api-key:read";
+```
+
+GraphQL 根据配置生成 `UserRole`、`WorkspaceRole`、`UserPermission`、
+`WorkspacePermission` 、`UserApiKeyPermission` 和 `MemberApiKeyPermission`。枚举名称转大写，中划线转 `_`，
+权限分隔符 `:` 转 `__`。例如 `super-admin` 对应 `SUPER_ADMIN`，
+`user-api-key:read` 对应 `USER_API_KEY__READ`。GraphQL 变量和响应使用枚举名称；
+Service、Ability 构建器和数据库继续使用原始值。修改目录后需要重新生成客户端类型，
+已有数据中的角色和权限也必须保留在配置目录中，才能由 GraphQL 正常序列化。
+
+`UserApiKeyPermission` 取用户与工作区权限目录的并集；`MemberApiKeyPermission` 使用工作区目录。
+这两个枚举不会随相应的 `apiKey.user.allowedPermissions` 或 `apiKey.member.allowedPermissions`
+缩小，确保收紧允许列表后仍能读取已有授权。
+Service 在写入时校验允许列表。用户与工作区权限目录追加到内置默认目录；省略配置，
+或显式配置 `user.permissions: []`、`workspace.permissions: []`，都会保留默认目录。
+需要没有角色授权的身份时，可以新增授权列表为 `[]` 的角色；空配置不会移除已有角色的内置授权。
+任一 API Key 作用域的 `allowedPermissions: []` 仍使用完整目录生成枚举，
+但不允许向该类 Key 授予权限。
+Service 继续校验 Key 作用域和操作者可授予的权限上限。
+
+Nest 的枚举元数据属于进程级注册。同一进程内并行运行的 AuthModule 应用必须使用相同
+枚举目录；冲突配置会在启动时被拒绝，避免覆盖其他应用的 Schema。应用关闭后会释放注册，
+后续应用可以使用不同配置。
+
+权限目录和角色定义来自 `user.permissions`、`user.roles`、
+`workspace.permissions` 与 `workspace.roles`，不使用独立的角色服务保存或管理。
+`UserService` 与 `MemberService` 负责向传输层提供配置目录并校验角色赋值。
+
+`listRoles()` 返回 `{ role, grantable }`，`listPermissions()` 返回
+`{ permission, grantable }`，标记基于当前请求计算。Service 保留配置中的原值，
+GraphQL 将这些值序列化为枚举名称。
+
+```typescript
+const userRoles = userService.listRoles();
+const userPermissions = userService.listPermissions();
+await userService.setUserRoles(user, ["admin", "auditor"]);
+
+const workspaceRoles = memberService.listRoles();
+const workspacePermissions = memberService.listPermissions();
+await memberService.setMemberRoles(member, ["admin"]);
+```
+
+`setUserRoles()` 与 `setMemberRoles()` 会拒绝空角色列表和不存在的角色。
+`setMemberRoles()` 在通过更新能力和授权范围检查后，可以授予或替换包括
+`workspace.creatorRole` 在内的任意已配置角色。同一工作区可有多名成员持有创建者角色，
+授予该角色不会改变其他成员的角色。添加成员和创建邀请也遵循相同的授权检查。
+
+`user.defaultRole` 与 `workspace.defaultRole` 分别为新用户和新成员提供默认角色；
+`workspace.creatorRole` 标识所有权角色；`user.adminRoles` 可以包含多个角色，并由
+`UserService.isAdmin()` 用于识别管理员用户。所有配置的生命周期角色都会在启动时依据
+对应角色映射进行校验。
+
+`getEffectiveUserPermissions()` 与 `getEffectiveMemberPermissions()` 返回所有角色继承权限和实体直接权限
+去重后的合集；`hasPermissions()` 使用同一份结果进行判断。
+`createUser()`、`addMember()`、`setUserPermissions()` 与
+`setMemberPermissions()` 会拒绝格式错误、重复或不在配置目录中的直接权限，避免将未知
+权限写入实体。
+
+用户管理还会检查授予上限：`createUser()`、`setUserRoles()` 与 `setUserPermissions()`
+不能授予调用者自身不具备的权限。角色赋值会检查其继承的权限，创建用户时的默认角色
+也不例外。使用个人 API Key 调用时，上限是用户角色和直接权限的合集与 Key 权限的交集。
+仅拥有 `user:set-roles` 不意味着可以将自己或他人提升为权限更高的角色。
+
+`userRoles` 和 `workspaceRoles` 返回完整角色目录，元素为 `{ role, grantable }`；
+`userPermissions` 和 `workspacePermissions` 返回 `{ permission, grantable }`。
+角色和权限字段仍为枚举；`grantable` 表示当前主体的授予范围，并考虑 API Key 限制。
+工作区角色选项的可授予状态要求 `member:set-roles` 或 `member:invite`，直接权限选项要求 `member:set-permissions`。
+仅有 `member:read` 的调用者获得的工作区选项均为 `grantable: false`；
+用户角色和权限目录分别要求 `user:set-roles`、`user:set-permissions`。
+前端据此禁止新增不可授予项，同时保留已有值的移除操作，并在提交前检查完整替换列表。
+mutation 的 Service 仍检查目标对象能力和授予上限；独立的 `workspaceAssignableRoles` 查询已移除。
+
+示例 GraphQL 应用提供 `userRoles`、`userPermissions`、`workspaceRoles` 与
+`workspacePermissions` 查询。角色修改分别使用 `setUserRoles` 和
+`setMemberRoles` mutation；工作区成员的直接权限使用
+`setMemberPermissions`，普通成员资料更新不再接受授权字段。
+
+## 保护路由
+
+用户和工作区操作统一使用 `@Can(action, subjectCallback)`。`AuthGuard` 与 Service 检查
+同一个 Ability，装饰器无需指定 scope。
+
+```typescript
+@Can("read", () => Post)
+@Query(() => [Post])
+posts() {
+  return this.postService.findAll();
+}
+
+@Can("read", () => User)
+@Query(() => User)
+me(@CurrentUser() user: User) {
+  return user;
+}
+```
+
+路由上每条要求都必须通过。重复 `@Can` 使用 `all` 语义；
+类级与方法级要求合并，不会互相覆盖。
+
+```typescript
+@Can("read", () => Post)
+@Can("update", () => Post)
+@Mutation(() => Post)
+updatePost() {
+  // 必须同时拥有 post:read 与 post:update。
+}
+```
+
+所有 subjectCallback 都可以同步或异步返回实体类或具体对象。每条权限要求在请求期间
+执行一次回调，不会在声明装饰器时执行。回调的第一个参数是 Controller 或 Resolver 实例，
+后续参数是被装饰方法的参数。
+
+```typescript
+@Can("update", (self: PostResolver, id: string) =>
+  self.postService.findOneOrFail({ id }),
+)
+@Mutation(() => Post)
+updatePost(@Args("id") id: string) {
+  return this.postService.update(id);
+}
+```
+
+Member API Key 仅贡献工作区授权。User API Key 贡献用户授权，并在成员关系有效时
+贡献工作区授权；调用回调前，各来源都已受凭证权限上限约束。守卫检查最终的 `AuthAbility`。
+内置工作区规则匹配当前工作区 ID；前端对 Member、Invitation、MemberApiKey 做实例
+检查时，应查询 `workspaceId`。自定义业务规则需要使用回调上下文显式声明对象条件。
+
+Auth 自动映射内置权限。业务扩展显式绑定权限，例如 `can({ user: "post:read" }, "read", Post)`。
+即使回调没有检查权限数组，工厂仍会检查有效权限，因此不具备 `post:read` 的 API Key
+不会获得这条规则。前端直接还原后端最终规则，不再单独维护权限映射。
+
+## Service 授权边界
+
+`UserService`、`SessionService`、`WorkspaceService`、`MemberService`、
+`InvitationService` 与 `UserApiKeyService` 和 `MemberApiKeyService` 会在读取或修改认证数据前强制校验
+权限。Resolver 和 Controller 上的装饰器用于提前拒绝并声明接口意图，但不是安全边界；
+即使遗漏装饰器，受保护的 Service 操作也不会变成公开操作。
+
+Service 权限划分与 Better Auth 的 admin、organization 访问控制保持一致：
+
+- 用户管理使用 `user:*` 与 `session:*` 权限；
+- 工作区操作使用 `workspace:*` 与 `member:*` 权限；
+- `member:invite` 统一管理邀请查询、创建和取消，与 `member:write` 独立；
+  接受或拒绝自己的邀请使用收件人身份校验；
+- 成员 API Key 管理使用 `member-api-key:read/write`；
+- 当前用户认证、会话管理、接受邀请和退出工作区使用已认证身份与资源归属校验。
+
+导出的 `can()` 和 `authorize()` 每次调用都会读取当前请求的 `AuthAbility`，
+无需注入授权服务。全局 `AuthGuard` 在受保护操作前准备 Ability，身份或工作区变化
+会在下一次权限检查时生效。
+
+请求上下文、身份或已准备的 Ability 缺失时，抛出 `ForbiddenException`。
+存在有效 Ability 时，`can()` 返回布尔值；`authorize()` 在没有权限时抛出异常。
+`getAuthAbility()` 返回具体实例，用于读取规则或使用完整 CASL API。
+身份切换后应重新获取，不要跨请求缓存该实例。
+
+Guard、路由装饰器和 Service 统一通过该 Ability 判断操作权限。身份发布和授权失效
+仍由内部 `RequestIdentity` 集中管理；这些函数不会为缺失的身份构建权限。
+
+Ability 构建与可授予权限判断共用当前请求身份的一份不可变有效权限快照。
+所有者权限与凭证限制后的权限仍有区别：API Key 管理同时检查所有者授权和调用凭证的权限上限。
+能否授予权限不会根据某个操作的 `ability.can()` 结果推断。
+
+## 底层权限检查
+
+请求准备完成后，底层代码也使用统一入口：
+
+```typescript
+import { can, getAuthAbility, authorize } from "@nest-boot/auth";
+
+authorize("update", post);
+const canRead = can("read", post);
+const rules = getAuthAbility().rules;
+```
+
+`authorize()` 直接定义在 `AuthAbility` 类上，操作被拒绝时抛出 NestJS 的
+`ForbiddenException`。显式创建的 `AuthAbility` 实例也可以在请求上下文之外调用该方法。
+`AuthAbility` 仍然是请求上下文 token。
+
+独立的 `assertCan` 和 `getAbility` 导出分别替换为 `authorize` 和
+`getAuthAbility`，不保留兼容别名。`can` 继续保留。
+
+示例前端的个人页与工作区页统一使用 `useAbility()`。Provider 消费当前身份的
+`currentAbilityRules`，不在前端合并或重新计算权限。
+
+## 数据库归属策略
+
+内置 User SELECT 策略允许 `authenticated` 数据库角色读取全部 User 行，匿名仍不可读。
+个人资料可见性由 Service 的 Ability 检查限制，而不是此 SELECT 策略；自定义权限因此可以
+授予 User 读取能力，无需数据库权限名映射。对外读取不可绕过 Service 授权直接查询 ORM/SQL。
+User 写入及 Session 读取同样由 Service 授权。数据库请求变量不传递应用权限，
+其他 RLS 策略仍保留归属和工作区范围约束。
+
+`userScopePolicy()` 和 `workspaceScopePolicy()` 返回 MikroORM 原生策略定义，所有参数都可省略：
+
+| 工厂                     | `type`   | `property`  | `command` | `roles`             |
+| ------------------------ | -------- | ----------- | --------- | ------------------- |
+| `userScopePolicy()`      | `bigint` | `user`      | `all`     | `["authenticated"]` |
+| `workspaceScopePolicy()` | `bigint` | `workspace` | `all`     | `["authenticated"]` |
+
+```typescript
+import { Entity } from "@mikro-orm/decorators/legacy";
+import { Member, userScopePolicy, workspaceScopePolicy } from "@nest-boot/auth";
+
+@Entity({
+  policies: [
+    // 跨工作区读取本人的成员关系，但不授予跨工作区写权限。
+    userScopePolicy({ command: "select" }),
+    workspaceScopePolicy(),
+  ],
+})
+export class Member extends Member {}
+```
+
+`property` 是实体属性名，不是数据库列名；原生回调会读取映射后的列名。适用于标量 ID
+或持有关联一方的单列外键。`type` 是显式的数据库转换类型，支持 `bigint`、`integer`、
+`uuid`、`text`。例如 `userScopePolicy({ property: "owner", type: "uuid" })`；
+用于 User 实体自身时指定 `property: "id"`。还可以覆盖 `command`、`roles` 和可选的 `name`。
+
+策略分别比较 `app.user.id` 和 `app.workspace.id`，保留
+`nullif(current_setting(..., true), '')`，变量缺失或为空时不会匹配记录。
+这些是允许型策略，同一操作的多条策略按 OR 合并；不查询工作区生命周期，也不替代
+Service 授权。数据库角色、表权限及可信 session 变量仍需单独配置。
+
+Auth 只传递身份变量 `app.user.id`、`app.workspace.id` 和 `app.member.id`，不向数据库传递应用权限列表。
+Service 负责 Ability、自定义权限与 API Key 权限上限检查；RLS 保留归属和工作区隔离。
+authenticated 角色的 User 读写及 Session 读取由 Service 授权，不能通过直接 ORM/SQL
+访问替代 Service 的权限检查。旧身份变量不再支持。
+
+`app.member.id` 是已认证请求在当前工作区中的有效成员 ID，也适用于服务账号。匿名请求或没有有效成员时为空；撤销工作区访问或清空认证身份时会清空该变量。
+
+示例 `UserApiKey` 和 `MemberApiKey` 使用两张表，各自只有一个必填归属外键。RLS 将个人 Key 的 `user_id` 与 `app.user.id` 比较；成员 Key 关联 `member_id`，通过成员解析所属工作区并与 `app.workspace.id` 比较。删除归属对象时级联删除 Key，工作区采用永久删除。数据库使用默认表权限；两个管理 Service 排除密钥哈希、禁止修改归属，并保留授权检查。
+
+这几个函数不是 Filter 或装饰器，运行时与 CLI 都不需要额外 discovery 钩子。
+修改策略后需要生成并执行迁移；使用策略回调时保持元数据缓存关闭。
+自定义业务实体如果需要数据库层的软删除限制，可组合使用
+[`softDeletePolicies()`](/docs/tutorial/database#软删除-rls-策略)。
+
+## 同一请求内的授权变更
+
+Service 提交当前用户的资料、角色、权限或封禁状态变更，当前成员的资料、角色、权限及状态变更，
+或当前工作区资料变更后，
+Auth 会刷新请求身份与 Ability。内部身份协调器统一使权限快照失效、重建 Ability，
+并同步发生变化的数据库身份值。采用新会话时也会在返回前完成这些步骤，
+调用方无需另行刷新 Guard。提交后的身份发布失败时，会撤销当前请求身份。
+停用当前成员、退出或删除工作区时，
+会清空工作区作用域；删除操作使用隔离上下文时，也会清理父请求的作用域。
+
+这些自身更新操作、`leaveWorkspace()` 和 `deleteWorkspace()` 必须在已有事务之外调用。
+它们需要先完成自身提交，再更新请求授权；MikroORM 不允许在活动事务中重新设置
+session context。写入失败时不更新请求授权。修改其他用户或成员不会替换调用者身份。
+
+修改当前用于认证的 API Key 也遵循相同的提交边界：权限变更会刷新 Ability，
+停用或删除会清空整个请求身份，不会回退到未受密钥限制的用户权限。
+`signOut()` 成功后立即清空认证；`updateCurrentUser()` 会先重新读取已保存的资料，
+再执行后续操作。这些方法同样需要在已有事务之外调用。
+
+## 客户端 Ability Rules
+
+传输层需要把已经构建的 Ability 发送给浏览器或其他进程时，可以使用
+`serializeAbilityRules()`。它会把类 subject 转换为稳定的类名，同时保留 action、字段、
+条件、反向规则与原因。返回值可安全 JSON 化，客户端可以通过 CASL 的
+`createMongoAbility()` 还原。
+
+```typescript
+const rules = serializeAbilityRules(getAuthAbility());
+```
+
+客户端 rules 只用于界面能力展示。每次请求仍必须以服务端 Guard 与 Service 权限检查
+为最终授权边界。

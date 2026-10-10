@@ -1,0 +1,31 @@
+import { DataloaderType } from "@mikro-orm/core";
+import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
+
+import type { DatabaseModuleOptions } from "../interfaces/database-module-options.interface.js";
+
+/**
+ * Loads the framework defaults that do not select a database connection.
+ * @returns Default database options, including driver selection and entity discovery.
+ */
+export function loadDefaultConfig() {
+  return {
+    colors: false,
+    debug: false,
+    dataloader: DataloaderType.ALL,
+    timezone: "UTC",
+    metadataProvider: TsMorphMetadataProvider,
+    metadataCache: { enabled: false },
+    entities: ["dist/**/*.entity.js"],
+    entitiesTs: ["src/**/*.entity.ts"],
+    migrations: {
+      path: "dist/database/migrations",
+      pathTs: "src/database/migrations",
+    },
+    seeder: {
+      path: "dist/database/seeders",
+      pathTs: "src/database/seeders",
+      defaultSeeder: "DatabaseSeeder",
+      fileName: (className: string) => className,
+    },
+  } satisfies DatabaseModuleOptions;
+}

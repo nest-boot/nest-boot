@@ -4,22 +4,22 @@ import {
   Module,
   type OnApplicationShutdown,
 } from "@nestjs/common";
-import Redis, { type RedisOptions } from "ioredis";
+import { Redis, type RedisOptions } from "ioredis";
 
+import { RedisHealthIndicator } from "./redis.health-indicator.js";
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
-} from "./redis.module-definition";
-import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
+} from "./redis.module-definition.js";
+import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 
 /**
  * Module that provides Redis connection using ioredis.
  *
  * The module automatically loads and parses `REDIS_URL` when explicit options
  * are not provided (for example, `redis://user:pass@host:6379/0`).
- *
  * @example
  * ```typescript
  * import { RedisModule } from '@nest-boot/redis';
@@ -35,7 +35,6 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
  * })
  * export class AppModule {}
  * ```
- *
  * @example
  * ```typescript
  * // Inject Redis client in your service
@@ -54,6 +53,7 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
 @Global()
 @Module({
   providers: [
+    RedisHealthIndicator,
     {
       provide: Redis,
       inject: [{ token: MODULE_OPTIONS_TOKEN, optional: true }],
@@ -64,7 +64,7 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util";
         }),
     },
   ],
-  exports: [Redis],
+  exports: [Redis, RedisHealthIndicator],
 })
 export class RedisModule
   extends ConfigurableModuleClass
@@ -90,7 +90,8 @@ export class RedisModule
     return super.registerAsync(options);
   }
 
-  /** Creates a new RedisModule instance.
+  /**
+   * Creates a new RedisModule instance.
    * @param redis - The ioredis client instance
    */
   constructor(private readonly redis: Redis) {

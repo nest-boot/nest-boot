@@ -1,16 +1,32 @@
 packages:
   - website
   - apps/**
+  - examples/**
   - packages/**
 
-overrides:
-  better-sqlite3: 12.11.1
-  zod: 4.3.6
-
 onlyBuiltDependencies:
-  - better-sqlite3
+  - "@swc/core"
 
 packageExtensions:
   ajv-draft-04@*:
     dependencies:
       ajv: ^8.5.0
+
+# Patch vulnerable transitive dependencies of the example's UI tooling.
+# Remove these overrides when the parent packages resolve the fixed releases.
+# picomatch: GHSA-c2c7-rcm5-vvqj; fast-uri: GHSA-hrr3-gc8f-f4qj;
+# brace-expansion: GHSA-q2hr-2g5m-vwhr; seroval: GHSA-p6vx-979v-rg4c.
+# browserslist: GHSA-c83g-rgw3-j3cx; baseline-browser-mapping: GHSA-w5vr-8v7q-w6rv;
+# source-map-js: GHSA-68fv-2mgg-jv7q.
+overrides:
+  micromatch@4>picomatch: ^2.3.2
+  ajv@8>fast-uri: ^3.1.8
+  minimatch@10>brace-expansion: ^5.0.12
+  solid-js@<1.9.17: ^1.9.17
+  browserslist@<4.28.7: ^4.28.7
+  baseline-browser-mapping@<2.11.0: ^2.11.0
+  source-map-js@<1.2.2: ^1.2.2
+  # MDX 14 wraps Markdown handlers without preserving their attention metadata.
+  # mdast-util-to-markdown 2.2 then recurses on emphasis/strong nodes. Keep the
+  # compatible serializer until the docs migrate to Fumadocs MDX 15.
+  fumadocs-mdx@14>mdast-util-to-markdown: 2.1.2

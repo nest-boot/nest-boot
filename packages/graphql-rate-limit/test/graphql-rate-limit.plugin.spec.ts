@@ -9,22 +9,31 @@ import {
   Kind,
   parse,
 } from "graphql";
-import { getComplexity, simpleEstimator } from "graphql-query-complexity";
+import * as graphqlQueryComplexity from "graphql-query-complexity/cjs";
 
-import { OPTIONS_TOKEN } from "../src/graphql-rate-limit.module-definition";
-import { GraphQLRateLimitPlugin } from "../src/graphql-rate-limit.plugin";
-import { GraphQLRateLimitStorage } from "../src/graphql-rate-limit.storage";
-import { CostThrottleStatus, GraphQLRateLimitOptions } from "../src/interfaces";
+import { OPTIONS_TOKEN } from "../src/graphql-rate-limit.module-definition.js";
+import { GraphQLRateLimitPlugin } from "../src/graphql-rate-limit.plugin.js";
+import { GraphQLRateLimitStorage } from "../src/graphql-rate-limit.storage.js";
+import {
+  CostThrottleStatus,
+  GraphQLRateLimitOptions,
+} from "../src/interfaces/index.js";
 
-jest.mock("graphql-query-complexity", () => {
-  const actual = jest.requireActual<typeof import("graphql-query-complexity")>(
-    "graphql-query-complexity",
-  );
+const { getComplexity, simpleEstimator } =
+  graphqlQueryComplexity as unknown as typeof import("graphql-query-complexity");
+
+// Match Nest and the complexity library's CommonJS GraphQL runtime.
+vi.mock("graphql", async () => await vi.importActual("graphql/index.js"));
+
+vi.mock("graphql-query-complexity/cjs", async () => {
+  const actual = await vi.importActual<
+    typeof import("graphql-query-complexity/cjs")
+  >("graphql-query-complexity/cjs");
 
   return {
     ...actual,
-    getComplexity: jest.fn(),
-    simpleEstimator: jest.fn(actual.simpleEstimator),
+    getComplexity: vi.fn(),
+    simpleEstimator: vi.fn(actual.simpleEstimator),
   };
 });
 
@@ -53,7 +62,7 @@ describe("GraphQLRateLimitPlugin", () => {
     type Query {
       hello: String!
       item: Item
-      connection(first: Int): ItemConnection
+      connection(first: Int, last: Int): ItemConnection
     }
   `);
   const document = parse(/* GraphQL */ `
@@ -79,15 +88,15 @@ describe("GraphQLRateLimitPlugin", () => {
     ...available,
     currentlyAvailable: 97,
   };
-  const subPoint = jest.fn(() => Promise.resolve(available));
-  const addPoint = jest.fn(() => Promise.resolve(restored));
+  const subPoint = vi.fn(() => Promise.resolve(available));
+  const addPoint = vi.fn(() => Promise.resolve(restored));
   const storage = {
     subPoint,
     addPoint,
   } as unknown as GraphQLRateLimitStorage;
   const schemaHost = { schema } as GraphQLSchemaHost;
   const moduleRef = {
-    get: jest.fn(() => schemaHost),
+    get: vi.fn(() => schemaHost),
   } as unknown as ModuleRef;
   const options: GraphQLRateLimitOptions = {
     maxComplexity: 1000,
@@ -97,8 +106,8 @@ describe("GraphQLRateLimitPlugin", () => {
     maximumAvailable: 100,
     getId: () => "client",
   };
-  const mockedGetComplexity = jest.mocked(getComplexity);
-  const mockedSimpleEstimator = jest.mocked(simpleEstimator);
+  const mockedGetComplexity = vi.mocked(getComplexity);
+  const mockedSimpleEstimator = vi.mocked(simpleEstimator);
   const createPlugin = (overrides?: Partial<GraphQLRateLimitOptions>) =>
     new GraphQLRateLimitPlugin(storage, moduleRef, {
       ...options,
@@ -106,7 +115,7 @@ describe("GraphQLRateLimitPlugin", () => {
     });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockedGetComplexity.mockReturnValue(7);
     subPoint.mockResolvedValue(available);
     addPoint.mockResolvedValue(restored);
@@ -201,6 +210,28 @@ describe("GraphQLRateLimitPlugin", () => {
     await expect(listener.didResolveOperation(context)).rejects.toThrow(
       "Query is too complex: 1000. Maximum allowed complexity: 1000",
     );
+    expect(subPoint).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "{ connection(first: -1) { nodes { name } } }",
+    "{ connection(last: -1) { nodes { name } } }",
+    "query($size: Int!) { connection(first: $size) { nodes { name } } }",
+    "{ first: connection(first: 1000) { nodes { name } } second: connection(first: -1000) { nodes { name } } }",
+  ])("rejects invalid pagination before charging points: %s", async (query) => {
+    const actual = await vi.importActual<
+      typeof import("graphql-query-complexity/cjs")
+    >("graphql-query-complexity/cjs");
+    mockedGetComplexity.mockImplementationOnce(actual.getComplexity);
+    const listener =
+      (await createPlugin().requestDidStart()) as TestRequestListener;
+    const context = {
+      request: { variables: { size: -1 } },
+      document: parse(query),
+    } as unknown as GraphQLRequestContext<BaseContext>;
+    await expect(listener.didResolveOperation(context)).rejects.toMatchObject({
+      extensions: { code: "BAD_USER_INPUT" },
+    });
     expect(subPoint).not.toHaveBeenCalled();
   });
 

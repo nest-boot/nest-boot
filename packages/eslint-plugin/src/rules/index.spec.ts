@@ -1,4 +1,4 @@
-import { rules } from ".";
+import { rules } from "./index.js";
 
 describe("rules", () => {
   it("should expose all packaged rules", () => {
@@ -7,9 +7,9 @@ describe("rules", () => {
       "entity-property-config-from-types",
       "graphql-field-config-from-types",
       "graphql-field-definite-assignment",
-      "import-bullmq",
+      "import-database",
       "import-graphql",
-      "import-mikro-orm",
+      "import-queue",
     ]);
   });
 });

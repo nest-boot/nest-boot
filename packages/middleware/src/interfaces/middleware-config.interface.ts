@@ -1,6 +1,7 @@
-import { NestMiddleware, RouteInfo, Type } from "@nestjs/common/interfaces";
+import { NestMiddleware, Type } from "@nestjs/common";
+import type { RouteInfo } from "@nestjs/common/interfaces/middleware/middleware-configuration.interface.js";
 
-import { MiddlewareFunction } from "../types";
+import { MiddlewareFunction } from "../types/index.js";
 
 /**
  * Configuration for a middleware.

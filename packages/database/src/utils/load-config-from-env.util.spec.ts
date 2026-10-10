@@ -1,0 +1,312 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { Configuration, DataloaderType, type Options } from "@mikro-orm/core";
+import { PgliteDriver } from "@mikro-orm/pglite";
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
+import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
+
+import { loadConfigFromEnv } from "./load-config-from-env.util.js";
+
+const ORIGINAL_ENV = process.env;
+
+interface TlsFilePaths {
+  clientCert: string;
+  clientKey: string;
+  rootCert: string;
+}
+
+/**
+ * Runs the callback with temporary TLS fixture files.
+ * @param callback - Work to execute in the supplied context.
+ */
+async function withTlsFiles(
+  callback: (paths: TlsFilePaths) => Promise<void>,
+): Promise<void> {
+  const directory = await mkdtemp(join(tmpdir(), "nest-boot-database-"));
+  const paths = {
+    clientCert: join(directory, "client.crt"),
+    clientKey: join(directory, "client.key"),
+    rootCert: join(directory, "root.crt"),
+  };
+
+  try {
+    await Promise.all([
+      writeFile(paths.rootCert, "root certificate"),
+      writeFile(paths.clientCert, "client certificate"),
+      writeFile(paths.clientKey, "client key"),
+    ]);
+    await callback(paths);
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+}
+
+describe("loadConfigFromEnv", () => {
+  beforeEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+    delete process.env.DATABASE_URL;
+  });
+
+  afterAll(() => {
+    process.env = ORIGINAL_ENV;
+  });
+
+  it("should load URL-based PostgreSQL config", async () => {
+    process.env.DATABASE_URL =
+      "postgresql://user%40example.com:p%40ss%2Fword@localhost:5432/app";
+
+    const config = await loadConfigFromEnv();
+
+    expect(config).toMatchObject({
+      colors: false,
+      dataloader: DataloaderType.ALL,
+      dbName: "app",
+      debug: false,
+      driver: PostgreSqlDriver,
+      entities: ["dist/**/*.entity.js"],
+      entitiesTs: ["src/**/*.entity.ts"],
+      host: "localhost",
+      metadataCache: { enabled: false },
+      metadataProvider: TsMorphMetadataProvider,
+      migrations: {
+        path: "dist/database/migrations",
+        pathTs: "src/database/migrations",
+      },
+      seeder: {
+        defaultSeeder: "DatabaseSeeder",
+        path: "dist/database/seeders",
+        pathTs: "src/database/seeders",
+      },
+      password: "p@ss/word",
+      port: 5432,
+      timezone: "UTC",
+      user: "user@example.com",
+    });
+    expect(config).not.toHaveProperty("clientUrl");
+    expect((config as Options).seeder?.fileName?.("CustomSeeder")).toBe(
+      "CustomSeeder",
+    );
+  });
+
+  it("should load PostgreSQL query options", async () => {
+    process.env.DATABASE_URL =
+      "postgresql://user:pass@[2001:db8::1]:5432/app?schema=tenant&sslmode=require&application_name=nest-boot";
+
+    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+      dbName: "app",
+      driver: PostgreSqlDriver,
+      driverOptions: {
+        connection: {
+          application_name: "nest-boot",
+          ssl: {},
+        },
+      },
+      host: "2001:db8::1",
+      password: "pass",
+      port: 5432,
+      schema: "tenant",
+      user: "user",
+    });
+  });
+
+  it("should load the postgres PostgreSQL URI form", async () => {
+    process.env.DATABASE_URL = "postgres://user:pass@localhost/app";
+
+    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+      dbName: "app",
+      driver: PostgreSqlDriver,
+      host: "localhost",
+      password: "pass",
+      user: "user",
+    });
+  });
+
+  it("should load a file URL as persistent PGlite config", async () => {
+    process.env.DATABASE_URL = "file:///var/lib/nest-boot/app%20data.db";
+
+    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+      dbName: "/var/lib/nest-boot/app data.db",
+      driver: PgliteDriver,
+    });
+  });
+
+  it("should load a memory URL as in-memory PGlite config", async () => {
+    process.env.DATABASE_URL = "memory://";
+
+    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+      dbName: "memory://",
+      driver: PgliteDriver,
+    });
+  });
+
+  it.each([
+    ["postgresql", "sslmode=disable", { ssl: false }],
+    ["postgresql", "sslmode=require", { ssl: { rejectUnauthorized: false } }],
+    ["postgresql", "sslmode=verify-full", { ssl: {} }],
+  ])(
+    "should parse %s driver query option %s",
+    async (protocol, query, expected) => {
+      process.env.DATABASE_URL = `${protocol}://user:pass@localhost/app?${query}`;
+
+      await expect(loadConfigFromEnv()).resolves.toMatchObject({
+        driverOptions: {
+          connection: expected,
+        },
+      });
+    },
+  );
+
+  it("should preserve omitted URL credentials and port", async () => {
+    process.env.DATABASE_URL = "postgresql://db.internal";
+
+    const config = await loadConfigFromEnv();
+
+    expect(config).toMatchObject({
+      dbName: undefined,
+      host: "db.internal",
+      password: "",
+      port: 0,
+      user: "",
+    });
+
+    const mikroOrmConfig = new Configuration(config as Options, false);
+
+    expect(
+      mikroOrmConfig.getDriver().getConnection().getConnectionOptions(),
+    ).toMatchObject({
+      host: "db.internal",
+      password: "",
+      port: 0,
+      user: "",
+    });
+  });
+
+  it("should load PostgreSQL TLS files into structured SSL options", async () => {
+    await withTlsFiles(async ({ clientCert, clientKey, rootCert }) => {
+      const databaseUrl = new URL("postgresql://user:pass@localhost/app");
+      databaseUrl.searchParams.set("sslmode", "verify-full");
+      databaseUrl.searchParams.set("sslrootcert", rootCert);
+      databaseUrl.searchParams.set("sslcert", clientCert);
+      databaseUrl.searchParams.set("sslkey", clientKey);
+      process.env.DATABASE_URL = databaseUrl.href;
+
+      await expect(loadConfigFromEnv()).resolves.toMatchObject({
+        driverOptions: {
+          connection: {
+            ssl: {
+              ca: "root certificate",
+              cert: "client certificate",
+              key: "client key",
+            },
+          },
+        },
+      });
+    });
+  });
+
+  it.each(["require", "verify-ca"])(
+    "should map PostgreSQL sslmode=%s with a root certificate",
+    async (sslMode) => {
+      await withTlsFiles(async ({ rootCert }) => {
+        const databaseUrl = new URL("postgresql://user:pass@localhost/app");
+        databaseUrl.searchParams.set("sslmode", sslMode);
+        databaseUrl.searchParams.set("sslrootcert", rootCert);
+        process.env.DATABASE_URL = databaseUrl.href;
+
+        const config = await loadConfigFromEnv();
+        const connection = config.driverOptions?.connection as Record<
+          string,
+          unknown
+        >;
+        const ssl = connection.ssl as Record<string, unknown>;
+
+        expect(ssl).toMatchObject({
+          ca: "root certificate",
+          checkServerIdentity: expect.any(Function),
+        });
+        const checkServerIdentity = ssl.checkServerIdentity as () => undefined;
+
+        checkServerIdentity();
+      });
+    },
+  );
+
+  it.each([
+    ["postgresql://user:pass@localhost/app?sslmode=allow", "allow"],
+    ["postgresql://user:pass@localhost/app?sslmode=prefer", "prefer"],
+  ])(
+    "should reject SSL fallback mode %s that structured options cannot express",
+    async (databaseUrl, sslMode) => {
+      process.env.DATABASE_URL = databaseUrl;
+
+      await expect(loadConfigFromEnv()).rejects.toThrow(
+        `Unsupported PostgreSQL sslmode: ${sslMode}`,
+      );
+    },
+  );
+
+  it("should require sslrootcert for PostgreSQL verify-ca", async () => {
+    process.env.DATABASE_URL =
+      "postgresql://user:pass@localhost/app?sslmode=verify-ca";
+
+    await expect(loadConfigFromEnv()).rejects.toThrow(
+      "PostgreSQL sslmode=verify-ca requires sslrootcert",
+    );
+  });
+
+  it.each([
+    [
+      "postgresql://user:pass@localhost/app?ssl=true",
+      "Unsupported PostgreSQL DATABASE_URL parameter: ssl",
+    ],
+    [
+      "postgresql://user:pass@localhost/app?ssl=1",
+      "Unsupported PostgreSQL DATABASE_URL parameter: ssl",
+    ],
+    [
+      "postgresql://user:pass@localhost/app?uselibpqcompat=true",
+      "Unsupported PostgreSQL DATABASE_URL parameter: uselibpqcompat",
+    ],
+    [
+      "postgresql://user:pass@localhost/app?sslmode=no-verify",
+      "Unsupported PostgreSQL sslmode: no-verify",
+    ],
+  ])("should reject non-standard database URL options", async (url, error) => {
+    process.env.DATABASE_URL = url;
+
+    await expect(loadConfigFromEnv()).rejects.toThrow(error);
+  });
+
+  it.each([
+    "mysql://localhost/app",
+    "mysql2://localhost/app",
+    "sqlite:///var/lib/app.db",
+  ])("should reject non-standard database URL %s", async (databaseUrl) => {
+    process.env.DATABASE_URL = databaseUrl;
+
+    await expect(loadConfigFromEnv()).rejects.toThrow(
+      `Unsupported DATABASE_URL protocol: ${new URL(databaseUrl).protocol}`,
+    );
+  });
+
+  it("should reject unsupported database URL protocols", async () => {
+    process.env.DATABASE_URL = "mongodb://localhost/app";
+
+    await expect(loadConfigFromEnv()).rejects.toThrow(
+      "Unsupported DATABASE_URL protocol: mongodb:",
+    );
+  });
+
+  it("should return undefined connection fields when DATABASE_URL is absent", async () => {
+    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+      dbName: undefined,
+      driver: undefined,
+      host: undefined,
+      password: undefined,
+      port: undefined,
+      user: undefined,
+    });
+  });
+});

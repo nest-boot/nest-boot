@@ -3,15 +3,13 @@
   "pages": [
     "hash",
     "crypt",
-    "mikro-orm",
-    "row-level-security",
-    "permission",
+    "database",
     "middleware",
     "redis",
     "request-context",
     "temporary-directory",
     "auth",
-    "bullmq",
+    "queue",
     "schedule",
     "graphql",
     "graphql-connection",
@@ -19,7 +17,8 @@
     "logger",
     "mailer",
     "metrics",
-    "file-upload",
+    "storage",
+    "staged-upload",
     "validator",
     "view"
   ]

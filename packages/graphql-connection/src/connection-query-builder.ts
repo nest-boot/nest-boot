@@ -1,26 +1,30 @@
+/* eslint-disable @typescript-eslint/no-generated-empty-object-type -- MikroORM QueryOrderMap resolves its fields only after the entity generic is supplied. */
 import {
-  FilterQuery,
-  FindOptions,
+  type FilterQuery,
+  type FindOptions,
   QueryOrder,
-  QueryOrderMap,
+  type QueryOrderMap,
 } from "@mikro-orm/core";
-import { type SqlEntityManager } from "@mikro-orm/knex";
-import compact from "lodash/compact";
-import get from "lodash/get";
-import set from "lodash/set";
+import { type SqlEntityManager } from "@mikro-orm/sql";
+import { BadRequestException } from "@nestjs/common";
+import { compact, get, set } from "lodash-es";
 import { parse, type ParseOptions } from "search-syntax";
 
-import { type ConnectionFindOptions } from "./connection.manager";
-import { Cursor } from "./cursor";
-import { OrderDirection, PagingType, TotalCountRelation } from "./enums";
-import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants";
+import { type ConnectionFindOptions } from "./connection.manager.js";
+import { Cursor } from "./cursor.js";
+import {
+  OrderDirection,
+  PagingType,
+  TotalCountRelation,
+} from "./enums/index.js";
+import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants.js";
 import {
   ConnectionArgsInterface,
   ConnectionMetadata,
   ConnectionResult,
   EdgeInterface,
-} from "./interfaces";
-import { ConnectionClass } from "./types";
+} from "./interfaces/index.js";
+import { ConnectionClass } from "./types/index.js";
 
 const TOTAL_COUNT_LIMIT = 10_000;
 
@@ -33,12 +37,12 @@ const TOTAL_COUNT_LIMIT = 10_000;
  * - Filter query construction from multiple sources (args, options, query string)
  * - Cursor encoding/decoding for stable pagination
  *
- * @typeParam Entity - The entity type being queried
- * @typeParam Hint - Type hints for population
- * @typeParam Fields - Fields to select
- * @typeParam Excludes - Fields to exclude
- *
- * @internal This class is used internally by ConnectionManager
+ * This class is used internally by ConnectionManager
+ * @template Entity - The entity type being queried
+ * @template Hint - Type hints for population
+ * @template Fields - Fields to select
+ * @template Excludes - Fields to exclude
+ * @internal
  */
 export class ConnectionQueryBuilder<
   Entity extends object,
@@ -124,6 +128,14 @@ export class ConnectionQueryBuilder<
   }
 
   private getLimit(): number {
+    for (const name of ["first", "last"] as const) {
+      const value = this.args[name];
+      if (value != null && (!Number.isSafeInteger(value) || value < 0)) {
+        throw new BadRequestException(
+          `${name} must be a non-negative safe integer`,
+        );
+      }
+    }
     return this.args.first ?? this.args.last ?? 0;
   }
 
@@ -172,7 +184,7 @@ export class ConnectionQueryBuilder<
   }
 
   private getQueryOrderMap(): QueryOrderMap<Entity>[] {
-    if (typeof this.args.orderBy === "undefined") {
+    if (this.args.orderBy == null) {
       return [
         {
           id: this.queryOrder,
@@ -181,11 +193,7 @@ export class ConnectionQueryBuilder<
     }
 
     const queryOrderMap: QueryOrderMap<Entity>[] = [
-      set(
-        {},
-        this.args.orderBy.field,
-        this.queryOrder,
-      ) as QueryOrderMap<Entity>,
+      set({}, this.args.orderBy.field, this.queryOrder),
     ];
 
     if ((this.args.orderBy.field as string) !== "id") {
@@ -216,33 +224,42 @@ export class ConnectionQueryBuilder<
           } as unknown as FilterQuery<Entity>)
         : null;
 
-    return typeof this.args.orderBy !== "undefined" &&
-      typeof this.cursor?.value !== "undefined"
-      ? ({
-          $or: [
-            set({}, this.args.orderBy.field, {
-              [cursorOperator]: this.cursor.value,
-            }),
-            idFilterQuery !== null
-              ? {
-                  $and: [
-                    set({}, this.args.orderBy.field, {
-                      $eq: this.cursor.value,
-                    }),
-                    idFilterQuery,
-                  ],
-                }
-              : set({}, this.args.orderBy.field, { $eq: this.cursor.value }),
-          ],
-        } as FilterQuery<Entity>)
-      : idFilterQuery;
+    if (
+      this.args.orderBy == null ||
+      typeof this.cursor?.value === "undefined"
+    ) {
+      return idFilterQuery;
+    }
+
+    const { field } = this.args.orderBy;
+    const value = this.cursor.value;
+    const sameValue = set({}, field, { $eq: value });
+    const tieBreak =
+      idFilterQuery === null ? sameValue : { $and: [sameValue, idFilterQuery] };
+    // Follow the platform's native placement, which reverses for backward paging.
+    const nullsFirst =
+      this.entityManager.getPlatform().sortsNullsLowest() ===
+      (this.queryOrder === QueryOrder.ASC);
+
+    if (value === null) {
+      return (
+        nullsFirst
+          ? { $or: [set({}, field, { $ne: null }), tieBreak] }
+          : tieBreak
+      ) as FilterQuery<Entity>;
+    }
+
+    return {
+      $or: [
+        set({}, field, { [cursorOperator]: value }),
+        tieBreak,
+        ...(nullsFirst ? [] : [set({}, field, { $eq: null })]),
+      ],
+    } as FilterQuery<Entity>;
   }
 
   private getQueryStringToFilterQuery(): FilterQuery<Entity> | null {
-    if (
-      typeof this.args.query !== "undefined" &&
-      this.args.query.trim() !== ""
-    ) {
+    if (this.args.query != null && this.args.query.trim() !== "") {
       const { fieldOptionsMap, filterQuerySchema } = this.metadata;
 
       // Build ParseOptions, only include filterable fields
@@ -292,25 +309,24 @@ export class ConnectionQueryBuilder<
   private async getTotalCount(): Promise<number> {
     const limitedCountQueryBuilder = this.entityManager
       .createQueryBuilder(this.metadata.entityClass)
-      .select("id")
+      .select("id" as never)
       .limit(TOTAL_COUNT_LIMIT + 1)
       .withSchema(this.options?.schema);
 
     if (this.totalCountFilterQuery !== null) {
-      limitedCountQueryBuilder.where(this.totalCountFilterQuery);
+      limitedCountQueryBuilder.where(this.totalCountFilterQuery as never);
     }
 
     await limitedCountQueryBuilder.applyFilters(this.options?.filters);
 
     return await this.entityManager
-      .createQueryBuilder(limitedCountQueryBuilder, "bounded_count")
+      .createQueryBuilder(limitedCountQueryBuilder as never, "bounded_count")
       .count()
       .getCount();
   }
 
   /**
    * Executes the paginated query and returns the connection result.
-   *
    * @returns A promise that resolves to the connection with edges, pageInfo,
    * totalCount, and totalCountRelation
    */
@@ -322,12 +338,12 @@ export class ConnectionQueryBuilder<
       this.allFilterQuery === null
         ? this.entityManager.findAll(
             this.metadata.entityClass,
-            this.findOptions,
+            this.findOptions as never,
           )
         : this.entityManager.find(
             this.metadata.entityClass,
-            this.allFilterQuery,
-            this.findOptions,
+            this.allFilterQuery as never,
+            this.findOptions as never,
           ),
       matchedCountPromise,
     ]);
@@ -355,10 +371,10 @@ export class ConnectionQueryBuilder<
           : sortedEntities.slice(1)
         : sortedEntities
     ).map<EdgeInterface<Entity>>((node) => ({
-      node: node as Entity,
+      node: node,
       cursor: new Cursor({
         id: (node as any)?.id,
-        ...(typeof this.args.orderBy !== "undefined"
+        ...(this.args.orderBy != null
           ? { value: get(node, this.args.orderBy.field) }
           : {}),
       }).toString(),

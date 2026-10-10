@@ -4,13 +4,11 @@
  * Cursors are encoded as base64 JSON strings containing the position information
  * needed for pagination. They typically include the entity ID and optionally
  * the value of the field being sorted by.
- *
  * @example Creating a cursor from an object
  * ```typescript
  * const cursor = new Cursor({ id: '123', value: 'some-value' });
  * console.log(cursor.toString()); // Base64 encoded string
  * ```
- *
  * @example Parsing a cursor string
  * ```typescript
  * const cursor = new Cursor('eyJpZCI6IjEyMyJ9');
@@ -49,7 +47,6 @@ export class Cursor implements Record<string, any> {
 
   /**
    * Converts the cursor to a base64-encoded string representation.
-   *
    * @returns The cursor encoded as a base64 JSON string
    */
   toString(): string {

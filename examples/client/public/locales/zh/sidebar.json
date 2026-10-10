@@ -1,0 +1,34 @@
+{
+  "admin": {
+    "title": "管理后台",
+    "users": "用户"
+  },
+  "navigation": {
+    "api_keys": "API 密钥",
+    "members": "成员",
+    "settings": "设置"
+  },
+  "switcher": {
+    "createWorkspace": "创建工作空间",
+    "workspaces": "工作空间",
+    "loadMore": "加载更多",
+    "manageWorkspaces": "管理工作空间",
+    "loading": "正在加载工作空间…",
+    "retry": "重新加载工作空间",
+    "loadFailed": "无法加载工作空间"
+  },
+  "user": {
+    "openOverview": "打开个人概览：{{name}}",
+    "account": "个人资料",
+    "api_keys": "API 密钥",
+    "logout": "退出登录",
+    "security": "安全",
+    "theme": {
+      "light": "浅色",
+      "dark": "深色",
+      "system": "跟随系统"
+    },
+    "title": "个人中心",
+    "workspaces": "工作空间"
+  }
+}

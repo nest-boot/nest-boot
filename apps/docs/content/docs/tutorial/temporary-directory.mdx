@@ -16,7 +16,7 @@ pnpm add @nest-boot/temporary-directory @nest-boot/request-context
 
 ## Requirements
 
-The module requires Node.js `>=24.4.0` because its cleanup lifecycle uses
+The module follows the shared Node.js `>=24.21.0` requirement. Its cleanup lifecycle uses
 Node.js asynchronous disposable temporary directories.
 
 ## Module Registration
@@ -178,7 +178,3 @@ propagated so callers can handle them at the appropriate application boundary.
 4. **Persist intentionally** — Copy required output to permanent storage before
    the context ends; temporary paths must not be stored in a database or sent
    to later background work.
-
-## API Reference
-
-For detailed API documentation, see the [Temporary Directory API Reference](/docs/api/temporary-directory).

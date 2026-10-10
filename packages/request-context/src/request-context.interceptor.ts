@@ -4,10 +4,16 @@ import {
   Injectable,
   type NestInterceptor,
 } from "@nestjs/common";
-import { Request } from "express";
+import { ModuleRef } from "@nestjs/core";
+import { type Request, type Response } from "express";
 import { Observable } from "rxjs";
 
-import { RequestContext } from "./request-context";
+import { createNestDependencyResolver } from "./nest-dependency-resolver.js";
+import {
+  REQUEST as CTX_REQUEST_TOKEN,
+  RESPONSE as CTX_RESPONSE_TOKEN,
+} from "./request-context.constants.js";
+import { RequestContext } from "./request-context.js";
 
 /**
  * NestJS interceptor that creates request context for HTTP and GraphQL requests.
@@ -16,13 +22,13 @@ import { RequestContext } from "./request-context";
  * run (e.g., GraphQL resolvers). It:
  * - Creates a new RequestContext if one doesn't already exist
  * - Uses the `x-request-id` header as the context ID if provided
+ * - Stores available request and response objects in the fallback context
  * - Supports both HTTP and GraphQL execution contexts
  * - Categorizes fallback contexts as `"http"` to match contexts created by
  *   the request middleware; NestJS may still report the resolver execution
  *   context type as `"graphql"`
  *
  * The interceptor is automatically registered by RequestContextModule.
- *
  * @example
  * The interceptor is typically used automatically, but can be applied manually:
  * ```typescript
@@ -37,9 +43,14 @@ import { RequestContext } from "./request-context";
 @Injectable()
 export class RequestContextInterceptor implements NestInterceptor {
   /**
+   * Creates a request context interceptor instance.
+   * @param moduleRef - Nest module reference used to resolve dependencies.
+   */
+  constructor(private readonly moduleRef?: ModuleRef) {}
+
+  /**
    * Intercepts the request and wraps execution in a request context.
-   *
-   * @typeParam T - The type of the response
+   * @template T - The type of the response
    * @param executionContext - The NestJS execution context
    * @param next - The call handler for the next interceptor or handler
    * @returns An observable of the response
@@ -48,22 +59,40 @@ export class RequestContextInterceptor implements NestInterceptor {
     executionContext: ExecutionContext,
     next: CallHandler<T>,
   ): Observable<T> {
+    const contextType = executionContext.getType<string>();
+
     if (
       RequestContext.isActive() ||
-      !["http", "graphql"].includes(executionContext.getType())
+      !["http", "graphql"].includes(contextType)
     ) {
       return next.handle();
     }
 
-    const id = (
-      executionContext.switchToHttp().getRequest<Request>() ??
-      executionContext.getArgByIndex<{ req: Request }>(2).req
-    )?.get?.("x-request-id");
+    let request: Request | undefined;
+    let response: Response | undefined;
+
+    if (contextType === "graphql") {
+      const graphqlContext = executionContext.getArgByIndex<
+        GraphqlHttpContext | undefined
+      >(2);
+      request = graphqlContext?.req;
+      response = graphqlContext?.res ?? graphqlContext?.req?.res;
+    } else {
+      const http = executionContext.switchToHttp();
+      request = http.getRequest<Request | undefined>();
+      response = http.getResponse<Response | undefined>();
+    }
 
     const ctx = new RequestContext({
-      id,
+      dependencyResolver: this.moduleRef
+        ? createNestDependencyResolver(this.moduleRef)
+        : undefined,
+      id: request?.get?.("x-request-id"),
       type: "http",
     });
+
+    if (request) ctx.set<Request>(CTX_REQUEST_TOKEN, request);
+    if (response) ctx.set<Response>(CTX_RESPONSE_TOKEN, response);
 
     return new Observable((subscriber) => {
       let resolveTermination!: () => void;
@@ -134,4 +163,9 @@ export class RequestContextInterceptor implements NestInterceptor {
       );
     });
   }
+}
+
+interface GraphqlHttpContext {
+  req?: Request;
+  res?: Response;
 }

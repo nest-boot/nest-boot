@@ -1,0 +1,587 @@
+## 8.0.5-beta.6 (2026-10-10)
+
+This was a version bump only for @nest-boot/database to align it with other projects, there were no code changes.
+
+## 8.0.5-beta.5 (2026-10-10)
+
+### 🚀 Features
+
+- ⚠️  **runtime:** require Node 24.21 and validate packed consumers ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### ⚠️  Breaking Changes
+
+- **runtime:** require Node 24.21 and validate packed consumers  ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.4-beta.3
+- Updated @nest-boot/eslint-config to 8.0.2-beta.4
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.5
+- Updated @nest-boot/health-check to 8.0.2-beta.4
+- Updated @nest-boot/tsconfig to 8.0.0-beta.5
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.5-beta.4 (2026-10-10)
+
+### 🩹 Fixes
+
+- **deps:** upgrade production dependencies and Nodemailer 10 ([#405](https://github.com/nest-boot/nest-boot/pull/405))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.4-beta.2
+- Updated @nest-boot/health-check to 8.0.2-beta.3
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.5-beta.3 (2026-10-10)
+
+### 🚀 Features
+
+- **eslint-config:** adopt JSDoc and retire TypeDoc ([#404](https://github.com/nest-boot/nest-boot/pull/404))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.4-beta.1
+- Updated @nest-boot/eslint-config to 8.0.2-beta.3
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.4
+- Updated @nest-boot/health-check to 8.0.2-beta.2
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.5-beta.2 (2026-10-10)
+
+### 🩹 Fixes
+
+- **release:** recover incomplete npm publications ([#403](https://github.com/nest-boot/nest-boot/pull/403))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.5-beta.1 (2026-10-09)
+
+### 🚀 Features
+
+- **database:** add automatic database health checks ([#400](https://github.com/nest-boot/nest-boot/pull/400))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/health-check to 8.0.2-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.5-beta.0 (2026-10-09)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.4-beta.0
+- Updated @nest-boot/eslint-config to 8.0.2-beta.2
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.3
+
+## 8.0.4-beta.1 (2026-10-09)
+
+### 🚀 Features
+
+- ⚠️  **database:** rename database integration packages and APIs ([#397](https://github.com/nest-boot/nest-boot/pull/397))
+
+### 🩹 Fixes
+
+- 移除 database 和 health-check 模块并格式化代码 ([49659ef9](https://github.com/nest-boot/nest-boot/commit/49659ef9))
+- 升级依赖 ([528189ef](https://github.com/nest-boot/nest-boot/commit/528189ef))
+
+### ⚠️  Breaking Changes
+
+- **database:** rename database integration packages and APIs  ([#397](https://github.com/nest-boot/nest-boot/pull/397))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.3-beta.0
+- Updated @nest-boot/eslint-config to 8.0.2-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.2
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.4-beta.0 (2026-09-23)
+
+### 🩹 Fixes
+
+- **eslint-plugin:** generate valid MikroORM 7 decorator imports ([#370](https://github.com/nest-boot/nest-boot/pull/370))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.2-beta.0
+- Updated @nest-boot/eslint-config to 8.0.2-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.3-beta.3 (2026-09-20)
+
+### 🩹 Fixes
+
+- **mikro-orm:** hydrate entity service references ([#342](https://github.com/nest-boot/nest-boot/pull/342))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.3-beta.2 (2026-09-19)
+
+### 🚀 Features
+
+- ⚠️  **auth:** unify auth entities, services and GraphQL APIs ([#331](https://github.com/nest-boot/nest-boot/pull/331))
+
+### ⚠️  Breaking Changes
+
+- **auth:** unify auth entities, services and GraphQL APIs  ([#331](https://github.com/nest-boot/nest-boot/pull/331))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.1-beta.0
+- Updated @nest-boot/eslint-config to 8.0.1-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.0
+- Updated @nest-boot/tsconfig to 8.0.0-beta.4
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.3-beta.1 (2026-09-16)
+
+### 🚀 Features
+
+- ⚠️  **mikro-orm:** adopt native RLS and remove the custom RLS package ([#329](https://github.com/nest-boot/nest-boot/pull/329))
+
+### ⚠️  Breaking Changes
+
+- **mikro-orm:** adopt native RLS and remove the custom RLS package  ([#329](https://github.com/nest-boot/nest-boot/pull/329))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.3-beta.0 (2026-09-08)
+
+### 🚀 Features
+
+- ⚠️  **auth:** rebuild authentication and authorization ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+- ⚠️  **mikro-orm:** replace MySQL and SQLite with PGlite ([#326](https://github.com/nest-boot/nest-boot/pull/326))
+
+### 🩹 Fixes
+
+- **release:** keep beta releases on the v8 line ([#328](https://github.com/nest-boot/nest-boot/pull/328))
+
+### ⚠️  Breaking Changes
+
+- **auth:** rebuild authentication and authorization  ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+- **mikro-orm:** replace MySQL and SQLite with PGlite  ([#326](https://github.com/nest-boot/nest-boot/pull/326))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 9.0.0-beta.1 (2026-09-08)
+
+### 🚀 Features
+
+- ⚠️  **auth:** rebuild authentication and authorization ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### ⚠️  Breaking Changes
+
+- **auth:** rebuild authentication and authorization  ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.6
+- Updated @nest-boot/eslint-config to 8.0.0-beta.3
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.3
+- Updated @nest-boot/tsconfig to 8.0.0-beta.3
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 9.0.0-beta.0 (2026-09-07)
+
+### 🚀 Features
+
+- ⚠️  **mikro-orm:** replace MySQL and SQLite with PGlite ([#326](https://github.com/nest-boot/nest-boot/pull/326))
+
+### ⚠️  Breaking Changes
+
+- **mikro-orm:** replace MySQL and SQLite with PGlite  ([#326](https://github.com/nest-boot/nest-boot/pull/326))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.2 (2026-09-07)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.5
+
+## 8.0.1 (2026-09-04)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.4
+
+# 8.0.0 (2026-09-01)
+
+### 🚀 Features
+
+- ⚠️  migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ⚠️  Breaking Changes
+
+- migrate to NestJS 12 and ESM  ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.3
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.2 (2026-08-31)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.2
+- Updated @nest-boot/eslint-config to 8.0.0-beta.2
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.2
+- Updated @nest-boot/tsconfig to 8.0.0-beta.2
+
+## 8.0.0-beta.1 (2026-08-31)
+
+### 🚀 Features
+
+- ⚠️  migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ⚠️  Breaking Changes
+
+- migrate to NestJS 12 and ESM  ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.1
+- Updated @nest-boot/eslint-config to 8.0.0-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.1
+- Updated @nest-boot/tsconfig to 8.0.0-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 7.7.7 (2026-08-31)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.7.6
+- Updated @nest-boot/eslint-config to 7.3.5
+- Updated @nest-boot/eslint-plugin to 7.2.5
+- Updated @nest-boot/tsconfig to 7.3.5
+
+## 7.7.6 (2026-08-29)
+
+### 🩹 Fixes
+
+- **mikro-orm:** batch entity service operations per context ([#308](https://github.com/nest-boot/nest-boot/pull/308))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 7.7.5 (2026-08-29)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.7.5
+- Updated @nest-boot/eslint-config to 7.3.4
+- Updated @nest-boot/eslint-plugin to 7.2.4
+- Updated @nest-boot/tsconfig to 7.3.4
+
+## 7.7.4 (2026-08-29)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.7.4
+- Updated @nest-boot/eslint-config to 7.3.3
+- Updated @nest-boot/eslint-plugin to 7.2.3
+- Updated @nest-boot/tsconfig to 7.3.3
+
+## 7.7.3 (2026-08-28)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.7.3
+
+## 7.7.2 (2026-08-28)
+
+### 🚀 Features
+
+- **config:** use URL-only environment connections ([8b50be63](https://github.com/nest-boot/nest-boot/commit/8b50be63))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.7.2
+- Updated @nest-boot/eslint-config to 7.3.2
+- Updated @nest-boot/eslint-plugin to 7.2.2
+- Updated @nest-boot/tsconfig to 7.3.2
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 7.7.1 (2026-08-27)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.7.1
+- Updated @nest-boot/eslint-config to 7.3.1
+- Updated @nest-boot/eslint-plugin to 7.2.1
+- Updated @nest-boot/tsconfig to 7.3.1
+
+## 7.7.0 (2026-08-12)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.7.0
+- Updated @nest-boot/eslint-config to 7.3.0
+- Updated @nest-boot/eslint-plugin to 7.2.0
+- Updated @nest-boot/tsconfig to 7.3.0
+
+## 7.6.1 (2026-06-17)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.6.1
+- Updated @nest-boot/eslint-config to 7.2.1
+- Updated @nest-boot/eslint-plugin to 7.1.1
+- Updated @nest-boot/tsconfig to 7.2.1
+
+## 7.6.0 (2026-06-17)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.6.0
+- Updated @nest-boot/eslint-config to 7.2.0
+- Updated @nest-boot/eslint-plugin to 7.1.0
+- Updated @nest-boot/tsconfig to 7.2.0
+
+## 7.5.0 (2026-06-07)
+
+### 🚀 Features
+
+- add row level security driver ([#236](https://github.com/nest-boot/nest-boot/pull/236))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 7.5.0
+- Updated @nest-boot/eslint-config to 7.1.0
+- Updated @nest-boot/eslint-plugin to 7.0.8
+- Updated @nest-boot/tsconfig to 7.1.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+# @nest-boot/mikro-orm
+
+## 7.4.0
+
+### Minor Changes
+
+- dbce7e8: feat: wrap entity removal in transactions to ensure data consistency in entity service
+
+## 7.3.2
+
+### Patch Changes
+
+- 3f42c62: add comprehensive TSDoc coverage and translate comments to English
+- Updated dependencies [3f42c62]
+  - @nest-boot/request-context@7.4.3
+
+## 7.3.1
+
+### Patch Changes
+
+- 8be49e8: fix(mikro-orm): move base configuration inside loadConfigFromEnv function
+
+## 7.3.0
+
+### Minor Changes
+
+- d0b5699: feat(mikro-orm): add logging support and update configuration options
+
+## 7.2.4
+
+### Patch Changes
+
+- 372cb9e: chore: use defineConfig to configure eslint
+- 372cb9e: fix: add typedoc
+- Updated dependencies [372cb9e]
+- Updated dependencies [372cb9e]
+  - @nest-boot/request-context@7.4.2
+
+## 7.2.3
+
+### Patch Changes
+
+- d663833: fix: eslint
+
+## 7.2.2
+
+### Patch Changes
+
+- bf35af9: fix: update @nestjs packages to version 11.1.9 across multiple packages
+- Updated dependencies [bf35af9]
+  - @nest-boot/request-context@7.4.1
+
+## 7.2.1
+
+### Patch Changes
+
+- 59f76aa: fix: 修复 EntityService.findOne 返回错误
+
+## 7.2.0
+
+### Minor Changes
+
+- 4673492: feat: 优化请求上下文
+
+## 7.1.0
+
+### Minor Changes
+
+- bf39843: feat: 支持软删除优化 findOne 先尝试从 Identity Map (UnitOfWork) 中取已有实体
+
+## 7.0.1
+
+### Patch Changes
+
+- c77f6d3: fix: IdOrEntity can infer the correct id type
+
+## 7.0.0
+
+### Minor Changes
+
+- 2ff1783: feat: mikro-orm、redis、schedule 默认从环境变量读取配置
+- 81fae6e: feat: mikro-orm, schedule, bullmq 非动态模块也能直接使用
+- fb7f5e2: feat: 添加 VectorType 类型
+
+### Patch Changes
+
+- 4c7c772: Forced upgrade version
+- 20f3262: fix: 重构 eslint-plugin 和移除 queue 模块
+- bae5a46: fix: 修改 MikroOrmModule 中的私有方法访问修饰符并更新模块装饰器
+- 50216e0: fix: 优化获取配置的方式
+- 172e636: fix: 修复打包后源码目录错误
+- 8469f07: fix: autoLoadEntities 默认为 false
+- e4e4ddc: fix: rename loadConfigByEnv to loadConfigFromEnv
+- f9c03c3: 修复 ESLint
+- 46ee2e1: fix: 更新 MikroOrmModule 的模块装饰器，添加 RequestContextModule 并优化中间件注册
+- 95b1c9e: 发布 mikro-orm
+- Updated dependencies [cf99c26]
+- Updated dependencies [79ef4a8]
+- Updated dependencies [b5e6548]
+- Updated dependencies [f9c03c3]
+- Updated dependencies [14895ac]
+  - @nest-boot/request-context@7.0.0
+
+## 7.0.0-beta.15
+
+### Patch Changes
+
+- f9c03c3: 修复 ESLint
+- Updated dependencies [f9c03c3]
+  - @nest-boot/request-context@7.0.0-beta.4
+
+## 7.0.0-beta.14
+
+### Patch Changes
+
+- 20f3262: fix: 重构 eslint-plugin 和移除 queue 模块
+  - @nest-boot/request-context@7.0.0-beta.3
+
+## 7.0.0-beta.13
+
+### Minor Changes
+
+- fb7f5e2: feat: 添加 VectorType 类型
+
+## 7.0.0-beta.12
+
+### Patch Changes
+
+- 50216e0: fix: 优化获取配置的方式
+
+## 7.0.0-beta.11
+
+### Patch Changes
+
+- 4c7c772: Forced upgrade version
+
+## 7.0.0-beta.10
+
+### Patch Changes
+
+- 8469f07: fix: autoLoadEntities 默认为 false
+
+## 7.0.0-beta.9
+
+### Patch Changes
+
+- 172e636: fix: 修复打包后源码目录错误
+
+## 7.0.0-beta.8
+
+### Minor Changes
+
+- 81fae6e: feat: mikro-orm, schedule, bullmq 非动态模块也能直接使用
+
+## 7.0.0-beta.7
+
+### Patch Changes
+
+- e4e4ddc: fix: rename loadConfigByEnv to loadConfigFromEnv
+
+## 7.0.0-beta.6
+
+### Minor Changes
+
+- 2ff1783: feat: mikro-orm、redis、schedule 默认从环境变量读取配置
+
+## 7.0.0-beta.5
+
+### Patch Changes
+
+- 46ee2e1: fix: 更新 MikroOrmModule 的模块装饰器，添加 RequestContextModule 并优化中间件注册
+
+## 7.0.0-beta.4
+
+### Patch Changes
+
+- bae5a46: fix: 修改 MikroOrmModule 中的私有方法访问修饰符并更新模块装饰器
+
+## 7.0.0-beta.3
+
+### Patch Changes
+
+- 95b1c9e: 发布 mikro-orm

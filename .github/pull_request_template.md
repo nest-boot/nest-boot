@@ -12,10 +12,10 @@ Describe the sanitized reproduction, broken contract, and evidence supporting th
 - [ ] Added or updated a regression/behavior test
 - [ ] Ran focused test, build, and lint targets for affected packages
 - [ ] Ran `pnpm format:check`
-- [ ] Ran `pnpm typedoc:check` when public APIs or docs changed
+- [ ] Ran `pnpm --filter @nest-boot/docs types:check` and `pnpm build:docs` when documentation changed
 - [ ] Ran `git diff --check`
 
-List every command and result. Explain any full-CI check that was not run, including unavailable PostgreSQL, Redis, or MinIO services.
+List every command and result. Explain any full-CI check that was not run, including unavailable PostgreSQL, Redis, or RustFS services.
 
 ## Compatibility and release impact
 

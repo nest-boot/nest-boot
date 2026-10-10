@@ -1,13 +1,12 @@
 import { compactDecrypt, CompactEncrypt } from "jose";
 
-import { deriveKey } from "./utils/derive-key";
+import { deriveKey } from "./utils/derive-key.js";
 
 /**
  * Service that provides encryption and decryption functionality using JWE (JSON Web Encryption).
  *
  * Uses HKDF to derive a 32-byte key from the secret, then A256GCMKW for key management
  * and A256GCM for content encryption. Accepts secrets of any length.
- *
  * @example
  * ```typescript
  * import { CryptService } from '@nest-boot/crypt';
@@ -21,12 +20,15 @@ import { deriveKey } from "./utils/derive-key";
  * ```
  */
 export class CryptService {
-  /** Singleton instance. @internal */
+  /**
+   * Singleton instance.
+   * @internal
+   */
   private static _instance?: CryptService;
 
   /**
    * Gets the static CryptService instance.
-   * @throws Error if CryptService has not been initialized via `init()`
+   * @throws {Error} if CryptService has not been initialized via `init()`
    * @returns The CryptService instance
    */
   static get instance(): CryptService {
@@ -40,9 +42,7 @@ export class CryptService {
   /**
    * Initializes the static CryptService instance with the given secret.
    * Call this method at application startup to configure the default secret.
-   *
    * @param secret - The secret key to use for encryption/decryption
-   *
    * @example
    * ```typescript
    * // In your application bootstrap
@@ -57,7 +57,7 @@ export class CryptService {
    * Encrypts a string value using the static instance.
    * @param value - The plaintext string to encrypt
    * @returns A JWE compact serialization string
-   * @throws Error if CryptService has not been initialized via `init()`
+   * @throws {Error} if CryptService has not been initialized via `init()`
    */
   static encrypt(value: string): Promise<string> {
     return this.instance.encrypt(value);
@@ -67,18 +67,25 @@ export class CryptService {
    * Decrypts a JWE string using the static instance.
    * @param value - The JWE compact serialization string to decrypt
    * @returns The decrypted plaintext string
-   * @throws Error if CryptService has not been initialized via `init()`
+   * @throws {Error} if CryptService has not been initialized via `init()`
    */
   static decrypt(value: string): Promise<string> {
     return this.instance.decrypt(value);
   }
 
-  /** Secret key used for encryption. @internal */
+  /**
+   * Secret key used for encryption.
+   * @internal
+   */
   private readonly secret: string;
-  /** Cached promise for the derived encryption key. @internal */
+  /**
+   * Cached promise for the derived encryption key.
+   * @internal
+   */
   private derivedKeyPromise?: Promise<Uint8Array>;
 
-  /** Creates a new CryptService instance.
+  /**
+   * Creates a new CryptService instance.
    * @param secret - The secret key to use for encryption/decryption
    */
   constructor(secret: string) {
@@ -87,6 +94,7 @@ export class CryptService {
 
   /**
    * Gets or creates the derived key asynchronously.
+   * @returns Cached promise for the derived encryption key.
    */
   private getDerivedKey(): Promise<Uint8Array> {
     return (this.derivedKeyPromise ??= deriveKey(this.secret));

@@ -1,4 +1,4 @@
-import { Cursor } from "./cursor";
+import { Cursor } from "./cursor.js";
 
 describe("Cursor", () => {
   it("encodes and decodes cursor payloads", () => {

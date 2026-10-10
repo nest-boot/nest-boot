@@ -1,9 +1,15 @@
 ---
 title: "Request Context"
-description: "Share request-scoped state across your NestJS application with AsyncLocalStorage-based context propagation."
+description: "Share lifecycle-scoped state and application providers across asynchronous NestJS execution."
 ---
 
-The `@nest-boot/request-context` module provides a request-scoped storage layer built on Node.js `AsyncLocalStorage`. It allows you to share state — such as the authenticated user, session, workspace, or entity manager — across all services and resolvers within a single request, without threading it through function arguments.
+`@nest-boot/request-context` keeps data available throughout one asynchronous
+execution lifecycle without passing it through every method call. A context has
+an ID, a lifecycle type, its own values, and optionally a parent context.
+
+For HTTP requests, `RequestContextModule` creates and propagates the context
+automatically. Jobs, events, scripts, and other entry points can create one
+explicitly.
 
 ## Installation
 
@@ -11,132 +17,330 @@ The `@nest-boot/request-context` module provides a request-scoped storage layer 
 pnpm add @nest-boot/request-context
 ```
 
-## Module Registration
+## HTTP Setup
+
+Import `RequestContextModule` once in the root module. The module is global and
+automatically covers HTTP requests.
 
 ```typescript
 import { RequestContextModule } from "@nest-boot/request-context";
+import { Module } from "@nestjs/common";
 
-@Global()
 @Module({
   imports: [RequestContextModule],
 })
-export class CommonModule {}
+export class AppModule {}
 ```
 
-## Basic Usage
+## Storing and Reading Values
 
-### Setting Values
-
-Store values from middleware, guards, or any service:
+Use a class, symbol, or string as the token. Classes and exported symbols are
+preferred because they avoid collisions.
 
 ```typescript
 import { RequestContext } from "@nest-boot/request-context";
-import { User } from "./user.entity";
-import { Workspace } from "./workspace.entity";
 
-// In a middleware or guard
+export const CURRENT_TENANT = Symbol("CURRENT_TENANT");
+
 RequestContext.set(User, authenticatedUser);
-RequestContext.set(Workspace, currentWorkspace);
-```
-
-### Getting Values
-
-Retrieve values anywhere in the request lifecycle:
-
-```typescript
-import { RequestContext } from "@nest-boot/request-context";
-import { User } from "./user.entity";
+RequestContext.set(CURRENT_TENANT, tenant);
 
 const user = RequestContext.get(User);
+const currentTenant = RequestContext.get<Tenant>(CURRENT_TENANT);
 ```
 
-### Request Object
-
-Access the Express request via the `REQUEST` token:
+`get()` returns `undefined` when the token cannot be resolved. `getOrSet()` can
+initialize a value on first access:
 
 ```typescript
-import { REQUEST, RequestContext } from "@nest-boot/request-context";
-import { Request } from "express";
+const metadata = RequestContext.getOrSet(
+  "request-metadata",
+  new Map<string, unknown>(),
+);
+```
+
+Lookups use the following order:
+
+1. Any explicit token aliases in the current context hierarchy are followed to
+   the final canonical token.
+2. A value stored for the canonical token in the current context hierarchy,
+   starting with the current context.
+3. An application provider available through the HTTP context, resolved with
+   the final canonical token.
+
+An explicitly stored value takes precedence even when it is `null` or
+`undefined`. This allows a child or request context to mask an inherited or
+application-level value.
+
+The static accessors require an active context. Use `isActive()` before reading
+context data from code that may run outside a managed lifecycle.
+
+```typescript
+if (RequestContext.isActive()) {
+  const user = RequestContext.get(User);
+}
+```
+
+## Token Aliases
+
+Use `alias(aliasToken, targetToken)` when multiple tokens should resolve the same
+request-scoped object. The alias used by consumers is the first argument and the
+canonical token that stores or provides the value is the second:
+
+```typescript
+context.alias(UserToken, User);
+context.set(UserToken, authenticatedUser); // stored under User
+
+context.get(UserToken) === authenticatedUser; // true
+context.get(User) === authenticatedUser; // true
+```
+
+The static form registers an alias on the active context:
+
+```typescript
+RequestContext.alias(UserToken, User);
+```
+
+Aliases belong to a context rather than global state. A child snapshots its
+parent's aliases when it is created, so later alias changes in either context do
+not retroactively alter the other. The child can override either an inherited
+alias or its canonical value without changing the parent. Alias chains are
+supported, while a circular chain throws an error when it is registered.
+`get()`, `set()`, and `getOrSet()` all follow the complete alias chain, so reads
+and writes use the same canonical token.
+
+Use `unalias(aliasToken)` to cancel an alias in the current context. Existing
+parent and child snapshots remain unchanged; children created afterward inherit
+the updated alias set. Calling `alias()` again for the same token re-enables it.
+
+```typescript
+context.unalias(UserToken);
+RequestContext.unalias(UserToken); // active context
+```
+
+## Accessing Application Providers
+
+HTTP contexts can lazily resolve singleton providers from the Nest application
+container. This is useful for callbacks that execute during a request but are
+created outside Nest dependency injection.
+
+```typescript
+const mailer = RequestContext.get(Mailer);
+
+await mailer?.sendMail({
+  subject: "Verify your email",
+  text: verificationUrl,
+  to: user.email,
+});
+```
+
+Request-scoped and transient providers cannot be resolved by this synchronous
+lookup and return `undefined`. Unexpected provider resolution errors are not
+suppressed.
+
+## Request Headers and Cookies
+
+Use `headers()` to read a Fetch-compatible snapshot of the incoming request
+headers without passing an Express request through every service:
+
+```typescript
+import { headers } from "@nest-boot/request-context";
+
+const authorization = headers().get("authorization");
+```
+
+Changing the returned `Headers` instance does not change the original request.
+The helper is synchronous and throws when there is no active HTTP request
+context.
+
+Use `cookies()` to read incoming cookies and emit response cookies:
+
+```typescript
+import { cookies } from "@nest-boot/request-context";
+
+const cookieStore = cookies();
+const session = cookieStore.get("session");
+
+cookieStore.set("session", token, {
+  httpOnly: true,
+  path: "/",
+  sameSite: "lax",
+  secure: true,
+});
+
+cookieStore.set({
+  httpOnly: true,
+  name: "preference",
+  value: "compact",
+});
+
+cookieStore.delete("session");
+```
+
+`get()`, `getAll()`, `has()`, and `toString()` read a snapshot of the incoming
+`Cookie` header. `set()` and `delete()` append separate `Set-Cookie` response
+header values, so writing one cookie does not combine or overwrite another.
+`set()` and `delete()` accept the same structured object style as Next.js and
+return the store for chaining. Both default to `Path=/`. Deletion expires the
+cookie immediately; pass the original cookie's `path` or `domain` in an object
+when those attributes differ.
+
+Cookie reads work in GraphQL request contexts when a request is available.
+Writes require a writable response and throw for subscription-only contexts or
+after response headers have already been sent.
+
+## Low-Level Request and Response Access
+
+The built-in HTTP context stores the Express request and response under the
+`REQUEST` and `RESPONSE` tokens. Prefer `headers()` and `cookies()` when they
+cover the use case; use these tokens when direct adapter access is required.
+
+```typescript
+import { REQUEST, RESPONSE, RequestContext } from "@nest-boot/request-context";
+import type { Request, Response } from "express";
 
 const request = RequestContext.get<Request>(REQUEST);
-const workspaceId = request?.headers["x-workspace-id"];
+const response = RequestContext.get<Response>(RESPONSE);
 ```
 
-## Context Type
-
-`RequestContext.current().type` is an application-level lifecycle category selected when the context is created. It does not mirror NestJS `ExecutionContext.getType()`.
-
-Contexts created automatically by the request middleware or fallback interceptor use `"http"`. This includes GraphQL resolver executions: NestJS reports `"graphql"` for the resolver execution context, while `RequestContext.type` remains `"http"` so middleware and fallback paths classify the same request consistently.
-
-Other integrations can select categories for the lifecycle they create. For example, the built-in BullMQ processor wrapper uses `"queue"`, and the REPL uses `"repl"`. For contexts you create directly, choose a descriptive category such as `"job"`. If an application needs to distinguish GraphQL execution from its request context category or transport, store that as separate context metadata instead of relying on `type`.
-
-## Common Patterns
-
-### Auth + Workspace Context
-
-A typical pattern in multi-tenant applications:
+Use `headers()` when an API expects Fetch-standard `Headers`. It reads the
+current Express request from `RequestContext`, preserves repeated values, and
+throws when no HTTP request is active.
 
 ```typescript
-// In AuthModule configuration
-onAuthenticated: async () => {
-  const user = RequestContext.get(User);
-  const request = RequestContext.get<Request>(REQUEST);
-  const workspaceId = request?.headers["x-workspace-id"];
+import { headers } from "@nest-boot/request-context";
 
-  if (user && typeof workspaceId === "string") {
-    const workspaceMember = await em.findOne(
-      WorkspaceMember,
-      { user, workspace: { id: workspaceId } },
-      { populate: ["workspace"] },
-    );
-
-    if (workspaceMember) {
-      RequestContext.set(Workspace, workspaceMember.workspace.getEntity());
-      RequestContext.set(WorkspaceMember, workspaceMember);
-    }
-  }
-},
+const session = await auth.api.getSession({ headers: headers() });
 ```
 
-### Using in Services
+## Context Metadata
+
+Use `current()` to inspect the active context:
 
 ```typescript
-import { RequestContext } from "@nest-boot/request-context";
+const context = RequestContext.current();
+
+console.log(context.id);
+console.log(context.type);
+console.log(context.parent);
+```
+
+`RequestContext.id` is a shortcut for the active context ID. The `type` is an
+application lifecycle category, not `ExecutionContext.getType()`:
+
+| Context source                 | Type example |
+| ------------------------------ | ------------ |
+| HTTP middleware or interceptor | `http`       |
+| BullMQ processor               | `queue`      |
+| REPL                           | `repl`       |
+| Application-created context    | `job`        |
+
+## Child Contexts
+
+`child()` creates an isolated context inside the active one. The child keeps the
+same ID and type, reads values and application providers through its parent, and
+stores its own overrides without changing the parent.
+
+```typescript
+RequestContext.set("tenant-id", "tenant-a");
+
+await RequestContext.child(async (childContext) => {
+  childContext.get<string>("tenant-id"); // tenant-a
+
+  childContext.set("tenant-id", "tenant-b");
+  childContext.set("attempt", 1);
+
+  await processAttempt();
+});
+
+RequestContext.get<string>("tenant-id"); // tenant-a
+RequestContext.get<number>("attempt"); // undefined
+```
+
+Within the callback, static calls such as `RequestContext.get()` and
+`RequestContext.set()` operate on the child. `child()` requires an active parent
+context and does not run registered context middleware again.
+
+Use a child context for temporary overrides, transaction branches, retries, or
+other nested work that must not mutate the surrounding context.
+
+## Contexts Outside HTTP
+
+### Running a Context Explicitly
+
+Create a `RequestContext` and pass it to `run()` for jobs, events, scripts, or
+tests. Registered context middleware runs before the callback.
+
+```typescript
+await RequestContext.run(
+  new RequestContext({ id: job.id, type: "job" }),
+  async (context) => {
+    context.set("job", job);
+    await processJob();
+  },
+);
+```
+
+### Using the Decorator
+
+`CreateRequestContext` wraps a method in a context created from its instance and
+arguments.
+
+```typescript
+import {
+  CreateRequestContext,
+  RequestContext,
+} from "@nest-boot/request-context";
 import { Injectable } from "@nestjs/common";
 
 @Injectable()
-export class AuditService {
-  getCurrentUser(): User | undefined {
-    return RequestContext.get(User);
-  }
-
-  getCurrentWorkspace(): Workspace | undefined {
-    return RequestContext.get(Workspace);
+export class EventHandler {
+  @CreateRequestContext(
+    (_handler, event: DomainEvent) =>
+      new RequestContext({ id: event.id, type: "event" }),
+  )
+  async handle(event: DomainEvent): Promise<void> {
+    RequestContext.set("event", event);
+    await dispatchEvent(event);
   }
 }
 ```
 
-## Middleware Registration
+## Context Middleware
 
-The module supports registering custom middleware within the request context:
+Context middleware initializes values or wraps every lifecycle created through
+`run()`, including the HTTP lifecycle. Register middleware once during
+application bootstrap.
+
+The optional third `dependencies` argument to `registerMiddleware()` lists
+middleware names that must run first:
 
 ```typescript
-RequestContext.registerMiddleware("my-middleware", (ctx, next) => {
-  ctx.set(SomeService, someInstance);
+RequestContext.registerMiddleware("authentication", async (context, next) => {
+  context.set(User, await authenticate());
   return next();
 });
+
+RequestContext.registerMiddleware(
+  "authorization",
+  async (context, next) => {
+    const user = context.get(User);
+    context.set(Ability, await createAbility(user));
+    return next();
+  },
+  ["authentication"],
+);
 ```
 
-This is used internally by modules like `MikroOrmModule` to fork the entity manager per request.
+In this example, `authentication` always runs before `authorization`, regardless
+of registration order. Multiple dependencies run before the middleware that
+declares them, and circular dependencies throw an error. Child contexts inherit
+initialized values and therefore do not execute the middleware stack again.
 
-## Best Practices
+## Recommendations
 
-1. **Use Class Keys** — Use entity/service classes as keys (e.g., `User`, `Workspace`) for type-safe lookups.
-
-2. **Set Early** — Populate the context in middleware or the `onAuthenticated` callback, not in resolvers or services.
-
-3. **Read-Only in Services** — Services should only read from `RequestContext`, never write.
-
-## API Reference
-
-For detailed API documentation, see the [Request Context API Reference](/docs/api/request-context).
+- Import `RequestContextModule` only once.
+- Prefer class or exported symbol tokens over ad hoc strings.
+- Populate request values early in middleware, guards, or authentication hooks.
+- Use `child()` for isolated nested work and `run()` for new entry points.
+- Treat `get()` as optional unless the lifecycle guarantees the token exists.

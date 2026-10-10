@@ -4,11 +4,11 @@ import { type Type } from "@nestjs/common";
 import { GraphQLScalarType } from "graphql";
 import { humanize, pluralize } from "inflection";
 
-import {
+import type {
   ConnectionArgsInterface,
   ConnectionFieldOptions,
   OrderInterface,
-} from "../interfaces";
+} from "../interfaces/index.js";
 
 /**
  * Creates a GraphQL Args type for connection queries.
@@ -20,14 +20,14 @@ import {
  * - `filter`: MongoDB-style filter query
  * - `orderBy`: Sorting options
  *
- * @typeParam Entity - The entity type being queried
+ * Used by ConnectionBuilder.build()
+ * @template Entity - The entity type being queried
  * @param entityName - The name to use for the GraphQL type
  * @param fieldOptionsMap - Map of field configurations
  * @param OrderClass - The Order input type class
  * @param FilterScalar - The Filter scalar type
  * @returns A class implementing ConnectionArgsInterface
- *
- * @internal Used by ConnectionBuilder.build()
+ * @internal
  */
 export function createConnectionArgs<Entity extends object>(
   entityName: string,
@@ -53,45 +53,45 @@ export function createConnectionArgs<Entity extends object>(
           }
         : {}),
     })
-    query?: string;
+    query?: string | null;
 
     // eslint-disable-next-line @nest-boot/graphql-field-config-from-types
     @Field(() => FilterScalar, {
       nullable: true,
       description: `Filter ${humanizeAndPluralizeEntityName} using MongoDB query syntax.`,
     })
-    filter?: FilterQuery<Entity>;
+    filter?: FilterQuery<Entity> | null;
 
     @Field(() => Int, {
       nullable: true,
       description: "Returns up to the first `n` elements from the list.",
     })
-    first?: number;
+    first?: number | null;
 
     @Field(() => Int, {
       nullable: true,
       description: "Returns up to the last `n` elements from the list.",
     })
-    last?: number;
+    last?: number | null;
 
     @Field(() => String, {
       description: `Returns the elements that come after the specified cursor.`,
       nullable: true,
     })
-    after?: string;
+    after?: string | null;
 
     @Field(() => String, {
       description: `Returns the elements that come before the specified cursor.`,
       nullable: true,
     })
-    before?: string;
+    before?: string | null;
 
     // eslint-disable-next-line @nest-boot/graphql-field-config-from-types
     @Field(() => OrderClass, {
       nullable: true,
       description: `Ordering options for the returned ${humanizeAndPluralizeEntityName}.`,
     })
-    orderBy?: OrderInterface<Entity>;
+    orderBy?: OrderInterface<Entity> | null;
   }
 
   return ConnectionArgs;

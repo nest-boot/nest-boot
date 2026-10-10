@@ -1,0 +1,34 @@
+{
+  "admin": {
+    "title": "Administration",
+    "users": "Users"
+  },
+  "navigation": {
+    "api_keys": "API Keys",
+    "members": "Members",
+    "settings": "Settings"
+  },
+  "switcher": {
+    "createWorkspace": "Create workspace",
+    "workspaces": "Workspaces",
+    "loadMore": "Load more",
+    "manageWorkspaces": "Manage workspaces",
+    "loading": "Loading workspaces…",
+    "retry": "Retry loading workspaces",
+    "loadFailed": "Unable to load workspaces"
+  },
+  "user": {
+    "openOverview": "Open personal overview: {{name}}",
+    "account": "Profile",
+    "api_keys": "API Keys",
+    "logout": "Log out",
+    "security": "Security",
+    "theme": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "title": "Personal",
+    "workspaces": "Workspaces"
+  }
+}

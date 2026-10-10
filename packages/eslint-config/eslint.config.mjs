@@ -2,11 +2,10 @@ import js from "@eslint/js";
 import nestBootPlugin from "@nest-boot/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import prettierConfig from "eslint-config-prettier";
+import jsdoc from "eslint-plugin-jsdoc";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
-import tsdocPlugin from "eslint-plugin-tsdoc";
 import tsEslint from "typescript-eslint";
 
-// eslint-disable-next-line tsdoc/syntax
 /** @type {import('eslint').Linter.Config[]} */
 const config = [
   js.configs.recommended,
@@ -15,7 +14,9 @@ const config = [
   ...tsEslint.configs.strictTypeChecked,
   ...tsEslint.configs.stylisticTypeChecked,
 
-  // // Prettier 配置
+  jsdoc.configs["flat/recommended-typescript-error"],
+
+  // Prettier 配置
   prettierConfig,
 
   // TypeScript 和插件配置
@@ -29,12 +30,8 @@ const config = [
     plugins: {
       "@nest-boot": nestBootPlugin,
       "simple-import-sort": simpleImportSort,
-      tsdoc: tsdocPlugin,
     },
     rules: {
-      // TSDoc 语法检查
-      "tsdoc/syntax": "error",
-
       // 基础规则
       "no-void": "off",
       "no-use-before-define": "off",
@@ -74,9 +71,9 @@ const config = [
       "@nest-boot/entity-property-config-from-types": "error",
       "@nest-boot/graphql-field-definite-assignment": "error",
       "@nest-boot/graphql-field-config-from-types": "error",
-      "@nest-boot/import-bullmq": "error",
+      "@nest-boot/import-queue": "error",
       "@nest-boot/import-graphql": "error",
-      "@nest-boot/import-mikro-orm": "error",
+      "@nest-boot/import-database": "error",
     },
   },
 ];

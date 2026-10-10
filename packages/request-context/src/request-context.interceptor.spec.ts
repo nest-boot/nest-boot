@@ -1,12 +1,171 @@
 import type { CallHandler, ExecutionContext } from "@nestjs/common";
-import type { Request } from "express";
+import type { ModuleRef } from "@nestjs/core";
+import type { Request, Response } from "express";
 import { lastValueFrom, Observable, of, take } from "rxjs";
 
-import { RequestContext } from "./request-context";
-import { RequestContextInterceptor } from "./request-context.interceptor";
+import { cookies } from "./cookies.js";
+import { headers } from "./headers.js";
+import { RequestContextInterceptor } from "./request-context.interceptor.js";
+import { RequestContext } from "./request-context.js";
 
 describe("RequestContextInterceptor", () => {
-  const interceptor = new RequestContextInterceptor();
+  class GlobalProvider {}
+
+  const globalProvider = { source: "nest" };
+  const getProvider = vi.fn((token: unknown) =>
+    token === GlobalProvider ? globalProvider : undefined,
+  );
+  const moduleRef = {
+    get: getProvider,
+  } as unknown as ModuleRef;
+  const interceptor = new RequestContextInterceptor(moduleRef);
+
+  it("resolves Nest providers lazily from the active context", async () => {
+    const result = await lastValueFrom(
+      interceptor.intercept(createExecutionContext("provider-resolution"), {
+        handle: () => of(RequestContext.get(GlobalProvider)),
+      }),
+    );
+
+    expect(result).toBe(globalProvider);
+    expect(getProvider).toHaveBeenCalledWith(GlobalProvider, {
+      strict: false,
+    });
+  });
+
+  it("prefers values stored directly in the context", async () => {
+    const contextualProvider = { source: "request" };
+
+    const result = await lastValueFrom(
+      interceptor.intercept(createExecutionContext("provider-override"), {
+        handle: () => {
+          RequestContext.set(GlobalProvider, contextualProvider);
+          return of(RequestContext.get(GlobalProvider));
+        },
+      }),
+    );
+
+    expect(result).toBe(contextualProvider);
+  });
+
+  it("preserves manual construction without a Nest container", async () => {
+    const manualInterceptor = new RequestContextInterceptor();
+    const result = await lastValueFrom(
+      manualInterceptor.intercept(createExecutionContext("manual"), {
+        handle: () => of(RequestContext.get(GlobalProvider)),
+      }),
+    );
+
+    expect(result).toBeUndefined();
+  });
+
+  it("exposes HTTP request and response helpers in fallback contexts", async () => {
+    const response = createResponse();
+    const result = await lastValueFrom(
+      interceptor.intercept(
+        createExecutionContext("http-helpers", {
+          headers: { cookie: "session=http", "x-client": "web" },
+          response,
+        }),
+        {
+          handle: () => {
+            const store = cookies();
+            store.set("theme", "dark", { path: "/" });
+
+            return of({
+              client: headers().get("x-client"),
+              session: store.get("session")?.value,
+            });
+          },
+        },
+      ),
+    );
+
+    expect(result).toEqual({ client: "web", session: "http" });
+    expect(response.headers["set-cookie"]).toEqual(["theme=dark; Path=/"]);
+  });
+
+  it("exposes request and response helpers in GraphQL query contexts", async () => {
+    const response = createResponse();
+    const result = await lastValueFrom(
+      interceptor.intercept(
+        createGraphqlExecutionContext({
+          req: createRequest("graphql-query", {
+            cookie: "session=graphql",
+            "x-client": "web",
+          }),
+          res: response as unknown as Response,
+        }),
+        {
+          handle: () => {
+            const store = cookies();
+            store.set("theme", "dark", { path: "/" });
+
+            return of({
+              client: headers().get("x-client"),
+              session: store.get("session")?.value,
+            });
+          },
+        },
+      ),
+    );
+
+    expect(result).toEqual({ client: "web", session: "graphql" });
+    expect(response.headers["set-cookie"]).toEqual(["theme=dark; Path=/"]);
+  });
+
+  it("recovers the response from Apollo's default GraphQL request context", async () => {
+    const response = createResponse();
+    const request = createRequest("apollo-default", {
+      cookie: "session=graphql",
+    });
+    request.res = response as unknown as Response;
+
+    await lastValueFrom(
+      interceptor.intercept(createGraphqlExecutionContext({ req: request }), {
+        handle: () => {
+          cookies().set("theme", "dark");
+          return of(undefined);
+        },
+      }),
+    );
+
+    expect(response.headers["set-cookie"]).toEqual(["theme=dark; Path=/"]);
+  });
+
+  it("allows cookie reads but rejects writes in GraphQL subscription contexts", async () => {
+    const result = await lastValueFrom(
+      interceptor.intercept(
+        createGraphqlExecutionContext({
+          req: createRequest("graphql-subscription", {
+            cookie: "session=subscription",
+          }),
+        }),
+        {
+          handle: () => {
+            const store = cookies();
+            let writeError: unknown;
+
+            try {
+              store.set("theme", "dark");
+            } catch (error) {
+              writeError = error;
+            }
+
+            return of({
+              session: store.get("session")?.value,
+              writeError,
+            });
+          },
+        },
+      ),
+    );
+
+    expect(result.session).toBe("subscription");
+    expect(result.writeError).toEqual(
+      new Error("Cookie writes require a writable HTTP response context"),
+    );
+  });
 
   it("reuses an active request context", async () => {
     const id = "active-context";
@@ -303,7 +462,7 @@ describe("RequestContextInterceptor", () => {
       },
     );
 
-    const handle = jest.fn(() => of("value"));
+    const handle = vi.fn(() => of("value"));
     const handler: CallHandler<string> = { handle };
     const subscription = interceptor
       .intercept(createExecutionContext(id), handler)
@@ -332,21 +491,106 @@ describe("RequestContextInterceptor", () => {
   });
 });
 
+/**
+ * Returns nest call handler returning the supplied observable.
+ * @param observable - Observable returned by the intercepted handler.
+ * @returns Nest call handler returning the supplied observable.
+ */
 function createCallHandler<T>(observable: Observable<T>): CallHandler<T> {
   return {
     handle: () => observable,
   };
 }
 
-function createExecutionContext(id: string): ExecutionContext {
-  const request = {
-    get: (name: string) => (name === "x-request-id" ? id : undefined),
-  } as Request;
+/**
+ * Returns execution context configured for the test.
+ * @param id - Identifier of the record to access.
+ * @param options - Configuration for this operation.
+ * @param options.headers - Headers supplied by the request fixture.
+ * @param options.response - Response object supplied by the fixture.
+ * @returns Execution context configured for the test.
+ */
+function createExecutionContext(
+  id: string,
+  options: {
+    headers?: Record<string, string | string[]>;
+    response?: TestResponse;
+  } = {},
+): ExecutionContext {
+  const request = createRequest(id, options.headers);
 
   return {
     getType: () => "http",
     switchToHttp: () => ({
       getRequest: () => request,
+      getResponse: () => options.response,
     }),
   } as unknown as ExecutionContext;
+}
+
+/**
+ * Returns graphql execution context configured for the test.
+ * @param context - Context used to resolve this operation.
+ * @param context.req - HTTP request exposed by the GraphQL context.
+ * @param context.res - HTTP response exposed by the GraphQL context.
+ * @returns Graphql execution context configured for the test.
+ */
+function createGraphqlExecutionContext(context: {
+  req?: Request;
+  res?: Response;
+}): ExecutionContext {
+  const root = { source: "graphql-root" };
+  const args = { source: "graphql-args" };
+
+  return {
+    getArgByIndex: (index: number) => [root, args, context][index],
+    getType: () => "graphql",
+    switchToHttp: () => ({
+      // Nest's ExecutionContextHost returns resolver root/args here. The
+      // interceptor must read the GraphQL context at argument index 2 instead.
+      getRequest: () => root,
+      getResponse: () => args,
+    }),
+  } as unknown as ExecutionContext;
+}
+
+/**
+ * Returns request configured for the test.
+ * @param id - Identifier of the record to access.
+ * @param headers - HTTP headers associated with the request or response.
+ * @returns Request configured for the test.
+ */
+function createRequest(
+  id: string,
+  headers: Record<string, string | string[]> = {},
+): Request {
+  return {
+    get: (name: string) =>
+      name.toLowerCase() === "x-request-id" ? id : headers[name.toLowerCase()],
+    headers,
+  } as unknown as Request;
+}
+
+interface TestResponse {
+  headers: Record<string, string | string[]>;
+  headersSent: boolean;
+  getHeader(name: string): string | string[] | undefined;
+  setHeader(name: string, value: string | string[]): void;
+}
+
+/**
+ * Returns writable HTTP response fixture with captured headers.
+ * @returns Writable HTTP response fixture with captured headers.
+ */
+function createResponse(): TestResponse {
+  return {
+    headers: {},
+    headersSent: false,
+    getHeader(name) {
+      return this.headers[name.toLowerCase()];
+    },
+    setHeader(name, value) {
+      this.headers[name.toLowerCase()] = value;
+    },
+  };
 }

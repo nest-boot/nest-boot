@@ -13,7 +13,7 @@ import type {
 export interface BaseFieldOptions {
   /**
    * Whether this field can be used in filter queries.
-   * @defaultValue true
+   * @default true
    */
   filterable?: boolean;
 
@@ -40,9 +40,8 @@ export interface SortableFieldOptions {
 
 /**
  * Options for a simple field with direct entity property mapping.
- *
- * @typeParam Entity - The entity type
- * @typeParam Type - The field type ("string", "number", "boolean", or "date")
+ * @template Entity - The entity type
+ * @template Type - The field type ("string", "number", "boolean", or "date")
  */
 export type SimpleFieldOptions<
   Entity extends object,
@@ -56,10 +55,9 @@ export type SimpleFieldOptions<
  * Options for a field with a replacement property path.
  *
  * Use this when the GraphQL field name differs from the entity property path.
- *
- * @typeParam Entity - The entity type
- * @typeParam Type - The field type
- * @typeParam Field - The GraphQL field name
+ * @template Entity - The entity type
+ * @template Type - The field type
+ * @template Field - The GraphQL field name
  */
 export type ReplacementFieldOptions<
   Entity extends object,
@@ -73,9 +71,8 @@ export type ReplacementFieldOptions<
  * Options for a field with a replacement callback function.
  *
  * Use this for complex field mappings that require runtime logic.
- *
- * @typeParam Entity - The entity type
- * @typeParam Type - The field type
+ * @template Entity - The entity type
+ * @template Type - The field type
  */
 export type ReplacementFunctionFieldOptions<
   Entity extends object,
@@ -89,11 +86,9 @@ export type ReplacementFunctionFieldOptions<
  * Union type of all field option types.
  *
  * This is the type used when adding fields to a ConnectionBuilder.
- *
- * @typeParam Entity - The entity type
- * @typeParam Type - The field type
- * @typeParam Field - The GraphQL field name (for replacement options)
- *
+ * @template Entity - The entity type
+ * @template Type - The field type
+ * @template Field - The GraphQL field name (for replacement options)
  * @example Simple field
  * ```typescript
  * const options: FieldOptions<User, "string"> = {
@@ -103,7 +98,6 @@ export type ReplacementFunctionFieldOptions<
  *   sortable: true,
  * };
  * ```
- *
  * @example Replacement field
  * ```typescript
  * const options: FieldOptions<User, "string", "authorName"> = {
@@ -128,8 +122,7 @@ export type FieldOptions<
  *
  * This intentionally avoids the public AutoPath-heavy field option types so
  * internal maps can be passed around without repeatedly expanding entity paths.
- *
- * @typeParam Entity - The entity type
+ * @template Entity - The entity type
  */
 export type ConnectionFieldOptions<Entity extends object> = BaseFieldOptions &
   SortableFieldOptions & {

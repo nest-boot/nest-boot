@@ -1,3 +1,118 @@
+## 8.0.1-beta.5 (2026-10-10)
+
+### 🚀 Features
+
+- ⚠️  **runtime:** require Node 24.21 and validate packed consumers ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### ⚠️  Breaking Changes
+
+- **runtime:** require Node 24.21 and validate packed consumers  ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/tsconfig to 8.0.0-beta.5
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.1-beta.4 (2026-10-10)
+
+### 🚀 Features
+
+- **eslint-config:** adopt JSDoc and retire TypeDoc ([#404](https://github.com/nest-boot/nest-boot/pull/404))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.1-beta.3 (2026-10-09)
+
+### 🚀 Features
+
+- ⚠️  **queue:** rename queue integration packages and APIs ([#398](https://github.com/nest-boot/nest-boot/pull/398))
+
+### ⚠️  Breaking Changes
+
+- **queue:** rename queue integration packages and APIs  ([#398](https://github.com/nest-boot/nest-boot/pull/398))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.1-beta.2 (2026-10-09)
+
+### 🚀 Features
+
+- ⚠️  **database:** rename database integration packages and APIs ([#397](https://github.com/nest-boot/nest-boot/pull/397))
+
+### ⚠️  Breaking Changes
+
+- **database:** rename database integration packages and APIs  ([#397](https://github.com/nest-boot/nest-boot/pull/397))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.1-beta.1 (2026-09-23)
+
+### 🩹 Fixes
+
+- **eslint-plugin:** generate valid MikroORM 7 decorator imports ([#370](https://github.com/nest-boot/nest-boot/pull/370))
+- **eslint-plugin:** reuse existing GraphQL scalar imports ([#371](https://github.com/nest-boot/nest-boot/pull/371))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.1-beta.0 (2026-09-19)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/tsconfig to 8.0.0-beta.4
+
+## 8.0.0-beta.3 (2026-09-08)
+
+### 🚀 Features
+
+- ⚠️  **auth:** rebuild authentication and authorization ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### ⚠️  Breaking Changes
+
+- **auth:** rebuild authentication and authorization  ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/tsconfig to 8.0.0-beta.3
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.2 (2026-08-31)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/tsconfig to 8.0.0-beta.2
+
+## 8.0.0-beta.1 (2026-08-31)
+
+### 🚀 Features
+
+- ⚠️ migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ⚠️ Breaking Changes
+
+- migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/tsconfig to 8.0.0-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.2.5 (2026-08-31)
 
 ### 🧱 Updated Dependencies

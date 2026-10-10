@@ -1,7 +1,7 @@
 import { SetMetadata } from "@nestjs/common";
 
-import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition";
-import { type ScheduleOptions } from "./schedule-options.interface";
+import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition.js";
+import { type ScheduleOptions } from "./schedule-options.interface.js";
 
 /**
  * Decorator that registers a method as a scheduled job.

@@ -36,7 +36,7 @@ HashModule.register({
 The resolved secret must be at least 32 characters and have at least 120 bits of estimated entropy. Generate a suitable value with:
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+node --input-type=module -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))"
 ```
 
 ## Usage
@@ -63,8 +63,4 @@ export class AuthService {
 
 ## MikroORM Integration
 
-Use the `@HashedProperty()` decorator from `@nest-boot/mikro-orm-hash` for automatic field hashing. See the [MikroORM tutorial](/docs/tutorial/mikro-orm#hashed-properties) for details.
-
-## API Reference
-
-For detailed API documentation, see the [Hash API Reference](/docs/api/hash).
+Use the `@HashedProperty()` decorator from `@nest-boot/database-hash` for automatic field hashing. See the [MikroORM tutorial](/docs/tutorial/database#hashed-properties) for details.

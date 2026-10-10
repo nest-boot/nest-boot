@@ -1,3 +1,3 @@
-export * from "./logger";
-export * from "./logger.module";
-export * from "./logger-module-options.interface";
+export * from "./logger.js";
+export * from "./logger.module.js";
+export * from "./logger-module-options.interface.js";

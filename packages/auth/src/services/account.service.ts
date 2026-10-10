@@ -1,0 +1,69 @@
+import { EntityManager } from "@mikro-orm/core";
+import type { SqlEntityManager } from "@mikro-orm/sql";
+import {
+  type ConnectionArgsInterface,
+  ConnectionManager,
+  type ConnectionResult,
+} from "@nest-boot/graphql-connection";
+import { ForbiddenException, Injectable } from "@nestjs/common";
+import type { GraphQLResolveInfo } from "graphql";
+
+import { AccountConnection } from "../connections/account.connection-definition.js";
+import { type Account } from "../entities/account.entity.js";
+import { type User } from "../entities/user.entity.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
+import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { omitCredentials } from "../utils/omit-credentials.util.js";
+
+/** Safe account queries scoped to the current user session and application RLS. */
+@Injectable()
+export class AccountService {
+  /**
+   * Creates the account query service.
+   * @param em - Entity manager used for persistence.
+   */
+  constructor(private readonly em: EntityManager) {}
+
+  /**
+   * Paginates the current session user's accounts without loading credentials.
+   * @param user - The user whose account is being accessed.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated provider accounts with credentials omitted.
+   */
+  async getAccountConnectionByUser(
+    user: User,
+    args: ConnectionArgsInterface<Account>,
+    info?: GraphQLResolveInfo,
+  ): Promise<
+    ConnectionResult<
+      Omit<Account, "password" | "accessToken" | "refreshToken" | "idToken">
+    >
+  > {
+    RequestIdentity.assertCurrentUser(user);
+    if (getCurrentApiKey()) {
+      throw new ForbiddenException(
+        "Account inspection requires a user session",
+      );
+    }
+    const connection = await new ConnectionManager(
+      this.em as SqlEntityManager,
+    ).find(AccountConnection, args, {
+      ...(info && { info }),
+      where: { user: String(user.id) },
+      exclude: ["password", "accessToken", "refreshToken", "idToken"],
+    });
+    return {
+      ...connection,
+      edges: connection.edges.map((edge) => ({
+        ...edge,
+        node: omitCredentials(edge.node, [
+          "password",
+          "accessToken",
+          "refreshToken",
+          "idToken",
+        ]),
+      })),
+    };
+  }
+}

@@ -1,36 +1,68 @@
 import { MikroORM } from "@mikro-orm/core";
-import { MiddlewareManager, MiddlewareModule } from "@nest-boot/middleware";
+import { HashService } from "@nest-boot/hash";
+import { Mailer } from "@nest-boot/mailer";
+import {
+  type MiddlewareConfigurator,
+  MiddlewareManager,
+  MiddlewareModule,
+} from "@nest-boot/middleware";
 import {
   RequestContextMiddleware,
   RequestContextModule,
 } from "@nest-boot/request-context";
-import { type DynamicModule, Global, Inject, Module } from "@nestjs/common";
-import { type Auth, betterAuth } from "better-auth";
-import { toNodeHandler } from "better-auth/node";
-import { genericOAuth } from "better-auth/plugins";
-
-import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter";
-import { AUTH_TOKEN } from "./auth.constants";
-import { AuthMiddleware } from "./auth.middleware";
 import {
-  ASYNC_OPTIONS_TYPE,
+  type ConfigurableModuleAsyncOptions,
+  type DynamicModule,
+  Global,
+  Inject,
+  Module,
+  type NestMiddleware,
+} from "@nestjs/common";
+import { APP_INTERCEPTOR } from "@nestjs/core";
+
+import { ApiKeyUsageInterceptor } from "./api-key-usage.interceptor.js";
+import { AUTH_TOKEN } from "./auth.constants.js";
+import { AuthGuard } from "./auth.guard.js";
+import { AuthMiddleware } from "./auth.middleware.js";
+import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
-  OPTIONS_TYPE,
-} from "./auth.module-definition";
-import { AuthService } from "./auth.service";
-import { AuthModuleOptions } from "./auth-module-options.interface";
-import { assertNoDuplicateGenericOAuthPlugin } from "./utils/assert-no-duplicate-generic-oauth-plugin";
-import { createEmailAndPasswordConfig } from "./utils/create-email-and-password-config";
-import { createOidcConfig } from "./utils/create-oidc-config";
-import { createSocialProvidersConfig } from "./utils/create-social-providers-config";
-import { isEnvTrue } from "./utils/is-env-true";
-import { resolveSecret } from "./utils/resolve-secret";
+} from "./auth.module-definition.js";
+import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
+import { type AuthModuleOptions } from "./auth-module-options.interface.js";
+import { InvitationResolver } from "./features/invitations/invitation.resolver.js";
+import { InvitationService } from "./features/invitations/invitation.service.js";
+import { AuthEnumRegistry } from "./infrastructure/auth-enum-registry.js";
+import { authServiceProviders } from "./infrastructure/auth-service.providers.js";
+import { createAuthInstance } from "./infrastructure/create-auth-instance.js";
+import { AuthResolver } from "./resolvers/auth.resolver.js";
+import { MemberResolver } from "./resolvers/member.resolver.js";
+import { MemberApiKeyResolver } from "./resolvers/member-api-key.resolver.js";
+import { SessionResolver } from "./resolvers/session.resolver.js";
+import { UserResolver } from "./resolvers/user.resolver.js";
+import { UserApiKeyResolver } from "./resolvers/user-api-key.resolver.js";
+import { WorkspaceResolver } from "./resolvers/workspace.resolver.js";
+import { AccountService } from "./services/account.service.js";
+import { AuthService } from "./services/auth.service.js";
+import { MemberService } from "./services/member.service.js";
+import { MemberApiKeyService } from "./services/member-api-key.service.js";
+import { SessionService } from "./services/session.service.js";
+import { UserService } from "./services/user.service.js";
+import { UserApiKeyService } from "./services/user-api-key.service.js";
+import { UserDeletionService } from "./services/user-deletion.service.js";
+import { WorkspaceService } from "./services/workspace.service.js";
+import {
+  DEFAULT_USER_PERMISSIONS,
+  DEFAULT_USER_ROLES,
+} from "./user.constants.js";
+import {
+  DEFAULT_WORKSPACE_PERMISSIONS,
+  DEFAULT_WORKSPACE_ROLES,
+} from "./workspace.constants.js";
 
 /**
  * Authentication module based on better-auth.
  *
- * @remarks
  * Provides authentication services including session management, middleware registration,
  * and MikroORM-based persistence via the better-auth adapter.
  */
@@ -38,65 +70,58 @@ import { resolveSecret } from "./utils/resolve-secret";
 @Module({
   imports: [RequestContextModule, MiddlewareModule],
   providers: [
+    {
+      provide: AuthEnumRegistry,
+      inject: [MODULE_OPTIONS_TOKEN, AUTH_TOKEN],
+      useFactory: (options: AuthModuleOptions) => new AuthEnumRegistry(options),
+    },
+    AuthResolver,
+    UserResolver,
+    SessionResolver,
+    UserApiKeyResolver,
+    MemberApiKeyResolver,
+    WorkspaceResolver,
+    MemberResolver,
+    InvitationResolver,
+    ...authServiceProviders,
+    UserApiKeyService,
+    MemberApiKeyService,
+    AccountService,
+    ApiKeyUsageInterceptor,
     AuthService,
+    UserDeletionService,
+    AuthGuard,
+    AuthHandlerMiddleware,
     AuthMiddleware,
     {
+      provide: APP_INTERCEPTOR,
+      useExisting: ApiKeyUsageInterceptor,
+    },
+    {
       provide: AUTH_TOKEN,
-      inject: [MODULE_OPTIONS_TOKEN, MikroORM],
-      useFactory: (options: AuthModuleOptions, orm: MikroORM) => {
-        const secret = resolveSecret(options);
-        const disableSignUp = isEnvTrue("AUTH_DISABLE_SIGN_UP");
-        const oidcConfig = createOidcConfig(disableSignUp);
-        const {
-          emailAndPassword,
-          plugins,
-          socialProviders,
-          ...betterAuthOptions
-        } = options;
-        const emailAndPasswordConfig = createEmailAndPasswordConfig(
-          disableSignUp,
-          emailAndPassword,
-        );
-        const socialProvidersConfig = createSocialProvidersConfig(
-          disableSignUp,
-          socialProviders,
-        );
-
-        if (oidcConfig) {
-          assertNoDuplicateGenericOAuthPlugin(plugins);
-        }
-
-        return betterAuth({
-          appName: process.env.APP_NAME,
-          baseURL: process.env.AUTH_URL ?? process.env.APP_URL,
-          secret,
-          account: {
-            skipStateCookieCheck: true,
-          },
-          ...betterAuthOptions,
-          emailAndPassword: emailAndPasswordConfig,
-          ...(socialProvidersConfig
-            ? { socialProviders: socialProvidersConfig }
-            : {}),
-          plugins: [
-            ...(oidcConfig
-              ? [
-                  genericOAuth({
-                    config: [oidcConfig],
-                  }),
-                ]
-              : []),
-            ...(plugins ?? []),
-          ],
-          database: mikroOrmAdapter({
-            orm,
-            entities: options.entities,
-          }),
-        });
-      },
+      inject: [
+        MODULE_OPTIONS_TOKEN,
+        MikroORM,
+        Mailer,
+        HashService,
+        UserDeletionService,
+      ],
+      useFactory: createAuthInstance,
     },
   ],
-  exports: [AuthService],
+  exports: [
+    AccountService,
+    MODULE_OPTIONS_TOKEN,
+    UserService,
+    UserApiKeyService,
+    MemberApiKeyService,
+    AuthGuard,
+    AuthService,
+    SessionService,
+    WorkspaceService,
+    MemberService,
+    InvitationService,
+  ],
 })
 export class AuthModule extends ConfigurableModuleClass {
   /**
@@ -104,8 +129,22 @@ export class AuthModule extends ConfigurableModuleClass {
    * @param options - Configuration options including secret and middleware settings
    * @returns Dynamic module configuration
    */
-  static override forRoot(options: typeof OPTIONS_TYPE): DynamicModule {
-    return super.forRoot(options);
+  static override forRoot<
+    const UserPermission extends string =
+      (typeof DEFAULT_USER_PERMISSIONS)[number],
+    const WorkspacePermission extends string =
+      (typeof DEFAULT_WORKSPACE_PERMISSIONS)[number],
+    const UserRole extends string = keyof typeof DEFAULT_USER_ROLES,
+    const WorkspaceRole extends string = keyof typeof DEFAULT_WORKSPACE_ROLES,
+  >(
+    options: AuthModuleOptions<
+      UserPermission,
+      WorkspacePermission,
+      UserRole,
+      WorkspaceRole
+    >,
+  ): DynamicModule {
+    return super.forRoot(options as unknown as AuthModuleOptions);
   }
 
   /**
@@ -113,25 +152,41 @@ export class AuthModule extends ConfigurableModuleClass {
    * @param options - Async configuration options
    * @returns Dynamic module configuration
    */
-  static override forRootAsync(
-    options: typeof ASYNC_OPTIONS_TYPE,
+  static override forRootAsync<
+    const UserPermission extends string =
+      (typeof DEFAULT_USER_PERMISSIONS)[number],
+    const WorkspacePermission extends string =
+      (typeof DEFAULT_WORKSPACE_PERMISSIONS)[number],
+    const UserRole extends string = keyof typeof DEFAULT_USER_ROLES,
+    const WorkspaceRole extends string = keyof typeof DEFAULT_WORKSPACE_ROLES,
+  >(
+    options: ConfigurableModuleAsyncOptions<
+      AuthModuleOptions<
+        UserPermission,
+        WorkspacePermission,
+        UserRole,
+        WorkspaceRole
+      >
+    >,
   ): DynamicModule {
-    return super.forRootAsync(options);
+    return super.forRootAsync(
+      options as unknown as ConfigurableModuleAsyncOptions<AuthModuleOptions>,
+    );
   }
 
   /**
    * Creates a new AuthModule instance.
-   * @param auth - The better-auth instance
    * @param options - Auth module configuration options
    * @param middlewareManager - Middleware manager for registering auth middleware
+   * @param authHandlerMiddleware - The dependency-injected auth endpoint handler
    * @param authMiddleware - The auth middleware instance
    */
   constructor(
-    @Inject(AUTH_TOKEN)
-    private readonly auth: Auth,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
     private readonly middlewareManager: MiddlewareManager,
+    @Inject(AuthHandlerMiddleware)
+    private readonly authHandlerMiddleware: NestMiddleware,
     private readonly authMiddleware: AuthMiddleware,
   ) {
     super();
@@ -141,24 +196,24 @@ export class AuthModule extends ConfigurableModuleClass {
     this.middlewareManager.globalExclude(basePath);
 
     this.middlewareManager
-      .apply(toNodeHandler(this.auth))
+      .apply(this.authHandlerMiddleware)
       .disableGlobalExcludeRoutes()
       .forRoutes(basePath);
 
     if (this.options.middleware?.register !== false) {
-      const proxy = this.middlewareManager
-        .apply(this.authMiddleware)
-        .dependencies(RequestContextMiddleware);
-
-      if (this.options.middleware?.excludeRoutes) {
-        proxy.exclude(...this.options.middleware.excludeRoutes);
-      }
-
-      if (this.options.middleware?.includeRoutes) {
-        proxy.forRoutes(...this.options.middleware.includeRoutes);
-      } else {
-        proxy.forRoutes("*");
-      }
+      this.configureRequestMiddleware(
+        this.middlewareManager
+          .apply(this.authMiddleware)
+          .dependencies(RequestContextMiddleware),
+      );
     }
+  }
+
+  private configureRequestMiddleware(proxy: MiddlewareConfigurator): void {
+    if (this.options.middleware?.excludeRoutes) {
+      proxy.exclude(...this.options.middleware.excludeRoutes);
+    }
+
+    proxy.forRoutes(...(this.options.middleware?.includeRoutes ?? ["*"]));
   }
 }

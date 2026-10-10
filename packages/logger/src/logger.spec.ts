@@ -1,41 +1,62 @@
 import { RequestContext } from "@nest-boot/request-context";
-import { INQUIRER } from "@nestjs/core";
+import { Injectable } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-const mockPinoLogger = {
-  child: jest.fn(),
-  debug: jest.fn(),
-  error: jest.fn(),
-  info: jest.fn(),
-  trace: jest.fn(),
-  warn: jest.fn(),
-};
-const mockPino = jest.fn(() => mockPinoLogger);
-const mockConfiguredPinoLogger = {
-  debug: jest.fn(),
-  error: jest.fn(),
-  info: jest.fn(),
-  trace: jest.fn(),
-  warn: jest.fn(),
-};
-const mockLoggerMiddleware = {
-  logger: mockConfiguredPinoLogger,
-};
+const {
+  mockConfiguredPinoLogger,
+  mockLoggerMiddleware,
+  mockPino,
+  mockPinoLogger,
+} = vi.hoisted(() => {
+  const mockPinoLogger = {
+    child: vi.fn(),
+    debug: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    trace: vi.fn(),
+    warn: vi.fn(),
+  };
+  const mockPino = vi.fn(() => mockPinoLogger);
+  const mockConfiguredPinoLogger = {
+    debug: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    trace: vi.fn(),
+    warn: vi.fn(),
+  };
+  const mockLoggerMiddleware = {
+    logger: mockConfiguredPinoLogger,
+  };
 
-jest.mock("pino", () => ({
+  return {
+    mockConfiguredPinoLogger,
+    mockLoggerMiddleware,
+    mockPino,
+    mockPinoLogger,
+  };
+});
+
+vi.mock("pino", () => ({
   __esModule: true,
   default: mockPino,
 }));
 
-import { Logger } from "./logger";
-import { BINDINGS, PINO_HTTP, PINO_LOGGER } from "./logger.module-definition";
+import { Logger } from "./logger.js";
+import {
+  BINDINGS,
+  PINO_HTTP,
+  PINO_LOGGER,
+} from "./logger.module-definition.js";
 
-class ParentService {}
+@Injectable()
+class ParentService {
+  constructor(readonly logger: Logger) {}
+}
 
 describe("Logger", () => {
   afterEach(() => {
-    jest.restoreAllMocks();
-    jest.clearAllMocks();
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should default context to the parent class name and allow overriding it", async () => {
@@ -49,10 +70,12 @@ describe("Logger", () => {
   });
 
   it("should merge bindings into request context", async () => {
-    jest.spyOn(RequestContext, "get").mockReturnValue({
+    vi.spyOn(RequestContext, "get").mockReturnValue({
       requestId: "request-1",
     });
-    const set = jest.spyOn(RequestContext, "set").mockImplementation();
+    const set = vi
+      .spyOn(RequestContext, "set")
+      .mockImplementation(() => undefined);
     const logger = await createLogger();
 
     logger.assign({
@@ -66,8 +89,10 @@ describe("Logger", () => {
   });
 
   it("should assign bindings when request context has no existing bindings", async () => {
-    jest.spyOn(RequestContext, "get").mockReturnValue(undefined);
-    const set = jest.spyOn(RequestContext, "set").mockImplementation();
+    vi.spyOn(RequestContext, "get").mockReturnValue(undefined);
+    const set = vi
+      .spyOn(RequestContext, "set")
+      .mockImplementation(() => undefined);
     const logger = await createLogger();
 
     logger.assign({
@@ -80,7 +105,7 @@ describe("Logger", () => {
   });
 
   it("should log with the global pino logger when request context is inactive", async () => {
-    jest.spyOn(RequestContext, "get").mockImplementation(() => {
+    vi.spyOn(RequestContext, "get").mockImplementation(() => {
       throw new Error("Request context is not active");
     });
     const logger = await createLogger();
@@ -125,8 +150,80 @@ describe("Logger", () => {
     );
   });
 
+  it.each(["fallback", "request"])(
+    "preserves Nest error arguments with the %s logger",
+    async (mode) => {
+      const requestLogger = { error: vi.fn() };
+      vi.spyOn(RequestContext, "get").mockImplementation((token) => {
+        if (mode === "fallback") throw new Error("No request");
+        if (token === PINO_LOGGER) return requestLogger;
+        if (token === BINDINGS) return { requestId: "request-1" };
+        return undefined;
+      });
+      const logger = await createLogger();
+      const output =
+        mode === "request" ? requestLogger.error : mockPinoLogger.error;
+      const requestBindings =
+        mode === "request" ? { requestId: "request-1" } : {};
+      const error = new Error("boom");
+      const stack = "Error: boom\n    at handler (app.ts:1:1)";
+      const cases: { args: unknown[]; bindings: Record<string, unknown> }[] = [
+        { args: ["Context"], bindings: { context: "Context" } },
+        { args: [stack], bindings: { stack, context: "ParentService" } },
+        { args: [stack, "Context"], bindings: { stack, context: "Context" } },
+        { args: ["Context", stack], bindings: { stack, context: "Context" } },
+        {
+          args: [{ orderId: "42" }, stack, "Context"],
+          bindings: { orderId: "42", stack, context: "Context" },
+        },
+        {
+          args: [{ orderId: "42" }, "opaque trace", "Context"],
+          bindings: {
+            orderId: "42",
+            stack: "opaque trace",
+            context: "Context",
+          },
+        },
+        {
+          args: [stack, { orderId: "42" }, "Context"],
+          bindings: { orderId: "42", stack, context: "Context" },
+        },
+        {
+          args: [{ orderId: "42" }, "Context", stack],
+          bindings: { orderId: "42", stack, context: "Context" },
+        },
+        {
+          args: [error, stack, "Context"],
+          bindings: { err: error, stack, context: "Context" },
+        },
+        {
+          args: ["opaque trace", "Context"],
+          bindings: { stack: "opaque trace", context: "Context" },
+        },
+        {
+          args: [{ err: error, jobId: "job-1" }, "Context"],
+          bindings: { err: error, jobId: "job-1", context: "Context" },
+        },
+        { args: [error], bindings: { err: error, context: "ParentService" } },
+        { args: [undefined, "Context"], bindings: { context: "Context" } },
+      ];
+      for (const { args, bindings } of cases) {
+        logger.error("boom", ...args);
+        expect(output).toHaveBeenLastCalledWith(
+          { ...requestBindings, ...bindings },
+          "boom",
+        );
+      }
+      logger.error(error);
+      expect(output).toHaveBeenLastCalledWith(
+        { ...requestBindings, err: error, context: "ParentService" },
+        "boom",
+      );
+    },
+  );
+
   it("should use the module-configured logger when request context is inactive", async () => {
-    jest.spyOn(RequestContext, "get").mockImplementation(() => {
+    vi.spyOn(RequestContext, "get").mockImplementation(() => {
       throw new Error("Request context is not active");
     });
     const logger = await createLogger(true);
@@ -144,9 +241,9 @@ describe("Logger", () => {
 
   it("should log with request-scoped pino logger and bindings", async () => {
     const requestLogger = {
-      warn: jest.fn(),
+      warn: vi.fn(),
     };
-    jest.spyOn(RequestContext, "get").mockImplementation((token) => {
+    vi.spyOn(RequestContext, "get").mockImplementation((token) => {
       if (token === PINO_LOGGER) return requestLogger;
       if (token === BINDINGS) {
         return {
@@ -170,9 +267,9 @@ describe("Logger", () => {
 
   it("should log with empty bindings when request context has no bindings", async () => {
     const requestLogger = {
-      debug: jest.fn(),
+      debug: vi.fn(),
     };
-    jest.spyOn(RequestContext, "get").mockImplementation((token) => {
+    vi.spyOn(RequestContext, "get").mockImplementation((token) => {
       if (token === PINO_LOGGER) return requestLogger;
       return undefined;
     });
@@ -189,15 +286,14 @@ describe("Logger", () => {
   });
 });
 
+/**
+ * Returns logger configured for the test.
+ * @param configured - Whether to include an explicit logger configuration.
+ * @returns Logger configured for the test.
+ */
 async function createLogger(configured = false) {
   const providers: Parameters<typeof Test.createTestingModule>[0]["providers"] =
-    [
-      Logger,
-      {
-        provide: INQUIRER,
-        useValue: new ParentService(),
-      },
-    ];
+    [Logger, ParentService];
 
   if (configured) {
     providers?.push({
@@ -210,5 +306,5 @@ async function createLogger(configured = false) {
     providers,
   }).compile();
 
-  return await moduleRef.resolve(Logger);
+  return moduleRef.get(ParentService).logger;
 }

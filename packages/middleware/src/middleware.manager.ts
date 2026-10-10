@@ -1,29 +1,43 @@
-import { Injectable, NestMiddleware, Type } from "@nestjs/common";
-import { MiddlewareConsumer, RouteInfo } from "@nestjs/common/interfaces";
+import {
+  Injectable,
+  MiddlewareConsumer,
+  NestMiddleware,
+  Type,
+} from "@nestjs/common";
+import type { RouteInfo } from "@nestjs/common/interfaces/middleware/middleware-configuration.interface.js";
 
-import { MiddlewareConfig } from "./interfaces";
-import { MiddlewareConfigurator } from "./middleware.configurator";
-import { MiddlewareInstanceOrFunction } from "./types";
+import { MiddlewareConfig } from "./interfaces/index.js";
+import { MiddlewareConfigurator } from "./middleware.configurator.js";
+import { MiddlewareInstanceOrFunction } from "./types/index.js";
 
 /**
  * Service that manages middleware registration and topological ordering.
  *
- * @remarks
  * Provides an API similar to NestJS `MiddlewareConsumer` but adds support
  * for dependency-based ordering and global route exclusions.
  */
 @Injectable()
 export class MiddlewareManager {
-  /** Global routes excluded from all middleware processing. @internal */
+  /**
+   * Global routes excluded from all middleware processing.
+   * @internal
+   */
   private globalExcludeRoutes: (string | RouteInfo)[] = [];
 
-  /** Map of middleware instances to their configurations. @internal */
+  /**
+   * Map of middleware instances to their configurations.
+   * @internal
+   */
   public readonly middlewareConfigMap = new Map<
     MiddlewareInstanceOrFunction,
     MiddlewareConfig
   >();
 
-  /** Returns middleware configs sorted by dependency order. @internal */
+  /**
+   * Returns middleware configs sorted by dependency order.
+   * @returns Middleware configurations sorted by their configured order.
+   * @internal
+   */
   private get middlewareConfigs(): MiddlewareConfig[] {
     const sorted: MiddlewareInstanceOrFunction[] = [];
     const visited = new Set<MiddlewareInstanceOrFunction>();

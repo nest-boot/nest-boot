@@ -1,11 +1,9 @@
-import { type OrderDirection } from "../enums";
-import { OrderFieldKey } from "./order-field.type";
+import { type OrderDirection } from "../enums/index.js";
+import { OrderFieldKey } from "./order-field.type.js";
 
 /**
  * Specifies the ordering for a connection query.
- *
- * @typeParam T - The entity type being ordered
- *
+ * @template T - The entity type being ordered
  * @example
  * ```typescript
  * const order: OrderInterface<User> = {

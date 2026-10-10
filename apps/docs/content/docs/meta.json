@@ -1,4 +1,4 @@
 {
   "title": "Docs",
-  "pages": ["---Tutorials---", "...tutorial", "---API Reference---", "...api"]
+  "pages": ["migration-v8", "---Tutorials---", "...tutorial"]
 }

@@ -1,0 +1,66 @@
+import {
+  normalizeApiKeyPermissions,
+  resolveApiKeyPermissionCatalog,
+} from "./api-key-permissions.util.js";
+
+describe("API key catalog snapshots", () => {
+  it.each(["user", "member"] as const)(
+    "normalizes %s grants with defaults and explicit empty values",
+    (scope) => {
+      const permission = scope === "user" ? "user:read" : "workspace:update";
+      const options = {
+        apiKey: {
+          [scope]: {
+            allowedPermissions: [permission],
+            defaultPermissions: [permission],
+          },
+        },
+      };
+      expect(normalizeApiKeyPermissions(options, scope, undefined)).toEqual([
+        permission,
+      ]);
+      expect(normalizeApiKeyPermissions(options, scope, null)).toEqual([]);
+      expect(normalizeApiKeyPermissions(options, scope, [])).toEqual([]);
+      expect(() =>
+        normalizeApiKeyPermissions(options, scope, [permission, permission]),
+      ).toThrow("duplicate permissions");
+      expect(() =>
+        normalizeApiKeyPermissions(options, scope, ["workspace:delete"]),
+      ).toThrow("configured allowedPermissions");
+      expect(() =>
+        normalizeApiKeyPermissions(options, scope, ["UNKNOWN"]),
+      ).toThrow();
+    },
+  );
+
+  it("reuses immutable catalogs and isolates scopes and module configurations", () => {
+    const options = {
+      apiKey: {
+        user: { allowedPermissions: [], defaultPermissions: [] },
+        member: {
+          allowedPermissions: ["workspace:update"],
+          defaultPermissions: ["workspace:update"],
+        },
+      },
+    };
+    const user = resolveApiKeyPermissionCatalog(options, "user");
+    const workspace = resolveApiKeyPermissionCatalog(options, "member");
+    expect(resolveApiKeyPermissionCatalog(options, "member")).toBe(workspace);
+    expect(user.allowed).toEqual([]);
+    expect(workspace.allowed).toEqual(["workspace:update"]);
+    expect(workspace.defaults).toEqual(["workspace:update"]);
+    for (const value of [
+      workspace,
+      workspace.permissions,
+      workspace.allowed,
+      workspace.defaults,
+    ]) {
+      expect(Object.isFrozen(value)).toBe(true);
+    }
+    options.apiKey.member.defaultPermissions.push("workspace:delete");
+    expect(workspace.defaults).toEqual(["workspace:update"]);
+    expect(resolveApiKeyPermissionCatalog({}, "user").allowed).toContain(
+      "user:read",
+    );
+  });
+});

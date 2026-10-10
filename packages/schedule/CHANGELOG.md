@@ -1,3 +1,174 @@
+## 8.0.11-beta.0 (2026-10-10)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/queue to 8.0.7-beta.4
+
+## 8.0.10-beta.3 (2026-10-10)
+
+### 🚀 Features
+
+- ⚠️  **runtime:** require Node 24.21 and validate packed consumers ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### ⚠️  Breaking Changes
+
+- **runtime:** require Node 24.21 and validate packed consumers  ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.4
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.5
+- Updated @nest-boot/tsconfig to 8.0.0-beta.5
+- Updated @nest-boot/queue to 8.0.7-beta.3
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.10-beta.2 (2026-10-10)
+
+### 🩹 Fixes
+
+- **deps:** upgrade production dependencies and Nodemailer 10 ([#405](https://github.com/nest-boot/nest-boot/pull/405))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/queue to 8.0.7-beta.2
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.10-beta.1 (2026-10-10)
+
+### 🚀 Features
+
+- **eslint-config:** adopt JSDoc and retire TypeDoc ([#404](https://github.com/nest-boot/nest-boot/pull/404))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.3
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.4
+- Updated @nest-boot/queue to 8.0.7-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.9-beta.1 (2026-10-09)
+
+### 🚀 Features
+
+- ⚠️  **queue:** rename queue integration packages and APIs ([#398](https://github.com/nest-boot/nest-boot/pull/398))
+
+### ⚠️  Breaking Changes
+
+- **queue:** rename queue integration packages and APIs  ([#398](https://github.com/nest-boot/nest-boot/pull/398))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.2
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.3
+- Updated @nest-boot/queue to 8.0.6-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.9-beta.0 (2026-10-09)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.2
+- Updated @nest-boot/bullmq to 8.0.6-beta.0
+
+## 8.0.8-beta.0 (2026-10-09)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/bullmq to 8.0.5-beta.2
+
+## 8.0.7-beta.0 (2026-10-08)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/bullmq to 8.0.5-beta.1
+
+## 8.0.6-beta.0 (2026-09-23)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.1
+- Updated @nest-boot/bullmq to 8.0.5-beta.0
+
+## 8.0.5-beta.0 (2026-09-23)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/bullmq to 8.0.4-beta.1
+
+## 8.0.4-beta.0 (2026-09-19)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.1-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.0
+- Updated @nest-boot/tsconfig to 8.0.0-beta.4
+- Updated @nest-boot/bullmq to 8.0.4-beta.0
+
+## 8.0.3-beta.0 (2026-09-08)
+
+### 🚀 Features
+
+- ⚠️  **auth:** rebuild authentication and authorization ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### ⚠️  Breaking Changes
+
+- **auth:** rebuild authentication and authorization  ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.0-beta.3
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.3
+- Updated @nest-boot/tsconfig to 8.0.0-beta.3
+- Updated @nest-boot/bullmq to 8.0.3-beta.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.2 (2026-08-31)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.0-beta.2
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.2
+- Updated @nest-boot/tsconfig to 8.0.0-beta.2
+- Updated @nest-boot/bullmq to 8.0.0-beta.2
+
+## 8.0.0-beta.1 (2026-08-31)
+
+### 🚀 Features
+
+- ⚠️  migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ⚠️  Breaking Changes
+
+- migrate to NestJS 12 and ESM  ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.0-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.1
+- Updated @nest-boot/tsconfig to 8.0.0-beta.1
+- Updated @nest-boot/bullmq to 8.0.0-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.3.8 (2026-08-31)
 
 ### 🧱 Updated Dependencies

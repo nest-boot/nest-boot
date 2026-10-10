@@ -1,6 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
 
-import { type GraphQLRateLimitModuleOptions } from "./interfaces";
+import { type GraphQLRateLimitModuleOptions } from "./interfaces/index.js";
 
 /** Injection token for the resolved GraphQL rate limit options. */
 export const OPTIONS_TOKEN = Symbol("GraphQLRateLimitOptions");
@@ -10,13 +10,25 @@ export const OPTIONS_TOKEN = Symbol("GraphQLRateLimitOptions");
  * @internal
  */
 export const {
-  /** @internal Base configurable module class. */
+  /**
+   * Base configurable module class.
+   * @internal
+   */
   ConfigurableModuleClass,
-  /** @internal Module options injection token. */
+  /**
+   * Module options injection token.
+   * @internal
+   */
   MODULE_OPTIONS_TOKEN,
-  /** @internal Synchronous options type. */
+  /**
+   * Synchronous options type.
+   * @internal
+   */
   OPTIONS_TYPE,
-  /** @internal Asynchronous options type. */
+  /**
+   * Asynchronous options type.
+   * @internal
+   */
   ASYNC_OPTIONS_TYPE,
 } = new ConfigurableModuleBuilder<GraphQLRateLimitModuleOptions>()
   .setClassMethodName("forRoot")

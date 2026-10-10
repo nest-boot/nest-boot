@@ -1,5 +1,6 @@
 import { FilterQuery } from "@mikro-orm/core";
-import { GraphQLScalarType, Kind, ValueNode } from "graphql";
+import { REQUEST, RequestContext } from "@nest-boot/request-context";
+import { GraphQLError, GraphQLScalarType, Kind, ValueNode } from "graphql";
 import {
   FieldOptions as FilterFieldOptions,
   FieldType,
@@ -7,17 +8,46 @@ import {
   FilterQuerySchemaBuilder,
 } from "mikro-orm-filter-query-schema";
 
-import { ConnectionFieldOptions } from "../interfaces";
+import { ConnectionFieldOptions } from "../interfaces/index.js";
+import { normalizeDateFilter } from "./normalize-date-filter.js";
 
 /**
  * The Zod schema type returned by FilterQuerySchemaBuilder.
- *
- * @typeParam Entity - The entity type for the filter
+ * @template Entity - The entity type for the filter
  */
 export type FilterQuerySchema<Entity extends object> = ReturnType<
   FilterQuerySchemaBuilder<Entity>["build"]
 >;
 
+/**
+ * Returns client timezone offset from request headers, or the default offset.
+ * @returns Client timezone offset from request headers, or the default offset.
+ */
+function getTimezoneOffset(): number {
+  const request = RequestContext.isActive()
+    ? RequestContext.get<{
+        headers?: Record<string, string | string[] | undefined>;
+      }>(REQUEST)
+    : undefined;
+  const header = request?.headers?.["x-timezone-offset"];
+  if (header === undefined) return 0;
+  if (typeof header === "string" && /^-?\d{1,3}$/.test(header)) {
+    const offset = Number(header);
+    if (Math.abs(offset) <= 14 * 60) return offset;
+  }
+  throw new GraphQLError(
+    "Invalid X-Timezone-Offset header: expected integer minutes between -840 and 840",
+    {
+      extensions: { code: "BAD_USER_INPUT" },
+    },
+  );
+}
+
+/**
+ * Returns parsed JSON value, or the original non-string input.
+ * @param value - Value to inspect or transform.
+ * @returns Parsed JSON value, or the original non-string input.
+ */
 function parseJson(value: unknown): unknown {
   if (typeof value === "string") {
     try {
@@ -29,6 +59,11 @@ function parseJson(value: unknown): unknown {
   return value;
 }
 
+/**
+ * Returns javaScript value represented by the GraphQL literal.
+ * @param ast - GraphQL value node to parse.
+ * @returns JavaScript value represented by the GraphQL literal.
+ */
 function parseLiteralValue(ast: ValueNode): unknown {
   switch (ast.kind) {
     case Kind.STRING:
@@ -58,8 +93,7 @@ function parseLiteralValue(ast: ValueNode): unknown {
 
 /**
  * The result of creating a filter scalar and schema.
- *
- * @typeParam Entity - The entity type for the filter
+ * @template Entity - The entity type for the filter
  */
 export interface CreateFilterResult<Entity extends object> {
   /**
@@ -79,13 +113,13 @@ export interface CreateFilterResult<Entity extends object> {
  * The Filter scalar accepts MongoDB-style query syntax and validates
  * it against the configured field options.
  *
- * @typeParam Entity - The entity type being filtered
+ * Used by ConnectionBuilder.build()
+ * @template Entity - The entity type being filtered
  * @param entityName - The name to use for the GraphQL scalar
  * @param fieldOptionsMap - Map of field configurations
  * @param filterOptions - Options for filter complexity limits
  * @returns An object containing the Filter scalar and filterQuerySchema
- *
- * @internal Used by ConnectionBuilder.build()
+ * @internal
  */
 export function createFilter<Entity extends object>(
   entityName: string,
@@ -106,7 +140,33 @@ export function createFilter<Entity extends object>(
     }
   }
 
-  const filterQuerySchema = builder.build();
+  const dateFields = new Set(
+    [...fieldOptionsMap.values()]
+      .filter(
+        (options) =>
+          options.filterable !== false &&
+          options.type === "date" &&
+          !options.array &&
+          typeof options.replacement !== "function",
+      )
+      .map((options) =>
+        typeof options.replacement === "string"
+          ? options.replacement
+          : options.field,
+      ),
+  );
+  // Date-only values on registered date paths represent whole days, including
+  // callback output targeting those paths. Use timestamps for exact instants.
+  const filterQuerySchema: FilterQuerySchema<Entity> = builder
+    .build()
+    .transform(
+      (filter) =>
+        normalizeDateFilter(
+          filter,
+          dateFields,
+          getTimezoneOffset(),
+        ) as FilterQuery<Entity>,
+    );
 
   const Filter = new GraphQLScalarType<FilterQuery<Entity>>({
     name: `${entityName}Filter`,

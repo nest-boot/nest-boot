@@ -1,0 +1,1387 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+import { LockMode } from "@mikro-orm/core";
+import { RequestContext } from "@nest-boot/request-context";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
+
+import { restoreAuthorization } from "../../test/mock-authorization.js";
+import { mockRlsContext } from "../../test/mock-rls-context.js";
+import {
+  createTestMember,
+  createTestUser,
+  createTestWorkspace,
+  createWorkspaceServices,
+} from "../../test/workspace-service.fixture.js";
+import { AuthAbility } from "../auth.ability.js";
+import { API_KEY } from "../auth.constants.js";
+import { Invitation } from "../entities/invitation.entity.js";
+import { Member } from "../entities/member.entity.js";
+import { MemberApiKey } from "../entities/member-api-key.entity.js";
+import { User } from "../entities/user.entity.js";
+import { Workspace } from "../entities/workspace.entity.js";
+import { MemberType } from "../enums/member-type.enum.js";
+import { AuthAbilityFactory } from "../infrastructure/auth-ability.factory.js";
+import { can } from "../utils/can.util.js";
+import {
+  DEFAULT_WORKSPACE_PERMISSIONS,
+  DEFAULT_WORKSPACE_ROLES,
+} from "../workspace.constants.js";
+import { MemberService } from "./member.service.js";
+
+describe("MemberService", () => {
+  it.each([
+    { roles: undefined, permissions: [], expectedRoles: ["member"] },
+    { roles: [], permissions: ["workspace:update"], expectedRoles: [] },
+  ])(
+    "creates service accounts with workspace grants and no login user ($permissions)",
+    async ({ roles, permissions, expectedRoles }) => {
+      const { memberService, em } = createWorkspaceServices();
+      const workspace = createTestWorkspace();
+      const member = await memberService.addServiceAccount(
+        workspace,
+        " CI deployer ",
+        { roles, permissions },
+      );
+      expect(member).toMatchObject({
+        name: "CI deployer",
+        type: MemberType.SERVICE_ACCOUNT,
+        user: null,
+        email: null,
+        workspace,
+        roles: expectedRoles,
+        permissions,
+        status: "ACTIVE",
+      });
+      expect(em.persist).toHaveBeenCalledWith(member);
+      expect(em.nativeUpdate).not.toHaveBeenCalled();
+      await expect(memberService.getMemberUser(member)).resolves.toBeNull();
+    },
+  );
+
+  it.each([
+    ["member:read", MemberType.USER],
+    ["service-account:read", MemberType.SERVICE_ACCOUNT],
+  ] as const)(
+    "scopes member pagination and lookup for %s",
+    async (permission, type) => {
+      const { memberService, em } = createWorkspaceServices();
+      const workspace = createTestWorkspace();
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          restoreAuthorization();
+          RequestContext.set(User, createTestUser());
+          RequestContext.set(Workspace, workspace);
+          RequestContext.set(
+            AuthAbility,
+            AuthAbilityFactory.createAbility({
+              user: createTestUser(),
+              member: null,
+              workspace,
+              userPermissions: [],
+              workspacePermissions: [permission],
+            }),
+          );
+          expect(memberService.getMemberListFilter(workspace)).toEqual({
+            workspace,
+            type: { $in: [type] },
+          });
+          await memberService.getMember("target-member");
+          expect(em.findOne).toHaveBeenCalledWith(Member, {
+            id: "target-member",
+            workspace,
+            type: { $in: [type] },
+          });
+        },
+      );
+    },
+  );
+
+  it("rejects service account creation with only ordinary member write permission", async () => {
+    const { memberService, em } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      restoreAuthorization();
+      RequestContext.set(User, createTestUser());
+      RequestContext.set(Workspace, workspace);
+      RequestContext.set(
+        AuthAbility,
+        AuthAbilityFactory.createAbility({
+          user: createTestUser(),
+          member: null,
+          workspace,
+          userPermissions: [],
+          workspacePermissions: ["member:write"],
+        }),
+      );
+      await expect(
+        memberService.addServiceAccount(workspace, "CI"),
+      ).rejects.toThrow(ForbiddenException);
+    });
+    expect(em.transactional).not.toHaveBeenCalled();
+    expect(em.persist).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["member:write", MemberType.SERVICE_ACCOUNT],
+    ["service-account:write", MemberType.USER],
+  ] as const)(
+    "rejects updates and removals of %s's excluded member type",
+    async (permission, type) => {
+      const { memberService, em } = createWorkspaceServices();
+      const workspace = createTestWorkspace();
+      const target = Object.assign(createTestMember(), {
+        id: "other-member",
+        type,
+      });
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          restoreAuthorization();
+          RequestContext.set(User, createTestUser());
+          RequestContext.set(Workspace, workspace);
+          RequestContext.set(
+            AuthAbility,
+            AuthAbilityFactory.createAbility({
+              user: createTestUser(),
+              member: null,
+              workspace,
+              userPermissions: [],
+              workspacePermissions: [permission],
+            }),
+          );
+          await expect(
+            memberService.updateMember(target, { name: "Changed" }),
+          ).rejects.toThrow(ForbiddenException);
+          await expect(memberService.removeMember(target)).rejects.toThrow(
+            ForbiddenException,
+          );
+        },
+      );
+      expect(em.transactional).not.toHaveBeenCalled();
+      expect(em.remove).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects invalid service account names before persistence", async () => {
+    const { memberService, em } = createWorkspaceServices();
+    for (const name of [" ", "x".repeat(256)]) {
+      await expect(
+        memberService.addServiceAccount(createTestWorkspace(), name),
+      ).rejects.toThrow("service account name");
+    }
+    expect(em.persist).not.toHaveBeenCalled();
+  });
+
+  it.each(["roles", "permissions"] as const)(
+    "publishes own %s only after commit and revokes stale workspace authorization",
+    async (field) => {
+      const { memberService, em } = createWorkspaceServices({
+        permissions: ["workspace:delete"],
+        roles: { owner: ["workspace:delete"], member: [] },
+      });
+      const workspace = createTestWorkspace();
+      const user = createTestUser();
+      const current = Object.assign(createTestMember(), {
+        user,
+        roles: ["owner"],
+      });
+      const locked = Object.assign(createTestMember(), {
+        user,
+        roles: field === "permissions" ? ["member"] : ["owner"],
+        permissions: field === "permissions" ? ["workspace:delete"] : [],
+      });
+      mockRlsContext(em).variables = {
+        "app.user.id": user.id,
+        "app.workspace.id": workspace.id,
+        "app.member.id": current.id,
+      };
+      em.findOne.mockResolvedValue(locked);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          const ability = new AuthAbility([
+            { action: "delete", subject: Workspace },
+          ]);
+          RequestContext.set(User, user);
+          RequestContext.set(Member, current);
+          RequestContext.set(Workspace, workspace);
+          RequestContext.set(AuthAbility, ability);
+          const update = () =>
+            field === "roles"
+              ? memberService.setMemberRoles(current, ["member"])
+              : memberService.setMemberPermissions(current, []);
+          em.isInTransaction.mockReturnValueOnce(true);
+          await expect(update()).rejects.toThrow(
+            "outside an active transaction",
+          );
+          expect(em.transactional).not.toHaveBeenCalled();
+          em.transactional.mockImplementationOnce(async (callback) => {
+            await callback(em);
+            throw new Error("Commit failed");
+          });
+          await expect(update()).rejects.toThrow("Commit failed");
+          expect(RequestContext.get(Member)).toBe(current);
+          expect(RequestContext.get(AuthAbility)).toBe(ability);
+          expect(em.setSessionContext).not.toHaveBeenCalled();
+          await update();
+          expect(RequestContext.get(Member)).toBe(locked);
+          expect(RequestContext.get(Workspace)).toBe(workspace);
+          expect(
+            RequestContext.get(AuthAbility)?.can("delete", Workspace),
+          ).toBe(false);
+          expect(em.setSessionContext).not.toHaveBeenCalled();
+        },
+      );
+    },
+  );
+
+  it.each(["entity", "id"] as const)(
+    "rejects disabling the current member by %s before writing any fields",
+    async (target) => {
+      const { memberService, em } = createWorkspaceServices();
+      const current = Object.assign(createTestMember(), { roles: ["owner"] });
+      const member = Object.assign(createTestMember(), { name: "Original" });
+      em.findOne.mockResolvedValue(member);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          restoreAuthorization();
+          RequestContext.set(User, createTestUser());
+          RequestContext.set(Member, current);
+          const workspace = createTestWorkspace();
+          RequestContext.set(Workspace, workspace);
+          RequestContext.set(
+            AuthAbility,
+            AuthAbilityFactory.createAbility({
+              user: createTestUser(),
+              workspace,
+              member: current,
+              userPermissions: [],
+              workspacePermissions: ["member:write"],
+            }),
+          );
+          await expect(
+            memberService.updateMember(target === "id" ? member.id : member, {
+              status: "DISABLED",
+              name: "Changed",
+            }),
+          ).rejects.toThrow("You are not allowed to write this resource");
+        },
+      );
+      expect(member.status).toBe("ACTIVE");
+      expect(member.name).toBe("Original");
+      expect(em.transactional).not.toHaveBeenCalled();
+      expect(em.assign).not.toHaveBeenCalled();
+      expect(em.flush).not.toHaveBeenCalled();
+    },
+  );
+
+  it("still allows updating the current member's profile and disabling another member", async () => {
+    const { memberService, em } = createWorkspaceServices();
+    mockRlsContext(em);
+    const current = createTestMember();
+    const other = Object.assign(createTestMember(), { id: "other-member" });
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      restoreAuthorization();
+      RequestContext.set(User, createTestUser());
+      const workspace = createTestWorkspace();
+      const ability = AuthAbilityFactory.createAbility({
+        user: createTestUser(),
+        workspace,
+        member: current,
+        userPermissions: [],
+        workspacePermissions: ["member:write"],
+      });
+      RequestContext.set(Member, current);
+      RequestContext.set(Workspace, workspace);
+      RequestContext.set(AuthAbility, ability);
+      em.findOne.mockResolvedValue(current);
+      await memberService.updateMember(current, {
+        name: "Updated",
+      });
+      expect(current.name).toBe("Updated");
+      RequestContext.set(AuthAbility, ability);
+      em.findOne.mockResolvedValue(other);
+      await memberService.updateMember(other, { status: "DISABLED" });
+      expect(other.status).toBe("DISABLED");
+      expect(current.status).toBe("ACTIVE");
+    });
+  });
+
+  it("resolves a member ID with write permission and updates only the locked row", async () => {
+    const { memberService, em, authorization } = createWorkspaceServices();
+    const member = Object.assign(createTestMember(), { name: "Original" });
+    const locked = Object.assign(createTestMember(), {
+      name: "Concurrent edit",
+    });
+    em.findOne.mockResolvedValueOnce(member).mockResolvedValueOnce(locked);
+    vi.mocked(authorization.authorize).mockImplementation((action) => {
+      if (action === "read") throw new ForbiddenException();
+    });
+    await expect(
+      memberService.updateMember(member.id, { name: " Updated " }),
+    ).resolves.toBe(locked);
+    expect(em.findOne).toHaveBeenNthCalledWith(
+      1,
+      Member,
+      { id: member.id },
+      { populate: ["workspace"], refresh: true },
+    );
+    expect(authorization.authorize).toHaveBeenNthCalledWith(1, "write", Member);
+    expect(authorization.authorize).toHaveBeenNthCalledWith(2, "write", member);
+    expect(authorization.authorize).toHaveBeenNthCalledWith(
+      3,
+      "write",
+      member,
+      "name",
+    );
+    expect(authorization.authorize).toHaveBeenNthCalledWith(4, "write", locked);
+    expect(authorization.authorize).toHaveBeenNthCalledWith(
+      5,
+      "write",
+      locked,
+      "name",
+    );
+    expect(member.name).toBe("Original");
+    expect(locked.name).toBe("Updated");
+    expect(em.flush).toHaveBeenCalledOnce();
+  });
+
+  it.each(["lookup", "lock"] as const)(
+    "does not change roles when a member disappears at %s",
+    async (stage) => {
+      const { memberService, em } = createWorkspaceServices();
+      const member = createTestMember();
+      if (stage === "lock") em.findOne.mockResolvedValueOnce(member);
+      em.findOne.mockResolvedValue(null);
+      await expect(
+        memberService.setMemberRoles(member.id, ["admin"]),
+      ).rejects.toThrow("Workspace member not found");
+      expect(member.roles).toEqual(["member"]);
+      expect(em.findOne).toHaveBeenCalledTimes(stage === "lock" ? 2 : 1);
+      expect(em.flush).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([false, true])(
+    "rejects a missing member with context present=%s",
+    async (present) => {
+      const { em } = createWorkspaceServices();
+      restoreAuthorization();
+      const service = new MemberService(em, {});
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          if (present) RequestContext.set(Member, createTestMember());
+          await expect(
+            service.leaveWorkspace(undefined as unknown as Member),
+          ).rejects.toThrow(ForbiddenException);
+        },
+      );
+      expect(em.transactional).not.toHaveBeenCalled();
+      expect(em.remove).not.toHaveBeenCalled();
+    },
+  );
+  it("allows the current member to leave without any workspace ability rules", async () => {
+    const { em } = createWorkspaceServices();
+    restoreAuthorization();
+    const session = mockRlsContext(em);
+    const workspace = createTestWorkspace();
+    const member = Object.assign(createTestMember(), { workspace });
+    const lockedMember = Object.assign(createTestMember(), { workspace });
+    const service = new MemberService(em, {});
+    em.findOne.mockResolvedValue(lockedMember);
+
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(Workspace, workspace);
+      RequestContext.set(Member, member);
+      const user = createTestUser();
+      member.user = user as never;
+      RequestContext.set(User, user);
+      RequestContext.set(AuthAbility, new AuthAbility());
+      expect(can("read", workspace)).toBe(false);
+      await expect(service.leaveWorkspace(member)).resolves.toBe(lockedMember);
+      expect(RequestContext.get(Member)).toBeNull();
+      expect(RequestContext.get(Workspace)).toBeNull();
+      expect(can("delete", workspace)).toBe(false);
+      expect(em.setSessionContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variables: expect.objectContaining({ "app.workspace.id": "" }),
+        }),
+      );
+    });
+    expect(em.findOne).toHaveBeenCalledWith(
+      Member,
+      { id: member.id, workspace },
+      { lockMode: LockMode.PESSIMISTIC_WRITE },
+    );
+    expect(em.remove).toHaveBeenCalledWith(lockedMember);
+    expect(em.flush).toHaveBeenCalledOnce();
+    expect(em.fork).not.toHaveBeenCalled();
+    expect(em.getSessionContext()).toEqual(session);
+  });
+
+  it("rejects an externally owned transaction before deleting the membership", async () => {
+    const { em } = createWorkspaceServices();
+    restoreAuthorization();
+    em.isInTransaction.mockReturnValue(true);
+    const workspace = createTestWorkspace();
+    const member = Object.assign(createTestMember(), { workspace });
+    const service = new MemberService(em, {});
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(Workspace, workspace);
+      RequestContext.set(Member, member);
+      const user = createTestUser();
+      member.user = user as never;
+      RequestContext.set(User, user);
+      await expect(service.leaveWorkspace(member)).rejects.toThrow(
+        "outside an active transaction",
+      );
+      expect(RequestContext.get(Member)).toBe(member);
+    });
+    expect(em.transactional).not.toHaveBeenCalled();
+    expect(em.remove).not.toHaveBeenCalled();
+  });
+
+  it.each(["workspace", "member", "missing-member"] as const)(
+    "rejects leaving with a mismatched %s identity before querying",
+    async (mismatch) => {
+      const { em } = createWorkspaceServices();
+      restoreAuthorization();
+      const workspace = createTestWorkspace();
+      const member = Object.assign(createTestMember(), { workspace });
+      const service = new MemberService(em, {});
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(
+            Workspace,
+            mismatch === "workspace"
+              ? Object.assign(createTestWorkspace(), { id: "other-workspace" })
+              : workspace,
+          );
+          if (mismatch !== "missing-member") {
+            RequestContext.set(
+              Member,
+              mismatch === "member"
+                ? Object.assign(createTestMember(), { id: "other-member" })
+                : member,
+            );
+          }
+          await expect(service.leaveWorkspace(member)).rejects.toThrow(
+            ForbiddenException,
+          );
+        },
+      );
+      expect(em.findOne).not.toHaveBeenCalled();
+      expect(em.remove).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not bypass RLS when the departing member cannot be loaded", async () => {
+    const { em } = createWorkspaceServices();
+    restoreAuthorization();
+    const session = mockRlsContext(em);
+    const workspace = createTestWorkspace();
+    const member = Object.assign(createTestMember(), { workspace });
+    const service = new MemberService(em, {});
+    em.findOne.mockResolvedValue(null);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(Workspace, workspace);
+      RequestContext.set(Member, member);
+      const user = createTestUser();
+      member.user = user as never;
+      RequestContext.set(User, user);
+      await expect(service.leaveWorkspace(member)).rejects.toThrow(
+        "Workspace member not found",
+      );
+    });
+    expect(em.remove).not.toHaveBeenCalled();
+    expect(em.fork).not.toHaveBeenCalled();
+    expect(em.getSessionContext()).toEqual(session);
+  });
+
+  it.each(["disable", "remove", "leave"] as const)(
+    "allows an authorized owner to %s without a role exception",
+    async (operation) => {
+      const { memberService, em } = createWorkspaceServices();
+      const member = Object.assign(createTestMember(), { roles: ["owner"] });
+      em.findOne.mockResolvedValue(member);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          const user = createTestUser();
+          member.user = user as never;
+          RequestContext.set(User, user);
+          const result =
+            operation === "disable"
+              ? memberService.updateMember(member, { status: "DISABLED" })
+              : operation === "remove"
+                ? memberService.removeMember(member)
+                : memberService.leaveWorkspace(member);
+          await expect(result).resolves.toBe(member);
+        },
+      );
+      expect(em.flush).toHaveBeenCalledOnce();
+    },
+  );
+  it("loads member users with Service checks and the injected RLS manager", async () => {
+    const { memberService, em, authorization } = createWorkspaceServices();
+    const session = mockRlsContext(em);
+    const user = Object.assign(createTestUser(), { id: "user-1" });
+    const member = Object.assign(createTestMember(), {
+      user: { id: user.id, loadOrFail: vi.fn() },
+    });
+    em.findOne.mockResolvedValueOnce(member).mockResolvedValueOnce(user);
+    await expect(memberService.getMemberUser(member)).resolves.toBe(user);
+    expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
+      member.workspace,
+    );
+    expect(authorization.authorize).toHaveBeenCalledWith("read", User);
+    expect(em.findOne).toHaveBeenLastCalledWith(
+      User,
+      { id: user.id },
+      { refresh: true },
+    );
+    expect(member.user.loadOrFail).not.toHaveBeenCalled();
+    expect(em.getSessionContext()).toEqual(session);
+    expect(em.fork).not.toHaveBeenCalled();
+    vi.mocked(authorization.authorize).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
+    em.findOne.mockClear();
+    await expect(memberService.getMemberUser(member)).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(em.findOne).not.toHaveBeenCalled();
+  });
+
+  it("reads the browser user's own member association without selecting a workspace", async () => {
+    const { memberService, em, authorization } = createWorkspaceServices();
+    const user = Object.assign(createTestUser(), { id: "self" });
+    const member = Object.assign(createTestMember(), {
+      user: { id: user.id },
+    });
+    em.findOne.mockResolvedValueOnce(member).mockResolvedValueOnce(user);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(User, user);
+      await expect(memberService.getMemberUser(member)).resolves.toBe(user);
+      expect(em.findOne).toHaveBeenCalledWith(
+        Member,
+        { id: member.id, workspace: member.workspace, user: user.id },
+        { refresh: true },
+      );
+      expect(authorization.assertCurrentWorkspace).not.toHaveBeenCalled();
+      expect(authorization.authorize).not.toHaveBeenCalled();
+      RequestContext.set(API_KEY, new MemberApiKey());
+      RequestContext.set(
+        User,
+        Object.assign(createTestUser(), { id: "other" }),
+      );
+      vi.mocked(authorization.assertCurrentWorkspace).mockImplementation(() => {
+        throw new ForbiddenException();
+      });
+      await expect(memberService.getMemberUser(member)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  it("returns null for absent member users and rows hidden by RLS", async () => {
+    const { memberService, em } = createWorkspaceServices();
+    const member = createTestMember();
+    em.findOne.mockResolvedValueOnce(member).mockResolvedValueOnce(null);
+    await expect(memberService.getMemberUser(member)).resolves.toBeNull();
+    await expect(memberService.getMemberUser(member)).resolves.toBeNull();
+    expect(em.findOne).toHaveBeenCalledTimes(2);
+  });
+
+  it("reads members with the scoped manager", async () => {
+    const { memberService, em } = createWorkspaceServices();
+    const context = mockRlsContext(em);
+    em.findOne.mockResolvedValue(null);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(Workspace, createTestWorkspace());
+      await expect(memberService.getMember("hidden")).resolves.toBeNull();
+    });
+    expect(em.fork).not.toHaveBeenCalled();
+    expect(em.getSessionContext()).toEqual(context);
+  });
+
+  it("authorizes member pagination before returning the selected workspace filter", () => {
+    const { memberService, authorization, em } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    expect(memberService.getMemberListFilter(workspace)).toEqual({
+      workspace,
+    });
+    expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
+      workspace,
+    );
+    expect(authorization.authorize).toHaveBeenCalledWith("read", Member);
+    vi.mocked(authorization.authorize).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
+    expect(() => memberService.getMemberListFilter(workspace)).toThrow(
+      ForbiddenException,
+    );
+    expect(em.find).not.toHaveBeenCalled();
+  });
+
+  it("rejects member reads without a request context before querying", async () => {
+    const { memberService, em } = createWorkspaceServices();
+    await expect(memberService.getMember("member-1")).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(em.findOne).not.toHaveBeenCalled();
+  });
+
+  it("rejects member reads without a selected workspace before querying", async () => {
+    const { memberService, em } = createWorkspaceServices();
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      await expect(memberService.getMember("member-1")).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+    expect(em.findOne).not.toHaveBeenCalled();
+  });
+
+  it("checks workspace read ability before querying a member", async () => {
+    const { memberService, em, authorization } = createWorkspaceServices();
+    vi.mocked(authorization.authorize).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(Workspace, createTestWorkspace());
+      await expect(memberService.getMember("member-1")).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+    expect(em.findOne).not.toHaveBeenCalled();
+  });
+
+  it("does not reuse a previous request's workspace for member reads", async () => {
+    const { memberService, em } = createWorkspaceServices();
+    for (const id of ["workspace-1", "workspace-2"]) {
+      const workspace = Object.assign(createTestWorkspace(), { id });
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(Workspace, workspace);
+          await memberService.getMember("member-1");
+          expect(em.findOne).toHaveBeenLastCalledWith(Member, {
+            id: "member-1",
+            workspace,
+          });
+        },
+      );
+    }
+  });
+
+  it("enforces self-removal rules without a resolver", async () => {
+    const { memberService, em } = createWorkspaceServices();
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      const actor = Object.assign(createTestMember(), {
+        id: "actor",
+        roles: ["admin"],
+      });
+      RequestContext.set(Member, actor);
+      await expect(memberService.removeMember(actor)).rejects.toThrow(
+        "You are not allowed to remove yourself",
+      );
+      expect(em.flush).not.toHaveBeenCalled();
+    });
+  });
+
+  it("assigns and replaces the configured creator role through ordinary role updates", async () => {
+    const { memberService, em } = createWorkspaceServices({
+      creatorRole: "founder",
+      roles: { founder: [], owner: [], member: [] },
+    });
+    const target = createTestMember();
+    em.findOne.mockResolvedValue(target);
+
+    await expect(
+      memberService.setMemberRoles(target, ["founder"]),
+    ).resolves.toBe(target);
+    expect(target.roles).toEqual(["founder"]);
+
+    await expect(memberService.setMemberRoles(target, ["owner"])).resolves.toBe(
+      target,
+    );
+    expect(target.roles).toEqual(["owner"]);
+  });
+
+  it("does not require the configured creator role for direct permission changes", async () => {
+    const { memberService, em } = createWorkspaceServices({
+      creatorRole: "founder",
+    });
+    const target = createTestMember();
+    em.findOne.mockResolvedValue(target);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(
+        Member,
+        Object.assign(createTestMember(), {
+          id: "actor",
+          roles: ["admin"],
+        }),
+      );
+      await expect(
+        memberService.setMemberPermissions(target, []),
+      ).resolves.toBe(target);
+    });
+  });
+
+  it("cancels pending invitations in the same transaction when adding a member", async () => {
+    const { em, memberService } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    const user = Object.assign(createTestUser(), {
+      email: "ALICE@example.com",
+      name: "Alice",
+    });
+    await memberService.addMember(workspace, user);
+    expect(em.transactional).toHaveBeenCalledTimes(1);
+    expect(em.refreshOrFail).toHaveBeenCalledWith(
+      workspace,
+      expect.objectContaining({
+        filters: false,
+        lockMode: LockMode.PESSIMISTIC_WRITE,
+      }),
+    );
+    expect(em.nativeUpdate).toHaveBeenCalledWith(
+      Invitation,
+      { workspace, email: "alice@example.com", status: "pending" },
+      { status: "canceled" },
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("adds a member by normalized email inside the workspace permission boundary", async () => {
+    const { authorization, em, memberService } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    const user = Object.assign(createTestUser(), {
+      email: "alice@example.com",
+      name: "Alice",
+    });
+    em.findOne.mockResolvedValueOnce(user).mockResolvedValueOnce(null);
+
+    await expect(
+      memberService.addMemberByEmail(workspace, " Alice@Example.com "),
+    ).resolves.toEqual(expect.objectContaining({ user, workspace }));
+
+    expect(em.findOne).toHaveBeenNthCalledWith(
+      1,
+      User,
+      { email: "alice@example.com" },
+      { filters: false },
+    );
+    expect(authorization.authorize).toHaveBeenCalledWith(
+      "write",
+      expect.objectContaining({
+        workspaceId: workspace.id,
+        type: MemberType.USER,
+      }),
+    );
+  });
+
+  it("rejects workspace resources outside the selected request context", async () => {
+    const { authorization, em, memberService } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    vi.mocked(authorization.assertCurrentWorkspace).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
+    await expect(
+      memberService.getMemberConnectionByWorkspace(workspace, {}),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(em.find).not.toHaveBeenCalled();
+  });
+
+  it("adds and updates a workspace member", async () => {
+    const { em, memberService } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    const user = Object.assign(createTestUser(), {
+      email: "bob@example.com",
+      name: "Bob",
+    });
+    em.findOne.mockResolvedValue(null);
+
+    const member = await memberService.addMember(workspace, user, {
+      permissions: ["workspace:update"],
+      roles: ["admin"],
+    });
+    expect(member).toEqual(
+      expect.objectContaining({
+        permissions: ["workspace:update"],
+        roles: ["admin"],
+        user,
+        workspace,
+      }),
+    );
+
+    em.findOne.mockResolvedValue(member);
+    await expect(
+      memberService.updateMember(member, { status: "DISABLED" }),
+    ).resolves.toBe(member);
+    expect(member.user).toBe(user);
+    expect(member.name).toBe("Bob");
+    expect(member.email).toBe("bob@example.com");
+    expect(member.status).toBe("DISABLED");
+    await expect(
+      memberService.updateMember(member, {
+        roles: ["member"],
+      } as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("rejects duplicate members and missing users", async () => {
+    const { em, memberService } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    const user = Object.assign(createTestUser(), {
+      email: "alice@example.com",
+    });
+    const member = Object.assign(createTestMember(), {
+      user,
+      workspace,
+    });
+    em.findOne.mockResolvedValueOnce(member);
+
+    await expect(memberService.addMember(workspace, user)).rejects.toThrow(
+      "User is already a member",
+    );
+
+    em.findOne.mockReset();
+    em.findOne.mockResolvedValueOnce(null);
+    await expect(
+      memberService.addMemberByEmail(workspace, "missing@example.com"),
+    ).rejects.toThrow("User not found");
+  });
+
+  it("allows editing owner contact fields through update ability without an owner caller", async () => {
+    const { memberService, em, authorization } = createWorkspaceServices();
+    const owner = Object.assign(createTestMember(), { roles: ["owner"] });
+    em.findOne.mockResolvedValue(owner);
+
+    await expect(
+      memberService.updateMember(owner, {
+        name: "Shared owner name",
+        email: "shared@example.com",
+      }),
+    ).resolves.toBe(owner);
+    expect(authorization.authorize).toHaveBeenLastCalledWith(
+      "write",
+      owner,
+      "email",
+    );
+    expect(authorization.assertCurrentMember).not.toHaveBeenCalled();
+    expect(owner.roles).toEqual(["owner"]);
+    expect(owner.name).toBe("Shared owner name");
+    expect(em.flush).toHaveBeenCalledOnce();
+  });
+
+  it("does not edit owner contact fields without update ability", async () => {
+    const { memberService, em, authorization } = createWorkspaceServices();
+    vi.mocked(authorization.authorize).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
+
+    await expect(
+      memberService.updateMember(
+        Object.assign(createTestMember(), { roles: ["owner"] }),
+        { name: "Denied" },
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(em.assign).not.toHaveBeenCalled();
+    expect(em.flush).not.toHaveBeenCalled();
+  });
+
+  it("rechecks update ability under a row lock before disabling a member", async () => {
+    const { em, memberService, authorization } = createWorkspaceServices();
+    vi.spyOn(memberService, "getCurrentMember").mockReturnValue(
+      Object.assign(createTestMember(), {
+        id: "actor",
+        roles: ["owner"],
+      }),
+    );
+    const workspace = createTestWorkspace();
+    const staleMember = Object.assign(createTestMember(), {
+      roles: ["member"],
+      workspace,
+    });
+    const promotedMember = Object.assign(createTestMember(), {
+      id: staleMember.id,
+      roles: ["owner"],
+      workspace,
+    });
+    em.findOne.mockResolvedValue(promotedMember);
+    vi.mocked(authorization.authorize).mockImplementation(
+      (_action, subject, field) => {
+        if (subject === promotedMember && field === "status")
+          throw new ForbiddenException();
+      },
+    );
+
+    await expect(
+      memberService.updateMember(staleMember, { status: "DISABLED" }),
+    ).rejects.toThrow(ForbiddenException);
+
+    expect(em.transactional).toHaveBeenCalledTimes(1);
+    expect(em.findOne).toHaveBeenCalledWith(
+      Member,
+      { id: staleMember.id, workspace },
+      {
+        lockMode: LockMode.PESSIMISTIC_WRITE,
+        refresh: true,
+      },
+    );
+    expect(promotedMember.status).toBe("ACTIVE");
+    expect(em.assign).not.toHaveBeenCalled();
+    expect(em.flush).not.toHaveBeenCalled();
+  });
+
+  it("rejects updates when the member was removed before acquiring its lock", async () => {
+    const { em, memberService } = createWorkspaceServices();
+    em.findOne.mockResolvedValue(null);
+
+    await expect(
+      memberService.updateMember(createTestMember(), {
+        status: "DISABLED",
+      }),
+    ).rejects.toThrow("Workspace member not found");
+    expect(em.assign).not.toHaveBeenCalled();
+    expect(em.flush).not.toHaveBeenCalled();
+  });
+
+  it("preserves omitted member fields when updating status through a DTO", async () => {
+    const { em, memberService } = createWorkspaceServices();
+    const member = Object.assign(createTestMember(), {
+      roles: ["admin"],
+      permissions: ["workspace:update"],
+    });
+    em.findOne.mockResolvedValue(member);
+
+    await memberService.updateMember(member, {
+      status: "DISABLED",
+    });
+
+    expect(member.status).toBe("DISABLED");
+    expect(member.roles).toEqual(["admin"]);
+    expect(member.permissions).toEqual(["workspace:update"]);
+    expect(em.assign).toHaveBeenCalledWith(member, { status: "DISABLED" });
+  });
+
+  it("edits shared member fields without changing private user fields", async () => {
+    const { em, memberService } = createWorkspaceServices();
+    const user = Object.assign(createTestUser(), {
+      name: "Private name",
+      email: "private@example.com",
+    });
+    const member = Object.assign(createTestMember(), {
+      user,
+      name: "Old name",
+      email: "old@example.com",
+    });
+    em.findOne.mockResolvedValue(member);
+    await memberService.updateMember(member, {
+      name: " Shared name ",
+      email: " Shared@Example.COM ",
+    });
+    expect(member.name).toBe("Shared name");
+    expect(member.email).toBe("shared@example.com");
+    expect(user.name).toBe("Private name");
+    expect(user.email).toBe("private@example.com");
+    expect(em.assign).toHaveBeenCalledWith(member, {
+      name: "Shared name",
+      email: "shared@example.com",
+    });
+
+    em.findOne.mockResolvedValue(member);
+    await memberService.updateMember(member, {
+      email: null,
+      name: undefined,
+    });
+    expect(member.email).toBeNull();
+    expect(member.name).toBe("Shared name");
+    expect(user.email).toBe("private@example.com");
+    expect(em.assign).toHaveBeenLastCalledWith(member, { email: null });
+  });
+
+  it.each(["", "  ", null])(
+    "rejects invalid shared member name %s before persistence",
+    async (name) => {
+      const { em, memberService } = createWorkspaceServices();
+      await expect(
+        memberService.updateMember(createTestMember(), {
+          name,
+        } as never),
+      ).rejects.toThrow("Member name must not be empty");
+      expect(em.assign).not.toHaveBeenCalled();
+      expect(em.flush).not.toHaveBeenCalled();
+    },
+  );
+
+  it("preserves distinct configured case variants in direct member permissions", async () => {
+    const permissions = ["Project:READ", "project:read"];
+    const { em, memberService } = createWorkspaceServices({ permissions });
+    const member = createTestMember();
+    em.findOne.mockResolvedValue(member);
+    await memberService.setMemberPermissions(member, permissions);
+    expect(member.permissions).toEqual(permissions);
+    await expect(
+      memberService.setMemberPermissions(member, ["project:READ"]),
+    ).rejects.toThrow("contains unknown permissions: project:READ");
+  });
+
+  it("allows shared contact emails without querying for duplicates", async () => {
+    const { em, memberService } = createWorkspaceServices();
+    const member = Object.assign(createTestMember(), {
+      email: "old@example.com",
+    });
+    em.findOne
+      .mockResolvedValueOnce(member)
+      .mockResolvedValueOnce(createTestMember());
+    await expect(
+      memberService.updateMember(member, {
+        email: "occupied@example.com",
+      }),
+    ).resolves.toBe(member);
+    expect(member.email).toBe("occupied@example.com");
+    expect(em.findOne).toHaveBeenCalledTimes(1);
+    expect(em.assign).toHaveBeenCalledWith(member, {
+      email: "occupied@example.com",
+    });
+    expect(em.flush).toHaveBeenCalledOnce();
+  });
+
+  it("authorizes the exact membership email lookup before accessing private users", async () => {
+    const { em, memberService, authorization } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    const user = createTestUser();
+    em.findOne.mockResolvedValue(user);
+    await expect(
+      memberService.getUserForMembership(workspace, " Person@Example.COM "),
+    ).resolves.toBe(user);
+    expect(em.findOne).toHaveBeenCalledWith(
+      User,
+      { email: "person@example.com" },
+      { filters: false },
+    );
+    em.findOne.mockClear();
+    vi.mocked(authorization.authorize).mockImplementation(() => {
+      throw new ForbiddenException();
+    });
+    await expect(
+      memberService.getUserForMembership(workspace, "person@example.com"),
+    ).rejects.toThrow(ForbiddenException);
+    expect(em.findOne).not.toHaveBeenCalled();
+  });
+
+  it("validates direct member permissions against the workspace catalog", async () => {
+    const { authorization, em, memberService } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    const user = createTestUser();
+    em.findOne.mockResolvedValue(null);
+
+    await expect(
+      memberService.addMember(workspace, user, {
+        permissions: ["user:read"],
+      }),
+    ).rejects.toThrow(
+      "Workspace member contains unknown permissions: user:read",
+    );
+
+    const member = createTestMember();
+    await expect(
+      memberService.setMemberPermissions(member, [
+        "workspace:update",
+        "workspace:update",
+      ]),
+    ).rejects.toThrow(
+      "Workspace member contains duplicate permissions: workspace:update",
+    );
+    em.findOne.mockResolvedValue(member);
+    await expect(
+      memberService.setMemberPermissions(member, ["workspace:update"]),
+    ).resolves.toBe(member);
+    expect(member.permissions).toEqual(["workspace:update"]);
+    expect(authorization.assertCanGrantPermissions).toHaveBeenCalledWith(
+      expect.anything(),
+      "workspace",
+      ["workspace:update"],
+    );
+  });
+
+  it("reloads detached members in the auth transaction before persisting permissions", async () => {
+    const { authorization, em, memberService } = createWorkspaceServices();
+    mockRlsContext(em);
+    const detached = Object.assign(createTestMember(), {
+      status: "DISABLED",
+      roles: ["owner"],
+    });
+    const managed = createTestMember();
+    em.findOne.mockResolvedValue(managed);
+
+    await expect(
+      memberService.setMemberPermissions(detached, ["workspace:update"]),
+    ).resolves.toBe(managed);
+
+    expect(em.fork).not.toHaveBeenCalled();
+    expect(em.transactional).toHaveBeenCalledOnce();
+    expect(em.findOne).toHaveBeenCalledWith(
+      Member,
+      { id: detached.id, workspace: detached.workspace },
+      { lockMode: LockMode.PESSIMISTIC_WRITE, refresh: true },
+    );
+    expect(authorization.authorize).toHaveBeenLastCalledWith(
+      "set-permissions",
+      managed,
+    );
+    expect(managed.permissions).toEqual(["workspace:update"]);
+    expect(managed.status).toBe("ACTIVE");
+    expect(managed.roles).toEqual(["member"]);
+    expect(detached.permissions).toEqual([]);
+    expect(em.persist).not.toHaveBeenCalled();
+    expect(em.flush).toHaveBeenCalledOnce();
+  });
+
+  it("does not recreate a deleted member while setting permissions", async () => {
+    const { em, memberService } = createWorkspaceServices();
+    em.findOne.mockResolvedValue(null);
+
+    await expect(
+      memberService.setMemberPermissions(createTestMember(), [
+        "workspace:update",
+      ]),
+    ).rejects.toThrow("Workspace member not found");
+    expect(em.flush).not.toHaveBeenCalled();
+  });
+
+  it("rechecks permission access against the locked member", async () => {
+    const { authorization, em, memberService } = createWorkspaceServices();
+    const detached = createTestMember();
+    const managed = createTestMember();
+    em.findOne.mockResolvedValue(managed);
+    vi.mocked(authorization.authorize).mockImplementation(
+      (_action, subject) => {
+        if (subject === managed) throw new ForbiddenException();
+      },
+    );
+
+    await expect(
+      memberService.setMemberPermissions(detached, ["workspace:update"]),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(managed.permissions).toEqual([]);
+    expect(em.flush).not.toHaveBeenCalled();
+  });
+
+  it("checks role grants against the issuer permission ceiling", async () => {
+    const { authorization, em, memberService } = createWorkspaceServices();
+    const member = Object.assign(createTestMember(), {
+      roles: ["member"],
+    });
+    em.findOne.mockResolvedValue(member);
+
+    await memberService.setMemberRoles(member, ["admin"]);
+    expect(authorization.assertCanGrantPermissions).toHaveBeenCalledWith(
+      expect.anything(),
+      "workspace",
+      expect.arrayContaining(["workspace:update", "member:write"]),
+    );
+  });
+
+  it("lists configured roles and updates member roles", async () => {
+    const { em, memberService } = createWorkspaceServices({
+      permissions: [
+        "workspace:update",
+        "member:write",
+        "workspace:delete",
+        "member:invite",
+      ],
+      roles: {
+        admin: ["workspace:update", "member:write"],
+        member: [],
+        owner: ["workspace:delete"],
+      },
+    });
+    const member = Object.assign(createTestMember(), {
+      permissions: ["member:invite"],
+      roles: ["member"],
+    });
+    em.findOne.mockResolvedValue(member);
+
+    expect(memberService.listRoles()).toEqual([
+      { role: "owner", grantable: true },
+      { role: "admin", grantable: true },
+      { role: "member", grantable: true },
+    ]);
+    expect(memberService.listPermissions()).toEqual(
+      DEFAULT_WORKSPACE_PERMISSIONS.map((permission) => ({
+        permission,
+        grantable: true,
+      })),
+    );
+
+    await expect(memberService.setMemberRoles(member, ["admin"])).resolves.toBe(
+      member,
+    );
+    expect(member.roles).toEqual(["admin"]);
+    expect(memberService.getEffectiveMemberPermissions(member)).toEqual(
+      DEFAULT_WORKSPACE_ROLES.admin,
+    );
+    await expect(
+      memberService.setMemberRoles(member, ["missing"]),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(memberService.setMemberRoles(member, ["owner"])).resolves.toBe(
+      member,
+    );
+    expect(member.roles).toEqual(["owner"]);
+  });
+
+  it("rechecks update ability on the locked member before changing owner roles", async () => {
+    const { em, memberService, authorization } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    const staleMember = Object.assign(createTestMember(), {
+      roles: ["member"],
+      workspace,
+    });
+    const promotedMember = Object.assign(createTestMember(), {
+      id: staleMember.id,
+      roles: ["owner"],
+      workspace,
+    });
+    em.findOne.mockResolvedValue(promotedMember);
+    vi.mocked(authorization.authorize).mockImplementation(
+      (_action, subject) => {
+        if (subject === promotedMember) throw new ForbiddenException();
+      },
+    );
+
+    await expect(
+      memberService.setMemberRoles(staleMember, ["admin"]),
+    ).rejects.toThrow(ForbiddenException);
+
+    expect(em.findOne).toHaveBeenCalledWith(
+      Member,
+      { id: staleMember.id, workspace },
+      { lockMode: LockMode.PESSIMISTIC_WRITE },
+    );
+    expect(promotedMember.roles).toEqual(["owner"]);
+    expect(em.flush).not.toHaveBeenCalled();
+  });
+
+  it("rejects owner role grants beyond the caller's permission scope", async () => {
+    const { em, memberService, authorization } = createWorkspaceServices();
+    const member = createTestMember();
+    vi.mocked(authorization.assertCanGrantPermissions).mockImplementation(
+      () => {
+        throw new ForbiddenException();
+      },
+    );
+    await expect(
+      memberService.setMemberRoles(member, ["owner"]),
+    ).rejects.toThrow(ForbiddenException);
+    expect(authorization.assertCanGrantPermissions).toHaveBeenCalledWith(
+      expect.anything(),
+      "workspace",
+      expect.arrayContaining(["workspace:delete"]),
+    );
+    expect(em.transactional).not.toHaveBeenCalled();
+    expect(member.roles).toEqual(["member"]);
+  });
+
+  it("finds members by identifier only in the request's selected workspace", async () => {
+    const { em, memberService, authorization } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    const member = createTestMember();
+    em.findOne.mockResolvedValue(member);
+
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(Workspace, workspace);
+      await expect(memberService.getMember(member.id)).resolves.toBe(member);
+    });
+    expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
+      workspace,
+    );
+    expect(authorization.authorize).toHaveBeenCalledWith("read", Member);
+    expect(em.findOne).toHaveBeenCalledWith(Member, {
+      id: member.id,
+      workspace,
+    });
+  });
+
+  it("rechecks delete ability and current identity under a row lock before removal", async () => {
+    const { em, memberService, authorization } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    const staleMember = Object.assign(createTestMember(), {
+      roles: ["member"],
+      workspace,
+    });
+    const promotedMember = Object.assign(createTestMember(), {
+      id: staleMember.id,
+      roles: ["owner"],
+      workspace,
+    });
+    em.findOne.mockResolvedValue(promotedMember);
+    vi.mocked(authorization.authorize).mockImplementation(
+      (_action, subject) => {
+        if (subject === promotedMember) throw new ForbiddenException();
+      },
+    );
+    vi.mocked(authorization.assertCurrentMember).mockImplementation(
+      (member) => {
+        if (member === promotedMember) throw new ForbiddenException();
+      },
+    );
+
+    await expect(memberService.removeMember(staleMember)).rejects.toThrow(
+      ForbiddenException,
+    );
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      const user = createTestUser();
+      staleMember.user = user as never;
+      RequestContext.set(User, user);
+      await expect(memberService.leaveWorkspace(staleMember)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+    expect(em.findOne).toHaveBeenCalledWith(
+      Member,
+      { id: staleMember.id, workspace },
+      { lockMode: LockMode.PESSIMISTIC_WRITE },
+    );
+    expect(em.remove).not.toHaveBeenCalled();
+  });
+
+  it("removes a member only after reloading it under a row lock", async () => {
+    const { em, memberService } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    const member = Object.assign(createTestMember(), {
+      roles: ["member"],
+      workspace,
+    });
+    em.findOne.mockResolvedValue(member);
+
+    await expect(memberService.removeMember(member)).resolves.toBe(member);
+    expect(em.remove).toHaveBeenCalledWith(member);
+  });
+
+  it("checks flattened member permissions regardless of role", () => {
+    const { memberService } = createWorkspaceServices();
+    const owner = Object.assign(createTestMember(), {
+      permissions: ["project:read", "project:update"],
+      roles: ["owner"],
+    });
+
+    expect(
+      memberService.hasPermissions(owner, {
+        permissions: { project: ["read", "update"] },
+      }),
+    ).toBe(true);
+    expect(
+      memberService.hasPermissions(owner, {
+        permissions: { project: ["delete"] },
+      }),
+    ).toBe(false);
+  });
+});

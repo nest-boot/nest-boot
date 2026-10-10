@@ -1,10 +1,9 @@
-import { type RegisterQueueOptions } from "@nest-boot/bullmq";
+import { type RegisterQueueOptions } from "@nest-boot/queue";
 import { type ConnectionOptions } from "bullmq";
 
 /**
  * Configuration options for the schedule module.
  *
- * @remarks
  * Extends BullMQ queue options with schedule-specific settings
  * for controlling job processing behavior.
  */

@@ -1,0 +1,708 @@
+import { subject } from "@casl/ability";
+import {
+  EntityManager,
+  type FilterObject,
+  LockMode,
+  Reference,
+} from "@mikro-orm/core";
+import type { SqlEntityManager } from "@mikro-orm/sql";
+import {
+  type ConnectionArgsInterface,
+  ConnectionManager,
+  type ConnectionResult,
+} from "@nest-boot/graphql-connection";
+import { RequestContext } from "@nest-boot/request-context";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import type { GraphQLResolveInfo } from "graphql";
+
+import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
+import type { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { MemberConnection } from "../connections/member.connection-definition.js";
+import { Invitation } from "../entities/invitation.entity.js";
+import { Member } from "../entities/member.entity.js";
+import { User } from "../entities/user.entity.js";
+import { Workspace } from "../entities/workspace.entity.js";
+import { MemberType } from "../enums/member-type.enum.js";
+import { RequestIdentity } from "../infrastructure/request-identity.js";
+import type { AddMemberOptions } from "../interfaces/add-member-options.interface.js";
+import type { UpdateMemberOptions } from "../interfaces/update-member-options.interface.js";
+import type { WorkspaceHasPermissionsOptions } from "../interfaces/workspace-has-permissions-options.interface.js";
+import type { WorkspacePermissionOption } from "../objects/workspace-permission-option.object.js";
+import type { WorkspaceRoleOption } from "../objects/workspace-role-option.object.js";
+import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
+import {
+  listAuthPermissions,
+  normalizeAuthPermissions,
+  normalizeAuthRoles,
+  resolveAuthPermissions,
+} from "../utils/auth-role.util.js";
+import { authorize } from "../utils/authorize.util.js";
+import { can } from "../utils/can.util.js";
+import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import {
+  assertCanGrantPermissions,
+  canGrantPermissions,
+} from "../utils/permission-grants.util.js";
+import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
+import { resolveMemberPermissions } from "../utils/resolve-effective-permissions.util.js";
+import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
+
+/** Workspace membership queries, profile management, and authorization. */
+@Injectable()
+export class MemberService {
+  /**
+   * Creates a workspace member domain service.
+   * @param em - Entity manager used for persistence.
+   * @param authOptions - Authentication module configuration.
+   */
+  constructor(
+    /** MikroORM entity manager used for workspace persistence. */
+    protected readonly em: EntityManager,
+    @Inject(MODULE_OPTIONS_TOKEN)
+    private readonly authOptions: AuthModuleOptions,
+  ) {}
+
+  /**
+   * Returns the current member after membership and instance read checks.
+   * @returns Active member in the selected workspace, or null if unavailable.
+   */
+  getCurrentMember(): Member | null {
+    const member = RequestIdentity.getCurrentMember();
+    if (member) authorize("read", member);
+    return member;
+  }
+
+  /**
+   * Authorizes member pagination and scopes it to the selected workspace.
+   * @param workspace - The workspace that scopes this operation.
+   * @returns Filter restricted to the workspace and readable member types.
+   */
+  getMemberListFilter(workspace: Workspace): FilterObject<Member> {
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    authorize("read", Member);
+    const types = Object.values(MemberType).filter((type) =>
+      can("read", subject("Member", { workspaceId: workspace.id, type })),
+    );
+    return types.length === Object.values(MemberType).length
+      ? { workspace }
+      : { workspace, type: { $in: types } };
+  }
+
+  /**
+   * Paginates members within the selected workspace and its RLS scope.
+   * @param workspace - The workspace that scopes this operation.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated members visible to the current principal.
+   */
+  async getMemberConnectionByWorkspace(
+    workspace: Workspace,
+    args: ConnectionArgsInterface<Member>,
+    info?: GraphQLResolveInfo,
+  ): Promise<ConnectionResult<Member>> {
+    const where = this.getMemberListFilter(workspace);
+    const connection = await new ConnectionManager(
+      this.em as SqlEntityManager,
+    ).find<Member>(MemberConnection, args, { where, ...(info && { info }) });
+    for (const { node } of connection.edges) {
+      authorize("read", node);
+    }
+    return connection;
+  }
+
+  /**
+   * Finds the active membership linking a user and workspace.
+   * @param workspace - The workspace that scopes this operation.
+   * @param user - The user whose account is being accessed.
+   * @returns Matching membership, or null if the user is not a member.
+   */
+  async getMemberByUser(
+    workspace: Workspace,
+    user: User,
+  ): Promise<Member | null> {
+    RequestIdentity.assertUserSession(user);
+    const member = await this.em.findOne(Member, {
+      status: "ACTIVE",
+      user,
+      workspace,
+    });
+    return member;
+  }
+
+  /**
+   * Finds a member by identifier within the request's selected workspace.
+   * @param id - Identifier of the record to access.
+   * @returns Authorized membership in the selected workspace.
+   */
+  async getMember(id: string): Promise<Member | null> {
+    const workspace = RequestContext.isActive()
+      ? RequestContext.get(Workspace)
+      : undefined;
+    if (!workspace) {
+      throw new ForbiddenException("A workspace must be selected");
+    }
+    const where = this.getMemberListFilter(workspace);
+    const member = await this.em.findOne(Member, { ...where, id });
+    if (member) authorize("read", member);
+    return member;
+  }
+
+  /**
+   * Resolves a member's user with workspace authorization and request RLS.
+   * @param member - The workspace membership to inspect or change.
+   * @returns User associated with the membership, or null for a service account.
+   */
+  async getMemberUser(member: Member): Promise<User | null> {
+    if (member.type === "SERVICE_ACCOUNT") return null;
+    const workspace = this.unwrapWorkspace(member);
+    const actor = RequestContext.isActive() ? RequestContext.get(User) : null;
+    const actorId = actor?.id;
+    const ownMember =
+      !getCurrentApiKey() &&
+      actorId !== undefined &&
+      member.user?.id === actorId;
+    if (!ownMember) {
+      RequestIdentity.assertCurrentWorkspace(workspace);
+      authorize("read", User);
+    }
+    const current = await this.em.findOne(
+      Member,
+      {
+        id: member.id,
+        workspace,
+        ...(ownMember ? { user: actorId } : {}),
+      },
+      { refresh: true },
+    );
+    if (!current?.user?.id) return null;
+    const user = await this.em.findOne(
+      User,
+      { id: current.user.id },
+      { refresh: true },
+    );
+    if (user && !ownMember) authorize("read", user);
+    return user;
+  }
+
+  /**
+   * Adds an existing user to a workspace.
+   * @param workspace - The workspace that scopes this operation.
+   * @param user - The user whose account is being accessed.
+   * @param input - Requested field values for the operation.
+   * @returns Created workspace membership.
+   */
+  async addMember(
+    workspace: Workspace,
+    user: User,
+    input: AddMemberOptions = {},
+  ): Promise<Member> {
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    authorize(
+      "write",
+      subject("Member", { workspaceId: workspace.id, type: MemberType.USER }),
+    );
+    const permissions = this.normalizePermissions(input.permissions ?? []);
+    assertCanGrantPermissions(this.authOptions, "workspace", permissions);
+    const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
+    return await this.em.transactional(
+      async (em) => {
+        await this.lockWorkspace(em, workspace);
+        const existing = await em.findOne(
+          Member,
+          { user, workspace },
+          { filters: false },
+        );
+        if (existing) throw new ConflictException("User is already a member");
+        const member = em.create(Member, {
+          name: user.name,
+          email: user.email.trim().toLowerCase(),
+          permissions,
+          roles,
+          status: "ACTIVE",
+          user,
+          workspace,
+        });
+        authorize("write", member);
+        await em.persist(member).flush();
+        await em.nativeUpdate(
+          Invitation,
+          {
+            email: user.email.trim().toLowerCase(),
+            status: "pending",
+            workspace,
+          },
+          { status: "canceled" },
+        );
+        return member;
+      },
+      { clear: true },
+    );
+  }
+
+  /**
+   * Adds a service account without creating a login user.
+   * @param workspace - The workspace that scopes this operation.
+   * @param name - Name used to identify the resource.
+   * @param input - Requested field values for the operation.
+   * @returns Created service account membership.
+   */
+  async addServiceAccount(
+    workspace: Workspace,
+    name: string,
+    input: AddMemberOptions = {},
+  ): Promise<Member> {
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    authorize(
+      "write",
+      subject("Member", {
+        workspaceId: workspace.id,
+        type: MemberType.SERVICE_ACCOUNT,
+      }),
+    );
+    if (!name.trim() || name.trim().length > 255)
+      throw new BadRequestException(
+        "A service account name is required (maximum 255 characters)",
+      );
+    const permissions = this.normalizePermissions(input.permissions ?? []);
+    assertCanGrantPermissions(this.authOptions, "workspace", permissions);
+    const roles =
+      input.roles?.length === 0
+        ? []
+        : this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
+    return await this.em.transactional(
+      async (em) => {
+        await this.lockWorkspace(em, workspace);
+        const member = em.create(Member, {
+          name: name.trim(),
+          type: MemberType.SERVICE_ACCOUNT,
+          user: null,
+          email: null,
+          roles,
+          permissions,
+          status: "ACTIVE",
+          workspace,
+        });
+        authorize("write", member);
+        await em.persist(member).flush();
+        return member;
+      },
+      { clear: true },
+    );
+  }
+
+  /**
+   * Adds an existing user to a workspace by normalized email address.
+   * @param workspace - The workspace that scopes this operation.
+   * @param email - Email address used to identify the user.
+   * @param input - Requested field values for the operation.
+   * @returns Membership created for the user with the supplied email.
+   */
+  async addMemberByEmail(
+    workspace: Workspace,
+    email: string,
+    input: AddMemberOptions = {},
+  ): Promise<Member> {
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    authorize(
+      "write",
+      subject("Member", { workspaceId: workspace.id, type: MemberType.USER }),
+    );
+    const user = await this.getUserForMembership(workspace, email);
+
+    return await this.addMember(workspace, user, input);
+  }
+
+  /**
+   * Looks up a user for explicitly authorized membership creation.
+   * Infrastructure isolates this lookup; membership writes retain request RLS.
+   * @param workspace - The workspace that scopes this operation.
+   * @param email - Email address used to identify the user.
+   * @returns User resolved for membership creation.
+   * @internal
+   */
+  async getUserForMembership(
+    workspace: Workspace,
+    email: string,
+  ): Promise<User> {
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    authorize(
+      "write",
+      subject("Member", { workspaceId: workspace.id, type: MemberType.USER }),
+    );
+    const user = await this.em.findOne(
+      User,
+      { email: email.trim().toLowerCase() },
+      { filters: false },
+    );
+    if (!user) throw new NotFoundException("User not found");
+    return user;
+  }
+
+  private async resolveMemberForAction(
+    member: Member | string,
+    action: string,
+  ): Promise<Member> {
+    if (typeof member !== "string") return member;
+    authorize(action, Member);
+    const entity = await this.em.findOne(
+      Member,
+      { id: member },
+      { populate: ["workspace"], refresh: true },
+    );
+    if (!entity) throw new NotFoundException("Workspace member not found");
+    return entity;
+  }
+
+  /**
+   * Updates workspace-visible member profile fields and active state.
+   * @param member - The workspace membership to inspect or change.
+   * @param input - Requested field values for the operation.
+   * @returns Membership after the requested profile changes.
+   */
+  async updateMember(
+    member: Member | string,
+    input: UpdateMemberOptions,
+  ): Promise<Member> {
+    member = await this.resolveMemberForAction(member, "write");
+    const workspace = this.unwrapWorkspace(member);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    authorize("write", member);
+    if ("roles" in input || "permissions" in input) {
+      throw new BadRequestException(
+        "Use setMemberRoles or setMemberPermissions to update authorization fields",
+      );
+    }
+    if (
+      input.name !== undefined &&
+      (typeof input.name !== "string" || !input.name.trim())
+    ) {
+      throw new BadRequestException("Member name must not be empty");
+    }
+    const normalizedEmail = input.email?.trim().toLowerCase() ?? null;
+    const email =
+      input.email === undefined
+        ? undefined
+        : normalizedEmail === ""
+          ? null
+          : normalizedEmail;
+    const changes = {
+      ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+      ...(email !== undefined ? { email } : {}),
+      ...(input.status !== undefined ? { status: input.status } : {}),
+    };
+    const assertCanUpdateFields = (target: Member) => {
+      for (const field of Object.keys(changes)) {
+        authorize("write", target, field);
+      }
+    };
+    assertCanUpdateFields(member);
+    this.assertAuthorizationCanCommit(member);
+    const updated = await this.em.transactional(
+      async (em) => {
+        const lockedMember = await em.findOne(
+          Member,
+          { id: member.id, workspace },
+          {
+            lockMode: LockMode.PESSIMISTIC_WRITE,
+            refresh: true,
+          },
+        );
+        if (!lockedMember) {
+          throw new NotFoundException("Workspace member not found");
+        }
+        authorize("write", lockedMember);
+        assertCanUpdateFields(lockedMember);
+        em.assign(lockedMember, changes);
+        await em.flush();
+        return lockedMember;
+      },
+      { clear: true },
+    );
+    RequestIdentity.updateMember(this.em, this.authOptions, updated);
+    return updated;
+  }
+
+  /**
+   * Replaces a workspace member's roles within the caller's permission scope.
+   * @param member - The workspace membership to inspect or change.
+   * @param roleNames - Role names to validate.
+   * @returns Membership after its assigned roles are replaced.
+   */
+  async setMemberRoles(
+    member: Member | string,
+    roleNames: string | readonly string[],
+  ): Promise<Member> {
+    member = await this.resolveMemberForAction(member, "set-roles");
+    const workspace = this.unwrapWorkspace(member);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    authorize("set-roles", member);
+    const roles = this.normalizeGrantedRoles(roleNames);
+    this.assertAuthorizationCanCommit(member);
+
+    const updated = await this.em.transactional(
+      async (em) => {
+        const lockedMember = await em.findOne(
+          Member,
+          { id: member.id, workspace },
+          { lockMode: LockMode.PESSIMISTIC_WRITE },
+        );
+        if (!lockedMember) {
+          throw new NotFoundException("Workspace member not found");
+        }
+        authorize("set-roles", lockedMember);
+
+        lockedMember.roles = roles;
+        await em.flush();
+        return lockedMember;
+      },
+      { clear: true },
+    );
+    RequestIdentity.updateMember(this.em, this.authOptions, updated);
+    return updated;
+  }
+
+  /**
+   * Replaces direct permissions assigned to a workspace member.
+   * @param member - The workspace membership to inspect or change.
+   * @param permissions - Permission names to apply.
+   * @returns Membership after its direct permissions are replaced.
+   */
+  async setMemberPermissions(
+    member: Member | string,
+    permissions: readonly string[],
+  ): Promise<Member> {
+    member = await this.resolveMemberForAction(member, "set-permissions");
+    const workspace = this.unwrapWorkspace(member);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    authorize("set-permissions", member);
+    const normalizedPermissions = this.normalizePermissions(permissions);
+    assertCanGrantPermissions(
+      this.authOptions,
+      "workspace",
+      normalizedPermissions,
+    );
+    this.assertAuthorizationCanCommit(member);
+    const updated = await this.em.transactional(
+      async (em) => {
+        const lockedMember = await em.findOne(
+          Member,
+          { id: member.id, workspace },
+          {
+            lockMode: LockMode.PESSIMISTIC_WRITE,
+            refresh: true,
+          },
+        );
+        if (!lockedMember) {
+          throw new NotFoundException("Workspace member not found");
+        }
+        authorize("set-permissions", lockedMember);
+        lockedMember.permissions = normalizedPermissions;
+        await em.flush();
+        return lockedMember;
+      },
+      { clear: true },
+    );
+    RequestIdentity.updateMember(this.em, this.authOptions, updated);
+    return updated;
+  }
+
+  private assertAuthorizationCanCommit(member: Member): void {
+    if (this.isCurrentMember(member) && this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Change your own membership outside an active transaction",
+      );
+    }
+  }
+
+  private isCurrentMember(member: Member): boolean {
+    const current = RequestContext.isActive()
+      ? RequestContext.get(Member)
+      : null;
+    return !!current && current.id === member.id;
+  }
+
+  /**
+   * Removes a member after checking write ability; self-removal uses leaveWorkspace.
+   * @param member - The workspace membership to inspect or change.
+   * @returns Removed membership.
+   */
+  async removeMember(member: Member | string): Promise<Member> {
+    member = await this.resolveMemberForAction(member, "write");
+    const workspace = this.unwrapWorkspace(member);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    authorize("write", member);
+    if (this.isCurrentMember(member)) {
+      throw new ForbiddenException("You are not allowed to remove yourself");
+    }
+    return await this.removeMemberRecord(workspace, member, (lockedMember) => {
+      authorize("write", lockedMember);
+    });
+  }
+
+  /**
+   * Lets the current member leave its workspace regardless of role.
+   * @param member - The workspace membership to inspect or change.
+   * @returns Membership removed from the current user's workspace.
+   */
+  async leaveWorkspace(member: Member): Promise<Member> {
+    RequestIdentity.assertCurrentMember(member);
+    const user = RequestContext.get(User);
+    if (!user) throw new ForbiddenException("A user identity is required");
+    RequestIdentity.assertUserSession(user);
+    if (member.user?.id !== user.id)
+      throw new ForbiddenException("The membership belongs to another user");
+    const workspace = this.unwrapWorkspace(member);
+    RequestIdentity.assertCurrentWorkspace(workspace);
+    // Session context can only be restaged after the removal's top-level commit.
+    if (this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Leave the workspace outside an active transaction",
+      );
+    }
+    const removed = await this.removeMemberRecord(
+      workspace,
+      member,
+      (lockedMember) => {
+        RequestIdentity.assertCurrentMember(lockedMember);
+      },
+    );
+    RequestIdentity.clearWorkspace(this.em, this.authOptions);
+    return removed;
+  }
+
+  /**
+   * Checks flattened `subject:action` values against member permissions.
+   * @param member - The workspace membership to inspect or change.
+   * @param input - Requested field values for the operation.
+   * @returns Whether every requested permission is effective for the principal.
+   */
+  hasPermissions(
+    member: Member,
+    input: WorkspaceHasPermissionsOptions,
+  ): boolean {
+    const permissions = new Set(this.getEffectiveMemberPermissions(member));
+    return Object.entries(input.permissions).every(([subject, actions]) =>
+      actions.every((action) => permissions.has(`${subject}:${action}`)),
+    );
+  }
+
+  /**
+   * Lists all roles with grant availability; mutations still authorize their targets.
+   * @returns Role choices and whether each is within the caller's grant ceiling.
+   */
+  listRoles(): WorkspaceRoleOption[] {
+    const canAssign = can("write", Invitation) || can("set-roles", Member);
+    if (!canAssign) authorize("read", Member);
+    return Object.entries(this.roles).map(([role, permissions]) => ({
+      role,
+      grantable:
+        canAssign &&
+        canGrantPermissions(this.authOptions, "workspace", permissions),
+    }));
+  }
+
+  /**
+   * Lists all direct-permission options without authorizing a particular member.
+   * @returns Permission choices and whether each is within the caller's grant ceiling.
+   */
+  listPermissions(): WorkspacePermissionOption[] {
+    const canAssign = can("set-permissions", Member);
+    if (!canAssign) authorize("read", Member);
+    return listAuthPermissions(this.permissions).map((permission) => ({
+      permission,
+      grantable:
+        canAssign &&
+        canGrantPermissions(this.authOptions, "workspace", [permission]),
+    }));
+  }
+
+  /**
+   * Resolves permissions inherited from roles plus direct member permissions.
+   * @param member - The workspace membership to inspect or change.
+   * @returns Union of the member's role permissions and direct permissions.
+   */
+  getEffectiveMemberPermissions(member: Member): string[] {
+    return resolveMemberPermissions(this.authOptions, member);
+  }
+
+  private async lockWorkspace(
+    em: EntityManager,
+    workspace: Workspace,
+  ): Promise<void> {
+    await em.refreshOrFail(workspace, {
+      filters: false,
+      lockMode: LockMode.PESSIMISTIC_WRITE,
+      populate: [],
+      failHandler: () => new NotFoundException("Workspace not found"),
+    });
+  }
+
+  private normalizeRoles(role: string | readonly string[]): string[] {
+    return normalizeAuthRoles(role, this.roles);
+  }
+
+  private normalizeGrantedRoles(role: string | readonly string[]): string[] {
+    const roles = this.normalizeRoles(role);
+    assertCanGrantPermissions(
+      this.authOptions,
+      "workspace",
+      resolveAuthPermissions(roles, [], this.roles),
+    );
+    return roles;
+  }
+
+  private normalizePermissions(permissions: readonly string[]): string[] {
+    return normalizeAuthPermissions(
+      permissions,
+      this.permissions,
+      "Workspace member",
+    );
+  }
+
+  private async removeMemberRecord(
+    workspace: Workspace,
+    member: Member,
+    assertAccess: (member: Member) => void,
+  ): Promise<Member> {
+    return await this.em.transactional(
+      async (em) => {
+        const lockedMember = await em.findOne(
+          Member,
+          { id: member.id, workspace },
+          { lockMode: LockMode.PESSIMISTIC_WRITE },
+        );
+        if (!lockedMember) {
+          throw new NotFoundException("Workspace member not found");
+        }
+        assertAccess(lockedMember);
+
+        await em.remove(lockedMember).flush();
+        return lockedMember;
+      },
+      { clear: true },
+    );
+  }
+
+  private get roles(): AuthModuleRoles {
+    return resolveAuthCatalog(this.authOptions, "workspace").roles;
+  }
+
+  private get defaultRole(): string {
+    return this.authOptions.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE;
+  }
+
+  private get permissions(): readonly string[] {
+    return resolveAuthCatalog(this.authOptions, "workspace").permissions;
+  }
+
+  private unwrapWorkspace(member: Member): Workspace {
+    return Reference.unwrapReference(member.workspace);
+  }
+}

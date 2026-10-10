@@ -1,3 +1,177 @@
+## 8.0.4-beta.3 (2026-10-10)
+
+### 🚀 Features
+
+- ⚠️  **runtime:** require Node 24.21 and validate packed consumers ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### ⚠️  Breaking Changes
+
+- **runtime:** require Node 24.21 and validate packed consumers  ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.4
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.5
+- Updated @nest-boot/validator to 8.0.7-beta.2
+- Updated @nest-boot/tsconfig to 8.0.0-beta.5
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.4-beta.2 (2026-10-10)
+
+### 🩹 Fixes
+
+- **deps:** upgrade production dependencies and Nodemailer 10 ([#405](https://github.com/nest-boot/nest-boot/pull/405))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.4-beta.1 (2026-10-10)
+
+### 🚀 Features
+
+- **eslint-config:** adopt JSDoc and retire TypeDoc ([#404](https://github.com/nest-boot/nest-boot/pull/404))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.3
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.4
+- Updated @nest-boot/validator to 8.0.7-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.4-beta.0 (2026-10-09)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.2
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.3
+- Updated @nest-boot/validator to 8.0.7-beta.0
+
+## 8.0.3-beta.0 (2026-10-09)
+
+### 🚀 Features
+
+- ⚠️  **staged-upload:** rename GraphQL adapter package and module ([#399](https://github.com/nest-boot/nest-boot/pull/399))
+- refresh example client and normalize date filters ([#375](https://github.com/nest-boot/nest-boot/pull/375))
+
+### ⚠️  Breaking Changes
+
+- **staged-upload:** rename GraphQL adapter package and module  ([#399](https://github.com/nest-boot/nest-boot/pull/399))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.2
+- Updated @nest-boot/validator to 8.0.6-beta.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.2-beta.0 (2026-09-23)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.1
+- Updated @nest-boot/validator to 8.0.5-beta.0
+
+## 8.0.1-beta.0 (2026-09-19)
+
+### 🚀 Features
+
+- ⚠️  **auth:** unify auth entities, services and GraphQL APIs ([#331](https://github.com/nest-boot/nest-boot/pull/331))
+
+### ⚠️  Breaking Changes
+
+- **auth:** unify auth entities, services and GraphQL APIs  ([#331](https://github.com/nest-boot/nest-boot/pull/331))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.1-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.0
+- Updated @nest-boot/validator to 8.0.4-beta.0
+- Updated @nest-boot/tsconfig to 8.0.0-beta.4
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.4 (2026-09-17)
+
+### 🚀 Features
+
+- ⚠️  **validator:** rebuild validation with Zod ([#333](https://github.com/nest-boot/nest-boot/pull/333))
+- ⚠️  **mikro-orm:** adopt native RLS and remove the custom RLS package ([#329](https://github.com/nest-boot/nest-boot/pull/329))
+
+### ⚠️  Breaking Changes
+
+- **validator:** rebuild validation with Zod  ([#333](https://github.com/nest-boot/nest-boot/pull/333))
+- **mikro-orm:** adopt native RLS and remove the custom RLS package  ([#329](https://github.com/nest-boot/nest-boot/pull/329))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/validator to 8.0.3-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.3 (2026-09-08)
+
+### 🚀 Features
+
+- ⚠️  **auth:** rebuild authentication and authorization ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+- **storage:** add object storage and staged upload modules ([#314](https://github.com/nest-boot/nest-boot/pull/314))
+
+### ⚠️  Breaking Changes
+
+- **auth:** rebuild authentication and authorization  ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.0-beta.3
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.3
+- Updated @nest-boot/tsconfig to 8.0.0-beta.3
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.2 (2026-08-31)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.0-beta.2
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.2
+- Updated @nest-boot/tsconfig to 8.0.0-beta.2
+
+## 8.0.0-beta.1 (2026-08-31)
+
+### 🚀 Features
+
+- ⚠️  migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ⚠️  Breaking Changes
+
+- migrate to NestJS 12 and ESM  ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.0-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.1
+- Updated @nest-boot/tsconfig to 8.0.0-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.3.5 (2026-08-31)
 
 ### 🧱 Updated Dependencies

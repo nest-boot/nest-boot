@@ -1,20 +1,20 @@
 import { Directive } from "@nest-boot/graphql";
 
-import { Complexity } from "../../src/decorators";
+import { Complexity } from "../../src/decorators/index.js";
 
-jest.mock("@nest-boot/graphql", () => ({
-  Directive: jest.fn(),
+vi.mock("@nest-boot/graphql", () => ({
+  Directive: vi.fn(),
 }));
 
 describe("Complexity", () => {
-  const mockedDirective = jest.mocked(Directive);
+  const mockedDirective = vi.mocked(Directive);
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("builds a directive with explicit complexity options", () => {
-    const decorator = jest.fn();
+    const decorator = vi.fn();
     mockedDirective.mockReturnValue(decorator);
 
     expect(Complexity({ value: 5, multipliers: ["first"] })).toBe(decorator);

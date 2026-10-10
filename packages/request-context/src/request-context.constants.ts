@@ -1,6 +1,5 @@
 /**
  * Token for storing the HTTP request object in the request context.
- *
  * @example
  * ```typescript
  * import { REQUEST } from '@nest-boot/request-context';
@@ -13,7 +12,6 @@ export const REQUEST = "REQUEST";
 
 /**
  * Token for storing the HTTP response object in the request context.
- *
  * @example
  * ```typescript
  * import { RESPONSE } from '@nest-boot/request-context';

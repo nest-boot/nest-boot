@@ -1,0 +1,168 @@
+import { useState } from "react";
+import { useMutation } from "@apollo/client/react";
+import { createFileRoute } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { CircleCheck, CircleX, MailCheck, RotateCw } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { z } from "zod";
+
+import { AuthPageShell } from "../components/auth-page-shell";
+import { FieldDescription, FieldError } from "@/components/ui/field";
+import { Button } from "@/components/thread-ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { graphql } from "@/gql";
+import { createEmailVerificationCallbackUrl } from "@/lib/auth-redirect";
+
+const SEND_VERIFICATION_EMAIL_FROM_VERIFY_EMAIL = graphql(`
+  mutation sendVerificationEmailFromVerifyEmail(
+    $input: AuthSendVerificationEmailInput!
+  ) {
+    sendVerificationEmail(input: $input)
+  }
+`);
+
+export const Route = createFileRoute("/auth/verify-email/")({
+  component: VerifyEmailComponent,
+  validateSearch: zodValidator(
+    z.object({
+      email: z.string().optional(),
+      error: z.string().optional(),
+      redirect: z.string().optional(),
+      verified: z.union([z.literal(true), z.literal("true")]).optional(),
+    }),
+  ),
+});
+
+function VerifyEmailComponent() {
+  const { t } = useTranslation();
+  const search = Route.useSearch();
+  const [sendVerificationEmail] = useMutation(
+    SEND_VERIFICATION_EMAIL_FROM_VERIFY_EMAIL,
+  );
+  const [error, setError] = useState<string>();
+  const [resent, setResent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const redirect = normalizeRedirect(search.redirect);
+  const loginUrl = `/auth/login?${new URLSearchParams({ redirect }).toString()}`;
+  const invalid = Boolean(search.error);
+  const verified = Boolean(search.verified && !invalid);
+
+  const resend = async () => {
+    if (!search.email) return;
+
+    setError(undefined);
+    setLoading(true);
+    try {
+      const result = await sendVerificationEmail({
+        variables: {
+          input: {
+            callbackURL: createEmailVerificationCallbackUrl(
+              window.location.origin,
+              redirect,
+            ),
+            email: search.email,
+          },
+        },
+      });
+
+      if (!result.data?.sendVerificationEmail) {
+        throw new Error(t("auth:emailVerification.resendFailed"));
+      }
+      setResent(true);
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : t("auth:emailVerification.resendFailed"),
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AuthPageShell>
+      <Card>
+        <CardHeader className="text-center">
+          <div className="mb-2 flex justify-center">
+            {invalid ? (
+              <CircleX className="text-destructive size-10" />
+            ) : verified ? (
+              <CircleCheck className="text-primary size-10" />
+            ) : (
+              <MailCheck className="text-primary size-10" />
+            )}
+          </div>
+          <CardTitle>
+            {invalid
+              ? t("auth:emailVerification.invalidTitle")
+              : verified
+                ? t("auth:emailVerification.verifiedTitle")
+                : t("auth:emailVerification.pendingTitle")}
+          </CardTitle>
+          <CardDescription>
+            {invalid
+              ? t("auth:emailVerification.invalidDescription")
+              : verified
+                ? t("auth:emailVerification.verifiedDescription")
+                : t("auth:emailVerification.pendingDescription", {
+                    email: search.email,
+                  })}
+          </CardDescription>
+        </CardHeader>
+        {(resent || error) && (
+          <CardContent>
+            <div className="flex flex-col gap-4">
+              {resent && (
+                <FieldDescription className="text-center">
+                  {t("auth:emailVerification.resent")}
+                </FieldDescription>
+              )}
+              {error && (
+                <FieldError className="text-center">{error}</FieldError>
+              )}
+            </div>
+          </CardContent>
+        )}
+        <CardFooter>
+          {verified ? (
+            <Button className="w-full" render={<a href={loginUrl} />}>
+              {t("auth:emailVerification.signIn")}
+            </Button>
+          ) : search.email ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={resend}
+              loading={loading}
+            >
+              <RotateCw />
+              {t("auth:emailVerification.resend")}
+            </Button>
+          ) : (
+            <Button
+              className="w-full"
+              variant="outline"
+              render={<a href={loginUrl} />}
+            >
+              {t("auth:emailVerification.backToSignIn")}
+            </Button>
+          )}
+        </CardFooter>
+      </Card>
+    </AuthPageShell>
+  );
+}
+
+function normalizeRedirect(redirect?: string): string {
+  if (redirect?.startsWith("/") && !redirect.startsWith("//")) return redirect;
+  return "/workspaces";
+}

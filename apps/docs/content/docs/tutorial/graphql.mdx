@@ -5,10 +5,19 @@ description: "Build GraphQL APIs with Apollo Server, cursor-based pagination, op
 
 The `@nest-boot/graphql` module provides a preconfigured [Apollo Server](https://www.apollographql.com/docs/apollo-server/) GraphQL layer for NestJS, with code-first schema generation, global exception filtering, and an optional local landing page. Companion modules provide [operation logging](#graphql-logger), [query complexity rate limiting](#graphql-rate-limiting), and [cursor-based pagination](#graphql-connection).
 
+To expose staged upload creation as a GraphQL mutation, see
+[GraphQL Integration in the Staged Upload guide](/docs/tutorial/staged-upload#graphql-integration).
+
 ## Installation
 
 ```bash
 pnpm add @nest-boot/graphql @nestjs/graphql @nestjs/apollo @apollo/server graphql
+```
+
+For the Zod input validation shown below, also install:
+
+```bash
+pnpm add @nest-boot/validator zod
 ```
 
 ## Module Registration
@@ -31,7 +40,7 @@ The module auto-configures Apollo Server with sensible defaults:
 - Code-first auto-generated schema (`schema.gql`)
 - Sorted schema output
 - Global `GraphQLExceptionFilter` for error handling
-- Apollo's local landing page unless `playground` is explicitly `false`
+- GraphiQL unless `graphiql` is explicitly `false`
 
 ### Async Registration
 
@@ -42,7 +51,7 @@ import { ConfigService } from "@nestjs/config";
 const GraphQLDynamicModule = GraphQLModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
-    playground: configService.get("NODE_ENV") !== "production",
+    graphiql: configService.get("NODE_ENV") !== "production",
   }),
 });
 ```
@@ -51,8 +60,11 @@ const GraphQLDynamicModule = GraphQLModule.forRootAsync({
 
 `@nest-boot/graphql` re-exports everything from `@nestjs/graphql`, so you can define GraphQL types and entity models using a single set of decorators:
 
+The entity example also uses MikroORM. Complete the [MikroORM installation](./database#installation), including `@mikro-orm/decorators`, first.
+
 ```typescript
-import { Entity, PrimaryKey, Property, t } from "@mikro-orm/postgresql";
+import { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
 import { Field, ID, ObjectType } from "@nest-boot/graphql";
 
 @ObjectType()
@@ -78,28 +90,72 @@ export class User {
 
 ### Input Types
 
-Use `@InputType()` to define mutation inputs, and combine with `class-validator` for validation:
+Use `@InputType()` to define mutation inputs, and combine it with
+`@nest-boot/validator` for Zod validation:
 
 ```typescript
 import { Field, InputType, ID } from "@nest-boot/graphql";
-import { IsOptional, IsString } from "class-validator";
+import { ZodField } from "@nest-boot/validator";
+import { z } from "zod";
 
 @InputType()
 export class CreateUserInput {
-  @IsString()
+  @ZodField(z.string().min(1))
   @Field(() => String)
   name!: string;
 
-  @IsString()
+  @ZodField(z.email())
   @Field(() => String)
   email!: string;
 
-  @IsOptional()
-  @IsString()
+  @ZodField(z.string().optional())
   @Field(() => ID, { nullable: true })
   workspaceId?: string;
 }
 ```
+
+Wrap GraphQL mapped types with the matching validator helper so both GraphQL
+field metadata and Zod schemas reach the derived class:
+
+```typescript
+import { PartialType } from "@nestjs/graphql";
+import { ZodPartialType } from "@nest-boot/validator";
+
+@InputType()
+export class UpdateUserInput extends ZodPartialType(
+  CreateUserInput,
+  PartialType,
+) {}
+```
+
+Register `ZodValidationPipe` globally as described in the
+[Validator guide](/docs/tutorial/validator#enable-nestjs-validation). When
+validation fails, `GraphQLExceptionFilter` returns an Apollo-style user input
+error while keeping field-level details in `extensions`:
+
+```json
+{
+  "errors": [
+    {
+      "message": "Validation failed",
+      "path": ["createUser"],
+      "extensions": {
+        "code": "BAD_USER_INPUT",
+        "validationErrors": [
+          {
+            "code": "invalid_format",
+            "field": ["email"],
+            "message": "Invalid email address"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+The top-level `path` is GraphQL's resolver response path. Each `field` is the
+path to the invalid input value and can include numeric array indexes.
 
 ## Resolvers
 
@@ -244,11 +300,11 @@ import { User } from "./user.entity";
 import {
   UserConnection,
   UserConnectionArgs,
-} from "./user.connection-definition";
+} from "./user.connection-definition.js";
 import {
   PostConnection,
   PostConnectionArgs,
-} from "./post.connection-definition";
+} from "./post.connection-definition.js";
 
 @Resolver(() => User)
 export class UserResolver {
@@ -376,26 +432,31 @@ The `@nest-boot/graphql-rate-limit` module provides Shopify-style query complexi
 ### Installation
 
 ```bash
-pnpm add @nest-boot/graphql-rate-limit graphql-query-complexity
+pnpm add @nest-boot/graphql-rate-limit @nest-boot/redis ioredis graphql-query-complexity
 ```
 
 ### Registration
 
 ```typescript
 import { GraphQLRateLimitModule } from "@nest-boot/graphql-rate-limit";
+import { RedisModule } from "@nest-boot/redis";
 
 @Module({
-  imports: [GraphQLRateLimitModule],
+  imports: [RedisModule.register({}), GraphQLRateLimitModule],
 })
 export class CommonModule {}
 ```
 
-The module is directly importable without dynamic registration. It selects a driver from the environment:
+The rate limit module is directly importable without dynamic registration. By default, it reuses the Redis client provided by `RedisModule`; `@nest-boot/redis` handles connection configuration and `REDIS_URL` parsing. `RedisModule` closes the shared connection, and the rate limit driver leaves it open.
 
-- When `REDIS_URL` is set, it parses the URL and uses the distributed Redis driver.
-- When `REDIS_URL` is not set, it uses the process-local memory driver.
+Driver selection follows this order:
 
-Passing explicit Redis `connection` options to `forRoot()` or `forRootAsync()` also selects the Redis driver, preserving programmatic Redis configuration without environment variables. An explicit custom `driver` takes precedence over both Redis selection paths.
+1. An explicit custom `driver`.
+2. Explicit `connection` options, which create a separate connection owned and closed by the rate limit driver.
+3. The shared client from a registered `RedisModule`.
+4. Process-local memory when no shared client is available.
+
+**Migration:** The rate limit module no longer reads `REDIS_URL`. Applications that previously set only this variable must register `RedisModule` to keep Redis-backed rate limiting. Explicit `connection` options are also no longer merged with environment configuration. To use environment or shared configuration, move connection options to `RedisModule.register()` or `registerAsync()` and omit the rate limit module's `connection`.
 
 The memory driver is convenient for local development and single-process applications, but its buckets are not shared across processes or replicas. Use Redis or a custom distributed driver when limits must be global.
 
@@ -423,6 +484,8 @@ export class CommonModule {}
 ```
 
 Custom drivers extend `GraphQLRateLimitDriver` and implement its atomic `update()` method. Positive `points` consume capacity and negative `points` restore it. `forRootAsync()` can be used when creating a driver requires injected dependencies.
+
+To supply a custom Redis instance managed outside the rate limit module, pass `new RedisGraphQLRateLimitDriver(redis, false)` as the `driver`. The second argument disables connection ownership, so the caller is responsible for closing it. Omitting that argument preserves the driver's default behavior of closing its client.
 
 ### Custom Complexity
 
@@ -454,7 +517,3 @@ The query cost is reported in the response `extensions`, giving clients full tra
 4. **Field Replacement** — Use the `replacement` option in `addField` to expose client-friendly snake_case field names while mapping to camelCase entity properties internally.
 
 5. **Scoped Queries** — Always pass a `where` filter to scope connection queries to the current workspace or tenant.
-
-## API Reference
-
-For detailed API documentation, see the [GraphQL API Reference](/docs/api/graphql), [GraphQL Connection API Reference](/docs/api/graphql-connection), [GraphQL Logger API Reference](/docs/api/graphql-logger), and [GraphQL Rate Limit API Reference](/docs/api/graphql-rate-limit).

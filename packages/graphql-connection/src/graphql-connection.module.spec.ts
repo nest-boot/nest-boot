@@ -1,4 +1,4 @@
-import { GraphQLConnectionModule } from "./graphql-connection.module";
+import { GraphQLConnectionModule } from "./graphql-connection.module.js";
 
 describe("GraphQLConnectionModule", () => {
   it("registers module options", () => {

@@ -1,3 +1,4 @@
+import { ZodValidationException } from "@nest-boot/validator";
 import {
   ArgumentsHost,
   BadRequestException,
@@ -9,12 +10,18 @@ import {
 import { BaseExceptionFilter } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import { GraphQLError } from "graphql";
+import { z } from "zod";
 
-import { GraphQLExceptionFilter } from "./graphql.exception-filter";
+import { GraphQLExceptionFilter } from "./graphql.exception-filter.js";
 
+/**
+ * Returns host configured for the test.
+ * @param type - Type used to interpret the value.
+ * @returns Host configured for the test.
+ */
 function createHost(type: "graphql" | "http") {
   return {
-    getType: jest.fn(() => type),
+    getType: vi.fn(() => type),
   } as unknown as ArgumentsHost;
 }
 
@@ -30,7 +37,7 @@ describe("GraphQLExceptionFilter", () => {
 
   afterEach(() => {
     process.env = ORIGINAL_ENV;
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("should return GraphQL errors unchanged", async () => {
@@ -72,6 +79,120 @@ describe("GraphQLExceptionFilter", () => {
         code: "BAD_REQUEST",
       },
     });
+    expect(
+      filter.transform(
+        new BadRequestException({
+          message: ["email must be an email", "name should not be empty"],
+        }),
+      ),
+    ).toMatchObject({
+      message: "email must be an email, name should not be empty",
+      extensions: {
+        code: "BAD_REQUEST",
+      },
+    });
+    expect(
+      filter.transform(
+        new HttpException(null as unknown as string, HttpStatus.BAD_REQUEST),
+      ),
+    ).toMatchObject({
+      message: "INTERNAL_SERVER_ERROR",
+      extensions: {
+        code: "BAD_REQUEST",
+      },
+    });
+  });
+
+  it("should transform validation errors into Apollo user input errors", async () => {
+    const { filter } = await createFilter();
+
+    const error = filter.transform(
+      new BadRequestException({
+        statusCode: 400,
+        message: "Validation failed",
+        error: "Bad Request",
+        validationErrors: [
+          {
+            code: "invalid_format",
+            field: ["email"],
+            message: "Invalid email address",
+          },
+          {
+            code: "too_small",
+            field: ["users", 0, "password"],
+            message: "Too small",
+          },
+        ],
+      }),
+    );
+
+    expect(error).toMatchObject({
+      message: "Validation failed",
+      extensions: {
+        code: "BAD_USER_INPUT",
+        validationErrors: [
+          {
+            code: "invalid_format",
+            field: ["email"],
+            message: "Invalid email address",
+          },
+          {
+            code: "too_small",
+            field: ["users", 0, "password"],
+            message: "Too small",
+          },
+        ],
+      },
+    });
+  });
+
+  it("should integrate with ZodValidationException", async () => {
+    const { filter } = await createFilter();
+    const result = z
+      .object({ email: z.email() })
+      .safeParse({ email: "invalid" });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) {
+      throw new Error("Expected Zod validation to fail");
+    }
+
+    expect(
+      filter.transform(new ZodValidationException(result.error)),
+    ).toMatchObject({
+      message: "Validation failed",
+      extensions: {
+        code: "BAD_USER_INPUT",
+        validationErrors: [
+          {
+            code: "invalid_format",
+            field: ["email"],
+            message: "Invalid email address",
+          },
+        ],
+      },
+    });
+  });
+
+  it("should not expose malformed validation errors", async () => {
+    const { filter } = await createFilter();
+
+    const error = filter.transform(
+      new BadRequestException({
+        message: "Validation failed",
+        validationErrors: [
+          {
+            code: "invalid_format",
+            field: ["email"],
+            message: { rejectedValue: "private" },
+          },
+        ],
+      }),
+    );
+
+    expect(error.extensions).toMatchObject({ code: "BAD_REQUEST" });
+    expect(error.extensions).not.toHaveProperty("validationErrors");
   });
 
   it("should hide internal errors in production", async () => {
@@ -107,9 +228,9 @@ describe("GraphQLExceptionFilter", () => {
 
   it("should log and delegate HTTP contexts to the base exception filter", async () => {
     const { errorLog, filter } = await createFilter();
-    const baseCatch = jest
+    const baseCatch = vi
       .spyOn(BaseExceptionFilter.prototype, "catch")
-      .mockImplementation();
+      .mockImplementation(() => undefined);
     const error = new Error("http boom");
     const host = createHost("http");
 
@@ -121,8 +242,12 @@ describe("GraphQLExceptionFilter", () => {
   });
 });
 
+/**
+ * Returns filter configured for the test.
+ * @returns Filter configured for the test.
+ */
 async function createFilter() {
-  const errorLog = jest.fn();
+  const errorLog = vi.fn();
   const moduleRef = await Test.createTestingModule({
     providers: [
       GraphQLExceptionFilter,

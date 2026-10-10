@@ -1,0 +1,40 @@
+{
+  "action": {
+    "load_more": "Load more",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "create": "Create",
+    "creating": "Creating...",
+    "delete": "Delete",
+    "deleting": "Deleting...",
+    "disable": "Disable",
+    "edit": "Edit",
+    "rename": "Rename",
+    "revoke": "Revoke",
+    "enable": "Enable",
+    "save": "Save",
+    "saving": "Saving...",
+    "retry": "Retry"
+  },
+  "app": {
+    "name": "Nest Boot"
+  },
+  "contextualSaveBar": {
+    "discard": "Discard",
+    "message": "Unsaved changes"
+  },
+  "navigation": {
+    "retry": "Retry"
+  },
+  "overview": {
+    "title": "Overview",
+    "workspace": "Workspace",
+    "loading": "Loading overview…",
+    "failed": "Could not load overview.",
+    "view_api_keys": "View API keys"
+  },
+  "mutation": {
+    "refresh_failed": "Saved successfully, but the latest data could not be loaded."
+  }
+}

@@ -12,39 +12,55 @@ import pino, {
   type Level,
   type Logger as PinoLogger,
 } from "pino";
-import { type HttpLogger } from "pino-http";
 
-import { BINDINGS, PINO_HTTP, PINO_LOGGER } from "./logger.module-definition";
+import {
+  BINDINGS,
+  PINO_HTTP,
+  PINO_LOGGER,
+} from "./logger.module-definition.js";
+import { type PinoHttpLogger } from "./pino-http.js";
 
 /**
  * Request-scoped structured logger built on top of pino.
  *
- * @remarks
  * Implements the NestJS {@link LoggerService} interface. Each request
  * gets its own logger context via {@link RequestContext}, supporting
  * request-scoped bindings and automatic context propagation.
  */
 @Injectable({ scope: Scope.TRANSIENT })
 export class Logger implements LoggerService {
-  /** Configured pino-http middleware supplied by LoggerModule. @internal */
+  /**
+   * Configured pino-http middleware supplied by LoggerModule.
+   * @internal
+   */
   @Optional()
   @Inject(PINO_HTTP)
-  private readonly loggerMiddleware?: HttpLogger;
+  private readonly loggerMiddleware?: PinoHttpLogger;
 
-  /** Current logging context name. @internal */
+  /**
+   * Current logging context name.
+   * @internal
+   */
   private context?: string;
 
-  /** Fallback pino logger when no request context is active. @internal */
+  /**
+   * Fallback pino logger when no request context is active.
+   * @internal
+   */
   private globalLogger?: PinoLogger;
 
-  /** Creates a new Logger instance.
+  /**
+   * Creates a new Logger instance.
    * @param parentClass - The parent class that owns this logger instance
    */
   constructor(@Inject(INQUIRER) private parentClass: object) {
     this.setContext(this.parentClass?.constructor?.name);
   }
 
-  /** Returns the current logger context name. */
+  /**
+   * Returns the current logger context name.
+   * @returns Context label associated with this logger.
+   */
   getContext(): string | undefined {
     return this.context;
   }
@@ -95,11 +111,44 @@ export class Logger implements LoggerService {
 
   /**
    * Logs a message at the `error` level.
-   * @param message - Log message
-   * @param optionalParams - Additional structured data or context override
+   * @param message - Log message or Error to serialize
+   * @param optionalParams - Stack trace, structured data, or context override
    */
-  error(message: string, ...optionalParams: unknown[]): void {
-    this.call("error", message, ...optionalParams);
+  error(message: string | Error, ...optionalParams: unknown[]): void {
+    let stack: string | undefined;
+    let context = this.context;
+    const lastParam = optionalParams.at(-1);
+
+    // A lone string remains a context override unless it looks like a stack.
+    // Also accept Nest's stack-last form without treating it as the context.
+    if (typeof lastParam === "string" && /\n\s+at\s/.test(lastParam)) {
+      stack = optionalParams.pop() as string;
+    }
+    if (typeof optionalParams.at(-1) === "string") {
+      context = optionalParams.pop() as string;
+    }
+    if (stack === undefined && typeof optionalParams.at(-1) === "string") {
+      stack = optionalParams.pop() as string;
+    } else if (stack === undefined && typeof optionalParams[0] === "string") {
+      stack = optionalParams.shift() as string;
+    }
+
+    const data = optionalParams[0];
+    const bindings: Bindings =
+      data instanceof Error
+        ? { err: data }
+        : typeof data === "object" && data !== null
+          ? { ...data }
+          : {};
+    if (message instanceof Error) bindings.err = message;
+    if (stack !== undefined) bindings.stack = stack;
+
+    this.call(
+      "error",
+      message instanceof Error ? message.message : message,
+      bindings,
+      context,
+    );
   }
 
   /**
@@ -113,7 +162,11 @@ export class Logger implements LoggerService {
     });
   }
 
-  /** Gets the current pino logger from request context or falls back to global. @internal */
+  /**
+   * Gets the current pino logger from request context or falls back to global.
+   * @returns Pino instance bound to the current request or configured fallback.
+   * @internal
+   */
   private get pinoLogger(): PinoLogger {
     let pinoLogger: PinoLogger | undefined;
 
@@ -134,7 +187,13 @@ export class Logger implements LoggerService {
     return pinoLogger;
   }
 
-  /** Dispatches a log message at the given level. @internal */
+  /**
+   * Dispatches a log message at the given level.
+   * @param level - Logging severity for the message.
+   * @param message - Message to log.
+   * @param optionalParams - Additional logging arguments.
+   * @internal
+   */
   private call(
     level: Level,
     message: string,

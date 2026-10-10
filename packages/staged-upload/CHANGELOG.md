@@ -1,0 +1,413 @@
+## 8.0.5-beta.3 (2026-10-10)
+
+### 🚀 Features
+
+- ⚠️  **runtime:** require Node 24.21 and validate packed consumers ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### ⚠️  Breaking Changes
+
+- **runtime:** require Node 24.21 and validate packed consumers  ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.4
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.5
+- Updated @nest-boot/tsconfig to 8.0.0-beta.5
+- Updated @nest-boot/storage to 8.0.4-beta.3
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.5-beta.2 (2026-10-10)
+
+### 🩹 Fixes
+
+- **deps:** upgrade production dependencies and Nodemailer 10 ([#405](https://github.com/nest-boot/nest-boot/pull/405))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/storage to 8.0.4-beta.2
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.5-beta.1 (2026-10-10)
+
+### 🚀 Features
+
+- **eslint-config:** adopt JSDoc and retire TypeDoc ([#404](https://github.com/nest-boot/nest-boot/pull/404))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.3
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.4
+- Updated @nest-boot/storage to 8.0.4-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.5-beta.0 (2026-10-09)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.2
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.3
+- Updated @nest-boot/storage to 8.0.4-beta.0
+
+## 8.0.4-beta.0 (2026-10-09)
+
+### 🚀 Features
+
+- ⚠️  **staged-upload:** rename GraphQL adapter package and module ([#399](https://github.com/nest-boot/nest-boot/pull/399))
+
+### ⚠️  Breaking Changes
+
+- **staged-upload:** rename GraphQL adapter package and module  ([#399](https://github.com/nest-boot/nest-boot/pull/399))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.2
+- Updated @nest-boot/storage to 8.0.3-beta.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.3-beta.0 (2026-09-23)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.2-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.1
+- Updated @nest-boot/storage to 8.0.2-beta.0
+
+## 8.0.2-beta.0 (2026-09-19)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.1-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.0
+- Updated @nest-boot/tsconfig to 8.0.0-beta.4
+- Updated @nest-boot/storage to 8.0.1-beta.0
+
+## 8.0.1-beta.0 (2026-09-16)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/storage to 8.0.0-beta.5
+
+## 8.0.0-beta.5 (2026-09-08)
+
+### 🚀 Features
+
+- ⚠️  **auth:** rebuild authentication and authorization ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### ⚠️  Breaking Changes
+
+- **auth:** rebuild authentication and authorization  ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.0-beta.3
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.3
+- Updated @nest-boot/tsconfig to 8.0.0-beta.3
+- Updated @nest-boot/storage to 8.0.0-beta.4
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.4 (2026-09-03)
+
+### 🩹 Fixes
+
+- **staged-upload:** accept root-relative upload locations ([#320](https://github.com/nest-boot/nest-boot/pull/320))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.3 (2026-09-01)
+
+### 🚀 Features
+
+- **storage:** add object storage and staged upload modules ([#314](https://github.com/nest-boot/nest-boot/pull/314))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/storage to 8.0.0-beta.3
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.2 (2026-08-31)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.0-beta.2
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.2
+- Updated @nest-boot/tsconfig to 8.0.0-beta.2
+- Updated @nest-boot/graphql to 8.0.0-beta.2
+
+## 8.0.0-beta.1 (2026-08-31)
+
+### 🚀 Features
+
+- ⚠️  migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ⚠️  Breaking Changes
+
+- migrate to NestJS 12 and ESM  ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 8.0.0-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.1
+- Updated @nest-boot/tsconfig to 8.0.0-beta.1
+- Updated @nest-boot/graphql to 8.0.0-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 7.3.5 (2026-08-31)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.5
+- Updated @nest-boot/eslint-plugin to 7.2.5
+- Updated @nest-boot/tsconfig to 7.3.5
+- Updated @nest-boot/graphql to 7.3.5
+
+## 7.3.4 (2026-08-29)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.4
+- Updated @nest-boot/eslint-plugin to 7.2.4
+- Updated @nest-boot/tsconfig to 7.3.4
+- Updated @nest-boot/graphql to 7.3.4
+
+## 7.3.3 (2026-08-29)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.3
+- Updated @nest-boot/eslint-plugin to 7.2.3
+- Updated @nest-boot/tsconfig to 7.3.3
+- Updated @nest-boot/graphql to 7.3.3
+
+## 7.3.2 (2026-08-28)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.2
+- Updated @nest-boot/eslint-plugin to 7.2.2
+- Updated @nest-boot/tsconfig to 7.3.2
+- Updated @nest-boot/graphql to 7.3.2
+
+## 7.3.1 (2026-08-27)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.1
+- Updated @nest-boot/eslint-plugin to 7.2.1
+- Updated @nest-boot/tsconfig to 7.3.1
+- Updated @nest-boot/graphql to 7.3.1
+
+## 7.3.0 (2026-08-12)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.3.0
+- Updated @nest-boot/eslint-plugin to 7.2.0
+- Updated @nest-boot/tsconfig to 7.3.0
+- Updated @nest-boot/graphql to 7.3.0
+
+## 7.2.1 (2026-06-17)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.2.1
+- Updated @nest-boot/eslint-plugin to 7.1.1
+- Updated @nest-boot/tsconfig to 7.2.1
+- Updated @nest-boot/graphql to 7.2.1
+
+## 7.2.0 (2026-06-17)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.2.0
+- Updated @nest-boot/eslint-plugin to 7.1.0
+- Updated @nest-boot/tsconfig to 7.2.0
+- Updated @nest-boot/graphql to 7.2.0
+
+## 7.1.5 (2026-06-07)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-config to 7.1.0
+- Updated @nest-boot/eslint-plugin to 7.0.8
+- Updated @nest-boot/tsconfig to 7.1.0
+- Updated @nest-boot/graphql to 7.1.5
+
+# @nest-boot/file-upload
+
+## 7.1.4
+
+### Patch Changes
+
+- c6eceed: Fix MikroORM enum fixer output to add the missing `Enum` import, and preserve custom file upload URL path prefixes.
+
+## 7.1.3
+
+### Patch Changes
+
+- 3f42c62: add comprehensive TSDoc coverage and translate comments to English
+
+## 7.1.2
+
+### Patch Changes
+
+- 372cb9e: chore: use defineConfig to configure eslint
+- 372cb9e: fix: add typedoc
+
+## 7.1.1
+
+### Patch Changes
+
+- bf35af9: fix: update @nestjs packages to version 11.1.9 across multiple packages
+- 795f20d: fix: update @apollo/server to version 5.2.0
+
+## 7.1.0
+
+### Minor Changes
+
+- db94d6b: feat: supports wildcard matching
+
+## 7.0.1
+
+### Patch Changes
+
+- a1a2490: fix: update @nest-boot dependencies to version 7.0.0 across multiple packages
+
+## 7.0.0
+
+### Major Changes
+
+- 14895ac: ESLint 升级到 v9
+
+### Minor Changes
+
+- 7f715cc: 上传客户端改为 s3
+
+### Patch Changes
+
+- 49659ef: fix: 移除 database 和 health-check 模块并格式化代码
+- 20f3262: fix: 重构 eslint-plugin 和移除 queue 模块
+- b5e6548: 重新发布版本
+- f9c03c3: 修复 ESLint
+- 7c761d6: 添加可选的自定义 URL 支持
+- Updated dependencies [49659ef]
+- Updated dependencies [34591c8]
+- Updated dependencies [20f3262]
+- Updated dependencies [79ef4a8]
+- Updated dependencies [eec2ebc]
+- Updated dependencies [b5e6548]
+- Updated dependencies [f9c03c3]
+- Updated dependencies [14895ac]
+- Updated dependencies [aeedd1c]
+  - @nest-boot/graphql@7.0.0
+
+## 7.0.0-beta.6
+
+### Patch Changes
+
+- f9c03c3: 修复 ESLint
+- Updated dependencies [f9c03c3]
+  - @nest-boot/graphql@7.0.0-beta.7
+
+## 7.0.0-beta.5
+
+### Patch Changes
+
+- 20f3262: fix: 重构 eslint-plugin 和移除 queue 模块
+- Updated dependencies [20f3262]
+  - @nest-boot/graphql@7.0.0-beta.6
+
+## 7.0.0-beta.4
+
+### Patch Changes
+
+- 49659ef: fix: 移除 database 和 health-check 模块并格式化代码
+
+## 7.0.0-beta.3
+
+### Patch Changes
+
+- 7c761d6: 添加可选的自定义 URL 支持
+
+## 7.0.0-beta.2
+
+### Patch Changes
+
+- b5e6548: 重新发布版本
+
+## 7.0.0-beta.1
+
+### Minor Changes
+
+- 7f715cc: 上传客户端改为 s3
+
+## 7.0.0-beta.0
+
+### Major Changes
+
+- 14895ac: ESLint 升级到 v9
+
+## 6.3.2
+
+### Patch Changes
+
+- bcd62cb: fix: Update dependencies across multiple packages to latest versions.
+- Updated dependencies [bcd62cb]
+  - @nest-boot/graphql@6.10.3
+
+## 6.3.1
+
+### Patch Changes
+
+- 8372590: 更新依赖
+- 8372590: 更新 minio 依赖到 8.0.1
+- Updated dependencies [8372590]
+  - @nest-boot/graphql@6.10.1
+
+## 6.3.0
+
+### Minor Changes
+
+- 3bed836: 修复 upload() 上传 xlsx 时出现不兼容
+
+## 6.2.0
+
+### Minor Changes
+
+- 294daf6: FileUploadService 中新增 upload()，便于后端服务直接上传文件
+
+## 6.1.1
+
+### Patch Changes
+
+- f32cf37: Rename the tmpAssetToFileAsset method to persist
+
+## 6.1.0
+
+### Minor Changes
+
+- add file upload docs
+- ad820b2: add file upload module

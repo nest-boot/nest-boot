@@ -2,7 +2,7 @@ import type { EntityClass } from "@mikro-orm/core";
 import { Field, ObjectType } from "@nest-boot/graphql";
 import { type Type } from "@nestjs/common";
 
-import { EdgeInterface } from "../interfaces";
+import { EdgeInterface } from "../interfaces/index.js";
 
 /**
  * Creates a GraphQL Edge type for a connection.
@@ -11,12 +11,12 @@ import { EdgeInterface } from "../interfaces";
  * - `node`: The actual entity item
  * - `cursor`: A string cursor for pagination
  *
- * @typeParam Entity - The entity type for the edge
+ * Used by ConnectionBuilder.build()
+ * @template Entity - The entity type for the edge
  * @param entityClass - The MikroORM entity class (used as the node type)
  * @param entityName - The name to use for the GraphQL type
  * @returns A class implementing EdgeInterface
- *
- * @internal Used by ConnectionBuilder.build()
+ * @internal
  */
 export function createEdge<Entity extends object>(
   entityClass: EntityClass<Entity>,

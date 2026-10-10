@@ -36,7 +36,7 @@ HashModule.register({
 最终解析出的 secret 必须至少包含 32 个字符，并具有至少 120 bit 的估算熵。可使用以下命令生成：
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+node --input-type=module -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))"
 ```
 
 ## 用法
@@ -63,8 +63,4 @@ export class AuthService {
 
 ## MikroORM 集成
 
-使用 `@nest-boot/mikro-orm-hash` 的 `@HashedProperty()` 装饰器实现自动字段哈希。详见 [MikroORM 教程](/docs/tutorial/mikro-orm#哈希属性)。
-
-## API 参考
-
-详细的 API 文档请参阅[哈希 API 参考](/docs/api/hash)。
+使用 `@nest-boot/database-hash` 的 `@HashedProperty()` 装饰器实现自动字段哈希。详见 [MikroORM 教程](/docs/tutorial/database#哈希属性)。

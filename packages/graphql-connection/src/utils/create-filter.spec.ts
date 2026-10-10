@@ -1,7 +1,10 @@
 import { Kind } from "graphql";
 
-import type { ConnectionFieldOptions, FieldOptions } from "../interfaces";
-import { createFilter } from "./create-filter";
+import type {
+  ConnectionFieldOptions,
+  FieldOptions,
+} from "../interfaces/index.js";
+import { createFilter } from "./create-filter.js";
 
 interface Book {
   title: string;

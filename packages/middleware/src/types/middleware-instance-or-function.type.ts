@@ -1,6 +1,6 @@
-import { NestMiddleware } from "@nestjs/common/interfaces";
+import { NestMiddleware } from "@nestjs/common";
 
-import { MiddlewareFunction } from "./middleware-function.type";
+import { MiddlewareFunction } from "./middleware-function.type.js";
 
 /**
  * Middleware instance or function.

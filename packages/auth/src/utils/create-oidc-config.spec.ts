@@ -1,4 +1,4 @@
-import { createOidcConfig } from "./create-oidc-config";
+import { createOidcConfig } from "./create-oidc-config.js";
 
 describe("createOidcConfig", () => {
   beforeEach(() => {
@@ -52,6 +52,21 @@ describe("createOidcConfig", () => {
       providerId: "oidc",
       scopes: ["openid", "email"],
     });
+  });
+
+  it.each([
+    "AUTH_OIDC_CLIENT_ID",
+    "AUTH_OIDC_CLIENT_SECRET",
+    "AUTH_OIDC_DISCOVERY_URL",
+  ])("rejects missing %s when OIDC is enabled", (envName) => {
+    process.env.AUTH_OIDC_ENABLED = "true";
+    process.env.AUTH_OIDC_CLIENT_ID = "client-id";
+    process.env.AUTH_OIDC_CLIENT_SECRET = "client-secret";
+    process.env.AUTH_OIDC_DISCOVERY_URL =
+      "https://oidc.example.com/.well-known/openid-configuration";
+    process.env[envName] = "";
+
+    expect(() => createOidcConfig(false)).toThrow(envName);
   });
 
   it("should use default scopes and global signup disable", () => {

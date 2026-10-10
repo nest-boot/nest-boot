@@ -185,7 +185,3 @@ export class OrdersModule {}
 - 只配置一次 `MetricsModule`。重复导入可能创建额外的 Registry 和默认采集器，而不是共享预期的应用 Registry。
 - 使用低基数标签。不要把用户 ID、请求 ID 或原始 URL 等无界值作为指标标签。
 - 指标端点会暴露进程和应用信息。如果不应公开访问，请在网络、Ingress 或代理层限制访问。
-
-## API 参考
-
-详细的 API 文档请参阅[指标 API 参考](/docs/api/metrics)。

@@ -1,5 +1,4 @@
-/** Configuration options for the ViewModule. */
-export interface ViewModuleOptions {
-  /** Directories to scan for Handlebars template files. */
-  path?: string[];
-}
+import { type LiquidOptions } from "liquidjs";
+
+/** LiquidJS configuration options used by the ViewModule. */
+export type ViewModuleOptions = LiquidOptions;

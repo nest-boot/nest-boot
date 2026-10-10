@@ -1,0 +1,58 @@
+import type { AuthModuleOptions } from "../auth-module-options.interface.js";
+import type { Member } from "../entities/member.entity.js";
+import type { User } from "../entities/user.entity.js";
+import { DEFAULT_USER_ROLE } from "../user.constants.js";
+import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
+import { resolveAuthPermissions } from "./auth-role.util.js";
+import { resolveAuthCatalog } from "./resolve-auth-catalog.util.js";
+
+/**
+ * Resolves an owner's grants independently of the requesting credential.
+ * @param options - Authentication module configuration.
+ * @param user - The user whose account is being accessed.
+ * @returns Effective permissions from the user's roles and direct grants.
+ * @internal
+ */
+export function resolveUserPermissions(
+  options: AuthModuleOptions,
+  user: User,
+): string[] {
+  return resolveAuthPermissions(
+    user.roles ?? [options.user?.defaultRole ?? DEFAULT_USER_ROLE],
+    user.permissions ?? [],
+    resolveAuthCatalog(options, "user").roles,
+  );
+}
+
+/**
+ * Resolves a member's grants independently of the requesting credential.
+ * @param options - Authentication module configuration.
+ * @param member - The workspace membership to inspect or change.
+ * @returns Effective permissions from the member's roles and direct grants.
+ * @internal
+ */
+export function resolveMemberPermissions(
+  options: AuthModuleOptions,
+  member: Member,
+): string[] {
+  return resolveAuthPermissions(
+    member.roles ?? [options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE],
+    member.permissions ?? [],
+    resolveAuthCatalog(options, "workspace").roles,
+  );
+}
+
+/**
+ * Returns only permissions present in both inputs.
+ * @param permissions - Permission names to apply.
+ * @param ceiling - Maximum permissions allowed by the owning principal.
+ * @returns Requested permissions that also occur in the ceiling.
+ * @internal
+ */
+export function intersectPermissions(
+  permissions: readonly string[],
+  ceiling: readonly string[],
+): string[] {
+  const allowed = new Set(ceiling);
+  return permissions.filter((permission) => allowed.has(permission));
+}

@@ -1,3 +1,384 @@
+## 8.0.11-beta.0 (2026-10-10)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/mailer to 8.0.4-beta.4
+
+## 8.0.10-beta.0 (2026-10-10)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/graphql-connection to 8.0.4-beta.4
+
+## 8.0.9-beta.4 (2026-10-10)
+
+### 🚀 Features
+
+- ⚠️  **runtime:** require Node 24.21 and validate packed consumers ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### ⚠️  Breaking Changes
+
+- **runtime:** require Node 24.21 and validate packed consumers  ([#406](https://github.com/nest-boot/nest-boot/pull/406))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/graphql-connection to 8.0.4-beta.3
+- Updated @nest-boot/request-context to 8.0.4-beta.3
+- Updated @nest-boot/eslint-config to 8.0.2-beta.4
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.5
+- Updated @nest-boot/middleware to 8.0.4-beta.2
+- Updated @nest-boot/validator to 8.0.7-beta.2
+- Updated @nest-boot/tsconfig to 8.0.0-beta.5
+- Updated @nest-boot/graphql to 8.0.4-beta.3
+- Updated @nest-boot/mailer to 8.0.4-beta.3
+- Updated @nest-boot/hash to 8.0.4-beta.2
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.9-beta.3 (2026-10-10)
+
+### 🩹 Fixes
+
+- **deps:** upgrade production dependencies and Nodemailer 10 ([#405](https://github.com/nest-boot/nest-boot/pull/405))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/graphql-connection to 8.0.4-beta.2
+- Updated @nest-boot/request-context to 8.0.4-beta.2
+- Updated @nest-boot/graphql to 8.0.4-beta.2
+- Updated @nest-boot/mailer to 8.0.4-beta.2
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.9-beta.2 (2026-10-10)
+
+### 🚀 Features
+
+- **eslint-config:** adopt JSDoc and retire TypeDoc ([#404](https://github.com/nest-boot/nest-boot/pull/404))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/graphql-connection to 8.0.4-beta.1
+- Updated @nest-boot/request-context to 8.0.4-beta.1
+- Updated @nest-boot/eslint-config to 8.0.2-beta.3
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.4
+- Updated @nest-boot/middleware to 8.0.4-beta.1
+- Updated @nest-boot/validator to 8.0.7-beta.1
+- Updated @nest-boot/graphql to 8.0.4-beta.1
+- Updated @nest-boot/mailer to 8.0.4-beta.1
+- Updated @nest-boot/hash to 8.0.4-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.9-beta.1 (2026-10-09)
+
+### 🚀 Features
+
+- ⚠️  **auth:** introduce member-owned API keys and service accounts ([#401](https://github.com/nest-boot/nest-boot/pull/401))
+
+### ⚠️  Breaking Changes
+
+- **auth:** introduce member-owned API keys and service accounts  ([#401](https://github.com/nest-boot/nest-boot/pull/401))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.9-beta.0 (2026-10-09)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/graphql-connection to 8.0.4-beta.0
+- Updated @nest-boot/request-context to 8.0.4-beta.0
+- Updated @nest-boot/eslint-config to 8.0.2-beta.2
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.3
+- Updated @nest-boot/middleware to 8.0.4-beta.0
+- Updated @nest-boot/validator to 8.0.7-beta.0
+- Updated @nest-boot/graphql to 8.0.4-beta.0
+- Updated @nest-boot/mailer to 8.0.4-beta.0
+- Updated @nest-boot/hash to 8.0.4-beta.0
+
+## 8.0.8-beta.0 (2026-10-09)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/graphql-connection to 8.0.3-beta.0
+- Updated @nest-boot/request-context to 8.0.3-beta.0
+- Updated @nest-boot/eslint-config to 8.0.2-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.2
+- Updated @nest-boot/middleware to 8.0.3-beta.0
+- Updated @nest-boot/validator to 8.0.6-beta.0
+- Updated @nest-boot/graphql to 8.0.3-beta.0
+- Updated @nest-boot/mailer to 8.0.3-beta.0
+- Updated @nest-boot/hash to 8.0.3-beta.0
+
+## 8.0.7-beta.4 (2026-09-30)
+
+### 🩹 Fixes
+
+- **auth:** honor password policy and selected connection counts ([#358](https://github.com/nest-boot/nest-boot/pull/358))
+- ⚠️  **auth:** accurately type credential-free query results ([#382](https://github.com/nest-boot/nest-boot/pull/382))
+
+### ⚠️  Breaking Changes
+
+- **auth:** accurately type credential-free query results  ([#382](https://github.com/nest-boot/nest-boot/pull/382))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.7-beta.3 (2026-09-30)
+
+This was a version bump only for @nest-boot/auth to align it with other projects, there were no code changes.
+
+## 8.0.7-beta.2 (2026-09-30)
+
+### 🩹 Fixes
+
+- **auth:** prevent members from changing their own status ([#379](https://github.com/nest-boot/nest-boot/pull/379))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.7-beta.1 (2026-09-29)
+
+### 🚀 Features
+
+- **auth:** configure API key prefixes per owner scope ([#377](https://github.com/nest-boot/nest-boot/pull/377))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.7-beta.0 (2026-09-24)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/graphql-connection to 8.0.2-beta.1
+
+## 8.0.6-beta.0 (2026-09-23)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/graphql-connection to 8.0.2-beta.0
+- Updated @nest-boot/request-context to 8.0.2-beta.0
+- Updated @nest-boot/eslint-config to 8.0.2-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.1
+- Updated @nest-boot/middleware to 8.0.2-beta.0
+- Updated @nest-boot/validator to 8.0.5-beta.0
+- Updated @nest-boot/graphql to 8.0.2-beta.0
+- Updated @nest-boot/mailer to 8.0.2-beta.0
+- Updated @nest-boot/hash to 8.0.2-beta.0
+
+## 8.0.5-beta.6 (2026-09-23)
+
+This was a version bump only for @nest-boot/auth to align it with other projects, there were no code changes.
+
+## 8.0.5-beta.5 (2026-09-23)
+
+This was a version bump only for @nest-boot/auth to align it with other projects, there were no code changes.
+
+## 8.0.5-beta.4 (2026-09-20)
+
+This was a version bump only for @nest-boot/auth to align it with other projects, there were no code changes.
+
+## 8.0.5-beta.3 (2026-09-20)
+
+This was a version bump only for @nest-boot/auth to align it with other projects, there were no code changes.
+
+## 8.0.5-beta.2 (2026-09-20)
+
+### 🚀 Features
+
+- ⚠️  **auth:** separate API key permission configuration by scope ([#349](https://github.com/nest-boot/nest-boot/pull/349))
+
+### ⚠️  Breaking Changes
+
+- **auth:** separate API key permission configuration by scope  ([#349](https://github.com/nest-boot/nest-boot/pull/349))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.5-beta.1 (2026-09-20)
+
+### 🩹 Fixes
+
+- **auth:** expose server-owned API key default selections ([#348](https://github.com/nest-boot/nest-boot/pull/348))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.5-beta.0 (2026-09-20)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/graphql-connection to 8.0.1-beta.3
+
+## 8.0.4-beta.0 (2026-09-20)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/graphql-connection to 8.0.1-beta.2
+
+## 8.0.3-beta.2 (2026-09-19)
+
+### 🚀 Features
+
+- ⚠️  **auth:** unify auth entities, services and GraphQL APIs ([#331](https://github.com/nest-boot/nest-boot/pull/331))
+
+### ⚠️  Breaking Changes
+
+- **auth:** unify auth entities, services and GraphQL APIs  ([#331](https://github.com/nest-boot/nest-boot/pull/331))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/graphql-connection to 8.0.1-beta.1
+- Updated @nest-boot/request-context to 8.0.1-beta.0
+- Updated @nest-boot/eslint-config to 8.0.1-beta.0
+- Updated @nest-boot/eslint-plugin to 8.0.1-beta.0
+- Updated @nest-boot/middleware to 8.0.1-beta.0
+- Updated @nest-boot/validator to 8.0.4-beta.0
+- Updated @nest-boot/tsconfig to 8.0.0-beta.4
+- Updated @nest-boot/graphql to 8.0.1-beta.0
+- Updated @nest-boot/mailer to 8.0.1-beta.0
+- Updated @nest-boot/hash to 8.0.1-beta.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.3-beta.1 (2026-09-16)
+
+### 🚀 Features
+
+- ⚠️  **mikro-orm:** adopt native RLS and remove the custom RLS package ([#329](https://github.com/nest-boot/nest-boot/pull/329))
+
+### ⚠️  Breaking Changes
+
+- **mikro-orm:** adopt native RLS and remove the custom RLS package  ([#329](https://github.com/nest-boot/nest-boot/pull/329))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.3-beta.0 (2026-09-08)
+
+### 🚀 Features
+
+- ⚠️  **auth:** rebuild authentication and authorization ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### 🩹 Fixes
+
+- **release:** keep beta releases on the v8 line ([#328](https://github.com/nest-boot/nest-boot/pull/328))
+
+### ⚠️  Breaking Changes
+
+- **auth:** rebuild authentication and authorization  ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/row-level-security to 8.0.5-beta.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 9.0.0-beta.0 (2026-09-08)
+
+### 🚀 Features
+
+- ⚠️  **auth:** rebuild authentication and authorization ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### ⚠️  Breaking Changes
+
+- **auth:** rebuild authentication and authorization  ([#316](https://github.com/nest-boot/nest-boot/pull/316))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/row-level-security to 8.0.4-beta.0
+- Updated @nest-boot/request-context to 8.0.0-beta.6
+- Updated @nest-boot/eslint-config to 8.0.0-beta.3
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.3
+- Updated @nest-boot/middleware to 8.0.0-beta.3
+- Updated @nest-boot/tsconfig to 8.0.0-beta.3
+- Updated @nest-boot/mailer to 8.0.0-beta.4
+- Updated @nest-boot/hash to 8.0.0-beta.3
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.2 (2026-09-07)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.5
+
+## 8.0.1 (2026-09-04)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.4
+
+# 8.0.0 (2026-09-01)
+
+### 🚀 Features
+
+- ⚠️  migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ⚠️  Breaking Changes
+
+- migrate to NestJS 12 and ESM  ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.3
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
+## 8.0.0-beta.2 (2026-08-31)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.2
+- Updated @nest-boot/eslint-config to 8.0.0-beta.2
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.2
+- Updated @nest-boot/middleware to 8.0.0-beta.2
+- Updated @nest-boot/tsconfig to 8.0.0-beta.2
+
+## 8.0.0-beta.1 (2026-08-31)
+
+### 🚀 Features
+
+- ⚠️  migrate to NestJS 12 and ESM ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### ⚠️  Breaking Changes
+
+- migrate to NestJS 12 and ESM  ([#312](https://github.com/nest-boot/nest-boot/issues/312))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.0-beta.1
+- Updated @nest-boot/eslint-config to 8.0.0-beta.1
+- Updated @nest-boot/eslint-plugin to 8.0.0-beta.1
+- Updated @nest-boot/middleware to 8.0.0-beta.1
+- Updated @nest-boot/tsconfig to 8.0.0-beta.1
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 7.13.6 (2026-08-31)
 
 ### 🧱 Updated Dependencies

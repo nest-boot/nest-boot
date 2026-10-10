@@ -1,26 +1,31 @@
 import { Test } from "@nestjs/testing";
 import { of } from "rxjs";
+import type { Mock } from "vitest";
 
-import { Logger } from "./logger";
-import { LoggingInterceptor } from "./logger.interceptor";
+import { LoggingInterceptor } from "./logger.interceptor.js";
+import { Logger } from "./logger.js";
 
 describe("LoggingInterceptor", () => {
   it("should assign route bindings for HTTP requests", async () => {
+    /**
+     * Returns undefined, representing a handler without a response body.
+     * @returns Undefined, representing a handler without a response body.
+     */
     function handler() {
       return undefined;
     }
     class TestController {}
-    const assign = jest.fn();
-    const handle = jest.fn(() => of("ok"));
+    const assign = vi.fn();
+    const handle = vi.fn(() => of("ok"));
     const interceptor = await createInterceptor(assign);
     const next = {
       handle,
     };
     const context = {
-      getClass: jest.fn(() => TestController),
-      getHandler: jest.fn(() => handler),
-      getType: jest.fn(() => "http"),
-      switchToHttp: jest.fn(() => ({
+      getClass: vi.fn(() => TestController),
+      getHandler: vi.fn(() => handler),
+      getType: vi.fn(() => "http"),
+      switchToHttp: vi.fn(() => ({
         getRequest: () => ({
           route: {
             path: "/test",
@@ -42,14 +47,14 @@ describe("LoggingInterceptor", () => {
   });
 
   it("should skip route bindings for non-HTTP requests", async () => {
-    const assign = jest.fn();
-    const handle = jest.fn(() => of("ok"));
+    const assign = vi.fn();
+    const handle = vi.fn(() => of("ok"));
     const interceptor = await createInterceptor(assign);
     const next = {
       handle,
     };
     const context = {
-      getType: jest.fn(() => "rpc"),
+      getType: vi.fn(() => "rpc"),
     };
 
     interceptor.intercept(context as never, next);
@@ -59,7 +64,12 @@ describe("LoggingInterceptor", () => {
   });
 });
 
-async function createInterceptor(assign: jest.Mock) {
+/**
+ * Returns interceptor configured for the test.
+ * @param assign - Mock that records request logger bindings.
+ * @returns Interceptor configured for the test.
+ */
+async function createInterceptor(assign: Mock) {
   const moduleRef = await Test.createTestingModule({
     providers: [
       LoggingInterceptor,

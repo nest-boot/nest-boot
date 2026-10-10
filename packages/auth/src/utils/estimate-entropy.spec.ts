@@ -1,4 +1,4 @@
-import { estimateEntropy } from "./estimate-entropy";
+import { estimateEntropy } from "./estimate-entropy.js";
 
 describe("estimateEntropy", () => {
   it("should return zero for empty strings", () => {

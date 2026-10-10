@@ -1,10 +1,10 @@
 import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
 
-import { createRule } from "../../utils/createRule";
+import { createRule } from "../../utils/createRule.js";
 import {
   hasClassDecorator,
   hasPropertyDecorator,
-} from "../../utils/decorators";
+} from "../../utils/decorators.js";
 
 export default createRule({
   name: "entity-field-definite-assignment",
@@ -64,6 +64,12 @@ export default createRule({
       return false;
     };
 
+    const isDeclareProperty = (
+      member: TSESTree.PropertyDefinition,
+    ): boolean => {
+      return member.declare;
+    };
+
     return {
       ClassDeclaration(node) {
         if (!isEntityClass(node)) return;
@@ -89,6 +95,7 @@ export default createRule({
 
           // Optional properties (?:) do not need a definite assignment assertion
           if (isOptionalProperty(member)) return;
+          if (isDeclareProperty(member)) return;
 
           const hasInit = hasInitializer(member);
           const hasDefinite = hasDefiniteAssignment(member);

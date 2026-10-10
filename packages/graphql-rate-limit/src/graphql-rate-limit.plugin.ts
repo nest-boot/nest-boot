@@ -17,20 +17,39 @@ import {
   GraphQLType,
   GraphQLUnionType,
 } from "graphql";
-import {
+import type {
   ComplexityEstimator,
   ComplexityEstimatorArgs,
+} from "graphql-query-complexity";
+import * as graphqlQueryComplexity from "graphql-query-complexity/cjs";
+
+import { OPTIONS_TOKEN } from "./graphql-rate-limit.module-definition.js";
+import { GraphQLRateLimitStorage } from "./graphql-rate-limit.storage.js";
+import type {
+  CostResponse,
+  GraphQLRateLimitOptions,
+} from "./interfaces/index.js";
+import { connectionPageSize } from "./utils/connection-page-size.util.js";
+
+// graphql-query-complexity has a native ESM build, but it loads
+// graphql/index.mjs while Nest's CommonJS packages load graphql/index.js.
+// Keep the complexity library on its CJS export so both sides share the same
+// GraphQL runtime types; otherwise real requests fail the cross-realm checks.
+const {
   directiveEstimator,
   fieldExtensionsEstimator,
   getComplexity,
   simpleEstimator,
-} from "graphql-query-complexity";
-
-import { OPTIONS_TOKEN } from "./graphql-rate-limit.module-definition";
-import { GraphQLRateLimitStorage } from "./graphql-rate-limit.storage";
-import { CostResponse, GraphQLRateLimitOptions } from "./interfaces";
+} =
+  graphqlQueryComplexity as unknown as typeof import("graphql-query-complexity");
 
 // https://shopify.engineering/rate-limiting-graphql-apis-calculating-query-complexity
+/**
+ * Returns estimated field cost, or undefined when no estimate applies.
+ * @param args - Pagination, filtering, and ordering arguments.
+ * @param type - Type used to interpret the value.
+ * @returns Estimated field cost, or undefined when no estimate applies.
+ */
 function shopifyEstimator(
   args: ComplexityEstimatorArgs,
   type?: GraphQLType,
@@ -43,7 +62,7 @@ function shopifyEstimator(
 
   // A GraphQL Connection represents a one-to-many relationship. The cost is two points plus the number of objects to return.
   if (type instanceof GraphQLObjectType && type.name.endsWith("Connection")) {
-    return 2 + args.childComplexity * (args.args.first ?? args.args.last ?? 0);
+    return 2 + args.childComplexity * connectionPageSize(args.args, 0);
   }
 
   // An Object is the basic unit of a query, generally representing a single server-side operation such as a database query or an internal service call.

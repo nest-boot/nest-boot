@@ -1,27 +1,30 @@
+import { BaseEntity, type Opt, t } from "@mikro-orm/core";
 import {
-  BaseEntity,
   Entity,
-  Opt,
+  Index,
   PrimaryKey,
   Property,
-  t,
-} from "@mikro-orm/core";
+} from "@mikro-orm/decorators/legacy";
 import { randomUUID } from "crypto";
 
-/**
- * Abstract base entity for verification records.
- *
- * @remarks
- * Used for email verification tokens, password reset tokens, and similar
- * time-limited verification flows managed by better-auth.
- */
-@Entity({ abstract: true })
-export abstract class BaseVerification extends BaseEntity {
+/** Built-in Verification entity with authentication persistence and access policies. */
+@Entity({
+  policies: [
+    {
+      command: "all",
+      roles: ["anonymous", "authenticated"],
+      using: () => "false",
+      check: () => "false",
+    },
+  ],
+})
+export class Verification extends BaseEntity {
   /** Primary key (UUID v4, auto-generated). */
   @PrimaryKey({ type: t.uuid })
   id: Opt<string> = randomUUID();
 
   /** Identifier associated with this verification (e.g. email address). */
+  @Index()
   @Property({ type: t.text })
   identifier!: string;
 

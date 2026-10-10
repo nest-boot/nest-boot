@@ -1,19 +1,19 @@
 import "reflect-metadata";
 
 import { QueryOrder } from "@mikro-orm/core";
-import { type SqlEntityManager } from "@mikro-orm/knex";
+import { type SqlEntityManager } from "@mikro-orm/sql";
 
-import { ConnectionQueryBuilder } from "./connection-query-builder";
-import { Cursor } from "./cursor";
-import { OrderDirection, TotalCountRelation } from "./enums";
-import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants";
+import { ConnectionQueryBuilder } from "./connection-query-builder.js";
+import { Cursor } from "./cursor.js";
+import { OrderDirection, TotalCountRelation } from "./enums/index.js";
+import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants.js";
 import type {
   ConnectionFieldOptions,
   ConnectionMetadata,
   FieldOptions,
-} from "./interfaces";
-import type { ConnectionClass } from "./types";
-import { createFilter } from "./utils";
+} from "./interfaces/index.js";
+import type { ConnectionClass } from "./types/index.js";
+import { createFilter } from "./utils/index.js";
 
 interface Book {
   id: number;
@@ -34,6 +34,10 @@ class BookEntity implements Book {
 
 class BookConnection {}
 
+/**
+ * Returns field options map configured for the test.
+ * @returns Field options map configured for the test.
+ */
 function createFieldOptionsMap() {
   const titleField = {
     field: "title",
@@ -47,6 +51,10 @@ function createFieldOptionsMap() {
   return new Map<string, ConnectionFieldOptions<Book>>([["title", titleField]]);
 }
 
+/**
+ * Registers the connection field metadata used by the test.
+ * @param fieldOptionsMap - Field metadata used to build the connection.
+ */
 function setConnectionMetadata(
   fieldOptionsMap: Map<
     string,
@@ -66,24 +74,32 @@ function setConnectionMetadata(
   );
 }
 
+/**
+ * Returns entity manager fixture and its query spies.
+ * @param entities - Entity classes registered for the operation.
+ * @param totalCount - Total number of matching records reported by the fixture.
+ * @param nullsLowest - Whether the database sorts nulls before non-null values.
+ * @returns Entity manager fixture and its query spies.
+ */
 function createEntityManager(
   entities: Book[] = [],
   totalCount: number = entities.length,
+  nullsLowest = false,
 ) {
-  const find = jest.fn().mockResolvedValue(entities);
-  const findAll = jest.fn().mockResolvedValue(entities);
+  const find = vi.fn().mockResolvedValue(entities);
+  const findAll = vi.fn().mockResolvedValue(entities);
   const limitedCountQueryBuilder = {
-    applyFilters: jest.fn().mockResolvedValue(undefined),
-    limit: jest.fn().mockReturnThis(),
-    select: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    withSchema: jest.fn().mockReturnThis(),
+    applyFilters: vi.fn().mockResolvedValue(undefined),
+    limit: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    withSchema: vi.fn().mockReturnThis(),
   };
   const countQueryBuilder = {
-    count: jest.fn().mockReturnThis(),
-    getCount: jest.fn().mockResolvedValue(totalCount),
+    count: vi.fn().mockReturnThis(),
+    getCount: vi.fn().mockResolvedValue(totalCount),
   };
-  const createQueryBuilder = jest
+  const createQueryBuilder = vi
     .fn()
     .mockReturnValueOnce(limitedCountQueryBuilder)
     .mockReturnValueOnce(countQueryBuilder);
@@ -91,6 +107,7 @@ function createEntityManager(
   return {
     entityManager: {
       createQueryBuilder,
+      getPlatform: () => ({ sortsNullsLowest: () => nullsLowest }),
       find,
       findAll,
     } as unknown as SqlEntityManager,
@@ -106,6 +123,125 @@ describe("ConnectionQueryBuilder", () => {
   beforeEach(() => {
     setConnectionMetadata();
   });
+
+  it.each([
+    {
+      direction: OrderDirection.ASC,
+      value: null,
+      expected: {
+        $or: [
+          { title: { $ne: null } },
+          { $and: [{ title: { $eq: null } }, { id: { $gt: 1 } }] },
+        ],
+      },
+    },
+    {
+      direction: OrderDirection.DESC,
+      value: null,
+      expected: { $and: [{ title: { $eq: null } }, { id: { $lt: 1 } }] },
+    },
+    {
+      direction: OrderDirection.ASC,
+      value: "A",
+      expected: {
+        $or: [
+          { title: { $gt: "A" } },
+          { $and: [{ title: { $eq: "A" } }, { id: { $gt: 1 } }] },
+        ],
+      },
+    },
+    {
+      direction: OrderDirection.DESC,
+      value: "A",
+      expected: {
+        $or: [
+          { title: { $lt: "A" } },
+          { $and: [{ title: { $eq: "A" } }, { id: { $lt: 1 } }] },
+          { title: { $eq: null } },
+        ],
+      },
+    },
+  ])(
+    "respects nulls-lowest platforms for $direction at $value",
+    async ({ direction, value, expected }) => {
+      const { entityManager, find } = createEntityManager([], 0, true);
+      await new ConnectionQueryBuilder(
+        entityManager,
+        BookConnection as unknown as ConnectionClass<Book>,
+        {
+          first: 2,
+          after: new Cursor({ id: 1, value }).toString(),
+          orderBy: { field: "title", direction },
+        },
+      ).query();
+      expect(find).toHaveBeenCalledWith(
+        BookEntity,
+        expected,
+        expect.any(Object),
+      );
+    },
+  );
+
+  it.each([
+    { first: 2, query: null },
+    { first: 2, orderBy: null },
+    {
+      first: 2,
+      last: null,
+      after: null,
+      before: null,
+      filter: null,
+      query: null,
+      orderBy: null,
+    },
+    { last: 2, first: null, query: null, orderBy: null },
+  ])("treats nullable arguments as omitted: %j", async (args) => {
+    const book = {
+      id: 1,
+      title: "Book",
+      isbn: "isbn",
+      searchableTitle: "Book",
+    };
+    const { entityManager, findAll } = createEntityManager([book]);
+    const result = await new ConnectionQueryBuilder(
+      entityManager,
+      BookConnection as unknown as ConnectionClass<Book>,
+      args,
+    ).query();
+
+    expect(result.edges).toEqual([
+      { node: book, cursor: new Cursor({ id: 1 }).toString() },
+    ]);
+    expect(findAll).toHaveBeenCalledWith(BookEntity, {
+      limit: 3,
+      orderBy: [{ id: args.last === 2 ? QueryOrder.DESC : QueryOrder.ASC }],
+    });
+  });
+
+  it.each([-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects invalid page sizes %s before database access",
+    (size) => {
+      const { entityManager, find, findAll, createQueryBuilder } =
+        createEntityManager();
+      for (const args of [
+        { first: size },
+        { last: size },
+        { first: 1, last: size },
+      ]) {
+        expect(
+          () =>
+            new ConnectionQueryBuilder(
+              entityManager,
+              BookConnection as unknown as ConnectionClass<Book>,
+              args,
+            ),
+        ).toThrow("non-negative safe integer");
+      }
+      expect(find).not.toHaveBeenCalled();
+      expect(findAll).not.toHaveBeenCalled();
+      expect(createQueryBuilder).not.toHaveBeenCalled();
+    },
+  );
 
   it("maps query string fulltext searches to a configured fulltext field path", async () => {
     const { entityManager, find, limitedCountQueryBuilder } =
@@ -268,6 +404,7 @@ describe("ConnectionQueryBuilder", () => {
           {
             $and: [{ title: { $eq: "A" } }, { id: { $gt: 1 } }],
           },
+          { title: { $eq: null } },
         ],
       },
       expect.objectContaining({
@@ -385,6 +522,7 @@ describe("ConnectionQueryBuilder", () => {
           {
             $and: [{ title: { $eq: "A" } }, { id: { $gt: 10 } }],
           },
+          { title: { $eq: null } },
         ],
       },
       expect.objectContaining({
