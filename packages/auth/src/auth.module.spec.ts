@@ -737,7 +737,7 @@ describe("AuthModule", () => {
           getSessionContext: vi.fn(),
         },
       },
-      {} as Mailer,
+      {},
       {},
       { deleteUser },
     );
@@ -768,7 +768,7 @@ describe("AuthModule", () => {
             getSessionContext: vi.fn(),
           },
         },
-        {} as Mailer,
+        {},
         {},
         { deleteUser },
       );
@@ -810,7 +810,7 @@ describe("AuthModule", () => {
           getSessionContext: vi.fn(),
         },
       },
-      {} as Mailer,
+      {},
       {},
       { deleteUser },
     );

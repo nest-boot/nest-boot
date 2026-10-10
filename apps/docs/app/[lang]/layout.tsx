@@ -9,14 +9,12 @@ const inter = Inter({
 });
 
 const { provider } = defineI18nUI(i18n, {
-  translations: {
-    en: {
-      displayName: "English",
-    },
-    "zh-Hans": {
-      displayName: "简体中文",
-      search: "搜索文档",
-    },
+  en: {
+    displayName: "English",
+  },
+  "zh-Hans": {
+    displayName: "简体中文",
+    search: "搜索文档",
   },
 });
 

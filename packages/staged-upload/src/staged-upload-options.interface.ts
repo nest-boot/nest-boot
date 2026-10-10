@@ -2,7 +2,7 @@
 export interface StagedUploadLimit {
   /** Maximum file size in bytes. */
   fileSize: number;
-  /** Allowed MIME type patterns (supports glob matching via micromatch). */
+  /** Allowed MIME type patterns (supports glob matching via picomatch). */
   mimeTypes: string[];
 }
 

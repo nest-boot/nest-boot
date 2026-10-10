@@ -41,6 +41,36 @@ describe("StagedUploadService", () => {
   });
 
   describe("create", () => {
+    it.each([
+      [["image/*"], "image/png", true],
+      [["image/png", "application/pdf"], "application/pdf", true],
+      [["image/{png,jpeg}"], "image/jpeg", true],
+      [["image/@(png|jpeg)"], "image/png", true],
+      [["image/*"], "application/pdf", false],
+      [["image/{png,jpeg}"], "image/gif", false],
+      [[], "image/png", false],
+    ])(
+      "matches MIME patterns %j against %s",
+      async (patterns, mimeType, allowed) => {
+        const storage = createStorage();
+        const service = await createService(
+          { limits: [{ fileSize: 1024, mimeTypes: patterns }] },
+          storage.value,
+        );
+        const result = service.create([
+          { fileSize: 512, mimeType, name: "upload" },
+        ]);
+
+        if (allowed) {
+          await expect(result).resolves.toHaveLength(1);
+          expect(storage.createTemporaryUploadUrl).toHaveBeenCalledOnce();
+        } else {
+          await expect(result).rejects.toBeInstanceOf(BadRequestException);
+          expect(storage.createTemporaryUploadUrl).not.toHaveBeenCalled();
+        }
+      },
+    );
+
     it("creates constrained uploads and rewrites a custom public URL", async () => {
       const storage = createStorage();
       const service = await createService(
