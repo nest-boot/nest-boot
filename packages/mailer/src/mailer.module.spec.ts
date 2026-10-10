@@ -1,5 +1,6 @@
 import { Injectable, Module } from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
+import type JSONTransport from "nodemailer/lib/json-transport/index.js";
 import Mailer from "nodemailer/lib/mailer/index.js";
 import SMTPConnection from "nodemailer/lib/smtp-connection/index.js";
 
@@ -110,7 +111,7 @@ describe("MailerModule", () => {
     const module = await compile(
       MailerModule.register({ jsonTransport: true }),
     );
-    const mailer = module.get(Mailer);
+    const mailer = module.get<Mailer<JSONTransport.SentMessageInfo>>(Mailer);
 
     const result = await mailer.sendMail({
       to: "recipient@example.com",
