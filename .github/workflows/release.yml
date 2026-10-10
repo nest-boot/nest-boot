@@ -1,6 +1,12 @@
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      projects:
+        description: "Optional comma-separated packages to version; leave empty to recover unpublished versions"
+        type: string
+        default: ""
   push:
     branches:
       - main
@@ -11,6 +17,7 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   verify:
     name: Verify
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta'
     uses: ./.github/workflows/verify.yml
     permissions:
       contents: write
@@ -18,5 +25,6 @@ jobs:
     with:
       fetch-depth: 0
       release: true
+      release-projects: ${{ inputs.projects || '' }}
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
