@@ -1,3 +1,18 @@
+## 8.0.4-beta.2 (2026-10-10)
+
+### 🩹 Fixes
+
+- **deps:** upgrade production dependencies and Nodemailer 10 ([#405](https://github.com/nest-boot/nest-boot/pull/405))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.4-beta.2
+- Updated @nest-boot/graphql to 8.0.4-beta.2
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.4-beta.1 (2026-10-10)
 
 ### 🚀 Features

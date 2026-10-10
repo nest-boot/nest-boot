@@ -1,3 +1,18 @@
+## 8.0.5-beta.4 (2026-10-10)
+
+### 🩹 Fixes
+
+- **deps:** upgrade production dependencies and Nodemailer 10 ([#405](https://github.com/nest-boot/nest-boot/pull/405))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/request-context to 8.0.4-beta.2
+- Updated @nest-boot/health-check to 8.0.2-beta.3
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.5-beta.3 (2026-10-10)
 
 ### 🚀 Features
