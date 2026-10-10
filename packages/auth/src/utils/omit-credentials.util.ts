@@ -1,4 +1,10 @@
-/** Copies public entity fields without credentials or ORM identity-map state. @internal */
+/**
+ * Copies public entity fields without credentials or ORM identity-map state.
+ * @param entity - Entity being checked by the authorization condition.
+ * @param keys - Credential property names to omit.
+ * @returns Copy of the entity with the selected credential fields removed.
+ * @internal
+ */
 export function omitCredentials<Entity extends object, Key extends PropertyKey>(
   entity: Entity,
   keys: readonly Key[],

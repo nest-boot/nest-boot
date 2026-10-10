@@ -17,6 +17,8 @@ export interface SoftDeletePoliciesOptions {
  * cannot set `deletedAt`, restore deleted rows, or physically delete records.
  * Soft deletion and restoration require a separately authorized service path
  * using a database role permitted to bypass these restrictions.
+ * @param options - Configuration for this operation.
+ * @returns Restrictive policies that filter soft-deleted rows and permit updates.
  */
 export function softDeletePolicies(
   options: SoftDeletePoliciesOptions = {},

@@ -41,7 +41,7 @@ describe('SearchableProperty', () => {
     expect(() => {
       SearchableProperty({
         properties: [],
-      })({} as object, 'searchableName');
+      })({}, 'searchableName');
     }).toThrow('properties must have at least one property');
   });
 
@@ -103,12 +103,17 @@ describe('SearchableProperty', () => {
 
     SearchableProperty<{ name: string }>({
       properties: ['name'],
-    })({} as object, key);
+    })({}, key);
 
     expect(Property).not.toHaveBeenCalled();
   });
 });
 
+/**
+ * Returns entity manager mock exposing the original entity values.
+ * @param original - Original entity data tracked by the unit of work.
+ * @returns Entity manager mock exposing the original entity values.
+ */
 function entityManagerWithOriginal(original: Record<string, unknown> | null) {
   return {
     getUnitOfWork: () => ({

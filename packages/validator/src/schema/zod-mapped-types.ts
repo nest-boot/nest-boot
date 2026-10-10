@@ -13,6 +13,11 @@ import {
   registerZodObject,
 } from "./metadata.js";
 
+/**
+ * Returns named DTO class used by mapped-type helpers.
+ * @param name - Name used to identify the resource.
+ * @returns Named DTO class used by mapped-type helpers.
+ */
 function createMappedClass<T extends object>(name: string): ZodClass<T> {
   class MappedClass {}
 
@@ -20,6 +25,13 @@ function createMappedClass<T extends object>(name: string): ZodClass<T> {
   return MappedClass as ZodClass<T>;
 }
 
+/**
+ * Copies selected field definitions into a mapped DTO class.
+ * @param source - Source value to read from.
+ * @param target - Object that receives the configuration.
+ * @param include - Predicate selecting fields to copy.
+ * @param transform - Transformation applied to each copied field definition.
+ */
 function copyFields(
   source: ZodClass,
   target: ZodClass,
@@ -35,6 +47,11 @@ function copyFields(
   }
 }
 
+/**
+ * Returns field schema or factory that accepts undefined.
+ * @param definition - Field schema or schema factory.
+ * @returns Field schema or factory that accepts undefined.
+ */
 function optionalDefinition(
   definition: ZodFieldDefinition,
 ): ZodFieldDefinition {
@@ -43,6 +60,11 @@ function optionalDefinition(
     : definition.optional();
 }
 
+/**
+ * Copies unknown-key policies from source DTOs to the mapped class.
+ * @param sources - Source classes whose unknown-key policies are copied.
+ * @param target - Object that receives the configuration.
+ */
 function copyUnknownKeysPolicy(sources: ZodClass[], target: ZodClass): void {
   const options = sources.flatMap(getZodObjectOptions);
   const unknownKeys = options.reduce<ZodObjectOptions["unknownKeys"]>(
@@ -57,7 +79,6 @@ function copyUnknownKeysPolicy(sources: ZodClass[], target: ZodClass): void {
 
 /**
  * Creates a partial DTO while preserving Zod field metadata.
- *
  * @param source - DTO whose decorated fields become optional
  * @param factory - Optional Nest mapped-type helper, such as GraphQL's
  * `PartialType`
@@ -76,7 +97,6 @@ export function ZodPartialType<T extends object>(
 
 /**
  * Creates a DTO containing selected fields while preserving Zod field metadata.
- *
  * @param source - DTO to select fields from
  * @param keys - Data-property names to include
  * @param factory - Optional Nest mapped-type helper, such as GraphQL's
@@ -104,7 +124,6 @@ export function ZodPickType<
 
 /**
  * Creates a DTO without selected fields while preserving Zod field metadata.
- *
  * @param source - DTO to remove fields from
  * @param keys - Data-property names to exclude
  * @param factory - Optional Nest mapped-type helper, such as GraphQL's
@@ -134,7 +153,6 @@ export function ZodOmitType<
  * Creates an intersection DTO while preserving Zod field metadata from both
  * inputs. Fields from the second DTO override fields with the same name from
  * the first at runtime and in the inferred output type.
- *
  * @param first - First DTO in the intersection
  * @param second - Second DTO in the intersection
  * @param factory - Optional Nest mapped-type helper, such as GraphQL's

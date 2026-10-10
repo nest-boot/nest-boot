@@ -38,6 +38,11 @@ const CONNECTION_TARGET_OPTION_KEYS = [
 @Module({})
 class DatabaseOptionsHostModule {}
 
+/**
+ * Returns whether the module options specify a connection target.
+ * @param options - Configuration for this operation.
+ * @returns Whether the module options specify a connection target.
+ */
 function hasExplicitConnectionTarget(options: DatabaseModuleOptions): boolean {
   return CONNECTION_TARGET_OPTION_KEYS.some(
     (key) => options[key] !== undefined,
@@ -47,7 +52,6 @@ function hasExplicitConnectionTarget(options: DatabaseModuleOptions): boolean {
 /**
  * MikroORM integration module with request-scoped entity manager.
  *
- * @remarks
  * Wraps `@mikro-orm/nestjs` with automatic environment-based configuration
  * and request context integration for per-request entity manager forking.
  * Automatic `DATABASE_URL` loading is skipped when an explicit URL or
@@ -170,7 +174,8 @@ export class DatabaseModule
     });
   }
 
-  /** Creates a new DatabaseModule instance.
+  /**
+   * Creates a new DatabaseModule instance.
    * @param orm - The MikroORM instance
    * @param options - Nest Boot configuration, including the session factory
    */
@@ -205,6 +210,7 @@ export class DatabaseModule
   /**
    * Clears the MikroORM metadata storage.
    * @param args - clearStorage arguments
+   * @returns Result of clearing the base module's registration storage.
    */
   static clearStorage(
     ...args: Parameters<typeof BaseDatabaseModule.clearStorage>

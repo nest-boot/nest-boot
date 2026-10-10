@@ -27,6 +27,12 @@ const fields = new Map<string, ConnectionFieldOptions<RecordWithDates>>([
 ]);
 const { Filter, filterQuerySchema } = createFilter("RecordDates", fields);
 
+/**
+ * Returns callback result within a request with the supplied timezone header.
+ * @param timezoneOffset - Client timezone offset in minutes.
+ * @param action - Permission action to check.
+ * @returns Callback result within a request with the supplied timezone header.
+ */
 function withTimezoneOffset<T>(
   timezoneOffset: string | string[] | undefined,
   action: () => T,

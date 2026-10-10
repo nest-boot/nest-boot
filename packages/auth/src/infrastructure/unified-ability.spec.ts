@@ -17,6 +17,10 @@ import { buildRequestAbility } from "../utils/build-request-ability.util.js";
 import { serializeAbilityRules } from "../utils/serialize-ability-rules.util.js";
 import { RequestIdentity } from "./request-identity.js";
 
+/**
+ * Returns user, workspace, and member used by the authorization fixture.
+ * @returns User, workspace, and member used by the authorization fixture.
+ */
 function identity() {
   const user = Object.assign(new User(), { roles: ["admin"] });
   const workspace = new Workspace();

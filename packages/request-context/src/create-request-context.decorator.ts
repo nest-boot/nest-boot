@@ -14,12 +14,10 @@ export type MethodArgs<T, M extends keyof T> = T[M] extends (
  *
  * This is useful for creating request contexts for background jobs, event handlers,
  * or any other code that runs outside of HTTP request handling.
- *
- * @typeParam T - The class type containing the method
- * @typeParam P - The property key of the method
+ * @template T - The class type containing the method
+ * @template P - The property key of the method
  * @param fn - A function that creates the RequestContext, receiving the class instance and method arguments
  * @returns A method decorator
- *
  * @example Basic usage with a job processor
  * ```typescript
  * import { CreateRequestContext, RequestContext } from '@nest-boot/request-context';
@@ -35,7 +33,6 @@ export type MethodArgs<T, M extends keyof T> = T[M] extends (
  *   }
  * }
  * ```
- *
  * @example With service injection
  * ```typescript
  * import { Injectable } from '@nestjs/common';

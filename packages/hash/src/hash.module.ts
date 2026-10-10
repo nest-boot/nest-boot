@@ -12,7 +12,6 @@ import { estimateEntropy } from "./utils/estimate-entropy.js";
 
 /**
  * Module that provides password hashing services using Argon2.
- *
  * @example
  * ```typescript
  * import { HashModule } from '@nest-boot/hash';

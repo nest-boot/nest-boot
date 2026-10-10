@@ -16,7 +16,10 @@ export class ScheduleProcessor
   extends WorkerHost
   implements OnApplicationBootstrap
 {
-  /** Logger for worker lifecycle failures. @internal */
+  /**
+   * Logger for worker lifecycle failures.
+   * @internal
+   */
   private readonly logger = new Logger(ScheduleProcessor.name);
 
   constructor(

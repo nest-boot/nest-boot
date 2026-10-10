@@ -8,7 +8,12 @@ type EmailVerificationConfig = NonNullable<
 >;
 type EmailVerificationOptions = AuthModuleOptions["emailVerification"];
 
-/** Creates the email verification configuration backed by the application mailer. */
+/**
+ * Creates the email verification configuration backed by the application mailer.
+ * @param mailer - Mailer used to deliver authentication emails.
+ * @param options - Configuration for this operation.
+ * @returns Email verification options with the configured delivery hook.
+ */
 export function createEmailVerificationConfig(
   mailer: Mailer,
   options?: EmailVerificationOptions,

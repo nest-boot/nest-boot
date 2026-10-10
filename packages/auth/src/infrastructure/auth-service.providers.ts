@@ -14,7 +14,10 @@ import { WorkspaceService } from "../services/workspace.service.js";
 import { ApiKeyAuthenticationService } from "./api-key-authentication.service.js";
 import { createContextualAuthService } from "./create-contextual-auth-service.js";
 
-/** Explicit internal execution boundaries; ordinary management is deliberately absent. @internal */
+/**
+ * Explicit internal execution boundaries; ordinary management is deliberately absent.
+ * @internal
+ */
 export const authServiceProviders: Provider[] = [
   {
     provide: WorkspaceService,

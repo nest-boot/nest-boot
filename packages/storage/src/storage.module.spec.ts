@@ -174,6 +174,12 @@ describe("StorageModule", () => {
     );
   });
 
+  /**
+   * Returns compiled Nest testing module.
+   * @param storageModule - Storage module registration to test.
+   * @param featureModule - Feature module imported by the test application.
+   * @returns Compiled Nest testing module.
+   */
   async function compile(
     storageModule:
       | typeof StorageModule
@@ -188,6 +194,11 @@ describe("StorageModule", () => {
   }
 });
 
+/**
+ * Returns public and internal S3 clients used by the storage instance.
+ * @param storage - Storage service used for file operations.
+ * @returns Public and internal S3 clients used by the storage instance.
+ */
 function storageClients(storage: Storage): {
   client: S3Client;
   internalClient: S3Client;

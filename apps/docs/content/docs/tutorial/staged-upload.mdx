@@ -208,10 +208,6 @@ presigned POST destination and every form field that the client must submit
 with the file. Validation, expiry, and object paths use the options registered
 with `StagedUploadModule`.
 
-See the
-[GraphQL Staged Upload API Reference](/docs/api/staged-upload-graphql) for the
-adapter's schema and resolver APIs.
-
 ## Best Practices
 
 1. **Strict MIME Types** — Only allow the MIME types your application actually needs.
@@ -219,8 +215,3 @@ adapter's schema and resolver APIs.
 2. **Reasonable Size Limits** — Define one or more `limits` entries that pair a maximum byte size with MIME glob patterns.
 
 3. **Temporary Object Cleanup** — `persist()` copies objects but does not delete the source; configure an S3 lifecycle rule for the effective `<rootPath>/<temporaryPath>/` prefix.
-
-## API Reference
-
-For complete signatures and option types, see the
-[Staged Upload API Reference](/docs/api/staged-upload).

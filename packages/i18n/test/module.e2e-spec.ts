@@ -70,6 +70,11 @@ describe("I18nModule - e2e", () => {
     });
   });
 
+  /**
+   * Returns initialized test application and its exposed dependencies.
+   * @param i18nModule - Internationalization module registration to test.
+   * @returns Initialized test application and its exposed dependencies.
+   */
   async function createApp(
     i18nModule: DynamicModule | Type,
   ): Promise<INestApplication> {
@@ -85,6 +90,10 @@ describe("I18nModule - e2e", () => {
   }
 });
 
+/**
+ * Returns options configured for the test.
+ * @returns Options configured for the test.
+ */
 function createOptions() {
   return {
     detection: {

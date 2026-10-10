@@ -6,7 +6,6 @@ export interface StorageModuleOptions {
   /**
    * S3 bucket used for all storage operations.
    *
-   * @remarks
    * When omitted, the module reads `STORAGE_BUCKET` from the environment.
    */
   bucket?: string;
@@ -40,7 +39,6 @@ export interface StorageModuleOptions {
    * Optional key prefix that scopes every storage path. Defaults to the bucket
    * root (`/`), represented internally by an empty prefix.
    *
-   * @remarks
    * When omitted, the module reads `STORAGE_ROOT_PATH` from the environment.
    */
   rootPath?: string;

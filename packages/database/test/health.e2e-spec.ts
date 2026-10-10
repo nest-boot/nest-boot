@@ -18,6 +18,13 @@ describe("Database health HTTP integration", () => {
     await app?.close();
   });
 
+  /**
+   * Returns initialized test application and its exposed dependencies.
+   * @param enabled - Whether this feature is enabled.
+   * @param asyncRegistration - Whether to register the module asynchronously.
+   * @param connect - Whether to open the database connection.
+   * @returns Initialized test application and its exposed dependencies.
+   */
   async function createApp(
     enabled = true,
     asyncRegistration = false,
@@ -59,6 +66,10 @@ describe("Database health HTTP integration", () => {
     return { orm, connection, probe };
   }
 
+  /**
+   * Returns hTTP status and body returned by the health endpoint.
+   * @returns HTTP status and body returned by the health endpoint.
+   */
   async function health() {
     const response = await fetch(`${await app.getUrl()}/api/health`);
     const body: unknown = await response.json();

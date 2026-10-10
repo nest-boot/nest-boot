@@ -79,6 +79,11 @@ describe("GraphQLRateLimitModule - e2e", () => {
     );
   });
 
+  /**
+   * Returns initialized test application and its exposed dependencies.
+   * @param rateLimitModule - GraphQL rate-limit module registration to test.
+   * @returns Initialized test application and its exposed dependencies.
+   */
   async function createApp(
     rateLimitModule: DynamicModule,
   ): Promise<INestApplication> {

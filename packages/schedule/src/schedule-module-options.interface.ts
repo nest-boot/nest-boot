@@ -4,7 +4,6 @@ import { type ConnectionOptions } from "bullmq";
 /**
  * Configuration options for the schedule module.
  *
- * @remarks
  * Extends BullMQ queue options with schedule-specific settings
  * for controlling job processing behavior.
  */

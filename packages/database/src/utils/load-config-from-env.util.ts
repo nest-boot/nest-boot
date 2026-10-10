@@ -10,6 +10,11 @@ export type DatabaseDriverConstructor = new (
   config: Configuration,
 ) => IDatabaseDriver;
 
+/**
+ * Returns database driver selected by the URL protocol.
+ * @param protocol - Database URL protocol used to select a driver.
+ * @returns Database driver selected by the URL protocol.
+ */
 async function getDriver(protocol: string): Promise<DatabaseDriverConstructor> {
   switch (protocol) {
     case "file:":
@@ -23,6 +28,11 @@ async function getDriver(protocol: string): Promise<DatabaseDriverConstructor> {
   }
 }
 
+/**
+ * Returns hostname without surrounding IPv6 brackets.
+ * @param hostname - Database hostname, possibly enclosed in IPv6 brackets.
+ * @returns Hostname without surrounding IPv6 brackets.
+ */
 function normalizeHostname(hostname: string): string {
   if (hostname.startsWith("[") && hostname.endsWith("]")) {
     return hostname.slice(1, -1);
@@ -31,6 +41,11 @@ function normalizeHostname(hostname: string): string {
   return hostname;
 }
 
+/**
+ * Returns tLS options containing loaded file contents, or undefined when none are configured.
+ * @param files - TLS file paths paired with their driver option names.
+ * @returns TLS options containing loaded file contents, or undefined when none are configured.
+ */
 async function loadTlsFiles(
   files: readonly (readonly [unknown, string])[],
 ): Promise<Record<string, unknown> | undefined> {
@@ -47,6 +62,11 @@ async function loadTlsFiles(
   return hasTlsFile ? ssl : undefined;
 }
 
+/**
+ * Returns postgreSQL TLS options with certificate paths resolved to contents.
+ * @param connection - Driver connection options.
+ * @returns PostgreSQL TLS options with certificate paths resolved to contents.
+ */
 async function loadPostgreSqlTlsFiles(
   connection: Record<string, unknown>,
 ): Promise<Record<string, unknown> | undefined> {
@@ -63,6 +83,11 @@ async function loadPostgreSqlTlsFiles(
   return ssl;
 }
 
+/**
+ * Returns schema and driver options derived from URL query parameters.
+ * @param url - URL whose configuration is being inspected.
+ * @returns Schema and driver options derived from URL query parameters.
+ */
 async function loadQueryConfig(
   url: URL,
 ): Promise<Pick<HostConfig, "driverOptions" | "schema">> {
@@ -168,7 +193,6 @@ export interface HostConfig {
 /**
  * Loads MikroORM configuration from environment variables.
  *
- * @remarks
  * Supports `DATABASE_URL`, which is parsed into individual connection options,
  * including structured query options. The `postgresql:` and `postgres:`
  * protocols select PostgreSQL, while `file:` selects persistent PGlite and
@@ -178,7 +202,6 @@ export interface HostConfig {
  * `verify-full`. Modes that require a plaintext fallback are rejected because
  * one structured driver configuration cannot preserve that behavior.
  * Framework defaults are included, with metadata caching disabled.
- *
  * @returns MikroORM options derived from environment variables
  */
 export async function loadConfigFromEnv(): Promise<

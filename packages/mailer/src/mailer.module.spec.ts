@@ -113,6 +113,12 @@ describe("MailerModule", () => {
     );
   });
 
+  /**
+   * Returns compiled Nest testing module.
+   * @param mailerModule - Mailer module registration to test.
+   * @param featureModule - Feature module imported by the test application.
+   * @returns Compiled Nest testing module.
+   */
   async function compile(
     mailerModule:
       | typeof MailerModule

@@ -9,7 +9,6 @@ import { QueueDatabaseModuleOptions } from "./queue-database-module-options.inte
 /**
  * Module that integrates BullMQ job events with MikroORM persistence.
  *
- * @remarks
  * Subscribes to BullMQ queue events and automatically persists job state
  * changes to the database using the configured entity.
  */

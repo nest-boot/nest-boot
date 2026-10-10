@@ -1,4 +1,8 @@
-/** Builds GraphQL names while preserving the original permission values. */
+/**
+ * Builds GraphQL names while preserving the original permission values.
+ * @param permissions - Permission names to apply.
+ * @returns GraphQL enum values mapped to the configured permission names.
+ */
 export function createPermissionEnum(
   permissions: readonly string[],
 ): Record<string, string> {

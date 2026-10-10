@@ -20,7 +20,6 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
  *
  * The module automatically loads and parses `REDIS_URL` when explicit options
  * are not provided (for example, `redis://user:pass@host:6379/0`).
- *
  * @example
  * ```typescript
  * import { RedisModule } from '@nest-boot/redis';
@@ -36,7 +35,6 @@ import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
  * })
  * export class AppModule {}
  * ```
- *
  * @example
  * ```typescript
  * // Inject Redis client in your service
@@ -92,7 +90,8 @@ export class RedisModule
     return super.registerAsync(options);
   }
 
-  /** Creates a new RedisModule instance.
+  /**
+   * Creates a new RedisModule instance.
    * @param redis - The ioredis client instance
    */
   constructor(private readonly redis: Redis) {

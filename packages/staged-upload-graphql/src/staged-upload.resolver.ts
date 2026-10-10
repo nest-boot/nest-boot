@@ -7,7 +7,8 @@ import { StagedUpload } from "./staged-upload.object.js";
 /** GraphQL resolver for creating staged uploads. */
 @Resolver(() => StagedUpload)
 export class StagedUploadResolver {
-  /** Creates a staged upload resolver.
+  /**
+   * Creates a staged upload resolver.
    * @param stagedUploadService - Globally registered staged upload service
    */
   constructor(private readonly stagedUploadService: StagedUploadService) {}

@@ -14,12 +14,20 @@ import { resolveRequestMember } from "./resolve-request-member.util.js";
 
 const REQUEST_PERMISSIONS = Symbol("auth.requestPermissions");
 
-/** Invalidates the shared permission snapshot when the request identity changes. @internal */
+/**
+ * Invalidates the shared permission snapshot when the request identity changes.
+ * @internal
+ */
 export function invalidateRequestPermissions(): void {
   if (RequestContext.isActive()) RequestContext.set(REQUEST_PERMISSIONS, null);
 }
 
-/** Resolves one credential-limited permission snapshot per request identity. @internal */
+/**
+ * Resolves one credential-limited permission snapshot per request identity.
+ * @param options - Authentication module configuration.
+ * @returns Effective user and workspace permissions, restricted by the active API key.
+ * @internal
+ */
 export function resolveRequestPermissions(
   options: AuthModuleOptions,
 ): RequestPermissions {

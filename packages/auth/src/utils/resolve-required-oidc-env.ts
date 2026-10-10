@@ -1,5 +1,10 @@
 import { RequiredOidcEnvName } from "./oidc.constants.js";
 
+/**
+ * Returns nonempty value of the required OIDC setting.
+ * @param name - Name used to identify the resource.
+ * @returns Nonempty value of the required OIDC setting.
+ */
 export function resolveRequiredOidcEnv(name: RequiredOidcEnvName): string {
   const value = process.env[name];
 

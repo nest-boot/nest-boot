@@ -6,7 +6,11 @@ import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { getCurrentApiKey } from "./get-current-api-key.util.js";
 
-/** Resolves active membership matching both the selected workspace and credential owner. @internal */
+/**
+ * Resolves active membership matching both the selected workspace and credential owner.
+ * @returns Authenticated member after checking its type and user association, or null.
+ * @internal
+ */
 export function resolveRequestMember(): Member | null {
   if (!RequestContext.isActive()) return null;
   const member = RequestContext.get(Member);

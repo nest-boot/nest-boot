@@ -2,7 +2,13 @@ import type { PolicyCallback, PolicyDef } from "@mikro-orm/core";
 
 import type { ScopePolicyOptions } from "../interfaces/scope-policy-options.interface.js";
 
-/** @internal Builds the common native policy without discovery hooks. */
+/**
+ * Builds the common native policy without discovery hooks.
+ * @param scope - User or workspace identifier stored in the database request context.
+ * @param options - Configuration for this operation.
+ * @returns Native database policy that compares the row with the request scope.
+ * @internal
+ */
 export function createScopePolicy(
   scope: "user" | "workspace",
   options: ScopePolicyOptions,

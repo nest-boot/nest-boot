@@ -55,6 +55,11 @@ describe("HTTP request helpers", () => {
   });
 });
 
+/**
+ * Returns hTTP server listening on an available loopback port.
+ * @param app - Application to start or configure.
+ * @returns HTTP server listening on an available loopback port.
+ */
 function listen(app: ReturnType<typeof express>): Promise<Server> {
   return new Promise((resolve, reject) => {
     const server = app.listen(0, "127.0.0.1", () => {
@@ -64,6 +69,10 @@ function listen(app: ReturnType<typeof express>): Promise<Server> {
   });
 }
 
+/**
+ * Returns promise that resolves after the server or app closes.
+ * @param server - HTTP server to close.
+ */
 function close(server: Server): Promise<void> {
   return new Promise((resolve, reject) => {
     server.close((error) => {

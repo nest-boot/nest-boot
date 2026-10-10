@@ -96,6 +96,12 @@ describe("native RLS with PGlite", () => {
     await module?.close();
   });
 
+  /**
+   * Returns callback result within the test request context.
+   * @param workspace - The workspace that scopes this operation.
+   * @param callback - Work to execute in the supplied context.
+   * @returns Callback result within the test request context.
+   */
   async function request<T>(
     workspace: string,
     callback: (em: typeof orm.em) => Promise<T>,

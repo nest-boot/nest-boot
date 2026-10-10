@@ -2,7 +2,6 @@ import type { FilterOptions } from "mikro-orm-filter-query-schema";
 
 /**
  * Configuration options for the ConnectionBuilder.
- *
  * @example
  * ```typescript
  * const options: ConnectionBuilderOptions = {

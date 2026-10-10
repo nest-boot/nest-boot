@@ -4,7 +4,7 @@ Thank you for improving Nest Boot. This repository is a pnpm/Nx monorepo for the
 
 ## Choose the correct repository
 
-- Use this repository for runtime behavior, public APIs and types, generated output, package dependencies, official tutorials/API docs, tests, and release infrastructure.
+- Use this repository for runtime behavior, public APIs and types, generated output, package dependencies, official guides and tutorials, tests, and release infrastructure.
 - Report incorrect or missing agent guidance to [nest-boot/skills](https://github.com/nest-boot/skills).
 - Keep application-specific wrappers, directory layouts, deployment rules, and private business behavior in the consuming project.
 - Follow [SECURITY.md](SECURITY.md) instead of opening a public Issue for suspected vulnerabilities or sensitive data exposure.
@@ -44,6 +44,8 @@ Work from an up-to-date `main` on a dedicated branch. Preserve unrelated changes
 - Check public exports, types, official docs, peer dependencies, and cross-package consumers when behavior changes.
 - Do not manually change package versions, tags, or release artifacts unless the current release workflow or a maintainer explicitly requires it.
 
+Source comments follow `eslint-plugin-jsdoc`'s `flat/recommended-typescript-error` preset. Use `@template` for generic parameters and `{ErrorType}` on `@throws`. Keep parameter and return types in TypeScript, and use `@param` and `@returns` for their descriptions. The shared ESLint config applies the preset without JSDoc rule overrides or legacy tag aliases.
+
 Run focused checks first. Use the package's Vitest script or its Nx test target:
 
 ```bash
@@ -63,9 +65,10 @@ The pull request workflow runs:
 pnpm build:packages --skip-nx-cache
 pnpm format:check
 pnpm lint
-pnpm typedoc:check
 pnpm test:cov
 ```
+
+For documentation changes, run `pnpm --filter @nest-boot/docs types:check`, `pnpm --filter @nest-boot/docs lint`, and `pnpm build:docs`. Keep tutorials, examples, and source comments aligned with public API changes.
 
 Coverage tests in CI use PostgreSQL, Redis, and RustFS. If equivalent services are unavailable locally, run the reliable subset and state exactly what was not run. Never claim a check passed without its output.
 

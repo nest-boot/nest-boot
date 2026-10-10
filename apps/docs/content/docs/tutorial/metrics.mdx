@@ -185,7 +185,3 @@ The same approach works with `Gauge`, `Histogram`, and `Summary` from `prom-clie
 - Configure `MetricsModule` only once. Re-importing it can create additional registries and default collectors instead of sharing the intended application registry.
 - Choose low-cardinality labels. Do not use unbounded values such as user IDs, request IDs, or raw URLs as metric labels.
 - The endpoint exposes process and application information. Restrict access at the network, ingress, or proxy layer when it should not be public.
-
-## API Reference
-
-For detailed API documentation, see the [Metrics API Reference](/docs/api/metrics).

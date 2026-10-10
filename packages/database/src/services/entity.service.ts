@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-generated-empty-object-type -- MikroORM QueryOrderMap resolves its fields only after the entity generic is supplied. */
 import {
   type AssignOptions,
   CountOptions,
@@ -63,12 +64,10 @@ export interface EntityServiceOptions<Entity extends IdEntity> {
 /**
  * Generic CRUD service for MikroORM entities with DataLoader batching.
  *
- * @remarks
  * Provides batched `create`, `findOne`, `update`, and `remove` operations
  * via DataLoader for automatic N+1 prevention, plus standard `findAll`,
  * `count`, and `chunkById` methods.
- *
- * @typeParam Entity - The entity type, which must have an `id` property
+ * @template Entity - The entity type, which must have an `id` property
  */
 export class EntityService<Entity extends IdEntity> {
   readonly #dataLoadersByEntityManager = new WeakMap<
@@ -293,7 +292,7 @@ export class EntityService<Entity extends IdEntity> {
    * Finds a single entity by ID, entity reference, or filter query, throwing if not found.
    * @param idOrEntityOrWhere - The entity ID, entity instance, or filter query
    * @returns The found entity
-   * @throws NotFoundException if the entity is not found
+   * @throws {NotFoundException} if the entity is not found
    */
   async findOneOrFail(
     idOrEntityOrWhere: IdOrEntity<Entity> | FilterQuery<Entity>,
@@ -349,7 +348,7 @@ export class EntityService<Entity extends IdEntity> {
    * @param data - The data to assign to the entity
    * @param options - Optional assign options
    * @returns The updated entity
-   * @throws NotFoundException if the entity is not found
+   * @throws {NotFoundException} if the entity is not found
    */
   async update<
     Naked extends FromEntityType<Entity> = FromEntityType<Entity>,
@@ -374,7 +373,7 @@ export class EntityService<Entity extends IdEntity> {
    * @param idOrEntity - The entity ID or entity instance to remove
    * @param softDelete - Whether to soft-delete (default: true)
    * @returns The removed entity
-   * @throws NotFoundException if the entity is not found
+   * @throws {NotFoundException} if the entity is not found
    */
   async remove(
     idOrEntity: IdOrEntity<Entity>,

@@ -1,6 +1,11 @@
 import { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { estimateEntropy } from "./estimate-entropy.js";
 
+/**
+ * Returns configured authentication secret.
+ * @param options - Authentication module configuration.
+ * @returns Configured authentication secret.
+ */
 export function resolveSecret(options: AuthModuleOptions): string {
   const secret =
     options.secret ?? process.env.AUTH_SECRET ?? process.env.APP_SECRET;

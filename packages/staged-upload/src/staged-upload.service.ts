@@ -21,7 +21,6 @@ import { type StagedUploadModuleOptions } from "./staged-upload-options.interfac
 /**
  * Service for staging uploads in S3-compatible storage.
  *
- * @remarks
  * Supports presigned POST uploads, direct uploads, and
  * promoting temporary files to permanent storage paths.
  */
@@ -31,7 +30,8 @@ export class StagedUploadService {
   private readonly temporaryPath: string;
   private readonly temporaryPathSegments: string[];
 
-  /** Creates a new StagedUploadService instance.
+  /**
+   * Creates a new StagedUploadService instance.
    * @param options - Staged upload module configuration options
    * @param storage - Storage service provided by the global StorageModule
    */
@@ -128,6 +128,7 @@ export class StagedUploadService {
    * Uploads file data directly to the configured storage.
    * @param data - File content as a Readable stream, Buffer, or string
    * @param metadata - Upload metadata including Content-Type and optional extension
+   * @param metadata.extension - File extension to apply to the permanent path.
    * @param persist - Whether to copy the file to permanent storage immediately
    * @returns The URL of the uploaded file
    */
@@ -159,12 +160,21 @@ export class StagedUploadService {
       : await this.getFileUrl(filePath);
   }
 
-  /** Constructs the full URL for a stored file. @internal */
+  /**
+   * Constructs the full URL for a stored file.
+   * @param filePath - Path of the stored file.
+   * @returns Public URL for the stored file.
+   * @internal
+   */
   private async getFileUrl(filePath: string): Promise<string> {
     return await this.storage.getUrl(filePath);
   }
 
-  /** Copies a storage-relative temporary path to its permanent dated path. */
+  /**
+   * Copies a storage-relative temporary path to its permanent dated path.
+   * @param temporaryPath - Path of the staged upload.
+   * @returns Public URL of the file copied to its permanent location.
+   */
   private async persistPath(temporaryPath: string): Promise<string> {
     const temporaryPrefix = `${this.temporaryPath}/`;
     if (!temporaryPath.startsWith(temporaryPrefix)) {
@@ -182,7 +192,11 @@ export class StagedUploadService {
     return await this.getFileUrl(targetPath);
   }
 
-  /** Extracts the storage-relative temporary path from an uploaded object URL. */
+  /**
+   * Extracts the storage-relative temporary path from an uploaded object URL.
+   * @param temporaryUrl - URL identifying the staged upload.
+   * @returns Validated staged file path extracted from the URL.
+   */
   private temporaryPathFromUrl(temporaryUrl: string): string {
     let segments: string[];
 
@@ -217,6 +231,12 @@ export class StagedUploadService {
   }
 }
 
+/**
+ * Returns normalized path with invalid components rejected.
+ * @param path - Path to normalize or access.
+ * @param optionName - Configuration option name used in validation errors.
+ * @returns Normalized path with invalid components rejected.
+ */
 function normalizeConfiguredPath(path: string, optionName: string): string {
   const segments = path.split("/").filter(Boolean);
 
@@ -230,6 +250,12 @@ function normalizeConfiguredPath(path: string, optionName: string): string {
   return segments.join("/");
 }
 
+/**
+ * Returns starting index of the last matching sequence, or -1.
+ * @param pathSegments - Path components to search.
+ * @param expectedSegments - Consecutive components to locate.
+ * @returns Starting index of the last matching sequence, or -1.
+ */
 function findLastPathSequence(
   pathSegments: string[],
   expectedSegments: string[],
@@ -251,6 +277,11 @@ function findLastPathSequence(
   return -1;
 }
 
+/**
+ * Returns whether the component is nonempty and safe for a storage path.
+ * @param segment - Single path component to validate.
+ * @returns Whether the component is nonempty and safe for a storage path.
+ */
 function isValidPathSegment(segment: string): boolean {
   return (
     Boolean(segment) &&

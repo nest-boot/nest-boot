@@ -9,7 +9,13 @@ type DeleteUser = (
   beforeDelete?: () => Promise<void>,
 ) => Promise<void>;
 
-/** Adds Nest Boot's mailer-backed defaults to Better Auth user options. */
+/**
+ * Adds Nest Boot's mailer-backed defaults to Better Auth user options.
+ * @param mailer - Mailer used to deliver authentication emails.
+ * @param options - Configuration for this operation.
+ * @param deleteUser - Callback that removes the user and related records.
+ * @returns Better Auth user options with email-change and deletion hooks.
+ */
 export function createUserConfig(
   mailer: Mailer,
   options?: AuthModuleUserOptions,

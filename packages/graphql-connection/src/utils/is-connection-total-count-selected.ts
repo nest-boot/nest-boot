@@ -10,6 +10,12 @@ import {
 
 const TOTAL_COUNT_FIELDS = new Set(["totalCount", "totalCountRelation"]);
 
+/**
+ * Returns whether directives allow the selection node to be included.
+ * @param info - GraphQL selection information used to shape the query.
+ * @param node - GraphQL selection node to inspect.
+ * @returns Whether directives allow the selection node to be included.
+ */
 function shouldIncludeNode(
   info: GraphQLResolveInfo,
   node: SelectionNode,
@@ -36,7 +42,8 @@ function shouldIncludeNode(
 /**
  * Determines whether a connection count field is selected by a GraphQL
  * operation.
- *
+ * @param info - GraphQL selection information used to shape the query.
+ * @returns Whether the selection set requests the connection's total count.
  * @internal
  */
 export function isConnectionTotalCountSelected(

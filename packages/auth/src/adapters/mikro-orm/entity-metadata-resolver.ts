@@ -18,6 +18,13 @@ export interface EntityMetadataResolver {
   toEntityData(model: string, data: object): EntityRecord;
 }
 
+/**
+ * Returns helpers that map between adapter records and entity metadata.
+ * @param em - Entity manager used for persistence.
+ * @param entities - Entity classes registered for the operation.
+ * @param context - Context used to resolve this operation.
+ * @returns Helpers that map between adapter records and entity metadata.
+ */
 export function createEntityMetadataResolver(
   em: EntityManager,
   entities: typeof authEntityMap,

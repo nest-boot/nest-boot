@@ -491,12 +491,25 @@ describe("RequestContextInterceptor", () => {
   });
 });
 
+/**
+ * Returns nest call handler returning the supplied observable.
+ * @param observable - Observable returned by the intercepted handler.
+ * @returns Nest call handler returning the supplied observable.
+ */
 function createCallHandler<T>(observable: Observable<T>): CallHandler<T> {
   return {
     handle: () => observable,
   };
 }
 
+/**
+ * Returns execution context configured for the test.
+ * @param id - Identifier of the record to access.
+ * @param options - Configuration for this operation.
+ * @param options.headers - Headers supplied by the request fixture.
+ * @param options.response - Response object supplied by the fixture.
+ * @returns Execution context configured for the test.
+ */
 function createExecutionContext(
   id: string,
   options: {
@@ -515,6 +528,13 @@ function createExecutionContext(
   } as unknown as ExecutionContext;
 }
 
+/**
+ * Returns graphql execution context configured for the test.
+ * @param context - Context used to resolve this operation.
+ * @param context.req - HTTP request exposed by the GraphQL context.
+ * @param context.res - HTTP response exposed by the GraphQL context.
+ * @returns Graphql execution context configured for the test.
+ */
 function createGraphqlExecutionContext(context: {
   req?: Request;
   res?: Response;
@@ -534,6 +554,12 @@ function createGraphqlExecutionContext(context: {
   } as unknown as ExecutionContext;
 }
 
+/**
+ * Returns request configured for the test.
+ * @param id - Identifier of the record to access.
+ * @param headers - HTTP headers associated with the request or response.
+ * @returns Request configured for the test.
+ */
 function createRequest(
   id: string,
   headers: Record<string, string | string[]> = {},
@@ -552,6 +578,10 @@ interface TestResponse {
   setHeader(name: string, value: string | string[]): void;
 }
 
+/**
+ * Returns writable HTTP response fixture with captured headers.
+ * @returns Writable HTTP response fixture with captured headers.
+ */
 function createResponse(): TestResponse {
   return {
     headers: {},

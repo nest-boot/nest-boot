@@ -67,7 +67,15 @@ import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 /** GraphQL transport for user administration. */
 @Resolver(() => User)
 export class UserResolver {
-  /** Creates the user-management GraphQL resolver. */
+  /**
+   * Creates the user-management GraphQL resolver.
+   * @param userService - Service for user profiles and permissions.
+   * @param workspaceService - Service for workspace queries and mutations.
+   * @param apiKeyService - Service for validating or managing API keys.
+   * @param sessionService - Service for session queries and revocation.
+   * @param invitationService - Service for invitation queries and mutations.
+   * @param accountService - Service for linked authentication accounts.
+   */
   constructor(
     private readonly userService: UserService,
     private readonly workspaceService: WorkspaceService,
@@ -77,7 +85,13 @@ export class UserResolver {
     private readonly accountService: AccountService,
   ) {}
 
-  /** Lists active sessions belonging to the parent user after service authorization. */
+  /**
+   * Lists active sessions belonging to the parent user after service authorization.
+   * @param user - The user whose account is being accessed.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated active sessions belonging to the user.
+   */
   @ResolveField(() => SessionConnection)
   async sessions(
     @Parent() user: User,
@@ -92,7 +106,13 @@ export class UserResolver {
     );
   }
 
-  /** Paginates the parent's linked accounts after service authorization. */
+  /**
+   * Paginates the parent's linked accounts after service authorization.
+   * @param user - The user whose account is being accessed.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated linked accounts with credentials omitted.
+   */
   @ResolveField(() => AccountConnection)
   async accounts(
     @Parent() user: User,
@@ -107,7 +127,13 @@ export class UserResolver {
     );
   }
 
-  /** Paginates workspaces joined by the parent user. */
+  /**
+   * Paginates workspaces joined by the parent user.
+   * @param user - The user whose account is being accessed.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated workspaces accessible to the user.
+   */
   @ResolveField(() => WorkspaceConnection)
   async workspaces(
     @Parent() user: User,
@@ -122,7 +148,12 @@ export class UserResolver {
     );
   }
 
-  /** Returns an accessible API key owned by the parent user. */
+  /**
+   * Returns an accessible API key owned by the parent user.
+   * @param user - The user whose account is being accessed.
+   * @param id - Identifier of the record to access.
+   * @returns Accessible API key metadata, or null if unavailable.
+   */
   @ResolveField(() => UserApiKey, { nullable: true })
   async apiKey(
     @Parent() user: User,
@@ -131,7 +162,13 @@ export class UserResolver {
     return await this.apiKeyService.getUserApiKey(id, user);
   }
 
-  /** Paginates API keys owned by the parent user. */
+  /**
+   * Paginates API keys owned by the parent user.
+   * @param user - The user whose account is being accessed.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated API key metadata with credential hashes omitted.
+   */
   @ResolveField(() => UserApiKeyConnection)
   async apiKeys(
     @Parent() user: User,
@@ -142,7 +179,13 @@ export class UserResolver {
     return await this.apiKeyService.getUserApiKeyConnection(user, args, info);
   }
 
-  /** Paginates pending invitations addressed to the parent user. */
+  /**
+   * Paginates pending invitations addressed to the parent user.
+   * @param user - The user whose account is being accessed.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated invitations visible to the current principal.
+   */
   @ResolveField(() => InvitationConnection)
   async invitations(
     @Parent() user: User,
@@ -157,19 +200,30 @@ export class UserResolver {
     );
   }
 
-  /** Lists configured user roles with the current principal's grant availability. */
+  /**
+   * Lists configured user roles with the current principal's grant availability.
+   * @returns User role choices and whether each may be granted.
+   */
   @Query(() => [UserRoleOption])
   userRoles(): UserRoleOption[] {
     return this.userService.listRoles();
   }
 
-  /** Lists configured user permissions with the current principal's grant availability. */
+  /**
+   * Lists configured user permissions with the current principal's grant availability.
+   * @returns User permission choices and whether each may be granted.
+   */
   @Query(() => [UserPermissionOption])
   userPermissions(): UserPermissionOption[] {
     return this.userService.listPermissions();
   }
 
-  /** Paginates users using the application's connection definition. */
+  /**
+   * Paginates users using the application's connection definition.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated users matching the query.
+   */
   @Query(() => UserConnection)
   async users(
     @Args({ type: () => UserConnectionArgs })
@@ -179,13 +233,21 @@ export class UserResolver {
     return await this.userService.getUserConnection(args, info);
   }
 
-  /** Returns a user by identifier. */
+  /**
+   * Returns a user by identifier.
+   * @param id - Identifier of the record to access.
+   * @returns Matching user, or null if unavailable.
+   */
   @Query(() => User, { nullable: true })
   async user(@Args("id", { type: () => ID }) id: string): Promise<User | null> {
     return await this.userService.getUser(id);
   }
 
-  /** Creates a credential user. */
+  /**
+   * Creates a credential user.
+   * @param input - Requested field values for the operation.
+   * @returns Identifier of the created user.
+   */
   @Mutation(() => CreateUserPayload)
   async createUser(
     @Args("input") input: CreateUserInput,
@@ -194,7 +256,12 @@ export class UserResolver {
     return { id: user.id };
   }
 
-  /** Updates mutable user profile fields. */
+  /**
+   * Updates mutable user profile fields.
+   * @param id - Identifier of the record to access.
+   * @param input - Requested field values for the operation.
+   * @returns Identifier of the updated user.
+   */
   @Mutation(() => UpdateUserPayload)
   async updateUser(
     @Args("id", { type: () => ID }) id: string,
@@ -204,7 +271,12 @@ export class UserResolver {
     return { id: user.id };
   }
 
-  /** Replaces the direct permissions assigned to a user. */
+  /**
+   * Replaces the direct permissions assigned to a user.
+   * @param id - Identifier of the record to access.
+   * @param input - Requested field values for the operation.
+   * @returns Identifier of the user whose permissions were replaced.
+   */
   @Mutation(() => SetUserPermissionsPayload)
   async setUserPermissions(
     @Args("id", { type: () => ID }) id: string,
@@ -217,7 +289,12 @@ export class UserResolver {
     return { id: user.id };
   }
 
-  /** Replaces the application roles assigned to a user. */
+  /**
+   * Replaces the application roles assigned to a user.
+   * @param id - Identifier of the record to access.
+   * @param input - Requested field values for the operation.
+   * @returns Identifier of the user whose roles were replaced.
+   */
   @Mutation(() => SetUserRolesPayload)
   async setUserRoles(
     @Args("id", { type: () => ID }) id: string,
@@ -227,7 +304,12 @@ export class UserResolver {
     return { id: user.id };
   }
 
-  /** Bans a user and revokes their sessions. */
+  /**
+   * Bans a user and revokes their sessions.
+   * @param id - Identifier of the record to access.
+   * @param input - Requested field values for the operation.
+   * @returns Identifier of the banned user.
+   */
   @Mutation(() => BanUserPayload)
   async banUser(
     @Args("id", { type: () => ID }) id: string,
@@ -240,7 +322,11 @@ export class UserResolver {
     return { id: user.id };
   }
 
-  /** Removes an active user ban. */
+  /**
+   * Removes an active user ban.
+   * @param id - Identifier of the record to access.
+   * @returns Identifier of the unbanned user.
+   */
   @Mutation(() => UnbanUserPayload)
   async unbanUser(
     @Args("id", { type: () => ID }) id: string,
@@ -249,7 +335,12 @@ export class UserResolver {
     return { id: user.id };
   }
 
-  /** Replaces a user's credential password. */
+  /**
+   * Replaces a user's credential password.
+   * @param id - Identifier of the record to access.
+   * @param input - Requested field values for the operation.
+   * @returns Whether the password was replaced successfully.
+   */
   @Mutation(() => Boolean)
   async setUserPassword(
     @Args("id", { type: () => ID }) id: string,
@@ -259,7 +350,11 @@ export class UserResolver {
     return true;
   }
 
-  /** Permanently deletes a user and returns only the deleted user's ID. */
+  /**
+   * Permanently deletes a user and returns only the deleted user's ID.
+   * @param id - Identifier of the record to access.
+   * @returns Identifier of the deleted user.
+   */
   @Mutation(() => DeleteUserPayload)
   async deleteUser(
     @Args("id", { type: () => ID }) id: string,

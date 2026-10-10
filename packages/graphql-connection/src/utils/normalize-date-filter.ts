@@ -1,5 +1,10 @@
 type FilterObject = Record<string, unknown>;
 
+/**
+ * Returns whether the value is a non-null object suitable for a filter.
+ * @param value - Value to inspect or transform.
+ * @returns Whether the value is a non-null object suitable for a filter.
+ */
 function isObject(value: unknown): value is FilterObject {
   return (
     value !== null &&
@@ -9,10 +14,21 @@ function isObject(value: unknown): value is FilterObject {
   );
 }
 
+/**
+ * Returns whether the value uses the YYYY-MM-DD date-only format.
+ * @param value - Value to inspect or transform.
+ * @returns Whether the value uses the YYYY-MM-DD date-only format.
+ */
 function isDateOnly(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
+/**
+ * Returns uTC instant corresponding to the start of the client's calendar day.
+ * @param value - Value to inspect or transform.
+ * @param timezoneOffset - Client timezone offset in minutes.
+ * @returns UTC instant corresponding to the start of the client's calendar day.
+ */
 function dayStart(value: string, timezoneOffset: number): Date {
   const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!parts) throw new RangeError("Expected a YYYY-MM-DD date");
@@ -34,12 +50,23 @@ function dayStart(value: string, timezoneOffset: number): Date {
   return date;
 }
 
+/**
+ * Returns iSO timestamp for the start of the following client calendar day.
+ * @param value - Value to inspect or transform.
+ * @param timezoneOffset - Client timezone offset in minutes.
+ * @returns ISO timestamp for the start of the following client calendar day.
+ */
 function nextDayStart(value: string, timezoneOffset: number): string {
   const date = dayStart(value, timezoneOffset);
   date.setUTCDate(date.getUTCDate() + 1);
   return date.toISOString();
 }
 
+/**
+ * Returns combined filter preserving duplicate field constraints with `$and`.
+ * @param clauses - Filter clauses to combine.
+ * @returns Combined filter preserving duplicate field constraints with `$and`.
+ */
 function combine(clauses: FilterObject[]): FilterObject {
   const keys = clauses.flatMap((clause) => Object.keys(clause));
   return new Set(keys).size === keys.length
@@ -47,6 +74,14 @@ function combine(clauses: FilterObject[]): FilterObject {
     : { $and: clauses };
 }
 
+/**
+ * Returns date-aware comparison for the selected field.
+ * @param field - Field name to inspect.
+ * @param operator - Comparison operator to apply.
+ * @param value - Value to inspect or transform.
+ * @param timezoneOffset - Client timezone offset in minutes.
+ * @returns Date-aware comparison for the selected field.
+ */
 function dateCondition(
   field: string,
   operator: string,
@@ -90,8 +125,14 @@ function dateCondition(
   }
 }
 
-/** Expand validated date-only filters into half-open day ranges.
+/**
+ * Expand validated date-only filters into half-open day ranges.
  * Run after schema validation and field replacements; timestamps stay exact.
+ * @param value - Value to inspect or transform.
+ * @param dateFields - Fields that accept date-aware filtering.
+ * @param timezoneOffset - Client timezone offset in minutes.
+ * @param path - Path to normalize or access.
+ * @returns Filter with date-only comparisons expanded into timezone-aware ranges.
  */
 export function normalizeDateFilter(
   value: unknown,

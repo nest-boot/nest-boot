@@ -3,6 +3,11 @@ import {
   SocialProviderId,
 } from "./social-provider.constants.js";
 
+/**
+ * Returns whether either provider credential is configured in the environment.
+ * @param provider - Authentication provider identifier.
+ * @returns Whether either provider credential is configured in the environment.
+ */
 export function hasSocialProviderCredentialEnvConfig(
   provider: SocialProviderId,
 ): boolean {

@@ -1,6 +1,10 @@
 import { type StorageModuleOptions } from "../interfaces/storage-module-options.interface.js";
 
-/** Loads storage configuration with explicit options overriding the environment. */
+/**
+ * Loads storage configuration with explicit options overriding the environment.
+ * @param options - Configuration for this operation.
+ * @returns Storage options derived from environment variables.
+ */
 export function loadStorageOptionsFromEnv(
   options: StorageModuleOptions = {},
 ): StorageModuleOptions {
@@ -36,6 +40,11 @@ export function loadStorageOptionsFromEnv(
   };
 }
 
+/**
+ * Returns parsed boolean, or undefined when no value is configured.
+ * @param value - Value to inspect or transform.
+ * @returns Parsed boolean, or undefined when no value is configured.
+ */
 function parseBoolean(value?: string): boolean | undefined {
   const normalized = value?.trim().toLowerCase();
   return normalized ? normalized === "true" : undefined;

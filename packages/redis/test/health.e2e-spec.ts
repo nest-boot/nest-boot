@@ -17,6 +17,12 @@ describe("Redis health HTTP integration", () => {
     await app?.close();
   });
 
+  /**
+   * Returns initialized test application and its exposed dependencies.
+   * @param enabled - Whether this feature is enabled.
+   * @param registration - Module registration variant exercised by the test.
+   * @returns Initialized test application and its exposed dependencies.
+   */
   async function createApp(
     enabled = true,
     registration: "default" | "sync" | "async" = "default",
@@ -40,6 +46,10 @@ describe("Redis health HTTP integration", () => {
     return { client, ping };
   }
 
+  /**
+   * Returns hTTP status and body returned by the health endpoint.
+   * @returns HTTP status and body returned by the health endpoint.
+   */
   async function health() {
     const response = await fetch(`${await app.getUrl()}/api/health`);
     const body: unknown = await response.json();

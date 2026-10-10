@@ -1,7 +1,11 @@
 import type { EntityManager, SessionContext } from "@mikro-orm/core";
 import { vi } from "vitest";
 
-/** Stages a native session on the caller and provides an isolated auth fork. */
+/**
+ * Stages a native session on the caller and provides an isolated auth fork.
+ * @param em - Entity manager used for persistence.
+ * @returns Database session context for the supplied identity.
+ */
 export function mockRlsContext(
   em: Pick<EntityManager, "getSessionContext" | "fork">,
 ): SessionContext {

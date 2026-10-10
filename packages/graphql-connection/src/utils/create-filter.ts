@@ -13,13 +13,16 @@ import { normalizeDateFilter } from "./normalize-date-filter.js";
 
 /**
  * The Zod schema type returned by FilterQuerySchemaBuilder.
- *
- * @typeParam Entity - The entity type for the filter
+ * @template Entity - The entity type for the filter
  */
 export type FilterQuerySchema<Entity extends object> = ReturnType<
   FilterQuerySchemaBuilder<Entity>["build"]
 >;
 
+/**
+ * Returns client timezone offset from request headers, or the default offset.
+ * @returns Client timezone offset from request headers, or the default offset.
+ */
 function getTimezoneOffset(): number {
   const request = RequestContext.isActive()
     ? RequestContext.get<{
@@ -40,6 +43,11 @@ function getTimezoneOffset(): number {
   );
 }
 
+/**
+ * Returns parsed JSON value, or the original non-string input.
+ * @param value - Value to inspect or transform.
+ * @returns Parsed JSON value, or the original non-string input.
+ */
 function parseJson(value: unknown): unknown {
   if (typeof value === "string") {
     try {
@@ -51,6 +59,11 @@ function parseJson(value: unknown): unknown {
   return value;
 }
 
+/**
+ * Returns javaScript value represented by the GraphQL literal.
+ * @param ast - GraphQL value node to parse.
+ * @returns JavaScript value represented by the GraphQL literal.
+ */
 function parseLiteralValue(ast: ValueNode): unknown {
   switch (ast.kind) {
     case Kind.STRING:
@@ -80,8 +93,7 @@ function parseLiteralValue(ast: ValueNode): unknown {
 
 /**
  * The result of creating a filter scalar and schema.
- *
- * @typeParam Entity - The entity type for the filter
+ * @template Entity - The entity type for the filter
  */
 export interface CreateFilterResult<Entity extends object> {
   /**
@@ -101,13 +113,13 @@ export interface CreateFilterResult<Entity extends object> {
  * The Filter scalar accepts MongoDB-style query syntax and validates
  * it against the configured field options.
  *
- * @typeParam Entity - The entity type being filtered
+ * Used by ConnectionBuilder.build()
+ * @template Entity - The entity type being filtered
  * @param entityName - The name to use for the GraphQL scalar
  * @param fieldOptionsMap - Map of field configurations
  * @param filterOptions - Options for filter complexity limits
  * @returns An object containing the Filter scalar and filterQuerySchema
- *
- * @internal Used by ConnectionBuilder.build()
+ * @internal
  */
 export function createFilter<Entity extends object>(
   entityName: string,

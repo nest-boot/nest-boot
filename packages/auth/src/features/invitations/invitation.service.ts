@@ -46,7 +46,11 @@ import { InvitationConnection } from "./invitation.connection-definition.js";
 /** Workspace invitation queries and lifecycle operations. */
 @Injectable()
 export class InvitationService {
-  /** Creates a workspace invitation domain service. */
+  /**
+   * Creates a workspace invitation domain service.
+   * @param em - Entity manager used for persistence.
+   * @param authOptions - Authentication module configuration.
+   */
   constructor(
     /** MikroORM entity manager used for workspace persistence. */
     protected readonly em: EntityManager,
@@ -54,7 +58,14 @@ export class InvitationService {
     private readonly authOptions: AuthModuleOptions,
   ) {}
 
-  /** Creates a pending workspace invitation. */
+  /**
+   * Creates a pending workspace invitation.
+   * @param workspace - The workspace that scopes this operation.
+   * @param inviter - User who sends the invitation.
+   * @param input - Requested field values for the operation.
+   * @param request - Incoming HTTP request.
+   * @returns Persisted invitation.
+   */
   async createInvitation(
     workspace: Workspace,
     inviter: User,
@@ -205,6 +216,10 @@ export class InvitationService {
    * Resolves only the login identity needed for invitation membership checks.
    * Infrastructure isolates this lookup; invitation writes retain request RLS.
    * An unregistered email is a valid invitation recipient.
+   * @param workspace - The workspace that scopes this operation.
+   * @param inviter - User who sends the invitation.
+   * @param email - Email address used to identify the user.
+   * @returns Identifier of the user with the invitation email, or null.
    * @internal
    */
   async getUserIdForInvitation(
@@ -223,7 +238,11 @@ export class InvitationService {
     return user ? String(user.id) : null;
   }
 
-  /** Finds an invitation after recipient or workspace authorization, preserving RLS. */
+  /**
+   * Finds an invitation after recipient or workspace authorization, preserving RLS.
+   * @param id - Identifier of the record to access.
+   * @returns Accessible invitation, or null if it does not exist.
+   */
   async getInvitation(id: string): Promise<Invitation | null> {
     const recipientSession =
       RequestContext.isActive() &&
@@ -241,7 +260,11 @@ export class InvitationService {
     return invitation;
   }
 
-  /** Resolves the inviter through an authorized invitation without bypassing RLS. */
+  /**
+   * Resolves the inviter through an authorized invitation without bypassing RLS.
+   * @param invitation - Invitation being inspected or changed.
+   * @returns User who sent the invitation.
+   */
   async getInvitationInviter(invitation: Invitation): Promise<User> {
     const current = await this.getInvitationForRelation(invitation);
     const actor = RequestContext.isActive() ? RequestContext.get(User) : null;
@@ -257,7 +280,11 @@ export class InvitationService {
     return user;
   }
 
-  /** Resolves the workspace through an authorized invitation without requiring membership. */
+  /**
+   * Resolves the workspace through an authorized invitation without requiring membership.
+   * @param invitation - Invitation being inspected or changed.
+   * @returns Workspace to which the invitation grants membership.
+   */
   async getInvitationWorkspace(invitation: Invitation): Promise<Workspace> {
     const current = await this.getInvitationForRelation(invitation);
     const workspace = await this.em.findOne(
@@ -300,7 +327,12 @@ export class InvitationService {
     authorize("read", invitation);
   }
 
-  /** Finds an invitation when it is addressed to the supplied user. */
+  /**
+   * Finds an invitation when it is addressed to the supplied user.
+   * @param id - Identifier of the record to access.
+   * @param user - The user whose account is being accessed.
+   * @returns Accessible invitation addressed to the user, or null.
+   */
   async getInvitationByUser(
     id: string,
     user: User,
@@ -313,7 +345,12 @@ export class InvitationService {
     return invitation;
   }
 
-  /** Finds an invitation owned by the supplied workspace. */
+  /**
+   * Finds an invitation owned by the supplied workspace.
+   * @param id - Identifier of the record to access.
+   * @param workspace - The workspace that scopes this operation.
+   * @returns Accessible invitation in the workspace, or null.
+   */
   async getInvitationByWorkspace(
     id: string,
     workspace: Workspace,
@@ -328,7 +365,13 @@ export class InvitationService {
     return invitation;
   }
 
-  /** Paginates invitations for the selected workspace after authorization. */
+  /**
+   * Paginates invitations for the selected workspace after authorization.
+   * @param workspace - The workspace that scopes this operation.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated invitations belonging to the workspace.
+   */
   async getInvitationConnectionByWorkspace(
     workspace: Workspace,
     args: ConnectionArgsInterface<Invitation>,
@@ -348,7 +391,13 @@ export class InvitationService {
     return connection;
   }
 
-  /** Paginates unexpired pending invitations addressed to the current user. */
+  /**
+   * Paginates unexpired pending invitations addressed to the current user.
+   * @param user - The user whose account is being accessed.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated invitations addressed to the user.
+   */
   async getInvitationConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<Invitation>,
@@ -369,7 +418,12 @@ export class InvitationService {
     return connection;
   }
 
-  /** Accepts a pending invitation and creates an active membership. */
+  /**
+   * Accepts a pending invitation and creates an active membership.
+   * @param user - The user whose account is being accessed.
+   * @param invitationId - Identifier of the invitation to accept.
+   * @returns Accepted invitation and its resulting membership.
+   */
   async acceptInvitation(
     user: User,
     invitationId: string,
@@ -437,7 +491,11 @@ export class InvitationService {
     );
   }
 
-  /** Cancels a pending invitation. */
+  /**
+   * Cancels a pending invitation.
+   * @param invitation - Invitation being inspected or changed.
+   * @returns Canceled invitation.
+   */
   async cancelInvitation(invitation: Invitation | string): Promise<Invitation> {
     authorize("write", Invitation);
     invitation = await this.resolveInvitationForAction(invitation);
@@ -463,7 +521,12 @@ export class InvitationService {
     return invitation;
   }
 
-  /** Rejects an invitation after verifying the invited user's email. */
+  /**
+   * Rejects an invitation after verifying the invited user's email.
+   * @param user - The user whose account is being accessed.
+   * @param invitation - Invitation being inspected or changed.
+   * @returns Rejected invitation.
+   */
   async rejectInvitation(
     user: User,
     invitation: Invitation | string,

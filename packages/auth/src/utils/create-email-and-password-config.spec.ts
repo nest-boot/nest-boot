@@ -9,6 +9,12 @@ const hash = vi.fn();
 const verify = vi.fn();
 const hashService = { hash, verify } as unknown as HashService;
 
+/**
+ * Returns email and password options with hashing and reset-email hooks.
+ * @param disableSignUp - Whether provider-based registration is disabled.
+ * @param options - Configuration for this operation.
+ * @returns Email and password options with hashing and reset-email hooks.
+ */
 function createEmailAndPasswordConfig(
   disableSignUp: boolean,
   options?: Parameters<typeof createEmailAndPasswordConfigWithMailer>[3],

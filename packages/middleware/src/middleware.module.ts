@@ -12,12 +12,16 @@ import { MiddlewareManager } from "./middleware.manager.js";
   exports: [MiddlewareManager],
 })
 export class MiddlewareModule implements NestModule {
-  /** Creates a new MiddlewareModule instance.
+  /**
+   * Creates a new MiddlewareModule instance.
    * @param middlewareManager - The middleware manager instance
    */
   constructor(private readonly middlewareManager: MiddlewareManager) {}
 
-  /** Configures all registered middlewares through the NestJS middleware consumer. */
+  /**
+   * Configures all registered middlewares through the NestJS middleware consumer.
+   * @param consumer - Nest middleware consumer used to register handlers.
+   */
   configure(consumer: MiddlewareConsumer) {
     this.middlewareManager.configure(consumer);
   }

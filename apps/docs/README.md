@@ -1,6 +1,6 @@
 # Nest Boot documentation site
 
-This Next.js/Fumadocs application serves the Nest Boot tutorials and generated API reference.
+This Next.js/Fumadocs application serves the Nest Boot guides and tutorials.
 
 ## Local development
 
@@ -16,17 +16,12 @@ The development server prints its local URL. English pages live under `/en/docs`
 ## Documentation sources
 
 - `content/docs/index*.mdx`: localized introduction pages
-- `content/docs/tutorial/*.mdx`: hand-written tutorials
-- `content/docs/api/*.mdx`: generated TypeDoc API pages; do not edit these by hand
+- `content/docs/tutorial/**/*.mdx`: hand-written tutorials
 - `source.config.ts`: Fumadocs collections and frontmatter processing
-- `../../typedoc.json`: TypeDoc package selection and Markdown output configuration
-- `../../typedoc-custom-frontmatter.mjs`: frontmatter added to generated API pages
 
-After changing a package's public API or TSDoc, regenerate the API reference from the repository root:
+Document concepts, configuration, usage examples, and migration guidance here. Update the relevant tutorials when behavior changes.
 
-```bash
-pnpm docs:generate
-```
+Read `../../packages/<package>/src/index.ts`, the implementation, and its source comments for exact exports, types, and method signatures. The documentation site builds directly from the hand-written content.
 
 ## Machine-readable routes
 
@@ -39,7 +34,7 @@ The site exposes the same content to tools and coding agents:
 | `/llms.mdx/docs/<slug>` | One documentation page as Markdown                     |
 | `/docs/<slug>.mdx`      | Markdown alternative for a localized documentation URL |
 | `/robots.txt`           | Crawler policy and sitemap location                    |
-| `/sitemap.xml`          | Localized pages and API reference URLs                 |
+| `/sitemap.xml`          | Localized documentation URLs                           |
 
 ## Validation
 

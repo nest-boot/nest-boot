@@ -29,7 +29,6 @@ import { RequestContext } from "./request-context.js";
  *   context type as `"graphql"`
  *
  * The interceptor is automatically registered by RequestContextModule.
- *
  * @example
  * The interceptor is typically used automatically, but can be applied manually:
  * ```typescript
@@ -43,13 +42,15 @@ import { RequestContext } from "./request-context.js";
  */
 @Injectable()
 export class RequestContextInterceptor implements NestInterceptor {
-  /** Creates a request context interceptor instance. */
+  /**
+   * Creates a request context interceptor instance.
+   * @param moduleRef - Nest module reference used to resolve dependencies.
+   */
   constructor(private readonly moduleRef?: ModuleRef) {}
 
   /**
    * Intercepts the request and wraps execution in a request context.
-   *
-   * @typeParam T - The type of the response
+   * @template T - The type of the response
    * @param executionContext - The NestJS execution context
    * @param next - The call handler for the next interceptor or handler
    * @returns An observable of the response

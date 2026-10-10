@@ -2,7 +2,6 @@ import { registerEnumType } from "@nest-boot/graphql";
 
 /**
  * Specifies the direction for ordering query results.
- *
  * @example
  * ```typescript
  * const order = {

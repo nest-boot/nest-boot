@@ -6,15 +6,15 @@ description: "Connect Auth services to transport adapters and RequestContext."
 The underlying Better Auth instance and injection token are internal. Inject the
 service that owns the required domain:
 
-| Service                                          | Responsibility                                                                              |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| `AuthService`                                    | Authentication, email verification, password recovery, profiles, and provider accounts      |
-| `SessionService`                                 | Session resolution, parent-user connections, impersonator lookup, and self/admin revocation |
-| `UserService`                                    | User administration, permissions, bans, impersonation, and passwords                        |
-| `AccountService`                                 | Safe account connections for the owning user session                                        |
-| `WorkspaceService`                               | Workspace queries and lifecycle operations                                                  |
-| `MemberService`                                  | Member queries, connections, profiles, roles, permissions, adding/removing, and leaving     |
-| `InvitationService`                              | Invitation queries, connections, creation, acceptance, rejection, and cancellation          |
+| Service                                       | Responsibility                                                                              |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `AuthService`                                 | Authentication, email verification, password recovery, profiles, and provider accounts      |
+| `SessionService`                              | Session resolution, parent-user connections, impersonator lookup, and self/admin revocation |
+| `UserService`                                 | User administration, permissions, bans, impersonation, and passwords                        |
+| `AccountService`                              | Safe account connections for the owning user session                                        |
+| `WorkspaceService`                            | Workspace queries and lifecycle operations                                                  |
+| `MemberService`                               | Member queries, connections, profiles, roles, permissions, adding/removing, and leaving     |
+| `InvitationService`                           | Invitation queries, connections, creation, acceptance, rejection, and cancellation          |
 | `UserApiKeyService` and `MemberApiKeyService` | Scoped API-key lifecycle and connections                                                    |
 
 `UserService`, `AccountService`, `WorkspaceService`, `MemberService` and `InvitationService` operate directly on the MikroORM entities
@@ -140,8 +140,6 @@ and callback URLs may remain relative paths.
 - Store high-entropy `AUTH_SECRET` and `HASH_SECRET` values outside source control.
 - Keep workspace selection explicit in the route, header, or Cookie.
 - `AuthModule` provides the standard GraphQL schema; applications can add their own field resolvers.
-
-For symbol-level documentation, see the [Auth API Reference](/docs/api/auth)
 
 ## Additional GraphQL-native APIs
 

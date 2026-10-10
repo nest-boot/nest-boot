@@ -61,7 +61,10 @@ interface LegacyImportEdit {
   text: string;
 }
 
-/** Normalizes core helpers and legacy decorators before field fixes generate bindings. @internal */
+/**
+ * Normalizes core helpers and legacy decorators before field fixes generate bindings.
+ * @internal
+ */
 export function legacyDecoratorImports(source: Readonly<SourceCode>) {
   type NamedBinding = TSESTree.ImportSpecifier | TSESTree.ExportSpecifier;
   const bindingName = (specifier: NamedBinding) =>
@@ -244,7 +247,10 @@ export function legacyDecoratorImports(source: Readonly<SourceCode>) {
   });
 }
 
-/** Splits obsolete namespace decorators without changing core/driver members or shadowed references. @internal */
+/**
+ * Splits obsolete namespace decorators without changing core/driver members or shadowed references.
+ * @internal
+ */
 export function legacyNamespaceEdits(source: Readonly<SourceCode>): RuleFix[] {
   const edits: RuleFix[] = [];
   const occupied = new Set(

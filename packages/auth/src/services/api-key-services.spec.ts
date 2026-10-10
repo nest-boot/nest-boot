@@ -23,6 +23,10 @@ import { omitCredentials } from "../utils/omit-credentials.util.js";
 import { MemberApiKeyService } from "./member-api-key.service.js";
 import { UserApiKeyService } from "./user-api-key.service.js";
 
+/**
+ * Returns workspace fixture with deterministic identifiers.
+ * @returns Workspace fixture with deterministic identifiers.
+ */
 function createTestWorkspace(): Workspace {
   return Object.assign(new Workspace(), {
     id: "workspace-1",
@@ -30,6 +34,10 @@ function createTestWorkspace(): Workspace {
   });
 }
 
+/**
+ * Returns user fixture with deterministic identifiers.
+ * @returns User fixture with deterministic identifiers.
+ */
 function createTestUser(): User {
   return Object.assign(new User(), {
     id: "user-1",
@@ -39,6 +47,10 @@ function createTestUser(): User {
   });
 }
 
+/**
+ * Returns member fixture with deterministic identifiers.
+ * @returns Member fixture with deterministic identifiers.
+ */
 function createTestMember(): Member {
   return Object.assign(new Member(), {
     id: "member-1",
@@ -52,6 +64,10 @@ function createTestMember(): Member {
   });
 }
 
+/**
+ * Returns api key fixture with deterministic identifiers.
+ * @returns Api key fixture with deterministic identifiers.
+ */
 function createTestApiKey(): MemberApiKey {
   return Object.assign(new MemberApiKey(), {
     id: "api-key-1",
@@ -2031,6 +2047,11 @@ describe("API-key management services", () => {
   });
 });
 
+/**
+ * Runs an API key service test within an isolated request context.
+ * @param name - Name used to identify the resource.
+ * @param callback - Work to execute in the supplied context.
+ */
 function it(name: string, callback: () => void | Promise<void>): void {
   baseIt(name, async () => {
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
@@ -2042,6 +2063,11 @@ function it(name: string, callback: () => void | Promise<void>): void {
   });
 }
 
+/**
+ * Returns test service and its mocked dependencies.
+ * @param configuration - Authentication configuration used by the fixture.
+ * @returns Test service and its mocked dependencies.
+ */
 function createService(
   configuration: Pick<
     AuthModuleOptions,

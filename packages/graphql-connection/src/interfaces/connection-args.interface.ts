@@ -8,9 +8,7 @@ import { OrderInterface } from "./order.interface.js";
  * Supports both forward pagination (first/after) and backward pagination (last/before),
  * as well as filtering, ordering, and search query functionality.
  * Explicit `null` is treated as omission for each optional argument.
- *
- * @typeParam Entity - The entity type being queried
- *
+ * @template Entity - The entity type being queried
  * @example Forward pagination
  * ```typescript
  * const args: ConnectionArgsInterface<User> = {
@@ -19,7 +17,6 @@ import { OrderInterface } from "./order.interface.js";
  *   orderBy: { field: "CREATED_AT", direction: OrderDirection.DESC },
  * };
  * ```
- *
  * @example Backward pagination
  * ```typescript
  * const args: ConnectionArgsInterface<User> = {

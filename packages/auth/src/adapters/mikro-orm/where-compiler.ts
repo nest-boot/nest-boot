@@ -3,6 +3,13 @@ import type { Where } from "better-auth/adapters";
 
 type FieldNameResolver = (field: string) => string;
 
+/**
+ * Returns equivalent MikroORM filter conditions.
+ * @param where - Conditions to translate into a database filter.
+ * @param resolveColumnName - Resolves a model field to its database column.
+ * @param resolvePropertyName - Resolves a model field to its entity property.
+ * @returns Equivalent MikroORM filter conditions.
+ */
 export function convertWhereToMikroOrm(
   where: Required<Where>[],
   resolveColumnName: FieldNameResolver = (field) => field,
@@ -80,6 +87,10 @@ export function convertWhereToMikroOrm(
   return { $and: [...andConditions, { $or: orConditions }] };
 }
 
+/**
+ * Rejects non-string values before applying a string comparison.
+ * @param value - Value to inspect or transform.
+ */
 function assertString(value: unknown): asserts value is string {
   if (typeof value !== "string") {
     throw new TypeError("Value must be a string");

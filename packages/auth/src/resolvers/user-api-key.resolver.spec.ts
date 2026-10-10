@@ -67,6 +67,11 @@ describe("UserApiKeyResolver", () => {
   });
 });
 
+/**
+ * Returns test resolver and its mocked dependencies.
+ * @param overrides - Fixture values that replace the defaults.
+ * @returns Test resolver and its mocked dependencies.
+ */
 function createResolver(overrides: Partial<UserApiKeyService> = {}) {
   const apiKeyService = {
     createUserApiKey: vi.fn(),

@@ -11,13 +11,13 @@ import { Plugin } from "@nestjs/apollo";
 /**
  * Apollo Server plugin that logs GraphQL operation metadata.
  *
- * @remarks
  * Adds operation ID, name, and type (query/mutation/subscription)
  * to the structured logger on each resolved operation.
  */
 @Plugin()
 export class GraphQLLoggerPlugin implements ApolloServerPlugin {
-  /** Creates a new GraphQLLoggerPlugin instance.
+  /**
+   * Creates a new GraphQLLoggerPlugin instance.
    * @param logger - Structured logger for recording operation metadata
    */
   constructor(private readonly logger: Logger) {}

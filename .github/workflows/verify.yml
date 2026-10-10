@@ -106,9 +106,6 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: TypeDoc
-        run: pnpm typedoc:check
-
       # Storage e2e suites create their buckets through the AWS SDK.
       - name: Test
         run: pnpm test:cov

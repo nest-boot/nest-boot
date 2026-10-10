@@ -368,6 +368,10 @@ describe("conditional service authorization", () => {
   });
 });
 
+/**
+ * Runs a test with the fixture's user and workspace identity.
+ * @param callback - Work to execute in the supplied context.
+ */
 async function withIdentity(
   callback: (context: ReturnType<typeof fixture>) => void | Promise<void>,
 ) {
@@ -410,6 +414,10 @@ async function withIdentity(
   });
 }
 
+/**
+ * Returns isolated identity, persistence mocks, and services for the test.
+ * @returns Isolated identity, persistence mocks, and services for the test.
+ */
 function fixture() {
   const result = createWorkspaceServices();
   result.authorization.assertCanGrantPermissions.mockRestore();

@@ -18,6 +18,11 @@ interface CachedSchema {
 
 const schemaCache = new WeakMap<ZodClass, CachedSchema>();
 
+/**
+ * Returns validated output with prototype-sensitive properties handled safely.
+ * @param value - Value to inspect or transform.
+ * @returns Validated output with prototype-sensitive properties handled safely.
+ */
 function normalizePassthroughOutput(
   value: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -36,6 +41,12 @@ function normalizePassthroughOutput(
   return output;
 }
 
+/**
+ * Returns zod object schema with the requested unknown-key policy.
+ * @param shape - Field schemas used to construct the object schema.
+ * @param unknownKeys - Policy for properties without field decorators.
+ * @returns Zod object schema with the requested unknown-key policy.
+ */
 function createObjectSchema(
   shape: Record<string, z.ZodType>,
   unknownKeys: ZodUnknownKeysMode,
@@ -53,11 +64,9 @@ function createObjectSchema(
 /**
  * Gets the cached Zod object schema assembled from a class's decorators.
  *
- * @remarks
  * Parent fields are inherited and can be overridden by a child decorator.
  * Returns `undefined` when neither the class nor its ancestors contain Zod
  * metadata.
- *
  * @param target - The decorated class constructor
  * @returns The assembled object schema, or `undefined` for an unregistered class
  */
@@ -97,7 +106,7 @@ export function getZodSchema<T extends object>(
   let schema = createObjectSchema(shape, unknownKeys);
 
   for (const current of options) {
-    schema = current.configure?.(schema as DecoratedZodObject) ?? schema;
+    schema = current.configure?.(schema) ?? schema;
   }
 
   schemaCache.set(target, { schema, version });
@@ -107,14 +116,12 @@ export function getZodSchema<T extends object>(
 /**
  * Converts a decorated class to a typed Zod object schema.
  *
- * @remarks
  * The inferred output uses all of the class's non-function data properties,
  * while the runtime shape contains only properties registered with
  * {@link ZodField}. An undecorated property therefore remains visible to
  * TypeScript but is not validated or preserved by the default object schema.
  * Decorate every property that must be present in parsed output, and keep its
  * declaration aligned with any schema coercions or transforms.
- *
  * @param target - The decorated class constructor
  * @returns The assembled object schema
  */

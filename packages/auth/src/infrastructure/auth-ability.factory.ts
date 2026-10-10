@@ -22,9 +22,17 @@ import { extendAbility } from "../utils/extend-ability.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
 import { DEFAULT_WORKSPACE_PERMISSIONS } from "../workspace.constants.js";
 
-/** Owns built-in permission mappings and validates business extensions. @internal */
+/**
+ * Owns built-in permission mappings and validates business extensions.
+ * @internal
+ */
 export class AuthAbilityFactory {
-  /** Builds auth rules and restricted extensions from already credential-limited permissions. */
+  /**
+   * Builds auth rules and restricted extensions from already credential-limited permissions.
+   * @param context - Context used to resolve this operation.
+   * @param options - Authentication module configuration.
+   * @returns CASL ability built from the current identity and effective permissions.
+   */
   static createAbility(
     context: AbilityContext,
     options: AuthModuleOptions = {},
@@ -124,7 +132,10 @@ export class AuthAbilityFactory {
     return builder.build();
   }
 
-  /** Keeps class checks, tagged objects, and serialized frontend names equivalent. */
+  /**
+   * Keeps class checks, tagged objects, and serialized frontend names equivalent.
+   * @param rules - Authorization rules to apply.
+   */
   private static addSubjectAliases(
     rules: RawRuleFrom<AbilityTuple, MongoQuery>[],
   ): void {

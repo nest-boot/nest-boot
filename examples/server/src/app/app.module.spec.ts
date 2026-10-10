@@ -43,6 +43,12 @@ describe('AppModule', () => {
   });
 });
 
+/**
+ * Returns property assignment with the requested name.
+ * @param objectLiteral - Object literal expression to inspect.
+ * @param name - Name used to identify the resource.
+ * @returns Property assignment with the requested name.
+ */
 function getPropertyAssignment(
   objectLiteral: ObjectLiteralExpression,
   name: string,
@@ -56,6 +62,12 @@ function getPropertyAssignment(
   return property;
 }
 
+/**
+ * Returns source text of the property's initializer, when present.
+ * @param objectLiteral - Object literal expression to inspect.
+ * @param name - Name used to identify the resource.
+ * @returns Source text of the property's initializer, when present.
+ */
 function getPropertyText(objectLiteral: ObjectLiteralExpression, name: string) {
   return getPropertyAssignment(objectLiteral, name).getInitializer()?.getText();
 }

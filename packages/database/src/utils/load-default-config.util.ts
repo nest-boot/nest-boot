@@ -3,7 +3,10 @@ import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
 
 import type { DatabaseModuleOptions } from "../interfaces/database-module-options.interface.js";
 
-/** Loads the framework defaults that do not select a database connection. */
+/**
+ * Loads the framework defaults that do not select a database connection.
+ * @returns Default database options, including driver selection and entity discovery.
+ */
 export function loadDefaultConfig() {
   return {
     colors: false,

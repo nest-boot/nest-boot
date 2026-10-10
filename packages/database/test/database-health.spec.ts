@@ -4,6 +4,11 @@ import { HealthCheckRegistry } from "@nest-boot/health-check";
 import { DatabaseHealthIndicator } from "../src/database-health.indicator.js";
 
 describe("DatabaseHealthIndicator", () => {
+  /**
+   * Returns test setup and its mocked dependencies.
+   * @param registry - Registry that owns the configured entries.
+   * @returns Test setup and its mocked dependencies.
+   */
   function setup(registry?: HealthCheckRegistry) {
     const connection = {
       ensureConnection: vi.fn(() => Promise.resolve()),
@@ -24,6 +29,11 @@ describe("DatabaseHealthIndicator", () => {
     vi.restoreAllMocks();
   });
 
+  /**
+   * Returns result of the registered health indicator.
+   * @param registry - Registry that owns the configured entries.
+   * @returns Result of the registered health indicator.
+   */
   async function check(registry: HealthCheckRegistry) {
     const results = await Promise.all(
       registry.healthIndicators.map((indicator) =>

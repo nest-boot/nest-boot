@@ -616,6 +616,11 @@ describe("Storage", () => {
   });
 });
 
+/**
+ * Returns storage fixture and its mocked file operations.
+ * @param options - Configuration for this operation.
+ * @returns Storage fixture and its mocked file operations.
+ */
 function createStorage(options: StorageModuleOptions): {
   client: S3Client;
   send: ReturnType<typeof vi.fn>;
@@ -633,6 +638,11 @@ function createStorage(options: StorageModuleOptions): {
   return { client, send, storage };
 }
 
+/**
+ * Returns public and internal S3 clients used by the storage instance.
+ * @param storage - Storage service used for file operations.
+ * @returns Public and internal S3 clients used by the storage instance.
+ */
 function storageClients(storage: Storage): {
   client: S3Client;
   internalClient: S3Client;
@@ -643,6 +653,11 @@ function storageClients(storage: Storage): {
   };
 }
 
+/**
+ * Returns uTF-8 text read from the stream.
+ * @param stream - Readable stream to consume.
+ * @returns UTF-8 text read from the stream.
+ */
 async function streamText(stream: Readable): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of stream) {
@@ -651,6 +666,14 @@ async function streamText(stream: Readable): Promise<string> {
   return Buffer.concat(chunks).toString();
 }
 
+/**
+ * Returns captured S3 command after verifying its type.
+ * @param send - Mock that captures S3 commands.
+ * @param index - Zero-based command index.
+ * @param type - Type used to interpret the value.
+ * @param type.prototype - Prototype of the expected command type.
+ * @returns Captured S3 command after verifying its type.
+ */
 function commandAt<T>(
   send: ReturnType<typeof vi.fn>,
   index: number,

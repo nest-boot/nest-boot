@@ -23,15 +23,15 @@ import { PageInfo } from "../objects/index.js";
  * - `totalCount`: Number of items matching the query, capped at 10,000
  * - `totalCountRelation`: Whether totalCount is exact or a lower bound
  *
- * @typeParam Entity - The entity type for the connection
+ * Used by ConnectionBuilder.build()
+ * @template Entity - The entity type for the connection
  * @param entityClass - The MikroORM entity class
  * @param entityName - The name to use for the GraphQL type
  * @param EdgeClass - The Edge type class to use for edges
  * @param fieldOptionsMap - Map of field configurations
  * @param filterQuerySchema - Zod schema for validating filter queries
  * @returns A class implementing ConnectionInterface
- *
- * @internal Used by ConnectionBuilder.build()
+ * @internal
  */
 export function createConnection<Entity extends object>(
   entityClass: EntityClass<Entity>,

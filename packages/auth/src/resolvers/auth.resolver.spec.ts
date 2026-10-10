@@ -264,6 +264,11 @@ describe("AuthResolver", () => {
   });
 });
 
+/**
+ * Returns test resolver and its mocked dependencies.
+ * @param overrides - Fixture values that replace the defaults.
+ * @returns Test resolver and its mocked dependencies.
+ */
 function createResolver(overrides: Record<string, unknown> = {}) {
   const authService = { ...overrides } as unknown as Mocked<AuthService>;
   return { authService, resolver: new AuthResolver(authService) };

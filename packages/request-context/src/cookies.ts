@@ -64,7 +64,6 @@ export interface CookieDeleteOptions extends Omit<
 export interface CookieStore {
   /**
    * Finds one incoming cookie by name.
-   *
    * @param name - Cookie name
    * @returns The cookie, or `undefined` when it is absent
    */
@@ -72,7 +71,6 @@ export interface CookieStore {
 
   /**
    * Lists incoming cookies, optionally filtered by name.
-   *
    * @param name - Optional cookie name
    * @returns Matching cookies in request-header order
    */
@@ -80,7 +78,6 @@ export interface CookieStore {
 
   /**
    * Checks whether an incoming cookie exists.
-   *
    * @param name - Cookie name
    * @returns Whether the cookie exists
    */
@@ -88,18 +85,16 @@ export interface CookieStore {
 
   /**
    * Emits a `Set-Cookie` response header without changing the incoming snapshot.
-   *
    * @param name - Cookie name
    * @param value - Cookie value
    * @param options - Optional response cookie attributes
    * @returns This cookie store
-   * @throws Error when no writable response exists or headers were already sent
+   * @throws {Error} when no writable response exists or headers were already sent
    */
   set(name: string, value: string, options?: CookieOptions): this;
 
   /**
    * Emits a `Set-Cookie` response header from a structured cookie value.
-   *
    * @param cookie - Cookie name, value, and response attributes
    * @returns This cookie store
    */
@@ -107,10 +102,9 @@ export interface CookieStore {
 
   /**
    * Emits an expired `Set-Cookie` response header. The path defaults to `/`.
-   *
    * @param nameOrOptions - Cookie name, or its name and identifying attributes
    * @returns This cookie store
-   * @throws Error when no writable response exists or headers were already sent
+   * @throws {Error} when no writable response exists or headers were already sent
    */
   delete(nameOrOptions: CookieDeleteOptions | string): this;
 
@@ -122,9 +116,8 @@ export interface CookieStore {
  * Returns a request-scoped cookie store for the current HTTP request.
  * Read operations use a snapshot of the incoming cookies, while write
  * operations append independent `Set-Cookie` values to the current response.
- *
  * @returns A synchronous cookie store for the current request
- * @throws Error when called outside an HTTP request context
+ * @throws {Error} when called outside an HTTP request context
  */
 export function cookies(): CookieStore {
   const request = getHttpRequest("cookies");
@@ -201,6 +194,11 @@ class RequestCookieStore implements CookieStore {
   }
 }
 
+/**
+ * Returns serializable cookies parsed from the request header.
+ * @param header - Raw Cookie header value.
+ * @returns Serializable cookies parsed from the request header.
+ */
 function parseRequestCookies(header: string | undefined): RequestCookie[] {
   if (!header) return [];
 
@@ -215,6 +213,11 @@ function parseRequestCookies(header: string | undefined): RequestCookie[] {
   );
 }
 
+/**
+ * Returns whether the cookie can be safely serialized.
+ * @param cookie - Cookie definition and its attributes.
+ * @returns Whether the cookie can be safely serialized.
+ */
 function isSerializableCookie(cookie: RequestCookie): boolean {
   try {
     stringifyCookie({ [cookie.name]: cookie.value });
@@ -224,6 +227,11 @@ function isSerializableCookie(cookie: RequestCookie): boolean {
   }
 }
 
+/**
+ * Returns response cookie with normalized expiration and default path.
+ * @param cookie - Cookie definition and its attributes.
+ * @returns Response cookie with normalized expiration and default path.
+ */
 function normalizeResponseCookie(cookie: ResponseCookie) {
   return {
     ...cookie,
@@ -235,6 +243,12 @@ function normalizeResponseCookie(cookie: ResponseCookie) {
   };
 }
 
+/**
+ * Returns header value, joining multiple values when necessary.
+ * @param headers - HTTP headers associated with the request or response.
+ * @param name - Name used to identify the resource.
+ * @returns Header value, joining multiple values when necessary.
+ */
 function getHeader(
   headers: Record<string, string | string[] | undefined>,
   name: string,
@@ -247,6 +261,11 @@ function getHeader(
   return Array.isArray(value) ? value.join("; ") : value;
 }
 
+/**
+ * Appends a Set-Cookie value without discarding existing cookies.
+ * @param response - HTTP response to inspect or update.
+ * @param value - Value to inspect or transform.
+ */
 function appendSetCookie(
   response: WritableHttpResponseLike,
   value: string,
@@ -267,6 +286,11 @@ function appendSetCookie(
   response.setHeader("Set-Cookie", [...values, value]);
 }
 
+/**
+ * Returns whether the response exposes an appendHeader method.
+ * @param response - HTTP response to inspect or update.
+ * @returns Whether the response exposes an appendHeader method.
+ */
 function supportsAppendHeader(
   response: WritableHttpResponseLike,
 ): response is Extract<WritableHttpResponseLike, { appendHeader: unknown }> {

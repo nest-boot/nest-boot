@@ -9,6 +9,10 @@ type ExecutionContext = "authentication" | "invitation-identity";
  * Installs the explicit infrastructure-owned execution boundaries for auth services.
  * Domain methods only use their injected manager. Unlisted methods keep request RLS.
  * Contextual instances are created per invocation, never by mutating a shared EM.
+ * @param em - Entity manager used for persistence.
+ * @param create - Mock implementation of the create operation.
+ * @param operations - Concurrent operations to execute.
+ * @returns Authentication service bound to the active request context.
  * @internal
  */
 export function createContextualAuthService<T extends object>(

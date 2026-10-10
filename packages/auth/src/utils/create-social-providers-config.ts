@@ -4,6 +4,12 @@ import { createSocialProviderConfig } from "./create-social-provider-config.js";
 
 type SocialProvidersConfig = NonNullable<BetterAuthOptions["socialProviders"]>;
 
+/**
+ * Returns enabled social provider configurations.
+ * @param disableSignUp - Whether provider-based registration is disabled.
+ * @param options - Configuration for this operation.
+ * @returns Enabled social provider configurations.
+ */
 export function createSocialProvidersConfig(
   disableSignUp: boolean,
   options?: SocialProvidersConfig,

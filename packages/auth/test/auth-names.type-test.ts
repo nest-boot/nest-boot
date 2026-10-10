@@ -87,8 +87,8 @@ expectTypeOf<PermissionName<never>>().toEqualTypeOf<never>();
 const invalidRole: RoleName<"Owner"> = "Owner";
 // @ts-expect-error Permission segments must both be nonempty.
 const invalidPermission: PermissionName<"user:"> = "user:";
-void invalidRole;
-void invalidPermission;
+expectTypeOf(invalidRole).toEqualTypeOf<never>();
+expectTypeOf(invalidPermission).toEqualTypeOf<never>();
 
 AuthModule.forRoot({
   buildAbility: (rules) => {
@@ -236,7 +236,9 @@ AuthModule.forRoot({
     can({ user: "report:read", workspace: "project:read" }, "read", "Report");
     // @ts-expect-error Source inference must not broaden the configured catalog.
     can({ workspace: "project:delete" }, "delete", "Project");
-    void [user?.id, workspace?.id, member?.id];
+    expectTypeOf(user?.id).toExtend<string | undefined>();
+    expectTypeOf(workspace?.id).toExtend<string | undefined>();
+    expectTypeOf(member?.id).toExtend<string | undefined>();
     // @ts-expect-error Effective permission snapshots are readonly.
     userPermissions.push("report:read");
     // @ts-expect-error The workspace array does not contain user-only permissions.

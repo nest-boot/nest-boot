@@ -10,7 +10,6 @@ import { GraphQLLoggerPlugin } from "./graphql-logger.plugin.js";
 /**
  * GraphQL request logging module.
  *
- * @remarks
  * Provides an Apollo Server plugin that logs GraphQL operations
  * including query details, variables, and execution timing.
  */

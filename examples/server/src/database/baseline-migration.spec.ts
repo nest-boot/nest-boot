@@ -6,6 +6,12 @@ import { Migration00000000000000_Initial } from './migrations/Migration000000000
 import { Migration20261009070926 } from './migrations/Migration20261009070926.js';
 
 const migrations = [Migration00000000000000_Initial, Migration20261009070926];
+/**
+ * Returns sQL emitted by the selected migration direction.
+ * @param MigrationClass - Migration class whose generated SQL is inspected.
+ * @param direction - Migration direction to execute.
+ * @returns SQL emitted by the selected migration direction.
+ */
 async function sqlFor(
   MigrationClass: (typeof migrations)[number],
   direction: 'up' | 'down' = 'up',

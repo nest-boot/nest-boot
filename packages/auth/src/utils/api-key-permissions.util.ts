@@ -10,7 +10,12 @@ const catalogs = new WeakMap<
   >
 >();
 
-/** Returns the owner's complete enum catalog and the subset configurable on API keys. */
+/**
+ * Returns the owner's complete enum catalog and the subset configurable on API keys.
+ * @param options - Authentication module configuration.
+ * @param scope - Authorization scope to apply.
+ * @returns Permission names available to keys in the requested scope.
+ */
 export function resolveApiKeyPermissionCatalog(
   options: AuthModuleOptions,
   scope: "user" | "member",
@@ -44,7 +49,14 @@ export function resolveApiKeyPermissionCatalog(
   return catalog;
 }
 
-/** Applies scope defaults, validates catalog values, and enforces the configured key ceiling. @internal */
+/**
+ * Applies scope defaults, validates catalog values, and enforces the configured key ceiling.
+ * @param options - Authentication module configuration.
+ * @param scope - Authorization scope to apply.
+ * @param requested - Requested grants to validate.
+ * @returns Validated API key permission restriction list.
+ * @internal
+ */
 export function normalizeApiKeyPermissions(
   options: AuthModuleOptions,
   scope: "user" | "member",

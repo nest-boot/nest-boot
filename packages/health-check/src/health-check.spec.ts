@@ -117,6 +117,10 @@ describe("registered health checks", () => {
     await expect(service.check()).rejects.toBe(failure);
   });
 
+  /**
+   * Returns test middleware and its mocked dependencies.
+   * @returns Test middleware and its mocked dependencies.
+   */
   function createMiddleware() {
     const adapter = { setHeader: vi.fn(), reply: vi.fn() };
     const host = new HttpAdapterHost();

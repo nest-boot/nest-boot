@@ -1,6 +1,5 @@
 /**
  * Derives a 32-byte key using HKDF-SHA256 via Web Crypto API.
- *
  * @param secret - The input key material (any length)
  * @returns A 32-byte (256-bit) derived key suitable for AES-256
  */

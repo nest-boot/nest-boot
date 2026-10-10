@@ -11,27 +11,27 @@ import type { I18nModuleOptions } from "./interfaces/i18n-module-options.interfa
 /**
  * Middleware that detects the request language and stores the i18n instance in the request context.
  *
- * @remarks
  * Uses `i18next-http-middleware` for language detection from headers,
  * cookies, or query parameters, then makes the i18n instance available
  * via {@link RequestContext}.
  */
 @Injectable()
 export class I18nMiddleware implements NestMiddleware {
-  /** i18next-http-middleware handler. @internal */
+  /**
+   * i18next-http-middleware handler.
+   * @internal
+   */
   private readonly handler: Handler;
 
-  /** Creates a new I18nMiddleware instance.
+  /**
+   * Creates a new I18nMiddleware instance.
    * @param options - i18next initialization and middleware options
    */
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
     readonly options: I18nModuleOptions,
   ) {
-    this.handler = middleware.handle(
-      i18next as any,
-      options,
-    ) as unknown as Handler;
+    this.handler = middleware.handle(i18next as any, options);
   }
 
   /**

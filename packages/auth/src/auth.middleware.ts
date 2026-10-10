@@ -82,7 +82,11 @@ export class AuthMiddleware implements NestMiddleware {
     }
   }
 
-  /** Adopts a newly issued session, rebuilding workspace membership and RLS scope. */
+  /**
+   * Adopts a newly issued session, rebuilding workspace membership and RLS scope.
+   * @param token - Token used to identify the requested value.
+   * @returns Persisted user associated with the authenticated session.
+   */
   async authenticateSession(token: string): Promise<User> {
     const data = await runAuthQuery(this.em, async (em) => {
       const session = await em.findOne(Session, {
@@ -118,12 +122,23 @@ export class AuthMiddleware implements NestMiddleware {
     }
     return data.user;
   }
-  /** Hydrates only the user returned by a successful registration without issuing an identity. @internal */
+  /**
+   * Hydrates only the user returned by a successful registration without issuing an identity.
+   * @param id - Identifier of the record to access.
+   * @returns Persisted user associated with the session result.
+   * @internal
+   */
   async resolveRegisteredUser(id: string): Promise<User> {
     return await runAuthQuery(this.em, (em) => em.findOneOrFail(User, { id }));
   }
 
-  /** Creates the authentication-context middleware. */
+  /**
+   * Creates the authentication-context middleware.
+   * @param options - Authentication module configuration.
+   * @param sessionService - Service for session queries and revocation.
+   * @param apiKeyService - Service for validating or managing API keys.
+   * @param em - Entity manager used for persistence.
+   */
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: AuthModuleOptions,
@@ -132,7 +147,12 @@ export class AuthMiddleware implements NestMiddleware {
     private readonly em: EntityManager,
   ) {}
 
-  /** Resolves workspace, credentials, and membership in their required order. */
+  /**
+   * Resolves workspace, credentials, and membership in their required order.
+   * @param req - Incoming HTTP request.
+   * @param _res - Outgoing HTTP response.
+   * @param next - Next handler in the Nest execution chain.
+   */
   async use(req: Request, _res: Response, next: NextFunction) {
     try {
       await this.resolveSelectedWorkspace(req);

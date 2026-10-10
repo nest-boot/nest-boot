@@ -152,6 +152,11 @@ describe("InvitationResolver", () => {
   });
 });
 
+/**
+ * Returns test resolver and its mocked dependencies.
+ * @param overrides - Fixture values that replace the defaults.
+ * @returns Test resolver and its mocked dependencies.
+ */
 function createResolver(overrides: Record<string, unknown> = {}) {
   const invitationService = {
     acceptInvitation: vi.fn(),

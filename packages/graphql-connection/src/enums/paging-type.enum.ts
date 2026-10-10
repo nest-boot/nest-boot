@@ -1,7 +1,8 @@
 /**
  * Represents the pagination direction for cursor-based pagination.
  *
- * @internal Used by ConnectionQueryBuilder to determine query direction
+ * Used by ConnectionQueryBuilder to determine query direction
+ * @internal
  */
 export enum PagingType {
   /**

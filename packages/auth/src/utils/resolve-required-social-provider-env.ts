@@ -4,6 +4,12 @@ import {
   SocialProviderRequiredEnvKey,
 } from "./social-provider.constants.js";
 
+/**
+ * Returns nonempty value of the required provider credential.
+ * @param provider - Authentication provider identifier.
+ * @param key - Key identifying the requested configuration value.
+ * @returns Nonempty value of the required provider credential.
+ */
 export function resolveRequiredSocialProviderEnv(
   provider: SocialProviderId,
   key: SocialProviderRequiredEnvKey,

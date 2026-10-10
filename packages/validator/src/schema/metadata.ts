@@ -12,6 +12,12 @@ const optionsByClass = new WeakMap<ZodClass, Readonly<ZodObjectOptions>>();
 
 let metadataVersion = 0;
 
+/**
+ * Stores a field schema and advances the metadata version.
+ * @param target - Object that receives the configuration.
+ * @param propertyName - Name of the decorated DTO property.
+ * @param definition - Field schema or schema factory.
+ */
 export function registerZodField(
   target: object,
   propertyName: string,
@@ -28,6 +34,11 @@ export function registerZodField(
   metadataVersion += 1;
 }
 
+/**
+ * Stores object-level schema options and advances the metadata version.
+ * @param target - Object that receives the configuration.
+ * @param options - Configuration for this operation.
+ */
 export function registerZodObject(
   target: ZodClass,
   options: ZodObjectOptions,
@@ -36,6 +47,11 @@ export function registerZodObject(
   metadataVersion += 1;
 }
 
+/**
+ * Returns field definitions collected from the class and its ancestors.
+ * @param target - Object that receives the configuration.
+ * @returns Field definitions collected from the class and its ancestors.
+ */
 export function getZodFields(
   target: ZodClass,
 ): Map<string, ZodFieldDefinition> {
@@ -59,6 +75,11 @@ export function getZodFields(
   return fields;
 }
 
+/**
+ * Returns object options collected from the class metadata.
+ * @param target - Object that receives the configuration.
+ * @returns Object options collected from the class metadata.
+ */
 export function getZodObjectOptions(
   target: ZodClass,
 ): Readonly<ZodObjectOptions>[] {
@@ -76,6 +97,10 @@ export function getZodObjectOptions(
   });
 }
 
+/**
+ * Returns version incremented whenever schema metadata changes.
+ * @returns Version incremented whenever schema metadata changes.
+ */
 export function getZodMetadataVersion(): number {
   return metadataVersion;
 }

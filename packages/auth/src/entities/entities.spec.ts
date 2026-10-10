@@ -24,7 +24,11 @@ describe("auth entities", () => {
         (meta) => meta.class === entity,
       );
       for (const field of fields)
-        expect(metadata?.properties[field].type).toBe(t.array);
+        expect(
+          Object.values(metadata?.properties ?? {}).find(
+            (property) => property.name === field,
+          )?.type,
+        ).toBe(t.array);
     }
   });
   it.each([
@@ -110,8 +114,16 @@ describe("auth entities", () => {
       const metadata = Object.values(MetadataStorage.getMetadata()).find(
         (meta) => meta.class === entity,
       );
-      expect(metadata?.properties[owner].nullable ?? false).toBe(false);
-      expect(metadata?.properties[other]).toBeUndefined();
+      expect(
+        Object.values(metadata?.properties ?? {}).find(
+          (property) => property.name === owner,
+        )?.nullable ?? false,
+      ).toBe(false);
+      expect(
+        Object.values(metadata?.properties ?? {}).find(
+          (property) => property.name === other,
+        ),
+      ).toBeUndefined();
       expect(metadata?.checks ?? []).toEqual([]);
     },
   );
@@ -161,8 +173,9 @@ describe("built-in auth entity field ownership", () => {
     "%s.%s targets the built-in class",
     (entity, field, target, options) => {
       const metadata = Object.values(MetadataStorage.getMetadata());
-      const property = metadata.find((meta) => meta.class === entity)
-        ?.properties[field];
+      const property = Object.values(
+        metadata.find((meta) => meta.class === entity)?.properties ?? {},
+      ).find((property) => property.name === field);
       expect(property).toMatchObject(options);
       expect(property?.cascade ?? []).not.toContain("remove");
       if (typeof property?.entity !== "function")

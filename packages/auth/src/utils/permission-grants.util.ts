@@ -3,7 +3,14 @@ import { ForbiddenException } from "@nestjs/common";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { resolveRequestPermissions } from "./resolve-request-permissions.util.js";
 
-/** Checks delegation against the shared, credential-limited permission snapshot. @internal */
+/**
+ * Checks delegation against the shared, credential-limited permission snapshot.
+ * @param options - Authentication module configuration.
+ * @param scope - Authorization scope to apply.
+ * @param requested - Requested grants to validate.
+ * @returns Whether every requested permission falls within the grant ceiling.
+ * @internal
+ */
 export function canGrantPermissions(
   options: AuthModuleOptions,
   scope: "user" | "workspace",
@@ -13,7 +20,13 @@ export function canGrantPermissions(
   return requested.every((permission) => allowed.has(permission));
 }
 
-/** Rejects delegation outside the caller's effective permission source. @internal */
+/**
+ * Rejects delegation outside the caller's effective permission source.
+ * @param options - Authentication module configuration.
+ * @param scope - Authorization scope to apply.
+ * @param requested - Requested grants to validate.
+ * @internal
+ */
 export function assertCanGrantPermissions(
   options: AuthModuleOptions,
   scope: "user" | "workspace",
@@ -26,7 +39,12 @@ export function assertCanGrantPermissions(
   );
 }
 
-/** Rejects access to or delegation of keys broader than the authenticating credential. @internal */
+/**
+ * Rejects access to or delegation of keys broader than the authenticating credential.
+ * @param options - Authentication module configuration.
+ * @param requested - Requested grants to validate.
+ * @internal
+ */
 export function assertApiKeyPermissionCeiling(
   options: AuthModuleOptions,
   requested: readonly string[],
@@ -44,7 +62,13 @@ export function assertApiKeyPermissionCeiling(
     );
 }
 
-/** Shared subset check for configured, owner, and credential permission ceilings. @internal */
+/**
+ * Shared subset check for configured, owner, and credential permission ceilings.
+ * @param requested - Requested grants to validate.
+ * @param allowed - Permissions the caller may grant.
+ * @param message - Message to log.
+ * @internal
+ */
 export function assertPermissionCeiling(
   requested: readonly string[],
   allowed: readonly string[],

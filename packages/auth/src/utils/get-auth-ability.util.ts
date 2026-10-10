@@ -8,6 +8,7 @@ import { getCurrentApiKey } from "./get-current-api-key.util.js";
 /**
  * Returns the current request's prepared ability or throws ForbiddenException.
  * Retrieve the instance again after identity changes; do not cache it across requests.
+ * @returns Ability stored in the current request context.
  */
 export function getAuthAbility(): AuthAbility {
   if (

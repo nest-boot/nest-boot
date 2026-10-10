@@ -24,19 +24,18 @@ export type NestWorkerOptions = Omit<WorkerOptions, "connection"> &
 /**
  * Decorator that marks a class as a BullMQ queue processor.
  *
- * @remarks
  * Wraps the `@nestjs/bullmq` `Processor` decorator to automatically
  * create a request context for each processed job.
- *
  * @param queueName - The name of the queue to process
+ * @returns Class decorator that associates the processor with a queue.
  */
 export function Processor(queueName: string): ClassDecorator;
 
 /**
  * Decorator that marks a class as a BullMQ queue processor with worker options.
- *
  * @param queueName - The name of the queue to process
  * @param workerOptions - Worker configuration options
+ * @returns Class decorator that associates the processor with a queue.
  */
 export function Processor(
   queueName: string,
@@ -45,16 +44,16 @@ export function Processor(
 
 /**
  * Decorator that marks a class as a BullMQ queue processor with processor options.
- *
  * @param processorOptions - Processor configuration options
+ * @returns Class decorator that associates the processor with a queue.
  */
 export function Processor(processorOptions: ProcessorOptions): ClassDecorator;
 
 /**
  * Decorator that marks a class as a BullMQ queue processor with processor and worker options.
- *
  * @param processorOptions - Processor configuration options
  * @param workerOptions - Worker configuration options
+ * @returns Class decorator that associates the processor with a queue.
  */
 export function Processor(
   processorOptions: ProcessorOptions,

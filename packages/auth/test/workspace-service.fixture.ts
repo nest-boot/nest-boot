@@ -7,12 +7,20 @@ import { InvitationService } from "../src/features/invitations/invitation.servic
 import { MemberService } from "../src/services/member.service.js";
 import { WorkspaceService } from "../src/services/workspace.service.js";
 import { mockAuthorization } from "./mock-authorization.js";
+/**
+ * Returns workspace fixture with deterministic identifiers.
+ * @returns Workspace fixture with deterministic identifiers.
+ */
 export function createTestWorkspace(): Workspace {
   return Object.assign(new Workspace(), {
     id: "workspace-1",
     name: "Acme",
   });
 }
+/**
+ * Returns member fixture with deterministic identifiers.
+ * @returns Member fixture with deterministic identifiers.
+ */
 export function createTestMember(): Member {
   return Object.assign(new Member(), {
     id: "member-1",
@@ -23,9 +31,17 @@ export function createTestMember(): Member {
     } as Member["workspace"],
   });
 }
+/**
+ * Returns user fixture with deterministic identifiers.
+ * @returns User fixture with deterministic identifiers.
+ */
 export function createTestUser(): User {
   return new User();
 }
+/**
+ * Returns invitation fixture with deterministic identifiers.
+ * @returns Invitation fixture with deterministic identifiers.
+ */
 export function createTestInvitation(): Invitation {
   return Object.assign(new Invitation(), {
     id: "invitation-1",
@@ -34,6 +50,11 @@ export function createTestInvitation(): Invitation {
     } as Invitation["workspace"],
   });
 }
+/**
+ * Returns workspace and member services with their persistence and authorization mocks.
+ * @param workspace - Workspace role and permission configuration for the fixture.
+ * @returns Workspace and member services with their persistence and authorization mocks.
+ */
 export function createWorkspaceServices(
   workspace: NonNullable<AuthModuleOptions["workspace"]> &
     Pick<AuthModuleOptions, "buildAbility"> = {},

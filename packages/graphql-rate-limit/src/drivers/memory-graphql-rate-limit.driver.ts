@@ -14,7 +14,6 @@ interface MemoryBucket {
 /**
  * Process-local in-memory GraphQL rate limit driver.
  *
- * @remarks
  * Buckets are isolated to one process and are not shared across replicas. Use
  * the Redis driver or a custom distributed driver when limits must be global.
  */

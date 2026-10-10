@@ -35,6 +35,11 @@ describe("EntityService request context integration", () => {
     await orm.close(true);
   });
 
+  /**
+   * Returns loaded identifiers and the batched lookup spy.
+   * @param ids - Identifiers of the entities to load.
+   * @returns Loaded identifiers and the batched lookup spy.
+   */
   async function loadInRequest(ids: number[]) {
     return await RequestContext.run(
       new RequestContext({ type: "test" }),

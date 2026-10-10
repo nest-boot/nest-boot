@@ -20,6 +20,10 @@ vi.mock("@nest-boot/request-context", async (importOriginal) => ({
   headers: () => requestHeaders,
 }));
 
+/**
+ * Returns mock Better Auth API methods.
+ * @returns Mock Better Auth API methods.
+ */
 function createApi() {
   return {
     accountInfo: vi.fn(),
@@ -44,6 +48,12 @@ function createApi() {
   };
 }
 
+/**
+ * Returns test service and its mocked dependencies.
+ * @param api - Better Auth API implementation.
+ * @param socialProviders - Social providers exposed by the fixture.
+ * @returns Test service and its mocked dependencies.
+ */
 async function createService(
   api = createApi(),
   socialProviders: { id: string; name: string }[] = [],
@@ -406,6 +416,11 @@ describe("current user identity", () => {
   });
 });
 
+/**
+ * Returns callback result and the spy recording response headers.
+ * @param callback - Work to execute in the supplied context.
+ * @returns Callback result and the spy recording response headers.
+ */
 async function withResponse<T>(callback: () => Promise<T>) {
   const appendHeader = vi.fn();
   const context = new RequestContext({ type: "http" });

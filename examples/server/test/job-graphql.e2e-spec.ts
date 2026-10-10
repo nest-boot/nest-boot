@@ -142,6 +142,13 @@ describe('example Job GraphQL API with native RLS', () => {
     await orm?.close();
   });
 
+  /**
+   * Returns graphQL request with the selected authentication state.
+   * @param source - Source value to read from.
+   * @param variables - GraphQL variables sent with the operation.
+   * @param authenticated - Whether the test request is authenticated.
+   * @returns GraphQL request with the selected authentication state.
+   */
   function query(
     source: string,
     variables: Record<string, unknown> = {},

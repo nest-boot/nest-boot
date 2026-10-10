@@ -19,7 +19,6 @@ import { RequestContext } from "./request-context.js";
  * - Maintains the context throughout the request lifecycle
  *
  * The middleware is automatically applied by RequestContextModule to all routes.
- *
  * @example Accessing request/response from context
  * ```typescript
  * import { RequestContext, REQUEST, RESPONSE } from '@nest-boot/request-context';
@@ -31,12 +30,14 @@ import { RequestContext } from "./request-context.js";
  */
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {
-  /** Creates a request context middleware instance. */
+  /**
+   * Creates a request context middleware instance.
+   * @param moduleRef - Nest module reference used to resolve dependencies.
+   */
   constructor(private readonly moduleRef?: ModuleRef) {}
 
   /**
    * Processes an incoming HTTP request and establishes request context.
-   *
    * @param req - The Express request object
    * @param res - The Express response object
    * @param next - The next middleware function

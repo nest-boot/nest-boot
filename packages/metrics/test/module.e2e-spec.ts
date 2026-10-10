@@ -62,6 +62,12 @@ describe("MetricsModule HTTP integration", () => {
     expect(response.text.trimEnd().endsWith("# EOF")).toBe(true);
   });
 
+  /**
+   * Returns hTTP response from the configured metrics endpoint.
+   * @param metricsModule - Metrics module registration to test.
+   * @param configureRegistry - Callback that registers metrics for the test.
+   * @returns HTTP response from the configured metrics endpoint.
+   */
   async function getMetrics(
     metricsModule: DynamicModule | Type,
     configureRegistry?: (registry: Registry<RegistryContentType>) => void,
@@ -88,6 +94,11 @@ describe("MetricsModule HTTP integration", () => {
   }
 });
 
+/**
+ * Returns normalized media type and parameter components.
+ * @param value - Value to inspect or transform.
+ * @returns Normalized media type and parameter components.
+ */
 function normalizeContentType(value: string): string[] {
   return value
     .split(";")

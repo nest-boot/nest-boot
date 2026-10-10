@@ -14,7 +14,12 @@ const catalogs = {
   workspace: new WeakMap<object, ReturnType<typeof resolveAuthCatalog>>(),
 };
 
-/** Resolves one immutable catalog per scope configuration, shared by startup, services and abilities. */
+/**
+ * Resolves one immutable catalog per scope configuration, shared by startup, services and abilities.
+ * @param options - Authentication module configuration.
+ * @param scope - Authorization scope to apply.
+ * @returns Configured authorization catalog for the requested scope.
+ */
 export function resolveAuthCatalog(
   options: AuthModuleOptions,
   scope: "user" | "workspace",

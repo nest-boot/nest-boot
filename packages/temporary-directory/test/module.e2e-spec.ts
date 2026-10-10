@@ -51,6 +51,10 @@ describe("TemporaryDirectoryModule HTTP integration", () => {
   });
 });
 
+/**
+ * Waits until the temporary directory has been removed.
+ * @param path - Path to normalize or access.
+ */
 async function expectRemoval(path: string): Promise<void> {
   for (let attempt = 0; attempt < 100; attempt++) {
     try {

@@ -34,6 +34,10 @@ class BookEntity implements Book {
 
 class BookConnection {}
 
+/**
+ * Returns field options map configured for the test.
+ * @returns Field options map configured for the test.
+ */
 function createFieldOptionsMap() {
   const titleField = {
     field: "title",
@@ -47,6 +51,10 @@ function createFieldOptionsMap() {
   return new Map<string, ConnectionFieldOptions<Book>>([["title", titleField]]);
 }
 
+/**
+ * Registers the connection field metadata used by the test.
+ * @param fieldOptionsMap - Field metadata used to build the connection.
+ */
 function setConnectionMetadata(
   fieldOptionsMap: Map<
     string,
@@ -66,6 +74,13 @@ function setConnectionMetadata(
   );
 }
 
+/**
+ * Returns entity manager fixture and its query spies.
+ * @param entities - Entity classes registered for the operation.
+ * @param totalCount - Total number of matching records reported by the fixture.
+ * @param nullsLowest - Whether the database sorts nulls before non-null values.
+ * @returns Entity manager fixture and its query spies.
+ */
 function createEntityManager(
   entities: Book[] = [],
   totalCount: number = entities.length,

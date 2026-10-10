@@ -30,7 +30,6 @@ import { getCurrentApiKey } from "./utils/get-current-api-key.util.js";
 export class AuthGuard implements CanActivate {
   /**
    * Creates the authentication and permission guard.
-   *
    * @param reflector - Nest metadata reflector.
    * @param options - Auth module options.
    * @param moduleRef - Nest module reference used to resolve handler instances.
@@ -44,7 +43,6 @@ export class AuthGuard implements CanActivate {
 
   /**
    * Checks authentication and route permission metadata.
-   *
    * @param context - Current Nest execution context.
    * @returns `true` when access is allowed.
    */
@@ -80,7 +78,6 @@ export class AuthGuard implements CanActivate {
 
   /**
    * Determines whether the current route is marked as public.
-   *
    * @param context - Current Nest execution context.
    * @returns `true` when authentication is not required.
    */
@@ -93,7 +90,6 @@ export class AuthGuard implements CanActivate {
 
   /**
    * Determines whether the request has a session or an API key.
-   *
    * @returns `true` when the request is authenticated.
    */
   protected isAuthenticated(): boolean {

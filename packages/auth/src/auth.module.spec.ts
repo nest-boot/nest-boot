@@ -87,6 +87,9 @@ const entities = {
   member: Member,
 };
 
+/**
+ * Sets the environment required to enable the OIDC test provider.
+ */
 function setOidcEnv() {
   process.env.AUTH_OIDC_ENABLED = "true";
   process.env.AUTH_OIDC_CLIENT_ID = "oidc-client-id";
@@ -95,18 +98,28 @@ function setOidcEnv() {
     "https://oidc.example.com/.well-known/openid-configuration";
 }
 
+/**
+ * Sets the environment required to enable the Google test provider.
+ */
 function setGoogleEnv() {
   process.env.AUTH_GOOGLE_ENABLED = "true";
   process.env.AUTH_GOOGLE_CLIENT_ID = "google-client-id";
   process.env.AUTH_GOOGLE_CLIENT_SECRET = "google-client-secret";
 }
 
+/**
+ * Sets the environment required to enable the GitHub test provider.
+ */
 function setGithubEnv() {
   process.env.AUTH_GITHUB_ENABLED = "true";
   process.env.AUTH_GITHUB_CLIENT_ID = "github-client-id";
   process.env.AUTH_GITHUB_CLIENT_SECRET = "github-client-secret";
 }
 
+/**
+ * Returns provider that constructs the Better Auth instance.
+ * @returns Provider that constructs the Better Auth instance.
+ */
 function getAuthProvider() {
   const providers = Reflect.getMetadata(
     MODULE_METADATA.PROVIDERS,
@@ -116,6 +129,10 @@ function getAuthProvider() {
   return providers.find((provider) => provider.provide === AUTH_TOKEN);
 }
 
+/**
+ * Returns middleware manager and proxies that record registrations.
+ * @returns Middleware manager and proxies that record registrations.
+ */
 function createMiddlewareManager() {
   const authProxy = {
     disableGlobalExcludeRoutes: vi.fn(),
@@ -149,6 +166,14 @@ function createMiddlewareManager() {
   };
 }
 
+/**
+ * Returns authentication module and middleware resolved from the test container.
+ * @param auth - Configured Better Auth instance.
+ * @param options - Configuration for this operation.
+ * @param middlewareManager - Manager that registers request middleware.
+ * @param authMiddleware - Middleware that populates the request identity.
+ * @returns Authentication module and middleware resolved from the test container.
+ */
 async function createAuthModule(
   auth: unknown,
   options: unknown,
@@ -271,7 +296,7 @@ describe("AuthModule", () => {
       entities,
       secret,
     };
-    const dynamicModule = AuthModule.forRoot(options as never);
+    const dynamicModule = AuthModule.forRoot(options);
 
     expect(dynamicModule.module).toBe(AuthModule);
     expect(dynamicModule.providers).toEqual(
@@ -300,7 +325,7 @@ describe("AuthModule", () => {
     );
     const dynamicModule = AuthModule.forRootAsync({
       useFactory,
-    } as never);
+    });
     const optionsProvider = dynamicModule.providers?.find(
       (provider) =>
         typeof provider === "object" &&
@@ -414,7 +439,7 @@ describe("AuthModule", () => {
           adminRoles: ["super-admin"],
         },
       },
-      { em: {} } as unknown as MikroORM,
+      { em: {} },
     );
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -470,7 +495,7 @@ describe("AuthModule", () => {
             },
             apiKey,
           },
-          { em: {} } as unknown as MikroORM,
+          { em: {} },
         ),
       ).not.toThrow();
       expect(mockBetterAuth).toHaveBeenCalledOnce();
@@ -504,9 +529,12 @@ describe("AuthModule", () => {
       const authProvider = getAuthProvider();
 
       expect(() =>
-        authProvider.useFactory({ entities, secret, ...config }, {
-          em: {},
-        } as unknown as MikroORM),
+        authProvider.useFactory(
+          { entities, secret, ...config },
+          {
+            em: {},
+          },
+        ),
       ).toThrow(error);
       expect(mockBetterAuth).not.toHaveBeenCalled();
     },
@@ -561,9 +589,12 @@ describe("AuthModule", () => {
     const authProvider = getAuthProvider();
 
     expect(() =>
-      authProvider.useFactory({ entities, secret, ...config }, {
-        em: {},
-      } as unknown as MikroORM),
+      authProvider.useFactory(
+        { entities, secret, ...config },
+        {
+          em: {},
+        },
+      ),
     ).toThrow(error);
     expect(mockBetterAuth).not.toHaveBeenCalled();
   });
@@ -619,9 +650,12 @@ describe("AuthModule", () => {
     const authProvider = getAuthProvider();
 
     expect(() =>
-      authProvider.useFactory({ entities, secret, ...config }, {
-        em: {},
-      } as unknown as MikroORM),
+      authProvider.useFactory(
+        { entities, secret, ...config },
+        {
+          em: {},
+        },
+      ),
     ).toThrow(error);
     expect(mockBetterAuth).not.toHaveBeenCalled();
   });
@@ -642,7 +676,7 @@ describe("AuthModule", () => {
           getContext: vi.fn().mockReturnThis(),
           getSessionContext: vi.fn(),
         },
-      } as unknown as MikroORM,
+      },
     );
 
     expect(mockBetterAuth).toHaveBeenCalledWith(
@@ -670,7 +704,7 @@ describe("AuthModule", () => {
           getContext: vi.fn().mockReturnThis(),
           getSessionContext: vi.fn(),
         },
-      } as unknown as MikroORM,
+      },
     );
 
     expect(mockBetterAuth).toHaveBeenCalledWith(
@@ -702,10 +736,10 @@ describe("AuthModule", () => {
           getContext: vi.fn().mockReturnThis(),
           getSessionContext: vi.fn(),
         },
-      } as unknown as MikroORM,
+      },
       {} as Mailer,
-      {} as HashService,
-      { deleteUser } as unknown as UserDeletionService,
+      {},
+      { deleteUser },
     );
 
     await mockBetterAuth.mock.calls[0]?.[0].user.deleteUser.beforeDelete(
@@ -733,10 +767,10 @@ describe("AuthModule", () => {
             getContext: vi.fn().mockReturnThis(),
             getSessionContext: vi.fn(),
           },
-        } as unknown as MikroORM,
+        },
         {} as Mailer,
-        {} as HashService,
-        { deleteUser } as unknown as UserDeletionService,
+        {},
+        { deleteUser },
       );
       const hook =
         mockBetterAuth.mock.calls[0]?.[0].user.deleteUser.beforeDelete;
@@ -775,10 +809,10 @@ describe("AuthModule", () => {
           getContext: vi.fn().mockReturnThis(),
           getSessionContext: vi.fn(),
         },
-      } as unknown as MikroORM,
+      },
       {} as Mailer,
-      {} as HashService,
-      { deleteUser } as unknown as UserDeletionService,
+      {},
+      { deleteUser },
     );
 
     await expect(
@@ -803,8 +837,8 @@ describe("AuthModule", () => {
           getContext: vi.fn().mockReturnThis(),
           getSessionContext: vi.fn(),
         },
-      } as unknown as MikroORM,
-      { sendMail } as unknown as Mailer,
+      },
+      { sendMail },
     );
 
     await mockBetterAuth.mock.calls[0]?.[0].emailVerification.sendVerificationEmail(
@@ -857,7 +891,7 @@ describe("AuthModule", () => {
           getContext: vi.fn().mockReturnThis(),
           getSessionContext: vi.fn(),
         },
-      } as unknown as MikroORM,
+      },
     );
 
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("user");
@@ -1382,7 +1416,7 @@ describe("AuthModule", () => {
       createMiddlewareManager();
 
     const { authHandlerMiddleware } = await createAuthModule(
-      auth as never,
+      auth,
       {
         basePath: "/auth",
         entities,
@@ -1390,8 +1424,8 @@ describe("AuthModule", () => {
           excludeRoutes: ["/public"],
           includeRoutes: ["/private"],
         },
-      } as never,
-      middlewareManager as never,
+      },
+      middlewareManager,
       authMiddleware,
     );
 
@@ -1420,14 +1454,14 @@ describe("AuthModule", () => {
       createMiddlewareManager();
 
     await createAuthModule(
-      auth as never,
+      auth,
       {
         entities,
         middleware: {
           register: false,
         },
-      } as never,
-      middlewareManager as never,
+      },
+      middlewareManager,
       authMiddleware,
     );
 

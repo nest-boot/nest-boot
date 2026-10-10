@@ -17,6 +17,15 @@ export interface CreateCustomAdapterOptions {
   inTransaction?: boolean;
 }
 
+/**
+ * Returns factory for the MikroORM-backed Better Auth adapter.
+ * @param options - Options used to construct the adapter.
+ * @param options.defaultUserRole - Role assigned to newly created users.
+ * @param options.em - Entity manager used by the adapter.
+ * @param options.entities - Authentication entity classes.
+ * @param options.inTransaction - Whether the adapter already runs inside a transaction.
+ * @returns Factory for the MikroORM-backed Better Auth adapter.
+ */
 export function createMikroOrmCustomAdapter({
   defaultUserRole,
   em,

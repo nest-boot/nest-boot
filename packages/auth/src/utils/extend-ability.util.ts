@@ -9,7 +9,15 @@ import { entities } from "../entities/index.js";
 import type { AbilityContext } from "../interfaces/ability-context.interface.js";
 import type { AbilityRules } from "../interfaces/ability-rules.interface.js";
 
-/** Runs synchronous extensions without exposing the builder, mutable rules, or a build function. */
+/**
+ * Runs synchronous extensions without exposing the builder, mutable rules, or a build function.
+ * @param builder - CASL builder that receives authorization rules.
+ * @param context - Context used to resolve this operation.
+ * @param catalog - User and workspace authorization catalogs.
+ * @param catalog.user - Application user roles and permissions.
+ * @param catalog.workspace - Workspace roles and permissions.
+ * @param configure - Callback that configures the instance before use.
+ */
 export function extendAbility(
   builder: AbilityBuilder<Ability<AbilityTuple, MongoQuery>>,
   context: AbilityContext,
@@ -85,6 +93,16 @@ export function extendAbility(
   }
 }
 
+/**
+ * Adds an allow or deny rule to the CASL ability builder.
+ * @param builder - CASL builder that receives authorization rules.
+ * @param rule - CASL rule arguments, including action, subject, fields, and conditions.
+ * @param rule."0" - Action or actions matched by the rule.
+ * @param rule."1" - Subject or subjects matched by the rule.
+ * @param rule."2" - Field selection or conditions for the rule.
+ * @param rule."3" - Conditions applied when a field selection is supplied.
+ * @param inverted - Whether the rule denies access.
+ */
 function addRule(
   builder: AbilityBuilder<Ability<AbilityTuple, MongoQuery>>,
   [action, subject, fieldsOrConditions, conditions]: Parameters<
@@ -103,6 +121,11 @@ function addRule(
   }
 }
 
+/**
+ * Returns independent copy of the rule's actions, subjects, fields, and conditions.
+ * @param rule - Authorization rule to copy.
+ * @returns Independent copy of the rule's actions, subjects, fields, and conditions.
+ */
 function copyRule(
   rule: Parameters<AbilityRules["cannot"]>,
 ): Parameters<AbilityRules["cannot"]> {

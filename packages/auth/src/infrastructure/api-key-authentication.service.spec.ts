@@ -10,6 +10,10 @@ import { MemberType } from "../enums/member-type.enum.js";
 import { hashApiKey } from "../utils/api-key-credential.util.js";
 import { ApiKeyAuthenticationService } from "./api-key-authentication.service.js";
 
+/**
+ * Returns isolated identity, persistence mocks, and services for the test.
+ * @returns Isolated identity, persistence mocks, and services for the test.
+ */
 function fixture() {
   const user = new User();
   const workspace = new Workspace();

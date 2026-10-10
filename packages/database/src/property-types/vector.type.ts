@@ -4,12 +4,12 @@ import { VectorType as BaseVectorType } from "pgvector/mikro-orm";
 /**
  * Custom MikroORM property type for pgvector vector columns with configurable dimensions.
  *
- * @remarks
  * Extends the base pgvector `VectorType` to support specifying the vector
  * dimension at the property level (e.g. `vector(1536)`).
  */
 export class VectorType extends BaseVectorType {
-  /** Creates a new VectorType instance.
+  /**
+   * Creates a new VectorType instance.
    * @param dimensions - Optional vector dimension (e.g. 1536 for OpenAI embeddings)
    */
   constructor(private readonly dimensions?: number) {

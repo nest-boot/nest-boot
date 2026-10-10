@@ -26,8 +26,7 @@ import {
  *
  * Contains all the GraphQL types needed for cursor-based pagination,
  * including dynamic named types based on the entity name.
- *
- * @typeParam Entity - The entity type for the connection
+ * @template Entity - The entity type for the connection
  */
 export type ConnectionBuildResult<Entity extends object> = {
   /** The generated Connection object type class. */
@@ -69,9 +68,7 @@ export type ConnectionBuildResult<Entity extends object> = {
  * - ConnectionArgs type with first, last, after, before, orderBy, filter, and query
  * - Order input type for sorting
  * - Filter scalar type for MongoDB-style filtering
- *
- * @typeParam Entity - The MikroORM entity type for the connection
- *
+ * @template Entity - The MikroORM entity type for the connection
  * @example Basic usage
  * ```typescript
  * import { ConnectionBuilder } from "@nest-boot/graphql-connection";
@@ -88,7 +85,6 @@ export type ConnectionBuildResult<Entity extends object> = {
  *   return this.connectionManager.find(Connection, args);
  * }
  * ```
- *
  * @example With custom filter options
  * ```typescript
  * const { Connection, ConnectionArgs } = new ConnectionBuilder(User, {
@@ -102,13 +98,22 @@ export type ConnectionBuildResult<Entity extends object> = {
  * ```
  */
 export class ConnectionBuilder<Entity extends object> {
-  /** Entity name for the connection. @internal */
+  /**
+   * Entity name for the connection.
+   * @internal
+   */
   private readonly entityName: EntityClass<Entity>["name"];
 
-  /** Connection builder options. @internal */
+  /**
+   * Connection builder options.
+   * @internal
+   */
   private readonly options: ConnectionBuilderOptions;
 
-  /** Map of field names to their sort/filter options. @internal */
+  /**
+   * Map of field names to their sort/filter options.
+   * @internal
+   */
   private readonly fieldOptionsMap = new Map<
     string,
     ConnectionFieldOptions<Entity>
@@ -142,12 +147,10 @@ export class ConnectionBuilder<Entity extends object> {
    *
    * Fields can be configured for filtering, sorting, and searching.
    * The field type determines what filter operators are available.
-   *
-   * @typeParam Type - The field type ("string", "number", "boolean", or "date")
-   * @typeParam Field - The field path in the entity
+   * @template Type - The field type ("string", "number", "boolean", or "date")
+   * @template Field - The field path in the entity
    * @param options - The field configuration options
    * @returns The builder instance for method chaining
-   *
    * @example
    * ```typescript
    * builder
@@ -161,10 +164,7 @@ export class ConnectionBuilder<Entity extends object> {
     Type extends "string" | "number" | "boolean" | "date" = never,
     Field extends string = never,
   >(options: FieldOptions<Entity, Type, Field>): this {
-    this.fieldOptionsMap.set(
-      options.field,
-      options as ConnectionFieldOptions<Entity>,
-    );
+    this.fieldOptionsMap.set(options.field, options);
     return this;
   }
 
@@ -173,7 +173,6 @@ export class ConnectionBuilder<Entity extends object> {
    *
    * The returned object contains both generic type references and
    * entity-specific named types (e.g., UserConnection, UserEdge).
-   *
    * @returns An object containing all generated connection types
    */
   build(): ConnectionBuildResult<Entity> {

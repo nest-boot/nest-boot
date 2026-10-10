@@ -57,7 +57,11 @@ import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
 /** Workspace membership queries, profile management, and authorization. */
 @Injectable()
 export class MemberService {
-  /** Creates a workspace member domain service. */
+  /**
+   * Creates a workspace member domain service.
+   * @param em - Entity manager used for persistence.
+   * @param authOptions - Authentication module configuration.
+   */
   constructor(
     /** MikroORM entity manager used for workspace persistence. */
     protected readonly em: EntityManager,
@@ -65,14 +69,21 @@ export class MemberService {
     private readonly authOptions: AuthModuleOptions,
   ) {}
 
-  /** Returns the current member after membership and instance read checks. */
+  /**
+   * Returns the current member after membership and instance read checks.
+   * @returns Active member in the selected workspace, or null if unavailable.
+   */
   getCurrentMember(): Member | null {
     const member = RequestIdentity.getCurrentMember();
     if (member) authorize("read", member);
     return member;
   }
 
-  /** Authorizes member pagination and scopes it to the selected workspace. */
+  /**
+   * Authorizes member pagination and scopes it to the selected workspace.
+   * @param workspace - The workspace that scopes this operation.
+   * @returns Filter restricted to the workspace and readable member types.
+   */
   getMemberListFilter(workspace: Workspace): FilterObject<Member> {
     RequestIdentity.assertCurrentWorkspace(workspace);
     authorize("read", Member);
@@ -84,7 +95,13 @@ export class MemberService {
       : { workspace, type: { $in: types } };
   }
 
-  /** Paginates members within the selected workspace and its RLS scope. */
+  /**
+   * Paginates members within the selected workspace and its RLS scope.
+   * @param workspace - The workspace that scopes this operation.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated members visible to the current principal.
+   */
   async getMemberConnectionByWorkspace(
     workspace: Workspace,
     args: ConnectionArgsInterface<Member>,
@@ -100,7 +117,12 @@ export class MemberService {
     return connection;
   }
 
-  /** Finds the active membership linking a user and workspace. */
+  /**
+   * Finds the active membership linking a user and workspace.
+   * @param workspace - The workspace that scopes this operation.
+   * @param user - The user whose account is being accessed.
+   * @returns Matching membership, or null if the user is not a member.
+   */
   async getMemberByUser(
     workspace: Workspace,
     user: User,
@@ -114,7 +136,11 @@ export class MemberService {
     return member;
   }
 
-  /** Finds a member by identifier within the request's selected workspace. */
+  /**
+   * Finds a member by identifier within the request's selected workspace.
+   * @param id - Identifier of the record to access.
+   * @returns Authorized membership in the selected workspace.
+   */
   async getMember(id: string): Promise<Member | null> {
     const workspace = RequestContext.isActive()
       ? RequestContext.get(Workspace)
@@ -128,7 +154,11 @@ export class MemberService {
     return member;
   }
 
-  /** Resolves a member's user with workspace authorization and request RLS. */
+  /**
+   * Resolves a member's user with workspace authorization and request RLS.
+   * @param member - The workspace membership to inspect or change.
+   * @returns User associated with the membership, or null for a service account.
+   */
   async getMemberUser(member: Member): Promise<User | null> {
     if (member.type === "SERVICE_ACCOUNT") return null;
     const workspace = this.unwrapWorkspace(member);
@@ -161,7 +191,13 @@ export class MemberService {
     return user;
   }
 
-  /** Adds an existing user to a workspace. */
+  /**
+   * Adds an existing user to a workspace.
+   * @param workspace - The workspace that scopes this operation.
+   * @param user - The user whose account is being accessed.
+   * @param input - Requested field values for the operation.
+   * @returns Created workspace membership.
+   */
   async addMember(
     workspace: Workspace,
     user: User,
@@ -210,7 +246,13 @@ export class MemberService {
     );
   }
 
-  /** Adds a service account without creating a login user. */
+  /**
+   * Adds a service account without creating a login user.
+   * @param workspace - The workspace that scopes this operation.
+   * @param name - Name used to identify the resource.
+   * @param input - Requested field values for the operation.
+   * @returns Created service account membership.
+   */
   async addServiceAccount(
     workspace: Workspace,
     name: string,
@@ -255,7 +297,13 @@ export class MemberService {
     );
   }
 
-  /** Adds an existing user to a workspace by normalized email address. */
+  /**
+   * Adds an existing user to a workspace by normalized email address.
+   * @param workspace - The workspace that scopes this operation.
+   * @param email - Email address used to identify the user.
+   * @param input - Requested field values for the operation.
+   * @returns Membership created for the user with the supplied email.
+   */
   async addMemberByEmail(
     workspace: Workspace,
     email: string,
@@ -274,6 +322,9 @@ export class MemberService {
   /**
    * Looks up a user for explicitly authorized membership creation.
    * Infrastructure isolates this lookup; membership writes retain request RLS.
+   * @param workspace - The workspace that scopes this operation.
+   * @param email - Email address used to identify the user.
+   * @returns User resolved for membership creation.
    * @internal
    */
   async getUserForMembership(
@@ -309,7 +360,12 @@ export class MemberService {
     return entity;
   }
 
-  /** Updates workspace-visible member profile fields and active state. */
+  /**
+   * Updates workspace-visible member profile fields and active state.
+   * @param member - The workspace membership to inspect or change.
+   * @param input - Requested field values for the operation.
+   * @returns Membership after the requested profile changes.
+   */
   async updateMember(
     member: Member | string,
     input: UpdateMemberOptions,
@@ -373,7 +429,12 @@ export class MemberService {
     return updated;
   }
 
-  /** Replaces a workspace member's roles within the caller's permission scope. */
+  /**
+   * Replaces a workspace member's roles within the caller's permission scope.
+   * @param member - The workspace membership to inspect or change.
+   * @param roleNames - Role names to validate.
+   * @returns Membership after its assigned roles are replaced.
+   */
   async setMemberRoles(
     member: Member | string,
     roleNames: string | readonly string[],
@@ -407,7 +468,12 @@ export class MemberService {
     return updated;
   }
 
-  /** Replaces direct permissions assigned to a workspace member. */
+  /**
+   * Replaces direct permissions assigned to a workspace member.
+   * @param member - The workspace membership to inspect or change.
+   * @param permissions - Permission names to apply.
+   * @returns Membership after its direct permissions are replaced.
+   */
   async setMemberPermissions(
     member: Member | string,
     permissions: readonly string[],
@@ -462,7 +528,11 @@ export class MemberService {
     return !!current && current.id === member.id;
   }
 
-  /** Removes a member after checking write ability; self-removal uses leaveWorkspace. */
+  /**
+   * Removes a member after checking write ability; self-removal uses leaveWorkspace.
+   * @param member - The workspace membership to inspect or change.
+   * @returns Removed membership.
+   */
   async removeMember(member: Member | string): Promise<Member> {
     member = await this.resolveMemberForAction(member, "write");
     const workspace = this.unwrapWorkspace(member);
@@ -476,7 +546,11 @@ export class MemberService {
     });
   }
 
-  /** Lets the current member leave its workspace regardless of role. */
+  /**
+   * Lets the current member leave its workspace regardless of role.
+   * @param member - The workspace membership to inspect or change.
+   * @returns Membership removed from the current user's workspace.
+   */
   async leaveWorkspace(member: Member): Promise<Member> {
     RequestIdentity.assertCurrentMember(member);
     const user = RequestContext.get(User);
@@ -503,7 +577,12 @@ export class MemberService {
     return removed;
   }
 
-  /** Checks flattened `subject:action` values against member permissions. */
+  /**
+   * Checks flattened `subject:action` values against member permissions.
+   * @param member - The workspace membership to inspect or change.
+   * @param input - Requested field values for the operation.
+   * @returns Whether every requested permission is effective for the principal.
+   */
   hasPermissions(
     member: Member,
     input: WorkspaceHasPermissionsOptions,
@@ -514,7 +593,10 @@ export class MemberService {
     );
   }
 
-  /** Lists all roles with grant availability; mutations still authorize their targets. */
+  /**
+   * Lists all roles with grant availability; mutations still authorize their targets.
+   * @returns Role choices and whether each is within the caller's grant ceiling.
+   */
   listRoles(): WorkspaceRoleOption[] {
     const canAssign = can("write", Invitation) || can("set-roles", Member);
     if (!canAssign) authorize("read", Member);
@@ -526,7 +608,10 @@ export class MemberService {
     }));
   }
 
-  /** Lists all direct-permission options without authorizing a particular member. */
+  /**
+   * Lists all direct-permission options without authorizing a particular member.
+   * @returns Permission choices and whether each is within the caller's grant ceiling.
+   */
   listPermissions(): WorkspacePermissionOption[] {
     const canAssign = can("set-permissions", Member);
     if (!canAssign) authorize("read", Member);
@@ -538,7 +623,11 @@ export class MemberService {
     }));
   }
 
-  /** Resolves permissions inherited from roles plus direct member permissions. */
+  /**
+   * Resolves permissions inherited from roles plus direct member permissions.
+   * @param member - The workspace membership to inspect or change.
+   * @returns Union of the member's role permissions and direct permissions.
+   */
   getEffectiveMemberPermissions(member: Member): string[] {
     return resolveMemberPermissions(this.authOptions, member);
   }

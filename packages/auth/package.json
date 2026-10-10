@@ -99,12 +99,6 @@
   "publishConfig": {
     "access": "public"
   },
-  "typedocOptions": {
-    "intentionallyNotExported": [
-      "ApiKeyAuthenticationService",
-      "LowercaseIdentifier"
-    ]
-  },
   "lint-staged": {
     "*.ts": [
       "prettier --write",

@@ -50,7 +50,11 @@ import { resolveRequestPermissions } from "../utils/resolve-request-permissions.
 export class MemberApiKeyService {
   private readonly logger = new Logger(MemberApiKeyService.name);
 
-  /** Creates an API-key domain service. */
+  /**
+   * Creates an API-key domain service.
+   * @param em - Entity manager used for persistence.
+   * @param authOptions - Authentication module configuration.
+   */
   constructor(
     /** MikroORM entity manager used for API-key persistence. */
     protected readonly em: EntityManager,
@@ -58,7 +62,11 @@ export class MemberApiKeyService {
     private readonly authOptions: AuthModuleOptions,
   ) {}
 
-  /** Lists API-key grants available to the caller in the selected workspace. */
+  /**
+   * Lists API-key grants available to the caller in the selected workspace.
+   * @param workspace - The workspace that scopes this operation.
+   * @returns Member API key permission choices with defaults and grant availability.
+   */
   getMemberApiKeyPermissions(
     workspace: Workspace,
   ): MemberApiKeyPermissionOption[] {
@@ -77,7 +85,12 @@ export class MemberApiKeyService {
     }));
   }
 
-  /** Returns a member-owned key in the selected workspace and within the caller's scope. */
+  /**
+   * Returns a member-owned key in the selected workspace and within the caller's scope.
+   * @param id - Identifier of the record to access.
+   * @param workspace - The workspace that scopes this operation.
+   * @returns Matching API key metadata with the credential hash omitted, or null.
+   */
   async getMemberApiKey(
     id: string,
     workspace: Workspace,
@@ -91,7 +104,13 @@ export class MemberApiKeyService {
     return apiKey ? omitCredentials(apiKey, ["key"]) : null;
   }
 
-  /** Paginates all selected-workspace member keys within the caller's permission ceilings. */
+  /**
+   * Paginates all selected-workspace member keys within the caller's permission ceilings.
+   * @param workspace - The workspace that scopes this operation.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated member API key metadata with credential hashes omitted.
+   */
   async getMemberApiKeyConnection(
     workspace: Workspace,
     args: ConnectionArgsInterface<MemberApiKey>,
@@ -121,7 +140,12 @@ export class MemberApiKeyService {
     };
   }
 
-  /** Creates an API key owned by a workspace member. */
+  /**
+   * Creates an API key owned by a workspace member.
+   * @param workspace - The workspace that scopes this operation.
+   * @param options - Configuration for this operation.
+   * @returns Created key metadata and its one-time plaintext credential.
+   */
   async createMemberApiKey(
     workspace: Workspace,
     options: CreateMemberApiKeyOptions,
@@ -138,7 +162,12 @@ export class MemberApiKeyService {
     return await this.createKey(member, options, permissions);
   }
 
-  /** Updates a member-owned key in the selected workspace. */
+  /**
+   * Updates a member-owned key in the selected workspace.
+   * @param id - Identifier of the record to access.
+   * @param input - Requested field values for the operation.
+   * @returns Updated API key metadata without the stored credential hash.
+   */
   async updateMemberApiKey(
     id: string,
     input: UpdateApiKeyOptions,
@@ -180,7 +209,11 @@ export class MemberApiKeyService {
     );
   }
 
-  /** Deletes a member-owned key in the selected workspace. */
+  /**
+   * Deletes a member-owned key in the selected workspace.
+   * @param id - Identifier of the record to access.
+   * @returns Deleted API key metadata without the stored credential hash.
+   */
   async deleteMemberApiKey(id: string): Promise<ApiKeyMetadata<MemberApiKey>> {
     authorize("write", MemberApiKey);
     const apiKey = await this.findWritableApiKey(id);

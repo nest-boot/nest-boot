@@ -100,6 +100,10 @@ describe("AccountService", () => {
   );
 });
 
+/**
+ * Returns test service and its mocked dependencies.
+ * @returns Test service and its mocked dependencies.
+ */
 function createService() {
   const fork = vi.fn();
   const em = {

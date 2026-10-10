@@ -5,7 +5,12 @@ import { CAN_METADATA } from "../permission.constants.js";
 import type { CanSubjectCallback } from "../types/can-subject-callback.type.js";
 import { appendMetadata } from "../utils/append-metadata.util.js";
 
-/** Requires an action on the callback result; repeated declarations must all be allowed. */
+/**
+ * Requires an action on the callback result; repeated declarations must all be allowed.
+ * @param action - Permission action to check.
+ * @param subjectCallback - Callback that resolves the resource being authorized.
+ * @returns Decorator that appends authorization metadata to the handler.
+ */
 export function Can<
   T extends Subject = Subject,
   TSelf = unknown,

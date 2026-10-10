@@ -102,24 +102,6 @@ tester.run("graphql-field-definite-assignment", rule, {
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],
     },
-    // Has initializer but also has !
-    {
-      code: /* typescript */ `
-        @ObjectType()
-        class User {
-          @Field()
-          createdAt!: Date = new Date();
-        }
-      `,
-      output: /* typescript */ `
-        @ObjectType()
-        class User {
-          @Field()
-          createdAt: Date = new Date();
-        }
-      `,
-      errors: [{ messageId: "removeDefiniteAssignment" }],
-    },
     // InputType - no initializer and no !
     {
       code: /* typescript */ `

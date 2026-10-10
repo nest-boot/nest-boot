@@ -50,6 +50,9 @@ export class AuthService {
   /**
    * Creates a new AuthService instance.
    * @param auth - Internal Better Auth instance.
+   * @param authMiddleware - Middleware that populates the request identity.
+   * @param userService - Service for user profiles and permissions.
+   * @param sessionService - Service for session queries and revocation.
    */
   constructor(
     @Inject(AUTH_TOKEN) auth: unknown,
@@ -62,12 +65,19 @@ export class AuthService {
 
   private readonly auth: BetterAuthAdapter;
 
-  /** Returns the public credential password policy. */
+  /**
+   * Returns the public credential password policy.
+   * @returns Configured minimum and maximum password lengths.
+   */
   getPasswordPolicy(): PasswordPolicy {
     return this.userService.getPasswordPolicy();
   }
 
-  /** Starts impersonation and adopts its identity before returning application fields. */
+  /**
+   * Starts impersonation and adopts its identity before returning application fields.
+   * @param id - Identifier of the record to access.
+   * @returns User represented by the new impersonation session.
+   */
   async impersonateUser(id: string): Promise<User> {
     this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.userService.impersonateUser(
@@ -77,7 +87,10 @@ export class AuthService {
     return await this.adoptSession(result.session.token);
   }
 
-  /** Restores the administrator and its abilities/RLS scope in the same request. */
+  /**
+   * Restores the administrator and its abilities/RLS scope in the same request.
+   * @returns Restored administrator, or null when there was no impersonation session.
+   */
   async stopImpersonating(): Promise<User | null> {
     this.authMiddleware.assertAuthenticationCanChange();
     const session = RequestContext.isActive()
@@ -94,7 +107,11 @@ export class AuthService {
     return user;
   }
 
-  /** Registers a user without exposing relations that require a session. */
+  /**
+   * Registers a user without exposing relations that require a session.
+   * @param options - Configuration for this operation.
+   * @returns Created user's identifier and optional session token.
+   */
   async signUpPayload(options: SignUpOptions): Promise<SignUpPayload> {
     const result = await this.signUp(options);
     if (result.token) {
@@ -103,7 +120,11 @@ export class AuthService {
     return { id: result.user.id, token: result.token };
   }
 
-  /** Signs in and establishes the new identity for nested GraphQL selections. */
+  /**
+   * Signs in and establishes the new identity for nested GraphQL selections.
+   * @param options - Configuration for this operation.
+   * @returns Sign-in response with the persisted user entity.
+   */
   async signInEntity(options: SignInOptions): Promise<SignInEntityResult> {
     const result = await this.signIn(options);
     return {
@@ -112,7 +133,11 @@ export class AuthService {
     };
   }
 
-  /** Returns a redirect payload or the authenticated application user. */
+  /**
+   * Returns a redirect payload or the authenticated application user.
+   * @param options - Configuration for this operation.
+   * @returns Social sign-in response with a persisted user when available.
+   */
   async signInSocialEntity(
     options: SignInSocialOptions,
   ): Promise<SignInSocialEntityResult> {
@@ -138,14 +163,20 @@ export class AuthService {
     return await this.authMiddleware.resolveRegisteredUser(user.id);
   }
 
-  /** Returns the current user, rejecting principals without a user identity. */
+  /**
+   * Returns the current user, rejecting principals without a user identity.
+   * @returns Authenticated user from the current request.
+   */
   getCurrentUser(): User {
     const user = RequestContext.isActive() ? RequestContext.get(User) : null;
     if (!user) throw new ForbiddenException("A user identity is required");
     return user;
   }
 
-  /** Lists social and generic OAuth providers currently enabled. */
+  /**
+   * Lists social and generic OAuth providers currently enabled.
+   * @returns Provider identifiers and display names available for sign-in.
+   */
   async listSocialProviders(): Promise<AuthSocialProvider[]> {
     const context = await this.auth.$context;
     return context.socialProviders.map(({ id, name }) => ({
@@ -154,7 +185,11 @@ export class AuthService {
     }));
   }
 
-  /** Signs up a user with an email address and password. */
+  /**
+   * Signs up a user with an email address and password.
+   * @param options - Configuration for this operation.
+   * @returns User registration response and optional session token.
+   */
   async signUp(options: SignUpOptions): Promise<SignUpResult> {
     this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.signUpEmail({
@@ -166,7 +201,11 @@ export class AuthService {
     return result.response;
   }
 
-  /** Signs in a user with an email address and password. */
+  /**
+   * Signs in a user with an email address and password.
+   * @param options - Configuration for this operation.
+   * @returns Normalized password sign-in response.
+   */
   async signIn(options: SignInOptions): Promise<SignInResult> {
     this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.signInEmail({
@@ -178,7 +217,11 @@ export class AuthService {
     return this.normalizeSignInResult(result.response);
   }
 
-  /** Starts a social or generic OAuth sign-in flow. */
+  /**
+   * Starts a social or generic OAuth sign-in flow.
+   * @param options - Configuration for this operation.
+   * @returns Normalized social sign-in response.
+   */
   async signInSocial(
     options: SignInSocialOptions,
   ): Promise<SignInSocialResult> {
@@ -192,7 +235,10 @@ export class AuthService {
     return this.normalizeSignInSocialResult(result.response);
   }
 
-  /** Signs out the session represented by the current request context. */
+  /**
+   * Signs out the session represented by the current request context.
+   * @returns Whether the current session was signed out successfully.
+   */
   async signOut(): Promise<boolean> {
     this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.signOut({
@@ -204,7 +250,11 @@ export class AuthService {
     return result.response.success;
   }
 
-  /** Sends an email-verification link to an unverified email address. */
+  /**
+   * Sends an email-verification link to an unverified email address.
+   * @param options - Configuration for this operation.
+   * @returns Whether the verification email request succeeded.
+   */
   async sendVerificationEmail(
     options: SendVerificationEmailOptions,
   ): Promise<boolean> {
@@ -212,14 +262,22 @@ export class AuthService {
     return result.status;
   }
 
-  /** Requests an enumeration-safe password-reset email. */
+  /**
+   * Requests an enumeration-safe password-reset email.
+   * @param options - Configuration for this operation.
+   * @returns Password reset request status and message.
+   */
   async requestPasswordReset(
     options: RequestPasswordResetOptions,
   ): Promise<RequestPasswordResetResult> {
     return await this.auth.api.requestPasswordReset({ body: options });
   }
 
-  /** Resets a credential password using a password-reset token. */
+  /**
+   * Resets a credential password using a password-reset token.
+   * @param options - Configuration for this operation.
+   * @returns Whether the password was reset successfully.
+   */
   async resetPassword(options: ResetPasswordOptions): Promise<boolean> {
     this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.resetPassword({ body: options });
@@ -227,7 +285,11 @@ export class AuthService {
     return result.status;
   }
 
-  /** Verifies the authenticated user's credential password. */
+  /**
+   * Verifies the authenticated user's credential password.
+   * @param password - Plaintext password to verify.
+   * @returns Whether password verification succeeded.
+   */
   async verifyCurrentUserPassword(password: string): Promise<boolean> {
     const result = await this.auth.api.verifyPassword({
       body: { password },
@@ -236,7 +298,11 @@ export class AuthService {
     return result.status;
   }
 
-  /** Updates the authenticated user's profile and refreshes its request identity. */
+  /**
+   * Updates the authenticated user's profile and refreshes its request identity.
+   * @param options - Configuration for this operation.
+   * @returns Whether the profile update succeeded.
+   */
   async updateCurrentUser(options: UpdateAuthUserOptions): Promise<boolean> {
     this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.updateUser({
@@ -249,7 +315,11 @@ export class AuthService {
     return result.response.status;
   }
 
-  /** Starts or completes the authenticated user's configured email-change flow. */
+  /**
+   * Starts or completes the authenticated user's configured email-change flow.
+   * @param options - Configuration for this operation.
+   * @returns Whether the email change request succeeded.
+   */
   async changeCurrentUserEmail(
     options: ChangeAuthEmailOptions,
   ): Promise<boolean> {
@@ -265,7 +335,11 @@ export class AuthService {
     return result.response.status;
   }
 
-  /** Changes the authenticated user's credential password. */
+  /**
+   * Changes the authenticated user's credential password.
+   * @param options - Configuration for this operation.
+   * @returns Replacement session token, when the password change issues one.
+   */
   async changeCurrentUserPassword(
     options: ChangeAuthPasswordOptions,
   ): Promise<ChangeAuthPasswordResult> {
@@ -289,7 +363,11 @@ export class AuthService {
     return { token: result.response.token };
   }
 
-  /** Adds a credential password to an authenticated account that has none. */
+  /**
+   * Adds a credential password to an authenticated account that has none.
+   * @param newPassword - New plaintext password to validate and store.
+   * @returns Whether the credential password was set successfully.
+   */
   async setCurrentUserPassword(newPassword: string): Promise<boolean> {
     const result = await this.auth.api.setPassword({
       body: { newPassword },
@@ -298,7 +376,11 @@ export class AuthService {
     return result.status;
   }
 
-  /** Requests deletion of the authenticated user's account. */
+  /**
+   * Requests deletion of the authenticated user's account.
+   * @param options - Configuration for this operation.
+   * @returns Account deletion status and any redirect information.
+   */
   async deleteCurrentUser(
     options?: DeleteAuthUserOptions,
   ): Promise<DeleteAuthUserResult> {
@@ -315,12 +397,19 @@ export class AuthService {
     return result.response;
   }
 
-  /** Lists safe summaries of authentication accounts linked to the current user. */
+  /**
+   * Lists safe summaries of authentication accounts linked to the current user.
+   * @returns Provider accounts linked to the authenticated user.
+   */
   async listCurrentUserAccounts(): Promise<AuthAccount[]> {
     return await this.auth.api.listUserAccounts({ headers: headers() });
   }
 
-  /** Starts a social or OpenID Connect account-linking flow. */
+  /**
+   * Starts a social or OpenID Connect account-linking flow.
+   * @param options - Configuration for this operation.
+   * @returns Account linking response and any provider redirect URL.
+   */
   async linkCurrentUserAccount(
     options: LinkAuthSocialAccountOptions,
   ): Promise<LinkAuthSocialAccountResult> {
@@ -333,7 +422,11 @@ export class AuthService {
     return result.response;
   }
 
-  /** Unlinks an authentication account from the current user. */
+  /**
+   * Unlinks an authentication account from the current user.
+   * @param options - Configuration for this operation.
+   * @returns Whether the provider account was unlinked successfully.
+   */
   async unlinkCurrentUserAccount(
     options: UnlinkAuthAccountOptions,
   ): Promise<boolean> {
@@ -344,7 +437,11 @@ export class AuthService {
     return result.status;
   }
 
-  /** Returns a usable provider access token for a linked account. */
+  /**
+   * Returns a usable provider access token for a linked account.
+   * @param selector - Fields that identify the provider account.
+   * @returns Provider access token with expiration and scope metadata.
+   */
   async getAccessToken(
     selector: AuthAccountSelector,
   ): Promise<AuthAccessToken> {
@@ -361,7 +458,11 @@ export class AuthService {
     };
   }
 
-  /** Refreshes provider credentials for a linked account. */
+  /**
+   * Refreshes provider credentials for a linked account.
+   * @param selector - Fields that identify the provider account.
+   * @returns Refreshed provider tokens and their expiration metadata.
+   */
   async refreshToken(
     selector: AuthAccountSelector,
   ): Promise<AuthRefreshedToken> {
@@ -382,7 +483,11 @@ export class AuthService {
     };
   }
 
-  /** Returns provider identity and metadata for a linked account. */
+  /**
+   * Returns provider identity and metadata for a linked account.
+   * @param selector - Fields that identify the provider account.
+   * @returns Information returned by the selected provider account.
+   */
   async getAccountInfo<
     UserInfo extends AuthProviderUserInfo = AuthProviderUserInfo,
     Data extends object = Record<string, unknown>,
@@ -399,7 +504,7 @@ export class AuthService {
     return {
       ...result,
       url: result.url ?? null,
-    } as SignInResult;
+    };
   }
 
   private normalizeSignInSocialResult(result: {

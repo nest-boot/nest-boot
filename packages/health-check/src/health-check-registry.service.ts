@@ -6,7 +6,10 @@ import type { HealthIndicatorFunction } from "@nestjs/terminus";
 export class HealthCheckRegistry {
   #healthIndicators: HealthIndicatorFunction[] = [];
 
-  /** Registered indicators, in registration order. */
+  /**
+   * Registered indicators, in registration order.
+   * @returns Health indicators registered with this registry.
+   */
   get healthIndicators(): HealthIndicatorFunction[] {
     return this.#healthIndicators;
   }

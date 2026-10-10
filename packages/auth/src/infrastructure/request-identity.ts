@@ -17,9 +17,15 @@ import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { resolveRequestMember } from "../utils/resolve-request-member.util.js";
 import { invalidateRequestPermissions } from "../utils/resolve-request-permissions.util.js";
 
-/** Owns request identity publication, authorization invalidation, and database scope. @internal */
+/**
+ * Owns request identity publication, authorization invalidation, and database scope.
+ * @internal
+ */
 export class RequestIdentity {
-  /** Returns the active request member, rejecting user API keys outside their membership. */
+  /**
+   * Returns the active request member, rejecting user API keys outside their membership.
+   * @returns Active member in the selected workspace, or null if unavailable.
+   */
   static getCurrentMember(): Member | null {
     const member = resolveRequestMember();
     if (getCurrentApiKey() && RequestContext.get(User) && !member) {
@@ -30,7 +36,10 @@ export class RequestIdentity {
     return member;
   }
 
-  /** Throws unless the supplied user is the authenticated user. */
+  /**
+   * Throws unless the supplied user is the authenticated user.
+   * @param user - The user whose account is being accessed.
+   */
   static assertCurrentUser(user: User): void {
     const currentUser = RequestContext.isActive()
       ? RequestContext.get(User)
@@ -41,7 +50,10 @@ export class RequestIdentity {
     }
   }
 
-  /** Authorizes an explicit self-service path without granting a general resource ability. */
+  /**
+   * Authorizes an explicit self-service path without granting a general resource ability.
+   * @param user - The user whose account is being accessed.
+   */
   static assertUserSession(user: User): void {
     this.assertCurrentUser(user);
     if (getCurrentApiKey()) {
@@ -51,7 +63,10 @@ export class RequestIdentity {
     }
   }
 
-  /** Throws unless the supplied session is the authenticated session. */
+  /**
+   * Throws unless the supplied session is the authenticated session.
+   * @param session - Session whose metadata is being accessed.
+   */
   static assertCurrentSession(session: Session): void {
     const currentSession = RequestContext.isActive()
       ? RequestContext.get(Session)
@@ -62,7 +77,10 @@ export class RequestIdentity {
     }
   }
 
-  /** Throws unless the supplied workspace is selected for the current request. */
+  /**
+   * Throws unless the supplied workspace is selected for the current request.
+   * @param workspace - The workspace that scopes this operation.
+   */
   static assertCurrentWorkspace(workspace: Workspace): void {
     const currentWorkspace = RequestContext.isActive()
       ? RequestContext.get(Workspace)
@@ -78,7 +96,10 @@ export class RequestIdentity {
     }
   }
 
-  /** Throws unless the supplied member is the current workspace member. */
+  /**
+   * Throws unless the supplied member is the current workspace member.
+   * @param member - The workspace membership to inspect or change.
+   */
   static assertCurrentMember(member: Member | null | undefined): void {
     const currentMember = RequestContext.isActive()
       ? RequestContext.get(Member)
@@ -95,7 +116,11 @@ export class RequestIdentity {
     }
   }
 
-  /** Matches credentials by both table and ID. */
+  /**
+   * Matches credentials by both table and ID.
+   * @param apiKey - API key whose metadata is being accessed.
+   * @returns Whether the key matches the credential authenticating this request.
+   */
   static isCurrentApiKey(apiKey: ApiKeyMetadata): boolean {
     const current = getCurrentApiKey();
     return (
@@ -105,7 +130,11 @@ export class RequestIdentity {
     );
   }
 
-  /** Rejects publishing an authenticating credential before its outer transaction commits. */
+  /**
+   * Rejects publishing an authenticating credential before its outer transaction commits.
+   * @param em - Entity manager used for persistence.
+   * @param apiKey - API key whose metadata is being accessed.
+   */
   static assertApiKeyCanCommit(
     em: EntityManager,
     apiKey: ApiKeyMetadata,
@@ -117,7 +146,12 @@ export class RequestIdentity {
     }
   }
 
-  /** Publishes only changes to the user represented by this request. */
+  /**
+   * Publishes only changes to the user represented by this request.
+   * @param em - Entity manager used for persistence.
+   * @param options - Authentication module configuration.
+   * @param user - The user whose account is being accessed.
+   */
   static updateUser(
     em: EntityManager,
     options: AuthModuleOptions,
@@ -128,7 +162,12 @@ export class RequestIdentity {
     this.update(em, options, { user });
   }
 
-  /** Publishes only current membership changes, clearing departed workspace scope. */
+  /**
+   * Publishes only current membership changes, clearing departed workspace scope.
+   * @param em - Entity manager used for persistence.
+   * @param options - Authentication module configuration.
+   * @param member - The workspace membership to inspect or change.
+   */
   static updateMember(
     em: EntityManager,
     options: AuthModuleOptions,
@@ -143,7 +182,13 @@ export class RequestIdentity {
     else this.update(em, options, { member });
   }
 
-  /** Publishes committed credential changes or revokes the entire request. */
+  /**
+   * Publishes committed credential changes or revokes the entire request.
+   * @param em - Entity manager used for persistence.
+   * @param options - Authentication module configuration.
+   * @param apiKey - API key whose metadata is being accessed.
+   * @param deleted - Whether the API key has been deleted.
+   */
   static updateApiKey(
     em: EntityManager,
     options: AuthModuleOptions,
@@ -160,13 +205,19 @@ export class RequestIdentity {
     else this.update(em, options, { apiKey });
   }
 
-  /** Prepares the request ability once, failing closed when configuration rejects. */
+  /**
+   * Prepares the request ability once, failing closed when configuration rejects.
+   * @param options - Authentication module configuration.
+   */
   static prepare(options: AuthModuleOptions): void {
     if (!RequestContext.isActive() || RequestContext.get(AuthAbility)) return;
     this.refresh(options);
   }
 
-  /** Stages identity while authentication is being resolved, before a guard can run. */
+  /**
+   * Stages identity while authentication is being resolved, before a guard can run.
+   * @param patch - Identity fields to replace.
+   */
   static stage(patch: RequestIdentityPatch): void {
     if (!RequestContext.isActive()) return;
     if ("user" in patch) RequestContext.set(User, patch.user ?? null);
@@ -180,7 +231,10 @@ export class RequestIdentity {
     RequestContext.set(AuthAbility, null);
   }
 
-  /** Rebuilds one ability, never retaining old grants on failure. */
+  /**
+   * Rebuilds one ability, never retaining old grants on failure.
+   * @param options - Authentication module configuration.
+   */
   static refresh(options: AuthModuleOptions): void {
     if (!RequestContext.isActive()) return;
     invalidateRequestPermissions();
@@ -188,7 +242,12 @@ export class RequestIdentity {
     RequestContext.set(AuthAbility, buildRequestAbility(options));
   }
 
-  /** Publishes a committed identity change; failures revoke the request instead of retaining stale grants. */
+  /**
+   * Publishes a committed identity change; failures revoke the request instead of retaining stale grants.
+   * @param em - Entity manager used for persistence.
+   * @param options - Authentication module configuration.
+   * @param patch - Identity fields to replace.
+   */
   static update(
     em: EntityManager,
     options: AuthModuleOptions,
@@ -215,7 +274,10 @@ export class RequestIdentity {
     }
   }
 
-  /** Removes all credentials without falling back to another authentication method. */
+  /**
+   * Removes all credentials without falling back to another authentication method.
+   * @param em - Entity manager used for persistence.
+   */
   static clear(em: EntityManager): void {
     this.stage({
       user: null,
@@ -238,7 +300,11 @@ export class RequestIdentity {
       });
   }
 
-  /** Revokes workspace rules and rebuilds the remaining user ability after a committed change. */
+  /**
+   * Revokes workspace rules and rebuilds the remaining user ability after a committed change.
+   * @param em - Entity manager used for persistence.
+   * @param options - Authentication module configuration.
+   */
   static clearWorkspace(em: EntityManager, options: AuthModuleOptions): void {
     if (getCurrentApiKey() instanceof MemberApiKey) {
       this.clear(em);
@@ -247,7 +313,10 @@ export class RequestIdentity {
     this.update(em, options, { member: null, workspace: null });
   }
 
-  /** Synchronizes only identity values; database policies never receive application permissions. */
+  /**
+   * Synchronizes only identity values; database policies never receive application permissions.
+   * @param em - Entity manager used for persistence.
+   */
   static syncDatabase(em: EntityManager): void {
     em.setSessionContext(this.databaseScope());
   }

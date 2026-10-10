@@ -27,7 +27,6 @@ import { createGraphQLRateLimitDriver } from "./utils/create-driver.util.js";
 /**
  * GraphQL rate limiting module using a pluggable leaky bucket driver.
  *
- * @remarks
  * Provides query complexity analysis and rate limiting for GraphQL operations.
  * Reuses the Redis client provided by `@nest-boot/redis` by default and falls
  * back to process-local memory when no Redis client is available.

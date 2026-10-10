@@ -31,7 +31,11 @@ import { DEFAULT_WORKSPACE_CREATOR_ROLE } from "../workspace.constants.js";
 /** Workspace queries and lifecycle operations. */
 @Injectable()
 export class WorkspaceService {
-  /** Creates a workspace domain service. */
+  /**
+   * Creates a workspace domain service.
+   * @param em - Entity manager used for persistence.
+   * @param authOptions - Authentication module configuration.
+   */
   constructor(
     /** MikroORM entity manager used for workspace persistence. */
     protected readonly em: EntityManager,
@@ -39,7 +43,10 @@ export class WorkspaceService {
     private readonly authOptions: AuthModuleOptions,
   ) {}
 
-  /** Returns the selected workspace after membership and instance read checks. */
+  /**
+   * Returns the selected workspace after membership and instance read checks.
+   * @returns Selected workspace, or null when none is available.
+   */
   getCurrentWorkspace(): Workspace | null {
     if (!RequestContext.isActive()) return null;
     const workspace = RequestContext.get(Workspace);
@@ -54,7 +61,12 @@ export class WorkspaceService {
     return workspace ?? null;
   }
 
-  /** Finds a workspace only when the current user is an active member. */
+  /**
+   * Finds a workspace only when the current user is an active member.
+   * @param id - Identifier of the record to access.
+   * @param user - The user whose account is being accessed.
+   * @returns Workspace when the user has an active membership, otherwise null.
+   */
   async getUserWorkspace(id: string, user: User): Promise<Workspace | null> {
     RequestIdentity.assertCurrentUser(user);
     if (getCurrentApiKey()) return await this.findOne({ id });
@@ -68,7 +80,13 @@ export class WorkspaceService {
       : null;
   }
 
-  /** Paginates workspaces belonging to the current user's active memberships. */
+  /**
+   * Paginates workspaces belonging to the current user's active memberships.
+   * @param user - The user whose account is being accessed.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated workspaces joined by the user.
+   */
   async getWorkspaceConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<Workspace>,
@@ -90,7 +108,11 @@ export class WorkspaceService {
     return connection;
   }
 
-  /** Finds the selected workspace matching the supplied filter and read ability. */
+  /**
+   * Finds the selected workspace matching the supplied filter and read ability.
+   * @param where - Conditions to translate into a database filter.
+   * @returns Accessible workspace, or null if it is unavailable.
+   */
   async findOne(where: FilterQuery<Workspace>): Promise<Workspace | null> {
     const current = RequestContext.isActive()
       ? RequestContext.get(Workspace)
@@ -105,7 +127,12 @@ export class WorkspaceService {
     return workspace;
   }
 
-  /** Creates a workspace and its owner membership atomically. */
+  /**
+   * Creates a workspace and its owner membership atomically.
+   * @param user - The user whose account is being accessed.
+   * @param input - Requested field values for the operation.
+   * @returns Persisted workspace.
+   */
   async createWorkspace(
     user: User,
     input: CreateWorkspaceOptions,
@@ -152,7 +179,12 @@ export class WorkspaceService {
     return entity;
   }
 
-  /** Updates mutable workspace fields. */
+  /**
+   * Updates mutable workspace fields.
+   * @param workspace - The workspace that scopes this operation.
+   * @param input - Requested field values for the operation.
+   * @returns Workspace after the requested changes.
+   */
   async updateWorkspace(
     workspace: Workspace | string,
     input: UpdateWorkspaceOptions,
@@ -179,7 +211,11 @@ export class WorkspaceService {
     return workspace;
   }
 
-  /** Permanently deletes a workspace and cascades its dependent authentication records. */
+  /**
+   * Permanently deletes a workspace and cascades its dependent authentication records.
+   * @param workspace - The workspace that scopes this operation.
+   * @returns Metadata of the deleted workspace.
+   */
   async deleteWorkspace(workspace: Workspace | string): Promise<Workspace> {
     workspace = await this.resolveWorkspaceForAction(workspace, "delete");
     RequestIdentity.assertCurrentWorkspace(workspace);
@@ -205,7 +241,12 @@ export class WorkspaceService {
     return workspace;
   }
 
-  /** Finds the active membership linking a user and workspace. */
+  /**
+   * Finds the active membership linking a user and workspace.
+   * @param workspace - The workspace that scopes this operation.
+   * @param user - The user whose account is being accessed.
+   * @returns Active membership for the user and workspace, or null.
+   */
   private async findActiveMemberByUser(
     workspace: Workspace,
     user: User,

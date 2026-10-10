@@ -96,7 +96,10 @@ export class Account extends BaseEntity {
   @Field(() => Date)
   updatedAt: Opt<Date> = new Date();
 
-  /** Granted OAuth scopes; credentials are intentionally not GraphQL fields. */
+  /**
+   * Granted OAuth scopes; credentials are intentionally not GraphQL fields.
+   * @returns Nonempty scopes parsed from the provider's scope string.
+   */
   @Field(() => [String])
   get scopes(): Opt<string[]> {
     return this.scope?.split(/[,\s]+/).filter(Boolean) ?? [];

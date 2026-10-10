@@ -8,7 +8,7 @@
 - 根 `package.json` 当前要求 Node 24.4+、pnpm 10.30.3；以 checkout 中声明为准。
 - `@nest-boot/<name>` 通常对应 `packages/<name>`，先用 package 的 `name` 字段确认，不只依赖目录猜测。
 - PR 标题由 commitlint 校验，使用 `fix(scope): ...`、`feat(scope): ...`、`docs(scope): ...` 等 Conventional Commit 形式。
-- PR CI 构建 packages、检查 Prettier、运行 lint、TypeDoc 和 coverage tests；完整测试需要 PostgreSQL、Redis 与 RustFS 服务。
+- PR CI 构建 packages、检查 Prettier、运行 lint 和 coverage tests；完整测试需要 PostgreSQL、Redis 与 RustFS 服务。
 - `CONTRIBUTING.md`、`SECURITY.md`、Issue forms 和 PR template 是当前贡献入口；开始任务时重新读取，若它们与本 reference 不一致则以上游文件和 CI 为准。
 
 ## 准备 checkout 与分支
@@ -40,8 +40,15 @@ pnpm nx run @nest-boot/<package>:lint --skip-nx-cache
 
 ```bash
 pnpm format:check
-pnpm typedoc:check
 pnpm build:packages --skip-nx-cache
+```
+
+文档站内容变化时运行：
+
+```bash
+pnpm --filter @nest-boot/docs types:check
+pnpm --filter @nest-boot/docs lint
+pnpm build:docs
 ```
 
 完整 CI 对齐命令为：
@@ -50,7 +57,6 @@ pnpm build:packages --skip-nx-cache
 pnpm build:packages --skip-nx-cache
 pnpm format:check
 pnpm lint
-pnpm typedoc:check
 pnpm test:cov
 ```
 

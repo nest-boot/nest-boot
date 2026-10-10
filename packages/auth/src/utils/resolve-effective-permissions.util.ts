@@ -6,7 +6,13 @@ import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
 import { resolveAuthPermissions } from "./auth-role.util.js";
 import { resolveAuthCatalog } from "./resolve-auth-catalog.util.js";
 
-/** Resolves an owner's grants independently of the requesting credential. @internal */
+/**
+ * Resolves an owner's grants independently of the requesting credential.
+ * @param options - Authentication module configuration.
+ * @param user - The user whose account is being accessed.
+ * @returns Effective permissions from the user's roles and direct grants.
+ * @internal
+ */
 export function resolveUserPermissions(
   options: AuthModuleOptions,
   user: User,
@@ -18,7 +24,13 @@ export function resolveUserPermissions(
   );
 }
 
-/** Resolves a member's grants independently of the requesting credential. @internal */
+/**
+ * Resolves a member's grants independently of the requesting credential.
+ * @param options - Authentication module configuration.
+ * @param member - The workspace membership to inspect or change.
+ * @returns Effective permissions from the member's roles and direct grants.
+ * @internal
+ */
 export function resolveMemberPermissions(
   options: AuthModuleOptions,
   member: Member,
@@ -30,7 +42,13 @@ export function resolveMemberPermissions(
   );
 }
 
-/** Returns only permissions present in both inputs. @internal */
+/**
+ * Returns only permissions present in both inputs.
+ * @param permissions - Permission names to apply.
+ * @param ceiling - Maximum permissions allowed by the owning principal.
+ * @returns Requested permissions that also occur in the ceiling.
+ * @internal
+ */
 export function intersectPermissions(
   permissions: readonly string[],
   ceiling: readonly string[],

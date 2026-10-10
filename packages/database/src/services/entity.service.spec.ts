@@ -9,6 +9,12 @@ class TestEntity {
   deletedAt?: Date;
 }
 
+/**
+ * Returns entity configured for the test.
+ * @param id - Identifier of the record to access.
+ * @param data - Data used to construct the result.
+ * @returns Entity configured for the test.
+ */
 function createEntity(id: number, data: Partial<TestEntity> = {}) {
   return Object.assign(new TestEntity(), {
     id,
@@ -16,6 +22,10 @@ function createEntity(id: number, data: Partial<TestEntity> = {}) {
   });
 }
 
+/**
+ * Returns entity manager fixture and its query spies.
+ * @returns Entity manager fixture and its query spies.
+ */
 function createEntityManager() {
   const getContext = vi.fn();
   const getById = vi.fn();

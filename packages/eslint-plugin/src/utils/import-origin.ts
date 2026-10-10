@@ -11,7 +11,10 @@ interface ProgramCache {
 }
 const programs = new WeakMap<ts.Program, ProgramCache>();
 
-/** Identifies a re-export by symbol identity, never by the spelling of its alias. @internal */
+/**
+ * Identifies a re-export by symbol identity, never by the spelling of its alias.
+ * @internal
+ */
 export function reexportedImportName(
   source: Readonly<SourceCode>,
   modules: string | readonly string[],
