@@ -27,7 +27,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,md}\"",
     "lint": "nx run-many -t lint",
     "lint:fix": "nx run-many -t lint:fix",
-    "release:dry-run": "nx release --dry-run --skip-publish",
+    "release:dry-run": "node .github/scripts/release-packages.mjs --dry-run",
     "test:e2e": "pnpm -r --filter './packages/**' --if-present test:e2e",
     "test:consumer": "node .github/scripts/verify-consumer.mjs"
   },

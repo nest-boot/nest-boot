@@ -33,6 +33,41 @@ test("main keeps its existing Nx version resolver and other branches are rejecte
   );
 });
 
+test("graduation resolves versions from manifests and explicitly removes prereleases", () => {
+  assert.deepEqual(getReleaseConfig("main", { graduate: true }), {
+    version: {
+      conventionalCommits: false,
+      preserveMatchingDependencyRanges: false,
+    },
+  });
+  assert.equal(
+    getReleaseSpecifier(
+      "main",
+      [{ name: "@nest-boot/auth", version: "8.0.11-beta.0" }],
+      ["@nest-boot/auth@8.0.2"],
+      { graduate: true },
+    ),
+    "patch",
+  );
+});
+
+test("graduation is limited to main and the validated v8 release line", () => {
+  assert.throws(
+    () => getReleaseConfig("beta", { graduate: true }),
+    /Graduation requires main/,
+  );
+  assert.throws(
+    () =>
+      getReleaseSpecifier(
+        "main",
+        [{ name: "@nest-boot/auth", version: "9.0.0-beta.0" }],
+        [],
+        { graduate: true },
+      ),
+    /v8/,
+  );
+});
+
 test("beta explicitly increments prereleases instead of interpreting breaking commits", () => {
   assert.equal(
     getReleaseSpecifier("beta", [

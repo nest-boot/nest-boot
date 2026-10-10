@@ -214,3 +214,129 @@ test("unknown explicit packages are rejected before release commands run", (t) =
     /Unknown release project/,
   );
 });
+
+test("main graduates every prerelease even with no changes since the beta release", (t) => {
+  const { cwd, manifest, commit } = fixture(t);
+  manifest("unchanged", { version: "8.0.5-beta.3" });
+  manifest("private", { private: true });
+  commit("chore(release): publish");
+  const calls = [];
+  releasePackages("main", {
+    cwd,
+    exec(command, args, options) {
+      if (command === "git") return execFileSync(command, args, options);
+      calls.push([command, args]);
+      if (command === "node") {
+        manifest("example", { version: "8.0.0" });
+        manifest("unchanged", { version: "8.0.5" });
+        commit("chore(release): publish");
+      }
+      if (command === "npm") throw registryError("E404");
+      return "";
+    },
+  });
+  assert.ok(
+    calls.some(
+      ([command, args]) =>
+        command === "node" &&
+        args.join(" ") ===
+          ".github/scripts/release.mjs main @nest-boot/example,@nest-boot/unchanged --graduate",
+    ),
+  );
+  assert.equal(calls.at(-1)[0], "pnpm");
+  assert.equal(calls.at(-1)[1].at(-1), "latest");
+});
+
+test("an occupied stable target stops graduation before any version or publication writes", (t) => {
+  const { cwd } = fixture(t);
+  assert.throws(
+    () =>
+      releasePackages("main", {
+        cwd,
+        exec(command, args, options) {
+          if (command === "git") return execFileSync(command, args, options);
+          assert.equal(command, "npm");
+          assert.equal(args[1], "@nest-boot/example@8.0.0");
+          return '"8.0.0"';
+        },
+      }),
+    /already published/,
+  );
+});
+
+test("a graduation dry run never publishes or requires manifests to be mutated", (t) => {
+  const { cwd } = fixture(t);
+  let versionCalls = 0;
+  releasePackages("main", {
+    cwd,
+    dryRun: true,
+    exec(command, args, options) {
+      if (command === "git") return execFileSync(command, args, options);
+      if (command === "npm") throw registryError("E404");
+      assert.equal(command, "node");
+      assert.ok(args.includes("--graduate"));
+      assert.ok(args.includes("--dry-run"));
+      versionCalls++;
+      return "";
+    },
+  });
+  assert.equal(versionCalls, 1);
+});
+
+test("main cannot publish a prerelease left behind by versioning", (t) => {
+  const { cwd } = fixture(t);
+  assert.throws(
+    () =>
+      releasePackages("main", {
+        cwd,
+        exec(command, args, options) {
+          if (command === "git") return execFileSync(command, args, options);
+          if (command === "npm") throw registryError("E404");
+          assert.equal(command, "node");
+          return "";
+        },
+      }),
+    /Cannot publish prerelease.*latest/,
+  );
+});
+
+test("a failed stable publish retries without another graduation or version bump", (t) => {
+  const { cwd, manifest, commit } = fixture(t);
+  let versionCalls = 0;
+  let publishCalls = 0;
+  const exec = (command, args, options) => {
+    if (command === "git") return execFileSync(command, args, options);
+    if (command === "npm") throw registryError("E404");
+    if (command === "node") {
+      versionCalls++;
+      assert.ok(args.includes("--graduate"));
+      manifest("example", { version: "8.0.0" });
+      commit("chore(release): publish");
+      return "";
+    }
+    assert.equal(command, "pnpm");
+    assert.equal(args.at(-1), "latest");
+    if (++publishCalls === 1) throw new Error("Publish denied");
+    return "";
+  };
+  assert.throws(() => releasePackages("main", { cwd, exec }), /Publish denied/);
+  releasePackages("main", { cwd, exec });
+  assert.equal(versionCalls, 1);
+  assert.equal(publishCalls, 2);
+});
+
+test("registry authorization failure stops graduation before versioning", (t) => {
+  const { cwd } = fixture(t);
+  assert.throws(
+    () =>
+      releasePackages("main", {
+        cwd,
+        exec(command, args) {
+          assert.equal(command, "npm");
+          assert.equal(args[1], "@nest-boot/example@8.0.0");
+          throw registryError("E403");
+        },
+      }),
+    /Unable to check npm publication/,
+  );
+});

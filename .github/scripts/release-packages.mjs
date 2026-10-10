@@ -2,9 +2,16 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { getReleaseSpecifier } from "./release-policy.mjs";
+
 export function releasePackages(
   branch,
-  { cwd = process.cwd(), exec = execFileSync, projects = [] } = {},
+  {
+    cwd = process.cwd(),
+    exec = execFileSync,
+    projects = [],
+    dryRun = false,
+  } = {},
 ) {
   if (branch !== "main" && branch !== "beta") {
     throw new Error(`Unsupported release branch: ${branch}`);
@@ -21,15 +28,48 @@ export function releasePackages(
   const roots = readdirSync(join(cwd, "packages"), { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => join("packages", entry.name));
-  const publicNames = new Set(
-    roots
-      .map(readManifest)
-      .filter(Boolean)
-      .map(({ name }) => name),
-  );
+  const manifests = roots.map(readManifest).filter(Boolean);
+  const publicNames = new Set(manifests.map(({ name }) => name));
   for (const project of projects) {
     if (!publicNames.has(project))
       throw new Error(`Unknown release project: ${project}`);
+  }
+
+  const isPublished = ({ name, version }) => {
+    const spec = `${name}@${version}`;
+    try {
+      run("npm", ["view", spec, "version", "--json"]);
+      return true;
+    } catch (error) {
+      let code;
+      try {
+        code = JSON.parse(error.stdout?.toString() || "{}").error?.code;
+      } catch {
+        // An unrecognized response is not evidence of an unpublished version.
+      }
+      if (code !== "E404") {
+        throw new Error(`Unable to check npm publication for ${spec}`, {
+          cause: error,
+        });
+      }
+      return false;
+    }
+  };
+  const prereleases =
+    branch === "main"
+      ? manifests.filter(({ version }) => version.includes("-"))
+      : [];
+  const graduate = prereleases.length > 0;
+  if (graduate) {
+    getReleaseSpecifier(branch, manifests, [], { graduate });
+    // Check the whole promotion before Nx writes manifests, commits, or tags.
+    // A retry after versioning uses stable manifests and skips this phase.
+    for (const manifest of prereleases) {
+      const version = manifest.version.split("-")[0];
+      if (isPublished({ ...manifest, version })) {
+        throw new Error(`${manifest.name}@${version} is already published`);
+      }
+    }
   }
 
   const releaseBase = run("git", [
@@ -57,6 +97,7 @@ export function releasePackages(
   const changedProjects = [
     ...new Set([
       ...projects,
+      ...prereleases.map(({ name }) => name),
       ...[...changedRoots]
         .map(readManifest)
         .filter(Boolean)
@@ -67,35 +108,31 @@ export function releasePackages(
   if (changedProjects.length) {
     run(
       "node",
-      [".github/scripts/release.mjs", branch, changedProjects.join(",")],
+      [
+        ".github/scripts/release.mjs",
+        branch,
+        changedProjects.join(","),
+        ...(graduate ? ["--graduate"] : []),
+        ...(dryRun ? ["--dry-run"] : []),
+      ],
       "inherit",
     );
   }
+  if (dryRun) return;
 
   // A release commit can exist even when npm publication failed. Always scan
   // the current manifests, including on a retry with no changed packages.
-  const missingProjects = [];
-  for (const root of roots) {
-    const manifest = readManifest(root);
-    if (!manifest) continue;
-    const spec = `${manifest.name}@${manifest.version}`;
-    try {
-      run("npm", ["view", spec, "version", "--json"]);
-    } catch (error) {
-      let code;
-      try {
-        code = JSON.parse(error.stdout?.toString() || "{}").error?.code;
-      } catch {
-        // An unrecognized response is not evidence of an unpublished version.
-      }
-      if (code !== "E404") {
-        throw new Error(`Unable to check npm publication for ${spec}`, {
-          cause: error,
-        });
-      }
-      missingProjects.push(manifest.name);
+  const versionedManifests = roots.map(readManifest).filter(Boolean);
+  for (const manifest of versionedManifests) {
+    if (branch === "main" && manifest.version.includes("-")) {
+      throw new Error(
+        `Cannot publish prerelease ${manifest.name}@${manifest.version} to latest`,
+      );
     }
   }
+  const missingProjects = versionedManifests
+    .filter((manifest) => !isPublished(manifest))
+    .map(({ name }) => name);
 
   if (missingProjects.length) {
     run(
@@ -117,7 +154,14 @@ export function releasePackages(
 }
 
 if (import.meta.main) {
-  releasePackages(process.argv[2], {
+  const args = process.argv.slice(2);
+  const branch = args.find((arg) => !arg.startsWith("--"));
+  for (const arg of args) {
+    if (arg !== branch && arg !== "--dry-run")
+      throw new Error(`Unknown release argument: ${arg}`);
+  }
+  releasePackages(branch, {
+    dryRun: args.includes("--dry-run"),
     projects: (process.env.RELEASE_PROJECTS || "")
       .split(",")
       .map((name) => name.trim())
