@@ -35,7 +35,7 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "devDependencies": {
-    "@apollo/server": "^5.2.0",
+    "@apollo/server": "^5.5.1",
     "@as-integrations/express5": "^1.1.2",
     "@nest-boot/eslint-config": "workspace:^",
     "@nest-boot/eslint-plugin": "workspace:^",
@@ -45,15 +45,15 @@
     "@nestjs/apollo": "^14.0.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
-    "@nestjs/graphql": "^14.0.0",
-    "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/graphql": "^14.0.3",
+    "@nestjs/platform-express": "^12.1.2",
     "@nestjs/testing": "^12.0.1",
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.2.1",
     "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9.39.3",
-    "express": "^5.1.0",
+    "express": "^5.3.0",
     "graphql": "^16.11.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
@@ -63,13 +63,13 @@
     "vitest": "^4.1.11"
   },
   "peerDependencies": {
-    "@apollo/server": "^5.0.0",
+    "@apollo/server": "^5.5.1",
     "@nest-boot/logger": "workspace:^",
     "@nestjs/apollo": "^14.0.0",
     "@nestjs/common": "^12.0.0",
     "@nestjs/core": "^12.0.0",
-    "@nestjs/graphql": "^14.0.0",
-    "express": "^5.0.0",
+    "@nestjs/graphql": "^14.0.3",
+    "express": "^5.3.0",
     "graphql": "^16.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.0.0"
@@ -85,7 +85,7 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=24.4.0"
+    "node": ">=24.21.0"
   },
   "exports": {
     ".": {

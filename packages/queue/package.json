@@ -43,11 +43,11 @@
     "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
-    "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/platform-express": "^12.1.2",
     "@nestjs/testing": "^12.0.1",
     "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^4.1.11",
-    "bullmq": "^5.61.0",
+    "bullmq": "^5.81.5",
     "dotenv": "^17.2.3",
     "eslint": "^9.39.3",
     "reflect-metadata": "^0.2.2",
@@ -61,7 +61,7 @@
     "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.0.0",
     "@nestjs/core": "^12.0.0",
-    "bullmq": "^5.0.0",
+    "bullmq": "^5.81.5",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.0.0"
   },
@@ -76,7 +76,7 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=24.4.0"
+    "node": ">=24.21.0"
   },
   "exports": {
     ".": {

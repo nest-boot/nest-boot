@@ -65,7 +65,7 @@ internal Endpoint, and Bucket Endpoint configuration.
 | `expires`       | Presigned POST lifetime in seconds; defaults to `3600`                                       |
 | `temporaryPath` | Temporary object path; defaults to `/tmp`                                                    |
 | `permanentPath` | Persisted object path; defaults to `/files`                                                  |
-| `limits`        | Accepted `{ fileSize, mimeTypes }` combinations; MIME patterns use micromatch glob semantics |
+| `limits`        | Accepted `{ fileSize, mimeTypes }` combinations; MIME patterns use picomatch glob semantics |
 
 Leading and trailing slashes in `temporaryPath` and `permanentPath` are
 normalized. Each path must contain at least one valid segment and cannot use

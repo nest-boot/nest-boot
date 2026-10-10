@@ -105,6 +105,36 @@ describe("MailerModule", () => {
     });
   });
 
+  it("sends mail with environment defaults through a registered transport", async () => {
+    vi.stubEnv("SMTP_FROM", "Example <no-reply@example.com>");
+    const module = await compile(
+      MailerModule.register({ jsonTransport: true }),
+    );
+    const mailer = module.get(Mailer);
+
+    const result = await mailer.sendMail({
+      to: "recipient@example.com",
+      subject: "Welcome",
+      text: "Hello from Nest Boot",
+    });
+
+    expect(JSON.parse(result.message)).toMatchObject({
+      from: { address: "no-reply@example.com", name: "Example" },
+      to: [{ address: "recipient@example.com", name: "" }],
+      subject: "Welcome",
+      text: "Hello from Nest Boot",
+    });
+
+    const override = await mailer.sendMail({
+      from: "override@example.com",
+      to: "recipient@example.com",
+      text: "Custom sender",
+    });
+    expect(JSON.parse(override.message).from.address).toBe(
+      "override@example.com",
+    );
+  });
+
   it("rejects invalid SMTP environment values", async () => {
     vi.stubEnv("SMTP_PORT", "invalid");
 

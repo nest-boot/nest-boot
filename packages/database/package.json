@@ -37,7 +37,7 @@
   "dependencies": {
     "@nest-boot/health-check": "workspace:^",
     "dataloader": "^2.2.3",
-    "lodash-es": "^4.17.21",
+    "lodash-es": "^4.18.1",
     "pgvector": "^0.2.1",
     "prettier": "^3.6.2",
     "sql-formatter": "^15.6.9"
@@ -55,7 +55,7 @@
     "@nest-boot/tsconfig": "workspace:^",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
-    "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/platform-express": "^12.1.2",
     "@nestjs/testing": "^12.0.1",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^24.0.0",
@@ -91,7 +91,7 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=24.4.0"
+    "node": ">=24.21.0"
   },
   "exports": {
     ".": {

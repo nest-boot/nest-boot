@@ -7,7 +7,7 @@
   },
   "packageManager": "pnpm@10.30.3",
   "engines": {
-    "node": ">=24.4.0"
+    "node": ">=24.21.0"
   },
   "scripts": {
     "commit:check": "lint-staged && pnpm build:packages",
@@ -28,7 +28,8 @@
     "lint": "nx run-many -t lint",
     "lint:fix": "nx run-many -t lint:fix",
     "release:dry-run": "nx release --dry-run --skip-publish",
-    "test:e2e": "pnpm -r --filter './packages/**' --if-present test:e2e"
+    "test:e2e": "pnpm -r --filter './packages/**' --if-present test:e2e",
+    "test:consumer": "node .github/scripts/verify-consumer.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
@@ -38,8 +39,8 @@
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^12.0.1",
-    "@nestjs/graphql": "^14.0.0",
-    "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/graphql": "^14.0.3",
+    "@nestjs/platform-express": "^12.1.2",
     "@nestjs/testing": "^12.0.1",
     "@nx/js": "^22.7.5",
     "@types/node": "^24.0.0",
