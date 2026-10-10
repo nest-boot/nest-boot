@@ -1,3 +1,17 @@
+## 8.0.4-beta.4 (2026-10-10)
+
+### 🚀 Features
+
+- **mailer:** add opt-in SMTP health checks ([#410](https://github.com/nest-boot/nest-boot/pull/410))
+
+### 🩹 Fixes
+
+- **mailer:** close transport on application shutdown ([#409](https://github.com/nest-boot/nest-boot/pull/409))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.4-beta.3 (2026-10-10)
 
 ### 🚀 Features

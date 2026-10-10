@@ -1,3 +1,9 @@
+## 8.0.7-beta.4 (2026-10-10)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/redis to 8.0.5-beta.4
+
 ## 8.0.7-beta.3 (2026-10-10)
 
 ### 🚀 Features

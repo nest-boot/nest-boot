@@ -1,3 +1,10 @@
+## 8.0.11-beta.0 (2026-10-10)
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/schedule to 8.0.11-beta.0
+- Updated @nest-boot/queue to 8.0.7-beta.4
+
 ## 8.0.10-beta.4 (2026-10-10)
 
 ### 🚀 Features
