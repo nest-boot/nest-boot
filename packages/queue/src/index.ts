@@ -1,8 +1,8 @@
 export { OnQueueEvent } from "./on-queue-event.decorator.js";
 export { OnWorkerEvent } from "./on-worker-event.decorator.js";
 export { type NestWorkerOptions, Processor } from "./processor.decorator.js";
+export { QueueHealthIndicator } from "./queue.health-indicator.js";
 export { QueueModule } from "./queue.module.js";
-export { QueueHealthIndicator } from "./queue-health.indicator.js";
 export * from "./queue-module-options.interface.js";
 export type {
   BullModuleExtraOptions,

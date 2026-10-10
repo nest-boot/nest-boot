@@ -13,6 +13,7 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 
+import { DatabaseHealthIndicator } from "./database.health-indicator.js";
 import {
   ASYNC_OPTIONS_TYPE,
   BASE_MODULE_OPTIONS_TOKEN,
@@ -20,7 +21,6 @@ import {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./database.module-definition.js";
-import { DatabaseHealthIndicator } from "./database-health.indicator.js";
 import type { DatabaseModuleOptions } from "./interfaces/database-module-options.interface.js";
 import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 import { loadDefaultConfig } from "./utils/load-default-config.util.js";

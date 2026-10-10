@@ -2,6 +2,7 @@ import { BullModule as BaseQueueModule } from "@nestjs/bullmq";
 import { type DynamicModule, Global, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
+import { QueueHealthIndicator } from "./queue.health-indicator.js";
 import {
   ASYNC_OPTIONS_TYPE,
   BASE_MODULE_OPTIONS_TOKEN,
@@ -9,7 +10,6 @@ import {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./queue.module-definition.js";
-import { QueueHealthIndicator } from "./queue-health.indicator.js";
 import { QueueModuleOptions } from "./queue-module-options.interface.js";
 import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 

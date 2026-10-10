@@ -1,7 +1,7 @@
 import { InjectRepository } from "@mikro-orm/nestjs";
 
+import { DatabaseHealthIndicator } from "./database.health-indicator.js";
 import { DatabaseModule } from "./database.module.js";
-import { DatabaseHealthIndicator } from "./database-health.indicator.js";
 import * as publicApi from "./index.js";
 
 describe("public API", () => {

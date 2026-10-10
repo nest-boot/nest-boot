@@ -1,5 +1,5 @@
+export { DatabaseHealthIndicator } from "./database.health-indicator.js";
 export { DatabaseModule } from "./database.module.js";
-export { DatabaseHealthIndicator } from "./database-health.indicator.js";
 export type { DatabaseModuleOptions } from "./interfaces/index.js";
 export * from "./interfaces/index.js";
 export * from "./policies/index.js";

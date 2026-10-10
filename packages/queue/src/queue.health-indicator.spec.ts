@@ -2,7 +2,7 @@ import { HealthCheckRegistry } from "@nest-boot/health-check";
 import type { DiscoveryService } from "@nestjs/core";
 import { Queue } from "bullmq";
 
-import { QueueHealthIndicator } from "./queue-health.indicator.js";
+import { QueueHealthIndicator } from "./queue.health-indicator.js";
 
 describe("QueueHealthIndicator", () => {
   /**
