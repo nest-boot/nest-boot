@@ -85,6 +85,8 @@ describe("Database health HTTP integration", () => {
         expect(probe).not.toHaveBeenCalled();
       }
     },
+    // This case also boots PGlite's WASM database on a shared CI runner.
+    15_000,
   );
 
   it("registers the asynchronously configured ORM connection", async () => {

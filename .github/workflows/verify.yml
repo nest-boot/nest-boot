@@ -9,6 +9,9 @@ on:
       release:
         type: boolean
         default: false
+      release-projects:
+        type: string
+        default: ""
     secrets:
       CODECOV_TOKEN:
         required: false
@@ -81,7 +84,7 @@ jobs:
 
       - name: Check release policy
         run: |
-          node --test .github/scripts/release-policy.test.mjs
+          node --test .github/scripts/release-*.test.mjs
           node .github/scripts/release-policy.mjs "${GITHUB_BASE_REF:-$GITHUB_REF_NAME}"
 
       - name: Commitlint latest commit
@@ -151,96 +154,8 @@ jobs:
 
       - name: Release packages
         if: inputs.release
-        run: |
-          npm_tag="latest"
-
-          release_projects="$(
-            node --input-type=module <<'NODE'
-          import { execFileSync } from 'node:child_process';
-          import { existsSync, readFileSync } from 'node:fs';
-          import { join } from 'node:path';
-
-          const releaseBase = execFileSync(
-            'git',
-            ['log', '-1', '--format=%H', '--grep=^chore(release): publish$'],
-            { encoding: 'utf8' },
-          ).trim();
-
-          if (!releaseBase) {
-            throw new Error('Unable to find the previous release commit');
-          }
-
-          const changedFiles = execFileSync(
-            'git',
-            ['diff', '--name-only', `${releaseBase}...HEAD`, '--', 'packages'],
-            { encoding: 'utf8' },
-          )
-            .trim()
-            .split('\n')
-            .filter(Boolean);
-          const projectRoots = new Set(
-            changedFiles.map((file) => file.split('/').slice(0, 2).join('/')),
-          );
-          const projects = [];
-
-          for (const projectRoot of projectRoots) {
-            const manifestPath = join(projectRoot, 'package.json');
-            if (!existsSync(manifestPath)) continue;
-
-            const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-            if (manifest.private || !manifest.name || !manifest.version) continue;
-
-            projects.push(manifest.name);
-          }
-
-          process.stdout.write(projects.sort().join(','));
-          NODE
-          )"
-
-          if [ -z "$release_projects" ]; then
-            echo "No changed packages to release"
-            exit 0
-          fi
-
-          if [ "${GITHUB_REF_NAME}" = "beta" ]; then
-            npm_tag="beta"
-          fi
-
-          node .github/scripts/release.mjs "$GITHUB_REF_NAME" "$release_projects"
-
-          missing_projects="$(
-            node --input-type=module <<'NODE'
-          import { execFileSync } from 'node:child_process';
-          import { existsSync, readdirSync, readFileSync } from 'node:fs';
-          import { join } from 'node:path';
-
-          const projects = [];
-
-          for (const entry of readdirSync('packages', { withFileTypes: true })) {
-            if (!entry.isDirectory()) continue;
-
-            const manifestPath = join('packages', entry.name, 'package.json');
-            if (!existsSync(manifestPath)) continue;
-
-            const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-            if (manifest.private || !manifest.name || !manifest.version) continue;
-
-            try {
-              execFileSync('npm', ['view', `${manifest.name}@${manifest.version}`, 'version'], {
-                stdio: 'ignore',
-              });
-            } catch {
-              projects.push(manifest.name);
-            }
-          }
-
-          process.stdout.write(projects.join(','));
-          NODE
-          )"
-
-          if [ -n "$missing_projects" ]; then
-            pnpm exec nx release publish --projects "$missing_projects" --yes --tag "$npm_tag"
-          fi
+        run: node .github/scripts/release-packages.mjs "$GITHUB_REF_NAME"
         env:
           GITHUB_TOKEN: ${{ github.token }}
           NPM_CONFIG_PROVENANCE: true
+          RELEASE_PROJECTS: ${{ inputs.release-projects }}

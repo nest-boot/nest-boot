@@ -96,6 +96,14 @@ A pull request should explain:
 
 Link an existing Issue with `Fixes #...` or `Refs #...` when applicable. Do not automatically merge or publish after opening a PR.
 
+## Recover npm publication
+
+The Release workflow versions changed packages and then checks every public package's current version on npm. If publication fails after a release commit is created, run Release again on the latest `beta` or `main` commit with the `projects` input empty. Missing versions are published even when there are no new package changes. Registry authentication or network errors stop the check instead of being treated as missing versions.
+
+For a new or renamed package, publish its built package once with a maintainer account, then configure its npm Trusted Publisher for `nest-boot/nest-boot`, workflow `release.yml`, with direct publishing allowed. The calling workflow is `release.yml`, even though publishing runs inside the reusable `verify.yml` workflow. Existing packages restored under an older name also need their publisher configuration checked.
+
+To validate a newly configured publisher, run Release on `beta` with the package names in the optional comma-separated `projects` input. This explicitly creates another beta version through the normal Nx release process, including affected dependents. npm requires a new trusted publisher to complete its first successful publish within two days. See the [npm trusted publishing documentation](https://docs.npmjs.com/trusted-publishers/).
+
 ## Guidance for coding agents
 
 Agents may perform read-only diagnosis, duplicate searches, local implementation, and draft Issue/PR content within the user's requested scope. They must:
