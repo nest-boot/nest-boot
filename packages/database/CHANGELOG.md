@@ -1,3 +1,13 @@
+## 8.0.5-beta.2 (2026-10-10)
+
+### 🩹 Fixes
+
+- **release:** recover incomplete npm publications ([#403](https://github.com/nest-boot/nest-boot/pull/403))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.5-beta.1 (2026-10-09)
 
 ### 🚀 Features

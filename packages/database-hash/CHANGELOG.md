@@ -1,3 +1,7 @@
+## 8.0.2-beta.1 (2026-10-10)
+
+This was a version bump only for @nest-boot/database-hash to align it with other projects, there were no code changes.
+
 ## 8.0.2-beta.0 (2026-10-09)
 
 ### 🧱 Updated Dependencies

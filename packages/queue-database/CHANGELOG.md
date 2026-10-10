@@ -1,3 +1,7 @@
+## 8.0.10-beta.1 (2026-10-10)
+
+This was a version bump only for @nest-boot/queue-database to align it with other projects, there were no code changes.
+
 ## 8.0.9-beta.1 (2026-10-09)
 
 ### 🚀 Features
