@@ -9,6 +9,7 @@ import {
 import { createTransport } from "nodemailer";
 import Mailer from "nodemailer/lib/mailer/index.js";
 
+import { MailerHealthIndicator } from "./mailer.health-indicator.js";
 import {
   ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
@@ -40,7 +41,10 @@ const mailerProvider: Provider<Mailer> = {
  * Closes the transport when the Nest application shuts down.
  */
 @Global()
-@Module({ providers: [mailerProvider], exports: [mailerProvider] })
+@Module({
+  providers: [mailerProvider, MailerHealthIndicator],
+  exports: [mailerProvider, MailerHealthIndicator],
+})
 export class MailerModule
   extends ConfigurableModuleClass
   implements OnApplicationShutdown
