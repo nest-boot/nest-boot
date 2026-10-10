@@ -76,7 +76,7 @@ For package contents or release infrastructure, also consider:
 
 ```bash
 pnpm --filter @nest-boot/<package> pack --dry-run
-pnpm release:dry-run
+pnpm release:dry-run beta
 ```
 
 After building packages, run `pnpm test:consumer` to install all public tarballs
@@ -125,6 +125,34 @@ A pull request should explain:
 Link an existing Issue with `Fixes #...` or `Refs #...` when applicable. Do not automatically merge or publish after opening a PR.
 
 ## Recover npm publication
+
+### Promote v8 to stable
+
+Before merging `beta` into `main`, run `pnpm release:dry-run main`. This uses the
+same package selection and version policy as CI without publishing or writing
+release files, commits, or tags.
+
+When `main` contains v8 prerelease manifests, the Release workflow includes every
+public prerelease package, even when it has no source changes since the last beta
+release. It checks that the corresponding stable versions are unpublished, then
+uses Nx's manifest resolver and an explicit `patch` increment to graduate
+`8.x.y-beta.n` to `8.x.y`. Nx updates internal dependencies and creates the release
+commit and tags. Stable publication refuses any remaining prerelease manifest.
+Once all manifests are stable, ordinary `main` releases resume Conventional
+Commits versioning. Beta releases continue to use the `beta` npm dist-tag.
+
+Graduation requires every public package to be a v8 prerelease. A mixed stable
+and prerelease workspace stops before release commands run: stable packages and
+their dependent bumps must not inherit the graduation specifier. Prepare a
+consistent prerelease baseline before promoting the release line.
+
+If a stable target already exists on npm, stop and choose a new v8 prerelease
+baseline before promotion. Do not overwrite or silently reuse the existing
+version. If publication fails after the stable release commit, rerun Release on
+`main` with `projects` empty to publish the missing versions without graduating
+or incrementing again.
+
+### Retry a publication
 
 The Release workflow versions changed packages and then checks every public package's current version on npm. If publication fails after a release commit is created, run Release again on the latest `beta` or `main` commit with the `projects` input empty. Missing versions are published even when there are no new package changes. Registry authentication or network errors stop the check instead of being treated as missing versions.
 
