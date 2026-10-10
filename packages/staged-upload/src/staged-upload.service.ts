@@ -8,8 +8,8 @@ import {
 } from "@nest-boot/storage";
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import dayjs from "dayjs";
-import micromatch from "micromatch";
 import mimeTypes from "mime-types";
+import picomatch from "picomatch";
 
 import {
   type StagedUploadRequest,
@@ -62,8 +62,7 @@ export class StagedUploadService {
 
       const limit = this.options.limits?.find(
         (v) =>
-          item.fileSize <= v.fileSize &&
-          micromatch.isMatch(item.mimeType, v.mimeTypes),
+          item.fileSize <= v.fileSize && picomatch(v.mimeTypes)(item.mimeType),
       );
 
       if (this.options.limits && !limit) {

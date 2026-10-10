@@ -9,7 +9,10 @@ export const gitConfig = {
 
 export function baseOptions(locale: string): BaseLayoutProps {
   return {
-    i18n,
+    i18n: {
+      defaultLanguage: i18n.defaultLanguage,
+      languages: i18n.languages,
+    },
     nav: {
       title: "Nest Boot",
     },

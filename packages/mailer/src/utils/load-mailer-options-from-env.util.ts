@@ -1,3 +1,4 @@
+import type { MailDefaults } from "nodemailer";
 import type SMTPTransport from "nodemailer/lib/smtp-transport/index.js";
 
 import { type MailerModuleOptions } from "../mailer-module-options.interface.js";
@@ -38,7 +39,7 @@ export function loadMailerOptionsFromEnv(
  * Loads the default sender independently from SMTP connection options.
  * @returns Default sender options, or undefined when no sender is configured.
  */
-export function loadMailerDefaultsFromEnv(): SMTPTransport.Options | undefined {
+export function loadMailerDefaultsFromEnv(): MailDefaults | undefined {
   const from = process.env.SMTP_FROM?.trim();
   return from ? { from } : undefined;
 }
