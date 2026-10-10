@@ -1,3 +1,17 @@
+# 8.0.0 (2026-10-10)
+
+### 🚀 Features
+
+- ⚠️  release Nest Boot v8 ([#413](https://github.com/nest-boot/nest-boot/pull/413))
+
+### ⚠️  Breaking Changes
+
+- release Nest Boot v8  ([#413](https://github.com/nest-boot/nest-boot/pull/413))
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.0-beta.5 (2026-10-10)
 
 ### 🚀 Features

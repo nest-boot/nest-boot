@@ -1,3 +1,22 @@
+## 8.0.2 (2026-10-10)
+
+### 🚀 Features
+
+- ⚠️  release Nest Boot v8 ([#413](https://github.com/nest-boot/nest-boot/pull/413))
+
+### ⚠️  Breaking Changes
+
+- release Nest Boot v8  ([#413](https://github.com/nest-boot/nest-boot/pull/413))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/eslint-plugin to 8.0.1
+- Updated @nest-boot/tsconfig to 8.0.0
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.2-beta.4 (2026-10-10)
 
 ### 🚀 Features

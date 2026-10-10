@@ -1,3 +1,30 @@
+## 8.0.11 (2026-10-10)
+
+### 🚀 Features
+
+- ⚠️  release Nest Boot v8 ([#413](https://github.com/nest-boot/nest-boot/pull/413))
+
+### ⚠️  Breaking Changes
+
+- release Nest Boot v8  ([#413](https://github.com/nest-boot/nest-boot/pull/413))
+
+### 🧱 Updated Dependencies
+
+- Updated @nest-boot/graphql-connection to 8.0.4
+- Updated @nest-boot/request-context to 8.0.4
+- Updated @nest-boot/eslint-config to 8.0.2
+- Updated @nest-boot/eslint-plugin to 8.0.1
+- Updated @nest-boot/middleware to 8.0.4
+- Updated @nest-boot/validator to 8.0.7
+- Updated @nest-boot/tsconfig to 8.0.0
+- Updated @nest-boot/graphql to 8.0.4
+- Updated @nest-boot/mailer to 8.0.4
+- Updated @nest-boot/hash to 8.0.4
+
+### ❤️ Thank You
+
+- Xudong Huang @xudongcc
+
 ## 8.0.11-beta.0 (2026-10-10)
 
 ### 🧱 Updated Dependencies
