@@ -234,7 +234,7 @@ import { GraphQLModule } from "@nest-boot/graphql";
 import { BaseQueue, Queue, QueueModule } from "@nest-boot/queue";
 import {
   entities,
-  jobSchemaGeneratorOptions,
+  getJobSchemaOptions,
 } from "@nest-boot/queue/persistence";
 import { Module } from "@nestjs/common";
 
@@ -246,7 +246,7 @@ export class ReportsQueue extends BaseQueue {}
     DatabaseModule.forRoot({
       driver: PostgreSqlDriver,
       entities,
-      schemaGenerator: jobSchemaGeneratorOptions,
+      ...getJobSchemaOptions(),
     }),
     GraphQLModule,
     QueueModule.forRoot({
@@ -260,9 +260,11 @@ export class ReportsQueue extends BaseQueue {}
 export class JobsModule {}
 ```
 
-Use the same entity discovery and `schemaGenerator` exclusions in the application and MikroORM CLI configuration. The Job entity is a read-only wildcard-schema mapping, excluded from normal ORM migration generation. `jobSchemaGeneratorOptions` also excludes the native `bullmq` schema from introspection and its table from schema targets. `readonly` alone only disables flush tracking; it does not prevent explicit native writes. Mutate jobs through BullMQ.
+Use the same entity discovery and `...getJobSchemaOptions()` in the application and MikroORM CLI configuration. Job maps the native columns, defaults, PostgreSQL enum and seven BullMQ operational indexes. It also declares `(queue, data->>'userId')` and `(queue, data->>'workspaceId')` indexes for ownership filters. Run BullMQ migrations first, then generate and apply the application migration: the initial Job diff adds only these two indexes, and subsequent comparisons are empty.
 
-For a custom schema such as `tasks`, set `QueueModule.connection` to `{ connectionString, schema: "tasks" }`, run `runMigrations(client, "tasks")`, and add `tasks` to `schemaGenerator.ignoreSchema` and `tasks.job` to `skipTables`. Direct ORM calls must pass `{ schema: "bullmq" }` (or the custom schema). JobService supplies this from the root queue configuration, defaulting to `bullmq`. The ORM connection must access the same database as that root configuration. Per-queue overrides targeting other databases/schemas are not aggregated by the root JobService.
+`getJobSchemaOptions()` installs a MikroORM schema-generator extension that preserves BullMQ's other tables, enums and functions during migration comparison, including rollback generation. Job's own columns and indexes still participate in the diff. Keep BullMQ's schema dedicated to queue infrastructure; application entities and routines belong in a separate schema. `readonly` disables flush tracking, not schema generation or explicit native writes. Mutate jobs through BullMQ. BullMQ upgrades must be followed by schema-diff checks before accepting generated migrations.
+
+For a custom schema such as `tasks`, use `getJobSchemaOptions("tasks")` in both ORM configurations, set `QueueModule.connection` to `{ connectionString, schema: "tasks" }`, and run `runMigrations(client, "tasks")`. Do not put the Job table or its schema in `skipTables` / `ignoreSchema`. Direct ORM queries use the configured entity schema; JobService reads the root Queue connection's schema, defaulting to `bullmq`. The ORM connection must access the same database as that root configuration. Per-queue overrides targeting other databases/schemas are not aggregated by the root JobService.
 
 | Entity field                       | Native mapping                                                      |
 | ---------------------------------- | ------------------------------------------------------------------- |
@@ -274,7 +276,7 @@ For a custom schema such as `tasks`, set `QueueModule.connection` to `{ connecti
 
 The native primary key remains `(queue, id)`. The computed API ID provides a unique cursor tie-breaker across queues. The native table has no last-update timestamp, so there is no `updatedAt` field or filter. GraphQL exposes `queue`, `jobId` and the computed `id`; filters and sorting support `queue`, `name`, `status` and `created_at`.
 
-`getJobReadFilter` runs for every read and scopes nodes, filters, pagination and counts. Missing callbacks, null and undefined deny access; returning an empty object explicitly grants all jobs in exposed queues. Payload ownership must come from trusted application identity. The default BullMQ schema has no application tenant RLS policy. Applications using database request roles must grant those roles schema usage and SELECT on the native job table; the example's `queue:migrate` command does this for `authenticated`. The example enforces user/workspace visibility in JobService rather than generating policies on BullMQ-owned tables.
+`getJobReadFilter` runs for every read and scopes nodes, filters, pagination and counts. Missing callbacks, null and undefined deny access; returning an empty object explicitly grants all jobs in exposed queues. Payload ownership must come from trusted application identity. The default BullMQ schema has no application tenant RLS policy. Applications using database request roles must grant those roles schema usage and SELECT on the native job table; the example's application migration does this for `authenticated`. The example enforces user/workspace visibility in JobService rather than generating policies on BullMQ-owned tables.
 
 Entities and JobService are exported from `@nest-boot/queue/persistence`; JobConnectionService, GraphQL types and resolvers from `@nest-boot/queue/graphql`. JobConnectionService extends JobService and provides `getJobConnection()` using the same authorization scope. These entry points isolate optional dependencies at runtime and in generated TypeScript declarations. For typed database filters, use `QueueModuleOptions<FilterQuery<Job>>`, importing the filter and entity types from their database entry points.
 

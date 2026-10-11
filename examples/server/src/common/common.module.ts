@@ -10,7 +10,7 @@ import { LoggerModule } from '@nest-boot/logger';
 import { MailerModule } from '@nest-boot/mailer';
 import {
   entities as queueEntities,
-  jobSchemaGeneratorOptions,
+  getJobSchemaOptions,
 } from '@nest-boot/queue/persistence';
 import { RequestContextModule } from '@nest-boot/request-context';
 import { Global, Module } from '@nestjs/common';
@@ -26,10 +26,10 @@ const GraphQLDynamicModule = GraphQLModule.forRoot({
 
 const DatabaseDynamicModule = DatabaseModule.forRoot({
   driver: PostgreSqlDriver,
+  ...getJobSchemaOptions(),
   schemaGenerator: {
-    ...jobSchemaGeneratorOptions,
     // Preserve the legacy mirror until its data is archived separately.
-    skipTables: [...jobSchemaGeneratorOptions.skipTables, 'job'],
+    skipTables: ['public.job'],
   },
   entities: [...authEntities, ...queueEntities, 'dist/**/*.entity.js'],
   entitiesTs: [...authEntities, ...queueEntities, 'src/**/*.entity.ts'],

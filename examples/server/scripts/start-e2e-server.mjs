@@ -37,12 +37,12 @@ process.on('SIGTERM', () => cleanup(0));
 
 try {
   await createDatabase();
-  await applyMigrations();
   execFileSync(process.execPath, ['scripts/migrate-queue.mjs'], {
     cwd: serverRoot,
     env: createServerEnv(),
     stdio: 'inherit',
   });
+  await applyMigrations();
   serverProcess = spawn(process.execPath, ['dist/main.js'], {
     cwd: serverRoot,
     env: createServerEnv(),

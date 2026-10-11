@@ -3,7 +3,7 @@ import { entities as authEntities } from '@nest-boot/auth';
 import { loadConfigFromEnv } from '@nest-boot/database';
 import {
   entities as queueEntities,
-  jobSchemaGeneratorOptions,
+  getJobSchemaOptions,
 } from '@nest-boot/queue/persistence';
 
 /**
@@ -15,10 +15,10 @@ export default async () => {
 
   return defineConfig({
     ...config,
+    ...getJobSchemaOptions(),
     schemaGenerator: {
-      ...jobSchemaGeneratorOptions,
       // Preserve the legacy mirror until its data is archived separately.
-      skipTables: [...jobSchemaGeneratorOptions.skipTables, 'job'],
+      skipTables: ['public.job'],
     },
     entities: [...authEntities, ...queueEntities, ...(config.entities ?? [])],
     entitiesTs: [

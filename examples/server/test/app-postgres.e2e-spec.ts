@@ -101,11 +101,11 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     setTestEnv();
     await createDatabase();
     migrationOrm = await adminOrm(databaseUrl);
-    await applyMigrations(migrationOrm);
     await execFileAsync(process.execPath, ['scripts/migrate-queue.mjs'], {
       cwd: process.cwd(),
       env: process.env,
     });
+    await applyMigrations(migrationOrm);
 
     await execFileAsync('pnpm', ['build'], {
       cwd: process.cwd(),

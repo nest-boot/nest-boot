@@ -1,16 +1,76 @@
 /* eslint-disable @nest-boot/entity-property-config-from-types -- Match BullMQ-owned SQL types and formulas rather than infer a new schema from TypeScript. */
-import { BigIntType, PrimaryKeyProp, t } from "@mikro-orm/core";
-import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
+import { BigIntType, PrimaryKeyProp, raw, t } from "@mikro-orm/core";
+import {
+  Entity,
+  Enum,
+  Index,
+  PrimaryKey,
+  Property,
+} from "@mikro-orm/decorators/legacy";
 import type { JobProgress, JobsOptions, JobState } from "bullmq";
 
 import { JobStatus } from "../enums/job-status.enum.js";
 
 /**
- * Query mapping for the BullMQ-owned table; BullMQ performs all mutations.
- * `readonly` disables flush change tracking, not native SQL or schema changes.
- * The ORM configuration must also exclude the BullMQ schema from migrations.
+ * Read-only mapping matching BullMQ's native table, including its operational indexes.
+ * BullMQ owns job writes and bootstrap migrations; MikroORM manages additional indexes.
  */
-@Entity({ tableName: "job", schema: "*", readonly: true })
+@Entity({ tableName: "job", schema: "bullmq", readonly: true })
+@Index({
+  name: "job_ready_idx",
+  properties: ["queue", "priority", "seq"],
+  where: { state: "waiting" },
+})
+@Index({
+  name: "job_delayed_idx",
+  properties: ["queue", "processAtMs"],
+  where: { state: "delayed" },
+})
+@Index({
+  name: "job_active_idx",
+  properties: ["queue", "lockedUntilMs"],
+  where: { state: "active" },
+})
+@Index({
+  name: "job_finished_idx",
+  properties: ["queue", "state", "finishedAtMs"],
+  where: { state: { $in: ["completed", "failed"] } },
+})
+@Index({
+  name: "job_waiting_children_idx",
+  properties: ["queue", "seq"],
+  where: { state: "waiting-children" },
+})
+@Index({
+  name: "job_parent_idx",
+  properties: ["parentQueue", "parentId"],
+  where: { parentId: { $ne: null } },
+})
+@Index({
+  name: "job_scheduler_idx",
+  properties: ["queue", "schedulerId"],
+  where: { schedulerId: { $ne: null } },
+})
+@Index({
+  name: "job_queue_user_idx",
+  expression: (columns, table, indexName) =>
+    raw("create index ?? on ?? (??, (??->>'userId'))", [
+      indexName,
+      table.qualifiedName,
+      columns.queue,
+      columns.data,
+    ]),
+})
+@Index({
+  name: "job_queue_workspace_idx",
+  expression: (columns, table, indexName) =>
+    raw("create index ?? on ?? (??, (??->>'workspaceId'))", [
+      indexName,
+      table.qualifiedName,
+      columns.queue,
+      columns.data,
+    ]),
+})
 export class Job {
   [PrimaryKeyProp]?: ["queue", "jobId"];
 
@@ -36,7 +96,17 @@ export class Job {
   @Property({ type: t.text })
   name!: string;
 
-  @Property({ type: t.text })
+  @Enum({
+    items: [
+      "waiting",
+      "active",
+      "completed",
+      "failed",
+      "delayed",
+      "waiting-children",
+    ],
+    nativeEnumName: "job_state",
+  })
   state!: Exclude<JobState, "prioritized" | "unknown">;
 
   /** API status, including priority waiting jobs. */
@@ -47,25 +117,29 @@ export class Job {
   })
   status!: JobStatus;
 
-  @Property({ type: t.json })
+  @Property({ type: t.json, defaultRaw: "'{}'::jsonb" })
   data!: Record<string, unknown>;
 
-  @Property({ type: t.json })
+  @Property({ type: t.json, defaultRaw: "'{}'::jsonb" })
   opts!: JobsOptions;
 
-  @Property({ type: t.integer })
+  @Property({ type: t.integer, default: 0 })
   priority!: number;
 
-  @Property({ type: new BigIntType("number"), fieldName: "delay_ms" })
+  @Property({
+    type: new BigIntType("number"),
+    fieldName: "delay_ms",
+    defaultRaw: "0",
+  })
   delayMs!: number;
 
-  @Property({ type: t.integer, fieldName: "max_attempts" })
+  @Property({ type: t.integer, fieldName: "max_attempts", default: 1 })
   maxAttempts!: number;
 
-  @Property({ type: t.integer, fieldName: "attempts_made" })
+  @Property({ type: t.integer, fieldName: "attempts_made", default: 0 })
   attemptsMade!: number;
 
-  @Property({ type: t.integer, fieldName: "attempts_started" })
+  @Property({ type: t.integer, fieldName: "attempts_started", default: 0 })
   attemptsStarted!: number;
 
   @Property({ type: t.json, nullable: true })
@@ -149,7 +223,7 @@ export class Job {
   })
   lockedUntilMs!: number | null;
 
-  @Property({ type: t.integer, fieldName: "stalled_count" })
+  @Property({ type: t.integer, fieldName: "stalled_count", default: 0 })
   stalledCount!: number;
 
   @Property({ type: t.text, fieldName: "dedup_id", nullable: true })
@@ -167,9 +241,9 @@ export class Job {
   @Property({ type: t.text, fieldName: "parent_key", nullable: true })
   parentKey!: string | null;
 
-  @Property({ type: t.integer, fieldName: "pending_deps" })
+  @Property({ type: t.integer, fieldName: "pending_deps", default: 0 })
   pendingDeps!: number;
 
-  @Property({ type: t.boolean, fieldName: "stalled_marked" })
+  @Property({ type: t.boolean, fieldName: "stalled_marked", default: false })
   stalledMarked!: boolean;
 }

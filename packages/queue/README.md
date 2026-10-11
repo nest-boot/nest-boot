@@ -2,7 +2,7 @@
 
 `QueueModule` configures BullMQ 6 queues and workers using the official PostgreSQL backend.
 Set `QUEUE_DATABASE_URL` or `DATABASE_URL`, and run BullMQ migrations before startup.
-Optional MikroORM and GraphQL queries read the native table; exclude its schema from ORM migrations.
+Optional MikroORM and GraphQL queries read the native table. Register the Job entity and spread `getJobSchemaOptions()` into both runtime and CLI ORM configuration. The mapping matches BullMQ columns and operational indexes, adding user/workspace ownership indexes through application migrations. Run BullMQ migrations first; other BullMQ tables, enums and functions remain unmanaged by the ORM extension.
 See the [queue tutorial](https://github.com/nest-boot/nest-boot/blob/main/apps/docs/content/docs/tutorial/queue.mdx) for configuration. When the application
 also imports `HealthCheckModule`, it automatically registers a health indicator
 for each discovered `Queue` provider, including custom subclasses:

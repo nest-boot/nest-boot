@@ -236,7 +236,7 @@ import { GraphQLModule } from "@nest-boot/graphql";
 import { BaseQueue, Queue, QueueModule } from "@nest-boot/queue";
 import {
   entities,
-  jobSchemaGeneratorOptions,
+  getJobSchemaOptions,
 } from "@nest-boot/queue/persistence";
 import { Module } from "@nestjs/common";
 
@@ -248,7 +248,7 @@ export class ReportsQueue extends BaseQueue {}
     DatabaseModule.forRoot({
       driver: PostgreSqlDriver,
       entities,
-      schemaGenerator: jobSchemaGeneratorOptions,
+      ...getJobSchemaOptions(),
     }),
     GraphQLModule,
     QueueModule.forRoot({
@@ -262,9 +262,11 @@ export class ReportsQueue extends BaseQueue {}
 export class JobsModule {}
 ```
 
-运行时和 MikroORM CLI 配置都加入相同实体与 `schemaGenerator` 排除设置。Job 是只读的 wildcard schema 实体，默认不参与 ORM 迁移生成；`jobSchemaGeneratorOptions` 还会排除数据库侧的 `bullmq` schema 和对应建表目标。`readonly` 本身只关闭 flush 变更追踪，不阻止显式原生写入；所有任务修改继续调用 BullMQ。
+运行时和 MikroORM CLI 配置都加入相同实体及 `...getJobSchemaOptions()`。Job 完整映射原生字段、默认值、PostgreSQL 枚举和 BullMQ 的 7 个运行索引，并声明 `(queue, data->>'userId')`、`(queue, data->>'workspaceId')` 两个归属索引。先执行 BullMQ 迁移，再生成并执行应用迁移：首次 Job 差异只添加这两个索引，此后再次比较为空。
 
-自定义 schema（如 `tasks`）时，设置 `QueueModule.connection: { connectionString, schema: "tasks" }`，执行 `runMigrations(client, "tasks")`，并在 `schemaGenerator.ignoreSchema` 加入 `tasks`、在 `skipTables` 加入 `tasks.job`。直接用 ORM 查询需传 `{ schema: "bullmq" }` 或自定义名称；JobService 自动使用根配置中的 schema，默认 `bullmq`。ORM 必须连接根队列配置对应的同一个数据库。单个队列覆盖到其他数据库或 schema 时，不会被根 JobService 自动聚合。
+`getJobSchemaOptions()` 安装 MikroORM schema generator 扩展，在生成正向及回滚迁移时保留 BullMQ 的其他表、枚举和函数。Job 自身的字段与索引仍完整参与比较。BullMQ schema 专用于队列基础设施，业务实体与函数使用其他 schema。`readonly` 只关闭 flush 变更追踪，不影响迁移生成，也不阻止显式原生写入；所有任务修改继续调用 BullMQ。升级 BullMQ 后应检查 schema 差异，再接受生成的迁移。
+
+自定义 schema（如 `tasks`）时，两处 ORM 配置均使用 `getJobSchemaOptions("tasks")`，设置 `QueueModule.connection: { connectionString, schema: "tasks" }`，并执行 `runMigrations(client, "tasks")`。不要再将 Job 表或其 schema 加入 `skipTables` / `ignoreSchema`。直接 ORM 查询使用实体配置的 schema；JobService 使用根 Queue 连接配置中的 schema，默认 `bullmq`。ORM 必须连接根队列配置对应的同一个数据库。单个队列覆盖到其他数据库或 schema 时，不会被根 JobService 自动聚合。
 
 | 实体字段                           | 原生映射                                                  |
 | ---------------------------------- | --------------------------------------------------------- |
@@ -276,7 +278,7 @@ export class JobsModule {}
 
 数据库保持 `(queue, id)` 复合主键，计算出的 API ID 用于跨队列唯一标识和游标排序。原生表没有最后更新时间，因此不提供 `updatedAt` 字段或筛选。GraphQL 暴露 `queue`、`jobId` 和计算出的 `id`；筛选和排序支持 `queue`、`name`、`status`、`created_at`。
 
-每次读取都执行 `getJobReadFilter`，范围同时约束单条任务、筛选、分页和数量。未配置、返回 null 或 undefined 均拒绝访问；返回空对象表示明确允许读取已开放队列中的全部任务。入队数据的身份必须来自可信应用上下文。BullMQ 默认表没有业务租户 RLS；使用数据库请求角色时，需授予该角色 schema usage 和 job 表 SELECT。示例的 `queue:migrate` 命令为 `authenticated` 授予这两项权限，用户与工作区隔离由 JobService 筛选实现，不再由 ORM 为 BullMQ 表生成 RLS 策略。
+每次读取都执行 `getJobReadFilter`，范围同时约束单条任务、筛选、分页和数量。未配置、返回 null 或 undefined 均拒绝访问；返回空对象表示明确允许读取已开放队列中的全部任务。入队数据的身份必须来自可信应用上下文。BullMQ 默认表没有业务租户 RLS；使用数据库请求角色时，需授予该角色 schema usage 和 job 表 SELECT。示例的应用迁移为 `authenticated` 授予这两项权限，用户与工作区隔离由 JobService 筛选实现，不再由 ORM 为 BullMQ 表生成 RLS 策略。
 
 实体和 JobService 从 `@nest-boot/queue/persistence` 导入；JobConnectionService、GraphQL 类型和 Resolver 从 `@nest-boot/queue/graphql` 导入。JobConnectionService 继承 JobService，通过 `getJobConnection()` 提供使用同一授权范围的分页查询。这些入口同时隔离运行时和 TypeScript 声明中的可选依赖。需要数据库筛选类型检查时，可使用 `QueueModuleOptions<FilterQuery<Job>>`，从相应数据库入口导入筛选及实体类型。
 

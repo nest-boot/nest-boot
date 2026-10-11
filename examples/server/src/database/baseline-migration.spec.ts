@@ -4,8 +4,13 @@ import type { Migration } from '@mikro-orm/migrations';
 
 import { Migration00000000000000_Initial } from './migrations/Migration00000000000000_Initial.js';
 import { Migration20261009070926 } from './migrations/Migration20261009070926.js';
+import { Migration20261011160256_JobIndexes } from './migrations/Migration20261011160256_JobIndexes.js';
 
-const migrations = [Migration00000000000000_Initial, Migration20261009070926];
+const migrations = [
+  Migration00000000000000_Initial,
+  Migration20261009070926,
+  Migration20261011160256_JobIndexes,
+];
 /**
  * Returns sQL emitted by the selected migration direction.
  * @param MigrationClass - Migration class whose generated SQL is inspected.
@@ -38,7 +43,7 @@ describe('ordered auth migrations', () => {
       migrations.map((type) => new type({} as never, {} as never).name + '.ts'),
     );
     for (const type of migrations) {
-      expect(type.name).toMatch(/^Migration\d{14}(?:_Initial)?$/);
+      expect(type.name).toMatch(/^Migration\d{14}(?:_[A-Z]\w*)?$/);
     }
   });
   it('initializes roles without custom SQL functions before any entity tables exist', async () => {

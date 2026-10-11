@@ -13,8 +13,8 @@ and run the server:
 ```bash
 docker compose up -d
 cp examples/server/.env.example examples/server/.env
-pnpm --filter @nest-boot/example-server migration:up
 pnpm --filter @nest-boot/example-server queue:migrate
+pnpm --filter @nest-boot/example-server migration:up
 pnpm --filter @nest-boot/example-server dev
 ```
 
@@ -75,13 +75,17 @@ does not require a login.
 
 `JobsModule` uses BullMQ 6's official PostgreSQL backend, configured through
 `QUEUE_DATABASE_URL` or `DATABASE_URL`. `ScheduleModule` uses the same backend.
-Run application migrations first, then `pnpm --filter @nest-boot/example-server queue:migrate`.
-The latter runs BullMQ's own migrations and grants the `authenticated` database
-role schema usage and SELECT on `bullmq.job`.
+Run `pnpm --filter @nest-boot/example-server queue:migrate` first to create or
+upgrade BullMQ's schema. Then run application migrations to add ownership indexes
+and grant the `authenticated` database role schema usage and SELECT on `bullmq.job`.
 
 The built-in `Job` from `@nest-boot/queue/persistence` maps that native table through
 MikroORM. Both runtime and CLI configurations include the entity and
-`jobSchemaGeneratorOptions` to exclude BullMQ's schema from ORM migrations.
+`...getJobSchemaOptions()` so Job participates in ORM migration comparison.
+Its native columns, defaults, enum and operational indexes match BullMQ. The
+application migration adds indexes for `data.userId` and `data.workspaceId`;
+subsequent comparisons are empty. Other BullMQ tables, enums and functions are
+preserved by the schema-generator extension.
 There is no mirror table, event synchronization or extra cleanup timer.
 Use BullMQ's `removeOnComplete` / `removeOnFail` options for retention; removing a
 job also removes it from queries. Existing legacy mirror rows are not imported.

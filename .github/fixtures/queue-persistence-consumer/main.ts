@@ -6,7 +6,11 @@ import type { FilterQuery } from "@mikro-orm/core";
 import { PgliteDriver } from "@mikro-orm/pglite";
 import { DatabaseModule } from "@nest-boot/database";
 import { QueueModule, type QueueModuleOptions } from "@nest-boot/queue";
-import { Job, JobService } from "@nest-boot/queue/persistence";
+import {
+  getJobSchemaOptions,
+  Job,
+  JobService,
+} from "@nest-boot/queue/persistence";
 import { Module } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 
@@ -31,6 +35,7 @@ const options: QueueModuleOptions<FilterQuery<Job>> = {
       driver: PgliteDriver,
       dbName: "memory://",
       entities: [Job],
+      ...getJobSchemaOptions(),
     }),
   ],
 })

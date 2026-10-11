@@ -87,8 +87,10 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 request-scoped `RequestContext` provider。
 
 移除 `BullMQMikroORMModule` / `QueueDatabaseModule` 导入。可选的 MikroORM 查询通过
-`@nest-boot/queue/persistence` 内置 `Job` 映射 BullMQ 原生表；须将其 schema 排除在
-ORM 迁移之外并配置查询授权，详见[队列教程](/docs/tutorial/queue)。保留 `bullmq`，
+`@nest-boot/queue/persistence` 内置 `Job` 完整映射 BullMQ 原生表。运行时和 CLI ORM 配置
+加入 `...getJobSchemaOptions()`，让 Job 参与迁移比较并保留 BullMQ 的其他对象。
+先执行 BullMQ 迁移，再执行应用迁移来添加用户、工作区归属索引，并配置查询授权，
+详见[队列教程](/docs/tutorial/queue)。保留 `bullmq`，
 仅在启用查询功能时安装对应 MikroORM/GraphQL 依赖。移除 `@nestjs/bullmq`。
 
 自定义 ESLint 配置中的 `@nest-boot/import-bullmq` 改为 `@nest-boot/import-queue`。

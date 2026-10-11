@@ -22,8 +22,8 @@ import {
   QueueModule,
 } from "../dist/index.js";
 import {
+  getJobSchemaOptions,
   Job,
-  jobSchemaGeneratorOptions,
   JobService,
   JobStatus,
 } from "../dist/persistence.js";
@@ -67,10 +67,7 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
           driver: PostgreSqlDriver,
           clientUrl: fixture.connection.connectionString,
           entities: [Job],
-          schemaGenerator: {
-            ...jobSchemaGeneratorOptions,
-            ignoreSchema: ["bullmq", fixture.connection.schema],
-          },
+          ...getJobSchemaOptions(fixture.connection.schema),
         }),
         GraphQLModule.forRoot({ autoSchemaFile: true, graphiql: false }),
       ],
@@ -85,6 +82,7 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
     app = module.createNestApplication();
     app.useLogger(false);
     orm = app.get(MikroORM);
+    await orm.schema.update();
     reports = app.get(ReportsQueue);
     emails = app.get(EmailsQueue);
     await app.listen(0, "127.0.0.1");
@@ -306,10 +304,8 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
     }
   });
 
-  it("excludes BullMQ tables from ORM creation, update and drop SQL", async () => {
-    expect((await orm.schema.getCreateSchemaSQL()).trim()).toBe("");
+  it("keeps the Job schema stable and flush read-only", async () => {
     expect((await orm.schema.getUpdateSchemaSQL()).trim()).toBe("");
-    expect((await orm.schema.getDropSchemaSQL()).trim()).toBe("");
     const em = orm.em.fork();
     const job = await em.findOneOrFail(
       Job,
