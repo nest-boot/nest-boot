@@ -83,9 +83,6 @@ export class JobService implements OnApplicationBootstrap, OnModuleDestroy {
       .fork()
       .upsert(PersistedJob, await this.getJobData(job, jobState), {
         onConflictFields: ["id"],
-        // Producers can finish writing after a worker in another process.
-        // An enqueue event must never replace an existing execution record.
-        ...(jobState === "waiting" && { onConflictAction: "ignore" }),
       });
   }
 

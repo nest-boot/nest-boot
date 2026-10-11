@@ -268,7 +268,7 @@ describe("JobService persistence", () => {
           createdAt: new Date(Date.UTC(2026, 0, 1)),
           updatedAt: expect.any(Date),
         }),
-        { onConflictFields: ["id"], onConflictAction: "ignore" },
+        { onConflictFields: ["id"] },
       );
     });
 
@@ -318,7 +318,6 @@ describe("JobService persistence", () => {
       }),
       {
         onConflictFields: ["id"],
-        onConflictAction: "ignore",
       },
     );
   });

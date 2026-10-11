@@ -70,9 +70,9 @@ class PingResolver {
 }
 
 describe("QueueModule automatic job features", () => {
-  it.each([false, true])(
-    "preserves worker results across separate producer writes (worker first=%s)",
-    async (workerFirst) => {
+  it.each(["completed", "failed"] as const)(
+    "replaces a %s record when a new job reuses its ID",
+    async (previousState) => {
       const module = await Test.createTestingModule({
         imports: [
           QueueModule,
@@ -92,38 +92,69 @@ describe("QueueModule automatic job features", () => {
           orm.em,
           {},
         );
-        const waiting = {
+        const timestamp = Date.now();
+        const previous = {
           id: "42",
           queueName: "email",
-          name: "send-email",
-          data: { tenant: "allowed" },
+          name: "old-email",
+          data: { message: "old" },
+          priority: 3,
+          progress: 100,
+          timestamp,
+          returnvalue: previousState === "completed" ? { sent: true } : null,
+          failedReason:
+            previousState === "failed" ? "Delivery failed" : undefined,
+          processedOn: timestamp + 100,
+          finishedOn: timestamp + 200,
+          getState: () => Promise.resolve(previousState),
+        } as unknown as BullJob;
+        await consumer.upsertJob(previous, previousState);
+
+        const next = {
+          id: "42",
+          queueName: "email",
+          name: "new-email",
+          data: { message: "new" },
           priority: 0,
           progress: 0,
-          timestamp: Date.now(),
+          timestamp: timestamp + 1000,
           getState: () => Promise.resolve("waiting"),
         } as unknown as BullJob;
-        const completed = {
-          ...waiting,
-          progress: 100,
-          returnvalue: { sent: true },
-          processedOn: Date.now(),
-          finishedOn: Date.now(),
-          getState: () => Promise.resolve("completed"),
-        } as unknown as BullJob;
-        if (!workerFirst) await producer.upsertJob(waiting, "waiting");
-        await consumer.upsertJob(completed, "completed");
-        // A delayed or repeated producer event must never erase worker fields.
-        await producer.upsertJob(waiting, "waiting");
-        await producer.upsertJob(waiting, "waiting");
+        await producer.upsertJob(next, "waiting");
+        await producer.upsertJob(next, "waiting");
         const em = orm.em.fork();
         expect(await em.count(Job, {})).toBe(1);
         expect(await em.findOneOrFail(Job, "email:42")).toMatchObject({
+          name: "new-email",
+          data: { message: "new" },
+          priority: 0,
+          status: JobStatus.WAITING,
+          progress: 0,
+          returnValue: null,
+          failedReason: null,
+          startedAt: null,
+          finishedAt: null,
+          createdAt: new Date(next.timestamp),
+        });
+
+        await consumer.upsertJob(
+          {
+            ...next,
+            progress: 100,
+            returnvalue: { sent: true },
+            getState: () => Promise.resolve("completed"),
+          } as unknown as BullJob,
+          "completed",
+        );
+        expect(
+          await orm.em.fork().findOneOrFail(Job, "email:42"),
+        ).toMatchObject({
+          data: { message: "new" },
           status: JobStatus.COMPLETED,
           progress: 100,
           returnValue: { sent: true },
-          startedAt: new Date(completed.processedOn ?? 0),
-          finishedAt: new Date(completed.finishedOn ?? 0),
         });
+        expect(await em.count(Job, {})).toBe(1);
       } finally {
         await module.close();
       }
