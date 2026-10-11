@@ -70,7 +70,8 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 `BullModule`、`BullModuleOptions`、`BullMQHealthIndicator` 分别改为
 `QueueModule`、`QueueModuleOptions`、`QueueHealthIndicator`。任务持久化整合进
 `QueueModule`：注册 `@nest-boot/queue/persistence` 的内置 `Job` 实体，
-将历史配置移至 `QueueModuleOptions.history`，移除 `BullMQMikroORMModule` /
+将历史配置移至 `QueueModuleOptions.history`，在需要记录历史的队列注册配置中设置
+`persist: true`，移除 include/exclude 列表和 `BullMQMikroORMModule` /
 `QueueDatabaseModule`。实体发现、数据库迁移和查询授权详见[队列教程](/docs/tutorial/queue)。
 
 底层继续使用 BullMQ 和 MikroORM，保留 `bullmq`、`@nestjs/bullmq`、`@mikro-orm/core`

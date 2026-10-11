@@ -1,16 +1,11 @@
-import { type DynamicModule, Global, Module } from "@nestjs/common";
+import type { ModuleMetadata } from "@nestjs/common";
+import { DiscoveryService, ModulesContainer } from "@nestjs/core";
+
 import {
-  DiscoveryModule,
-  DiscoveryService,
-  ModulesContainer,
-} from "@nestjs/core";
-
-import { MODULE_OPTIONS_TOKEN } from "./queue.constants.js";
+  JOB_HISTORY_SERVICE,
+  MODULE_OPTIONS_TOKEN,
+} from "./queue.constants.js";
 import type { QueueModuleOptions } from "./queue-module-options.interface.js";
-
-@Global()
-@Module({})
-class JobIntegrationModule {}
 
 /**
  * Checks an optional peer without swallowing errors from installed packages.
@@ -30,10 +25,15 @@ function isAvailable(name: string): boolean {
 
 /**
  * Builds optional providers; features activate only when their application services exist.
- * @returns The module containing providers for the installed integrations.
+ * @returns Providers and exports for the installed integrations.
  */
-export async function createJobIntegration(): Promise<DynamicModule> {
-  const definition: DynamicModule = { module: JobIntegrationModule };
+export async function createJobProviders(): Promise<
+  Pick<ModuleMetadata, "providers" | "exports">
+> {
+  const definition: Pick<ModuleMetadata, "providers" | "exports"> = {
+    providers: [{ provide: JOB_HISTORY_SERVICE, useValue: null }],
+    exports: [JOB_HISTORY_SERVICE],
+  };
   if (!isAvailable("@nest-boot/database")) return definition;
 
   const { DatabaseModule } = await import("@nest-boot/database");
@@ -43,7 +43,6 @@ export async function createJobIntegration(): Promise<DynamicModule> {
     await import("./services/job-history.service.js");
   const { JobService } = await import("./services/job.service.js");
 
-  definition.imports = [DiscoveryModule];
   definition.providers = [
     {
       provide: JobHistoryService,
@@ -88,7 +87,11 @@ export async function createJobIntegration(): Promise<DynamicModule> {
       ) => (history && em ? new JobService(em, options) : null),
     },
   ];
-  definition.exports = [JobHistoryService, JobService];
+  definition.providers.push({
+    provide: JOB_HISTORY_SERVICE,
+    useExisting: JobHistoryService,
+  });
+  definition.exports = [JOB_HISTORY_SERVICE, JobHistoryService, JobService];
 
   if (isAvailable("@nest-boot/graphql")) {
     const { GraphQLModule } = await import("@nest-boot/graphql");

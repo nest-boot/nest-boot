@@ -2,7 +2,7 @@ import { BullModule as BaseQueueModule } from "@nestjs/bullmq";
 import { type DynamicModule, Global, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
-import { createJobIntegration } from "./job-integration.module.js";
+import { createJobProviders } from "./job.providers.js";
 import { QueueHealthIndicator } from "./queue.health-indicator.js";
 import {
   ASYNC_OPTIONS_TYPE,
@@ -12,23 +12,28 @@ import {
   OPTIONS_TYPE,
 } from "./queue.module-definition.js";
 import { QueueModuleOptions } from "./queue-module-options.interface.js";
+import type {
+  RegisterQueueAsyncOptions,
+  RegisterQueueOptions,
+} from "./register-queue-options.interface.js";
 import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
+import { withQueuePersistence } from "./utils/with-queue-persistence.util.js";
 
-const jobIntegration = await createJobIntegration();
+const jobProviders = await createJobProviders();
 
 /**
  * BullMQ integration module for job queue processing.
  *
  * Wraps `@nestjs/bullmq` with automatic Redis connection configuration
  * from `REDIS_URL`. Registers job history when DatabaseModule and Job metadata
- * are available, and job queries when GraphQLModule is also registered unless
+ * are available; only queues registered with persist: true record jobs. Enables
+ * job queries when GraphQLModule is also registered unless
  * the graphql option is false.
  */
 @Global()
 @Module({
   imports: [
     DiscoveryModule,
-    jobIntegration,
     BaseQueueModule.forRootAsync({
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: (options: QueueModuleOptions) => {
@@ -44,6 +49,7 @@ const jobIntegration = await createJobIntegration();
     }),
   ],
   providers: [
+    ...(jobProviders.providers ?? []),
     QueueHealthIndicator,
     {
       provide: MODULE_OPTIONS_TOKEN,
@@ -51,7 +57,11 @@ const jobIntegration = await createJobIntegration();
       useFactory: (options?: QueueModuleOptions) => options ?? {},
     },
   ],
-  exports: [MODULE_OPTIONS_TOKEN, QueueHealthIndicator],
+  exports: [
+    MODULE_OPTIONS_TOKEN,
+    QueueHealthIndicator,
+    ...(jobProviders.exports ?? []),
+  ],
 })
 export class QueueModule extends ConfigurableModuleClass {
   /**
@@ -79,10 +89,8 @@ export class QueueModule extends ConfigurableModuleClass {
    * @param args - registerQueue arguments
    * @returns Dynamic module configuration
    */
-  static registerQueue(
-    ...args: Parameters<typeof BaseQueueModule.registerQueue>
-  ): DynamicModule {
-    return BaseQueueModule.registerQueue(...args);
+  static registerQueue(...args: RegisterQueueOptions[]): DynamicModule {
+    return withQueuePersistence(BaseQueueModule.registerQueue(...args), args);
   }
 
   /**
@@ -91,8 +99,11 @@ export class QueueModule extends ConfigurableModuleClass {
    * @returns Dynamic module configuration
    */
   static registerQueueAsync(
-    ...args: Parameters<typeof BaseQueueModule.registerQueueAsync>
+    ...args: RegisterQueueAsyncOptions[]
   ): DynamicModule {
-    return BaseQueueModule.registerQueueAsync(...args);
+    return withQueuePersistence(
+      BaseQueueModule.registerQueueAsync(...args),
+      args,
+    );
   }
 }

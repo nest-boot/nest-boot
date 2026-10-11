@@ -3,6 +3,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 
 import { QueueModule } from "@nest-boot/queue";
+import { Module } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 
 for (const dependency of [
@@ -24,4 +25,20 @@ const app = await NestFactory.createApplicationContext(
   },
 );
 await app.close();
+
+@Module({
+  imports: [
+    QueueModule,
+    QueueModule.registerQueue({ name: "history", persist: true }),
+  ],
+})
+class MissingDatabaseModule {}
+
+await assert.rejects(
+  NestFactory.createApplicationContext(MissingDatabaseModule, {
+    logger: false,
+    abortOnError: false,
+  }),
+  /Queue "history" has persist: true.*DatabaseModule/,
+);
 console.log("Packed plain queue starts without database or GraphQL peers");

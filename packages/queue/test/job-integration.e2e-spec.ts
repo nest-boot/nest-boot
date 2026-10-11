@@ -19,6 +19,9 @@ import { Job, JobHistoryService, JobStatus } from "../dist/persistence.js";
 let releaseJob: (() => void) | undefined;
 
 const queueName = `integration-${randomUUID()}`;
+const plainQueueName = `${queueName}-plain`;
+const disabledQueueName = `${queueName}-disabled`;
+const asyncQueueName = `${queueName}-async`;
 
 @Processor(queueName)
 class HistoryWorker extends WorkerHost {
@@ -33,9 +36,19 @@ class HistoryWorker extends WorkerHost {
   }
 }
 
+@Processor(plainQueueName)
+class PlainWorker extends HistoryWorker {}
+
+@Processor(disabledQueueName)
+class DisabledWorker extends HistoryWorker {}
+
+@Processor(asyncQueueName)
+class AsyncWorker extends HistoryWorker {}
+
 describe("automatically discovered job history and GraphQL", () => {
   let app: INestApplication;
   let queue: Queue;
+  let otherQueues: Queue[];
   let orm: MikroORM;
 
   beforeAll(async () => {
@@ -45,7 +58,15 @@ describe("automatically discovered job history and GraphQL", () => {
         QueueModule.forRoot({
           getJobReadFilter: () => ({ data: { tenant: "allowed" } }),
         }),
-        QueueModule.registerQueue({ name: queueName }),
+        QueueModule.registerQueue(
+          { name: queueName, persist: true },
+          { name: plainQueueName },
+          { name: disabledQueueName, persist: false },
+        ),
+        QueueModule.registerQueueAsync({
+          name: asyncQueueName,
+          useFactory: () => ({ persist: true }),
+        }),
         DatabaseModule.forRoot({
           driver: PgliteDriver,
           dbName: "memory://",
@@ -53,18 +74,24 @@ describe("automatically discovered job history and GraphQL", () => {
         }),
         GraphQLModule.forRoot({ autoSchemaFile: true, graphiql: false }),
       ],
-      providers: [HistoryWorker],
+      providers: [HistoryWorker, PlainWorker, DisabledWorker, AsyncWorker],
     }).compile();
     app = module.createNestApplication();
     app.useLogger(false);
     orm = module.get(MikroORM);
     await orm.schema.create();
     queue = module.get(getQueueToken(queueName));
+    otherQueues = [plainQueueName, disabledQueueName, asyncQueueName].map(
+      (name) => module.get<Queue>(getQueueToken(name)),
+    );
     await app.listen(0, "127.0.0.1");
   }, 30000);
 
   afterAll(async () => {
     await queue?.obliterate({ force: true });
+    await Promise.all(
+      (otherQueues ?? []).map((other) => other.obliterate({ force: true })),
+    );
     await app?.close();
   });
 
@@ -123,6 +150,33 @@ describe("automatically discovered job history and GraphQL", () => {
     expect(result.data.jobs.totalCount).toBe(2);
     expect(result.data.jobs.edges).toHaveLength(2);
   }, 30000);
+  it("processes plain queues without history and persists the async opt-in queue", async () => {
+    const jobs = await Promise.all(
+      otherQueues.map((other) => other.add("mixed", { tenant: "allowed" })),
+    );
+    await vi.waitFor(
+      async () => {
+        expect(await Promise.all(jobs.map((job) => job.getState()))).toEqual([
+          "completed",
+          "completed",
+          "completed",
+        ]);
+        expect(
+          await orm.em.fork().count(Job, {
+            queueName: asyncQueueName,
+            status: JobStatus.COMPLETED,
+          }),
+        ).toBe(1);
+      },
+      { timeout: 15000 },
+    );
+    expect(
+      await orm.em
+        .fork()
+        .count(Job, { queueName: [plainQueueName, disabledQueueName] }),
+    ).toBe(0);
+  }, 30000);
+
   it("records the final worker result while shutting down history", async () => {
     const job = await queue.add("shutdown", { tenant: "allowed", wait: true });
     await vi.waitFor(() => {

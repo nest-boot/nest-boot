@@ -15,7 +15,6 @@ import { Job as PersistedJob } from "../entities/job.entity.js";
 import { type JobHistoryOptions } from "../job-history-options.interface.js";
 import { JOB_HISTORY_OPTIONS } from "../queue.constants.js";
 import { convertQueueJobStateToJobStatus } from "../utils/convert-queue-job-state-to-job-status.util.js";
-import { shouldIncludeQueue } from "../utils/should-include-queue.util.js";
 
 @Injectable()
 export class JobHistoryService
@@ -31,8 +30,7 @@ export class JobHistoryService
 
   private readonly jobTTL: number = 1000 * 60 * 60 * 24 * 30;
 
-  private readonly includeQueues: string[] = [];
-  private readonly excludeQueues: string[] = [];
+  private readonly queues = new Set<Queue>();
 
   constructor(
     private readonly discoveryService: DiscoveryService,
@@ -41,8 +39,6 @@ export class JobHistoryService
     private readonly options: JobHistoryOptions,
   ) {
     this.jobTTL = this.options.jobTTL ?? this.jobTTL;
-    this.includeQueues = this.options.includeQueues ?? this.includeQueues;
-    this.excludeQueues = this.options.excludeQueues ?? this.excludeQueues;
   }
 
   async convertJobToEntityData(
@@ -108,6 +104,14 @@ export class JobHistoryService
     });
   }
 
+  /**
+   * Includes an explicitly persisted queue in local event observation.
+   * @param queue - Queue registered with persist enabled.
+   */
+  registerQueue(queue: Queue): void {
+    this.queues.add(queue);
+  }
+
   onApplicationBootstrap() {
     this.cleanupTimer = setInterval(
       () => {
@@ -124,35 +128,24 @@ export class JobHistoryService
     );
     this.cleanupTimer.unref();
 
+    if (this.queues.size === 0) return;
     const instanceWrappers = this.discoveryService.getProviders();
 
-    instanceWrappers
-      .filter((provider) => provider.instance instanceof Queue)
-      .filter((provider: InstanceWrapper<Queue>) =>
-        shouldIncludeQueue(
-          provider.instance.name,
-          this.includeQueues,
-          this.excludeQueues,
-        ),
-      )
-      .forEach((provider: InstanceWrapper<Queue>) => {
-        const onWaiting = (job: Job) => {
-          this.recordJobEvent(job, "waiting");
-        };
-        provider.instance.on("waiting", onWaiting);
-        this.unsubscribe.push(() =>
-          provider.instance.off("waiting", onWaiting),
-        );
-      });
+    for (const queue of this.queues) {
+      const onWaiting = (job: Job) => {
+        this.recordJobEvent(job, "waiting");
+      };
+      queue.on("waiting", onWaiting);
+      this.unsubscribe.push(() => queue.off("waiting", onWaiting));
+    }
+    const persistedQueues = new Set(
+      [...this.queues].map((queue) => queue.qualifiedName),
+    );
 
     instanceWrappers
       .filter((provider) => provider.instance instanceof WorkerHost)
       .filter((provider: InstanceWrapper<WorkerHost>) =>
-        shouldIncludeQueue(
-          provider.instance.worker.name,
-          this.includeQueues,
-          this.excludeQueues,
-        ),
+        persistedQueues.has(provider.instance.worker.qualifiedName),
       )
       .forEach((provider: InstanceWrapper<WorkerHost>) => {
         const worker = provider.instance.worker;

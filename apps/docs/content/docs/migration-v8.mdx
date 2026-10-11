@@ -75,7 +75,8 @@ provide a CommonJS `require` entry.
 Use `QueueModule`, `QueueModuleOptions`, and `QueueHealthIndicator` in place of
 `BullModule`, `BullModuleOptions`, and `BullMQHealthIndicator`. Job persistence
 is integrated into `QueueModule`: register the built-in `Job` entity from
-`@nest-boot/queue/persistence` and move history settings into `QueueModuleOptions.history`.
+`@nest-boot/queue/persistence` and move history settings into `QueueModuleOptions.history`. Enable `persist: true`
+when registering each queue that needs history; remove include/exclude lists.
 Remove `BullMQMikroORMModule` / `QueueDatabaseModule` imports. See the
 [queue migration guide](/docs/tutorial/queue#migrating-from-queue-database) for
 entity discovery, database migrations, and query authorization.

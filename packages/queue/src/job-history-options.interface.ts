@@ -3,7 +3,7 @@ import type { Job as BullJob } from "bullmq";
 
 import type { Job } from "./entities/job.entity.js";
 
-/** Configuration options for the BullMQ-MikroORM integration module. */
+/** Settings for opted-in queue job history. */
 export interface JobHistoryOptions {
   /** Time-to-live (in milliseconds) after which inactive history records are deleted, based on their last update. */
   jobTTL?: number;
@@ -12,9 +12,4 @@ export interface JobHistoryOptions {
   convertJobToEntityData?: (
     job: BullJob,
   ) => EntityData<Job> | Promise<EntityData<Job>>;
-
-  /** Queue names to include for persistence. If unset, all queues are included. */
-  includeQueues?: string[];
-  /** Queue names to exclude from persistence. */
-  excludeQueues?: string[];
 }

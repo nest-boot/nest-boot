@@ -21,6 +21,7 @@ const { mockBaseQueueModule, mockState } = vi.hoisted(() => {
 
 vi.mock("@nestjs/bullmq", () => ({
   BullModule: mockBaseQueueModule,
+  getQueueToken: (name?: string) => `BullQueue_${name ?? "default"}`,
   QueueEventsListener: class QueueEventsListener {},
 }));
 
@@ -133,7 +134,6 @@ describe("QueueModule", () => {
     expect(loadConfigFromEnv).toHaveBeenCalledTimes(1);
     expect(imports).toEqual([
       DiscoveryModule,
-      expect.objectContaining({ module: expect.any(Function) }),
       {
         module: expect.any(Function),
       },

@@ -21,6 +21,7 @@ class TestWorkerHost extends WorkerHost {
 interface TestWorker {
   close: Mock;
   name: string;
+  qualifiedName: string;
   on: Mock;
   off: Mock;
 }
@@ -113,31 +114,30 @@ async function createService(
 /**
  * Returns queue configured for the test.
  * @param name - Name used to identify the resource.
+ * @param prefix - Redis key prefix for the queue.
  * @returns Queue configured for the test.
  */
-function createQueue(name: string) {
-  const queue = Object.create(Queue.prototype) as Omit<Queue, "name" | "on"> & {
-    name: string;
-    on: Mock;
-    off: Mock;
-  };
-  queue.name = name;
-  queue.on = vi.fn();
-  queue.off = vi.fn();
-
-  return queue;
+function createQueue(name: string, prefix = "bull") {
+  return Object.defineProperties(Object.create(Queue.prototype), {
+    name: { value: name },
+    qualifiedName: { value: `${prefix}:${name}` },
+    on: { value: vi.fn() },
+    off: { value: vi.fn() },
+  }) as Queue & { on: Mock; off: Mock };
 }
 
 /**
  * Returns worker host configured for the test.
  * @param name - Name used to identify the resource.
+ * @param prefix - Redis key prefix for the queue.
  * @returns Worker host configured for the test.
  */
-function createWorkerHost(name: string): WorkerHostWithMock {
+function createWorkerHost(name: string, prefix = "bull"): WorkerHostWithMock {
   const workerHost = new TestWorkerHost();
   const worker: TestWorker = {
     close: vi.fn().mockResolvedValue(undefined),
     name,
+    qualifiedName: `${prefix}:${name}`,
     on: vi.fn(),
     off: vi.fn(),
   };
@@ -167,6 +167,7 @@ describe("JobHistoryService", () => {
       const log = vi
         .spyOn(Logger.prototype, "error")
         .mockImplementation(() => undefined);
+      service.registerQueue(queue);
       service.onApplicationBootstrap();
       const calls = (
         event === "waiting" ? queue.on.mock.calls : worker.worker.on.mock.calls
@@ -323,6 +324,7 @@ describe("JobHistoryService", () => {
           finishWrite = resolve;
         }),
     );
+    service.registerQueue(queue);
     service.onApplicationBootstrap();
     queue.on.mock.calls[0][1](createJob("waiting"));
     let closed = false;
@@ -332,14 +334,14 @@ describe("JobHistoryService", () => {
     await Promise.resolve();
     expect(closed).toBe(false);
     expect(worker.worker.close).toHaveBeenCalledOnce();
-    expect(queue.off).not.toHaveBeenCalled();
+    expect(queue.off.mock.calls).toHaveLength(0);
     expect(worker.worker.off).not.toHaveBeenCalled();
     finishWorker();
     await vi.waitFor(() => {
-      expect(queue.off).toHaveBeenCalledWith(
+      expect(queue.off.mock.calls).toContainEqual([
         "waiting",
         queue.on.mock.calls[0][1],
-      );
+      ]);
     });
     expect(worker.worker.off).toHaveBeenCalledTimes(4);
     expect(closed).toBe(false);
@@ -348,26 +350,32 @@ describe("JobHistoryService", () => {
     expect(closed).toBe(true);
   });
 
-  it("should subscribe included queues and workers on application bootstrap", async () => {
+  it("observes only opted-in queues and their matching workers", async () => {
     const emailQueue = createQueue("email");
     const ignoredQueue = createQueue("ignored");
     const emailWorkerHost = createWorkerHost("email");
     const ignoredWorkerHost = createWorkerHost("ignored");
+    const otherPrefixWorker = createWorkerHost("email", "other");
     const job = createJob("waiting");
-    const { getProviders, service } = await createService(
-      {
-        excludeQueues: ["ignored"],
-        includeQueues: ["email", "ignored"],
-      },
-      [emailQueue, ignoredQueue, emailWorkerHost, ignoredWorkerHost, {}],
-    );
+    const { getProviders, service } = await createService({}, [
+      emailQueue,
+      ignoredQueue,
+      emailWorkerHost,
+      ignoredWorkerHost,
+      otherPrefixWorker,
+      {},
+    ]);
     const upsertJob = vi.spyOn(service, "upsertJob").mockResolvedValue();
 
+    service.registerQueue(emailQueue);
     service.onApplicationBootstrap();
 
     expect(getProviders).toHaveBeenCalledTimes(1);
-    expect(emailQueue.on).toHaveBeenCalledWith("waiting", expect.any(Function));
-    expect(ignoredQueue.on).not.toHaveBeenCalled();
+    expect(emailQueue.on.mock.calls).toContainEqual([
+      "waiting",
+      expect.any(Function),
+    ]);
+    expect(ignoredQueue.on.mock.calls).toHaveLength(0);
     expect(emailWorkerHost.worker.on).toHaveBeenCalledWith(
       "active",
       expect.any(Function),
@@ -385,6 +393,7 @@ describe("JobHistoryService", () => {
       expect.any(Function),
     );
     expect(ignoredWorkerHost.worker.on).not.toHaveBeenCalled();
+    expect(otherPrefixWorker.worker.on).not.toHaveBeenCalled();
 
     const queueWaitingHandler = emailQueue.on.mock.calls.find(
       ([event]) => event === "waiting",

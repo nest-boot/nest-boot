@@ -169,13 +169,13 @@ These behaviors apply only to decorators imported from `@nest-boot/queue`. Callb
 
 ## Integrated job history and GraphQL
 
-`QueueModule` discovers the application's registered integrations automatically. `graphql` defaults to `true`; set it to `false` to keep history without registering job queries. No persistence switch is needed:
+`QueueModule` discovers the application's registered integrations automatically. `graphql` defaults to `true`; set it to `false` to keep history without registering job queries. Each queue defaults to `persist: false`; enable it explicitly in `registerQueue`:
 
-| Application configuration                      | Behavior                                                                        |
-| ---------------------------------------------- | ------------------------------------------------------------------------------- |
-| Queue only, or no registered `Job` entity      | BullMQ queues and workers only                                                  |
-| `DatabaseModule` and the built-in `Job` entity | Persist local queue/worker events; provide `JobHistoryService` and `JobService` |
-| Database history plus `GraphQLModule`          | Also provide `job(id)` and the `jobs` connection                                |
+| Application configuration                                      | Behavior                                                                                         |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| No database integration and no `persist: true`                 | BullMQ queues and workers only                                                                   |
+| `DatabaseModule` and the built-in `Job` entity                 | Provide `JobHistoryService` and `JobService`; record events only for queues with `persist: true` |
+| Database history plus `GraphQLModule`, unless `graphql: false` | Also provide `job(id)` and the `jobs` connection                                                 |
 
 Installing a package alone does not enable its integration. Database and GraphQL packages are optional peers; plain queues do not require either. Add `@nest-boot/database` for persistence and `@nest-boot/graphql` plus `@nest-boot/graphql-connection` for GraphQL, with their documented peer dependencies.
 
@@ -197,11 +197,15 @@ import { Module } from "@nestjs/common";
     GraphQLModule,
     QueueModule.forRoot({
       graphql: true, // Default; use false to disable the built-in job queries.
-      history: { jobTTL: 7 * 24 * 60 * 60 * 1000, excludeQueues: ["schedule"] },
+      history: { jobTTL: 7 * 24 * 60 * 60 * 1000 },
       // Authorize this request using your application's verified identity.
       // Return a MikroORM filter for visible jobs, or null to deny access.
       getJobReadFilter: () => null,
     }),
+    QueueModule.registerQueue(
+      { name: "email" },
+      { name: "export", persist: true },
+    ),
   ],
 })
 export class JobsModule {}
@@ -215,13 +219,24 @@ For async registration, put `graphql`, `history` and `getJobReadFilter` in the `
 
 The `jobs` connection supports queue, name, status and date filters, name search, cursor pagination and sorting. `job(id)` returns `null` for missing or out-of-scope jobs. Query authorization is enforced in `JobService`, including direct service calls.
 
-History observes **local** Queue and Worker events. It is a best-effort history mirror, not a durable audit log or a replacement for BullMQ state. Each write forks an EntityManager; failures are logged without failing workers. `history.includeQueues` and `history.excludeQueues` select queues. `history.convertJobToEntityData` can transform persisted values. An owned hourly timer deletes records whose last update is older than `history.jobTTL` (30 days by default), and is stopped during shutdown. `ScheduleModule` is not required for history cleanup.
+History observes **local** Queue and Worker events. It is a best-effort history mirror, not a durable audit log or a replacement for BullMQ state. Each write forks an EntityManager; failures are logged without failing workers. `persist` is the only per-queue selection setting; queues and scheduled tasks without it do not record history. `history.convertJobToEntityData` can transform persisted values. An owned hourly timer deletes records whose last update is older than `history.jobTTL` (30 days by default), and is stopped during shutdown. `ScheduleModule` is not required for history cleanup.
+
+For async queue registration, return `persist` from the options factory; `useClass` and `useExisting` factories support the same option:
+
+```ts
+QueueModule.registerQueueAsync({
+  name: "export",
+  useFactory: () => ({ persist: true }),
+});
+```
+
+Explicitly enabling `persist` requires registered `QueueModule` and `DatabaseModule` services and the built-in `Job` in ORM metadata. Missing prerequisites cause startup to fail before creating that queue. Register each producer and worker application with the same setting to capture its local events.
 
 ### Migrating from queue-database
 
 `@nest-boot/queue-database` has been removed from the repository. Migrate to the integrated `@nest-boot/queue` package. Previously published versions remain on npm but do not receive this update.
 
-To adopt the integrated API, remove `QueueDatabaseModule`, register the built-in `Job` entity instead of the application's previous entity, move history options under `QueueModule.history`, and configure `getJobReadFilter`. Remove application-owned `JobResolver`, `JobService` and connection definitions to avoid duplicate GraphQL fields. Review the generated migration carefully to preserve existing job data, additional fields and RLS policies.
+To adopt the integrated API, remove `QueueDatabaseModule`, register the built-in `Job` entity instead of the application's previous entity, move history options under `QueueModuleOptions.history`, replace include/exclude lists with `persist: true` on each selected queue, and configure `getJobReadFilter`. Remove application-owned `JobResolver`, `JobService` and connection definitions to avoid duplicate GraphQL fields. Review the generated migration carefully to preserve existing job data, additional fields and RLS policies.
 
 ## Best Practices
 

@@ -7,6 +7,11 @@ export { QueueHealthIndicator } from "./queue.health-indicator.js";
 export { QueueModule } from "./queue.module.js";
 export * from "./queue-module-options.interface.js";
 export type {
+  RegisterQueueAsyncOptions,
+  RegisterQueueOptions,
+  RegisterQueueOptionsFactory,
+} from "./register-queue-options.interface.js";
+export type {
   BullModuleExtraOptions,
   BullQueueAdvancedProcessor,
   BullQueueAdvancedSeparateProcessor,
@@ -21,9 +26,6 @@ export type {
   RegisterFlowProducerAsyncOptions,
   RegisterFlowProducerOptions,
   RegisterFlowProducerOptionsFactory,
-  RegisterQueueAsyncOptions,
-  RegisterQueueOptions,
-  RegisterQueueOptionsFactory,
   SharedBullAsyncConfiguration,
   SharedBullConfigurationFactory,
 } from "@nestjs/bullmq";

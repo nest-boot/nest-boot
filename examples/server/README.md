@@ -106,8 +106,9 @@ Background tasks without either identifier
 remain available to the background database connection but are hidden from request
 roles. The integration copies `data` directly; no extra owner columns or custom
 `convertJobToEntityData` mapping are needed. History is retained for 30 days by
-default. `history.includeQueues` and `history.excludeQueues` can limit which registered queues are
-persisted.
+default. Enable history per queue with `QueueModule.registerQueue({ name, persist: true })`,
+or return `persist: true` from `registerQueueAsync` options. Unselected queues and the
+schedule queue do not record history by default.
 
 ### GraphQL queries
 
