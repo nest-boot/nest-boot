@@ -19,7 +19,7 @@ jobs:
 
   changesets:
     name: Changesets status
-    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'changeset-release/')
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && !startsWith(github.head_ref, 'changeset-release/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

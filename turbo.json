@@ -12,7 +12,7 @@
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", ".source/**", "*.tsbuildinfo"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "env": ["NODE_ENV"]
+      "env": ["NODE_ENV", "VERCEL_PROJECT_PRODUCTION_URL"]
     },
     "dev": {
       "dependsOn": ["^build"],
