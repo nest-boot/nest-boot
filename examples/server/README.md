@@ -184,10 +184,7 @@ query Jobs($id: ID!, $after: String, $filter: JobFilter) {
     queue
     name
     status
-    data
     progress
-    returnValue
-    failedReason
     startedAt
     finishedAt
     createdAt
@@ -226,8 +223,13 @@ Example variables:
 }
 ```
 
-IDs use the computed `queue:jobId` form. `data`, `progress` and `returnValue`
-are JSON scalars and do not take GraphQL subfields. Output status uses the
+IDs use the computed `queue:jobId` form; the separate `jobId` is not public.
+The API exposes only `id`, `queue`, `name`, `status`, numeric `progress` and the
+three timestamps. The progress resolver returns null for objects, strings,
+booleans and non-finite numbers. Payloads, raw results, failure details and
+operational fields stay private. Read the report result through BullMQ on the
+server; client-facing business results belong in a separate typed, authorized API.
+Output status uses the
 `JobStatus` enum (for example `COMPLETED`); status filters use stored values
 (for example `completed`). Filters and sorting support `queue`, `name`,
 `status` and `created_at`; sorting also supports `ID`. The connection

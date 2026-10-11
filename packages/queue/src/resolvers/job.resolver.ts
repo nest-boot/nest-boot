@@ -1,4 +1,13 @@
-import { Args, ID, Info, Query, Resolver } from "@nest-boot/graphql";
+import {
+  Args,
+  Float,
+  ID,
+  Info,
+  Parent,
+  Query,
+  ResolveField,
+  Resolver,
+} from "@nest-boot/graphql";
 import type {
   ConnectionArgsInterface,
   ConnectionResult,
@@ -20,6 +29,18 @@ export class JobResolver {
    * @param jobService - Service for reading persisted queue jobs.
    */
   constructor(private readonly jobService: JobConnectionService) {}
+
+  /**
+   * Returns numeric progress without exposing arbitrary BullMQ progress payloads.
+   * @param job - Authorized parent job.
+   * @returns Finite numeric progress, or null for other progress values.
+   */
+  @ResolveField(() => Float, { nullable: true })
+  progress(@Parent() job: Job): number | null {
+    return typeof job.progress === "number" && Number.isFinite(job.progress)
+      ? job.progress
+      : null;
+  }
 
   /**
    * 按完整任务 ID 查询当前身份可访问的任务。

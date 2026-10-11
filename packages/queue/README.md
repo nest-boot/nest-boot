@@ -41,5 +41,9 @@ checks run. The module does not import it or add a health endpoint. The exported
 
 Queues default to `expose: false`. Set `@Queue({ expose: true })` and register the
 queue provider in the API application to include its jobs in the optional Job API.
+The public fields are `id`, `queue`, `name`, `status`, numeric `progress` and
+`createdAt` / `startedAt` / `finishedAt`. Other progress formats return null.
+Payloads, raw results, failure details and operational fields stay private;
+applications expose business results through their own authorized API.
 Nodes, lists and counts also require the configured `getJobReadFilter` authorization.
 The flag affects API visibility, not BullMQ storage or direct queue operations.

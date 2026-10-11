@@ -21,7 +21,7 @@ export class ReportProcessor extends BaseProcessor {
   /**
    * Generates an example statistical report without external side effects.
    * @param job - Persisted report input.
-   * @returns The summary, also available through the Job API's returnValue field.
+   * @returns The summary, stored by BullMQ for server-side use.
    */
   async process(
     job: Job<ReportData, ReportResult, 'summarize'>,

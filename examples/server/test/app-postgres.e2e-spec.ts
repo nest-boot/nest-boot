@@ -177,7 +177,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
   });
 
-  it('processes example reports and exposes the result only to their owner', async () => {
+  it('processes example reports and exposes job status only to their owner', async () => {
     const owner = await createAuthenticatedUser('Report owner');
     const other = await createAuthenticatedUser('Other report viewer');
     const reports = new PostgresQueue('report-queue', {
@@ -203,7 +203,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       );
 
       const source = `query {
-        job(id: "report-queue:${task.id}") { id status progress returnValue }
+        job(id: "report-queue:${task.id}") { id status progress }
       }`;
       const result = await gql(source, { cookies: owner.cookies });
       expectNoGraphQLErrors(result);
@@ -211,7 +211,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         id: `report-queue:${task.id}`,
         status: 'COMPLETED',
         progress: 100,
-        returnValue: { count: 3, total: 60, average: 20 },
       });
       const hidden = await gql(source, { cookies: other.cookies });
       expectNoGraphQLErrors(hidden);
@@ -299,8 +298,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       );
     }
     const source = `query {
-      own: job(id: "report-queue:own") { id data status progress }
-      shared: job(id: "report-queue:shared") { id data }
+      own: job(id: "report-queue:own") { id status progress }
+      shared: job(id: "report-queue:shared") { id }
       foreign: job(id: "report-queue:foreign") { id }
       jobs(first: 10, filter: { queue: "report-queue" }, orderBy: {field: ID, direction: ASC}) {
         totalCount edges { node { id } }
@@ -313,11 +312,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expectNoGraphQLErrors(response);
     expect(response.body.data.own).toEqual({
       id: 'report-queue:own',
-      data: payloads.own,
       status: 'COMPLETED',
       progress: 0,
     });
-    expect(response.body.data.shared.data).toEqual(payloads.shared);
+    expect(response.body.data.shared).toEqual({ id: 'report-queue:shared' });
     expect(response.body.data.foreign).toBeNull();
     expect(response.body.data.jobs.totalCount).toBe(2);
     expect(response.body.data.jobs.edges.map(({ node }) => node.id)).toEqual([
@@ -332,7 +330,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const keyed = await gql(source, { bearerToken: key.apiKey });
     expectNoGraphQLErrors(keyed);
     expect(keyed.body.data.own).toBeNull();
-    expect(keyed.body.data.shared.data).toEqual(payloads.shared);
+    expect(keyed.body.data.shared).toEqual({ id: 'report-queue:shared' });
     expect(keyed.body.data.foreign).toBeNull();
     expect(keyed.body.data.jobs.totalCount).toBe(1);
     expect(keyed.body.data.jobs.edges.map(({ node }) => node.id)).toEqual([

@@ -79,6 +79,8 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 `super(localOptions)`；`@Queue()` 自动提供全局配置。应用只注册一次全局 QueueModule，ScheduleModule
 直接复用全局服务，不在内部重复导入。
 
+Job API 只公开全局 `id`、`queue`、`name`、`status`、有限数值 `progress` 和时间字段。移除查询中的 `jobId`、`data`、`returnValue`、`failedReason`、`priority`，业务结果由应用 API 提供；非数值进度返回 null。
+
 队列任务默认不出现在 API 中。需要查询时，声明 `@Queue({ expose: true })` 并在 API 应用中注册该队列 provider；`getJobReadFilter` 仍然生效。
 
 消费者使用 `@Processor(QueueClass)` 并继承 `BaseProcessor`，移除 `WorkerHost`。

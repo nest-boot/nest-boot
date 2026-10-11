@@ -381,27 +381,17 @@ enum InvitationStatus {
 }
 
 """
-The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
-"""
-scalar JSON
-
-"""
 The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
 scalar JSONObject
 
 type Job {
   createdAt: DateTime!
-  data: JSON!
-  failedReason: String
   finishedAt: DateTime
   id: ID!
-  jobId: ID!
   name: String!
-  priority: Int!
-  progress: JSON
+  progress: Float
   queue: String!
-  returnValue: JSON
   startedAt: DateTime
   status: JobStatus!
 }

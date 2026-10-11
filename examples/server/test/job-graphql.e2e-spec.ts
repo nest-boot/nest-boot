@@ -198,35 +198,97 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
       .send({ query: source, variables });
   }
 
-  it('returns a single owned job with JSON payload, progress, result and enum status', async () => {
+  it('returns public job metadata without exposing object progress', async () => {
     const { body } = await query(
-      `query { job(id: "reports:1") { id queue name data progress returnValue status priority failedReason startedAt finishedAt createdAt } }`,
+      `query { job(id: "reports:1") { id queue name progress status startedAt finishedAt createdAt } }`,
     );
     expect(body.errors).toBeUndefined();
     expect(body).toHaveProperty('data');
-    expect(body.data.job).toMatchObject({
+    expect(body.data.job).toEqual({
       id: 'reports:1',
       queue: 'reports',
       name: 'generate-report',
-      data: { userId: '101', workspaceId: '202', format: 'csv' },
-      progress: { done: 10 },
-      returnValue: { rows: 10 },
+      progress: null,
       status: 'COMPLETED',
-      priority: 2,
-      failedReason: null,
       startedAt: null,
       finishedAt: null,
       createdAt: '2026-01-01T00:00:00.000Z',
     });
   });
 
+  it('defines only the public Job fields and numeric progress', async () => {
+    const { body } = await query(`query {
+      __type(name: "Job") { fields { name type { kind name } } }
+    }`);
+    expect(body.errors).toBeUndefined();
+    expect(body.data.__type.fields.map((field) => field.name).sort()).toEqual([
+      'createdAt',
+      'finishedAt',
+      'id',
+      'name',
+      'progress',
+      'queue',
+      'startedAt',
+      'status',
+    ]);
+    expect(
+      body.data.__type.fields.find((field) => field.name === 'progress').type,
+    ).toEqual({
+      kind: 'SCALAR',
+      name: 'Float',
+    });
+  });
+
+  it.each([
+    'job(id: "reports:1") { jobId data returnValue failedReason priority opts stacktrace lockToken }',
+    'jobs(first: 10) { edges { node { jobId data returnValue failedReason priority opts stacktrace lockToken } } }',
+  ])('rejects private fields in %s', async (selection) => {
+    const { body } = await query(`query { ${selection} }`);
+    expect(body.data).toBeUndefined();
+    expect(body.errors).toHaveLength(8);
+    for (const error of body.errors)
+      expect(error.message).toContain('Cannot query field');
+  });
+
+  it.each([
+    [0, 0],
+    [42.5, 42.5],
+    [100, 100],
+    ['private message', null],
+    [true, null],
+    [{ internalDetail: 'private message' }, null],
+    [null, null],
+  ])(
+    'returns only numeric progress for %j in single and connection queries',
+    async (progress, expected) => {
+      try {
+        await orm.em.execute(
+          'update bullmq.job set progress = ?::jsonb where queue = ? and id = ?',
+          [JSON.stringify(progress), 'reports', '3'],
+        );
+        const { body } = await query(`query {
+        job(id: "reports:3") { progress }
+        jobs(first: 10, filter: { status: "waiting" }) { edges { node { id progress } } }
+      }`);
+        expect(body.errors).toBeUndefined();
+        expect(body.data.job.progress).toBe(expected);
+        expect(body.data.jobs.edges).toEqual([
+          { node: { id: 'reports:3', progress: expected } },
+        ]);
+      } finally {
+        await orm.em.execute(
+          "update bullmq.job set progress = '0'::jsonb where queue = 'reports' and id = '3'",
+        );
+      }
+    },
+  );
+
   it.each(['reports:4', 'schedule:5', 'reports:missing'])(
     'returns null for inaccessible or missing job %s',
     async (id) => {
-      const { body } = await query(
-        'query($id: ID!) { job(id: $id) { id data } }',
-        { id },
-      );
+      const { body } = await query('query($id: ID!) { job(id: $id) { id } }', {
+        id,
+      });
       expect(body.errors).toBeUndefined();
       expect(body.data.job).toBeNull();
     },
@@ -304,7 +366,7 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
 
   it('supports text search and queries that omit totalCount', async () => {
     const { body } = await query(
-      `query { jobs(first: 10, query: "name:export-report") { edges { node { id progress returnValue failedReason } } } }`,
+      `query { jobs(first: 10, query: "name:export-report") { edges { node { id progress status } } } }`,
     );
     expect(body.errors).toBeUndefined();
     expect(body.data.jobs.edges).toEqual([
@@ -312,8 +374,7 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
         node: {
           id: 'exports:2',
           progress: 20,
-          returnValue: null,
-          failedReason: 'Export failed',
+          status: 'FAILED',
         },
       },
     ]);

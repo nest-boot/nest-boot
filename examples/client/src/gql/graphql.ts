@@ -39,8 +39,6 @@ export type Scalars = {
    * Supported fields: email, status, created_at
    */
   InvitationFilter: { input: any; output: any };
-  /** The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf). */
-  JSON: { input: any; output: any };
   /** The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf). */
   JSONObject: {
     input: Record<string, unknown>;
@@ -424,16 +422,11 @@ export type InvitationStatus =
 export type Job = {
   __typename?: "Job";
   createdAt: Scalars["DateTime"]["output"];
-  data: Scalars["JSON"]["output"];
-  failedReason?: Maybe<Scalars["String"]["output"]>;
   finishedAt?: Maybe<Scalars["DateTime"]["output"]>;
   id: Scalars["ID"]["output"];
-  jobId: Scalars["ID"]["output"];
   name: Scalars["String"]["output"];
-  priority: Scalars["Int"]["output"];
-  progress?: Maybe<Scalars["JSON"]["output"]>;
+  progress?: Maybe<Scalars["Float"]["output"]>;
   queue: Scalars["String"]["output"];
-  returnValue?: Maybe<Scalars["JSON"]["output"]>;
   startedAt?: Maybe<Scalars["DateTime"]["output"]>;
   status: JobStatus;
 };

@@ -275,7 +275,7 @@ export class JobsModule {}
 | status                             | 原生 state，并将有优先级的 waiting 任务表示为 prioritized |
 | createdAt / startedAt / finishedAt | 毫秒时间戳转换为 Date                                     |
 
-数据库保持 `(queue, id)` 复合主键，计算出的 API ID 用于跨队列唯一标识和游标排序。原生表没有最后更新时间，因此不提供 `updatedAt` 字段或筛选。GraphQL 暴露 `queue`、`jobId` 和计算出的 `id`；筛选和排序支持 `queue`、`name`、`status`、`created_at`。
+数据库保持 `(queue, id)` 复合主键，计算出的 API ID 用于跨队列唯一标识和游标排序。原生表没有最后更新时间，因此不提供 `updatedAt` 字段或筛选。GraphQL 只暴露 `id`、`queue`、`name`、`status`、`progress`、`createdAt`、`startedAt` 和 `finishedAt`。可空的 `progress: Float` 通过 resolver 只返回有限数值；JSON 对象、字符串、布尔值及非有限数值均返回 null。`jobId`、任务入参、原始结果、错误和运行参数不公开。业务结果由应用通过有明确类型和授权逻辑的字段或 API 提供。筛选和排序支持 `queue`、`name`、`status`、`created_at`。
 
 每次读取都执行 `getJobReadFilter`，范围同时约束单条任务、筛选、分页和数量。未配置、返回 null 或 undefined 均拒绝访问；返回空对象表示服务层只限制已开放队列，数据库 RLS 仍然生效。入队数据的身份必须来自可信应用上下文。Job 实体为 `authenticated` 声明 RLS SELECT 策略：`data.userId` 匹配 `app.user.id`，或 `data.workspaceId` 匹配 `app.workspace.id`。缺失或空身份不会匹配；服务账户无需用户身份即可读取所属工作区的任务。没有允许请求写入或匿名读取的策略。先创建该角色，再授予 schema usage 和 job 表 SELECT，示例迁移已包含这些配置。Auth 通过请求 EntityManager session 提供已验证身份；不使用 Auth 的应用也可自行设置相同的可信 session 变量。
 

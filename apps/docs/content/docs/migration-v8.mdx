@@ -86,6 +86,8 @@ constructors inject business dependencies and call
 `super(localOptions)` for dynamic settings; `@Queue()` supplies global options automatically. Register the global
 QueueModule once; ScheduleModule uses its global services without importing it internally.
 
+The Job API exposes only the global `id`, `queue`, `name`, `status`, finite numeric `progress` and timestamps. Remove selections of `jobId`, `data`, `returnValue`, `failedReason` and `priority`; provide business results through application APIs. Non-numeric progress returns null.
+
 Queue jobs are hidden from the API by default. Declare `@Queue({ expose: true })` and register that queue provider in the API application to enable queries; `getJobReadFilter` still applies.
 
 Consumers use `@Processor(QueueClass)` and extend `BaseProcessor`; `WorkerHost` is
