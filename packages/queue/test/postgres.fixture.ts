@@ -15,6 +15,11 @@ export async function createPostgresFixture(schemaName?: string) {
   const database = `queue_test_${randomUUID().replaceAll("-", "")}`;
   const schema = schemaName ?? database;
   const admin = new Pool({ connectionString: baseConnectionString });
+  // Shared request role, also used when generating the Job entity's RLS policy.
+  await admin.query(`do $$ begin
+    create role authenticated nologin noinherit;
+  exception when duplicate_object or unique_violation then null;
+  end $$`);
   await admin.query(`create database "${database}"`);
   const url = new URL(baseConnectionString);
   url.pathname = database;

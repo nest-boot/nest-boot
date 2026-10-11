@@ -13,9 +13,21 @@ import { JobStatus } from "../enums/job-status.enum.js";
 
 /**
  * Read-only mapping matching BullMQ's native table, including its operational indexes.
- * BullMQ owns job writes and bootstrap migrations; MikroORM manages additional indexes.
+ * BullMQ owns job writes and bootstrap migrations; MikroORM manages indexes and RLS.
  */
-@Entity({ tableName: "job", schema: "bullmq", readonly: true })
+@Entity({
+  tableName: "job",
+  schema: "bullmq",
+  readonly: true,
+  policies: [
+    {
+      name: "job_select_policy",
+      command: "select",
+      roles: ["authenticated"],
+      using: `("data" ->> 'userId' = nullif(current_setting('app.user.id', true), '') OR "data" ->> 'workspaceId' = nullif(current_setting('app.workspace.id', true), ''))`,
+    },
+  ],
+})
 @Index({
   name: "job_ready_idx",
   properties: ["queue", "priority", "seq"],

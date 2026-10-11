@@ -35,7 +35,7 @@ describe.each(["bullmq", "custom_tasks"])("Job migrations in %s", (schema) => {
     await fixture?.close();
   });
 
-  it("adds only ownership indexes and then produces no schema diff", async () => {
+  it("adds ownership indexes and RLS and then produces no schema diff", async () => {
     const { rows: originalFunctions } = await fixture.pool.query(
       "select p.proname, pg_get_functiondef(p.oid) as definition from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = $1 order by p.proname",
       [schema],
@@ -60,18 +60,25 @@ describe.each(["bullmq", "custom_tasks"])("Job migrations in %s", (schema) => {
     );
     expect(migration.down.match(/drop index/g)).toHaveLength(2);
     expect(migration.up + migration.down).not.toMatch(
-      /(?:create|alter|drop) (?:or replace )?(?:table|type|function|sequence)/i,
+      /(?:create|alter|drop) (?:or replace )?(?:type|function|sequence)|(?:create|drop) table/i,
     );
     const statements = migration.up
       .split(";")
       .map((statement) => statement.trim())
       .filter(Boolean);
-    expect(statements).toHaveLength(2);
+    expect(statements).toHaveLength(4);
     expect(statements).toEqual(
       expect.arrayContaining([
         `create index "job_queue_user_idx" on "${schema}"."job" ("queue", ("data"->>'userId'))`,
         `create index "job_queue_workspace_idx" on "${schema}"."job" ("queue", ("data"->>'workspaceId'))`,
+        `alter table "${schema}"."job" enable row level security`,
       ]),
+    );
+    expect(migration.up).toContain(
+      `create policy "job_select_policy" on "${schema}"."job" for select to "authenticated"`,
+    );
+    expect(migration.down).toContain(
+      `alter table "${schema}"."job" disable row level security`,
     );
     await orm.schema.execute(migration.up);
     const { rows: functions } = await fixture.pool.query(

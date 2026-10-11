@@ -91,7 +91,9 @@ request-scoped `RequestContext` provider。
 加入 `...getJobSchemaOptions()` 并注册完整的 `entities` 数组，使 11 张表参与原生迁移比较。
 `ignoreRoutines: true` 保留所有 schema 中的已有函数；继续启用迁移快照，
 并检查直接从在线数据库生成的回滚 SQL，避免带入 BullMQ 函数定义。
-先执行 BullMQ 迁移，再执行应用迁移来添加用户、工作区归属索引，并配置查询授权，
+先执行 BullMQ 迁移，再执行应用迁移来添加用户、工作区归属索引及 authenticated RLS SELECT 策略。
+先创建 `authenticated` 角色，请求 session 设置已验证的 `app.user.id` / `app.workspace.id`；
+BullMQ 连接使用表所有者或 `BYPASSRLS` 角色，并继续保留应用查询授权，
 详见[队列教程](/docs/tutorial/queue)。保留 `bullmq`，
 仅在启用查询功能时安装对应 MikroORM/GraphQL 依赖。移除 `@nestjs/bullmq`。
 

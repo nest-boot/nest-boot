@@ -46,6 +46,7 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
         return { rows: (results.at(-1)?.rows ?? []) as R[] };
       },
     });
+    await orm.schema.update();
     await orm.em.execute('grant usage on schema bullmq to authenticated');
     await orm.em.execute('grant select on bullmq.job to authenticated');
     const fixtures = [

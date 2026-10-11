@@ -101,7 +101,7 @@ ORM options and register the full exported `entities` array. All 11 BullMQ table
 participate in native migration comparison; `ignoreRoutines: true` leaves existing
 functions unchanged across all schemas. Keep migration snapshots enabled and
 review live-generated rollback SQL for unwanted function definitions. Run BullMQ migrations before application migrations; the first
-Job migration adds user/workspace ownership indexes. Configure read authorization. See the [queue tutorial](/docs/tutorial/queue).
+Job migration adds user/workspace ownership indexes and an authenticated RLS SELECT policy. Create the `authenticated` role first and configure verified `app.user.id` / `app.workspace.id` request sessions. BullMQ connections must use the table owner or a `BYPASSRLS` role. Keep application read authorization. See the [queue tutorial](/docs/tutorial/queue).
 Keep `bullmq`; install MikroORM/GraphQL peers only for the optional query features.
 Remove `@nestjs/bullmq`; the queue integration uses BullMQ directly.
 

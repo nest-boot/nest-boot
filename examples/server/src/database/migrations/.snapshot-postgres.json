@@ -2792,7 +2792,17 @@
       "checks": [],
       "triggers": [],
       "foreignKeys": {},
-      "comment": null
+      "comment": null,
+      "policies": [
+        {
+          "name": "job_select_policy",
+          "command": "select",
+          "type": "permissive",
+          "roles": ["authenticated"],
+          "using": "(\"data\" ->> 'userId' = nullif(current_setting('app.user.id', true), '') OR \"data\" ->> 'workspaceId' = nullif(current_setting('app.workspace.id', true), ''))"
+        }
+      ],
+      "rlsEnabled": true
     },
     {
       "name": "dedup",
