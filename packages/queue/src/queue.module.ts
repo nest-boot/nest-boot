@@ -21,7 +21,8 @@ const jobIntegration = await createJobIntegration();
  *
  * Wraps `@nestjs/bullmq` with automatic Redis connection configuration
  * from `REDIS_URL`. Registers job history when DatabaseModule and Job metadata
- * are available, and job queries when GraphQLModule is also registered.
+ * are available, and job queries when GraphQLModule is also registered unless
+ * the graphql option is false.
  */
 @Global()
 @Module({
@@ -34,6 +35,7 @@ const jobIntegration = await createJobIntegration();
         const bullOptions = { ...options };
         delete bullOptions.history;
         delete bullOptions.getJobReadFilter;
+        delete bullOptions.graphql;
         return {
           ...bullOptions,
           connection: options.connection ?? loadConfigFromEnv(),

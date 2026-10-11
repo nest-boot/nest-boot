@@ -19,6 +19,7 @@ class TestWorkerHost extends WorkerHost {
 }
 
 interface TestWorker {
+  close: Mock;
   name: string;
   on: Mock;
   off: Mock;
@@ -135,6 +136,7 @@ function createQueue(name: string) {
 function createWorkerHost(name: string): WorkerHostWithMock {
   const workerHost = new TestWorkerHost();
   const worker: TestWorker = {
+    close: vi.fn().mockResolvedValue(undefined),
     name,
     on: vi.fn(),
     off: vi.fn(),
@@ -307,6 +309,13 @@ describe("JobHistoryService", () => {
     const queue = createQueue("email");
     const worker = createWorkerHost("email");
     const { service } = await createService({}, [queue, worker]);
+    let finishWorker!: () => void;
+    worker.worker.close.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishWorker = resolve;
+        }),
+    );
     let finishWrite!: () => void;
     vi.spyOn(service, "upsertJob").mockImplementation(
       () =>
@@ -322,11 +331,18 @@ describe("JobHistoryService", () => {
     });
     await Promise.resolve();
     expect(closed).toBe(false);
-    expect(queue.off).toHaveBeenCalledWith(
-      "waiting",
-      queue.on.mock.calls[0][1],
-    );
+    expect(worker.worker.close).toHaveBeenCalledOnce();
+    expect(queue.off).not.toHaveBeenCalled();
+    expect(worker.worker.off).not.toHaveBeenCalled();
+    finishWorker();
+    await vi.waitFor(() => {
+      expect(queue.off).toHaveBeenCalledWith(
+        "waiting",
+        queue.on.mock.calls[0][1],
+      );
+    });
     expect(worker.worker.off).toHaveBeenCalledTimes(4);
+    expect(closed).toBe(false);
     finishWrite();
     await closing;
     expect(closed).toBe(true);

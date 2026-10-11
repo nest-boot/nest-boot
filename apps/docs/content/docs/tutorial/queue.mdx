@@ -169,7 +169,7 @@ These behaviors apply only to decorators imported from `@nest-boot/queue`. Callb
 
 ## Integrated job history and GraphQL
 
-`QueueModule` discovers the application's registered integrations automatically. No `persistence` or `graphql` switches are needed:
+`QueueModule` discovers the application's registered integrations automatically. `graphql` defaults to `true`; set it to `false` to keep history without registering job queries. No persistence switch is needed:
 
 | Application configuration                      | Behavior                                                                        |
 | ---------------------------------------------- | ------------------------------------------------------------------------------- |
@@ -196,6 +196,7 @@ import { Module } from "@nestjs/common";
     }),
     GraphQLModule,
     QueueModule.forRoot({
+      graphql: true, // Default; use false to disable the built-in job queries.
       history: { jobTTL: 7 * 24 * 60 * 60 * 1000, excludeQueues: ["schedule"] },
       // Authorize this request using your application's verified identity.
       // Return a MikroORM filter for visible jobs, or null to deny access.
@@ -210,7 +211,7 @@ Add `queueEntities` to **both** the application's database options and the Mikro
 
 `getJobReadFilter` is evaluated for every read. Its scope applies to single-job queries, pagination and counts. Missing callbacks, `null` and `undefined` deny access. Returning `{}` explicitly allows all jobs; do so only after checking the caller's authorization. Task payloads and results can contain sensitive data. Applications remain responsible for assigning trustworthy job ownership when enqueueing and, where used, configuring their own RLS policies. The example server retains its user/workspace RLS policy using MikroORM's `discovery.onMetadata` hook.
 
-For async registration, put `history` and `getJobReadFilter` in the `forRootAsync` factory result. Services and the built-in entity are available from `@nest-boot/queue/persistence`; GraphQL connection types and the resolver are available from `@nest-boot/queue/graphql`. These are entry points in the same package, separated so importing plain queues does not load optional dependencies. Only import the GraphQL entry point in applications that install its peers.
+For async registration, put `graphql`, `history` and `getJobReadFilter` in the `forRootAsync` factory result. Services and the built-in entity are available from `@nest-boot/queue/persistence`; GraphQL connection types and the resolver are available from `@nest-boot/queue/graphql`. These are entry points in the same package, separated so importing plain queues does not load optional dependencies. Only import the GraphQL entry point in applications that install its peers.
 
 The `jobs` connection supports queue, name, status and date filters, name search, cursor pagination and sorting. `job(id)` returns `null` for missing or out-of-scope jobs. Query authorization is enforced in `JobService`, including direct service calls.
 

@@ -9,7 +9,7 @@ import {
 } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 import { type InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
-import { type Job, type JobState, Queue } from "bullmq";
+import { type Job, type JobState, Queue, type Worker } from "bullmq";
 
 import { Job as PersistedJob } from "../entities/job.entity.js";
 import { type JobHistoryOptions } from "../job-history-options.interface.js";
@@ -26,6 +26,7 @@ export class JobHistoryService
   private cleanupTimer?: ReturnType<typeof setInterval>;
   private cleanup?: Promise<void>;
   private readonly unsubscribe: (() => void)[] = [];
+  private readonly workers = new Set<Worker>();
   private readonly writes = new Set<Promise<void>>();
 
   private readonly jobTTL: number = 1000 * 60 * 60 * 24 * 30;
@@ -155,6 +156,7 @@ export class JobHistoryService
       )
       .forEach((provider: InstanceWrapper<WorkerHost>) => {
         const worker = provider.instance.worker;
+        this.workers.add(worker);
         for (const [event, state] of [
           ["active", "active"],
           ["progress", "active"],
@@ -170,9 +172,12 @@ export class JobHistoryService
       });
   }
 
-  /** Removes observers and waits for history writes before the database closes. */
+  /** Drains workers before removing observers, then finishes writes before the database closes. */
   async onModuleDestroy(): Promise<void> {
     if (this.cleanupTimer) clearInterval(this.cleanupTimer);
+    // BullMQ normally closes workers during onApplicationShutdown, after ORM
+    // teardown can begin. Close them here while the database and observers exist.
+    await Promise.all([...this.workers].map((worker) => worker.close()));
     for (const unsubscribe of this.unsubscribe.splice(0)) unsubscribe();
     await Promise.all([...this.writes, this.cleanup]);
   }

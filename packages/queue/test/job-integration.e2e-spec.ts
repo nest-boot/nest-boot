@@ -14,7 +14,9 @@ import {
   QueueModule,
   WorkerHost,
 } from "../dist/index.js";
-import { Job, JobStatus } from "../dist/persistence.js";
+import { Job, JobHistoryService, JobStatus } from "../dist/persistence.js";
+
+let releaseJob: (() => void) | undefined;
 
 const queueName = `integration-${randomUUID()}`;
 
@@ -22,6 +24,10 @@ const queueName = `integration-${randomUUID()}`;
 class HistoryWorker extends WorkerHost {
   async process(job: BullJob) {
     await job.updateProgress({ done: 1 });
+    if (job.data.wait)
+      await new Promise<void>((resolve) => {
+        releaseJob = resolve;
+      });
     if (job.data.fail) throw new Error("expected failure");
     return { saved: true };
   }
@@ -117,4 +123,18 @@ describe("automatically discovered job history and GraphQL", () => {
     expect(result.data.jobs.totalCount).toBe(2);
     expect(result.data.jobs.edges).toHaveLength(2);
   }, 30000);
+  it("records the final worker result while shutting down history", async () => {
+    const job = await queue.add("shutdown", { tenant: "allowed", wait: true });
+    await vi.waitFor(() => {
+      expect(releaseJob).toBeTypeOf("function");
+    });
+    const stopping = app.get(JobHistoryService).onModuleDestroy();
+    releaseJob?.();
+    await stopping;
+    const row = await orm.em
+      .fork()
+      .findOneOrFail(Job, { id: `${queueName}:${job.id ?? ""}` });
+    expect(row.status).toBe(JobStatus.COMPLETED);
+    expect(row.returnValue).toEqual({ saved: true });
+  }, 15000);
 });

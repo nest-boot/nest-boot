@@ -111,6 +111,7 @@ describe("QueueModule", () => {
     expect(
       mockState.forRootAsyncOptions.useFactory({
         prefix: "jobs",
+        graphql: false,
       }),
     ).toEqual({
       connection: {

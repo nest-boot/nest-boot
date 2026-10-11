@@ -9,6 +9,9 @@ export interface QueueModuleOptions extends Omit<QueueOptions, "connection"> {
   /** Redis connection options for BullMQ queues and workers. */
   connection?: ConnectionOptions;
 
+  /** Enable job queries when database history and GraphQL are available. Defaults to true. */
+  graphql?: boolean;
+
   /** Settings used when DatabaseModule is registered. */
   history?: JobHistoryOptions;
 

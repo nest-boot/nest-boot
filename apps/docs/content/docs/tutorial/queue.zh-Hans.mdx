@@ -169,7 +169,7 @@ export class EmailEventsModule {}
 
 ## 内置任务历史与 GraphQL
 
-`QueueModule` 自动发现应用已注册的集成，不需要 `persistence` 或 `graphql` 开关：
+`QueueModule` 自动发现应用已注册的集成，`graphql` 默认为 `true`；设置为 `false` 可保留持久化但不注册任务查询。无需持久化开关：
 
 | 应用配置                                  | 行为                                                         |
 | ----------------------------------------- | ------------------------------------------------------------ |
@@ -196,6 +196,7 @@ import { Module } from "@nestjs/common";
     }),
     GraphQLModule,
     QueueModule.forRoot({
+      graphql: true, // 默认开启；false 仅关闭内置任务查询。
       history: { jobTTL: 7 * 24 * 60 * 60 * 1000, excludeQueues: ["schedule"] },
       // Authorize this request using your application's verified identity.
       // Return a MikroORM filter for visible jobs, or null to deny access.
@@ -210,7 +211,7 @@ export class JobsModule {}
 
 `getJobReadFilter` 在每次读取时执行，将授权范围同时应用于单条任务、分页结果及总数。未配置回调、返回 `null` 或 `undefined` 都会拒绝访问。返回 `{}` 明确允许访问全部任务，必须先校验调用者权限。任务参数和返回值可能含有敏感数据；入队时可靠地写入归属信息，以及配置需要的 RLS 策略，仍由应用负责。示例服务端通过 MikroORM 的 `discovery.onMetadata` 保留原有用户/工作区 RLS 策略。
 
-异步注册时，将 `history` 和 `getJobReadFilter` 放在 `forRootAsync` 的工厂返回值中。实体和服务从 `@nest-boot/queue/persistence` 导入；GraphQL 连接类型和 Resolver 从 `@nest-boot/queue/graphql` 导入。这些是同一个包的入口，分开导出以避免纯队列加载可选依赖。只在安装相应依赖的应用中导入 GraphQL 入口。
+异步注册时，将 `graphql`、`history` 和 `getJobReadFilter` 放在 `forRootAsync` 的工厂返回值中。实体和服务从 `@nest-boot/queue/persistence` 导入；GraphQL 连接类型和 Resolver 从 `@nest-boot/queue/graphql` 导入。这些是同一个包的入口，分开导出以避免纯队列加载可选依赖。只在安装相应依赖的应用中导入 GraphQL 入口。
 
 `jobs` 支持队列、名称、状态、日期筛选，名称搜索、游标分页和排序。`job(id)` 对不存在或超出授权范围的记录返回 `null`。授权范围由 `JobService` 执行，直接调用服务也同样受限。
 

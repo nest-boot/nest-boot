@@ -94,13 +94,15 @@ export async function createJobIntegration(): Promise<DynamicModule> {
     const { GraphQLModule } = await import("@nest-boot/graphql");
     definition.providers.push({
       provide: Symbol("JobResolver"),
-      inject: [JobService, ModulesContainer],
+      inject: [JobService, ModulesContainer, MODULE_OPTIONS_TOKEN],
       useFactory: async (
         service: InstanceType<typeof JobService> | null,
         modules: ModulesContainer,
+        options: QueueModuleOptions,
       ) => {
         if (
           !service ||
+          options.graphql === false ||
           ![...modules.values()].some(
             (module) => module.metatype === GraphQLModule,
           )

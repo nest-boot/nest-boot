@@ -71,6 +71,43 @@ describe("QueueModule automatic job features", () => {
     30000,
   );
 
+  it.each([false, true])(
+    "disables GraphQL without disabling history (async=%s)",
+    async (async) => {
+      const options = { graphql: false };
+      const module = await Test.createTestingModule({
+        imports: [
+          async
+            ? QueueModule.forRootAsync({ useFactory: () => options })
+            : QueueModule.forRoot(options),
+          DatabaseModule.forRoot({
+            driver: PgliteDriver,
+            dbName: "memory://",
+            entities: [Job],
+          }),
+          GraphQLModule.forRoot({ autoSchemaFile: true, graphiql: false }),
+        ],
+        providers: [PingResolver],
+      }).compile();
+      const app = module.createNestApplication();
+      app.useLogger(false);
+      try {
+        await app.init();
+        expect(module.get(JobHistoryService)).toBeInstanceOf(JobHistoryService);
+        expect(module.get(JobService)).toBeInstanceOf(JobService);
+        expect(
+          Object.keys(
+            module.get(GraphQLSchemaHost).schema.getQueryType()?.getFields() ??
+              {},
+          ),
+        ).toEqual(["ping"]);
+      } finally {
+        await app.close();
+      }
+    },
+    30000,
+  );
+
   it("keeps an existing database application without Job discovery as a plain queue", async () => {
     const module = await Test.createTestingModule({
       imports: [
