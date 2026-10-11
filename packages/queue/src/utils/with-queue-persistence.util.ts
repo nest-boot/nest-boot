@@ -24,30 +24,29 @@ export function withQueuePersistence(
     queues.map(({ name }) => [getQueueToken(name), name ?? "default"]),
   );
   definition.providers = definition.providers?.map((provider) => {
-    if (
-      typeof provider !== "object" ||
-      !("provide" in provider) ||
-      !("useFactory" in provider) ||
-      !tokens.has(provider.provide)
-    )
+    if (typeof provider !== "object" || !("useFactory" in provider))
       return provider;
+    const name = tokens.get(provider.provide);
+    if (name === undefined) return provider;
     const factory: FactoryProvider<Queue> = provider;
-    const name = tokens.get(factory.provide) ?? "default";
     return {
       ...factory,
       inject: [
-        ...(factory.inject ?? []),
         { token: JOB_HISTORY_SERVICE, optional: true },
+        ...(factory.inject ?? []),
       ],
-      useFactory: async (...args: unknown[]) => {
-        const history = args.pop() as JobHistoryService | null | undefined;
-        const { persist, ...options } = args[0] as RegisterQueueOptions;
+      useFactory: async (
+        history: JobHistoryService | null | undefined,
+        queueOptions: RegisterQueueOptions,
+        ...dependencies: unknown[]
+      ) => {
+        const { persist, ...options } = queueOptions;
         if (persist && !history) {
           throw new Error(
             `Queue "${name}" has persist: true but job history is unavailable. Register QueueModule and DatabaseModule, and include the built-in Job entity from @nest-boot/queue/persistence in database discovery.`,
           );
         }
-        const queue = await factory.useFactory(options, ...args.slice(1));
+        const queue = await factory.useFactory(options, ...dependencies);
         if (persist && history) history.registerQueue(queue);
         return queue;
       },

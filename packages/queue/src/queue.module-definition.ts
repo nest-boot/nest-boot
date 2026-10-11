@@ -1,11 +1,6 @@
 import { ConfigurableModuleBuilder } from "@nestjs/common";
-import { randomUUID } from "crypto";
 
 import { QueueModuleOptions } from "./queue-module-options.interface.js";
-
-export const SCHEDULE_QUEUE_NAME = "schedule";
-
-export const SCHEDULE_METADATA_KEY = randomUUID();
 
 export { MODULE_OPTIONS_TOKEN } from "./queue.constants.js";
 

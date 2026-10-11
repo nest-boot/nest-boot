@@ -199,6 +199,51 @@ describe("JobHistoryService", () => {
     ).rejects.toBe(error);
   });
 
+  it.each([false, true])(
+    "keeps local writes ordered without blocking other jobs (first fails=%s)",
+    async (failFirst) => {
+      const queue = createQueue("email");
+      const worker = createWorkerHost("email");
+      const { service } = await createService({}, [worker]);
+      let finishWaiting!: () => void;
+      const waiting = new Promise<void>((resolve) => {
+        finishWaiting = resolve;
+      });
+      const saved: string[] = [];
+      const logger = vi
+        .spyOn(Logger.prototype, "error")
+        .mockImplementation(() => undefined);
+      vi.spyOn(service, "upsertJob").mockImplementation(async (job, state) => {
+        if (job.id === "42" && state === "waiting") {
+          await waiting;
+          if (failFirst) throw new Error("First write failed");
+        }
+        saved.push(`${job.id ?? ""}:${state}`);
+      });
+      service.registerQueue(queue);
+      service.onApplicationBootstrap();
+      const onWaiting = queue.on.mock.calls[0][1] as (job: Job) => void;
+      const onCompleted = (
+        worker.worker.on.mock.calls as WorkerEventCall[]
+      ).find(([event]) => event === "completed")?.[1];
+      if (!onCompleted) throw new Error("Missing completed listener");
+      onWaiting(createJob("waiting"));
+      onCompleted(createJob("completed"));
+      onWaiting(createJob("waiting", { id: "43" }));
+      await Promise.resolve();
+      // Another job can finish while this job's earlier write is still pending.
+      expect(saved).toEqual(["43:waiting"]);
+      finishWaiting();
+      await service.onModuleDestroy();
+      expect(saved).toEqual([
+        "43:waiting",
+        ...(failFirst ? [] : ["42:waiting"]),
+        "42:completed",
+      ]);
+      expect(logger).toHaveBeenCalledTimes(failFirst ? 1 : 0);
+    },
+  );
+
   describe("convertJobToEntityData", () => {
     it("should convert a BullMQ job to entity data", async () => {
       const { service } = await createService();
@@ -410,6 +455,7 @@ describe("JobHistoryService", () => {
     workerHandlers.completed(job);
     workerHandlers.failed(job);
     workerHandlers.failed(undefined);
+    await service.onModuleDestroy();
 
     expect(upsertJob).toHaveBeenCalledWith(job, "waiting");
     expect(upsertJob).toHaveBeenCalledWith(job, "active");

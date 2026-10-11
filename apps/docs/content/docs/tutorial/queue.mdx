@@ -177,7 +177,22 @@ These behaviors apply only to decorators imported from `@nest-boot/queue`. Callb
 | `DatabaseModule` and the built-in `Job` entity                 | Provide `JobHistoryService` and `JobService`; record events only for queues with `persist: true` |
 | Database history plus `GraphQLModule`, unless `graphql: false` | Also provide `job(id)` and the `jobs` connection                                                 |
 
-Installing a package alone does not enable its integration. Database and GraphQL packages are optional peers; plain queues do not require either. Add `@nest-boot/database` for persistence and `@nest-boot/graphql` plus `@nest-boot/graphql-connection` for GraphQL, with their documented peer dependencies.
+`@nest-boot/database`, `@nest-boot/graphql`, and `@nest-boot/graphql-connection` are all optional peer dependencies. Install them in the application only for the features you use, together with their documented peers:
+
+| Feature             | Additional Nest Boot packages                                                |
+| ------------------- | ---------------------------------------------------------------------------- |
+| Plain queues        | None                                                                         |
+| Job persistence     | `@nest-boot/database`                                                        |
+| Job GraphQL queries | `@nest-boot/database`, `@nest-boot/graphql`, `@nest-boot/graphql-connection` |
+
+Installing a package alone does not enable its integration; the application must register the corresponding modules and the built-in entity. `graphql: true` does not require GraphQL in a persistence-only application. If GraphQL queries are active but `graphql-connection` is missing, startup fails with an actionable error; set `graphql: false` to disable those queries.
+
+| Setting            | Registration                                                         | Default          |
+| ------------------ | -------------------------------------------------------------------- | ---------------- |
+| `persist`          | `registerQueue` options or the resolved `registerQueueAsync` options | `false`          |
+| `graphql`          | `forRoot` / `forRootAsync` options                                   | `true`           |
+| `history`          | `forRoot` / `forRootAsync` options                                   | 30-day retention |
+| `getJobReadFilter` | `forRoot` / `forRootAsync` options                                   | Deny reads       |
 
 ```typescript
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
@@ -219,7 +234,7 @@ For async registration, put `graphql`, `history` and `getJobReadFilter` in the `
 
 The `jobs` connection supports queue, name, status and date filters, name search, cursor pagination and sorting. `job(id)` returns `null` for missing or out-of-scope jobs. Query authorization is enforced in `JobService`, including direct service calls.
 
-History observes **local** Queue and Worker events. It is a best-effort history mirror, not a durable audit log or a replacement for BullMQ state. Each write forks an EntityManager; failures are logged without failing workers. `persist` is the only per-queue selection setting; queues and scheduled tasks without it do not record history. `history.convertJobToEntityData` can transform persisted values. An owned hourly timer deletes records whose last update is older than `history.jobTTL` (30 days by default), and is stopped during shutdown. `ScheduleModule` is not required for history cleanup.
+History observes **local** Queue and Worker events. It is a best-effort history mirror, not a durable audit log or a replacement for BullMQ state. Each write forks an EntityManager; failures are logged without failing workers. Within one process, writes for the same job run in event order so a slow earlier write cannot overwrite a later result; different jobs can write concurrently. This does not provide ordering across separate producer/worker processes. `persist` is the only per-queue selection setting; queues and scheduled tasks without it do not record history. `history.convertJobToEntityData` can transform persisted values. An owned hourly timer deletes records whose last update is older than `history.jobTTL` (30 days by default), and is stopped during shutdown. `ScheduleModule` is not required for history cleanup.
 
 For async queue registration, return `persist` from the options factory; `useClass` and `useExisting` factories support the same option:
 

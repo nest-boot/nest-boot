@@ -177,7 +177,22 @@ export class EmailEventsModule {}
 | 已注册 `DatabaseModule` 和内置 `Job` 实体                           | 提供 `JobHistoryService` 和 `JobService`，仅记录设置了 `persist: true` 的队列事件 |
 | 已启用数据库历史，并注册 `GraphQLModule`，且未设置 `graphql: false` | 同时提供 `job(id)` 和 `jobs` 分页查询                                             |
 
-仅安装依赖包不会启用功能。数据库与 GraphQL 是可选 peer dependency，纯队列无需安装它们。持久化需要 `@nest-boot/database`，GraphQL 还需要 `@nest-boot/graphql` 和 `@nest-boot/graphql-connection`，以及各自文档列出的 peer dependency。
+`@nest-boot/database`、`@nest-boot/graphql` 和 `@nest-boot/graphql-connection` 都是可选 peer dependency。按需在应用中安装，并补齐各自文档列出的对等依赖：
+
+| 功能              | 额外需要的 Nest Boot 包                                                      |
+| ----------------- | ---------------------------------------------------------------------------- |
+| 纯队列            | 无                                                                           |
+| 任务持久化        | `@nest-boot/database`                                                        |
+| 任务 GraphQL 查询 | `@nest-boot/database`、`@nest-boot/graphql`、`@nest-boot/graphql-connection` |
+
+仅安装包不会启用功能，还需在应用中注册相应模块及内置实体。只使用持久化时，默认的 `graphql: true` 不会要求安装 GraphQL。若任务查询已满足其他启用条件，但缺少 `graphql-connection`，启动会明确报错；可设置 `graphql: false` 关闭任务查询。
+
+| 配置               | 设置位置                                                 | 默认值     |
+| ------------------ | -------------------------------------------------------- | ---------- |
+| `persist`          | `registerQueue` 参数，或 `registerQueueAsync` 的最终配置 | `false`    |
+| `graphql`          | `forRoot` / `forRootAsync` 参数                          | `true`     |
+| `history`          | `forRoot` / `forRootAsync` 参数                          | 保留 30 天 |
+| `getJobReadFilter` | `forRoot` / `forRootAsync` 参数                          | 拒绝读取   |
 
 ```typescript
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
@@ -219,7 +234,7 @@ export class JobsModule {}
 
 `jobs` 支持队列、名称、状态、日期筛选，名称搜索、游标分页和排序。`job(id)` 对不存在或超出授权范围的记录返回 `null`。授权范围由 `JobService` 执行，直接调用服务也同样受限。
 
-历史同步监听**本地** Queue 和 Worker 事件，是尽力而为的历史记录，不是可靠审计日志，也不能替代 BullMQ 状态。每次写入都会 fork EntityManager，失败仅记录日志，不使 worker 失败。队列是否记录历史统一由 `persist` 控制，未开启的普通队列和定时任务默认不落库；`history.convertJobToEntityData` 可转换记录内容。模块自己的每小时定时器按 `history.jobTTL` 清理最后更新时间过期的记录，默认 30 天；关闭应用时停止定时器，无需 `ScheduleModule`。
+历史同步监听**本地** Queue 和 Worker 事件，是尽力而为的历史记录，不是可靠审计日志，也不能替代 BullMQ 状态。每次写入都会 fork EntityManager，失败仅记录日志，不使 worker 失败。同一进程中，同一任务的写入按事件顺序执行，避免较早的慢写入覆盖后续结果；不同任务仍可并发写入。这不保证独立生产者和 worker 进程之间的写入顺序。队列是否记录历史统一由 `persist` 控制，未开启的普通队列和定时任务默认不落库；`history.convertJobToEntityData` 可转换记录内容。模块自己的每小时定时器按 `history.jobTTL` 清理最后更新时间过期的记录，默认 30 天；关闭应用时停止定时器，无需 `ScheduleModule`。
 
 异步注册队列时，在工厂返回值中设置 `persist`；`useClass` 和 `useExisting` 工厂也支持同一配置：
 

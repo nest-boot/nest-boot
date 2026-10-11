@@ -28,9 +28,9 @@ function isAvailable(name: string): boolean {
  * @returns Providers and exports for the installed integrations.
  */
 export async function createJobProviders(): Promise<
-  Pick<ModuleMetadata, "providers" | "exports">
+  Required<Pick<ModuleMetadata, "providers" | "exports">>
 > {
-  const definition: Pick<ModuleMetadata, "providers" | "exports"> = {
+  const definition: Required<Pick<ModuleMetadata, "providers" | "exports">> = {
     providers: [{ provide: JOB_HISTORY_SERVICE, useValue: null }],
     exports: [JOB_HISTORY_SERVICE],
   };

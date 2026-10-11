@@ -49,7 +49,7 @@ const jobProviders = await createJobProviders();
     }),
   ],
   providers: [
-    ...(jobProviders.providers ?? []),
+    ...jobProviders.providers,
     QueueHealthIndicator,
     {
       provide: MODULE_OPTIONS_TOKEN,
@@ -60,7 +60,7 @@ const jobProviders = await createJobProviders();
   exports: [
     MODULE_OPTIONS_TOKEN,
     QueueHealthIndicator,
-    ...(jobProviders.exports ?? []),
+    ...jobProviders.exports,
   ],
 })
 export class QueueModule extends ConfigurableModuleClass {

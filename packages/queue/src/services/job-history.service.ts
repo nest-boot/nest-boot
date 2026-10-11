@@ -26,7 +26,7 @@ export class JobHistoryService
   private cleanup?: Promise<void>;
   private readonly unsubscribe: (() => void)[] = [];
   private readonly workers = new Set<Worker>();
-  private readonly writes = new Set<Promise<void>>();
+  private readonly writes = new Map<string, Promise<void>>();
 
   private readonly jobTTL: number = 1000 * 60 * 60 * 24 * 30;
 
@@ -85,15 +85,23 @@ export class JobHistoryService
    * @param state - Queue job state reported by the event.
    */
   private recordJobEvent(job: Job, state: JobState): void {
-    const write = this.upsertJob(job, state).catch((error: unknown) => {
+    const id = `${job.queueName}:${job.id ?? ""}`;
+    const previous = this.writes.get(id);
+    // A slow earlier write must not overwrite this job's later result.
+    const pending = previous
+      ? previous.then(() => this.upsertJob(job, state))
+      : this.upsertJob(job, state);
+    const write = pending.catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
         `Failed to persist job ${job.queueName}:${job.id ?? "unknown"} (${state}): ${message}`,
         error instanceof Error ? error.stack : undefined,
       );
     });
-    this.writes.add(write);
-    void write.finally(() => this.writes.delete(write));
+    this.writes.set(id, write);
+    void write.then(() => {
+      if (this.writes.get(id) === write) this.writes.delete(id);
+    });
   }
 
   async cleanHistoryJobs() {
@@ -172,6 +180,6 @@ export class JobHistoryService
     // teardown can begin. Close them here while the database and observers exist.
     await Promise.all([...this.workers].map((worker) => worker.close()));
     for (const unsubscribe of this.unsubscribe.splice(0)) unsubscribe();
-    await Promise.all([...this.writes, this.cleanup]);
+    await Promise.all([...this.writes.values(), this.cleanup]);
   }
 }

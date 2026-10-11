@@ -108,7 +108,10 @@ roles. The integration copies `data` directly; no extra owner columns or custom
 `convertJobToEntityData` mapping are needed. History is retained for 30 days by
 default. Enable history per queue with `QueueModule.registerQueue({ name, persist: true })`,
 or return `persist: true` from `registerQueueAsync` options. Unselected queues and the
-schedule queue do not record history by default.
+schedule queue do not record history by default. `graphql` belongs to `QueueModule.forRoot()` /
+`forRootAsync()` and defaults to true; set it to false for history without the built-in queries.
+The database, GraphQL, and graphql-connection packages are optional peers of queue; the
+example installs all three, while a persistence-only application needs only database support.
 
 ### GraphQL queries
 
