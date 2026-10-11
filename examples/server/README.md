@@ -2,7 +2,7 @@
 
 NestJS API used by the full-stack Nest Boot example. It demonstrates
 authentication, permission checks, GraphQL connections, MikroORM,
-PostgreSQL row-level security, BullMQ job history, middleware, request context,
+PostgreSQL row-level security, BullMQ job persistence, middleware, request context,
 logging, and application commands.
 
 ## Run locally
@@ -68,12 +68,12 @@ Healthy checks return HTTP 200; a failed or timed-out check returns HTTP 503.
 The middleware responds before the global auth guard, so the health endpoint
 does not require a login.
 
-## Job history
+## Jobs
 
 `JobsModule` registers `QueueModule`; the module discovers the application's
-`DatabaseModule`, built-in `Job` metadata, and `GraphQLModule` to enable history
+`DatabaseModule`, built-in `Job` metadata, and `GraphQLModule` to enable job persistence
 and queries. `ScheduleModule` remains registered for application schedules;
-history cleanup uses QueueModule's own hourly timer. Redis/Valkey must be running
+job cleanup uses QueueModule's own hourly timer. Redis/Valkey must be running
 at `REDIS_URL`; `BULLMQ_PREFIX` separates this application's queues from other
 applications using the same Redis database. Both the application and migration
 CLI explicitly include the queue entities. Run migrations before starting the
@@ -105,11 +105,11 @@ the application exposes.
 Background tasks without either identifier
 remain available to the background database connection but are hidden from request
 roles. The integration copies `data` directly; no extra owner columns or custom
-`convertJobToEntityData` mapping are needed. History is retained for 30 days by
-default. Enable history per queue with `QueueModule.registerQueue({ name, persist: true })`,
+`convertJobToEntityData` mapping are needed. Jobs are retained for 30 days by
+default; configure retention and conversion through `QueueModuleOptions.job`. Enable persistence per queue with `QueueModule.registerQueue({ name, persist: true })`,
 or return `persist: true` from `registerQueueAsync` options. Unselected queues and the
-schedule queue do not record history by default. `graphql` belongs to `QueueModule.forRoot()` /
-`forRootAsync()` and defaults to true; set it to false for history without the built-in queries.
+schedule queue do not persist jobs by default. `graphql` belongs to `QueueModule.forRoot()` /
+`forRootAsync()` and defaults to true; set it to false for persistence without the built-in queries.
 The database, GraphQL, and graphql-connection packages are optional peers of queue; the
 example installs all three, while a persistence-only application needs only database support.
 
@@ -120,10 +120,10 @@ connection. Both use the current request's EntityManager and `getJobReadFilter`,
 `data.userId OR data.workspaceId` RLS rule applies to returned rows and counts.
 An inaccessible or missing job returns `null`. Anonymous requests are rejected
 by the application's global `AuthGuard`. Member API keys use their workspace
-scope when reading history.
+scope when reading jobs.
 
 ```graphql
-query JobHistory($id: ID!, $after: String, $filter: JobFilter) {
+query Jobs($id: ID!, $after: String, $filter: JobFilter) {
   job(id: $id) {
     id
     queueName
@@ -178,7 +178,7 @@ are JSON scalars and do not take GraphQL subfields. Output status uses the
 (for example `completed`). Filters and sorting support `queue_name`, `name`,
 `status`, `created_at` and `updated_at`; sorting also supports `ID`. The connection
 supports `first`/`after`, `last`/`before`, and search syntax such as
-`query: "name:generate-report"`. These queries read the persisted history;
+`query: "name:generate-report"`. These queries read the persisted jobs;
 changes become visible after BullMQ events have been synchronized.
 
 ## Member profiles and User privacy

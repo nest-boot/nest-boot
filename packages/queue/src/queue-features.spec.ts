@@ -16,7 +16,6 @@ import { Job } from "./entities/job.entity.js";
 import { QueueModule } from "./queue.module.js";
 import type { RegisterQueueOptionsFactory } from "./register-queue-options.interface.js";
 import { JobService } from "./services/job.service.js";
-import { JobHistoryService } from "./services/job-history.service.js";
 
 // Exercise real Nest option factories while replacing only the Redis transport.
 vi.mock("bullmq", async (importOriginal) => {
@@ -105,8 +104,8 @@ describe("QueueModule automatic job features", () => {
       try {
         await module.init();
         const queue = module.get<Queue>(getQueueToken(name));
-        const history = module.get(JobHistoryService);
-        const write = vi.spyOn(history, "upsertJob").mockResolvedValue();
+        const jobService = module.get(JobService);
+        const write = vi.spyOn(jobService, "upsertJob").mockResolvedValue();
         queue.emit("waiting", { id: "42" } as BullJob);
         expect(write).toHaveBeenCalledTimes(persist ? 1 : 0);
         expect(queue.opts).not.toHaveProperty("persist");
@@ -174,7 +173,6 @@ describe("QueueModule automatic job features", () => {
     const module = await Test.createTestingModule({
       imports: [QueueModule.forRoot({})],
     }).compile();
-    expect(module.get(JobHistoryService)).toBeNull();
     expect(module.get(JobService)).toBeNull();
     await module.close();
   });
@@ -200,7 +198,6 @@ describe("QueueModule automatic job features", () => {
       app.useLogger(false);
       try {
         expect(module.get(EntityManager)).toBeDefined();
-        expect(module.get(JobHistoryService)).toBeInstanceOf(JobHistoryService);
         expect(module.get(JobService)).toBeInstanceOf(JobService);
         if (graphql) {
           await app.init();
@@ -240,7 +237,6 @@ describe("QueueModule automatic job features", () => {
       app.useLogger(false);
       try {
         await app.init();
-        expect(module.get(JobHistoryService)).toBeInstanceOf(JobHistoryService);
         expect(module.get(JobService)).toBeInstanceOf(JobService);
         expect(
           Object.keys(
@@ -277,7 +273,7 @@ describe("QueueModule automatic job features", () => {
     app.useLogger(false);
     try {
       await app.init();
-      expect(module.get(JobHistoryService)).toBeNull();
+      expect(module.get(JobService)).toBeNull();
       expect(
         Object.keys(
           module.get(GraphQLSchemaHost).schema.getQueryType()?.getFields() ??

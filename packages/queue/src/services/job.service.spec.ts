@@ -1,5 +1,6 @@
 import { MikroORM } from "@mikro-orm/pglite";
 import { ForbiddenException } from "@nestjs/common";
+import { DiscoveryService, ModulesContainer } from "@nestjs/core";
 
 import { Job } from "../entities/job.entity.js";
 import { JobStatus } from "../enums/job-status.enum.js";
@@ -32,7 +33,11 @@ describe("JobService read authorization without database RLS", () => {
   it.each([undefined, () => null, () => undefined])(
     "denies both query paths without an authorized scope",
     async (getJobReadFilter) => {
-      const service = new JobService(orm.em.fork(), { getJobReadFilter });
+      const service = new JobService(
+        new DiscoveryService(new ModulesContainer()),
+        orm.em.fork(),
+        { getJobReadFilter },
+      );
       await expect(service.getJob("reports:alice")).rejects.toBeInstanceOf(
         ForbiddenException,
       );
@@ -44,9 +49,13 @@ describe("JobService read authorization without database RLS", () => {
 
   it("evaluates the current identity for every read and scopes rows and counts", async () => {
     let owner = "alice";
-    const service = new JobService(orm.em.fork(), {
-      getJobReadFilter: () => Promise.resolve({ data: { owner } }),
-    });
+    const service = new JobService(
+      new DiscoveryService(new ModulesContainer()),
+      orm.em.fork(),
+      {
+        getJobReadFilter: () => Promise.resolve({ data: { owner } }),
+      },
+    );
     expect((await service.getJob("reports:alice"))?.id).toBe("reports:alice");
     expect(await service.getJob("reports:bob")).toBeNull();
     const connection = await service.getJobConnection({ first: 10 });
@@ -66,9 +75,13 @@ describe("JobService read authorization without database RLS", () => {
   });
 
   it("allows unscoped reads only when the callback explicitly grants them", async () => {
-    const service = new JobService(orm.em.fork(), {
-      getJobReadFilter: () => ({}),
-    });
+    const service = new JobService(
+      new DiscoveryService(new ModulesContainer()),
+      orm.em.fork(),
+      {
+        getJobReadFilter: () => ({}),
+      },
+    );
     expect((await service.getJobConnection({ first: 10 })).totalCount).toBe(2);
   });
 });

@@ -4,8 +4,7 @@ import { EntityManager } from '@mikro-orm/core';
 import { MikroORM } from '@mikro-orm/pglite';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
 import { JobStatus } from '@nest-boot/queue';
-import { JobHistoryService } from '@nest-boot/queue/persistence';
-import { Job } from '@nest-boot/queue/persistence';
+import { Job, JobService } from '@nest-boot/queue/persistence';
 import { RequestContext } from '@nest-boot/request-context';
 import { DiscoveryService } from '@nestjs/core';
 import type { Job as BullJob } from 'bullmq';
@@ -14,7 +13,7 @@ import { configureJobMetadata } from '../src/app/jobs/job-access.js';
 
 describe('example job history RLS', () => {
   let orm: MikroORM;
-  let history: JobHistoryService;
+  let jobService: JobService;
 
   beforeAll(async () => {
     orm = await MikroORM.init({
@@ -32,7 +31,7 @@ describe('example job history RLS', () => {
     await orm.em.execute('create role authenticated nologin');
     await orm.schema.create();
     await orm.em.execute('grant all on job to anonymous, authenticated');
-    history = new JobHistoryService(
+    jobService = new JobService(
       { getProviders: () => [] } as unknown as DiscoveryService,
       orm.em,
       {},
@@ -75,7 +74,7 @@ describe('example job history RLS', () => {
       timestamp: Date.now(),
       getState: async () => 'waiting',
     } as unknown as BullJob;
-    await history.upsertJob(job, 'waiting');
+    await jobService.upsertJob(job, 'waiting');
     return { job, id: `${queueName}:${job.id}` };
   }
 
@@ -232,7 +231,7 @@ describe('example job history RLS', () => {
       finishedOn: Date.now(),
       getState: async () => 'completed',
     } as unknown as BullJob;
-    await history.upsertJob(completed, 'completed');
+    await jobService.upsertJob(completed, 'completed');
     const em = scoped();
     expect(await em.findOneOrFail(Job, reports.id)).toMatchObject({
       data,
@@ -245,7 +244,7 @@ describe('example job history RLS', () => {
     await admin.nativeUpdate(Job, reports.id, {
       updatedAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000),
     });
-    await history.cleanHistoryJobs();
+    await jobService.cleanJobs();
     expect(await admin.count(Job, reports.id)).toBe(0);
     expect(await admin.count(Job, exports.id)).toBe(1);
   });

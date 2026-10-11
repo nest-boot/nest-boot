@@ -2,18 +2,18 @@ import type { FilterQuery } from "@mikro-orm/core";
 import { ConnectionOptions, type QueueOptions } from "bullmq";
 
 import type { Job } from "./entities/job.entity.js";
-import type { JobHistoryOptions } from "./job-history-options.interface.js";
+import type { JobOptions } from "./job-options.interface.js";
 
 /** Configuration options for the BullMQ module. */
 export interface QueueModuleOptions extends Omit<QueueOptions, "connection"> {
   /** Redis connection options for BullMQ queues and workers. */
   connection?: ConnectionOptions;
 
-  /** Enable job queries when database history and GraphQL are available. Defaults to true. */
+  /** Enable job queries when job persistence and GraphQL are available. Defaults to true. */
   graphql?: boolean;
 
   /** Settings used when DatabaseModule is registered. */
-  history?: JobHistoryOptions;
+  job?: JobOptions;
 
   /**
    * Authorizes each job read and returns its database scope using trusted request context.

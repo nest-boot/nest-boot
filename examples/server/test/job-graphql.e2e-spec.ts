@@ -9,7 +9,12 @@ import { Job } from '@nest-boot/queue/persistence';
 import { JobService } from '@nest-boot/queue/persistence';
 import { RequestContext } from '@nest-boot/request-context';
 import type { INestApplication } from '@nestjs/common';
-import { ModuleRef, Reflector } from '@nestjs/core';
+import {
+  DiscoveryService,
+  ModuleRef,
+  ModulesContainer,
+  Reflector,
+} from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
@@ -94,7 +99,11 @@ describe('example Job GraphQL API with native RLS', () => {
       },
     ]);
 
-    const service = new JobService(orm.em, { getJobReadFilter });
+    const service = new JobService(
+      new DiscoveryService(new ModulesContainer()),
+      orm.em,
+      { getJobReadFilter },
+    );
     const module = await Test.createTestingModule({
       imports: [
         GraphQLModule.forRoot({ autoSchemaFile: true, graphiql: false }),

@@ -167,15 +167,15 @@ export class EmailEventsModule {}
 
 这些行为仅适用于从 `@nest-boot/queue` 导入的装饰器。直接使用 `worker.on()`、`queue.on()` 或 `queueEvents.on()` 注册的回调，需要显式通过 `RequestContext.run()` 等方式包装，并处理异步异常。
 
-## 内置任务历史与 GraphQL
+## 内置任务持久化与 GraphQL
 
 `QueueModule` 自动发现应用已注册的集成，`graphql` 默认为 `true`；设置为 `false` 可保留持久化但不注册任务查询。各队列的 `persist` 默认为 `false`，在 `registerQueue` 中按需开启：
 
-| 应用配置                                                            | 行为                                                                              |
-| ------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| 未配置数据库集成，且没有队列设置 `persist: true`                    | 仅运行 BullMQ 队列和 worker                                                       |
-| 已注册 `DatabaseModule` 和内置 `Job` 实体                           | 提供 `JobHistoryService` 和 `JobService`，仅记录设置了 `persist: true` 的队列事件 |
-| 已启用数据库历史，并注册 `GraphQLModule`，且未设置 `graphql: false` | 同时提供 `job(id)` 和 `jobs` 分页查询                                             |
+| 应用配置                                                            | 行为                                                       |
+| ------------------------------------------------------------------- | ---------------------------------------------------------- |
+| 未配置数据库集成，且没有队列设置 `persist: true`                    | 仅运行 BullMQ 队列和 worker                                |
+| 已注册 `DatabaseModule` 和内置 `Job` 实体                           | 提供 `JobService`，仅记录设置了 `persist: true` 的队列事件 |
+| 已启用任务持久化，并注册 `GraphQLModule`，且未设置 `graphql: false` | 同时提供 `job(id)` 和 `jobs` 分页查询                      |
 
 `@nest-boot/database`、`@nest-boot/graphql` 和 `@nest-boot/graphql-connection` 都是可选 peer dependency。按需在应用中安装，并补齐各自文档列出的对等依赖：
 
@@ -191,7 +191,7 @@ export class EmailEventsModule {}
 | ------------------ | -------------------------------------------------------- | ---------- |
 | `persist`          | `registerQueue` 参数，或 `registerQueueAsync` 的最终配置 | `false`    |
 | `graphql`          | `forRoot` / `forRootAsync` 参数                          | `true`     |
-| `history`          | `forRoot` / `forRootAsync` 参数                          | 保留 30 天 |
+| `job`              | `forRoot` / `forRootAsync` 参数                          | 保留 30 天 |
 | `getJobReadFilter` | `forRoot` / `forRootAsync` 参数                          | 拒绝读取   |
 
 ```typescript
@@ -212,7 +212,7 @@ import { Module } from "@nestjs/common";
     GraphQLModule,
     QueueModule.forRoot({
       graphql: true, // 默认开启；false 仅关闭内置任务查询。
-      history: { jobTTL: 7 * 24 * 60 * 60 * 1000 },
+      job: { jobTTL: 7 * 24 * 60 * 60 * 1000 },
       // Authorize this request using your application's verified identity.
       // Return a MikroORM filter for visible jobs, or null to deny access.
       getJobReadFilter: () => null,
@@ -230,11 +230,11 @@ export class JobsModule {}
 
 `getJobReadFilter` 在每次读取时执行，将授权范围同时应用于单条任务、分页结果及总数。未配置回调、返回 `null` 或 `undefined` 都会拒绝访问。返回 `{}` 明确允许访问全部任务，必须先校验调用者权限。任务参数和返回值可能含有敏感数据；入队时可靠地写入归属信息，以及配置需要的 RLS 策略，仍由应用负责。示例服务端通过 MikroORM 的 `discovery.onMetadata` 保留原有用户/工作区 RLS 策略。
 
-异步注册时，将 `graphql`、`history` 和 `getJobReadFilter` 放在 `forRootAsync` 的工厂返回值中。实体和服务从 `@nest-boot/queue/persistence` 导入；GraphQL 连接类型和 Resolver 从 `@nest-boot/queue/graphql` 导入。这些是同一个包的入口，分开导出以避免纯队列加载可选依赖。只在安装相应依赖的应用中导入 GraphQL 入口。
+异步注册时，将 `graphql`、`job` 和 `getJobReadFilter` 放在 `forRootAsync` 的工厂返回值中。实体和服务从 `@nest-boot/queue/persistence` 导入；GraphQL 连接类型和 Resolver 从 `@nest-boot/queue/graphql` 导入。这些是同一个包的入口，分开导出以避免纯队列加载可选依赖。只在安装相应依赖的应用中导入 GraphQL 入口。
 
 `jobs` 支持队列、名称、状态、日期筛选，名称搜索、游标分页和排序。`job(id)` 对不存在或超出授权范围的记录返回 `null`。授权范围由 `JobService` 执行，直接调用服务也同样受限。
 
-历史同步监听**本地** Queue 和 Worker 事件，是尽力而为的历史记录，不是可靠审计日志，也不能替代 BullMQ 状态。每次写入都会 fork EntityManager，失败仅记录日志，不使 worker 失败。同一进程中，同一任务的写入按事件顺序执行，避免较早的慢写入覆盖后续结果；不同任务仍可并发写入。这不保证独立生产者和 worker 进程之间的写入顺序。队列是否记录历史统一由 `persist` 控制，未开启的普通队列和定时任务默认不落库；`history.convertJobToEntityData` 可转换记录内容。模块自己的每小时定时器按 `history.jobTTL` 清理最后更新时间过期的记录，默认 30 天；关闭应用时停止定时器，无需 `ScheduleModule`。
+`JobService` 监听**本地** Queue 和 Worker 事件，每个任务保存一条记录，持续更新其最近已知状态。这是尽力而为的状态同步，不是逐条事件历史或可靠审计日志，也不能替代 BullMQ 状态。每次写入都会 fork EntityManager，失败仅记录日志，不使 worker 失败。同一进程中，同一任务的写入按事件顺序执行，避免较早的慢写入覆盖后续结果；不同任务仍可并发写入。这不保证独立生产者和 worker 进程之间的写入顺序。队列是否持久化任务统一由 `persist` 控制，未开启的普通队列和定时任务默认不落库；`job.convertJobToEntityData` 可转换记录内容。模块自己的每小时定时器按 `job.jobTTL` 清理最后更新时间过期的记录，默认 30 天；关闭应用时停止定时器，无需 `ScheduleModule`。
 
 异步注册队列时，在工厂返回值中设置 `persist`；`useClass` 和 `useExisting` 工厂也支持同一配置：
 
@@ -251,7 +251,7 @@ QueueModule.registerQueueAsync({
 
 `@nest-boot/queue-database` 已从仓库移除。迁移到同一个 `@nest-boot/queue` 包；已发布的旧版本仍保留在 npm，但不会随本次变更更新。
 
-使用内置 API 时，移除 `QueueDatabaseModule`，以内置 `Job` 替换应用的旧实体，将历史配置移至 `QueueModuleOptions.history`，用各队列的 `persist: true` 替代 include/exclude 列表，并配置 `getJobReadFilter`。删除应用原有的 `JobResolver`、`JobService` 和分页定义，避免重复 GraphQL 字段。审核迁移时注意保留既有任务数据、自定义字段和 RLS 策略。
+使用内置 API 时，移除 `QueueDatabaseModule`，以内置 `Job` 替换应用的旧实体，将任务持久化配置移至 `QueueModuleOptions.job`，用各队列的 `persist: true` 替代 include/exclude 列表，并配置 `getJobReadFilter`。删除应用原有的 `JobResolver`、`JobService` 和分页定义，避免重复 GraphQL 字段。审核迁移时注意保留既有任务数据、自定义字段和 RLS 策略。
 
 ## 最佳实践
 

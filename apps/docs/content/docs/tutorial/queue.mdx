@@ -3,7 +3,7 @@ title: "Queue"
 description: "Distributed job queues and background workers with BullMQ, Redis-backed processing, and optional MikroORM integration."
 ---
 
-The `@nest-boot/queue` module wraps [`@nestjs/bullmq`](https://docs.nestjs.com/techniques/queues) for distributed job processing with Redis-backed queues. It also integrates job history and GraphQL queries by discovering registered application services.
+The `@nest-boot/queue` module wraps [`@nestjs/bullmq`](https://docs.nestjs.com/techniques/queues) for distributed job processing with Redis-backed queues. It also integrates job persistence and GraphQL queries by discovering registered application services.
 
 ## Installation
 
@@ -167,15 +167,15 @@ Handler and context middleware failures are caught and logged to prevent unhandl
 
 These behaviors apply only to decorators imported from `@nest-boot/queue`. Callbacks registered directly with `worker.on()`, `queue.on()`, or `queueEvents.on()` need explicit wrapping, such as `RequestContext.run()`, and asynchronous error handling.
 
-## Integrated job history and GraphQL
+## Integrated job persistence and GraphQL
 
-`QueueModule` discovers the application's registered integrations automatically. `graphql` defaults to `true`; set it to `false` to keep history without registering job queries. Each queue defaults to `persist: false`; enable it explicitly in `registerQueue`:
+`QueueModule` discovers the application's registered integrations automatically. `graphql` defaults to `true`; set it to `false` to keep persistence without registering job queries. Each queue defaults to `persist: false`; enable it explicitly in `registerQueue`:
 
-| Application configuration                                      | Behavior                                                                                         |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| No database integration and no `persist: true`                 | BullMQ queues and workers only                                                                   |
-| `DatabaseModule` and the built-in `Job` entity                 | Provide `JobHistoryService` and `JobService`; record events only for queues with `persist: true` |
-| Database history plus `GraphQLModule`, unless `graphql: false` | Also provide `job(id)` and the `jobs` connection                                                 |
+| Application configuration                                     | Behavior                                                                 |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| No database integration and no `persist: true`                | BullMQ queues and workers only                                           |
+| `DatabaseModule` and the built-in `Job` entity                | Provide `JobService`; record events only for queues with `persist: true` |
+| Job persistence plus `GraphQLModule`, unless `graphql: false` | Also provide `job(id)` and the `jobs` connection                         |
 
 `@nest-boot/database`, `@nest-boot/graphql`, and `@nest-boot/graphql-connection` are all optional peer dependencies. Install them in the application only for the features you use, together with their documented peers:
 
@@ -191,7 +191,7 @@ Installing a package alone does not enable its integration; the application must
 | ------------------ | -------------------------------------------------------------------- | ---------------- |
 | `persist`          | `registerQueue` options or the resolved `registerQueueAsync` options | `false`          |
 | `graphql`          | `forRoot` / `forRootAsync` options                                   | `true`           |
-| `history`          | `forRoot` / `forRootAsync` options                                   | 30-day retention |
+| `job`              | `forRoot` / `forRootAsync` options                                   | 30-day retention |
 | `getJobReadFilter` | `forRoot` / `forRootAsync` options                                   | Deny reads       |
 
 ```typescript
@@ -212,7 +212,7 @@ import { Module } from "@nestjs/common";
     GraphQLModule,
     QueueModule.forRoot({
       graphql: true, // Default; use false to disable the built-in job queries.
-      history: { jobTTL: 7 * 24 * 60 * 60 * 1000 },
+      job: { jobTTL: 7 * 24 * 60 * 60 * 1000 },
       // Authorize this request using your application's verified identity.
       // Return a MikroORM filter for visible jobs, or null to deny access.
       getJobReadFilter: () => null,
@@ -230,11 +230,11 @@ Add `queueEntities` to **both** the application's database options and the Mikro
 
 `getJobReadFilter` is evaluated for every read. Its scope applies to single-job queries, pagination and counts. Missing callbacks, `null` and `undefined` deny access. Returning `{}` explicitly allows all jobs; do so only after checking the caller's authorization. Task payloads and results can contain sensitive data. Applications remain responsible for assigning trustworthy job ownership when enqueueing and, where used, configuring their own RLS policies. The example server retains its user/workspace RLS policy using MikroORM's `discovery.onMetadata` hook.
 
-For async registration, put `graphql`, `history` and `getJobReadFilter` in the `forRootAsync` factory result. Services and the built-in entity are available from `@nest-boot/queue/persistence`; GraphQL connection types and the resolver are available from `@nest-boot/queue/graphql`. These are entry points in the same package, separated so importing plain queues does not load optional dependencies. Only import the GraphQL entry point in applications that install its peers.
+For async registration, put `graphql`, `job` and `getJobReadFilter` in the `forRootAsync` factory result. Services and the built-in entity are available from `@nest-boot/queue/persistence`; GraphQL connection types and the resolver are available from `@nest-boot/queue/graphql`. These are entry points in the same package, separated so importing plain queues does not load optional dependencies. Only import the GraphQL entry point in applications that install its peers.
 
 The `jobs` connection supports queue, name, status and date filters, name search, cursor pagination and sorting. `job(id)` returns `null` for missing or out-of-scope jobs. Query authorization is enforced in `JobService`, including direct service calls.
 
-History observes **local** Queue and Worker events. It is a best-effort history mirror, not a durable audit log or a replacement for BullMQ state. Each write forks an EntityManager; failures are logged without failing workers. Within one process, writes for the same job run in event order so a slow earlier write cannot overwrite a later result; different jobs can write concurrently. This does not provide ordering across separate producer/worker processes. `persist` is the only per-queue selection setting; queues and scheduled tasks without it do not record history. `history.convertJobToEntityData` can transform persisted values. An owned hourly timer deletes records whose last update is older than `history.jobTTL` (30 days by default), and is stopped during shutdown. `ScheduleModule` is not required for history cleanup.
+`JobService` observes **local** Queue and Worker events and stores one record per job, updating its latest known state. It is a best-effort state mirror, not an event history, durable audit log, or replacement for BullMQ state. Each write forks an EntityManager; failures are logged without failing workers. Within one process, writes for the same job run in event order so a slow earlier write cannot overwrite a later result; different jobs can write concurrently. This does not provide ordering across separate producer/worker processes. `persist` is the only per-queue selection setting; queues and scheduled tasks without it do not persist jobs. `job.convertJobToEntityData` can transform persisted values. An owned hourly timer deletes records whose last update is older than `job.jobTTL` (30 days by default), and is stopped during shutdown. `ScheduleModule` is not required for history cleanup.
 
 For async queue registration, return `persist` from the options factory; `useClass` and `useExisting` factories support the same option:
 
@@ -251,7 +251,7 @@ Explicitly enabling `persist` requires registered `QueueModule` and `DatabaseMod
 
 `@nest-boot/queue-database` has been removed from the repository. Migrate to the integrated `@nest-boot/queue` package. Previously published versions remain on npm but do not receive this update.
 
-To adopt the integrated API, remove `QueueDatabaseModule`, register the built-in `Job` entity instead of the application's previous entity, move history options under `QueueModuleOptions.history`, replace include/exclude lists with `persist: true` on each selected queue, and configure `getJobReadFilter`. Remove application-owned `JobResolver`, `JobService` and connection definitions to avoid duplicate GraphQL fields. Review the generated migration carefully to preserve existing job data, additional fields and RLS policies.
+To adopt the integrated API, remove `QueueDatabaseModule`, register the built-in `Job` entity instead of the application's previous entity, move job persistence options under `QueueModuleOptions.job`, replace include/exclude lists with `persist: true` on each selected queue, and configure `getJobReadFilter`. Remove application-owned `JobResolver`, `JobService` and connection definitions to avoid duplicate GraphQL fields. Review the generated migration carefully to preserve existing job data, additional fields and RLS policies.
 
 ## Best Practices
 

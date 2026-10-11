@@ -25,7 +25,7 @@ const jobProviders = await createJobProviders();
  * BullMQ integration module for job queue processing.
  *
  * Wraps `@nestjs/bullmq` with automatic Redis connection configuration
- * from `REDIS_URL`. Registers job history when DatabaseModule and Job metadata
+ * from `REDIS_URL`. Registers JobService when DatabaseModule and Job metadata
  * are available; only queues registered with persist: true record jobs. Enables
  * job queries when GraphQLModule is also registered unless
  * the graphql option is false.
@@ -38,7 +38,7 @@ const jobProviders = await createJobProviders();
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: (options: QueueModuleOptions) => {
         const bullOptions = { ...options };
-        delete bullOptions.history;
+        delete bullOptions.job;
         delete bullOptions.getJobReadFilter;
         delete bullOptions.graphql;
         return {

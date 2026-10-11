@@ -6,9 +6,9 @@ import type {
 } from "@nestjs/common";
 import type { Queue } from "bullmq";
 
-import { JOB_HISTORY_SERVICE } from "../queue.constants.js";
+import { JOB_SERVICE } from "../queue.constants.js";
 import type { RegisterQueueOptions } from "../register-queue-options.interface.js";
-import type { JobHistoryService } from "../services/job-history.service.js";
+import type { JobService } from "../services/job.service.js";
 
 /**
  * Applies persistence to queues after resolving their synchronous or async options.
@@ -32,22 +32,22 @@ export function withQueuePersistence(
     return {
       ...factory,
       inject: [
-        { token: JOB_HISTORY_SERVICE, optional: true },
+        { token: JOB_SERVICE, optional: true },
         ...(factory.inject ?? []),
       ],
       useFactory: async (
-        history: JobHistoryService | null | undefined,
+        jobService: JobService | null | undefined,
         queueOptions: RegisterQueueOptions,
         ...dependencies: unknown[]
       ) => {
         const { persist, ...options } = queueOptions;
-        if (persist && !history) {
+        if (persist && !jobService) {
           throw new Error(
-            `Queue "${name}" has persist: true but job history is unavailable. Register QueueModule and DatabaseModule, and include the built-in Job entity from @nest-boot/queue/persistence in database discovery.`,
+            `Queue "${name}" has persist: true but job persistence is unavailable. Register QueueModule and DatabaseModule, and include the built-in Job entity from @nest-boot/queue/persistence in database discovery.`,
           );
         }
         const queue = await factory.useFactory(options, ...dependencies);
-        if (persist && history) history.registerQueue(queue);
+        if (persist && jobService) jobService.registerQueue(queue);
         return queue;
       },
     };

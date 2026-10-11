@@ -4,7 +4,7 @@ import type {
 } from "@nestjs/bullmq";
 import type { Type } from "@nestjs/common";
 
-/** Options for registering a queue and its optional job history. */
+/** Options for registering a queue and optional job persistence. */
 export interface RegisterQueueOptions extends BaseRegisterQueueOptions {
   /** Persist this queue's local job events. Defaults to false; requires DatabaseModule and Job metadata. */
   persist?: boolean;

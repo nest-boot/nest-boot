@@ -10,7 +10,7 @@ import { type JobProgress } from "bullmq";
 
 import { JobStatus } from "../enums/job-status.enum.js";
 
-/** Persisted BullMQ job history. Add this entity to MikroORM discovery. */
+/** Persisted BullMQ job state. Add this entity to MikroORM discovery. */
 @Entity()
 export class Job {
   /** BullMQ job identifier. */

@@ -1,10 +1,7 @@
 import type { ModuleMetadata } from "@nestjs/common";
 import { DiscoveryService, ModulesContainer } from "@nestjs/core";
 
-import {
-  JOB_HISTORY_SERVICE,
-  MODULE_OPTIONS_TOKEN,
-} from "./queue.constants.js";
+import { JOB_SERVICE, MODULE_OPTIONS_TOKEN } from "./queue.constants.js";
 import type { QueueModuleOptions } from "./queue-module-options.interface.js";
 
 /**
@@ -31,21 +28,19 @@ export async function createJobProviders(): Promise<
   Required<Pick<ModuleMetadata, "providers" | "exports">>
 > {
   const definition: Required<Pick<ModuleMetadata, "providers" | "exports">> = {
-    providers: [{ provide: JOB_HISTORY_SERVICE, useValue: null }],
-    exports: [JOB_HISTORY_SERVICE],
+    providers: [{ provide: JOB_SERVICE, useValue: null }],
+    exports: [JOB_SERVICE],
   };
   if (!isAvailable("@nest-boot/database")) return definition;
 
   const { DatabaseModule } = await import("@nest-boot/database");
   const { EntityManager } = await import("@mikro-orm/core");
   const { Job } = await import("./entities/job.entity.js");
-  const { JobHistoryService } =
-    await import("./services/job-history.service.js");
   const { JobService } = await import("./services/job.service.js");
 
   definition.providers = [
     {
-      provide: JobHistoryService,
+      provide: JobService,
       inject: [
         DiscoveryService,
         ModulesContainer,
@@ -70,28 +65,15 @@ export async function createJobProviders(): Promise<
           em.getMetadata().get(Job).class !== Job
         )
           return null;
-        return new JobHistoryService(discovery, em, options.history ?? {});
+        return new JobService(discovery, em, options);
       },
-    },
-    {
-      provide: JobService,
-      inject: [
-        JobHistoryService,
-        { token: EntityManager, optional: true },
-        MODULE_OPTIONS_TOKEN,
-      ],
-      useFactory: (
-        history: InstanceType<typeof JobHistoryService> | null,
-        em: InstanceType<typeof EntityManager> | undefined,
-        options: QueueModuleOptions,
-      ) => (history && em ? new JobService(em, options) : null),
     },
   ];
   definition.providers.push({
-    provide: JOB_HISTORY_SERVICE,
-    useExisting: JobHistoryService,
+    provide: JOB_SERVICE,
+    useExisting: JobService,
   });
-  definition.exports = [JOB_HISTORY_SERVICE, JobHistoryService, JobService];
+  definition.exports = [JOB_SERVICE, JobService];
 
   if (isAvailable("@nest-boot/graphql")) {
     const { GraphQLModule } = await import("@nest-boot/graphql");

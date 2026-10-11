@@ -8,9 +8,9 @@ import type { Mock } from "vitest";
 
 import { Job as PersistedJob } from "../entities/job.entity.js";
 import { JobStatus } from "../enums/job-status.enum.js";
-import { JobHistoryOptions } from "../job-history-options.interface.js";
-import { JOB_HISTORY_OPTIONS } from "../queue.constants.js";
-import { JobHistoryService } from "./job-history.service.js";
+import { JobOptions } from "../job-options.interface.js";
+import { MODULE_OPTIONS_TOKEN } from "../queue.constants.js";
+import { JobService } from "./job.service.js";
 
 class TestWorkerHost extends WorkerHost {
   async process(): Promise<void> {
@@ -66,7 +66,7 @@ function createJob(
  * @returns Test service and its mocked dependencies.
  */
 async function createService(
-  options: Partial<JobHistoryOptions> = {},
+  options: Partial<JobOptions> = {},
   providers: unknown[] = [],
 ) {
   const fork = {
@@ -84,7 +84,7 @@ async function createService(
   } as unknown as DiscoveryService;
   const moduleRef = await Test.createTestingModule({
     providers: [
-      JobHistoryService,
+      JobService,
       {
         provide: DiscoveryService,
         useValue: discoveryService,
@@ -94,9 +94,9 @@ async function createService(
         useValue: em,
       },
       {
-        provide: JOB_HISTORY_OPTIONS,
+        provide: MODULE_OPTIONS_TOKEN,
         useValue: {
-          ...options,
+          job: options,
         },
       },
     ],
@@ -107,7 +107,7 @@ async function createService(
     em,
     fork,
     getProviders,
-    service: moduleRef.get(JobHistoryService),
+    service: moduleRef.get(JobService),
   };
 }
 
@@ -150,7 +150,7 @@ function createWorkerHost(name: string, prefix = "bull"): WorkerHostWithMock {
   return workerHost as unknown as WorkerHostWithMock;
 }
 
-describe("JobHistoryService", () => {
+describe("JobService persistence", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -322,7 +322,7 @@ describe("JobHistoryService", () => {
       jobTTL: 1000,
     });
 
-    await service.cleanHistoryJobs();
+    await service.cleanJobs();
 
     expect(fork.nativeDelete).toHaveBeenCalledWith(PersistedJob, {
       updatedAt: {
@@ -341,7 +341,7 @@ describe("JobHistoryService", () => {
     service.onApplicationBootstrap();
     await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
     expect(logger).toHaveBeenCalledWith(
-      "Failed to clean job history",
+      "Failed to clean jobs",
       expect.any(Error),
     );
     await vi.advanceTimersByTimeAsync(60 * 60 * 1000);

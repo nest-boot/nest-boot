@@ -12,7 +12,7 @@ import {
 import { Job } from "../entities/job.entity.js";
 import { JobService } from "../services/job.service.js";
 
-/** Job history queries protected by the service read scope. */
+/** Job queries protected by the service read scope. */
 @Resolver(() => Job)
 export class JobResolver {
   /**

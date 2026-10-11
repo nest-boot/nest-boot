@@ -1,3 +1,2 @@
-export const JOB_HISTORY_OPTIONS = Symbol("JobHistoryOptions");
 export const MODULE_OPTIONS_TOKEN = Symbol("QueueModuleOptions");
-export const JOB_HISTORY_SERVICE = Symbol("JobHistoryService");
+export const JOB_SERVICE = Symbol("JobService");

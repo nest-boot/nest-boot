@@ -6,7 +6,7 @@
     "url": "https://github.com/nest-boot/nest-boot.git",
     "directory": "packages/queue"
   },
-  "description": "BullMQ queues, persisted job history, and optional GraphQL queries",
+  "description": "BullMQ queues, job persistence, and optional GraphQL queries",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",

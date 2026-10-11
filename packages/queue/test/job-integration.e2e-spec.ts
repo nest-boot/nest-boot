@@ -14,7 +14,7 @@ import {
   QueueModule,
   WorkerHost,
 } from "../dist/index.js";
-import { Job, JobHistoryService, JobStatus } from "../dist/persistence.js";
+import { Job, JobService, JobStatus } from "../dist/persistence.js";
 
 let releaseJob: (() => void) | undefined;
 
@@ -182,7 +182,7 @@ describe("automatically discovered job history and GraphQL", () => {
     await vi.waitFor(() => {
       expect(releaseJob).toBeTypeOf("function");
     });
-    const stopping = app.get(JobHistoryService).onModuleDestroy();
+    const stopping = app.get(JobService).onModuleDestroy();
     releaseJob?.();
     await stopping;
     const row = await orm.em
