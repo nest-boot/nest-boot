@@ -62,15 +62,16 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 
 ## 队列包改名
 
-| 原包名                        | 版本 8 包名                 |
-| ----------------------------- | --------------------------- |
-| `@nest-boot/bullmq`           | `@nest-boot/queue`          |
-| `@nest-boot/bullmq-mikro-orm` | `@nest-boot/queue-database` |
+| 原包名                        | 版本 8 包名                    |
+| ----------------------------- | ------------------------------ |
+| `@nest-boot/bullmq`           | `@nest-boot/queue`             |
+| `@nest-boot/bullmq-mikro-orm` | `@nest-boot/queue`（任务历史） |
 
 `BullModule`、`BullModuleOptions`、`BullMQHealthIndicator` 分别改为
-`QueueModule`、`QueueModuleOptions`、`QueueHealthIndicator`。任务持久化模块和配置类型
-分别从 `BullMQMikroORMModule`、`BullMQMikroORMModuleOptions` 改为
-`QueueDatabaseModule`、`QueueDatabaseModuleOptions`。
+`QueueModule`、`QueueModuleOptions`、`QueueHealthIndicator`。任务持久化整合进
+`QueueModule`：注册 `@nest-boot/queue/persistence` 的内置 `Job` 实体，
+将历史配置移至 `QueueModuleOptions.history`，移除 `BullMQMikroORMModule` /
+`QueueDatabaseModule`。实体发现、数据库迁移和查询授权详见[队列教程](/docs/tutorial/queue)。
 
 底层继续使用 BullMQ 和 MikroORM，保留 `bullmq`、`@nestjs/bullmq`、`@mikro-orm/core`
 等上游依赖。

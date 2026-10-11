@@ -1,16 +1,16 @@
-import { EntityData, EntityManager } from "@mikro-orm/core";
-import { WorkerHost } from "@nest-boot/queue";
+import { EntityManager } from "@mikro-orm/core";
+import { WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import { Job, JobState, Queue } from "bullmq";
 import type { Mock } from "vitest";
 
-import { JobEntity } from "./entities/job.entity.js";
-import { JobStatus } from "./enums/job-status.enum.js";
-import { MODULE_OPTIONS_TOKEN } from "./queue-database.module-definition.js";
-import { QueueDatabaseService } from "./queue-database.service.js";
-import { QueueDatabaseModuleOptions } from "./queue-database-module-options.interface.js";
+import { Job as PersistedJob } from "../entities/job.entity.js";
+import { JobStatus } from "../enums/job-status.enum.js";
+import { JobHistoryOptions } from "../job-history-options.interface.js";
+import { JOB_HISTORY_OPTIONS } from "../queue.constants.js";
+import { JobHistoryService } from "./job-history.service.js";
 
 class TestWorkerHost extends WorkerHost {
   async process(): Promise<void> {
@@ -21,6 +21,7 @@ class TestWorkerHost extends WorkerHost {
 interface TestWorker {
   name: string;
   on: Mock;
+  off: Mock;
 }
 
 type WorkerHostWithMock = Omit<TestWorkerHost, "worker"> & {
@@ -63,7 +64,7 @@ function createJob(
  * @returns Test service and its mocked dependencies.
  */
 async function createService(
-  options: Partial<QueueDatabaseModuleOptions> = {},
+  options: Partial<JobHistoryOptions> = {},
   providers: unknown[] = [],
 ) {
   const fork = {
@@ -81,7 +82,7 @@ async function createService(
   } as unknown as DiscoveryService;
   const moduleRef = await Test.createTestingModule({
     providers: [
-      QueueDatabaseService,
+      JobHistoryService,
       {
         provide: DiscoveryService,
         useValue: discoveryService,
@@ -91,9 +92,8 @@ async function createService(
         useValue: em,
       },
       {
-        provide: MODULE_OPTIONS_TOKEN,
+        provide: JOB_HISTORY_OPTIONS,
         useValue: {
-          jobEntity: JobEntity,
           ...options,
         },
       },
@@ -105,7 +105,7 @@ async function createService(
     em,
     fork,
     getProviders,
-    service: moduleRef.get(QueueDatabaseService),
+    service: moduleRef.get(JobHistoryService),
   };
 }
 
@@ -118,9 +118,11 @@ function createQueue(name: string) {
   const queue = Object.create(Queue.prototype) as Omit<Queue, "name" | "on"> & {
     name: string;
     on: Mock;
+    off: Mock;
   };
   queue.name = name;
   queue.on = vi.fn();
+  queue.off = vi.fn();
 
   return queue;
 }
@@ -135,6 +137,7 @@ function createWorkerHost(name: string): WorkerHostWithMock {
   const worker: TestWorker = {
     name,
     on: vi.fn(),
+    off: vi.fn(),
   };
 
   Object.defineProperty(workerHost, "_worker", {
@@ -142,10 +145,10 @@ function createWorkerHost(name: string): WorkerHostWithMock {
     value: worker,
   });
 
-  return workerHost as WorkerHostWithMock;
+  return workerHost as unknown as WorkerHostWithMock;
 }
 
-describe("QueueDatabaseService", () => {
+describe("JobHistoryService", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -218,10 +221,7 @@ describe("QueueDatabaseService", () => {
 
     it("should use the event state when BullMQ returns unknown", async () => {
       const { service } = await createService({
-        convertJobToEntityData: () =>
-          ({
-            tenantId: "tenant-1",
-          }) as EntityData<JobEntity>,
+        convertJobToEntityData: () => ({ name: "custom-name" }),
       });
 
       await expect(
@@ -244,7 +244,7 @@ describe("QueueDatabaseService", () => {
         status: JobStatus.FAILED,
         startedAt: null,
         finishedAt: null,
-        tenantId: "tenant-1",
+        name: "custom-name",
       });
     });
   });
@@ -256,7 +256,7 @@ describe("QueueDatabaseService", () => {
     await service.upsertJob(job, "waiting");
 
     expect(fork.upsert).toHaveBeenCalledWith(
-      JobEntity,
+      PersistedJob,
       expect.objectContaining({
         id: "email:42",
         status: JobStatus.WAITING,
@@ -276,11 +276,60 @@ describe("QueueDatabaseService", () => {
 
     await service.cleanHistoryJobs();
 
-    expect(fork.nativeDelete).toHaveBeenCalledWith(JobEntity, {
+    expect(fork.nativeDelete).toHaveBeenCalledWith(PersistedJob, {
       updatedAt: {
         $lt: new Date("2026-01-30T23:59:59.000Z"),
       },
     });
+  });
+
+  it("cleans history hourly without ScheduleModule, catches failures, and stops on shutdown", async () => {
+    vi.useFakeTimers();
+    const { service, fork } = await createService();
+    const logger = vi
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => undefined);
+    fork.nativeDelete.mockRejectedValueOnce(new Error("database unavailable"));
+    service.onApplicationBootstrap();
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+    expect(logger).toHaveBeenCalledWith(
+      "Failed to clean job history",
+      expect.any(Error),
+    );
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+    expect(fork.nativeDelete).toHaveBeenCalledTimes(2);
+    await service.onModuleDestroy();
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+    expect(fork.nativeDelete).toHaveBeenCalledTimes(2);
+  });
+
+  it("detaches listeners and drains pending history writes during shutdown", async () => {
+    const queue = createQueue("email");
+    const worker = createWorkerHost("email");
+    const { service } = await createService({}, [queue, worker]);
+    let finishWrite!: () => void;
+    vi.spyOn(service, "upsertJob").mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishWrite = resolve;
+        }),
+    );
+    service.onApplicationBootstrap();
+    queue.on.mock.calls[0][1](createJob("waiting"));
+    let closed = false;
+    const closing = service.onModuleDestroy().then(() => {
+      closed = true;
+    });
+    await Promise.resolve();
+    expect(closed).toBe(false);
+    expect(queue.off).toHaveBeenCalledWith(
+      "waiting",
+      queue.on.mock.calls[0][1],
+    );
+    expect(worker.worker.off).toHaveBeenCalledTimes(4);
+    finishWrite();
+    await closing;
+    expect(closed).toBe(true);
   });
 
   it("should subscribe included queues and workers on application bootstrap", async () => {

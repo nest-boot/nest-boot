@@ -1,40 +1,42 @@
-import { ArgsType, ObjectType } from '@nest-boot/graphql';
-import { ConnectionBuilder } from '@nest-boot/graphql-connection';
+import "../resolvers/job.object.js";
 
-import { Job } from '../entities/job.entity.js';
+import { ArgsType, ObjectType } from "@nest-boot/graphql";
+import { ConnectionBuilder } from "@nest-boot/graphql-connection";
+
+import { Job } from "../entities/job.entity.js";
 
 const { Connection, ConnectionArgs } = new ConnectionBuilder(Job)
   .addField({
-    field: 'queue_name',
-    replacement: 'queueName',
-    type: 'string',
+    field: "queue_name",
+    replacement: "queueName",
+    type: "string",
     filterable: true,
     sortable: true,
   })
   .addField({
-    field: 'name',
-    type: 'string',
+    field: "name",
+    type: "string",
     filterable: true,
     sortable: true,
     searchable: true,
   })
   .addField({
-    field: 'status',
-    type: 'string',
+    field: "status",
+    type: "string",
     filterable: true,
     sortable: true,
   })
   .addField({
-    field: 'created_at',
-    replacement: 'createdAt',
-    type: 'date',
+    field: "created_at",
+    replacement: "createdAt",
+    type: "date",
     filterable: true,
     sortable: true,
   })
   .addField({
-    field: 'updated_at',
-    replacement: 'updatedAt',
-    type: 'date',
+    field: "updated_at",
+    replacement: "updatedAt",
+    type: "date",
     filterable: true,
     sortable: true,
   })

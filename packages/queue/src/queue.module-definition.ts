@@ -7,7 +7,7 @@ export const SCHEDULE_QUEUE_NAME = "schedule";
 
 export const SCHEDULE_METADATA_KEY = randomUUID();
 
-export const MODULE_OPTIONS_TOKEN = Symbol("QueueModuleOptions");
+export { MODULE_OPTIONS_TOKEN } from "./queue.constants.js";
 
 export const {
   ConfigurableModuleClass,

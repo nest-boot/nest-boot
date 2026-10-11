@@ -2,6 +2,7 @@ import { BullModule as BaseQueueModule } from "@nestjs/bullmq";
 import { type DynamicModule, Global, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
+import { createJobIntegration } from "./job-integration.module.js";
 import { QueueHealthIndicator } from "./queue.health-indicator.js";
 import {
   ASYNC_OPTIONS_TYPE,
@@ -13,21 +14,28 @@ import {
 import { QueueModuleOptions } from "./queue-module-options.interface.js";
 import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
 
+const jobIntegration = await createJobIntegration();
+
 /**
  * BullMQ integration module for job queue processing.
  *
  * Wraps `@nestjs/bullmq` with automatic Redis connection configuration
- * from `REDIS_URL`. Supports registering queues and flow producers.
+ * from `REDIS_URL`. Registers job history when DatabaseModule and Job metadata
+ * are available, and job queries when GraphQLModule is also registered.
  */
 @Global()
 @Module({
   imports: [
     DiscoveryModule,
+    jobIntegration,
     BaseQueueModule.forRootAsync({
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: (options: QueueModuleOptions) => {
+        const bullOptions = { ...options };
+        delete bullOptions.history;
+        delete bullOptions.getJobReadFilter;
         return {
-          ...options,
+          ...bullOptions,
           connection: options.connection ?? loadConfigFromEnv(),
         };
       },

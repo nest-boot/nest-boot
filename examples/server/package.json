@@ -49,7 +49,6 @@
     "@nest-boot/auth": "workspace:^",
     "@nest-boot/command": "workspace:^",
     "@nest-boot/queue": "workspace:^",
-    "@nest-boot/queue-database": "workspace:^",
     "@nest-boot/graphql": "workspace:^",
     "@nest-boot/graphql-connection": "workspace:^",
     "@nest-boot/hash": "workspace:^",

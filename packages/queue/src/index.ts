@@ -1,3 +1,5 @@
+export { JobStatus } from "./enums/job-status.enum.js";
+export type { JobHistoryOptions } from "./job-history-options.interface.js";
 export { OnQueueEvent } from "./on-queue-event.decorator.js";
 export { OnWorkerEvent } from "./on-worker-event.decorator.js";
 export { type NestWorkerOptions, Processor } from "./processor.decorator.js";

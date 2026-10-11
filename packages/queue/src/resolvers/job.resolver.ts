@@ -1,18 +1,18 @@
-import { Args, ID, Info, Query, Resolver } from '@nest-boot/graphql';
+import { Args, ID, Info, Query, Resolver } from "@nest-boot/graphql";
 import type {
   ConnectionArgsInterface,
   ConnectionResult,
-} from '@nest-boot/graphql-connection';
-import type { GraphQLResolveInfo } from 'graphql';
+} from "@nest-boot/graphql-connection";
+import type { GraphQLResolveInfo } from "graphql";
 
 import {
   JobConnection,
   JobConnectionArgs,
-} from './connections/job.connection-definition.js';
-import { Job } from './entities/job.entity.js';
-import { JobService } from './job.service.js';
+} from "../connections/job.connection-definition.js";
+import { Job } from "../entities/job.entity.js";
+import { JobService } from "../services/job.service.js";
 
-/** 由应用全局 AuthGuard 保护的任务历史查询入口。 */
+/** Job history queries protected by the service read scope. */
 @Resolver(() => Job)
 export class JobResolver {
   /**
@@ -27,7 +27,7 @@ export class JobResolver {
    * @returns Requested queue job, or null if it does not exist.
    */
   @Query(() => Job, { nullable: true })
-  async job(@Args('id', { type: () => ID }) id: string): Promise<Job | null> {
+  async job(@Args("id", { type: () => ID }) id: string): Promise<Job | null> {
     return await this.jobService.getJob(id);
   }
 

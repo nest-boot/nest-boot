@@ -8,11 +8,13 @@ import { HashModule } from '@nest-boot/hash';
 import { HealthCheckModule } from '@nest-boot/health-check';
 import { LoggerModule } from '@nest-boot/logger';
 import { MailerModule } from '@nest-boot/mailer';
+import { entities as queueEntities } from '@nest-boot/queue/persistence';
 import { RequestContextModule } from '@nest-boot/request-context';
 import { Global, Module } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
 import { GreetCommand } from './commands/greet.command.js';
+import { configureJobMetadata } from '../app/jobs/job-access.js';
 import { ConfigModule } from './modules/config.module.js';
 import { createSessionContext } from './session-context.js';
 
@@ -22,8 +24,9 @@ const GraphQLDynamicModule = GraphQLModule.forRoot({
 
 const DatabaseDynamicModule = DatabaseModule.forRoot({
   driver: PostgreSqlDriver,
-  entities: [...authEntities, 'dist/**/*.entity.js'],
-  entitiesTs: [...authEntities, 'src/**/*.entity.ts'],
+  discovery: { onMetadata: configureJobMetadata },
+  entities: [...authEntities, ...queueEntities, 'dist/**/*.entity.js'],
+  entitiesTs: [...authEntities, ...queueEntities, 'src/**/*.entity.ts'],
   session: createSessionContext,
 });
 

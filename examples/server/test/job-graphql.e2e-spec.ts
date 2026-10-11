@@ -3,8 +3,10 @@ import { MikroORM } from '@mikro-orm/pglite';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
 import { AuthGuard, Session, User, Workspace } from '@nest-boot/auth';
 import { GraphQLModule } from '@nest-boot/graphql';
-import { ConnectionManager } from '@nest-boot/graphql-connection';
-import { JobStatus } from '@nest-boot/queue-database';
+import { JobStatus } from '@nest-boot/queue';
+import { JobResolver } from '@nest-boot/queue/graphql';
+import { Job } from '@nest-boot/queue/persistence';
+import { JobService } from '@nest-boot/queue/persistence';
 import { RequestContext } from '@nest-boot/request-context';
 import type { INestApplication } from '@nestjs/common';
 import { ModuleRef, Reflector } from '@nestjs/core';
@@ -12,9 +14,10 @@ import { Test } from '@nestjs/testing';
 import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 
-import { Job } from '../src/app/jobs/entities/job.entity.js';
-import { JobResolver } from '../src/app/jobs/job.resolver.js';
-import { JobService } from '../src/app/jobs/job.service.js';
+import {
+  configureJobMetadata,
+  getJobReadFilter,
+} from '../src/app/jobs/job-access.js';
 
 describe('example Job GraphQL API with native RLS', () => {
   let app: INestApplication;
@@ -24,6 +27,7 @@ describe('example Job GraphQL API with native RLS', () => {
     orm = await MikroORM.init({
       dbName: 'memory://',
       entities: [Job],
+      discovery: { onMetadata: configureJobMetadata },
       metadataProvider: TsMorphMetadataProvider,
       metadataCache: { enabled: false },
       context: () =>
@@ -90,7 +94,7 @@ describe('example Job GraphQL API with native RLS', () => {
       },
     ]);
 
-    const service = new JobService(orm.em, new ConnectionManager(orm.em));
+    const service = new JobService(orm.em, { getJobReadFilter });
     const module = await Test.createTestingModule({
       imports: [
         GraphQLModule.forRoot({ autoSchemaFile: true, graphiql: false }),

@@ -1,6 +1,9 @@
 import { defineConfig } from '@mikro-orm/postgresql';
 import { entities as authEntities } from '@nest-boot/auth';
 import { loadConfigFromEnv } from '@nest-boot/database';
+import { entities as queueEntities } from '@nest-boot/queue/persistence';
+
+import { configureJobMetadata } from './app/jobs/job-access.js';
 
 /**
  * MikroORM 配置工厂。
@@ -11,7 +14,12 @@ export default async () => {
 
   return defineConfig({
     ...config,
-    entities: [...authEntities, ...(config.entities ?? [])],
-    entitiesTs: [...authEntities, ...(config.entitiesTs ?? [])],
+    discovery: { onMetadata: configureJobMetadata },
+    entities: [...authEntities, ...queueEntities, ...(config.entities ?? [])],
+    entitiesTs: [
+      ...authEntities,
+      ...queueEntities,
+      ...(config.entitiesTs ?? []),
+    ],
   });
 };

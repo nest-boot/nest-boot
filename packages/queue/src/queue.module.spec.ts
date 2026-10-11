@@ -132,6 +132,7 @@ describe("QueueModule", () => {
     expect(loadConfigFromEnv).toHaveBeenCalledTimes(1);
     expect(imports).toEqual([
       DiscoveryModule,
+      expect.objectContaining({ module: expect.any(Function) }),
       {
         module: expect.any(Function),
       },

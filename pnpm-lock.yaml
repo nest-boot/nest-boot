@@ -462,9 +462,6 @@ importers:
       '@nest-boot/queue':
         specifier: workspace:^
         version: link:../../packages/queue
-      '@nest-boot/queue-database':
-        specifier: workspace:^
-        version: link:../../packages/queue-database
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../../packages/request-context
@@ -1886,13 +1883,37 @@ importers:
       '@nest-boot/redis':
         specifier: workspace:^
         version: link:../redis
+      graphql-type-json:
+        specifier: ^0.3.2
+        version: 0.3.2
     devDependencies:
+      '@mikro-orm/core':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/decorators':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/pglite':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@mikro-orm/sql':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@nest-boot/database':
+        specifier: workspace:^
+        version: link:../database
       '@nest-boot/eslint-config':
         specifier: workspace:^
         version: link:../eslint-config
       '@nest-boot/eslint-plugin':
         specifier: workspace:^
         version: link:../eslint-plugin
+      '@nest-boot/graphql':
+        specifier: workspace:^
+        version: link:../graphql
+      '@nest-boot/graphql-connection':
+        specifier: workspace:^
+        version: link:../graphql-connection
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../request-context
@@ -1908,6 +1929,9 @@ importers:
       '@nestjs/core':
         specifier: ^12.0.1
         version: 12.0.1
+      '@nestjs/graphql':
+        specifier: ^14.0.3
+        version: 14.0.3
       '@nestjs/platform-express':
         specifier: ^12.1.2
         version: 12.1.2
@@ -1929,75 +1953,9 @@ importers:
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite-tsconfig-paths:
-        specifier: ^5.1.4
-        version: 5.1.4
-      vitest:
-        specifier: ^4.1.11
-        version: 4.1.11
-
-  packages/queue-database:
-    devDependencies:
-      '@mikro-orm/core':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@mikro-orm/decorators':
-        specifier: 7.2.0
-        version: 7.2.0
-      '@nest-boot/eslint-config':
-        specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
-      '@nest-boot/queue':
-        specifier: workspace:^
-        version: link:../queue
-      '@nest-boot/request-context':
-        specifier: workspace:^
-        version: link:../request-context
-      '@nest-boot/schedule':
-        specifier: workspace:^
-        version: link:../schedule
-      '@nest-boot/tsconfig':
-        specifier: workspace:^
-        version: link:../tsconfig
-      '@nestjs/bullmq':
-        specifier: ^12.0.0
-        version: 12.0.0
-      '@nestjs/common':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/core':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@nestjs/testing':
-        specifier: ^12.0.1
-        version: 12.0.1
-      '@types/node':
-        specifier: ^24.0.0
-        version: 24.13.3
-      '@vitest/coverage-v8':
-        specifier: ^4.1.11
-        version: 4.1.11
-      bullmq:
-        specifier: ^5.81.5
-        version: 5.81.5
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
-      eslint:
-        specifier: ^9.39.3
-        version: 9.39.3
+      graphql:
+        specifier: ^16.11.0
+        version: 16.12.0
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -12633,7 +12591,7 @@ snapshots:
     dependencies:
       '@commitlint/config-validator': 21.0.1
       '@commitlint/types': 21.0.1
-      es-toolkit: 1.47.0
+      es-toolkit: 1.52.0
       global-directory: 5.0.0
       resolve-from: 5.0.0
 
@@ -13198,7 +13156,7 @@ snapshots:
       graphql-ws: 6.3.0
       isows: 1.0.7
       tslib: 2.8.1
-      ws: 8.21.3
+      ws: 8.22.0
 
   '@graphql-tools/executor-http@3.3.0':
     dependencies:
@@ -13214,11 +13172,11 @@ snapshots:
 
   '@graphql-tools/executor-legacy-ws@1.1.33':
     dependencies:
-      '@graphql-tools/utils': 12.0.0
+      '@graphql-tools/utils': 12.0.3
       '@types/ws': 8.18.1
       isomorphic-ws: 5.0.0
       tslib: 2.8.1
-      ws: 8.21.3
+      ws: 8.22.0
 
   '@graphql-tools/executor@1.5.7':
     dependencies:
@@ -13263,12 +13221,12 @@ snapshots:
       '@babel/plugin-syntax-import-assertions': 7.29.7
       '@babel/traverse': 7.29.7
       '@babel/types': 7.29.7
-      '@graphql-tools/utils': 12.0.0
+      '@graphql-tools/utils': 12.0.3
       tslib: 2.8.1
 
   '@graphql-tools/import@7.1.19':
     dependencies:
-      '@graphql-tools/utils': 12.0.0
+      '@graphql-tools/utils': 12.0.3
       resolve-from: 5.0.0
       tslib: 2.8.1
 
@@ -13293,7 +13251,7 @@ snapshots:
 
   '@graphql-tools/merge@9.2.4':
     dependencies:
-      '@graphql-tools/utils': 12.0.1
+      '@graphql-tools/utils': 12.0.3
       tslib: 2.8.1
 
   '@graphql-tools/merge@9.2.6':
@@ -13313,14 +13271,14 @@ snapshots:
 
   '@graphql-tools/schema@10.1.0':
     dependencies:
-      '@graphql-tools/merge': 9.2.3
+      '@graphql-tools/merge': 9.2.6
       '@graphql-tools/utils': 12.0.3
       tslib: 2.8.1
 
   '@graphql-tools/schema@10.1.1':
     dependencies:
-      '@graphql-tools/merge': 9.2.4
-      '@graphql-tools/utils': 12.0.1
+      '@graphql-tools/merge': 9.2.6
+      '@graphql-tools/utils': 12.0.3
       tslib: 2.8.1
 
   '@graphql-tools/schema@10.1.3':

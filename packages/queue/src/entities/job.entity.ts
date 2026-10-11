@@ -10,14 +10,9 @@ import { type JobProgress } from "bullmq";
 
 import { JobStatus } from "../enums/job-status.enum.js";
 
-/**
- * Abstract base entity for persisting BullMQ job data in the database.
- *
- * Extend this entity in your application to create a concrete job table.
- * Automatically populated by the BullMQ-MikroORM subscriber.
- */
-@Entity({ abstract: true })
-export abstract class JobEntity {
+/** Persisted BullMQ job history. Add this entity to MikroORM discovery. */
+@Entity()
+export class Job {
   /** BullMQ job identifier. */
   @PrimaryKey({ type: t.string })
   id!: string;
@@ -55,7 +50,7 @@ export abstract class JobEntity {
   /** Current status of the job. */
   @Index()
   @Enum({ items: () => JobStatus })
-  status!: string;
+  status!: JobStatus;
 
   /** Timestamp when the job started processing. */
   @Property({ type: t.datetime, nullable: true })

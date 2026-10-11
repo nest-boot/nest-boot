@@ -67,15 +67,18 @@ provide a CommonJS `require` entry.
 
 ## Rename queue packages
 
-| Previous package              | Version 8 package           |
-| ----------------------------- | --------------------------- |
-| `@nest-boot/bullmq`           | `@nest-boot/queue`          |
-| `@nest-boot/bullmq-mikro-orm` | `@nest-boot/queue-database` |
+| Previous package              | Version 8 package                |
+| ----------------------------- | -------------------------------- |
+| `@nest-boot/bullmq`           | `@nest-boot/queue`               |
+| `@nest-boot/bullmq-mikro-orm` | `@nest-boot/queue` (job history) |
 
 Use `QueueModule`, `QueueModuleOptions`, and `QueueHealthIndicator` in place of
 `BullModule`, `BullModuleOptions`, and `BullMQHealthIndicator`. Job persistence
-uses `QueueDatabaseModule` and `QueueDatabaseModuleOptions` instead of
-`BullMQMikroORMModule` and `BullMQMikroORMModuleOptions`.
+is integrated into `QueueModule`: register the built-in `Job` entity from
+`@nest-boot/queue/persistence` and move history settings into `QueueModuleOptions.history`.
+Remove `BullMQMikroORMModule` / `QueueDatabaseModule` imports. See the
+[queue migration guide](/docs/tutorial/queue#migrating-from-queue-database) for
+entity discovery, database migrations, and query authorization.
 
 BullMQ and MikroORM remain the implementations; retain upstream dependencies
 such as `bullmq`, `@nestjs/bullmq`, and `@mikro-orm/core`.

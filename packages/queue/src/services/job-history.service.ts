@@ -1,25 +1,32 @@
 import { type EntityData, EntityManager } from "@mikro-orm/core";
-import { WorkerHost } from "@nest-boot/queue";
-import { Cron } from "@nest-boot/schedule";
+import { WorkerHost } from "@nestjs/bullmq";
 import {
   Inject,
   Injectable,
   Logger,
   type OnApplicationBootstrap,
+  type OnModuleDestroy,
 } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 import { type InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
 import { type Job, type JobState, Queue } from "bullmq";
 
-import { JobEntity } from "./entities/job.entity.js";
-import { MODULE_OPTIONS_TOKEN } from "./queue-database.module-definition.js";
-import { type QueueDatabaseModuleOptions } from "./queue-database-module-options.interface.js";
-import { convertQueueJobStateToJobStatus } from "./utils/convert-queue-job-state-to-job-status.util.js";
-import { shouldIncludeQueue } from "./utils/should-include-queue.util.js";
+import { Job as PersistedJob } from "../entities/job.entity.js";
+import { type JobHistoryOptions } from "../job-history-options.interface.js";
+import { JOB_HISTORY_OPTIONS } from "../queue.constants.js";
+import { convertQueueJobStateToJobStatus } from "../utils/convert-queue-job-state-to-job-status.util.js";
+import { shouldIncludeQueue } from "../utils/should-include-queue.util.js";
 
 @Injectable()
-export class QueueDatabaseService implements OnApplicationBootstrap {
-  private readonly logger = new Logger(QueueDatabaseService.name);
+export class JobHistoryService
+  implements OnApplicationBootstrap, OnModuleDestroy
+{
+  private readonly logger = new Logger(JobHistoryService.name);
+
+  private cleanupTimer?: ReturnType<typeof setInterval>;
+  private cleanup?: Promise<void>;
+  private readonly unsubscribe: (() => void)[] = [];
+  private readonly writes = new Set<Promise<void>>();
 
   private readonly jobTTL: number = 1000 * 60 * 60 * 24 * 30;
 
@@ -29,8 +36,8 @@ export class QueueDatabaseService implements OnApplicationBootstrap {
   constructor(
     private readonly discoveryService: DiscoveryService,
     private readonly em: EntityManager,
-    @Inject(MODULE_OPTIONS_TOKEN)
-    private readonly options: QueueDatabaseModuleOptions,
+    @Inject(JOB_HISTORY_OPTIONS)
+    private readonly options: JobHistoryOptions,
   ) {
     this.jobTTL = this.options.jobTTL ?? this.jobTTL;
     this.includeQueues = this.options.includeQueues ?? this.includeQueues;
@@ -40,7 +47,7 @@ export class QueueDatabaseService implements OnApplicationBootstrap {
   async convertJobToEntityData(
     job: Job,
     jobState: JobState,
-  ): Promise<EntityData<JobEntity>> {
+  ): Promise<EntityData<PersistedJob>> {
     let latestJobState = await job.getState();
 
     if (latestJobState === "unknown") {
@@ -70,33 +77,30 @@ export class QueueDatabaseService implements OnApplicationBootstrap {
   async upsertJob(job: Job, jobState: JobState) {
     await this.em
       .fork()
-      .upsert(
-        this.options.jobEntity,
-        await this.convertJobToEntityData(job, jobState),
-        {
-          onConflictFields: ["id"],
-        },
-      );
+      .upsert(PersistedJob, await this.convertJobToEntityData(job, jobState), {
+        onConflictFields: ["id"],
+      });
   }
 
   /**
    * Records history without turning an observer failure into a worker failure.
    * @param job - Queue job whose context is captured.
-   * @param state - Queue job state reported by the fixture.
+   * @param state - Queue job state reported by the event.
    */
   private recordJobEvent(job: Job, state: JobState): void {
-    void this.upsertJob(job, state).catch((error: unknown) => {
+    const write = this.upsertJob(job, state).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
         `Failed to persist job ${job.queueName}:${job.id ?? "unknown"} (${state}): ${message}`,
         error instanceof Error ? error.stack : undefined,
       );
     });
+    this.writes.add(write);
+    void write.finally(() => this.writes.delete(write));
   }
 
-  @Cron("0 * * * *")
   async cleanHistoryJobs() {
-    await this.em.fork().nativeDelete(this.options.jobEntity, {
+    await this.em.fork().nativeDelete(PersistedJob, {
       updatedAt: {
         $lt: new Date(Date.now() - this.jobTTL),
       },
@@ -104,6 +108,21 @@ export class QueueDatabaseService implements OnApplicationBootstrap {
   }
 
   onApplicationBootstrap() {
+    this.cleanupTimer = setInterval(
+      () => {
+        if (this.cleanup) return;
+        this.cleanup = this.cleanHistoryJobs()
+          .catch((error: unknown) => {
+            this.logger.error("Failed to clean job history", error);
+          })
+          .finally(() => {
+            this.cleanup = undefined;
+          });
+      },
+      60 * 60 * 1000,
+    );
+    this.cleanupTimer.unref();
+
     const instanceWrappers = this.discoveryService.getProviders();
 
     instanceWrappers
@@ -116,9 +135,13 @@ export class QueueDatabaseService implements OnApplicationBootstrap {
         ),
       )
       .forEach((provider: InstanceWrapper<Queue>) => {
-        void provider.instance.on("waiting", (job) => {
+        const onWaiting = (job: Job) => {
           this.recordJobEvent(job, "waiting");
-        });
+        };
+        provider.instance.on("waiting", onWaiting);
+        this.unsubscribe.push(() =>
+          provider.instance.off("waiting", onWaiting),
+        );
       });
 
     instanceWrappers
@@ -131,18 +154,26 @@ export class QueueDatabaseService implements OnApplicationBootstrap {
         ),
       )
       .forEach((provider: InstanceWrapper<WorkerHost>) => {
-        provider.instance.worker.on("active", (job) => {
-          this.recordJobEvent(job, "active");
-        });
-        provider.instance.worker.on("progress", (job) => {
-          this.recordJobEvent(job, "active");
-        });
-        provider.instance.worker.on("completed", (job) => {
-          this.recordJobEvent(job, "completed");
-        });
-        provider.instance.worker.on("failed", (job) => {
-          if (job) this.recordJobEvent(job, "failed");
-        });
+        const worker = provider.instance.worker;
+        for (const [event, state] of [
+          ["active", "active"],
+          ["progress", "active"],
+          ["completed", "completed"],
+          ["failed", "failed"],
+        ] as const) {
+          const listener = (job?: Job) => {
+            if (job) this.recordJobEvent(job, state);
+          };
+          worker.on(event, listener);
+          this.unsubscribe.push(() => worker.off(event, listener));
+        }
       });
+  }
+
+  /** Removes observers and waits for history writes before the database closes. */
+  async onModuleDestroy(): Promise<void> {
+    if (this.cleanupTimer) clearInterval(this.cleanupTimer);
+    for (const unsubscribe of this.unsubscribe.splice(0)) unsubscribe();
+    await Promise.all([...this.writes, this.cleanup]);
   }
 }

@@ -70,14 +70,17 @@ does not require a login.
 
 ## Job history
 
-`JobsModule` registers `QueueDatabaseModule` with a concrete `Job` entity,
-plus `QueueModule` and `ScheduleModule` for Redis connections and hourly history
-cleanup. Redis/Valkey must be running at `REDIS_URL`; `BULLMQ_PREFIX` separates
-this application's queues from other applications using the same Redis database.
-Both the application and the migration CLI discover `Job` through their entity
-globs. Run migrations before starting the application.
+`JobsModule` registers `QueueModule`; the module discovers the application's
+`DatabaseModule`, built-in `Job` metadata, and `GraphQLModule` to enable history
+and queries. `ScheduleModule` remains registered for application schedules;
+history cleanup uses QueueModule's own hourly timer. Redis/Valkey must be running
+at `REDIS_URL`; `BULLMQ_PREFIX` separates this application's queues from other
+applications using the same Redis database. Both the application and migration
+CLI explicitly include the queue entities. Run migrations before starting the
+application. The example's `configureJobMetadata` hook preserves its user/workspace
+RLS policy on the framework entity.
 
-`Job` inherits `JobEntity.data`, stored as PostgreSQL `jsonb`, so the complete
+The built-in `Job` from `@nest-boot/queue/persistence` stores `data` as PostgreSQL `jsonb`, so the complete
 BullMQ payload is preserved. When adding a task to a registered queue, put the
 authenticated user/workspace identifiers in that payload as strings:
 
@@ -99,17 +102,17 @@ to the current workspace. Anonymous requests and tasks with neither identity
 matching are denied. Service-level authorization still controls which operations
 the application exposes.
 
-Background tasks without either identifier, including the history cleanup job,
+Background tasks without either identifier
 remain available to the background database connection but are hidden from request
 roles. The integration copies `data` directly; no extra owner columns or custom
 `convertJobToEntityData` mapping are needed. History is retained for 30 days by
-default. `includeQueues` and `excludeQueues` can limit which registered queues are
+default. `history.includeQueues` and `history.excludeQueues` can limit which registered queues are
 persisted.
 
 ### GraphQL queries
 
 The authenticated `/api/graphql` endpoint exposes `job(id: ID!)` and the `jobs`
-connection. Both use the current request's EntityManager, so the same
+connection. Both use the current request's EntityManager and `getJobReadFilter`, so the same
 `data.userId OR data.workspaceId` RLS rule applies to returned rows and counts.
 An inaccessible or missing job returns `null`. Anonymous requests are rejected
 by the application's global `AuthGuard`. Member API keys use their workspace

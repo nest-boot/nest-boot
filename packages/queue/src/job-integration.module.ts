@@ -1,0 +1,120 @@
+import { type DynamicModule, Global, Module } from "@nestjs/common";
+import {
+  DiscoveryModule,
+  DiscoveryService,
+  ModulesContainer,
+} from "@nestjs/core";
+
+import { MODULE_OPTIONS_TOKEN } from "./queue.constants.js";
+import type { QueueModuleOptions } from "./queue-module-options.interface.js";
+
+@Global()
+@Module({})
+class JobIntegrationModule {}
+
+/**
+ * Checks an optional peer without swallowing errors from installed packages.
+ * @param name - The optional package name.
+ * @returns Whether the package can be resolved from this package.
+ */
+function isAvailable(name: string): boolean {
+  try {
+    import.meta.resolve(name);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ERR_MODULE_NOT_FOUND")
+      return false;
+    throw error;
+  }
+}
+
+/**
+ * Builds optional providers; features activate only when their application services exist.
+ * @returns The module containing providers for the installed integrations.
+ */
+export async function createJobIntegration(): Promise<DynamicModule> {
+  const definition: DynamicModule = { module: JobIntegrationModule };
+  if (!isAvailable("@nest-boot/database")) return definition;
+
+  const { DatabaseModule } = await import("@nest-boot/database");
+  const { EntityManager } = await import("@mikro-orm/core");
+  const { Job } = await import("./entities/job.entity.js");
+  const { JobHistoryService } =
+    await import("./services/job-history.service.js");
+  const { JobService } = await import("./services/job.service.js");
+
+  definition.imports = [DiscoveryModule];
+  definition.providers = [
+    {
+      provide: JobHistoryService,
+      inject: [
+        DiscoveryService,
+        ModulesContainer,
+        { token: EntityManager, optional: true },
+        MODULE_OPTIONS_TOKEN,
+      ],
+      useFactory: (
+        discovery: DiscoveryService,
+        modules: ModulesContainer,
+        em: InstanceType<typeof EntityManager> | undefined,
+        options: QueueModuleOptions,
+      ) => {
+        if (
+          !em ||
+          ![...modules.values()].some(
+            (module) => module.metatype === DatabaseModule,
+          )
+        )
+          return null;
+        if (
+          !em.getMetadata().has(Job) ||
+          em.getMetadata().get(Job).class !== Job
+        )
+          return null;
+        return new JobHistoryService(discovery, em, options.history ?? {});
+      },
+    },
+    {
+      provide: JobService,
+      inject: [
+        JobHistoryService,
+        { token: EntityManager, optional: true },
+        MODULE_OPTIONS_TOKEN,
+      ],
+      useFactory: (
+        history: InstanceType<typeof JobHistoryService> | null,
+        em: InstanceType<typeof EntityManager> | undefined,
+        options: QueueModuleOptions,
+      ) => (history && em ? new JobService(em, options) : null),
+    },
+  ];
+  definition.exports = [JobHistoryService, JobService];
+
+  if (isAvailable("@nest-boot/graphql")) {
+    const { GraphQLModule } = await import("@nest-boot/graphql");
+    definition.providers.push({
+      provide: Symbol("JobResolver"),
+      inject: [JobService, ModulesContainer],
+      useFactory: async (
+        service: InstanceType<typeof JobService> | null,
+        modules: ModulesContainer,
+      ) => {
+        if (
+          !service ||
+          ![...modules.values()].some(
+            (module) => module.metatype === GraphQLModule,
+          )
+        )
+          return null;
+        if (!isAvailable("@nest-boot/graphql-connection")) {
+          throw new Error(
+            "Queue GraphQL queries require @nest-boot/graphql-connection",
+          );
+        }
+        const { JobResolver } = await import("./resolvers/job.resolver.js");
+        return new JobResolver(service);
+      },
+    });
+  }
+  return definition;
+}

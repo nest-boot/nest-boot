@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const consumer = mkdtempSync(join(tmpdir(), "nest-boot-consumer-"));
+const queueConsumer = mkdtempSync(join(tmpdir(), "nest-boot-queue-consumer-"));
 const relativePath = relative(repository, consumer);
 assert(
   relativePath.startsWith(`..${sep}`),
@@ -43,6 +44,8 @@ try {
   const dependencies = {};
   const imports = [];
   let packedPackages = 0;
+  const manifests = new Map();
+  const tarballs = new Map();
   for (const directory of readdirSync(join(repository, "packages")).sort()) {
     const cwd = join(repository, "packages", directory);
     const manifestPath = join(cwd, "package.json");
@@ -54,6 +57,8 @@ try {
     pnpm(["pack", "--pack-destination", consumer], cwd, "pipe");
     const tarball = `${manifest.name.replace(/^@/, "").replaceAll("/", "-")}-${manifest.version}.tgz`;
     dependencies[manifest.name] = `file:./${tarball}`;
+    manifests.set(manifest.name, manifest);
+    tarballs.set(manifest.name, `file:${join(consumer, tarball)}`);
     packedPackages++;
     // Applications install the public peers, including global type packages,
     // directly. pnpm checks every package's range against these selections.
@@ -135,9 +140,109 @@ try {
   console.log(
     "Packed command bin, source and compiled entries, DI and request context passed",
   );
+  // Install only the transitive required dependencies of queue in a sibling
+  // directory: the full consumer's node_modules must not hide missing peers.
+  const queueDependencies = {};
+  function addQueueDependency(name, range) {
+    if (name in queueDependencies) return;
+    const manifest = manifests.get(name);
+    queueDependencies[name] = tarballs.get(name) ?? range;
+    if (!manifest) return;
+    for (const [dependency, version] of Object.entries(
+      manifest.dependencies ?? {},
+    )) {
+      addQueueDependency(dependency, version);
+    }
+    for (const [dependency, version] of Object.entries(
+      manifest.peerDependencies ?? {},
+    )) {
+      if (!manifest.peerDependenciesMeta?.[dependency]?.optional) {
+        addQueueDependency(dependency, version);
+      }
+    }
+  }
+  addQueueDependency("@nest-boot/queue");
+  addQueueDependency("@nest-boot/tsconfig");
+  queueDependencies.typescript = workspace.devDependencies.typescript;
+  queueDependencies["@types/node"] = workspace.devDependencies["@types/node"];
+  cpSync(join(repository, ".github/fixtures/queue-consumer"), queueConsumer, {
+    recursive: true,
+  });
+  writeFileSync(
+    join(queueConsumer, "package.json"),
+    JSON.stringify(
+      {
+        name: "nest-boot-plain-queue-consumer",
+        private: true,
+        type: "module",
+        packageManager: workspace.packageManager,
+        dependencies: queueDependencies,
+      },
+      null,
+      2,
+    ),
+  );
+  cpSync(join(consumer, ".npmrc"), join(queueConsumer, ".npmrc"));
+  pnpm(
+    [
+      "install",
+      "--ignore-pnpmfile",
+      "--strict-peer-dependencies",
+      "--no-frozen-lockfile",
+    ],
+    queueConsumer,
+  );
+  pnpm(["exec", "tsc", "--project", "tsconfig.json"], queueConsumer);
+  execFileSync(process.execPath, ["dist/main.js"], {
+    cwd: queueConsumer,
+    stdio: "inherit",
+    timeout: 60_000,
+  });
+  // Installing database support must not require the optional GraphQL stack.
+  addQueueDependency("@nest-boot/database");
+  // MikroORM drivers require their core/sql peers at exactly the same version.
+  const ormVersion =
+    manifests.get("@nest-boot/queue").devDependencies["@mikro-orm/pglite"];
+  for (const name of ["core", "decorators", "reflection", "sql", "pglite"]) {
+    queueDependencies[`@mikro-orm/${name}`] = ormVersion;
+  }
+  cpSync(
+    join(repository, ".github/fixtures/queue-persistence-consumer/main.ts"),
+    join(queueConsumer, "main.ts"),
+  );
+  writeFileSync(
+    join(queueConsumer, "package.json"),
+    JSON.stringify(
+      {
+        name: "nest-boot-database-queue-consumer",
+        private: true,
+        type: "module",
+        packageManager: workspace.packageManager,
+        dependencies: queueDependencies,
+      },
+      null,
+      2,
+    ),
+  );
+  pnpm(
+    [
+      "install",
+      "--ignore-pnpmfile",
+      "--strict-peer-dependencies",
+      "--no-frozen-lockfile",
+    ],
+    queueConsumer,
+  );
+  pnpm(["exec", "tsc", "--project", "tsconfig.json"], queueConsumer);
+  execFileSync(process.execPath, ["dist/main.js"], {
+    cwd: queueConsumer,
+    stdio: "inherit",
+    timeout: 60_000,
+  });
   console.log(
     `Verified ${packedPackages} packed packages on ${process.version}`,
   );
 } finally {
+  rmSync(queueConsumer, { recursive: true, force: true });
   rmSync(consumer, { recursive: true, force: true });
 }
