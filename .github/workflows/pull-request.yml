@@ -1,10 +1,14 @@
 name: Pull request
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - main
       - beta
+
+permissions:
+  contents: read
 
 jobs:
   verify:
@@ -12,3 +16,19 @@ jobs:
     uses: ./.github/workflows/verify.yml
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  changesets:
+    name: Changesets status
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && !startsWith(github.head_ref, 'changeset-release/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Read changesets in the PR
+        id: changesets
+        uses: changesets/action/pr-status@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+      - name: Summarize release impact
+        env:
+          CHANGESET_SUMMARY: ${{ steps.changesets.outputs.comment-body }}
+        run: printf '%s\n' "$CHANGESET_SUMMARY" >> "$GITHUB_STEP_SUMMARY"

@@ -218,9 +218,8 @@ web_modules/
 .next
 out
 
-# Nx
-.nx/cache
-.nx/workspace-data
+# Turborepo
+.turbo
 
 # Nuxt.js build / generate output
 .nuxt

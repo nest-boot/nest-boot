@@ -14,7 +14,7 @@
     "eslint.config.mjs"
   ],
   "scripts": {
-    "clean": "rm -rf .nx && rm -rf node_modules && rm -rf coverage && rm -rf dist",
+    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf coverage && rm -rf dist",
     "lint": "eslint \"test/**/*.ts\" \"vitest.config*.ts\"",
     "lint:fix": "eslint \"test/**/*.ts\" \"vitest.config*.ts\" --fix",
     "test": "vitest run",

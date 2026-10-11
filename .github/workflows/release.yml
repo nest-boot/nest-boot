@@ -2,29 +2,160 @@ name: Release
 
 on:
   workflow_dispatch:
-    inputs:
-      projects:
-        description: "Optional comma-separated packages to version; leave empty to recover unpublished versions"
-        type: string
-        default: ""
   push:
     branches:
       - main
       - beta
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  select-mode:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      mode: ${{ steps.select-mode.outputs.mode }}
+      publish-plan-artifact-id: ${{ steps.select-mode.outputs.publish-plan-artifact-id }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - name: Check release channel
+        run: node .github/scripts/release-channel.mjs "$GITHUB_REF_NAME"
+      - name: Select Changesets mode
+        id: select-mode
+        uses: changesets/action/select-mode@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+
+  version:
+    needs: select-mode
+    if: needs.select-mode.outputs.mode == 'version'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - name: Create or update version PR
+        id: version
+        uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          script: pnpm release:version
+          commit-message: "chore(release): version packages"
+          pr-title: "chore(release): version packages"
+      # GITHUB_TOKEN-created PRs do not trigger pull_request workflows.
+      # workflow_dispatch is supported without a separate PAT or GitHub App.
+      - name: Verify version PR
+        if: steps.version.outputs.pr-number != '' && steps.version.outputs.pr-number != 'undefined'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.version.outputs.pr-number }}
+        run: |
+          branch=$(gh pr view "$PR_NUMBER" --json headRefName --jq .headRefName)
+          title=$(gh pr view "$PR_NUMBER" --json title --jq .title)
+          gh workflow run pull-request.yml --ref "$branch"
+          gh workflow run commitlint-pr-title.yml --ref "$branch" -f "title=$title"
+
   verify:
     name: Verify
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta'
+    needs: select-mode
+    if: needs.select-mode.outputs.mode == 'publish'
     uses: ./.github/workflows/verify.yml
+    permissions:
+      contents: read
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  pack:
+    needs: [select-mode, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      pack-dir-artifact-id: ${{ steps.pack.outputs.pack-dir-artifact-id }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - name: Check publish channel
+        run: node .github/scripts/release-channel.mjs "$GITHUB_REF_NAME" --publish
+      - run: pnpm build:packages --force
+      - name: Pack packages
+        id: pack
+        uses: changesets/action/pack@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}
+
+  publish:
+    needs: pack
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
-    with:
-      fetch-depth: 0
-      release: true
-      release-projects: ${{ inputs.projects || '' }}
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Publish packages with npm Trusted Publishing
+        id: publish
+        uses: changesets/action/publish@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}
+        env:
+          NPM_CONFIG_PROVENANCE: true
+      # Keep the original plan when retrying a failed publish job: npm may have
+      # succeeded before the action failed to create tags or GitHub releases.
+      - name: Download original release plan
+        id: download-plan
+        if: ${{ !cancelled() && steps.publish.outcome != 'skipped' }}
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.pack.outputs.pack-dir-artifact-id }}
+          path: ${{ runner.temp }}/release-artifacts
+          merge-multiple: true
+      - name: Recover missing GitHub release metadata
+        if: ${{ !cancelled() && steps.publish.outcome != 'skipped' && steps.download-plan.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/release-metadata.mjs "$RUNNER_TEMP/release-artifacts/publish-plan.json"
