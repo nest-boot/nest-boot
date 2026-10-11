@@ -27,10 +27,6 @@ const GraphQLDynamicModule = GraphQLModule.forRoot({
 const DatabaseDynamicModule = DatabaseModule.forRoot({
   driver: PostgreSqlDriver,
   ...getJobSchemaOptions(),
-  schemaGenerator: {
-    // Preserve the legacy mirror until its data is archived separately.
-    skipTables: ['public.job'],
-  },
   entities: [...authEntities, ...queueEntities, 'dist/**/*.entity.js'],
   entitiesTs: [...authEntities, ...queueEntities, 'src/**/*.entity.ts'],
   session: createSessionContext,

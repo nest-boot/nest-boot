@@ -1,8 +1,9 @@
 import { EntitySchema } from "@mikro-orm/core";
 import { MikroORM } from "@mikro-orm/postgresql";
+import { DatabaseSchema } from "@mikro-orm/sql";
 import { createPostgresBackend, withBackend } from "bullmq";
 
-import { getJobSchemaOptions, Job } from "../dist/persistence.js";
+import { entities, getJobSchemaOptions, Job } from "../dist/persistence.js";
 import { createPostgresFixture } from "./postgres.fixture.js";
 
 const { Queue } = withBackend(createPostgresBackend);
@@ -22,12 +23,10 @@ describe.each(["bullmq", "custom_tasks"])("Job migrations in %s", (schema) => {
     await fixture.pool.query(
       "create table public.business_entity (id text primary key)",
     );
-    await fixture.pool.query("create table public.job (id text primary key)");
     orm = await MikroORM.init({
       clientUrl: fixture.connection.connectionString,
-      entities: [Job, BusinessEntity],
+      entities: [...entities, BusinessEntity],
       ...getJobSchemaOptions(schema),
-      schemaGenerator: { skipTables: ["public.job"] },
     });
   });
 
@@ -37,13 +36,32 @@ describe.each(["bullmq", "custom_tasks"])("Job migrations in %s", (schema) => {
   });
 
   it("adds only ownership indexes and then produces no schema diff", async () => {
+    const { rows: originalFunctions } = await fixture.pool.query(
+      "select p.proname, pg_get_functiondef(p.oid) as definition from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = $1 order by p.proname",
+      [schema],
+    );
+    // Matches MikroORM's default snapshotOnMigrate flow. A snapshot contains
+    // tables and enums, while BullMQ keeps ownership of functions and sequences.
+    const snapshot = await DatabaseSchema.create(
+      orm.em.getConnection(),
+      orm.em.getPlatform(),
+      orm.config,
+    );
     const { rows: originalIndexes } = await fixture.pool.query(
       "select indexname, indexdef from pg_indexes where schemaname = $1 and tablename = 'job' order by indexname",
       [schema],
     );
     const migration = await orm.schema.getUpdateSchemaMigrationSQL({
       wrap: false,
+      fromSchema: snapshot,
     });
+    expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe(
+      migration.up,
+    );
+    expect(migration.down.match(/drop index/g)).toHaveLength(2);
+    expect(migration.up + migration.down).not.toMatch(
+      /(?:create|alter|drop) (?:or replace )?(?:table|type|function|sequence)/i,
+    );
     const statements = migration.up
       .split(";")
       .map((statement) => statement.trim())
@@ -56,6 +74,11 @@ describe.each(["bullmq", "custom_tasks"])("Job migrations in %s", (schema) => {
       ]),
     );
     await orm.schema.execute(migration.up);
+    const { rows: functions } = await fixture.pool.query(
+      "select p.proname, pg_get_functiondef(p.oid) as definition from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = $1 order by p.proname",
+      [schema],
+    );
+    expect(functions).toEqual(originalFunctions);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe("");
     const { rows: indexes } = await fixture.pool.query(
       "select indexname, indexdef from pg_indexes where schemaname = $1 and tablename = 'job' order by indexname",
@@ -92,11 +115,19 @@ describe.each(["bullmq", "custom_tasks"])("Job migrations in %s", (schema) => {
       `alter table "${schema}".job alter column priority set default 9`,
     );
     await fixture.pool.query(`drop index "${schema}".job_ready_idx`);
+    await fixture.pool.query(`drop index "${schema}".dep_child_idx`);
+    await fixture.pool.query(
+      `alter table "${schema}".scheduler alter column iteration_count set default 9`,
+    );
     const sql = await orm.schema.getUpdateSchemaSQL({ wrap: false });
     expect(sql).toContain(
       `alter table "${schema}"."job" alter column "priority" set default 0`,
     );
     expect(sql).toContain('create index "job_ready_idx"');
+    expect(sql).toContain('create index "dep_child_idx"');
+    expect(sql).toContain(
+      `alter table "${schema}"."scheduler" alter column "iteration_count" set default 0`,
+    );
     expect(sql).not.toMatch(/drop (?:table|type|function)/i);
     await orm.schema.execute(sql);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe("");
@@ -116,9 +147,5 @@ describe.each(["bullmq", "custom_tasks"])("Job migrations in %s", (schema) => {
     );
     expect(rows[0].dependency).not.toBeNull();
     expect(rows[0].status).not.toBeNull();
-    expect(
-      (await fixture.pool.query("select to_regclass('public.job') as legacy"))
-        .rows[0].legacy,
-    ).not.toBeNull();
   });
 });

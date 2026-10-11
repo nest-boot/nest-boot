@@ -80,17 +80,20 @@ upgrade BullMQ's schema. Then run application migrations to add ownership indexe
 and grant the `authenticated` database role schema usage and SELECT on `bullmq.job`.
 
 The built-in `Job` from `@nest-boot/queue/persistence` maps that native table through
-MikroORM. Both runtime and CLI configurations include the entity and
+MikroORM. Both runtime and CLI configurations include all 11 exported Queue entities and
 `...getJobSchemaOptions()` so Job participates in ORM migration comparison.
 Its native columns, defaults, enum and operational indexes match BullMQ. The
 application migration adds indexes for `data.userId` and `data.workspaceId`;
-subsequent comparisons are empty. Other BullMQ tables, enums and functions are
-preserved by the schema-generator extension.
+subsequent comparisons are empty. Supporting tables, enums and foreign keys are mapped by read-only entities.
+The standard MikroORM schema generator is used, with native `ignoreRoutines: true`
+to preserve existing functions. This option applies to application functions too.
+Keep migration snapshots enabled; MikroORM 7.2.0 live-generated rollback SQL can
+include ignored routines and must be reviewed. BullMQ owns functions and sequences.
 There is no mirror table, event synchronization or extra cleanup timer.
 Use BullMQ's `removeOnComplete` / `removeOnFail` options for retention; removing a
 job also removes it from queries. Existing legacy mirror rows are not imported.
-The example also excludes the old `public.job` table from schema generation to
-preserve historical data until it is archived and removed separately.
+The read-only `LegacyJob` entity preserves the old `public.job` table and its
+historical data until it is archived and removed separately. It has no API.
 
 Register classes extending `BaseQueue` as providers and inject them directly.
 Consumers use `@Processor(QueueClass)` and extend `BaseProcessor`. A consumer-only

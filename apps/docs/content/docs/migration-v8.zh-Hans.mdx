@@ -88,7 +88,9 @@ request-scoped `RequestContext` provider。
 
 移除 `BullMQMikroORMModule` / `QueueDatabaseModule` 导入。可选的 MikroORM 查询通过
 `@nest-boot/queue/persistence` 内置 `Job` 完整映射 BullMQ 原生表。运行时和 CLI ORM 配置
-加入 `...getJobSchemaOptions()`，让 Job 参与迁移比较并保留 BullMQ 的其他对象。
+加入 `...getJobSchemaOptions()` 并注册完整的 `entities` 数组，使 11 张表参与原生迁移比较。
+`ignoreRoutines: true` 保留所有 schema 中的已有函数；继续启用迁移快照，
+并检查直接从在线数据库生成的回滚 SQL，避免带入 BullMQ 函数定义。
 先执行 BullMQ 迁移，再执行应用迁移来添加用户、工作区归属索引，并配置查询授权，
 详见[队列教程](/docs/tutorial/queue)。保留 `bullmq`，
 仅在启用查询功能时安装对应 MikroORM/GraphQL 依赖。移除 `@nestjs/bullmq`。

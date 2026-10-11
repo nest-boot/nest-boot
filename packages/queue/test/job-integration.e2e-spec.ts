@@ -22,6 +22,7 @@ import {
   QueueModule,
 } from "../dist/index.js";
 import {
+  entities,
   getJobSchemaOptions,
   Job,
   JobService,
@@ -66,7 +67,7 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
         DatabaseModule.forRoot({
           driver: PostgreSqlDriver,
           clientUrl: fixture.connection.connectionString,
-          entities: [Job],
+          entities,
           ...getJobSchemaOptions(fixture.connection.schema),
         }),
         GraphQLModule.forRoot({ autoSchemaFile: true, graphiql: false }),

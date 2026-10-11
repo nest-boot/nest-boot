@@ -16,10 +16,6 @@ export default async () => {
   return defineConfig({
     ...config,
     ...getJobSchemaOptions(),
-    schemaGenerator: {
-      // Preserve the legacy mirror until its data is archived separately.
-      skipTables: ['public.job'],
-    },
     entities: [...authEntities, ...queueEntities, ...(config.entities ?? [])],
     entitiesTs: [
       ...authEntities,

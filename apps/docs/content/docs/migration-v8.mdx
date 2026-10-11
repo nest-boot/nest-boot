@@ -97,8 +97,10 @@ a request-scoped `RequestContext` provider for constructor injection.
 Remove `BullMQMikroORMModule` / `QueueDatabaseModule` imports. Optional MikroORM
 queries map the native BullMQ table through the built-in `Job` from
 `@nest-boot/queue/persistence`. Add `...getJobSchemaOptions()` to runtime and CLI
-ORM options so Job participates in migration comparison while other BullMQ objects
-remain untouched. Run BullMQ migrations before application migrations; the first
+ORM options and register the full exported `entities` array. All 11 BullMQ tables
+participate in native migration comparison; `ignoreRoutines: true` leaves existing
+functions unchanged across all schemas. Keep migration snapshots enabled and
+review live-generated rollback SQL for unwanted function definitions. Run BullMQ migrations before application migrations; the first
 Job migration adds user/workspace ownership indexes. Configure read authorization. See the [queue tutorial](/docs/tutorial/queue).
 Keep `bullmq`; install MikroORM/GraphQL peers only for the optional query features.
 Remove `@nestjs/bullmq`; the queue integration uses BullMQ directly.

@@ -5,7 +5,11 @@ import { AuthGuard, Session, User, Workspace } from '@nest-boot/auth';
 import { GraphQLModule } from '@nest-boot/graphql';
 import { JobStatus } from '@nest-boot/queue';
 import { JobConnectionService, JobResolver } from '@nest-boot/queue/graphql';
-import { getJobSchemaOptions,Job } from '@nest-boot/queue/persistence';
+import {
+  entities,
+  getJobSchemaOptions,
+  Job,
+} from '@nest-boot/queue/persistence';
 import { RequestContext } from '@nest-boot/request-context';
 import type { INestApplication } from '@nestjs/common';
 import { ModuleRef, Reflector } from '@nestjs/core';
@@ -23,7 +27,7 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
   beforeAll(async () => {
     orm = await MikroORM.init({
       dbName: 'memory://',
-      entities: [Job],
+      entities,
       ...getJobSchemaOptions(),
       metadataProvider: TsMorphMetadataProvider,
       metadataCache: { enabled: false },
