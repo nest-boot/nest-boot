@@ -7,8 +7,7 @@ import { Job } from "../entities/job.entity.js";
 
 const { Connection, ConnectionArgs } = new ConnectionBuilder(Job)
   .addField({
-    field: "queue_name",
-    replacement: "queueName",
+    field: "queue",
     type: "string",
     filterable: true,
     sortable: true,
@@ -29,13 +28,6 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(Job)
   .addField({
     field: "created_at",
     replacement: "createdAt",
-    type: "date",
-    filterable: true,
-    sortable: true,
-  })
-  .addField({
-    field: "updated_at",
-    replacement: "updatedAt",
     type: "date",
     filterable: true,
     sortable: true,

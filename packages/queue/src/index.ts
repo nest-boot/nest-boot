@@ -1,7 +1,6 @@
 export { BaseProcessor } from "./base-processor.js";
 export { BaseQueue } from "./base-queue.js";
 export { JobStatus } from "./enums/job-status.enum.js";
-export type { JobPersistenceOptions } from "./job-persistence-options.interface.js";
 export { OnQueueEvent } from "./on-queue-event.decorator.js";
 export { OnWorkerEvent } from "./on-worker-event.decorator.js";
 export { Processor, type ProcessorOptions } from "./processor.decorator.js";

@@ -45,7 +45,7 @@ const envKeys = [
   'DB_URL',
   'DATABASE_URL',
   'REDIS_URL',
-  'BULLMQ_PREFIX',
+  'QUEUE_DATABASE_URL',
   'APP_URL',
   'AUTH_URL',
   'APP_SECRET',
@@ -99,6 +99,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     await createDatabase();
     migrationOrm = await adminOrm(databaseUrl);
     await applyMigrations(migrationOrm);
+    await execFileAsync(process.execPath, ['scripts/migrate-queue.mjs'], {
+      cwd: process.cwd(),
+      env: process.env,
+    });
 
     await execFileAsync('pnpm', ['build'], {
       cwd: process.cwd(),
@@ -180,7 +184,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
   });
 
-  it('queries Job history with user OR workspace identity through sessions and member API keys', async () => {
+  it('queries native jobs with user OR workspace identity through sessions and member API keys', async () => {
     const user = await createAuthenticatedUser('Job viewer');
     const other = await createAuthenticatedUser('Other job viewer');
     const workspace = await createWorkspace(user, 'Job workspace');
@@ -197,15 +201,15 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     };
     for (const [name, data] of Object.entries(payloads)) {
       await migrationOrm.em.execute(
-        `insert into job (id, queue_name, name, data, priority, progress, status) values (?, 'graphql-history', 'generate-report', ?::jsonb, 0, '0'::jsonb, 'waiting')`,
-        [`graphql-history:${name}`, JSON.stringify(data)],
+        `insert into bullmq.job (queue, id, seq, name, data, progress, state, added_at_ms) values ('graphql-history', ?, ?, 'generate-report', ?::jsonb, '0'::jsonb, 'waiting', ?)`,
+        [name, Date.now(), JSON.stringify(data), Date.now()],
       );
     }
     const source = `query {
       own: job(id: "graphql-history:own") { id data status progress }
       shared: job(id: "graphql-history:shared") { id data }
       foreign: job(id: "graphql-history:foreign") { id }
-      jobs(first: 10, filter: { queue_name: "graphql-history" }, orderBy: {field: ID, direction: ASC}) {
+      jobs(first: 10, filter: { queue: "graphql-history" }, orderBy: {field: ID, direction: ASC}) {
         totalCount edges { node { id } }
       }
     }`;
@@ -5999,7 +6003,7 @@ function setTestEnv() {
     process.env.SERVER_E2E_REDIS_URL ??
     process.env.REDIS_URL ??
     'redis://127.0.0.1:36379/0';
-  process.env.BULLMQ_PREFIX = databaseName;
+  process.env.QUEUE_DATABASE_URL = databaseUrl;
   process.env.APP_URL = 'http://127.0.0.1';
   process.env.AUTH_URL = 'http://127.0.0.1';
   process.env.APP_SECRET = '1oAdy3zpD3S0t1AdAqPTlj4Hhkyx83pT2UlNGfS4P2c';

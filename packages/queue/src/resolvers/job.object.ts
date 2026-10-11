@@ -15,15 +15,15 @@ registerEnumType(JobStatus, { name: "JobStatus" });
 // Keep the ORM entity and GraphQL node constructor identical for ConnectionBuilder.
 ObjectType()(Job);
 Field(() => ID)(Job.prototype, "id");
-Field(() => String)(Job.prototype, "queueName");
+Field(() => ID)(Job.prototype, "jobId");
+Field(() => String)(Job.prototype, "queue");
 Field(() => String)(Job.prototype, "name");
 Field(() => GraphQLJSON)(Job.prototype, "data");
 Field(() => GraphQLJSON, { nullable: true })(Job.prototype, "returnValue");
 Field(() => String, { nullable: true })(Job.prototype, "failedReason");
 Field(() => Int)(Job.prototype, "priority");
-Field(() => GraphQLJSON)(Job.prototype, "progress");
+Field(() => GraphQLJSON, { nullable: true })(Job.prototype, "progress");
 Field(() => JobStatus)(Job.prototype, "status");
 Field(() => Date, { nullable: true })(Job.prototype, "startedAt");
 Field(() => Date, { nullable: true })(Job.prototype, "finishedAt");
 Field(() => Date)(Job.prototype, "createdAt");
-Field(() => Date)(Job.prototype, "updatedAt");

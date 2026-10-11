@@ -37,7 +37,7 @@ const app = await NestFactory.createApplicationContext(DatabaseQueueModule, {
 });
 try {
   assert(app.get(JobService) instanceof JobService);
-  console.log("Packed queue discovers database history without GraphQL peers");
+  console.log("Packed queue discovers ORM queries without GraphQL peers");
 } finally {
   await app.close();
 }

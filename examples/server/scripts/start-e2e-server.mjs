@@ -1,6 +1,6 @@
 import { EntitySchema } from '@mikro-orm/core';
 import { MikroORM, PostgreSqlDriver } from '@mikro-orm/postgresql';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { readdir } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -38,6 +38,11 @@ process.on('SIGTERM', () => cleanup(0));
 try {
   await createDatabase();
   await applyMigrations();
+  execFileSync(process.execPath, ['scripts/migrate-queue.mjs'], {
+    cwd: serverRoot,
+    env: createServerEnv(),
+    stdio: 'inherit',
+  });
   serverProcess = spawn(process.execPath, ['dist/main.js'], {
     cwd: serverRoot,
     env: createServerEnv(),
@@ -196,7 +201,7 @@ function createServerEnv() {
     process.env.SERVER_E2E_REDIS_URL ??
     process.env.REDIS_URL ??
     'redis://127.0.0.1:36379/0';
-  env.BULLMQ_PREFIX = databaseName;
+  env.QUEUE_DATABASE_URL = databaseUrl;
   env.APP_URL = appUrl;
   env.AUTH_URL = authUrl;
   env.APP_SECRET = '1oAdy3zpD3S0t1AdAqPTlj4Hhkyx83pT2UlNGfS4P2c';
@@ -206,8 +211,7 @@ function createServerEnv() {
   env.AUTH_GITHUB_CLIENT_ID = 'github-client-id';
   env.AUTH_GITHUB_CLIENT_SECRET = 'github-client-secret';
   env.AUTH_OIDC_ENABLED = 'false';
-  env.SMTP_URL =
-    process.env.SERVER_E2E_SMTP_URL ?? 'smtp://127.0.0.1:31025';
+  env.SMTP_URL = process.env.SERVER_E2E_SMTP_URL ?? 'smtp://127.0.0.1:31025';
   env.SMTP_FROM = 'Nest Boot Example <no-reply@example.com>';
   env.PORT = port;
 

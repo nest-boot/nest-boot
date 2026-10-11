@@ -1,6 +1,9 @@
 # @nest-boot/queue
 
-`QueueModule` configures BullMQ queues and workers for Nest Boot. When the application
+`QueueModule` configures BullMQ 6 queues and workers using the official PostgreSQL backend.
+Set `QUEUE_DATABASE_URL` or `DATABASE_URL`, and run BullMQ migrations before startup.
+Optional MikroORM and GraphQL queries read the native table; exclude its schema from ORM migrations.
+See the [queue tutorial](https://github.com/nest-boot/nest-boot/blob/main/apps/docs/content/docs/tutorial/queue.mdx) for configuration. When the application
 also imports `HealthCheckModule`, it automatically registers a health indicator
 for each discovered `Queue` provider, including custom subclasses:
 

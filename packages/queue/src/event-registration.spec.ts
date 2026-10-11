@@ -21,8 +21,8 @@ const { startedWorkers } = vi.hoisted(() => ({
 }));
 
 // Keep Nest's real discovery, decorators and listener registration. Only the
-// Redis-backed transports are replaced with local emitters in this test.
-vi.mock("bullmq", async (importOriginal) => {
+// PostgreSQL-backed transports are replaced with local emitters in this test.
+vi.mock("./postgres.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("bullmq")>();
   const { EventEmitter } = await import("node:events");
 
@@ -55,7 +55,12 @@ vi.mock("bullmq", async (importOriginal) => {
     }
   }
 
-  return { ...actual, Queue, Worker, QueueEvents: Queue };
+  return {
+    ...actual,
+    PostgresQueue: Queue,
+    PostgresWorker: Worker,
+    PostgresQueueEvents: Queue,
+  };
 });
 
 describe("Nest queue event registration", () => {
@@ -119,7 +124,7 @@ describe("Nest queue event registration", () => {
       @Processor(EmailQueue)
       class EmailWorker extends ParentWorker {}
       const module = await Test.createTestingModule({
-        imports: [QueueModule, QueueModule.forRoot({})],
+        imports: [QueueModule.forRoot({})],
         providers: [
           async
             ? {
@@ -182,7 +187,7 @@ describe("Nest queue event registration", () => {
 
     const module = await Test.createTestingModule({
       imports: [
-        QueueModule.forRoot({ connection: { host: "localhost", port: 6379 } }),
+        QueueModule.forRoot({ connection: { host: "localhost", port: 5432 } }),
       ],
       providers: [EmailQueue, EmailWorker, EmailQueueListener],
     }).compile();

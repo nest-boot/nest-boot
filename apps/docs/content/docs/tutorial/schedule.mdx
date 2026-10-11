@@ -29,7 +29,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-`QueueModule` reads and parses the Redis connection from `REDIS_URL`. `ScheduleModule` also accepts an explicit BullMQ `connection`, `concurrency`, and `autorun`. The worker starts automatically unless `autorun` is `false`.
+Register `QueueModule` once at the application level; `ScheduleModule` uses its global services and does not import it internally. `QueueModule` uses PostgreSQL configured by `QUEUE_DATABASE_URL` or `DATABASE_URL`. `ScheduleModule` also accepts an explicit BullMQ `connection`, `concurrency`, and `autorun`. The worker starts automatically unless `autorun` is `false`.
 
 ## Defining Scheduled Tasks
 

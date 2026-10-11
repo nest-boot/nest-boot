@@ -48,7 +48,7 @@ export type Scalars = {
   };
   /**
    * A filter for Job that accepts MongoDB query syntax.
-   * Supported fields: queue_name, name, status, created_at, updated_at
+   * Supported fields: queue, name, status, created_at
    */
   JobFilter: { input: any; output: any };
   /**
@@ -428,14 +428,14 @@ export type Job = {
   failedReason?: Maybe<Scalars["String"]["output"]>;
   finishedAt?: Maybe<Scalars["DateTime"]["output"]>;
   id: Scalars["ID"]["output"];
+  jobId: Scalars["ID"]["output"];
   name: Scalars["String"]["output"];
   priority: Scalars["Int"]["output"];
-  progress: Scalars["JSON"]["output"];
-  queueName: Scalars["String"]["output"];
+  progress?: Maybe<Scalars["JSON"]["output"]>;
+  queue: Scalars["String"]["output"];
   returnValue?: Maybe<Scalars["JSON"]["output"]>;
   startedAt?: Maybe<Scalars["DateTime"]["output"]>;
   status: JobStatus;
-  updatedAt: Scalars["DateTime"]["output"];
 };
 
 export type JobConnection = {
@@ -472,9 +472,8 @@ export const JobOrderField = {
   CREATED_AT: "CREATED_AT",
   ID: "ID",
   NAME: "NAME",
-  QUEUE_NAME: "QUEUE_NAME",
+  QUEUE: "QUEUE",
   STATUS: "STATUS",
-  UPDATED_AT: "UPDATED_AT",
 } as const;
 
 export type JobOrderField = (typeof JobOrderField)[keyof typeof JobOrderField];

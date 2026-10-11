@@ -18,7 +18,7 @@ import {
 } from "./index.js";
 
 const { workers } = vi.hoisted(() => ({ workers: [] as any[] }));
-vi.mock("bullmq", async (original) => {
+vi.mock("./postgres.js", async (original) => {
   const actual = await original<typeof import("bullmq")>();
   const { EventEmitter } = await import("node:events");
   class Transport extends EventEmitter {
@@ -40,7 +40,7 @@ vi.mock("bullmq", async (original) => {
       workers.push(this);
     }
   }
-  return { ...actual, Queue: Transport, Worker };
+  return { ...actual, PostgresQueue: Transport, PostgresWorker: Worker };
 });
 
 afterEach(() => {
@@ -54,7 +54,6 @@ it.each(["singleton", "request", "bubbled", "transient"])(
     @Queue({
       name: "scope",
       connection: { host: "queue-host" },
-      prefix: "scope-prefix",
     })
     class TaskQueue extends BaseQueue {}
     @Injectable({ scope: mode === "bubbled" ? Scope.REQUEST : Scope.DEFAULT })
@@ -98,7 +97,6 @@ it.each(["singleton", "request", "bubbled", "transient"])(
       const [worker] = workers;
       expect(worker.opts).toMatchObject({
         connection: { host: "queue-host" },
-        prefix: "scope-prefix",
       });
       const signal = new AbortController().signal;
       const [first, second] = await Promise.all([

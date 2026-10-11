@@ -396,14 +396,14 @@ type Job {
   failedReason: String
   finishedAt: DateTime
   id: ID!
+  jobId: ID!
   name: String!
   priority: Int!
-  progress: JSON!
-  queueName: String!
+  progress: JSON
+  queue: String!
   returnValue: JSON
   startedAt: DateTime
   status: JobStatus!
-  updatedAt: DateTime!
 }
 
 type JobConnection {
@@ -445,7 +445,7 @@ type JobEdge {
 
 """
 A filter for Job that accepts MongoDB query syntax.
-Supported fields: queue_name, name, status, created_at, updated_at
+Supported fields: queue, name, status, created_at
 """
 scalar JobFilter
 
@@ -471,9 +471,8 @@ enum JobOrderField {
   CREATED_AT
   ID
   NAME
-  QUEUE_NAME
+  QUEUE
   STATUS
-  UPDATED_AT
 }
 
 enum JobStatus {
@@ -820,7 +819,7 @@ type Query {
     """
     Apply one or multiple filters to the query.
     Supported filter parameters:
-    `queue_name`, `name`, `status`, `created_at`, `updated_at`
+    `queue`, `name`, `status`, `created_at`
     """
     query: String
   ): JobConnection!

@@ -37,7 +37,6 @@ import {
   Workspace,
 } from '@nest-boot/auth';
 import { loadConfigFromEnv } from '@nest-boot/database';
-import { Job } from '@nest-boot/queue/persistence';
 import { REQUEST, RequestContext } from '@nest-boot/request-context';
 import { type FactoryProvider, ForbiddenException } from '@nestjs/common';
 import type { Request } from 'express';
@@ -48,7 +47,6 @@ import { ApiKeyAuthenticationService } from '../../../packages/auth/dist/infrast
 import { createContextualAuthService } from '../../../packages/auth/dist/infrastructure/create-contextual-auth-service.js';
 import { RequestIdentity } from '../../../packages/auth/dist/infrastructure/request-identity.js';
 import { UserDeletionService } from '../../../packages/auth/dist/services/user-deletion.service.js';
-import { configureJobMetadata } from '../src/app/jobs/job-access.js';
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
 import { Migration20261009070926 } from '../src/database/migrations/Migration20261009070926.js';
 
@@ -62,7 +60,6 @@ describe('example native RLS migrations with PGlite', () => {
       instance.getMetadata(Workspace),
       instance.getMetadata(Member),
       instance.getMetadata(Invitation),
-      instance.getMetadata(Job),
     ].map((metadata) => metadata.policies);
   let originalPolicies: ReturnType<typeof readPolicies>;
 
@@ -72,10 +69,10 @@ describe('example native RLS migrations with PGlite', () => {
     const initialize = () =>
       MikroORM.init({
         dbName: 'memory://',
-        discovery: { onMetadata: configureJobMetadata },
         driverOptions: { extensions: { pgcrypto, uuid_ossp } },
         metadataProvider: TsMorphMetadataProvider,
         metadataCache,
+        schemaGenerator: { skipTables: ['job'] },
         entities: [
           User,
           Account,
@@ -86,7 +83,6 @@ describe('example native RLS migrations with PGlite', () => {
           Invitation,
           UserApiKey,
           MemberApiKey,
-          Job,
         ],
         extensions: [Migrator],
         migrations: {

@@ -1,5 +1,4 @@
 import { type QueueOptions } from "@nest-boot/queue";
-import { type ConnectionOptions } from "bullmq";
 
 /**
  * Configuration options for the schedule module.
@@ -12,6 +11,4 @@ export interface ScheduleModuleOptions extends QueueOptions {
   autorun?: boolean;
   /** Maximum number of concurrent scheduled jobs to process. */
   concurrency?: number;
-  /** Optional Redis connection options for the schedule queue. */
-  connection?: ConnectionOptions;
 }

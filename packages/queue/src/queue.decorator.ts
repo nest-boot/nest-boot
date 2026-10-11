@@ -17,7 +17,7 @@ export function Queue(options: QueueDefinition): ClassDecorator {
 }
 
 /**
- * Reads a queue declaration without opening a Redis connection.
+ * Reads a queue declaration without opening a database connection.
  * @param target - Declared queue class.
  * @returns The queue configuration.
  */

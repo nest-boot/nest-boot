@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import {
   HealthCheckModule,
   HealthCheckRegistry,
@@ -14,12 +12,15 @@ import {
   QueueHealthIndicator,
   QueueModule,
 } from "../dist/index.js";
+import { createPostgresFixture } from "./postgres.fixture.js";
 
 describe("Queue health HTTP integration", () => {
+  let fixture: Awaited<ReturnType<typeof createPostgresFixture>>;
   let app: INestApplication;
 
   afterEach(async () => {
     await app?.close();
+    await fixture?.close();
   });
 
   /**
@@ -32,16 +33,17 @@ describe("Queue health HTTP integration", () => {
     enabled = true,
     registration: "default" | "sync" | "async" = "default",
   ) {
-    const prefix = `health-e2e-${randomUUID()}`;
+    fixture = await createPostgresFixture();
+    const connection = { ...fixture.connection, max: 1 };
     const rootModule =
       registration === "sync"
         ? QueueModule.forRoot({})
         : registration === "async"
           ? QueueModule.forRootAsync({ useFactory: () => ({}) })
           : QueueModule;
-    @Queue({ name: "email", prefix })
+    @Queue({ name: "email", connection })
     class EmailQueue extends BaseQueue {}
-    @Queue({ name: "upload", prefix })
+    @Queue({ name: "upload", connection })
     class UploadQueue extends BaseQueue {}
     const queues = [EmailQueue, UploadQueue].map((queue) =>
       registration === "async"
@@ -152,10 +154,11 @@ describe("Queue health HTTP integration", () => {
 
   it("bounds stalled reads, shares each pending command, and recovers", async () => {
     const { email, read } = await createApp();
-    const client = await email.client;
     const indicator = app.get(QueueHealthIndicator);
-    // Stall only this connection so other queues and suites remain responsive.
-    client.stream.pause();
+    // Occupy only this queue's single-connection pool while health reads queue up.
+    const pending = email
+      .getBackend()
+      .connection.pool.query("select pg_sleep(1.3)");
     try {
       expect((await health()).status).toBe(503);
       expect(await indicator.check("queue.email", email, 10)).toMatchObject({
@@ -163,9 +166,10 @@ describe("Queue health HTTP integration", () => {
       });
       expect(read).toHaveBeenCalledOnce();
     } finally {
-      client.stream.resume();
+      await pending;
     }
-    await client.ping();
-    expect((await health()).status).toBe(200);
+    await vi.waitFor(async () => {
+      expect((await health()).status).toBe(200);
+    });
   });
 });

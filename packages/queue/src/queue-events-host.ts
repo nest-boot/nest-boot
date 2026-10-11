@@ -1,8 +1,7 @@
-import type { QueueEvents } from "bullmq";
-
+import type { PostgresQueueEvents as QueueEvents } from "./postgres.js";
 import { QUEUE_EVENTS_REF } from "./queue.constants.js";
 
-/** Base class for explicit Redis stream event listeners. */
+/** Base class for explicit PostgreSQL queue event listeners. */
 export abstract class QueueEventsHost {
   /** @internal */
   [QUEUE_EVENTS_REF]?: QueueEvents;

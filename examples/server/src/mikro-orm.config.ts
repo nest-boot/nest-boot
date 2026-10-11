@@ -1,9 +1,10 @@
 import { defineConfig } from '@mikro-orm/postgresql';
 import { entities as authEntities } from '@nest-boot/auth';
 import { loadConfigFromEnv } from '@nest-boot/database';
-import { entities as queueEntities } from '@nest-boot/queue/persistence';
-
-import { configureJobMetadata } from './app/jobs/job-access.js';
+import {
+  entities as queueEntities,
+  jobSchemaGeneratorOptions,
+} from '@nest-boot/queue/persistence';
 
 /**
  * MikroORM 配置工厂。
@@ -14,7 +15,11 @@ export default async () => {
 
   return defineConfig({
     ...config,
-    discovery: { onMetadata: configureJobMetadata },
+    schemaGenerator: {
+      ...jobSchemaGeneratorOptions,
+      // Preserve the legacy mirror until its data is archived separately.
+      skipTables: [...jobSchemaGeneratorOptions.skipTables, 'job'],
+    },
     entities: [...authEntities, ...queueEntities, ...(config.entities ?? [])],
     entitiesTs: [
       ...authEntities,

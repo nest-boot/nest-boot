@@ -3,14 +3,13 @@ import { MODULE_METADATA } from "@nestjs/common/constants";
 import { DiscoveryModule } from "@nestjs/core";
 
 vi.mock("@nest-boot/queue", () => ({
-  QueueModule: class QueueModule {},
   QueueFactory: class QueueFactory {},
   Queue: vi.fn(() => vi.fn()),
   BaseQueue: class BaseQueue {},
   Processor: vi.fn(() => vi.fn()),
   BaseProcessor: class BaseProcessor {},
 }));
-import { QueueFactory, QueueModule } from "@nest-boot/queue";
+import { QueueFactory } from "@nest-boot/queue";
 
 import { ScheduleModule } from "./schedule.module.js";
 import {
@@ -74,7 +73,7 @@ describe("ScheduleModule", () => {
       (provider: any) => provider.provide === MODULE_OPTIONS_TOKEN,
     );
 
-    expect(imports).toEqual([DiscoveryModule, QueueModule]);
+    expect(imports).toEqual([DiscoveryModule]);
     expect(providers).toEqual(
       expect.arrayContaining([Logger, ScheduleRegistry, ScheduleProcessor]),
     );
@@ -102,13 +101,13 @@ describe("ScheduleModule", () => {
     expect(provider.inject).toEqual([QueueFactory, MODULE_OPTIONS_TOKEN]);
     expect(
       provider.useFactory(factory, {
-        prefix: "schedule-test",
+        connection: { schema: "schedule_test" },
         concurrency: 2,
         autorun: false,
       }),
     ).toBe(queue);
     expect(factory.create).toHaveBeenCalledWith(ScheduleQueue, {
-      prefix: "schedule-test",
+      connection: { schema: "schedule_test" },
     });
   });
 });

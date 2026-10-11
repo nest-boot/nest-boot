@@ -6,7 +6,7 @@
     "url": "https://github.com/nest-boot/nest-boot.git",
     "directory": "packages/queue"
   },
-  "description": "BullMQ queues, job persistence, and optional GraphQL queries",
+  "description": "PostgreSQL-backed BullMQ queues and optional MikroORM and GraphQL job queries",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",
@@ -46,7 +46,7 @@
     "@nestjs/testing": "^12.0.1",
     "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^4.1.11",
-    "bullmq": "^5.81.5",
+    "bullmq": "^6.3.12",
     "dotenv": "^17.2.3",
     "eslint": "^9.39.3",
     "reflect-metadata": "^0.2.2",
@@ -62,13 +62,15 @@
     "@nestjs/graphql": "^14.0.3",
     "graphql": "^16.11.0",
     "@mikro-orm/pglite": "7.2.0",
-    "@nest-boot/database": "workspace:^"
+    "@nest-boot/database": "workspace:^",
+    "@types/pg": "^8.15.6",
+    "@mikro-orm/postgresql": "7.2.0"
   },
   "peerDependencies": {
     "@nest-boot/request-context": "workspace:^",
     "@nestjs/common": "^12.0.0",
     "@nestjs/core": "^12.0.0",
-    "bullmq": "^5.81.5",
+    "bullmq": "^6.3.12",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.0.0",
     "@mikro-orm/core": "^7.2.0",
@@ -110,8 +112,8 @@
   },
   "dependencies": {
     "@nest-boot/health-check": "workspace:^",
-    "@nest-boot/redis": "workspace:^",
-    "graphql-type-json": "^0.3.2"
+    "graphql-type-json": "^0.3.2",
+    "pg": "^8.16.3"
   },
   "peerDependenciesMeta": {
     "@mikro-orm/core": {

@@ -8,13 +8,15 @@ import { HashModule } from '@nest-boot/hash';
 import { HealthCheckModule } from '@nest-boot/health-check';
 import { LoggerModule } from '@nest-boot/logger';
 import { MailerModule } from '@nest-boot/mailer';
-import { entities as queueEntities } from '@nest-boot/queue/persistence';
+import {
+  entities as queueEntities,
+  jobSchemaGeneratorOptions,
+} from '@nest-boot/queue/persistence';
 import { RequestContextModule } from '@nest-boot/request-context';
 import { Global, Module } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
 import { GreetCommand } from './commands/greet.command.js';
-import { configureJobMetadata } from '../app/jobs/job-access.js';
 import { ConfigModule } from './modules/config.module.js';
 import { createSessionContext } from './session-context.js';
 
@@ -24,7 +26,11 @@ const GraphQLDynamicModule = GraphQLModule.forRoot({
 
 const DatabaseDynamicModule = DatabaseModule.forRoot({
   driver: PostgreSqlDriver,
-  discovery: { onMetadata: configureJobMetadata },
+  schemaGenerator: {
+    ...jobSchemaGeneratorOptions,
+    // Preserve the legacy mirror until its data is archived separately.
+    skipTables: [...jobSchemaGeneratorOptions.skipTables, 'job'],
+  },
   entities: [...authEntities, ...queueEntities, 'dist/**/*.entity.js'],
   entitiesTs: [...authEntities, ...queueEntities, 'src/**/*.entity.ts'],
   session: createSessionContext,

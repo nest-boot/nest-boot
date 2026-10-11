@@ -5,26 +5,19 @@ import { AuthGuard, Session, User, Workspace } from '@nest-boot/auth';
 import { GraphQLModule } from '@nest-boot/graphql';
 import { JobStatus } from '@nest-boot/queue';
 import { JobResolver } from '@nest-boot/queue/graphql';
-import { Job } from '@nest-boot/queue/persistence';
+import { Job, jobSchemaGeneratorOptions } from '@nest-boot/queue/persistence';
 import { JobService } from '@nest-boot/queue/persistence';
 import { RequestContext } from '@nest-boot/request-context';
 import type { INestApplication } from '@nestjs/common';
-import {
-  DiscoveryService,
-  ModuleRef,
-  ModulesContainer,
-  Reflector,
-} from '@nestjs/core';
+import { ModuleRef, Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
+import { runMigrations } from 'bullmq';
 import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 
-import {
-  configureJobMetadata,
-  getJobReadFilter,
-} from '../src/app/jobs/job-access.js';
+import { getJobReadFilter } from '../src/app/jobs/job-access.js';
 
-describe('example Job GraphQL API with native RLS', () => {
+describe('example Job GraphQL API with native BullMQ tables', () => {
   let app: INestApplication;
   let orm: MikroORM;
 
@@ -32,7 +25,7 @@ describe('example Job GraphQL API with native RLS', () => {
     orm = await MikroORM.init({
       dbName: 'memory://',
       entities: [Job],
-      discovery: { onMetadata: configureJobMetadata },
+      schemaGenerator: jobSchemaGeneratorOptions,
       metadataProvider: TsMorphMetadataProvider,
       metadataCache: { enabled: false },
       context: () =>
@@ -42,12 +35,20 @@ describe('example Job GraphQL API with native RLS', () => {
     });
     await orm.em.execute('create role anonymous nologin');
     await orm.em.execute('create role authenticated nologin');
-    await orm.schema.create();
-    await orm.em.execute('grant all on job to anonymous, authenticated');
-    await orm.em.fork().insertMany(Job, [
+    const client = await orm.em.getConnection().getNativeClient();
+    await runMigrations({
+      async query<R>(sql: string, params?: readonly unknown[]) {
+        if (params?.length) return await client.query<R>(sql, [...params]);
+        const results = await client.exec(sql);
+        return { rows: (results.at(-1)?.rows ?? []) as R[] };
+      },
+    });
+    await orm.em.execute('grant usage on schema bullmq to authenticated');
+    await orm.em.execute('grant select on bullmq.job to authenticated');
+    const fixtures = [
       {
         id: 'reports:1',
-        queueName: 'reports',
+        queue: 'reports',
         name: 'generate-report',
         data: { userId: '101', workspaceId: '202', format: 'csv' },
         status: JobStatus.COMPLETED,
@@ -58,7 +59,7 @@ describe('example Job GraphQL API with native RLS', () => {
       },
       {
         id: 'exports:2',
-        queueName: 'exports',
+        queue: 'exports',
         name: 'export-report',
         data: { userId: '102', workspaceId: '201' },
         status: JobStatus.FAILED,
@@ -69,7 +70,7 @@ describe('example Job GraphQL API with native RLS', () => {
       },
       {
         id: 'reports:3',
-        queueName: 'reports',
+        queue: 'reports',
         name: 'generate-report',
         data: { userId: '101', workspaceId: '201' },
         status: JobStatus.WAITING,
@@ -79,7 +80,7 @@ describe('example Job GraphQL API with native RLS', () => {
       },
       {
         id: 'reports:4',
-        queueName: 'reports',
+        queue: 'reports',
         name: 'generate-report',
         data: { userId: '102', workspaceId: '202' },
         status: JobStatus.COMPLETED,
@@ -89,7 +90,7 @@ describe('example Job GraphQL API with native RLS', () => {
       },
       {
         id: 'schedule:5',
-        queueName: 'schedule',
+        queue: 'schedule',
         name: 'cleanup',
         data: {},
         status: JobStatus.COMPLETED,
@@ -97,13 +98,27 @@ describe('example Job GraphQL API with native RLS', () => {
         priority: 0,
         createdAt: new Date('2026-01-05T00:00:00Z'),
       },
-    ]);
+    ];
+    for (const [index, job] of fixtures.entries()) {
+      await client.query(
+        'insert into bullmq.job (queue, id, seq, name, state, data, priority, progress, return_value, failed_reason, added_at_ms) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+        [
+          job.queue,
+          job.id.split(':')[1],
+          index + 1,
+          job.name,
+          job.status,
+          JSON.stringify(job.data),
+          job.priority,
+          JSON.stringify(job.progress),
+          JSON.stringify(job.returnValue ?? null),
+          job.failedReason ?? null,
+          job.createdAt.getTime(),
+        ],
+      );
+    }
 
-    const service = new JobService(
-      new DiscoveryService(new ModulesContainer()),
-      orm.em,
-      { getJobReadFilter },
-    );
+    const service = new JobService(orm.em, { getJobReadFilter });
     const module = await Test.createTestingModule({
       imports: [
         GraphQLModule.forRoot({ autoSchemaFile: true, graphiql: false }),
@@ -116,7 +131,7 @@ describe('example Job GraphQL API with native RLS', () => {
       new AuthGuard(module.get(Reflector), {}, module.get(ModuleRef)),
     );
     // Test-only identity fixtures replace authentication middleware, while the
-    // real AuthGuard, GraphQL transport, request EM and PostgreSQL RLS execute.
+    // real AuthGuard, GraphQL transport, request EM and JobService authorization execute.
     app.use((req: Request, _res: Response, next: NextFunction) => {
       const authenticated = req.header('x-test-authenticated') === 'true';
       const userId = req.header('x-test-user') ?? '101';
@@ -175,13 +190,13 @@ describe('example Job GraphQL API with native RLS', () => {
 
   it('returns a single owned job with JSON payload, progress, result and enum status', async () => {
     const { body } = await query(
-      `query { job(id: "reports:1") { id queueName name data progress returnValue status priority failedReason startedAt finishedAt createdAt updatedAt } }`,
+      `query { job(id: "reports:1") { id queue name data progress returnValue status priority failedReason startedAt finishedAt createdAt } }`,
     );
     expect(body.errors).toBeUndefined();
     expect(body).toHaveProperty('data');
     expect(body.data.job).toMatchObject({
       id: 'reports:1',
-      queueName: 'reports',
+      queue: 'reports',
       name: 'generate-report',
       data: { userId: '101', workspaceId: '202', format: 'csv' },
       progress: { done: 10 },
@@ -215,7 +230,7 @@ describe('example Job GraphQL API with native RLS', () => {
     expect(body.errors[0].extensions.code).toBe('UNAUTHORIZED');
   });
 
-  it('paginates across queues with RLS-scoped counts and stable cursors in both directions', async () => {
+  it('paginates across queues with identity-scoped counts and stable cursors in both directions', async () => {
     const source = `query($after: String, $before: String, $first: Int, $last: Int) {
       jobs(first: $first, last: $last, after: $after, before: $before, orderBy: {field: CREATED_AT, direction: ASC}) {
         totalCount totalCountRelation edges { cursor node { id } }
@@ -263,7 +278,7 @@ describe('example Job GraphQL API with native RLS', () => {
     }`,
       {
         filter: {
-          queue_name: 'reports',
+          queue: 'reports',
           name: 'generate-report',
           status: 'completed',
           created_at: { $gte: '2026-01-01T00:00:00Z' },

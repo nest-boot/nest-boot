@@ -22,7 +22,7 @@ export interface QueueEventsDefinition {
 /**
  * Declares an explicit queue event listener. Persistence does not use QueueEvents.
  * @param queue - Queue class registered in this application.
- * @param options - Redis event stream options.
+ * @param options - Queue event stream options.
  * @returns Queue event listener class decorator.
  */
 export function QueueEventsListener(

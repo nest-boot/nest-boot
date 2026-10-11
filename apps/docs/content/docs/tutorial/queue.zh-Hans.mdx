@@ -1,6 +1,6 @@
 ---
 title: "队列"
-description: "通过 BullMQ 提供可注入的队列类、后台消费者与可选的任务持久化。"
+description: "通过 BullMQ 提供可注入的队列类、PostgreSQL 后台消费者与可选的 MikroORM 查询。"
 ---
 
 `@nest-boot/queue` 直接基于 [BullMQ](https://docs.bullmq.io/) 集成 Nest。队列类是可注入的 provider，消费者引用同一个队列类，不再依赖 `@nestjs/bullmq`。
@@ -28,7 +28,7 @@ export interface EmailData {
 export class EmailQueue extends BaseQueue<EmailData> {}
 ```
 
-把队列类加入 `providers`，直接通过构造函数注入：
+把队列类加入 `providers`，直接通过构造函数注入。应用中只注册一次 `QueueModule`，选择直接导入或使用 `forRoot()` / `forRootAsync()` 配置。其 provider 为全局服务，业务模块和 `ScheduleModule` 直接复用，无需重复导入：
 
 ```ts
 import { QueueModule } from "@nest-boot/queue";
@@ -52,7 +52,7 @@ export class EmailService {
 export class EmailModule {}
 ```
 
-不需要 `registerQueue()` 或 `@InjectQueue()`。`QueueModule` 自动读取 `REDIS_URL`；通过 `forRoot()` / `forRootAsync()` 可以指定连接和共享默认配置，根配置只注册一次。队列类继承 BullMQ 的方法，也可以添加业务方法。
+不需要 `registerQueue()` 或 `@InjectQueue()`。`QueueModule` 自动读取 `QUEUE_DATABASE_URL` / `DATABASE_URL`；通过 `forRoot()` / `forRootAsync()` 可以指定连接和共享默认配置，根配置只注册一次。队列类继承 BullMQ 的方法，也可以添加业务方法。
 
 队列 provider 必须保持单例，队列名称在应用内必须唯一。需要跨模块使用时，导出队列类并导入所属模块，不要重复创建实例。应用关闭时会关闭队列连接。
 
@@ -83,7 +83,7 @@ export class EmailProcessor extends BaseProcessor {
 }
 ```
 
-将 `EmailProcessor` 与 `EmailQueue` 都注册为 provider，或者导入导出队列的模块。纯消费者部署也必须注册队列类。注册只创建客户端，不会自动入队；缺少队列 provider 时会在启动任何 worker 前报错。消费者的连接、prefix 和 telemetry 都来自队列实例，worker 配置不能指向不同的 Redis 命名空间。使用 `BaseProcessor` 替代已移除的 `WorkerHost` 导出。
+将 `EmailProcessor` 与 `EmailQueue` 都注册为 provider，或者导入导出队列的模块。纯消费者部署也必须注册队列类。注册只创建客户端，不会自动入队；缺少队列 provider 时会在启动任何 worker 前报错。消费者的PostgreSQL 连接和 telemetry 都来自队列实例，worker 配置不能指向不同的数据库或 schema。使用 `BaseProcessor` 替代已移除的 `WorkerHost` 导出。
 
 ### Scope 与 RequestContext
 
@@ -133,7 +133,7 @@ export class EmailWorkerModule {}
 
 ## 动态队列配置
 
-配置依赖其他服务或异步读取时，使用普通 Nest factory provider。`QueueFactory.create()` 保留声明中的队列名称，用运行时配置覆盖装饰器配置，并逐字段合并 `persistence`。返回的队列实例仍由 Nest 管理生命周期。
+配置依赖其他服务或异步读取时，使用普通 Nest factory provider。`QueueFactory.create()` 保留声明中的队列名称，用运行时配置覆盖装饰器配置。返回的队列实例仍由 Nest 管理生命周期。
 
 ```ts
 import { QueueFactory, QueueModule } from "@nest-boot/queue";
@@ -159,7 +159,7 @@ export class EmailModule {}
 
 ## 队列事件
 
-`@OnWorkerEvent()` 监听本地 worker。显式监听 Redis 事件流时使用独立的单例 `QueueEventsHost`：
+`@OnWorkerEvent()` 监听本地 worker。显式监听 PostgreSQL 队列事件时使用独立的单例 `QueueEventsHost`：
 
 ```ts
 import {
@@ -179,87 +179,95 @@ export class EmailEvents extends QueueEventsHost {
 }
 ```
 
-将 `EmailEvents` 及其队列注册为 provider。Worker 事件仅绑定单例消费者，scoped 消费者的事件方法会被跳过；QueueEvents listener 必须是单例。持久化使用本地 Queue/Worker 事件，不创建 QueueEvents 读取器。
+将 `EmailEvents` 及其队列注册为 provider。Worker 事件仅绑定单例消费者，scoped 消费者的事件方法会被跳过；QueueEvents listener 必须是单例。任务查询直接读取原生表，无需事件监听器。
 
 每个事件回调都有独立上下文并运行上下文中间件。携带 Job 的 worker 事件绑定 `JOB_REF`；`stalled` 只有任务 ID。QueueEvents 使用 payload 中的 `jobId`，不绑定 `JOB_REF`。其他事件生成上下文 ID。事件处理器及中间件的错误会记录并抑制，因为 BullMQ 不等待异步监听器。直接调用 `.on()` 时，需要自行处理上下文及异步错误。
 
-## 内置任务持久化与 GraphQL
+## PostgreSQL 存储与迁移
 
-`QueueModule` 自动发现应用已注册的集成。每个队列通过 `persistence.enabled: true` 开启持久化，默认关闭；只设置队列 TTL 不会自动开启。模块配置的 `persistence.ttl` 提供默认保留时间，默认 30 天，单位毫秒；各队列可覆盖。`graphql` 默认为 `true`，设为 `false` 可关闭内置任务查询。
+所有队列使用 BullMQ 6 官方 PostgreSQL 后端。优先读取 `QUEUE_DATABASE_URL`，其次使用 `DATABASE_URL`；都未设置时使用 node-postgres 默认连接参数。显式 `connection` 支持 PostgreSQL 配置、URL 或调用方管理的连接池。自定义 schema 请传配置对象中的 `schema`；默认是 `bullmq`，不再使用 Redis prefix。
 
-| 应用配置                                                      | 行为                                                         |
-| ------------------------------------------------------------- | ------------------------------------------------------------ |
-| 未配置数据库集成，且没有队列开启持久化                        | 仅运行 BullMQ 队列和 worker                                  |
-| 已注册 `DatabaseModule` 和内置 `Job` 实体                     | 提供 `JobService`，仅监听 `persistence.enabled: true` 的队列 |
-| 已配置数据库集成和 `GraphQLModule`，且未设置 `graphql: false` | 同时提供 `job(id)` 和 `jobs` 分页查询                        |
+启动生产者、消费者或查询服务之前，执行 BullMQ 官方迁移。队列表、函数、索引和迁移记录均由它管理：
 
-`@nest-boot/database`、`@nest-boot/graphql` 和 `@nest-boot/graphql-connection` 都是可选 peer dependency。按需在应用中安装，并补齐各自文档列出的对等依赖：
+```ts
+import { runMigrations } from "bullmq";
+import { Client } from "pg";
 
-| 功能              | 额外需要的 Nest Boot 包                                                      |
-| ----------------- | ---------------------------------------------------------------------------- |
-| 纯队列            | 无                                                                           |
-| 任务持久化        | `@nest-boot/database`                                                        |
-| 任务 GraphQL 查询 | `@nest-boot/database`、`@nest-boot/graphql`、`@nest-boot/graphql-connection` |
+const client = new Client({ connectionString: process.env.DATABASE_URL });
+await client.connect();
+try {
+  await runMigrations(client); // 第二个参数可指定自定义 schema。
+} finally {
+  await client.end();
+}
+```
 
-仅安装包不会启用功能，还需在应用中注册相应模块及内置实体。只使用持久化时，默认的 `graphql: true` 不会要求安装 GraphQL。若任务查询已满足其他启用条件，但缺少 `graphql-connection`，启动会明确报错；可设置 `graphql: false` 关闭任务查询。
+迁移需要独占一个连接，不能通过 `pool.query()` 在多个会话间切换。也可显式配置 `connection: { connectionString, migrate: true }`；Nest Boot 默认不会自动执行迁移。连接同一个数据库并不意味着入队和业务写入自动处于同一个事务。
 
-| 配置                  | 设置位置                                             | 默认值           |
-| --------------------- | ---------------------------------------------------- | ---------------- |
-| `persistence.enabled` | `@Queue()` 参数或 `QueueFactory.create()` 的最终配置 | `false`          |
-| `persistence.ttl`     | `@Queue()` 参数或 `QueueFactory.create()` 的最终配置 | 继承模块默认 TTL |
-| `persistence.ttl`     | `forRoot` / `forRootAsync` 参数                      | 30 天，单位毫秒  |
-| `graphql`             | `forRoot` / `forRootAsync` 参数                      | `true`           |
-| `getJobReadFilter`    | `forRoot` / `forRootAsync` 参数                      | 拒绝读取         |
+传入调用方管理的 `pg.Pool` 时，需要提前设置正确的 `search_path`（如 `options: "-c search_path=bullmq,public"`），并在队列和 worker 停止后自行关闭连接池。自定义 `schema` 使用配置对象，不直接传裸 Pool。
 
-```typescript
+## 可选 MikroORM 与 GraphQL 查询
+
+PostgreSQL 后端本身负责持久化，`add()` 和 `addBulk()` 完成后原生任务立即可查。不再维护事件同步表、持久化开关、同步监听器或额外清理定时器。任务保留时间通过 BullMQ 的 `removeOnComplete` / `removeOnFail` 设置，`age` 单位为秒。任务被移除后，ORM 和 GraphQL 也查询不到。重复使用仍存在的 job ID 会保留原任务；确实需要复用 ID 时先移除旧任务。
+
+| 应用配置                       | 行为                                         |
+| ------------------------------ | -------------------------------------------- |
+| 仅 QueueModule                 | PostgreSQL 队列和消费者，无需 ORM 或 GraphQL |
+| DatabaseModule 和内置 Job 实体 | 同时提供只读 JobService                      |
+| 再注册 GraphQLModule           | 暴露 job(id) 和 jobs，除非 graphql 为 false  |
+
+`@nest-boot/database`、`@nest-boot/graphql` 和 `@nest-boot/graphql-connection` 仍为可选对等依赖，按功能安装各自所需的依赖。仅安装包不会启用功能。只查询单个实体可以不安装 GraphQL；连接分页查询需要 GraphQL 相关依赖。
+
+```ts
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { DatabaseModule } from "@nest-boot/database";
 import { GraphQLModule } from "@nest-boot/graphql";
-import { BaseQueue, Queue, QueueModule } from "@nest-boot/queue";
-import { entities as queueEntities } from "@nest-boot/queue/persistence";
+import { QueueModule } from "@nest-boot/queue";
+import {
+  entities,
+  jobSchemaGeneratorOptions,
+} from "@nest-boot/queue/persistence";
 import { Module } from "@nestjs/common";
-
-@Queue({ name: "export", persistence: { enabled: true, ttl: 7 * 86400000 } })
-class ExportQueue extends BaseQueue {}
 
 @Module({
   imports: [
     DatabaseModule.forRoot({
       driver: PostgreSqlDriver,
-      entities: [...queueEntities, "dist/**/*.entity.js"],
-      entitiesTs: [...queueEntities, "src/**/*.entity.ts"],
+      entities,
+      schemaGenerator: jobSchemaGeneratorOptions,
     }),
     GraphQLModule,
     QueueModule.forRoot({
-      graphql: true, // 默认开启；false 仅关闭内置任务查询。
-      persistence: { ttl: 30 * 24 * 60 * 60 * 1000 },
-      // Authorize this request using your application's verified identity.
-      // Return a MikroORM filter for visible jobs, or null to deny access.
+      graphql: true,
+      // 根据可信请求身份返回 MikroORM 筛选条件，null 表示拒绝访问。
       getJobReadFilter: () => null,
     }),
   ],
-  providers: [ExportQueue],
 })
 export class JobsModule {}
 ```
 
-将 `queueEntities` 同时加入**运行时数据库配置和 MikroORM CLI 配置**。启动 worker 前生成、审核并执行迁移；自动发现不会创建或修改数据库表。内置表名是 `job`，ID 格式为 `queueName:jobId`。
+运行时和 MikroORM CLI 配置都加入相同实体与 `schemaGenerator` 排除设置。Job 是只读的 wildcard schema 实体，默认不参与 ORM 迁移生成；`jobSchemaGeneratorOptions` 还会排除数据库侧的 `bullmq` schema 和对应建表目标。`readonly` 本身只关闭 flush 变更追踪，不阻止显式原生写入；所有任务修改继续调用 BullMQ。
 
-`getJobReadFilter` 在每次读取时执行，将授权范围同时应用于单条任务、分页结果及总数。未配置回调、返回 `null` 或 `undefined` 都会拒绝访问。返回 `{}` 明确允许访问全部任务，必须先校验调用者权限。任务参数和返回值可能含有敏感数据；入队时可靠地写入归属信息，以及配置需要的 RLS 策略，仍由应用负责。示例服务端通过 MikroORM 的 `discovery.onMetadata` 保留原有用户/工作区 RLS 策略。
+自定义 schema（如 `tasks`）时，设置 `QueueModule.connection: { connectionString, schema: "tasks" }`，执行 `runMigrations(client, "tasks")`，并在 `schemaGenerator.ignoreSchema` 加入 `tasks`、在 `skipTables` 加入 `tasks.job`。直接用 ORM 查询需传 `{ schema: "bullmq" }` 或自定义名称；JobService 自动使用根配置中的 schema，默认 `bullmq`。ORM 必须连接根队列配置对应的同一个数据库。单个队列覆盖到其他数据库或 schema 时，不会被根 JobService 自动聚合。
 
-异步注册时，将 `graphql`、默认 `persistence.ttl` 和 `getJobReadFilter` 放在 `forRootAsync` 的工厂返回值中；队列自己的 `persistence` 放在 `@Queue()` 或传入 `QueueFactory.create()` 的运行时配置中。实体和服务从 `@nest-boot/queue/persistence` 导入；GraphQL 连接类型和 Resolver 从 `@nest-boot/queue/graphql` 导入。这些是同一个包的入口，分开导出以避免纯队列加载可选依赖。只在安装相应依赖的应用中导入 GraphQL 入口。
+| 实体字段                           | 原生映射                                                  |
+| ---------------------------------- | --------------------------------------------------------- |
+| queue                              | queue 列                                                  |
+| jobId                              | id 列                                                     |
+| id                                 | formula 计算 queue:jobId，不新增数据库列                  |
+| status                             | 原生 state，并将有优先级的 waiting 任务表示为 prioritized |
+| createdAt / startedAt / finishedAt | 毫秒时间戳转换为 Date                                     |
 
-`jobs` 支持队列、名称、状态、日期筛选，名称搜索、游标分页和排序。`job(id)` 对不存在或超出授权范围的记录返回 `null`。授权范围由 `JobService` 执行，直接调用服务也同样受限。
+数据库保持 `(queue, id)` 复合主键，计算出的 API ID 用于跨队列唯一标识和游标排序。原生表没有最后更新时间，因此不提供 `updatedAt` 字段或筛选。GraphQL 暴露 `queue`、`jobId` 和计算出的 `id`；筛选和排序支持 `queue`、`name`、`status`、`created_at`。
 
-`JobService` 监听**本地** Queue 和 Worker 事件，每个任务保存一条记录，持续更新其最近已知状态。这是尽力而为的状态同步，不是逐条事件历史或可靠审计日志，也不能替代 BullMQ 状态。所有被监听的 Queue 和 Worker 事件统一按 `queueName:jobId` 执行 upsert，覆盖已有字段。BullMQ 任务移除后复用相同 ID 时，新的入队写入会替换旧任务数据并清空旧执行结果。每次写入都会 fork EntityManager，失败仅记录日志，不使 worker 失败。同一进程中，同一任务的写入按事件顺序执行，避免较早的慢写入覆盖后续结果；不同任务仍可并发写入。这不保证独立生产者和 worker 进程之间的写入顺序：最后完成的数据库写入生效，因此迟到的生产者写入可能覆盖 Worker 结果。未开启持久化的普通队列和定时任务默认不落库。模块自己的每小时定时器仅清理当前应用开启了持久化的队列，按各队列实际 TTL 和记录最后更新时间判断过期；未注册或关闭持久化的队列不参与清理。TTL 优先级为队列配置、模块默认值、30 天。没有队列开启持久化时不启动清理定时器；关闭应用时停止定时器，无需 `ScheduleModule`。
+每次读取都执行 `getJobReadFilter`，范围同时约束单条任务、筛选、分页和数量。未配置、返回 null 或 undefined 均拒绝访问；返回空对象表示明确允许读取全部任务。入队数据的身份必须来自可信应用上下文。BullMQ 默认表没有业务租户 RLS；使用数据库请求角色时，需授予该角色 schema usage 和 job 表 SELECT。示例的 `queue:migrate` 命令为 `authenticated` 授予这两项权限，用户与工作区隔离由 JobService 筛选实现，不再由 ORM 为 BullMQ 表生成 RLS 策略。
 
-队列开启 `persistence.enabled` 时，必须注册 `QueueModule`、`DatabaseModule`，并将内置 `Job` 加入 ORM 实体发现。缺少条件会在创建该队列前导致启动失败。生产者和消费者应用都必须注册同一个队列类，并复用一致的持久化配置，包括 TTL；配置只作用于本地应用，不会通过 Redis 自动传播。生产者仅记录本地入队事件，消费者仅记录本地执行事件；开启持久化的两侧都需数据库集成。`persistence` 仅配置在队列注册参数中，不放在 `@Processor()` 上。内置持久化不使用 `QueueEvents` 写库，也不保证 `queue.add()` 返回时数据库写入已完成。
+实体和 JobService 从 `@nest-boot/queue/persistence` 导入；GraphQL 类型和 Resolver 从 `@nest-boot/queue/graphql` 导入，避免普通队列加载可选依赖。
 
-### 从 queue-database 迁移
+### 迁移现有队列
 
-`@nest-boot/queue-database` 已从仓库移除。迁移到同一个 `@nest-boot/queue` 包；已发布的旧版本仍保留在 npm，但不会随本次变更更新。
-
-使用内置 API 时，移除 `QueueDatabaseModule`，以内置 `Job` 替换应用的旧实体，将默认 TTL 移至 `QueueModuleOptions.persistence.ttl`，用各队列的 `persistence: { enabled: true }` 和可选 TTL 覆盖替代 include/exclude 列表，并配置 `getJobReadFilter`。删除应用原有的 `JobResolver`、`JobService` 和分页定义，避免重复 GraphQL 字段。审核迁移时注意保留既有任务数据、自定义字段和 RLS 策略。
+此 API 保持 v8。移除 `@nest-boot/queue-database`、`QueueDatabaseModule`、旧同步实体和 Resolver、persistence/TTL 配置与 Redis prefix，改为注册队列类 provider，配置 PostgreSQL 并执行官方迁移；按需添加 ORM 排除配置和查询授权。旧 Redis 任务和同步表数据不会自动搬迁，切换部署前应单独排空或迁移。旧业务表的清理另行审核，以保留需要的历史数据。
 
 ## 最佳实践
 

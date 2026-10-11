@@ -9,7 +9,8 @@ import {
   Optional,
 } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
-import { Queue } from "bullmq";
+
+import { BaseQueue as Queue } from "./base-queue.js";
 
 /** Registers health checks for the application's existing BullMQ queues. */
 @Injectable()
@@ -18,7 +19,7 @@ export class QueueHealthIndicator implements OnApplicationBootstrap {
   private readonly pendingReads = new WeakMap<Queue, Promise<boolean>>();
 
   /**
-   * Creates a queue health indicator without creating queues or Redis connections.
+   * Creates a queue health indicator without creating queues or PostgreSQL connections.
    * @param discoveryService - Provider discovery for registered queue instances
    * @param registry - Optional application health check registry
    */
@@ -55,10 +56,10 @@ export class QueueHealthIndicator implements OnApplicationBootstrap {
       .check(key)
       .attempt(async ({ signal }) => {
         if (queue.closing) throw new Error("Queue is closing");
-        const client = await queue.client;
+        await queue.waitUntilReady();
         signal.throwIfAborted();
-        if (client.status !== "ready")
-          throw new Error("Queue connection is not ready");
+        if (queue.closing || queue.getBackend().connection.isClosing)
+          throw new Error("Queue connection is closing");
         // Share commands that outlive a timeout instead of queueing more reads.
         let read = this.pendingReads.get(queue);
         if (!read) {

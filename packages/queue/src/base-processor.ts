@@ -1,5 +1,6 @@
-import type { Job, Worker } from "bullmq";
+import type { Job } from "bullmq";
 
+import type { PostgresWorker as Worker } from "./postgres.js";
 import { WORKER_REF } from "./queue.constants.js";
 
 /** Base class for a consumer registered with `@Processor()`. */

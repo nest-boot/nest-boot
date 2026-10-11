@@ -52,17 +52,4 @@ await assert.rejects(
   /Processor.*consumer-only.*ConsumerQueue.*providers/,
 );
 
-@Queue({ name: "history", persistence: { enabled: true } })
-class HistoryQueue extends BaseQueue {}
-
-@Module({ imports: [QueueModule], providers: [HistoryQueue] })
-class MissingDatabaseModule {}
-
-await assert.rejects(
-  NestFactory.createApplicationContext(MissingDatabaseModule, {
-    logger: false,
-    abortOnError: false,
-  }),
-  /Queue "history" has persistence.enabled: true.*DatabaseModule/,
-);
 console.log("Packed plain queue starts without database or GraphQL peers");

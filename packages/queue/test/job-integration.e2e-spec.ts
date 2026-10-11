@@ -1,210 +1,260 @@
-import { randomUUID } from "node:crypto";
-
-import { MikroORM, PgliteDriver } from "@mikro-orm/pglite";
+import { MikroORM, PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { DatabaseModule } from "@nest-boot/database";
 import { GraphQLModule } from "@nest-boot/graphql";
 import { RequestContextModule } from "@nest-boot/request-context";
-import type { INestApplication } from "@nestjs/common";
+import { ForbiddenException, type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { type Job as BullJob, Queue } from "bullmq";
+import { type Job as BullJob } from "bullmq";
 
 import {
   BaseProcessor,
   BaseQueue,
   Processor,
-  Queue as DeclareQueue,
-  QueueFactory,
+  Queue,
   QueueModule,
 } from "../dist/index.js";
-import { Job, JobService, JobStatus } from "../dist/persistence.js";
+import {
+  Job,
+  jobSchemaGeneratorOptions,
+  JobService,
+  JobStatus,
+} from "../dist/persistence.js";
+import { createPostgresFixture } from "./postgres.fixture.js";
 
-let releaseJob: (() => void) | undefined;
-
-const queueName = `integration-${randomUUID()}`;
-const plainQueueName = `${queueName}-plain`;
-const disabledQueueName = `${queueName}-disabled`;
-const asyncQueueName = `${queueName}-async`;
-
-@DeclareQueue({ name: queueName, persistence: { enabled: true } })
-class HistoryQueue extends BaseQueue {}
-@DeclareQueue({ name: plainQueueName })
-class PlainQueue extends BaseQueue {}
-@DeclareQueue({ name: disabledQueueName, persistence: { enabled: false } })
-class DisabledQueue extends BaseQueue {}
-@DeclareQueue({ name: asyncQueueName })
-class AsyncQueue extends BaseQueue {}
-
-@Processor(HistoryQueue)
-class HistoryWorker extends BaseProcessor {
+@Queue({ name: "reports" })
+class ReportsQueue extends BaseQueue {}
+@Queue({ name: "emails" })
+class EmailsQueue extends BaseQueue {}
+@Processor(ReportsQueue, { autorun: false })
+class ReportsProcessor extends BaseProcessor {
   async process(job: BullJob) {
     await job.updateProgress({ done: 1 });
-    if (job.data.wait)
-      await new Promise<void>((resolve) => {
-        releaseJob = resolve;
-      });
     if (job.data.fail) throw new Error("expected failure");
     return { saved: true };
   }
 }
 
-@Processor(PlainQueue)
-class PlainWorker extends HistoryWorker {}
-
-@Processor(DisabledQueue)
-class DisabledWorker extends HistoryWorker {}
-
-@Processor(AsyncQueue)
-class AsyncWorker extends HistoryWorker {}
-
-describe("automatically discovered job history and GraphQL", () => {
+describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
+  let fixture: Awaited<ReturnType<typeof createPostgresFixture>>;
   let app: INestApplication;
-  let queue: Queue;
-  let otherQueues: Queue[];
   let orm: MikroORM;
+  let reports: ReportsQueue;
+  let emails: EmailsQueue;
 
   beforeAll(async () => {
+    fixture = await createPostgresFixture();
     const module = await Test.createTestingModule({
       imports: [
         RequestContextModule,
         QueueModule.forRoot({
-          getJobReadFilter: () => ({ data: { tenant: "allowed" } }),
+          connection: fixture.connection,
+          getJobReadFilter: () => ({ data: { owner: "alice" } }),
         }),
         DatabaseModule.forRoot({
-          driver: PgliteDriver,
-          dbName: "memory://",
+          driver: PostgreSqlDriver,
+          clientUrl: fixture.connection.connectionString,
           entities: [Job],
+          schemaGenerator: {
+            ...jobSchemaGeneratorOptions,
+            ignoreSchema: ["bullmq", fixture.connection.schema],
+          },
         }),
         GraphQLModule.forRoot({ autoSchemaFile: true, graphiql: false }),
       ],
-      providers: [
-        HistoryQueue,
-        PlainQueue,
-        DisabledQueue,
-        {
-          provide: AsyncQueue,
-          inject: [QueueFactory],
-          useFactory: (factory: QueueFactory) =>
-            factory.create(AsyncQueue, { persistence: { enabled: true } }),
-        },
-        HistoryWorker,
-        PlainWorker,
-        DisabledWorker,
-        AsyncWorker,
-      ],
+      providers: [ReportsQueue, EmailsQueue, ReportsProcessor],
     }).compile();
     app = module.createNestApplication();
     app.useLogger(false);
-    orm = module.get(MikroORM);
-    await orm.schema.create();
-    queue = module.get(HistoryQueue);
-    otherQueues = [PlainQueue, DisabledQueue, AsyncQueue].map((queueType) =>
-      module.get(queueType),
-    );
+    orm = app.get(MikroORM);
+    reports = app.get(ReportsQueue);
+    emails = app.get(EmailsQueue);
     await app.listen(0, "127.0.0.1");
   }, 30000);
 
   afterAll(async () => {
-    await queue?.obliterate({ force: true });
-    await Promise.all(
-      (otherQueues ?? []).map((other) => other.obliterate({ force: true })),
-    );
     await app?.close();
+    await fixture?.close();
   });
 
-  it("persists completed and failed workers and scopes GraphQL rows and counts", async () => {
-    const successful = await queue.add(
-      "success",
-      { tenant: "allowed" },
-      { removeOnComplete: true },
-    );
-    const failed = await queue.add("failure", {
-      tenant: "allowed",
-      fail: true,
-    });
-    const hidden = await queue.add("hidden", { tenant: "other" });
-    const successfulId = successful.id;
-    const failedId = failed.id;
-    const hiddenId = hidden.id;
-    if (!successfulId || !failedId || !hiddenId)
-      throw new Error("BullMQ did not assign job IDs");
-    await vi.waitFor(
-      async () => {
-        const rows = await orm.em.fork().find(Job, {});
-        expect(rows).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({
-              id: `${queueName}:${successfulId}`,
-              status: JobStatus.COMPLETED,
-              progress: { done: 1 },
-              returnValue: { saved: true },
-            }),
-            expect.objectContaining({
-              id: `${queueName}:${failedId}`,
-              status: JobStatus.FAILED,
-              failedReason: "expected failure",
-            }),
-            expect.objectContaining({
-              id: `${queueName}:${hiddenId}`,
-              status: JobStatus.COMPLETED,
-            }),
-          ]),
-        );
+  it("reads bulk jobs immediately and retains original data when BullMQ deduplicates IDs", async () => {
+    await reports.addBulk([
+      {
+        name: "first",
+        data: { owner: "alice", original: true },
+        opts: { jobId: "shared" },
       },
-      { timeout: 15000 },
-    );
+      { name: "second", data: { owner: "bob" }, opts: { jobId: "hidden" } },
+    ]);
+    await reports.add("ignored", { owner: "bob" }, { jobId: "shared" });
+    await emails.add("first", { owner: "alice" }, { jobId: "shared" });
+    const service = new JobService(orm.em.fork(), {
+      connection: fixture.connection,
+      getJobReadFilter: () => ({}),
+    });
+    expect(await service.getJob("reports:shared")).toMatchObject({
+      id: "reports:shared",
+      queue: "reports",
+      jobId: "shared",
+      name: "first",
+      data: { owner: "alice", original: true },
+      status: JobStatus.WAITING,
+      createdAt: expect.any(Date),
+    });
+    expect(await service.getJob("emails:shared")).toMatchObject({
+      id: "emails:shared",
+    });
+  });
+
+  it("keeps cross-queue cursors stable with duplicate job IDs and sort values", async () => {
+    const service = new JobService(orm.em.fork(), {
+      connection: fixture.connection,
+      getJobReadFilter: () => ({ data: { owner: "alice" } }),
+    });
+    const first = await service.getJobConnection({ first: 1 });
+    expect(first.totalCount).toBe(2);
+    expect(first.edges[0].node.id).toBe("emails:shared");
+    const next = await service.getJobConnection({
+      first: 1,
+      after: first.pageInfo.endCursor,
+    });
+    expect(next.edges[0].node.id).toBe("reports:shared");
+    expect(next.pageInfo.hasNextPage).toBe(false);
+    const before = await service.getJobConnection({
+      last: 1,
+      before: next.pageInfo.endCursor,
+    });
+    expect(before.edges[0].node.id).toBe("emails:shared");
+    const readOrdered = async (after?: string) => {
+      const response = await fetch(`${await app.getUrl()}/api/graphql`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          query: `query($after: String) {
+            jobs(first: 1, after: $after, orderBy: { field: NAME, direction: ASC }) {
+              edges { node { id } }
+              pageInfo { endCursor }
+            }
+          }`,
+          variables: { after },
+        }),
+      });
+      const result = await response.json();
+      expect(result.errors).toBeUndefined();
+      return result.data.jobs;
+    };
+    const ordered = await readOrdered();
+    expect(ordered.edges[0].node.id).toBe("emails:shared");
+    const orderedNext = await readOrdered(ordered.pageInfo.endCursor);
+    expect(orderedNext.edges[0].node.id).toBe("reports:shared");
+  });
+
+  it("denies unconfigured readers and scopes GraphQL nodes, filters and counts", async () => {
+    for (const getJobReadFilter of [undefined, () => null, () => undefined]) {
+      const service = new JobService(orm.em.fork(), {
+        connection: fixture.connection,
+        getJobReadFilter,
+      });
+      await expect(service.getJob("reports:shared")).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      await expect(
+        service.getJobConnection({ first: 10 }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    }
     const response = await fetch(`${await app.getUrl()}/api/graphql`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        query: `query($id: ID!) { job(id: $id) { id } jobs(first: 10) { totalCount edges { node { id status progress returnValue } } } }`,
-        variables: { id: `${queueName}:${hiddenId}` },
+        query: `{ job(id: "reports:hidden") { id } jobs(first: 10) { totalCount edges { node { id status createdAt progress } } } }`,
       }),
     });
     const result = await response.json();
     expect(result.errors).toBeUndefined();
     expect(result.data.job).toBeNull();
     expect(result.data.jobs.totalCount).toBe(2);
-    expect(result.data.jobs.edges).toHaveLength(2);
-  }, 30000);
-  it("processes plain queues without history and persists the async opt-in queue", async () => {
-    const jobs = await Promise.all(
-      otherQueues.map((other) => other.add("mixed", { tenant: "allowed" })),
+    const service = new JobService(orm.em.fork(), {
+      connection: fixture.connection,
+      getJobReadFilter: () => ({ data: { owner: "alice" } }),
+    });
+    expect(
+      (
+        await service.getJobConnection({
+          first: 10,
+          filter: { id: "reports:hidden" },
+        })
+      ).totalCount,
+    ).toBe(0);
+  });
+
+  it("excludes BullMQ tables from ORM creation, update and drop SQL", async () => {
+    expect((await orm.schema.getCreateSchemaSQL()).trim()).toBe("");
+    expect((await orm.schema.getUpdateSchemaSQL()).trim()).toBe("");
+    expect((await orm.schema.getDropSchemaSQL()).trim()).toBe("");
+    const em = orm.em.fork();
+    const job = await em.findOneOrFail(
+      Job,
+      { queue: "reports", jobId: "shared" },
+      { schema: fixture.connection.schema },
     );
+    job.name = "must not write";
+    await em.flush();
+    expect((await reports.getJob("shared"))?.name).toBe("first");
+  });
+
+  it("maps priority waiting jobs without inventing a native state", async () => {
+    await emails.add("priority", {}, { jobId: "priority", priority: 7 });
+    const service = new JobService(orm.em.fork(), {
+      connection: fixture.connection,
+      getJobReadFilter: () => ({}),
+    });
+    expect(await service.getJob("emails:priority")).toMatchObject({
+      state: "waiting",
+      status: JobStatus.PRIORITIZED,
+    });
+    const result = await service.getJobConnection({
+      first: 10,
+      filter: { status: JobStatus.PRIORITIZED },
+    });
+    expect(result.edges.map(({ node }) => node.id)).toEqual([
+      "emails:priority",
+    ]);
+  });
+
+  it("reads live worker results and honors BullMQ retention", async () => {
+    await reports.add(
+      "failure",
+      { owner: "alice", fail: true },
+      { jobId: "failure" },
+    );
+    await reports.add(
+      "removed",
+      { owner: "alice" },
+      { jobId: "removed", removeOnComplete: true },
+    );
+    const processor = app.get(ReportsProcessor);
+    const running = processor.worker.run();
+    const service = new JobService(orm.em.fork(), {
+      connection: fixture.connection,
+      getJobReadFilter: () => ({}),
+    });
     await vi.waitFor(
       async () => {
-        expect(await Promise.all(jobs.map((job) => job.getState()))).toEqual([
-          "completed",
-          "completed",
-          "completed",
-        ]);
-        expect(
-          await orm.em.fork().count(Job, {
-            queueName: asyncQueueName,
-            status: JobStatus.COMPLETED,
-          }),
-        ).toBe(1);
+        expect(await service.getJob("reports:shared")).toMatchObject({
+          status: JobStatus.COMPLETED,
+          progress: { done: 1 },
+          returnValue: { saved: true },
+          startedAt: expect.any(Date),
+          finishedAt: expect.any(Date),
+        });
+        expect(await service.getJob("reports:failure")).toMatchObject({
+          status: JobStatus.FAILED,
+          failedReason: "expected failure",
+        });
+        expect(await service.getJob("reports:removed")).toBeNull();
       },
-      { timeout: 15000 },
+      { timeout: 10000 },
     );
-    expect(
-      await orm.em
-        .fork()
-        .count(Job, { queueName: [plainQueueName, disabledQueueName] }),
-    ).toBe(0);
-  }, 30000);
-
-  it("records the final worker result while shutting down history", async () => {
-    const job = await queue.add("shutdown", { tenant: "allowed", wait: true });
-    await vi.waitFor(() => {
-      expect(releaseJob).toBeTypeOf("function");
-    });
-    const stopping = app.get(JobService).onModuleDestroy();
-    releaseJob?.();
-    await stopping;
-    const row = await orm.em
-      .fork()
-      .findOneOrFail(Job, { id: `${queueName}:${job.id ?? ""}` });
-    expect(row.status).toBe(JobStatus.COMPLETED);
-    expect(row.returnValue).toEqual({ saved: true });
+    await processor.worker.close();
+    await running;
   }, 15000);
 });

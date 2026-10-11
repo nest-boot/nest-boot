@@ -1,4 +1,4 @@
-import { QueueFactory, QueueModule } from "@nest-boot/queue";
+import { QueueFactory } from "@nest-boot/queue";
 import { type DynamicModule, Global, Logger, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
@@ -22,7 +22,7 @@ import { type ScheduleModuleOptions } from "./schedule-module-options.interface.
  */
 @Global()
 @Module({
-  imports: [DiscoveryModule, QueueModule],
+  imports: [DiscoveryModule],
   providers: [
     Logger,
     ScheduleRegistry,

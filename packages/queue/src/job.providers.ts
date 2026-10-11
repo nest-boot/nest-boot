@@ -1,7 +1,7 @@
 import type { ModuleMetadata } from "@nestjs/common";
-import { DiscoveryService, ModulesContainer } from "@nestjs/core";
+import { ModulesContainer } from "@nestjs/core";
 
-import { JOB_SERVICE, MODULE_OPTIONS_TOKEN } from "./queue.constants.js";
+import { MODULE_OPTIONS_TOKEN } from "./queue.constants.js";
 import type { QueueModuleOptions } from "./queue-module-options.interface.js";
 
 /**
@@ -28,8 +28,8 @@ export async function createJobProviders(): Promise<
   Required<Pick<ModuleMetadata, "providers" | "exports">>
 > {
   const definition: Required<Pick<ModuleMetadata, "providers" | "exports">> = {
-    providers: [{ provide: JOB_SERVICE, useValue: null }],
-    exports: [JOB_SERVICE],
+    providers: [],
+    exports: [],
   };
   if (!isAvailable("@nest-boot/database")) return definition;
 
@@ -42,38 +42,28 @@ export async function createJobProviders(): Promise<
     {
       provide: JobService,
       inject: [
-        DiscoveryService,
         ModulesContainer,
         { token: EntityManager, optional: true },
         MODULE_OPTIONS_TOKEN,
       ],
       useFactory: (
-        discovery: DiscoveryService,
         modules: ModulesContainer,
         em: InstanceType<typeof EntityManager> | undefined,
         options: QueueModuleOptions,
       ) => {
         if (
           !em ||
+          em.getMetadata().find(Job)?.class !== Job ||
           ![...modules.values()].some(
             (module) => module.metatype === DatabaseModule,
           )
         )
           return null;
-        if (
-          !em.getMetadata().has(Job) ||
-          em.getMetadata().get(Job).class !== Job
-        )
-          return null;
-        return new JobService(discovery, em, options);
+        return new JobService(em, options);
       },
     },
   ];
-  definition.providers.push({
-    provide: JOB_SERVICE,
-    useExisting: JobService,
-  });
-  definition.exports = [JOB_SERVICE, JobService];
+  definition.exports = [JobService];
 
   if (isAvailable("@nest-boot/graphql")) {
     const { GraphQLModule } = await import("@nest-boot/graphql");

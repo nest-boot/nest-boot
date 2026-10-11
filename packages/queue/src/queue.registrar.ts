@@ -14,13 +14,15 @@ import {
   ModuleRef,
 } from "@nestjs/core";
 import type { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
-import { QueueEvents, Worker } from "bullmq";
 
 import { BaseProcessor } from "./base-processor.js";
 import { BaseQueue } from "./base-queue.js";
+import {
+  PostgresQueueEvents as QueueEvents,
+  PostgresWorker as Worker,
+} from "./postgres.js";
 import type { ProcessorDefinition } from "./processor.decorator.js";
 import {
-  OBSERVE_WORKER,
   ON_QUEUE_EVENT,
   ON_WORKER_EVENT,
   PROCESSOR_OPTIONS,
@@ -134,7 +136,6 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
     for (const { provider, definition, queue, listener } of bindings) {
       const connection = {
         connection: queue.opts.connection,
-        prefix: queue.opts.prefix,
         telemetry: queue.opts.telemetry,
       };
       if (listener) {
@@ -148,6 +149,8 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
         this.bindEvents(instance, events, ON_QUEUE_EVENT);
       } else {
         const instance = provider.instance as BaseProcessor;
+        const scoped =
+          !provider.isDependencyTreeStatic() || provider.isTransient;
         const options = { ...definition.options };
         delete options.scope;
         delete options.durable;
@@ -156,7 +159,7 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
           async (job, token, signal) =>
             await runInQueueContext({ job }, async () => {
               let consumer = instance;
-              if (!provider.isDependencyTreeStatic() || provider.isTransient) {
+              if (scoped) {
                 const context = ContextIdFactory.getByRequest(job);
                 this.moduleRef.registerRequestByContextId(job, context);
                 // Resolve in the provider's own module so repeated tokens in other
@@ -179,9 +182,7 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
         );
         this.workers.add(worker);
         if (instance) instance[WORKER_REF] = worker;
-        queue[OBSERVE_WORKER](worker);
-        if (provider.isDependencyTreeStatic() && !provider.isTransient)
-          this.bindEvents(instance, worker, ON_WORKER_EVENT);
+        if (!scoped) this.bindEvents(instance, worker, ON_WORKER_EVENT);
         else {
           worker.on("error", (error) => {
             this.logger.error(error);
@@ -217,15 +218,7 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
 
   /** Drains workers while application dependencies are still available. */
   async onModuleDestroy(): Promise<void> {
-    await Promise.all(
-      [...this.workers].map(async (worker) => {
-        await worker.close();
-      }),
-    );
-    await Promise.all(
-      [...this.listeners].map(async (listener) => {
-        await listener.close();
-      }),
-    );
+    await Promise.all([...this.workers].map((worker) => worker.close()));
+    await Promise.all([...this.listeners].map((listener) => listener.close()));
   }
 }

@@ -1,6 +1,6 @@
 ---
 title: "Queue"
-description: "Typed queue providers, background workers, and optional job persistence with BullMQ."
+description: "Typed queue providers, background workers, and optional MikroORM queries with BullMQ."
 ---
 
 `@nest-boot/queue` integrates [BullMQ](https://docs.bullmq.io/) directly with Nest. Queue classes are injectable providers; consumers refer to the same class. `@nestjs/bullmq` is not required.
@@ -28,7 +28,7 @@ export interface EmailData {
 export class EmailQueue extends BaseQueue<EmailData> {}
 ```
 
-Add the queue class to `providers`. `QueueModule` reads `REDIS_URL`; use `forRoot()` or `forRootAsync()` to set an explicit connection and shared defaults. Import the root configuration once.
+Add the queue class to `providers`. `QueueModule` reads `QUEUE_DATABASE_URL` / `DATABASE_URL`; use `forRoot()` or `forRootAsync()` to set an explicit connection and shared defaults. Register `QueueModule` once in the application, using either the plain module or a root configuration. Its providers are global; feature modules and `ScheduleModule` use that registration without importing it again.
 
 ```ts
 import { QueueModule } from "@nest-boot/queue";
@@ -81,7 +81,7 @@ export class EmailProcessor extends BaseProcessor {
 }
 ```
 
-Register `EmailProcessor` as a provider alongside `EmailQueue` (or import the module exporting the queue). Consumer-only applications must also register the queue class. Registration creates a client but does not enqueue jobs. A missing queue provider fails startup before any worker starts. Consumers use their queue instance's connection, prefix and telemetry; worker options cannot select a different Redis namespace. `BaseProcessor` replaces the removed `WorkerHost` export.
+Register `EmailProcessor` as a provider alongside `EmailQueue` (or import the module exporting the queue). Consumer-only applications must also register the queue class. Registration creates a client but does not enqueue jobs. A missing queue provider fails startup before any worker starts. Consumers use their queue instance's PostgreSQL connection and telemetry; worker options cannot select another database or schema. `BaseProcessor` replaces the removed `WorkerHost` export.
 
 ### Scope and request context
 
@@ -131,7 +131,7 @@ Singleton services can keep using `RequestContext.current()` or `RequestContext.
 
 ## Dynamic queue configuration
 
-Use a normal Nest factory provider when queue settings depend on injected services or asynchronous configuration. `QueueFactory.create()` retains the declared name and merges runtime options over the decorator options; persistence fields merge individually. The resulting instance has the same lifecycle as a class provider.
+Use a normal Nest factory provider when queue settings depend on injected services or asynchronous configuration. `QueueFactory.create()` retains the declared name and merges runtime options over the decorator options. The resulting instance has the same lifecycle as a class provider.
 
 ```ts
 import { QueueFactory, QueueModule } from "@nest-boot/queue";
@@ -157,7 +157,7 @@ export class EmailModule {}
 
 ## Queue events
 
-`@OnWorkerEvent()` observes the local worker. Use a separate singleton `QueueEventsHost` for explicit Redis stream listeners:
+`@OnWorkerEvent()` observes the local worker. Use a separate singleton `QueueEventsHost` for explicit PostgreSQL queue event listeners:
 
 ```ts
 import {
@@ -177,87 +177,95 @@ export class EmailEvents extends QueueEventsHost {
 }
 ```
 
-Register `EmailEvents` and its queue as providers. Worker event handlers are bound only on singleton consumers; scoped consumer handlers are skipped. Queue event listener providers must be singletons. Persistence uses local Queue/Worker events and does not create QueueEvents readers.
+Register `EmailEvents` and its queue as providers. Worker event handlers are bound only on singleton consumers; scoped consumer handlers are skipped. Queue event listener providers must be singletons. Job queries read the native table and need no event listeners.
 
 Each decorated event callback has an independent request context and runs context middleware. Job-bearing worker events bind `JOB_REF`; `stalled` uses the job ID only. QueueEvents payloads supply a `jobId`, not a Job, so their contexts do not bind `JOB_REF`. Other events receive a generated context ID. Handler or middleware failures are logged and suppressed because BullMQ does not await listeners. Direct `.on()` callbacks need their own context and asynchronous error handling.
 
-## Integrated job persistence and GraphQL
+## PostgreSQL storage and migrations
 
-`QueueModule` discovers the application's registered integrations automatically. Enable persistence per queue with `persistence.enabled: true`; it defaults to `false`. Setting only a queue TTL does not enable persistence. Module options provide the default `persistence.ttl` (30 days, in milliseconds); each queue can override it. `graphql` defaults to `true`; set it to `false` to disable built-in job queries.
+All queues use BullMQ 6's official PostgreSQL backend. `QUEUE_DATABASE_URL` takes precedence over `DATABASE_URL`; without either, node-postgres connection defaults apply. Explicit `connection` options support a PostgreSQL config, URL or caller-owned pool. Use a config object with `schema` for a namespace other than `bullmq`. Redis prefixes and Redis connections are no longer queue options.
 
-| Application configuration                                          | Behavior                                                                   |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| No database integration and no enabled persistence                 | BullMQ queues and workers only                                             |
-| `DatabaseModule` and the built-in `Job` entity                     | Provide `JobService`; observe only queues with `persistence.enabled: true` |
-| Database integration plus `GraphQLModule`, unless `graphql: false` | Also provide `job(id)` and the `jobs` connection                           |
+Run BullMQ's migrations before starting producers, workers or queries. They own the tables, functions, indexes and migration ledger:
 
-`@nest-boot/database`, `@nest-boot/graphql`, and `@nest-boot/graphql-connection` are all optional peer dependencies. Install them in the application only for the features you use, together with their documented peers:
+```ts
+import { runMigrations } from "bullmq";
+import { Client } from "pg";
 
-| Feature             | Additional Nest Boot packages                                                |
-| ------------------- | ---------------------------------------------------------------------------- |
-| Plain queues        | None                                                                         |
-| Job persistence     | `@nest-boot/database`                                                        |
-| Job GraphQL queries | `@nest-boot/database`, `@nest-boot/graphql`, `@nest-boot/graphql-connection` |
+const client = new Client({ connectionString: process.env.DATABASE_URL });
+await client.connect();
+try {
+  await runMigrations(client); // Pass a custom schema as the second argument.
+} finally {
+  await client.end();
+}
+```
 
-Installing a package alone does not enable its integration; the application must register the corresponding modules and the built-in entity. `graphql: true` does not require GraphQL in a persistence-only application. If GraphQL queries are active but `graphql-connection` is missing, startup fails with an actionable error; set `graphql: false` to disable those queries.
+The migrator needs one dedicated client, not `pool.query()` across different sessions. Explicit `connection: { connectionString, migrate: true }` is also supported by BullMQ; Nest Boot does not enable automatic migrations by default. Enqueueing and business writes do not share a transaction merely because they use the same database.
 
-| Setting               | Registration                                  | Default                  |
-| --------------------- | --------------------------------------------- | ------------------------ |
-| `persistence.enabled` | `@Queue()` or `QueueFactory.create()` options | `false`                  |
-| `persistence.ttl`     | `@Queue()` or `QueueFactory.create()` options | Module's default TTL     |
-| `persistence.ttl`     | `forRoot` / `forRootAsync` options            | 30 days, in milliseconds |
-| `graphql`             | `forRoot` / `forRootAsync` options            | `true`                   |
-| `getJobReadFilter`    | `forRoot` / `forRootAsync` options            | Deny reads               |
+Caller-owned `pg.Pool` instances must set the correct `search_path` (for example, `options: "-c search_path=bullmq,public"`) before being passed to BullMQ. The caller also closes the pool after queues and workers stop. Use a config object rather than a raw pool when selecting a custom `schema`.
 
-```typescript
+## Optional MikroORM and GraphQL queries
+
+Persistence is inherent to the PostgreSQL backend. `queue.add()` and `addBulk()` write native jobs immediately. There is no event mirror, per-queue persistence switch, synchronization listener or separate cleanup timer. Keep completed/failed rows using BullMQ's `removeOnComplete` / `removeOnFail` policies (`age` is in seconds). Removing a job also removes it from ORM and GraphQL queries. A duplicate retained job ID keeps the original job; remove the original before intentionally reusing its ID.
+
+| Application configuration                 | Behavior                                                  |
+| ----------------------------------------- | --------------------------------------------------------- |
+| QueueModule only                          | PostgreSQL queues and workers; no ORM or GraphQL required |
+| DatabaseModule plus built-in Job metadata | Also provide read-only JobService queries                 |
+| Database integration plus GraphQLModule   | Also expose job(id) and jobs, unless graphql is false     |
+
+`@nest-boot/database`, `@nest-boot/graphql` and `@nest-boot/graphql-connection` remain optional peers. Install their required dependencies only when using the integration. Installed packages alone do not activate features. Database-only applications can use JobService without installing GraphQL; connection queries require the GraphQL peers.
+
+```ts
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { DatabaseModule } from "@nest-boot/database";
 import { GraphQLModule } from "@nest-boot/graphql";
-import { BaseQueue, Queue, QueueModule } from "@nest-boot/queue";
-import { entities as queueEntities } from "@nest-boot/queue/persistence";
+import { QueueModule } from "@nest-boot/queue";
+import {
+  entities,
+  jobSchemaGeneratorOptions,
+} from "@nest-boot/queue/persistence";
 import { Module } from "@nestjs/common";
-
-@Queue({ name: "export", persistence: { enabled: true, ttl: 7 * 86400000 } })
-class ExportQueue extends BaseQueue {}
 
 @Module({
   imports: [
     DatabaseModule.forRoot({
       driver: PostgreSqlDriver,
-      entities: [...queueEntities, "dist/**/*.entity.js"],
-      entitiesTs: [...queueEntities, "src/**/*.entity.ts"],
+      entities,
+      schemaGenerator: jobSchemaGeneratorOptions,
     }),
     GraphQLModule,
     QueueModule.forRoot({
-      graphql: true, // Default; use false to disable the built-in job queries.
-      persistence: { ttl: 30 * 24 * 60 * 60 * 1000 },
-      // Authorize this request using your application's verified identity.
-      // Return a MikroORM filter for visible jobs, or null to deny access.
+      graphql: true,
+      // Return a MikroORM filter from verified request identity, or null to deny.
       getJobReadFilter: () => null,
     }),
   ],
-  providers: [ExportQueue],
 })
 export class JobsModule {}
 ```
 
-Add `queueEntities` to **both** the application's database options and the MikroORM CLI configuration. Generate, review and apply the migration before starting workers. Runtime discovery does not create or alter tables. The built-in table is `job`, with IDs of the form `queueName:jobId`.
+Use the same entity discovery and `schemaGenerator` exclusions in the application and MikroORM CLI configuration. The Job entity is a read-only wildcard-schema mapping, excluded from normal ORM migration generation. `jobSchemaGeneratorOptions` also excludes the native `bullmq` schema from introspection and its table from schema targets. `readonly` alone only disables flush tracking; it does not prevent explicit native writes. Mutate jobs through BullMQ.
 
-`getJobReadFilter` is evaluated for every read. Its scope applies to single-job queries, pagination and counts. Missing callbacks, `null` and `undefined` deny access. Returning `{}` explicitly allows all jobs; do so only after checking the caller's authorization. Task payloads and results can contain sensitive data. Applications remain responsible for assigning trustworthy job ownership when enqueueing and, where used, configuring their own RLS policies. The example server retains its user/workspace RLS policy using MikroORM's `discovery.onMetadata` hook.
+For a custom schema such as `tasks`, set `QueueModule.connection` to `{ connectionString, schema: "tasks" }`, run `runMigrations(client, "tasks")`, and add `tasks` to `schemaGenerator.ignoreSchema` and `tasks.job` to `skipTables`. Direct ORM calls must pass `{ schema: "bullmq" }` (or the custom schema). JobService supplies this from the root queue configuration, defaulting to `bullmq`. The ORM connection must access the same database as that root configuration. Per-queue overrides targeting other databases/schemas are not aggregated by the root JobService.
 
-For async registration, put `graphql`, the default `persistence.ttl` and `getJobReadFilter` in the `forRootAsync` factory result. Queue-specific `persistence` belongs in `@Queue()` or the overrides passed to `QueueFactory.create()`. Services and the built-in entity are available from `@nest-boot/queue/persistence`; GraphQL connection types and the resolver are available from `@nest-boot/queue/graphql`. These are entry points in the same package, separated so importing plain queues does not load optional dependencies. Only import the GraphQL entry point in applications that install its peers.
+| Entity field                       | Native mapping                                                      |
+| ---------------------------------- | ------------------------------------------------------------------- |
+| queue                              | queue column                                                        |
+| jobId                              | id column                                                           |
+| id                                 | SQL formula combining queue and jobId as queue:jobId                |
+| status                             | Native state, with waiting priority jobs represented as prioritized |
+| createdAt / startedAt / finishedAt | Millisecond timestamps converted to Date                            |
 
-The `jobs` connection supports queue, name, status and date filters, name search, cursor pagination and sorting. `job(id)` returns `null` for missing or out-of-scope jobs. Query authorization is enforced in `JobService`, including direct service calls.
+The native primary key remains `(queue, id)`. The computed API ID provides a unique cursor tie-breaker across queues. The native table has no last-update timestamp, so there is no `updatedAt` field or filter. GraphQL exposes `queue`, `jobId` and the computed `id`; filters and sorting support `queue`, `name`, `status` and `created_at`.
 
-`JobService` observes **local** Queue and Worker events and stores one record per job, updating its latest known state. It is a best-effort state mirror, not an event history, durable audit log, or replacement for BullMQ state. All observed Queue and Worker events upsert the row identified by `queueName:jobId`, overwriting existing fields. When a removed BullMQ job ID is reused, the new enqueue write replaces the previous task data and clears its execution results. Each write forks an EntityManager; failures are logged without failing workers. Within one process, writes for the same job run in event order so a slow earlier write cannot overwrite a later result; different jobs can write concurrently. This does not provide ordering across separate producer/worker processes: the last database write wins, so a late producer write can replace worker results. Queues and scheduled tasks without enabled persistence do not record jobs. An owned hourly timer deletes records only for queues whose persistence is enabled in the current application, using each queue's effective TTL from the last update. Queues not registered here or with persistence disabled are excluded from cleanup. Retention resolves in order: queue TTL, module TTL, then 30 days. No cleanup timer starts if no queue enables persistence; shutdown stops the timer. `ScheduleModule` is not required for history cleanup.
+`getJobReadFilter` runs for every read and scopes nodes, filters, pagination and counts. Missing callbacks, null and undefined deny access; returning an empty object explicitly grants all jobs. Payload ownership must come from trusted application identity. The default BullMQ schema has no application tenant RLS policy. Applications using database request roles must grant those roles schema usage and SELECT on the native job table; the example's `queue:migrate` command does this for `authenticated`. The example enforces user/workspace visibility in JobService rather than generating policies on BullMQ-owned tables.
 
-Enabling a queue's `persistence.enabled` requires registered `QueueModule` and `DatabaseModule` services and the built-in `Job` in ORM metadata. Missing prerequisites cause startup to fail before creating that queue. Both producer and consumer applications must register the queue class. Use the same persistence settings, including TTL, for each application that handles it; configuration is local and is not propagated through Redis. Producers record only their local enqueue events, while consumers record only their local worker events. Both applications need database integration when persistence is enabled. `persistence` belongs only in queue configuration, not in `@Processor()`. The integration does not use `QueueEvents` for database writes, and does not await persistence before `queue.add()` returns.
+Entities and JobService are exported from `@nest-boot/queue/persistence`; GraphQL types and resolvers from `@nest-boot/queue/graphql`. These entry points keep optional dependencies out of plain queue imports.
 
-### Migrating from queue-database
+### Migrating existing queues
 
-`@nest-boot/queue-database` has been removed from the repository. Migrate to the integrated `@nest-boot/queue` package. Previously published versions remain on npm but do not receive this update.
-
-To adopt the integrated API, remove `QueueDatabaseModule`, register the built-in `Job` entity instead of the application's previous entity, set the default TTL under `QueueModuleOptions.persistence.ttl`, replace include/exclude lists with `persistence: { enabled: true }` on each selected queue and optional TTL overrides, and configure `getJobReadFilter`. Remove application-owned `JobResolver`, `JobService` and connection definitions to avoid duplicate GraphQL fields. Review the generated migration carefully to preserve existing job data, additional fields and RLS policies.
+This API remains in v8. Remove `@nest-boot/queue-database`, `QueueDatabaseModule`, the old mirror entity/resolver, persistence/TTL options and Redis prefixes. Register queue classes as providers, switch to a PostgreSQL connection, run official migrations and configure optional ORM exclusions and read authorization. Existing Redis jobs and legacy mirror rows are not moved automatically; drain or migrate them separately before changing a deployment. Review old application table cleanup separately to preserve any history you need.
 
 ## Best Practices
 
