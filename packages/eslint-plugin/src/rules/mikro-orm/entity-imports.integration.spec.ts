@@ -9,7 +9,7 @@ import * as ts from "typescript";
 import rule from "./entity-property-config-from-types.js";
 
 const packageRoot = fileURLToPath(new URL("../../../", import.meta.url));
-// Keep executable compiler fixtures out of Nx's production dependency graph.
+// Keep executable compiler fixtures isolated from the workspace packages.
 const fixtureRoot = path.join(packageRoot, ".cache/orm-imports");
 mkdirSync(fixtureRoot, { recursive: true });
 afterAll(() => {

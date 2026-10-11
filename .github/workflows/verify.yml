@@ -6,12 +6,6 @@ on:
       fetch-depth:
         type: number
         default: 1
-      release:
-        type: boolean
-        default: false
-      release-projects:
-        type: string
-        default: ""
     secrets:
       CODECOV_TOKEN:
         required: false
@@ -40,7 +34,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build packages
-        run: pnpm build:packages --skip-nx-cache
+        run: pnpm build:packages --force
       - name: Verify independent consumer
         run: pnpm test:consumer
 
@@ -117,25 +111,18 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          registry-url: https://registry.npmjs.org/
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check release policy
-        run: |
-          node --test .github/scripts/release-*.test.mjs
-          node .github/scripts/release-policy.mjs "${GITHUB_BASE_REF:-$GITHUB_REF_NAME}"
-
-      - name: Commitlint latest commit
-        if: inputs.release
-        run: pnpm commitlint --last --verbose
+      - name: Check release tooling
+        run: pnpm test:release
 
       - name: Build packages
-        run: pnpm build:packages --skip-nx-cache
+        run: pnpm build:packages --force
 
       - name: Build examples
-        run: pnpm build:examples --skip-nx-cache
+        run: pnpm build:examples --force
 
       - name: Typecheck Auth source and tests
         run: pnpm --filter @nest-boot/auth typecheck
@@ -210,17 +197,3 @@ jobs:
         uses: codecov/codecov-action@v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Configure Git
-        if: inputs.release
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Release packages
-        if: inputs.release
-        run: node .github/scripts/release-packages.mjs "$GITHUB_REF_NAME"
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          NPM_CONFIG_PROVENANCE: true
-          RELEASE_PROJECTS: ${{ inputs.release-projects }}

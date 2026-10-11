@@ -1,10 +1,10 @@
 # 仓库贡献工作流
 
-目标仓库：[nest-boot/nest-boot](https://github.com/nest-boot/nest-boot)。开始工作时重新读取根 `package.json`、`nx.json`、目标 package 的 `package.json` 和 `.github/workflows/verify.yml`；这里记录的是基线，不替代仓库当前配置。
+目标仓库：[nest-boot/nest-boot](https://github.com/nest-boot/nest-boot)。开始工作时重新读取根 `package.json`、`turbo.json`、目标 package 的 `package.json` 和 `.github/workflows/verify.yml`；这里记录的是基线，不替代仓库当前配置。
 
 ## 当前仓库约束
 
-- 默认分支是 `main`，workspace 使用 pnpm 和 Nx。
+- 默认分支是 `main`，workspace 使用 pnpm 和 Turborepo。
 - 根 `package.json` 当前要求 Node 24.21.0+、pnpm 10.30.3；以 checkout 中声明为准。
 - `@nest-boot/<name>` 通常对应 `packages/<name>`，先用 package 的 `name` 字段确认，不只依赖目录猜测。
 - PR 标题由 commitlint 校验，使用 `fix(scope): ...`、`feat(scope): ...`、`docs(scope): ...` 等 Conventional Commit 形式。
@@ -27,20 +27,20 @@
 
 ## 实现与验证
 
-先添加能在修复前失败的最小测试，再修改实现。优先运行目标 package 的 Vitest 脚本或 Nx test target：
+先添加能在修复前失败的最小测试，再修改实现。优先运行目标 package 的 Vitest 脚本或 Turborepo task：
 
 ```bash
 pnpm --filter @nest-boot/<package> test
-pnpm nx run @nest-boot/<package>:test --skip-nx-cache
-pnpm nx run @nest-boot/<package>:build --skip-nx-cache
-pnpm nx run @nest-boot/<package>:lint --skip-nx-cache
+pnpm turbo run test --filter=@nest-boot/<package> --env-mode=loose
+pnpm turbo run build --filter=@nest-boot/<package> --force
+pnpm turbo run lint --filter=@nest-boot/<package>
 ```
 
-两个测试命令不要求同时执行。某些 package 没有 test 或 lint target，也可能没有测试文件；先用 `pnpm nx show project @nest-boot/<package>` 或 package 配置确认，不执行不存在的 target。文档、导出或类型变化还应运行相关检查：
+两个测试命令不要求同时执行。某些 package 没有 test 或 lint target，也可能没有测试文件；先用 `pnpm --filter @nest-boot/<package> run` 或 package 配置确认，不执行不存在的 target。文档、导出或类型变化还应运行相关检查：
 
 ```bash
 pnpm format:check
-pnpm build:packages --skip-nx-cache
+pnpm build:packages --force
 ```
 
 文档站内容变化时运行：
@@ -54,13 +54,13 @@ pnpm build:docs
 完整 CI 对齐命令为：
 
 ```bash
-pnpm build:packages --skip-nx-cache
+pnpm build:packages --force
 pnpm format:check
 pnpm lint
 pnpm test:cov
 ```
 
-`pnpm test:cov` 的 CI 环境会提供 PostgreSQL、Redis 和 RustFS。没有同等服务时只运行可证明的子集，并在 PR 中明确未运行项。公开包内容变化时酌情运行 `pnpm --filter @nest-boot/<package> pack --dry-run`；发布流程变化才运行 `pnpm release:dry-run`。
+`pnpm test:cov` 的 CI 环境会提供 PostgreSQL、Redis 和 RustFS。没有同等服务时只运行可证明的子集，并在 PR 中明确未运行项。公开包内容变化时酌情运行 `pnpm --filter @nest-boot/<package> pack --dry-run`；发布流程变化才运行 `pnpm release:status` 和 `pnpm test:release`。
 
 提交前检查：
 

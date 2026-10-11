@@ -1,6 +1,12 @@
 name: Commitlint PR title
 
 on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: PR title to validate for an automatically created version PR
+        type: string
+        required: true
   pull_request:
     types:
       - opened
@@ -40,4 +46,4 @@ jobs:
       - name: Commitlint PR title
         run: printf '%s\n' "$COMMITLINT_TITLE" | pnpm exec commitlint --verbose
         env:
-          COMMITLINT_TITLE: ${{ github.event.pull_request.title }}
+          COMMITLINT_TITLE: ${{ github.event.pull_request.title || inputs.title }}
