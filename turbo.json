@@ -1,25 +1,49 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "globalDependencies": [".nvmrc", ".pnpmfile.cjs", "tsconfig*.json"],
+  "globalDependencies": [".nvmrc", ".pnpmfile.cjs", "tsconfig*.json", ".env*"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "*.tsbuildinfo"]
+      "outputs": ["dist/**", "*.tsbuildinfo"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "env": ["NODE_ENV"]
     },
     "@nest-boot/docs#build": {
-      "outputs": [".next/**", "!.next/cache/**", ".source/**", "*.tsbuildinfo"]
+      "outputs": [".next/**", "!.next/cache/**", ".source/**", "*.tsbuildinfo"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "env": ["NODE_ENV"]
     },
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     },
-    "clean": { "cache": false },
-    "lint": { "dependsOn": ["^build"], "cache": false },
-    "lint:fix": { "dependsOn": ["^build"], "cache": false },
-    "test": { "dependsOn": ["build"], "cache": false },
-    "test:cov": { "dependsOn": ["build"], "cache": false },
-    "test:e2e": { "dependsOn": ["build"], "cache": false },
-    "typecheck": { "dependsOn": ["^build"], "cache": false }
+    "clean": {
+      "cache": false
+    },
+    "lint": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "lint:fix": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "test": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "test:cov": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "cache": false
+    }
   }
 }
