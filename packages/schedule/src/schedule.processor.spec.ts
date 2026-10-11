@@ -111,7 +111,7 @@ describe("ScheduleProcessor", () => {
       .spyOn(Logger.prototype, "error")
       .mockImplementation(vi.fn());
     const processor = await createProcessor(createRegistry().registry);
-    const error = new Error("Redis unavailable");
+    const error = new Error("PostgreSQL unavailable");
     (processor as any).worker.run.mockRejectedValueOnce(error);
 
     processor.onApplicationBootstrap();
@@ -119,7 +119,7 @@ describe("ScheduleProcessor", () => {
 
     expect((processor as any).worker.run).toHaveBeenCalledTimes(1);
     expect(loggerError).toHaveBeenCalledWith(
-      "Schedule worker stopped unexpectedly: Redis unavailable",
+      "Schedule worker stopped unexpectedly: PostgreSQL unavailable",
       error.stack,
     );
   });

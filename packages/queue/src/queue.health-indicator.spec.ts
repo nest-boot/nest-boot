@@ -1,32 +1,30 @@
 import { HealthCheckRegistry } from "@nest-boot/health-check";
 import type { DiscoveryService } from "@nestjs/core";
 
-import { BaseQueue as Queue } from "./base-queue.js";
+import { BaseQueue } from "./base-queue.js";
 import { QueueHealthIndicator } from "./queue.health-indicator.js";
 
 describe("QueueHealthIndicator", () => {
   /**
    * Returns queue configured for the test.
    * @param name - Name used to identify the resource.
-   * @param client - Client used to communicate with the backing service.
-   * @returns Queue configured for the test.
+   * @param ready - Pending readiness of the PostgreSQL connection.
+   * @returns BaseQueue configured for the test.
    */
   function createQueue(
     name = "email",
-    client = Promise.resolve({ status: "ready" }),
+    ready: Promise<void> = Promise.resolve(),
   ) {
     const isPaused = vi.fn(() => Promise.resolve(false));
-    const queue = Object.assign(Object.create(Queue.prototype) as Queue, {
-      name,
-      qualifiedName: `bull:${name}`,
-      isPaused,
-    });
-    Object.defineProperty(queue, "waitUntilReady", {
-      value: async () => {
-        const result = await client;
-        if (result.status !== "ready")
-          throw new Error("Connection is not ready");
+    const queue = Object.assign(
+      Object.create(BaseQueue.prototype) as BaseQueue,
+      {
+        name,
+        isPaused,
       },
+    );
+    Object.defineProperty(queue, "waitUntilReady", {
+      value: () => ready,
     });
     Object.defineProperty(queue, "getBackend", {
       value: () => ({ connection: { isClosing: false } }),
@@ -93,10 +91,10 @@ describe("QueueHealthIndicator", () => {
     });
   });
 
-  it("does not enqueue reads for reconnecting or closing queues", async () => {
+  it("does not enqueue reads when readiness fails or the queue is closing", async () => {
     const { queue, isPaused } = createQueue(
       "email",
-      Promise.resolve({ status: "reconnecting" }),
+      Promise.reject(new Error("Connection is not ready")),
     );
     const { indicator } = setup();
     expect(await indicator.check("queue", queue)).toMatchObject({
@@ -110,9 +108,9 @@ describe("QueueHealthIndicator", () => {
   });
 
   it("bounds readiness waits and does not perform a late read after timeout", async () => {
-    let resolveClient!: (value: { status: string }) => void;
-    const pending = new Promise<{ status: string }>((resolve) => {
-      resolveClient = resolve;
+    let resolveReady!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      resolveReady = resolve;
     });
     const { queue, isPaused } = createQueue("email", pending);
     const { indicator } = setup();
@@ -121,7 +119,7 @@ describe("QueueHealthIndicator", () => {
         queue: { status: "down", message: "timeout of 10ms exceeded" },
       });
     } finally {
-      resolveClient({ status: "ready" });
+      resolveReady();
     }
     await pending;
     await Promise.resolve();

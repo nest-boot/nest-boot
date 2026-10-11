@@ -160,7 +160,7 @@ describe("Queue event request contexts", () => {
       listener.ready(),
       listener.closing("closing-message"),
       listener.drained("stream-id"),
-      listener.error(new Error("Redis error")),
+      listener.error(new Error("PostgreSQL error")),
     ]);
     expect(new Set(contexts.map((ctx) => ctx?.id)).size).toBe(4);
     for (const context of contexts) {

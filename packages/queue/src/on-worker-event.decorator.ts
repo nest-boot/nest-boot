@@ -1,4 +1,3 @@
-import { SetMetadata } from "@nestjs/common";
 import type { Job, WorkerListener } from "bullmq";
 
 import { ON_WORKER_EVENT } from "./queue.constants.js";
@@ -17,21 +16,17 @@ import { createContextEventDecorator } from "./utils/create-context-event-decora
 export function OnWorkerEvent(
   eventName: keyof WorkerListener,
 ): MethodDecorator {
-  return createContextEventDecorator(
-    eventName,
-    SetMetadata(ON_WORKER_EVENT, eventName),
-    ([first]) => {
-      switch (eventName) {
-        case "active":
-        case "completed":
-        case "failed":
-        case "progress":
-          return { job: first as Job | undefined };
-        case "stalled":
-          return { id: first as string };
-        default:
-          return {};
-      }
-    },
-  );
+  return createContextEventDecorator(eventName, ON_WORKER_EVENT, ([first]) => {
+    switch (eventName) {
+      case "active":
+      case "completed":
+      case "failed":
+      case "progress":
+        return { job: first as Job | undefined };
+      case "stalled":
+        return { id: first as string };
+      default:
+        return {};
+    }
+  });
 }

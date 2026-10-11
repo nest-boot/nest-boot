@@ -151,6 +151,10 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
         const instance = provider.instance as BaseProcessor;
         const scoped =
           !provider.isDependencyTreeStatic() || provider.isTransient;
+        // Resolve scoped consumers in their declaring module. Capture it once
+        // so each job only needs to create its context and resolve the consumer.
+        const localRef = provider.host?.providers.get(ModuleRef)
+          ?.instance as ModuleRef;
         const options = { ...definition.options };
         delete options.scope;
         delete options.durable;
@@ -162,10 +166,6 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
               if (scoped) {
                 const context = ContextIdFactory.getByRequest(job);
                 this.moduleRef.registerRequestByContextId(job, context);
-                // Resolve in the provider's own module so repeated tokens in other
-                // feature modules cannot redirect a request-scoped consumer.
-                const localRef = provider.host?.providers.get(ModuleRef)
-                  ?.instance as ModuleRef;
                 consumer = await localRef.resolve<BaseProcessor>(
                   provider.token,
                   context,
