@@ -66,6 +66,7 @@ The indicator initializes MikroORM's lazy
 connection during startup. Runtime probes report a closed connection as unhealthy
 until the application restores it; the example needs no custom indicator code.
 Registered queues also appear as `queue.<name>`, including `queue.schedule`.
+The report example adds `queue.report-queue`.
 Healthy checks return HTTP 200; a failed or timed-out check returns HTTP 503.
 The middleware responds before the global auth guard, so the health endpoint
 does not require a login.
@@ -92,15 +93,55 @@ Consumers use `@Processor(QueueClass)` and extend `BaseProcessor`. A consumer-on
 application also registers its queue provider. For dynamic queue settings, inject business dependencies in a queue constructor
 and pass local overrides to `super(localOptions)`; `@Queue()` supplies global configuration automatically. PostgreSQL persistence is always
 active; the database and GraphQL integrations are optional read features.
-`graphql` defaults to true when the corresponding modules and entity are registered.
+`QueueModule.graphql` defaults to true when the corresponding modules and entity are registered.
+
+### Runnable Queue and Schedule example
+
+`AppModule` imports `JobsModule` for shared configuration and `ReportsModule` for
+the business providers. `QueueModule` is imported only by `JobsModule`; its global
+services are available to `ReportsModule` without another registration.
+
+| File                                                         | Responsibility                                                                                                                                                                                |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`report.queue.ts`](src/app/reports/report.queue.ts)         | `@Queue()` and a typed `BaseQueue` subclass named `report-queue`, with retry, backoff and retention defaults. No constructor is needed.                                                       |
+| [`report.processor.ts`](src/app/reports/report.processor.ts) | `@Processor(ReportQueue)` and `BaseProcessor`, with concurrency 2. Updates progress and returns count, total and average. Injecting `RequestContext` gives each job its own scoped processor. |
+| [`report.schedule.ts`](src/app/reports/report.schedule.ts)   | Directly injects `ReportQueue`. A UTC midnight `@Cron` and five-minute `@Interval` enqueue sample reports. Scheduled handlers only enqueue; the report worker performs the work.              |
+| [`reports.module.ts`](src/app/reports/reports.module.ts)     | Registers the queue, processor and scheduled provider, and exports the queue for other modules.                                                                                               |
+
+The scheduled inputs are fixed demonstration values, with no external side effects.
+The report calculation is safe to repeat. Real tasks with side effects should also
+be idempotent because failed or stalled jobs can run again.
+
+After migrations, start the application with `pnpm --filter @nest-boot/example-server dev`.
+The two schedules register automatically. To enqueue a report manually, start the
+example's Nest REPL instead:
+
+```bash
+pnpm --filter @nest-boot/example-server repl
+```
+
+```js
+const reports = get(ReportQueue);
+const task = await reports.add('summarize', { values: [10, 20, 30] });
+// Read a fresh job after the worker processes it.
+const completed = await reports.getJob(task.id);
+await completed.getState(); // 'completed' once processing finishes
+completed.progress; // 100
+completed.returnvalue; // { count: 3, total: 60, average: 20 }
+```
+
+These background samples have no user/workspace ownership and are hidden from the
+authenticated Job API by `getJobReadFilter`. To expose a user's report, enqueue it
+from trusted application code using the verified identity as shown below. The
+worker gets a fresh queue context; it does not inherit the producer's HTTP session.
 
 Assign ownership using the verified server-side identity when enqueueing:
 
 ```ts
-await queue.add('generate-report', {
+await reports.add('summarize', {
   userId: user.id,
   workspaceId: workspace.id,
-  format: 'csv',
+  values: [10, 20, 30],
 });
 ```
 
@@ -163,8 +204,8 @@ Example variables:
 
 ```json
 {
-  "id": "reports:42",
-  "filter": { "queue": "reports", "status": "completed" }
+  "id": "report-queue:42",
+  "filter": { "queue": "report-queue", "status": "completed" }
 }
 ```
 
@@ -174,7 +215,7 @@ are JSON scalars and do not take GraphQL subfields. Output status uses the
 (for example `completed`). Filters and sorting support `queue`, `name`,
 `status` and `created_at`; sorting also supports `ID`. The connection
 supports `first`/`after`, `last`/`before`, and search syntax such as
-`query: "name:generate-report"`. These queries read native BullMQ rows directly; single and bulk enqueues are visible as soon as they complete.
+`query: "name:summarize"`. These queries read native BullMQ rows directly; single and bulk enqueues are visible as soon as they complete.
 
 ## Member profiles and User privacy
 

@@ -4,15 +4,11 @@ import { Module } from '@nestjs/common';
 
 import { getJobReadFilter } from './job-access.js';
 
-/** Expose native PostgreSQL job queries when the application's database and GraphQL services exist. */
+/** Configure global queues, scheduling and authorized native job queries once. */
 @Module({
   imports: [
-    QueueModule.forRootAsync({
-      useFactory: () => ({
-        getJobReadFilter,
-      }),
-    }),
-    ScheduleModule,
+    QueueModule.forRoot({ getJobReadFilter }),
+    ScheduleModule.forRoot({ concurrency: 2 }),
   ],
 })
 export class JobsModule {}

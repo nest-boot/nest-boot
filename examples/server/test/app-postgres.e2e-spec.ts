@@ -13,9 +13,12 @@ import {
   MikroORM,
   PostgreSqlDriver,
 } from '@mikro-orm/postgresql';
+import { createPostgresBackend, withBackend } from 'bullmq';
 import request from 'supertest';
 
 import { createContextualAuthService } from '../../../packages/auth/dist/infrastructure/create-contextual-auth-service.js';
+
+const { Queue: PostgresQueue } = withBackend(createPostgresBackend);
 
 interface DbProbe {
   id: number;
@@ -169,8 +172,98 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       details: {
         database: { status: 'up' },
         'queue.schedule': { status: 'up' },
+        'queue.report-queue': { status: 'up' },
       },
     });
+  });
+
+  it('processes example reports and exposes the result only to their owner', async () => {
+    const owner = await createAuthenticatedUser('Report owner');
+    const other = await createAuthenticatedUser('Other report viewer');
+    const reports = new PostgresQueue('report-queue', {
+      connection: { connectionString: databaseUrl },
+    });
+    try {
+      const task = await reports.add('summarize', {
+        userId: owner.user.id,
+        values: [10, 20, 30],
+      });
+      await vi.waitFor(
+        async () => {
+          const completed = await reports.getJob(task.id);
+          expect(await completed.getState()).toBe('completed');
+          expect(completed.progress).toBe(100);
+          expect(completed.returnvalue).toEqual({
+            count: 3,
+            total: 60,
+            average: 20,
+          });
+        },
+        { timeout: 10_000 },
+      );
+
+      const source = `query {
+        job(id: "report-queue:${task.id}") { id status progress returnValue }
+      }`;
+      const result = await gql(source, { cookies: owner.cookies });
+      expectNoGraphQLErrors(result);
+      expect(result.body.data.job).toEqual({
+        id: `report-queue:${task.id}`,
+        status: 'COMPLETED',
+        progress: 100,
+        returnValue: { count: 3, total: 60, average: 20 },
+      });
+      const hidden = await gql(source, { cookies: other.cookies });
+      expectNoGraphQLErrors(hidden);
+      expect(hidden.body.data.job).toBeNull();
+    } finally {
+      await reports.close();
+    }
+  });
+
+  it('registers cron and interval schedules and dispatches work through the injected report queue', async () => {
+    const connection = { connectionString: databaseUrl };
+    const schedules = new PostgresQueue('schedule', { connection });
+    const reports = new PostgresQueue('report-queue', { connection });
+    try {
+      expect(await schedules.getJobSchedulers()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'ReportSchedule.daily',
+            pattern: '0 0 * * *',
+            tz: 'UTC',
+          }),
+          expect.objectContaining({
+            name: 'ReportSchedule.sample',
+            every: 300_000,
+          }),
+        ]),
+      );
+      // Exercise the same dispatch path without waiting until midnight.
+      const scheduled = await schedules.add('ReportSchedule.daily', {});
+      await vi.waitFor(
+        async () => {
+          expect(await scheduled.getState()).toBe('completed');
+          const completed = await reports.getJobs(['completed']);
+          expect(completed).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                data: { values: [10, 20, 30] },
+                returnvalue: { count: 3, total: 60, average: 20 },
+                opts: expect.objectContaining({
+                  attempts: 3,
+                  backoff: { type: 'exponential', delay: 1000 },
+                  removeOnComplete: { age: 86_400, count: 100 },
+                }),
+              }),
+            ]),
+          );
+        },
+        { timeout: 10_000 },
+      );
+    } finally {
+      await Promise.all([schedules.close(), reports.close()]);
+    }
   });
 
   it('exposes the password policy without authentication', async () => {
