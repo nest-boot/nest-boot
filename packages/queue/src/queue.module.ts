@@ -1,8 +1,8 @@
-import { BullModule as BaseQueueModule } from "@nestjs/bullmq";
 import { type DynamicModule, Global, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
 import { createJobProviders } from "./job.providers.js";
+import { QueueFactory } from "./queue.factory.js";
 import { QueueHealthIndicator } from "./queue.health-indicator.js";
 import {
   ASYNC_OPTIONS_TYPE,
@@ -12,45 +12,26 @@ import {
   OPTIONS_TYPE,
 } from "./queue.module-definition.js";
 import { QueueModuleOptions } from "./queue-module-options.interface.js";
-import type {
-  RegisterQueueAsyncOptions,
-  RegisterQueueOptions,
-} from "./register-queue-options.interface.js";
-import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
-import { withQueuePersistence } from "./utils/with-queue-persistence.util.js";
+import { QueueRuntimeModule } from "./queue-runtime.module.js";
 
 const jobProviders = await createJobProviders();
 
 /**
  * BullMQ integration module for job queue processing.
  *
- * Wraps `@nestjs/bullmq` with automatic Redis connection configuration
- * from `REDIS_URL`. Registers JobService when persistence is enabled and
- * DatabaseModule and Job metadata are available; only queues registered with persist: true record jobs. Enables
+ * Uses BullMQ directly with automatic Redis connection configuration
+ * from `REDIS_URL`. Registers JobService when DatabaseModule and Job metadata are available;
+ * only queue classes with persistence.enabled: true record jobs. Enables
  * job queries when GraphQLModule is also registered unless
  * the graphql option is false.
  */
 @Global()
 @Module({
-  imports: [
-    DiscoveryModule,
-    BaseQueueModule.forRootAsync({
-      inject: [MODULE_OPTIONS_TOKEN],
-      useFactory: (options: QueueModuleOptions) => {
-        const bullOptions = { ...options };
-        delete bullOptions.persistence;
-        delete bullOptions.getJobReadFilter;
-        delete bullOptions.graphql;
-        return {
-          ...bullOptions,
-          connection: options.connection ?? loadConfigFromEnv(),
-        };
-      },
-    }),
-  ],
+  imports: [DiscoveryModule, QueueRuntimeModule],
   providers: [
     ...jobProviders.providers,
     QueueHealthIndicator,
+    QueueFactory,
     {
       provide: MODULE_OPTIONS_TOKEN,
       inject: [{ token: BASE_MODULE_OPTIONS_TOKEN, optional: true }],
@@ -60,6 +41,7 @@ const jobProviders = await createJobProviders();
   exports: [
     MODULE_OPTIONS_TOKEN,
     QueueHealthIndicator,
+    QueueFactory,
     ...jobProviders.exports,
   ],
 })
@@ -82,28 +64,5 @@ export class QueueModule extends ConfigurableModuleClass {
     options: typeof ASYNC_OPTIONS_TYPE,
   ): DynamicModule {
     return super.forRootAsync(options);
-  }
-
-  /**
-   * Registers a BullMQ queue.
-   * @param args - registerQueue arguments
-   * @returns Dynamic module configuration
-   */
-  static registerQueue(...args: RegisterQueueOptions[]): DynamicModule {
-    return withQueuePersistence(BaseQueueModule.registerQueue(...args), args);
-  }
-
-  /**
-   * Registers a BullMQ queue asynchronously.
-   * @param args - registerQueueAsync arguments
-   * @returns Dynamic module configuration
-   */
-  static registerQueueAsync(
-    ...args: RegisterQueueAsyncOptions[]
-  ): DynamicModule {
-    return withQueuePersistence(
-      BaseQueueModule.registerQueueAsync(...args),
-      args,
-    );
   }
 }

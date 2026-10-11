@@ -1,18 +1,19 @@
 import { EntityManager } from "@mikro-orm/core";
-import { WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import { Job, JobState, Queue } from "bullmq";
 import type { Mock } from "vitest";
 
+import { BaseProcessor } from "../base-processor.js";
 import { Job as PersistedJob } from "../entities/job.entity.js";
 import { JobStatus } from "../enums/job-status.enum.js";
 import { JobPersistenceOptions } from "../job-persistence-options.interface.js";
+import { WORKER_REF } from "../queue.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "../queue.constants.js";
 import { JobService } from "./job.service.js";
 
-class TestWorkerHost extends WorkerHost {
+class TestWorkerHost extends BaseProcessor {
   async process(): Promise<void> {
     await Promise.resolve();
   }
@@ -142,7 +143,7 @@ function createWorkerHost(name: string, prefix = "bull"): WorkerHostWithMock {
     off: vi.fn(),
   };
 
-  Object.defineProperty(workerHost, "_worker", {
+  Object.defineProperty(workerHost, WORKER_REF, {
     configurable: true,
     value: worker,
   });
@@ -267,7 +268,7 @@ describe("JobService persistence", () => {
           createdAt: new Date(Date.UTC(2026, 0, 1)),
           updatedAt: expect.any(Date),
         }),
-        { onConflictFields: ["id"] },
+        { onConflictFields: ["id"], onConflictAction: "ignore" },
       );
     });
 
@@ -317,6 +318,7 @@ describe("JobService persistence", () => {
       }),
       {
         onConflictFields: ["id"],
+        onConflictAction: "ignore",
       },
     );
   });
@@ -328,13 +330,27 @@ describe("JobService persistence", () => {
       ttl: 1000,
     });
 
+    service.registerQueue(createQueue("email"));
     await service.cleanJobs();
 
     expect(fork.nativeDelete).toHaveBeenCalledWith(PersistedJob, {
-      updatedAt: {
-        $lt: new Date("2026-01-30T23:59:59.000Z"),
-      },
+      $or: [
+        {
+          queueName: "email",
+          updatedAt: { $lt: new Date("2026-01-30T23:59:59.000Z") },
+        },
+      ],
     });
+  });
+
+  it("does not clean jobs or start a timer without persisted queues", async () => {
+    vi.useFakeTimers();
+    const { service, fork } = await createService();
+    service.onApplicationBootstrap();
+    await service.cleanJobs();
+    expect(fork.nativeDelete).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+    await service.onModuleDestroy();
   });
 
   it("cleans history hourly without ScheduleModule, catches failures, and stops on shutdown", async () => {
@@ -344,6 +360,7 @@ describe("JobService persistence", () => {
       .spyOn(Logger.prototype, "error")
       .mockImplementation(() => undefined);
     fork.nativeDelete.mockRejectedValueOnce(new Error("database unavailable"));
+    service.registerQueue(createQueue("email"));
     service.onApplicationBootstrap();
     await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
     expect(logger).toHaveBeenCalledWith(

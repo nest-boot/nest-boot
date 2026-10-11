@@ -15,7 +15,7 @@ pnpm up "@nest-boot/*@^8" "@nestjs/common@^12" "@nestjs/core@^12"
 ```
 
 GraphQL applications should also use `@nestjs/graphql@^14` and
-`@nestjs/apollo@^14`; BullMQ applications should use `@nestjs/bullmq@^12`.
+`@nestjs/apollo@^14`; queue applications use `bullmq` directly without `@nestjs/bullmq`.
 Packages integrating MikroORM require MikroORM 7.
 
 Follow the upstream [NestJS migration guide](https://docs.nestjs.com/migration-guide)
@@ -42,8 +42,8 @@ Custom request-context middleware must depend on `"database"` instead of
 order.
 
 Custom ESLint configurations should use `@nest-boot/import-database` instead of
-`@nest-boot/import-mikro-orm`. Its autofix migrates named imports and preserves
-local aliases. Namespace imports require manual migration.
+`@nest-boot/import-mikro-orm`. Its autofix migrates compatible named imports and preserves
+local aliases. Queue registration, processor decorators, removed helpers and namespace imports require manual migration.
 
 ## Enable ESM
 
@@ -75,20 +75,20 @@ provide a CommonJS `require` entry.
 Use `QueueModule`, `QueueModuleOptions`, and `QueueHealthIndicator` in place of
 `BullModule`, `BullModuleOptions`, and `BullMQHealthIndicator`. Job persistence
 is integrated into `QueueModule`: register the built-in `Job` entity from
-`@nest-boot/queue/persistence` and move job persistence settings into `QueueModuleOptions.persistence`. Enable `persist: true`
-when registering each queue that needs persistence; remove include/exclude lists.
-Persistence settings are `enabled` (default true) and `ttl` (milliseconds, default 30 days).
-Set `persistence.enabled: false` to disable persistence and job queries globally while keeping queues running.
+`@nest-boot/queue/persistence` and set the default TTL under `QueueModuleOptions.persistence.ttl` (milliseconds, default 30 days).
+Enable each selected queue with `persistence: { enabled: true }`; add `ttl` to override retention for that queue.
+Persistence defaults to disabled; remove include/exclude lists. Cleanup applies only to queues enabled in the current application.
+Replace `registerQueue` / `registerQueueAsync` with queue classes decorated by `@Queue({ name, ...options })` and extending `BaseQueue`. Add them to module `providers` and inject the class directly; `InjectQueue` is removed. Use a standard factory provider with `QueueFactory.create()` for dynamic settings. Consumers now use `@Processor(QueueClass)` and extend `BaseProcessor`; `WorkerHost` is removed. Consumer-only deployments also register the queue class. Missing queues fail startup before workers start. Request and transient scopes, dependency scope propagation, and durable context strategies remain supported. `RequestContextModule` now exports a request-scoped `RequestContext` provider for constructor injection.
 Remove `BullMQMikroORMModule` / `QueueDatabaseModule` imports. See the
 [queue migration guide](/docs/tutorial/queue#migrating-from-queue-database) for
 entity discovery, database migrations, and query authorization.
 
 BullMQ and MikroORM remain the implementations; retain upstream dependencies
-such as `bullmq`, `@nestjs/bullmq`, and `@mikro-orm/core`.
+such as `bullmq` and `@mikro-orm/core`. Remove `@nestjs/bullmq`; the queue integration uses BullMQ directly.
 
 Custom ESLint configurations should use `@nest-boot/import-queue` instead of
-`@nest-boot/import-bullmq`. Its autofix migrates named imports and preserves
-local aliases. Namespace imports require manual migration.
+`@nest-boot/import-bullmq`. Its autofix migrates compatible named imports and preserves
+local aliases. Queue registration, processor decorators, removed helpers and namespace imports require manual migration.
 
 ## Update related integrations
 

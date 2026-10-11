@@ -8,7 +8,6 @@ import type {
   ConnectionArgsInterface,
   ConnectionResult,
 } from "@nest-boot/graphql-connection";
-import { WorkerHost } from "@nestjs/bullmq";
 import {
   ForbiddenException,
   Inject,
@@ -22,6 +21,7 @@ import { type InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
 import { type Job, type JobState, Queue, type Worker } from "bullmq";
 import type { GraphQLResolveInfo } from "graphql";
 
+import { BaseProcessor } from "../base-processor.js";
 import { Job as PersistedJob } from "../entities/job.entity.js";
 import { MODULE_OPTIONS_TOKEN } from "../queue.constants.js";
 import type { QueueModuleOptions } from "../queue-module-options.interface.js";
@@ -40,7 +40,7 @@ export class JobService implements OnApplicationBootstrap, OnModuleDestroy {
 
   private readonly ttl: number;
 
-  private readonly queues = new Set<Queue>();
+  private readonly queues = new Map<Queue, number>();
 
   constructor(
     private readonly discoveryService: DiscoveryService,
@@ -83,6 +83,9 @@ export class JobService implements OnApplicationBootstrap, OnModuleDestroy {
       .fork()
       .upsert(PersistedJob, await this.getJobData(job, jobState), {
         onConflictFields: ["id"],
+        // Producers can finish writing after a worker in another process.
+        // An enqueue event must never replace an existing execution record.
+        ...(jobState === "waiting" && { onConflictAction: "ignore" }),
       });
   }
 
@@ -112,22 +115,27 @@ export class JobService implements OnApplicationBootstrap, OnModuleDestroy {
   }
 
   async cleanJobs() {
+    if (this.queues.size === 0) return;
+    const now = Date.now();
     await this.em.fork().nativeDelete(PersistedJob, {
-      updatedAt: {
-        $lt: new Date(Date.now() - this.ttl),
-      },
+      $or: [...this.queues].map(([queue, ttl]) => ({
+        queueName: queue.name,
+        updatedAt: { $lt: new Date(now - ttl) },
+      })),
     });
   }
 
   /**
    * Includes an explicitly persisted queue in local event observation.
-   * @param queue - Queue registered with persist enabled.
+   * @param queue - Queue registered with persistence enabled.
+   * @param ttl - Optional queue retention override in milliseconds.
    */
-  registerQueue(queue: Queue): void {
-    this.queues.add(queue);
+  registerQueue(queue: Queue, ttl?: number): void {
+    this.queues.set(queue, ttl ?? this.ttl);
   }
 
   onApplicationBootstrap() {
+    if (this.queues.size === 0) return;
     this.cleanupTimer = setInterval(
       () => {
         if (this.cleanup) return;
@@ -143,10 +151,9 @@ export class JobService implements OnApplicationBootstrap, OnModuleDestroy {
     );
     this.cleanupTimer.unref();
 
-    if (this.queues.size === 0) return;
     const instanceWrappers = this.discoveryService.getProviders();
 
-    for (const queue of this.queues) {
+    for (const queue of this.queues.keys()) {
       const onWaiting = (job: Job) => {
         this.recordJobEvent(job, "waiting");
       };
@@ -154,30 +161,38 @@ export class JobService implements OnApplicationBootstrap, OnModuleDestroy {
       this.unsubscribe.push(() => queue.off("waiting", onWaiting));
     }
     const persistedQueues = new Set(
-      [...this.queues].map((queue) => queue.qualifiedName),
+      [...this.queues.keys()].map((queue) => queue.qualifiedName),
     );
 
     instanceWrappers
-      .filter((provider) => provider.instance instanceof WorkerHost)
-      .filter((provider: InstanceWrapper<WorkerHost>) =>
+      .filter((provider) => provider.instance instanceof BaseProcessor)
+      .filter((provider: InstanceWrapper<BaseProcessor>) =>
         persistedQueues.has(provider.instance.worker.qualifiedName),
       )
-      .forEach((provider: InstanceWrapper<WorkerHost>) => {
-        const worker = provider.instance.worker;
-        this.workers.add(worker);
-        for (const [event, state] of [
-          ["active", "active"],
-          ["progress", "active"],
-          ["completed", "completed"],
-          ["failed", "failed"],
-        ] as const) {
-          const listener = (job?: Job) => {
-            if (job) this.recordJobEvent(job, state);
-          };
-          worker.on(event, listener);
-          this.unsubscribe.push(() => worker.off(event, listener));
-        }
+      .forEach((provider: InstanceWrapper<BaseProcessor>) => {
+        this.registerWorker(provider.instance.worker);
       });
+  }
+
+  /**
+   * Observes a local worker once, including scoped consumers without a static instance.
+   * @param worker - Worker associated with an enabled queue.
+   */
+  registerWorker(worker: Worker): void {
+    if (this.workers.has(worker)) return;
+    this.workers.add(worker);
+    for (const [event, state] of [
+      ["active", "active"],
+      ["progress", "active"],
+      ["completed", "completed"],
+      ["failed", "failed"],
+    ] as const) {
+      const listener = (job?: Job) => {
+        if (job) this.recordJobEvent(job, state);
+      };
+      worker.on(event, listener);
+      this.unsubscribe.push(() => worker.off(event, listener));
+    }
   }
 
   /** Drains workers before removing observers, then finishes writes before the database closes. */

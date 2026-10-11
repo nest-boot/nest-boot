@@ -1,4 +1,4 @@
-import { Processor, WorkerHost } from "@nest-boot/queue";
+import { BaseProcessor, Processor } from "@nest-boot/queue";
 import {
   Inject,
   Logger,
@@ -8,12 +8,13 @@ import {
 import { Job } from "bullmq";
 
 import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition.js";
+import { ScheduleQueue } from "./schedule.queue.js";
 import { ScheduleRegistry } from "./schedule.registry.js";
 import { type ScheduleModuleOptions } from "./schedule-module-options.interface.js";
 
-@Processor("schedule", { autorun: false })
+@Processor(ScheduleQueue, { autorun: false })
 export class ScheduleProcessor
-  extends WorkerHost
+  extends BaseProcessor
   implements OnApplicationBootstrap
 {
   /**

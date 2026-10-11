@@ -1,3 +1,5 @@
+import { AST_NODE_TYPES } from "@typescript-eslint/utils";
+
 import { createRule } from "../../utils/createRule.js";
 import { fixRenamedImport } from "../../utils/fix-renamed-import.js";
 
@@ -28,8 +30,32 @@ export default createRule({
             node,
             messageId: "replaceQueueImport",
             fix(fixer) {
+              const supported = new Set([
+                "BullModuleOptions",
+                "QueueModuleOptions",
+                "BullMQHealthIndicator",
+                "QueueHealthIndicator",
+                "WorkerHost",
+                "BaseProcessor",
+                "OnWorkerEvent",
+                "OnQueueEvent",
+                "JOB_REF",
+                "QueueEventsHost",
+              ]);
+              if (
+                node.specifiers.some(
+                  (specifier) =>
+                    specifier.type !== AST_NODE_TYPES.ImportSpecifier ||
+                    !supported.has(
+                      specifier.imported.type === AST_NODE_TYPES.Identifier
+                        ? specifier.imported.name
+                        : specifier.imported.value,
+                    ),
+                )
+              )
+                return null;
               return fixRenamedImport(fixer, node, "@nest-boot/queue", {
-                BullModule: "QueueModule",
+                WorkerHost: "BaseProcessor",
                 BullModuleOptions: "QueueModuleOptions",
                 BullMQHealthIndicator: "QueueHealthIndicator",
               });

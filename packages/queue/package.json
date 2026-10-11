@@ -40,7 +40,6 @@
     "@nest-boot/eslint-plugin": "workspace:^",
     "@nest-boot/request-context": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",
-    "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
     "@nestjs/platform-express": "^12.1.2",
@@ -67,7 +66,6 @@
   },
   "peerDependencies": {
     "@nest-boot/request-context": "workspace:^",
-    "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.0.0",
     "@nestjs/core": "^12.0.0",
     "bullmq": "^5.81.5",

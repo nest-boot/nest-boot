@@ -4,12 +4,16 @@ import {
   HealthCheckModule,
   HealthCheckRegistry,
 } from "@nest-boot/health-check";
-import { getQueueToken } from "@nestjs/bullmq";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { Queue } from "bullmq";
 
-import { QueueHealthIndicator, QueueModule } from "../dist/index.js";
+import {
+  BaseQueue,
+  Queue,
+  QueueFactory,
+  QueueHealthIndicator,
+  QueueModule,
+} from "../dist/index.js";
 
 describe("Queue health HTTP integration", () => {
   let app: INestApplication;
@@ -35,27 +39,32 @@ describe("Queue health HTTP integration", () => {
         : registration === "async"
           ? QueueModule.forRootAsync({ useFactory: () => ({}) })
           : QueueModule;
-    const queues =
+    @Queue({ name: "email", prefix })
+    class EmailQueue extends BaseQueue {}
+    @Queue({ name: "upload", prefix })
+    class UploadQueue extends BaseQueue {}
+    const queues = [EmailQueue, UploadQueue].map((queue) =>
       registration === "async"
-        ? QueueModule.registerQueueAsync(
-            { name: "email", useFactory: () => ({ prefix }) },
-            { name: "upload", useFactory: () => ({ prefix }) },
-          )
-        : QueueModule.registerQueue(
-            { name: "email", prefix },
-            { name: "upload", prefix },
-          );
+        ? {
+            provide: queue,
+            inject: [QueueFactory],
+            useFactory: async (factory: QueueFactory) =>
+              await Promise.resolve(factory.create(queue)),
+          }
+        : queue,
+    );
     const module = await Test.createTestingModule({
-      imports: [rootModule, queues, ...(enabled ? [HealthCheckModule] : [])],
+      imports: [rootModule, ...(enabled ? [HealthCheckModule] : [])],
       providers: [
-        { provide: "QUEUE_ALIAS", useExisting: getQueueToken("email") },
+        ...queues,
+        { provide: "QUEUE_ALIAS", useExisting: EmailQueue },
       ],
     })
       .setLogger({ log: vi.fn(), warn: vi.fn(), error: vi.fn() })
       .compile();
     app = module.createNestApplication();
-    const email = app.get<Queue>(getQueueToken("email"));
-    const upload = app.get<Queue>(getQueueToken("upload"));
+    const email = app.get(EmailQueue);
+    const upload = app.get(UploadQueue);
     await Promise.all([email.waitUntilReady(), upload.waitUntilReady()]);
     const read = vi.spyOn(email, "isPaused");
     await app.listen(0, "127.0.0.1");

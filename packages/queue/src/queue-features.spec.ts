@@ -7,14 +7,19 @@ import {
   Query,
   Resolver,
 } from "@nest-boot/graphql";
-import { getQueueToken } from "@nestjs/bullmq";
-import { Module } from "@nestjs/common";
+import { DiscoveryService } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import type { Job as BullJob, Queue } from "bullmq";
 
 import { Job } from "./entities/job.entity.js";
+import { JobStatus } from "./enums/job-status.enum.js";
+import {
+  BaseQueue,
+  Queue as DeclareQueue,
+  type QueueDefinition,
+  QueueFactory,
+} from "./index.js";
 import { QueueModule } from "./queue.module.js";
-import type { RegisterQueueOptionsFactory } from "./register-queue-options.interface.js";
 import { JobService } from "./services/job.service.js";
 
 // Exercise real Nest option factories while replacing only the Redis transport.
@@ -37,14 +42,24 @@ vi.mock("bullmq", async (importOriginal) => {
   return { ...actual, Queue };
 });
 
-class QueueOptionsFactory implements RegisterQueueOptionsFactory {
-  createRegisterQueueOptions() {
-    return { persist: true };
-  }
+/**
+ * Defines a test queue provider.
+ * @param options - Queue declaration.
+ * @param async - Whether to use a factory provider.
+ * @returns Queue provider for a testing module.
+ */
+function queueProvider(options: QueueDefinition, async = false) {
+  @DeclareQueue(options)
+  class TestQueue extends BaseQueue {}
+  return async
+    ? {
+        provide: TestQueue,
+        inject: [QueueFactory],
+        useFactory: async (factory: QueueFactory) =>
+          await Promise.resolve(factory.create(TestQueue)),
+      }
+    : TestQueue;
 }
-
-@Module({ providers: [QueueOptionsFactory], exports: [QueueOptionsFactory] })
-class QueueOptionsModule {}
 
 @Resolver()
 class PingResolver {
@@ -55,45 +70,12 @@ class PingResolver {
 }
 
 describe("QueueModule automatic job features", () => {
-  it.each([
-    { registration: "sync", persist: undefined },
-    { registration: "sync", persist: false },
-    { registration: "sync", persist: true },
-    { registration: "async", persist: undefined },
-    { registration: "async", persist: false },
-    { registration: "async", persist: true },
-    { registration: "useClass", persist: true },
-    { registration: "useExisting", persist: true },
-  ])(
-    "$registration registers history only with persist=$persist",
-    async ({ registration, persist }) => {
-      const name = "email";
-      const queueModule =
-        registration === "sync"
-          ? QueueModule.registerQueue({ name, persist })
-          : QueueModule.registerQueueAsync({
-              name,
-              ...(registration === "useClass"
-                ? { useClass: QueueOptionsFactory }
-                : registration === "useExisting"
-                  ? {
-                      imports: [QueueOptionsModule],
-                      useExisting: QueueOptionsFactory,
-                    }
-                  : {
-                      inject: ["PERSIST"],
-                      extraProviders: [
-                        { provide: "PERSIST", useValue: persist },
-                      ],
-                      useFactory: async (enabled: boolean) => ({
-                        persist: await Promise.resolve(enabled),
-                      }),
-                    }),
-            });
+  it.each([false, true])(
+    "preserves worker results across separate producer writes (worker first=%s)",
+    async (workerFirst) => {
       const module = await Test.createTestingModule({
         imports: [
           QueueModule,
-          queueModule,
           DatabaseModule.forRoot({
             driver: PgliteDriver,
             dbName: "memory://",
@@ -102,13 +84,89 @@ describe("QueueModule automatic job features", () => {
         ],
       }).compile();
       try {
+        const orm = module.get(MikroORM);
+        await orm.schema.create();
+        const producer = module.get(JobService);
+        const consumer = new JobService(
+          { getProviders: () => [] } as unknown as DiscoveryService,
+          orm.em,
+          {},
+        );
+        const waiting = {
+          id: "42",
+          queueName: "email",
+          name: "send-email",
+          data: { tenant: "allowed" },
+          priority: 0,
+          progress: 0,
+          timestamp: Date.now(),
+          getState: () => Promise.resolve("waiting"),
+        } as unknown as BullJob;
+        const completed = {
+          ...waiting,
+          progress: 100,
+          returnvalue: { sent: true },
+          processedOn: Date.now(),
+          finishedOn: Date.now(),
+          getState: () => Promise.resolve("completed"),
+        } as unknown as BullJob;
+        if (!workerFirst) await producer.upsertJob(waiting, "waiting");
+        await consumer.upsertJob(completed, "completed");
+        // A delayed or repeated producer event must never erase worker fields.
+        await producer.upsertJob(waiting, "waiting");
+        await producer.upsertJob(waiting, "waiting");
+        const em = orm.em.fork();
+        expect(await em.count(Job, {})).toBe(1);
+        expect(await em.findOneOrFail(Job, "email:42")).toMatchObject({
+          status: JobStatus.COMPLETED,
+          progress: 100,
+          returnValue: { sent: true },
+          startedAt: new Date(completed.processedOn ?? 0),
+          finishedAt: new Date(completed.finishedOn ?? 0),
+        });
+      } finally {
+        await module.close();
+      }
+    },
+    30000,
+  );
+
+  it.each([
+    { registration: "sync", persistence: undefined },
+    { registration: "sync", persistence: { enabled: false } },
+    { registration: "sync", persistence: { enabled: true } },
+    { registration: "async", persistence: undefined },
+    { registration: "async", persistence: { enabled: false } },
+    { registration: "async", persistence: { enabled: true } },
+  ])(
+    "$registration registers history only with persistence=$persistence",
+    async ({ registration, persistence }) => {
+      const name = "email";
+      const provider = queueProvider(
+        { name, persistence },
+        registration === "async",
+      );
+      const module = await Test.createTestingModule({
+        imports: [
+          QueueModule,
+          DatabaseModule.forRoot({
+            driver: PgliteDriver,
+            dbName: "memory://",
+            entities: [Job],
+          }),
+        ],
+        providers: [provider],
+      }).compile();
+      try {
         await module.init();
-        const queue = module.get<Queue>(getQueueToken(name));
+        const queue = module.get<Queue>(
+          typeof provider === "function" ? provider : provider.provide,
+        );
         const jobService = module.get(JobService);
         const write = vi.spyOn(jobService, "upsertJob").mockResolvedValue();
         queue.emit("waiting", { id: "42" } as BullJob);
-        expect(write).toHaveBeenCalledTimes(persist ? 1 : 0);
-        expect(queue.opts).not.toHaveProperty("persist");
+        expect(write).toHaveBeenCalledTimes(persistence?.enabled ? 1 : 0);
+        expect(queue.opts).not.toHaveProperty("persistence");
       } finally {
         await module.close();
       }
@@ -121,78 +179,118 @@ describe("QueueModule automatic job features", () => {
     async (async) => {
       await expect(
         Test.createTestingModule({
-          imports: [
-            QueueModule,
-            async
-              ? QueueModule.registerQueueAsync({
-                  name: "email",
-                  useFactory: () => ({ persist: true }),
-                })
-              : QueueModule.registerQueue({ name: "email", persist: true }),
+          imports: [QueueModule],
+          providers: [
+            queueProvider(
+              { name: "email", persistence: { enabled: true } },
+              async,
+            ),
           ],
         }).compile(),
-      ).rejects.toThrow(/Queue "email" has persist: true.*DatabaseModule/);
+      ).rejects.toThrow(
+        /Queue "email" has persistence.enabled: true.*DatabaseModule/,
+      );
+    },
+  );
+
+  it.each([false, true])(
+    "starts disabled queues without database services (async=%s)",
+    async (async) => {
+      const queues = [
+        { name: "disabled", persistence: { enabled: false, ttl: 0 } },
+        { name: "ttl-only", persistence: { ttl: 0 } },
+      ];
+      const providers = queues.map((options) => queueProvider(options, async));
+      const module = await Test.createTestingModule({
+        imports: [QueueModule.forRoot({ persistence: { ttl: 1000 } })],
+        providers,
+      }).compile();
+      try {
+        await module.init();
+        for (const provider of providers) {
+          const queue = module.get<Queue>(
+            typeof provider === "function" ? provider : provider.provide,
+          );
+          const name = queue.name;
+          expect(queue.name).toBe(name);
+          expect(queue.listenerCount("waiting")).toBe(0);
+          expect(queue.opts).not.toHaveProperty("persistence");
+        }
+      } finally {
+        await module.close();
+      }
     },
   );
 
   it.each([
-    { async: false, integrations: false },
-    { async: true, integrations: false },
-    { async: false, integrations: true },
-    { async: true, integrations: true },
+    { async: false, ttl: undefined },
+    { async: false, ttl: 7 * 86400000 },
+    { async: true, ttl: 7 * 86400000 },
   ])(
-    "keeps queues available when persistence is globally disabled (async=$async, integrations=$integrations)",
-    async ({ async, integrations }) => {
-      const options = { persistence: { enabled: false } };
+    "applies queue TTL overrides without deleting other queues (async=$async, global ttl=$ttl)",
+    async ({ async, ttl }) => {
+      const queues = [
+        { name: "inherited", persistence: { enabled: true } },
+        { name: "short", persistence: { enabled: true, ttl: 86400000 } },
+        { name: "long", persistence: { enabled: true, ttl: 30 * 86400000 } },
+        { name: "disabled", persistence: { enabled: false, ttl: 0 } },
+        { name: "ttl-only", persistence: { ttl: 0 } },
+      ];
+      const options = { persistence: { ttl } };
       const module = await Test.createTestingModule({
         imports: [
           async
             ? QueueModule.forRootAsync({ useFactory: () => options })
             : QueueModule.forRoot(options),
-          async
-            ? QueueModule.registerQueueAsync({
-                name: "email",
-                useFactory: () => ({ persist: true }),
-              })
-            : QueueModule.registerQueue({ name: "email", persist: true }),
-          ...(integrations
-            ? [
-                DatabaseModule.forRoot({
-                  driver: PgliteDriver,
-                  dbName: "memory://",
-                  entities: [Job],
-                }),
-                GraphQLModule.forRoot({
-                  autoSchemaFile: true,
-                  graphiql: false,
-                }),
-              ]
-            : []),
+          DatabaseModule.forRoot({
+            driver: PgliteDriver,
+            dbName: "memory://",
+            entities: [Job],
+          }),
         ],
-        providers: integrations ? [PingResolver] : [],
+        providers: queues.map((options) => queueProvider(options, async)),
       }).compile();
-      const app = module.createNestApplication();
-      app.useLogger(false);
       try {
-        await app.init();
-        const queue = module.get<Queue>(getQueueToken("email"));
-        expect(queue.name).toBe("email");
-        expect(queue.listenerCount("waiting")).toBe(0);
-        expect(queue.opts).not.toHaveProperty("persist");
-        expect(queue.opts).not.toHaveProperty("persistence");
-        expect(module.get(JobService)).toBeNull();
-        if (integrations) {
-          expect(
-            Object.keys(
-              module
-                .get(GraphQLSchemaHost)
-                .schema.getQueryType()
-                ?.getFields() ?? {},
-            ),
-          ).toEqual(["ping"]);
-        }
+        const orm = module.get(MikroORM);
+        await orm.schema.create();
+        const em = orm.em.fork();
+        const records = [
+          { queueName: "inherited", age: 2, keep: true },
+          { queueName: "inherited", age: 8, keep: ttl === undefined },
+          { queueName: "inherited", age: 31, keep: false },
+          { queueName: "short", age: 2, keep: false },
+          { queueName: "long", age: 8, keep: true },
+          { queueName: "long", age: 31, keep: false },
+          { queueName: "disabled", age: 40, keep: true },
+          { queueName: "ttl-only", age: 40, keep: true },
+          { queueName: "elsewhere", age: 40, keep: true },
+        ];
+        await em.insertMany(
+          Job,
+          records.map(({ queueName, age }) => ({
+            id: `${queueName}:${String(age)}`,
+            queueName,
+            name: "report",
+            data: {},
+            priority: 0,
+            progress: 100,
+            status: JobStatus.COMPLETED,
+            updatedAt: new Date(Date.now() - age * 86400000),
+          })),
+        );
+        await module.get(JobService).cleanJobs();
+        expect(
+          (await em.find(Job, {}, { orderBy: { id: "asc" } })).map(
+            ({ id }) => id,
+          ),
+        ).toEqual(
+          records
+            .filter(({ keep }) => keep)
+            .map(({ queueName, age }) => `${queueName}:${String(age)}`)
+            .sort(),
+        );
       } finally {
-        await app.close();
+        await module.close();
       }
     },
     30000,
@@ -220,7 +318,9 @@ describe("QueueModule automatic job features", () => {
               dbName: "memory://",
               entities,
             }),
-            QueueModule.registerQueue({ name: "email", persist: true }),
+          ],
+          providers: [
+            queueProvider({ name: "email", persistence: { enabled: true } }),
           ],
         })
           .overrideProvider(MikroORM)

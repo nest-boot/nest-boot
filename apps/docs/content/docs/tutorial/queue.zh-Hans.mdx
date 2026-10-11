@@ -1,182 +1,197 @@
 ---
-title: "任务队列"
-description: "基于 BullMQ 的分布式任务队列和后台工作器，支持 Redis 驱动处理和可选的 MikroORM 集成。"
+title: "队列"
+description: "通过 BullMQ 提供可注入的队列类、后台消费者与可选的任务持久化。"
 ---
 
-`@nest-boot/queue` 模块封装 [`@nestjs/bullmq`](https://docs.nestjs.com/techniques/queues)，提供基于 Redis 支持的分布式任务处理。它也通过发现应用已注册的服务，整合任务持久化和 GraphQL 查询。
+`@nest-boot/queue` 直接基于 [BullMQ](https://docs.bullmq.io/) 集成 Nest。队列类是可注入的 provider，消费者引用同一个队列类，不再依赖 `@nestjs/bullmq`。
 
 ## 安装
 
 ```bash
-pnpm add @nest-boot/queue @nest-boot/request-context @nestjs/bullmq bullmq
+pnpm add @nest-boot/queue @nest-boot/request-context bullmq
 ```
 
-## 模块注册
+## 定义与注入队列
 
-在 `CommonModule` 中注册 `QueueModule` 配置 Redis 连接：
+```ts
+import { BaseQueue, Queue } from "@nest-boot/queue";
 
-```typescript
-import { QueueModule } from "@nest-boot/queue";
-import { Module } from "@nestjs/common";
-
-@Module({
-  imports: [QueueModule],
-})
-export class AppModule {}
-```
-
-模块自动读取并解析 `REDIS_URL`。也可以通过 `QueueModule.forRoot()` 或 `forRootAsync()` 显式传入 BullMQ `connection`。
-
-## 定义队列
-
-在功能模块中注册命名队列：
-
-```typescript
-import { QueueModule } from "@nest-boot/queue";
-import { Module } from "@nestjs/common";
-
-@Module({
-  imports: [
-    QueueModule.registerQueue({
-      name: "file-ops-queue",
-      defaultJobOptions: {
-        removeOnComplete: { age: 60 * 60 },
-        removeOnFail: { age: 60 * 60 },
-      },
-    }),
-  ],
-  providers: [FileService, FileOpsProcessor],
-})
-export class FileModule {}
-```
-
-## 添加任务
-
-使用 `@InjectQueue()` 注入 `Queue` 来添加任务：
-
-```typescript
-import { InjectQueue } from "@nest-boot/queue";
-import { Injectable } from "@nestjs/common";
-import { Queue } from "bullmq";
-
-interface EmailJobData {
+export interface EmailData {
   to: string;
   subject: string;
-  body: string;
 }
+
+@Queue({
+  name: "email",
+  defaultJobOptions: { attempts: 3, removeOnComplete: { age: 3600 } },
+})
+export class EmailQueue extends BaseQueue<EmailData> {}
+```
+
+把队列类加入 `providers`，直接通过构造函数注入：
+
+```ts
+import { QueueModule } from "@nest-boot/queue";
+import { Injectable, Module } from "@nestjs/common";
+import { EmailQueue, type EmailData } from "./email.queue";
 
 @Injectable()
 export class EmailService {
-  constructor(
-    @InjectQueue("email-queue")
-    private readonly emailQueue: Queue<EmailJobData>,
-  ) {}
+  constructor(private readonly queue: EmailQueue) {}
 
-  async sendEmail(data: EmailJobData): Promise<string> {
-    const job = await this.emailQueue.add("send", data, {
-      jobId: `email-${Date.now()}`,
-    });
-
-    return job.id!;
+  async send(data: EmailData) {
+    return await this.queue.add("send", data);
   }
 }
+
+@Module({
+  imports: [QueueModule],
+  providers: [EmailQueue, EmailService],
+  exports: [EmailQueue],
+})
+export class EmailModule {}
 ```
 
-## 处理任务
+不需要 `registerQueue()` 或 `@InjectQueue()`。`QueueModule` 自动读取 `REDIS_URL`；通过 `forRoot()` / `forRootAsync()` 可以指定连接和共享默认配置，根配置只注册一次。队列类继承 BullMQ 的方法，也可以添加业务方法。
 
-使用 `@Processor()` 装饰器继承 `WorkerHost` 创建处理器：
+队列 provider 必须保持单例，队列名称在应用内必须唯一。需要跨模块使用时，导出队列类并导入所属模块，不要重复创建实例。应用关闭时会关闭队列连接。
 
-```typescript
-import { OnWorkerEvent, Processor, WorkerHost } from "@nest-boot/queue";
-import { Logger } from "@nest-boot/logger";
+队列类需要在构造函数中注入业务依赖时，注入 `QueueFactory` 并调用 `super(factory)`。`QueueFactory.create()` 用于保留继承构造函数的队列类。
+
+## 消费任务
+
+```ts
+import { BaseProcessor, OnWorkerEvent, Processor } from "@nest-boot/queue";
 import { Job } from "bullmq";
+import { EmailQueue, type EmailData } from "./email.queue";
 import { NotificationService } from "./notification.service";
 
-@Processor("email-queue", { concurrency: 5 })
-export class EmailProcessor extends WorkerHost {
-  constructor(
-    private readonly logger: Logger,
-    private readonly notificationService: NotificationService,
-  ) {
+@Processor(EmailQueue, { concurrency: 5 })
+export class EmailProcessor extends BaseProcessor {
+  constructor(private readonly notifications: NotificationService) {
     super();
-    this.logger.setContext(EmailProcessor.name);
   }
 
-  async process(job: Job<EmailJobData>): Promise<void> {
-    const { to, subject, body } = job.data;
-
-    this.logger.assign({ jobId: job.id, to });
-    this.logger.log("Processing email job");
-
-    await this.notificationService.sendEmail({ to, subject, body });
-
-    this.logger.log("Email sent successfully");
+  async process(job: Job<EmailData>) {
+    await this.notifications.send(job.data);
   }
 
   @OnWorkerEvent("completed")
-  onCompleted(job: Job<EmailJobData>): void {
-    this.logger.log(`Email job ${job.id} completed`);
+  onCompleted(job: Job<EmailData>) {
+    console.log(`Completed ${job.id}`);
   }
 }
 ```
 
-Nest Boot 的 `@Processor()` 会为每个任务创建 `RequestContext`、写入 BullMQ `JOB_REF`，再调用正常的 `@nestjs/bullmq` processor。
+将 `EmailProcessor` 与 `EmailQueue` 都注册为 provider，或者导入导出队列的模块。纯消费者部署也必须注册队列类。注册只创建客户端，不会自动入队；缺少队列 provider 时会在启动任何 worker 前报错。消费者的连接、prefix 和 telemetry 都来自队列实例，worker 配置不能指向不同的 Redis 命名空间。使用 `BaseProcessor` 替代已移除的 `WorkerHost` 导出。
+
+### Scope 与 RequestContext
+
+每次任务执行都创建独立的 `RequestContext`，类型为 `"queue"`，并绑定 `JOB_REF`。上下文及其中间件会在 Nest **解析消费者依赖之前**建立。`process()` 的错误继续交给 BullMQ 重试。
+
+支持单例、REQUEST 和 TRANSIENT 消费者。注入 request-scoped 服务时，作用域会沿依赖链传递；框架会通过 `ContextIdFactory.getByRequest()` 和消费者所属模块的 `ModuleRef.resolve()` 为任务解析实例，也支持应用定义的 durable context 策略。
+
+导入 `RequestContextModule` 后可以直接注入 `RequestContext`。该 provider 使用 REQUEST 作用域，返回当前已有的上下文，因此注入它也会让消费者变为 request-scoped：
+
+```ts
+import {
+  BaseProcessor,
+  JOB_REF,
+  Processor,
+  QueueModule,
+} from "@nest-boot/queue";
+import {
+  RequestContext,
+  RequestContextModule,
+} from "@nest-boot/request-context";
+import { Inject, Module } from "@nestjs/common";
+import { Job } from "bullmq";
+import { EmailQueue, type EmailData } from "./email.queue";
+
+@Processor(EmailQueue)
+export class EmailProcessor extends BaseProcessor {
+  constructor(
+    private readonly context: RequestContext,
+    @Inject(JOB_REF) private readonly job: Job<EmailData>,
+  ) {
+    super();
+  }
+
+  async process() {
+    return { contextId: this.context.id, recipient: this.job.data.to };
+  }
+}
+
+@Module({
+  imports: [QueueModule, RequestContextModule],
+  providers: [EmailQueue, EmailProcessor],
+})
+export class EmailWorkerModule {}
+```
+
+单例服务可以继续在方法中使用 `RequestContext.current()` 或 `RequestContext.get(JOB_REF)`，不要在单例构造函数中捕获任务上下文。durable 依赖只适合有意共享的状态，不能保存当前任务数据。`worker` getter 可在模块初始化后及 scoped 消费者的 `process()` 中使用。
+
+## 动态队列配置
+
+配置依赖其他服务或异步读取时，使用普通 Nest factory provider。`QueueFactory.create()` 保留声明中的队列名称，用运行时配置覆盖装饰器配置，并逐字段合并 `persistence`。返回的队列实例仍由 Nest 管理生命周期。
+
+```ts
+import { QueueFactory, QueueModule } from "@nest-boot/queue";
+import { Module } from "@nestjs/common";
+import { EmailQueue } from "./email.queue";
+import { SettingsService } from "./settings.service";
+
+@Module({
+  imports: [QueueModule],
+  providers: [
+    SettingsService,
+    {
+      provide: EmailQueue,
+      inject: [QueueFactory, SettingsService],
+      useFactory: async (factory: QueueFactory, settings: SettingsService) =>
+        factory.create(EmailQueue, await settings.getEmailQueueOptions()),
+    },
+  ],
+  exports: [EmailQueue],
+})
+export class EmailModule {}
+```
 
 ## 队列事件
 
-从 `@nest-boot/queue` 导入 `OnWorkerEvent` 和 `OnQueueEvent`，即可为每次事件回调创建独立的 `RequestContext`，并执行已注册的上下文中间件。即使事件在另一个上下文中触发，也不会继承其中的 EntityManager 或其他上下文数据。
+`@OnWorkerEvent()` 监听本地 worker。显式监听 Redis 事件流时使用独立的单例 `QueueEventsHost`：
 
-`@OnWorkerEvent()` 放在 `@Processor()` 标记的 `WorkerHost` 中，监听当前 worker 的事件，例如上面示例中的 `onCompleted()`。`@OnQueueEvent()` 则放在独立的 `QueueEventsHost` 中，监听整个队列的事件：
-
-```typescript
+```ts
 import {
-  QueueModule,
   OnQueueEvent,
   QueueEventsHost,
   QueueEventsListener,
 } from "@nest-boot/queue";
 import { RequestContext } from "@nest-boot/request-context";
-import { Logger, Module } from "@nestjs/common";
+import { EmailQueue } from "./email.queue";
 
-@QueueEventsListener("email-queue")
-export class EmailQueueEvents extends QueueEventsHost {
-  private readonly logger = new Logger(EmailQueueEvents.name);
-
+@QueueEventsListener(EmailQueue)
+export class EmailEvents extends QueueEventsHost {
   @OnQueueEvent("completed")
-  onCompleted(event: { jobId: string }, eventId: string): void {
-    this.logger.log({
-      jobId: event.jobId,
-      eventId,
-      contextId: RequestContext.id,
-    });
+  completed(event: { jobId: string }) {
+    console.log(event.jobId, RequestContext.id);
   }
 }
-
-@Module({
-  imports: [QueueModule.registerQueue({ name: "email-queue" })],
-  providers: [EmailQueueEvents],
-})
-export class EmailEventsModule {}
 ```
 
-两类监听器都必须注册为 provider，并保持单例作用域；Nest 不会为请求作用域的 provider 注册事件监听器。
+将 `EmailEvents` 及其队列注册为 provider。Worker 事件仅绑定单例消费者，scoped 消费者的事件方法会被跳过；QueueEvents listener 必须是单例。持久化使用本地 Queue/Worker 事件，不创建 QueueEvents 读取器。
 
-所有这些上下文的 `type` 都是 `"queue"`。Worker 的 `active`、`completed`、`progress` 事件，以及携带 Job 的 `failed` 事件，会绑定 `JOB_REF` 并使用 Job ID 作为上下文 ID。`stalled` 事件只有 Job ID；QueueEvents 事件也只有事件数据，使用其中的 `jobId` 作为上下文 ID，不绑定 `JOB_REF`。没有 Job ID 的事件会生成上下文 ID，不会额外查询 Redis 来获取 Job。
-
-事件回调和上下文中间件的异常会被捕获并记录，避免未处理的 Promise 拒绝。BullMQ 不会等待异步监听器完成，也不会因为监听器失败而重试任务；`process()` 的异常仍正常交给 BullMQ 处理。上下文中间件可以是异步的，因此不要依赖事件回调的同步副作用。
-
-这些行为仅适用于从 `@nest-boot/queue` 导入的装饰器。直接使用 `worker.on()`、`queue.on()` 或 `queueEvents.on()` 注册的回调，需要显式通过 `RequestContext.run()` 等方式包装，并处理异步异常。
+每个事件回调都有独立上下文并运行上下文中间件。携带 Job 的 worker 事件绑定 `JOB_REF`；`stalled` 只有任务 ID。QueueEvents 使用 payload 中的 `jobId`，不绑定 `JOB_REF`。其他事件生成上下文 ID。事件处理器及中间件的错误会记录并抑制，因为 BullMQ 不等待异步监听器。直接调用 `.on()` 时，需要自行处理上下文及异步错误。
 
 ## 内置任务持久化与 GraphQL
 
-`QueueModule` 自动发现应用已注册的集成。`persistence.enabled` 默认为 `true`；设为 `false` 会关闭持久化、过期清理和内置任务查询，包括已设置 `persist: true` 的队列，队列和 worker 仍可在没有数据库支持时继续运行。`graphql` 默认为 `true`；设置为 `false` 可保留持久化但不注册任务查询。各队列的 `persist` 默认为 `false`，在 `registerQueue` 中按需开启：
+`QueueModule` 自动发现应用已注册的集成。每个队列通过 `persistence.enabled: true` 开启持久化，默认关闭；只设置队列 TTL 不会自动开启。模块配置的 `persistence.ttl` 提供默认保留时间，默认 30 天，单位毫秒；各队列可覆盖。`graphql` 默认为 `true`，设为 `false` 可关闭内置任务查询。
 
-| 应用配置                                                            | 行为                                                           |
-| ------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `persistence.enabled: false`                                        | 仅运行 BullMQ 队列和 worker，包括设置了 `persist: true` 的队列 |
-| 未配置数据库集成，且没有队列设置 `persist: true`                    | 仅运行 BullMQ 队列和 worker                                    |
-| 持久化已开启，且已注册 `DatabaseModule` 和内置 `Job` 实体           | 提供 `JobService`，仅记录设置了 `persist: true` 的队列事件     |
-| 已启用任务持久化，并注册 `GraphQLModule`，且未设置 `graphql: false` | 同时提供 `job(id)` 和 `jobs` 分页查询                          |
+| 应用配置                                                      | 行为                                                         |
+| ------------------------------------------------------------- | ------------------------------------------------------------ |
+| 未配置数据库集成，且没有队列开启持久化                        | 仅运行 BullMQ 队列和 worker                                  |
+| 已注册 `DatabaseModule` 和内置 `Job` 实体                     | 提供 `JobService`，仅监听 `persistence.enabled: true` 的队列 |
+| 已配置数据库集成和 `GraphQLModule`，且未设置 `graphql: false` | 同时提供 `job(id)` 和 `jobs` 分页查询                        |
 
 `@nest-boot/database`、`@nest-boot/graphql` 和 `@nest-boot/graphql-connection` 都是可选 peer dependency。按需在应用中安装，并补齐各自文档列出的对等依赖：
 
@@ -188,21 +203,24 @@ export class EmailEventsModule {}
 
 仅安装包不会启用功能，还需在应用中注册相应模块及内置实体。只使用持久化时，默认的 `graphql: true` 不会要求安装 GraphQL。若任务查询已满足其他启用条件，但缺少 `graphql-connection`，启动会明确报错；可设置 `graphql: false` 关闭任务查询。
 
-| 配置                  | 设置位置                                                 | 默认值          |
-| --------------------- | -------------------------------------------------------- | --------------- |
-| `persist`             | `registerQueue` 参数，或 `registerQueueAsync` 的最终配置 | `false`         |
-| `graphql`             | `forRoot` / `forRootAsync` 参数                          | `true`          |
-| `persistence.enabled` | `forRoot` / `forRootAsync` 参数                          | `true`          |
-| `persistence.ttl`     | `forRoot` / `forRootAsync` 参数                          | 30 天，单位毫秒 |
-| `getJobReadFilter`    | `forRoot` / `forRootAsync` 参数                          | 拒绝读取        |
+| 配置                  | 设置位置                                             | 默认值           |
+| --------------------- | ---------------------------------------------------- | ---------------- |
+| `persistence.enabled` | `@Queue()` 参数或 `QueueFactory.create()` 的最终配置 | `false`          |
+| `persistence.ttl`     | `@Queue()` 参数或 `QueueFactory.create()` 的最终配置 | 继承模块默认 TTL |
+| `persistence.ttl`     | `forRoot` / `forRootAsync` 参数                      | 30 天，单位毫秒  |
+| `graphql`             | `forRoot` / `forRootAsync` 参数                      | `true`           |
+| `getJobReadFilter`    | `forRoot` / `forRootAsync` 参数                      | 拒绝读取         |
 
 ```typescript
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { DatabaseModule } from "@nest-boot/database";
 import { GraphQLModule } from "@nest-boot/graphql";
-import { QueueModule } from "@nest-boot/queue";
+import { BaseQueue, Queue, QueueModule } from "@nest-boot/queue";
 import { entities as queueEntities } from "@nest-boot/queue/persistence";
 import { Module } from "@nestjs/common";
+
+@Queue({ name: "export", persistence: { enabled: true, ttl: 7 * 86400000 } })
+class ExportQueue extends BaseQueue {}
 
 @Module({
   imports: [
@@ -214,16 +232,13 @@ import { Module } from "@nestjs/common";
     GraphQLModule,
     QueueModule.forRoot({
       graphql: true, // 默认开启；false 仅关闭内置任务查询。
-      persistence: { enabled: true, ttl: 7 * 24 * 60 * 60 * 1000 },
+      persistence: { ttl: 30 * 24 * 60 * 60 * 1000 },
       // Authorize this request using your application's verified identity.
       // Return a MikroORM filter for visible jobs, or null to deny access.
       getJobReadFilter: () => null,
     }),
-    QueueModule.registerQueue(
-      { name: "email" },
-      { name: "export", persist: true },
-    ),
   ],
+  providers: [ExportQueue],
 })
 export class JobsModule {}
 ```
@@ -232,28 +247,19 @@ export class JobsModule {}
 
 `getJobReadFilter` 在每次读取时执行，将授权范围同时应用于单条任务、分页结果及总数。未配置回调、返回 `null` 或 `undefined` 都会拒绝访问。返回 `{}` 明确允许访问全部任务，必须先校验调用者权限。任务参数和返回值可能含有敏感数据；入队时可靠地写入归属信息，以及配置需要的 RLS 策略，仍由应用负责。示例服务端通过 MikroORM 的 `discovery.onMetadata` 保留原有用户/工作区 RLS 策略。
 
-异步注册时，将 `graphql`、`persistence` 和 `getJobReadFilter` 放在 `forRootAsync` 的工厂返回值中。实体和服务从 `@nest-boot/queue/persistence` 导入；GraphQL 连接类型和 Resolver 从 `@nest-boot/queue/graphql` 导入。这些是同一个包的入口，分开导出以避免纯队列加载可选依赖。只在安装相应依赖的应用中导入 GraphQL 入口。
+异步注册时，将 `graphql`、默认 `persistence.ttl` 和 `getJobReadFilter` 放在 `forRootAsync` 的工厂返回值中；队列自己的 `persistence` 放在 `@Queue()` 或传入 `QueueFactory.create()` 的运行时配置中。实体和服务从 `@nest-boot/queue/persistence` 导入；GraphQL 连接类型和 Resolver 从 `@nest-boot/queue/graphql` 导入。这些是同一个包的入口，分开导出以避免纯队列加载可选依赖。只在安装相应依赖的应用中导入 GraphQL 入口。
 
 `jobs` 支持队列、名称、状态、日期筛选，名称搜索、游标分页和排序。`job(id)` 对不存在或超出授权范围的记录返回 `null`。授权范围由 `JobService` 执行，直接调用服务也同样受限。
 
-`JobService` 监听**本地** Queue 和 Worker 事件，每个任务保存一条记录，持续更新其最近已知状态。这是尽力而为的状态同步，不是逐条事件历史或可靠审计日志，也不能替代 BullMQ 状态。每次写入都会 fork EntityManager，失败仅记录日志，不使 worker 失败。同一进程中，同一任务的写入按事件顺序执行，避免较早的慢写入覆盖后续结果；不同任务仍可并发写入。这不保证独立生产者和 worker 进程之间的写入顺序。队列是否持久化任务统一由 `persist` 控制，未开启的普通队列和定时任务默认不落库。模块自己的每小时定时器按 `persistence.ttl` 清理最后更新时间过期的记录，默认 30 天；关闭应用时停止定时器，无需 `ScheduleModule`。
+`JobService` 监听**本地** Queue 和 Worker 事件，每个任务保存一条记录，持续更新其最近已知状态。这是尽力而为的状态同步，不是逐条事件历史或可靠审计日志，也不能替代 BullMQ 状态。入队事件仅插入缺失的记录，不修改已有执行记录；Worker 事件创建或更新执行状态。因此即使生产者的写入晚于任务完成，也不会覆盖 Worker 的结果。每次写入都会 fork EntityManager，失败仅记录日志，不使 worker 失败。同一进程中，同一任务的写入按事件顺序执行，避免较早的慢写入覆盖后续结果；不同任务仍可并发写入。这不保证独立生产者和 worker 进程之间的写入顺序。未开启持久化的普通队列和定时任务默认不落库。模块自己的每小时定时器仅清理当前应用开启了持久化的队列，按各队列实际 TTL 和记录最后更新时间判断过期；未注册或关闭持久化的队列不参与清理。TTL 优先级为队列配置、模块默认值、30 天。没有队列开启持久化时不启动清理定时器；关闭应用时停止定时器，无需 `ScheduleModule`。
 
-异步注册队列时，在工厂返回值中设置 `persist`；`useClass` 和 `useExisting` 工厂也支持同一配置：
-
-```ts
-QueueModule.registerQueueAsync({
-  name: "export",
-  useFactory: () => ({ persist: true }),
-});
-```
-
-全局持久化未关闭且显式开启 `persist` 时，必须注册 `QueueModule`、`DatabaseModule`，并将内置 `Job` 加入 ORM 实体发现。缺少条件会在创建该队列前导致启动失败。生产者和 worker 分开部署时，两侧都应设置 `persist: true`，以记录各自的本地事件。
+队列开启 `persistence.enabled` 时，必须注册 `QueueModule`、`DatabaseModule`，并将内置 `Job` 加入 ORM 实体发现。缺少条件会在创建该队列前导致启动失败。生产者和消费者应用都必须注册同一个队列类，并复用一致的持久化配置，包括 TTL；配置只作用于本地应用，不会通过 Redis 自动传播。生产者仅记录本地入队事件，消费者仅记录本地执行事件；开启持久化的两侧都需数据库集成。`persistence` 仅配置在队列注册参数中，不放在 `@Processor()` 上。内置持久化不使用 `QueueEvents` 写库，也不保证 `queue.add()` 返回时数据库写入已完成。
 
 ### 从 queue-database 迁移
 
 `@nest-boot/queue-database` 已从仓库移除。迁移到同一个 `@nest-boot/queue` 包；已发布的旧版本仍保留在 npm，但不会随本次变更更新。
 
-使用内置 API 时，移除 `QueueDatabaseModule`，以内置 `Job` 替换应用的旧实体，将任务持久化配置移至 `QueueModuleOptions.persistence`，用各队列的 `persist: true` 替代 include/exclude 列表，并配置 `getJobReadFilter`。删除应用原有的 `JobResolver`、`JobService` 和分页定义，避免重复 GraphQL 字段。审核迁移时注意保留既有任务数据、自定义字段和 RLS 策略。
+使用内置 API 时，移除 `QueueDatabaseModule`，以内置 `Job` 替换应用的旧实体，将默认 TTL 移至 `QueueModuleOptions.persistence.ttl`，用各队列的 `persistence: { enabled: true }` 和可选 TTL 覆盖替代 include/exclude 列表，并配置 `getJobReadFilter`。删除应用原有的 `JobResolver`、`JobService` 和分页定义，避免重复 GraphQL 字段。审核迁移时注意保留既有任务数据、自定义字段和 RLS 策略。
 
 ## 最佳实践
 

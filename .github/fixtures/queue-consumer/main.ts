@@ -2,11 +2,18 @@ import "reflect-metadata";
 
 import assert from "node:assert/strict";
 
-import { QueueModule } from "@nest-boot/queue";
+import {
+  BaseProcessor,
+  BaseQueue,
+  Queue,
+  Processor,
+  QueueModule,
+} from "@nest-boot/queue";
 import { Module } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 
 for (const dependency of [
+  "@nestjs/bullmq",
   "@nest-boot/database",
   "@nest-boot/graphql",
   "@mikro-orm/core",
@@ -26,12 +33,29 @@ const app = await NestFactory.createApplicationContext(
 );
 await app.close();
 
-@Module({
-  imports: [
-    QueueModule,
-    QueueModule.registerQueue({ name: "history", persist: true }),
-  ],
-})
+@Queue({ name: "consumer-only" })
+class ConsumerQueue extends BaseQueue {}
+
+@Processor(ConsumerQueue)
+class Consumer extends BaseProcessor {
+  async process(): Promise<void> {}
+}
+
+@Module({ imports: [QueueModule], providers: [Consumer] })
+class UnregisteredConsumerModule {}
+
+await assert.rejects(
+  NestFactory.createApplicationContext(UnregisteredConsumerModule, {
+    logger: false,
+    abortOnError: false,
+  }),
+  /Processor.*consumer-only.*ConsumerQueue.*providers/,
+);
+
+@Queue({ name: "history", persistence: { enabled: true } })
+class HistoryQueue extends BaseQueue {}
+
+@Module({ imports: [QueueModule], providers: [HistoryQueue] })
 class MissingDatabaseModule {}
 
 await assert.rejects(
@@ -39,6 +63,6 @@ await assert.rejects(
     logger: false,
     abortOnError: false,
   }),
-  /Queue "history" has persist: true.*DatabaseModule/,
+  /Queue "history" has persistence.enabled: true.*DatabaseModule/,
 );
 console.log("Packed plain queue starts without database or GraphQL peers");

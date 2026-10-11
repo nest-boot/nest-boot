@@ -1,4 +1,4 @@
-import { type RegisterQueueOptions } from "@nest-boot/queue";
+import { type QueueOptions } from "@nest-boot/queue";
 import { type ConnectionOptions } from "bullmq";
 
 /**
@@ -7,7 +7,7 @@ import { type ConnectionOptions } from "bullmq";
  * Extends BullMQ queue options with schedule-specific settings
  * for controlling job processing behavior.
  */
-export interface ScheduleModuleOptions extends RegisterQueueOptions {
+export interface ScheduleModuleOptions extends QueueOptions {
   /** Whether to automatically start processing scheduled jobs on module init. */
   autorun?: boolean;
   /** Maximum number of concurrent scheduled jobs to process. */

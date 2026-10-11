@@ -1,6 +1,7 @@
-import { OnQueueEvent as BaseOnQueueEvent } from "@nestjs/bullmq";
+import { SetMetadata } from "@nestjs/common";
 import type { QueueEventsListener } from "bullmq";
 
+import { ON_QUEUE_EVENT } from "./queue.constants.js";
 import { createContextEventDecorator } from "./utils/create-context-event-decorator.util.js";
 
 /**
@@ -19,7 +20,7 @@ export function OnQueueEvent(
 ): MethodDecorator {
   return createContextEventDecorator(
     eventName,
-    BaseOnQueueEvent(eventName),
+    SetMetadata(ON_QUEUE_EVENT, eventName),
     ([first]) => ({
       id:
         typeof first === "object" &&

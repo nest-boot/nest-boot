@@ -1,12 +1,13 @@
-import { OnWorkerEvent as BaseOnWorkerEvent } from "@nestjs/bullmq";
+import { SetMetadata } from "@nestjs/common";
 import type { Job, WorkerListener } from "bullmq";
 
+import { ON_WORKER_EVENT } from "./queue.constants.js";
 import { createContextEventDecorator } from "./utils/create-context-event-decorator.util.js";
 
 /**
  * Listens to a worker event in an independent queue request context.
  *
- * Use on a method of a singleton `WorkerHost` registered with `@Processor()`.
+ * Use on a method of a singleton `BaseProcessor` registered with `@Processor()`.
  * Job-bearing events bind `JOB_REF`; `stalled` supplies only the context ID.
  * Events without a job ID use a generated context ID. Handler and middleware
  * failures are logged and suppressed because BullMQ does not await listeners.
@@ -18,7 +19,7 @@ export function OnWorkerEvent(
 ): MethodDecorator {
   return createContextEventDecorator(
     eventName,
-    BaseOnWorkerEvent(eventName),
+    SetMetadata(ON_WORKER_EVENT, eventName),
     ([first]) => {
       switch (eventName) {
         case "active":

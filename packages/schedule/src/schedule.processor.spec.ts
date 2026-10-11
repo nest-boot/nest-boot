@@ -1,3 +1,4 @@
+import { ScheduleQueue } from "./schedule.queue.js";
 const { mockProcessor, mockProcessorDecorator } = vi.hoisted(() => {
   const mockProcessorDecorator = vi.fn();
   const mockProcessor = vi.fn(() => mockProcessorDecorator);
@@ -9,9 +10,10 @@ const { mockProcessor, mockProcessorDecorator } = vi.hoisted(() => {
 });
 
 vi.mock("@nest-boot/queue", () => ({
-  InjectQueue: vi.fn(() => vi.fn()),
+  Queue: vi.fn(() => vi.fn()),
+  BaseQueue: class BaseQueue {},
   Processor: mockProcessor,
-  WorkerHost: class WorkerHost {
+  BaseProcessor: class BaseProcessor {
     worker = {
       concurrency: 1,
       run: vi.fn().mockResolvedValue(undefined),
@@ -44,7 +46,7 @@ describe("ScheduleProcessor", () => {
   });
 
   it("should apply the schedule processor decorator", () => {
-    expect(mockProcessor).toHaveBeenCalledWith("schedule", {
+    expect(mockProcessor).toHaveBeenCalledWith(ScheduleQueue, {
       autorun: false,
     });
     expect(mockProcessorDecorator).toHaveBeenCalledWith(ScheduleProcessor);
@@ -141,9 +143,10 @@ describe("ScheduleProcessor", () => {
   it("should load decorator metadata fallback branches", async () => {
     vi.resetModules();
     vi.doMock("@nest-boot/queue", () => ({
-      InjectQueue: vi.fn(() => vi.fn()),
+      Queue: vi.fn(() => vi.fn()),
+      BaseQueue: class BaseQueue {},
       Processor: vi.fn(() => vi.fn()),
-      WorkerHost: class WorkerHost {
+      BaseProcessor: class BaseProcessor {
         worker = {
           concurrency: 1,
           run: vi.fn().mockResolvedValue(undefined),
@@ -161,9 +164,10 @@ describe("ScheduleProcessor", () => {
     vi.doUnmock("./schedule.registry.js");
     vi.resetModules();
     vi.doMock("@nest-boot/queue", () => ({
-      InjectQueue: vi.fn(() => vi.fn()),
+      Queue: vi.fn(() => vi.fn()),
+      BaseQueue: class BaseQueue {},
       Processor: vi.fn(() => vi.fn()),
-      WorkerHost: class WorkerHost {
+      BaseProcessor: class BaseProcessor {
         worker = {
           concurrency: 1,
           run: vi.fn().mockResolvedValue(undefined),

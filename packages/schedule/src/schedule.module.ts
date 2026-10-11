@@ -1,4 +1,4 @@
-import { QueueModule } from "@nest-boot/queue";
+import { QueueFactory, QueueModule } from "@nest-boot/queue";
 import { type DynamicModule, Global, Logger, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
@@ -10,6 +10,7 @@ import {
   OPTIONS_TYPE,
 } from "./schedule.module-definition.js";
 import { ScheduleProcessor } from "./schedule.processor.js";
+import { ScheduleQueue } from "./schedule.queue.js";
 import { ScheduleRegistry } from "./schedule.registry.js";
 import { type ScheduleModuleOptions } from "./schedule-module-options.interface.js";
 
@@ -21,18 +22,21 @@ import { type ScheduleModuleOptions } from "./schedule-module-options.interface.
  */
 @Global()
 @Module({
-  imports: [
-    DiscoveryModule,
-    QueueModule.registerQueueAsync({
-      name: "schedule",
-      inject: [MODULE_OPTIONS_TOKEN],
-      useFactory: (options: ScheduleModuleOptions) => options,
-    }),
-  ],
+  imports: [DiscoveryModule, QueueModule],
   providers: [
     Logger,
     ScheduleRegistry,
     ScheduleProcessor,
+    {
+      provide: ScheduleQueue,
+      inject: [QueueFactory, MODULE_OPTIONS_TOKEN],
+      useFactory: (factory: QueueFactory, options: ScheduleModuleOptions) => {
+        const queueOptions = { ...options };
+        delete queueOptions.autorun;
+        delete queueOptions.concurrency;
+        return factory.create(ScheduleQueue, queueOptions);
+      },
+    },
     {
       provide: MODULE_OPTIONS_TOKEN,
       inject: [{ token: BASE_MODULE_OPTIONS_TOKEN, optional: true }],

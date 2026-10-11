@@ -5,16 +5,16 @@ also imports `HealthCheckModule`, it automatically registers a health indicator
 for each discovered `Queue` provider, including custom subclasses:
 
 ```ts
-import { QueueModule } from "@nest-boot/queue";
+import { BaseQueue, Queue, QueueModule } from "@nest-boot/queue";
 import { HealthCheckModule } from "@nest-boot/health-check";
 import { Module } from "@nestjs/common";
 
+@Queue({ name: "email" })
+class EmailQueue extends BaseQueue {}
+
 @Module({
-  imports: [
-    HealthCheckModule,
-    QueueModule,
-    QueueModule.registerQueue({ name: "email" }),
-  ],
+  imports: [HealthCheckModule, QueueModule],
+  providers: [EmailQueue],
 })
 export class AppModule {}
 ```

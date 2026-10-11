@@ -1,8 +1,8 @@
 import { EventEmitter } from "node:events";
 
 import { RequestContext } from "@nest-boot/request-context";
-import { JOB_REF } from "@nestjs/bullmq";
 import { Logger, SetMetadata } from "@nestjs/common";
+import { REQUEST as JOB_REF } from "@nestjs/core";
 
 import { OnQueueEvent, OnWorkerEvent } from "./index.js";
 

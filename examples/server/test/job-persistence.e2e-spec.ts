@@ -7,7 +7,7 @@ import { JobStatus } from '@nest-boot/queue';
 import { Job, JobService } from '@nest-boot/queue/persistence';
 import { RequestContext } from '@nest-boot/request-context';
 import { DiscoveryService } from '@nestjs/core';
-import type { Job as BullJob } from 'bullmq';
+import type { Job as BullJob, Queue } from 'bullmq';
 
 import { configureJobMetadata } from '../src/app/jobs/job-access.js';
 
@@ -244,6 +244,8 @@ describe('example job history RLS', () => {
     await admin.nativeUpdate(Job, reports.id, {
       updatedAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000),
     });
+    jobService.registerQueue({ name: 'reports' } as Queue);
+    jobService.registerQueue({ name: 'exports' } as Queue);
     await jobService.cleanJobs();
     expect(await admin.count(Job, reports.id)).toBe(0);
     expect(await admin.count(Job, exports.id)).toBe(1);

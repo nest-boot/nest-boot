@@ -9,10 +9,12 @@ import { Test } from "@nestjs/testing";
 import { type Job as BullJob, Queue } from "bullmq";
 
 import {
-  getQueueToken,
+  BaseProcessor,
+  BaseQueue,
   Processor,
+  Queue as DeclareQueue,
+  QueueFactory,
   QueueModule,
-  WorkerHost,
 } from "../dist/index.js";
 import { Job, JobService, JobStatus } from "../dist/persistence.js";
 
@@ -23,8 +25,17 @@ const plainQueueName = `${queueName}-plain`;
 const disabledQueueName = `${queueName}-disabled`;
 const asyncQueueName = `${queueName}-async`;
 
-@Processor(queueName)
-class HistoryWorker extends WorkerHost {
+@DeclareQueue({ name: queueName, persistence: { enabled: true } })
+class HistoryQueue extends BaseQueue {}
+@DeclareQueue({ name: plainQueueName })
+class PlainQueue extends BaseQueue {}
+@DeclareQueue({ name: disabledQueueName, persistence: { enabled: false } })
+class DisabledQueue extends BaseQueue {}
+@DeclareQueue({ name: asyncQueueName })
+class AsyncQueue extends BaseQueue {}
+
+@Processor(HistoryQueue)
+class HistoryWorker extends BaseProcessor {
   async process(job: BullJob) {
     await job.updateProgress({ done: 1 });
     if (job.data.wait)
@@ -36,13 +47,13 @@ class HistoryWorker extends WorkerHost {
   }
 }
 
-@Processor(plainQueueName)
+@Processor(PlainQueue)
 class PlainWorker extends HistoryWorker {}
 
-@Processor(disabledQueueName)
+@Processor(DisabledQueue)
 class DisabledWorker extends HistoryWorker {}
 
-@Processor(asyncQueueName)
+@Processor(AsyncQueue)
 class AsyncWorker extends HistoryWorker {}
 
 describe("automatically discovered job history and GraphQL", () => {
@@ -58,15 +69,6 @@ describe("automatically discovered job history and GraphQL", () => {
         QueueModule.forRoot({
           getJobReadFilter: () => ({ data: { tenant: "allowed" } }),
         }),
-        QueueModule.registerQueue(
-          { name: queueName, persist: true },
-          { name: plainQueueName },
-          { name: disabledQueueName, persist: false },
-        ),
-        QueueModule.registerQueueAsync({
-          name: asyncQueueName,
-          useFactory: () => ({ persist: true }),
-        }),
         DatabaseModule.forRoot({
           driver: PgliteDriver,
           dbName: "memory://",
@@ -74,15 +76,29 @@ describe("automatically discovered job history and GraphQL", () => {
         }),
         GraphQLModule.forRoot({ autoSchemaFile: true, graphiql: false }),
       ],
-      providers: [HistoryWorker, PlainWorker, DisabledWorker, AsyncWorker],
+      providers: [
+        HistoryQueue,
+        PlainQueue,
+        DisabledQueue,
+        {
+          provide: AsyncQueue,
+          inject: [QueueFactory],
+          useFactory: (factory: QueueFactory) =>
+            factory.create(AsyncQueue, { persistence: { enabled: true } }),
+        },
+        HistoryWorker,
+        PlainWorker,
+        DisabledWorker,
+        AsyncWorker,
+      ],
     }).compile();
     app = module.createNestApplication();
     app.useLogger(false);
     orm = module.get(MikroORM);
     await orm.schema.create();
-    queue = module.get(getQueueToken(queueName));
-    otherQueues = [plainQueueName, disabledQueueName, asyncQueueName].map(
-      (name) => module.get<Queue>(getQueueToken(name)),
+    queue = module.get(HistoryQueue);
+    otherQueues = [PlainQueue, DisabledQueue, AsyncQueue].map((queueType) =>
+      module.get(queueType),
     );
     await app.listen(0, "127.0.0.1");
   }, 30000);

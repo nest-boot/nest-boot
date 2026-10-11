@@ -13,7 +13,7 @@ tester.run("import-queue", rule, {
     `,
     // Named import
     /* typescript */ `
-      import { InjectQueue, Processor } from "@nest-boot/queue";
+      import { BaseQueue, Processor } from "@nest-boot/queue";
     `,
     // Default import
     /* typescript */ `
@@ -26,8 +26,13 @@ tester.run("import-queue", rule, {
   ],
   invalid: [
     {
+      code: 'import { WorkerHost } from "@nestjs/bullmq";',
+      output: 'import { BaseProcessor as WorkerHost } from "@nest-boot/queue";',
+      errors: [{ messageId: "replaceQueueImport" }],
+    },
+    {
       code: 'import { BullModule as BullModule } from "@nestjs/bullmq";',
-      output: 'import { QueueModule as BullModule } from "@nest-boot/queue";',
+      output: null,
       errors: [{ messageId: "replaceQueueImport" }],
     },
     {
@@ -37,8 +42,7 @@ tester.run("import-queue", rule, {
     },
     {
       code: 'import { BullModule as Tasks } from "@nestjs/bullmq"; Tasks.forRoot({});',
-      output:
-        'import { QueueModule as Tasks } from "@nest-boot/queue"; Tasks.forRoot({});',
+      output: null,
       errors: [{ messageId: "replaceQueueImport" }],
     },
     {
@@ -54,7 +58,7 @@ tester.run("import-queue", rule, {
     },
     {
       code: 'import { "BullModule" as Tasks } from "@nestjs/bullmq";',
-      output: 'import { QueueModule as Tasks } from "@nest-boot/queue";',
+      output: null,
       errors: [{ messageId: "replaceQueueImport" }],
     },
     // Importing from @nestjs/bullmq, should be replaced with @nest-boot/queue
@@ -62,9 +66,7 @@ tester.run("import-queue", rule, {
       code: /* typescript */ `
         import { BullModule } from "@nestjs/bullmq";
       `,
-      output: /* typescript */ `
-        import { QueueModule as BullModule } from "@nest-boot/queue";
-      `,
+      output: null,
       errors: [{ messageId: "replaceQueueImport" }],
     },
     // Processor related imports
@@ -72,9 +74,7 @@ tester.run("import-queue", rule, {
       code: /* typescript */ `
         import { Processor, InjectQueue } from "@nestjs/bullmq";
       `,
-      output: /* typescript */ `
-        import { Processor, InjectQueue } from "@nest-boot/queue";
-      `,
+      output: null,
       errors: [{ messageId: "replaceQueueImport" }],
     },
     // Type import
@@ -92,9 +92,7 @@ tester.run("import-queue", rule, {
       code: /* typescript */ `
         import { OnQueueActive, OnQueueCompleted } from "@nestjs/bullmq";
       `,
-      output: /* typescript */ `
-        import { OnQueueActive, OnQueueCompleted } from "@nest-boot/queue";
-      `,
+      output: null,
       errors: [{ messageId: "replaceQueueImport" }],
     },
   ],

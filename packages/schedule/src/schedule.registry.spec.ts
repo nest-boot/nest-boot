@@ -1,13 +1,15 @@
 import "reflect-metadata";
 
+import { ScheduleQueue } from "./schedule.queue.js";
+
 vi.mock("@nest-boot/queue", () => ({
-  InjectQueue: vi.fn(() => vi.fn()),
+  Queue: vi.fn(() => vi.fn()),
+  BaseQueue: class BaseQueue {},
 }));
 
 import { Logger } from "@nestjs/common";
 import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
-import { Queue } from "bullmq";
 
 import { Cron, Interval } from "./schedule.decorator.js";
 import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition.js";
@@ -91,7 +93,7 @@ describe("ScheduleRegistry", () => {
       providers: [
         ScheduleRegistry,
         {
-          provide: Queue,
+          provide: ScheduleQueue,
           useValue: queue,
         },
         {
@@ -210,7 +212,8 @@ describe("ScheduleRegistry", () => {
   it("should load decorator metadata fallback branches", async () => {
     vi.resetModules();
     vi.doMock("@nest-boot/queue", () => ({
-      InjectQueue: vi.fn(() => vi.fn()),
+      Queue: vi.fn(() => vi.fn()),
+      BaseQueue: class BaseQueue {},
     }));
     vi.doMock("bullmq", () => ({
       Queue: undefined,

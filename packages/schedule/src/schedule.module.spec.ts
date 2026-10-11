@@ -2,42 +2,15 @@ import { Logger } from "@nestjs/common";
 import { MODULE_METADATA } from "@nestjs/common/constants";
 import { DiscoveryModule } from "@nestjs/core";
 
-const { mockProcessor, mockQueueModule, mockRegisterQueueAsync, mockState } =
-  vi.hoisted(() => {
-    const mockState = {
-      registerQueueAsyncOptions: undefined as any,
-    };
-    const mockQueueModule = {
-      module: class QueueModule {},
-    };
-    const mockRegisterQueueAsync = vi.fn((options) => {
-      mockState.registerQueueAsyncOptions = options;
-      return mockQueueModule;
-    });
-    const mockProcessorDecorator = vi.fn();
-    const mockProcessor = vi.fn(() => mockProcessorDecorator);
-
-    return {
-      mockProcessor,
-      mockQueueModule,
-      mockRegisterQueueAsync,
-      mockState,
-    };
-  });
-
 vi.mock("@nest-boot/queue", () => ({
-  QueueModule: {
-    registerQueueAsync: mockRegisterQueueAsync,
-  },
-  InjectQueue: vi.fn(() => vi.fn()),
-  Processor: mockProcessor,
-  WorkerHost: class WorkerHost {
-    worker = {
-      concurrency: 1,
-      run: vi.fn().mockResolvedValue(undefined),
-    };
-  },
+  QueueModule: class QueueModule {},
+  QueueFactory: class QueueFactory {},
+  Queue: vi.fn(() => vi.fn()),
+  BaseQueue: class BaseQueue {},
+  Processor: vi.fn(() => vi.fn()),
+  BaseProcessor: class BaseProcessor {},
 }));
+import { QueueFactory, QueueModule } from "@nest-boot/queue";
 
 import { ScheduleModule } from "./schedule.module.js";
 import {
@@ -45,6 +18,7 @@ import {
   MODULE_OPTIONS_TOKEN,
 } from "./schedule.module-definition.js";
 import { ScheduleProcessor } from "./schedule.processor.js";
+import { ScheduleQueue } from "./schedule.queue.js";
 import { ScheduleRegistry } from "./schedule.registry.js";
 
 describe("ScheduleModule", () => {
@@ -100,7 +74,7 @@ describe("ScheduleModule", () => {
       (provider: any) => provider.provide === MODULE_OPTIONS_TOKEN,
     );
 
-    expect(imports).toEqual([DiscoveryModule, mockQueueModule]);
+    expect(imports).toEqual([DiscoveryModule, QueueModule]);
     expect(providers).toEqual(
       expect.arrayContaining([Logger, ScheduleRegistry, ScheduleProcessor]),
     );
@@ -115,19 +89,26 @@ describe("ScheduleModule", () => {
     });
   });
 
-  it("should register the schedule queue from module options", () => {
-    expect(mockState.registerQueueAsyncOptions).toEqual(
-      expect.objectContaining({
-        inject: [MODULE_OPTIONS_TOKEN],
-        name: "schedule",
-      }),
+  it("creates the schedule queue from module options", () => {
+    const providers = Reflect.getMetadata(
+      MODULE_METADATA.PROVIDERS,
+      ScheduleModule,
     );
+    const provider = providers.find(
+      (value: any) => value.provide === ScheduleQueue,
+    );
+    const queue = {};
+    const factory = { create: vi.fn(() => queue) };
+    expect(provider.inject).toEqual([QueueFactory, MODULE_OPTIONS_TOKEN]);
     expect(
-      mockState.registerQueueAsyncOptions.useFactory({
+      provider.useFactory(factory, {
+        prefix: "schedule-test",
         concurrency: 2,
+        autorun: false,
       }),
-    ).toEqual({
-      concurrency: 2,
+    ).toBe(queue);
+    expect(factory.create).toHaveBeenCalledWith(ScheduleQueue, {
+      prefix: "schedule-test",
     });
   });
 });

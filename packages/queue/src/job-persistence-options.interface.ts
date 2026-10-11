@@ -1,8 +1,8 @@
 /** Settings for persisted queue jobs. */
 export interface JobPersistenceOptions {
-  /** Enable persistence for opted-in queues and built-in job queries. Defaults to true. */
+  /** Persist this queue's local job events. Defaults to false. */
   enabled?: boolean;
 
-  /** Retention in milliseconds, measured from the record's last update. Defaults to 30 days. */
+  /** Retention in milliseconds from the last update. Overrides the module default (30 days if unset). */
   ttl?: number;
 }

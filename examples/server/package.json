@@ -60,7 +60,6 @@
     "@nest-boot/schedule": "workspace:^",
     "@nest-boot/validator": "workspace:^",
     "@nestjs/apollo": "^14.0.0",
-    "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^12.0.1",

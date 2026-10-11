@@ -1,0 +1,35 @@
+import type { Job, Worker } from "bullmq";
+
+import { WORKER_REF } from "./queue.constants.js";
+
+/** Base class for a consumer registered with `@Processor()`. */
+export abstract class BaseProcessor<T extends Worker = Worker> {
+  /** @internal */
+  [WORKER_REF]?: T;
+
+  /**
+   * The worker is available after module initialization.
+   * @returns The initialized worker.
+   */
+  get worker(): T {
+    const worker = this[WORKER_REF];
+    if (!worker)
+      throw new Error(
+        "Worker is not initialized; access it after onModuleInit.",
+      );
+    return worker;
+  }
+
+  /**
+   * Processes a queued job. Rejections are handled by BullMQ's retry policy.
+   * @param job - Current job.
+   * @param token - Worker lock token.
+   * @param signal - Optional cancellation signal.
+   * @returns The job result.
+   */
+  abstract process(
+    job: Job,
+    token?: string,
+    signal?: AbortSignal,
+  ): Promise<any>;
+}

@@ -12,8 +12,8 @@ export interface QueueModuleOptions extends Omit<QueueOptions, "connection"> {
   /** Enable job queries when job persistence and GraphQL are available. Defaults to true. */
   graphql?: boolean;
 
-  /** Global persistence switch and retention; queues opt in with persist: true. */
-  persistence?: JobPersistenceOptions;
+  /** Default retention for persisted jobs, in milliseconds. Defaults to 30 days; queues can override it. */
+  persistence?: Pick<JobPersistenceOptions, "ttl">;
 
   /**
    * Authorizes each job read and returns its database scope using trusted request context.

@@ -1,47 +1,22 @@
+export { BaseProcessor } from "./base-processor.js";
+export { BaseQueue } from "./base-queue.js";
 export { JobStatus } from "./enums/job-status.enum.js";
 export type { JobPersistenceOptions } from "./job-persistence-options.interface.js";
 export { OnQueueEvent } from "./on-queue-event.decorator.js";
 export { OnWorkerEvent } from "./on-worker-event.decorator.js";
-export { type NestWorkerOptions, Processor } from "./processor.decorator.js";
+export { Processor, type ProcessorOptions } from "./processor.decorator.js";
+export { Queue } from "./queue.decorator.js";
+export { QueueFactory } from "./queue.factory.js";
 export { QueueHealthIndicator } from "./queue.health-indicator.js";
 export { QueueModule } from "./queue.module.js";
-export * from "./queue-module-options.interface.js";
-export type {
-  RegisterQueueAsyncOptions,
-  RegisterQueueOptions,
-  RegisterQueueOptionsFactory,
-} from "./register-queue-options.interface.js";
-export type {
-  BullModuleExtraOptions,
-  BullQueueAdvancedProcessor,
-  BullQueueAdvancedSeparateProcessor,
-  BullQueueProcessor,
-  BullQueueProcessorCallback,
-  BullQueueSeparateProcessor,
-  BullRootModuleOptions,
-  OnQueueEventMetadata,
-  OnWorkerEventMetadata,
-  ProcessorOptions,
-  QueueEventsListenerOptions,
-  RegisterFlowProducerAsyncOptions,
-  RegisterFlowProducerOptions,
-  RegisterFlowProducerOptionsFactory,
-  SharedBullAsyncConfiguration,
-  SharedBullConfigurationFactory,
-} from "@nestjs/bullmq";
+export { QueueEventsHost } from "./queue-events-host.js";
 export {
-  BULL_CONFIG_DEFAULT_TOKEN,
-  BullRegistrar,
-  getFlowProducerOptionsToken,
-  getFlowProducerToken,
-  getQueueOptionsToken,
-  getQueueToken,
-  getSharedConfigToken,
-  InjectFlowProducer,
-  InjectQueue,
-  JOB_REF,
-  ProcessorDecoratorService,
-  QueueEventsHost,
   QueueEventsListener,
-  WorkerHost,
-} from "@nestjs/bullmq";
+  type QueueEventsListenerOptions,
+} from "./queue-events-listener.decorator.js";
+export type { QueueModuleOptions } from "./queue-module-options.interface.js";
+export type {
+  QueueDefinition,
+  QueueOptions,
+} from "./queue-options.interface.js";
+export { REQUEST as JOB_REF } from "@nestjs/core";

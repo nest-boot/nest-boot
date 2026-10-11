@@ -54,7 +54,6 @@ export async function createJobProviders(): Promise<
         options: QueueModuleOptions,
       ) => {
         if (
-          options.persistence?.enabled === false ||
           !em ||
           ![...modules.values()].some(
             (module) => module.metatype === DatabaseModule,

@@ -104,10 +104,12 @@ the application exposes.
 
 Background tasks without either identifier
 remain available to the background database connection but are hidden from request
-roles. The integration copies `data` directly; no extra owner columns are needed. Jobs are retained for 30 days by
-default; configure retention in milliseconds through `persistence.ttl`. Enable persistence per queue with `QueueModule.registerQueue({ name, persist: true })`,
-or return `persist: true` from `registerQueueAsync` options. Unselected queues and the
-schedule queue do not persist jobs by default. Set `persistence.enabled: false` in the root options to disable persistence, cleanup, and job queries globally, including for opted-in queues; queues continue running. The global switch defaults to true. `graphql` belongs to `QueueModule.forRoot()` /
+roles. The integration copies `data` directly; no extra owner columns are needed. Jobs are retained for 30 days by default; configure the module's default retention in milliseconds through `QueueModuleOptions.persistence.ttl`.
+Enable persistence on queue classes with `@Queue({ name, persistence: { enabled: true, ttl } })`.
+Register classes extending `BaseQueue` in module providers and inject them directly; consumers use `@Processor(QueueClass)`.
+Use `QueueFactory.create(QueueClass, options)` in a standard factory provider for dynamic settings. Omit the queue TTL to inherit the module default.
+Persistence defaults to disabled; setting only a TTL does not enable it. Only queues enabled in the current
+application participate in event observation and hourly cleanup. Every Nest Boot processor requires a matching named queue registration, including consumer-only deployments. Reuse the same queue options in separate producer and consumer applications. Enqueue writes only insert missing rows; worker writes update execution state, so late producer events cannot erase worker results. `graphql` belongs to `QueueModule.forRoot()` /
 `forRootAsync()` and defaults to true; set it to false for persistence without the built-in queries.
 The database, GraphQL, and graphql-connection packages are optional peers of queue; the
 example installs all three, while a persistence-only application needs only database support.

@@ -1,12 +1,8 @@
-import { InjectQueue } from "@nest-boot/queue";
-import { Logger, OnApplicationBootstrap } from "@nestjs/common";
+import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
 import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
-import { Queue } from "bullmq";
 
-import {
-  SCHEDULE_METADATA_KEY,
-  SCHEDULE_QUEUE_NAME,
-} from "./schedule.module-definition.js";
+import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition.js";
+import { ScheduleQueue } from "./schedule.queue.js";
 import { type ScheduleOptions } from "./schedule-options.interface.js";
 
 /**
@@ -17,6 +13,7 @@ import { type ScheduleOptions } from "./schedule-options.interface.js";
  * them as BullMQ job schedulers. Removes stale schedulers that are no
  * longer defined in the codebase.
  */
+@Injectable()
 export class ScheduleRegistry implements OnApplicationBootstrap {
   /**
    * Logger instance for the schedule registry.
@@ -46,8 +43,7 @@ export class ScheduleRegistry implements OnApplicationBootstrap {
    * @param metadataScanner - Scanner for extracting method metadata
    */
   constructor(
-    @InjectQueue(SCHEDULE_QUEUE_NAME)
-    private readonly queue: Queue,
+    private readonly queue: ScheduleQueue,
     private readonly reflector: Reflector,
     private readonly discoveryService: DiscoveryService,
     private readonly metadataScanner: MetadataScanner,

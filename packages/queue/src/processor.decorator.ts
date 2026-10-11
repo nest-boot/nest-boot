@@ -1,82 +1,37 @@
-/* eslint-disable @typescript-eslint/unified-signatures */
+import { Injectable, type ScopeOptions, type Type } from "@nestjs/common";
+import type { WorkerOptions } from "bullmq";
 
-import {
-  Processor as BaseProcessor,
-  type ProcessorOptions,
-  type WorkerHost,
-} from "@nestjs/bullmq";
-import type { Type } from "@nestjs/common";
-import type {
-  Processor as QueueProcessor,
-  Worker,
+import type { BaseQueue } from "./base-queue.js";
+import { PROCESSOR_OPTIONS } from "./queue.constants.js";
+
+/** Consumer options; connection and namespace always come from its queue. */
+export type ProcessorOptions = Omit<
   WorkerOptions,
-} from "bullmq";
-
-import { runInQueueContext } from "./utils/run-in-queue-context.util.js";
-
-/** Worker options accepted by Nest's BullMQ processor decorator. */
-export type NestWorkerOptions = Omit<WorkerOptions, "connection"> &
-  Partial<Pick<WorkerOptions, "connection">> & {
-    /** @deprecated BullMQ no longer supports shared connections. */
-    sharedConnection?: boolean;
-  };
+  "connection" | "prefix" | "telemetry"
+> &
+  ScopeOptions;
 
 /**
- * Decorator that marks a class as a BullMQ queue processor.
- *
- * Wraps the `@nestjs/bullmq` `Processor` decorator to automatically
- * create a request context for each processed job.
- * @param queueName - The name of the queue to process
- * @returns Class decorator that associates the processor with a queue.
+ * Consumer declaration read during startup.
+ * @internal
  */
-export function Processor(queueName: string): ClassDecorator;
+export interface ProcessorDefinition {
+  queue: Type<BaseQueue>;
+  options: ProcessorOptions;
+}
 
 /**
- * Decorator that marks a class as a BullMQ queue processor with worker options.
- * @param queueName - The name of the queue to process
- * @param workerOptions - Worker configuration options
- * @returns Class decorator that associates the processor with a queue.
+ * Declares a consumer of the given queue class.
+ * @param queue - Queue class registered as a provider in this application.
+ * @param options - Worker and Nest injection scope options.
+ * @returns Consumer class decorator.
  */
 export function Processor(
-  queueName: string,
-  workerOptions: NestWorkerOptions,
-): ClassDecorator;
-
-/**
- * Decorator that marks a class as a BullMQ queue processor with processor options.
- * @param processorOptions - Processor configuration options
- * @returns Class decorator that associates the processor with a queue.
- */
-export function Processor(processorOptions: ProcessorOptions): ClassDecorator;
-
-/**
- * Decorator that marks a class as a BullMQ queue processor with processor and worker options.
- * @param processorOptions - Processor configuration options
- * @param workerOptions - Worker configuration options
- * @returns Class decorator that associates the processor with a queue.
- */
-export function Processor(
-  processorOptions: ProcessorOptions,
-  workerOptions: NestWorkerOptions,
-): ClassDecorator;
-
-export function Processor<T extends Worker = Worker>(
-  queueNameOrOptions?: string | ProcessorOptions,
-  maybeWorkerOptions?: NestWorkerOptions,
-) {
-  return (target: Type<WorkerHost<T>>) => {
-    const originalProcess = target.prototype.process as QueueProcessor;
-    if (originalProcess) {
-      target.prototype.process = async function (
-        ...args: Parameters<QueueProcessor>
-      ) {
-        const [job] = args;
-        return await runInQueueContext({ job }, () =>
-          originalProcess.apply(this, args),
-        );
-      };
-    }
-
-    BaseProcessor(queueNameOrOptions as any, maybeWorkerOptions as any)(target);
+  queue: Type<BaseQueue>,
+  options: ProcessorOptions = {},
+): ClassDecorator {
+  return (target) => {
+    Reflect.defineMetadata(PROCESSOR_OPTIONS, { queue, options }, target);
+    Injectable({ scope: options.scope, durable: options.durable })(target);
   };
 }
