@@ -9,6 +9,7 @@
       "env": ["NODE_ENV"]
     },
     "@nest-boot/docs#build": {
+      "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", ".source/**", "*.tsbuildinfo"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "env": ["NODE_ENV"]

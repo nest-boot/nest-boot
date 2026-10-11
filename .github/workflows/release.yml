@@ -138,8 +138,24 @@ jobs:
           package-manager-cache: false
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Publish packages with npm Trusted Publishing
+        id: publish
         uses: changesets/action/publish@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}
         env:
           NPM_CONFIG_PROVENANCE: true
+      # Keep the original plan when retrying a failed publish job: npm may have
+      # succeeded before the action failed to create tags or GitHub releases.
+      - name: Download original release plan
+        id: download-plan
+        if: ${{ !cancelled() && steps.publish.outcome != 'skipped' }}
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.pack.outputs.pack-dir-artifact-id }}
+          path: ${{ runner.temp }}/release-artifacts
+          merge-multiple: true
+      - name: Recover missing GitHub release metadata
+        if: ${{ !cancelled() && steps.publish.outcome != 'skipped' && steps.download-plan.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/release-metadata.mjs "$RUNNER_TEMP/release-artifacts/publish-plan.json"

@@ -188,10 +188,16 @@ publication without an active `beta` prerelease state.
 
 ### Recovery and npm authorization
 
-If publication partially fails, rerun Release on the same version commit. The
-Changesets publish plan skips versions already present on npm and publishes the
-remaining versions without another version bump. Never edit an already published
-version or add a changeset solely to retry a failed upload.
+If publication partially fails, use **Re-run failed jobs** on the original Release
+run. The publish job reuses its original packed artifacts; already-published npm
+versions are not overwritten. A metadata recovery step checks each original
+planned version on npm and creates missing GitHub tags/releases at the original
+workflow commit. This also repairs a failure after npm succeeded but before
+GitHub metadata was created. Existing tags and releases are never overwritten.
+Do not start a fresh workflow to repair missing metadata: a fresh npm publish plan
+cannot include versions that are already published. Keep the original run's
+artifacts available until recovery completes (30-day retention). Never edit an
+already published version or add a changeset solely to retry a failed upload.
 
 Existing npm Trusted Publishers continue to use `nest-boot/nest-boot` and workflow
 `release.yml`. No workflow rename or npm token is needed. For a new or renamed
