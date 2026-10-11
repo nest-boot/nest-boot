@@ -89,8 +89,8 @@ preserve historical data until it is archived and removed separately.
 
 Register classes extending `BaseQueue` as providers and inject them directly.
 Consumers use `@Processor(QueueClass)` and extend `BaseProcessor`. A consumer-only
-application also registers its queue provider. Use `QueueFactory.create()` in
-factory providers for dynamic queue settings. PostgreSQL persistence is always
+application also registers its queue provider. For dynamic queue settings, inject `QUEUE_MODULE_OPTIONS` in a queue constructor
+and pass the defaults and local overrides to `super(moduleOptions, localOptions)`. PostgreSQL persistence is always
 active; the database and GraphQL integrations are optional read features.
 `graphql` defaults to true when the corresponding modules and entity are registered.
 

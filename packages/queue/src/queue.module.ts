@@ -2,7 +2,6 @@ import { Global, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
 import { createJobProviders } from "./job.providers.js";
-import { QueueFactory } from "./queue.factory.js";
 import { QueueHealthIndicator } from "./queue.health-indicator.js";
 import {
   ConfigurableModuleClass,
@@ -25,10 +24,13 @@ const jobProviders = await createJobProviders();
   providers: [
     { provide: MODULE_OPTIONS_TOKEN, useValue: {} },
     QueueRegistrar,
-    QueueFactory,
     QueueHealthIndicator,
     ...jobProviders.providers,
   ],
-  exports: [QueueFactory, QueueHealthIndicator, ...jobProviders.exports],
+  exports: [
+    MODULE_OPTIONS_TOKEN,
+    QueueHealthIndicator,
+    ...jobProviders.exports,
+  ],
 })
 export class QueueModule extends ConfigurableModuleClass {}

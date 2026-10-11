@@ -1,4 +1,3 @@
-import { QueueFactory } from "@nest-boot/queue";
 import { type DynamicModule, Global, Logger, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
@@ -27,16 +26,7 @@ import { type ScheduleModuleOptions } from "./schedule-module-options.interface.
     Logger,
     ScheduleRegistry,
     ScheduleProcessor,
-    {
-      provide: ScheduleQueue,
-      inject: [QueueFactory, MODULE_OPTIONS_TOKEN],
-      useFactory: (factory: QueueFactory, options: ScheduleModuleOptions) => {
-        const queueOptions = { ...options };
-        delete queueOptions.autorun;
-        delete queueOptions.concurrency;
-        return factory.create(ScheduleQueue, queueOptions);
-      },
-    },
+    ScheduleQueue,
     {
       provide: MODULE_OPTIONS_TOKEN,
       inject: [{ token: BASE_MODULE_OPTIONS_TOKEN, optional: true }],

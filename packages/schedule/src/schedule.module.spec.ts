@@ -2,14 +2,19 @@ import { Logger } from "@nestjs/common";
 import { MODULE_METADATA } from "@nestjs/common/constants";
 import { DiscoveryModule } from "@nestjs/core";
 
+const { createQueue } = vi.hoisted(() => ({ createQueue: vi.fn() }));
+
 vi.mock("@nest-boot/queue", () => ({
-  QueueFactory: class QueueFactory {},
   Queue: vi.fn(() => vi.fn()),
-  BaseQueue: class BaseQueue {},
+  QUEUE_MODULE_OPTIONS: Symbol("QueueModuleOptions"),
+  BaseQueue: class BaseQueue {
+    constructor(...args: unknown[]) {
+      createQueue(...args);
+    }
+  },
   Processor: vi.fn(() => vi.fn()),
   BaseProcessor: class BaseProcessor {},
 }));
-import { QueueFactory } from "@nest-boot/queue";
 
 import { ScheduleModule } from "./schedule.module.js";
 import {
@@ -75,7 +80,12 @@ describe("ScheduleModule", () => {
 
     expect(imports).toEqual([DiscoveryModule]);
     expect(providers).toEqual(
-      expect.arrayContaining([Logger, ScheduleRegistry, ScheduleProcessor]),
+      expect.arrayContaining([
+        Logger,
+        ScheduleRegistry,
+        ScheduleProcessor,
+        ScheduleQueue,
+      ]),
     );
     expect(exports).toEqual([MODULE_OPTIONS_TOKEN]);
     expect(optionsProvider.useFactory(undefined)).toEqual({});
@@ -89,25 +99,16 @@ describe("ScheduleModule", () => {
   });
 
   it("creates the schedule queue from module options", () => {
-    const providers = Reflect.getMetadata(
-      MODULE_METADATA.PROVIDERS,
-      ScheduleModule,
-    );
-    const provider = providers.find(
-      (value: any) => value.provide === ScheduleQueue,
-    );
-    const queue = {};
-    const factory = { create: vi.fn(() => queue) };
-    expect(provider.inject).toEqual([QueueFactory, MODULE_OPTIONS_TOKEN]);
-    expect(
-      provider.useFactory(factory, {
-        connection: { schema: "schedule_test" },
-        concurrency: 2,
-        autorun: false,
-      }),
-    ).toBe(queue);
-    expect(factory.create).toHaveBeenCalledWith(ScheduleQueue, {
+    const root = { connection: { host: "queue.pg" } };
+    const options = {
+      connection: { schema: "schedule_test" },
+      concurrency: 2,
+      autorun: false,
+    };
+    new ScheduleQueue(root, options);
+    expect(createQueue).toHaveBeenCalledWith(root, {
       connection: { schema: "schedule_test" },
     });
+    expect(options).toHaveProperty("concurrency", 2);
   });
 });

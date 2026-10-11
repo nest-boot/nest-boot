@@ -73,18 +73,31 @@ provide a CommonJS `require` entry.
 | `@nest-boot/bullmq-mikro-orm` | `@nest-boot/queue` (job persistence) |
 
 Use `QueueModule`, `QueueModuleOptions`, and `QueueHealthIndicator` in place of
-`BullModule`, `BullModuleOptions`, and `BullMQHealthIndicator`. Job persistence
-is integrated into `QueueModule`: register the built-in `Job` entity from
-`@nest-boot/queue/persistence` and set the default TTL under `QueueModuleOptions.persistence.ttl` (milliseconds, default 30 days).
-Enable each selected queue with `persistence: { enabled: true }`; add `ttl` to override retention for that queue.
-Persistence defaults to disabled; remove include/exclude lists. Cleanup applies only to queues enabled in the current application.
-Replace `registerQueue` / `registerQueueAsync` with queue classes decorated by `@Queue({ name, ...options })` and extending `BaseQueue`. Add them to module `providers` and inject the class directly; `InjectQueue` is removed. Use a standard factory provider with `QueueFactory.create()` for dynamic settings. Consumers now use `@Processor(QueueClass)` and extend `BaseProcessor`; `WorkerHost` is removed. Consumer-only deployments also register the queue class. Missing queues fail startup before workers start. Request and transient scopes, dependency scope propagation, and durable context strategies remain supported. `RequestContextModule` now exports a request-scoped `RequestContext` provider for constructor injection.
-Remove `BullMQMikroORMModule` / `QueueDatabaseModule` imports. See the
-[queue migration guide](/docs/tutorial/queue#migrating-from-queue-database) for
-entity discovery, database migrations, and query authorization.
+`BullModule`, `BullModuleOptions`, and `BullMQHealthIndicator`. Queues use BullMQ 6's
+PostgreSQL backend. Configure `QUEUE_DATABASE_URL`, `DATABASE_URL` or explicit
+connection options, and run BullMQ's official migrations. Use native
+`removeOnComplete` / `removeOnFail` retention; persistence switches and mirror TTL
+cleanup are removed. Existing Redis jobs and mirror rows are not migrated automatically.
 
-BullMQ and MikroORM remain the implementations; retain upstream dependencies
-such as `bullmq` and `@mikro-orm/core`. Remove `@nestjs/bullmq`; the queue integration uses BullMQ directly.
+Replace `registerQueue` / `registerQueueAsync` with queue classes decorated by
+`@Queue({ name, ...options })` and extending `BaseQueue`. Add them to module
+`providers` and inject the class directly; `InjectQueue` is removed. Custom
+constructors inject `QUEUE_MODULE_OPTIONS` and call
+`super(moduleOptions, localOptions)` for dynamic settings. Register the global
+QueueModule once; ScheduleModule uses its global services without importing it internally.
+
+Consumers use `@Processor(QueueClass)` and extend `BaseProcessor`; `WorkerHost` is
+removed. Consumer-only deployments also register the queue class. Missing queues
+fail startup before workers start. Request/transient scopes, dependency scope
+propagation and durable contexts remain supported. `RequestContextModule` exports
+a request-scoped `RequestContext` provider for constructor injection.
+
+Remove `BullMQMikroORMModule` / `QueueDatabaseModule` imports. Optional MikroORM
+queries map the native BullMQ table through the built-in `Job` from
+`@nest-boot/queue/persistence`. Exclude BullMQ's schema from ORM migrations and
+configure read authorization. See the [queue tutorial](/docs/tutorial/queue).
+Keep `bullmq`; install MikroORM/GraphQL peers only for the optional query features.
+Remove `@nestjs/bullmq`; the queue integration uses BullMQ directly.
 
 Custom ESLint configurations should use `@nest-boot/import-queue` instead of
 `@nest-boot/import-bullmq`. Its autofix migrates compatible named imports and preserves

@@ -30,7 +30,7 @@ export async function createPostgresFixture() {
     pool,
     async close() {
       await pool.end();
-      await admin.query(`drop database "${database}" with (force)`);
+      await admin.query(`drop database "${database}"`);
       await admin.end();
     },
   };

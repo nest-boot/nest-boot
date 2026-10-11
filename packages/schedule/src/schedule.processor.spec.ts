@@ -11,6 +11,7 @@ const { mockProcessor, mockProcessorDecorator } = vi.hoisted(() => {
 
 vi.mock("@nest-boot/queue", () => ({
   Queue: vi.fn(() => vi.fn()),
+  QUEUE_MODULE_OPTIONS: Symbol("QueueModuleOptions"),
   BaseQueue: class BaseQueue {},
   Processor: mockProcessor,
   BaseProcessor: class BaseProcessor {
@@ -144,6 +145,7 @@ describe("ScheduleProcessor", () => {
     vi.resetModules();
     vi.doMock("@nest-boot/queue", () => ({
       Queue: vi.fn(() => vi.fn()),
+      QUEUE_MODULE_OPTIONS: Symbol("QueueModuleOptions"),
       BaseQueue: class BaseQueue {},
       Processor: vi.fn(() => vi.fn()),
       BaseProcessor: class BaseProcessor {
@@ -165,6 +167,7 @@ describe("ScheduleProcessor", () => {
     vi.resetModules();
     vi.doMock("@nest-boot/queue", () => ({
       Queue: vi.fn(() => vi.fn()),
+      QUEUE_MODULE_OPTIONS: Symbol("QueueModuleOptions"),
       BaseQueue: class BaseQueue {},
       Processor: vi.fn(() => vi.fn()),
       BaseProcessor: class BaseProcessor {

@@ -13,6 +13,8 @@ pnpm add @nest-boot/queue @nest-boot/request-context bullmq
 
 ## 定义与注入队列
 
+`@Queue()` 默认将类名转换为 kebab-case 作为队列名称，例如 `EmailQueue` 转为 `email-queue`。可直接向装饰器传入队列配置，并通过可选的 `name` 覆盖名称。
+
 ```ts
 import { BaseQueue, Queue } from "@nest-boot/queue";
 
@@ -22,7 +24,6 @@ export interface EmailData {
 }
 
 @Queue({
-  name: "email",
   defaultJobOptions: { attempts: 3, removeOnComplete: { age: 3600 } },
 })
 export class EmailQueue extends BaseQueue<EmailData> {}
@@ -56,7 +57,7 @@ export class EmailModule {}
 
 队列 provider 必须保持单例，队列名称在应用内必须唯一。需要跨模块使用时，导出队列类并导入所属模块，不要重复创建实例。应用关闭时会关闭队列连接。
 
-队列类需要在构造函数中注入业务依赖时，注入 `QueueFactory` 并调用 `super(factory)`。`QueueFactory.create()` 用于保留继承构造函数的队列类。
+未声明构造函数的队列会自动注入全局配置。自定义构造函数中注入 `QUEUE_MODULE_OPTIONS`，调用 `super(moduleOptions, localOptions)`，也可以正常注入其他单例服务。
 
 ## 消费任务
 
@@ -133,29 +134,36 @@ export class EmailWorkerModule {}
 
 ## 动态队列配置
 
-配置依赖其他服务或异步读取时，使用普通 Nest factory provider。`QueueFactory.create()` 保留声明中的队列名称，用运行时配置覆盖装饰器配置。返回的队列实例仍由 Nest 管理生命周期。
+在队列构造函数中读取动态配置。BaseQueue 依次合并全局默认值、装饰器配置、构造函数覆盖值，不修改传入的配置对象。队列类直接加入 `providers`。
 
 ```ts
-import { QueueFactory, QueueModule } from "@nest-boot/queue";
-import { Module } from "@nestjs/common";
-import { EmailQueue } from "./email.queue";
+import {
+  BaseQueue,
+  Queue,
+  QUEUE_MODULE_OPTIONS,
+  type QueueModuleOptions,
+} from "@nest-boot/queue";
+import { Inject, Module } from "@nestjs/common";
 import { SettingsService } from "./settings.service";
 
+@Queue({ name: "email" })
+export class EmailQueue extends BaseQueue {
+  constructor(
+    @Inject(QUEUE_MODULE_OPTIONS) moduleOptions: QueueModuleOptions,
+    settings: SettingsService,
+  ) {
+    super(moduleOptions, settings.getEmailQueueOptions());
+  }
+}
+
 @Module({
-  imports: [QueueModule],
-  providers: [
-    SettingsService,
-    {
-      provide: EmailQueue,
-      inject: [QueueFactory, SettingsService],
-      useFactory: async (factory: QueueFactory, settings: SettingsService) =>
-        factory.create(EmailQueue, await settings.getEmailQueueOptions()),
-    },
-  ],
+  providers: [SettingsService, EmailQueue],
   exports: [EmailQueue],
 })
 export class EmailModule {}
 ```
+
+应用统一注册一次全局 `QueueModule`。共享配置需要异步加载时，使用 `QueueModule.forRootAsync()`。单个队列需要异步配置时，保留队列的继承构造函数，在普通 async factory provider 中注入 `QUEUE_MODULE_OPTIONS` 和配置服务，返回 `new EmailQueue(moduleOptions, await settings.getEmailQueueOptions())`。
 
 ## 队列事件
 

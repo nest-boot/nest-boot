@@ -8,9 +8,10 @@ import { Test } from "@nestjs/testing";
 import {
   BaseQueue,
   Queue,
-  QueueFactory,
+  QUEUE_MODULE_OPTIONS,
   QueueHealthIndicator,
   QueueModule,
+  type QueueModuleOptions,
 } from "../dist/index.js";
 import { createPostgresFixture } from "./postgres.fixture.js";
 
@@ -49,9 +50,9 @@ describe("Queue health HTTP integration", () => {
       registration === "async"
         ? {
             provide: queue,
-            inject: [QueueFactory],
-            useFactory: async (factory: QueueFactory) =>
-              await Promise.resolve(factory.create(queue)),
+            inject: [QUEUE_MODULE_OPTIONS],
+            useFactory: async (options: QueueModuleOptions) =>
+              await Promise.resolve(new queue(options)),
           }
         : queue,
     );

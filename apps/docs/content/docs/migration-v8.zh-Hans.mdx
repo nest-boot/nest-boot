@@ -68,15 +68,26 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 | `@nest-boot/bullmq-mikro-orm` | `@nest-boot/queue`（任务持久化） |
 
 `BullModule`、`BullModuleOptions`、`BullMQHealthIndicator` 分别改为
-`QueueModule`、`QueueModuleOptions`、`QueueHealthIndicator`。任务持久化整合进
-`QueueModule`：注册 `@nest-boot/queue/persistence` 的内置 `Job` 实体，
-将默认 TTL 移至 `QueueModuleOptions.persistence.ttl`，单位毫秒，默认 30 天。
-各队列用 `persistence: { enabled: true }` 开启持久化，并可设置 `ttl` 覆盖全局默认值；持久化默认关闭。
-将 `registerQueue` / `registerQueueAsync` 改为 `@Queue({ name, ...options })` 装饰、继承 `BaseQueue` 的队列类，并加入模块 `providers`。直接注入队列类，移除 `InjectQueue`；动态配置使用普通工厂 provider 和 `QueueFactory.create()`。消费者使用 `@Processor(QueueClass)` 并继承 `BaseProcessor`，不再导出 `WorkerHost`。纯消费者部署也必须注册队列类，缺少时在启动 worker 前报错。保留 REQUEST、TRANSIENT、作用域传递及 durable context 策略。`RequestContextModule` 新增可注入的 request-scoped `RequestContext` provider。
-`QueueDatabaseModule`。实体发现、数据库迁移和查询授权详见[队列教程](/docs/tutorial/queue)。
+`QueueModule`、`QueueModuleOptions`、`QueueHealthIndicator`。队列使用 BullMQ 6
+官方 PostgreSQL 后端，通过 `QUEUE_DATABASE_URL`、`DATABASE_URL` 或显式连接配置，
+并单独执行 BullMQ 官方迁移。保留策略使用 `removeOnComplete` / `removeOnFail`；
+移除持久化开关和同步表 TTL 清理。旧 Redis 任务及同步表数据不会自动迁移。
 
-底层继续使用 BullMQ 和 MikroORM，保留 `bullmq`、`@mikro-orm/core`
-等上游依赖。
+将 `registerQueue` / `registerQueueAsync` 改为 `@Queue({ name, ...options })`
+装饰、继承 `BaseQueue` 的队列类，加入模块 `providers` 并直接注入，移除 `InjectQueue`。
+动态配置在自定义构造函数中注入 `QUEUE_MODULE_OPTIONS`，调用
+`super(moduleOptions, localOptions)`。应用只注册一次全局 QueueModule，ScheduleModule
+直接复用全局服务，不在内部重复导入。
+
+消费者使用 `@Processor(QueueClass)` 并继承 `BaseProcessor`，移除 `WorkerHost`。
+纯消费者部署也必须注册队列类，缺少时在启动 worker 前报错。保留 REQUEST、TRANSIENT、
+作用域传递和 durable context 策略。`RequestContextModule` 导出可注入的
+request-scoped `RequestContext` provider。
+
+移除 `BullMQMikroORMModule` / `QueueDatabaseModule` 导入。可选的 MikroORM 查询通过
+`@nest-boot/queue/persistence` 内置 `Job` 映射 BullMQ 原生表；须将其 schema 排除在
+ORM 迁移之外并配置查询授权，详见[队列教程](/docs/tutorial/queue)。保留 `bullmq`，
+仅在启用查询功能时安装对应 MikroORM/GraphQL 依赖。移除 `@nestjs/bullmq`。
 
 自定义 ESLint 配置中的 `@nest-boot/import-bullmq` 改为 `@nest-boot/import-queue`。
 自动修复会迁移具名导入并保留本地别名；命名空间导入需要手动迁移。

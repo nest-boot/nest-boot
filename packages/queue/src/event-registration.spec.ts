@@ -10,10 +10,11 @@ import {
   OnWorkerEvent,
   Processor,
   Queue,
+  QUEUE_MODULE_OPTIONS,
   QueueEventsHost,
   QueueEventsListener,
-  QueueFactory,
   QueueModule,
+  type QueueModuleOptions,
 } from "./index.js";
 
 const { startedWorkers } = vi.hoisted(() => ({
@@ -129,9 +130,9 @@ describe("Nest queue event registration", () => {
           async
             ? {
                 provide: EmailQueue,
-                inject: [QueueFactory],
-                useFactory: async (factory: QueueFactory) =>
-                  await Promise.resolve(factory.create(EmailQueue)),
+                inject: [QUEUE_MODULE_OPTIONS],
+                useFactory: async (options: QueueModuleOptions) =>
+                  await Promise.resolve(new EmailQueue(options)),
               }
             : EmailQueue,
           provider === "factory"

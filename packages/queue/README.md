@@ -12,7 +12,7 @@ import { BaseQueue, Queue, QueueModule } from "@nest-boot/queue";
 import { HealthCheckModule } from "@nest-boot/health-check";
 import { Module } from "@nestjs/common";
 
-@Queue({ name: "email" })
+@Queue()
 class EmailQueue extends BaseQueue {}
 
 @Module({
