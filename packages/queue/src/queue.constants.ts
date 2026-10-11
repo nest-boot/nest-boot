@@ -1,4 +1,3 @@
-export const MODULE_OPTIONS_TOKEN = Symbol("QueueModuleOptions");
 export const QUEUE_OPTIONS = Symbol("QueueOptions");
 export const PROCESSOR_OPTIONS = Symbol("ProcessorOptions");
 export const QUEUE_EVENTS_OPTIONS = Symbol("QueueEventsOptions");

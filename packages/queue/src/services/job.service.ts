@@ -8,7 +8,7 @@ import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import type { GraphQLResolveInfo } from "graphql";
 
 import { Job } from "../entities/job.entity.js";
-import { MODULE_OPTIONS_TOKEN } from "../queue.constants.js";
+import { MODULE_OPTIONS_TOKEN } from "../queue.module-definition.js";
 import type { QueueModuleOptions } from "../queue-module-options.interface.js";
 
 /** Reads BullMQ-owned jobs within the application's authorized scope. BullMQ performs every write. */

@@ -13,7 +13,8 @@ import {
 import { kebabCase } from "lodash-es";
 
 import type { BaseQueue } from "./base-queue.js";
-import { MODULE_OPTIONS_TOKEN, QUEUE_OPTIONS } from "./queue.constants.js";
+import { QUEUE_OPTIONS } from "./queue.constants.js";
+import { MODULE_OPTIONS_TOKEN } from "./queue.module-definition.js";
 import { queueConstructionContext } from "./queue-construction-context.js";
 import type { QueueModuleOptions } from "./queue-module-options.interface.js";
 import type { QueueDefinition } from "./queue-options.interface.js";

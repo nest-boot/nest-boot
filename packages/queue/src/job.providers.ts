@@ -1,7 +1,7 @@
 import type { ModuleMetadata } from "@nestjs/common";
 import { ModulesContainer } from "@nestjs/core";
 
-import { MODULE_OPTIONS_TOKEN } from "./queue.constants.js";
+import { MODULE_OPTIONS_TOKEN } from "./queue.module-definition.js";
 import type { QueueModuleOptions } from "./queue-module-options.interface.js";
 
 /**
