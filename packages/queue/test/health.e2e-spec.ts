@@ -3,15 +3,14 @@ import {
   HealthCheckRegistry,
 } from "@nest-boot/health-check";
 import type { INestApplication } from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 
 import {
   BaseQueue,
   Queue,
-  QUEUE_MODULE_OPTIONS,
   QueueHealthIndicator,
   QueueModule,
-  type QueueModuleOptions,
 } from "../dist/index.js";
 import { createPostgresFixture } from "./postgres.fixture.js";
 
@@ -50,9 +49,9 @@ describe("Queue health HTTP integration", () => {
       registration === "async"
         ? {
             provide: queue,
-            inject: [QUEUE_MODULE_OPTIONS],
-            useFactory: async (options: QueueModuleOptions) =>
-              await Promise.resolve(new queue(options)),
+            inject: [ModuleRef],
+            useFactory: async (moduleRef: ModuleRef) =>
+              await moduleRef.create(queue),
           }
         : queue,
     );

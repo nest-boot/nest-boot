@@ -82,8 +82,8 @@ cleanup are removed. Existing Redis jobs and mirror rows are not migrated automa
 Replace `registerQueue` / `registerQueueAsync` with queue classes decorated by
 `@Queue({ name, ...options })` and extending `BaseQueue`. Add them to module
 `providers` and inject the class directly; `InjectQueue` is removed. Custom
-constructors inject `QUEUE_MODULE_OPTIONS` and call
-`super(moduleOptions, localOptions)` for dynamic settings. Register the global
+constructors inject business dependencies and call
+`super(localOptions)` for dynamic settings; `@Queue()` supplies global options automatically. Register the global
 QueueModule once; ScheduleModule uses its global services without importing it internally.
 
 Consumers use `@Processor(QueueClass)` and extend `BaseProcessor`; `WorkerHost` is

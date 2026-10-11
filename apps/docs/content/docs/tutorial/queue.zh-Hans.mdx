@@ -57,7 +57,7 @@ export class EmailModule {}
 
 队列 provider 必须保持单例，队列名称在应用内必须唯一。需要跨模块使用时，导出队列类并导入所属模块，不要重复创建实例。应用关闭时会关闭队列连接。
 
-未声明构造函数的队列会自动注入全局配置。自定义构造函数中注入 `QUEUE_MODULE_OPTIONS`，调用 `super(moduleOptions, localOptions)`，也可以正常注入其他单例服务。
+队列会自动取得全局配置。自定义构造函数只注入业务依赖，并调用 `super(localOptions)`；装饰器配置足够时，可完全省略构造函数。
 
 ## 消费任务
 
@@ -134,36 +134,35 @@ export class EmailWorkerModule {}
 
 ## 动态队列配置
 
-在队列构造函数中读取动态配置。BaseQueue 依次合并全局默认值、装饰器配置、构造函数覆盖值，不修改传入的配置对象。队列类直接加入 `providers`。
+在队列构造函数中注入配置服务，只向 `super()` 传递当前队列的配置。BaseQueue 按全局配置、装饰器配置、构造函数配置的顺序合并，后者优先且不修改原始对象。`@Queue()` 自动提供全局配置，继承构造函数时也一样。
 
 ```ts
-import {
-  BaseQueue,
-  Queue,
-  QUEUE_MODULE_OPTIONS,
-  type QueueModuleOptions,
-} from "@nest-boot/queue";
-import { Inject, Module } from "@nestjs/common";
-import { SettingsService } from "./settings.service";
+import { BaseQueue, Queue } from "@nest-boot/queue";
+import { Module } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
 
-@Queue({ name: "email" })
+@Queue()
 export class EmailQueue extends BaseQueue {
-  constructor(
-    @Inject(QUEUE_MODULE_OPTIONS) moduleOptions: QueueModuleOptions,
-    settings: SettingsService,
-  ) {
-    super(moduleOptions, settings.getEmailQueueOptions());
+  constructor(config: ConfigService) {
+    super({
+      defaultJobOptions: {
+        attempts: config.get<number>("EMAIL_JOB_ATTEMPTS", 3),
+      },
+    });
   }
 }
 
 @Module({
-  providers: [SettingsService, EmailQueue],
+  imports: [ConfigModule],
+  providers: [EmailQueue],
   exports: [EmailQueue],
 })
 export class EmailModule {}
 ```
 
-应用统一注册一次全局 `QueueModule`。共享配置需要异步加载时，使用 `QueueModule.forRootAsync()`。单个队列需要异步配置时，保留队列的继承构造函数，在普通 async factory provider 中注入 `QUEUE_MODULE_OPTIONS` 和配置服务，返回 `new EmailQueue(moduleOptions, await settings.getEmailQueueOptions())`。
+应用统一注册一次全局 `QueueModule`。共享配置需要异步加载时，使用 `QueueModule.forRootAsync()`。单个队列需要异步配置时，通过 `useFactory: async ...` 注册其依赖的配置 provider，Nest 会等待该 provider 就绪后再构造队列。
+
+队列实例由 Nest 创建，以自动提供全局配置和业务依赖。需要自定义 factory provider 时，注入 `ModuleRef` 并返回 `moduleRef.create(EmailQueue)`。将队列类注册为 provider，无需自行 `new` 实例。
 
 ## 队列事件
 

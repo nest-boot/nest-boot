@@ -6,7 +6,6 @@ const { createQueue } = vi.hoisted(() => ({ createQueue: vi.fn() }));
 
 vi.mock("@nest-boot/queue", () => ({
   Queue: vi.fn(() => vi.fn()),
-  QUEUE_MODULE_OPTIONS: Symbol("QueueModuleOptions"),
   BaseQueue: class BaseQueue {
     constructor(...args: unknown[]) {
       createQueue(...args);
@@ -99,14 +98,13 @@ describe("ScheduleModule", () => {
   });
 
   it("creates the schedule queue from module options", () => {
-    const root = { connection: { host: "queue.pg" } };
     const options = {
       connection: { schema: "schedule_test" },
       concurrency: 2,
       autorun: false,
     };
-    new ScheduleQueue(root, options);
-    expect(createQueue).toHaveBeenCalledWith(root, {
+    new ScheduleQueue(options);
+    expect(createQueue).toHaveBeenCalledWith({
       connection: { schema: "schedule_test" },
     });
     expect(options).toHaveProperty("concurrency", 2);

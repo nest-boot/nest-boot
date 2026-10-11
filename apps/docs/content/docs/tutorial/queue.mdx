@@ -55,7 +55,7 @@ export class EmailModule {}
 
 No `registerQueue()` or `@InjectQueue()` is needed. Queue classes inherit BullMQ's methods and can add domain-specific methods. Keep queue providers singleton-scoped and queue names unique within an application. Export a queue from its owning module and import that module where needed instead of constructing additional instances. Nest closes each queue during shutdown.
 
-Queue classes without a constructor receive global options automatically. A custom constructor injects `QUEUE_MODULE_OPTIONS` and calls `super(moduleOptions, localOptions)`; it can inject other singleton services normally.
+Queue classes receive global options automatically. A custom constructor only injects business dependencies and calls `super(localOptions)`; omit the constructor entirely when the decorator configuration is sufficient.
 
 ## Process jobs
 
@@ -132,36 +132,35 @@ Singleton services can keep using `RequestContext.current()` or `RequestContext.
 
 ## Dynamic queue configuration
 
-Resolve dynamic options in the queue's constructor. BaseQueue merges global defaults, decorator options and constructor overrides in that order, without mutating them. Register the queue class directly as a provider.
+Inject configuration services in the queue's constructor and pass only local options to `super()`. BaseQueue merges global defaults, decorator options and constructor overrides in that order, without mutating them. `@Queue()` supplies global options automatically, including for inherited constructors.
 
 ```ts
-import {
-  BaseQueue,
-  Queue,
-  QUEUE_MODULE_OPTIONS,
-  type QueueModuleOptions,
-} from "@nest-boot/queue";
-import { Inject, Module } from "@nestjs/common";
-import { SettingsService } from "./settings.service";
+import { BaseQueue, Queue } from "@nest-boot/queue";
+import { Module } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
 
-@Queue({ name: "email" })
+@Queue()
 export class EmailQueue extends BaseQueue {
-  constructor(
-    @Inject(QUEUE_MODULE_OPTIONS) moduleOptions: QueueModuleOptions,
-    settings: SettingsService,
-  ) {
-    super(moduleOptions, settings.getEmailQueueOptions());
+  constructor(config: ConfigService) {
+    super({
+      defaultJobOptions: {
+        attempts: config.get<number>("EMAIL_JOB_ATTEMPTS", 3),
+      },
+    });
   }
 }
 
 @Module({
-  providers: [SettingsService, EmailQueue],
+  imports: [ConfigModule],
+  providers: [EmailQueue],
   exports: [EmailQueue],
 })
 export class EmailModule {}
 ```
 
-The application registers the global `QueueModule` once. To load shared settings asynchronously, use `QueueModule.forRootAsync()`. For asynchronous per-queue settings, keep the queue's inherited constructor and use a standard async factory provider: inject `QUEUE_MODULE_OPTIONS` and the settings service, then return `new EmailQueue(moduleOptions, await settings.getEmailQueueOptions())`.
+The application registers the global `QueueModule` once. To load shared settings asynchronously, use `QueueModule.forRootAsync()`. For asynchronous per-queue settings, resolve an injected settings provider through `useFactory: async ...`; Nest waits for it before constructing the queue.
+
+Let Nest construct queue instances so it can provide global configuration and business dependencies. When a custom factory provider is needed, inject `ModuleRef` and return `moduleRef.create(EmailQueue)`. Queue classes are registered as providers, rather than instantiated with `new`.
 
 ## Queue events
 

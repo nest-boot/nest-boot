@@ -75,8 +75,8 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 
 将 `registerQueue` / `registerQueueAsync` 改为 `@Queue({ name, ...options })`
 装饰、继承 `BaseQueue` 的队列类，加入模块 `providers` 并直接注入，移除 `InjectQueue`。
-动态配置在自定义构造函数中注入 `QUEUE_MODULE_OPTIONS`，调用
-`super(moduleOptions, localOptions)`。应用只注册一次全局 QueueModule，ScheduleModule
+动态配置在自定义构造函数中注入业务依赖，调用
+`super(localOptions)`；`@Queue()` 自动提供全局配置。应用只注册一次全局 QueueModule，ScheduleModule
 直接复用全局服务，不在内部重复导入。
 
 消费者使用 `@Processor(QueueClass)` 并继承 `BaseProcessor`，移除 `WorkerHost`。

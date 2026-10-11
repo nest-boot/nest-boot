@@ -1,13 +1,8 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 
-import {
-  BaseQueue,
-  Queue,
-  QUEUE_MODULE_OPTIONS,
-  QueueModule,
-  type QueueModuleOptions,
-} from "./index.js";
+import { BaseQueue, Queue, QueueModule } from "./index.js";
 import { getQueueDefinition } from "./queue.decorator.js";
 
 vi.mock("./postgres.js", async (original) => {
@@ -101,11 +96,8 @@ it("allows queue classes to inject their own dependencies", async () => {
   }
   @Queue({ name: "custom" })
   class CustomQueue extends BaseQueue {
-    constructor(
-      @Inject(QUEUE_MODULE_OPTIONS) options: QueueModuleOptions,
-      readonly settings: Settings,
-    ) {
-      super(options);
+    constructor(readonly settings: Settings) {
+      super();
     }
   }
   const module = await Test.createTestingModule({
@@ -136,8 +128,8 @@ it("rejects conflicting queue providers before starting consumers", async () => 
 it("merges constructor overrides over declarations and asynchronous defaults", async () => {
   @Queue({ name: "configured", defaultJobOptions: { attempts: 2 } })
   class ConfiguredQueue extends BaseQueue {
-    constructor(@Inject(QUEUE_MODULE_OPTIONS) options: QueueModuleOptions) {
-      super(options, { defaultJobOptions: { attempts: 5 } });
+    constructor() {
+      super({ defaultJobOptions: { attempts: 5 } });
     }
   }
   const defaults = {
@@ -186,9 +178,9 @@ it("preserves custom and inherited constructor dependencies", async () => {
   class CustomQueue extends ParentQueue {
     constructor(
       readonly settings: Settings,
-      @Inject(QUEUE_MODULE_OPTIONS) options: QueueModuleOptions,
+      @Optional() @Inject("missing") readonly missing?: string,
     ) {
-      super(options, { defaultJobOptions: { attempts: settings.attempts } });
+      super({ defaultJobOptions: { attempts: settings.attempts } });
     }
   }
   @Queue({ name: "inherited" })
@@ -201,10 +193,88 @@ it("preserves custom and inherited constructor dependencies", async () => {
     await module.init();
     expect(module.get(CustomQueue).settings).toBe(module.get(Settings));
     expect(module.get(InheritedQueue).settings).toBe(module.get(Settings));
+    expect(module.get(InheritedQueue).missing).toBeUndefined();
     expect(module.get(InheritedQueue).opts.defaultJobOptions).toEqual({
       attempts: 7,
     });
   } finally {
     await module.close();
+  }
+});
+
+it("injects asynchronous business settings and optional tokens without exposing module options", async () => {
+  const SETTINGS = Symbol("QueueSettings");
+  @Queue()
+  class EmailQueue extends BaseQueue {
+    constructor(
+      @Inject(SETTINGS) readonly settings: { attempts: number },
+      @Optional() @Inject("missing") readonly missing?: string,
+    ) {
+      super({ defaultJobOptions: { attempts: settings.attempts } });
+    }
+  }
+  const module = await Test.createTestingModule({
+    imports: [QueueModule.forRoot({ connection: { host: "queue.pg" } })],
+    providers: [
+      {
+        provide: SETTINGS,
+        useFactory: async () => await Promise.resolve({ attempts: 6 }),
+      },
+      {
+        provide: EmailQueue,
+        inject: [ModuleRef],
+        useFactory: async (moduleRef: ModuleRef) =>
+          await moduleRef.create(EmailQueue),
+      },
+    ],
+  }).compile();
+  try {
+    await module.init();
+    expect(module.get(EmailQueue).settings).toEqual({ attempts: 6 });
+    expect(module.get(EmailQueue).missing).toBeUndefined();
+    expect(module.get(EmailQueue).opts).toMatchObject({
+      connection: { host: "queue.pg" },
+      defaultJobOptions: { attempts: 6 },
+    });
+  } finally {
+    await module.close();
+  }
+});
+
+it("isolates defaults between applications and requires Nest construction", async () => {
+  const constructors = vi.fn();
+  @Queue()
+  class EmailQueue extends BaseQueue {
+    constructor() {
+      super({ defaultJobOptions: { attempts: 4 } });
+      constructors();
+    }
+  }
+  const create = async (host: string) =>
+    await Test.createTestingModule({
+      imports: [
+        QueueModule.forRootAsync({
+          useFactory: async () =>
+            await Promise.resolve({ connection: { host } }),
+        }),
+      ],
+      providers: [EmailQueue],
+    }).compile();
+  const [first, second] = await Promise.all([
+    create("first.pg"),
+    create("second.pg"),
+  ]);
+  try {
+    await Promise.all([first.init(), second.init()]);
+    expect(constructors).toHaveBeenCalledTimes(2);
+    expect(first.get(EmailQueue).opts).toMatchObject({
+      connection: { host: "first.pg" },
+    });
+    expect(second.get(EmailQueue).opts).toMatchObject({
+      connection: { host: "second.pg" },
+    });
+    expect(() => new EmailQueue()).toThrow(/must be created by Nest/);
+  } finally {
+    await Promise.all([first.close(), second.close()]);
   }
 });

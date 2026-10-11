@@ -4,7 +4,6 @@ import { ScheduleQueue } from "./schedule.queue.js";
 
 vi.mock("@nest-boot/queue", () => ({
   Queue: vi.fn(() => vi.fn()),
-  QUEUE_MODULE_OPTIONS: Symbol("QueueModuleOptions"),
   BaseQueue: class BaseQueue {},
 }));
 
@@ -214,7 +213,6 @@ describe("ScheduleRegistry", () => {
     vi.resetModules();
     vi.doMock("@nest-boot/queue", () => ({
       Queue: vi.fn(() => vi.fn()),
-      QUEUE_MODULE_OPTIONS: Symbol("QueueModuleOptions"),
       BaseQueue: class BaseQueue {},
     }));
     vi.doMock("bullmq", () => ({

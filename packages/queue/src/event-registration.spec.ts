@@ -1,5 +1,5 @@
 import { RequestContext } from "@nest-boot/request-context";
-import { REQUEST as JOB_REF } from "@nestjs/core";
+import { ModuleRef, REQUEST as JOB_REF } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import type { Job } from "bullmq";
 
@@ -10,11 +10,9 @@ import {
   OnWorkerEvent,
   Processor,
   Queue,
-  QUEUE_MODULE_OPTIONS,
   QueueEventsHost,
   QueueEventsListener,
   QueueModule,
-  type QueueModuleOptions,
 } from "./index.js";
 
 const { startedWorkers } = vi.hoisted(() => ({
@@ -130,9 +128,9 @@ describe("Nest queue event registration", () => {
           async
             ? {
                 provide: EmailQueue,
-                inject: [QUEUE_MODULE_OPTIONS],
-                useFactory: async (options: QueueModuleOptions) =>
-                  await Promise.resolve(new EmailQueue(options)),
+                inject: [ModuleRef],
+                useFactory: async (moduleRef: ModuleRef) =>
+                  await moduleRef.create(EmailQueue),
               }
             : EmailQueue,
           provider === "factory"
