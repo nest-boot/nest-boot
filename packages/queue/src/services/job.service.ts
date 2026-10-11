@@ -3,6 +3,7 @@ import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 
 import { Job } from "../entities/job.entity.js";
 import { MODULE_OPTIONS_TOKEN } from "../queue.module-definition.js";
+import { QueueRegistrar } from "../queue.registrar.js";
 import type { QueueModuleOptions } from "../queue-module-options.interface.js";
 
 /** Reads BullMQ-owned jobs within the application's authorized scope. BullMQ performs every write. */
@@ -14,6 +15,8 @@ export class JobService {
     protected readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: QueueModuleOptions<FilterQuery<Job>>,
+    @Inject(QueueRegistrar)
+    private readonly queues: Pick<QueueRegistrar, "getExposedQueueNames">,
   ) {
     const connection = options.connection;
     this.schema =
@@ -23,7 +26,7 @@ export class JobService {
   }
 
   /**
-   * Resolves the authorized scope shared by native and GraphQL reads.
+   * Intersects queue exposure with the authorized scope shared by API reads.
    * @returns Filter limiting reads to the current identity.
    */
   protected async getReadFilter(): Promise<FilterQuery<Job>> {
@@ -32,7 +35,9 @@ export class JobService {
       throw new ForbiddenException(
         "Job access is not configured for this identity",
       );
-    return filter;
+    return {
+      $and: [{ queue: { $in: this.queues.getExposedQueueNames() } }, filter],
+    };
   }
 
   /**

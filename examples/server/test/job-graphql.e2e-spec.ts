@@ -91,7 +91,7 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
         id: 'schedule:5',
         queue: 'schedule',
         name: 'cleanup',
-        data: {},
+        data: { userId: '101', workspaceId: '201' },
         status: JobStatus.COMPLETED,
         progress: 100,
         priority: 0,
@@ -117,7 +117,13 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
       );
     }
 
-    const service = new JobConnectionService(orm.em, { getJobReadFilter });
+    const service = new JobConnectionService(
+      orm.em,
+      { getJobReadFilter },
+      {
+        getExposedQueueNames: () => ['reports', 'exports'],
+      },
+    );
     const module = await Test.createTestingModule({
       imports: [
         GraphQLModule.forRoot({ autoSchemaFile: true, graphiql: false }),

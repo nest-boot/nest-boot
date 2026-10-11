@@ -10,7 +10,7 @@ export interface QueueModuleOptions<ReadFilter = object> extends QueueOptions {
 
   /**
    * Authorizes each job read and returns its database scope using trusted request context.
-   * Missing callbacks, null and undefined deny access. Return {} only to grant all jobs.
+   * Missing callbacks, null and undefined deny access. Return {} only to grant all jobs in exposed queues.
    */
   getJobReadFilter?: () =>
     | ReadFilter

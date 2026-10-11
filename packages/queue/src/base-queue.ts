@@ -21,6 +21,7 @@ export abstract class BaseQueue<
    */
   constructor(options: QueueOptions = {}) {
     const { name, ...declaredOptions } = getQueueDefinition(new.target);
+    delete declaredOptions.expose;
     const context = queueConstructionContext.getStore();
     if (context?.target !== new.target)
       throw new Error(

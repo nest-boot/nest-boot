@@ -16,6 +16,7 @@ export interface ReportResult {
 
 /** Injectable queue named report-queue; no constructor or injection token is needed. */
 @Queue({
+  expose: true,
   defaultJobOptions: {
     attempts: 3,
     backoff: { type: 'exponential', delay: 1000 },

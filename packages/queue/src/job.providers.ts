@@ -2,6 +2,7 @@ import type { ModuleMetadata } from "@nestjs/common";
 import { ModulesContainer } from "@nestjs/core";
 
 import { MODULE_OPTIONS_TOKEN } from "./queue.module-definition.js";
+import { QueueRegistrar } from "./queue.registrar.js";
 import type { QueueModuleOptions } from "./queue-module-options.interface.js";
 
 /**
@@ -45,11 +46,13 @@ export async function createJobProviders(): Promise<
         ModulesContainer,
         { token: EntityManager, optional: true },
         MODULE_OPTIONS_TOKEN,
+        QueueRegistrar,
       ],
       useFactory: (
         modules: ModulesContainer,
         em: InstanceType<typeof EntityManager> | undefined,
         options: QueueModuleOptions,
+        queues: QueueRegistrar,
       ) => {
         if (
           !em ||
@@ -59,7 +62,7 @@ export async function createJobProviders(): Promise<
           )
         )
           return null;
-        return new JobService(em, options);
+        return new JobService(em, options, queues);
       },
     },
   ];
@@ -76,12 +79,14 @@ export async function createJobProviders(): Promise<
         ModulesContainer,
         MODULE_OPTIONS_TOKEN,
         { token: EntityManager, optional: true },
+        QueueRegistrar,
       ],
       useFactory: (
         service: InstanceType<typeof JobService> | null,
         modules: ModulesContainer,
         options: QueueModuleOptions,
         em: InstanceType<typeof EntityManager> | undefined,
+        queues: QueueRegistrar,
       ) => {
         if (
           !service ||
@@ -97,7 +102,7 @@ export async function createJobProviders(): Promise<
             "Queue GraphQL queries require @nest-boot/graphql-connection",
           );
         }
-        return new JobConnectionService(em, options);
+        return new JobConnectionService(em, options, queues);
       },
     });
     definition.providers.push({

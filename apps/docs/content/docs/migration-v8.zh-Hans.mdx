@@ -79,6 +79,8 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 `super(localOptions)`；`@Queue()` 自动提供全局配置。应用只注册一次全局 QueueModule，ScheduleModule
 直接复用全局服务，不在内部重复导入。
 
+队列任务默认不出现在 API 中。需要查询时，声明 `@Queue({ expose: true })` 并在 API 应用中注册该队列 provider；`getJobReadFilter` 仍然生效。
+
 消费者使用 `@Processor(QueueClass)` 并继承 `BaseProcessor`，移除 `WorkerHost`。
 纯消费者部署也必须注册队列类，缺少时在启动 worker 前报错。保留 REQUEST、TRANSIENT、
 作用域传递和 durable context 策略。`RequestContextModule` 导出可注入的

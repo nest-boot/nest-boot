@@ -94,6 +94,10 @@ application also registers its queue provider. For dynamic queue settings, injec
 and pass local overrides to `super(localOptions)`; `@Queue()` supplies global configuration automatically. PostgreSQL persistence is always
 active; the database and GraphQL integrations are optional read features.
 `QueueModule.graphql` defaults to true when the corresponding modules and entity are registered.
+Queue declarations default to `expose: false`: the example opts `ReportQueue` in
+with `@Queue({ expose: true })`, while the internal Schedule queue stays hidden.
+Job API nodes, lists and counts require both queue exposure and the identity filter.
+Direct BullMQ queue operations and persistence remain available for hidden queues.
 
 ### Runnable Queue and Schedule example
 

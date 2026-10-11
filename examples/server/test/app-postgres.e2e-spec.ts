@@ -294,15 +294,15 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     };
     for (const [name, data] of Object.entries(payloads)) {
       await migrationOrm.em.execute(
-        `insert into bullmq.job (queue, id, seq, name, data, progress, state, added_at_ms) values ('graphql-history', ?, ?, 'generate-report', ?::jsonb, '0'::jsonb, 'waiting', ?)`,
+        `insert into bullmq.job (queue, id, seq, name, data, progress, state, added_at_ms) values ('report-queue', ?, ?, 'generate-report', ?::jsonb, '0'::jsonb, 'completed', ?)`,
         [name, Date.now(), JSON.stringify(data), Date.now()],
       );
     }
     const source = `query {
-      own: job(id: "graphql-history:own") { id data status progress }
-      shared: job(id: "graphql-history:shared") { id data }
-      foreign: job(id: "graphql-history:foreign") { id }
-      jobs(first: 10, filter: { queue: "graphql-history" }, orderBy: {field: ID, direction: ASC}) {
+      own: job(id: "report-queue:own") { id data status progress }
+      shared: job(id: "report-queue:shared") { id data }
+      foreign: job(id: "report-queue:foreign") { id }
+      jobs(first: 10, filter: { queue: "report-queue" }, orderBy: {field: ID, direction: ASC}) {
         totalCount edges { node { id } }
       }
     }`;
@@ -312,17 +312,17 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
     expectNoGraphQLErrors(response);
     expect(response.body.data.own).toEqual({
-      id: 'graphql-history:own',
+      id: 'report-queue:own',
       data: payloads.own,
-      status: 'WAITING',
+      status: 'COMPLETED',
       progress: 0,
     });
     expect(response.body.data.shared.data).toEqual(payloads.shared);
     expect(response.body.data.foreign).toBeNull();
     expect(response.body.data.jobs.totalCount).toBe(2);
     expect(response.body.data.jobs.edges.map(({ node }) => node.id)).toEqual([
-      'graphql-history:own',
-      'graphql-history:shared',
+      'report-queue:own',
+      'report-queue:shared',
     ]);
 
     const key = await createMemberApiKey(user, workspace.id, {
@@ -336,7 +336,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expect(keyed.body.data.foreign).toBeNull();
     expect(keyed.body.data.jobs.totalCount).toBe(1);
     expect(keyed.body.data.jobs.edges.map(({ node }) => node.id)).toEqual([
-      'graphql-history:shared',
+      'report-queue:shared',
     ]);
 
     const anonymous = await gql('query { jobs(first: 10) { totalCount } }');

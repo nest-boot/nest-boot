@@ -223,18 +223,25 @@ PostgreSQL 后端本身负责持久化，`add()` 和 `addBulk()` 完成后原生
 | DatabaseModule 和内置 Job 实体 | 同时提供只读 JobService                      |
 | 再注册 GraphQLModule           | 暴露 job(id) 和 jobs，除非 graphql 为 false  |
 
+队列默认 `expose: false`。只有在 API 应用中注册并显式声明 `@Queue({ expose: true })` 的队列，才参与 JobService 和 GraphQL 查询，包括单条任务、筛选、分页和数量统计。可见队列范围始终与 `getJobReadFilter` 取交集，客户端筛选不能绕过它。Schedule 等内部队列默认隐藏。此设置不影响 BullMQ 持久化或直接操作队列。
+
+生产者、消费者与 API 分开部署时，API 应用也需要在 `providers` 中注册要开放的队列类；Processor 只需在消费者应用中注册。`expose` 是应用配置，不是 BullMQ 任务表字段。`QueueModule.graphql` 单独控制是否注册 GraphQL 接口。
+
 `@nest-boot/database`、`@nest-boot/graphql` 和 `@nest-boot/graphql-connection` 仍为可选对等依赖，按功能安装各自所需的依赖。仅安装包不会启用功能。只查询单个实体可以不安装 GraphQL；连接分页查询需要 GraphQL 相关依赖。
 
 ```ts
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { DatabaseModule } from "@nest-boot/database";
 import { GraphQLModule } from "@nest-boot/graphql";
-import { QueueModule } from "@nest-boot/queue";
+import { BaseQueue, Queue, QueueModule } from "@nest-boot/queue";
 import {
   entities,
   jobSchemaGeneratorOptions,
 } from "@nest-boot/queue/persistence";
 import { Module } from "@nestjs/common";
+
+@Queue({ expose: true })
+export class ReportsQueue extends BaseQueue {}
 
 @Module({
   imports: [
@@ -250,6 +257,7 @@ import { Module } from "@nestjs/common";
       getJobReadFilter: () => null,
     }),
   ],
+  providers: [ReportsQueue],
 })
 export class JobsModule {}
 ```
@@ -268,7 +276,7 @@ export class JobsModule {}
 
 数据库保持 `(queue, id)` 复合主键，计算出的 API ID 用于跨队列唯一标识和游标排序。原生表没有最后更新时间，因此不提供 `updatedAt` 字段或筛选。GraphQL 暴露 `queue`、`jobId` 和计算出的 `id`；筛选和排序支持 `queue`、`name`、`status`、`created_at`。
 
-每次读取都执行 `getJobReadFilter`，范围同时约束单条任务、筛选、分页和数量。未配置、返回 null 或 undefined 均拒绝访问；返回空对象表示明确允许读取全部任务。入队数据的身份必须来自可信应用上下文。BullMQ 默认表没有业务租户 RLS；使用数据库请求角色时，需授予该角色 schema usage 和 job 表 SELECT。示例的 `queue:migrate` 命令为 `authenticated` 授予这两项权限，用户与工作区隔离由 JobService 筛选实现，不再由 ORM 为 BullMQ 表生成 RLS 策略。
+每次读取都执行 `getJobReadFilter`，范围同时约束单条任务、筛选、分页和数量。未配置、返回 null 或 undefined 均拒绝访问；返回空对象表示明确允许读取已开放队列中的全部任务。入队数据的身份必须来自可信应用上下文。BullMQ 默认表没有业务租户 RLS；使用数据库请求角色时，需授予该角色 schema usage 和 job 表 SELECT。示例的 `queue:migrate` 命令为 `authenticated` 授予这两项权限，用户与工作区隔离由 JobService 筛选实现，不再由 ORM 为 BullMQ 表生成 RLS 策略。
 
 实体和 JobService 从 `@nest-boot/queue/persistence` 导入；JobConnectionService、GraphQL 类型和 Resolver 从 `@nest-boot/queue/graphql` 导入。JobConnectionService 继承 JobService，通过 `getJobConnection()` 提供使用同一授权范围的分页查询。这些入口同时隔离运行时和 TypeScript 声明中的可选依赖。需要数据库筛选类型检查时，可使用 `QueueModuleOptions<FilterQuery<Job>>`，从相应数据库入口导入筛选及实体类型。
 

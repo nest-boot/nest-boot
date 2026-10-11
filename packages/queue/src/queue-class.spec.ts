@@ -4,6 +4,7 @@ import { Test } from "@nestjs/testing";
 
 import { BaseQueue, Queue, QueueModule } from "./index.js";
 import { getQueueDefinition } from "./queue.decorator.js";
+import { QueueRegistrar } from "./queue.registrar.js";
 
 vi.mock("./postgres.js", async (original) => {
   const actual = await original<typeof import("bullmq")>();
@@ -84,6 +85,37 @@ it("defaults names to kebab-case and accepts options without a name", async () =
       attempts: 4,
     });
     expect(module.get(UploadQueue).name).toBe("CustomUploads");
+  } finally {
+    await module.close();
+  }
+});
+
+it("exposes only opted-in queue instances, including factory providers", async () => {
+  @Queue({ expose: true })
+  class PublicQueue extends BaseQueue {}
+  @Queue()
+  class InternalQueue extends BaseQueue {}
+  @Queue({ expose: false })
+  class HiddenQueue extends BaseQueue {}
+  const module = await Test.createTestingModule({
+    imports: [QueueModule],
+    providers: [
+      {
+        provide: PublicQueue,
+        inject: [ModuleRef],
+        useFactory: (ref: ModuleRef) => ref.create(PublicQueue),
+      },
+      { provide: "ALIAS", useExisting: PublicQueue },
+      InternalQueue,
+      HiddenQueue,
+    ],
+  }).compile();
+  try {
+    await module.init();
+    expect(module.get(QueueRegistrar).getExposedQueueNames()).toEqual([
+      "public-queue",
+    ]);
+    expect(module.get(PublicQueue).opts).not.toHaveProperty("expose");
   } finally {
     await module.close();
   }

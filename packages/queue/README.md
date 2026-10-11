@@ -38,3 +38,8 @@ a timeout; separate queues continue to be checked independently.
 Without `HealthCheckModule`, no queues are discovered for health checks and no
 checks run. The module does not import it or add a health endpoint. The exported
 `QueueHealthIndicator` also supports explicit `check(key, queue, timeout)` calls.
+
+Queues default to `expose: false`. Set `@Queue({ expose: true })` and register the
+queue provider in the API application to include its jobs in the optional Job API.
+Nodes, lists and counts also require the configured `getJobReadFilter` authorization.
+The flag affects API visibility, not BullMQ storage or direct queue operations.

@@ -86,6 +86,8 @@ constructors inject business dependencies and call
 `super(localOptions)` for dynamic settings; `@Queue()` supplies global options automatically. Register the global
 QueueModule once; ScheduleModule uses its global services without importing it internally.
 
+Queue jobs are hidden from the API by default. Declare `@Queue({ expose: true })` and register that queue provider in the API application to enable queries; `getJobReadFilter` still applies.
+
 Consumers use `@Processor(QueueClass)` and extend `BaseProcessor`; `WorkerHost` is
 removed. Consumer-only deployments also register the queue class. Missing queues
 fail startup before workers start. Request/transient scopes, dependency scope

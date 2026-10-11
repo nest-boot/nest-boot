@@ -43,18 +43,33 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
   private readonly scanner = new MetadataScanner();
   private readonly workers = new Set<Worker>();
   private readonly listeners = new Set<QueueEvents>();
+  private readonly queues = new Map<string, BaseQueue>();
 
   constructor(
     private readonly discovery: DiscoveryService,
     private readonly moduleRef: ModuleRef,
   ) {}
 
+  /**
+   * Lists registered queues explicitly included in API reads.
+   * @returns Queue names allowed by their declarations.
+   */
+  getExposedQueueNames(): string[] {
+    return [...this.queues.values()]
+      .filter(
+        (queue) =>
+          getQueueDefinition(queue.constructor as Type<BaseQueue>).expose ===
+          true,
+      )
+      .map((queue) => queue.name);
+  }
+
   onModuleInit(): void {
     const bindings: ({ provider: InstanceWrapper; queue: BaseQueue } & (
       | { definition: ProcessorDefinition; listener: false }
       | { definition: QueueEventsDefinition; listener: true }
     ))[] = [];
-    const queues = new Map<string, BaseQueue>();
+    const queues = this.queues;
     const seen = new Set<unknown>();
     for (const provider of this.discovery.getProviders()) {
       if (provider.isAlias) continue;

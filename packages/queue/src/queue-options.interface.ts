@@ -14,4 +14,6 @@ export interface QueueOptions extends Omit<
 /** Options recorded by the queue class decorator. */
 export interface QueueDefinition extends QueueOptions {
   name: string;
+  /** Include this queue's jobs in API reads, subject to authorization. Defaults to false. */
+  expose?: boolean;
 }

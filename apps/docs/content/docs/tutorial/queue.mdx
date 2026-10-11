@@ -221,18 +221,25 @@ Persistence is inherent to the PostgreSQL backend. `queue.add()` and `addBulk()`
 | DatabaseModule plus built-in Job metadata | Also provide read-only JobService queries                 |
 | Database integration plus GraphQLModule   | Also expose job(id) and jobs, unless graphql is false     |
 
+Queue declarations default to `expose: false`. Only queues registered in the API application with `@Queue({ expose: true })` participate in JobService and GraphQL reads, including single-job lookups, filtered lists, pagination and counts. Exposure is always intersected with `getJobReadFilter`; client filters cannot override it. Internal queues such as Schedule remain hidden. BullMQ persistence and direct queue operations are unaffected.
+
+When producers, consumers and the API run separately, register the exposed queue class in the API application's `providers` too. Its processor is only needed in the consumer application. The flag is application configuration, not a column in BullMQ's job table. `QueueModule.graphql` separately controls registration of the GraphQL interface.
+
 `@nest-boot/database`, `@nest-boot/graphql` and `@nest-boot/graphql-connection` remain optional peers. Install their required dependencies only when using the integration. Installed packages alone do not activate features. Database-only applications can use JobService without installing GraphQL. JobConnectionService adds connection queries when the GraphQL integration is enabled.
 
 ```ts
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { DatabaseModule } from "@nest-boot/database";
 import { GraphQLModule } from "@nest-boot/graphql";
-import { QueueModule } from "@nest-boot/queue";
+import { BaseQueue, Queue, QueueModule } from "@nest-boot/queue";
 import {
   entities,
   jobSchemaGeneratorOptions,
 } from "@nest-boot/queue/persistence";
 import { Module } from "@nestjs/common";
+
+@Queue({ expose: true })
+export class ReportsQueue extends BaseQueue {}
 
 @Module({
   imports: [
@@ -248,6 +255,7 @@ import { Module } from "@nestjs/common";
       getJobReadFilter: () => null,
     }),
   ],
+  providers: [ReportsQueue],
 })
 export class JobsModule {}
 ```
@@ -266,7 +274,7 @@ For a custom schema such as `tasks`, set `QueueModule.connection` to `{ connecti
 
 The native primary key remains `(queue, id)`. The computed API ID provides a unique cursor tie-breaker across queues. The native table has no last-update timestamp, so there is no `updatedAt` field or filter. GraphQL exposes `queue`, `jobId` and the computed `id`; filters and sorting support `queue`, `name`, `status` and `created_at`.
 
-`getJobReadFilter` runs for every read and scopes nodes, filters, pagination and counts. Missing callbacks, null and undefined deny access; returning an empty object explicitly grants all jobs. Payload ownership must come from trusted application identity. The default BullMQ schema has no application tenant RLS policy. Applications using database request roles must grant those roles schema usage and SELECT on the native job table; the example's `queue:migrate` command does this for `authenticated`. The example enforces user/workspace visibility in JobService rather than generating policies on BullMQ-owned tables.
+`getJobReadFilter` runs for every read and scopes nodes, filters, pagination and counts. Missing callbacks, null and undefined deny access; returning an empty object explicitly grants all jobs in exposed queues. Payload ownership must come from trusted application identity. The default BullMQ schema has no application tenant RLS policy. Applications using database request roles must grant those roles schema usage and SELECT on the native job table; the example's `queue:migrate` command does this for `authenticated`. The example enforces user/workspace visibility in JobService rather than generating policies on BullMQ-owned tables.
 
 Entities and JobService are exported from `@nest-boot/queue/persistence`; JobConnectionService, GraphQL types and resolvers from `@nest-boot/queue/graphql`. JobConnectionService extends JobService and provides `getJobConnection()` using the same authorization scope. These entry points isolate optional dependencies at runtime and in generated TypeScript declarations. For typed database filters, use `QueueModuleOptions<FilterQuery<Job>>`, importing the filter and entity types from their database entry points.
 
