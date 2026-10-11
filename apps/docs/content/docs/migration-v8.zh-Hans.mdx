@@ -70,7 +70,8 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 `BullModule`、`BullModuleOptions`、`BullMQHealthIndicator` 分别改为
 `QueueModule`、`QueueModuleOptions`、`QueueHealthIndicator`。任务持久化整合进
 `QueueModule`：注册 `@nest-boot/queue/persistence` 的内置 `Job` 实体，
-将任务持久化配置移至 `QueueModuleOptions.job`，在需要持久化任务的队列注册配置中设置
+将任务持久化配置移至 `QueueModuleOptions.persistence`，其中 `enabled` 默认开启，`ttl` 为毫秒数，默认保留 30 天。
+设置 `persistence.enabled: false` 可全局关闭持久化和任务查询，队列继续运行。在需要持久化任务的队列注册配置中设置
 `persist: true`，移除 include/exclude 列表和 `BullMQMikroORMModule` /
 `QueueDatabaseModule`。实体发现、数据库迁移和查询授权详见[队列教程](/docs/tutorial/queue)。
 

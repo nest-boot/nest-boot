@@ -38,7 +38,7 @@ export class JobService implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly workers = new Set<Worker>();
   private readonly writes = new Map<string, Promise<void>>();
 
-  private readonly jobTTL: number = 1000 * 60 * 60 * 24 * 30;
+  private readonly ttl: number;
 
   private readonly queues = new Set<Queue>();
 
@@ -48,10 +48,10 @@ export class JobService implements OnApplicationBootstrap, OnModuleDestroy {
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly options: QueueModuleOptions,
   ) {
-    this.jobTTL = this.options.job?.jobTTL ?? this.jobTTL;
+    this.ttl = this.options.persistence?.ttl ?? 1000 * 60 * 60 * 24 * 30;
   }
 
-  async convertJobToEntityData(
+  private async getJobData(
     job: Job,
     jobState: JobState,
   ): Promise<EntityData<PersistedJob>> {
@@ -75,16 +75,13 @@ export class JobService implements OnApplicationBootstrap, OnModuleDestroy {
       finishedAt: job.finishedOn ? new Date(job.finishedOn) : null,
       createdAt: new Date(job.timestamp),
       updatedAt: new Date(),
-      ...(this.options.job?.convertJobToEntityData
-        ? await this.options.job.convertJobToEntityData(job)
-        : {}),
     };
   }
 
   async upsertJob(job: Job, jobState: JobState) {
     await this.em
       .fork()
-      .upsert(PersistedJob, await this.convertJobToEntityData(job, jobState), {
+      .upsert(PersistedJob, await this.getJobData(job, jobState), {
         onConflictFields: ["id"],
       });
   }
@@ -117,7 +114,7 @@ export class JobService implements OnApplicationBootstrap, OnModuleDestroy {
   async cleanJobs() {
     await this.em.fork().nativeDelete(PersistedJob, {
       updatedAt: {
-        $lt: new Date(Date.now() - this.jobTTL),
+        $lt: new Date(Date.now() - this.ttl),
       },
     });
   }

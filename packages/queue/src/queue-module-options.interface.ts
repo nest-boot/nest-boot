@@ -2,7 +2,7 @@ import type { FilterQuery } from "@mikro-orm/core";
 import { ConnectionOptions, type QueueOptions } from "bullmq";
 
 import type { Job } from "./entities/job.entity.js";
-import type { JobOptions } from "./job-options.interface.js";
+import type { JobPersistenceOptions } from "./job-persistence-options.interface.js";
 
 /** Configuration options for the BullMQ module. */
 export interface QueueModuleOptions extends Omit<QueueOptions, "connection"> {
@@ -12,8 +12,8 @@ export interface QueueModuleOptions extends Omit<QueueOptions, "connection"> {
   /** Enable job queries when job persistence and GraphQL are available. Defaults to true. */
   graphql?: boolean;
 
-  /** Settings used when DatabaseModule is registered. */
-  job?: JobOptions;
+  /** Global persistence switch and retention; queues opt in with persist: true. */
+  persistence?: JobPersistenceOptions;
 
   /**
    * Authorizes each job read and returns its database scope using trusted request context.

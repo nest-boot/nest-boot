@@ -8,7 +8,7 @@ import type { Mock } from "vitest";
 
 import { Job as PersistedJob } from "../entities/job.entity.js";
 import { JobStatus } from "../enums/job-status.enum.js";
-import { JobOptions } from "../job-options.interface.js";
+import { JobPersistenceOptions } from "../job-persistence-options.interface.js";
 import { MODULE_OPTIONS_TOKEN } from "../queue.constants.js";
 import { JobService } from "./job.service.js";
 
@@ -66,7 +66,7 @@ function createJob(
  * @returns Test service and its mocked dependencies.
  */
 async function createService(
-  options: Partial<JobOptions> = {},
+  options: Partial<JobPersistenceOptions> = {},
   providers: unknown[] = [],
 ) {
   const fork = {
@@ -96,7 +96,7 @@ async function createService(
       {
         provide: MODULE_OPTIONS_TOKEN,
         useValue: {
-          job: options,
+          persistence: options,
         },
       },
     ],
@@ -244,56 +244,62 @@ describe("JobService persistence", () => {
     },
   );
 
-  describe("convertJobToEntityData", () => {
-    it("should convert a BullMQ job to entity data", async () => {
-      const { service } = await createService();
+  describe("persisted job data", () => {
+    it("stores the latest BullMQ state, payload and result", async () => {
+      const { service, fork } = await createService();
 
-      await expect(
-        service.convertJobToEntityData(createJob("completed"), "waiting"),
-      ).resolves.toMatchObject({
-        id: "email:42",
-        queueName: "email",
-        name: "send-email",
-        data: { to: "user@example.com" },
-        returnValue: { accepted: true },
-        failedReason: null,
-        priority: 3,
-        progress: 50,
-        status: JobStatus.COMPLETED,
-        startedAt: new Date(Date.UTC(2026, 0, 1, 1)),
-        finishedAt: new Date(Date.UTC(2026, 0, 1, 2)),
-        createdAt: new Date(Date.UTC(2026, 0, 1)),
-        updatedAt: expect.any(Date),
-      });
+      await service.upsertJob(createJob("completed"), "waiting");
+
+      expect(fork.upsert).toHaveBeenCalledWith(
+        PersistedJob,
+        expect.objectContaining({
+          id: "email:42",
+          queueName: "email",
+          name: "send-email",
+          data: { to: "user@example.com" },
+          returnValue: { accepted: true },
+          failedReason: null,
+          priority: 3,
+          progress: 50,
+          status: JobStatus.COMPLETED,
+          startedAt: new Date(Date.UTC(2026, 0, 1, 1)),
+          finishedAt: new Date(Date.UTC(2026, 0, 1, 2)),
+          createdAt: new Date(Date.UTC(2026, 0, 1)),
+          updatedAt: expect.any(Date),
+        }),
+        { onConflictFields: ["id"] },
+      );
     });
 
-    it("should use the event state when BullMQ returns unknown", async () => {
-      const { service } = await createService({
-        convertJobToEntityData: () => ({ name: "custom-name" }),
-      });
+    it("uses the event state when BullMQ returns unknown", async () => {
+      const { service, fork } = await createService();
 
-      await expect(
-        service.convertJobToEntityData(
-          createJob("unknown", {
-            data: undefined,
-            id: undefined,
-            returnvalue: undefined,
-            failedReason: "failed",
-            processedOn: undefined,
-            finishedOn: undefined,
-          }),
-          "failed",
-        ),
-      ).resolves.toMatchObject({
-        id: "email:",
-        data: null,
-        returnValue: null,
-        failedReason: "failed",
-        status: JobStatus.FAILED,
-        startedAt: null,
-        finishedAt: null,
-        name: "custom-name",
-      });
+      await service.upsertJob(
+        createJob("unknown", {
+          data: undefined,
+          id: undefined,
+          returnvalue: undefined,
+          failedReason: "failed",
+          processedOn: undefined,
+          finishedOn: undefined,
+        }),
+        "failed",
+      );
+
+      expect(fork.upsert).toHaveBeenCalledWith(
+        PersistedJob,
+        expect.objectContaining({
+          id: "email:",
+          data: null,
+          returnValue: null,
+          failedReason: "failed",
+          status: JobStatus.FAILED,
+          startedAt: null,
+          finishedAt: null,
+          name: "send-email",
+        }),
+        { onConflictFields: ["id"] },
+      );
     });
   });
 
@@ -319,7 +325,7 @@ describe("JobService persistence", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-31T00:00:00.000Z"));
     const { fork, service } = await createService({
-      jobTTL: 1000,
+      ttl: 1000,
     });
 
     await service.cleanJobs();

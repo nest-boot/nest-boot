@@ -6,7 +6,8 @@ import type {
 } from "@nestjs/common";
 import type { Queue } from "bullmq";
 
-import { JOB_SERVICE } from "../queue.constants.js";
+import { JOB_SERVICE, MODULE_OPTIONS_TOKEN } from "../queue.constants.js";
+import type { QueueModuleOptions } from "../queue-module-options.interface.js";
 import type { RegisterQueueOptions } from "../register-queue-options.interface.js";
 import type { JobService } from "../services/job.service.js";
 
@@ -33,14 +34,18 @@ export function withQueuePersistence(
       ...factory,
       inject: [
         { token: JOB_SERVICE, optional: true },
+        { token: MODULE_OPTIONS_TOKEN, optional: true },
         ...(factory.inject ?? []),
       ],
       useFactory: async (
         jobService: JobService | null | undefined,
+        moduleOptions: QueueModuleOptions | undefined,
         queueOptions: RegisterQueueOptions,
         ...dependencies: unknown[]
       ) => {
-        const { persist, ...options } = queueOptions;
+        const { persist: requested, ...options } = queueOptions;
+        const persist =
+          requested && moduleOptions?.persistence?.enabled !== false;
         if (persist && !jobService) {
           throw new Error(
             `Queue "${name}" has persist: true but job persistence is unavailable. Register QueueModule and DatabaseModule, and include the built-in Job entity from @nest-boot/queue/persistence in database discovery.`,

@@ -135,6 +135,69 @@ describe("QueueModule automatic job features", () => {
     },
   );
 
+  it.each([
+    { async: false, integrations: false },
+    { async: true, integrations: false },
+    { async: false, integrations: true },
+    { async: true, integrations: true },
+  ])(
+    "keeps queues available when persistence is globally disabled (async=$async, integrations=$integrations)",
+    async ({ async, integrations }) => {
+      const options = { persistence: { enabled: false } };
+      const module = await Test.createTestingModule({
+        imports: [
+          async
+            ? QueueModule.forRootAsync({ useFactory: () => options })
+            : QueueModule.forRoot(options),
+          async
+            ? QueueModule.registerQueueAsync({
+                name: "email",
+                useFactory: () => ({ persist: true }),
+              })
+            : QueueModule.registerQueue({ name: "email", persist: true }),
+          ...(integrations
+            ? [
+                DatabaseModule.forRoot({
+                  driver: PgliteDriver,
+                  dbName: "memory://",
+                  entities: [Job],
+                }),
+                GraphQLModule.forRoot({
+                  autoSchemaFile: true,
+                  graphiql: false,
+                }),
+              ]
+            : []),
+        ],
+        providers: integrations ? [PingResolver] : [],
+      }).compile();
+      const app = module.createNestApplication();
+      app.useLogger(false);
+      try {
+        await app.init();
+        const queue = module.get<Queue>(getQueueToken("email"));
+        expect(queue.name).toBe("email");
+        expect(queue.listenerCount("waiting")).toBe(0);
+        expect(queue.opts).not.toHaveProperty("persist");
+        expect(queue.opts).not.toHaveProperty("persistence");
+        expect(module.get(JobService)).toBeNull();
+        if (integrations) {
+          expect(
+            Object.keys(
+              module
+                .get(GraphQLSchemaHost)
+                .schema.getQueryType()
+                ?.getFields() ?? {},
+            ),
+          ).toEqual(["ping"]);
+        }
+      } finally {
+        await app.close();
+      }
+    },
+    30000,
+  );
+
   it("rejects persist when ORM metadata contains a different Job entity", async () => {
     const entities = [
       new EntitySchema({

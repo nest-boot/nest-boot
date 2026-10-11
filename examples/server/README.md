@@ -104,11 +104,10 @@ the application exposes.
 
 Background tasks without either identifier
 remain available to the background database connection but are hidden from request
-roles. The integration copies `data` directly; no extra owner columns or custom
-`convertJobToEntityData` mapping are needed. Jobs are retained for 30 days by
-default; configure retention and conversion through `QueueModuleOptions.job`. Enable persistence per queue with `QueueModule.registerQueue({ name, persist: true })`,
+roles. The integration copies `data` directly; no extra owner columns are needed. Jobs are retained for 30 days by
+default; configure retention in milliseconds through `persistence.ttl`. Enable persistence per queue with `QueueModule.registerQueue({ name, persist: true })`,
 or return `persist: true` from `registerQueueAsync` options. Unselected queues and the
-schedule queue do not persist jobs by default. `graphql` belongs to `QueueModule.forRoot()` /
+schedule queue do not persist jobs by default. Set `persistence.enabled: false` in the root options to disable persistence, cleanup, and job queries globally, including for opted-in queues; queues continue running. The global switch defaults to true. `graphql` belongs to `QueueModule.forRoot()` /
 `forRootAsync()` and defaults to true; set it to false for persistence without the built-in queries.
 The database, GraphQL, and graphql-connection packages are optional peers of queue; the
 example installs all three, while a persistence-only application needs only database support.

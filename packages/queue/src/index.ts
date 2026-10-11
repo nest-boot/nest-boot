@@ -1,5 +1,5 @@
 export { JobStatus } from "./enums/job-status.enum.js";
-export type { JobOptions } from "./job-options.interface.js";
+export type { JobPersistenceOptions } from "./job-persistence-options.interface.js";
 export { OnQueueEvent } from "./on-queue-event.decorator.js";
 export { OnWorkerEvent } from "./on-worker-event.decorator.js";
 export { type NestWorkerOptions, Processor } from "./processor.decorator.js";
