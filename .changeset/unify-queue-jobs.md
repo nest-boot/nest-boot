@@ -13,6 +13,6 @@ Replace registerQueue/registerQueueAsync and InjectQueue with injectable @Queue 
 
 Preserve worker/listener events, health discovery, Nest scopes, durable contexts and graceful shutdown. Establish RequestContext before resolving scoped consumers, and export its injectable request-scoped provider. Update Schedule, ESLint import migration guidance, packed-consumer checks, example application and bilingual documentation.
 
-Register QueueModule once at the application level. Schedule consumes its global services without importing it internally, removing duplicate queue registration and the separate runtime/configuration forwarding layer.
+Import QueueModule once anywhere in the application module tree; AppModule placement is not required. Schedule consumes its global services without importing it internally, removing duplicate queue registration and the separate runtime/configuration forwarding layer.
 
 This release stays on v8 with a minor Queue update as requested by the maintainer. Existing Redis jobs and old mirror data are not migrated automatically; drain or migrate them separately before switching deployments.

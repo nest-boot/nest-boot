@@ -29,7 +29,7 @@ export interface EmailData {
 export class EmailQueue extends BaseQueue<EmailData> {}
 ```
 
-Add the queue class to `providers`. `QueueModule` reads `QUEUE_DATABASE_URL` / `DATABASE_URL`; use `forRoot()` or `forRootAsync()` to set an explicit connection and shared defaults. Register `QueueModule` once in the application, using either the plain module or a root configuration. Its providers are global; feature modules and `ScheduleModule` use that registration without importing it again.
+Add the queue class to `providers`. `QueueModule` reads `QUEUE_DATABASE_URL` / `DATABASE_URL`; use `forRoot()` or `forRootAsync()` to set an explicit connection and shared defaults. Import `QueueModule` once anywhere in the application module tree, such as `CommonModule`, `JobsModule` or the feature module below. It does not have to be in `AppModule`. Its providers are global; other modules and `ScheduleModule` use that registration without importing it again. The import is required to provide configuration, discover consumers and manage workers.
 
 ```ts
 import { QueueModule } from "@nest-boot/queue";
@@ -158,7 +158,7 @@ export class EmailQueue extends BaseQueue {
 export class EmailModule {}
 ```
 
-The application registers the global `QueueModule` once. To load shared settings asynchronously, use `QueueModule.forRootAsync()`. For asynchronous per-queue settings, resolve an injected settings provider through `useFactory: async ...`; Nest waits for it before constructing the queue.
+Define shared configuration once, wherever the application imports `QueueModule`. To load it asynchronously, use `QueueModule.forRootAsync()`. For asynchronous per-queue settings, resolve an injected settings provider through `useFactory: async ...`; Nest waits for it before constructing the queue.
 
 Let Nest construct queue instances so it can provide global configuration and business dependencies. When a custom factory provider is needed, inject `ModuleRef` and return `moduleRef.create(EmailQueue)`. Queue classes are registered as providers, rather than instantiated with `new`.
 
@@ -221,7 +221,7 @@ Persistence is inherent to the PostgreSQL backend. `queue.add()` and `addBulk()`
 | DatabaseModule plus built-in Job metadata | Also provide read-only JobService queries                 |
 | Database integration plus GraphQLModule   | Also expose job(id) and jobs, unless graphql is false     |
 
-`@nest-boot/database`, `@nest-boot/graphql` and `@nest-boot/graphql-connection` remain optional peers. Install their required dependencies only when using the integration. Installed packages alone do not activate features. Database-only applications can use JobService without installing GraphQL; connection queries require the GraphQL peers.
+`@nest-boot/database`, `@nest-boot/graphql` and `@nest-boot/graphql-connection` remain optional peers. Install their required dependencies only when using the integration. Installed packages alone do not activate features. Database-only applications can use JobService without installing GraphQL. JobConnectionService adds connection queries when the GraphQL integration is enabled.
 
 ```ts
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
@@ -268,7 +268,7 @@ The native primary key remains `(queue, id)`. The computed API ID provides a uni
 
 `getJobReadFilter` runs for every read and scopes nodes, filters, pagination and counts. Missing callbacks, null and undefined deny access; returning an empty object explicitly grants all jobs. Payload ownership must come from trusted application identity. The default BullMQ schema has no application tenant RLS policy. Applications using database request roles must grant those roles schema usage and SELECT on the native job table; the example's `queue:migrate` command does this for `authenticated`. The example enforces user/workspace visibility in JobService rather than generating policies on BullMQ-owned tables.
 
-Entities and JobService are exported from `@nest-boot/queue/persistence`; GraphQL types and resolvers from `@nest-boot/queue/graphql`. These entry points keep optional dependencies out of plain queue imports.
+Entities and JobService are exported from `@nest-boot/queue/persistence`; JobConnectionService, GraphQL types and resolvers from `@nest-boot/queue/graphql`. JobConnectionService extends JobService and provides `getJobConnection()` using the same authorization scope. These entry points isolate optional dependencies at runtime and in generated TypeScript declarations. For typed database filters, use `QueueModuleOptions<FilterQuery<Job>>`, importing the filter and entity types from their database entry points.
 
 ### Migrating existing queues
 

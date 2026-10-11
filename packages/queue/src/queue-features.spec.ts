@@ -12,6 +12,7 @@ import { Test } from "@nestjs/testing";
 import { Job } from "./entities/job.entity.js";
 import { QueueModule } from "./queue.module.js";
 import { JobService } from "./services/job.service.js";
+import { JobConnectionService } from "./services/job-connection.service.js";
 
 @Resolver()
 class PingResolver {
@@ -52,6 +53,9 @@ describe("QueueModule automatic job features", () => {
       try {
         expect(module.get(EntityManager)).toBeDefined();
         expect(module.get(JobService)).toBeInstanceOf(JobService);
+        expect(module.get(JobConnectionService)).toEqual(
+          graphql ? expect.any(JobConnectionService) : null,
+        );
         if (graphql) {
           await app.init();
           const fields =
@@ -91,6 +95,7 @@ describe("QueueModule automatic job features", () => {
       try {
         await app.init();
         expect(module.get(JobService)).toBeInstanceOf(JobService);
+        expect(module.get(JobConnectionService)).toBeNull();
         expect(
           Object.keys(
             module.get(GraphQLSchemaHost).schema.getQueryType()?.getFields() ??

@@ -1,10 +1,10 @@
-import type { FilterQuery } from "@mikro-orm/core";
-
-import type { Job } from "./entities/job.entity.js";
 import type { QueueOptions } from "./queue-options.interface.js";
 
-/** Configuration options for the BullMQ module. */
-export interface QueueModuleOptions extends QueueOptions {
+/**
+ * Configuration options for the BullMQ module.
+ * @template ReadFilter - Query type supplied by the optional database integration.
+ */
+export interface QueueModuleOptions<ReadFilter = object> extends QueueOptions {
   /** Enable job queries when DatabaseModule, Job metadata and GraphQL are available. Defaults to true. */
   graphql?: boolean;
 
@@ -13,8 +13,8 @@ export interface QueueModuleOptions extends QueueOptions {
    * Missing callbacks, null and undefined deny access. Return {} only to grant all jobs.
    */
   getJobReadFilter?: () =>
-    | FilterQuery<Job>
+    | ReadFilter
     | null
     | undefined
-    | Promise<FilterQuery<Job> | null | undefined>;
+    | Promise<ReadFilter | null | undefined>;
 }

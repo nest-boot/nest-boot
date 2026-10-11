@@ -1,11 +1,5 @@
 import { EntityManager, type FilterQuery } from "@mikro-orm/core";
-import type { SqlEntityManager } from "@mikro-orm/sql";
-import type {
-  ConnectionArgsInterface,
-  ConnectionResult,
-} from "@nest-boot/graphql-connection";
 import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
-import type { GraphQLResolveInfo } from "graphql";
 
 import { Job } from "../entities/job.entity.js";
 import { MODULE_OPTIONS_TOKEN } from "../queue.module-definition.js";
@@ -14,11 +8,12 @@ import type { QueueModuleOptions } from "../queue-module-options.interface.js";
 /** Reads BullMQ-owned jobs within the application's authorized scope. BullMQ performs every write. */
 @Injectable()
 export class JobService {
-  private readonly schema: string;
+  protected readonly schema: string;
 
   constructor(
-    private readonly em: EntityManager,
-    @Inject(MODULE_OPTIONS_TOKEN) private readonly options: QueueModuleOptions,
+    protected readonly em: EntityManager,
+    @Inject(MODULE_OPTIONS_TOKEN)
+    private readonly options: QueueModuleOptions<FilterQuery<Job>>,
   ) {
     const connection = options.connection;
     this.schema =
@@ -27,7 +22,11 @@ export class JobService {
         : "bullmq";
   }
 
-  private async getReadFilter(): Promise<FilterQuery<Job>> {
+  /**
+   * Resolves the authorized scope shared by native and GraphQL reads.
+   * @returns Filter limiting reads to the current identity.
+   */
+  protected async getReadFilter(): Promise<FilterQuery<Job>> {
     const filter = await this.options.getJobReadFilter?.();
     if (filter == null)
       throw new ForbiddenException(
@@ -54,32 +53,6 @@ export class JobService {
         ],
       },
       { schema: this.schema, refresh: true },
-    );
-  }
-
-  /**
-   * Queries native PostgreSQL jobs, applying the same authorized scope to rows and counts.
-   * @param args - Pagination, filtering and sorting arguments.
-   * @param info - GraphQL selection information.
-   * @returns A connection containing only authorized jobs.
-   */
-  async getJobConnection(
-    args: ConnectionArgsInterface<Job>,
-    info?: GraphQLResolveInfo,
-  ): Promise<ConnectionResult<Job>> {
-    const where = await this.getReadFilter();
-    const { ConnectionManager } = await import("@nest-boot/graphql-connection");
-    const { JobConnection } =
-      await import("../connections/job.connection-definition.js");
-    return await new ConnectionManager(this.em as SqlEntityManager).find(
-      JobConnection,
-      args,
-      {
-        where,
-        schema: this.schema,
-        refresh: true,
-        ...(info && { info }),
-      },
     );
   }
 }

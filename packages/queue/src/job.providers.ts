@@ -67,16 +67,25 @@ export async function createJobProviders(): Promise<
 
   if (isAvailable("@nest-boot/graphql")) {
     const { GraphQLModule } = await import("@nest-boot/graphql");
+    const { JobConnectionService } =
+      await import("./services/job-connection.service.js");
     definition.providers.push({
-      provide: Symbol("JobResolver"),
-      inject: [JobService, ModulesContainer, MODULE_OPTIONS_TOKEN],
-      useFactory: async (
+      provide: JobConnectionService,
+      inject: [
+        JobService,
+        ModulesContainer,
+        MODULE_OPTIONS_TOKEN,
+        { token: EntityManager, optional: true },
+      ],
+      useFactory: (
         service: InstanceType<typeof JobService> | null,
         modules: ModulesContainer,
         options: QueueModuleOptions,
+        em: InstanceType<typeof EntityManager> | undefined,
       ) => {
         if (
           !service ||
+          !em ||
           options.graphql === false ||
           ![...modules.values()].some(
             (module) => module.metatype === GraphQLModule,
@@ -88,10 +97,21 @@ export async function createJobProviders(): Promise<
             "Queue GraphQL queries require @nest-boot/graphql-connection",
           );
         }
+        return new JobConnectionService(em, options);
+      },
+    });
+    definition.providers.push({
+      provide: Symbol("JobResolver"),
+      inject: [JobConnectionService],
+      useFactory: async (
+        service: InstanceType<typeof JobConnectionService> | null,
+      ) => {
+        if (!service) return null;
         const { JobResolver } = await import("./resolvers/job.resolver.js");
         return new JobResolver(service);
       },
     });
+    definition.exports.push(JobConnectionService);
   }
   return definition;
 }

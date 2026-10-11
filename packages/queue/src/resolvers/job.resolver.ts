@@ -10,7 +10,7 @@ import {
   JobConnectionArgs,
 } from "../connections/job.connection-definition.js";
 import { Job } from "../entities/job.entity.js";
-import { JobService } from "../services/job.service.js";
+import { JobConnectionService } from "../services/job-connection.service.js";
 
 /** Job queries protected by the service read scope. */
 @Resolver(() => Job)
@@ -19,7 +19,7 @@ export class JobResolver {
    * 创建任务查询解析器。
    * @param jobService - Service for reading persisted queue jobs.
    */
-  constructor(private readonly jobService: JobService) {}
+  constructor(private readonly jobService: JobConnectionService) {}
 
   /**
    * 按完整任务 ID 查询当前身份可访问的任务。

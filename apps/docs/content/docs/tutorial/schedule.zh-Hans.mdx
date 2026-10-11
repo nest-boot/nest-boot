@@ -29,7 +29,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-在应用中统一注册一次 `QueueModule`；`ScheduleModule` 使用其全局服务，不再在内部导入它。`QueueModule` 从 `QUEUE_DATABASE_URL` 或 `DATABASE_URL` 读取 PostgreSQL 连接。`ScheduleModule` 还接受显式的 BullMQ `connection`、`concurrency` 和 `autorun`；除非 `autorun` 为 `false`，worker 会自动启动。
+在应用模块树的任意一个模块中导入一次 `QueueModule` 即可，例如 `CommonModule`，不要求放在 `AppModule`。`ScheduleModule` 使用其全局服务，不再在内部导入它。`QueueModule` 从 `QUEUE_DATABASE_URL` 或 `DATABASE_URL` 读取 PostgreSQL 连接。`ScheduleModule` 还接受显式的 BullMQ `connection`、`concurrency` 和 `autorun`；除非 `autorun` 为 `false`，worker 会自动启动。
 
 ## 定义定时任务
 

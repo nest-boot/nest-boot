@@ -29,7 +29,7 @@ export interface EmailData {
 export class EmailQueue extends BaseQueue<EmailData> {}
 ```
 
-把队列类加入 `providers`，直接通过构造函数注入。应用中只注册一次 `QueueModule`，选择直接导入或使用 `forRoot()` / `forRootAsync()` 配置。其 provider 为全局服务，业务模块和 `ScheduleModule` 直接复用，无需重复导入：
+把队列类加入 `providers`，直接通过构造函数注入。在应用模块树的任意一个模块中导入一次 `QueueModule` 即可，例如 `CommonModule`、`JobsModule` 或下面的业务模块，不要求放在 `AppModule`。可以直接导入，或使用 `forRoot()` / `forRootAsync()` 配置。其 provider 为全局服务，其他模块和 `ScheduleModule` 直接复用，无需重复导入。应用仍需这次导入，以提供配置、发现消费者并管理 worker：
 
 ```ts
 import { QueueModule } from "@nest-boot/queue";
@@ -53,7 +53,7 @@ export class EmailService {
 export class EmailModule {}
 ```
 
-不需要 `registerQueue()` 或 `@InjectQueue()`。`QueueModule` 自动读取 `QUEUE_DATABASE_URL` / `DATABASE_URL`；通过 `forRoot()` / `forRootAsync()` 可以指定连接和共享默认配置，根配置只注册一次。队列类继承 BullMQ 的方法，也可以添加业务方法。
+不需要 `registerQueue()` 或 `@InjectQueue()`。`QueueModule` 自动读取 `QUEUE_DATABASE_URL` / `DATABASE_URL`；通过 `forRoot()` / `forRootAsync()` 可以指定连接和共享默认配置，全局配置只定义一份。队列类继承 BullMQ 的方法，也可以添加业务方法。
 
 队列 provider 必须保持单例，队列名称在应用内必须唯一。需要跨模块使用时，导出队列类并导入所属模块，不要重复创建实例。应用关闭时会关闭队列连接。
 
@@ -270,7 +270,7 @@ export class JobsModule {}
 
 每次读取都执行 `getJobReadFilter`，范围同时约束单条任务、筛选、分页和数量。未配置、返回 null 或 undefined 均拒绝访问；返回空对象表示明确允许读取全部任务。入队数据的身份必须来自可信应用上下文。BullMQ 默认表没有业务租户 RLS；使用数据库请求角色时，需授予该角色 schema usage 和 job 表 SELECT。示例的 `queue:migrate` 命令为 `authenticated` 授予这两项权限，用户与工作区隔离由 JobService 筛选实现，不再由 ORM 为 BullMQ 表生成 RLS 策略。
 
-实体和 JobService 从 `@nest-boot/queue/persistence` 导入；GraphQL 类型和 Resolver 从 `@nest-boot/queue/graphql` 导入，避免普通队列加载可选依赖。
+实体和 JobService 从 `@nest-boot/queue/persistence` 导入；JobConnectionService、GraphQL 类型和 Resolver 从 `@nest-boot/queue/graphql` 导入。JobConnectionService 继承 JobService，通过 `getJobConnection()` 提供使用同一授权范围的分页查询。这些入口同时隔离运行时和 TypeScript 声明中的可选依赖。需要数据库筛选类型检查时，可使用 `QueueModuleOptions<FilterQuery<Job>>`，从相应数据库入口导入筛选及实体类型。
 
 ### 迁移现有队列
 

@@ -6,6 +6,7 @@ import { ForbiddenException, type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { type Job as BullJob } from "bullmq";
 
+import { JobConnectionService } from "../dist/graphql.js";
 import {
   BaseProcessor,
   BaseQueue,
@@ -106,7 +107,7 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
   });
 
   it("keeps cross-queue cursors stable with duplicate job IDs and sort values", async () => {
-    const service = new JobService(orm.em.fork(), {
+    const service = new JobConnectionService(orm.em.fork(), {
       connection: fixture.connection,
       getJobReadFilter: () => ({ data: { owner: "alice" } }),
     });
@@ -150,7 +151,7 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
 
   it("denies unconfigured readers and scopes GraphQL nodes, filters and counts", async () => {
     for (const getJobReadFilter of [undefined, () => null, () => undefined]) {
-      const service = new JobService(orm.em.fork(), {
+      const service = new JobConnectionService(orm.em.fork(), {
         connection: fixture.connection,
         getJobReadFilter,
       });
@@ -172,7 +173,7 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
     expect(result.errors).toBeUndefined();
     expect(result.data.job).toBeNull();
     expect(result.data.jobs.totalCount).toBe(2);
-    const service = new JobService(orm.em.fork(), {
+    const service = new JobConnectionService(orm.em.fork(), {
       connection: fixture.connection,
       getJobReadFilter: () => ({ data: { owner: "alice" } }),
     });
@@ -203,7 +204,7 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
 
   it("maps priority waiting jobs without inventing a native state", async () => {
     await emails.add("priority", {}, { jobId: "priority", priority: 7 });
-    const service = new JobService(orm.em.fork(), {
+    const service = new JobConnectionService(orm.em.fork(), {
       connection: fixture.connection,
       getJobReadFilter: () => ({}),
     });

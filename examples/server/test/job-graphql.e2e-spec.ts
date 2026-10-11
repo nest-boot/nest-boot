@@ -4,9 +4,8 @@ import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
 import { AuthGuard, Session, User, Workspace } from '@nest-boot/auth';
 import { GraphQLModule } from '@nest-boot/graphql';
 import { JobStatus } from '@nest-boot/queue';
-import { JobResolver } from '@nest-boot/queue/graphql';
+import { JobConnectionService, JobResolver } from '@nest-boot/queue/graphql';
 import { Job, jobSchemaGeneratorOptions } from '@nest-boot/queue/persistence';
-import { JobService } from '@nest-boot/queue/persistence';
 import { RequestContext } from '@nest-boot/request-context';
 import type { INestApplication } from '@nestjs/common';
 import { ModuleRef, Reflector } from '@nestjs/core';
@@ -118,7 +117,7 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
       );
     }
 
-    const service = new JobService(orm.em, { getJobReadFilter });
+    const service = new JobConnectionService(orm.em, { getJobReadFilter });
     const module = await Test.createTestingModule({
       imports: [
         GraphQLModule.forRoot({ autoSchemaFile: true, graphiql: false }),

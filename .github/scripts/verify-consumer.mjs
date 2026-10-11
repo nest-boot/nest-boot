@@ -207,8 +207,9 @@ try {
     queueDependencies[`@mikro-orm/${name}`] = ormVersion;
   }
   cpSync(
-    join(repository, ".github/fixtures/queue-persistence-consumer/main.ts"),
-    join(queueConsumer, "main.ts"),
+    join(repository, ".github/fixtures/queue-persistence-consumer"),
+    queueConsumer,
+    { recursive: true },
   );
   writeFileSync(
     join(queueConsumer, "package.json"),
@@ -233,7 +234,13 @@ try {
     ],
     queueConsumer,
   );
-  pnpm(["exec", "tsc", "--project", "tsconfig.json"], queueConsumer);
+  // Check the queue persistence declarations independently of DatabaseModule
+  // and PGlite's existing declaration errors, without installing GraphQL peers.
+  pnpm(["exec", "tsc", "--project", "tsconfig.types.json"], queueConsumer);
+  pnpm(
+    ["exec", "tsc", "--project", "tsconfig.json", "--skipLibCheck"],
+    queueConsumer,
+  );
   execFileSync(process.execPath, ["dist/main.js"], {
     cwd: queueConsumer,
     stdio: "inherit",
