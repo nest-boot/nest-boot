@@ -126,6 +126,28 @@ it("loads source decorators and implicit DI metadata, resolves .js imports and k
   expect(result.stdout).toContain("SOURCE:ALICE!");
   expect(result.stdout).toContain("CLOSED");
 });
+it("prefers relative TypeScript sources over adjacent JavaScript during source execution", () => {
+  writeSource();
+  write("src/commands.js", "throw new Error('Loaded stale commands.js');");
+  write("src/punctuation.js", "export const punctuation = 'STALE';");
+  const result = run(["hello", "Alice"]);
+  expect(result.stderr).toBe("");
+  expect(result.status).toBe(0);
+  expect(result.stdout).toContain("SOURCE:Alice!");
+  expect(result.stdout).not.toContain("STALE");
+});
+it("loads JavaScript implementations when relative declarations exist without TypeScript source", () => {
+  write(
+    "src/cli.ts",
+    "import { message } from './message.js'; console.log(message);",
+  );
+  write("src/message.d.ts", "export declare const message: string;");
+  write("src/message.js", "export const message = 'JAVASCRIPT';");
+  const result = run();
+  expect(result.stderr).toBe("");
+  expect(result.status).toBe(0);
+  expect(result.stdout.trim()).toBe("JAVASCRIPT");
+});
 it("supports tsconfig path aliases", () => {
   writeSource();
   write("src/cli.ts", source.replace("./commands.js", "@app/commands"));
