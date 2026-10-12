@@ -12,12 +12,12 @@ import {
 } from "@nestjs/common/constants";
 import { kebabCase } from "lodash-es";
 
-import type { BaseQueue } from "./base-queue.js";
-import { QUEUE_OPTIONS } from "./queue.constants.js";
-import { MODULE_OPTIONS_TOKEN } from "./queue.module-definition.js";
-import { queueConstructionContext } from "./queue-construction-context.js";
-import type { QueueModuleOptions } from "./queue-module-options.interface.js";
-import type { QueueDefinition } from "./queue-options.interface.js";
+import type { BaseQueue } from "../base-queue.js";
+import { QUEUE_OPTIONS } from "../queue.constants.js";
+import { MODULE_OPTIONS_TOKEN } from "../queue.module-definition.js";
+import { queueConstructionContext } from "../queue-construction-context.js";
+import type { QueueModuleOptions } from "../queue-module-options.interface.js";
+import type { QueueDefinition } from "../queue-options.interface.js";
 
 /**
  * Declares a queue; add the decorated class to its module's providers.

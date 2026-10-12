@@ -2,8 +2,8 @@ import { Inject, Injectable, Optional } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 
+import { getQueueDefinition } from "./decorators/queue.decorator.js";
 import { BaseQueue, Queue, QueueModule } from "./index.js";
-import { getQueueDefinition } from "./queue.decorator.js";
 import { QueueRegistrar } from "./queue.registrar.js";
 
 vi.mock("./postgres.js", async (original) => {

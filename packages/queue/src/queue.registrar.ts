@@ -17,11 +17,13 @@ import type { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
 
 import { BaseProcessor } from "./base-processor.js";
 import { BaseQueue } from "./base-queue.js";
+import type { ProcessorDefinition } from "./decorators/processor.decorator.js";
+import { getQueueDefinition } from "./decorators/queue.decorator.js";
+import type { QueueEventsDefinition } from "./decorators/queue-events-listener.decorator.js";
 import {
   PostgresQueueEvents as QueueEvents,
   PostgresWorker as Worker,
 } from "./postgres.js";
-import type { ProcessorDefinition } from "./processor.decorator.js";
 import {
   ON_QUEUE_EVENT,
   ON_WORKER_EVENT,
@@ -31,9 +33,7 @@ import {
   QUEUE_OPTIONS,
   WORKER_REF,
 } from "./queue.constants.js";
-import { getQueueDefinition } from "./queue.decorator.js";
 import { QueueEventsHost } from "./queue-events-host.js";
-import type { QueueEventsDefinition } from "./queue-events-listener.decorator.js";
 import { runInQueueContext } from "./utils/run-in-queue-context.util.js";
 
 /** Discovers consumers and explicit listeners, and owns their BullMQ transports. */

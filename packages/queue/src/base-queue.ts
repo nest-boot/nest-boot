@@ -1,7 +1,7 @@
 import type { OnApplicationShutdown } from "@nestjs/common";
 
+import { getQueueDefinition } from "./decorators/queue.decorator.js";
 import { PostgresQueue } from "./postgres.js";
-import { getQueueDefinition } from "./queue.decorator.js";
 import { queueConstructionContext } from "./queue-construction-context.js";
 import type { QueueOptions } from "./queue-options.interface.js";
 import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";

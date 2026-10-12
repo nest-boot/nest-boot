@@ -1,7 +1,7 @@
 import type { QueueEventsListener } from "bullmq";
 
-import { ON_QUEUE_EVENT } from "./queue.constants.js";
-import { createContextEventDecorator } from "./utils/create-context-event-decorator.util.js";
+import { ON_QUEUE_EVENT } from "../queue.constants.js";
+import { createContextEventDecorator } from "../utils/create-context-event-decorator.util.js";
 
 /**
  * Listens to a queue event in an independent queue request context.

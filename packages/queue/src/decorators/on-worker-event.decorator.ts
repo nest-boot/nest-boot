@@ -1,7 +1,7 @@
 import type { Job, WorkerListener } from "bullmq";
 
-import { ON_WORKER_EVENT } from "./queue.constants.js";
-import { createContextEventDecorator } from "./utils/create-context-event-decorator.util.js";
+import { ON_WORKER_EVENT } from "../queue.constants.js";
+import { createContextEventDecorator } from "../utils/create-context-event-decorator.util.js";
 
 /**
  * Listens to a worker event in an independent queue request context.
