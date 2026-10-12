@@ -89,6 +89,7 @@ export class CommandRegistry {
       static paths = options.paths;
       static usage = options.usage ?? {};
       static schema = commandClass.schema;
+      private executionStarted = false;
 
       constructor() {
         super();
@@ -96,10 +97,9 @@ export class CommandRegistry {
       }
 
       /**
-       * Runs the Nest provider after copying its parsed options and CLI context.
-       * @returns The optional command exit code.
+       * Copies parser state before invoking either execution or error handling.
        */
-      async execute(): Promise<number | undefined> {
+      private syncState(): void {
         for (const key of Object.keys(definitions)) {
           Reflect.set(instance, key, Reflect.get(this, key));
         }
@@ -107,6 +107,15 @@ export class CommandRegistry {
         instance.cli = this.cli;
         instance.path = this.path;
         instance.help = this.help;
+      }
+
+      /**
+       * Runs the Nest provider with its parsed options and CLI context.
+       * @returns The optional command exit code.
+       */
+      async execute(): Promise<number | undefined> {
+        this.syncState();
+        this.executionStarted = true;
         return (await instance.execute()) ?? undefined;
       }
 
@@ -115,6 +124,9 @@ export class CommandRegistry {
        * @param error - Failure raised while executing the command.
        */
       async catch(error: Error): Promise<void> {
+        // Schema failures precede execute(); execution failures already have
+        // initialized state, including any changes made by the Nest command.
+        if (!this.executionStarted) this.syncState();
         await instance.catch(error);
       }
     };

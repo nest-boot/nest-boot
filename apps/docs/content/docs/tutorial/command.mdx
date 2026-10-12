@@ -88,6 +88,8 @@ For programmatic use, call `await CommandFactory.run(AppModule, { args: ["greet"
 
 `CommandModule` imports `RequestContextModule` automatically. Each `CommandFactory.run()` execution creates an independent context with `type: "command"` and a generated ID, and runs the registered context middleware around command execution and custom error handling. Singleton commands and services can use `RequestContext.current()` or `RequestContext.get(token)` inside their methods. Application initialization and shutdown hooks run outside the command context.
 
+Context lookup falls back to singleton providers in the Nest application. Missing, request-scoped and transient providers return `undefined`. Each factory call also isolates middleware registered during application initialization, so sequential and concurrent calls do not reuse middleware from another application. Middleware registered before the factory call is inherited.
+
 ```ts
 import { RequestContext } from "@nest-boot/request-context";
 

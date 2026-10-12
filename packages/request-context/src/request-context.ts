@@ -15,6 +15,12 @@ export type RequestContextMiddlewareType = <T>(
   next: () => Promise<T>,
 ) => Promise<T>;
 
+interface MiddlewareRegistry {
+  middlewares: Map<string, RequestContextMiddlewareType>;
+  dependencies: Map<string, string[]>;
+  stack: RequestContextMiddlewareType[];
+}
+
 /**
  * Nest-compatible token used to store, resolve, or alias a request-context value.
  * @template T - The value associated with the token
@@ -151,22 +157,15 @@ export class RequestContext {
    * Registered middleware map keyed by name.
    * @internal
    */
-  private static readonly middlewares = new Map<
-    string,
-    RequestContextMiddlewareType
-  >();
+  private static readonly globalMiddlewares: MiddlewareRegistry = {
+    middlewares: new Map(),
+    dependencies: new Map(),
+    stack: [],
+  };
 
-  /**
-   * Dependency graph for middleware ordering.
-   * @internal
-   */
-  private static readonly middlewareDependencies = new Map<string, string[]>();
-
-  /**
-   * Topologically-sorted middleware execution stack.
-   * @internal
-   */
-  private static middlewaresStack: RequestContextMiddlewareType[] = [];
+  /** Application-local middleware registrations, independent of request data. */
+  private static readonly middlewareScopes =
+    new AsyncLocalStorage<MiddlewareRegistry>();
 
   /**
    * Creates a new RequestContext instance.
@@ -562,9 +561,10 @@ export class RequestContext {
     callback: (ctx: RequestContext) => T | Promise<T>,
   ): Promise<T> {
     let i = 0;
+    const middlewares = this.middlewareRegistry.stack;
 
     const next = async (): Promise<T> => {
-      const middleware = this.middlewaresStack[i++];
+      const middleware = middlewares[i++];
       return typeof middleware === "undefined"
         ? await callback(ctx)
         : await middleware<T>(ctx, next);
@@ -649,9 +649,33 @@ export class RequestContext {
     middleware: RequestContextMiddlewareType,
     dependencies?: string[],
   ): void {
-    this.middlewares.set(name, middleware);
-    this.middlewareDependencies.set(name, dependencies ?? []);
+    this.middlewareRegistry.middlewares.set(name, middleware);
+    this.middlewareRegistry.dependencies.set(name, dependencies ?? []);
     this.generateMiddlewaresStack();
+  }
+
+  /**
+   * Isolates middleware registration while bootstrapping and running an application.
+   * Existing registrations are inherited; new registrations stay inside this scope.
+   * This does not activate a request context or run any middleware itself.
+   * @param callback - Application initialization, execution and shutdown.
+   * @returns The callback's result.
+   */
+  static withMiddlewareScope<T>(callback: () => T): T {
+    const parent = this.middlewareRegistry;
+    return this.middlewareScopes.run(
+      {
+        middlewares: new Map(parent.middlewares),
+        dependencies: new Map(parent.dependencies),
+        stack: parent.stack,
+      },
+      callback,
+    );
+  }
+
+  /** @returns The middleware registry for the current application scope. */
+  private static get middlewareRegistry(): MiddlewareRegistry {
+    return this.middlewareScopes.getStore() ?? this.globalMiddlewares;
   }
 
   /**
@@ -671,7 +695,7 @@ export class RequestContext {
     }
     seen.add(name);
 
-    const deps = this.middlewareDependencies.get(name) ?? [];
+    const deps = this.middlewareRegistry.dependencies.get(name) ?? [];
     for (const dep of deps) {
       if (!resolved.has(dep)) {
         this.resolveDependencies(dep, resolved, seen);
@@ -689,14 +713,15 @@ export class RequestContext {
     const resolved = new Set<string>();
     const seen = new Set<string>();
 
-    for (const name of this.middlewares.keys()) {
+    const registry = this.middlewareRegistry;
+    for (const name of registry.middlewares.keys()) {
       if (!resolved.has(name)) {
         this.resolveDependencies(name, resolved, seen);
       }
     }
 
-    this.middlewaresStack = Array.from(resolved)
-      .map((name) => this.middlewares.get(name))
+    registry.stack = Array.from(resolved)
+      .map((name) => registry.middlewares.get(name))
       .filter((middleware) => typeof middleware !== "undefined");
   }
 }

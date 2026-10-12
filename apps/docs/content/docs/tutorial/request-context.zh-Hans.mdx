@@ -262,6 +262,8 @@ export class EventHandler {
 
 上下文中间件用于初始化数据，或包装通过 `run()` 创建的每个生命周期，其中也包括 HTTP 生命周期。中间件应在应用启动时注册一次。
 
+同一进程运行多个应用时，用 `RequestContext.withMiddlewareScope(callback)` 包裹各应用的初始化、执行和关闭。该作用域继承现有中间件，并将新注册的中间件保留在本作用域内，支持异步调用。它不会激活请求上下文；每次操作仍需通过 `run()` 执行。`CommandFactory.run()` 会自动建立该作用域。
+
 `registerMiddleware()` 的可选第三个 `dependencies` 参数用于声明必须先运行的中间件名称：
 
 ```typescript

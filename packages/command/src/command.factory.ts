@@ -1,6 +1,8 @@
 import { RequestContext } from "@nest-boot/request-context";
 import type { DynamicModule, Type } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import { InvalidClassScopeException } from "@nestjs/core/errors/exceptions/invalid-class-scope.exception";
+import { UnknownElementException } from "@nestjs/core/errors/exceptions/unknown-element.exception";
 import type { BaseContext, CliOptions } from "clipanion";
 
 import { Builtins, Cli } from "./clipanion.js";
@@ -30,31 +32,49 @@ export class CommandFactory {
     rootModule: Type | DynamicModule,
     options: CommandFactoryOptions = {},
   ): Promise<number> {
-    try {
-      const app = await NestFactory.createApplicationContext(rootModule, {
-        logger: false,
-        ...options.contextOptions,
-        abortOnError: false,
-      });
-      let exitCode: number;
+    return await RequestContext.withMiddlewareScope(async () => {
       try {
-        const cli = new Cli({ binaryName: "nb", ...options });
-        cli.register(Builtins.HelpCommand);
-        if (options.binaryVersion) cli.register(Builtins.VersionCommand);
-        app.get(CommandRegistry, { strict: false }).register(cli);
-        const args = options.args ?? process.argv.slice(2);
-        exitCode = await RequestContext.run(
-          new RequestContext({ type: "command" }),
-          () => cli.run(args.length ? args : ["--help"], options.context ?? {}),
-        );
-      } finally {
-        await app.close();
+        const app = await NestFactory.createApplicationContext(rootModule, {
+          logger: false,
+          ...options.contextOptions,
+          abortOnError: false,
+        });
+        let exitCode: number;
+        try {
+          const cli = new Cli({ binaryName: "nb", ...options });
+          cli.register(Builtins.HelpCommand);
+          if (options.binaryVersion) cli.register(Builtins.VersionCommand);
+          app.get(CommandRegistry, { strict: false }).register(cli);
+          const args = options.args ?? process.argv.slice(2);
+          exitCode = await RequestContext.run(
+            new RequestContext({
+              type: "command",
+              dependencyResolver: (token) => {
+                try {
+                  return app.get(token, { strict: false });
+                } catch (error) {
+                  // Like HTTP contexts, command contexts only resolve singletons.
+                  if (
+                    error instanceof UnknownElementException ||
+                    error instanceof InvalidClassScopeException
+                  )
+                    return undefined;
+                  throw error;
+                }
+              },
+            }),
+            () =>
+              cli.run(args.length ? args : ["--help"], options.context ?? {}),
+          );
+        } finally {
+          await app.close();
+        }
+        process.exitCode = exitCode;
+        return exitCode;
+      } catch (error) {
+        process.exitCode = 1;
+        throw error;
       }
-      process.exitCode = exitCode;
-      return exitCode;
-    } catch (error) {
-      process.exitCode = 1;
-      throw error;
-    }
+    });
   }
 }

@@ -2,7 +2,15 @@ import "reflect-metadata";
 
 import { Writable } from "node:stream";
 
-import { Inject, Injectable, Module, Scope } from "@nestjs/common";
+import { RequestContext } from "@nest-boot/request-context";
+import {
+  type DynamicModule,
+  Inject,
+  Injectable,
+  Module,
+  Scope,
+} from "@nestjs/common";
+import { REQUEST as NEST_REQUEST } from "@nestjs/core";
 
 import {
   BaseCommand,
@@ -296,21 +304,180 @@ it("keeps the command context available to custom error handling and clears it a
   let executing: InstanceType<typeof RequestContext> | undefined;
   @Command({ paths: [["fail-with-context"]] })
   class FailingCommand extends BaseCommand {
+    name = Option.String({ required: true });
     async execute() {
+      this.name = "updated during execution";
       executing = RequestContext.current();
       await Promise.reject(new Error("expected failure"));
     }
     async catch() {
       await Promise.resolve();
       expect(RequestContext.current()).toBe(executing);
+      expect(this.name).toBe("updated during execution");
     }
   }
   @Module({ imports: [CommandModule], providers: [FailingCommand] })
   class AppModule {}
   await CommandFactory.run(AppModule, {
-    args: ["fail-with-context"],
+    args: ["fail-with-context", "original"],
     context: capture(),
   });
   expect(executing?.type).toBe("command");
   expect(RequestContext.isActive()).toBe(false);
+});
+
+it("resolves singleton providers in command middleware and execution while leaving unavailable tokens undefined", async () => {
+  @Injectable({ scope: Scope.REQUEST })
+  class RequestService {}
+  @Injectable({ scope: Scope.TRANSIENT })
+  class TransientService {}
+  const serviceAlias = Symbol("greeting-service");
+  const lookups: (GreetingService | undefined)[] = [];
+  RequestContext.registerMiddleware(
+    "command-provider-test",
+    async (ctx, next) => {
+      ctx.alias(serviceAlias, GreetingService);
+      lookups.push(ctx.get<GreetingService>(serviceAlias));
+      expect(ctx.get(NEST_REQUEST)).toBeUndefined();
+      expect(ctx.get(RequestService)).toBeUndefined();
+      expect(ctx.get(TransientService)).toBeUndefined();
+      expect(ctx.get("unregistered-command-token")).toBeUndefined();
+      ctx.set("command-local-value", "stored");
+      return await next();
+    },
+  );
+  @Command({ paths: [["providers"]] })
+  class ProviderCommand extends BaseCommand {
+    constructor(
+      @Inject(GreetingService) private readonly service: GreetingService,
+    ) {
+      super();
+    }
+    async execute() {
+      expect(RequestContext.get(GreetingService)).toBe(this.service);
+      expect(RequestContext.get(serviceAlias)).toBe(this.service);
+      expect(RequestContext.get("command-local-value")).toBe("stored");
+      await Promise.resolve();
+    }
+  }
+  @Module({
+    providers: [
+      GreetingService,
+      RequestService,
+      TransientService,
+      ProviderCommand,
+    ],
+  })
+  class ProviderModule {}
+  @Module({ imports: [CommandModule, ProviderModule] })
+  class AppModule {}
+  try {
+    expect(await CommandFactory.run(AppModule, { args: ["providers"] })).toBe(
+      0,
+    );
+    expect(lookups).toHaveLength(1);
+    expect(lookups[0]).toBeInstanceOf(GreetingService);
+  } finally {
+    RequestContext.registerMiddleware("command-provider-test", (_ctx, next) =>
+      next(),
+    );
+  }
+});
+
+it("copies parsed options and CLI state to custom error handlers after schema validation fails", async () => {
+  let executed = false;
+  let handled = false;
+  @Command({ paths: [["validate"]] })
+  class ValidationCommand extends BaseCommand {
+    static schema: NonNullable<typeof BaseCommand.schema> = [() => false];
+    name = Option.String({ required: true });
+    loud = Option.Boolean("--loud", false);
+    async execute() {
+      executed = true;
+      await Promise.resolve();
+    }
+    async catch(error: Error) {
+      handled = true;
+      expect(error.message).toContain("Invalid option schema");
+      expect(this.name).toBe("Alice");
+      expect(this.loud).toBe(true);
+      expect(this.path).toEqual(["validate"]);
+      expect(this.help).toBe(false);
+      expect(this.cli.binaryName).toBe("nb");
+      expect(RequestContext.current().type).toBe("command");
+      this.context.stdout.write(`Handled:${this.name}`);
+      await Promise.resolve();
+    }
+  }
+  @Module({ imports: [CommandModule], providers: [ValidationCommand] })
+  class AppModule {}
+  const output = capture();
+  expect(
+    await CommandFactory.run(AppModule, {
+      args: ["validate", "Alice", "--loud"],
+      context: output,
+    }),
+  ).toBe(0);
+  expect(executed).toBe(false);
+  expect(handled).toBe(true);
+  expect(output.output()).toBe("Handled:Alice");
+});
+
+it("isolates application middleware registrations across sequential and concurrent runs", async () => {
+  const labelToken = Symbol("application-label");
+  const middlewareValue = Symbol("middleware-value");
+  const middlewareName = "command-application-test";
+  @Injectable()
+  class ApplicationMiddleware {
+    closed = false;
+    constructor(@Inject(labelToken) private readonly label: string) {}
+    onModuleInit() {
+      RequestContext.registerMiddleware(middlewareName, async (ctx, next) => {
+        expect(this.closed).toBe(false);
+        ctx.set(middlewareValue, this.label);
+        return await next();
+      });
+    }
+    onApplicationShutdown() {
+      this.closed = true;
+    }
+  }
+  @Command({ paths: [["application"]] })
+  class ApplicationCommand extends BaseCommand {
+    constructor(
+      @Inject(labelToken) private readonly label: string | undefined,
+    ) {
+      super();
+    }
+    async execute() {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(RequestContext.get(middlewareValue)).toBe(this.label);
+    }
+  }
+  @Module({})
+  class AppModule {}
+  const application = (label?: string): DynamicModule => ({
+    module: AppModule,
+    imports: [CommandModule],
+    providers: [
+      { provide: labelToken, useValue: label },
+      ApplicationCommand,
+      ...(label ? [ApplicationMiddleware] : []),
+    ],
+  });
+  const run = (label?: string) =>
+    CommandFactory.run(application(label), {
+      args: ["application"],
+      context: capture(),
+    });
+  try {
+    expect(await run("first")).toBe(0);
+    expect(await run()).toBe(0);
+    expect(
+      await Promise.all([run("concurrent-a"), run("concurrent-b")]),
+    ).toEqual([0, 0]);
+    expect(await run()).toBe(0);
+  } finally {
+    RequestContext.registerMiddleware(middlewareName, (_ctx, next) => next());
+  }
 });

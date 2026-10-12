@@ -77,6 +77,28 @@ export async function registerTypeScript(entry: string): Promise<ModuleHooks> {
   };
   return registerHooks({
     resolve(specifier, context, nextResolve) {
+      // TypeScript paths take precedence over packages with the same name.
+      if (
+        configPath &&
+        options.paths &&
+        !specifier.startsWith(".") &&
+        !specifier.startsWith("/") &&
+        context.parentURL?.startsWith("file:") &&
+        /\.(?:ts|mts)$/.test(new URL(context.parentURL).pathname)
+      ) {
+        const resolved = ts.resolveModuleName(
+          specifier,
+          fileURLToPath(context.parentURL),
+          options,
+          ts.sys,
+        ).resolvedModule;
+        if (resolved && !resolved.isExternalLibraryImport) {
+          return nextResolve(
+            pathToFileURL(resolved.resolvedFileName).href,
+            context,
+          );
+        }
+      }
       try {
         return nextResolve(specifier, context);
       } catch (error) {
@@ -96,19 +118,6 @@ export async function registerTypeScript(entry: string): Promise<ModuleHooks> {
             if (existsSync(alternative) && statSync(alternative).isFile()) {
               return nextResolve(pathToFileURL(alternative).href, context);
             }
-          }
-        } else if (configPath && options.paths) {
-          const resolved = ts.resolveModuleName(
-            specifier,
-            fileURLToPath(context.parentURL),
-            options,
-            ts.sys,
-          ).resolvedModule;
-          if (resolved && !resolved.isExternalLibraryImport) {
-            return nextResolve(
-              pathToFileURL(resolved.resolvedFileName).href,
-              context,
-            );
           }
         }
         throw error;

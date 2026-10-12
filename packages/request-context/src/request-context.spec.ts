@@ -390,4 +390,53 @@ describe("RequestContext", () => {
     expect(child.get(Provider)).toBe(provider);
     expect(dependencyResolver).toHaveBeenCalledWith(Provider);
   });
+
+  it("inherits ordered middleware registrations and restores the parent scope after an asynchronous failure", async () => {
+    const key = Symbol("middleware-scope-test");
+    const read = () =>
+      RequestContext.run(new RequestContext({ type: "test" }), (ctx) =>
+        ctx.get(key),
+      );
+    const register = (value: string) => {
+      RequestContext.registerMiddleware(
+        "scope-value-test",
+        async (ctx, next) => {
+          expect(ctx.get("scope-base-test")).toBe(true);
+          ctx.set(key, value);
+          return await next();
+        },
+        ["scope-base-test"],
+      );
+    };
+    RequestContext.registerMiddleware("scope-base-test", async (ctx, next) => {
+      ctx.set("scope-base-test", true);
+      return await next();
+    });
+    register("global");
+    try {
+      await RequestContext.withMiddlewareScope(async () => {
+        expect(RequestContext.isActive()).toBe(false);
+        expect(await read()).toBe("global");
+        register("parent");
+        await expect(
+          RequestContext.withMiddlewareScope(async () => {
+            register("nested");
+            expect(await read()).toBe("nested");
+            throw new Error("scope failed");
+          }),
+        ).rejects.toThrow("scope failed");
+        expect(RequestContext.isActive()).toBe(false);
+        expect(await read()).toBe("parent");
+      });
+      expect(await read()).toBe("global");
+      expect(RequestContext.isActive()).toBe(false);
+    } finally {
+      RequestContext.registerMiddleware("scope-value-test", (_ctx, next) =>
+        next(),
+      );
+      RequestContext.registerMiddleware("scope-base-test", (_ctx, next) =>
+        next(),
+      );
+    }
+  });
 });

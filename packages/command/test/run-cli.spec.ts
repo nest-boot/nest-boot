@@ -135,6 +135,31 @@ it("supports tsconfig path aliases", () => {
   expect(result.status).toBe(0);
   expect(result.stdout).toContain("SOURCE:Alice!");
 });
+it("prefers tsconfig path aliases over an installed package with the same name", () => {
+  writeSource();
+  write("src/cli.ts", source.replace("./commands.js", "@app/commands"));
+  write(
+    "tsconfig.json",
+    JSON.stringify({
+      compilerOptions: { paths: { "@app/*": ["./src/*"] } },
+    }),
+  );
+  write(
+    "node_modules/@app/commands/package.json",
+    JSON.stringify({
+      type: "module",
+      exports: "./index.js",
+    }),
+  );
+  write(
+    "node_modules/@app/commands/index.js",
+    "throw new Error('Loaded installed package instead of alias');",
+  );
+  const result = run(["hello", "Alice"]);
+  expect(result.stderr).toBe("");
+  expect(result.status).toBe(0);
+  expect(result.stdout).toContain("SOURCE:Alice!");
+});
 it("prefers source during development and built JavaScript during production", () => {
   writeSource();
   write("dist/cli.js", built);
