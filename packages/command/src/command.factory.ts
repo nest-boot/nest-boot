@@ -3,9 +3,8 @@ import type { DynamicModule, Type } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { InvalidClassScopeException } from "@nestjs/core/errors/exceptions/invalid-class-scope.exception";
 import { UnknownElementException } from "@nestjs/core/errors/exceptions/unknown-element.exception";
-import type { BaseContext, CliOptions } from "clipanion";
+import { type BaseContext, Builtins, Cli, type CliOptions } from "clipanion";
 
-import { Builtins, Cli } from "./clipanion.js";
 import { CommandRegistry } from "./command.registry.js";
 
 /** Programmatic command execution settings. */

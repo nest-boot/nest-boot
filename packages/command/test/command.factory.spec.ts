@@ -21,7 +21,12 @@ import {
 } from "../src/index.js";
 
 const events: string[] = [];
-const calls: { name: string; loud: boolean; identity: boolean }[] = [];
+const calls: {
+  name: string;
+  loud: boolean;
+  identity: boolean;
+  tokens: BaseCommand["tokens"];
+}[] = [];
 
 @Injectable()
 class GreetingService {
@@ -51,6 +56,7 @@ class GreetingCommand extends BaseCommand {
       name: this.name,
       loud: this.loud,
       identity: this.#identity === this,
+      tokens: this.tokens,
     });
     this.context.stdout.write(this.service.format(this.name, this.loud));
     await Promise.resolve();
@@ -98,7 +104,19 @@ it("discovers commands in another module and preserves the Nest instance and its
     }),
   ).toBe(0);
   expect(output.output()).toBe("ALICE");
-  expect(calls).toEqual([{ name: "Alice", loud: true, identity: true }]);
+  expect(calls).toEqual([
+    {
+      name: "Alice",
+      loud: true,
+      identity: true,
+      tokens: [
+        { segmentIndex: 0, type: "path" },
+        { segmentIndex: 1, type: "path" },
+        { segmentIndex: 2, type: "positional" },
+        { segmentIndex: 3, type: "option", option: "--loud" },
+      ],
+    },
+  ]);
   expect(events).toEqual(["closed"]);
 });
 
@@ -403,6 +421,11 @@ it("copies parsed options and CLI state to custom error handlers after schema va
       expect(this.loud).toBe(true);
       expect(this.path).toEqual(["validate"]);
       expect(this.help).toBe(false);
+      expect(this.tokens).toEqual([
+        { segmentIndex: 0, type: "path" },
+        { segmentIndex: 1, type: "positional" },
+        { segmentIndex: 2, type: "option", option: "--loud" },
+      ]);
       expect(this.cli.binaryName).toBe("nb");
       expect(RequestContext.current().type).toBe("command");
       this.context.stdout.write(`Handled:${this.name}`);

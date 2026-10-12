@@ -1,9 +1,8 @@
 import { Inject, Injectable, Scope } from "@nestjs/common";
 import { DiscoveryService, Reflector } from "@nestjs/core";
-import type { Cli } from "clipanion";
+import { type Cli, Command as ClipanionCommand } from "clipanion";
 
 import { BaseCommand } from "./base.command.js";
-import { ClipanionCommand } from "./clipanion.js";
 import { COMMAND_OPTIONS } from "./command.constants.js";
 import type { CommandOptions } from "./command-options.interface.js";
 
@@ -84,7 +83,7 @@ export class CommandRegistry {
           Reflect.get(value, ClipanionCommand.isOption) === true,
       ),
     );
-    const commandClass = instance.constructor as typeof BaseCommand;
+    const commandClass = instance.constructor;
     return class CommandAdapter extends ClipanionCommand {
       static paths = options.paths;
       static usage = options.usage ?? {};
@@ -107,6 +106,7 @@ export class CommandRegistry {
         instance.cli = this.cli;
         instance.path = this.path;
         instance.help = this.help;
+        instance.tokens = this.tokens;
       }
 
       /**

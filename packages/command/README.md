@@ -1,6 +1,6 @@
 # @nest-boot/command
 
-Type-safe NestJS commands powered by Clipanion 3. Run `nb` from your application directory to execute its CLI entry script.
+Type-safe NestJS commands powered by Clipanion 4. Run `nb` from your application directory to execute its CLI entry script.
 
 ## Quick start
 

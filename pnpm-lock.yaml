@@ -735,8 +735,8 @@ importers:
   packages/command:
     dependencies:
       clipanion:
-        specifier: ^3.2.1
-        version: 3.2.1
+        specifier: ^4.0.0-rc.4
+        version: 4.0.0-rc.4
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -7143,8 +7143,8 @@ packages:
   client-only@0.0.1:
     resolution: {integrity: sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==}
 
-  clipanion@3.2.1:
-    resolution: {integrity: sha512-dYFdjLb7y1ajfxQopN05mylEpK9ZX0sO1/RfMXdfmwjlIsPkbh4p7A682x++zFPLDCo1x3p82dtljHf5cW2LKA==}
+  clipanion@4.0.0-rc.4:
+    resolution: {integrity: sha512-CXkMQxU6s9GklO/1f714dkKBMu1lopS1WFF0B8o4AxPykR1hpozxSiUZ5ZUeBjfPgCWqbcNOtZVFhB8Lkfp1+Q==}
 
   cliui@8.0.1:
     resolution: {integrity: sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==}
@@ -16964,7 +16964,7 @@ snapshots:
 
   client-only@0.0.1: {}
 
-  clipanion@3.2.1:
+  clipanion@4.0.0-rc.4:
     dependencies:
       typanion: 3.14.0
 
