@@ -1,0 +1,97 @@
+---
+title: Command
+description: Type-safe commands registered by Nest modules
+---
+
+`@nest-boot/command` uses Clipanion 3 to parse commands with inferred option types. The `nb` executable runs the application's CLI entry script. Like `main.ts` and `repl.ts`, `src/cli.ts` bootstraps the shared `AppModule` through `CommandFactory.run()`, which discovers commands across imported modules.
+
+## Installation
+
+```bash
+pnpm add @nest-boot/command @nest-boot/request-context
+```
+
+Requires Node.js 24.21.0+ and NestJS 12. Run `nb` from the project directory, for example with `pnpm exec nb` or a package script.
+
+## Define a command
+
+```ts
+import { BaseCommand, Command, Option } from "@nest-boot/command";
+
+@Command({
+  paths: [["greet"], ["hello", "user"]],
+  usage: { description: "Greet a user." },
+})
+export class GreetCommand extends BaseCommand {
+  name = Option.String({ required: true }); // string
+  loud = Option.Boolean("--loud", false); // boolean
+  prefix = Option.String("--prefix"); // string | undefined
+
+  async execute(): Promise<void> {
+    const name = this.loud ? this.name.toUpperCase() : this.name;
+    this.context.stdout.write(`${this.prefix ?? "Hello"} ${name}!\n`);
+  }
+}
+```
+
+`Option.String`, `Option.Boolean`, `Option.Array` and the other Clipanion helpers retain their inferred types. For validation and numeric coercion, install `typanion` and pass a validator to the option. Nest constructor injection works normally. Commands and their dependencies must be singletons.
+
+## Register commands in modules
+
+```ts
+// src/app/app.module.ts
+import { CommandModule } from "@nest-boot/command";
+import { Module } from "@nestjs/common";
+
+import { GreetCommand } from "../greet.command.js";
+
+@Module({ providers: [GreetCommand] })
+class GreetingModule {}
+
+@Module({ imports: [CommandModule, GreetingModule] })
+export class AppModule {}
+```
+
+```ts
+// src/cli.ts
+import { CommandFactory } from "@nest-boot/command";
+
+import { AppModule } from "./app/app.module.js";
+
+async function bootstrap() {
+  await CommandFactory.run(AppModule);
+}
+
+void bootstrap();
+```
+
+Every imported module can contribute commands by registering decorated classes in `providers`; commands do not need to be exported. Paths support nested commands and aliases. Duplicate paths fail before execution.
+
+```bash
+pnpm exec nb greet Alice --loud
+pnpm exec nb hello user Alice --prefix Welcome
+pnpm exec nb --help
+pnpm exec nb greet --help
+```
+
+Use the same `AppModule` as the HTTP and REPL entries. Nest application initialization hooks still run and must be compatible with the command being executed. Background services follow their own modules' lifecycle configuration.
+
+## Entry resolution and execution
+
+Development checks `src/cli.ts`, `dist/cli.js`, then `dist/cli.ts`. With `NODE_ENV=production`, built entries are checked first. A failing selected entry reports an error rather than loading stale output. TypeScript is transpiled using the project tsconfig with Nest decorator metadata, relative `.js` imports resolving to `.ts` source, and tsconfig path aliases. Transpilation does not replace a typecheck. Compiled JavaScript needs no source files or tsconfig.
+
+The entry is an executable bootstrap script and needs no default export. `CommandFactory.run(AppModule)` sets `process.exitCode` internally. Compiled `dist/cli.js` can also be executed directly with Node.js. Commands return an optional exit code from `execute()`. Unknown commands, invalid options and execution errors return a nonzero exit code. Help and successful commands return zero. Nest shutdown hooks run when the command finishes, including failures.
+
+For programmatic use, call `await CommandFactory.run(AppModule, { args: ["greet", "Alice"] })`. It returns an exit code and closes the context without calling `process.exit()`. `runCli({ cwd, production })` executes the project entry script; the script owns bootstrap and factory options, while the factory sets exit codes. Custom output streams and binary help settings are supported through factory options.
+
+## Request context
+
+`CommandModule` imports `RequestContextModule` automatically. Each `CommandFactory.run()` execution creates an independent context with `type: "command"` and a generated ID, and runs the registered context middleware around command execution and custom error handling. Singleton commands and services can use `RequestContext.current()` or `RequestContext.get(token)` inside their methods. Application initialization and shutdown hooks run outside the command context.
+
+```ts
+import { RequestContext } from "@nest-boot/request-context";
+
+// Inside execute() or an injected service method:
+const context = RequestContext.current();
+console.log(context.type, context.id);
+```

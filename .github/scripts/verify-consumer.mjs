@@ -109,6 +109,23 @@ try {
     stdio: "inherit",
     timeout: 60_000,
   });
+  // Exercise npm's bin links and both project entries outside the workspace.
+  for (const mode of ["development", "production"]) {
+    const output = execFileSync(
+      "pnpm",
+      ["exec", "nb", "hello", "Alice", "--loud"],
+      {
+        cwd: consumer,
+        encoding: "utf8",
+        env: { ...process.env, NODE_ENV: mode },
+        timeout: 60_000,
+      },
+    );
+    assert.equal(output.trim(), "Hello:ALICE");
+  }
+  console.log(
+    "Packed command bin, source and compiled entries, DI and request context passed",
+  );
   console.log(
     `Verified ${packedPackages} packed packages on ${process.version}`,
   );
