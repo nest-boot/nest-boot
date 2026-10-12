@@ -75,14 +75,16 @@ export async function registerTypeScript(entry: string): Promise<ModuleHooks> {
     inlineSourceMap: true,
     inlineSources: true,
   };
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- Support baseUrl in existing TypeScript 6 project configurations.
+  const hasImportMappings = Boolean(options.paths ?? options.baseUrl);
   return registerHooks({
     resolve(specifier, context, nextResolve) {
       // Match TypeScript's source substitutions and paths before native JS resolution.
       const relative = specifier.startsWith(".") || specifier.startsWith("/");
       if (
-        (relative || (configPath && options.paths)) &&
+        (relative || (configPath && hasImportMappings)) &&
         context.parentURL?.startsWith("file:") &&
-        /\.(?:ts|mts)$/.test(new URL(context.parentURL).pathname)
+        /\.(?:tsx?|mts)$/.test(new URL(context.parentURL).pathname)
       ) {
         const resolved = ts.resolveModuleName(
           specifier,
@@ -107,7 +109,7 @@ export async function registerTypeScript(entry: string): Promise<ModuleHooks> {
         if (
           (error as NodeJS.ErrnoException).code !== "ERR_MODULE_NOT_FOUND" ||
           !context.parentURL?.startsWith("file:") ||
-          !/\.(?:ts|mts)$/.test(new URL(context.parentURL).pathname)
+          !/\.(?:tsx?|mts)$/.test(new URL(context.parentURL).pathname)
         )
           throw error;
         if (specifier.startsWith(".") || specifier.startsWith("/")) {
@@ -128,7 +130,7 @@ export async function registerTypeScript(entry: string): Promise<ModuleHooks> {
     load(url, context, nextLoad) {
       if (
         !url.startsWith("file:") ||
-        !/\.(?:ts|mts)$/.test(new URL(url).pathname)
+        !/\.(?:tsx?|mts)$/.test(new URL(url).pathname)
       ) {
         return nextLoad(url, context);
       }

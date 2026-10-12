@@ -1,6 +1,10 @@
 import { Inject, Injectable, Scope } from "@nestjs/common";
 import { DiscoveryService, Reflector } from "@nestjs/core";
-import { type Cli, Command as ClipanionCommand } from "clipanion";
+import {
+  type Cli,
+  Command as ClipanionCommand,
+  type CommandClass,
+} from "clipanion";
 
 import { BaseCommand } from "./base.command.js";
 import { COMMAND_OPTIONS } from "./command.constants.js";
@@ -21,6 +25,7 @@ export class CommandRegistry {
   register(cli: Cli): void {
     const paths = new Set<string>();
     const instances = new Set<BaseCommand>();
+    const adapters = new Map<CommandClass, CommandClass>();
     for (const wrapper of this.discovery.getProviders()) {
       if (!wrapper.metatype) continue;
       const options = this.reflector.get<CommandOptions | undefined>(
@@ -64,7 +69,7 @@ export class CommandRegistry {
         }
         paths.add(key);
       }
-      cli.register(this.createAdapter(instance, options));
+      cli.register(this.createAdapter(instance, options, adapters));
     }
   }
 
@@ -72,9 +77,14 @@ export class CommandRegistry {
    * Bridges Clipanion's no-argument constructor to a Nest-owned provider.
    * @param instance - Initialized command with its injected dependencies.
    * @param options - Command paths and help text.
+   * @param adapters - Registered parser classes keyed by their Nest command class.
    * @returns The class used only for argument parsing.
    */
-  private createAdapter(instance: BaseCommand, options: CommandOptions) {
+  private createAdapter(
+    instance: BaseCommand,
+    options: CommandOptions,
+    adapters: Map<CommandClass, CommandClass>,
+  ) {
     const definitions = Object.fromEntries(
       Object.entries(instance).filter(
         ([, value]) =>
@@ -84,7 +94,7 @@ export class CommandRegistry {
       ),
     );
     const commandClass = instance.constructor;
-    return class CommandAdapter extends ClipanionCommand {
+    class CommandAdapter extends ClipanionCommand {
       static paths = options.paths;
       static usage = options.usage ?? {};
       static schema = commandClass.schema;
@@ -103,7 +113,39 @@ export class CommandRegistry {
           Reflect.set(instance, key, Reflect.get(this, key));
         }
         instance.context = this.context;
-        instance.cli = this.cli;
+        // Clipanion registers the adapter; helpers must receive that identity.
+        const cli = this.cli;
+        const resolveClass = (command: CommandClass) =>
+          adapters.get(command) ?? command;
+        const resolveInstance = (
+          command: ClipanionCommand | null | undefined,
+        ) => {
+          const Adapter = command && adapters.get(command.constructor);
+          return Adapter
+            ? command === instance
+              ? this
+              : new Adapter()
+            : command;
+        };
+        instance.cli = {
+          ...cli,
+          definition: (command) => cli.definition(resolveClass(command)),
+          usage: (command, options) =>
+            cli.usage(
+              typeof command === "function"
+                ? resolveClass(command)
+                : resolveInstance(command),
+              options,
+            ),
+          error: (error, options) =>
+            cli.error(
+              error,
+              options && {
+                ...options,
+                command: resolveInstance(options.command),
+              },
+            ),
+        };
         instance.path = this.path;
         instance.help = this.help;
         instance.tokens = this.tokens;
@@ -129,6 +171,8 @@ export class CommandRegistry {
         if (!this.executionStarted) this.syncState();
         await instance.catch(error);
       }
-    };
+    }
+    adapters.set(commandClass, CommandAdapter);
+    return CommandAdapter;
   }
 }

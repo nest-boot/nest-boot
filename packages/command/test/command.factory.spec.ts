@@ -5,6 +5,7 @@ import { Writable } from "node:stream";
 import { RequestContext } from "@nest-boot/request-context";
 import { Inject, Injectable, Module, Scope } from "@nestjs/common";
 import { REQUEST as NEST_REQUEST } from "@nestjs/core";
+import { UsageError } from "clipanion";
 
 import {
   BaseCommand,
@@ -439,3 +440,82 @@ it("copies parsed options and CLI state to custom error handlers after schema va
   expect(handled).toBe(true);
   expect(output.output()).toBe("Handled:Alice");
 });
+
+it.each(["execute", "schema"])(
+  "supports command-aware CLI helpers during %s handling",
+  async (phase) => {
+    @Command({
+      paths: [["sibling"]],
+      usage: { description: "Sibling command." },
+    })
+    class SiblingCommand extends BaseCommand {
+      async execute() {
+        await Promise.resolve();
+      }
+    }
+    @Command({
+      paths: [["helpers"]],
+      usage: { description: "Render command help." },
+    })
+    class HelperCommand extends BaseCommand {
+      static schema: NonNullable<typeof BaseCommand.schema> = [
+        () => phase === "execute",
+      ];
+      loud = Option.Boolean("--loud", false);
+      constructor(
+        @Inject(GreetingService) private readonly greeting: GreetingService,
+        @Inject(SiblingCommand) private readonly sibling: SiblingCommand,
+      ) {
+        super();
+      }
+      private renderHelp() {
+        expect(this.loud).toBe(true);
+        const usage = this.cli.usage(this, { prefix: "HELP " });
+        const classUsage = this.cli.usage(this.constructor, { detailed: true });
+        const definition = this.cli.definition(this.constructor);
+        const error = this.cli.error(new UsageError("Invalid greeting"), {
+          command: this,
+        });
+        expect(usage).toContain("HELP nb helpers");
+        expect(classUsage).toContain("Render command help.");
+        expect(definition?.description?.trim()).toBe("Render command help.");
+        expect(error).toContain("nb helpers");
+        expect(this.cli.usage()).toContain("helpers");
+        expect(this.cli.usage(SiblingCommand)).toContain("nb sibling");
+        expect(this.cli.usage(this.sibling)).toContain("nb sibling");
+        expect(this.cli.definition(SiblingCommand)?.description?.trim()).toBe(
+          "Sibling command.",
+        );
+        expect(
+          this.cli.error(new UsageError("Sibling failure"), {
+            command: this.sibling,
+          }),
+        ).toContain("nb sibling");
+        expect(this.cli.definitions()).toHaveLength(2);
+        this.context.stdout.write(this.greeting.format("helpers", this.loud));
+      }
+      async execute() {
+        this.renderHelp();
+        await Promise.resolve();
+      }
+      async catch(error: Error) {
+        expect(error.message).toContain("Invalid option schema");
+        this.renderHelp();
+        await Promise.resolve();
+      }
+    }
+    @Module({
+      imports: [CommandModule],
+      providers: [GreetingService, HelperCommand, SiblingCommand],
+    })
+    class AppModule {}
+    const output = capture();
+    const exitCode = await CommandFactory.run(AppModule, {
+      args: ["helpers", "--loud"],
+      context: output,
+    });
+    expect(exitCode, output.output()).toBe(0);
+    expect(output.output()).toBe("HELPERS");
+    expect(events).toEqual(["closed"]);
+  },
+);

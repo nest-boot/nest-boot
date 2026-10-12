@@ -126,6 +126,29 @@ it("loads source decorators and implicit DI metadata, resolves .js imports and k
   expect(result.stdout).toContain("SOURCE:ALICE!");
   expect(result.stdout).toContain("CLOSED");
 });
+it("transpiles TSX dependencies with project JSX settings and resolves their TypeScript imports", () => {
+  writeSource();
+  write("src/commands.ts", commands.replace("./punctuation.js", "./view.js"));
+  write(
+    "tsconfig.json",
+    JSON.stringify({ compilerOptions: { jsx: "react", jsxFactory: "render" } }),
+  );
+  write(
+    "src/view.tsx",
+    `
+    import { text } from './template-text.js';
+    function render(_tag: string, _props: unknown, ...children: string[]) { return children.join(''); }
+    export const punctuation = <span>{text}</span>;
+  `,
+  );
+  write("src/template-text.ts", "export const text: string = '!';");
+  write("src/template-text.js", "export const text = 'STALE';");
+  const result = run(["hello", "Alice"]);
+  expect(result.stderr).toBe("");
+  expect(result.status).toBe(0);
+  expect(result.stdout).toContain("SOURCE:Alice!");
+  expect(result.stdout).not.toContain("STALE");
+});
 it("prefers relative TypeScript sources over adjacent JavaScript during source execution", () => {
   writeSource();
   write("src/commands.js", "throw new Error('Loaded stale commands.js');");
@@ -148,6 +171,36 @@ it("loads JavaScript implementations when relative declarations exist without Ty
   expect(result.status).toBe(0);
   expect(result.stdout.trim()).toBe("JAVASCRIPT");
 });
+it.each([false, true])(
+  "resolves baseUrl-only imports with an installed package present: %s",
+  (installed) => {
+    writeSource();
+    write("src/cli.ts", source.replace("./commands.js", "src/commands.js"));
+    write(
+      "tsconfig.json",
+      JSON.stringify({
+        compilerOptions: { baseUrl: ".", ignoreDeprecations: "6.0" },
+      }),
+    );
+    if (installed) {
+      write(
+        "node_modules/src/package.json",
+        JSON.stringify({
+          type: "module",
+          exports: { "./commands.js": "./commands.js" },
+        }),
+      );
+      write(
+        "node_modules/src/commands.js",
+        "export const FeatureModule = null; throw new Error('Loaded installed src package');",
+      );
+    }
+    const result = run(["hello", "Alice"]);
+    expect(result.stderr).toBe("");
+    expect(result.status, result.stdout).toBe(0);
+    expect(result.stdout).toContain("SOURCE:Alice!");
+  },
+);
 it("supports tsconfig path aliases", () => {
   writeSource();
   write("src/cli.ts", source.replace("./commands.js", "@app/commands"));
