@@ -21,7 +21,7 @@ import { GreetCommand } from './commands/greet.command.js';
 import { createSessionContext } from './session-context.js';
 
 /** 全局配置动态模块。 */
-export const ConfigDynamicModule = ConfigModule.forRoot({
+const ConfigDynamicModule = ConfigModule.forRoot({
   isGlobal: true,
   envFilePath: process.env.NODE_ENV === 'testing' ? '.testing.env' : '.env',
   expandVariables: true,
