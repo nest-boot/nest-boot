@@ -218,6 +218,32 @@ it("uses Node's package exports resolution for bare imports", () => {
   expect(result.status, result.stderr).toBe(0);
   expect(result.stdout.trim()).toBe("PACKAGE EXPORTS");
 });
+it("preserves installed JavaScript dependency imports when TypeScript sources are also published", () => {
+  write("tsconfig.json", JSON.stringify(sourceConfig));
+  write(
+    "src/cli.ts",
+    "import { value } from 'fixture-package'; console.log(value);",
+  );
+  write(
+    "node_modules/fixture-package/package.json",
+    JSON.stringify({ type: "module", exports: "./index.js" }),
+  );
+  write(
+    "node_modules/fixture-package/index.js",
+    "export { value } from './worker.js';",
+  );
+  write(
+    "node_modules/fixture-package/worker.js",
+    "export const value = 'PUBLISHED JAVASCRIPT';",
+  );
+  write(
+    "node_modules/fixture-package/worker.ts",
+    "export const value: string = 'PACKAGE SOURCE';",
+  );
+  const result = run();
+  expect(result.status, result.stderr).toBe(0);
+  expect(result.stdout.trim()).toBe("PUBLISHED JAVASCRIPT");
+});
 it("loads a CommonJS JavaScript dependency from an ESM source entry", () => {
   write("tsconfig.json", JSON.stringify(sourceConfig));
   write(

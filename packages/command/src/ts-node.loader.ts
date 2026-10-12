@@ -1,6 +1,9 @@
+import { fileURLToPath } from "node:url";
+
 import { create, createEsmHooks, type RegisterOptions } from "ts-node";
 
 let hooks: Extract<ReturnType<typeof createEsmHooks>, { load: unknown }>;
+let ignored: ReturnType<typeof create>["ignored"];
 
 /**
  * Creates ts-node's ESM hooks in Node's loader thread.
@@ -31,6 +34,7 @@ export function initialize(options: RegisterOptions): void {
   if (!("load" in created))
     throw new Error("ts-node requires modern Node ESM hooks.");
   hooks = created;
+  ignored = (fileName) => service.ignored(fileName);
 }
 
 /**
@@ -40,12 +44,18 @@ export function initialize(options: RegisterOptions): void {
  */
 export function resolve(...args: Parameters<typeof hooks.resolve>) {
   const [specifier, context, nextResolve] = args;
+  const sourceParent =
+    context.parentURL?.startsWith("file:") &&
+    !ignored(fileURLToPath(context.parentURL));
+  const sourceTarget =
+    specifier.startsWith("file:") && !ignored(fileURLToPath(specifier));
   if (
-    !specifier.startsWith(".") &&
-    !specifier.startsWith("/") &&
-    !specifier.startsWith("file:")
+    (!specifier.startsWith(".") &&
+      !specifier.startsWith("/") &&
+      !specifier.startsWith("file:")) ||
+    (!sourceParent && !sourceTarget)
   ) {
-    // Keep modern package exports on Node's resolver, rather than ts-node's fork.
+    // Node owns package exports and imports from files ts-node does not compile.
     return nextResolve(specifier, context, nextResolve);
   }
   return hooks.resolve(...args);
