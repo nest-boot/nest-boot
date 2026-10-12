@@ -246,6 +246,19 @@ try {
     stdio: "inherit",
     timeout: 60_000,
   });
+  // Simulate an EntitySchema consumer that omits Queue's optional decorators.
+  // Remove only this disposable fixture's installed decorator packages.
+  const queueStore = join(queueConsumer, "node_modules/.pnpm");
+  for (const directory of readdirSync(queueStore)) {
+    if (directory.startsWith("@mikro-orm+decorators@")) {
+      rmSync(join(queueStore, directory), { recursive: true, force: true });
+    }
+  }
+  execFileSync(process.execPath, ["no-decorators.mjs"], {
+    cwd: queueConsumer,
+    stdio: "inherit",
+    timeout: 60_000,
+  });
   console.log(
     `Verified ${packedPackages} packed packages on ${process.version}`,
   );

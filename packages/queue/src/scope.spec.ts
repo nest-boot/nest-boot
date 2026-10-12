@@ -270,3 +270,41 @@ it("resolves request-scoped factory consumers once per job", async () => {
     await module.close();
   }
 });
+
+it("binds workers to runtime queue names across independent applications", async () => {
+  @Queue({ name: "schedule", expose: true })
+  class ApplicationQueue extends BaseQueue {
+    constructor(@Inject("APP_QUEUE_NAME") name: string) {
+      super({}, name);
+    }
+  }
+  @Processor(ApplicationQueue, { autorun: false })
+  class Consumer extends BaseProcessor {
+    async process() {
+      await Promise.resolve();
+    }
+  }
+  const modules = [];
+  try {
+    for (const name of ["billing-schedule", "reporting-schedule"]) {
+      const module = await Test.createTestingModule({
+        imports: [QueueModule],
+        providers: [
+          ApplicationQueue,
+          Consumer,
+          { provide: "APP_QUEUE_NAME", useValue: name },
+        ],
+      }).compile();
+      modules.push(module);
+      await module.init();
+      expect(module.get(ApplicationQueue).name).toBe(name);
+      expect(module.get(Consumer).worker.name).toBe(name);
+    }
+    expect(workers.map((worker) => worker.name)).toEqual([
+      "billing-schedule",
+      "reporting-schedule",
+    ]);
+  } finally {
+    await Promise.all(modules.map((module) => module.close()));
+  }
+});

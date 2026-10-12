@@ -52,6 +52,8 @@ export class AuditService {
 
 Injecting this provider makes the dependency tree request-scoped. HTTP middleware and Nest Boot's queue runtime establish the context before resolving scoped dependencies. For custom entry points, establish `RequestContext.run()` before using `ModuleRef.resolve()` with a context ID. Resolving the provider outside an active context throws.
 
+GraphQL subscriptions and other executions that only reach the interceptor fallback must use static accessors inside handler methods. The interceptor runs after Nest resolves constructor dependencies, so constructor injection requires an entry point that establishes the context earlier.
+
 Singleton services can continue calling `RequestContext.current()` or the static accessors inside methods. Do not cache the current context in a singleton constructor or durable provider.
 
 ## Storing and Reading Values

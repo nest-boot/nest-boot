@@ -32,7 +32,12 @@ export async function createJobProviders(): Promise<
     providers: [],
     exports: [],
   };
-  if (!isAvailable("@nest-boot/database")) return definition;
+  if (
+    !isAvailable("@nest-boot/database") ||
+    !isAvailable("@mikro-orm/core") ||
+    !isAvailable("@mikro-orm/decorators/legacy")
+  )
+    return definition;
 
   const { DatabaseModule } = await import("@nest-boot/database");
   const { EntityManager } = await import("@mikro-orm/core");

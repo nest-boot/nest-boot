@@ -31,8 +31,6 @@ export default createRule({
             messageId: "replaceQueueImport",
             fix(fixer) {
               const supported = new Set([
-                "BullModuleOptions",
-                "QueueModuleOptions",
                 "BullMQHealthIndicator",
                 "QueueHealthIndicator",
                 "WorkerHost",
@@ -56,7 +54,6 @@ export default createRule({
                 return null;
               return fixRenamedImport(fixer, node, "@nest-boot/queue", {
                 WorkerHost: "BaseProcessor",
-                BullModuleOptions: "QueueModuleOptions",
                 BullMQHealthIndicator: "QueueHealthIndicator",
               });
             },

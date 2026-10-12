@@ -31,6 +31,12 @@ export class AppModule {}
 
 在应用模块树的任意一个模块中导入一次 `QueueModule` 即可，例如 `CommonModule`，不要求放在 `AppModule`。`ScheduleModule` 使用其全局服务，不再在内部导入它。`QueueModule` 从 `QUEUE_DATABASE_URL` 或 `DATABASE_URL` 读取 PostgreSQL 连接。`ScheduleModule` 还接受显式的 BullMQ `connection`、`concurrency` 和 `autorun`；除非 `autorun` 为 `false`，worker 会自动启动。
 
+共享 PostgreSQL 数据库和 schema 的不同应用必须配置不同的 `queueName`；同一应用的副本使用相同名称。Worker 和旧 scheduler 清理都只作用于该队列：
+
+```ts
+ScheduleModule.forRoot({ queueName: "billing-schedule" });
+```
+
 ## 定义定时任务
 
 使用 `@Cron()` 定义 Cron 表达式，使用 `@Interval()` 定义毫秒间隔。Cron 默认使用 `UTC` 时区。

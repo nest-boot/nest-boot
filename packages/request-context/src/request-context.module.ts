@@ -47,6 +47,8 @@ import { RequestContextMiddleware } from "./request-context.middleware.js";
     {
       provide: RequestContext,
       scope: Scope.REQUEST,
+      // Entry points must establish the context before Nest resolves this tree.
+      // Interceptor fallbacks run later and support static accessors in handlers.
       useFactory: () => RequestContext.current(),
     },
     RequestContextMiddleware,

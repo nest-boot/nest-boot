@@ -16,3 +16,5 @@ Preserve worker/listener events, health discovery, Nest scopes, durable contexts
 Import QueueModule once anywhere in the application module tree; AppModule placement is not required. Schedule consumes its global services without importing it internally, removing duplicate queue registration and the separate runtime/configuration forwarding layer.
 
 This release stays on v8 with a minor Queue update as requested by the maintainer. Existing Redis jobs and old mirror data are not migrated automatically; drain or migrate them separately before switching deployments.
+
+Schedule accepts queueName for isolating applications sharing one database and schema. Replicas share their application queue name. Skip optional Job integration when ORM decorators are absent, keep Redis configuration types out of ESLint autofixes, and validate the complete example migration snapshot against all mapped entities. Constructor injection of RequestContext requires an entry point that establishes the context before dependency resolution; GraphQL interceptor-only fallbacks use static accessors inside handlers.

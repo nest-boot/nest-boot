@@ -18,9 +18,12 @@ export abstract class BaseQueue<
   /**
    * Creates a queue using module defaults, its declaration and local overrides.
    * @param options - Overrides supplied by the queue's constructor.
+   * @param name - Optional runtime queue name, for application-specific namespaces.
    */
-  constructor(options: QueueOptions = {}) {
-    const { name, ...declaredOptions } = getQueueDefinition(new.target);
+  constructor(options: QueueOptions = {}, name?: string) {
+    const { name: declaredName, ...declaredOptions } = getQueueDefinition(
+      new.target,
+    );
     delete declaredOptions.expose;
     const context = queueConstructionContext.getStore();
     if (context?.target !== new.target)
@@ -31,7 +34,7 @@ export abstract class BaseQueue<
     delete root.graphql;
     delete root.getJobReadFilter;
     const local = { ...declaredOptions, ...options };
-    super(name, {
+    super(name ?? declaredName, {
       ...root,
       ...local,
       connection: local.connection ?? root.connection ?? loadConfigFromEnv(),

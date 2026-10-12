@@ -43,7 +43,7 @@ order.
 
 Custom ESLint configurations should use `@nest-boot/import-database` instead of
 `@nest-boot/import-mikro-orm`. Its autofix migrates compatible named imports and preserves
-local aliases. Queue registration, processor decorators, removed helpers and namespace imports require manual migration.
+local aliases. Redis configuration types (`BullModuleOptions` and the old `QueueModuleOptions`), queue registration, processor decorators, removed helpers and namespace imports require manual migration.
 
 ## Enable ESM
 
@@ -111,7 +111,7 @@ Remove `@nestjs/bullmq`; the queue integration uses BullMQ directly.
 
 Custom ESLint configurations should use `@nest-boot/import-queue` instead of
 `@nest-boot/import-bullmq`. Its autofix migrates compatible named imports and preserves
-local aliases. Queue registration, processor decorators, removed helpers and namespace imports require manual migration.
+local aliases. Redis configuration types (`BullModuleOptions` and the old `QueueModuleOptions`), queue registration, processor decorators, removed helpers and namespace imports require manual migration.
 
 ## Update related integrations
 

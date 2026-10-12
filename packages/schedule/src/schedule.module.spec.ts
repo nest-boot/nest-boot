@@ -48,7 +48,34 @@ describe("ScheduleModule", () => {
         );
         expect(createQueue).toHaveBeenCalledExactlyOnceWith(
           mode === "default" ? {} : { connection: options.connection },
+          undefined,
         );
+      } finally {
+        await module.close();
+      }
+    },
+  );
+
+  it.each(["sync", "async"])(
+    "namespaces the schedule queue with %s options",
+    async (mode) => {
+      const options = { queueName: "billing-schedule", concurrency: 2 };
+      const module = await Test.createTestingModule({
+        imports: [
+          mode === "sync"
+            ? ScheduleModule.forRoot(options)
+            : ScheduleModule.forRootAsync({ useFactory: () => options }),
+        ],
+      }).compile();
+      try {
+        expect(createQueue).toHaveBeenCalledExactlyOnceWith(
+          {},
+          "billing-schedule",
+        );
+        expect(options).toEqual({
+          queueName: "billing-schedule",
+          concurrency: 2,
+        });
       } finally {
         await module.close();
       }
@@ -62,9 +89,10 @@ describe("ScheduleModule", () => {
       autorun: false,
     };
     new ScheduleQueue(options);
-    expect(createQueue).toHaveBeenCalledWith({
-      connection: { schema: "schedule_test" },
-    });
+    expect(createQueue).toHaveBeenCalledWith(
+      { connection: { schema: "schedule_test" } },
+      undefined,
+    );
     expect(options).toHaveProperty("concurrency", 2);
   });
 });

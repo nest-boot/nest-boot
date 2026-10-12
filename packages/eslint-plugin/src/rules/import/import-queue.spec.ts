@@ -47,8 +47,7 @@ tester.run("import-queue", rule, {
     },
     {
       code: 'import { type BullModuleOptions, BullMQHealthIndicator } from "@nest-boot/bullmq";',
-      output:
-        'import { type QueueModuleOptions as BullModuleOptions, QueueHealthIndicator as BullMQHealthIndicator } from "@nest-boot/queue";',
+      output: null,
       errors: [{ messageId: "replaceQueueImport" }],
     },
     {
@@ -82,9 +81,12 @@ tester.run("import-queue", rule, {
       code: /* typescript */ `
         import type { BullModuleOptions } from "@nestjs/bullmq";
       `,
-      output: /* typescript */ `
-        import type { QueueModuleOptions as BullModuleOptions } from "@nest-boot/queue";
-      `,
+      output: null,
+      errors: [{ messageId: "replaceQueueImport" }],
+    },
+    {
+      code: 'import type { QueueModuleOptions } from "@nest-boot/bullmq"; const options: QueueModuleOptions = { connection: { host: "redis", port: 6379 } };',
+      output: null,
       errors: [{ messageId: "replaceQueueImport" }],
     },
     // Decorator imports

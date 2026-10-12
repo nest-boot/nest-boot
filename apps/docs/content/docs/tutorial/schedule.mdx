@@ -31,6 +31,12 @@ export class AppModule {}
 
 Import `QueueModule` once anywhere in the application module tree, for example in `CommonModule`; it does not have to be in `AppModule`. `ScheduleModule` uses its global services and does not import it internally. `QueueModule` uses PostgreSQL configured by `QUEUE_DATABASE_URL` or `DATABASE_URL`. `ScheduleModule` also accepts an explicit BullMQ `connection`, `concurrency`, and `autorun`. The worker starts automatically unless `autorun` is `false`.
 
+Applications sharing a PostgreSQL database and schema must configure distinct `queueName` values. Replicas of the same application use the same name. Workers and scheduler cleanup operate only on that queue:
+
+```ts
+ScheduleModule.forRoot({ queueName: "billing-schedule" });
+```
+
 ## Defining Scheduled Tasks
 
 Use `@Cron()` for a cron pattern and `@Interval()` for a millisecond interval. Cron schedules default to the `UTC` timezone.
