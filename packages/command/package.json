@@ -1,6 +1,6 @@
 {
   "name": "@nest-boot/command",
-  "version": "0.0.0",
+  "version": "8.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/nest-boot/nest-boot.git",
