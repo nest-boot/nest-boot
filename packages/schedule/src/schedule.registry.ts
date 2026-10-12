@@ -1,3 +1,4 @@
+import { isCommandContext } from "@nest-boot/command";
 import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
 import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
 
@@ -146,6 +147,7 @@ export class ScheduleRegistry implements OnApplicationBootstrap {
 
   /** Discovers all scheduled methods and registers them as BullMQ job schedulers. */
   async onApplicationBootstrap(): Promise<void> {
+    if (isCommandContext()) return;
     this.discoverySchedules();
     await this.cleanUnregisteredSchedules();
     await this.registerSchedules();

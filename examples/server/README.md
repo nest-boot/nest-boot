@@ -75,7 +75,7 @@ does not require a login.
 
 `CommonModule` configures `QueueModule` with BullMQ 6's official PostgreSQL backend, configured through
 `QUEUE_DATABASE_URL` or `DATABASE_URL`. `ScheduleModule` uses the same backend.
-The dedicated `src/cli.ts` imports CommandModule and QueueModule to register `nb queue:migrate` without initializing HTTP infrastructure or workers. Run `pnpm --filter @nest-boot/example-server queue:migrate` first to create or
+`src/cli.ts` bootstraps the same `AppModule` as `main.ts` and `repl.ts` through `CommandFactory.run()`. Queue workers, event listeners and schedule registration stay inactive in the command context; application providers remain available. Run `pnpm --filter @nest-boot/example-server queue:migrate` first to create or
 upgrade BullMQ's schema. Then run application migrations to add ownership indexes,
 enable Job RLS and grant the `authenticated` database role schema usage and SELECT on `bullmq.job`.
 

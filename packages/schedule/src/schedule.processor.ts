@@ -1,3 +1,4 @@
+import { isCommandContext } from "@nest-boot/command";
 import { BaseProcessor, Processor } from "@nest-boot/queue";
 import {
   Inject,
@@ -37,6 +38,7 @@ export class ScheduleProcessor
   }
 
   onApplicationBootstrap() {
+    if (isCommandContext()) return;
     if (this.options?.concurrency) {
       this.worker.concurrency = this.options.concurrency;
     }

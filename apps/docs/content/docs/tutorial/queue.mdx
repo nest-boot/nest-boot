@@ -194,7 +194,7 @@ All queues use BullMQ 6's official PostgreSQL backend. `QUEUE_DATABASE_URL` take
 
 Run BullMQ's migrations before starting producers, workers or queries. They own the tables, functions, indexes and migration ledger:
 
-Create a dedicated `src/cli.ts` using [`@nest-boot/command`](./command), import `CommandModule` and your configured `QueueModule`, default-export the CLI module, then run:
+Create `src/cli.ts` using [`@nest-boot/command`](./command) and bootstrap the shared `AppModule` through `CommandFactory.run()`. Import `CommandModule` and your configured `QueueModule` in the application module tree, then run:
 
 ```bash
 pnpm exec nb queue:migrate

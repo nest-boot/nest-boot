@@ -196,7 +196,7 @@ export class EmailEvents extends QueueEventsHost {
 
 启动生产者、消费者或查询服务之前，执行 BullMQ 官方迁移。队列表、函数、索引和迁移记录均由它管理：
 
-使用 [`@nest-boot/command`](./command) 定义专用的 `src/cli.ts`，导入 `CommandModule` 和配置好的 `QueueModule`，默认导出 CLI 模块后执行：
+使用 [`@nest-boot/command`](./command) 创建 `src/cli.ts`，通过 `CommandFactory.run()` 启动共享的 `AppModule`。在应用模块树中导入 `CommandModule` 和配置好的 `QueueModule` 后执行：
 
 ```bash
 pnpm exec nb queue:migrate

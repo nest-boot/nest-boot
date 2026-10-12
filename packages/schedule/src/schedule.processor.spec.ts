@@ -1,3 +1,5 @@
+import { isCommandContext } from "@nest-boot/command";
+vi.mock("@nest-boot/command", () => ({ isCommandContext: vi.fn(() => false) }));
 import { ScheduleQueue } from "./schedule.queue.js";
 const { mockProcessor, mockProcessorDecorator } = vi.hoisted(() => {
   const mockProcessorDecorator = vi.fn();
@@ -30,6 +32,9 @@ import { ScheduleRegistry } from "./schedule.registry.js";
 import { type ScheduleModuleOptions } from "./schedule-module-options.interface.js";
 
 describe("ScheduleProcessor", () => {
+  beforeEach(() => {
+    vi.mocked(isCommandContext).mockReturnValue(false);
+  });
   const createRegistry = (entry?: ReturnType<ScheduleRegistry["get"]>) => {
     const get = vi.fn(() => entry);
 
@@ -45,6 +50,20 @@ describe("ScheduleProcessor", () => {
     vi.restoreAllMocks();
   });
 
+  it("does not access an uninitialized worker during command execution", async () => {
+    const processor = await createProcessor(createRegistry().registry, {
+      concurrency: 4,
+    });
+    Object.defineProperty(processor, "worker", {
+      get() {
+        throw new Error("Worker is not initialized");
+      },
+    });
+    vi.mocked(isCommandContext).mockReturnValue(true);
+    expect(() => {
+      processor.onApplicationBootstrap();
+    }).not.toThrow();
+  });
   it("should apply the schedule processor decorator", () => {
     expect(mockProcessor).toHaveBeenCalledWith(ScheduleQueue, {
       autorun: false,

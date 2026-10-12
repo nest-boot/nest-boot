@@ -2093,6 +2093,9 @@ importers:
 
   packages/schedule:
     devDependencies:
+      '@nest-boot/command':
+        specifier: workspace:^
+        version: link:../command
       '@nest-boot/eslint-config':
         specifier: workspace:^
         version: link:../eslint-config

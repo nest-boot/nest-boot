@@ -35,6 +35,7 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism"
   },
   "devDependencies": {
+    "@nest-boot/command": "workspace:^",
     "@nest-boot/queue": "workspace:^",
     "@nest-boot/eslint-config": "workspace:^",
     "@nest-boot/eslint-plugin": "workspace:^",
@@ -55,6 +56,7 @@
     "vitest": "^4.1.11"
   },
   "peerDependencies": {
+    "@nest-boot/command": "workspace:^",
     "@nest-boot/queue": "workspace:^",
     "@nestjs/common": "^12.0.0",
     "@nestjs/core": "^12.0.0",

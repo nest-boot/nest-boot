@@ -1,5 +1,6 @@
 import type { EventEmitter } from "node:events";
 
+import { isCommandContext } from "@nest-boot/command";
 import {
   Injectable,
   Logger,
@@ -147,6 +148,8 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
       else if (events)
         bindings.push({ provider, definition: events, queue, listener: true });
     }
+    // CLI commands reuse application providers without starting background consumers.
+    if (isCommandContext()) return;
     // Validate every binding before constructing any worker or stream reader.
     for (const { provider, definition, queue, listener } of bindings) {
       const connection = {

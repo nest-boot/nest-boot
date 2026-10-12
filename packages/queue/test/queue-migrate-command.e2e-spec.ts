@@ -4,7 +4,15 @@ import { CommandFactory, CommandModule } from "@nest-boot/command";
 import { Module } from "@nestjs/common";
 import { LATEST_SCHEMA_VERSION } from "bullmq";
 
-import { QueueModule } from "../dist/index.js";
+import {
+  BaseProcessor,
+  BaseQueue,
+  Processor,
+  Queue,
+  QueueEventsHost,
+  QueueEventsListener,
+  QueueModule,
+} from "../dist/index.js";
 import { createPostgresFixture } from "./postgres.fixture.js";
 
 it("discovers queue:migrate, initializes a fresh custom schema and preserves jobs on repeated migrations", async () => {
@@ -16,7 +24,27 @@ it("discovers queue:migrate, initializes a fresh custom schema and preserves job
       callback();
     },
   });
+  @Queue({ name: "reports" })
+  class ReportQueue extends BaseQueue {}
+  @Processor(ReportQueue)
+  class ReportProcessor extends BaseProcessor {
+    async process(): Promise<void> {
+      await Promise.reject(new Error("CLI must not consume jobs"));
+    }
+    onApplicationBootstrap() {
+      expect(() => this.worker).toThrow("Worker is not initialized");
+    }
+  }
+  @QueueEventsListener(ReportQueue)
+  class ReportEvents extends QueueEventsHost {
+    onApplicationBootstrap() {
+      expect(() => this.queueEvents).toThrow(
+        "Queue events are not initialized",
+      );
+    }
+  }
   @Module({
+    providers: [ReportQueue, ReportProcessor, ReportEvents],
     imports: [
       CommandModule,
       QueueModule.forRoot({ connection: fixture.connection, graphql: false }),

@@ -1,3 +1,5 @@
+import { isCommandContext } from "@nest-boot/command";
+vi.mock("@nest-boot/command", () => ({ isCommandContext: vi.fn(() => false) }));
 import "reflect-metadata";
 
 import { ScheduleQueue } from "./schedule.queue.js";
@@ -16,6 +18,9 @@ import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition.js";
 import { ScheduleRegistry } from "./schedule.registry.js";
 
 describe("ScheduleRegistry", () => {
+  beforeEach(() => {
+    vi.mocked(isCommandContext).mockReturnValue(false);
+  });
   class ControllerSchedules {
     calls: string[] = [];
 
@@ -133,6 +138,14 @@ describe("ScheduleRegistry", () => {
     vi.restoreAllMocks();
   });
 
+  it("does not register or remove schedules during command execution", async () => {
+    const { queue, registry } = await createRegistry();
+    vi.mocked(isCommandContext).mockReturnValue(true);
+    await registry.onApplicationBootstrap();
+    expect(queue.getJobSchedulers).not.toHaveBeenCalled();
+    expect(queue.upsertJobScheduler).not.toHaveBeenCalled();
+    expect(queue.removeJobScheduler).not.toHaveBeenCalled();
+  });
   it("should discover decorated methods, clean stale schedulers, and register schedules", async () => {
     const { controller, queue, registry } = await createRegistry(
       undefined,
