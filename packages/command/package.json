@@ -33,7 +33,8 @@
     "test:cov": "vitest run --coverage",
     "test:watch": "vitest",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "devDependencies": {
     "@nest-boot/eslint-config": "workspace:^",
