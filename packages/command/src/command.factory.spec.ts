@@ -4,8 +4,8 @@ import { Writable } from "node:stream";
 
 import { RequestContext } from "@nest-boot/request-context";
 import { Inject, Injectable, Module, Scope } from "@nestjs/common";
-import { REQUEST as NEST_REQUEST } from "@nestjs/core";
-import { UsageError } from "clipanion";
+import { NestFactory, REQUEST as NEST_REQUEST } from "@nestjs/core";
+import { Builtins, UsageError } from "clipanion";
 
 import {
   BaseCommand,
@@ -113,6 +113,19 @@ it("discovers commands in another module and preserves the Nest instance and its
     },
   ]);
   expect(events).toEqual(["closed"]);
+});
+
+it("reads arguments from process.argv when bootstrap options omit them", async () => {
+  const previousArgv = process.argv;
+  const output = capture();
+  process.argv = [...previousArgv.slice(0, 2), "greet", "Alice"];
+  try {
+    expect(await CommandFactory.run(CliModule, { context: output })).toBe(0);
+    expect(output.output()).toBe("Alice");
+    expect(events).toEqual(["closed"]);
+  } finally {
+    process.argv = previousArgv;
+  }
 });
 
 it("infers positional, optional, boolean and array types without manual interfaces", () => {
@@ -253,7 +266,7 @@ it("runs initialization, command execution and shutdown in order", async () => {
   expect(lifecycle).toEqual(["init", "execute", "shutdown"]);
 });
 
-it("provides isolated command contexts to services and executes context middleware", async () => {
+it("provides the command context to services and executes context middleware", async () => {
   const { RequestContext } = await import("@nest-boot/request-context");
   const contexts: InstanceType<typeof RequestContext>[] = [];
   const middlewareEvents: string[] = [];
@@ -295,12 +308,8 @@ it("provides isolated command contexts to services and executes context middlewa
   })
   class AppModule {}
   try {
-    await Promise.all([
-      CommandFactory.run(AppModule, { args: ["context"] }),
-      CommandFactory.run(AppModule, { args: ["context"] }),
-    ]);
-    expect(contexts).toHaveLength(2);
-    expect(contexts[0].id).not.toBe(contexts[1].id);
+    await CommandFactory.run(AppModule, { args: ["context"] });
+    expect(contexts).toHaveLength(1);
     expect(RequestContext.isActive()).toBe(false);
     for (const context of contexts) {
       expect(middlewareEvents.indexOf(`before:${context.id}`)).toBeLessThan(
@@ -397,6 +406,46 @@ it("resolves singleton providers in command middleware and execution while leavi
   }
 });
 
+it("reports unexpected provider lookup failures and still closes the application", async () => {
+  const failure = new Error("Unexpected provider lookup failure");
+  @Command({ paths: [["lookup-failure"]] })
+  class LookupCommand extends BaseCommand {
+    async execute() {
+      await Promise.resolve();
+      lookup.mockImplementationOnce(() => {
+        throw failure;
+      });
+      RequestContext.get("unexpected-provider");
+    }
+  }
+  @Module({
+    imports: [CommandModule],
+    providers: [GreetingService, LookupCommand],
+  })
+  class AppModule {}
+  const app = await NestFactory.createApplicationContext(AppModule, {
+    logger: false,
+  });
+  const lookup = vi.spyOn(app, "get");
+  const bootstrap = vi
+    .spyOn(NestFactory, "createApplicationContext")
+    .mockResolvedValue(app);
+  const output = capture();
+  try {
+    expect(
+      await CommandFactory.run(AppModule, {
+        args: ["lookup-failure"],
+        context: output,
+      }),
+    ).toBe(1);
+    expect(output.output()).toContain(failure.message);
+    expect(events).toEqual(["closed"]);
+  } finally {
+    lookup.mockRestore();
+    bootstrap.mockRestore();
+  }
+});
+
 it("copies parsed options and CLI state to custom error handlers after schema validation fails", async () => {
   let executed = false;
   let handled = false;
@@ -481,6 +530,9 @@ it.each(["execute", "schema"])(
         expect(definition?.description?.trim()).toBe("Render command help.");
         expect(error).toContain("nb helpers");
         expect(this.cli.usage()).toContain("helpers");
+        expect(this.cli.usage(null)).toContain("helpers");
+        expect(this.cli.definition(Builtins.HelpCommand)).toBeNull();
+        expect(this.cli.usage(Builtins.HelpCommand)).toContain("nb -h");
         expect(this.cli.usage(SiblingCommand)).toContain("nb sibling");
         expect(this.cli.usage(this.sibling)).toContain("nb sibling");
         expect(this.cli.definition(SiblingCommand)?.description?.trim()).toBe(

@@ -30,10 +30,8 @@ export function initialize(options: RegisterOptions): void {
     };
     service = create(options);
   }
-  const created = createEsmHooks(service);
-  if (!("load" in created))
-    throw new Error("ts-node requires modern Node ESM hooks.");
-  hooks = created;
+  // Our minimum Node version always uses ts-node's modern ESM hook API.
+  hooks = createEsmHooks(service) as typeof hooks;
   ignored = (fileName) => service.ignored(fileName);
 }
 

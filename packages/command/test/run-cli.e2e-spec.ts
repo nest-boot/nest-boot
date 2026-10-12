@@ -291,6 +291,22 @@ it("does not fall back to stale output if a source entry fails", () => {
   expect(result.stderr).toContain("broken source");
   expect(result.stdout).not.toContain("BUILT");
 });
+it("reports non-Error entry failures with a nonzero exit code", () => {
+  write("src/cli.ts", "throw 'Entry bootstrap failed';");
+  const result = run();
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain("Entry bootstrap failed");
+});
+it("reports TypeScript compilation diagnostics without falling back to built output", () => {
+  write("tsconfig.json", JSON.stringify(sourceConfig));
+  write("src/cli.ts", "export const value: = 1;");
+  write("dist/cli.js", built);
+  const result = run(["built"]);
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain("TS1110");
+  expect(result.stderr).toContain("Type expected");
+  expect(result.stdout).toBe("");
+});
 it("returns failure for unknown commands without forcing process.exit", () => {
   write("dist/cli.js", built);
   expect(run(["missing"]).status).toBe(1);

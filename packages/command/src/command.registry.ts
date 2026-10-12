@@ -93,6 +93,14 @@ export class CommandRegistry {
           Reflect.get(value, ClipanionCommand.isOption) === true,
       ),
     );
+    const stateKeys = [
+      ...Object.keys(definitions),
+      "context",
+      "cli",
+      "path",
+      "help",
+      "tokens",
+    ];
     const commandClass = instance.constructor;
     class CommandAdapter extends ClipanionCommand {
       static paths = options.paths;
@@ -109,10 +117,9 @@ export class CommandRegistry {
        * Copies parser state before invoking either execution or error handling.
        */
       private syncState(): void {
-        for (const key of Object.keys(definitions)) {
+        for (const key of stateKeys) {
           Reflect.set(instance, key, Reflect.get(this, key));
         }
-        instance.context = this.context;
         // Clipanion registers the adapter; helpers must receive that identity.
         const cli = this.cli;
         const resolveClass = (command: CommandClass) =>
@@ -131,14 +138,7 @@ export class CommandRegistry {
           ...cli,
           run: async (...args) => {
             const state = Object.fromEntries(
-              [
-                ...Object.keys(definitions),
-                "context",
-                "cli",
-                "path",
-                "help",
-                "tokens",
-              ].map((key) => [key, Reflect.get(instance, key)]),
+              stateKeys.map((key) => [key, Reflect.get(instance, key)]),
             );
             try {
               return await cli.run(...args);
@@ -163,9 +163,6 @@ export class CommandRegistry {
               },
             ),
         };
-        instance.path = this.path;
-        instance.help = this.help;
-        instance.tokens = this.tokens;
       }
 
       /**

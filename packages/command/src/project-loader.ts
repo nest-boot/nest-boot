@@ -8,9 +8,9 @@ import { resolve } from "node:path";
  * @returns The first existing entry file.
  */
 export function resolveCliEntry(cwd: string, production: boolean): string {
-  const source = ["src/cli.ts"];
-  const built = ["dist/cli.js"];
-  const candidates = production ? [...built, ...source] : [...source, ...built];
+  const candidates = production
+    ? ["dist/cli.js", "src/cli.ts"]
+    : ["src/cli.ts", "dist/cli.js"];
   for (const candidate of candidates) {
     const path = resolve(cwd, candidate);
     if (existsSync(path) && statSync(path).isFile()) return path;
