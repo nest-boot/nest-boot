@@ -1,6 +1,7 @@
 import { Global, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
+import { QueueMigrateCommand } from "./commands/queue-migrate.command.js";
 import { createJobProviders } from "./job.providers.js";
 import { QueueHealthIndicator } from "./queue.health-indicator.js";
 import {
@@ -25,6 +26,7 @@ const jobProviders = await createJobProviders();
     { provide: MODULE_OPTIONS_TOKEN, useValue: {} },
     QueueRegistrar,
     QueueHealthIndicator,
+    QueueMigrateCommand,
     ...jobProviders.providers,
   ],
   exports: [

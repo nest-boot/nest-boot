@@ -51,3 +51,5 @@ role and trusted `app.user.id` / `app.workspace.id` variables, and apply the Job
 RLS migration. Empty identities match no rows. BullMQ workers use a separate
 owner or `BYPASSRLS` connection.
 The flag affects API visibility, not BullMQ storage or direct queue operations.
+
+QueueModule also registers `nb queue:migrate` for CLI modules importing `CommandModule` from `@nest-boot/command`. The command uses the configured database and schema, accepts `--schema`, and runs BullMQ migrations before MikroORM application migrations.

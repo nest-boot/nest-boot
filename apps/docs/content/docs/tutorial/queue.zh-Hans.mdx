@@ -196,18 +196,14 @@ export class EmailEvents extends QueueEventsHost {
 
 启动生产者、消费者或查询服务之前，执行 BullMQ 官方迁移。队列表、函数、索引和迁移记录均由它管理：
 
-```ts
-import { runMigrations } from "bullmq";
-import { Client } from "pg";
+使用 [`@nest-boot/command`](./command) 定义专用的 `src/cli.ts`，导入 `CommandModule` 和配置好的 `QueueModule`，默认导出 CLI 模块后执行：
 
-const client = new Client({ connectionString: process.env.DATABASE_URL });
-await client.connect();
-try {
-  await runMigrations(client); // 第二个参数可指定自定义 schema。
-} finally {
-  await client.end();
-}
+```bash
+pnpm exec nb queue:migrate
+pnpm exec nb queue:migrate --schema tasks
 ```
+
+`queue:migrate` 使用 QueueModule 的连接和 schema，`--schema` 可覆盖 schema。不要在 CLI 模块中导入会在初始化时查询尚未迁移数据库的业务模块。也可以直接调用 BullMQ 的 `runMigrations(client, schema)`。
 
 迁移需要独占一个连接，不能通过 `pool.query()` 在多个会话间切换。也可显式配置 `connection: { connectionString, migrate: true }`；Nest Boot 默认不会自动执行迁移。连接同一个数据库并不意味着入队和业务写入自动处于同一个事务。
 

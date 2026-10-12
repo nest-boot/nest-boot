@@ -194,18 +194,14 @@ All queues use BullMQ 6's official PostgreSQL backend. `QUEUE_DATABASE_URL` take
 
 Run BullMQ's migrations before starting producers, workers or queries. They own the tables, functions, indexes and migration ledger:
 
-```ts
-import { runMigrations } from "bullmq";
-import { Client } from "pg";
+Create a dedicated `src/cli.ts` using [`@nest-boot/command`](./command), import `CommandModule` and your configured `QueueModule`, default-export the CLI module, then run:
 
-const client = new Client({ connectionString: process.env.DATABASE_URL });
-await client.connect();
-try {
-  await runMigrations(client); // Pass a custom schema as the second argument.
-} finally {
-  await client.end();
-}
+```bash
+pnpm exec nb queue:migrate
+pnpm exec nb queue:migrate --schema tasks
 ```
+
+`queue:migrate` uses QueueModule's connection and schema; `--schema` overrides the schema. Keep the CLI module free of modules that require migrated tables during startup. Calling BullMQ's `runMigrations(client, schema)` directly is also supported.
 
 The migrator needs one dedicated client, not `pool.query()` across different sessions. Explicit `connection: { connectionString, migrate: true }` is also supported by BullMQ; Nest Boot does not enable automatic migrations by default. Enqueueing and business writes do not share a transaction merely because they use the same database.
 

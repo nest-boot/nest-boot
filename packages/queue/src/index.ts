@@ -1,5 +1,6 @@
 export { BaseProcessor } from "./base.processor.js";
 export { BaseQueue } from "./base.queue.js";
+export * from "./commands/queue-migrate.command.js";
 export * from "./decorators/index.js";
 export * from "./entities/index.js";
 export { JobStatus } from "./enums/job-status.enum.js";
