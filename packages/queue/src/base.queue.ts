@@ -32,7 +32,6 @@ export abstract class BaseQueue<
       );
     const root = { ...context.options };
     delete root.graphql;
-    delete root.getJobReadFilter;
     const local = { ...declaredOptions, ...options };
     super(name ?? declaredName, {
       ...root,

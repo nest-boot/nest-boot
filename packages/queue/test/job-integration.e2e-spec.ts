@@ -5,7 +5,7 @@ import {
   RequestContext,
   RequestContextModule,
 } from "@nest-boot/request-context";
-import { ForbiddenException, type INestApplication } from "@nestjs/common";
+import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
   createPostgresBackend,
@@ -62,13 +62,16 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
         RequestContextModule,
         QueueModule.forRoot({
           connection: fixture.connection,
-          getJobReadFilter: () => ({ data: { owner: "alice" } }),
         }),
         DatabaseModule.forRoot({
           driver: PostgreSqlDriver,
           clientUrl: fixture.connection.connectionString,
           entities,
           ...getJobSchemaOptions(fixture.connection.schema),
+          session: () => ({
+            role: "authenticated",
+            variables: { "app.user.id": "alice", "app.workspace.id": "" },
+          }),
         }),
         GraphQLModule.forRoot({ autoSchemaFile: true, graphiql: false }),
       ],
@@ -84,6 +87,10 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
     app.useLogger(false);
     orm = app.get(MikroORM);
     await orm.schema.update();
+    await fixture.pool.query(`
+      grant usage on schema "${fixture.connection.schema}" to authenticated;
+      grant select on "${fixture.connection.schema}".job to authenticated;
+    `);
     reports = app.get(ReportsQueue);
     emails = app.get(EmailsQueue);
     await app.listen(0, "127.0.0.1");
@@ -94,22 +101,35 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
     await fixture?.close();
   });
 
+  /**
+   * Creates a request entity manager with the database identity used by RLS.
+   * @param userId - Verified user identity, or an empty identity.
+   * @returns A fork using the non-owner request role.
+   */
+  function requestEm(userId = "alice") {
+    return orm.em.fork({
+      session: {
+        role: "authenticated",
+        variables: { "app.user.id": userId, "app.workspace.id": "" },
+      },
+    });
+  }
+
   it("reads bulk jobs immediately and retains original data when BullMQ deduplicates IDs", async () => {
     await reports.addBulk([
       {
         name: "first",
-        data: { owner: "alice", original: true },
+        data: { userId: "alice", original: true },
         opts: { jobId: "shared" },
       },
-      { name: "second", data: { owner: "bob" }, opts: { jobId: "hidden" } },
+      { name: "second", data: { userId: "bob" }, opts: { jobId: "hidden" } },
     ]);
-    await reports.add("ignored", { owner: "bob" }, { jobId: "shared" });
-    await emails.add("first", { owner: "alice" }, { jobId: "shared" });
+    await reports.add("ignored", { userId: "bob" }, { jobId: "shared" });
+    await emails.add("first", { userId: "alice" }, { jobId: "shared" });
     const service = new JobService(
-      orm.em.fork(),
+      requestEm(),
       {
         connection: fixture.connection,
-        getJobReadFilter: () => ({}),
       },
       app.get(QueueRegistrar),
     );
@@ -118,7 +138,7 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
       queue: "reports",
       jobId: "shared",
       name: "first",
-      data: { owner: "alice", original: true },
+      data: { userId: "alice", original: true },
       status: JobStatus.WAITING,
       createdAt: expect.any(Date),
     });
@@ -129,10 +149,9 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
 
   it("keeps cross-queue cursors stable with duplicate job IDs and sort values", async () => {
     const service = new JobConnectionService(
-      orm.em.fork(),
+      requestEm(),
       {
         connection: fixture.connection,
-        getJobReadFilter: () => ({ data: { owner: "alice" } }),
       },
       app.get(QueueRegistrar),
     );
@@ -174,23 +193,30 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
     expect(orderedNext.edges[0].node.id).toBe("reports:shared");
   });
 
-  it("denies unconfigured readers and scopes GraphQL nodes, filters and counts", async () => {
-    for (const getJobReadFilter of [undefined, () => null, () => undefined]) {
-      const service = new JobConnectionService(
-        orm.em.fork(),
-        {
-          connection: fixture.connection,
-          getJobReadFilter,
-        },
-        app.get(QueueRegistrar),
-      );
-      await expect(service.getJob("reports:shared")).rejects.toBeInstanceOf(
-        ForbiddenException,
-      );
-      await expect(
-        service.getJobConnection({ first: 10 }),
-      ).rejects.toBeInstanceOf(ForbiddenException);
-    }
+  it("uses RLS to scope GraphQL nodes, filters and counts without a callback", async () => {
+    const unscoped = new JobConnectionService(
+      requestEm(""),
+      { connection: fixture.connection },
+      app.get(QueueRegistrar),
+    );
+    expect(await unscoped.getJob("reports:shared")).toBeNull();
+    expect(await unscoped.getJobConnection({ first: 10 })).toMatchObject({
+      totalCount: 0,
+      edges: [],
+    });
+    const otherUser = new JobConnectionService(
+      requestEm("bob"),
+      { connection: fixture.connection },
+      app.get(QueueRegistrar),
+    );
+    expect(await otherUser.getJob("reports:shared")).toBeNull();
+    expect(await otherUser.getJob("reports:hidden")).toMatchObject({
+      id: "reports:hidden",
+    });
+    expect(await otherUser.getJobConnection({ first: 10 })).toMatchObject({
+      totalCount: 1,
+      edges: [{ node: { id: "reports:hidden" } }],
+    });
     const response = await fetch(`${await app.getUrl()}/api/graphql`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -203,10 +229,9 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
     expect(result.data.job).toBeNull();
     expect(result.data.jobs.totalCount).toBe(2);
     const service = new JobConnectionService(
-      orm.em.fork(),
+      requestEm(),
       {
         connection: fixture.connection,
-        getJobReadFilter: () => ({ data: { owner: "alice" } }),
       },
       app.get(QueueRegistrar),
     );
@@ -233,7 +258,7 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
       ]) {
         await queue.add(
           "internal-task",
-          { owner: "alice" },
+          { userId: "alice" },
           { jobId: "private" },
         );
         // Exposure affects API reads, not BullMQ storage or internal queue access.
@@ -272,12 +297,11 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
           .sort(),
       ).toEqual(["emails", "reports"]);
 
-      // An unrestricted identity filter cannot bypass the queue opt-in.
+      // Matching ownership cannot bypass the queue opt-in.
       const service = new JobConnectionService(
-        orm.em.fork(),
+        requestEm(),
         {
           connection: fixture.connection,
-          getJobReadFilter: () => ({}),
         },
         app.get(QueueRegistrar),
       );
@@ -288,10 +312,9 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
       ).toBe(0);
 
       const noQueues = new JobConnectionService(
-        orm.em.fork(),
+        requestEm(),
         {
           connection: fixture.connection,
-          getJobReadFilter: () => ({}),
         },
         { getExposedQueueNames: () => [] },
       );
@@ -321,20 +344,19 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
   it("filters and orders directly by the native database state, including priority jobs", async () => {
     const priority = await emails.add(
       "priority",
-      { owner: "alice" },
+      { userId: "alice" },
       { jobId: "priority", priority: 7 },
     );
-    await emails.add("waiting", { owner: "alice" }, { jobId: "waiting" });
+    await emails.add("waiting", { userId: "alice" }, { jobId: "waiting" });
     await emails.add(
       "delayed",
-      { owner: "alice" },
+      { userId: "alice" },
       { jobId: "delayed", priority: 7, delay: 60000 },
     );
     const service = new JobConnectionService(
-      orm.em.fork(),
+      requestEm(),
       {
         connection: fixture.connection,
-        getJobReadFilter: () => ({ queue: "emails" }),
       },
       app.get(QueueRegistrar),
     );
@@ -353,7 +375,7 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
     );
     const waiting = await service.getJobConnection({
       first: 10,
-      filter: { status: JobStatus.WAITING },
+      filter: { queue: "emails", status: JobStatus.WAITING },
     });
     expect(waiting.totalCount).toBe(3);
     expect(waiting.edges.map(({ node }) => node.id).sort()).toEqual([
@@ -395,21 +417,20 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
   it("reads live worker results and honors BullMQ retention", async () => {
     await reports.add(
       "failure",
-      { owner: "alice", fail: true },
+      { userId: "alice", fail: true },
       { jobId: "failure" },
     );
     await reports.add(
       "removed",
-      { owner: "alice" },
+      { userId: "alice" },
       { jobId: "removed", removeOnComplete: true },
     );
     const processor = app.get(ReportsProcessor);
     const running = processor.worker.run();
     const service = new JobService(
-      orm.em.fork(),
+      requestEm(),
       {
         connection: fixture.connection,
-        getJobReadFilter: () => ({}),
       },
       app.get(QueueRegistrar),
     );

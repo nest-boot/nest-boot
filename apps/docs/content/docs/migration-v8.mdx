@@ -90,7 +90,7 @@ The Job API exposes only the global `id`, `queue`, `name`, `status`, finite nume
 
 `JobStatus` uses the six native PostgreSQL states. Waiting jobs with a priority return `WAITING`; `PRIORITIZED` and `UNKNOWN` are removed. Missing or inaccessible jobs return null. Status filters and ordering use the native `state` column directly.
 
-Queue jobs are hidden from the API by default. Declare `@Queue({ expose: true })` and register that queue provider in the API application to enable queries; `getJobReadFilter` still applies.
+Queue jobs are hidden from the API by default. Declare `@Queue({ expose: true })` and register that queue provider in the API application to enable queries; database RLS controls user/workspace access through the request EntityManager session.
 
 Consumers use `@Processor(QueueClass)` and extend `BaseProcessor`; `WorkerHost` is
 removed. Consumer-only deployments also register the queue class. Missing queues

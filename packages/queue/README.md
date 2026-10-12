@@ -45,5 +45,9 @@ The public fields are `id`, `queue`, `name`, `status`, numeric `progress` and
 `createdAt` / `startedAt` / `finishedAt`. Other progress formats return null.
 Payloads, raw results, failure details and operational fields stay private;
 applications expose business results through their own authorized API.
-Nodes, lists and counts also require the configured `getJobReadFilter` authorization.
+Database RLS scopes nodes, lists and counts to the verified user or workspace.
+Configure the request EntityManager session with the non-owner `authenticated`
+role and trusted `app.user.id` / `app.workspace.id` variables, and apply the Job
+RLS migration. Empty identities match no rows. BullMQ workers use a separate
+owner or `BYPASSRLS` connection.
 The flag affects API visibility, not BullMQ storage or direct queue operations.

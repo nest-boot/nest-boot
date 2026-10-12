@@ -8,11 +8,13 @@ import { HashModule } from '@nest-boot/hash';
 import { HealthCheckModule } from '@nest-boot/health-check';
 import { LoggerModule } from '@nest-boot/logger';
 import { MailerModule } from '@nest-boot/mailer';
+import { QueueModule } from '@nest-boot/queue';
 import {
   entities as queueEntities,
   getJobSchemaOptions,
 } from '@nest-boot/queue/persistence';
 import { RequestContextModule } from '@nest-boot/request-context';
+import { ScheduleModule } from '@nest-boot/schedule';
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import type { Request, Response } from 'express';
@@ -39,6 +41,10 @@ const DatabaseDynamicModule = DatabaseModule.forRoot({
   session: createSessionContext,
 });
 
+const QueueDynamicModule = QueueModule.forRoot({});
+
+const ScheduleDynamicModule = ScheduleModule.forRoot({ concurrency: 2 });
+
 /** 服务端公共基础设施模块。 */
 @Global()
 @Module({
@@ -53,6 +59,8 @@ const DatabaseDynamicModule = DatabaseModule.forRoot({
     GraphQLDynamicModule,
     GraphQLConnectionModule,
     LoggerModule,
+    QueueDynamicModule,
+    ScheduleDynamicModule,
   ],
   providers: [GreetCommand],
 })

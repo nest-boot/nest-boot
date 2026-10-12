@@ -221,7 +221,7 @@ Persistence is inherent to the PostgreSQL backend. `queue.add()` and `addBulk()`
 | DatabaseModule plus built-in Job metadata | Also provide read-only JobService queries                 |
 | Database integration plus GraphQLModule   | Also expose job(id) and jobs, unless graphql is false     |
 
-Queue declarations default to `expose: false`. Only queues registered in the API application with `@Queue({ expose: true })` participate in JobService and GraphQL reads, including single-job lookups, filtered lists, pagination and counts. Exposure is always intersected with `getJobReadFilter`; client filters cannot override it. Internal queues such as Schedule remain hidden. BullMQ persistence and direct queue operations are unaffected.
+Queue declarations default to `expose: false`. Only queues registered in the API application with `@Queue({ expose: true })` participate in JobService and GraphQL reads, including single-job lookups, filtered lists, pagination and counts. The service restricts queries to exposed queues, and database RLS enforces ownership. Client filters cannot override either restriction. Internal queues such as Schedule remain hidden. BullMQ persistence and direct queue operations are unaffected.
 
 When producers, consumers and the API run separately, register the exposed queue class in the API application's `providers` too. Its processor is only needed in the consumer application. The flag is application configuration, not a column in BullMQ's job table. `QueueModule.graphql` separately controls registration of the GraphQL interface.
 
@@ -244,12 +244,14 @@ export class ReportsQueue extends BaseQueue {}
       driver: PostgreSqlDriver,
       entities,
       ...getJobSchemaOptions(),
+      session: () => ({
+        role: "anonymous",
+        variables: { "app.user.id": "", "app.workspace.id": "" },
+      }),
     }),
     GraphQLModule,
     QueueModule.forRoot({
       graphql: true,
-      // Return a MikroORM filter from verified request identity, or null to deny.
-      getJobReadFilter: () => null,
     }),
   ],
   providers: [ReportsQueue],
@@ -277,15 +279,15 @@ For a custom schema such as `tasks`, use `getJobSchemaOptions("tasks")` in both 
 
 The native primary key remains `(queue, id)`. The computed API ID provides a unique cursor tie-breaker across queues. The native table has no last-update timestamp, so there is no `updatedAt` field or filter. GraphQL exposes only `id`, `queue`, `name`, `status`, `progress`, `createdAt`, `startedAt` and `finishedAt`. The nullable `progress: Float` field uses a resolver to return finite numbers; JSON objects, strings, booleans and non-finite values return null. `jobId`, input data, raw results, errors and operational fields remain private. Applications provide business results through their own typed, authorized fields or APIs. Filters and sorting support `queue`, `name`, `status` and `created_at`.
 
-`getJobReadFilter` runs for every read and scopes nodes, filters, pagination and counts. Missing callbacks, null and undefined deny access; returning an empty object adds no service-level restriction beyond exposed queues. Database RLS still applies. Payload ownership must come from trusted application identity. The Job entity declares an RLS SELECT policy for `authenticated`: `data.userId` must match `app.user.id`, or `data.workspaceId` must match `app.workspace.id`. Missing or empty identity values do not match; a service account can read its workspace's jobs without a user identity. There are no policies permitting request writes or anonymous reads. Create the role and grant it schema usage and SELECT on the native job table; the example migrations provide this setup. Auth supplies the verified identity through the request EntityManager session. Applications without Auth can supply the same trusted session variables themselves.
+Database RLS scopes nodes, filters, pagination and counts using the request EntityManager session. Payload ownership must come from trusted application identity. The Job entity declares an RLS SELECT policy for `authenticated`: `data.userId` must match `app.user.id`, or `data.workspaceId` must match `app.workspace.id`. Missing or empty identity values do not match; a service account can read its workspace's jobs without a user identity. There are no policies permitting request writes or anonymous reads. Create the `anonymous` and `authenticated` roles, and grant only `authenticated` schema usage and SELECT on the native job table; the example migrations provide this setup. Auth supplies the verified identity through the request EntityManager session. Applications without Auth can supply the same trusted session variables themselves.
 
-BullMQ producers and workers use a separate connection under the table owner or a role with `BYPASSRLS` so they can process all tenants and jobs without ownership fields. The Job entity enables RLS without `FORCE ROW LEVEL SECURITY`. Request queries must switch to a role that neither owns the table nor bypasses RLS. RLS applies only to Job; internal BullMQ tables remain outside the request API and must not be granted to request roles. Keep `getJobReadFilter` and the exposed-queue allowlist for application authorization.
+BullMQ producers and workers use a separate connection under the table owner or a role with `BYPASSRLS` so they can process all tenants and jobs without ownership fields. The Job entity enables RLS without `FORCE ROW LEVEL SECURITY`. Request queries must switch to a role that neither owns the table nor bypasses RLS. RLS applies only to Job; internal BullMQ tables remain outside the request API and must not be granted to request roles. JobService retains the exposed-queue allowlist; identity authorization is handled by RLS without an application filter callback.
 
-Entities and JobService are exported from `@nest-boot/queue/persistence`; JobConnectionService, GraphQL types and resolvers from `@nest-boot/queue/graphql`. JobConnectionService extends JobService and provides `getJobConnection()` using the same authorization scope. These entry points isolate optional dependencies at runtime and in generated TypeScript declarations. For typed database filters, use `QueueModuleOptions<FilterQuery<Job>>`, importing the filter and entity types from their database entry points.
+Entities and JobService are exported from `@nest-boot/queue/persistence`; JobConnectionService, GraphQL types and resolvers from `@nest-boot/queue/graphql`. JobConnectionService extends JobService and provides `getJobConnection()` using the same authorization scope. These entry points isolate optional dependencies at runtime and in generated TypeScript declarations.
 
 ### Migrating existing queues
 
-This API remains in v8. Remove `@nest-boot/queue-database`, `QueueDatabaseModule`, the old mirror entity/resolver, persistence/TTL options and Redis prefixes. Register queue classes as providers, switch to a PostgreSQL connection, run official migrations and configure optional ORM exclusions and read authorization. Existing Redis jobs and legacy mirror rows are not moved automatically; drain or migrate them separately before changing a deployment. Review old application table cleanup separately to preserve any history you need.
+This API remains in v8. Remove `@nest-boot/queue-database`, `QueueDatabaseModule`, the old mirror entity/resolver, persistence/TTL options and Redis prefixes. Register queue classes as providers, switch to a PostgreSQL connection, run official migrations, register the native entities and configure request sessions for RLS. Existing Redis jobs and legacy mirror rows are not moved automatically; drain or migrate them separately before changing a deployment. Review old application table cleanup separately to preserve any history you need.
 
 ## Best Practices
 

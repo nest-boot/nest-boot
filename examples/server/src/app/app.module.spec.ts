@@ -27,7 +27,7 @@ describe('AppModule', () => {
         .getInitializerIfKindOrThrow(SyntaxKind.ArrayLiteralExpression)
         .getElements()
         .map((element) => element.getText()),
-    ).toEqual(['CommonModule', 'AuthModule', 'JobsModule', 'ReportsModule']);
+    ).toEqual(['CommonModule', 'AuthModule', 'ReportsModule']);
     const providers = getPropertyAssignment(metadata, 'providers')
       .getInitializerIfKindOrThrow(SyntaxKind.ArrayLiteralExpression)
       .getElements();

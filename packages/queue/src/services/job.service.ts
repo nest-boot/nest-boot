@@ -1,12 +1,12 @@
 import { EntityManager, type FilterQuery } from "@mikro-orm/core";
-import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 
 import { Job } from "../entities/job.entity.js";
 import { MODULE_OPTIONS_TOKEN } from "../queue.module-definition.js";
 import { QueueRegistrar } from "../queue.registrar.js";
 import type { QueueModuleOptions } from "../queue-module-options.interface.js";
 
-/** Reads BullMQ-owned jobs within the application's authorized scope. BullMQ performs every write. */
+/** Reads exposed BullMQ jobs using the EntityManager session and database RLS. BullMQ performs every write. */
 @Injectable()
 export class JobService {
   protected readonly schema: string;
@@ -14,7 +14,7 @@ export class JobService {
   constructor(
     protected readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN)
-    private readonly options: QueueModuleOptions<FilterQuery<Job>>,
+    options: QueueModuleOptions,
     @Inject(QueueRegistrar)
     private readonly queues: Pick<QueueRegistrar, "getExposedQueueNames">,
   ) {
@@ -26,18 +26,11 @@ export class JobService {
   }
 
   /**
-   * Intersects queue exposure with the authorized scope shared by API reads.
-   * @returns Filter limiting reads to the current identity.
+   * Restricts API reads to exposed queues; database RLS enforces ownership.
+   * @returns Filter shared by node, list and count queries.
    */
-  protected async getReadFilter(): Promise<FilterQuery<Job>> {
-    const filter = await this.options.getJobReadFilter?.();
-    if (filter == null)
-      throw new ForbiddenException(
-        "Job access is not configured for this identity",
-      );
-    return {
-      $and: [{ queue: { $in: this.queues.getExposedQueueNames() } }, filter],
-    };
+  protected getReadFilter(): FilterQuery<Job> {
+    return { queue: { $in: this.queues.getExposedQueueNames() } };
   }
 
   /**
@@ -46,7 +39,7 @@ export class JobService {
    * @returns The visible job, or null.
    */
   async getJob(id: string): Promise<Job | null> {
-    const scope = await this.getReadFilter();
+    const scope = this.getReadFilter();
     const separator = id.indexOf(":");
     if (separator <= 0 || separator === id.length - 1) return null;
     return await this.em.findOne(

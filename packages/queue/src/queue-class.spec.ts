@@ -168,7 +168,6 @@ it("merges constructor overrides over declarations and asynchronous defaults", a
     connection: { host: "queue.pg" },
     defaultJobOptions: { attempts: 1 },
     graphql: false,
-    getJobReadFilter: () => ({}),
   };
   const module = await Test.createTestingModule({
     imports: [
@@ -191,9 +190,6 @@ it("merges constructor overrides over declarations and asynchronous defaults", a
       host: "queue.pg",
     });
     expect(module.get(ConfiguredQueue).opts).not.toHaveProperty("graphql");
-    expect(module.get(ConfiguredQueue).opts).not.toHaveProperty(
-      "getJobReadFilter",
-    );
   } finally {
     await module.close();
   }

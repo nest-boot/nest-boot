@@ -18,8 +18,6 @@ import { runMigrations } from 'bullmq';
 import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 
-import { getJobReadFilter } from '../src/app/jobs/job-access.js';
-
 describe('example Job GraphQL API with native BullMQ tables', () => {
   let app: INestApplication;
   let orm: MikroORM;
@@ -124,7 +122,7 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
 
     const service = new JobConnectionService(
       orm.em,
-      { getJobReadFilter },
+      {},
       {
         getExposedQueueNames: () => ['reports', 'exports'],
       },

@@ -13,7 +13,7 @@ import { JobService } from "./job.service.js";
 @Injectable()
 export class JobConnectionService extends JobService {
   /**
-   * Queries native PostgreSQL jobs, applying the authorized scope to rows and counts.
+   * Queries exposed native PostgreSQL jobs; database RLS scopes rows and counts.
    * @param args - Pagination, filtering and sorting arguments.
    * @param info - GraphQL selection information.
    * @returns A connection containing only authorized jobs.
@@ -22,7 +22,7 @@ export class JobConnectionService extends JobService {
     args: ConnectionArgsInterface<Job>,
     info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<Job>> {
-    const where = await this.getReadFilter();
+    const where = this.getReadFilter();
     const { ConnectionManager } = await import("@nest-boot/graphql-connection");
     const { JobConnection } =
       await import("../connections/job.connection-definition.js");

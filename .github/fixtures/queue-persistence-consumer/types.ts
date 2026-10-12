@@ -1,4 +1,3 @@
-import type { FilterQuery } from "@mikro-orm/core";
 import { QueueModule, type QueueModuleOptions } from "@nest-boot/queue";
 import {
   getJobSchemaOptions,
@@ -6,9 +5,7 @@ import {
   type JobService,
 } from "@nest-boot/queue/persistence";
 
-const options: QueueModuleOptions<FilterQuery<Job>> = {
-  getJobReadFilter: () => ({ queue: "email" }),
-};
+const options: QueueModuleOptions = { graphql: false };
 QueueModule.forRoot(options);
 const ormOptions = getJobSchemaOptions("tasks");
 void ormOptions;

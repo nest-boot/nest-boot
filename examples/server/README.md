@@ -73,7 +73,7 @@ does not require a login.
 
 ## Jobs
 
-`JobsModule` uses BullMQ 6's official PostgreSQL backend, configured through
+`CommonModule` configures `QueueModule` with BullMQ 6's official PostgreSQL backend, configured through
 `QUEUE_DATABASE_URL` or `DATABASE_URL`. `ScheduleModule` uses the same backend.
 Run `pnpm --filter @nest-boot/example-server queue:migrate` first to create or
 upgrade BullMQ's schema. Then run application migrations to add ownership indexes,
@@ -103,13 +103,13 @@ active; the database and GraphQL integrations are optional read features.
 `QueueModule.graphql` defaults to true when the corresponding modules and entity are registered.
 Queue declarations default to `expose: false`: the example opts `ReportQueue` in
 with `@Queue({ expose: true })`, while the internal Schedule queue stays hidden.
-Job API nodes, lists and counts require both queue exposure and the identity filter.
+Job API nodes, lists and counts require both queue exposure and the RLS ownership policy.
 Direct BullMQ queue operations and persistence remain available for hidden queues.
 
 ### Runnable Queue and Schedule example
 
-`AppModule` imports `JobsModule` for shared configuration and `ReportsModule` for
-the business providers. `QueueModule` is imported only by `JobsModule`; its global
+`AppModule` imports `CommonModule` for shared configuration and `ReportsModule` for
+the business providers. `QueueModule` is imported only by `CommonModule`; its global
 services are available to `ReportsModule` without another registration.
 
 | File                                                         | Responsibility                                                                                                                                                                                |
@@ -142,7 +142,7 @@ completed.returnvalue; // { count: 3, total: 60, average: 20 }
 ```
 
 These background samples have no user/workspace ownership and are hidden from the
-authenticated Job API by `getJobReadFilter`. To expose a user's report, enqueue it
+authenticated Job API by RLS. To expose a user's report, enqueue it
 from trusted application code using the verified identity as shown below. The
 worker gets a fresh queue context; it does not inherit the producer's HTTP session.
 
@@ -156,11 +156,11 @@ await reports.add('summarize', {
 });
 ```
 
-`getJobReadFilter` allows a job when either `data.userId` matches the current user
+The Job RLS policy allows a job when either `data.userId` matches the current user
 or `data.workspaceId` matches the selected workspace. Personal tasks can omit the
 workspace ID; workspace tasks can omit the user ID. Jobs without a matching identity
-are hidden. JobService enforces this scope and the exposed-queue allowlist. The Job
-entity also enables RLS for `authenticated`, comparing those payload fields with
+are hidden. JobService restricts reads to the exposed-queue allowlist, while RLS
+compares those payload fields with
 verified `app.user.id` / `app.workspace.id` session variables. Missing or empty
 identities match no rows; anonymous reads and request writes have no policy.
 BullMQ producers and workers use a separate connection as the table owner (or a
@@ -171,7 +171,7 @@ grant request roles access to the other internal BullMQ tables.
 ### GraphQL queries
 
 The authenticated `/api/graphql` endpoint exposes `job(id: ID!)` and the `jobs`
-connection. Both use the current request's EntityManager and `getJobReadFilter`, so the same
+connection. Both use the current request's EntityManager session and RLS, so the same
 `data.userId OR data.workspaceId` scope applies to returned rows and counts.
 An inaccessible or missing job returns `null`. Anonymous requests are rejected
 by the application's global `AuthGuard`. Member API keys use their workspace
