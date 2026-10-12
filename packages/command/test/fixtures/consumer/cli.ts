@@ -1,8 +1,8 @@
 import {
   BaseCommand,
   Command,
-  CommandModule,
   CommandFactory,
+  CommandModule,
   Option,
 } from "@nest-boot/command";
 import { RequestContext } from "@nest-boot/request-context";
@@ -46,6 +46,7 @@ class GreetingModule {}
 })
 class AppModule {}
 
+/** Boots the consumer application and executes its command. */
 async function bootstrap() {
   await CommandFactory.run(AppModule);
 }

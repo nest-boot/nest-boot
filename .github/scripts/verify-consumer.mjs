@@ -32,6 +32,13 @@ try {
   cpSync(join(repository, ".github/fixtures/consumer"), consumer, {
     recursive: true,
   });
+  cpSync(
+    join(repository, "packages/command/test/fixtures/consumer"),
+    consumer,
+    {
+      recursive: true,
+    },
+  );
   const dependencies = {};
   const imports = [];
   let packedPackages = 0;
