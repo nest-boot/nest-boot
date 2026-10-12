@@ -129,6 +129,23 @@ export class CommandRegistry {
         };
         instance.cli = {
           ...cli,
+          run: async (...args) => {
+            const state = Object.fromEntries(
+              [
+                ...Object.keys(definitions),
+                "context",
+                "cli",
+                "path",
+                "help",
+                "tokens",
+              ].map((key) => [key, Reflect.get(instance, key)]),
+            );
+            try {
+              return await cli.run(...args);
+            } finally {
+              Object.assign(instance, state);
+            }
+          },
           definition: (command) => cli.definition(resolveClass(command)),
           usage: (command, options) =>
             cli.usage(

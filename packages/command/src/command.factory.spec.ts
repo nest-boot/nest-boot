@@ -512,10 +512,60 @@ it.each(["execute", "schema"])(
     const output = capture();
     const exitCode = await CommandFactory.run(AppModule, {
       args: ["helpers", "--loud"],
+      enableColors: false,
       context: output,
     });
     expect(exitCode, output.output()).toBe(0);
     expect(output.output()).toBe("HELPERS");
     expect(events).toEqual(["closed"]);
+  },
+);
+
+it.each([false, true])(
+  "restores command state after a nested invocation fails: %s",
+  async (fails) => {
+    const innerOutput = capture();
+    @Command({ paths: [["forward"], ["alias"]] })
+    class ForwardCommand extends BaseCommand {
+      name = Option.String({ required: true });
+      loud = Option.Boolean("--loud", false);
+
+      async execute() {
+        if (this.name === "outer") {
+          const parentCli = this.cli;
+          const parentContext = this.context;
+          const parentTokens = this.tokens;
+          this.name = "outer-mutated";
+          const exitCode = await this.cli.run(
+            ["alias", "inner", "--loud"],
+            innerOutput,
+          );
+          expect(exitCode).toBe(fails ? 1 : 0);
+          expect(this.name).toBe("outer-mutated");
+          expect(this.loud).toBe(false);
+          expect(this.path).toEqual(["forward"]);
+          expect(this.cli).toBe(parentCli);
+          expect(this.context).toBe(parentContext);
+          expect(this.tokens).toBe(parentTokens);
+          this.context.stdout.write(this.name);
+        } else {
+          expect(this.name).toBe("inner");
+          expect(this.loud).toBe(true);
+          this.context.stdout.write("INNER");
+          if (fails) throw new UsageError("Nested failure");
+        }
+      }
+    }
+    @Module({ imports: [CommandModule], providers: [ForwardCommand] })
+    class AppModule {}
+    const output = capture();
+    const exitCode = await CommandFactory.run(AppModule, {
+      args: ["forward", "outer"],
+      context: output,
+      enableColors: false,
+    });
+    expect(exitCode, output.output()).toBe(0);
+    expect(output.output()).toBe("outer-mutated");
+    expect(innerOutput.output()).toContain("INNER");
   },
 );

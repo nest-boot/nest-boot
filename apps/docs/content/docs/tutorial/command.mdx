@@ -78,7 +78,9 @@ Use the same `AppModule` as the HTTP and REPL entries. Nest application initiali
 
 ## Entry resolution and execution
 
-Development checks `src/cli.ts`, then `dist/cli.js`. With `NODE_ENV=production`, `dist/cli.js` is checked before `src/cli.ts`. A failing selected entry reports an error rather than loading stale output. TypeScript is transpiled using the project tsconfig with Nest decorator metadata, relative `.js` imports resolving to `.ts` source, and tsconfig `paths` or `baseUrl` imports. TSX dependencies are transpiled using the project JSX settings. Transpilation does not replace a typecheck. Compiled JavaScript needs no source files or tsconfig.
+Development checks `src/cli.ts`, then `dist/cli.js`. With `NODE_ENV=production`, `dist/cli.js` is checked before `src/cli.ts`. A failing selected entry reports an error rather than loading stale output. Source execution uses `ts-node` in transpile-only mode with `experimentalResolver` and `preferTsExts` enabled. ESM loading, relative extension remapping and JSX follow the project tsconfig and `ts-node` settings. Source applications use `"type": "module"` and `module`/`moduleResolution` set to `"NodeNext"`. Configure `experimentalDecorators` and `emitDecoratorMetadata` for Nest dependency injection. Without a tsconfig, the CLI uses NodeNext and Nest decorator defaults. Transpilation does not replace a typecheck. Compiled JavaScript needs no source files or tsconfig.
+
+`ts-node` does not automatically implement `paths`, `baseUrl` or `dist`-to-`src` mappings. Configure any runtime aliases in your project. See the [ts-node documentation](https://typestrong.org/ts-node/docs/paths/).
 
 The entry is an executable bootstrap script and needs no default export. Call `CommandFactory.run(AppModule)` once from the CLI bootstrap; it sets `process.exitCode` internally. Compiled `dist/cli.js` can also be executed directly with Node.js. Commands return an optional exit code from `execute()`. Unknown commands, invalid options and execution errors return a nonzero exit code. Help and successful commands return zero. Nest shutdown hooks run when the command finishes, including failures.
 

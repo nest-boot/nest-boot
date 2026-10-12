@@ -1,8 +1,10 @@
 import "reflect-metadata";
 
+import { register as registerLoader } from "node:module";
+import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { registerTypeScript, resolveCliEntry } from "./project-loader.js";
+import { resolveCliEntry } from "./project-loader.js";
 
 /** Settings for locating and executing an application's CLI entry script. */
 export interface RunCliOptions {
@@ -21,16 +23,18 @@ export async function runCli(options: RunCliOptions = {}): Promise<void> {
     options.cwd ?? process.cwd(),
     options.production ?? process.env.NODE_ENV === "production",
   );
-  const hooks = entry.endsWith(".ts")
-    ? await registerTypeScript(entry)
-    : undefined;
   process.argv[1] = entry;
-  try {
-    await import(pathToFileURL(entry).href);
-    // A void bootstrap() can outlive module evaluation. Keep TypeScript hooks
-    // for the process lifetime so its later dynamic imports remain supported.
-  } catch (error) {
-    hooks?.deregister();
-    throw error;
+  if (entry.endsWith(".ts")) {
+    registerLoader("./ts-node.loader.js", {
+      parentURL: import.meta.url,
+      data: {
+        cwd: resolve(options.cwd ?? process.cwd()),
+        projectSearchDir: dirname(entry),
+        transpileOnly: true,
+        experimentalResolver: true,
+        preferTsExts: true,
+      },
+    });
   }
+  await import(pathToFileURL(entry).href);
 }

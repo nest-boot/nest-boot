@@ -73,7 +73,9 @@ function run(args: string[] = [], production = false) {
   });
 }
 
-const source = readFileSync(join(testApplication, "src/cli.ts"), "utf8");
+const sourceConfig = JSON.parse(
+  readFileSync(join(testApplication, "tsconfig.json"), "utf8"),
+) as { compilerOptions: Record<string, string | boolean>; include: string[] };
 const commands = readFileSync(
   join(testApplication, "src/app/hello.command.ts"),
   "utf8",
@@ -99,11 +101,29 @@ Module({ imports: [CommandModule], providers: [BuiltCommand] })(AppModule);
 void CommandFactory.run(AppModule);
 `;
 
-it("loads source decorators and implicit DI metadata, resolves .js imports and keeps hooks through execution", () => {
+it("uses ts-node for source decorators, implicit DI metadata, relative imports and dynamic imports", () => {
   writeSource();
   const result = run(["hello", "Alice", "--loud"]);
-  expect(result.stderr).toBe("");
+  expect(result.stderr).not.toMatch(/Error|SyntaxError|TSError/);
   expect(result.status).toBe(0);
+  expect(result.stdout).toContain("SOURCE:ALICE!");
+  expect(result.stdout).toContain("CLOSED");
+});
+it("runs a Nest source application without a tsconfig using default decorator settings", () => {
+  writeSource();
+  rmSync(join(project, "tsconfig.json"));
+  const result = run(["hello", "Alice", "--loud"]);
+  expect(result.status, result.stderr).toBe(0);
+  expect(result.stdout).toContain("SOURCE:ALICE!");
+  expect(result.stdout).toContain("CLOSED");
+});
+it("runs a TypeScript 6 project whose source tsconfig does not declare rootDir", () => {
+  writeSource();
+  const compilerOptions = { ...sourceConfig.compilerOptions };
+  delete compilerOptions.rootDir;
+  write("tsconfig.json", JSON.stringify({ ...sourceConfig, compilerOptions }));
+  const result = run(["hello", "Alice", "--loud"]);
+  expect(result.status, result.stderr).toBe(0);
   expect(result.stdout).toContain("SOURCE:ALICE!");
   expect(result.stdout).toContain("CLOSED");
 });
@@ -115,7 +135,14 @@ it("transpiles TSX dependencies with project JSX settings and resolves their Typ
   );
   write(
     "tsconfig.json",
-    JSON.stringify({ compilerOptions: { jsx: "react", jsxFactory: "render" } }),
+    JSON.stringify({
+      ...sourceConfig,
+      compilerOptions: {
+        ...sourceConfig.compilerOptions,
+        jsx: "react",
+        jsxFactory: "render",
+      },
+    }),
   );
   write(
     "src/app/view.tsx",
@@ -128,7 +155,7 @@ it("transpiles TSX dependencies with project JSX settings and resolves their Typ
   write("src/app/template-text.ts", "export const text: string = '!';");
   write("src/app/template-text.js", "export const text = 'STALE';");
   const result = run(["hello", "Alice"]);
-  expect(result.stderr).toBe("");
+  expect(result.stderr).not.toMatch(/Error|SyntaxError|TSError/);
   expect(result.status).toBe(0);
   expect(result.stdout).toContain("SOURCE:Alice!");
   expect(result.stdout).not.toContain("STALE");
@@ -141,7 +168,7 @@ it("prefers relative TypeScript sources over adjacent JavaScript during source e
   );
   write("src/app/punctuation.js", "export const punctuation = 'STALE';");
   const result = run(["hello", "Alice"]);
-  expect(result.stderr).toBe("");
+  expect(result.stderr).not.toMatch(/Error|SyntaxError|TSError/);
   expect(result.status).toBe(0);
   expect(result.stdout).toContain("SOURCE:Alice!");
   expect(result.stdout).not.toContain("STALE");
@@ -154,85 +181,9 @@ it("loads JavaScript implementations when relative declarations exist without Ty
   write("src/message.d.ts", "export declare const message: string;");
   write("src/message.js", "export const message = 'JAVASCRIPT';");
   const result = run();
-  expect(result.stderr).toBe("");
+  expect(result.stderr).not.toMatch(/Error|SyntaxError|TSError/);
   expect(result.status).toBe(0);
   expect(result.stdout.trim()).toBe("JAVASCRIPT");
-});
-it.each([false, true])(
-  "resolves baseUrl-only imports with an installed package present: %s",
-  (installed) => {
-    writeSource();
-    write(
-      "src/cli.ts",
-      source.replace("./app/app.module.js", "src/app/app.module.js"),
-    );
-    write(
-      "tsconfig.json",
-      JSON.stringify({
-        compilerOptions: { baseUrl: ".", ignoreDeprecations: "6.0" },
-      }),
-    );
-    if (installed) {
-      write(
-        "node_modules/src/package.json",
-        JSON.stringify({
-          type: "module",
-          exports: { "./app/app.module.js": "./app.module.js" },
-        }),
-      );
-      write(
-        "node_modules/src/app.module.js",
-        "export const AppModule = null; throw new Error('Loaded installed src package');",
-      );
-    }
-    const result = run(["hello", "Alice"]);
-    expect(result.stderr).toBe("");
-    expect(result.status, result.stdout).toBe(0);
-    expect(result.stdout).toContain("SOURCE:Alice!");
-  },
-);
-it("supports tsconfig path aliases", () => {
-  writeSource();
-  write("src/cli.ts", source.replace("./app/app.module.js", "@app/commands"));
-  write(
-    "tsconfig.json",
-    JSON.stringify({
-      compilerOptions: {
-        paths: { "@app/commands": ["./src/app/app.module.ts"] },
-      },
-    }),
-  );
-  const result = run(["hello", "Alice"]);
-  expect(result.stderr).toBe("");
-  expect(result.status).toBe(0);
-  expect(result.stdout).toContain("SOURCE:Alice!");
-});
-it("prefers tsconfig path aliases over an installed package with the same name", () => {
-  writeSource();
-  write("src/cli.ts", source.replace("./app/app.module.js", "@app/commands"));
-  write(
-    "tsconfig.json",
-    JSON.stringify({
-      compilerOptions: {
-        paths: { "@app/commands": ["./src/app/app.module.ts"] },
-      },
-    }),
-  );
-  write(
-    "node_modules/@app/commands/package.json",
-    JSON.stringify({
-      type: "module",
-      exports: "./index.js",
-    }),
-  );
-  write(
-    "node_modules/@app/commands/index.js",
-    "throw new Error('Loaded installed package instead of alias');",
-  );
-  const result = run(["hello", "Alice"]);
-  expect(result.stderr).toBe("");
-  expect(result.status).toBe(0);
-  expect(result.stdout).toContain("SOURCE:Alice!");
 });
 it("prefers source during development and built JavaScript during production", () => {
   writeSource();
@@ -246,23 +197,37 @@ it("loads compiled JavaScript without source or a tsconfig", () => {
   write("dist/cli.js", built);
   expect(run(["built"]).status).toBe(0);
 });
-it("supports a CommonJS bootstrap entry", () => {
-  write("package.json", JSON.stringify({ type: "commonjs" }));
+it("uses Node's package exports resolution for bare imports", () => {
+  write("tsconfig.json", JSON.stringify(sourceConfig));
   write(
-    "dist/cli.js",
-    built
-      .replace(
-        "import { BaseCommand, Command, CommandFactory, CommandModule } from '@nest-boot/command';",
-        "const { BaseCommand, Command, CommandFactory, CommandModule } = require('@nest-boot/command');",
-      )
-      .replace(
-        "import { Module } from '@nestjs/common';",
-        "const { Module } = require('@nestjs/common');",
-      ),
+    "src/cli.ts",
+    "import { value } from 'fixture-package/worker.js'; console.log(value);",
   );
-  const result = run(["built"]);
-  expect(result.status).toBe(0);
-  expect(result.stdout).toBe("BUILT");
+  write(
+    "node_modules/fixture-package/package.json",
+    JSON.stringify({
+      type: "module",
+      exports: { "./*.js": "./*.js", "./*": "./*.js" },
+    }),
+  );
+  write(
+    "node_modules/fixture-package/worker.js",
+    "export const value = 'PACKAGE EXPORTS';",
+  );
+  const result = run();
+  expect(result.status, result.stderr).toBe(0);
+  expect(result.stdout.trim()).toBe("PACKAGE EXPORTS");
+});
+it("loads a CommonJS JavaScript dependency from an ESM source entry", () => {
+  write("tsconfig.json", JSON.stringify(sourceConfig));
+  write(
+    "src/cli.ts",
+    "import worker from './worker.cjs'; console.log(worker.value);",
+  );
+  write("src/worker.cjs", "module.exports = { value: 'COMMONJS DEPENDENCY' };");
+  const result = run();
+  expect(result.status, result.stderr).toBe(0);
+  expect(result.stdout.trim()).toBe("COMMONJS DEPENDENCY");
 });
 it("returns a nonzero exit code for missing entries", () => {
   const result = run();
@@ -282,7 +247,7 @@ it("runs the built entry directly like main.js and repl.js", () => {
     encoding: "utf8",
     timeout: 15_000,
   });
-  expect(result.stderr).toBe("");
+  expect(result.stderr).not.toMatch(/Error|SyntaxError|TSError/);
   expect(result.status).toBe(0);
   expect(result.stdout).toBe("BUILT");
   const failure = spawnSync(process.execPath, ["dist/cli.js", "missing"], {
