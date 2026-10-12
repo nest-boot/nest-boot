@@ -1,7 +1,10 @@
 import { spawnSync } from "node:child_process";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
+  readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -11,7 +14,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const executable = join(packageDirectory, "dist/cli.js");
+const executable = join(packageDirectory, "bin/nb");
 let project: string;
 
 beforeEach(() => {
@@ -234,3 +237,64 @@ it("returns failure for unknown commands without forcing process.exit", () => {
   write("dist/cli.js", built);
   expect(run(["missing"]).status).toBe(1);
 });
+
+it("links nb during a fresh workspace installation before compiled output exists", () => {
+  const manifest = JSON.parse(
+    readFileSync(join(packageDirectory, "package.json"), "utf8"),
+  ) as {
+    version: string;
+    type: string;
+    bin: Record<string, string>;
+  };
+  write("workspace/package.json", JSON.stringify({ private: true }));
+  write("workspace/pnpm-workspace.yaml", "packages:\n  - packages/*\n");
+  write(
+    "workspace/packages/command/package.json",
+    JSON.stringify({
+      name: "@fixture/command",
+      version: manifest.version,
+      type: manifest.type,
+      bin: manifest.bin,
+    }),
+  );
+  const binDirectory = join(packageDirectory, "bin");
+  if (existsSync(binDirectory))
+    for (const name of readdirSync(binDirectory)) {
+      write(
+        `workspace/packages/command/bin/${name}`,
+        readFileSync(join(binDirectory, name), "utf8"),
+      );
+    }
+  write(
+    "workspace/packages/app/package.json",
+    JSON.stringify({
+      name: "fixture-app",
+      private: true,
+      dependencies: { "@fixture/command": "workspace:*" },
+    }),
+  );
+  const installed = spawnSync(
+    "pnpm",
+    ["install", "--offline", "--ignore-scripts"],
+    {
+      cwd: join(project, "workspace"),
+      encoding: "utf8",
+      timeout: 15_000,
+    },
+  );
+  expect(installed.status, installed.stdout + installed.stderr).toBe(0);
+  expect(
+    existsSync(join(project, "workspace/packages/app/node_modules/.bin/nb")),
+  ).toBe(true);
+  write(
+    "workspace/packages/command/dist/cli.js",
+    "console.log('WORKSPACE CLI');\n",
+  );
+  const result = spawnSync("pnpm", ["exec", "nb"], {
+    cwd: join(project, "workspace/packages/app"),
+    encoding: "utf8",
+    timeout: 15_000,
+  });
+  expect(result.status, result.stdout + result.stderr).toBe(0);
+  expect(result.stdout.trim()).toBe("WORKSPACE CLI");
+}, 20_000);

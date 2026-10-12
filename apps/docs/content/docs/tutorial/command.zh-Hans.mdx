@@ -80,7 +80,7 @@ CLI 与 HTTP、REPL 共享 `AppModule`。Nest 应用初始化钩子仍会执行�
 
 开发环境依次查找 `src/cli.ts`、`dist/cli.js`、`dist/cli.ts`；`NODE_ENV=production` 时优先查找 dist。选中的入口报错时直接返回错误，不回退到旧产物。源码加载读取项目 tsconfig，并保留 Nest 装饰器元数据，支持相对 `.js` 导入解析到 `.ts` 源码和 tsconfig 路径别名。运行时转译不代替类型检查。编译后的 JavaScript 不需要源码或 tsconfig。
 
-入口是可执行的 bootstrap 脚本，无需默认导出模块。`CommandFactory.run(AppModule)` 内部设置 `process.exitCode`；编译后的 `dist/cli.js` 也可以直接通过 Node.js 执行。`execute()` 可以返回退出码；帮助和成功执行返回 0，未知命令、无效参数、执行失败返回非零。执行结束后会关闭 Nest 上下文并调用资源清理钩子，失败时也会清理。
+入口是可执行的 bootstrap 脚本，无需默认导出模块。`CommandFactory.run(AppModule)` 内部设置 `process.exitCode`；编译后的 `dist/cli.js` 也可以直接通过 Node.js 执行。`execute()` 可以返回退出码；帮助和成功执行返回 0，未知命令、无效参数、执行失败返回非零。执行结束后会关闭 Nest 上下文并调用资源清理钩子，失败时也会清理。并发 factory 调用会在 `process.exitCode` 中保留首个非零结果，每次调用仍返回自己的退出码。全部调用结束后，下一次调用会重新计算退出状态。
 
 编程调用使用 `await CommandFactory.run(AppModule, { args: ["greet", "Alice"] })`，返回退出码并关闭上下文，不调用 `process.exit()`。`runCli({ cwd, production })` 执行项目入口，由入口负责 bootstrap 和 factory options，factory 内部设置退出码。factory options 支持输出流和帮助信息配置。
 

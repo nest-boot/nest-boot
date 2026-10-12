@@ -20,6 +20,7 @@
     "lib": "dist"
   },
   "files": [
+    "bin",
     "dist"
   ],
   "scripts": {
@@ -79,7 +80,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "nb": "./dist/cli.js"
+    "nb": "./bin/nb"
   },
   "dependencies": {
     "clipanion": "^4.0.0-rc.4",

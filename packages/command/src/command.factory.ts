@@ -21,31 +21,35 @@ export interface CommandFactoryOptions extends Partial<CliOptions> {
 
 /** Boots a standalone Nest context, runs one command, then closes its resources. */
 export class CommandFactory {
+  private static activeRuns = 0;
+  private static batchExitCode = 0;
   /**
    * Executes commands declared in the root module and its imported modules.
    * @param rootModule - CLI root module importing CommandModule.
    * @param options - Arguments, help configuration and Nest settings.
-   * @returns The command exit code, also assigned to process.exitCode.
+   * @returns The command exit code; concurrent runs preserve the first nonzero process exit code.
    */
   static async run(
     rootModule: Type | DynamicModule,
     options: CommandFactoryOptions = {},
   ): Promise<number> {
-    return await RequestContext.withMiddlewareScope(async () => {
-      try {
+    if (CommandFactory.activeRuns === 0) CommandFactory.batchExitCode = 0;
+    CommandFactory.activeRuns++;
+    let exitCode = 1;
+    try {
+      exitCode = await RequestContext.withMiddlewareScope(async () => {
         const app = await NestFactory.createApplicationContext(rootModule, {
           logger: false,
           ...options.contextOptions,
           abortOnError: false,
         });
-        let exitCode: number;
         try {
           const cli = new Cli({ binaryName: "nb", ...options });
           cli.register(Builtins.HelpCommand);
           if (options.binaryVersion) cli.register(Builtins.VersionCommand);
           app.get(CommandRegistry, { strict: false }).register(cli);
           const args = options.args ?? process.argv.slice(2);
-          exitCode = await RequestContext.run(
+          return await RequestContext.run(
             new RequestContext({
               type: "command",
               dependencyResolver: (token) => {
@@ -68,12 +72,14 @@ export class CommandFactory {
         } finally {
           await app.close();
         }
-        process.exitCode = exitCode;
-        return exitCode;
-      } catch (error) {
-        process.exitCode = 1;
-        throw error;
+      });
+      return exitCode;
+    } finally {
+      if (exitCode !== 0 && CommandFactory.batchExitCode === 0) {
+        CommandFactory.batchExitCode = exitCode;
       }
-    });
+      CommandFactory.activeRuns--;
+      process.exitCode = CommandFactory.batchExitCode;
+    }
   }
 }

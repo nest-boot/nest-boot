@@ -65,7 +65,7 @@ Development prefers `src/cli.ts`; production (`NODE_ENV=production`) prefers `di
 
 Use `CommandFactory.run(AppModule, { args })` for programmatic command execution; it returns an exit code without exiting the process. `runCli({ cwd, production })` executes the project entry script, which calls the factory to bootstrap the application and set its exit code.
 
-`RequestContext.get(token)` falls back to Nest singleton providers; unavailable or scoped providers return `undefined`. Factory calls inherit existing middleware registrations and isolate middleware registered during their own application initialization, including concurrent calls.
+`RequestContext.get(token)` falls back to Nest singleton providers; unavailable or scoped providers return `undefined`. Factory calls inherit existing middleware registrations and isolate middleware registered during their own application initialization, including concurrent calls. Concurrent runs preserve the first nonzero exit code in `process.exitCode`; each call still returns its own result. A subsequent run after all active calls finish starts a new exit status.
 
 After publication, `npm install -g @nest-boot/command` provides a global `nb` executable. Run it from the application directory; the project still installs this package and its peers and provides its own CLI entry and module registration.
 

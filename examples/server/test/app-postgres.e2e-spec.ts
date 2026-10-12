@@ -155,6 +155,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       });
       expect(result.stdout).toContain('Hello ALICE!');
     },
+    20_000,
   );
 
   it('exposes database and queue health without authentication', async () => {

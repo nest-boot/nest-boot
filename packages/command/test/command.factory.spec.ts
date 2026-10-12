@@ -504,3 +504,56 @@ it("isolates application middleware registrations across sequential and concurre
     RequestContext.registerMiddleware(middlewareName, (_ctx, next) => next());
   }
 });
+
+it.each([0, 20])(
+  "preserves concurrent failure exit codes with a %d ms failure delay",
+  async (failureDelay) => {
+    @Command({ paths: [["status"]] })
+    class StatusCommand extends BaseCommand {
+      outcome = Option.String({ required: true });
+      async execute() {
+        await new Promise((resolve) =>
+          setTimeout(
+            resolve,
+            this.outcome === "fail" ? failureDelay : 20 - failureDelay,
+          ),
+        );
+        return this.outcome === "fail" ? 7 : 0;
+      }
+    }
+    @Module({ imports: [CommandModule], providers: [StatusCommand] })
+    class AppModule {}
+    const run = (outcome: string) =>
+      CommandFactory.run(AppModule, {
+        args: ["status", outcome],
+        context: capture(),
+      });
+    expect(await Promise.all([run("fail"), run("success")])).toEqual([7, 0]);
+    expect(process.exitCode).toBe(7);
+    expect(await run("success")).toBe(0);
+    expect(process.exitCode).toBe(0);
+  },
+);
+
+it("does not mask a concurrent factory error with a successful command", async () => {
+  @Module({})
+  class MissingCommandModule {}
+  @Command({ paths: [["slow-success"]] })
+  class SlowCommand extends BaseCommand {
+    async execute() {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+  }
+  @Module({ imports: [CommandModule], providers: [SlowCommand] })
+  class AppModule {}
+  const results = await Promise.allSettled([
+    CommandFactory.run(MissingCommandModule, { args: [] }),
+    CommandFactory.run(AppModule, {
+      args: ["slow-success"],
+      context: capture(),
+    }),
+  ]);
+  expect(results[0].status).toBe("rejected");
+  expect(results[1]).toEqual({ status: "fulfilled", value: 0 });
+  expect(process.exitCode).toBe(1);
+});
