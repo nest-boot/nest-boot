@@ -95,3 +95,25 @@ import { RequestContext } from "@nest-boot/request-context";
 const context = RequestContext.current();
 console.log(context.type, context.id);
 ```
+
+## Run the example server commands
+
+The repository's example server includes `src/cli.ts`, bootstrapping its existing `AppModule`. `CommonModule` imports `CommandModule` and registers `GreetCommand`. After configuring the example's services and applying its database migrations:
+
+```bash
+pnpm --filter @nest-boot/example-server command --help
+pnpm --filter @nest-boot/example-server command greet Alice --loud
+```
+
+This prints `Hello ALICE!`. Build the server to execute `node dist/cli.js greet Alice --loud` from `examples/server`. Commands share the application's initialization hooks, so the example still requires PostgreSQL and Redis.
+
+## Global executable
+
+Once the package is published, you can install its executable globally:
+
+```bash
+npm install -g @nest-boot/command
+nb --help
+```
+
+Run `nb` from the application directory. The project still installs `@nest-boot/command` and its peers and provides its own CLI entry and CommandModule registration. Global installation supplies the executable; commands and providers come from the project.

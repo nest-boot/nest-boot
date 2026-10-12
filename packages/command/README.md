@@ -65,4 +65,8 @@ Development prefers `src/cli.ts`; production (`NODE_ENV=production`) prefers `di
 
 Use `CommandFactory.run(AppModule, { args })` for programmatic command execution; it returns an exit code without exiting the process. `runCli({ cwd, production })` executes the project entry script, which calls the factory to bootstrap the application and set its exit code.
 
+After publication, `npm install -g @nest-boot/command` provides a global `nb` executable. Run it from the application directory; the project still installs this package and its peers and provides its own CLI entry and module registration.
+
+The repository example is runnable with `pnpm --filter @nest-boot/example-server command greet Alice --loud` after configuring its services and applying database migrations.
+
 [Full documentation](https://github.com/nest-boot/nest-boot/blob/main/apps/docs/content/docs/tutorial/command.mdx)

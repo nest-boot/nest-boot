@@ -95,3 +95,25 @@ import { RequestContext } from "@nest-boot/request-context";
 const context = RequestContext.current();
 console.log(context.type, context.id);
 ```
+
+## 运行 example server 命令
+
+仓库的 example server 已添加 `src/cli.ts`，启动现有 `AppModule`。`CommonModule` 导入 `CommandModule` 并注册 `GreetCommand`。配置示例所需服务并执行数据库迁移后，在仓库根目录运行：
+
+```bash
+pnpm --filter @nest-boot/example-server command --help
+pnpm --filter @nest-boot/example-server command greet Alice --loud
+```
+
+输出为 `Hello ALICE!`。编译后也可在 `examples/server` 中执行 `node dist/cli.js greet Alice --loud`。命令共享应用的初始化钩子，示例仍需 PostgreSQL 和 Redis。
+
+## 全局命令入口
+
+包发布后可以全局安装：
+
+```bash
+npm install -g @nest-boot/command
+nb --help
+```
+
+在应用目录运行 `nb`。项目自身仍需安装 `@nest-boot/command` 及其 peer dependencies，并提供 CLI 入口和 `CommandModule` 注册。全局安装提供执行入口；命令与依赖注入使用项目自己的实现。

@@ -435,6 +435,9 @@ importers:
       '@nest-boot/auth':
         specifier: workspace:^
         version: link:../../packages/auth
+      '@nest-boot/command':
+        specifier: workspace:^
+        version: link:../../packages/command
       '@nest-boot/database':
         specifier: workspace:^
         version: link:../../packages/database
