@@ -11,7 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  */
 export function resolveCliEntry(cwd: string, production: boolean): string {
   const source = ["src/cli.ts"];
-  const built = ["dist/cli.js", "dist/cli.ts"];
+  const built = ["dist/cli.js"];
   const candidates = production ? [...built, ...source] : [...source, ...built];
   for (const candidate of candidates) {
     const path = resolve(cwd, candidate);

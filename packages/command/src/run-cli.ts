@@ -8,7 +8,7 @@ import { registerTypeScript, resolveCliEntry } from "./project-loader.js";
 export interface RunCliOptions {
   /** Application directory; defaults to process.cwd(), not the home directory. */
   cwd?: string;
-  /** Prefer dist/cli.js or dist/cli.ts; defaults to NODE_ENV === "production". */
+  /** Prefer dist/cli.js; defaults to NODE_ENV === "production". */
   production?: boolean;
 }
 

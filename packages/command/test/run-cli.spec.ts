@@ -175,10 +175,6 @@ it("loads compiled JavaScript without source or a tsconfig", () => {
   write("dist/cli.js", built);
   expect(run(["built"]).status).toBe(0);
 });
-it("supports dist/cli.ts", () => {
-  write("dist/cli.ts", built);
-  expect(run(["built"]).stdout).toBe("BUILT");
-});
 it("supports a CommonJS bootstrap entry", () => {
   write("package.json", JSON.stringify({ type: "commonjs" }));
   write(
