@@ -9,17 +9,20 @@ export abstract class BaseProcessor<T extends Worker = Worker> {
   [WORKER_REF]?: T;
 
   /**
-   * The worker is available after module initialization.
+   * The worker is available after QueueRegistrar.start().
    * @returns The initialized worker.
    */
   get worker(): T {
     const worker = this[WORKER_REF];
     if (!worker)
       throw new Error(
-        "Worker is not initialized; access it after onModuleInit.",
+        "Worker is not initialized; call QueueRegistrar.start() first.",
       );
     return worker;
   }
+
+  /** Prepares this singleton consumer before its queue begins processing. */
+  onQueueStart?(): void | Promise<void>;
 
   /**
    * Processes a queued job. Rejections are handled by BullMQ's retry policy.

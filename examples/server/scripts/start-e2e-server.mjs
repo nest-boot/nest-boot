@@ -19,6 +19,7 @@ const administratorPassword =
 const databaseName = `nest_boot_example_e2e_${process.pid}_${Date.now()}`;
 const databaseUrl = databaseUrlFor(databaseName);
 let serverProcess;
+let workerProcess;
 let shuttingDown = false;
 
 const DbProbeSchema = new EntitySchema({
@@ -37,7 +38,7 @@ process.on('SIGTERM', () => cleanup(0));
 
 try {
   await createDatabase();
-  execFileSync(process.execPath, ['scripts/migrate-queue.mjs'], {
+  execFileSync(process.execPath, ['dist/cli.js', 'queue:migrate'], {
     cwd: serverRoot,
     env: createServerEnv(),
     stdio: 'inherit',
@@ -55,6 +56,17 @@ try {
     }
   });
 
+  workerProcess = spawn(process.execPath, ['dist/cli.js', 'queue:run'], {
+    cwd: serverRoot,
+    env: createServerEnv(),
+    stdio: ['ignore', 'inherit', 'inherit'],
+  });
+  workerProcess.once('exit', (code, signal) => {
+    if (!shuttingDown) {
+      console.error(`e2e worker exited unexpectedly: ${signal ?? code}`);
+      cleanup(1);
+    }
+  });
   await waitForServer();
   await seedAdministrator();
   console.log(`example server ready ${databaseName} ${authUrl}`);
@@ -114,16 +126,18 @@ async function cleanup(exitCode) {
 
   shuttingDown = true;
 
-  if (serverProcess && serverProcess.exitCode === null) {
-    await new Promise((resolveExit) => {
-      serverProcess.once('exit', resolveExit);
-      serverProcess.kill('SIGTERM');
-      setTimeout(() => {
-        if (serverProcess.exitCode === null) {
-          serverProcess.kill('SIGKILL');
-        }
-      }, 5_000).unref();
-    });
+  for (const child of [workerProcess, serverProcess]) {
+    if (child && child.exitCode === null && child.signalCode === null) {
+      await new Promise((resolveExit) => {
+        child.once('exit', resolveExit);
+        child.kill('SIGTERM');
+        setTimeout(() => {
+          if (child.exitCode === null && child.signalCode === null) {
+            child.kill('SIGKILL');
+          }
+        }, 5_000).unref();
+      });
+    }
   }
 
   await dropDatabase().catch((error) => {

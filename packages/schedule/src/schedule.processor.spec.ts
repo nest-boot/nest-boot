@@ -1,5 +1,3 @@
-import { isCommandContext } from "@nest-boot/command";
-vi.mock("@nest-boot/command", () => ({ isCommandContext: vi.fn(() => false) }));
 import { ScheduleQueue } from "./schedule.queue.js";
 const { mockProcessor, mockProcessorDecorator } = vi.hoisted(() => {
   const mockProcessorDecorator = vi.fn();
@@ -32,9 +30,6 @@ import { ScheduleRegistry } from "./schedule.registry.js";
 import { type ScheduleModuleOptions } from "./schedule-module-options.interface.js";
 
 describe("ScheduleProcessor", () => {
-  beforeEach(() => {
-    vi.mocked(isCommandContext).mockReturnValue(false);
-  });
   const createRegistry = (entry?: ReturnType<ScheduleRegistry["get"]>) => {
     const get = vi.fn(() => entry);
 
@@ -42,6 +37,7 @@ describe("ScheduleProcessor", () => {
       get,
       registry: {
         get,
+        register: vi.fn().mockResolvedValue(undefined),
       } as unknown as ScheduleRegistry,
     };
   };
@@ -50,19 +46,10 @@ describe("ScheduleProcessor", () => {
     vi.restoreAllMocks();
   });
 
-  it("does not access an uninitialized worker during command execution", async () => {
-    const processor = await createProcessor(createRegistry().registry, {
-      concurrency: 4,
-    });
-    Object.defineProperty(processor, "worker", {
-      get() {
-        throw new Error("Worker is not initialized");
-      },
-    });
-    vi.mocked(isCommandContext).mockReturnValue(true);
-    expect(() => {
-      processor.onApplicationBootstrap();
-    }).not.toThrow();
+  it("does not start a worker when the Nest application initializes", async () => {
+    const processor = await createProcessor(createRegistry().registry);
+    expect("onApplicationBootstrap" in processor).toBe(false);
+    expect((processor as any).worker.run).not.toHaveBeenCalled();
   });
   it("should apply the schedule processor decorator", () => {
     expect(mockProcessor).toHaveBeenCalledWith(ScheduleQueue, {
@@ -108,7 +95,7 @@ describe("ScheduleProcessor", () => {
       concurrency: 4,
     });
 
-    processor.onApplicationBootstrap();
+    await processor.onQueueStart();
 
     expect((processor as any).worker.concurrency).toBe(4);
     expect((processor as any).worker.run).toHaveBeenCalledTimes(1);
@@ -119,7 +106,7 @@ describe("ScheduleProcessor", () => {
       autorun: false,
     });
 
-    processor.onApplicationBootstrap();
+    await processor.onQueueStart();
 
     expect((processor as any).worker.concurrency).toBe(1);
     expect((processor as any).worker.run).not.toHaveBeenCalled();
@@ -133,7 +120,7 @@ describe("ScheduleProcessor", () => {
     const error = new Error("PostgreSQL unavailable");
     (processor as any).worker.run.mockRejectedValueOnce(error);
 
-    processor.onApplicationBootstrap();
+    await processor.onQueueStart();
     await Promise.resolve();
 
     expect((processor as any).worker.run).toHaveBeenCalledTimes(1);
@@ -150,7 +137,7 @@ describe("ScheduleProcessor", () => {
     const processor = await createProcessor(createRegistry().registry);
     (processor as any).worker.run.mockRejectedValueOnce("connection closed");
 
-    processor.onApplicationBootstrap();
+    await processor.onQueueStart();
     await Promise.resolve();
 
     expect(loggerError).toHaveBeenCalledWith(

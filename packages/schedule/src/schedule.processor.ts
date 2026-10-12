@@ -1,11 +1,5 @@
-import { isCommandContext } from "@nest-boot/command";
 import { BaseProcessor, Processor } from "@nest-boot/queue";
-import {
-  Inject,
-  Logger,
-  OnApplicationBootstrap,
-  Optional,
-} from "@nestjs/common";
+import { Inject, Logger, Optional } from "@nestjs/common";
 import { Job } from "bullmq";
 
 import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition.js";
@@ -14,10 +8,7 @@ import { ScheduleRegistry } from "./schedule.registry.js";
 import { type ScheduleModuleOptions } from "./schedule-module-options.interface.js";
 
 @Processor(ScheduleQueue, { autorun: false })
-export class ScheduleProcessor
-  extends BaseProcessor
-  implements OnApplicationBootstrap
-{
+export class ScheduleProcessor extends BaseProcessor {
   /**
    * Logger for worker lifecycle failures.
    * @internal
@@ -37,8 +28,8 @@ export class ScheduleProcessor
     await this.scheduleRegistry.get(job.name)?.handler();
   }
 
-  onApplicationBootstrap() {
-    if (isCommandContext()) return;
+  async onQueueStart(): Promise<void> {
+    await this.scheduleRegistry.register();
     if (this.options?.concurrency) {
       this.worker.concurrency = this.options.concurrency;
     }

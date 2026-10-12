@@ -427,6 +427,7 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
       { userId: "alice" },
       { jobId: "removed", removeOnComplete: true },
     );
+    await app.get(QueueRegistrar).start();
     const processor = app.get(ReportsProcessor);
     const running = processor.worker.run();
     const service = new JobService(

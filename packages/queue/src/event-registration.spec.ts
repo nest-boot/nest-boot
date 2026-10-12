@@ -13,6 +13,7 @@ import {
   QueueEventsHost,
   QueueEventsListener,
   QueueModule,
+  QueueRegistrar,
 } from "./index.js";
 
 const { startedWorkers } = vi.hoisted(() => ({
@@ -32,6 +33,9 @@ vi.mock("./postgres.js", async (importOriginal) => {
     ) {
       super();
     }
+
+    waitUntilReady = vi.fn().mockResolvedValue(undefined);
+    run = vi.fn().mockResolvedValue(undefined);
 
     async close() {
       await Promise.resolve();
@@ -142,6 +146,7 @@ describe("Nest queue event registration", () => {
       }).compile();
       try {
         await module.init();
+        await module.get(QueueRegistrar).start();
         expect(module.get(EmailWorker).worker.name).toBe("email");
         expect(startedWorkers).toEqual(["email"]);
       } finally {
@@ -193,6 +198,7 @@ describe("Nest queue event registration", () => {
 
     try {
       await module.init();
+      await module.get(QueueRegistrar).start();
       const worker = module.get(EmailWorker);
       const listener = module.get(EmailQueueListener);
       const job = { id: "job-1" } as Job;

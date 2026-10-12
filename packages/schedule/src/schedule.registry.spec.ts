@@ -1,5 +1,3 @@
-import { isCommandContext } from "@nest-boot/command";
-vi.mock("@nest-boot/command", () => ({ isCommandContext: vi.fn(() => false) }));
 import "reflect-metadata";
 
 import { ScheduleQueue } from "./schedule.queue.js";
@@ -18,9 +16,6 @@ import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition.js";
 import { ScheduleRegistry } from "./schedule.registry.js";
 
 describe("ScheduleRegistry", () => {
-  beforeEach(() => {
-    vi.mocked(isCommandContext).mockReturnValue(false);
-  });
   class ControllerSchedules {
     calls: string[] = [];
 
@@ -121,6 +116,7 @@ describe("ScheduleRegistry", () => {
 
     return {
       controller,
+      moduleRef,
       discoveryService,
       metadataScanner,
       provider,
@@ -138,13 +134,13 @@ describe("ScheduleRegistry", () => {
     vi.restoreAllMocks();
   });
 
-  it("does not register or remove schedules during command execution", async () => {
-    const { queue, registry } = await createRegistry();
-    vi.mocked(isCommandContext).mockReturnValue(true);
-    await registry.onApplicationBootstrap();
+  it("does not register schedules when the Nest application initializes", async () => {
+    const { queue, registry, moduleRef } = await createRegistry();
+    await moduleRef.init();
+    expect("onApplicationBootstrap" in registry).toBe(false);
     expect(queue.getJobSchedulers).not.toHaveBeenCalled();
     expect(queue.upsertJobScheduler).not.toHaveBeenCalled();
-    expect(queue.removeJobScheduler).not.toHaveBeenCalled();
+    await moduleRef.close();
   });
   it("should discover decorated methods, clean stale schedulers, and register schedules", async () => {
     const { controller, queue, registry } = await createRegistry(
@@ -166,7 +162,7 @@ describe("ScheduleRegistry", () => {
       ],
     );
 
-    await registry.onApplicationBootstrap();
+    await registry.register();
     await registry.get("ControllerSchedules.syncUsers")?.handler();
 
     expect(controller.calls).toEqual(["syncUsers"]);
@@ -205,7 +201,7 @@ describe("ScheduleRegistry", () => {
     const { discoveryService, metadataScanner, queue, reflector, registry } =
       await createRegistry();
 
-    await registry.onApplicationBootstrap();
+    await registry.register();
 
     expect(discoveryService.getControllers).toHaveBeenCalledTimes(1);
     expect(discoveryService.getProviders).toHaveBeenCalledTimes(1);

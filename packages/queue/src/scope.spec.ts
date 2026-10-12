@@ -15,6 +15,7 @@ import {
   Processor,
   Queue,
   QueueModule,
+  QueueRegistrar,
 } from "./index.js";
 
 const { workers } = vi.hoisted(() => ({ workers: [] as any[] }));
@@ -23,6 +24,8 @@ vi.mock("./postgres.js", async (original) => {
   const { EventEmitter } = await import("node:events");
   class Transport extends EventEmitter {
     close = vi.fn().mockResolvedValue(undefined);
+    waitUntilReady = vi.fn().mockResolvedValue(undefined);
+    run = vi.fn().mockResolvedValue(undefined);
     constructor(
       readonly name: string,
       readonly opts: object,
@@ -75,6 +78,9 @@ it.each(["singleton", "request", "bubbled", "transient"])(
       constructor(readonly dependency: Dependency) {
         super();
       }
+      onQueueStart() {
+        expect(mode).toBe("singleton");
+      }
       async process(job: Job, token?: string, signal?: AbortSignal) {
         const context = RequestContext.current();
         await Promise.resolve();
@@ -93,6 +99,7 @@ it.each(["singleton", "request", "bubbled", "transient"])(
     }).compile();
     try {
       await module.init();
+      await module.get(QueueRegistrar).start();
       expect(workers).toHaveLength(1);
       const [worker] = workers;
       expect(worker.opts).toMatchObject({
@@ -162,6 +169,7 @@ it("injects JOB_REF and respects durable context strategies", async () => {
   }).compile();
   try {
     await module.init();
+    await module.get(QueueRegistrar).start();
     const a = await workers[0].processJob({ id: "a" });
     const b = await workers[0].processJob({ id: "b" });
     expect(a.consumer).not.toBe(b.consumer);
@@ -206,6 +214,7 @@ it("resolves a scoped consumer from its declaring module", async () => {
   }).compile();
   try {
     await module.init();
+    await module.get(QueueRegistrar).start();
     expect(
       await Promise.all(
         workers.map(async (worker) => await worker.processJob({ id: "job" })),
@@ -259,6 +268,7 @@ it("resolves request-scoped factory consumers once per job", async () => {
   }).compile();
   try {
     await module.init();
+    await module.get(QueueRegistrar).start();
     expect(create).not.toHaveBeenCalled();
     const [first, second] = await Promise.all([
       workers[0].processJob({ id: "first" }),
@@ -297,6 +307,7 @@ it("binds workers to runtime queue names across independent applications", async
       }).compile();
       modules.push(module);
       await module.init();
+      await module.get(QueueRegistrar).start();
       expect(module.get(ApplicationQueue).name).toBe(name);
       expect(module.get(Consumer).worker.name).toBe(name);
     }

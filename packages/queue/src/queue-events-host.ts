@@ -7,14 +7,14 @@ export abstract class QueueEventsHost {
   [QUEUE_EVENTS_REF]?: QueueEvents;
 
   /**
-   * The event stream is available after module initialization.
+   * The event stream is available after QueueRegistrar.start().
    * @returns The initialized event stream.
    */
   get queueEvents(): QueueEvents {
     const events = this[QUEUE_EVENTS_REF];
     if (!events)
       throw new Error(
-        "Queue events are not initialized; access them after onModuleInit.",
+        "Queue events are not initialized; call QueueRegistrar.start() first.",
       );
     return events;
   }

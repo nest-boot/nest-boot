@@ -29,7 +29,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-Import `QueueModule` once anywhere in the application module tree, for example in `CommonModule`; it does not have to be in `AppModule`. `ScheduleModule` uses its global services and does not import it internally. `QueueModule` uses PostgreSQL configured by `QUEUE_DATABASE_URL` or `DATABASE_URL`. `ScheduleModule` also accepts an explicit BullMQ `connection`, `concurrency`, and `autorun`. The worker starts automatically unless `autorun` is `false`.
+Import `QueueModule` once anywhere in the application module tree, for example in `CommonModule`; it does not have to be in `AppModule`. `ScheduleModule` uses its global services and does not import it internally. `QueueModule` uses PostgreSQL configured by `QUEUE_DATABASE_URL` or `DATABASE_URL`. `ScheduleModule` also accepts an explicit BullMQ `connection`, `concurrency`, and `autorun`. The worker and scheduler registration stay inactive until `nb queue:run` selects this queue. Run `nb queue:run --queue schedule` for the default queue, or select the configured `queueName`. `autorun: false` keeps the selected schedule worker idle for manual startup.
 
 Applications sharing a PostgreSQL database and schema must configure distinct `queueName` values. Replicas of the same application use the same name. Workers and scheduler cleanup operate only on that queue:
 

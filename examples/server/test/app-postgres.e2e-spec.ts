@@ -94,6 +94,8 @@ type MigrationConstructor = new () => MigrationInstance;
 describe('Server application PostgreSQL integration (e2e)', () => {
   let migrationOrm: AdminOrm;
   let serverProcess: ChildProcessWithoutNullStreams;
+  let workerProcess: ChildProcessWithoutNullStreams;
+  let workerOutput = '';
   let serverOutput = '';
   let baseUrl: string;
 
@@ -101,7 +103,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     setTestEnv();
     await createDatabase();
     migrationOrm = await adminOrm(databaseUrl);
-    await execFileAsync(process.execPath, ['scripts/migrate-queue.mjs'], {
+    await execFileAsync('pnpm', ['exec', 'nb', 'queue:migrate'], {
       cwd: process.cwd(),
       env: process.env,
     });
@@ -132,9 +134,27 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
 
     await waitForServer(baseUrl, serverProcess, () => serverOutput);
+    workerProcess = spawn(process.execPath, ['dist/cli.js', 'queue:run'], {
+      cwd: process.cwd(),
+      env: createServerEnv(),
+    });
+    workerProcess.stdout.on('data', (chunk) => {
+      workerOutput += chunk.toString();
+    });
+    workerProcess.stderr.on('data', (chunk) => {
+      workerOutput += chunk.toString();
+    });
+    await vi.waitFor(
+      () => {
+        if (workerProcess.exitCode !== null) throw new Error(workerOutput);
+        expect(workerOutput).toContain('Queue workers running:');
+      },
+      { timeout: 15_000 },
+    );
   }, 60_000);
 
   afterAll(async () => {
+    if (workerProcess) await stopServer(workerProcess);
     if (serverProcess) {
       await stopServer(serverProcess);
     }

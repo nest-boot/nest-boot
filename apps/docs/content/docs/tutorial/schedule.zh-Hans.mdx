@@ -29,7 +29,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-在应用模块树的任意一个模块中导入一次 `QueueModule` 即可，例如 `CommonModule`，不要求放在 `AppModule`。`ScheduleModule` 使用其全局服务，不再在内部导入它。`QueueModule` 从 `QUEUE_DATABASE_URL` 或 `DATABASE_URL` 读取 PostgreSQL 连接。`ScheduleModule` 还接受显式的 BullMQ `connection`、`concurrency` 和 `autorun`；除非 `autorun` 为 `false`，worker 会自动启动。
+`QueueModule` 在模块树中注册一次，例如放在 `CommonModule` 中。`ScheduleModule` 使用其全局服务，支持 `connection`、`concurrency` 和 `autorun`。默认不注册定时任务或启动 worker；运行 `nb queue:run --queue schedule` 后才启动。设置了 `queueName` 时使用对应名称；不传 `--queue` 时也会启动定时任务队列。`autorun: false` 会让显式选中的定时任务 worker 保持空闲，供手动启动。
 
 共享 PostgreSQL 数据库和 schema 的不同应用必须配置不同的 `queueName`；同一应用的副本使用相同名称。Worker 和旧 scheduler 清理都只作用于该队列：
 

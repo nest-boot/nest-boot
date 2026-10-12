@@ -125,8 +125,11 @@ The report calculation is safe to repeat. Real tasks with side effects should al
 be idempotent because failed or stalled jobs can run again.
 
 After migrations, start the application with `pnpm --filter @nest-boot/example-server dev`.
-The two schedules register automatically. To enqueue a report manually, start the
-example's Nest REPL instead:
+Start consumers in a second terminal with `pnpm --filter @nest-boot/example-server queue:run`.
+HTTP and REPL processes leave workers inactive. The worker process registers the
+two schedules and consumes reports. Use `queue:run --queue report-queue` to run only
+the report consumer, or `queue:run --queue schedule` to run only scheduled triggers.
+To enqueue a report manually, start the example's Nest REPL:
 
 ```bash
 pnpm --filter @nest-boot/example-server repl

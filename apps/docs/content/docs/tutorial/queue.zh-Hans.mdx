@@ -8,7 +8,7 @@ description: "通过 BullMQ 提供可注入的队列类、PostgreSQL 后台消�
 ## 安装
 
 ```bash
-pnpm add @nest-boot/queue @nest-boot/request-context bullmq @mikro-orm/core @mikro-orm/decorators
+pnpm add @nest-boot/queue @nest-boot/command @nest-boot/request-context bullmq @mikro-orm/core @mikro-orm/decorators
 ```
 
 ## 定义与注入队列
@@ -130,7 +130,7 @@ export class EmailProcessor extends BaseProcessor {
 export class EmailWorkerModule {}
 ```
 
-单例服务可以继续在方法中使用 `RequestContext.current()` 或 `RequestContext.get(JOB_REF)`，不要在单例构造函数中捕获任务上下文。durable 依赖只适合有意共享的状态，不能保存当前任务数据。`worker` getter 可在模块初始化后及 scoped 消费者的 `process()` 中使用。
+单例服务可以继续在方法中使用 `RequestContext.current()` 或 `RequestContext.get(JOB_REF)`，不要在单例构造函数中捕获任务上下文。durable 依赖只适合有意共享的状态，不能保存当前任务数据。`worker` getter 可在`QueueRegistrar.start()` 完成后及 scoped 消费者的 `process()` 中使用。
 
 ## 动态队列配置
 
@@ -300,3 +300,16 @@ BullMQ 生产者和 Worker 使用独立连接，以表所有者或具备 `BYPASS
 3. **结构化日志** — 在处理器中使用 `Logger.assign()` 将任务上下文附加到日志条目。
 
 4. **自动清理** — 设置 `removeOnComplete` 和 `removeOnFail` 自动清理旧任务。
+
+## 独立运行 worker
+
+HTTP、REPL 和普通命令默认不创建 worker 或队列事件监听器。按照 [Command](/docs/tutorial/command) 配置 `src/cli.ts`，调用 `CommandFactory.run(AppModule)`，并导入 `CommandModule`。随后在独立进程中运行：
+
+```bash
+pnpm exec nb queue:run
+pnpm exec nb queue:run --queue email-queue --queue report-queue
+```
+
+不传 `--queue` 时启动所有注册的消费者和事件监听器；重复传入可选择配置的队列名称。未知名称会在创建任何 worker 前报错。未选中的队列仍可注入并投递任务。仅在选中定时任务队列时注册定时任务。SIGINT 和 SIGTERM 会等待活动任务完成并关闭应用。
+
+也可在应用初始化后注入 `QueueRegistrar`，调用 `await registrar.start(["email-queue"])`；省略参数表示全部队列。消费者或监听器的 `autorun: false` 仍会在显式启动时创建空闲 transport，供手动调用 `.run()`。单例消费者可实现 `onQueueStart()`，在 transport 就绪后、开始消费前执行准备操作。

@@ -8,7 +8,7 @@ description: "Typed queue providers, background workers, and optional MikroORM q
 ## Installation
 
 ```bash
-pnpm add @nest-boot/queue @nest-boot/request-context bullmq @mikro-orm/core @mikro-orm/decorators
+pnpm add @nest-boot/queue @nest-boot/command @nest-boot/request-context bullmq @mikro-orm/core @mikro-orm/decorators
 ```
 
 ## Define and inject a queue
@@ -84,6 +84,19 @@ export class EmailProcessor extends BaseProcessor {
 
 Register `EmailProcessor` as a provider alongside `EmailQueue` (or import the module exporting the queue). Consumer-only applications must also register the queue class. Registration creates a client but does not enqueue jobs. A missing queue provider fails startup before any worker starts. Consumers use their queue instance's PostgreSQL connection and telemetry; worker options cannot select another database or schema. `BaseProcessor` replaces the removed `WorkerHost` export.
 
+## Run workers separately
+
+Workers and queue event listeners are disabled by default in HTTP, REPL and ordinary command entry points. Configure `src/cli.ts` with `CommandFactory.run(AppModule)` and import `CommandModule` as described in [Command](/docs/tutorial/command). Then run a separate foreground process:
+
+```bash
+pnpm exec nb queue:run
+pnpm exec nb queue:run --queue email-queue --queue report-queue
+```
+
+Omit `--queue` to run all registered consumers and event listeners. Repeat it to select configured queue names. Unknown names fail before any consumer starts. Only selected queues create workers and listeners; their producer providers remain injectable in every process. Scheduled handlers register only when their schedule queue is selected. SIGINT and SIGTERM drain active jobs and close the application.
+
+For programmatic startup, inject `QueueRegistrar` and call `await registrar.start(["email-queue"])` after application initialization; omit the argument for all queues. `autorun: false` on a processor or event listener still creates an idle transport during explicit startup, allowing manual `.run()`. Singleton processors may implement `onQueueStart()` to prepare their consumer after its transport is ready and before processing begins.
+
 ### Scope and request context
 
 Each invocation runs in a fresh `RequestContext` with type `"queue"` and the current `JOB_REF`. The context and its middleware are established **before** Nest resolves the consumer's dependencies. `process()` failures propagate to BullMQ for retries.
@@ -128,7 +141,7 @@ export class EmailProcessor extends BaseProcessor {
 export class EmailWorkerModule {}
 ```
 
-Singleton services can keep using `RequestContext.current()` or `RequestContext.get(JOB_REF)` inside methods. Do not capture a task context in a singleton constructor. Use durable dependencies only for intentionally shared state, not current-job data. The `worker` getter is available after module initialization and inside scoped consumers' `process()` methods.
+Singleton services can keep using `RequestContext.current()` or `RequestContext.get(JOB_REF)` inside methods. Do not capture a task context in a singleton constructor. Use durable dependencies only for intentionally shared state, not current-job data. The `worker` getter is available after `QueueRegistrar.start()` and inside scoped consumers' `process()` methods.
 
 ## Dynamic queue configuration
 

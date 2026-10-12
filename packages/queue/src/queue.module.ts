@@ -2,6 +2,7 @@ import { Global, Module } from "@nestjs/common";
 import { DiscoveryModule } from "@nestjs/core";
 
 import { QueueMigrateCommand } from "./commands/queue-migrate.command.js";
+import { QueueRunCommand } from "./commands/queue-run.command.js";
 import { createJobProviders } from "./job.providers.js";
 import { QueueHealthIndicator } from "./queue.health-indicator.js";
 import {
@@ -27,9 +28,11 @@ const jobProviders = await createJobProviders();
     QueueRegistrar,
     QueueHealthIndicator,
     QueueMigrateCommand,
+    QueueRunCommand,
     ...jobProviders.providers,
   ],
   exports: [
+    QueueRegistrar,
     MODULE_OPTIONS_TOKEN,
     QueueHealthIndicator,
     ...jobProviders.exports,

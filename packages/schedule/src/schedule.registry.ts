@@ -1,5 +1,4 @@
-import { isCommandContext } from "@nest-boot/command";
-import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
 
 import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition.js";
@@ -7,7 +6,7 @@ import { ScheduleQueue } from "./schedule.queue.js";
 import { type ScheduleOptions } from "./schedule-options.interface.js";
 
 /**
- * Registry that discovers and manages scheduled jobs at application startup.
+ * Registry that discovers and manages scheduled jobs when the schedule queue starts.
  *
  * Scans all controllers and providers for methods decorated with
  * {@link Schedule}, {@link Cron}, or {@link Interval}, then registers
@@ -15,7 +14,7 @@ import { type ScheduleOptions } from "./schedule-options.interface.js";
  * longer defined in the codebase.
  */
 @Injectable()
-export class ScheduleRegistry implements OnApplicationBootstrap {
+export class ScheduleRegistry {
   /**
    * Logger instance for the schedule registry.
    * @internal
@@ -146,8 +145,7 @@ export class ScheduleRegistry implements OnApplicationBootstrap {
   }
 
   /** Discovers all scheduled methods and registers them as BullMQ job schedulers. */
-  async onApplicationBootstrap(): Promise<void> {
-    if (isCommandContext()) return;
+  async register(): Promise<void> {
     this.discoverySchedules();
     await this.cleanUnregisteredSchedules();
     await this.registerSchedules();

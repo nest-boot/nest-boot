@@ -33,6 +33,7 @@
     "seeder:create": "mikro-orm seeder:create",
     "seeder:run": "mikro-orm seeder:run",
     "queue:migrate": "nb queue:migrate",
+    "queue:run": "nb queue:run",
     "command": "nb"
   },
   "dependencies": {
