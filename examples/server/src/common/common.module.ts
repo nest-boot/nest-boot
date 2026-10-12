@@ -14,11 +14,18 @@ import {
 } from '@nest-boot/queue/persistence';
 import { RequestContextModule } from '@nest-boot/request-context';
 import { Global, Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import type { Request, Response } from 'express';
 
 import { GreetCommand } from './commands/greet.command.js';
-import { ConfigModule } from './modules/config.module.js';
 import { createSessionContext } from './session-context.js';
+
+/** 全局配置动态模块。 */
+export const ConfigDynamicModule = ConfigModule.forRoot({
+  isGlobal: true,
+  envFilePath: process.env.NODE_ENV === 'testing' ? '.testing.env' : '.env',
+  expandVariables: true,
+});
 
 const GraphQLDynamicModule = GraphQLModule.forRoot({
   context: ({ req, res }: { req: Request; res: Response }) => ({ req, res }),
@@ -38,7 +45,7 @@ const DatabaseDynamicModule = DatabaseModule.forRoot({
   imports: [
     CommandModule,
     RequestContextModule,
-    ConfigModule,
+    ConfigDynamicModule,
     HashModule,
     MailerModule,
     DatabaseDynamicModule,
