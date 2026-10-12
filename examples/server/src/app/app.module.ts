@@ -2,8 +2,8 @@ import { AuthGuard } from '@nest-boot/auth';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 
-import { CommonModule } from '../common/common.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { CommonModule } from './common/common.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
 import { ReportsModule } from './reports/reports.module.js';
 
