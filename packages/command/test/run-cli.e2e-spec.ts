@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -15,6 +16,7 @@ import { fileURLToPath } from "node:url";
 
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const executable = join(packageDirectory, "bin/nb");
+const testApplication = join(packageDirectory, "src/test");
 let project: string;
 
 beforeEach(() => {
@@ -23,6 +25,11 @@ beforeEach(() => {
   symlinkSync(
     packageDirectory,
     join(project, "node_modules/@nest-boot/command"),
+    "dir",
+  );
+  symlinkSync(
+    join(packageDirectory, "node_modules/@nest-boot/request-context"),
+    join(project, "node_modules/@nest-boot/request-context"),
     "dir",
   );
   symlinkSync(
@@ -66,47 +73,21 @@ function run(args: string[] = [], production = false) {
   });
 }
 
-const source = `
-import { CommandFactory, CommandModule } from '@nest-boot/command';
-import { Module } from '@nestjs/common';
-import { FeatureModule } from './commands.js';
-@Module({ imports: [CommandModule, FeatureModule] })
-class AppModule {}
-async function bootstrap() {
-  await new Promise(resolve => setTimeout(resolve, 10));
-  await CommandFactory.run(AppModule);
-}
-void bootstrap();
-`;
-const commands = `
-import { BaseCommand, Command, Option } from '@nest-boot/command';
-import { Injectable, Module } from '@nestjs/common';
-@Injectable()
-class GreetingService {
-  prefix = 'SOURCE';
-  onApplicationShutdown() { console.log('CLOSED'); }
-}
-@Command({ paths: [['hello']] })
-class HelloCommand extends BaseCommand {
-  name = Option.String({ required: true });
-  loud = Option.Boolean('--loud', false);
-  constructor(private readonly service: GreetingService) { super(); }
-  async execute() {
-    const { punctuation } = await import('./punctuation.js');
-    const name = this.loud ? this.name.toUpperCase() : this.name;
-    this.context.stdout.write(this.service.prefix + ':' + name + punctuation + '\\n');
-  }
-}
-@Module({ providers: [GreetingService, HelloCommand] })
-export class FeatureModule {}
-`;
-/**
- *
- */
+const source = readFileSync(join(testApplication, "src/cli.ts"), "utf8");
+const commands = readFileSync(
+  join(testApplication, "src/app/hello.command.ts"),
+  "utf8",
+);
+
+/** Copies the complete Nest application into the isolated test project. */
 function writeSource() {
-  write("src/cli.ts", source);
-  write("src/commands.ts", commands);
-  write("src/punctuation.ts", `export const punctuation: string = '!';`);
+  cpSync(join(testApplication, "src"), join(project, "src"), {
+    recursive: true,
+  });
+  write(
+    "tsconfig.json",
+    readFileSync(join(testApplication, "tsconfig.json"), "utf8"),
+  );
 }
 const built = `
 import { BaseCommand, Command, CommandFactory, CommandModule } from '@nest-boot/command';
@@ -128,21 +109,24 @@ it("loads source decorators and implicit DI metadata, resolves .js imports and k
 });
 it("transpiles TSX dependencies with project JSX settings and resolves their TypeScript imports", () => {
   writeSource();
-  write("src/commands.ts", commands.replace("./punctuation.js", "./view.js"));
+  write(
+    "src/app/hello.command.ts",
+    commands.replace("./punctuation.js", "./view.js"),
+  );
   write(
     "tsconfig.json",
     JSON.stringify({ compilerOptions: { jsx: "react", jsxFactory: "render" } }),
   );
   write(
-    "src/view.tsx",
+    "src/app/view.tsx",
     `
     import { text } from './template-text.js';
     function render(_tag: string, _props: unknown, ...children: string[]) { return children.join(''); }
     export const punctuation = <span>{text}</span>;
   `,
   );
-  write("src/template-text.ts", "export const text: string = '!';");
-  write("src/template-text.js", "export const text = 'STALE';");
+  write("src/app/template-text.ts", "export const text: string = '!';");
+  write("src/app/template-text.js", "export const text = 'STALE';");
   const result = run(["hello", "Alice"]);
   expect(result.stderr).toBe("");
   expect(result.status).toBe(0);
@@ -151,8 +135,11 @@ it("transpiles TSX dependencies with project JSX settings and resolves their Typ
 });
 it("prefers relative TypeScript sources over adjacent JavaScript during source execution", () => {
   writeSource();
-  write("src/commands.js", "throw new Error('Loaded stale commands.js');");
-  write("src/punctuation.js", "export const punctuation = 'STALE';");
+  write(
+    "src/app/app.module.js",
+    "throw new Error('Loaded stale app.module.js');",
+  );
+  write("src/app/punctuation.js", "export const punctuation = 'STALE';");
   const result = run(["hello", "Alice"]);
   expect(result.stderr).toBe("");
   expect(result.status).toBe(0);
@@ -175,7 +162,10 @@ it.each([false, true])(
   "resolves baseUrl-only imports with an installed package present: %s",
   (installed) => {
     writeSource();
-    write("src/cli.ts", source.replace("./commands.js", "src/commands.js"));
+    write(
+      "src/cli.ts",
+      source.replace("./app/app.module.js", "src/app/app.module.js"),
+    );
     write(
       "tsconfig.json",
       JSON.stringify({
@@ -187,12 +177,12 @@ it.each([false, true])(
         "node_modules/src/package.json",
         JSON.stringify({
           type: "module",
-          exports: { "./commands.js": "./commands.js" },
+          exports: { "./app/app.module.js": "./app.module.js" },
         }),
       );
       write(
-        "node_modules/src/commands.js",
-        "export const FeatureModule = null; throw new Error('Loaded installed src package');",
+        "node_modules/src/app.module.js",
+        "export const AppModule = null; throw new Error('Loaded installed src package');",
       );
     }
     const result = run(["hello", "Alice"]);
@@ -203,10 +193,14 @@ it.each([false, true])(
 );
 it("supports tsconfig path aliases", () => {
   writeSource();
-  write("src/cli.ts", source.replace("./commands.js", "@app/commands"));
+  write("src/cli.ts", source.replace("./app/app.module.js", "@app/commands"));
   write(
     "tsconfig.json",
-    JSON.stringify({ compilerOptions: { paths: { "@app/*": ["./src/*"] } } }),
+    JSON.stringify({
+      compilerOptions: {
+        paths: { "@app/commands": ["./src/app/app.module.ts"] },
+      },
+    }),
   );
   const result = run(["hello", "Alice"]);
   expect(result.stderr).toBe("");
@@ -215,11 +209,13 @@ it("supports tsconfig path aliases", () => {
 });
 it("prefers tsconfig path aliases over an installed package with the same name", () => {
   writeSource();
-  write("src/cli.ts", source.replace("./commands.js", "@app/commands"));
+  write("src/cli.ts", source.replace("./app/app.module.js", "@app/commands"));
   write(
     "tsconfig.json",
     JSON.stringify({
-      compilerOptions: { paths: { "@app/*": ["./src/*"] } },
+      compilerOptions: {
+        paths: { "@app/commands": ["./src/app/app.module.ts"] },
+      },
     }),
   );
   write(
