@@ -3,7 +3,7 @@ import { MikroORM } from "@mikro-orm/postgresql";
 import { DatabaseSchema } from "@mikro-orm/sql";
 import { createPostgresBackend, withBackend } from "bullmq";
 
-import { entities, getJobSchemaOptions, Job } from "../dist/persistence.js";
+import { entities, Job, withQueueDatabaseConfig } from "../dist/index.js";
 import { createPostgresFixture } from "./postgres.fixture.js";
 
 const { Queue } = withBackend(createPostgresBackend);
@@ -23,11 +23,15 @@ describe.each(["bullmq", "custom_tasks"])("Job migrations in %s", (schema) => {
     await fixture.pool.query(
       "create table public.business_entity (id text primary key)",
     );
-    orm = await MikroORM.init({
-      clientUrl: fixture.connection.connectionString,
-      entities: [...entities, BusinessEntity],
-      ...getJobSchemaOptions(schema),
-    });
+    orm = await MikroORM.init(
+      withQueueDatabaseConfig(
+        {
+          clientUrl: fixture.connection.connectionString,
+          entities: [...entities, BusinessEntity],
+        },
+        schema,
+      ),
+    );
   });
 
   afterAll(async () => {

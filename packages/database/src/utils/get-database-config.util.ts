@@ -204,7 +204,7 @@ export interface HostConfig {
  * Framework defaults are included, with metadata caching disabled.
  * @returns MikroORM options derived from environment variables
  */
-export async function loadConfigFromEnv(): Promise<
+export async function getDatabaseConfig(): Promise<
   DriverConfig & HostConfig & Partial<Options>
 > {
   const baseConfig = loadDefaultConfig();

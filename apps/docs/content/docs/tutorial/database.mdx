@@ -47,7 +47,7 @@ export class CommonModule {}
 
 The explicit driver lets MikroORM 7 register the driver-specific `EntityManager`
 for dependency injection. Other connection options are optional: the module
-auto-loads them with `loadConfigFromEnv()`. It reads `DATABASE_URL` and parses
+auto-loads them with `getDatabaseConfig()`. It reads `DATABASE_URL` and parses
 the URL into structured MikroORM options instead of passing the URL to a
 database client. PostgreSQL accepts its documented `postgresql:` and
 `postgres:` URI forms. PGlite accepts `file:` for persistent storage and
@@ -63,14 +63,14 @@ An explicit `clientUrl` or host-style connection target such as `host` or `dbNam
 
 The default config discovers runtime entities from `dist/**/*.entity.js`, TypeScript entities from `src/**/*.entity.ts`, uses `TsMorphMetadataProvider`, enables MikroORM DataLoaders, and stores migrations and seeders under `src/database` (or `dist/database` after build).
 
-Metadata caching is disabled by default (`metadataCache: { enabled: false }`) for both module registration and CLI configuration loaded through `loadConfigFromEnv()`. Entity metadata is rediscovered on each ORM initialization, which may increase startup time, but not on each request. Query result caching is unaffected. Set `metadataCache: { enabled: true }` to opt in; setting only a cache directory or formatting options does not enable it.
+Metadata caching is disabled by default (`metadataCache: { enabled: false }`) for both module registration and CLI configuration loaded through `getDatabaseConfig()`. Entity metadata is rediscovered on each ORM initialization, which may increase startup time, but not on each request. Query result caching is unaffected. Set `metadataCache: { enabled: true }` to opt in; setting only a cache directory or formatting options does not enable it.
 
 MikroORM 7.2.0's JSON metadata cache does not fully preserve policy callbacks. Keep caching disabled when entities use functions for `policies.using` or `policies.check`.
 
 ### Async Registration
 
 ```typescript
-import { loadConfigFromEnv, DatabaseModule } from "@nest-boot/database";
+import { getDatabaseConfig, DatabaseModule } from "@nest-boot/database";
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 
 @Module({
@@ -78,7 +78,7 @@ import { PostgreSqlDriver } from "@mikro-orm/postgresql";
     DatabaseModule.forRootAsync({
       driverHint: PostgreSqlDriver,
       useFactory: async () => ({
-        ...(await loadConfigFromEnv()),
+        ...(await getDatabaseConfig()),
         debug: true,
       }),
     }),
@@ -95,13 +95,24 @@ For MikroORM CLI (migrations, schema generation), create a `mikro-orm.config.ts`
 import { existsSync } from "node:fs";
 import { loadEnvFile } from "node:process";
 
-import { loadConfigFromEnv } from "@nest-boot/database";
+import { getDatabaseConfig } from "@nest-boot/database";
 
 if (existsSync(".env")) {
   loadEnvFile();
 }
 
-export default loadConfigFromEnv();
+export default getDatabaseConfig();
+```
+
+Compose configuration helpers when using Auth and Queue. They return new configurations, merge and deduplicate entity lists, and retain your application settings. Queue also composes schema options and synchronous or asynchronous discovery hooks. Reuse this factory in `DatabaseModule.forRootAsync()`; add the request `session` there. `loadConfigFromEnv` remains a deprecated compatibility alias for `getDatabaseConfig`.
+
+```typescript
+import { withAuthDatabaseConfig } from "@nest-boot/auth";
+import { getDatabaseConfig } from "@nest-boot/database";
+import { withQueueDatabaseConfig } from "@nest-boot/queue";
+
+export default async () =>
+  withQueueDatabaseConfig(withAuthDatabaseConfig(await getDatabaseConfig()));
 ```
 
 ## Health Checks
@@ -356,7 +367,7 @@ Values are automatically hashed before create and update operations. The decorat
 
 ## Best Practices
 
-1. **Environment Config** — Use `loadConfigFromEnv()` for both runtime and CLI configuration to keep them in sync.
+1. **Environment Config** — Use `getDatabaseConfig()` for both runtime and CLI configuration to keep them in sync.
 
 2. **EntityService as Base** — Extend `EntityService` for all domain services to get CRUD + DataLoader batching out of the box.
 

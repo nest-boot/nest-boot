@@ -17,17 +17,15 @@ import { JobConnectionService } from "../dist/graphql.js";
 import {
   BaseProcessor,
   BaseQueue,
-  Processor,
-  Queue,
-  QueueModule,
-} from "../dist/index.js";
-import {
   entities,
-  getJobSchemaOptions,
   Job,
   JobService,
   JobStatus,
-} from "../dist/persistence.js";
+  Processor,
+  Queue,
+  QueueModule,
+  withQueueDatabaseConfig,
+} from "../dist/index.js";
 import { QueueRegistrar } from "../dist/queue.registrar.js";
 import { createPostgresFixture } from "./postgres.fixture.js";
 
@@ -63,16 +61,20 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
         QueueModule.forRoot({
           connection: fixture.connection,
         }),
-        DatabaseModule.forRoot({
-          driver: PostgreSqlDriver,
-          clientUrl: fixture.connection.connectionString,
-          entities,
-          ...getJobSchemaOptions(fixture.connection.schema),
-          session: () => ({
-            role: "authenticated",
-            variables: { "app.user.id": "alice", "app.workspace.id": "" },
-          }),
-        }),
+        DatabaseModule.forRoot(
+          withQueueDatabaseConfig(
+            {
+              driver: PostgreSqlDriver,
+              clientUrl: fixture.connection.connectionString,
+              entities,
+              session: () => ({
+                role: "authenticated",
+                variables: { "app.user.id": "alice", "app.workspace.id": "" },
+              }),
+            },
+            fixture.connection.schema,
+          ),
+        ),
         GraphQLModule.forRoot({ autoSchemaFile: true, graphiql: false }),
       ],
       providers: [

@@ -4,6 +4,9 @@ import "./imports.js";
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 
+import { withAuthDatabaseConfig } from "@nest-boot/auth";
+import { getDatabaseConfig, loadConfigFromEnv } from "@nest-boot/database";
+import { withQueueDatabaseConfig } from "@nest-boot/queue";
 import { HashModule, HashService } from "@nest-boot/hash";
 import { HealthCheckModule } from "@nest-boot/health-check";
 import { Mailer, MailerModule } from "@nest-boot/mailer";
@@ -14,6 +17,16 @@ import {
 import { Controller, Get, Module } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import type { JSONSentMessageInfo } from "nodemailer/lib/json-transport/index.js";
+
+assert.equal(getDatabaseConfig, loadConfigFromEnv);
+const databaseConfig = withQueueDatabaseConfig(
+  withAuthDatabaseConfig(await getDatabaseConfig()),
+);
+assert.equal(
+  new Set(databaseConfig.entities).size,
+  databaseConfig.entities.length,
+);
+assert.equal(databaseConfig.schemaGenerator.ignoreRoutines, true);
 
 @Controller()
 class ConsumerController {

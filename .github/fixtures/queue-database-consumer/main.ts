@@ -4,12 +4,12 @@ import assert from "node:assert/strict";
 
 import { MikroORM, PgliteDriver } from "@mikro-orm/pglite";
 import { DatabaseModule } from "@nest-boot/database";
-import { QueueModule, type QueueModuleOptions } from "@nest-boot/queue";
 import {
-  entities,
-  getJobSchemaOptions,
+  QueueModule,
+  type QueueModuleOptions,
+  withQueueDatabaseConfig,
   JobService,
-} from "@nest-boot/queue/persistence";
+} from "@nest-boot/queue";
 import { RequestContext } from "@nest-boot/request-context";
 import { Module } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
@@ -30,12 +30,12 @@ const options: QueueModuleOptions = {};
 @Module({
   imports: [
     QueueModule.forRoot(options),
-    DatabaseModule.forRoot({
-      driver: PgliteDriver,
-      dbName: "memory://",
-      entities,
-      ...getJobSchemaOptions(),
-    }),
+    DatabaseModule.forRoot(
+      withQueueDatabaseConfig({
+        driver: PgliteDriver,
+        dbName: "memory://",
+      }),
+    ),
   ],
 })
 class DatabaseQueueModule {}

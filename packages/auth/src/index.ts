@@ -207,4 +207,5 @@ export { can } from "./utils/can.util.js";
 export * from "./utils/extract-api-key.util.js";
 export { getAuthAbility } from "./utils/get-auth-ability.util.js";
 export * from "./utils/serialize-ability-rules.util.js";
+export { withAuthDatabaseConfig } from "./with-auth-database-config.js";
 export * from "./workspace.constants.js";

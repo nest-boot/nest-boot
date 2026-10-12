@@ -7,7 +7,7 @@ import { PgliteDriver } from "@mikro-orm/pglite";
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
 
-import { loadConfigFromEnv } from "./load-config-from-env.util.js";
+import { getDatabaseConfig } from "./get-database-config.util.js";
 
 const ORIGINAL_ENV = process.env;
 
@@ -43,7 +43,7 @@ async function withTlsFiles(
   }
 }
 
-describe("loadConfigFromEnv", () => {
+describe("getDatabaseConfig", () => {
   beforeEach(() => {
     process.env = { ...ORIGINAL_ENV };
     delete process.env.DATABASE_URL;
@@ -57,7 +57,7 @@ describe("loadConfigFromEnv", () => {
     process.env.DATABASE_URL =
       "postgresql://user%40example.com:p%40ss%2Fword@localhost:5432/app";
 
-    const config = await loadConfigFromEnv();
+    const config = await getDatabaseConfig();
 
     expect(config).toMatchObject({
       colors: false,
@@ -94,7 +94,7 @@ describe("loadConfigFromEnv", () => {
     process.env.DATABASE_URL =
       "postgresql://user:pass@[2001:db8::1]:5432/app?schema=tenant&sslmode=require&application_name=nest-boot";
 
-    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+    await expect(getDatabaseConfig()).resolves.toMatchObject({
       dbName: "app",
       driver: PostgreSqlDriver,
       driverOptions: {
@@ -114,7 +114,7 @@ describe("loadConfigFromEnv", () => {
   it("should load the postgres PostgreSQL URI form", async () => {
     process.env.DATABASE_URL = "postgres://user:pass@localhost/app";
 
-    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+    await expect(getDatabaseConfig()).resolves.toMatchObject({
       dbName: "app",
       driver: PostgreSqlDriver,
       host: "localhost",
@@ -126,7 +126,7 @@ describe("loadConfigFromEnv", () => {
   it("should load a file URL as persistent PGlite config", async () => {
     process.env.DATABASE_URL = "file:///var/lib/nest-boot/app%20data.db";
 
-    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+    await expect(getDatabaseConfig()).resolves.toMatchObject({
       dbName: "/var/lib/nest-boot/app data.db",
       driver: PgliteDriver,
     });
@@ -135,7 +135,7 @@ describe("loadConfigFromEnv", () => {
   it("should load a memory URL as in-memory PGlite config", async () => {
     process.env.DATABASE_URL = "memory://";
 
-    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+    await expect(getDatabaseConfig()).resolves.toMatchObject({
       dbName: "memory://",
       driver: PgliteDriver,
     });
@@ -150,7 +150,7 @@ describe("loadConfigFromEnv", () => {
     async (protocol, query, expected) => {
       process.env.DATABASE_URL = `${protocol}://user:pass@localhost/app?${query}`;
 
-      await expect(loadConfigFromEnv()).resolves.toMatchObject({
+      await expect(getDatabaseConfig()).resolves.toMatchObject({
         driverOptions: {
           connection: expected,
         },
@@ -161,7 +161,7 @@ describe("loadConfigFromEnv", () => {
   it("should preserve omitted URL credentials and port", async () => {
     process.env.DATABASE_URL = "postgresql://db.internal";
 
-    const config = await loadConfigFromEnv();
+    const config = await getDatabaseConfig();
 
     expect(config).toMatchObject({
       dbName: undefined,
@@ -192,7 +192,7 @@ describe("loadConfigFromEnv", () => {
       databaseUrl.searchParams.set("sslkey", clientKey);
       process.env.DATABASE_URL = databaseUrl.href;
 
-      await expect(loadConfigFromEnv()).resolves.toMatchObject({
+      await expect(getDatabaseConfig()).resolves.toMatchObject({
         driverOptions: {
           connection: {
             ssl: {
@@ -215,7 +215,7 @@ describe("loadConfigFromEnv", () => {
         databaseUrl.searchParams.set("sslrootcert", rootCert);
         process.env.DATABASE_URL = databaseUrl.href;
 
-        const config = await loadConfigFromEnv();
+        const config = await getDatabaseConfig();
         const connection = config.driverOptions?.connection as Record<
           string,
           unknown
@@ -241,7 +241,7 @@ describe("loadConfigFromEnv", () => {
     async (databaseUrl, sslMode) => {
       process.env.DATABASE_URL = databaseUrl;
 
-      await expect(loadConfigFromEnv()).rejects.toThrow(
+      await expect(getDatabaseConfig()).rejects.toThrow(
         `Unsupported PostgreSQL sslmode: ${sslMode}`,
       );
     },
@@ -251,7 +251,7 @@ describe("loadConfigFromEnv", () => {
     process.env.DATABASE_URL =
       "postgresql://user:pass@localhost/app?sslmode=verify-ca";
 
-    await expect(loadConfigFromEnv()).rejects.toThrow(
+    await expect(getDatabaseConfig()).rejects.toThrow(
       "PostgreSQL sslmode=verify-ca requires sslrootcert",
     );
   });
@@ -276,7 +276,7 @@ describe("loadConfigFromEnv", () => {
   ])("should reject non-standard database URL options", async (url, error) => {
     process.env.DATABASE_URL = url;
 
-    await expect(loadConfigFromEnv()).rejects.toThrow(error);
+    await expect(getDatabaseConfig()).rejects.toThrow(error);
   });
 
   it.each([
@@ -286,7 +286,7 @@ describe("loadConfigFromEnv", () => {
   ])("should reject non-standard database URL %s", async (databaseUrl) => {
     process.env.DATABASE_URL = databaseUrl;
 
-    await expect(loadConfigFromEnv()).rejects.toThrow(
+    await expect(getDatabaseConfig()).rejects.toThrow(
       `Unsupported DATABASE_URL protocol: ${new URL(databaseUrl).protocol}`,
     );
   });
@@ -294,13 +294,13 @@ describe("loadConfigFromEnv", () => {
   it("should reject unsupported database URL protocols", async () => {
     process.env.DATABASE_URL = "mongodb://localhost/app";
 
-    await expect(loadConfigFromEnv()).rejects.toThrow(
+    await expect(getDatabaseConfig()).rejects.toThrow(
       "Unsupported DATABASE_URL protocol: mongodb:",
     );
   });
 
   it("should return undefined connection fields when DATABASE_URL is absent", async () => {
-    await expect(loadConfigFromEnv()).resolves.toMatchObject({
+    await expect(getDatabaseConfig()).resolves.toMatchObject({
       dbName: undefined,
       driver: undefined,
       host: undefined,

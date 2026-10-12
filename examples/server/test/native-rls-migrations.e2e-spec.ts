@@ -36,11 +36,11 @@ import {
   Verification,
   Workspace,
 } from '@nest-boot/auth';
-import { loadConfigFromEnv } from '@nest-boot/database';
+import { getDatabaseConfig } from '@nest-boot/database';
 import {
   entities as queueEntities,
-  getJobSchemaOptions,
-} from '@nest-boot/queue/persistence';
+  withQueueDatabaseConfig,
+} from '@nest-boot/queue';
 import { REQUEST, RequestContext } from '@nest-boot/request-context';
 import { type FactoryProvider, ForbiddenException } from '@nestjs/common';
 import type { Request } from 'express';
@@ -70,7 +70,7 @@ describe('example native RLS migrations with PGlite', () => {
 
   beforeAll(async () => {
     vi.stubEnv('DATABASE_URL', 'memory://');
-    const { metadataCache } = await loadConfigFromEnv();
+    const { metadataCache } = await getDatabaseConfig();
     const initialize = () =>
       MikroORM.init({
         dbName: 'memory://',
@@ -1035,23 +1035,29 @@ describe('example native RLS migrations with PGlite', () => {
     await access('./src/database/migrations/.snapshot-postgres.json');
     // The shared snapshot includes Queue and the preserved Redis mirror too.
     // Compare it with the complete example metadata, without synchronizing a DB.
-    const complete = await MikroORM.init({
-      ...orm.config.getAll(),
-      entities: [
-        User,
-        Account,
-        Session,
-        Verification,
-        Workspace,
-        Member,
-        Invitation,
-        UserApiKey,
-        MemberApiKey,
-        LegacyJob,
-        ...queueEntities,
-      ],
-      ...getJobSchemaOptions(),
-    });
+    const complete = await MikroORM.init(
+      withQueueDatabaseConfig({
+        ...orm.config.getAll(),
+        // The Auth-only fixture excludes job; this comparison covers every table.
+        schemaGenerator: {
+          ...orm.config.get('schemaGenerator'),
+          skipTables: [],
+        },
+        entities: [
+          User,
+          Account,
+          Session,
+          Verification,
+          Workspace,
+          Member,
+          Invitation,
+          UserApiKey,
+          MemberApiKey,
+          LegacyJob,
+          ...queueEntities,
+        ],
+      }),
+    );
     try {
       expect(await complete.migrator.checkSchema()).toBe(false);
     } finally {

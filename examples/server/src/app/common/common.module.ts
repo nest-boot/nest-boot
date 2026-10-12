@@ -1,5 +1,4 @@
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
-import { entities as authEntities } from '@nest-boot/auth';
 import { CommandModule } from '@nest-boot/command';
 import { DatabaseModule } from '@nest-boot/database';
 import { GraphQLModule } from '@nest-boot/graphql';
@@ -9,10 +8,6 @@ import { HealthCheckModule } from '@nest-boot/health-check';
 import { LoggerModule } from '@nest-boot/logger';
 import { MailerModule } from '@nest-boot/mailer';
 import { QueueModule } from '@nest-boot/queue';
-import {
-  entities as queueEntities,
-  getJobSchemaOptions,
-} from '@nest-boot/queue/persistence';
 import { RequestContextModule } from '@nest-boot/request-context';
 import { ScheduleModule } from '@nest-boot/schedule';
 import { Global, Module } from '@nestjs/common';
@@ -20,6 +15,7 @@ import { ConfigModule } from '@nestjs/config';
 import type { Request, Response } from 'express';
 
 import { GreetCommand } from './commands/greet.command.js';
+import getDatabaseConfig from '../../mikro-orm.config.js';
 import { createSessionContext } from './session-context.js';
 
 /** 全局配置动态模块。 */
@@ -33,12 +29,12 @@ const GraphQLDynamicModule = GraphQLModule.forRoot({
   context: ({ req, res }: { req: Request; res: Response }) => ({ req, res }),
 });
 
-const DatabaseDynamicModule = DatabaseModule.forRoot({
-  driver: PostgreSqlDriver,
-  ...getJobSchemaOptions(),
-  entities: [...authEntities, ...queueEntities, 'dist/**/*.entity.js'],
-  entitiesTs: [...authEntities, ...queueEntities, 'src/**/*.entity.ts'],
-  session: createSessionContext,
+const DatabaseDynamicModule = DatabaseModule.forRootAsync({
+  driverHint: PostgreSqlDriver,
+  useFactory: async () => ({
+    ...(await getDatabaseConfig()),
+    session: createSessionContext,
+  }),
 });
 
 const QueueDynamicModule = QueueModule.forRoot({});

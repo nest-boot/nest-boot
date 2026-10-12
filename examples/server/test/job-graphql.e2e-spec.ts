@@ -3,13 +3,13 @@ import { MikroORM } from '@mikro-orm/pglite';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
 import { AuthGuard, Session, User, Workspace } from '@nest-boot/auth';
 import { GraphQLModule } from '@nest-boot/graphql';
-import { JobStatus } from '@nest-boot/queue';
-import { JobConnectionService, JobResolver } from '@nest-boot/queue/graphql';
 import {
   entities,
-  getJobSchemaOptions,
   Job,
-} from '@nest-boot/queue/persistence';
+  JobStatus,
+  withQueueDatabaseConfig,
+} from '@nest-boot/queue';
+import { JobConnectionService, JobResolver } from '@nest-boot/queue/graphql';
 import { RequestContext } from '@nest-boot/request-context';
 import type { INestApplication } from '@nestjs/common';
 import { ModuleRef, Reflector } from '@nestjs/core';
@@ -23,17 +23,18 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
   let orm: MikroORM;
 
   beforeAll(async () => {
-    orm = await MikroORM.init({
-      dbName: 'memory://',
-      entities,
-      ...getJobSchemaOptions(),
-      metadataProvider: TsMorphMetadataProvider,
-      metadataCache: { enabled: false },
-      context: () =>
-        RequestContext.isActive()
-          ? RequestContext.get(EntityManager)
-          : undefined,
-    });
+    orm = await MikroORM.init(
+      withQueueDatabaseConfig({
+        dbName: 'memory://',
+        entities,
+        metadataProvider: TsMorphMetadataProvider,
+        metadataCache: { enabled: false },
+        context: () =>
+          RequestContext.isActive()
+            ? RequestContext.get(EntityManager)
+            : undefined,
+      }),
+    );
     await orm.em.execute('create role anonymous nologin');
     await orm.em.execute('create role authenticated nologin');
     const client = await orm.em.getConnection().getNativeClient();

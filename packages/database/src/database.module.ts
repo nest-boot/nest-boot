@@ -22,7 +22,7 @@ import {
   OPTIONS_TYPE,
 } from "./database.module-definition.js";
 import type { DatabaseModuleOptions } from "./interfaces/database-module-options.interface.js";
-import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
+import { getDatabaseConfig } from "./utils/get-database-config.util.js";
 import { loadDefaultConfig } from "./utils/load-default-config.util.js";
 
 const CONNECTION_TARGET_OPTION_KEYS = [
@@ -138,7 +138,7 @@ export class DatabaseModule
         const logger = new Logger("Database");
         const envOptions = hasExplicitConnectionTarget(options)
           ? loadDefaultConfig()
-          : await loadConfigFromEnv();
+          : await getDatabaseConfig();
 
         const resolvedOptions = {
           registerRequestContext: false,

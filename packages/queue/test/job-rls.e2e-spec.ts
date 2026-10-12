@@ -4,7 +4,7 @@ import { MikroORM } from "@mikro-orm/postgresql";
 import { createPostgresBackend, withBackend } from "bullmq";
 import type { PoolClient } from "pg";
 
-import { entities, getJobSchemaOptions } from "../dist/persistence.js";
+import { entities, withQueueDatabaseConfig } from "../dist/index.js";
 import { createPostgresFixture } from "./postgres.fixture.js";
 
 const { Queue, Worker } = withBackend(createPostgresBackend);
@@ -18,11 +18,15 @@ describe.each(["bullmq", "custom_tasks"])("Job RLS in %s", (schema) => {
 
   beforeAll(async () => {
     fixture = await createPostgresFixture(schema);
-    orm = await MikroORM.init({
-      clientUrl: fixture.connection.connectionString,
-      entities,
-      ...getJobSchemaOptions(schema),
-    });
+    orm = await MikroORM.init(
+      withQueueDatabaseConfig(
+        {
+          clientUrl: fixture.connection.connectionString,
+          entities,
+        },
+        schema,
+      ),
+    );
     await orm.schema.update();
     await fixture.pool.query(`
       create role "${owner}" nologin noinherit nosuperuser nobypassrls;

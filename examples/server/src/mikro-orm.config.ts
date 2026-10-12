@@ -1,26 +1,10 @@
-import { defineConfig } from '@mikro-orm/postgresql';
-import { entities as authEntities } from '@nest-boot/auth';
-import { loadConfigFromEnv } from '@nest-boot/database';
-import {
-  entities as queueEntities,
-  getJobSchemaOptions,
-} from '@nest-boot/queue/persistence';
+import { withAuthDatabaseConfig } from '@nest-boot/auth';
+import { getDatabaseConfig } from '@nest-boot/database';
+import { withQueueDatabaseConfig } from '@nest-boot/queue';
 
 /**
- * MikroORM 配置工厂。
- * @returns MikroORM configuration including the authentication entities.
+ * MikroORM 配置工厂，供 CLI 和应用运行时共用。
+ * @returns Database configuration including authentication and native queue entities.
  */
-export default async () => {
-  const config = (await loadConfigFromEnv()) as any;
-
-  return defineConfig({
-    ...config,
-    ...getJobSchemaOptions(),
-    entities: [...authEntities, ...queueEntities, ...(config.entities ?? [])],
-    entitiesTs: [
-      ...authEntities,
-      ...queueEntities,
-      ...(config.entitiesTs ?? []),
-    ],
-  });
-};
+export default async () =>
+  withQueueDatabaseConfig(withAuthDatabaseConfig(await getDatabaseConfig()));

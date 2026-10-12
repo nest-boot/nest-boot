@@ -46,7 +46,7 @@ export class CommonModule {}
 ```
 
 显式驱动使 MikroORM 7 能够为依赖注入注册驱动专用的 `EntityManager`。
-其他连接选项可以省略；模块会通过 `loadConfigFromEnv()` 自动加载。它读取
+其他连接选项可以省略；模块会通过 `getDatabaseConfig()` 自动加载。它读取
 `DATABASE_URL`，并解析为结构化 MikroORM 选项，而不会把 URL 交给数据库客户端
 解析。PostgreSQL 接受其文档定义的 `postgresql:` 和 `postgres:` URI 形式。
 PGlite 使用 `file:` 进行持久化存储，使用 `memory:` 创建内存数据库；其他协议名
@@ -60,14 +60,14 @@ PostgreSQL 的 TLS 文件参数使用 `sslrootcert`、`sslcert` 和 `sslkey`，�
 
 默认配置从 `dist/**/*.entity.js` 发现运行时实体，从 `src/**/*.entity.ts` 发现 TypeScript 实体，使用 `TsMorphMetadataProvider`，启用 MikroORM DataLoader，并把 migration 与 seeder 放在 `src/database`（构建后为 `dist/database`）下。
 
-元数据缓存默认关闭（`metadataCache: { enabled: false }`），模块注册与 `loadConfigFromEnv()` 的 CLI 配置保持一致。每次 ORM 初始化都会重新发现实体元数据，启动可能稍慢，但不会在每次请求时重新发现，也不影响查询结果缓存。需要时可显式设置 `metadataCache: { enabled: true }`；仅设置缓存目录或格式不会开启缓存。
+元数据缓存默认关闭（`metadataCache: { enabled: false }`），模块注册与 `getDatabaseConfig()` 的 CLI 配置保持一致。每次 ORM 初始化都会重新发现实体元数据，启动可能稍慢，但不会在每次请求时重新发现，也不影响查询结果缓存。需要时可显式设置 `metadataCache: { enabled: true }`；仅设置缓存目录或格式不会开启缓存。
 
 MikroORM 7.2.0 的 JSON 元数据缓存不能完整保留策略回调；实体使用 `policies.using` 或 `policies.check` 函数时，请保持缓存关闭。
 
 ### 异步注册
 
 ```typescript
-import { loadConfigFromEnv, DatabaseModule } from "@nest-boot/database";
+import { getDatabaseConfig, DatabaseModule } from "@nest-boot/database";
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 
 @Module({
@@ -75,7 +75,7 @@ import { PostgreSqlDriver } from "@mikro-orm/postgresql";
     DatabaseModule.forRootAsync({
       driverHint: PostgreSqlDriver,
       useFactory: async () => ({
-        ...(await loadConfigFromEnv()),
+        ...(await getDatabaseConfig()),
         debug: true,
       }),
     }),
@@ -92,13 +92,24 @@ export class CommonModule {}
 import { existsSync } from "node:fs";
 import { loadEnvFile } from "node:process";
 
-import { loadConfigFromEnv } from "@nest-boot/database";
+import { getDatabaseConfig } from "@nest-boot/database";
 
 if (existsSync(".env")) {
   loadEnvFile();
 }
 
-export default loadConfigFromEnv();
+export default getDatabaseConfig();
+```
+
+使用 Auth 和 Queue 时可组合配置函数。它们返回新配置，合并并去重实体列表，并保留应用设置；Queue 还会合并 schema 选项，串联同步或异步 discovery 回调。运行时通过 `DatabaseModule.forRootAsync()` 复用此工厂，并在该处补充请求 `session`。`loadConfigFromEnv` 保留为 `getDatabaseConfig` 的已弃用兼容别名。
+
+```typescript
+import { withAuthDatabaseConfig } from "@nest-boot/auth";
+import { getDatabaseConfig } from "@nest-boot/database";
+import { withQueueDatabaseConfig } from "@nest-boot/queue";
+
+export default async () =>
+  withQueueDatabaseConfig(withAuthDatabaseConfig(await getDatabaseConfig()));
 ```
 
 ## 健康检查
@@ -343,7 +354,7 @@ export class User {
 
 ## 最佳实践
 
-1. **环境配置** — 运行时和 CLI 都使用 `loadConfigFromEnv()` 保持配置同步。
+1. **环境配置** — 运行时和 CLI 都使用 `getDatabaseConfig()` 保持配置同步。
 
 2. **EntityService 作为基类** — 所有领域服务都继承 `EntityService`，开箱即获得 CRUD + DataLoader 批处理。
 

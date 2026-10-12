@@ -46,17 +46,13 @@ Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
 `Member`、`Invitation`、`UserApiKey` 和 `MemberApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
-在运行时和迁移 CLI 的 MikroORM 配置中注册导出的 `entities` 数组；CLI 不会启动 Nest 模块：
+使用 `withAuthDatabaseConfig(config)` 在运行时与迁移 CLI 配置中注册 Auth 实体。它合并并去重 `entities` 与 `entitiesTs`，不修改原配置；CLI 不会启动 Nest 模块：
 
 ```typescript
-import { entities as authEntities } from "@nest-boot/auth";
-import { defineConfig } from "@mikro-orm/postgresql";
+import { withAuthDatabaseConfig } from "@nest-boot/auth";
+import { getDatabaseConfig } from "@nest-boot/database";
 
-export default defineConfig({
-  entities: [...authEntities, "dist/**/*.entity.js"],
-  entitiesTs: [...authEntities, "src/**/*.entity.ts"],
-  // Connection and migration options...
-});
+export default async () => withAuthDatabaseConfig(await getDatabaseConfig());
 ```
 
 自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，

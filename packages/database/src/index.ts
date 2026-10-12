@@ -6,7 +6,7 @@ export * from "./policies/index.js";
 export * from "./property-types/index.js";
 export * from "./services/entity.service.js";
 export * from "./types/index.js";
-export * from "./utils/load-config-from-env.util.js";
+export * from "./utils/get-database-config.util.js";
 export type {
   EntityName,
   MaybePromise,
@@ -31,3 +31,6 @@ export {
   MikroOrmMiddleware,
   MultipleMikroOrmMiddleware,
 } from "@mikro-orm/nestjs";
+
+/** @deprecated Use getDatabaseConfig instead. */
+export { getDatabaseConfig as loadConfigFromEnv } from "./utils/get-database-config.util.js";

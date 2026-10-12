@@ -102,10 +102,6 @@
       "import": "./dist/index.js"
     },
     "./package.json": "./package.json",
-    "./persistence": {
-      "types": "./dist/persistence.d.ts",
-      "import": "./dist/persistence.js"
-    },
     "./graphql": {
       "types": "./dist/graphql.d.ts",
       "import": "./dist/graphql.js"
@@ -117,12 +113,6 @@
     "lodash-es": "^4.18.1"
   },
   "peerDependenciesMeta": {
-    "@mikro-orm/core": {
-      "optional": true
-    },
-    "@mikro-orm/decorators": {
-      "optional": true
-    },
     "@mikro-orm/sql": {
       "optional": true
     },

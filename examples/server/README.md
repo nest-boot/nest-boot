@@ -79,9 +79,10 @@ Run `pnpm --filter @nest-boot/example-server queue:migrate` first to create or
 upgrade BullMQ's schema. Then run application migrations to add ownership indexes,
 enable Job RLS and grant the `authenticated` database role schema usage and SELECT on `bullmq.job`.
 
-The built-in `Job` from `@nest-boot/queue/persistence` maps that native table through
-MikroORM. Both runtime and CLI configurations include all 11 exported Queue entities and
-`...getJobSchemaOptions()` so Job participates in ORM migration comparison.
+The built-in `Job` from `@nest-boot/queue` maps that native table through
+MikroORM. The CLI configuration composes `withQueueDatabaseConfig(withAuthDatabaseConfig(await getDatabaseConfig()))`.
+CommonModule reuses this factory through `DatabaseModule.forRootAsync()` and adds the request session.
+The helpers register the Auth entities and all 11 native Queue entities so Job participates in ORM migration comparison.
 Its native columns, defaults, enum and operational indexes match BullMQ. The
 application migrations add indexes for `data.userId` and `data.workspaceId` and
 an authenticated SELECT policy; subsequent comparisons are empty. Supporting tables, enums and foreign keys are mapped by read-only entities.

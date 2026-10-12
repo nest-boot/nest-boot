@@ -16,7 +16,6 @@ for (const dependency of [
   "@nestjs/bullmq",
   "@nest-boot/database",
   "@nest-boot/graphql",
-  "@mikro-orm/core",
   "@nestjs/graphql",
 ]) {
   assert.throws(() => import.meta.resolve(dependency), {
@@ -52,4 +51,6 @@ await assert.rejects(
   /Processor.*consumer-only.*ConsumerQueue.*providers/,
 );
 
-console.log("Packed plain queue starts without database or GraphQL peers");
+console.log(
+  "Packed plain queue starts without DatabaseModule or GraphQL peers",
+);
