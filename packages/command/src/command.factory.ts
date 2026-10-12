@@ -21,65 +21,57 @@ export interface CommandFactoryOptions extends Partial<CliOptions> {
 
 /** Boots a standalone Nest context, runs one command, then closes its resources. */
 export class CommandFactory {
-  private static activeRuns = 0;
-  private static batchExitCode = 0;
   /**
    * Executes commands declared in the root module and its imported modules.
+   * Called once by the CLI bootstrap in each process.
    * @param rootModule - CLI root module importing CommandModule.
    * @param options - Arguments, help configuration and Nest settings.
-   * @returns The command exit code; concurrent runs preserve the first nonzero process exit code.
+   * @returns The command exit code, also assigned to process.exitCode.
    */
   static async run(
     rootModule: Type | DynamicModule,
     options: CommandFactoryOptions = {},
   ): Promise<number> {
-    if (CommandFactory.activeRuns === 0) CommandFactory.batchExitCode = 0;
-    CommandFactory.activeRuns++;
-    let exitCode = 1;
     try {
-      exitCode = await RequestContext.withMiddlewareScope(async () => {
-        const app = await NestFactory.createApplicationContext(rootModule, {
-          logger: false,
-          ...options.contextOptions,
-          abortOnError: false,
-        });
-        try {
-          const cli = new Cli({ binaryName: "nb", ...options });
-          cli.register(Builtins.HelpCommand);
-          if (options.binaryVersion) cli.register(Builtins.VersionCommand);
-          app.get(CommandRegistry, { strict: false }).register(cli);
-          const args = options.args ?? process.argv.slice(2);
-          return await RequestContext.run(
-            new RequestContext({
-              type: "command",
-              dependencyResolver: (token) => {
-                try {
-                  return app.get(token, { strict: false });
-                } catch (error) {
-                  // Like HTTP contexts, command contexts only resolve singletons.
-                  if (
-                    error instanceof UnknownElementException ||
-                    error instanceof InvalidClassScopeException
-                  )
-                    return undefined;
-                  throw error;
-                }
-              },
-            }),
-            () =>
-              cli.run(args.length ? args : ["--help"], options.context ?? {}),
-          );
-        } finally {
-          await app.close();
-        }
+      const app = await NestFactory.createApplicationContext(rootModule, {
+        logger: false,
+        ...options.contextOptions,
+        abortOnError: false,
       });
-      return exitCode;
-    } finally {
-      if (exitCode !== 0 && CommandFactory.batchExitCode === 0) {
-        CommandFactory.batchExitCode = exitCode;
+      let exitCode: number;
+      try {
+        const cli = new Cli({ binaryName: "nb", ...options });
+        cli.register(Builtins.HelpCommand);
+        if (options.binaryVersion) cli.register(Builtins.VersionCommand);
+        app.get(CommandRegistry, { strict: false }).register(cli);
+        const args = options.args ?? process.argv.slice(2);
+        exitCode = await RequestContext.run(
+          new RequestContext({
+            type: "command",
+            dependencyResolver: (token) => {
+              try {
+                return app.get(token, { strict: false });
+              } catch (error) {
+                // Like HTTP contexts, command contexts only resolve singletons.
+                if (
+                  error instanceof UnknownElementException ||
+                  error instanceof InvalidClassScopeException
+                )
+                  return undefined;
+                throw error;
+              }
+            },
+          }),
+          () => cli.run(args.length ? args : ["--help"], options.context ?? {}),
+        );
+      } finally {
+        await app.close();
       }
-      CommandFactory.activeRuns--;
-      process.exitCode = CommandFactory.batchExitCode;
+      process.exitCode = exitCode;
+      return exitCode;
+    } catch (error) {
+      process.exitCode = 1;
+      throw error;
     }
   }
 }

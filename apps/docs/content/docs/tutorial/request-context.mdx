@@ -312,12 +312,6 @@ Context middleware initializes values or wraps every lifecycle created through
 `run()`, including the HTTP lifecycle. Register middleware once during
 application bootstrap.
 
-When several applications run in one process, wrap their bootstrap, execution,
-and shutdown in `RequestContext.withMiddlewareScope(callback)`. The scope
-inherits existing middleware and keeps new registrations local, including
-across asynchronous calls. It does not activate a request context; use `run()`
-for each operation. `CommandFactory.run()` applies this scope automatically.
-
 The optional third `dependencies` argument to `registerMiddleware()` lists
 middleware names that must run first:
 

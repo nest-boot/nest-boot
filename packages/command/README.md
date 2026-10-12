@@ -61,11 +61,11 @@ pnpm exec nb --help
 
 Modules register command classes in `providers`; the CLI discovers commands across the imported module tree and retains Nest dependency injection. Commands and dependencies must be singletons. Parameter types are inferred by `Option` helpers. Commands implement `async execute()` and can return an exit code.
 
-Development prefers `src/cli.ts`; production (`NODE_ENV=production`) prefers `dist/cli.js`. The entry calls `CommandFactory.run(AppModule)`, which sets `process.exitCode` internally; it needs no exports. Every command runs in an independent `RequestContext` of type `"command"`, including registered context middleware. `CommandModule` imports `RequestContextModule` automatically. Application initialization and shutdown hooks run normally. TypeScript loading preserves decorator metadata and supports `.js` imports and tsconfig paths. Execution always closes the Nest application context.
+Development prefers `src/cli.ts`; production (`NODE_ENV=production`) prefers `dist/cli.js`. The entry calls `CommandFactory.run(AppModule)`, which sets `process.exitCode` internally; it needs no exports. Call the factory once from the CLI bootstrap. Every command runs in an independent `RequestContext` of type `"command"`, including registered context middleware. `CommandModule` imports `RequestContextModule` automatically. Application initialization and shutdown hooks run normally. TypeScript loading preserves decorator metadata and supports `.js` imports and tsconfig paths. Execution always closes the Nest application context.
 
 Use `CommandFactory.run(AppModule, { args })` for programmatic command execution; it returns an exit code without exiting the process. `runCli({ cwd, production })` executes the project entry script, which calls the factory to bootstrap the application and set its exit code.
 
-`RequestContext.get(token)` falls back to Nest singleton providers; unavailable or scoped providers return `undefined`. Factory calls inherit existing middleware registrations and isolate middleware registered during their own application initialization, including concurrent calls. Concurrent runs preserve the first nonzero exit code in `process.exitCode`; each call still returns its own result. A subsequent run after all active calls finish starts a new exit status.
+`RequestContext.get(token)` falls back to Nest singleton providers; unavailable or scoped providers return `undefined`.
 
 After publication, `npm install -g @nest-boot/command` provides a global `nb` executable. Run it from the application directory; the project still installs this package and its peers and provides its own CLI entry and module registration.
 

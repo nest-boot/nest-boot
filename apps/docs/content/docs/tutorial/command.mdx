@@ -80,7 +80,7 @@ Use the same `AppModule` as the HTTP and REPL entries. Nest application initiali
 
 Development checks `src/cli.ts`, then `dist/cli.js`. With `NODE_ENV=production`, `dist/cli.js` is checked before `src/cli.ts`. A failing selected entry reports an error rather than loading stale output. TypeScript is transpiled using the project tsconfig with Nest decorator metadata, relative `.js` imports resolving to `.ts` source, and tsconfig path aliases. Transpilation does not replace a typecheck. Compiled JavaScript needs no source files or tsconfig.
 
-The entry is an executable bootstrap script and needs no default export. `CommandFactory.run(AppModule)` sets `process.exitCode` internally. Compiled `dist/cli.js` can also be executed directly with Node.js. Commands return an optional exit code from `execute()`. Unknown commands, invalid options and execution errors return a nonzero exit code. Help and successful commands return zero. Nest shutdown hooks run when the command finishes, including failures. Concurrent factory calls preserve the first nonzero result in `process.exitCode`, while each call returns its own exit code. Once all active calls finish, a subsequent call starts a new exit status.
+The entry is an executable bootstrap script and needs no default export. Call `CommandFactory.run(AppModule)` once from the CLI bootstrap; it sets `process.exitCode` internally. Compiled `dist/cli.js` can also be executed directly with Node.js. Commands return an optional exit code from `execute()`. Unknown commands, invalid options and execution errors return a nonzero exit code. Help and successful commands return zero. Nest shutdown hooks run when the command finishes, including failures.
 
 For programmatic use, call `await CommandFactory.run(AppModule, { args: ["greet", "Alice"] })`. It returns an exit code and closes the context without calling `process.exit()`. `runCli({ cwd, production })` executes the project entry script; the script owns bootstrap and factory options, while the factory sets exit codes. Custom output streams and binary help settings are supported through factory options.
 
@@ -88,7 +88,7 @@ For programmatic use, call `await CommandFactory.run(AppModule, { args: ["greet"
 
 `CommandModule` imports `RequestContextModule` automatically. Each `CommandFactory.run()` execution creates an independent context with `type: "command"` and a generated ID, and runs the registered context middleware around command execution and custom error handling. Singleton commands and services can use `RequestContext.current()` or `RequestContext.get(token)` inside their methods. Application initialization and shutdown hooks run outside the command context.
 
-Context lookup falls back to singleton providers in the Nest application. Missing, request-scoped and transient providers return `undefined`. Each factory call also isolates middleware registered during application initialization, so sequential and concurrent calls do not reuse middleware from another application. Middleware registered before the factory call is inherited.
+Context lookup falls back to singleton providers in the Nest application. Missing, request-scoped and transient providers return `undefined`.
 
 ```ts
 import { RequestContext } from "@nest-boot/request-context";

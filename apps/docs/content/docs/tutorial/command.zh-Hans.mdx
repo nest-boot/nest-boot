@@ -80,7 +80,7 @@ CLI 与 HTTP、REPL 共享 `AppModule`。Nest 应用初始化钩子仍会执行�
 
 开发环境依次查找 `src/cli.ts`、`dist/cli.js`；`NODE_ENV=production` 时依次查找 `dist/cli.js`、`src/cli.ts`。选中的入口报错时直接返回错误，不回退到旧产物。源码加载读取项目 tsconfig，并保留 Nest 装饰器元数据，支持相对 `.js` 导入解析到 `.ts` 源码和 tsconfig 路径别名。运行时转译不代替类型检查。编译后的 JavaScript 不需要源码或 tsconfig。
 
-入口是可执行的 bootstrap 脚本，无需默认导出模块。`CommandFactory.run(AppModule)` 内部设置 `process.exitCode`；编译后的 `dist/cli.js` 也可以直接通过 Node.js 执行。`execute()` 可以返回退出码；帮助和成功执行返回 0，未知命令、无效参数、执行失败返回非零。执行结束后会关闭 Nest 上下文并调用资源清理钩子，失败时也会清理。并发 factory 调用会在 `process.exitCode` 中保留首个非零结果，每次调用仍返回自己的退出码。全部调用结束后，下一次调用会重新计算退出状态。
+入口是可执行的 bootstrap 脚本，无需默认导出模块。在 CLI bootstrap 中调用一次 `CommandFactory.run(AppModule)`，内部会设置 `process.exitCode`；编译后的 `dist/cli.js` 也可以直接通过 Node.js 执行。`execute()` 可以返回退出码；帮助和成功执行返回 0，未知命令、无效参数、执行失败返回非零。执行结束后会关闭 Nest 上下文并调用资源清理钩子，失败时也会清理。
 
 编程调用使用 `await CommandFactory.run(AppModule, { args: ["greet", "Alice"] })`，返回退出码并关闭上下文，不调用 `process.exit()`。`runCli({ cwd, production })` 执行项目入口，由入口负责 bootstrap 和 factory options，factory 内部设置退出码。factory options 支持输出流和帮助信息配置。
 
@@ -88,7 +88,7 @@ CLI 与 HTTP、REPL 共享 `AppModule`。Nest 应用初始化钩子仍会执行�
 
 `CommandModule` 默认导入 `RequestContextModule`。每次 `CommandFactory.run()` 执行都建立独立上下文，`type` 为 `"command"`，ID 自动生成，并执行已注册的上下文中间件。命令执行和自定义错误处理使用同一个上下文。单例命令及服务可在方法内调用 `RequestContext.current()`、`RequestContext.get(token)`。应用初始化和关闭钩子在命令上下文之外执行。
 
-上下文中没有存储的值会回退到 Nest 应用中的单例 provider；不存在、请求作用域或 transient provider 返回 `undefined`。每次 factory 调用也会隔离应用初始化期间注册的中间件，顺序或并发调用不会复用其他应用的中间件。factory 调用前已注册的中间件会被继承。
+上下文中没有存储的值会回退到 Nest 应用中的单例 provider；不存在、请求作用域或 transient provider 返回 `undefined`。
 
 ```ts
 import { RequestContext } from "@nest-boot/request-context";
