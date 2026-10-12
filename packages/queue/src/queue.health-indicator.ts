@@ -10,7 +10,7 @@ import {
 } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 
-import { BaseQueue } from "./base-queue.js";
+import { BaseQueue } from "./base.queue.js";
 
 /** Registers health checks for the application's existing BullMQ queues. */
 @Injectable()

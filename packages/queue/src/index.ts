@@ -1,5 +1,5 @@
-export { BaseProcessor } from "./base-processor.js";
-export { BaseQueue } from "./base-queue.js";
+export { BaseProcessor } from "./base.processor.js";
+export { BaseQueue } from "./base.queue.js";
 export * from "./decorators/index.js";
 export { JobStatus } from "./enums/job-status.enum.js";
 export { QueueHealthIndicator } from "./queue.health-indicator.js";

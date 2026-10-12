@@ -15,8 +15,8 @@ import {
 } from "@nestjs/core";
 import type { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
 
-import { BaseProcessor } from "./base-processor.js";
-import { BaseQueue } from "./base-queue.js";
+import { BaseProcessor } from "./base.processor.js";
+import { BaseQueue } from "./base.queue.js";
 import type { ProcessorDefinition } from "./decorators/processor.decorator.js";
 import { getQueueDefinition } from "./decorators/queue.decorator.js";
 import type { QueueEventsDefinition } from "./decorators/queue-events-listener.decorator.js";

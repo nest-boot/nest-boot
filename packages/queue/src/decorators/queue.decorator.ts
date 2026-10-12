@@ -12,7 +12,7 @@ import {
 } from "@nestjs/common/constants";
 import { kebabCase } from "lodash-es";
 
-import type { BaseQueue } from "../base-queue.js";
+import type { BaseQueue } from "../base.queue.js";
 import { QUEUE_OPTIONS } from "../queue.constants.js";
 import { MODULE_OPTIONS_TOKEN } from "../queue.module-definition.js";
 import { queueConstructionContext } from "../queue-construction-context.js";

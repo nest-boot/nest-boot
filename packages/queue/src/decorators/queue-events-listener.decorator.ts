@@ -1,7 +1,7 @@
 import { Injectable, type Type } from "@nestjs/common";
 import type { QueueEventsOptions } from "bullmq";
 
-import type { BaseQueue } from "../base-queue.js";
+import type { BaseQueue } from "../base.queue.js";
 import { QUEUE_EVENTS_OPTIONS } from "../queue.constants.js";
 
 /** Event stream settings; connection and namespace come from the queue. */

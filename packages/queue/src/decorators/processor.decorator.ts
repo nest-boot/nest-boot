@@ -1,7 +1,7 @@
 import { Injectable, type ScopeOptions, type Type } from "@nestjs/common";
 import type { WorkerOptions } from "bullmq";
 
-import type { BaseQueue } from "../base-queue.js";
+import type { BaseQueue } from "../base.queue.js";
 import { PROCESSOR_OPTIONS } from "../queue.constants.js";
 
 /** Consumer options; connection and namespace always come from its queue. */

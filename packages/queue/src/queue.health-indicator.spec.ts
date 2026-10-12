@@ -1,7 +1,7 @@
 import { HealthCheckRegistry } from "@nest-boot/health-check";
 import type { DiscoveryService } from "@nestjs/core";
 
-import { BaseQueue } from "./base-queue.js";
+import { BaseQueue } from "./base.queue.js";
 import { QueueHealthIndicator } from "./queue.health-indicator.js";
 
 describe("QueueHealthIndicator", () => {
