@@ -88,6 +88,8 @@ QueueModule once; ScheduleModule uses its global services without importing it i
 
 The Job API exposes only the global `id`, `queue`, `name`, `status`, finite numeric `progress` and timestamps. Remove selections of `jobId`, `data`, `returnValue`, `failedReason` and `priority`; provide business results through application APIs. Non-numeric progress returns null.
 
+`JobStatus` uses the six native PostgreSQL states. Waiting jobs with a priority return `WAITING`; `PRIORITIZED` and `UNKNOWN` are removed. Missing or inaccessible jobs return null. Status filters and ordering use the native `state` column directly.
+
 Queue jobs are hidden from the API by default. Declare `@Queue({ expose: true })` and register that queue provider in the API application to enable queries; `getJobReadFilter` still applies.
 
 Consumers use `@Processor(QueueClass)` and extend `BaseProcessor`; `WorkerHost` is

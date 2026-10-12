@@ -79,7 +79,7 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
         data: { userId: '101', workspaceId: '201' },
         status: JobStatus.WAITING,
         progress: 0,
-        priority: 0,
+        priority: 7,
         createdAt: new Date('2026-01-03T00:00:00Z'),
       },
       {
@@ -237,6 +237,30 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
       kind: 'SCALAR',
       name: 'Float',
     });
+  });
+
+  it('uses the six database states and includes priority jobs in waiting filters', async () => {
+    const { body } = await query(`query {
+      __type(name: "JobStatus") { enumValues { name } }
+      job(id: "reports:3") { status }
+      jobs(first: 10, filter: { status: "waiting" }) { totalCount edges { node { id status } } }
+    }`);
+    expect(body.errors).toBeUndefined();
+    expect(
+      body.data.__type.enumValues.map((value) => value.name).sort(),
+    ).toEqual([
+      'ACTIVE',
+      'COMPLETED',
+      'DELAYED',
+      'FAILED',
+      'WAITING',
+      'WAITING_CHILDREN',
+    ]);
+    expect(body.data.job.status).toBe('WAITING');
+    expect(body.data.jobs.totalCount).toBe(1);
+    expect(body.data.jobs.edges).toEqual([
+      { node: { id: 'reports:3', status: 'WAITING' } },
+    ]);
   });
 
   it.each([

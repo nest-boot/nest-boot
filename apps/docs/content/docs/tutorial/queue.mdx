@@ -265,13 +265,15 @@ The exported `entities` array maps all 11 BullMQ tables, including its migration
 
 For a custom schema such as `tasks`, use `getJobSchemaOptions("tasks")` in both ORM configurations, set `QueueModule.connection` to `{ connectionString, schema: "tasks" }`, and run `runMigrations(client, "tasks")`. Do not put the Job table or its schema in `skipTables` / `ignoreSchema`. Direct ORM queries use the configured entity schema; JobService reads the root Queue connection's schema, defaulting to `bullmq`. The ORM connection must access the same database as that root configuration. Per-queue overrides targeting other databases/schemas are not aggregated by the root JobService.
 
-| Entity field                       | Native mapping                                                      |
-| ---------------------------------- | ------------------------------------------------------------------- |
-| queue                              | queue column                                                        |
-| jobId                              | id column                                                           |
-| id                                 | SQL formula combining queue and jobId as queue:jobId                |
-| status                             | Native state, with waiting priority jobs represented as prioritized |
-| createdAt / startedAt / finishedAt | Millisecond timestamps converted to Date                            |
+| Entity field                       | Native mapping                                       |
+| ---------------------------------- | ---------------------------------------------------- |
+| queue                              | queue column                                         |
+| jobId                              | id column                                            |
+| id                                 | SQL formula combining queue and jobId as queue:jobId |
+| status                             | Direct mapping to the native state column            |
+| createdAt / startedAt / finishedAt | Millisecond timestamps converted to Date             |
+
+`JobStatus` matches the six PostgreSQL states: `WAITING`, `ACTIVE`, `COMPLETED`, `FAILED`, `DELAYED` and `WAITING_CHILDREN`. The entity maps `status` directly to `state`, so filtering and sorting use the native column. Waiting jobs with a priority also return `WAITING`; `PRIORITIZED` and `UNKNOWN` are not API states. A missing or inaccessible job returns null.
 
 The native primary key remains `(queue, id)`. The computed API ID provides a unique cursor tie-breaker across queues. The native table has no last-update timestamp, so there is no `updatedAt` field or filter. GraphQL exposes only `id`, `queue`, `name`, `status`, `progress`, `createdAt`, `startedAt` and `finishedAt`. The nullable `progress: Float` field uses a resolver to return finite numbers; JSON objects, strings, booleans and non-finite values return null. `jobId`, input data, raw results, errors and operational fields remain private. Applications provide business results through their own typed, authorized fields or APIs. Filters and sorting support `queue`, `name`, `status` and `created_at`.
 

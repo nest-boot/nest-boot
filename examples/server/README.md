@@ -231,7 +231,8 @@ operational fields stay private. Read the report result through BullMQ on the
 server; client-facing business results belong in a separate typed, authorized API.
 Output status uses the
 `JobStatus` enum (for example `COMPLETED`); status filters use stored values
-(for example `completed`). Filters and sorting support `queue`, `name`,
+(for example `completed`). The six statuses map directly to the native `state` column;
+waiting jobs with a priority also return `WAITING`. Filters and sorting support `queue`, `name`,
 `status` and `created_at`; sorting also supports `ID`. The connection
 supports `first`/`after`, `last`/`before`, and search syntax such as
 `query: "name:summarize"`. These queries read native BullMQ rows directly; single and bulk enqueues are visible as soon as they complete.

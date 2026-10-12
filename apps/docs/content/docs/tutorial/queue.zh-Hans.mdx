@@ -267,13 +267,15 @@ export class JobsModule {}
 
 自定义 schema（如 `tasks`）时，两处 ORM 配置均使用 `getJobSchemaOptions("tasks")`，设置 `QueueModule.connection: { connectionString, schema: "tasks" }`，并执行 `runMigrations(client, "tasks")`。不要再将 Job 表或其 schema 加入 `skipTables` / `ignoreSchema`。直接 ORM 查询使用实体配置的 schema；JobService 使用根 Queue 连接配置中的 schema，默认 `bullmq`。ORM 必须连接根队列配置对应的同一个数据库。单个队列覆盖到其他数据库或 schema 时，不会被根 JobService 自动聚合。
 
-| 实体字段                           | 原生映射                                                  |
-| ---------------------------------- | --------------------------------------------------------- |
-| queue                              | queue 列                                                  |
-| jobId                              | id 列                                                     |
-| id                                 | formula 计算 queue:jobId，不新增数据库列                  |
-| status                             | 原生 state，并将有优先级的 waiting 任务表示为 prioritized |
-| createdAt / startedAt / finishedAt | 毫秒时间戳转换为 Date                                     |
+| 实体字段                           | 原生映射                                 |
+| ---------------------------------- | ---------------------------------------- |
+| queue                              | queue 列                                 |
+| jobId                              | id 列                                    |
+| id                                 | formula 计算 queue:jobId，不新增数据库列 |
+| status                             | 直接映射原生 state 列                    |
+| createdAt / startedAt / finishedAt | 毫秒时间戳转换为 Date                    |
+
+`JobStatus` 与 PostgreSQL 的六种状态一致：`WAITING`、`ACTIVE`、`COMPLETED`、`FAILED`、`DELAYED` 和 `WAITING_CHILDREN`。实体的 `status` 直接映射 `state`，筛选和排序使用原生列。有优先级的等待任务也返回 `WAITING`，API 不提供 `PRIORITIZED` 和 `UNKNOWN` 状态。任务不存在或无权访问时返回 null。
 
 数据库保持 `(queue, id)` 复合主键，计算出的 API ID 用于跨队列唯一标识和游标排序。原生表没有最后更新时间，因此不提供 `updatedAt` 字段或筛选。GraphQL 只暴露 `id`、`queue`、`name`、`status`、`progress`、`createdAt`、`startedAt` 和 `finishedAt`。可空的 `progress: Float` 通过 resolver 只返回有限数值；JSON 对象、字符串、布尔值及非有限数值均返回 null。`jobId`、任务入参、原始结果、错误和运行参数不公开。业务结果由应用通过有明确类型和授权逻辑的字段或 API 提供。筛选和排序支持 `queue`、`name`、`status`、`created_at`。
 

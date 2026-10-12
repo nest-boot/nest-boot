@@ -318,27 +318,78 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
     expect((await reports.getJob("shared"))?.name).toBe("first");
   });
 
-  it("maps priority waiting jobs without inventing a native state", async () => {
-    await emails.add("priority", {}, { jobId: "priority", priority: 7 });
+  it("filters and orders directly by the native database state, including priority jobs", async () => {
+    const priority = await emails.add(
+      "priority",
+      { owner: "alice" },
+      { jobId: "priority", priority: 7 },
+    );
+    await emails.add("waiting", { owner: "alice" }, { jobId: "waiting" });
+    await emails.add(
+      "delayed",
+      { owner: "alice" },
+      { jobId: "delayed", priority: 7, delay: 60000 },
+    );
     const service = new JobConnectionService(
       orm.em.fork(),
       {
         connection: fixture.connection,
-        getJobReadFilter: () => ({}),
+        getJobReadFilter: () => ({ queue: "emails" }),
       },
       app.get(QueueRegistrar),
     );
-    expect(await service.getJob("emails:priority")).toMatchObject({
-      state: "waiting",
-      status: JobStatus.PRIORITIZED,
-    });
-    const result = await service.getJobConnection({
+    const { rows } = await fixture.pool.query(
+      `select id, state from "${fixture.connection.schema}".job where queue = 'emails'`,
+    );
+    for (const row of rows) {
+      expect((await service.getJob(`emails:${String(row.id)}`))?.status).toBe(
+        row.state,
+      );
+    }
+    // BullMQ's public getState differs from its PostgreSQL storage for priority jobs.
+    expect(await priority.getState()).toBe("prioritized");
+    expect((await service.getJob("emails:priority"))?.status).toBe(
+      JobStatus.WAITING,
+    );
+    const waiting = await service.getJobConnection({
       first: 10,
-      filter: { status: JobStatus.PRIORITIZED },
+      filter: { status: JobStatus.WAITING },
     });
-    expect(result.edges.map(({ node }) => node.id)).toEqual([
+    expect(waiting.totalCount).toBe(3);
+    expect(waiting.edges.map(({ node }) => node.id).sort()).toEqual([
       "emails:priority",
+      "emails:shared",
+      "emails:waiting",
     ]);
+    const readOrdered = async (after?: string) => {
+      const response = await fetch(`${await app.getUrl()}/api/graphql`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          query: `query($after: String) {
+            jobs(first: 2, after: $after, filter: { queue: "emails" }, orderBy: { field: STATUS, direction: ASC }) {
+              edges { node { id } }
+              pageInfo { endCursor hasNextPage }
+            }
+          }`,
+          variables: { after },
+        }),
+      });
+      const result = await response.json();
+      expect(result.errors).toBeUndefined();
+      return result.data.jobs;
+    };
+    const ordered = await readOrdered();
+    const next = await readOrdered(ordered.pageInfo.endCursor);
+    const { rows: nativeOrder } = await fixture.pool.query(
+      `select id from "${fixture.connection.schema}".job where queue = 'emails' order by state, id`,
+    );
+    expect(
+      [...ordered.edges, ...next.edges].map(({ node }) => node.id),
+    ).toEqual(nativeOrder.map((row) => `emails:${String(row.id)}`));
+    expect(ordered.pageInfo.hasNextPage).toBe(true);
+    expect(next.pageInfo.hasNextPage).toBe(false);
+    expect(await service.getJob("emails:missing")).toBeNull();
   });
 
   it("reads live worker results and honors BullMQ retention", async () => {

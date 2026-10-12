@@ -104,7 +104,7 @@ describe.each(["bullmq", "custom_tasks"])("Job migrations in %s", (schema) => {
         .fork()
         .findOneOrFail(Job, { queue: queue.name, jobId: job.id });
       expect(entity.data).toEqual(job.data);
-      expect(entity.state).toBe("waiting");
+      expect(entity.status).toBe("waiting");
       await job.remove();
     } finally {
       await queue.close();

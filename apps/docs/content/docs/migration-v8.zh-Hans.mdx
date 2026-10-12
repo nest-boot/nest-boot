@@ -81,6 +81,8 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 
 Job API 只公开全局 `id`、`queue`、`name`、`status`、有限数值 `progress` 和时间字段。移除查询中的 `jobId`、`data`、`returnValue`、`failedReason`、`priority`，业务结果由应用 API 提供；非数值进度返回 null。
 
+`JobStatus` 使用 PostgreSQL 原生的六种状态。有优先级的等待任务返回 `WAITING`，移除 `PRIORITIZED` 和 `UNKNOWN`。任务不存在或无权访问时返回 null；状态筛选和排序直接使用原生 `state` 列。
+
 队列任务默认不出现在 API 中。需要查询时，声明 `@Queue({ expose: true })` 并在 API 应用中注册该队列 provider；`getJobReadFilter` 仍然生效。
 
 消费者使用 `@Processor(QueueClass)` 并继承 `BaseProcessor`，移除 `WorkerHost`。

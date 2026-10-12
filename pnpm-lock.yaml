@@ -1880,9 +1880,6 @@ importers:
       '@nest-boot/health-check':
         specifier: workspace:^
         version: link:../health-check
-      graphql-type-json:
-        specifier: ^0.3.2
-        version: 0.3.2
       lodash-es:
         specifier: ^4.18.1
         version: 4.18.1

@@ -7,7 +7,7 @@ import {
   PrimaryKey,
   Property,
 } from "@mikro-orm/decorators/legacy";
-import type { JobProgress, JobsOptions, JobState } from "bullmq";
+import type { JobProgress, JobsOptions } from "bullmq";
 
 import { JobStatus } from "../enums/job-status.enum.js";
 
@@ -31,27 +31,27 @@ import { JobStatus } from "../enums/job-status.enum.js";
 @Index({
   name: "job_ready_idx",
   properties: ["queue", "priority", "seq"],
-  where: { state: "waiting" },
+  where: { status: JobStatus.WAITING },
 })
 @Index({
   name: "job_delayed_idx",
   properties: ["queue", "processAtMs"],
-  where: { state: "delayed" },
+  where: { status: JobStatus.DELAYED },
 })
 @Index({
   name: "job_active_idx",
   properties: ["queue", "lockedUntilMs"],
-  where: { state: "active" },
+  where: { status: JobStatus.ACTIVE },
 })
 @Index({
   name: "job_finished_idx",
-  properties: ["queue", "state", "finishedAtMs"],
-  where: { state: { $in: ["completed", "failed"] } },
+  properties: ["queue", "status", "finishedAtMs"],
+  where: { status: { $in: [JobStatus.COMPLETED, JobStatus.FAILED] } },
 })
 @Index({
   name: "job_waiting_children_idx",
   properties: ["queue", "seq"],
-  where: { state: "waiting-children" },
+  where: { status: JobStatus.WAITING_CHILDREN },
 })
 @Index({
   name: "job_parent_idx",
@@ -108,24 +108,11 @@ export class Job {
   @Property({ type: t.text })
   name!: string;
 
+  /** Native state column, used directly by API status filters and ordering. */
   @Enum({
-    items: [
-      "waiting",
-      "active",
-      "completed",
-      "failed",
-      "delayed",
-      "waiting-children",
-    ],
+    items: () => JobStatus,
+    fieldName: "state",
     nativeEnumName: "job_state",
-  })
-  state!: Exclude<JobState, "prioritized" | "unknown">;
-
-  /** API status, including priority waiting jobs. */
-  @Property({
-    type: t.text,
-    formula: (columns) =>
-      `case when ${columns.state} = 'waiting' and ${columns.priority} > 0 then 'prioritized' else ${columns.state}::text end`,
   })
   status!: JobStatus;
 
