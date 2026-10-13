@@ -3,7 +3,7 @@
 NestJS API used by the full-stack Nest Boot example. It demonstrates
 authentication, permission checks, GraphQL connections, MikroORM,
 PostgreSQL row-level security, BullMQ job history, middleware, request context,
-and logging.
+logging, and application commands.
 
 ## Run locally
 
@@ -27,6 +27,33 @@ abilities and delivery callbacks; it does not redeclare authentication entities.
 
 Workspace invitations are delivered through `workspace.sendInvitationEmail`;
 the example sends acceptance links with the globally configured Mailer.
+
+## Commands
+
+`src/cli.ts` calls `CommandFactory.run(AppModule)`, sharing the same application
+module as `main.ts` and `repl.ts`. `CommonModule` imports `CommandModule` and
+registers `GreetCommand`, which demonstrates inferred positional and boolean options.
+
+After installing dependencies, configuring the services above, and applying database
+migrations, run from the repository root:
+
+```bash
+pnpm --filter @nest-boot/example-server command --help
+pnpm --filter @nest-boot/example-server command greet Alice --loud
+```
+
+For a compiled deployment:
+
+```bash
+pnpm --filter @nest-boot/example-server build
+cd examples/server
+node dist/cli.js greet Alice --loud
+```
+
+The greeting prints `Hello ALICE!`. Commands run in a RequestContext of type
+`command`, and the factory handles exit codes and closes application resources.
+Application initialization hooks still run, so the example requires PostgreSQL,
+Redis and its database migrations just like the HTTP application.
 
 ## Health checks
 

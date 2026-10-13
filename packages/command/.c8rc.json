@@ -1,0 +1,6 @@
+{
+  "include": ["{src,dist}/{cli,run-cli,project-loader,ts-node.loader}.{ts,js}"],
+  "exclude-after-remap": true,
+  "reports-dir": "coverage/e2e",
+  "reporter": ["text", "lcov", "json"]
+}

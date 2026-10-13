@@ -32,6 +32,14 @@ try {
   cpSync(join(repository, ".github/fixtures/consumer"), consumer, {
     recursive: true,
   });
+  const commandApplication = join(repository, "packages/command/src/test");
+  cpSync(join(commandApplication, "src"), join(consumer, "src"), {
+    recursive: true,
+  });
+  cpSync(
+    join(commandApplication, "tsconfig.json"),
+    join(consumer, "tsconfig.cli.json"),
+  );
   const dependencies = {};
   const imports = [];
   let packedPackages = 0;
@@ -99,6 +107,7 @@ try {
     "--no-frozen-lockfile",
   ]);
   pnpm(["exec", "tsc", "--project", "tsconfig.json"]);
+  pnpm(["exec", "tsc", "--project", "tsconfig.cli.json"]);
   execFileSync(process.execPath, ["dist/main.js"], {
     cwd: consumer,
     stdio: "inherit",
@@ -109,6 +118,23 @@ try {
     stdio: "inherit",
     timeout: 60_000,
   });
+  // Exercise npm's bin links and both project entries outside the workspace.
+  for (const mode of ["development", "production"]) {
+    const output = execFileSync(
+      "pnpm",
+      ["exec", "nb", "hello", "Alice", "--loud", "--prefix", "Hello"],
+      {
+        cwd: consumer,
+        encoding: "utf8",
+        env: { ...process.env, NODE_ENV: mode },
+        timeout: 60_000,
+      },
+    );
+    assert.equal(output.trim(), "Hello:ALICE!\nCLOSED");
+  }
+  console.log(
+    "Packed command bin, source and compiled entries, DI and request context passed",
+  );
   console.log(
     `Verified ${packedPackages} packed packages on ${process.version}`,
   );

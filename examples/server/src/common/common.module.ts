@@ -1,5 +1,6 @@
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { entities as authEntities } from '@nest-boot/auth';
+import { CommandModule } from '@nest-boot/command';
 import { DatabaseModule } from '@nest-boot/database';
 import { GraphQLModule } from '@nest-boot/graphql';
 import { GraphQLConnectionModule } from '@nest-boot/graphql-connection';
@@ -11,6 +12,7 @@ import { RequestContextModule } from '@nest-boot/request-context';
 import { Global, Module } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
+import { GreetCommand } from './commands/greet.command.js';
 import { ConfigModule } from './modules/config.module.js';
 import { createSessionContext } from './session-context.js';
 
@@ -29,6 +31,7 @@ const DatabaseDynamicModule = DatabaseModule.forRoot({
 @Global()
 @Module({
   imports: [
+    CommandModule,
     RequestContextModule,
     ConfigModule,
     HashModule,
@@ -39,5 +42,6 @@ const DatabaseDynamicModule = DatabaseModule.forRoot({
     GraphQLConnectionModule,
     LoggerModule,
   ],
+  providers: [GreetCommand],
 })
 export class CommonModule {}

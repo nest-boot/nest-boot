@@ -140,6 +140,24 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     restoreEnv();
   }, 30_000);
 
+  it.each(['source', 'compiled'])(
+    'executes the %s CLI entry with the shared AppModule and closes its resources',
+    async (entry) => {
+      const executable = entry === 'source' ? 'pnpm' : process.execPath;
+      const args =
+        entry === 'source'
+          ? ['exec', 'nb', 'greet', 'Alice', '--loud']
+          : ['dist/cli.js', 'greet', 'Alice', '--loud'];
+      const result = await execFileAsync(executable, args, {
+        cwd: process.cwd(),
+        env: createServerEnv(),
+        timeout: 15_000,
+      });
+      expect(result.stdout).toContain('Hello ALICE!');
+    },
+    20_000,
+  );
+
   it('exposes database and queue health without authentication', async () => {
     const response = await request(baseUrl).get('/api/health').expect(200);
     expect(response.body).toMatchObject({
