@@ -4,7 +4,7 @@ import { getQueueDefinition } from "./decorators/queue.decorator.js";
 import { PostgresQueue } from "./postgres.js";
 import { queueConstructionContext } from "./queue-construction-context.js";
 import type { QueueOptions } from "./queue-options.interface.js";
-import { loadConfigFromEnv } from "./utils/load-config-from-env.util.js";
+import { getDatabaseConfig } from "./utils/get-database-config.util.js";
 
 /** Injectable PostgreSQL BullMQ queue with module configuration and managed shutdown. */
 export abstract class BaseQueue<
@@ -36,7 +36,7 @@ export abstract class BaseQueue<
     super(name ?? declaredName, {
       ...root,
       ...local,
-      connection: local.connection ?? root.connection ?? loadConfigFromEnv(),
+      connection: local.connection ?? root.connection ?? getDatabaseConfig(),
     });
   }
 

@@ -31,6 +31,3 @@ export {
   MikroOrmMiddleware,
   MultipleMikroOrmMiddleware,
 } from "@mikro-orm/nestjs";
-
-/** @deprecated Use getDatabaseConfig instead. */
-export { getDatabaseConfig as loadConfigFromEnv } from "./utils/get-database-config.util.js";

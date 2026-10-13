@@ -104,7 +104,7 @@ if (existsSync(".env")) {
 export default getDatabaseConfig();
 ```
 
-Compose configuration helpers when using Auth and Queue. They return new configurations, merge and deduplicate entity lists, and retain your application settings. Queue also composes schema options and synchronous or asynchronous discovery hooks. Reuse this factory in `DatabaseModule.forRootAsync()`; add the request `session` there. `loadConfigFromEnv` remains a deprecated compatibility alias for `getDatabaseConfig`.
+Compose configuration helpers when using Auth and Queue. They return new configurations, merge and deduplicate entity lists, and retain your application settings. Queue also composes schema options and synchronous or asynchronous discovery hooks. Reuse this factory in `DatabaseModule.forRootAsync()`; add the request `session` there. Replace imports and calls of `loadConfigFromEnv` with `getDatabaseConfig`.
 
 ```typescript
 import { withAuthDatabaseConfig } from "@nest-boot/auth";

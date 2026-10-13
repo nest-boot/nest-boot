@@ -101,7 +101,7 @@ if (existsSync(".env")) {
 export default getDatabaseConfig();
 ```
 
-使用 Auth 和 Queue 时可组合配置函数。它们返回新配置，合并并去重实体列表，并保留应用设置；Queue 还会合并 schema 选项，串联同步或异步 discovery 回调。运行时通过 `DatabaseModule.forRootAsync()` 复用此工厂，并在该处补充请求 `session`。`loadConfigFromEnv` 保留为 `getDatabaseConfig` 的已弃用兼容别名。
+使用 Auth 和 Queue 时可组合配置函数。它们返回新配置，合并并去重实体列表，并保留应用设置；Queue 还会合并 schema 选项，串联同步或异步 discovery 回调。运行时通过 `DatabaseModule.forRootAsync()` 复用此工厂，并在该处补充请求 `session`。将 `loadConfigFromEnv` 的导入和调用改为 `getDatabaseConfig`。
 
 ```typescript
 import { withAuthDatabaseConfig } from "@nest-boot/auth";

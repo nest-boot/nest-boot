@@ -5,7 +5,7 @@ import { Client } from "pg";
 
 import { MODULE_OPTIONS_TOKEN } from "../queue.module-definition.js";
 import type { QueueModuleOptions } from "../queue-module-options.interface.js";
-import { loadConfigFromEnv } from "../utils/load-config-from-env.util.js";
+import { getDatabaseConfig } from "../utils/get-database-config.util.js";
 
 /** Applies the PostgreSQL migrations bundled with the installed BullMQ version. */
 @Command({
@@ -26,7 +26,7 @@ export class QueueMigrateCommand extends BaseCommand {
 
   /** Applies pending migrations using one dedicated database connection. */
   async execute(): Promise<void> {
-    const connection = this.options.connection ?? loadConfigFromEnv();
+    const connection = this.options.connection ?? getDatabaseConfig();
     if (isPgPool(connection)) {
       const client = await connection.connect();
       try {

@@ -31,6 +31,9 @@ Replace these dependencies and their import paths:
 | `@nest-boot/mikro-orm-crypt` | `@nest-boot/database-crypt` |
 | `@nest-boot/mikro-orm-hash`  | `@nest-boot/database-hash`  |
 
+Rename database configuration imports and calls from `loadConfigFromEnv()` to
+`getDatabaseConfig()`. The old export is removed.
+
 Import `DatabaseModule` and `DatabaseModuleOptions` instead of
 `MikroOrmModule` and `MikroOrmModuleOptions`. The database integration continues
 using MikroORM; its upstream dependencies and CLI configuration stay named

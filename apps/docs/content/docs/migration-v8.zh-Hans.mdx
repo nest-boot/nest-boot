@@ -30,6 +30,9 @@ GraphQL 应用还应使用 `@nestjs/graphql@^14` 与 `@nestjs/apollo@^14`；
 | `@nest-boot/mikro-orm-crypt` | `@nest-boot/database-crypt` |
 | `@nest-boot/mikro-orm-hash`  | `@nest-boot/database-hash`  |
 
+将数据库配置函数的导入和调用从 `loadConfigFromEnv()` 改为
+`getDatabaseConfig()`，旧导出已移除。
+
 模块类和配置类型分别改为 `DatabaseModule`、`DatabaseModuleOptions`，替代
 `MikroOrmModule`、`MikroOrmModuleOptions`。数据库集成仍使用 MikroORM；上游依赖和
 CLI 配置继续使用 `@mikro-orm/*`、`mikro-orm.config.ts`。
