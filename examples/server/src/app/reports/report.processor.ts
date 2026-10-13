@@ -9,14 +9,10 @@ import {
   type ReportResult,
 } from './report.queue.js';
 
-/** RequestContext injection gives each job its own processor instance and context. */
+/** Reads each job's context through the static RequestContext API. */
 @Processor(ReportQueue, { concurrency: 2 })
 export class ReportProcessor extends BaseProcessor {
   private readonly logger = new Logger(ReportProcessor.name);
-
-  constructor(private readonly context: RequestContext) {
-    super();
-  }
 
   /**
    * Generates an example statistical report without external side effects.
@@ -26,6 +22,7 @@ export class ReportProcessor extends BaseProcessor {
   async process(
     job: Job<ReportData, ReportResult, 'summarize'>,
   ): Promise<ReportResult> {
+    const context = RequestContext.current();
     const { values } = job.data;
     const total = values.reduce((sum, value) => sum + value, 0);
     const result = {
@@ -35,7 +32,7 @@ export class ReportProcessor extends BaseProcessor {
     };
     await job.updateProgress(100);
     this.logger.log(
-      `Generated report ${job.id} in ${this.context.type} context ${this.context.id}`,
+      `Generated report ${job.id} in ${context.type} context ${context.id}`,
     );
     return result;
   }

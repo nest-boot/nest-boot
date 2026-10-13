@@ -103,42 +103,21 @@ Each invocation runs in a fresh `RequestContext` with type `"queue"` and the cur
 
 Consumers support singleton, request and transient scopes. Request-scoped dependencies propagate their scope to consumers. Request/transient consumers are resolved for each task in their declaring module using `ContextIdFactory.getByRequest()` and `ModuleRef.resolve()`, including application-defined durable context strategies.
 
-Import `RequestContextModule` to inject the current context. Its `RequestContext` provider is request-scoped and returns the active context, so injecting it also makes the consumer request-scoped:
+Read the current context inside the handler using the static API:
 
 ```ts
-import {
-  BaseProcessor,
-  JOB_REF,
-  Processor,
-  QueueModule,
-} from "@nest-boot/queue";
-import {
-  RequestContext,
-  RequestContextModule,
-} from "@nest-boot/request-context";
-import { Inject, Module } from "@nestjs/common";
-import { Job } from "bullmq";
+import { BaseProcessor, Processor } from "@nest-boot/queue";
+import { RequestContext } from "@nest-boot/request-context";
+import type { Job } from "bullmq";
 import { EmailQueue, type EmailData } from "./email.queue";
 
 @Processor(EmailQueue)
 export class EmailProcessor extends BaseProcessor {
-  constructor(
-    private readonly context: RequestContext,
-    @Inject(JOB_REF) private readonly job: Job<EmailData>,
-  ) {
-    super();
-  }
-
-  async process() {
-    return { contextId: this.context.id, recipient: this.job.data.to };
+  async process(job: Job<EmailData>) {
+    const context = RequestContext.current();
+    return { contextId: context.id, recipient: job.data.to };
   }
 }
-
-@Module({
-  imports: [QueueModule, RequestContextModule],
-  providers: [EmailQueue, EmailProcessor],
-})
-export class EmailWorkerModule {}
 ```
 
 Singleton services can keep using `RequestContext.current()` or `RequestContext.get(JOB_REF)` inside methods. Do not capture a task context in a singleton constructor. Use durable dependencies only for intentionally shared state, not current-job data. The `worker` getter is available after `QueueRegistrar.start()` and inside scoped consumers' `process()` methods.

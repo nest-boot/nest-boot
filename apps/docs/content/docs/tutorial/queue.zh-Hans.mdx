@@ -92,42 +92,21 @@ export class EmailProcessor extends BaseProcessor {
 
 支持单例、REQUEST 和 TRANSIENT 消费者。注入 request-scoped 服务时，作用域会沿依赖链传递；框架会通过 `ContextIdFactory.getByRequest()` 和消费者所属模块的 `ModuleRef.resolve()` 为任务解析实例，也支持应用定义的 durable context 策略。
 
-导入 `RequestContextModule` 后可以直接注入 `RequestContext`。该 provider 使用 REQUEST 作用域，返回当前已有的上下文，因此注入它也会让消费者变为 request-scoped：
+在处理方法内通过静态 API 读取当前上下文：
 
 ```ts
-import {
-  BaseProcessor,
-  JOB_REF,
-  Processor,
-  QueueModule,
-} from "@nest-boot/queue";
-import {
-  RequestContext,
-  RequestContextModule,
-} from "@nest-boot/request-context";
-import { Inject, Module } from "@nestjs/common";
-import { Job } from "bullmq";
+import { BaseProcessor, Processor } from "@nest-boot/queue";
+import { RequestContext } from "@nest-boot/request-context";
+import type { Job } from "bullmq";
 import { EmailQueue, type EmailData } from "./email.queue";
 
 @Processor(EmailQueue)
 export class EmailProcessor extends BaseProcessor {
-  constructor(
-    private readonly context: RequestContext,
-    @Inject(JOB_REF) private readonly job: Job<EmailData>,
-  ) {
-    super();
-  }
-
-  async process() {
-    return { contextId: this.context.id, recipient: this.job.data.to };
+  async process(job: Job<EmailData>) {
+    const context = RequestContext.current();
+    return { contextId: context.id, recipient: job.data.to };
   }
 }
-
-@Module({
-  imports: [QueueModule, RequestContextModule],
-  providers: [EmailQueue, EmailProcessor],
-})
-export class EmailWorkerModule {}
 ```
 
 单例服务可以继续在方法中使用 `RequestContext.current()` 或 `RequestContext.get(JOB_REF)`，不要在单例构造函数中捕获任务上下文。durable 依赖只适合有意共享的状态，不能保存当前任务数据。`worker` getter 可在`QueueRegistrar.start()` 完成后及 scoped 消费者的 `process()` 中使用。

@@ -95,8 +95,8 @@ Queue jobs are hidden from the API by default. Declare `@Queue({ expose: true })
 Consumers use `@Processor(QueueClass)` and extend `BaseProcessor`; `WorkerHost` is
 removed. Consumer-only deployments also register the queue class. Missing queues
 fail startup before workers start. Request/transient scopes, dependency scope
-propagation and durable contexts remain supported. `RequestContextModule` exports
-a request-scoped `RequestContext` provider for constructor injection.
+propagation and durable contexts remain supported. Read the current context
+through `RequestContext.current()` or static accessors inside handlers.
 
 Remove `BullMQMikroORMModule` / `QueueDatabaseModule` imports. Optional MikroORM
 queries map the native BullMQ table through the built-in `Job` from

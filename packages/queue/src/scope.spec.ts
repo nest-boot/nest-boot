@@ -1,7 +1,4 @@
-import {
-  RequestContext,
-  RequestContextModule,
-} from "@nest-boot/request-context";
+import { RequestContext } from "@nest-boot/request-context";
 import { Inject, Injectable, Module, Scope } from "@nestjs/common";
 import { ContextIdFactory } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
@@ -138,14 +135,13 @@ it("injects JOB_REF and respects durable context strategies", async () => {
     constructor(
       readonly tenant: TenantState,
       @Inject(JOB_REF) readonly injectedJob: Job,
-      readonly context: RequestContext,
     ) {
       super();
     }
     async process(job: Job) {
       await Promise.resolve();
       expect(this.injectedJob).toBe(job);
-      expect(this.context).toBe(RequestContext.current());
+      expect(RequestContext.get(JOB_REF)).toBe(job);
       return { consumer: this, tenant: this.tenant };
     }
   }
@@ -161,7 +157,7 @@ it("injects JOB_REF and respects durable context strategies", async () => {
       return context;
     });
   const module = await Test.createTestingModule({
-    imports: [QueueModule, RequestContextModule],
+    imports: [QueueModule],
     providers: [TaskQueue, TenantState, Consumer],
   }).compile();
   try {

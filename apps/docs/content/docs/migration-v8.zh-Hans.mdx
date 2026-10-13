@@ -87,8 +87,8 @@ Job API 只公开全局 `id`、`queue`、`name`、`status`、有限数值 `progr
 
 消费者使用 `@Processor(QueueClass)` 并继承 `BaseProcessor`，移除 `WorkerHost`。
 纯消费者部署也必须注册队列类，缺少时在启动 worker 前报错。保留 REQUEST、TRANSIENT、
-作用域传递和 durable context 策略。`RequestContextModule` 导出可注入的
-request-scoped `RequestContext` provider。
+作用域传递和 durable context 策略。在处理方法内通过 `RequestContext.current()`
+或静态访问器读取当前上下文。
 
 移除 `BullMQMikroORMModule` / `QueueDatabaseModule` 导入。可选的 MikroORM 查询通过
 `@nest-boot/queue` 内置 `Job` 完整映射 BullMQ 原生表。运行时和 CLI ORM 配置
