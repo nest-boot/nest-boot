@@ -1,5 +1,5 @@
 import { BaseProcessor, Processor } from "@nest-boot/queue";
-import { Inject, Logger, Optional } from "@nestjs/common";
+import { Inject, Optional } from "@nestjs/common";
 import { Job } from "bullmq";
 
 import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition.js";
@@ -7,14 +7,8 @@ import { ScheduleQueue } from "./schedule.queue.js";
 import { ScheduleRegistry } from "./schedule.registry.js";
 import { type ScheduleModuleOptions } from "./schedule-module-options.interface.js";
 
-@Processor(ScheduleQueue, { autorun: false })
+@Processor(ScheduleQueue)
 export class ScheduleProcessor extends BaseProcessor {
-  /**
-   * Logger for worker lifecycle failures.
-   * @internal
-   */
-  private readonly logger = new Logger(ScheduleProcessor.name);
-
   constructor(
     private readonly scheduleRegistry: ScheduleRegistry,
     @Optional()
@@ -28,21 +22,12 @@ export class ScheduleProcessor extends BaseProcessor {
     await this.scheduleRegistry.get(job.name)?.handler();
   }
 
-  async onQueueStart(): Promise<void> {
+  async onQueueStart(): Promise<boolean> {
     await this.scheduleRegistry.register();
     if (this.options?.concurrency) {
       this.worker.concurrency = this.options.concurrency;
     }
 
-    if (this.options?.autorun !== false) {
-      void this.worker.run().catch((error: unknown) => {
-        const message = error instanceof Error ? error.message : String(error);
-
-        this.logger.error(
-          `Schedule worker stopped unexpectedly: ${message}`,
-          error instanceof Error ? error.stack : undefined,
-        );
-      });
-    }
+    return this.options?.autorun !== false;
   }
 }

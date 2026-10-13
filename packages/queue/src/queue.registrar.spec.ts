@@ -141,6 +141,18 @@ it("rejects unknown queues before creating transports and permits a corrected se
   }
 });
 
+it("lets a startup hook keep its worker idle while retaining event listeners", async () => {
+  const app = await createApp();
+  app.get(EmailProcessor).onQueueStart.mockReturnValue(false);
+  try {
+    await app.get(QueueRegistrar).start(["email"]);
+    expect(workers[0].run).not.toHaveBeenCalled();
+    expect(streams[0].run).toHaveBeenCalledOnce();
+  } finally {
+    await app.close();
+  }
+});
+
 it.each(["readiness", "hook"])(
   "closes all partially created transports when %s fails",
   async (failure) => {

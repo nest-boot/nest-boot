@@ -312,4 +312,4 @@ pnpm exec nb queue:run --queue email-queue --queue report-queue
 
 不传 `--queue` 时启动所有注册的消费者和事件监听器；重复传入可选择配置的队列名称。未知名称会在创建任何 worker 前报错。未选中的队列仍可注入并投递任务。仅在选中定时任务队列时注册定时任务。SIGINT 和 SIGTERM 会等待活动任务完成并关闭应用。
 
-也可在应用初始化后注入 `QueueRegistrar`，调用 `await registrar.start(["email-queue"])`；省略参数表示全部队列。消费者或监听器的 `autorun: false` 仍会在显式启动时创建空闲 transport，供手动调用 `.run()`。单例消费者可实现 `onQueueStart()`，在 transport 就绪后、开始消费前执行准备操作。
+也可在应用初始化后注入 `QueueRegistrar`，调用 `await registrar.start(["email-queue"])`；省略参数表示全部队列。消费者或监听器的 `autorun: false` 仍会在显式启动时创建空闲 transport，供手动调用 `.run()`。单例消费者可实现 `onQueueStart()`，在 transport 就绪后、开始消费前执行准备操作；返回 `false` 可根据运行时配置让该 worker 保持空闲。所有启动钩子完成后，由 QueueRegistrar 统一启动启用的 worker，消费循环失败时通知 `queue:run` 退出。

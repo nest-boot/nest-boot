@@ -95,7 +95,7 @@ pnpm exec nb queue:run --queue email-queue --queue report-queue
 
 Omit `--queue` to run all registered consumers and event listeners. Repeat it to select configured queue names. Unknown names fail before any consumer starts. Only selected queues create workers and listeners; their producer providers remain injectable in every process. Scheduled handlers register only when their schedule queue is selected. SIGINT and SIGTERM drain active jobs and close the application.
 
-For programmatic startup, inject `QueueRegistrar` and call `await registrar.start(["email-queue"])` after application initialization; omit the argument for all queues. `autorun: false` on a processor or event listener still creates an idle transport during explicit startup, allowing manual `.run()`. Singleton processors may implement `onQueueStart()` to prepare their consumer after its transport is ready and before processing begins.
+For programmatic startup, inject `QueueRegistrar` and call `await registrar.start(["email-queue"])` after application initialization; omit the argument for all queues. `autorun: false` on a processor or event listener still creates an idle transport during explicit startup, allowing manual `.run()`. Singleton processors may implement `onQueueStart()` to prepare their consumer after its transport is ready and before processing begins. Returning `false` from this hook keeps that worker idle, allowing runtime configuration to disable consumption. QueueRegistrar starts the enabled workers after every startup hook finishes and notifies `queue:run` when a consumer loop fails.
 
 ### Scope and request context
 

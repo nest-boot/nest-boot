@@ -282,11 +282,13 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
           !provider.isTransient &&
           provider.instance instanceof BaseProcessor
         ) {
-          await Promise.race([
+          const autorun = await Promise.race([
             Promise.resolve(provider.instance.onQueueStart?.()),
             this.lifetime,
           ]);
           if (this.stopping) return [];
+          if (autorun === false)
+            this.runnableWorkers.delete(provider.instance.worker);
         }
       }
       for (const { provider, definition, listener } of bindings) {

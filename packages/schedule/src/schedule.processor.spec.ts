@@ -21,7 +21,7 @@ vi.mock("@nest-boot/queue", () => ({
   },
 }));
 
-import { Logger, type Provider } from "@nestjs/common";
+import { type Provider } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
 import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition.js";
@@ -52,9 +52,7 @@ describe("ScheduleProcessor", () => {
     expect((processor as any).worker.run).not.toHaveBeenCalled();
   });
   it("should apply the schedule processor decorator", () => {
-    expect(mockProcessor).toHaveBeenCalledWith(ScheduleQueue, {
-      autorun: false,
-    });
+    expect(mockProcessor).toHaveBeenCalledWith(ScheduleQueue);
     expect(mockProcessorDecorator).toHaveBeenCalledWith(ScheduleProcessor);
   });
 
@@ -90,15 +88,15 @@ describe("ScheduleProcessor", () => {
     expect(get).toHaveBeenCalledWith("Missing.run");
   });
 
-  it("should configure concurrency and start the worker by default", async () => {
+  it("configures concurrency and lets the registrar start its worker", async () => {
     const processor = await createProcessor(createRegistry().registry, {
       concurrency: 4,
     });
 
-    await processor.onQueueStart();
+    expect(await processor.onQueueStart()).toBe(true);
 
     expect((processor as any).worker.concurrency).toBe(4);
-    expect((processor as any).worker.run).toHaveBeenCalledTimes(1);
+    expect((processor as any).worker.run).not.toHaveBeenCalled();
   });
 
   it("should skip autorun when disabled", async () => {
@@ -106,44 +104,10 @@ describe("ScheduleProcessor", () => {
       autorun: false,
     });
 
-    await processor.onQueueStart();
+    expect(await processor.onQueueStart()).toBe(false);
 
     expect((processor as any).worker.concurrency).toBe(1);
     expect((processor as any).worker.run).not.toHaveBeenCalled();
-  });
-
-  it("should log worker run errors", async () => {
-    const loggerError = vi
-      .spyOn(Logger.prototype, "error")
-      .mockImplementation(vi.fn());
-    const processor = await createProcessor(createRegistry().registry);
-    const error = new Error("PostgreSQL unavailable");
-    (processor as any).worker.run.mockRejectedValueOnce(error);
-
-    await processor.onQueueStart();
-    await Promise.resolve();
-
-    expect((processor as any).worker.run).toHaveBeenCalledTimes(1);
-    expect(loggerError).toHaveBeenCalledWith(
-      "Schedule worker stopped unexpectedly: PostgreSQL unavailable",
-      error.stack,
-    );
-  });
-
-  it("should stringify non-error worker run rejections", async () => {
-    const loggerError = vi
-      .spyOn(Logger.prototype, "error")
-      .mockImplementation(vi.fn());
-    const processor = await createProcessor(createRegistry().registry);
-    (processor as any).worker.run.mockRejectedValueOnce("connection closed");
-
-    await processor.onQueueStart();
-    await Promise.resolve();
-
-    expect(loggerError).toHaveBeenCalledWith(
-      "Schedule worker stopped unexpectedly: connection closed",
-      undefined,
-    );
   });
 
   it("should load decorator metadata fallback branches", async () => {
