@@ -4,14 +4,14 @@ import type { Migration } from '@mikro-orm/migrations';
 
 import { Migration00000000000000_Initial } from './migrations/Migration00000000000000_Initial.js';
 import { Migration20261009070926 } from './migrations/Migration20261009070926.js';
-import { Migration20261011160256_JobIndexes } from './migrations/Migration20261011160256_JobIndexes.js';
-import { Migration20261011164129_JobRls } from './migrations/Migration20261011164129_JobRls.js';
+import { Migration20261013084102_QueueJobs } from './migrations/Migration20261013084102_QueueJobs.js';
+import { Migration20261013084103_QueueJobAccess } from './migrations/Migration20261013084103_QueueJobAccess.js';
 
 const migrations = [
   Migration00000000000000_Initial,
   Migration20261009070926,
-  Migration20261011160256_JobIndexes,
-  Migration20261011164129_JobRls,
+  Migration20261013084102_QueueJobs,
+  Migration20261013084103_QueueJobAccess,
 ];
 /**
  * Returns sQL emitted by the selected migration direction.
