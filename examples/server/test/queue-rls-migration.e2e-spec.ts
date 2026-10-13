@@ -18,11 +18,11 @@ it('denies request-role job reads during rollback and restores ownership reads o
     orm.config,
   );
 
-    /**
-     * Executes the actual application's migration queries as the table owner.
-     * @param direction - Migration operation.
-     */
-    async function apply(direction: 'up' | 'down') {
+  /**
+   * Executes the actual application's migration queries as the table owner.
+   * @param direction - Migration operation.
+   */
+  async function apply(direction: 'up' | 'down') {
     migration.reset();
     await migration[direction]();
     for (const sql of migration.getQueries()) {
