@@ -15,7 +15,7 @@ pnpm up "@nest-boot/*@^8" "@nestjs/common@^12" "@nestjs/core@^12"
 ```
 
 GraphQL 应用还应使用 `@nestjs/graphql@^14` 与 `@nestjs/apollo@^14`；
-BullMQ 应用应使用 `@nestjs/bullmq@^12`。集成 MikroORM 的包要求 MikroORM 7。
+队列模块直接使用 `bullmq`，无需 `@nestjs/bullmq`。集成 MikroORM 的包要求 MikroORM 7。
 
 应用层面的 NestJS 破坏性变更请参考上游
 [NestJS 迁移指南](https://docs.nestjs.com/migration-guide)。
@@ -29,6 +29,9 @@ BullMQ 应用应使用 `@nestjs/bullmq@^12`。集成 MikroORM 的包要求 Mikro
 | `@nest-boot/mikro-orm`       | `@nest-boot/database`       |
 | `@nest-boot/mikro-orm-crypt` | `@nest-boot/database-crypt` |
 | `@nest-boot/mikro-orm-hash`  | `@nest-boot/database-hash`  |
+
+将数据库配置函数的导入和调用从 `loadConfigFromEnv()` 改为
+`getDatabaseConfig()`，旧导出已移除。
 
 模块类和配置类型分别改为 `DatabaseModule`、`DatabaseModuleOptions`，替代
 `MikroOrmModule`、`MikroOrmModuleOptions`。数据库集成仍使用 MikroORM；上游依赖和
@@ -62,21 +65,46 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 
 ## 队列包改名
 
-| 原包名                        | 版本 8 包名                 |
-| ----------------------------- | --------------------------- |
-| `@nest-boot/bullmq`           | `@nest-boot/queue`          |
-| `@nest-boot/bullmq-mikro-orm` | `@nest-boot/queue-database` |
+| 原包名                        | 版本 8 包名                      |
+| ----------------------------- | -------------------------------- |
+| `@nest-boot/bullmq`           | `@nest-boot/queue`               |
+| `@nest-boot/bullmq-mikro-orm` | `@nest-boot/queue`（任务持久化） |
 
 `BullModule`、`BullModuleOptions`、`BullMQHealthIndicator` 分别改为
-`QueueModule`、`QueueModuleOptions`、`QueueHealthIndicator`。任务持久化模块和配置类型
-分别从 `BullMQMikroORMModule`、`BullMQMikroORMModuleOptions` 改为
-`QueueDatabaseModule`、`QueueDatabaseModuleOptions`。
+`QueueModule`、`QueueModuleOptions`、`QueueHealthIndicator`。队列使用 BullMQ 6
+官方 PostgreSQL 后端，通过 `QUEUE_DATABASE_URL`、`DATABASE_URL` 或显式连接配置，
+并单独执行 BullMQ 官方迁移。保留策略使用 `removeOnComplete` / `removeOnFail`；
+移除持久化开关和同步表 TTL 清理。旧 Redis 任务及同步表数据不会自动迁移。
 
-底层继续使用 BullMQ 和 MikroORM，保留 `bullmq`、`@nestjs/bullmq`、`@mikro-orm/core`
-等上游依赖。
+将 `registerQueue` / `registerQueueAsync` 改为 `@Queue({ name, ...options })`
+装饰、继承 `BaseQueue` 的队列类，加入模块 `providers` 并直接注入，移除 `InjectQueue`。
+动态配置在自定义构造函数中注入业务依赖，调用
+`super(localOptions)`；`@Queue()` 自动提供全局配置。应用只注册一次全局 QueueModule，ScheduleModule
+直接复用全局服务，不在内部重复导入。
 
-自定义 ESLint 配置中的 `@nest-boot/import-bullmq` 改为 `@nest-boot/import-queue`。
-自动修复会迁移具名导入并保留本地别名；命名空间导入需要手动迁移。
+Job API 只公开全局 `id`、`queue`、`name`、`status`、有限数值 `progress` 和时间字段。移除查询中的 `jobId`、`data`、`returnValue`、`failedReason`、`priority`，业务结果由应用 API 提供；非数值进度返回 null。
+
+`JobStatus` 使用 PostgreSQL 原生的六种状态。有优先级的等待任务返回 `WAITING`，移除 `PRIORITIZED` 和 `UNKNOWN`。任务不存在或无权访问时返回 null；状态筛选和排序直接使用原生 `state` 列。
+
+队列任务默认不出现在 API 中。需要查询时，声明 `@Queue({ expose: true })` 并在 API 应用中注册该队列 provider；用户和工作区权限通过请求 EntityManager session 交由数据库 RLS 控制。
+
+消费者使用 `@Processor(QueueClass)` 并继承 `BaseProcessor`，移除 `WorkerHost`。
+纯消费者部署也必须注册队列类，缺少时在启动 worker 前报错。保留 REQUEST、TRANSIENT、
+作用域传递和 durable context 策略。在处理方法内通过 `RequestContext.current()`
+或静态访问器读取当前上下文。
+
+移除 `BullMQMikroORMModule` / `QueueDatabaseModule` 导入。可选的 MikroORM 查询通过
+`@nest-boot/queue` 内置 `Job` 完整映射 BullMQ 原生表。运行时和 CLI ORM 配置
+使用 `withQueueDatabaseConfig(config)` 注册全部实体及 schema 设置，使 11 张表参与原生迁移比较；安装必需的 `@mikro-orm/core` 和 `@mikro-orm/decorators` peer。
+`ignoreRoutines: true` 保留所有 schema 中的已有函数；继续启用迁移快照，
+并检查直接从在线数据库生成的回滚 SQL，避免带入 BullMQ 函数定义。
+先执行 BullMQ 迁移，再执行应用迁移来添加用户、工作区归属索引及 authenticated RLS SELECT 策略。
+先创建 `authenticated` 角色，请求 session 设置已验证的 `app.user.id` / `app.workspace.id`；
+BullMQ 连接使用表所有者或 `BYPASSRLS` 角色，并继续保留应用查询授权，
+详见[队列教程](/docs/tutorial/queue)。保留 `bullmq`，
+仅在启用查询功能时安装对应 MikroORM/GraphQL 依赖。移除 `@nestjs/bullmq`。
+
+从自定义 ESLint 配置中移除 `@nest-boot/import-bullmq` 和 `@nest-boot/import-queue`。队列导入、注册、processor 装饰器和 PostgreSQL 连接配置需按照上面的新 API 显式迁移。
 
 ## 更新相关集成
 

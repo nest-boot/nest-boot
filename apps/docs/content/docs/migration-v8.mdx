@@ -15,7 +15,7 @@ pnpm up "@nest-boot/*@^8" "@nestjs/common@^12" "@nestjs/core@^12"
 ```
 
 GraphQL applications should also use `@nestjs/graphql@^14` and
-`@nestjs/apollo@^14`; BullMQ applications should use `@nestjs/bullmq@^12`.
+`@nestjs/apollo@^14`; queue applications use `bullmq` directly without `@nestjs/bullmq`.
 Packages integrating MikroORM require MikroORM 7.
 
 Follow the upstream [NestJS migration guide](https://docs.nestjs.com/migration-guide)
@@ -31,6 +31,9 @@ Replace these dependencies and their import paths:
 | `@nest-boot/mikro-orm-crypt` | `@nest-boot/database-crypt` |
 | `@nest-boot/mikro-orm-hash`  | `@nest-boot/database-hash`  |
 
+Rename database configuration imports and calls from `loadConfigFromEnv()` to
+`getDatabaseConfig()`. The old export is removed.
+
 Import `DatabaseModule` and `DatabaseModuleOptions` instead of
 `MikroOrmModule` and `MikroOrmModuleOptions`. The database integration continues
 using MikroORM; its upstream dependencies and CLI configuration stay named
@@ -42,8 +45,8 @@ Custom request-context middleware must depend on `"database"` instead of
 order.
 
 Custom ESLint configurations should use `@nest-boot/import-database` instead of
-`@nest-boot/import-mikro-orm`. Its autofix migrates named imports and preserves
-local aliases. Namespace imports require manual migration.
+`@nest-boot/import-mikro-orm`. Its autofix migrates compatible named imports and preserves
+local aliases. Redis configuration types (`BullModuleOptions` and the old `QueueModuleOptions`), queue registration, processor decorators, removed helpers and namespace imports require manual migration.
 
 ## Enable ESM
 
@@ -67,22 +70,49 @@ provide a CommonJS `require` entry.
 
 ## Rename queue packages
 
-| Previous package              | Version 8 package           |
-| ----------------------------- | --------------------------- |
-| `@nest-boot/bullmq`           | `@nest-boot/queue`          |
-| `@nest-boot/bullmq-mikro-orm` | `@nest-boot/queue-database` |
+| Previous package              | Version 8 package                    |
+| ----------------------------- | ------------------------------------ |
+| `@nest-boot/bullmq`           | `@nest-boot/queue`                   |
+| `@nest-boot/bullmq-mikro-orm` | `@nest-boot/queue` (job persistence) |
 
 Use `QueueModule`, `QueueModuleOptions`, and `QueueHealthIndicator` in place of
-`BullModule`, `BullModuleOptions`, and `BullMQHealthIndicator`. Job persistence
-uses `QueueDatabaseModule` and `QueueDatabaseModuleOptions` instead of
-`BullMQMikroORMModule` and `BullMQMikroORMModuleOptions`.
+`BullModule`, `BullModuleOptions`, and `BullMQHealthIndicator`. Queues use BullMQ 6's
+PostgreSQL backend. Configure `QUEUE_DATABASE_URL`, `DATABASE_URL` or explicit
+connection options, and run BullMQ's official migrations. Use native
+`removeOnComplete` / `removeOnFail` retention; persistence switches and mirror TTL
+cleanup are removed. Existing Redis jobs and mirror rows are not migrated automatically.
 
-BullMQ and MikroORM remain the implementations; retain upstream dependencies
-such as `bullmq`, `@nestjs/bullmq`, and `@mikro-orm/core`.
+Replace `registerQueue` / `registerQueueAsync` with queue classes decorated by
+`@Queue({ name, ...options })` and extending `BaseQueue`. Add them to module
+`providers` and inject the class directly; `InjectQueue` is removed. Custom
+constructors inject business dependencies and call
+`super(localOptions)` for dynamic settings; `@Queue()` supplies global options automatically. Register the global
+QueueModule once; ScheduleModule uses its global services without importing it internally.
 
-Custom ESLint configurations should use `@nest-boot/import-queue` instead of
-`@nest-boot/import-bullmq`. Its autofix migrates named imports and preserves
-local aliases. Namespace imports require manual migration.
+The Job API exposes only the global `id`, `queue`, `name`, `status`, finite numeric `progress` and timestamps. Remove selections of `jobId`, `data`, `returnValue`, `failedReason` and `priority`; provide business results through application APIs. Non-numeric progress returns null.
+
+`JobStatus` uses the six native PostgreSQL states. Waiting jobs with a priority return `WAITING`; `PRIORITIZED` and `UNKNOWN` are removed. Missing or inaccessible jobs return null. Status filters and ordering use the native `state` column directly.
+
+Queue jobs are hidden from the API by default. Declare `@Queue({ expose: true })` and register that queue provider in the API application to enable queries; database RLS controls user/workspace access through the request EntityManager session.
+
+Consumers use `@Processor(QueueClass)` and extend `BaseProcessor`; `WorkerHost` is
+removed. Consumer-only deployments also register the queue class. Missing queues
+fail startup before workers start. Request/transient scopes, dependency scope
+propagation and durable contexts remain supported. Read the current context
+through `RequestContext.current()` or static accessors inside handlers.
+
+Remove `BullMQMikroORMModule` / `QueueDatabaseModule` imports. Optional MikroORM
+queries map the native BullMQ table through the built-in `Job` from
+`@nest-boot/queue`. Use `withQueueDatabaseConfig(config)` in runtime and CLI
+ORM options to register the full entity set and schema settings. Install the required `@mikro-orm/core` and `@mikro-orm/decorators` peers. All 11 BullMQ tables
+participate in native migration comparison; `ignoreRoutines: true` leaves existing
+functions unchanged across all schemas. Keep migration snapshots enabled and
+review live-generated rollback SQL for unwanted function definitions. Run BullMQ migrations before application migrations; the first
+Job migration adds user/workspace ownership indexes and an authenticated RLS SELECT policy. Create the `authenticated` role first and configure verified `app.user.id` / `app.workspace.id` request sessions. BullMQ connections must use the table owner or a `BYPASSRLS` role. Keep application read authorization. See the [queue tutorial](/docs/tutorial/queue).
+Keep `bullmq`; install MikroORM/GraphQL peers only for the optional query features.
+Remove `@nestjs/bullmq`; the queue integration uses BullMQ directly.
+
+Remove `@nest-boot/import-bullmq` and `@nest-boot/import-queue` from custom ESLint configurations. Queue imports, registration, processor decorators and PostgreSQL connection settings require explicit migration to the new API described above.
 
 ## Update related integrations
 

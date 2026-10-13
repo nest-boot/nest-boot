@@ -1,13 +1,21 @@
+import { createRequire } from "node:module";
+
 import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  resolve: {
+    alias: [
+      {
+        find: /^graphql$/,
+        replacement: createRequire(import.meta.url).resolve("graphql"),
+      },
+    ],
+  },
   // Resolves the path aliases declared in tsconfig.json, including the ones
   // added by `nest g library`.
   plugins: [tsconfigPaths()],
   test: {
-    // Allow the registration test to replace Redis transports inside Nest's explorer.
-    server: { deps: { inline: ["@nestjs/bullmq"] } },
     globals: true,
     root: "./",
     include: ["**/*.spec.ts"],

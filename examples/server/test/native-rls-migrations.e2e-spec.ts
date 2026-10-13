@@ -36,7 +36,11 @@ import {
   Verification,
   Workspace,
 } from '@nest-boot/auth';
-import { loadConfigFromEnv } from '@nest-boot/database';
+import { getDatabaseConfig } from '@nest-boot/database';
+import {
+  entities as queueEntities,
+  withQueueDatabaseConfig,
+} from '@nest-boot/queue';
 import { REQUEST, RequestContext } from '@nest-boot/request-context';
 import { type FactoryProvider, ForbiddenException } from '@nestjs/common';
 import type { Request } from 'express';
@@ -47,7 +51,7 @@ import { ApiKeyAuthenticationService } from '../../../packages/auth/dist/infrast
 import { createContextualAuthService } from '../../../packages/auth/dist/infrastructure/create-contextual-auth-service.js';
 import { RequestIdentity } from '../../../packages/auth/dist/infrastructure/request-identity.js';
 import { UserDeletionService } from '../../../packages/auth/dist/services/user-deletion.service.js';
-import { Job } from '../src/app/jobs/entities/job.entity.js';
+import { LegacyJob } from '../src/database/entities/legacy-job.entity.js';
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
 import { Migration20261009070926 } from '../src/database/migrations/Migration20261009070926.js';
 
@@ -61,19 +65,19 @@ describe('example native RLS migrations with PGlite', () => {
       instance.getMetadata(Workspace),
       instance.getMetadata(Member),
       instance.getMetadata(Invitation),
-      instance.getMetadata(Job),
     ].map((metadata) => metadata.policies);
   let originalPolicies: ReturnType<typeof readPolicies>;
 
   beforeAll(async () => {
     vi.stubEnv('DATABASE_URL', 'memory://');
-    const { metadataCache } = await loadConfigFromEnv();
+    const { metadataCache } = await getDatabaseConfig();
     const initialize = () =>
       MikroORM.init({
         dbName: 'memory://',
         driverOptions: { extensions: { pgcrypto, uuid_ossp } },
         metadataProvider: TsMorphMetadataProvider,
         metadataCache,
+        schemaGenerator: { skipTables: ['job'] },
         entities: [
           User,
           Account,
@@ -84,7 +88,6 @@ describe('example native RLS migrations with PGlite', () => {
           Invitation,
           UserApiKey,
           MemberApiKey,
-          Job,
         ],
         extensions: [Migrator],
         migrations: {
@@ -1030,10 +1033,36 @@ describe('example native RLS migrations with PGlite', () => {
 
   it('matches the committed snapshot without generating another migration', async () => {
     await access('./src/database/migrations/.snapshot-postgres.json');
-    expect(
-      await orm.migrator.checkSchema(),
-      await orm.schema.getUpdateSchemaSQL(),
-    ).toBe(false);
+    // The shared snapshot includes Queue and the preserved Redis mirror too.
+    // Compare it with the complete example metadata, without synchronizing a DB.
+    const complete = await MikroORM.init(
+      withQueueDatabaseConfig({
+        ...orm.config.getAll(),
+        // The Auth-only fixture excludes job; this comparison covers every table.
+        schemaGenerator: {
+          ...orm.config.get('schemaGenerator'),
+          skipTables: [],
+        },
+        entities: [
+          User,
+          Account,
+          Session,
+          Verification,
+          Workspace,
+          Member,
+          Invitation,
+          UserApiKey,
+          MemberApiKey,
+          LegacyJob,
+          ...queueEntities,
+        ],
+      }),
+    );
+    try {
+      expect(await complete.migrator.checkSchema()).toBe(false);
+    } finally {
+      await complete.close();
+    }
   });
 
   it('generates distinct policy names for composed policies', async () => {

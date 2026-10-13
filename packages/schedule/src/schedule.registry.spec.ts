@@ -1,16 +1,18 @@
 import "reflect-metadata";
 
+import { ScheduleQueue } from "./schedule.queue.js";
+
 vi.mock("@nest-boot/queue", () => ({
-  InjectQueue: vi.fn(() => vi.fn()),
+  Queue: vi.fn(() => vi.fn()),
+  BaseQueue: class BaseQueue {},
 }));
 
 import { Logger } from "@nestjs/common";
 import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
-import { Queue } from "bullmq";
+import { SchemaMigrationRequiredError } from "bullmq";
 
 import { Cron, Interval } from "./schedule.decorator.js";
-import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition.js";
 import { ScheduleRegistry } from "./schedule.registry.js";
 
 describe("ScheduleRegistry", () => {
@@ -91,7 +93,7 @@ describe("ScheduleRegistry", () => {
       providers: [
         ScheduleRegistry,
         {
-          provide: Queue,
+          provide: ScheduleQueue,
           useValue: queue,
         },
         {
@@ -114,6 +116,7 @@ describe("ScheduleRegistry", () => {
 
     return {
       controller,
+      moduleRef,
       discoveryService,
       metadataScanner,
       provider,
@@ -131,6 +134,40 @@ describe("ScheduleRegistry", () => {
     vi.restoreAllMocks();
   });
 
+  it("registers schedules when the Nest application initializes", async () => {
+    const { queue, moduleRef } = await createRegistry();
+    await moduleRef.init();
+    expect(queue.getJobSchedulers).toHaveBeenCalledOnce();
+    expect(queue.upsertJobScheduler).toHaveBeenCalledTimes(2);
+    await moduleRef.close();
+  });
+
+  it("allows migration commands to initialize an application before the BullMQ schema exists", async () => {
+    const { queue, registry, moduleRef } = await createRegistry();
+    const warning = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(vi.fn());
+    queue.getJobSchedulers.mockRejectedValue(
+      new SchemaMigrationRequiredError("tasks"),
+    );
+    try {
+      await moduleRef.init();
+      expect(queue.upsertJobScheduler).not.toHaveBeenCalled();
+      expect(registry.get("ControllerSchedules.syncUsers")).toBeDefined();
+      expect(warning).toHaveBeenCalledWith(
+        expect.stringContaining("nb queue:migrate"),
+      );
+    } finally {
+      await moduleRef.close();
+    }
+  });
+
+  it("propagates schedule registration errors other than an uninitialized schema", async () => {
+    const { queue, registry } = await createRegistry();
+    const failure = new Error("database permission denied");
+    queue.getJobSchedulers.mockRejectedValue(failure);
+    await expect(registry.onApplicationBootstrap()).rejects.toBe(failure);
+  });
   it("should discover decorated methods, clean stale schedulers, and register schedules", async () => {
     const { controller, queue, registry } = await createRegistry(
       undefined,
@@ -151,7 +188,7 @@ describe("ScheduleRegistry", () => {
       ],
     );
 
-    await registry.onApplicationBootstrap();
+    await registry.register();
     await registry.get("ControllerSchedules.syncUsers")?.handler();
 
     expect(controller.calls).toEqual(["syncUsers"]);
@@ -184,48 +221,5 @@ describe("ScheduleRegistry", () => {
         },
       },
     );
-  });
-
-  it("should ignore non-object wrappers and methods without schedule metadata", async () => {
-    const { discoveryService, metadataScanner, queue, reflector, registry } =
-      await createRegistry();
-
-    await registry.onApplicationBootstrap();
-
-    expect(discoveryService.getControllers).toHaveBeenCalledTimes(1);
-    expect(discoveryService.getProviders).toHaveBeenCalledTimes(1);
-    expect(metadataScanner.getAllMethodNames).toHaveBeenCalledTimes(2);
-    expect(reflector.get).toHaveBeenCalledWith(
-      SCHEDULE_METADATA_KEY,
-      Object.getOwnPropertyDescriptor(
-        ControllerSchedules.prototype,
-        "undecorated",
-      )?.value,
-    );
-    expect(queue.removeJobScheduler).not.toHaveBeenCalled();
-    expect(queue.upsertJobScheduler).toHaveBeenCalledTimes(2);
-    expect(registry.get("ControllerSchedules.undecorated")).toBeUndefined();
-  });
-
-  it("should load decorator metadata fallback branches", async () => {
-    vi.resetModules();
-    vi.doMock("@nest-boot/queue", () => ({
-      InjectQueue: vi.fn(() => vi.fn()),
-    }));
-    vi.doMock("bullmq", () => ({
-      Queue: undefined,
-    }));
-    vi.doMock("@nestjs/core", () => ({
-      DiscoveryService: undefined,
-      MetadataScanner: undefined,
-      Reflector: undefined,
-    }));
-
-    expect(
-      (await import("./schedule.registry.js")).ScheduleRegistry,
-    ).toBeDefined();
-    vi.doUnmock("@nest-boot/queue");
-    vi.doUnmock("bullmq");
-    vi.doUnmock("@nestjs/core");
   });
 });

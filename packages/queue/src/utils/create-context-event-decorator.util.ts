@@ -1,4 +1,4 @@
-import { Logger } from "@nestjs/common";
+import { Logger, SetMetadata } from "@nestjs/common";
 
 import {
   type QueueContextOptions,
@@ -8,14 +8,14 @@ import {
 /**
  * Wraps an event callback while preserving Nest's discovery metadata.
  * @param eventName - Event whose handler should run in a request context.
- * @param baseDecorator - Underlying BullMQ event decorator.
+ * @param metadataKey - Identifies the worker or queue event declaration.
  * @param getContextOptions - Builds request context options from event arguments.
  * @returns Decorator that runs the event handler in a queue request context.
  * @internal
  */
 export function createContextEventDecorator(
   eventName: string,
-  baseDecorator: MethodDecorator,
+  metadataKey: symbol,
   getContextOptions: (args: unknown[]) => QueueContextOptions,
 ): MethodDecorator {
   return (target, propertyKey, descriptor: PropertyDescriptor) => {
@@ -48,6 +48,6 @@ export function createContextEventDecorator(
       );
     }
 
-    return baseDecorator(target, propertyKey, descriptor);
+    return SetMetadata(metadataKey, eventName)(target, propertyKey, descriptor);
   };
 }

@@ -1,22 +1,24 @@
-import { InjectQueue } from "@nest-boot/queue";
-import { Logger, OnApplicationBootstrap } from "@nestjs/common";
-import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
-import { Queue } from "bullmq";
-
 import {
-  SCHEDULE_METADATA_KEY,
-  SCHEDULE_QUEUE_NAME,
-} from "./schedule.module-definition.js";
+  Injectable,
+  Logger,
+  type OnApplicationBootstrap,
+} from "@nestjs/common";
+import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
+import { SchemaMigrationRequiredError } from "bullmq";
+
+import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition.js";
+import { ScheduleQueue } from "./schedule.queue.js";
 import { type ScheduleOptions } from "./schedule-options.interface.js";
 
 /**
- * Registry that discovers and manages scheduled jobs at application startup.
+ * Registry that discovers and manages scheduled jobs during application startup.
  *
  * Scans all controllers and providers for methods decorated with
  * {@link Schedule}, {@link Cron}, or {@link Interval}, then registers
  * them as BullMQ job schedulers. Removes stale schedulers that are no
  * longer defined in the codebase.
  */
+@Injectable()
 export class ScheduleRegistry implements OnApplicationBootstrap {
   /**
    * Logger instance for the schedule registry.
@@ -46,12 +48,25 @@ export class ScheduleRegistry implements OnApplicationBootstrap {
    * @param metadataScanner - Scanner for extracting method metadata
    */
   constructor(
-    @InjectQueue(SCHEDULE_QUEUE_NAME)
-    private readonly queue: Queue,
+    private readonly queue: ScheduleQueue,
     private readonly reflector: Reflector,
     private readonly discoveryService: DiscoveryService,
     private readonly metadataScanner: MetadataScanner,
   ) {}
+
+  /** Registers schedulers without starting their worker. */
+  async onApplicationBootstrap(): Promise<void> {
+    try {
+      await this.register();
+    } catch (error) {
+      if (!(error instanceof SchemaMigrationRequiredError)) throw error;
+      // The migration command bootstraps the same application before it creates
+      // BullMQ's tables. A subsequent entry registers the schedules after migration.
+      this.logger.warn(
+        `Schedule registration awaits PostgreSQL schema "${error.schema}". Run nb queue:migrate and restart the application.`,
+      );
+    }
+  }
 
   /**
    * Retrieves a registered schedule entry by name.
@@ -149,7 +164,7 @@ export class ScheduleRegistry implements OnApplicationBootstrap {
   }
 
   /** Discovers all scheduled methods and registers them as BullMQ job schedulers. */
-  async onApplicationBootstrap(): Promise<void> {
+  async register(): Promise<void> {
     this.discoverySchedules();
     await this.cleanUnregisteredSchedules();
     await this.registerSchedules();

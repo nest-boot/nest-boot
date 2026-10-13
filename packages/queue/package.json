@@ -6,7 +6,7 @@
     "url": "https://github.com/nest-boot/nest-boot.git",
     "directory": "packages/queue"
   },
-  "description": "BullMQ queues and workers with request context integration",
+  "description": "PostgreSQL-backed BullMQ queues and optional MikroORM and GraphQL job queries",
   "author": {
     "name": "Xudong Huang",
     "email": "me@huangxudong.com",
@@ -40,30 +40,50 @@
     "@nest-boot/eslint-plugin": "workspace:^",
     "@nest-boot/request-context": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",
-    "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
     "@nestjs/platform-express": "^12.1.2",
     "@nestjs/testing": "^12.0.1",
     "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^4.1.11",
-    "bullmq": "^5.81.5",
+    "bullmq": "^6.3.12",
     "dotenv": "^17.2.3",
     "eslint": "^9.39.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "@mikro-orm/core": "7.2.0",
+    "@mikro-orm/decorators": "7.2.0",
+    "@mikro-orm/sql": "7.2.0",
+    "@nest-boot/graphql": "workspace:^",
+    "@nest-boot/graphql-connection": "workspace:^",
+    "@nestjs/graphql": "^14.0.3",
+    "graphql": "^16.11.0",
+    "@mikro-orm/pglite": "7.2.0",
+    "@nest-boot/database": "workspace:^",
+    "@types/pg": "^8.15.6",
+    "@mikro-orm/postgresql": "7.2.0",
+    "@types/lodash-es": "^4.17.12",
+    "@nest-boot/command": "workspace:^"
   },
   "peerDependencies": {
     "@nest-boot/request-context": "workspace:^",
-    "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.0.0",
     "@nestjs/core": "^12.0.0",
-    "bullmq": "^5.81.5",
+    "bullmq": "^6.3.12",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.0.0"
+    "rxjs": "^7.0.0",
+    "@mikro-orm/core": "^7.2.0",
+    "@mikro-orm/decorators": "^7.2.0",
+    "@mikro-orm/sql": "^7.2.0",
+    "@nest-boot/graphql": "workspace:^",
+    "@nest-boot/graphql-connection": "workspace:^",
+    "@nestjs/graphql": "^14.0.3",
+    "graphql": "^16.0.0",
+    "@nest-boot/database": "workspace:^",
+    "@nest-boot/command": "workspace:^"
   },
   "publishConfig": {
     "access": "public"
@@ -83,10 +103,35 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./graphql": {
+      "types": "./dist/graphql.d.ts",
+      "import": "./dist/graphql.js"
+    }
   },
   "dependencies": {
     "@nest-boot/health-check": "workspace:^",
-    "@nest-boot/redis": "workspace:^"
+    "pg": "^8.16.3",
+    "lodash-es": "^4.18.1"
+  },
+  "peerDependenciesMeta": {
+    "@mikro-orm/sql": {
+      "optional": true
+    },
+    "@nest-boot/graphql": {
+      "optional": true
+    },
+    "@nest-boot/graphql-connection": {
+      "optional": true
+    },
+    "@nestjs/graphql": {
+      "optional": true
+    },
+    "graphql": {
+      "optional": true
+    },
+    "@nest-boot/database": {
+      "optional": true
+    }
   }
 }

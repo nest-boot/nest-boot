@@ -13,9 +13,12 @@ import {
   MikroORM,
   PostgreSqlDriver,
 } from '@mikro-orm/postgresql';
+import { createPostgresBackend, withBackend } from 'bullmq';
 import request from 'supertest';
 
 import { createContextualAuthService } from '../../../packages/auth/dist/infrastructure/create-contextual-auth-service.js';
+
+const { Queue: PostgresQueue } = withBackend(createPostgresBackend);
 
 interface DbProbe {
   id: number;
@@ -45,7 +48,7 @@ const envKeys = [
   'DB_URL',
   'DATABASE_URL',
   'REDIS_URL',
-  'BULLMQ_PREFIX',
+  'QUEUE_DATABASE_URL',
   'APP_URL',
   'AUTH_URL',
   'APP_SECRET',
@@ -91,6 +94,8 @@ type MigrationConstructor = new () => MigrationInstance;
 describe('Server application PostgreSQL integration (e2e)', () => {
   let migrationOrm: AdminOrm;
   let serverProcess: ChildProcessWithoutNullStreams;
+  let workerProcess: ChildProcessWithoutNullStreams;
+  let workerOutput = '';
   let serverOutput = '';
   let baseUrl: string;
 
@@ -98,6 +103,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     setTestEnv();
     await createDatabase();
     migrationOrm = await adminOrm(databaseUrl);
+    await execFileAsync('pnpm', ['exec', 'nb', 'queue:migrate'], {
+      cwd: process.cwd(),
+      env: process.env,
+    });
     await applyMigrations(migrationOrm);
 
     await execFileAsync('pnpm', ['build'], {
@@ -125,9 +134,27 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
 
     await waitForServer(baseUrl, serverProcess, () => serverOutput);
+    workerProcess = spawn(process.execPath, ['dist/cli.js', 'queue:run'], {
+      cwd: process.cwd(),
+      env: createServerEnv(),
+    });
+    workerProcess.stdout.on('data', (chunk) => {
+      workerOutput += chunk.toString();
+    });
+    workerProcess.stderr.on('data', (chunk) => {
+      workerOutput += chunk.toString();
+    });
+    await vi.waitFor(
+      () => {
+        if (workerProcess.exitCode !== null) throw new Error(workerOutput);
+        expect(workerOutput).toContain('Queue workers running:');
+      },
+      { timeout: 15_000 },
+    );
   }, 60_000);
 
   afterAll(async () => {
+    if (workerProcess) await stopServer(workerProcess);
     if (serverProcess) {
       await stopServer(serverProcess);
     }
@@ -165,8 +192,97 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       details: {
         database: { status: 'up' },
         'queue.schedule': { status: 'up' },
+        'queue.report-queue': { status: 'up' },
       },
     });
+  });
+
+  it('processes example reports and exposes job status only to their owner', async () => {
+    const owner = await createAuthenticatedUser('Report owner');
+    const other = await createAuthenticatedUser('Other report viewer');
+    const reports = new PostgresQueue('report-queue', {
+      connection: { connectionString: databaseUrl },
+    });
+    try {
+      const task = await reports.add('summarize', {
+        userId: owner.user.id,
+        values: [10, 20, 30],
+      });
+      await vi.waitFor(
+        async () => {
+          const completed = await reports.getJob(task.id);
+          expect(await completed.getState()).toBe('completed');
+          expect(completed.progress).toBe(100);
+          expect(completed.returnvalue).toEqual({
+            count: 3,
+            total: 60,
+            average: 20,
+          });
+        },
+        { timeout: 10_000 },
+      );
+
+      const source = `query {
+        job(id: "report-queue:${task.id}") { id status progress }
+      }`;
+      const result = await gql(source, { cookies: owner.cookies });
+      expectNoGraphQLErrors(result);
+      expect(result.body.data.job).toEqual({
+        id: `report-queue:${task.id}`,
+        status: 'COMPLETED',
+        progress: 100,
+      });
+      const hidden = await gql(source, { cookies: other.cookies });
+      expectNoGraphQLErrors(hidden);
+      expect(hidden.body.data.job).toBeNull();
+    } finally {
+      await reports.close();
+    }
+  });
+
+  it('registers cron and interval schedules and dispatches work through the injected report queue', async () => {
+    const connection = { connectionString: databaseUrl };
+    const schedules = new PostgresQueue('schedule', { connection });
+    const reports = new PostgresQueue('report-queue', { connection });
+    try {
+      expect(await schedules.getJobSchedulers()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'ReportSchedule.daily',
+            pattern: '0 0 * * *',
+            tz: 'UTC',
+          }),
+          expect.objectContaining({
+            name: 'ReportSchedule.sample',
+            every: 300_000,
+          }),
+        ]),
+      );
+      // Exercise the same dispatch path without waiting until midnight.
+      const scheduled = await schedules.add('ReportSchedule.daily', {});
+      await vi.waitFor(
+        async () => {
+          expect(await scheduled.getState()).toBe('completed');
+          const completed = await reports.getJobs(['completed']);
+          expect(completed).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                data: { values: [10, 20, 30] },
+                returnvalue: { count: 3, total: 60, average: 20 },
+                opts: expect.objectContaining({
+                  attempts: 3,
+                  backoff: { type: 'exponential', delay: 1000 },
+                  removeOnComplete: { age: 86_400, count: 100 },
+                }),
+              }),
+            ]),
+          );
+        },
+        { timeout: 10_000 },
+      );
+    } finally {
+      await Promise.all([schedules.close(), reports.close()]);
+    }
   });
 
   it('exposes the password policy without authentication', async () => {
@@ -180,7 +296,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
   });
 
-  it('queries Job history with user OR workspace identity through sessions and member API keys', async () => {
+  it('queries native jobs with user OR workspace identity through sessions and member API keys', async () => {
     const user = await createAuthenticatedUser('Job viewer');
     const other = await createAuthenticatedUser('Other job viewer');
     const workspace = await createWorkspace(user, 'Job workspace');
@@ -197,15 +313,15 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     };
     for (const [name, data] of Object.entries(payloads)) {
       await migrationOrm.em.execute(
-        `insert into job (id, queue_name, name, data, priority, progress, status) values (?, 'graphql-history', 'generate-report', ?::jsonb, 0, '0'::jsonb, 'waiting')`,
-        [`graphql-history:${name}`, JSON.stringify(data)],
+        `insert into bullmq.job (queue, id, seq, name, data, progress, state, added_at_ms) values ('report-queue', ?, ?, 'generate-report', ?::jsonb, '0'::jsonb, 'completed', ?)`,
+        [name, Date.now(), JSON.stringify(data), Date.now()],
       );
     }
     const source = `query {
-      own: job(id: "graphql-history:own") { id data status progress }
-      shared: job(id: "graphql-history:shared") { id data }
-      foreign: job(id: "graphql-history:foreign") { id }
-      jobs(first: 10, filter: { queue_name: "graphql-history" }, orderBy: {field: ID, direction: ASC}) {
+      own: job(id: "report-queue:own") { id status progress }
+      shared: job(id: "report-queue:shared") { id }
+      foreign: job(id: "report-queue:foreign") { id }
+      jobs(first: 10, filter: { queue: "report-queue" }, orderBy: {field: ID, direction: ASC}) {
         totalCount edges { node { id } }
       }
     }`;
@@ -215,17 +331,16 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
     expectNoGraphQLErrors(response);
     expect(response.body.data.own).toEqual({
-      id: 'graphql-history:own',
-      data: payloads.own,
-      status: 'WAITING',
+      id: 'report-queue:own',
+      status: 'COMPLETED',
       progress: 0,
     });
-    expect(response.body.data.shared.data).toEqual(payloads.shared);
+    expect(response.body.data.shared).toEqual({ id: 'report-queue:shared' });
     expect(response.body.data.foreign).toBeNull();
     expect(response.body.data.jobs.totalCount).toBe(2);
     expect(response.body.data.jobs.edges.map(({ node }) => node.id)).toEqual([
-      'graphql-history:own',
-      'graphql-history:shared',
+      'report-queue:own',
+      'report-queue:shared',
     ]);
 
     const key = await createMemberApiKey(user, workspace.id, {
@@ -235,11 +350,11 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const keyed = await gql(source, { bearerToken: key.apiKey });
     expectNoGraphQLErrors(keyed);
     expect(keyed.body.data.own).toBeNull();
-    expect(keyed.body.data.shared.data).toEqual(payloads.shared);
+    expect(keyed.body.data.shared).toEqual({ id: 'report-queue:shared' });
     expect(keyed.body.data.foreign).toBeNull();
     expect(keyed.body.data.jobs.totalCount).toBe(1);
     expect(keyed.body.data.jobs.edges.map(({ node }) => node.id)).toEqual([
-      'graphql-history:shared',
+      'report-queue:shared',
     ]);
 
     const anonymous = await gql('query { jobs(first: 10) { totalCount } }');
@@ -5999,7 +6114,7 @@ function setTestEnv() {
     process.env.SERVER_E2E_REDIS_URL ??
     process.env.REDIS_URL ??
     'redis://127.0.0.1:36379/0';
-  process.env.BULLMQ_PREFIX = databaseName;
+  process.env.QUEUE_DATABASE_URL = databaseUrl;
   process.env.APP_URL = 'http://127.0.0.1';
   process.env.AUTH_URL = 'http://127.0.0.1';
   process.env.APP_SECRET = '1oAdy3zpD3S0t1AdAqPTlj4Hhkyx83pT2UlNGfS4P2c';

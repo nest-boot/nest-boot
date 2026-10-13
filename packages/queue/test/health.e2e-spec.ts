@@ -1,21 +1,26 @@
-import { randomUUID } from "node:crypto";
-
 import {
   HealthCheckModule,
   HealthCheckRegistry,
 } from "@nest-boot/health-check";
-import { getQueueToken } from "@nestjs/bullmq";
 import type { INestApplication } from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
-import { Queue } from "bullmq";
 
-import { QueueHealthIndicator, QueueModule } from "../dist/index.js";
+import {
+  BaseQueue,
+  Queue,
+  QueueHealthIndicator,
+  QueueModule,
+} from "../dist/index.js";
+import { createPostgresFixture } from "./postgres.fixture.js";
 
 describe("Queue health HTTP integration", () => {
+  let fixture: Awaited<ReturnType<typeof createPostgresFixture>>;
   let app: INestApplication;
 
   afterEach(async () => {
     await app?.close();
+    await fixture?.close();
   });
 
   /**
@@ -28,34 +33,40 @@ describe("Queue health HTTP integration", () => {
     enabled = true,
     registration: "default" | "sync" | "async" = "default",
   ) {
-    const prefix = `health-e2e-${randomUUID()}`;
+    fixture = await createPostgresFixture();
+    const connection = { ...fixture.connection, max: 1 };
     const rootModule =
       registration === "sync"
         ? QueueModule.forRoot({})
         : registration === "async"
           ? QueueModule.forRootAsync({ useFactory: () => ({}) })
           : QueueModule;
-    const queues =
+    @Queue({ name: "email", connection })
+    class EmailQueue extends BaseQueue {}
+    @Queue({ name: "upload", connection })
+    class UploadQueue extends BaseQueue {}
+    const queues = [EmailQueue, UploadQueue].map((queue) =>
       registration === "async"
-        ? QueueModule.registerQueueAsync(
-            { name: "email", useFactory: () => ({ prefix }) },
-            { name: "upload", useFactory: () => ({ prefix }) },
-          )
-        : QueueModule.registerQueue(
-            { name: "email", prefix },
-            { name: "upload", prefix },
-          );
+        ? {
+            provide: queue,
+            inject: [ModuleRef],
+            useFactory: async (moduleRef: ModuleRef) =>
+              await moduleRef.create(queue),
+          }
+        : queue,
+    );
     const module = await Test.createTestingModule({
-      imports: [rootModule, queues, ...(enabled ? [HealthCheckModule] : [])],
+      imports: [rootModule, ...(enabled ? [HealthCheckModule] : [])],
       providers: [
-        { provide: "QUEUE_ALIAS", useExisting: getQueueToken("email") },
+        ...queues,
+        { provide: "QUEUE_ALIAS", useExisting: EmailQueue },
       ],
     })
       .setLogger({ log: vi.fn(), warn: vi.fn(), error: vi.fn() })
       .compile();
     app = module.createNestApplication();
-    const email = app.get<Queue>(getQueueToken("email"));
-    const upload = app.get<Queue>(getQueueToken("upload"));
+    const email = app.get(EmailQueue);
+    const upload = app.get(UploadQueue);
     await Promise.all([email.waitUntilReady(), upload.waitUntilReady()]);
     const read = vi.spyOn(email, "isPaused");
     await app.listen(0, "127.0.0.1");
@@ -143,10 +154,11 @@ describe("Queue health HTTP integration", () => {
 
   it("bounds stalled reads, shares each pending command, and recovers", async () => {
     const { email, read } = await createApp();
-    const client = await email.client;
     const indicator = app.get(QueueHealthIndicator);
-    // Stall only this connection so other queues and suites remain responsive.
-    client.stream.pause();
+    // Occupy only this queue's single-connection pool while health reads queue up.
+    const pending = email
+      .getBackend()
+      .connection.pool.query("select pg_sleep(1.3)");
     try {
       expect((await health()).status).toBe(503);
       expect(await indicator.check("queue.email", email, 10)).toMatchObject({
@@ -154,9 +166,10 @@ describe("Queue health HTTP integration", () => {
       });
       expect(read).toHaveBeenCalledOnce();
     } finally {
-      client.stream.resume();
+      await pending;
     }
-    await client.ping();
-    expect((await health()).status).toBe(200);
+    await vi.waitFor(async () => {
+      expect((await health()).status).toBe(200);
+    });
   });
 });

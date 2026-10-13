@@ -1,21 +1,28 @@
 import { RequestContext } from "@nest-boot/request-context";
-import { JOB_REF } from "@nestjs/bullmq";
+import { ModuleRef, REQUEST as JOB_REF } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import type { Job } from "bullmq";
 
 import {
+  BaseProcessor,
+  BaseQueue,
   OnQueueEvent,
   OnWorkerEvent,
   Processor,
+  Queue,
   QueueEventsHost,
   QueueEventsListener,
   QueueModule,
-  WorkerHost,
+  QueueRegistrar,
 } from "./index.js";
 
+const { startedWorkers } = vi.hoisted(() => ({
+  startedWorkers: [] as string[],
+}));
+
 // Keep Nest's real discovery, decorators and listener registration. Only the
-// Redis-backed transports are replaced with local emitters in this test.
-vi.mock("bullmq", async (importOriginal) => {
+// PostgreSQL-backed transports are replaced with local emitters in this test.
+vi.mock("./postgres.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("bullmq")>();
   const { EventEmitter } = await import("node:events");
 
@@ -26,6 +33,9 @@ vi.mock("bullmq", async (importOriginal) => {
     ) {
       super();
     }
+
+    waitUntilReady = vi.fn().mockResolvedValue(undefined);
+    run = vi.fn().mockResolvedValue(undefined);
 
     async close() {
       await Promise.resolve();
@@ -40,6 +50,7 @@ vi.mock("bullmq", async (importOriginal) => {
       opts: object,
     ) {
       super(name, opts);
+      startedWorkers.push(name);
     }
 
     async processJob(job: Job, token: string) {
@@ -47,15 +58,108 @@ vi.mock("bullmq", async (importOriginal) => {
     }
   }
 
-  return { ...actual, Queue, Worker, QueueEvents: Queue };
+  return {
+    ...actual,
+    PostgresQueue: Queue,
+    PostgresWorker: Worker,
+    PostgresQueueEvents: Queue,
+  };
 });
 
 describe("Nest queue event registration", () => {
+  afterEach(() => {
+    startedWorkers.length = 0;
+  });
+
+  @Queue({ name: "email" })
+  class EmailQueue extends BaseQueue {}
+  @Queue({ name: "other" })
+  class OtherQueue extends BaseQueue {}
+  @Queue({ name: "parent" })
+  class ParentQueue extends BaseQueue {}
+
+  it.each(["none", "unrelated", "factory", "value"])(
+    "rejects a consumer without its registered queue before starting workers (%s)",
+    async (registration) => {
+      @Processor(EmailQueue)
+      class EmailWorker extends BaseProcessor {
+        async process() {
+          await Promise.resolve();
+        }
+      }
+      const module = await Test.createTestingModule({
+        imports: [QueueModule.forRoot({})],
+        providers: [
+          ...(registration === "unrelated" ? [OtherQueue] : []),
+          registration === "factory"
+            ? { provide: EmailWorker, useFactory: () => new EmailWorker() }
+            : registration === "value"
+              ? { provide: EmailWorker, useValue: new EmailWorker() }
+              : EmailWorker,
+        ],
+      }).compile();
+      try {
+        await expect(module.init()).rejects.toThrow(
+          /Processor.*email.*EmailQueue.*providers/,
+        );
+        expect(startedWorkers).toEqual([]);
+      } finally {
+        // Nest's close also rejects with the failed initialization promise.
+        await module.close().catch(() => undefined);
+      }
+    },
+  );
+
+  it.each([
+    { async: false, provider: "class" },
+    { async: true, provider: "class" },
+    { async: false, provider: "factory" },
+    { async: true, provider: "value" },
+  ])(
+    "starts a registered consumer once (async=$async, provider=$provider)",
+    async ({ async, provider }) => {
+      @Processor(ParentQueue)
+      class ParentWorker extends BaseProcessor {
+        async process() {
+          await Promise.resolve();
+        }
+      }
+      @Processor(EmailQueue)
+      class EmailWorker extends ParentWorker {}
+      const module = await Test.createTestingModule({
+        imports: [QueueModule.forRoot({})],
+        providers: [
+          async
+            ? {
+                provide: EmailQueue,
+                inject: [ModuleRef],
+                useFactory: async (moduleRef: ModuleRef) =>
+                  await moduleRef.create(EmailQueue),
+              }
+            : EmailQueue,
+          provider === "factory"
+            ? { provide: EmailWorker, useFactory: () => new EmailWorker() }
+            : provider === "value"
+              ? { provide: EmailWorker, useValue: new EmailWorker() }
+              : EmailWorker,
+        ],
+      }).compile();
+      try {
+        await module.init();
+        await module.get(QueueRegistrar).start();
+        expect(module.get(EmailWorker).worker.name).toBe("email");
+        expect(startedWorkers).toEqual(["email"]);
+      } finally {
+        await module.close();
+      }
+    },
+  );
+
   it("discovers inherited handlers and binds both event types with independent contexts", async () => {
     const contexts: RequestContext[] = [];
     const argumentsSeen: unknown[][] = [];
 
-    class BaseWorker extends WorkerHost {
+    class BaseWorker extends BaseProcessor {
       async process(job: Job, token?: string) {
         await Promise.resolve();
         contexts.push(RequestContext.current());
@@ -70,7 +174,7 @@ describe("Nest queue event registration", () => {
       }
     }
 
-    @Processor("email")
+    @Processor(EmailQueue)
     class EmailWorker extends BaseWorker {}
 
     class BaseQueueListener extends QueueEventsHost {
@@ -82,19 +186,19 @@ describe("Nest queue event registration", () => {
       }
     }
 
-    @QueueEventsListener("email")
+    @QueueEventsListener(EmailQueue)
     class EmailQueueListener extends BaseQueueListener {}
 
     const module = await Test.createTestingModule({
       imports: [
-        QueueModule.forRoot({ connection: { host: "localhost", port: 6379 } }),
-        QueueModule.registerQueue({ name: "email" }),
+        QueueModule.forRoot({ connection: { host: "localhost", port: 5432 } }),
       ],
-      providers: [EmailWorker, EmailQueueListener],
+      providers: [EmailQueue, EmailWorker, EmailQueueListener],
     }).compile();
 
     try {
       await module.init();
+      await module.get(QueueRegistrar).start();
       const worker = module.get(EmailWorker);
       const listener = module.get(EmailQueueListener);
       const job = { id: "job-1" } as Job;

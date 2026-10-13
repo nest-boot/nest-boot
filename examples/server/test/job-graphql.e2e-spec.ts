@@ -3,42 +3,55 @@ import { MikroORM } from '@mikro-orm/pglite';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
 import { AuthGuard, Session, User, Workspace } from '@nest-boot/auth';
 import { GraphQLModule } from '@nest-boot/graphql';
-import { ConnectionManager } from '@nest-boot/graphql-connection';
-import { JobStatus } from '@nest-boot/queue-database';
+import {
+  entities,
+  Job,
+  JobStatus,
+  withQueueDatabaseConfig,
+} from '@nest-boot/queue';
+import { JobConnectionService, JobResolver } from '@nest-boot/queue/graphql';
 import { RequestContext } from '@nest-boot/request-context';
 import type { INestApplication } from '@nestjs/common';
 import { ModuleRef, Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
+import { runMigrations } from 'bullmq';
 import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 
-import { Job } from '../src/app/jobs/entities/job.entity.js';
-import { JobResolver } from '../src/app/jobs/job.resolver.js';
-import { JobService } from '../src/app/jobs/job.service.js';
-
-describe('example Job GraphQL API with native RLS', () => {
+describe('example Job GraphQL API with native BullMQ tables', () => {
   let app: INestApplication;
   let orm: MikroORM;
 
   beforeAll(async () => {
-    orm = await MikroORM.init({
-      dbName: 'memory://',
-      entities: [Job],
-      metadataProvider: TsMorphMetadataProvider,
-      metadataCache: { enabled: false },
-      context: () =>
-        RequestContext.isActive()
-          ? RequestContext.get(EntityManager)
-          : undefined,
-    });
+    orm = await MikroORM.init(
+      withQueueDatabaseConfig({
+        dbName: 'memory://',
+        entities,
+        metadataProvider: TsMorphMetadataProvider,
+        metadataCache: { enabled: false },
+        context: () =>
+          RequestContext.isActive()
+            ? RequestContext.get(EntityManager)
+            : undefined,
+      }),
+    );
     await orm.em.execute('create role anonymous nologin');
     await orm.em.execute('create role authenticated nologin');
-    await orm.schema.create();
-    await orm.em.execute('grant all on job to anonymous, authenticated');
-    await orm.em.fork().insertMany(Job, [
+    const client = await orm.em.getConnection().getNativeClient();
+    await runMigrations({
+      async query<R>(sql: string, params?: readonly unknown[]) {
+        if (params?.length) return await client.query<R>(sql, [...params]);
+        const results = await client.exec(sql);
+        return { rows: (results.at(-1)?.rows ?? []) as R[] };
+      },
+    });
+    await orm.schema.update();
+    await orm.em.execute('grant usage on schema bullmq to authenticated');
+    await orm.em.execute('grant select on bullmq.job to authenticated');
+    const fixtures = [
       {
         id: 'reports:1',
-        queueName: 'reports',
+        queue: 'reports',
         name: 'generate-report',
         data: { userId: '101', workspaceId: '202', format: 'csv' },
         status: JobStatus.COMPLETED,
@@ -49,7 +62,7 @@ describe('example Job GraphQL API with native RLS', () => {
       },
       {
         id: 'exports:2',
-        queueName: 'exports',
+        queue: 'exports',
         name: 'export-report',
         data: { userId: '102', workspaceId: '201' },
         status: JobStatus.FAILED,
@@ -60,17 +73,17 @@ describe('example Job GraphQL API with native RLS', () => {
       },
       {
         id: 'reports:3',
-        queueName: 'reports',
+        queue: 'reports',
         name: 'generate-report',
         data: { userId: '101', workspaceId: '201' },
         status: JobStatus.WAITING,
         progress: 0,
-        priority: 0,
+        priority: 7,
         createdAt: new Date('2026-01-03T00:00:00Z'),
       },
       {
         id: 'reports:4',
-        queueName: 'reports',
+        queue: 'reports',
         name: 'generate-report',
         data: { userId: '102', workspaceId: '202' },
         status: JobStatus.COMPLETED,
@@ -80,17 +93,41 @@ describe('example Job GraphQL API with native RLS', () => {
       },
       {
         id: 'schedule:5',
-        queueName: 'schedule',
+        queue: 'schedule',
         name: 'cleanup',
-        data: {},
+        data: { userId: '101', workspaceId: '201' },
         status: JobStatus.COMPLETED,
         progress: 100,
         priority: 0,
         createdAt: new Date('2026-01-05T00:00:00Z'),
       },
-    ]);
+    ];
+    for (const [index, job] of fixtures.entries()) {
+      await client.query(
+        'insert into bullmq.job (queue, id, seq, name, state, data, priority, progress, return_value, failed_reason, added_at_ms) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+        [
+          job.queue,
+          job.id.split(':')[1],
+          index + 1,
+          job.name,
+          job.status,
+          JSON.stringify(job.data),
+          job.priority,
+          JSON.stringify(job.progress),
+          JSON.stringify(job.returnValue ?? null),
+          job.failedReason ?? null,
+          job.createdAt.getTime(),
+        ],
+      );
+    }
 
-    const service = new JobService(orm.em, new ConnectionManager(orm.em));
+    const service = new JobConnectionService(
+      orm.em,
+      {},
+      {
+        getExposedQueueNames: () => ['reports', 'exports'],
+      },
+    );
     const module = await Test.createTestingModule({
       imports: [
         GraphQLModule.forRoot({ autoSchemaFile: true, graphiql: false }),
@@ -103,7 +140,7 @@ describe('example Job GraphQL API with native RLS', () => {
       new AuthGuard(module.get(Reflector), {}, module.get(ModuleRef)),
     );
     // Test-only identity fixtures replace authentication middleware, while the
-    // real AuthGuard, GraphQL transport, request EM and PostgreSQL RLS execute.
+    // real AuthGuard, GraphQL transport, request EM and JobService authorization execute.
     app.use((req: Request, _res: Response, next: NextFunction) => {
       const authenticated = req.header('x-test-authenticated') === 'true';
       const userId = req.header('x-test-user') ?? '101';
@@ -160,35 +197,121 @@ describe('example Job GraphQL API with native RLS', () => {
       .send({ query: source, variables });
   }
 
-  it('returns a single owned job with JSON payload, progress, result and enum status', async () => {
+  it('returns public job metadata without exposing object progress', async () => {
     const { body } = await query(
-      `query { job(id: "reports:1") { id queueName name data progress returnValue status priority failedReason startedAt finishedAt createdAt updatedAt } }`,
+      `query { job(id: "reports:1") { id queue name progress status startedAt finishedAt createdAt } }`,
     );
     expect(body.errors).toBeUndefined();
     expect(body).toHaveProperty('data');
-    expect(body.data.job).toMatchObject({
+    expect(body.data.job).toEqual({
       id: 'reports:1',
-      queueName: 'reports',
+      queue: 'reports',
       name: 'generate-report',
-      data: { userId: '101', workspaceId: '202', format: 'csv' },
-      progress: { done: 10 },
-      returnValue: { rows: 10 },
+      progress: null,
       status: 'COMPLETED',
-      priority: 2,
-      failedReason: null,
       startedAt: null,
       finishedAt: null,
       createdAt: '2026-01-01T00:00:00.000Z',
     });
   });
 
+  it('defines only the public Job fields and numeric progress', async () => {
+    const { body } = await query(`query {
+      __type(name: "Job") { fields { name type { kind name } } }
+    }`);
+    expect(body.errors).toBeUndefined();
+    expect(body.data.__type.fields.map((field) => field.name).sort()).toEqual([
+      'createdAt',
+      'finishedAt',
+      'id',
+      'name',
+      'progress',
+      'queue',
+      'startedAt',
+      'status',
+    ]);
+    expect(
+      body.data.__type.fields.find((field) => field.name === 'progress').type,
+    ).toEqual({
+      kind: 'SCALAR',
+      name: 'Float',
+    });
+  });
+
+  it('uses the six database states and includes priority jobs in waiting filters', async () => {
+    const { body } = await query(`query {
+      __type(name: "JobStatus") { enumValues { name } }
+      job(id: "reports:3") { status }
+      jobs(first: 10, filter: { status: "waiting" }) { totalCount edges { node { id status } } }
+    }`);
+    expect(body.errors).toBeUndefined();
+    expect(
+      body.data.__type.enumValues.map((value) => value.name).sort(),
+    ).toEqual([
+      'ACTIVE',
+      'COMPLETED',
+      'DELAYED',
+      'FAILED',
+      'WAITING',
+      'WAITING_CHILDREN',
+    ]);
+    expect(body.data.job.status).toBe('WAITING');
+    expect(body.data.jobs.totalCount).toBe(1);
+    expect(body.data.jobs.edges).toEqual([
+      { node: { id: 'reports:3', status: 'WAITING' } },
+    ]);
+  });
+
+  it.each([
+    'job(id: "reports:1") { jobId data returnValue failedReason priority opts stacktrace lockToken }',
+    'jobs(first: 10) { edges { node { jobId data returnValue failedReason priority opts stacktrace lockToken } } }',
+  ])('rejects private fields in %s', async (selection) => {
+    const { body } = await query(`query { ${selection} }`);
+    expect(body.data).toBeUndefined();
+    expect(body.errors).toHaveLength(8);
+    for (const error of body.errors)
+      expect(error.message).toContain('Cannot query field');
+  });
+
+  it.each([
+    [0, 0],
+    [42.5, 42.5],
+    [100, 100],
+    ['private message', null],
+    [true, null],
+    [{ internalDetail: 'private message' }, null],
+    [null, null],
+  ])(
+    'returns only numeric progress for %j in single and connection queries',
+    async (progress, expected) => {
+      try {
+        await orm.em.execute(
+          'update bullmq.job set progress = ?::jsonb where queue = ? and id = ?',
+          [JSON.stringify(progress), 'reports', '3'],
+        );
+        const { body } = await query(`query {
+        job(id: "reports:3") { progress }
+        jobs(first: 10, filter: { status: "waiting" }) { edges { node { id progress } } }
+      }`);
+        expect(body.errors).toBeUndefined();
+        expect(body.data.job.progress).toBe(expected);
+        expect(body.data.jobs.edges).toEqual([
+          { node: { id: 'reports:3', progress: expected } },
+        ]);
+      } finally {
+        await orm.em.execute(
+          "update bullmq.job set progress = '0'::jsonb where queue = 'reports' and id = '3'",
+        );
+      }
+    },
+  );
+
   it.each(['reports:4', 'schedule:5', 'reports:missing'])(
     'returns null for inaccessible or missing job %s',
     async (id) => {
-      const { body } = await query(
-        'query($id: ID!) { job(id: $id) { id data } }',
-        { id },
-      );
+      const { body } = await query('query($id: ID!) { job(id: $id) { id } }', {
+        id,
+      });
       expect(body.errors).toBeUndefined();
       expect(body.data.job).toBeNull();
     },
@@ -202,7 +325,7 @@ describe('example Job GraphQL API with native RLS', () => {
     expect(body.errors[0].extensions.code).toBe('UNAUTHORIZED');
   });
 
-  it('paginates across queues with RLS-scoped counts and stable cursors in both directions', async () => {
+  it('paginates across queues with identity-scoped counts and stable cursors in both directions', async () => {
     const source = `query($after: String, $before: String, $first: Int, $last: Int) {
       jobs(first: $first, last: $last, after: $after, before: $before, orderBy: {field: CREATED_AT, direction: ASC}) {
         totalCount totalCountRelation edges { cursor node { id } }
@@ -250,7 +373,7 @@ describe('example Job GraphQL API with native RLS', () => {
     }`,
       {
         filter: {
-          queue_name: 'reports',
+          queue: 'reports',
           name: 'generate-report',
           status: 'completed',
           created_at: { $gte: '2026-01-01T00:00:00Z' },
@@ -266,7 +389,7 @@ describe('example Job GraphQL API with native RLS', () => {
 
   it('supports text search and queries that omit totalCount', async () => {
     const { body } = await query(
-      `query { jobs(first: 10, query: "name:export-report") { edges { node { id progress returnValue failedReason } } } }`,
+      `query { jobs(first: 10, query: "name:export-report") { edges { node { id progress status } } } }`,
     );
     expect(body.errors).toBeUndefined();
     expect(body.data.jobs.edges).toEqual([
@@ -274,8 +397,7 @@ describe('example Job GraphQL API with native RLS', () => {
         node: {
           id: 'exports:2',
           progress: 20,
-          returnValue: null,
-          failedReason: 'Export failed',
+          status: 'FAILED',
         },
       },
     ]);

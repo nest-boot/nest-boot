@@ -39,8 +39,6 @@ export type Scalars = {
    * Supported fields: email, status, created_at
    */
   InvitationFilter: { input: any; output: any };
-  /** The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf). */
-  JSON: { input: any; output: any };
   /** The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf). */
   JSONObject: {
     input: Record<string, unknown>;
@@ -48,7 +46,7 @@ export type Scalars = {
   };
   /**
    * A filter for Job that accepts MongoDB query syntax.
-   * Supported fields: queue_name, name, status, created_at, updated_at
+   * Supported fields: queue, name, status, created_at
    */
   JobFilter: { input: any; output: any };
   /**
@@ -424,18 +422,13 @@ export type InvitationStatus =
 export type Job = {
   __typename?: "Job";
   createdAt: Scalars["DateTime"]["output"];
-  data: Scalars["JSON"]["output"];
-  failedReason?: Maybe<Scalars["String"]["output"]>;
   finishedAt?: Maybe<Scalars["DateTime"]["output"]>;
   id: Scalars["ID"]["output"];
   name: Scalars["String"]["output"];
-  priority: Scalars["Int"]["output"];
-  progress: Scalars["JSON"]["output"];
-  queueName: Scalars["String"]["output"];
-  returnValue?: Maybe<Scalars["JSON"]["output"]>;
+  progress?: Maybe<Scalars["Float"]["output"]>;
+  queue: Scalars["String"]["output"];
   startedAt?: Maybe<Scalars["DateTime"]["output"]>;
   status: JobStatus;
-  updatedAt: Scalars["DateTime"]["output"];
 };
 
 export type JobConnection = {
@@ -472,9 +465,8 @@ export const JobOrderField = {
   CREATED_AT: "CREATED_AT",
   ID: "ID",
   NAME: "NAME",
-  QUEUE_NAME: "QUEUE_NAME",
+  QUEUE: "QUEUE",
   STATUS: "STATUS",
-  UPDATED_AT: "UPDATED_AT",
 } as const;
 
 export type JobOrderField = (typeof JobOrderField)[keyof typeof JobOrderField];
@@ -483,8 +475,6 @@ export const JobStatus = {
   COMPLETED: "COMPLETED",
   DELAYED: "DELAYED",
   FAILED: "FAILED",
-  PRIORITIZED: "PRIORITIZED",
-  UNKNOWN: "UNKNOWN",
   WAITING: "WAITING",
   WAITING_CHILDREN: "WAITING_CHILDREN",
 } as const;

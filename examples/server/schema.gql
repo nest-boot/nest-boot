@@ -381,29 +381,19 @@ enum InvitationStatus {
 }
 
 """
-The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
-"""
-scalar JSON
-
-"""
 The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
 scalar JSONObject
 
 type Job {
   createdAt: DateTime!
-  data: JSON!
-  failedReason: String
   finishedAt: DateTime
   id: ID!
   name: String!
-  priority: Int!
-  progress: JSON!
-  queueName: String!
-  returnValue: JSON
+  progress: Float
+  queue: String!
   startedAt: DateTime
   status: JobStatus!
-  updatedAt: DateTime!
 }
 
 type JobConnection {
@@ -445,7 +435,7 @@ type JobEdge {
 
 """
 A filter for Job that accepts MongoDB query syntax.
-Supported fields: queue_name, name, status, created_at, updated_at
+Supported fields: queue, name, status, created_at
 """
 scalar JobFilter
 
@@ -471,9 +461,8 @@ enum JobOrderField {
   CREATED_AT
   ID
   NAME
-  QUEUE_NAME
+  QUEUE
   STATUS
-  UPDATED_AT
 }
 
 enum JobStatus {
@@ -481,8 +470,6 @@ enum JobStatus {
   COMPLETED
   DELAYED
   FAILED
-  PRIORITIZED
-  UNKNOWN
   WAITING
   WAITING_CHILDREN
 }
@@ -820,7 +807,7 @@ type Query {
     """
     Apply one or multiple filters to the query.
     Supported filter parameters:
-    `queue_name`, `name`, `status`, `created_at`, `updated_at`
+    `queue`, `name`, `status`, `created_at`
     """
     query: String
   ): JobConnection!

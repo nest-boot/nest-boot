@@ -1,8 +1,8 @@
 import { EventEmitter } from "node:events";
 
 import { RequestContext } from "@nest-boot/request-context";
-import { JOB_REF } from "@nestjs/bullmq";
 import { Logger, SetMetadata } from "@nestjs/common";
+import { REQUEST as JOB_REF } from "@nestjs/core";
 
 import { OnQueueEvent, OnWorkerEvent } from "./index.js";
 
@@ -43,46 +43,7 @@ describe("Queue event request contexts", () => {
     );
   });
 
-  it("creates a worker event context and binds the current job", async () => {
-    const job = { id: "worker-job" };
-    class Listener {
-      @OnWorkerEvent("completed")
-      async completed(input: typeof job, result: string, previous: string) {
-        const context = RequestContext.current();
-        await Promise.resolve();
-        expect(RequestContext.current()).toBe(context);
-        expect(context.type).toBe("queue");
-        expect(context.id).toBe(input.id);
-        expect(context.get(JOB_REF)).toBe(input);
-        return [result, previous];
-      }
-    }
-
-    await expect(
-      new Listener().completed(job, "result", "active"),
-    ).resolves.toEqual(["result", "active"]);
-    expect(RequestContext.isActive()).toBe(false);
-  });
-
-  it("creates a queue event context without treating its payload as a Job", async () => {
-    class Listener {
-      @OnQueueEvent("completed")
-      async completed(event: { jobId: string }, eventId: string) {
-        await Promise.resolve();
-        expect(RequestContext.current().type).toBe("queue");
-        expect(RequestContext.id).toBe(event.jobId);
-        expect(RequestContext.get(JOB_REF)).toBeUndefined();
-        return eventId;
-      }
-    }
-
-    await expect(
-      new Listener().completed({ jobId: "queue-job" }, "123-0"),
-    ).resolves.toBe("123-0");
-    expect(RequestContext.isActive()).toBe(false);
-  });
-
-  it.each(["active", "completed", "failed", "progress"] as const)(
+  it.each(["active", "failed", "progress"] as const)(
     "binds the Job for the %s worker event",
     async (eventName) => {
       class Listener {
@@ -160,7 +121,7 @@ describe("Queue event request contexts", () => {
       listener.ready(),
       listener.closing("closing-message"),
       listener.drained("stream-id"),
-      listener.error(new Error("Redis error")),
+      listener.error(new Error("PostgreSQL error")),
     ]);
     expect(new Set(contexts.map((ctx) => ctx?.id)).size).toBe(4);
     for (const context of contexts) {

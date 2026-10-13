@@ -1,6 +1,6 @@
 import { EntitySchema } from '@mikro-orm/core';
 import { MikroORM, PostgreSqlDriver } from '@mikro-orm/postgresql';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { readdir } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -19,6 +19,7 @@ const administratorPassword =
 const databaseName = `nest_boot_example_e2e_${process.pid}_${Date.now()}`;
 const databaseUrl = databaseUrlFor(databaseName);
 let serverProcess;
+let workerProcess;
 let shuttingDown = false;
 
 const DbProbeSchema = new EntitySchema({
@@ -37,6 +38,11 @@ process.on('SIGTERM', () => cleanup(0));
 
 try {
   await createDatabase();
+  execFileSync(process.execPath, ['dist/cli.js', 'queue:migrate'], {
+    cwd: serverRoot,
+    env: createServerEnv(),
+    stdio: 'inherit',
+  });
   await applyMigrations();
   serverProcess = spawn(process.execPath, ['dist/main.js'], {
     cwd: serverRoot,
@@ -50,6 +56,17 @@ try {
     }
   });
 
+  workerProcess = spawn(process.execPath, ['dist/cli.js', 'queue:run'], {
+    cwd: serverRoot,
+    env: createServerEnv(),
+    stdio: ['ignore', 'inherit', 'inherit'],
+  });
+  workerProcess.once('exit', (code, signal) => {
+    if (!shuttingDown) {
+      console.error(`e2e worker exited unexpectedly: ${signal ?? code}`);
+      cleanup(1);
+    }
+  });
   await waitForServer();
   await seedAdministrator();
   console.log(`example server ready ${databaseName} ${authUrl}`);
@@ -109,16 +126,18 @@ async function cleanup(exitCode) {
 
   shuttingDown = true;
 
-  if (serverProcess && serverProcess.exitCode === null) {
-    await new Promise((resolveExit) => {
-      serverProcess.once('exit', resolveExit);
-      serverProcess.kill('SIGTERM');
-      setTimeout(() => {
-        if (serverProcess.exitCode === null) {
-          serverProcess.kill('SIGKILL');
-        }
-      }, 5_000).unref();
-    });
+  for (const child of [workerProcess, serverProcess]) {
+    if (child && child.exitCode === null && child.signalCode === null) {
+      await new Promise((resolveExit) => {
+        child.once('exit', resolveExit);
+        child.kill('SIGTERM');
+        setTimeout(() => {
+          if (child.exitCode === null && child.signalCode === null) {
+            child.kill('SIGKILL');
+          }
+        }, 5_000).unref();
+      });
+    }
   }
 
   await dropDatabase().catch((error) => {
@@ -196,7 +215,7 @@ function createServerEnv() {
     process.env.SERVER_E2E_REDIS_URL ??
     process.env.REDIS_URL ??
     'redis://127.0.0.1:36379/0';
-  env.BULLMQ_PREFIX = databaseName;
+  env.QUEUE_DATABASE_URL = databaseUrl;
   env.APP_URL = appUrl;
   env.AUTH_URL = authUrl;
   env.APP_SECRET = '1oAdy3zpD3S0t1AdAqPTlj4Hhkyx83pT2UlNGfS4P2c';
@@ -206,8 +225,7 @@ function createServerEnv() {
   env.AUTH_GITHUB_CLIENT_ID = 'github-client-id';
   env.AUTH_GITHUB_CLIENT_SECRET = 'github-client-secret';
   env.AUTH_OIDC_ENABLED = 'false';
-  env.SMTP_URL =
-    process.env.SERVER_E2E_SMTP_URL ?? 'smtp://127.0.0.1:31025';
+  env.SMTP_URL = process.env.SERVER_E2E_SMTP_URL ?? 'smtp://127.0.0.1:31025';
   env.SMTP_FROM = 'Nest Boot Example <no-reply@example.com>';
   env.PORT = port;
 

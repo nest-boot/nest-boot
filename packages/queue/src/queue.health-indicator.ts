@@ -9,16 +9,17 @@ import {
   Optional,
 } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
-import { Queue } from "bullmq";
+
+import { BaseQueue } from "./base.queue.js";
 
 /** Registers health checks for the application's existing BullMQ queues. */
 @Injectable()
 export class QueueHealthIndicator implements OnApplicationBootstrap {
   private readonly healthIndicator = new HealthIndicatorService();
-  private readonly pendingReads = new WeakMap<Queue, Promise<boolean>>();
+  private readonly pendingReads = new WeakMap<BaseQueue, Promise<boolean>>();
 
   /**
-   * Creates a queue health indicator without creating queues or Redis connections.
+   * Creates a queue health indicator without creating queues or PostgreSQL connections.
    * @param discoveryService - Provider discovery for registered queue instances
    * @param registry - Optional application health check registry
    */
@@ -30,9 +31,9 @@ export class QueueHealthIndicator implements OnApplicationBootstrap {
   /** Registers one check per queue instance after application modules initialize. */
   onApplicationBootstrap(): void {
     if (!this.registry) return;
-    const queues = new Set<Queue>();
+    const queues = new Set<BaseQueue>();
     for (const provider of this.discoveryService.getProviders()) {
-      if (provider.instance instanceof Queue) queues.add(provider.instance);
+      if (provider.instance instanceof BaseQueue) queues.add(provider.instance);
     }
     for (const queue of queues) {
       this.registry.register(() => this.check(`queue.${queue.name}`, queue));
@@ -42,23 +43,23 @@ export class QueueHealthIndicator implements OnApplicationBootstrap {
   /**
    * Checks connection readiness and reads queue pause state within the timeout.
    * @param key - Unique indicator key
-   * @param queue - Existing queue to check, including custom Queue subclasses
+   * @param queue - Existing queue to check, including custom BaseQueue subclasses
    * @param timeout - Maximum check duration in milliseconds, defaults to 1000
    * @returns An up or down result; paused queues remain healthy
    */
   async check(
     key: string,
-    queue: Queue,
+    queue: BaseQueue,
     timeout = 1000,
   ): Promise<HealthIndicatorResult> {
     return await this.healthIndicator
       .check(key)
       .attempt(async ({ signal }) => {
         if (queue.closing) throw new Error("Queue is closing");
-        const client = await queue.client;
+        await queue.waitUntilReady();
         signal.throwIfAborted();
-        if (client.status !== "ready")
-          throw new Error("Queue connection is not ready");
+        if (queue.closing || queue.getBackend().connection.isClosing)
+          throw new Error("Queue connection is closing");
         // Share commands that outlive a timeout instead of queueing more reads.
         let read = this.pendingReads.get(queue);
         if (!read) {

@@ -1,5 +1,5 @@
 import { RequestContext } from "@nest-boot/request-context";
-import { JOB_REF } from "@nestjs/bullmq";
+import { REQUEST as JOB_REF } from "@nestjs/core";
 import type { Job } from "bullmq";
 
 /**

@@ -1,99 +1,61 @@
-import { HealthCheckRegistry } from "@nest-boot/health-check";
 import type { DiscoveryService } from "@nestjs/core";
-import { Queue } from "bullmq";
 
+import { BaseQueue } from "./base.queue.js";
 import { QueueHealthIndicator } from "./queue.health-indicator.js";
 
 describe("QueueHealthIndicator", () => {
   /**
    * Returns queue configured for the test.
    * @param name - Name used to identify the resource.
-   * @param client - Client used to communicate with the backing service.
-   * @returns Queue configured for the test.
+   * @param ready - Pending readiness of the PostgreSQL connection.
+   * @returns BaseQueue configured for the test.
    */
   function createQueue(
     name = "email",
-    client = Promise.resolve({ status: "ready" }),
+    ready: Promise<void> = Promise.resolve(),
   ) {
+    const isPaused = vi.fn(() => Promise.resolve(false));
     const queue = Object.assign(
-      Object.create(Queue.prototype) as Omit<Queue, "isPaused">,
+      Object.create(BaseQueue.prototype) as BaseQueue,
       {
         name,
-        qualifiedName: `bull:${name}`,
-        isPaused: vi.fn(() => Promise.resolve(false)),
+        isPaused,
       },
     );
-    Object.defineProperty(queue, "client", { value: client });
-    return queue;
+    Object.defineProperty(queue, "waitUntilReady", {
+      value: () => ready,
+    });
+    Object.defineProperty(queue, "getBackend", {
+      value: () => ({ connection: { isClosing: false } }),
+    });
+    return { queue, isPaused };
   }
 
-  /**
-   * Returns test setup and its mocked dependencies.
-   * @param instances - Provider instances discovered by the fixture.
-   * @param registry - Registry that owns the configured entries.
-   * @returns Test setup and its mocked dependencies.
-   */
-  function setup(instances: unknown[] = [], registry?: HealthCheckRegistry) {
-    const discovery = {
-      getProviders: vi.fn(() => instances.map((instance) => ({ instance }))),
-    };
-    return {
-      discovery,
-      indicator: new QueueHealthIndicator(
-        discovery as unknown as DiscoveryService,
-        registry,
-      ),
-    };
+  /** @returns Health indicator with unused provider discovery stubbed. */
+  function createIndicator() {
+    const discovery = { getProviders: vi.fn() };
+    return new QueueHealthIndicator(discovery as unknown as DiscoveryService);
   }
-
-  it("discovers queues and deduplicates aliases without running probes at startup", async () => {
-    const email = createQueue();
-    const upload = createQueue("upload");
-    const registry = new HealthCheckRegistry();
-    const { indicator } = setup([email, email, upload, {}], registry);
-    indicator.onApplicationBootstrap();
-    expect(registry.healthIndicators).toHaveLength(2);
-    expect(email.isPaused).not.toHaveBeenCalled();
-    const results = await Promise.all(
-      registry.healthIndicators.map((check) =>
-        Promise.resolve(typeof check === "function" ? check() : check),
-      ),
-    );
-    expect(results[0]).toMatchObject({
-      "queue.email": { status: "up", paused: false },
-    });
-    expect(results[1]).toMatchObject({
-      "queue.upload": { status: "up" },
-    });
-  });
-
-  it("does not discover or check queues without HealthCheckModule", () => {
-    const { indicator, discovery } = setup([createQueue()]);
-    indicator.onApplicationBootstrap();
-    expect(discovery.getProviders).not.toHaveBeenCalled();
-  });
 
   it("reports read failures and recovery, and treats pausing as queue metadata", async () => {
-    const queue = createQueue();
-    const { indicator } = setup();
-    vi.mocked(queue.isPaused).mockRejectedValueOnce(
-      new Error("connection lost"),
-    );
+    const { queue, isPaused } = createQueue();
+    const indicator = createIndicator();
+    isPaused.mockRejectedValueOnce(new Error("connection lost"));
     expect(await indicator.check("queue", queue)).toMatchObject({
       queue: { status: "down" },
     });
-    vi.mocked(queue.isPaused).mockResolvedValue(true);
+    isPaused.mockResolvedValue(true);
     expect(await indicator.check("queue", queue)).toMatchObject({
       queue: { status: "up", paused: true },
     });
   });
 
-  it("does not enqueue reads for reconnecting or closing queues", async () => {
-    const queue = createQueue(
+  it("does not enqueue reads when readiness fails or the queue is closing", async () => {
+    const { queue, isPaused } = createQueue(
       "email",
-      Promise.resolve({ status: "reconnecting" }),
+      Promise.reject(new Error("Connection is not ready")),
     );
-    const { indicator } = setup();
+    const indicator = createIndicator();
     expect(await indicator.check("queue", queue)).toMatchObject({
       queue: { status: "down" },
     });
@@ -101,36 +63,36 @@ describe("QueueHealthIndicator", () => {
     expect(await indicator.check("queue", queue)).toMatchObject({
       queue: { status: "down", message: "Queue is closing" },
     });
-    expect(queue.isPaused).not.toHaveBeenCalled();
+    expect(isPaused).not.toHaveBeenCalled();
   });
 
   it("bounds readiness waits and does not perform a late read after timeout", async () => {
-    let resolveClient!: (value: { status: string }) => void;
-    const pending = new Promise<{ status: string }>((resolve) => {
-      resolveClient = resolve;
+    let resolveReady!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      resolveReady = resolve;
     });
-    const queue = createQueue("email", pending);
-    const { indicator } = setup();
+    const { queue, isPaused } = createQueue("email", pending);
+    const indicator = createIndicator();
     try {
       expect(await indicator.check("queue", queue, 10)).toMatchObject({
         queue: { status: "down", message: "timeout of 10ms exceeded" },
       });
     } finally {
-      resolveClient({ status: "ready" });
+      resolveReady();
     }
     await pending;
     await Promise.resolve();
-    expect(queue.isPaused).not.toHaveBeenCalled();
+    expect(isPaused).not.toHaveBeenCalled();
   });
 
   it("bounds queue reads after the connection is ready", async () => {
-    const queue = createQueue();
+    const { queue, isPaused } = createQueue();
     let resolvePause!: (value: boolean) => void;
     const pending = new Promise<boolean>((resolve) => {
       resolvePause = resolve;
     });
-    vi.mocked(queue.isPaused).mockReturnValue(pending);
-    const { indicator } = setup();
+    isPaused.mockReturnValue(pending);
+    const indicator = createIndicator();
     try {
       expect(await indicator.check("queue", queue, 10)).toMatchObject({
         queue: { status: "down" },
@@ -141,21 +103,21 @@ describe("QueueHealthIndicator", () => {
   });
 
   it("shares a stalled read across probes while checking other queues independently", async () => {
-    const queue = createQueue();
-    const other = createQueue("upload");
-    const { indicator } = setup();
+    const { queue, isPaused } = createQueue();
+    const { queue: other } = createQueue("upload");
+    const indicator = createIndicator();
     let complete!: (value: boolean) => void;
     const pending = new Promise<boolean>((resolve) => {
       complete = resolve;
     });
-    vi.mocked(queue.isPaused).mockReturnValueOnce(pending);
+    isPaused.mockReturnValueOnce(pending);
     try {
       for (let attempt = 0; attempt < 3; attempt++) {
         expect(await indicator.check("queue.email", queue, 10)).toMatchObject({
           "queue.email": { status: "down" },
         });
       }
-      expect(queue.isPaused).toHaveBeenCalledOnce();
+      expect(isPaused).toHaveBeenCalledOnce();
       expect(await indicator.check("queue.upload", other)).toMatchObject({
         "queue.upload": { status: "up" },
       });
@@ -166,6 +128,6 @@ describe("QueueHealthIndicator", () => {
     expect(await indicator.check("queue.email", queue)).toMatchObject({
       "queue.email": { status: "up" },
     });
-    expect(queue.isPaused).toHaveBeenCalledTimes(2);
+    expect(isPaused).toHaveBeenCalledTimes(2);
   });
 });

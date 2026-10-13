@@ -8,7 +8,7 @@ description: "使用 BullMQ Job Scheduler 为 NestJS 提供持久化 Cron 和间
 ## 安装
 
 ```bash
-pnpm add @nest-boot/schedule @nest-boot/queue @nestjs/bullmq bullmq
+pnpm add @nest-boot/schedule @nest-boot/queue bullmq
 ```
 
 ## 模块注册
@@ -29,7 +29,13 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-`QueueModule` 从 `REDIS_URL` 读取并解析 Redis 连接。`ScheduleModule` 还接受显式的 BullMQ `connection`、`concurrency` 和 `autorun`；除非 `autorun` 为 `false`，worker 会自动启动。
+`QueueModule` 在模块树中注册一次，例如放在 `CommonModule` 中。`ScheduleModule` 使用其全局服务，支持 `connection` 和 `concurrency`。定时任务在应用初始化时注册，此时不会创建 worker；运行 `nb queue:run --queue schedule` 后才启动消费者。设置了 `queueName` 时使用对应名称；不传 `--queue` 时也会启动定时任务队列。不需要消费定时任务时，只选择要启动的业务消费者。BullMQ schema 尚不存在时暂缓登记，允许先运行 `nb queue:migrate`，迁移后重新启动应用即可登记定时任务。
+
+共享 PostgreSQL 数据库和 schema 的不同应用必须配置不同的 `queueName`；同一应用的副本使用相同名称。Worker 和旧 scheduler 清理都只作用于该队列：
+
+```ts
+ScheduleModule.forRoot({ queueName: "billing-schedule" });
+```
 
 ## 定义定时任务
 

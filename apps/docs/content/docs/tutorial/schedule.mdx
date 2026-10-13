@@ -8,7 +8,7 @@ The `@nest-boot/schedule` module discovers decorated providers and controllers, 
 ## Installation
 
 ```bash
-pnpm add @nest-boot/schedule @nest-boot/queue @nestjs/bullmq bullmq
+pnpm add @nest-boot/schedule @nest-boot/queue bullmq
 ```
 
 ## Module Registration
@@ -29,7 +29,13 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-`QueueModule` reads and parses the Redis connection from `REDIS_URL`. `ScheduleModule` also accepts an explicit BullMQ `connection`, `concurrency`, and `autorun`. The worker starts automatically unless `autorun` is `false`.
+Import `QueueModule` once anywhere in the application module tree, for example in `CommonModule`; it does not have to be in `AppModule`. `ScheduleModule` uses its global services and does not import it internally. `QueueModule` uses PostgreSQL configured by `QUEUE_DATABASE_URL` or `DATABASE_URL`. `ScheduleModule` also accepts an explicit BullMQ `connection` and `concurrency`. Scheduled handlers register during application startup, without creating a worker. The schedule worker starts when `nb queue:run` selects its queue. Run `nb queue:run --queue schedule` for the default queue, or select the configured `queueName`. To leave scheduled jobs waiting, select only the business consumers you want to run. Before the BullMQ schema exists, registration is deferred so `nb queue:migrate` can initialize it; restart the application after migration to register schedules.
+
+Applications sharing a PostgreSQL database and schema must configure distinct `queueName` values. Replicas of the same application use the same name. Workers and scheduler cleanup operate only on that queue:
+
+```ts
+ScheduleModule.forRoot({ queueName: "billing-schedule" });
+```
 
 ## Defining Scheduled Tasks
 

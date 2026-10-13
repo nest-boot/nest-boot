@@ -1,20 +1,23 @@
 # @nest-boot/queue
 
-`QueueModule` configures BullMQ queues and workers for Nest Boot. When the application
+`QueueModule` configures BullMQ 6 queues and workers using the official PostgreSQL backend.
+Set `QUEUE_DATABASE_URL` or `DATABASE_URL`, and run BullMQ migrations before startup.
+Optional MikroORM and GraphQL queries read the native table. Use `withQueueDatabaseConfig(config)` from `@nest-boot/queue` in both runtime and CLI ORM configuration; it registers the entities and composes schema settings and discovery hooks. MikroORM core and decorators are required peers; DatabaseModule and GraphQL remain optional integrations. The read-only entities map all 11 native BullMQ tables, including defaults, enums, foreign keys and operational indexes. MikroORM uses its standard schema generator to add user/workspace ownership indexes. Run BullMQ migrations first; its functions and independent sequences remain owned by BullMQ. The helper uses native `ignoreRoutines: true`, which applies to all schemas, so existing application functions also require explicit migrations for changes. Keep MikroORM migration snapshots enabled; review live-generated rollback SQL because MikroORM 7.2.0 can restore ignored routines in `down`.
+See the [queue tutorial](https://github.com/nest-boot/nest-boot/blob/main/apps/docs/content/docs/tutorial/queue.mdx) for configuration. When the application
 also imports `HealthCheckModule`, it automatically registers a health indicator
 for each discovered `Queue` provider, including custom subclasses:
 
 ```ts
-import { QueueModule } from "@nest-boot/queue";
+import { BaseQueue, Queue, QueueModule } from "@nest-boot/queue";
 import { HealthCheckModule } from "@nest-boot/health-check";
 import { Module } from "@nestjs/common";
 
+@Queue()
+class EmailQueue extends BaseQueue {}
+
 @Module({
-  imports: [
-    HealthCheckModule,
-    QueueModule,
-    QueueModule.registerQueue({ name: "email" }),
-  ],
+  imports: [HealthCheckModule, QueueModule],
+  providers: [EmailQueue],
 })
 export class AppModule {}
 ```
@@ -35,3 +38,20 @@ a timeout; separate queues continue to be checked independently.
 Without `HealthCheckModule`, no queues are discovered for health checks and no
 checks run. The module does not import it or add a health endpoint. The exported
 `QueueHealthIndicator` also supports explicit `check(key, queue, timeout)` calls.
+
+Queues default to `expose: false`. Set `@Queue({ expose: true })` and register the
+queue provider in the API application to include its jobs in the optional Job API.
+The public fields are `id`, `queue`, `name`, `status`, numeric `progress` and
+`createdAt` / `startedAt` / `finishedAt`. Other progress formats return null.
+Payloads, raw results, failure details and operational fields stay private;
+applications expose business results through their own authorized API.
+Database RLS scopes nodes, lists and counts to the verified user or workspace.
+Configure the request EntityManager session with the non-owner `authenticated`
+role and trusted `app.user.id` / `app.workspace.id` variables, and apply the Job
+RLS migration. Empty identities match no rows. BullMQ workers use a separate
+owner or `BYPASSRLS` connection.
+The flag affects API visibility, not BullMQ storage or direct queue operations.
+
+QueueModule also registers `nb queue:migrate` for CLI modules importing `CommandModule` from `@nest-boot/command`. The command uses the configured database and schema, accepts `--schema`, and runs BullMQ migrations before MikroORM application migrations.
+
+Workers and event listeners are disabled by default in every application entry. Run a separate foreground worker process with `nb queue:run`, or select queues with `nb queue:run --queue email-queue --queue report-queue`. Unknown queue names fail before consumer creation. Queue providers remain injectable in HTTP, REPL and ordinary commands, including commands that enqueue work. Scheduled handlers register at application startup; their worker starts only when selected. SIGINT and SIGTERM drain active jobs before closing application dependencies. Programmatic applications can inject `QueueRegistrar` and call `start(queueNames?)` after initialization.
