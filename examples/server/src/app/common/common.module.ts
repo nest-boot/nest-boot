@@ -14,8 +14,8 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import type { Request, Response } from 'express';
 
-import { GreetCommand } from './commands/greet.command.js';
 import getDatabaseConfig from '../../mikro-orm.config.js';
+import { GreetCommand } from './commands/greet.command.js';
 import { createSessionContext } from './session-context.js';
 
 /** 全局配置动态模块。 */

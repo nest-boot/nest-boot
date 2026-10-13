@@ -166,3 +166,53 @@ it.each(["readiness", "hook"])(
       expect(transport.close).toHaveBeenCalledOnce();
   },
 );
+
+it.each(["readiness", "hook"])(
+  "closes the application while %s is pending and never starts consumers",
+  async (stage) => {
+    const app = await createApp();
+    if (stage === "readiness")
+      readiness.mockImplementation(() => new Promise<void>(() => undefined));
+    else
+      app
+        .get(EmailProcessor)
+        .onQueueStart.mockImplementation(
+          () => new Promise<void>(() => undefined),
+        );
+    const registrar = app.get(QueueRegistrar);
+    const starting = registrar.start(["email"]);
+    await vi.waitFor(() => {
+      if (stage === "readiness") expect(readiness).toHaveBeenCalled();
+      else expect(app.get(EmailProcessor).onQueueStart).toHaveBeenCalled();
+    });
+    await app.close();
+    await expect(starting).resolves.toEqual([]);
+    expect(workers[0].run).not.toHaveBeenCalled();
+    expect(streams[0].run).not.toHaveBeenCalled();
+    expect(workers[0].close).toHaveBeenCalledExactlyOnceWith(true);
+    await expect(registrar.start()).rejects.toThrow("shutting down");
+  },
+);
+
+it.each(["worker", "listener"])(
+  "notifies the foreground command when a %s loop fails",
+  async (transport) => {
+    const app = await createApp();
+    const failure = new Error("fatal consumer loop failure");
+    app.get(EmailProcessor).onQueueStart.mockImplementation(() => {
+      (transport === "worker" ? workers[0] : streams[0]).run.mockRejectedValue(
+        failure,
+      );
+    });
+    try {
+      const registrar = app.get(QueueRegistrar);
+      const stopped = expect(registrar.waitForStop()).rejects.toBe(failure);
+      await registrar.start(["email"]);
+      await stopped;
+    } finally {
+      await app.close();
+    }
+    expect(workers[0].close).toHaveBeenCalledOnce();
+    expect(streams[0].close).toHaveBeenCalledOnce();
+  },
+);

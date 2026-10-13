@@ -20,7 +20,10 @@ it.each(["SIGINT", "SIGTERM"])(
     });
     const off = vi.spyOn(process, "off").mockImplementation(() => process);
     const start = vi.fn().mockResolvedValue(["reports", "emails"]);
-    const command = new QueueRunCommand({ start } as unknown as QueueRegistrar);
+    const command = new QueueRunCommand({
+      start,
+      waitForStop: () => new Promise<void>(() => undefined),
+    } as unknown as QueueRegistrar);
     command.queues = ["reports", "emails"];
     command.context = { stdout } as never;
     let finished = false;
@@ -32,7 +35,7 @@ it.each(["SIGINT", "SIGTERM"])(
     expect(finished).toBe(false);
     const handler = handlers.get(signal);
     expect(handler).toBeDefined();
-    handler?.();
+    handler?.(signal);
     await running;
     expect(on).toHaveBeenCalledTimes(2);
     expect(off).toHaveBeenCalledWith("SIGINT", handlers.get("SIGINT"));
@@ -49,4 +52,33 @@ it("cleans signal handlers when startup fails", async () => {
   await expect(command.execute()).rejects.toThrow("invalid queue");
   for (const [event, handler] of on.mock.calls)
     expect(off).toHaveBeenCalledWith(event, handler);
+});
+
+it("returns when interrupted while startup is pending", async () => {
+  const handlers = new Map<string | symbol, () => void>();
+  vi.spyOn(process, "on").mockImplementation((event, handler) => {
+    handlers.set(event, handler);
+    return process;
+  });
+  const off = vi.spyOn(process, "off");
+  const command = new QueueRunCommand({
+    start: () => new Promise<string[]>(() => undefined),
+  } as unknown as QueueRegistrar);
+  command.context = { stdout } as never;
+  const running = command.execute();
+  handlers.get("SIGTERM")?.();
+  await running;
+  expect(off).toHaveBeenCalledWith("SIGTERM", handlers.get("SIGTERM"));
+});
+
+it("propagates a fatal consumer failure and removes signal handlers", async () => {
+  const failure = new Error("worker transport stopped");
+  const off = vi.spyOn(process, "off");
+  const command = new QueueRunCommand({
+    start: () => Promise.resolve(["reports"]),
+    waitForStop: () => Promise.reject(failure),
+  } as unknown as QueueRegistrar);
+  command.context = { stdout } as never;
+  await expect(command.execute()).rejects.toBe(failure);
+  expect(off).toHaveBeenCalledTimes(2);
 });

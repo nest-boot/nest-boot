@@ -24,12 +24,18 @@ export class QueueRunCommand extends BaseCommand {
   async execute(): Promise<void> {
     let finish!: () => void;
     const interrupted = new Promise<void>((resolve) => {
-      finish = resolve;
+      finish = () => {
+        resolve();
+      };
     });
     process.on("SIGINT", finish);
     process.on("SIGTERM", finish);
     try {
-      const names = await this.registrar.start(this.queues);
+      const names = await Promise.race([
+        this.registrar.start(this.queues),
+        interrupted,
+      ]);
+      if (!names) return;
       if (!names.length)
         throw new Error(
           "No queue processors or event listeners are registered for the selected queues.",
@@ -37,7 +43,7 @@ export class QueueRunCommand extends BaseCommand {
       this.context.stdout.write(
         `Queue workers running: ${names.join(", ")}.\n`,
       );
-      await interrupted;
+      await Promise.race([interrupted, this.registrar.waitForStop()]);
     } finally {
       process.off("SIGINT", finish);
       process.off("SIGTERM", finish);

@@ -53,11 +53,28 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
   private bindings: QueueBinding[] = [];
   private startup?: Promise<string[]>;
   private shutdown?: Promise<void>;
+  private readonly lifetime: Promise<void>;
+  private stop!: () => void;
+  private fail!: (error: unknown) => void;
+  private stopping = false;
+  private started = false;
 
   constructor(
     private readonly discovery: DiscoveryService,
     private readonly moduleRef: ModuleRef,
-  ) {}
+  ) {
+    this.lifetime = new Promise<void>((resolve, reject) => {
+      this.stop = resolve;
+      this.fail = reject;
+    });
+    // A loop may fail before the foreground command starts awaiting it.
+    void this.lifetime.catch(() => undefined);
+  }
+
+  /** @returns Shutdown notification, rejecting on fatal worker or listener failure. */
+  waitForStop(): Promise<void> {
+    return this.lifetime;
+  }
 
   /**
    * Lists registered queues explicitly included in API reads.
@@ -162,6 +179,8 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
    * @returns Names of queues with active consumers or listeners.
    */
   start(queueNames?: readonly string[]): Promise<string[]> {
+    if (this.stopping)
+      return Promise.reject(new Error("Queue consumers are shutting down."));
     if (this.startup)
       return Promise.reject(
         new Error("Queue consumers have already been started."),
@@ -248,10 +267,14 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
           }
         }
       }
-      await Promise.all([
-        ...[...this.workers].map((worker) => worker.waitUntilReady()),
-        ...[...this.listeners].map((listener) => listener.waitUntilReady()),
+      await Promise.race([
+        Promise.all([
+          ...[...this.workers].map((worker) => worker.waitUntilReady()),
+          ...[...this.listeners].map((listener) => listener.waitUntilReady()),
+        ]),
+        this.lifetime,
       ]);
+      if (this.stopping) return [];
       for (const { provider, listener } of bindings) {
         if (
           !listener &&
@@ -259,7 +282,11 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
           !provider.isTransient &&
           provider.instance instanceof BaseProcessor
         ) {
-          await provider.instance.onQueueStart?.();
+          await Promise.race([
+            Promise.resolve(provider.instance.onQueueStart?.()),
+            this.lifetime,
+          ]);
+          if (this.stopping) return [];
         }
       }
       for (const { provider, definition, listener } of bindings) {
@@ -268,17 +295,21 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
             .run()
             .catch((error: unknown) => {
               this.logger.error(error);
+              this.fail(error);
             });
         }
       }
       for (const worker of this.runnableWorkers) {
         void worker.run().catch((error: unknown) => {
           this.logger.error(error);
+          this.fail(error);
         });
       }
+      this.started = true;
       return [...new Set(bindings.map(({ queue }) => queue.name))];
     } catch (error) {
-      await this.closeTransports();
+      this.shutdown ??= this.closeTransports();
+      await this.shutdown;
       throw error;
     }
   }
@@ -306,7 +337,9 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
 
   private async closeTransports(): Promise<void> {
     try {
-      await Promise.all([...this.workers].map((worker) => worker.close()));
+      await Promise.all(
+        [...this.workers].map((worker) => worker.close(!this.started)),
+      );
     } finally {
       await Promise.all(
         [...this.listeners].map((listener) => listener.close()),
@@ -325,7 +358,8 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
 
   /** Drains workers while application dependencies are still available. */
   async onModuleDestroy(): Promise<void> {
-    await this.startup?.catch(() => undefined);
+    this.stopping = true;
+    this.stop();
     this.shutdown ??= this.closeTransports();
     await this.shutdown;
   }

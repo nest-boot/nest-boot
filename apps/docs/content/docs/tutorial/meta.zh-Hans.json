@@ -9,7 +9,6 @@
     "request-context",
     "temporary-directory",
     "auth",
-    "command",
     "queue",
     "schedule",
     "graphql",
