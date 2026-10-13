@@ -3,6 +3,7 @@
 "@nest-boot/schedule": patch
 "@nest-boot/request-context": minor
 "@nest-boot/eslint-plugin": patch
+"@nest-boot/eslint-config": patch
 ---
 
 Use BullMQ 6's official PostgreSQL backend for Queue and Schedule. Configure PostgreSQL through QUEUE_DATABASE_URL, DATABASE_URL or explicit connection options; run BullMQ migrations independently of MikroORM. Remove Redis queue configuration, queue-database, event-based job mirroring, persistence switches and mirror TTL cleanup. Retention uses BullMQ's native removeOnComplete/removeOnFail policies.
@@ -11,7 +12,7 @@ Add read-only MikroORM entities for all 11 BullMQ tables, matching enums, defaul
 
 Replace registerQueue/registerQueueAsync and InjectQueue with injectable @Queue classes extending BaseQueue. @Queue() defaults the queue name to the kebab-cased class name (EmailQueue becomes email-queue), with optional decorator configuration and an explicit name override. BaseQueue merges module defaults, decorator settings and constructor overrides. The decorator supplies application defaults automatically; custom constructors inject only business dependencies and pass local settings to super. No QueueFactory or public module-options injection token is needed. Queues are constructed by Nest; custom factory providers can use ModuleRef.create(). Consumers refer to queue classes via @Processor and extend BaseProcessor; WorkerHost and @nestjs/bullmq compatibility exports are removed. Consumer-only applications also register their queue provider, validated before workers start.
 
-Preserve worker/listener events, health discovery, Nest scopes, durable contexts and graceful shutdown. Establish RequestContext before resolving scoped consumers, and export its injectable request-scoped provider. Update Schedule, ESLint import migration guidance, packed-consumer checks, example application and bilingual documentation.
+Preserve worker/listener events, health discovery, Nest scopes, durable contexts and graceful shutdown. Establish RequestContext before resolving scoped consumers, and export its injectable request-scoped provider. Update Schedule, packed-consumer checks, example application and bilingual documentation. Remove the obsolete import-queue ESLint migration rule and its preset entry; migrate the queue API explicitly.
 
 Import QueueModule once anywhere in the application module tree; AppModule placement is not required. Schedule consumes its global services without importing it internally, removing duplicate queue registration and the separate runtime/configuration forwarding layer.
 
@@ -19,4 +20,4 @@ Remove public autorun options from processors, queue event listeners and Schedul
 
 This release stays on v8 with a minor Queue update as requested by the maintainer. Existing Redis jobs and old mirror data are not migrated automatically; drain or migrate them separately before switching deployments.
 
-Schedule accepts queueName for isolating applications sharing one database and schema. Replicas share their application queue name. keep Redis configuration types out of ESLint autofixes, and validate the complete example migration snapshot against all mapped entities. Constructor injection of RequestContext requires an entry point that establishes the context before dependency resolution; GraphQL interceptor-only fallbacks use static accessors inside handlers.
+Schedule accepts queueName for isolating applications sharing one database and schema. Replicas share their application queue name. Validate the complete example migration snapshot against all mapped entities. Constructor injection of RequestContext requires an entry point that establishes the context before dependency resolution; GraphQL interceptor-only fallbacks use static accessors inside handlers.

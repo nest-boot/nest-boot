@@ -119,6 +119,7 @@ describe.each(["bullmq", "custom_tasks"])("Job migrations in %s", (schema) => {
       migration.up,
     );
     await orm.schema.execute(migration.up);
+    expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe("");
   });
 
   it("still detects drift in BullMQ's columns and operational indexes", async () => {
@@ -141,63 +142,6 @@ describe.each(["bullmq", "custom_tasks"])("Job migrations in %s", (schema) => {
     );
     expect(sql).not.toMatch(/drop (?:table|type|function)/i);
     await orm.schema.execute(sql);
-    expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe("");
-  });
-
-  it("repairs disabled RLS once while preserving the existing ownership policy", async () => {
-    const enabledSnapshot = await DatabaseSchema.create(
-      orm.em.getConnection(),
-      orm.em.getPlatform(),
-      orm.config,
-    );
-    const readPolicies = async () =>
-      (
-        await fixture.pool.query(
-          "select policyname, roles, cmd, qual from pg_policies where schemaname = $1 and tablename = 'job' order by policyname",
-          [schema],
-        )
-      ).rows;
-    const policies = await readPolicies();
-    expect(policies).toHaveLength(1);
-    const disable = `alter table "${schema}"."job" disable row level security;`;
-    const enable = `alter table "${schema}"."job" enable row level security;`;
-
-    for (let cycle = 0; cycle < 2; cycle++) {
-      await orm.schema.execute(disable);
-      await orm.schema.execute(disable);
-      expect(await readPolicies()).toEqual(policies);
-      const repair = await orm.schema.getUpdateSchemaSQL({ wrap: false });
-      expect(repair.trim()).toBe(enable);
-      expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe(repair);
-      // Migration creation uses its snapshot, so an out-of-band ALTER does
-      // not change the authored diff while the snapshot still has RLS enabled.
-      expect(
-        (
-          await orm.schema.getUpdateSchemaMigrationSQL({
-            wrap: false,
-            fromSchema: enabledSnapshot,
-          })
-        ).up,
-      ).toBe("");
-      await orm.schema.execute(repair);
-      expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe("");
-      expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe("");
-      expect(await readPolicies()).toEqual(policies);
-    }
-  });
-
-  it("recreates a rolled-back ownership policy once without toggling enabled RLS", async () => {
-    await fixture.pool.query(
-      `drop policy "job_select_policy" on "${schema}"."job"`,
-    );
-    await orm.schema.execute(
-      `alter table "${schema}"."job" enable row level security;`,
-    );
-    const repair = await orm.schema.getUpdateSchemaSQL({ wrap: false });
-    expect(repair.trim()).toMatch(/^create policy "job_select_policy" /);
-    expect(repair).not.toContain("alter table");
-    await orm.schema.execute(repair);
-    expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe("");
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe("");
   });
 

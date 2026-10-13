@@ -9,7 +9,6 @@ describe("rules", () => {
       "graphql-field-definite-assignment",
       "import-database",
       "import-graphql",
-      "import-queue",
     ]);
   });
 });

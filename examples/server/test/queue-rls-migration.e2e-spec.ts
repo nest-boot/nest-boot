@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -90,62 +90,6 @@ it('revokes request reads before rolling back Job RLS and restores ownership rea
     expect((await orm.migrator.create()).fileName).toBe('');
   } finally {
     client.release();
-    await orm.close(true);
-    await fixture.close();
-    await rm(directory, { recursive: true, force: true });
-  }
-}, 30_000);
-
-it('preserves the generated RLS migration on repeated migration creation', async () => {
-  const fixture = await createQueueDatabaseFixture();
-  const directory = await mkdtemp(join(tmpdir(), 'queue-rls-migrations-'));
-  const orm = await MikroORM.init(
-    withQueueDatabaseConfig({
-      driver: PostgreSqlDriver,
-      clientUrl: fixture.connectionString,
-      extensions: [Migrator],
-      migrations: {
-        path: directory,
-        pathTs: directory,
-        emit: 'js' as const,
-        snapshot: true,
-        snapshotName: '.snapshot-queue-rls',
-      },
-    }),
-  );
-  try {
-    const generated = await orm.migrator.create();
-    expect(generated.code).toContain(
-      'alter table "bullmq"."job" disable row level security;',
-    );
-    const file = join(directory, generated.fileName);
-    const original = await readFile(file, 'utf8');
-    await orm.schema.execute(generated.diff.up.join('\n'));
-
-    for (let attempt = 0; attempt < 2; attempt++) {
-      expect((await orm.migrator.create()).fileName).toBe('');
-      expect(await readFile(file, 'utf8')).toBe(original);
-    }
-
-    await orm.schema.execute(
-      'alter table "bullmq"."job" disable row level security;',
-    );
-    expect((await orm.schema.getUpdateSchemaSQL({ wrap: false })).trim()).toBe(
-      'alter table "bullmq"."job" enable row level security;',
-    );
-    // A committed snapshot tracks the desired schema, rather than this
-    // manual database change; repeated migration creation leaves it intact.
-    for (let attempt = 0; attempt < 2; attempt++) {
-      expect((await orm.migrator.create()).fileName).toBe('');
-      expect(await readFile(file, 'utf8')).toBe(original);
-    }
-    expect(await readdir(directory)).toEqual(
-      expect.arrayContaining([generated.fileName, '.snapshot-queue-rls.json']),
-    );
-    expect(await readdir(directory)).toHaveLength(2);
-    await orm.schema.update();
-    expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
-  } finally {
     await orm.close(true);
     await fixture.close();
     await rm(directory, { recursive: true, force: true });

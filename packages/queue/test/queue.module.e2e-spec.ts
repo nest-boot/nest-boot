@@ -36,6 +36,7 @@ describe("QueueModule application integration", () => {
     const job = await app.get(ReportsQueue).add("report", {});
     expect(await job.getState()).toBe("waiting");
     expect(() => app?.get(ReportsProcessor).worker).toThrow("not initialized");
+    expect(() => app?.get(ScheduleProcessor).worker).toThrow("not initialized");
   });
 
   it("activates native database reads without GraphQL and hides internal queues", async () => {

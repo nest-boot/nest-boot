@@ -1,27 +1,3 @@
-import { ScheduleQueue } from "./schedule.queue.js";
-const { mockProcessor, mockProcessorDecorator } = vi.hoisted(() => {
-  const mockProcessorDecorator = vi.fn();
-  const mockProcessor = vi.fn(() => mockProcessorDecorator);
-
-  return {
-    mockProcessor,
-    mockProcessorDecorator,
-  };
-});
-
-vi.mock("@nest-boot/queue", () => ({
-  Queue: vi.fn(() => vi.fn()),
-  BaseQueue: class BaseQueue {},
-  Processor: mockProcessor,
-  BaseProcessor: class BaseProcessor {
-    constructor(readonly workerOptions: object = {}) {}
-    worker = {
-      concurrency: 1,
-      run: vi.fn().mockResolvedValue(undefined),
-    };
-  },
-}));
-
 import { type Provider } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
@@ -38,24 +14,9 @@ describe("ScheduleProcessor", () => {
       get,
       registry: {
         get,
-        register: vi.fn().mockResolvedValue(undefined),
       } as unknown as ScheduleRegistry,
     };
   };
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("does not start a worker when the Nest application initializes", async () => {
-    const processor = await createProcessor(createRegistry().registry);
-    expect("onApplicationBootstrap" in processor).toBe(false);
-    expect((processor as any).worker.run).not.toHaveBeenCalled();
-  });
-  it("should apply the schedule processor decorator", () => {
-    expect(mockProcessor).toHaveBeenCalledWith(ScheduleQueue);
-    expect(mockProcessorDecorator).toHaveBeenCalledWith(ScheduleProcessor);
-  });
 
   it("should invoke the registered schedule handler for the job name", async () => {
     const handler = vi.fn().mockResolvedValue(undefined);
@@ -89,59 +50,16 @@ describe("ScheduleProcessor", () => {
     expect(get).toHaveBeenCalledWith("Missing.run");
   });
 
-  it("configures concurrency and lets the registrar start its worker", async () => {
-    const processor = await createProcessor(createRegistry().registry, {
-      concurrency: 4,
-    });
-
-    expect(processor.workerOptions).toEqual({ concurrency: 4 });
-    expect((processor as any).worker.run).not.toHaveBeenCalled();
-  });
-
-  it("should load decorator metadata fallback branches", async () => {
-    vi.resetModules();
-    vi.doMock("@nest-boot/queue", () => ({
-      Queue: vi.fn(() => vi.fn()),
-      BaseQueue: class BaseQueue {},
-      Processor: vi.fn(() => vi.fn()),
-      BaseProcessor: class BaseProcessor {
-        worker = {
-          concurrency: 1,
-          run: vi.fn().mockResolvedValue(undefined),
-        };
-      },
-    }));
-    vi.doMock("./schedule.registry.js", () => ({
-      ScheduleRegistry: undefined,
-    }));
-
-    expect(
-      (await import("./schedule.processor.js")).ScheduleProcessor,
-    ).toBeDefined();
-
-    vi.doUnmock("./schedule.registry.js");
-    vi.resetModules();
-    vi.doMock("@nest-boot/queue", () => ({
-      Queue: vi.fn(() => vi.fn()),
-      BaseQueue: class BaseQueue {},
-      Processor: vi.fn(() => vi.fn()),
-      BaseProcessor: class BaseProcessor {
-        worker = {
-          concurrency: 1,
-          run: vi.fn().mockResolvedValue(undefined),
-        };
-      },
-    }));
-    vi.doMock("./schedule-module-options.interface.js", () => ({
-      ScheduleModuleOptions: class ScheduleModuleOptions {},
-    }));
-
-    expect(
-      (await import("./schedule.processor.js")).ScheduleProcessor,
-    ).toBeDefined();
-    vi.doUnmock("./schedule-module-options.interface.js");
-    vi.doUnmock("@nest-boot/queue");
-  });
+  it.each([undefined, 4])(
+    "uses configured or default worker concurrency (%s)",
+    async (concurrency) => {
+      const processor = await createProcessor(
+        createRegistry().registry,
+        concurrency === undefined ? undefined : { concurrency },
+      );
+      expect(processor.workerOptions.concurrency).toBe(concurrency ?? 1);
+    },
+  );
 });
 
 /**

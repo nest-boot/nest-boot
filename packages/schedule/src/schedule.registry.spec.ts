@@ -244,27 +244,4 @@ describe("ScheduleRegistry", () => {
     expect(queue.upsertJobScheduler).toHaveBeenCalledTimes(2);
     expect(registry.get("ControllerSchedules.undecorated")).toBeUndefined();
   });
-
-  it("should load decorator metadata fallback branches", async () => {
-    vi.resetModules();
-    vi.doMock("@nest-boot/queue", () => ({
-      Queue: vi.fn(() => vi.fn()),
-      BaseQueue: class BaseQueue {},
-    }));
-    vi.doMock("bullmq", () => ({
-      Queue: undefined,
-    }));
-    vi.doMock("@nestjs/core", () => ({
-      DiscoveryService: undefined,
-      MetadataScanner: undefined,
-      Reflector: undefined,
-    }));
-
-    expect(
-      (await import("./schedule.registry.js")).ScheduleRegistry,
-    ).toBeDefined();
-    vi.doUnmock("@nest-boot/queue");
-    vi.doUnmock("bullmq");
-    vi.doUnmock("@nestjs/core");
-  });
 });

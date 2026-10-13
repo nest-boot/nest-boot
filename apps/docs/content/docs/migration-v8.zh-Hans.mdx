@@ -101,8 +101,7 @@ BullMQ 连接使用表所有者或 `BYPASSRLS` 角色，并继续保留应用查
 详见[队列教程](/docs/tutorial/queue)。保留 `bullmq`，
 仅在启用查询功能时安装对应 MikroORM/GraphQL 依赖。移除 `@nestjs/bullmq`。
 
-自定义 ESLint 配置中的 `@nest-boot/import-bullmq` 改为 `@nest-boot/import-queue`。
-自动修复仅迁移兼容的具名导入并保留本地别名。Redis 配置类型（`BullModuleOptions` 和旧 `QueueModuleOptions`）、队列注册、processor 装饰器、已移除的 helper 和命名空间导入均需手动迁移。
+从自定义 ESLint 配置中移除 `@nest-boot/import-bullmq` 和 `@nest-boot/import-queue`。队列导入、注册、processor 装饰器和 PostgreSQL 连接配置需按照上面的新 API 显式迁移。
 
 ## 更新相关集成
 

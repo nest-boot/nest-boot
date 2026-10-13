@@ -109,9 +109,7 @@ Job migration adds user/workspace ownership indexes and an authenticated RLS SEL
 Keep `bullmq`; install MikroORM/GraphQL peers only for the optional query features.
 Remove `@nestjs/bullmq`; the queue integration uses BullMQ directly.
 
-Custom ESLint configurations should use `@nest-boot/import-queue` instead of
-`@nest-boot/import-bullmq`. Its autofix migrates compatible named imports and preserves
-local aliases. Redis configuration types (`BullModuleOptions` and the old `QueueModuleOptions`), queue registration, processor decorators, removed helpers and namespace imports require manual migration.
+Remove `@nest-boot/import-bullmq` and `@nest-boot/import-queue` from custom ESLint configurations. Queue imports, registration, processor decorators and PostgreSQL connection settings require explicit migration to the new API described above.
 
 ## Update related integrations
 
