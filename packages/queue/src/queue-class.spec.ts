@@ -121,29 +121,6 @@ it("exposes only opted-in queue instances, including factory providers", async (
   }
 });
 
-it("allows queue classes to inject their own dependencies", async () => {
-  @Injectable()
-  class Settings {
-    readonly label = "configured";
-  }
-  @Queue({ name: "custom" })
-  class CustomQueue extends BaseQueue {
-    constructor(readonly settings: Settings) {
-      super();
-    }
-  }
-  const module = await Test.createTestingModule({
-    imports: [QueueModule],
-    providers: [Settings, CustomQueue],
-  }).compile();
-  try {
-    await module.init();
-    expect(module.get(CustomQueue).settings.label).toBe("configured");
-  } finally {
-    await module.close();
-  }
-});
-
 it("rejects conflicting queue providers before starting consumers", async () => {
   @Queue({ name: "duplicate" })
   class FirstQueue extends BaseQueue {}

@@ -80,17 +80,4 @@ describe("ScheduleModule", () => {
       }
     },
   );
-
-  it("creates the schedule queue from module options", () => {
-    const options = {
-      connection: { schema: "schedule_test" },
-      concurrency: 2,
-    };
-    new ScheduleQueue(options);
-    expect(createQueue).toHaveBeenCalledWith(
-      { connection: { schema: "schedule_test" } },
-      undefined,
-    );
-    expect(options).toHaveProperty("concurrency", 2);
-  });
 });

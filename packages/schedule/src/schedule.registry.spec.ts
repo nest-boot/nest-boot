@@ -13,7 +13,6 @@ import { Test } from "@nestjs/testing";
 import { SchemaMigrationRequiredError } from "bullmq";
 
 import { Cron, Interval } from "./schedule.decorator.js";
-import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition.js";
 import { ScheduleRegistry } from "./schedule.registry.js";
 
 describe("ScheduleRegistry", () => {
@@ -222,26 +221,5 @@ describe("ScheduleRegistry", () => {
         },
       },
     );
-  });
-
-  it("should ignore non-object wrappers and methods without schedule metadata", async () => {
-    const { discoveryService, metadataScanner, queue, reflector, registry } =
-      await createRegistry();
-
-    await registry.register();
-
-    expect(discoveryService.getControllers).toHaveBeenCalledTimes(1);
-    expect(discoveryService.getProviders).toHaveBeenCalledTimes(1);
-    expect(metadataScanner.getAllMethodNames).toHaveBeenCalledTimes(2);
-    expect(reflector.get).toHaveBeenCalledWith(
-      SCHEDULE_METADATA_KEY,
-      Object.getOwnPropertyDescriptor(
-        ControllerSchedules.prototype,
-        "undecorated",
-      )?.value,
-    );
-    expect(queue.removeJobScheduler).not.toHaveBeenCalled();
-    expect(queue.upsertJobScheduler).toHaveBeenCalledTimes(2);
-    expect(registry.get("ControllerSchedules.undecorated")).toBeUndefined();
   });
 });

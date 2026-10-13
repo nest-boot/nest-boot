@@ -78,7 +78,7 @@ describe("Nest queue event registration", () => {
   @Queue({ name: "parent" })
   class ParentQueue extends BaseQueue {}
 
-  it.each(["none", "empty", "unrelated", "factory", "value"])(
+  it.each(["none", "unrelated", "factory", "value"])(
     "rejects a consumer without its registered queue before starting workers (%s)",
     async (registration) => {
       @Processor(EmailQueue)

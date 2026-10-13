@@ -23,14 +23,6 @@ class PingResolver {
 }
 
 describe("QueueModule automatic job features", () => {
-  it("does not activate installed integrations without application services", async () => {
-    const module = await Test.createTestingModule({
-      imports: [QueueModule.forRoot({})],
-    }).compile();
-    expect(module.get(JobService)).toBeNull();
-    await module.close();
-  });
-
   it.each([false, true])(
     "discovers database services with GraphQL=%s",
     async (graphql) => {

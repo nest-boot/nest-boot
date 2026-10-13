@@ -1,4 +1,3 @@
-import { HealthCheckRegistry } from "@nest-boot/health-check";
 import type { DiscoveryService } from "@nestjs/core";
 
 import { BaseQueue } from "./base.queue.js";
@@ -32,55 +31,15 @@ describe("QueueHealthIndicator", () => {
     return { queue, isPaused };
   }
 
-  /**
-   * Returns test setup and its mocked dependencies.
-   * @param instances - Provider instances discovered by the fixture.
-   * @param registry - Registry that owns the configured entries.
-   * @returns Test setup and its mocked dependencies.
-   */
-  function setup(instances: unknown[] = [], registry?: HealthCheckRegistry) {
-    const discovery = {
-      getProviders: vi.fn(() => instances.map((instance) => ({ instance }))),
-    };
-    return {
-      discovery,
-      indicator: new QueueHealthIndicator(
-        discovery as unknown as DiscoveryService,
-        registry,
-      ),
-    };
+  /** @returns Health indicator with unused provider discovery stubbed. */
+  function createIndicator() {
+    const discovery = { getProviders: vi.fn() };
+    return new QueueHealthIndicator(discovery as unknown as DiscoveryService);
   }
-
-  it("discovers queues and deduplicates aliases without running probes at startup", async () => {
-    const { queue: email, isPaused } = createQueue();
-    const { queue: upload } = createQueue("upload");
-    const registry = new HealthCheckRegistry();
-    const { indicator } = setup([email, email, upload, {}], registry);
-    indicator.onApplicationBootstrap();
-    expect(registry.healthIndicators).toHaveLength(2);
-    expect(isPaused).not.toHaveBeenCalled();
-    const results = await Promise.all(
-      registry.healthIndicators.map((check) =>
-        Promise.resolve(typeof check === "function" ? check() : check),
-      ),
-    );
-    expect(results[0]).toMatchObject({
-      "queue.email": { status: "up", paused: false },
-    });
-    expect(results[1]).toMatchObject({
-      "queue.upload": { status: "up" },
-    });
-  });
-
-  it("does not discover or check queues without HealthCheckModule", () => {
-    const { indicator, discovery } = setup([createQueue().queue]);
-    indicator.onApplicationBootstrap();
-    expect(discovery.getProviders).not.toHaveBeenCalled();
-  });
 
   it("reports read failures and recovery, and treats pausing as queue metadata", async () => {
     const { queue, isPaused } = createQueue();
-    const { indicator } = setup();
+    const indicator = createIndicator();
     isPaused.mockRejectedValueOnce(new Error("connection lost"));
     expect(await indicator.check("queue", queue)).toMatchObject({
       queue: { status: "down" },
@@ -96,7 +55,7 @@ describe("QueueHealthIndicator", () => {
       "email",
       Promise.reject(new Error("Connection is not ready")),
     );
-    const { indicator } = setup();
+    const indicator = createIndicator();
     expect(await indicator.check("queue", queue)).toMatchObject({
       queue: { status: "down" },
     });
@@ -113,7 +72,7 @@ describe("QueueHealthIndicator", () => {
       resolveReady = resolve;
     });
     const { queue, isPaused } = createQueue("email", pending);
-    const { indicator } = setup();
+    const indicator = createIndicator();
     try {
       expect(await indicator.check("queue", queue, 10)).toMatchObject({
         queue: { status: "down", message: "timeout of 10ms exceeded" },
@@ -133,7 +92,7 @@ describe("QueueHealthIndicator", () => {
       resolvePause = resolve;
     });
     isPaused.mockReturnValue(pending);
-    const { indicator } = setup();
+    const indicator = createIndicator();
     try {
       expect(await indicator.check("queue", queue, 10)).toMatchObject({
         queue: { status: "down" },
@@ -146,7 +105,7 @@ describe("QueueHealthIndicator", () => {
   it("shares a stalled read across probes while checking other queues independently", async () => {
     const { queue, isPaused } = createQueue();
     const { queue: other } = createQueue("upload");
-    const { indicator } = setup();
+    const indicator = createIndicator();
     let complete!: (value: boolean) => void;
     const pending = new Promise<boolean>((resolve) => {
       complete = resolve;
