@@ -34,6 +34,9 @@ it("injects the active context and propagates request scope without sharing conc
     );
     expect(services[0]).not.toBe(services[1]);
     expect(RequestContext.isActive()).toBe(false);
+    await expect(
+      module.resolve(Service, ContextIdFactory.create()),
+    ).rejects.toThrow("Request context is not active");
   } finally {
     await module.close();
   }

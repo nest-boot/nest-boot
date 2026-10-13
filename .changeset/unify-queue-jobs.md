@@ -1,7 +1,6 @@
 ---
 "@nest-boot/queue": minor
 "@nest-boot/schedule": patch
-"@nest-boot/request-context": minor
 "@nest-boot/eslint-plugin": patch
 "@nest-boot/eslint-config": patch
 ---
@@ -12,7 +11,7 @@ Add read-only MikroORM entities for all 11 BullMQ tables, matching enums, defaul
 
 Replace registerQueue/registerQueueAsync and InjectQueue with injectable @Queue classes extending BaseQueue. @Queue() defaults the queue name to the kebab-cased class name (EmailQueue becomes email-queue), with optional decorator configuration and an explicit name override. BaseQueue merges module defaults, decorator settings and constructor overrides. The decorator supplies application defaults automatically; custom constructors inject only business dependencies and pass local settings to super. No QueueFactory or public module-options injection token is needed. Queues are constructed by Nest; custom factory providers can use ModuleRef.create(). Consumers refer to queue classes via @Processor and extend BaseProcessor; WorkerHost and @nestjs/bullmq compatibility exports are removed. Consumer-only applications also register their queue provider, validated before workers start.
 
-Preserve worker/listener events, health discovery, Nest scopes, durable contexts and graceful shutdown. Establish RequestContext before resolving scoped consumers, and export its injectable request-scoped provider. Update Schedule, packed-consumer checks, example application and bilingual documentation. Remove the obsolete import-queue ESLint migration rule and its preset entry; migrate the queue API explicitly.
+Preserve worker/listener events, health discovery, Nest scopes, durable contexts and graceful shutdown. Establish RequestContext before resolving scoped consumers, using the injectable request-scoped provider added independently. Update Schedule, packed-consumer checks, example application and bilingual documentation. Remove the obsolete import-queue ESLint migration rule and its preset entry; migrate the queue API explicitly.
 
 Import QueueModule once anywhere in the application module tree; AppModule placement is not required. Schedule consumes its global services without importing it internally, removing duplicate queue registration and the separate runtime/configuration forwarding layer.
 

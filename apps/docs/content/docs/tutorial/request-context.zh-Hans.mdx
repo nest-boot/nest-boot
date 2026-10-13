@@ -45,7 +45,7 @@ export class AuditService {
 }
 ```
 
-注入它会使依赖链变为 request-scoped。HTTP 中间件和 Nest Boot 队列运行时会在解析 scoped 依赖前建立上下文。自定义入口需要先进入 `RequestContext.run()`，再使用 context ID 调用 `ModuleRef.resolve()`；没有活动上下文时解析此 provider 会抛错。
+注入它会使依赖链变为 request-scoped。HTTP 中间件会在解析 scoped 依赖前建立上下文。自定义入口需要先进入 `RequestContext.run()`，再使用 context ID 调用 `ModuleRef.resolve()`；没有活动上下文时解析此 provider 会抛错。
 
 GraphQL subscription 等仅依赖 interceptor fallback 的入口，应在处理方法中使用静态访问器。Interceptor 在 Nest 解析构造函数依赖之后才运行，因此构造函数注入要求入口更早建立上下文。
 
