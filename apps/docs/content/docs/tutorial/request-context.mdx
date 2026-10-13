@@ -32,6 +32,30 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
+## Constructor injection
+
+`RequestContextModule` exports a request-scoped `RequestContext` provider. It returns the active context instead of creating another one:
+
+```ts
+import { RequestContext } from "@nest-boot/request-context";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class AuditService {
+  constructor(private readonly context: RequestContext) {}
+
+  getRequestId() {
+    return this.context.id;
+  }
+}
+```
+
+Injecting this provider makes the dependency tree request-scoped. HTTP middleware establishes the context before resolving scoped dependencies. For custom entry points, establish `RequestContext.run()` before using `ModuleRef.resolve()` with a context ID. Resolving the provider outside an active context throws.
+
+GraphQL subscriptions and other executions that only reach the interceptor fallback must use static accessors inside handler methods. The interceptor runs after Nest resolves constructor dependencies, so constructor injection requires an entry point that establishes the context earlier.
+
+Singleton services can continue calling `RequestContext.current()` or the static accessors inside methods. Do not cache the current context in a singleton constructor or durable provider.
+
 ## Storing and Reading Values
 
 Use a class, symbol, or string as the token. Classes and exported symbols are

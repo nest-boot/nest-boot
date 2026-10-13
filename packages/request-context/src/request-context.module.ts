@@ -1,8 +1,9 @@
 import { MiddlewareManager, MiddlewareModule } from "@nest-boot/middleware";
-import { Global, Module } from "@nestjs/common";
+import { Global, Module, Scope } from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 
 import { RequestContextInterceptor } from "./request-context.interceptor.js";
+import { RequestContext } from "./request-context.js";
 import { RequestContextMiddleware } from "./request-context.middleware.js";
 
 /**
@@ -43,13 +44,20 @@ import { RequestContextMiddleware } from "./request-context.middleware.js";
 @Module({
   imports: [MiddlewareModule],
   providers: [
+    {
+      provide: RequestContext,
+      scope: Scope.REQUEST,
+      // Entry points must establish the context before Nest resolves this tree.
+      // Interceptor fallbacks run later and support static accessors in handlers.
+      useFactory: () => RequestContext.current(),
+    },
     RequestContextMiddleware,
     {
       provide: APP_INTERCEPTOR,
       useClass: RequestContextInterceptor,
     },
   ],
-  exports: [RequestContextMiddleware],
+  exports: [RequestContextMiddleware, RequestContext],
 })
 export class RequestContextModule {
   /**

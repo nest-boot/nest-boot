@@ -27,6 +27,30 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
+## 构造函数注入
+
+`RequestContextModule` 导出 request-scoped 的 `RequestContext` provider，返回当前已有的上下文，不会另建一个：
+
+```ts
+import { RequestContext } from "@nest-boot/request-context";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class AuditService {
+  constructor(private readonly context: RequestContext) {}
+
+  getRequestId() {
+    return this.context.id;
+  }
+}
+```
+
+注入它会使依赖链变为 request-scoped。HTTP 中间件会在解析 scoped 依赖前建立上下文。自定义入口需要先进入 `RequestContext.run()`，再使用 context ID 调用 `ModuleRef.resolve()`；没有活动上下文时解析此 provider 会抛错。
+
+GraphQL subscription 等仅依赖 interceptor fallback 的入口，应在处理方法中使用静态访问器。Interceptor 在 Nest 解析构造函数依赖之后才运行，因此构造函数注入要求入口更早建立上下文。
+
+单例服务可以继续在方法内调用 `RequestContext.current()` 或静态方法。不要在单例构造函数或 durable provider 中缓存当前上下文。
+
 ## 存取上下文数据
 
 可以使用类、Symbol 或字符串作为 Token。推荐使用类或导出的 Symbol，以避免命名冲突。
