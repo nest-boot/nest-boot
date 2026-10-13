@@ -52,9 +52,11 @@ vi.mock("./postgres.js", async () => {
 class EmailQueue extends BaseQueue {}
 @Queue({ name: "reports" })
 class ReportsQueue extends BaseQueue {}
-@Processor(EmailQueue)
+@Processor(EmailQueue, { concurrency: 2 })
 class EmailProcessor extends BaseProcessor {
-  onQueueStart = vi.fn();
+  constructor() {
+    super({ concurrency: 4 });
+  }
   async process() {
     await Promise.resolve();
   }
@@ -96,13 +98,12 @@ it("keeps workers and event streams uninitialized when an application starts", a
     expect(streams).toEqual([]);
     expect(() => app.get(EmailProcessor).worker).toThrow("not initialized");
     expect(() => app.get(EmailEvents).queueEvents).toThrow("not initialized");
-    expect(app.get(EmailProcessor).onQueueStart).not.toHaveBeenCalled();
   } finally {
     await app.close();
   }
 });
 
-it("starts only selected consumers, listeners and their startup hooks", async () => {
+it("starts only selected consumers and listeners", async () => {
   const app = await createApp();
   try {
     expect(await app.get(QueueRegistrar).start(["email", "email"])).toEqual([
@@ -110,11 +111,9 @@ it("starts only selected consumers, listeners and their startup hooks", async ()
     ]);
     expect(workers.map((w) => w.name)).toEqual(["email"]);
     expect(streams.map((w) => w.name)).toEqual(["email"]);
-    expect(workers[0].opts).toMatchObject({ autorun: false });
+    expect(workers[0].opts).toMatchObject({ autorun: false, concurrency: 4 });
     expect(workers[0].run).toHaveBeenCalledOnce();
     expect(streams[0].run).toHaveBeenCalledOnce();
-    expect(app.get(EmailProcessor).onQueueStart).toHaveBeenCalledOnce();
-    expect(app.get(ReportsProcessor).onQueueStart).not.toHaveBeenCalled();
     expect(() => app.get(ReportsProcessor).worker).toThrow("not initialized");
     await expect(app.get(QueueRegistrar).start()).rejects.toThrow(
       "already been started",
@@ -141,85 +140,87 @@ it("rejects unknown queues before creating transports and permits a corrected se
   }
 });
 
-it("lets a startup hook keep its worker idle while retaining event listeners", async () => {
+it("waits for every transport to become ready before running consumers", async () => {
   const app = await createApp();
-  app.get(EmailProcessor).onQueueStart.mockReturnValue(false);
+  let finishEmail!: () => void;
+  let finishReports!: () => void;
+  readiness.mockReturnValueOnce(
+    new Promise<void>((resolve) => {
+      finishEmail = resolve;
+    }),
+  );
+  readiness.mockReturnValueOnce(
+    new Promise<void>((resolve) => {
+      finishReports = resolve;
+    }),
+  );
   try {
-    await app.get(QueueRegistrar).start(["email"]);
-    expect(workers[0].run).not.toHaveBeenCalled();
-    expect(streams[0].run).toHaveBeenCalledOnce();
+    const starting = app.get(QueueRegistrar).start();
+    await vi.waitFor(() => {
+      expect(finishEmail).toBeTypeOf("function");
+    });
+    for (const transport of [...workers, ...streams])
+      expect(transport.run).not.toHaveBeenCalled();
+    finishEmail();
+    await vi.waitFor(() => {
+      expect(finishReports).toBeTypeOf("function");
+    });
+    for (const transport of [...workers, ...streams])
+      expect(transport.run).not.toHaveBeenCalled();
+    finishReports();
+    await starting;
+    for (const transport of [...workers, ...streams])
+      expect(transport.run).toHaveBeenCalledOnce();
   } finally {
     await app.close();
   }
 });
 
-it.each(["readiness", "hook"])(
-  "closes all partially created transports when %s fails",
-  async (failure) => {
-    const app = await createApp();
-    if (failure === "readiness")
-      readiness.mockRejectedValue(new Error("database unavailable"));
-    else
-      app
-        .get(EmailProcessor)
-        .onQueueStart.mockRejectedValue(new Error("registration failed"));
-    try {
-      await expect(app.get(QueueRegistrar).start()).rejects.toThrow(
-        failure === "readiness"
-          ? "database unavailable"
-          : "registration failed",
-      );
-      expect(workers.every((w) => w.run.mock.calls.length === 0)).toBe(true);
-      expect(() => app.get(EmailProcessor).worker).toThrow("not initialized");
-    } finally {
-      await app.close();
-    }
-    for (const transport of [...workers, ...streams])
-      expect(transport.close).toHaveBeenCalledOnce();
-  },
-);
-
-it.each(["readiness", "hook"])(
-  "closes the application while %s is pending and never starts consumers",
-  async (stage) => {
-    const app = await createApp();
-    if (stage === "readiness")
-      readiness.mockImplementation(() => new Promise<void>(() => undefined));
-    else
-      app
-        .get(EmailProcessor)
-        .onQueueStart.mockImplementation(
-          () => new Promise<void>(() => undefined),
-        );
-    const registrar = app.get(QueueRegistrar);
-    const starting = registrar.start(["email"]);
-    await vi.waitFor(() => {
-      if (stage === "readiness") expect(readiness).toHaveBeenCalled();
-      else expect(app.get(EmailProcessor).onQueueStart).toHaveBeenCalled();
-    });
+it("closes all partially created transports when readiness fails", async () => {
+  const app = await createApp();
+  readiness.mockRejectedValue(new Error("database unavailable"));
+  try {
+    await expect(app.get(QueueRegistrar).start()).rejects.toThrow(
+      "database unavailable",
+    );
+    expect(workers.every((w) => w.run.mock.calls.length === 0)).toBe(true);
+    expect(() => app.get(EmailProcessor).worker).toThrow("not initialized");
+  } finally {
     await app.close();
-    await expect(starting).resolves.toEqual([]);
-    expect(workers[0].run).not.toHaveBeenCalled();
-    expect(streams[0].run).not.toHaveBeenCalled();
-    expect(workers[0].close).toHaveBeenCalledExactlyOnceWith(true);
-    await expect(registrar.start()).rejects.toThrow("shutting down");
-  },
-);
+  }
+  for (const transport of [...workers, ...streams])
+    expect(transport.close).toHaveBeenCalledOnce();
+});
+
+it("closes the application while readiness is pending and never starts consumers", async () => {
+  const app = await createApp();
+  readiness.mockImplementation(() => new Promise<void>(() => undefined));
+  const registrar = app.get(QueueRegistrar);
+  const starting = registrar.start(["email"]);
+  await vi.waitFor(() => {
+    expect(readiness).toHaveBeenCalled();
+  });
+  await app.close();
+  await expect(starting).resolves.toEqual([]);
+  expect(workers[0].run).not.toHaveBeenCalled();
+  expect(streams[0].run).not.toHaveBeenCalled();
+  expect(workers[0].close).toHaveBeenCalledExactlyOnceWith(true);
+  await expect(registrar.start()).rejects.toThrow("shutting down");
+});
 
 it.each(["worker", "listener"])(
   "notifies the foreground command when a %s loop fails",
   async (transport) => {
     const app = await createApp();
     const failure = new Error("fatal consumer loop failure");
-    app.get(EmailProcessor).onQueueStart.mockImplementation(() => {
-      (transport === "worker" ? workers[0] : streams[0]).run.mockRejectedValue(
-        failure,
-      );
-    });
     try {
       const registrar = app.get(QueueRegistrar);
       const stopped = expect(registrar.waitForStop()).rejects.toBe(failure);
-      await registrar.start(["email"]);
+      const starting = registrar.start(["email"]);
+      (transport === "worker" ? workers[0] : streams[0]).run.mockRejectedValue(
+        failure,
+      );
+      await starting;
       await stopped;
     } finally {
       await app.close();

@@ -37,7 +37,7 @@ class EmailsQueue extends BaseQueue {}
 class InternalQueue extends BaseQueue {}
 @Queue({ name: "hidden", expose: false })
 class HiddenQueue extends BaseQueue {}
-@Processor(ReportsQueue, { autorun: false })
+@Processor(ReportsQueue)
 class ReportsProcessor extends BaseProcessor {
   async process(job: BullJob) {
     await job.updateProgress({ done: 1 });
@@ -429,7 +429,6 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
     );
     await app.get(QueueRegistrar).start();
     const processor = app.get(ReportsProcessor);
-    const running = processor.worker.run();
     const service = new JobService(
       requestEm(),
       {
@@ -455,6 +454,5 @@ describe("native PostgreSQL jobs with read-only MikroORM queries", () => {
       { timeout: 10000 },
     );
     await processor.worker.close();
-    await running;
   }, 15000);
 });

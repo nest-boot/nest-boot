@@ -10,6 +10,7 @@ vi.mock("@nest-boot/queue", () => ({
 import { Logger } from "@nestjs/common";
 import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
+import { SchemaMigrationRequiredError } from "bullmq";
 
 import { Cron, Interval } from "./schedule.decorator.js";
 import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition.js";
@@ -134,13 +135,39 @@ describe("ScheduleRegistry", () => {
     vi.restoreAllMocks();
   });
 
-  it("does not register schedules when the Nest application initializes", async () => {
-    const { queue, registry, moduleRef } = await createRegistry();
+  it("registers schedules when the Nest application initializes", async () => {
+    const { queue, moduleRef } = await createRegistry();
     await moduleRef.init();
-    expect("onApplicationBootstrap" in registry).toBe(false);
-    expect(queue.getJobSchedulers).not.toHaveBeenCalled();
-    expect(queue.upsertJobScheduler).not.toHaveBeenCalled();
+    expect(queue.getJobSchedulers).toHaveBeenCalledOnce();
+    expect(queue.upsertJobScheduler).toHaveBeenCalledTimes(2);
     await moduleRef.close();
+  });
+
+  it("allows migration commands to initialize an application before the BullMQ schema exists", async () => {
+    const { queue, registry, moduleRef } = await createRegistry();
+    const warning = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(vi.fn());
+    queue.getJobSchedulers.mockRejectedValue(
+      new SchemaMigrationRequiredError("tasks"),
+    );
+    try {
+      await moduleRef.init();
+      expect(queue.upsertJobScheduler).not.toHaveBeenCalled();
+      expect(registry.get("ControllerSchedules.syncUsers")).toBeDefined();
+      expect(warning).toHaveBeenCalledWith(
+        expect.stringContaining("nb queue:migrate"),
+      );
+    } finally {
+      await moduleRef.close();
+    }
+  });
+
+  it("propagates schedule registration errors other than an uninitialized schema", async () => {
+    const { queue, registry } = await createRegistry();
+    const failure = new Error("database permission denied");
+    queue.getJobSchedulers.mockRejectedValue(failure);
+    await expect(registry.onApplicationBootstrap()).rejects.toBe(failure);
   });
   it("should discover decorated methods, clean stale schedulers, and register schedules", async () => {
     const { controller, queue, registry } = await createRegistry(

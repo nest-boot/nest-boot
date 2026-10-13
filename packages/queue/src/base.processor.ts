@@ -1,10 +1,19 @@
 import type { Job } from "bullmq";
 
+import type { ProcessorOptions } from "./decorators/processor.decorator.js";
 import type { PostgresWorker as Worker } from "./postgres.js";
 import { WORKER_REF } from "./queue.constants.js";
 
 /** Base class for a consumer registered with `@Processor()`. */
 export abstract class BaseProcessor<T extends Worker = Worker> {
+  /**
+   * Supplies worker settings derived from this singleton's injected dependencies.
+   * @param workerOptions - Overrides for the declared worker settings.
+   */
+  constructor(
+    readonly workerOptions: Omit<ProcessorOptions, "scope" | "durable"> = {},
+  ) {}
+
   /** @internal */
   [WORKER_REF]?: T;
 
@@ -20,10 +29,6 @@ export abstract class BaseProcessor<T extends Worker = Worker> {
       );
     return worker;
   }
-
-  /** Prepares this singleton consumer; return false to leave its worker idle. */
-  // eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- Preserve existing void hooks while allowing runtime configuration to opt out.
-  onQueueStart?(): boolean | void | Promise<boolean | void>;
 
   /**
    * Processes a queued job. Rejections are handled by BullMQ's retry policy.

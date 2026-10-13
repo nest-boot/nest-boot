@@ -75,7 +75,7 @@ does not require a login.
 
 `CommonModule` configures `QueueModule` with BullMQ 6's official PostgreSQL backend, configured through
 `QUEUE_DATABASE_URL` or `DATABASE_URL`. `ScheduleModule` uses the same backend.
-`src/cli.ts` bootstraps the same `AppModule` as `main.ts` and `repl.ts` through `CommandFactory.run()`. Queue workers, event listeners and schedule registration stay inactive in the command context; application providers remain available. Run `pnpm --filter @nest-boot/example-server queue:migrate` first to create or
+`src/cli.ts` bootstraps the same `AppModule` as `main.ts` and `repl.ts` through `CommandFactory.run()`. Queue workers and event listeners are created only by `queue:run`; queue providers remain injectable in every entry, including ordinary commands that enqueue jobs. Scheduled handlers register during application startup. Run `pnpm --filter @nest-boot/example-server queue:migrate` first to create or
 upgrade BullMQ's schema. Then run application migrations to add ownership indexes,
 enable Job RLS and grant the `authenticated` database role schema usage and SELECT on `bullmq.job`.
 
@@ -126,8 +126,7 @@ be idempotent because failed or stalled jobs can run again.
 
 After migrations, start the application with `pnpm --filter @nest-boot/example-server dev`.
 Start consumers in a second terminal with `pnpm --filter @nest-boot/example-server queue:run`.
-HTTP and REPL processes leave workers inactive. The worker process registers the
-two schedules and consumes reports. Use `queue:run --queue report-queue` to run only
+HTTP and REPL processes leave workers inactive. Application initialization registers the two schedules; the selected workers consume scheduled jobs and reports. Use `queue:run --queue report-queue` to run only
 the report consumer, or `queue:run --queue schedule` to run only scheduled triggers.
 To enqueue a report manually, start the example's Nest REPL:
 

@@ -12,7 +12,6 @@ import type { ScheduleModuleOptions } from "./schedule-module-options.interface.
 export class ScheduleQueue extends BaseQueue {
   constructor(@Inject(MODULE_OPTIONS_TOKEN) options: ScheduleModuleOptions) {
     const { queueName, ...queueOptions } = options;
-    delete queueOptions.autorun;
     delete queueOptions.concurrency;
     super(queueOptions, queueName);
   }

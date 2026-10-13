@@ -28,7 +28,6 @@ describe("ScheduleModule", () => {
       const options = {
         connection: { schema: "schedule_test" },
         concurrency: 3,
-        autorun: false,
       };
       const module = await Test.createTestingModule({
         imports: [
@@ -86,7 +85,6 @@ describe("ScheduleModule", () => {
     const options = {
       connection: { schema: "schedule_test" },
       concurrency: 2,
-      autorun: false,
     };
     new ScheduleQueue(options);
     expect(createQueue).toHaveBeenCalledWith(

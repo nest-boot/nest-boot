@@ -7,7 +7,7 @@ import { PROCESSOR_OPTIONS } from "../queue.constants.js";
 /** Consumer options; connection and namespace always come from its queue. */
 export type ProcessorOptions = Omit<
   WorkerOptions,
-  "connection" | "prefix" | "telemetry"
+  "connection" | "prefix" | "telemetry" | "autorun"
 > &
   ScopeOptions;
 

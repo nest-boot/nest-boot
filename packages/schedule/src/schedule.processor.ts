@@ -13,21 +13,12 @@ export class ScheduleProcessor extends BaseProcessor {
     private readonly scheduleRegistry: ScheduleRegistry,
     @Optional()
     @Inject(MODULE_OPTIONS_TOKEN)
-    private readonly options?: ScheduleModuleOptions,
+    options?: ScheduleModuleOptions,
   ) {
-    super();
+    super({ concurrency: options?.concurrency ?? 1 });
   }
 
   async process(job: Job): Promise<void> {
     await this.scheduleRegistry.get(job.name)?.handler();
-  }
-
-  async onQueueStart(): Promise<boolean> {
-    await this.scheduleRegistry.register();
-    if (this.options?.concurrency) {
-      this.worker.concurrency = this.options.concurrency;
-    }
-
-    return this.options?.autorun !== false;
   }
 }

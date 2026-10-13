@@ -4,7 +4,6 @@ import { RequestContext } from "@nest-boot/request-context";
 import type { INestApplicationContext } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { ScheduleRegistry } from "../../schedule/dist/index.js";
 import { ScheduleProcessor } from "../../schedule/dist/schedule.processor.js";
 import { createPostgresFixture } from "./postgres.fixture.js";
 import { AppModule } from "./src/app.module.js";
@@ -66,27 +65,24 @@ describe("QueueModule application integration", () => {
     app = await Test.createTestingModule({ imports: [AppModule] }).compile();
     await app.init();
     const failure = new Error("schedule stalled check failed");
-    const schedules = app.get(ScheduleRegistry);
     const processor = app.get(ScheduleProcessor);
-    const register = schedules.register.bind(schedules);
-    vi.spyOn(schedules, "register").mockImplementation(async () => {
-      await register();
-      vi.spyOn(processor.worker, "startStalledCheckTimer").mockRejectedValue(
-        failure,
-      );
-    });
     const registrar = app.get(QueueRegistrar);
     const stopped = expect(registrar.waitForStop()).rejects.toBe(failure);
-    await registrar.start(["schedule"]);
+    const starting = registrar.start(["schedule"]);
+    vi.spyOn(processor.worker, "startStalledCheckTimer").mockRejectedValue(
+      failure,
+    );
+    await starting;
     await stopped;
   }, 30_000);
 
-  it("keeps the schedule worker idle when autorun is disabled", async () => {
-    vi.stubEnv("QUEUE_TEST_SCHEDULE_AUTORUN", "false");
+  it("starts the selected schedule worker while leaving business workers uninitialized", async () => {
     app = await Test.createTestingModule({ imports: [AppModule] }).compile();
     await app.init();
     await app.get(QueueRegistrar).start(["schedule"]);
-    expect(app.get(ScheduleProcessor).worker.isRunning()).toBe(false);
+    expect(app.get(ScheduleProcessor).worker.isRunning()).toBe(true);
+    expect(app.get(ScheduleProcessor).worker.concurrency).toBe(3);
+    expect(() => app?.get(ReportsProcessor).worker).toThrow("not initialized");
     const { rows } = await fixture.pool.query(
       `select count(*)::int as count from "${fixture.connection.schema}".scheduler`,
     );

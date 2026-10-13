@@ -9,8 +9,6 @@ import { type QueueOptions } from "@nest-boot/queue";
 export interface ScheduleModuleOptions extends QueueOptions {
   /** Queue name shared by replicas of one application. Defaults to "schedule". */
   queueName?: string;
-  /** Whether to process scheduled jobs when the schedule queue is explicitly started. */
-  autorun?: boolean;
   /** Maximum number of concurrent scheduled jobs to process. */
   concurrency?: number;
 }

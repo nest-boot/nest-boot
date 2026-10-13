@@ -47,7 +47,6 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(QueueRegistrar.name);
   private readonly scanner = new MetadataScanner();
   private readonly workers = new Set<Worker>();
-  private readonly runnableWorkers = new Set<Worker>();
   private readonly listeners = new Set<QueueEvents>();
   private readonly queues = new Map<string, BaseQueue>();
   private bindings: QueueBinding[] = [];
@@ -227,7 +226,10 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
           // so each job only needs to create its context and resolve the consumer.
           const localRef = provider.host?.providers.get(ModuleRef)
             ?.instance as ModuleRef;
-          const options = { ...definition.options };
+          const options = {
+            ...definition.options,
+            ...(!scoped && instance.workerOptions),
+          };
           delete options.scope;
           delete options.durable;
           const worker = new Worker(
@@ -253,8 +255,6 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
             { ...options, ...connection, autorun: false },
           );
           this.workers.add(worker);
-          if (definition.options.autorun !== false)
-            this.runnableWorkers.add(worker);
           if (instance) instance[WORKER_REF] = worker;
           if (!scoped) this.bindEvents(instance, worker, ON_WORKER_EVENT);
           else {
@@ -276,23 +276,7 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
       ]);
       if (this.stopping) return [];
       for (const { provider, listener } of bindings) {
-        if (
-          !listener &&
-          provider.isDependencyTreeStatic() &&
-          !provider.isTransient &&
-          provider.instance instanceof BaseProcessor
-        ) {
-          const autorun = await Promise.race([
-            Promise.resolve(provider.instance.onQueueStart?.()),
-            this.lifetime,
-          ]);
-          if (this.stopping) return [];
-          if (autorun === false)
-            this.runnableWorkers.delete(provider.instance.worker);
-        }
-      }
-      for (const { provider, definition, listener } of bindings) {
-        if (listener && definition.options.autorun !== false) {
+        if (listener) {
           void (provider.instance as QueueEventsHost).queueEvents
             .run()
             .catch((error: unknown) => {
@@ -301,7 +285,7 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
             });
         }
       }
-      for (const worker of this.runnableWorkers) {
+      for (const worker of this.workers) {
         void worker.run().catch((error: unknown) => {
           this.logger.error(error);
           this.fail(error);
@@ -347,7 +331,6 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
         [...this.listeners].map((listener) => listener.close()),
       );
       this.workers.clear();
-      this.runnableWorkers.clear();
       this.listeners.clear();
       for (const { provider, listener } of this.bindings) {
         if (listener)

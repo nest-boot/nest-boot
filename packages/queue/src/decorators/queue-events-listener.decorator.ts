@@ -7,7 +7,7 @@ import { QUEUE_EVENTS_OPTIONS } from "../queue.constants.js";
 /** Event stream settings; connection and namespace come from the queue. */
 export type QueueEventsListenerOptions = Omit<
   QueueEventsOptions,
-  "connection" | "prefix" | "telemetry"
+  "connection" | "prefix" | "telemetry" | "autorun"
 >;
 
 /**

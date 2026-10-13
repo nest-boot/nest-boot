@@ -17,11 +17,7 @@ import { WorkerModule } from "./app/worker/worker.module.js";
         graphql: false,
       }),
     }),
-    ScheduleModule.forRootAsync({
-      useFactory: () => ({
-        autorun: process.env.QUEUE_TEST_SCHEDULE_AUTORUN !== "false",
-      }),
-    }),
+    ScheduleModule.forRoot({ concurrency: 3 }),
     WorkerModule,
   ],
 })

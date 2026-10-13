@@ -14,6 +14,7 @@ vi.mock("@nest-boot/queue", () => ({
   BaseQueue: class BaseQueue {},
   Processor: mockProcessor,
   BaseProcessor: class BaseProcessor {
+    constructor(readonly workerOptions: object = {}) {}
     worker = {
       concurrency: 1,
       run: vi.fn().mockResolvedValue(undefined),
@@ -93,20 +94,7 @@ describe("ScheduleProcessor", () => {
       concurrency: 4,
     });
 
-    expect(await processor.onQueueStart()).toBe(true);
-
-    expect((processor as any).worker.concurrency).toBe(4);
-    expect((processor as any).worker.run).not.toHaveBeenCalled();
-  });
-
-  it("should skip autorun when disabled", async () => {
-    const processor = await createProcessor(createRegistry().registry, {
-      autorun: false,
-    });
-
-    expect(await processor.onQueueStart()).toBe(false);
-
-    expect((processor as any).worker.concurrency).toBe(1);
+    expect(processor.workerOptions).toEqual({ concurrency: 4 });
     expect((processor as any).worker.run).not.toHaveBeenCalled();
   });
 

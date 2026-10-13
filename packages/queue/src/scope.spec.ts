@@ -78,9 +78,6 @@ it.each(["singleton", "request", "bubbled", "transient"])(
       constructor(readonly dependency: Dependency) {
         super();
       }
-      onQueueStart() {
-        expect(mode).toBe("singleton");
-      }
       async process(job: Job, token?: string, signal?: AbortSignal) {
         const context = RequestContext.current();
         await Promise.resolve();
@@ -288,7 +285,7 @@ it("binds workers to runtime queue names across independent applications", async
       super({}, name);
     }
   }
-  @Processor(ApplicationQueue, { autorun: false })
+  @Processor(ApplicationQueue)
   class Consumer extends BaseProcessor {
     async process() {
       await Promise.resolve();

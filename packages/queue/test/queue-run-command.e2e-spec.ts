@@ -61,7 +61,7 @@ async function waitForOutput(
   );
 }
 
-it("keeps all jobs waiting and leaves schedules unregistered when executing ordinary commands", async () => {
+it("registers schedules and keeps consumers uninitialized when executing ordinary commands", async () => {
   const job = await reports.add("report", {});
   const process = run(["--help"]);
   await vi.waitFor(
@@ -80,7 +80,7 @@ it("keeps all jobs waiting and leaves schedules unregistered when executing ordi
         "select count(*)::int as count from tasks.scheduler",
       )
     ).rows[0].count,
-  ).toBe(0);
+  ).toBe(1);
 });
 
 it("runs only selected queues and drains the active job on SIGTERM", async () => {
@@ -113,7 +113,8 @@ it("runs only selected queues and drains the active job on SIGTERM", async () =>
         "select count(*)::int as count from tasks.scheduler",
       )
     ).rows[0].count,
-  ).toBe(0);
+  ).toBe(1);
+  expect(process.output()).not.toContain("TICK");
 }, 20_000);
 
 it("runs every registered queue including scheduled handlers and exits cleanly on SIGINT", async () => {
@@ -159,18 +160,13 @@ it("reports an unknown queue and exits without consuming jobs", async () => {
   expect(await job.getState()).toBe("waiting");
 });
 
-it("interrupts a pending startup hook without starting consumers", async () => {
-  const job = await reports.add("report", {});
-  const running = runCli(
-    ["queue:run", "--queue", "reports"],
-    fixture.connection,
-    {
-      QUEUE_TEST_STARTUP: "blocked",
-    },
-  );
-  children.push(running.child);
-  await waitForOutput(running, "STARTING:reports");
-  running.child.kill("SIGTERM");
+it("enqueues work from an ordinary command without creating workers", async () => {
+  const running = run(["report:enqueue"]);
   expect(await running.exited, running.output()).toBe(0);
-  expect(await job.getState()).toBe("waiting");
+  const jobs = await reports.getJobs(["waiting"]);
+  expect(jobs).toHaveLength(1);
+  expect(jobs[0].name).toBe("report");
+  expect(running.output()).toContain(`ENQUEUED:${String(jobs[0].id)}`);
+  expect(running.output()).not.toContain("ACTIVE:");
+  expect(running.output()).not.toContain("TICK");
 }, 20_000);
