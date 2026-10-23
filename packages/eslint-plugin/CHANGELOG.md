@@ -1,3 +1,16 @@
+## 8.0.3
+
+### Patch Changes
+
+- 8b96012: Remove obsolete import migration rules and the implicit MikroORM import migration
+  from entity field fixes. Delete custom configuration entries for `import-database`,
+  `import-graphql`, `import-mikro-orm`, `import-bullmq`, and `import-queue`, including
+  disabled entries, and migrate import paths and APIs manually.
+  
+  The shared ESLint config now requires braces around all conditional and loop
+  bodies with `curly: ["error", "all"]`. Existing violations can be fixed with
+  `eslint --fix`.
+
 ## 8.0.2
 
 ### Patch Changes
