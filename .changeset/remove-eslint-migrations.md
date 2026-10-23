@@ -1,6 +1,6 @@
 ---
-"@nest-boot/eslint-plugin": major
-"@nest-boot/eslint-config": major
+"@nest-boot/eslint-plugin": patch
+"@nest-boot/eslint-config": patch
 ---
 
 Remove obsolete import migration rules and the implicit MikroORM import migration
