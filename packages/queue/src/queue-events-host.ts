@@ -12,10 +12,11 @@ export abstract class QueueEventsHost {
    */
   get queueEvents(): QueueEvents {
     const events = this[QUEUE_EVENTS_REF];
-    if (!events)
+    if (!events) {
       throw new Error(
         "Queue events are not initialized; call QueueRegistrar.start() first.",
       );
+    }
     return events;
   }
 }

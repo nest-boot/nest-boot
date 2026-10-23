@@ -1,45 +1,38 @@
-# eslint-plugin-nest-boot
+# @nest-boot/eslint-plugin
 
-Nest Boot 定制规则
+Nest Boot 日常代码规范规则。`@nest-boot/eslint-config` 默认启用以下规则：
 
-## Installation
+| 规则                                           | 用途                                      |
+| ---------------------------------------------- | ----------------------------------------- |
+| `@nest-boot/entity-field-definite-assignment`  | 检查实体字段的确定赋值断言                |
+| `@nest-boot/entity-property-config-from-types` | 根据 TypeScript 类型检查实体字段配置      |
+| `@nest-boot/graphql-field-definite-assignment` | 检查 GraphQL 字段的确定赋值断言           |
+| `@nest-boot/graphql-field-config-from-types`   | 根据 TypeScript 类型检查 GraphQL 字段配置 |
 
-You'll first need to install [ESLint](https://eslint.org/):
+单独使用插件时，将默认导出注册为 `@nest-boot`：
 
-```sh
-npm i eslint --save-dev
+```js
+import nestBootPlugin from "@nest-boot/eslint-plugin";
+import tsParser from "@typescript-eslint/parser";
+
+export default [
+  {
+    files: ["**/*.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: { projectService: true },
+    },
+    plugins: { "@nest-boot": nestBootPlugin },
+    rules: {
+      "@nest-boot/entity-property-config-from-types": "error",
+      "@nest-boot/graphql-field-config-from-types": "error",
+    },
+  },
+];
 ```
 
-Next, install `eslint-plugin-nest-boot`:
+## 移除旧迁移规则配置
 
-```sh
-npm install eslint-plugin-nest-boot --save-dev
-```
+已移除 `import-bullmq`、`import-queue`、`import-mikro-orm`、`import-database`、`import-graphql`，不提供兼容别名。删除自定义 ESLint 配置中的对应条目，包括设为 `off` 的条目。
 
-## Usage
-
-Add `nest-boot` to the plugins section of your `.eslintrc` configuration file. You can omit the `eslint-plugin-` prefix:
-
-```json
-{
-  "plugins": ["nest-boot"]
-}
-```
-
-Then configure the rules you want to use under the rules section.
-
-```json
-{
-  "rules": {
-    "nest-boot/rule-name": 2
-  }
-}
-```
-
-## Rules
-
-<!-- begin auto-generated rules list -->
-
-TODO: Run eslint-doc-generator to generate the rules list.
-
-<!-- end auto-generated rules list -->
+包名、导入路径和旧 API 的迁移由开发者手动完成。实体字段规则也不再迁移旧 MikroORM 装饰器、命名空间导入、重导出或 `@mikro-orm/knex` 路径；字段配置修复仍会添加所需的当前 API 导入。

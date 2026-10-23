@@ -26,7 +26,9 @@ export function resolveApiKeyPermissionCatalog(
 } {
   const scopes = catalogs.get(options) ?? {};
   const cached = scopes[scope];
-  if (cached) return cached;
+  if (cached) {
+    return cached;
+  }
   const users = resolveAuthCatalog(options, "user").permissions;
   const workspaces = resolveAuthCatalog(options, "workspace").permissions;
   const permissions = [

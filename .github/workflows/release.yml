@@ -17,6 +17,7 @@ jobs:
   select-mode:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     outputs:
@@ -34,8 +35,6 @@ jobs:
           node-version-file: .nvmrc
           package-manager-cache: false
       - run: pnpm install --frozen-lockfile
-      - name: Check release channel
-        run: node .github/scripts/release-channel.mjs "$GITHUB_REF_NAME"
       - name: Select Changesets mode
         id: select-mode
         uses: changesets/action/select-mode@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
@@ -44,6 +43,7 @@ jobs:
     needs: select-mode
     if: needs.select-mode.outputs.mode == 'version'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
       pull-requests: write
@@ -94,6 +94,7 @@ jobs:
   pack:
     needs: [select-mode, verify]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     outputs:
@@ -110,8 +111,6 @@ jobs:
           node-version-file: .nvmrc
           package-manager-cache: false
       - run: pnpm install --frozen-lockfile
-      - name: Check publish channel
-        run: node .github/scripts/release-channel.mjs "$GITHUB_REF_NAME" --publish
       - run: pnpm build:packages --force
       - name: Pack packages
         id: pack
@@ -122,6 +121,7 @@ jobs:
   publish:
     needs: pack
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
       id-token: write
@@ -144,18 +144,3 @@ jobs:
           pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}
         env:
           NPM_CONFIG_PROVENANCE: true
-      # Keep the original plan when retrying a failed publish job: npm may have
-      # succeeded before the action failed to create tags or GitHub releases.
-      - name: Download original release plan
-        id: download-plan
-        if: ${{ !cancelled() && steps.publish.outcome != 'skipped' }}
-        uses: actions/download-artifact@v8
-        with:
-          artifact-ids: ${{ needs.pack.outputs.pack-dir-artifact-id }}
-          path: ${{ runner.temp }}/release-artifacts
-          merge-multiple: true
-      - name: Recover missing GitHub release metadata
-        if: ${{ !cancelled() && steps.publish.outcome != 'skipped' && steps.download-plan.outcome == 'success' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node .github/scripts/release-metadata.mjs "$RUNNER_TEMP/release-artifacts/publish-plan.json"

@@ -32,10 +32,14 @@ export function createContextualAuthService<T extends object>(
           ) => unknown;
           return await Reflect.apply(method, instance, args);
         };
-        if (context === "authentication") return await runAuthQuery(em, invoke);
+        if (context === "authentication") {
+          return await runAuthQuery(em, invoke);
+        }
 
         const current = em.getContext(false);
-        if (!current.isInTransaction()) return await runAuthQuery(em, invoke);
+        if (!current.isInTransaction()) {
+          return await runAuthQuery(em, invoke);
+        }
         // Reuse the locked transaction's connection. The isolated identity lookup
         // runs in a savepoint so errors restore the caller's role on rollback.
         const reader = current.fork({

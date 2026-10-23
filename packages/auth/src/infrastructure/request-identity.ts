@@ -157,8 +157,12 @@ export class RequestIdentity {
     options: AuthModuleOptions,
     user: User,
   ): void {
-    if (!RequestContext.isActive() || RequestContext.get(User)?.id !== user.id)
+    if (
+      !RequestContext.isActive() ||
+      RequestContext.get(User)?.id !== user.id
+    ) {
       return;
+    }
     this.update(em, options, { user });
   }
 
@@ -176,10 +180,14 @@ export class RequestIdentity {
     if (
       !RequestContext.isActive() ||
       RequestContext.get(Member)?.id !== member.id
-    )
+    ) {
       return;
-    if (member.status !== "ACTIVE") this.clearWorkspace(em, options);
-    else this.update(em, options, { member });
+    }
+    if (member.status !== "ACTIVE") {
+      this.clearWorkspace(em, options);
+    } else {
+      this.update(em, options, { member });
+    }
   }
 
   /**
@@ -195,14 +203,18 @@ export class RequestIdentity {
     apiKey: ApiKeyMetadata,
     deleted = false,
   ): void {
-    if (!this.isCurrentApiKey(apiKey)) return;
+    if (!this.isCurrentApiKey(apiKey)) {
+      return;
+    }
     if (
       deleted ||
       !apiKey.enabled ||
       (apiKey.expiresAt && apiKey.expiresAt <= new Date())
-    )
+    ) {
       this.clear(em);
-    else this.update(em, options, { apiKey });
+    } else {
+      this.update(em, options, { apiKey });
+    }
   }
 
   /**
@@ -210,7 +222,9 @@ export class RequestIdentity {
    * @param options - Authentication module configuration.
    */
   static prepare(options: AuthModuleOptions): void {
-    if (!RequestContext.isActive() || RequestContext.get(AuthAbility)) return;
+    if (!RequestContext.isActive() || RequestContext.get(AuthAbility)) {
+      return;
+    }
     this.refresh(options);
   }
 
@@ -219,14 +233,24 @@ export class RequestIdentity {
    * @param patch - Identity fields to replace.
    */
   static stage(patch: RequestIdentityPatch): void {
-    if (!RequestContext.isActive()) return;
-    if ("user" in patch) RequestContext.set(User, patch.user ?? null);
-    if ("member" in patch) RequestContext.set(Member, patch.member ?? null);
-    if ("workspace" in patch)
+    if (!RequestContext.isActive()) {
+      return;
+    }
+    if ("user" in patch) {
+      RequestContext.set(User, patch.user ?? null);
+    }
+    if ("member" in patch) {
+      RequestContext.set(Member, patch.member ?? null);
+    }
+    if ("workspace" in patch) {
       RequestContext.set(Workspace, patch.workspace ?? null);
-    if ("session" in patch) RequestContext.set(Session, patch.session ?? null);
-    if ("apiKey" in patch)
+    }
+    if ("session" in patch) {
+      RequestContext.set(Session, patch.session ?? null);
+    }
+    if ("apiKey" in patch) {
       RequestContext.set<ApiKeyMetadata | null>(API_KEY, patch.apiKey ?? null);
+    }
     invalidateRequestPermissions();
     RequestContext.set(AuthAbility, null);
   }
@@ -236,7 +260,9 @@ export class RequestIdentity {
    * @param options - Authentication module configuration.
    */
   static refresh(options: AuthModuleOptions): void {
-    if (!RequestContext.isActive()) return;
+    if (!RequestContext.isActive()) {
+      return;
+    }
     invalidateRequestPermissions();
     RequestContext.set(AuthAbility, new AuthAbility());
     RequestContext.set(AuthAbility, buildRequestAbility(options));
@@ -253,7 +279,9 @@ export class RequestIdentity {
     options: AuthModuleOptions,
     patch: RequestIdentityPatch,
   ): void {
-    if (!RequestContext.isActive()) return;
+    if (!RequestContext.isActive()) {
+      return;
+    }
     this.stage(patch);
     try {
       const currentScope = em.getSessionContext();
@@ -265,8 +293,9 @@ export class RequestIdentity {
           Object.entries(scope.variables).some(
             ([key, value]) => currentScope.variables?.[key] !== value,
           ))
-      )
+      ) {
         em.setSessionContext(scope);
+      }
       this.refresh(options);
     } catch (error) {
       this.clear(em);
@@ -289,7 +318,7 @@ export class RequestIdentity {
     if (RequestContext.isActive()) {
       RequestContext.set(AuthAbility, new AuthAbility());
     }
-    if (em.getSessionContext())
+    if (em.getSessionContext()) {
       em.setSessionContext({
         role: "anonymous",
         variables: {
@@ -298,6 +327,7 @@ export class RequestIdentity {
           "app.member.id": "",
         },
       });
+    }
   }
 
   /**

@@ -758,8 +758,9 @@ describe("AuthModule", () => {
     async (state) => {
       const actor = Object.assign(new BaseUser(), { id: "actor" });
       const deleteUser = vi.fn().mockResolvedValue(actor);
-      if (state === "failure")
+      if (state === "failure") {
         deleteUser.mockRejectedValue(new Error("Commit failed"));
+      }
       getAuthProvider().useFactory(
         { entities, secret, user: { deleteUser: { enabled: true } } },
         {
@@ -782,9 +783,11 @@ describe("AuthModule", () => {
             { id: state === "other" ? "other" : actor.id },
             new Request("https://example.com/delete"),
           );
-          if (state === "failure")
+          if (state === "failure") {
             await expect(operation).rejects.toThrow("Commit failed");
-          else await operation;
+          } else {
+            await operation;
+          }
           expect(RequestContext.get(BaseUser)).toBe(
             state === "current" ? null : actor,
           );

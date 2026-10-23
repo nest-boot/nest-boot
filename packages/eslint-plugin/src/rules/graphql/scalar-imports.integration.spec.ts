@@ -6,7 +6,6 @@ import parser from "@typescript-eslint/parser";
 import { Linter, type Rule } from "eslint";
 import * as ts from "typescript";
 
-import importRule from "../import/import-graphql.js";
 import rule from "./graphql-field-config-from-types.js";
 
 const packageRoot = fileURLToPath(new URL("../../../", import.meta.url));
@@ -64,11 +63,10 @@ const config: Linter.Config[] = [
       test: {
         rules: {
           field: rule as unknown as Rule.RuleModule,
-          imports: importRule as unknown as Rule.RuleModule,
         },
       },
     },
-    rules: { "test/field": "error", "test/imports": "error" },
+    rules: { "test/field": "error" },
   },
 ];
 
@@ -425,12 +423,17 @@ function compileDiagnostics(code: string, noUnusedLocals = false): string[] {
   const host = ts.createCompilerHost(compilerOptions);
   const getSourceFile = host.getSourceFile.bind(host);
   host.getSourceFile = (file, ...args) => {
-    if (file === filename)
+    if (file === filename) {
       return ts.createSourceFile(file, code, ts.ScriptTarget.ES2023, true);
+    }
     const cached = sourceFiles.get(file);
-    if (cached) return cached;
+    if (cached) {
+      return cached;
+    }
     const source = getSourceFile(file, ...args);
-    if (source) sourceFiles.set(file, source);
+    if (source) {
+      sourceFiles.set(file, source);
+    }
     return source;
   };
   const program = ts.createProgram(

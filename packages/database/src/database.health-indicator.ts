@@ -24,7 +24,9 @@ export class DatabaseHealthIndicator implements OnModuleInit {
 
   /** Initializes the existing lazy connection and registers its deferred health check. */
   async onModuleInit(): Promise<void> {
-    if (!this.registry) return;
+    if (!this.registry) {
+      return;
+    }
 
     const connection = this.orm.em.getConnection();
     // MikroORM 7 connects lazily. Initialize once during application startup;
@@ -55,7 +57,9 @@ export class DatabaseHealthIndicator implements OnModuleInit {
             this.pendingCheck = undefined;
           }));
         const result = await check;
-        if (!result.ok) throw new Error(result.reason);
+        if (!result.ok) {
+          throw new Error(result.reason);
+        }
       })
       .withTimeout(timeout);
   }

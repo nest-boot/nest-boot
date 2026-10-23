@@ -60,7 +60,9 @@ describe("credential projection with a hydrated identity map", () => {
         refresh: true,
       });
       expect(queried).toBe(managed);
-      for (const key of keys) expect(queried).toHaveProperty(key, managed[key]);
+      for (const key of keys) {
+        expect(queried).toHaveProperty(key, managed[key]);
+      }
 
       const result = omitCredentials(queried, keys);
       expect(result).not.toBe(managed);
@@ -79,7 +81,9 @@ describe("credential projection with a hydrated identity map", () => {
         .fork()
         .findOneOrFail(CredentialRecord, managed.id);
       expect(persisted.name).toBe("Updated");
-      for (const key of keys) expect(persisted[key]).toBe(managed[key]);
+      for (const key of keys) {
+        expect(persisted[key]).toBe(managed[key]);
+      }
     },
   );
 });

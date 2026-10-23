@@ -112,13 +112,14 @@ describe("InvitationService read authorization", () => {
               id: scenario.selected,
             });
             RequestContext.set(Workspace, selected);
-            if (scenario.member)
+            if (scenario.member) {
               RequestContext.set(
                 Member,
                 Object.assign(createTestMember(), {
                   workspace: ref(Workspace, selected),
                 }),
               );
+            }
           }
           RequestContext.set(
             AuthAbility,

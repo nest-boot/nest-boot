@@ -27,12 +27,16 @@ export class CommandRegistry {
     const instances = new Set<BaseCommand>();
     const adapters = new Map<CommandClass, CommandClass>();
     for (const wrapper of this.discovery.getProviders()) {
-      if (!wrapper.metatype) continue;
+      if (!wrapper.metatype) {
+        continue;
+      }
       const options = this.reflector.get<CommandOptions | undefined>(
         COMMAND_OPTIONS,
         wrapper.metatype,
       );
-      if (!options) continue;
+      if (!options) {
+        continue;
+      }
       if (
         wrapper.scope === Scope.TRANSIENT ||
         !wrapper.isDependencyTreeStatic()
@@ -47,7 +51,9 @@ export class CommandRegistry {
           `Command ${String(wrapper.name)} must extend BaseCommand.`,
         );
       }
-      if (instances.has(instance)) continue;
+      if (instances.has(instance)) {
+        continue;
+      }
       instances.add(instance);
       if (!options.paths.length) {
         throw new Error(
@@ -182,7 +188,9 @@ export class CommandRegistry {
       async catch(error: Error): Promise<void> {
         // Schema failures precede execute(); execution failures already have
         // initialized state, including any changes made by the Nest command.
-        if (!this.executionStarted) this.syncState();
+        if (!this.executionStarted) {
+          this.syncState();
+        }
         await instance.catch(error);
       }
     }

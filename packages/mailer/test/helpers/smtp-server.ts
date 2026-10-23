@@ -25,11 +25,15 @@ export async function createSmtpServer() {
         commands.push(command);
         if (command === "EHLO" || command === "HELO") {
           const greet = () => {
-            if (!socket.destroyed)
+            if (!socket.destroyed) {
               socket.write("250-localhost\r\n250 AUTH PLAIN\r\n");
+            }
           };
-          if (state.stalled) greetings.add(greet);
-          else greet();
+          if (state.stalled) {
+            greetings.add(greet);
+          } else {
+            greet();
+          }
         } else if (command === "AUTH") {
           socket.write(
             state.authenticate
@@ -54,13 +58,19 @@ export async function createSmtpServer() {
     state,
     resume: () => {
       state.stalled = false;
-      for (const greet of greetings) greet();
+      for (const greet of greetings) {
+        greet();
+      }
       greetings.clear();
     },
     close: async () => {
-      for (const socket of sockets) socket.destroy();
+      for (const socket of sockets) {
+        socket.destroy();
+      }
       greetings.clear();
-      if (!server.listening) return;
+      if (!server.listening) {
+        return;
+      }
       const closed = once(server, "close");
       server.close();
       await closed;

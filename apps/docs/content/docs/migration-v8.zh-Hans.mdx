@@ -40,9 +40,10 @@ CLI 配置继续使用 `@mikro-orm/*`、`mikro-orm.config.ts`。
 自定义请求上下文中间件的依赖名称从 `"mikro-orm"` 改为 `"database"`。请更新
 `RequestContext.registerMiddleware()` 的依赖参数，确保实体管理器先完成初始化。
 
-自定义 ESLint 配置中的 `@nest-boot/import-mikro-orm` 改为
-`@nest-boot/import-database`。自动修复会迁移具名导入并保留本地别名；命名空间导入
-需要手动迁移。
+删除旧 ESLint 导入迁移规则：`@nest-boot/import-mikro-orm`、
+`@nest-boot/import-database`、`@nest-boot/import-graphql`、`@nest-boot/import-bullmq`
+和 `@nest-boot/import-queue`，包括设为 off 的条目。包名、导入路径和 API 需要手动迁移。
+实体字段规则也不再迁移旧 MikroORM 导入或重导出，继续检查当前字段配置。
 
 ## 启用 ESM
 

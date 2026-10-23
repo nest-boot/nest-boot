@@ -236,13 +236,17 @@ export class MemberApiKeyService {
             { populate: ["workspace", "user"], refresh: true },
           )
         : (owner ?? RequestContext.get(Member));
-    if (!member) throw new NotFoundException("Workspace member not found");
-    if (member.status !== "ACTIVE")
+    if (!member) {
+      throw new NotFoundException("Workspace member not found");
+    }
+    if (member.status !== "ACTIVE") {
       throw new ForbiddenException("An active workspace member is required");
-    if (member.workspace.id !== workspace.id)
+    }
+    if (member.workspace.id !== workspace.id) {
       throw new ForbiddenException(
         "The operation belongs to another workspace",
       );
+    }
     if (
       member.type !== "SERVICE_ACCOUNT" &&
       (!RequestContext.get(User) ||
@@ -367,8 +371,9 @@ export class MemberApiKeyService {
   }
 
   private unwrapWorkspace(apiKey: ApiKeyMetadata<MemberApiKey>): Workspace {
-    if (!apiKey.member)
+    if (!apiKey.member) {
       throw new ForbiddenException("API key owner is missing");
+    }
     return Reference.unwrapReference(
       Reference.unwrapReference(apiKey.member).workspace,
     );
@@ -379,8 +384,9 @@ export class MemberApiKeyService {
     permissions: readonly string[],
   ): void {
     const ownerPermissions = resolveMemberPermissions(this.authOptions, member);
-    if (!permissions.length)
+    if (!permissions.length) {
       assertApiKeyPermissionCeiling(this.authOptions, permissions);
+    }
     assertPermissionCeiling(
       permissions,
       ownerPermissions,

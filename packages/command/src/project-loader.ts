@@ -13,7 +13,9 @@ export function resolveCliEntry(cwd: string, production: boolean): string {
     : ["src/cli.ts", "dist/cli.js"];
   for (const candidate of candidates) {
     const path = resolve(cwd, candidate);
-    if (existsSync(path) && statSync(path).isFile()) return path;
+    if (existsSync(path) && statSync(path).isFile()) {
+      return path;
+    }
   }
   throw new Error(
     `CLI entry not found in ${cwd}. Expected ${candidates.join(", ")}.`,

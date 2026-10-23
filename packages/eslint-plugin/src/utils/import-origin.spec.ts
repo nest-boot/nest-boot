@@ -19,14 +19,17 @@ const rule = createRule<[], "recognized">({
   create(context) {
     return {
       CallExpression(node) {
-        if (node.callee.type !== AST_NODE_TYPES.Identifier) return;
+        if (node.callee.type !== AST_NODE_TYPES.Identifier) {
+          return;
+        }
         const name = importedBindingName(
           context.sourceCode,
           "@nest-boot/database-crypt",
           node.callee,
         );
-        if (name === "EncryptedProperty")
+        if (name === "EncryptedProperty") {
           context.report({ node, messageId: "recognized", data: { name } });
+        }
       },
     };
   },

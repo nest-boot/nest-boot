@@ -129,8 +129,9 @@ describe("Database health HTTP integration", () => {
     "returns 503 after closing the %s and recovers after reconnecting",
     async (target) => {
       const { orm, connection } = await createApp();
-      if (target === "orm") await orm.close(true);
-      else {
+      if (target === "orm") {
+        await orm.close(true);
+      } else {
         const client = await connection.getNativeClient();
         await client.close();
       }

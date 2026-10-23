@@ -87,8 +87,12 @@ export function resolveBetterAuthOptions(
         userDeletionService.deleteUser(userId, beforeDelete),
       );
       // Publish the committed deletion before Better Auth runs afterDelete.
-      if (RequestContext.isActive() && RequestContext.get(User)?.id === userId)
+      if (
+        RequestContext.isActive() &&
+        RequestContext.get(User)?.id === userId
+      ) {
         RequestIdentity.clear(orm.em);
+      }
     },
   );
 
@@ -229,8 +233,12 @@ function copyBetterAuthOptions(
   target: BetterAuthOptions,
   source: AuthModuleOptions,
 ): void {
-  if (source.basePath !== undefined) target.basePath = source.basePath;
-  if (source.session !== undefined) target.session = source.session;
+  if (source.basePath !== undefined) {
+    target.basePath = source.basePath;
+  }
+  if (source.session !== undefined) {
+    target.session = source.session;
+  }
   if (source.trustedOrigins !== undefined) {
     target.trustedOrigins = source.trustedOrigins;
   }

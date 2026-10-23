@@ -90,8 +90,9 @@ describe.each(["bullmq", "custom_tasks"])("Job RLS in %s", (schema) => {
         ["app.user.id", userId],
         ["app.workspace.id", workspaceId],
       ]) {
-        if (value !== undefined)
+        if (value !== undefined) {
           await client.query("select set_config($1, $2, true)", [key, value]);
+        }
       }
       return await run(client);
     } finally {
@@ -117,7 +118,9 @@ describe.each(["bullmq", "custom_tasks"])("Job RLS in %s", (schema) => {
         ),
       );
       expect(result.rows.map((row) => row.id)).toEqual(ids);
-      for (const row of result.rows) expect(Number(row.total)).toBe(ids.length);
+      for (const row of result.rows) {
+        expect(Number(row.total)).toBe(ids.length);
+      }
     },
   );
 
@@ -184,7 +187,9 @@ describe.each(["bullmq", "custom_tasks"])("Job RLS in %s", (schema) => {
       ).toBe(true);
       const queue = new Queue("reports", { connection });
       try {
-        for (const id of completed) await queue.remove(id);
+        for (const id of completed) {
+          await queue.remove(id);
+        }
       } finally {
         await queue.close();
       }

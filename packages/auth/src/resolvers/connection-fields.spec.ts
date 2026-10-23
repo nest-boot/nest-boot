@@ -75,8 +75,9 @@ describe("connection field delegation", () => {
       getMemberConnectionByWorkspace,
       getUserApiKeyConnection,
       getMemberApiKeyConnection,
-    ])
+    ]) {
       mock.mockRejectedValue(new ForbiddenException());
+    }
     await expect(
       userResolver.workspaces(user, args, info),
     ).rejects.toBeInstanceOf(ForbiddenException);

@@ -131,7 +131,9 @@ describe("runAuthQuery with native RLS", () => {
         const operation = runAuthQuery(em, async (authEm) => {
           await authEm.getConnection().execute("select 1");
           RequestIdentity.clear(authEm);
-          if (failure) throw new Error("Persistence failed");
+          if (failure) {
+            throw new Error("Persistence failed");
+          }
           return "committed";
         });
         if (failure) {

@@ -55,7 +55,9 @@ export class AuthAbilityFactory {
       workspace: Workspace,
     };
     for (const permission of DEFAULT_USER_PERMISSIONS) {
-      if (!snapshot.userPermissions.includes(permission)) continue;
+      if (!snapshot.userPermissions.includes(permission)) {
+        continue;
+      }
       const [resource, action] = permission.split(":");
       builder.can(action, subjects[resource as keyof typeof subjects]);
     }
@@ -69,8 +71,9 @@ export class AuthAbilityFactory {
       if (
         !snapshot.workspace ||
         !snapshot.workspacePermissions.includes(permission)
-      )
+      ) {
         continue;
+      }
       // Invitation management is one member permission; keep entity checks for CASL conditions.
       if (permission === "member:invite") {
         builder.can(["read", "write"], Invitation, {
@@ -110,7 +113,7 @@ export class AuthAbilityFactory {
           ...args: Parameters<NonNullable<typeof options.buildAbility>>
         ) => unknown)
       | undefined = options.buildAbility;
-    if (configure)
+    if (configure) {
       extendAbility(
         builder,
         snapshot,
@@ -120,6 +123,7 @@ export class AuthAbilityFactory {
         },
         (rules) => configure(rules, snapshot),
       );
+    }
     // Members may edit their profile but cannot change their own active state.
     // Apply after extensions so the same invariant reaches every consumer.
     if (snapshot.member && snapshot.workspace) {
@@ -144,7 +148,9 @@ export class AuthAbilityFactory {
       for (const target of Array.isArray(rule.subject)
         ? rule.subject
         : [rule.subject]) {
-        if (typeof target === "function") classes.set(target.name, target);
+        if (typeof target === "function") {
+          classes.set(target.name, target);
+        }
       }
     }
     for (const rule of rules) {
@@ -154,7 +160,9 @@ export class AuthAbilityFactory {
       rule.subject = [
         ...new Set(
           targets.flatMap((target) => {
-            if (typeof target === "function") return [target, target.name];
+            if (typeof target === "function") {
+              return [target, target.name];
+            }
             const constructor = classes.get(target);
             return constructor ? [constructor, target] : [target];
           }),

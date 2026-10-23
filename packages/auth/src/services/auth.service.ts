@@ -96,7 +96,9 @@ export class AuthService {
     const session = RequestContext.isActive()
       ? RequestContext.get(Session)
       : null;
-    if (!session) throw new ForbiddenException("A user session is required");
+    if (!session) {
+      throw new ForbiddenException("A user session is required");
+    }
     const result = await this.userService.stopImpersonating(session);
     return result ? await this.adoptSession(result.session.token) : null;
   }
@@ -169,7 +171,9 @@ export class AuthService {
    */
   getCurrentUser(): User {
     const user = RequestContext.isActive() ? RequestContext.get(User) : null;
-    if (!user) throw new ForbiddenException("A user identity is required");
+    if (!user) {
+      throw new ForbiddenException("A user identity is required");
+    }
     return user;
   }
 
@@ -245,7 +249,9 @@ export class AuthService {
       headers: headers(),
       returnHeaders: true,
     });
-    if (result.response.success) this.authMiddleware.clearAuthentication();
+    if (result.response.success) {
+      this.authMiddleware.clearAuthentication();
+    }
     applyAuthResponseCookies(result.headers);
     return result.response.success;
   }
@@ -281,7 +287,9 @@ export class AuthService {
   async resetPassword(options: ResetPasswordOptions): Promise<boolean> {
     this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.resetPassword({ body: options });
-    if (result.status) await this.authMiddleware.revalidateCurrentSession();
+    if (result.status) {
+      await this.authMiddleware.revalidateCurrentSession();
+    }
     return result.status;
   }
 
@@ -310,7 +318,9 @@ export class AuthService {
       headers: headers(),
       returnHeaders: true,
     });
-    if (result.response.status) await this.authMiddleware.refreshCurrentUser();
+    if (result.response.status) {
+      await this.authMiddleware.refreshCurrentUser();
+    }
     applyAuthResponseCookies(result.headers);
     return result.response.status;
   }
@@ -330,7 +340,9 @@ export class AuthService {
       returnHeaders: true,
     });
     // A successful response may only queue verification; reload persisted state.
-    if (result.response.status) await this.authMiddleware.refreshCurrentUser();
+    if (result.response.status) {
+      await this.authMiddleware.refreshCurrentUser();
+    }
     applyAuthResponseCookies(result.headers);
     return result.response.status;
   }
@@ -343,8 +355,9 @@ export class AuthService {
   async changeCurrentUserPassword(
     options: ChangeAuthPasswordOptions,
   ): Promise<ChangeAuthPasswordResult> {
-    if (options.revokeOtherSessions)
+    if (options.revokeOtherSessions) {
       this.authMiddleware.assertAuthenticationCanChange();
+    }
     const result = await this.auth.api.changePassword({
       body: options,
       headers: headers(),

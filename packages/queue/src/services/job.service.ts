@@ -41,7 +41,9 @@ export class JobService {
   async getJob(id: string): Promise<Job | null> {
     const scope = this.getReadFilter();
     const separator = id.indexOf(":");
-    if (separator <= 0 || separator === id.length - 1) return null;
+    if (separator <= 0 || separator === id.length - 1) {
+      return null;
+    }
     return await this.em.findOne(
       Job,
       {

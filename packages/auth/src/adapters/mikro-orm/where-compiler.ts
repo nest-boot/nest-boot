@@ -79,7 +79,9 @@ export function convertWhereToMikroOrm(
     (_, index) => where[index].connector === "OR",
   );
 
-  if (orConditions.length === 0) return { $and: andConditions };
+  if (orConditions.length === 0) {
+    return { $and: andConditions };
+  }
   if (andConditions.length === 0) {
     return orConditions.length === 1 ? orConditions[0] : { $or: orConditions };
   }

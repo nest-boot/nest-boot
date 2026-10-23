@@ -93,7 +93,9 @@ async function createSmtpServer() {
     port: (server.address() as AddressInfo).port,
     sockets,
     close: async () => {
-      for (const socket of sockets) socket.destroy();
+      for (const socket of sockets) {
+        socket.destroy();
+      }
       const closed = once(server, "close");
       server.close();
       await closed;

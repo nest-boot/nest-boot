@@ -15,8 +15,9 @@ function isAvailable(name: string): boolean {
     import.meta.resolve(name);
     return true;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ERR_MODULE_NOT_FOUND")
+    if ((error as NodeJS.ErrnoException).code === "ERR_MODULE_NOT_FOUND") {
       return false;
+    }
     throw error;
   }
 }
@@ -32,7 +33,9 @@ export async function createJobProviders(): Promise<
     providers: [],
     exports: [],
   };
-  if (!isAvailable("@nest-boot/database")) return definition;
+  if (!isAvailable("@nest-boot/database")) {
+    return definition;
+  }
 
   const { DatabaseModule } = await import("@nest-boot/database");
   const { EntityManager } = await import("@mikro-orm/core");
@@ -60,8 +63,9 @@ export async function createJobProviders(): Promise<
           ![...modules.values()].some(
             (module) => module.metatype === DatabaseModule,
           )
-        )
+        ) {
           return null;
+        }
         return new JobService(em, options, queues);
       },
     },
@@ -95,8 +99,9 @@ export async function createJobProviders(): Promise<
           ![...modules.values()].some(
             (module) => module.metatype === GraphQLModule,
           )
-        )
+        ) {
           return null;
+        }
         if (!isAvailable("@nest-boot/graphql-connection")) {
           throw new Error(
             "Queue GraphQL queries require @nest-boot/graphql-connection",
@@ -111,7 +116,9 @@ export async function createJobProviders(): Promise<
       useFactory: async (
         service: InstanceType<typeof JobConnectionService> | null,
       ) => {
-        if (!service) return null;
+        if (!service) {
+          return null;
+        }
         const { JobResolver } = await import("./resolvers/job.resolver.js");
         return new JobResolver(service);
       },

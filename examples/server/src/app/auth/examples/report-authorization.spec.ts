@@ -66,11 +66,12 @@ describe('business authorization recipe', () => {
               status: 'ACTIVE',
             }),
           );
-          if (key !== undefined)
+          if (key !== undefined) {
             RequestContext.set(
               API_KEY,
               Object.assign(new UserApiKey(), { user, permissions: key }),
             );
+          }
           // Production requests are prepared by AuthGuard; manually prepare only this isolated test.
           new AuthGuard(
             new Reflector(),
@@ -103,12 +104,13 @@ describe('business authorization recipe', () => {
           expect(
             frontend.can('read', createAbilitySubject('Report', report)),
           ).toBe(canRead);
-          if (canRead)
+          if (canRead) {
             await expect(service.getReport(report.id)).resolves.toBe(report);
-          else
+          } else {
             await expect(service.getReport(report.id)).rejects.toThrow(
               ForbiddenException,
             );
+          }
           if (archive) {
             await expect(
               service.archiveReport(report.id),

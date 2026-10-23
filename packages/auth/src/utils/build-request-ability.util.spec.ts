@@ -42,7 +42,9 @@ describe("framework-owned request abilities", () => {
         permissions: ["article:update"],
       },
     });
-    if (!ability) throw new Error("Expected user ability");
+    if (!ability) {
+      throw new Error("Expected user ability");
+    }
     expect(ability.can("read", new User())).toBe(true);
     expect(ability.can("delete", new User())).toBe(false);
     fields.push("private");
@@ -152,7 +154,9 @@ describe("framework-owned request abilities", () => {
       },
     };
     const ability = buildRequestAbility(options);
-    if (!ability) throw new Error("Expected a user ability");
+    if (!ability) {
+      throw new Error("Expected a user ability");
+    }
     expect(ability.can("read", subject("Article", { authorId: "me" }))).toBe(
       true,
     );

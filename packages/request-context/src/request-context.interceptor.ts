@@ -91,8 +91,12 @@ export class RequestContextInterceptor implements NestInterceptor {
       type: "http",
     });
 
-    if (request) ctx.set<Request>(CTX_REQUEST_TOKEN, request);
-    if (response) ctx.set<Response>(CTX_RESPONSE_TOKEN, response);
+    if (request) {
+      ctx.set<Request>(CTX_REQUEST_TOKEN, request);
+    }
+    if (response) {
+      ctx.set<Response>(CTX_RESPONSE_TOKEN, response);
+    }
 
     return new Observable((subscriber) => {
       let resolveTermination!: () => void;

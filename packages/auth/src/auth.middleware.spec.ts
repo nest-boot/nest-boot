@@ -157,9 +157,11 @@ describe("AuthMiddleware", () => {
       const findOne = vi.fn();
       const { middleware, em } = await createMiddleware(vi.fn(), findOne);
       mockRlsContext(em);
-      if (state === "failure")
+      if (state === "failure") {
         findOne.mockRejectedValue(new Error("Database unavailable"));
-      else findOne.mockResolvedValue(state === "valid" ? session : null);
+      } else {
+        findOne.mockResolvedValue(state === "valid" ? session : null);
+      }
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -170,11 +172,13 @@ describe("AuthMiddleware", () => {
           RequestContext.set(SessionEntity, session);
           RequestContext.set(WorkspaceEntity, new TestWorkspace());
           RequestContext.set(AuthAbility, ability);
-          if (state === "failure")
+          if (state === "failure") {
             await expect(middleware.revalidateCurrentSession()).rejects.toThrow(
               "Database unavailable",
             );
-          else await middleware.revalidateCurrentSession();
+          } else {
+            await middleware.revalidateCurrentSession();
+          }
           expect(findOne).toHaveBeenCalledWith(
             SessionEntity,
             {
@@ -313,8 +317,9 @@ describe("AuthMiddleware", () => {
         SessionEntity,
         WorkspaceEntity,
         MemberEntity,
-      ])
+      ]) {
         expect(RequestContext.get(token)).toBeNull();
+      }
       expect(RequestContext.get(API_KEY)).toBeNull();
       expect(RequestContext.get(AuthAbility)?.can("read", UserEntity)).toBe(
         false,

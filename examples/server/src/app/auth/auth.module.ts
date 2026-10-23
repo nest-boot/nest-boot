@@ -34,7 +34,9 @@ import { Module } from '@nestjs/common';
           url.searchParams.set('invitationId', id);
 
           const mailer = RequestContext.get(Mailer);
-          if (!mailer) throw new Error('Mailer is unavailable');
+          if (!mailer) {
+            throw new Error('Mailer is unavailable');
+          }
 
           await mailer.sendMail({
             to: email,

@@ -60,7 +60,7 @@ pnpm lint
 pnpm test:cov
 ```
 
-`pnpm test:cov` 的 CI 环境会提供 PostgreSQL、Redis 和 RustFS。没有同等服务时只运行可证明的子集，并在 PR 中明确未运行项。公开包内容变化时酌情运行 `pnpm --filter @nest-boot/<package> pack --dry-run`；发布流程变化才运行 `pnpm release:status` 和 `pnpm test:release`。
+`pnpm test:cov` 的 CI 环境会提供 PostgreSQL、Redis 和 RustFS。没有同等服务时只运行可证明的子集，并在 PR 中明确未运行项。公开包内容变化时酌情运行 `pnpm --filter @nest-boot/<package> pack --dry-run`；发布流程变化才运行 `pnpm release:status`。
 
 提交前检查：
 

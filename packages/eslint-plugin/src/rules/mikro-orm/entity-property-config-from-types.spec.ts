@@ -3,6 +3,12 @@ import rule from "./entity-property-config-from-types.js";
 
 tester.run("entity-property-config-from-types", rule, {
   valid: [
+    // Import migration is outside the field configuration rule's scope.
+    'import { Entity, Property } from "@mikro-orm/core";',
+    'import * as orm from "@mikro-orm/postgresql"; @orm.Entity() class Thing {}',
+    'import type { Opt } from "@mikro-orm/knex";',
+    'export { Entity as Model, Property } from "@mikro-orm/core";',
+    'export * from "@mikro-orm/core";',
     // Correct string type
     /* typescript */ `
       import { Entity, Property } from "@mikro-orm/decorators/legacy";

@@ -109,10 +109,14 @@ it.each(["singleton", "request", "bubbled", "transient"])(
       expect(first.signal).toBe(signal);
       expect(first.worker).toBe(worker);
       expect(second.worker).toBe(worker);
-      if (mode === "singleton") expect(first.consumer).toBe(second.consumer);
-      else expect(first.consumer).not.toBe(second.consumer);
-      if (mode === "bubbled")
+      if (mode === "singleton") {
+        expect(first.consumer).toBe(second.consumer);
+      } else {
+        expect(first.consumer).not.toBe(second.consumer);
+      }
+      if (mode === "bubbled") {
         expect(first.consumer.dependency).not.toBe(second.consumer.dependency);
+      }
       worker.emit("completed", { id: "1" });
       await Promise.resolve();
       expect(events).toHaveBeenCalledTimes(mode === "singleton" ? 1 : 0);

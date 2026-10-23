@@ -21,7 +21,9 @@ export function createUserConfig(
   options?: AuthModuleUserOptions,
   deleteUser?: DeleteUser,
 ): UserConfig | undefined {
-  if (!options) return undefined;
+  if (!options) {
+    return undefined;
+  }
 
   const config: UserConfig = {};
   if (options.changeEmail !== undefined) {
@@ -48,10 +50,16 @@ export function createUserConfig(
     };
   }
 
-  if (!config.changeEmail && !config.deleteUser) return undefined;
+  if (!config.changeEmail && !config.deleteUser) {
+    return undefined;
+  }
 
-  if (!config.changeEmail?.enabled) return config;
-  if (config.changeEmail.sendChangeEmailConfirmation) return config;
+  if (!config.changeEmail?.enabled) {
+    return config;
+  }
+  if (config.changeEmail.sendChangeEmailConfirmation) {
+    return config;
+  }
 
   return {
     ...config,

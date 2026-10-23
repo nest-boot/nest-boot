@@ -72,12 +72,15 @@ describe("RequestIdentity", () => {
             : credential === "user-key"
               ? Object.assign(new UserApiKey(), { user, permissions: [] })
               : Object.assign(new MemberApiKey(), { member, permissions: [] });
-        if (state === "wrong-workspace")
+        if (state === "wrong-workspace") {
           Object.assign(member, { workspace: new Workspace() });
+        }
         if (state === "wrong-owner") {
-          if (apiKey instanceof MemberApiKey)
+          if (apiKey instanceof MemberApiKey) {
             Object.assign(apiKey, { member: new Member() });
-          else Object.assign(member, { user: new User() });
+          } else {
+            Object.assign(member, { user: new User() });
+          }
         }
         const valid = state === "active";
         await RequestContext.run(new RequestContext({ type: "test" }), () => {
@@ -277,15 +280,18 @@ describe("RequestIdentity", () => {
       const em = manager();
       const options: AuthModuleOptions = {
         buildAbility: (_rules) => {
-          if (failure === "ability") throw new Error("Ability failed");
+          if (failure === "ability") {
+            throw new Error("Ability failed");
+          }
         },
 
         workspace: {},
       };
-      if (failure === "database")
+      if (failure === "database") {
         vi.mocked(em.setSessionContext).mockImplementationOnce(() => {
           throw new Error("Database failed");
         });
+      }
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         RequestIdentity.stage({
           user: Object.assign(new User(), { id: "old" }),

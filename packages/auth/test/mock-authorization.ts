@@ -65,7 +65,9 @@ export function restoreAuthorization(): void {
   ] as const) {
     for (const name of names) {
       const check = Reflect.get(target, name);
-      if (vi.isMockFunction(check)) check.mockRestore();
+      if (vi.isMockFunction(check)) {
+        check.mockRestore();
+      }
     }
   }
 }

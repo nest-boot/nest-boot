@@ -41,7 +41,9 @@ class HiddenQueue extends BaseQueue {}
 class ReportsProcessor extends BaseProcessor {
   async process(job: BullJob) {
     await job.updateProgress({ done: 1 });
-    if (job.data.fail) throw new Error("expected failure");
+    if (job.data.fail) {
+      throw new Error("expected failure");
+    }
     return { saved: true };
   }
 }

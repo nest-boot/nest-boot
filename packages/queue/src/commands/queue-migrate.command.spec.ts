@@ -83,9 +83,11 @@ it("falls back to QUEUE_DATABASE_URL before DATABASE_URL", async () => {
 it.each(["connect", "migration"])(
   "closes its client when %s fails",
   async (stage) => {
-    if (stage === "connect")
+    if (stage === "connect") {
       client.connect.mockRejectedValue(new Error("failed"));
-    else vi.mocked(runMigrations).mockRejectedValue(new Error("failed"));
+    } else {
+      vi.mocked(runMigrations).mockRejectedValue(new Error("failed"));
+    }
     await expect(command().execute()).rejects.toThrow("failed");
     expect(client.end).toHaveBeenCalledOnce();
   },

@@ -58,7 +58,9 @@ export class AuthGuard implements CanActivate {
       CAN_METADATA,
       [context.getHandler(), context.getClass()],
     );
-    if (!metadata?.length) return true;
+    if (!metadata?.length) {
+      return true;
+    }
     for (const requirement of metadata) {
       // Require a prepared identity before resolving a protected subject callback.
       getAuthAbility();
@@ -66,7 +68,9 @@ export class AuthGuard implements CanActivate {
         requirement.subjectCallback,
         context,
       );
-      if (!can(requirement.action, subject)) return false;
+      if (!can(requirement.action, subject)) {
+        return false;
+      }
     }
     return true;
   }
@@ -93,7 +97,9 @@ export class AuthGuard implements CanActivate {
    * @returns `true` when the request is authenticated.
    */
   protected isAuthenticated(): boolean {
-    if (!RequestContext.isActive()) return false;
+    if (!RequestContext.isActive()) {
+      return false;
+    }
     return !!RequestContext.get(Session) || !!getCurrentApiKey();
   }
 

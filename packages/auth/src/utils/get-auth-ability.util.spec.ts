@@ -12,9 +12,12 @@ describe("getAuthAbility().rules", () => {
   });
   it.each(["identity", "ability"])("rejects a missing %s", async (missing) => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      if (missing !== "identity") RequestContext.set(User, new User());
-      if (missing !== "ability")
+      if (missing !== "identity") {
+        RequestContext.set(User, new User());
+      }
+      if (missing !== "ability") {
         RequestContext.set(AuthAbility, new AuthAbility());
+      }
       expect(() => getAuthAbility().rules).toThrow(ForbiddenException);
     });
   });

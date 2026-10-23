@@ -35,11 +35,14 @@ export class QueueRunCommand extends BaseCommand {
         this.registrar.start(this.queues),
         interrupted,
       ]);
-      if (!names) return;
-      if (!names.length)
+      if (!names) {
+        return;
+      }
+      if (!names.length) {
         throw new Error(
           "No queue processors or event listeners are registered for the selected queues.",
         );
+      }
       this.context.stdout.write(
         `Queue workers running: ${names.join(", ")}.\n`,
       );

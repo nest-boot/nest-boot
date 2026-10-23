@@ -14,10 +14,12 @@ export function getAuthAbility(): AuthAbility {
   if (
     !RequestContext.isActive() ||
     (!RequestContext.get(User) && !getCurrentApiKey())
-  )
+  ) {
     throw new ForbiddenException("Permission ability is not available");
+  }
   const ability = RequestContext.get(AuthAbility);
-  if (!ability)
+  if (!ability) {
     throw new ForbiddenException("Permission ability is not available");
+  }
   return ability;
 }

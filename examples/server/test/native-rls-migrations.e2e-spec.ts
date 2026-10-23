@@ -1006,8 +1006,9 @@ describe('example native RLS migrations with PGlite', () => {
     for (const policy of policies) {
       expect(policy.qual).toContain('app.workspace.id');
       expect(policy.qual).not.toContain('app.workspace_id');
-      if (policy.with_check)
+      if (policy.with_check) {
         expect(policy.with_check).toContain('app.workspace.id');
+      }
     }
   });
 
@@ -2177,8 +2178,9 @@ describe('example native RLS migrations with PGlite', () => {
           scope === 'foreign' ? current.id : targetWorkspace.id,
           identity === 'anonymous' || identity === 'member-key' ? '' : user.id,
         );
-        if (identity === 'anonymous')
+        if (identity === 'anonymous') {
           em.setSessionContext({ role: 'anonymous' });
+        }
         if (scope === 'deleted') {
           // Simulate deletion after authentication; foreign keys remove all children.
           await admin.nativeDelete(Workspace, targetWorkspace.id);
@@ -2237,8 +2239,11 @@ describe('example native RLS migrations with PGlite', () => {
           (scope === 'foreign' && identity === 'self' && table === 'member');
         expect(await read()).toHaveLength(canRead ? 1 : 0);
         expect(await update()).toHaveLength(canWrite ? 1 : 0);
-        if (canWrite) await insert();
-        else await expect(insert()).rejects.toThrow(/row.level security/i);
+        if (canWrite) {
+          await insert();
+        } else {
+          await expect(insert()).rejects.toThrow(/row.level security/i);
+        }
         expect(await remove()).toHaveLength(canWrite ? 1 : 0);
       },
     );

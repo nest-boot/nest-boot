@@ -190,8 +190,11 @@ describe("DatabaseHealthIndicator", () => {
         }
         expect(connection.checkConnection).toHaveBeenCalledOnce();
       } finally {
-        if (settlement === "resolve") complete({ ok: true });
-        else reject(new Error("late failure"));
+        if (settlement === "resolve") {
+          complete({ ok: true });
+        } else {
+          reject(new Error("late failure"));
+        }
         await pending.catch(() => undefined);
         ping.mockRestore();
       }

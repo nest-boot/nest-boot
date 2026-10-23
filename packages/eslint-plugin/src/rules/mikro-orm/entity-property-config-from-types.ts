@@ -15,10 +15,6 @@ import {
   namedImportEdits,
   promoteImportReferences,
 } from "../../utils/named-imports.js";
-import {
-  legacyDecoratorImports,
-  legacyNamespaceEdits,
-} from "./legacy-decorator-imports.js";
 
 // Custom Fix object type for deferred fix application
 interface CustomFix {
@@ -43,7 +39,6 @@ export default createRule<
   | "useEnumDecorator"
   | "useOptTypeForInitializedProperty"
   | "removeOptTypeForNonInitializedProperty"
-  | "useLegacyDecoratorImports"
 >({
   name: "entity-property-config-from-types",
   meta: {
@@ -55,8 +50,6 @@ export default createRule<
     fixable: "code",
     schema: [],
     messages: {
-      useLegacyDecoratorImports:
-        "Import MikroORM helpers from @mikro-orm/core and decorators from @mikro-orm/decorators/legacy.",
       alignPropertyDecoratorWithTsType:
         "@Property decorator should align with the TypeScript type (type and nullable).",
       removePropertyDecorator:
@@ -73,32 +66,6 @@ export default createRule<
   create(context) {
     const source = context.sourceCode;
     let importLocation: TSESTree.Node = source.ast;
-    const namespaceEdits = legacyNamespaceEdits(source);
-    if (namespaceEdits.length)
-      return {
-        Program(node) {
-          context.report({
-            node,
-            messageId: "useLegacyDecoratorImports",
-            fix: () => namespaceEdits,
-          });
-        },
-      };
-    const legacyImports = legacyDecoratorImports(source);
-    if (legacyImports.length > 0) {
-      // Let ESLint reparse migrated imports before generating property fixes.
-      return {
-        Program() {
-          for (const { node, text } of legacyImports) {
-            context.report({
-              node,
-              messageId: "useLegacyDecoratorImports",
-              fix: (fixer) => fixer.replaceText(node, text),
-            });
-          }
-        },
-      };
-    }
     const coreModule = "@mikro-orm/core";
     const decoratorsModule = "@mikro-orm/decorators/legacy";
     const coreName = (local: TSESTree.Node) =>
@@ -154,7 +121,9 @@ export default createRule<
     };
 
     const getPropertyType = (typeName: string | null): string | null => {
-      if (!typeName) return null;
+      if (!typeName) {
+        return null;
+      }
 
       switch (typeName) {
         case "String":
@@ -177,7 +146,9 @@ export default createRule<
     };
 
     const isValidStringType = (typeConfig: string | null): boolean => {
-      if (!typeConfig) return false;
+      if (!typeConfig) {
+        return false;
+      }
 
       // Accept t.string, t.text, t.uuid, t.decimal, t.bigint
       if (
@@ -216,7 +187,9 @@ export default createRule<
     };
 
     const isValidNumberType = (typeConfig: string | null): boolean => {
-      if (!typeConfig) return false;
+      if (!typeConfig) {
+        return false;
+      }
 
       // Accept t.integer, t.float, t.double, t.decimal
       if (
@@ -254,7 +227,9 @@ export default createRule<
     };
 
     const isValidNumberArrayType = (typeConfig: string | null): boolean => {
-      if (!typeConfig) return false;
+      if (!typeConfig) {
+        return false;
+      }
 
       // Accept t.array (default)
       if (typeConfig === "t.array") {
@@ -275,7 +250,9 @@ export default createRule<
     };
 
     const isValidDateType = (typeConfig: string | null): boolean => {
-      if (!typeConfig) return false;
+      if (!typeConfig) {
+        return false;
+      }
 
       // Accept t.datetime, t.date, t.time
       if (
@@ -377,7 +354,9 @@ export default createRule<
             t.type === AST_NODE_TYPES.TSUndefinedKeyword
           );
         });
-        if (hasNullish) isNullable = true;
+        if (hasNullish) {
+          isNullable = true;
+        }
 
         baseTypeNode =
           baseTypeNode.types.find((t: TSESTree.TypeNode) => {
@@ -402,7 +381,9 @@ export default createRule<
               t.type === AST_NODE_TYPES.TSUndefinedKeyword
             );
           });
-          if (hasNullish) isNullable = true;
+          if (hasNullish) {
+            isNullable = true;
+          }
           inner =
             inner.types.find((t: TSESTree.TypeNode) => {
               return (
@@ -440,7 +421,7 @@ export default createRule<
         if (property.value?.type === AST_NODE_TYPES.Literal) {
           const value = property.value.value;
           const typeOf = typeof value;
-          if (typeOf === "boolean")
+          if (typeOf === "boolean") {
             return {
               typeName: "boolean",
               isArray,
@@ -449,7 +430,8 @@ export default createRule<
               propertyType: isArray ? "t.json" : getPropertyType("boolean"),
               arrayElementTypeName: isArray ? "boolean" : undefined,
             };
-          if (typeOf === "number")
+          }
+          if (typeOf === "number") {
             return {
               typeName: "number",
               isArray,
@@ -458,7 +440,8 @@ export default createRule<
               propertyType: isArray ? "t.array" : getPropertyType("number"),
               arrayElementTypeName: isArray ? "number" : undefined,
             };
-          if (typeOf === "string")
+          }
+          if (typeOf === "string") {
             return {
               typeName: "string",
               isArray,
@@ -467,6 +450,7 @@ export default createRule<
               propertyType: isArray ? "t.array" : getPropertyType("string"),
               arrayElementTypeName: isArray ? "string" : undefined,
             };
+          }
         }
         return null;
       }
@@ -740,9 +724,12 @@ export default createRule<
       const otherProps: { key: string; value: string }[] = [];
 
       for (const prop of firstArg.properties) {
-        if (prop.type !== AST_NODE_TYPES.Property) continue;
-        if (prop.key.type !== AST_NODE_TYPES.Identifier || !prop.key.name)
+        if (prop.type !== AST_NODE_TYPES.Property) {
           continue;
+        }
+        if (prop.key.type !== AST_NODE_TYPES.Identifier || !prop.key.name) {
+          continue;
+        }
 
         if (prop.key.name === "type") {
           type = source.getText(prop.value);
@@ -797,9 +784,12 @@ export default createRule<
       let nullable = false;
 
       for (const prop of firstArg.properties) {
-        if (prop.type !== AST_NODE_TYPES.Property) continue;
-        if (prop.key.type !== AST_NODE_TYPES.Identifier || !prop.key.name)
+        if (prop.type !== AST_NODE_TYPES.Property) {
           continue;
+        }
+        if (prop.key.type !== AST_NODE_TYPES.Identifier || !prop.key.name) {
+          continue;
+        }
 
         if (prop.key.name === "items") {
           items = source.getText(prop.value);
@@ -856,7 +846,9 @@ export default createRule<
 
     return {
       ClassDeclaration(node) {
-        if (!isEntityClass(node)) return;
+        if (!isEntityClass(node)) {
+          return;
+        }
         importLocation = node;
         const runtimeReferences: TSESTree.Node[] = [
           ...node.decorators,
@@ -870,15 +862,20 @@ export default createRule<
             : [],
         );
         for (const member of node.body.body) {
-          if (member.type !== AST_NODE_TYPES.PropertyDefinition) continue;
+          if (member.type !== AST_NODE_TYPES.PropertyDefinition) {
+            continue;
+          }
           for (const decorator of member.decorators) {
             if (
               decorator.expression.type !== AST_NODE_TYPES.CallExpression ||
               decoratorName(decorator.expression.callee) === null
-            )
+            ) {
               continue;
+            }
             const reference = parsePropertyDecorator(decorator).typeReference;
-            if (reference) runtimeReferences.push(reference);
+            if (reference) {
+              runtimeReferences.push(reference);
+            }
           }
         }
         const promotions = promoteImportReferences(source, runtimeReferences);
@@ -895,7 +892,9 @@ export default createRule<
         checkOptUsageWithoutImport(node);
 
         node.body.body.forEach((member: TSESTree.ClassElement) => {
-          if (member.type !== AST_NODE_TYPES.PropertyDefinition) return;
+          if (member.type !== AST_NODE_TYPES.PropertyDefinition) {
+            return;
+          }
 
           // Check relation decorators (OneToOne, OneToMany, ManyToOne, ManyToMany)
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -915,7 +914,9 @@ export default createRule<
           );
 
           // If there are relation decorators, skip checking (these properties don't need @Property)
-          if (hasRelationDecorator) return;
+          if (hasRelationDecorator) {
+            return;
+          }
 
           // Property-like decorators (decorators that need type checking)
           const propertyLikeDecorators = [
@@ -967,7 +968,9 @@ export default createRule<
 
           const typeInfo = computeTypeInfo(member);
 
-          if (!typeInfo?.typeName) return;
+          if (!typeInfo?.typeName) {
+            return;
+          }
 
           // Check initializer and Opt<T> type match
           const hasInitializer = member.value !== null;
@@ -1019,9 +1022,13 @@ export default createRule<
 
               if (member.value.type === AST_NODE_TYPES.Literal) {
                 const valueType = typeof member.value.value;
-                if (valueType === "boolean") inferredType = "boolean";
-                else if (valueType === "number") inferredType = "number";
-                else if (valueType === "string") inferredType = "string";
+                if (valueType === "boolean") {
+                  inferredType = "boolean";
+                } else if (valueType === "number") {
+                  inferredType = "number";
+                } else if (valueType === "string") {
+                  inferredType = "string";
+                }
               } else if (member.value.type === AST_NODE_TYPES.ArrayExpression) {
                 // Empty array [] case, need to infer type from @Property decorator
                 inferredType = "unknown[]";
@@ -1216,7 +1223,9 @@ export default createRule<
             needReport = true;
           }
 
-          if (!needReport) return;
+          if (!needReport) {
+            return;
+          }
 
           context.report({
             node: member,

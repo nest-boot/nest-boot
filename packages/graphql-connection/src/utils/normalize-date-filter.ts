@@ -31,7 +31,9 @@ function isDateOnly(value: unknown): value is string {
  */
 function dayStart(value: string, timezoneOffset: number): Date {
   const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!parts) throw new RangeError("Expected a YYYY-MM-DD date");
+  if (!parts) {
+    throw new RangeError("Expected a YYYY-MM-DD date");
+  }
   const year = Number(parts[1]);
   const month = Number(parts[2]) - 1;
   const day = Number(parts[3]);
@@ -99,7 +101,9 @@ function dateCondition(
     const included = { $or: alternatives };
     return operator === "$nin" ? { $not: included } : included;
   }
-  if (!isDateOnly(value)) return { [field]: { [operator]: value } };
+  if (!isDateOnly(value)) {
+    return { [field]: { [operator]: value } };
+  }
 
   const start = dayStart(value, timezoneOffset).toISOString();
   switch (operator) {
@@ -140,7 +144,9 @@ export function normalizeDateFilter(
   timezoneOffset: number,
   path = "",
 ): unknown {
-  if (!isObject(value)) return value;
+  if (!isObject(value)) {
+    return value;
+  }
   const clauses = Object.entries(value).map(
     ([field, condition]): FilterObject => {
       if ((field === "$and" || field === "$or") && Array.isArray(condition)) {
@@ -171,11 +177,15 @@ export function normalizeDateFilter(
           ),
         };
       }
-      if (isDateOnly(condition))
+      if (isDateOnly(condition)) {
         return dateCondition(field, "$eq", condition, timezoneOffset);
-      if (Array.isArray(condition))
+      }
+      if (Array.isArray(condition)) {
         return dateCondition(field, "$in", condition, timezoneOffset);
-      if (!isObject(condition)) return { [field]: condition };
+      }
+      if (!isObject(condition)) {
+        return { [field]: condition };
+      }
       if (
         !Object.values(condition).some(
           (operand) =>

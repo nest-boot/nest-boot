@@ -22,7 +22,9 @@ export function reexportedImportName(
   namespaceMember?: string,
 ): string | null {
   const { program, esTreeNodeToTSNodeMap } = source.parserServices ?? {};
-  if (!program || !esTreeNodeToTSNodeMap) return null;
+  if (!program || !esTreeNodeToTSNodeMap) {
+    return null;
+  }
   const checker = program.getTypeChecker();
   const original = esTreeNodeToTSNodeMap.get(node);
   const unalias = (symbol: ts.Symbol) =>
@@ -32,10 +34,14 @@ export function reexportedImportName(
   const reference = namespaceMember
     ? checker.getTypeAtLocation(original).getProperty(namespaceMember)
     : checker.getSymbolAtLocation(original);
-  if (!reference) return null;
+  if (!reference) {
+    return null;
+  }
   const symbol = unalias(reference);
   const declarations = symbol.getDeclarations();
-  if (!declarations?.length) return null;
+  if (!declarations?.length) {
+    return null;
+  }
   const candidates = typeof modules === "string" ? [modules] : modules;
   const key = JSON.stringify(candidates);
   const cache: ProgramCache = programs.get(program) ?? {
@@ -45,7 +51,9 @@ export function reexportedImportName(
   programs.set(program, cache);
   const names = cache.names.get(symbol) ?? new Map<string, string | null>();
   cache.names.set(symbol, names);
-  if (names.has(key)) return names.get(key) ?? null;
+  if (names.has(key)) {
+    return names.get(key) ?? null;
+  }
 
   // Resolving from a declaration also supports relative imports into workspace
   // packages whose public entry point is available through package self-reference.
@@ -100,22 +108,32 @@ function moduleSourceFiles(
 ): ts.SourceFile[] {
   const files = new Set<ts.SourceFile>();
   const declaration = program.getSourceFile(filename);
-  if (declaration) files.add(declaration);
-  if (!/\.d\.[cm]?ts$/.test(filename)) return [...files];
+  if (declaration) {
+    files.add(declaration);
+  }
+  if (!/\.d\.[cm]?ts$/.test(filename)) {
+    return [...files];
+  }
   for (const mapFile of [
     filename + ".map",
     filename.replace(/\.d\.([cm]?)ts$/, ".$1js.map"),
   ]) {
     const content = ts.sys.readFile(mapFile);
-    if (!content) continue;
+    if (!content) {
+      continue;
+    }
     try {
       const map = JSON.parse(content) as {
         sourceRoot?: unknown;
         sources?: unknown;
       } | null;
-      if (!map || !Array.isArray(map.sources)) continue;
+      if (!map || !Array.isArray(map.sources)) {
+        continue;
+      }
       for (const source of map.sources) {
-        if (typeof source !== "string") continue;
+        if (typeof source !== "string") {
+          continue;
+        }
         const file = program.getSourceFile(
           path.resolve(
             path.dirname(mapFile),
@@ -123,7 +141,9 @@ function moduleSourceFiles(
             source,
           ),
         );
-        if (file) files.add(file);
+        if (file) {
+          files.add(file);
+        }
       }
     } catch {
       // An unavailable or malformed source map cannot establish an origin.

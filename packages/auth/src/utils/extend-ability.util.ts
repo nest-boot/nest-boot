@@ -27,8 +27,9 @@ export function extendAbility(
   const restrictions: Parameters<AbilityRules["cannot"]>[] = [];
   let active = true;
   const assertActive = () => {
-    if (!active)
+    if (!active) {
       throw new Error("Ability rules can only be configured synchronously");
+    }
   };
   const rules: AbilityRules = Object.freeze({
     can(
@@ -41,16 +42,19 @@ export function extendAbility(
         typeof permission !== "object" ||
         (typeof permission.user === "string") ===
           (typeof permission.workspace === "string")
-      )
+      ) {
         throw new Error(
           "Ability grants require exactly one user or workspace permission",
         );
+      }
       const scope = typeof permission.user === "string" ? "user" : "workspace";
       const name = permission.user ?? permission.workspace;
-      if (typeof name !== "string")
+      if (typeof name !== "string") {
         throw new Error("Ability grants require a permission name");
-      if (!catalog[scope].includes(name))
+      }
+      if (!catalog[scope].includes(name)) {
         throw new Error(`Unknown ${scope} ability permission: ${name}`);
+      }
       const subjects = Array.isArray(rule[1]) ? rule[1] : [rule[1]];
       if (
         subjects.some(
@@ -65,16 +69,18 @@ export function extendAbility(
                   target.prototype instanceof entity,
             ),
         )
-      )
+      ) {
         throw new Error(
           "Custom grants cannot target built-in auth subjects or all",
         );
+      }
       if (
         context[
           scope === "user" ? "userPermissions" : "workspacePermissions"
         ].includes(name)
-      )
+      ) {
         addRule(builder, copyRule(rule), false);
+      }
     },
     cannot(...rule: Parameters<AbilityRules["cannot"]>) {
       assertActive();
@@ -82,12 +88,15 @@ export function extendAbility(
     },
   });
   try {
-    if (configure(rules) !== undefined)
+    if (configure(rules) !== undefined) {
       throw new Error(
         "buildAbility must not return a value; auth builds the ability",
       );
+    }
     // Restrictions always win, regardless of callback declaration order.
-    for (const rule of restrictions) addRule(builder, rule, true);
+    for (const rule of restrictions) {
+      addRule(builder, rule, true);
+    }
   } finally {
     active = false;
   }

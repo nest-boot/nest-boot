@@ -8,7 +8,9 @@ import { entities, QueueEvent } from "./entities/index.js";
  * @param schema - Schema used by BullMQ migrations and connections.
  */
 function configureQueueMetadata(meta: EntityMetadata, schema: string): void {
-  if (!entities.some((entity) => entity === meta.class)) return;
+  if (!entities.some((entity) => entity === meta.class)) {
+    return;
+  }
   meta.schema = schema;
   if (meta.class === QueueEvent) {
     const namespace = /^[a-z_][a-z0-9_$]*$/.test(schema)
@@ -51,10 +53,11 @@ export function withQueueDatabaseConfig<T extends object>(
       ...config.discovery,
       onMetadata(meta, platform) {
         const pending = onMetadata?.(meta, platform);
-        if (pending)
+        if (pending) {
           return pending.then(() => {
             configureQueueMetadata(meta, schema);
           });
+        }
         configureQueueMetadata(meta, schema);
       },
     },

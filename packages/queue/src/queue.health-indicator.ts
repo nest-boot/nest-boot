@@ -30,10 +30,14 @@ export class QueueHealthIndicator implements OnApplicationBootstrap {
 
   /** Registers one check per queue instance after application modules initialize. */
   onApplicationBootstrap(): void {
-    if (!this.registry) return;
+    if (!this.registry) {
+      return;
+    }
     const queues = new Set<BaseQueue>();
     for (const provider of this.discoveryService.getProviders()) {
-      if (provider.instance instanceof BaseQueue) queues.add(provider.instance);
+      if (provider.instance instanceof BaseQueue) {
+        queues.add(provider.instance);
+      }
     }
     for (const queue of queues) {
       this.registry.register(() => this.check(`queue.${queue.name}`, queue));
@@ -55,11 +59,14 @@ export class QueueHealthIndicator implements OnApplicationBootstrap {
     return await this.healthIndicator
       .check(key)
       .attempt(async ({ signal }) => {
-        if (queue.closing) throw new Error("Queue is closing");
+        if (queue.closing) {
+          throw new Error("Queue is closing");
+        }
         await queue.waitUntilReady();
         signal.throwIfAborted();
-        if (queue.closing || queue.getBackend().connection.isClosing)
+        if (queue.closing || queue.getBackend().connection.isClosing) {
           throw new Error("Queue connection is closing");
+        }
         // Share commands that outlive a timeout instead of queueing more reads.
         let read = this.pendingReads.get(queue);
         if (!read) {

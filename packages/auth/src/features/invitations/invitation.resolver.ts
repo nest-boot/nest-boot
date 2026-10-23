@@ -98,7 +98,9 @@ export class InvitationResolver {
     @CurrentUser() user: User,
   ): Promise<AcceptInvitationPayload> {
     const result = await this.invitationService.acceptInvitation(user, id);
-    if (!result) throw new NotFoundException("Workspace invitation not found");
+    if (!result) {
+      throw new NotFoundException("Workspace invitation not found");
+    }
     return {
       id: result.invitation.id,
       memberId: result.member.id,

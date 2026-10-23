@@ -15,11 +15,27 @@ describe("eslint config", () => {
       "@nest-boot/entity-property-config-from-types": "error",
       "@nest-boot/graphql-field-definite-assignment": "error",
       "@nest-boot/graphql-field-config-from-types": "error",
-      "@nest-boot/import-graphql": "error",
-      "@nest-boot/import-database": "error",
+      curly: ["error", "all"],
       "simple-import-sort/exports": "error",
       "simple-import-sort/imports": "error",
     });
+  });
+
+  it("does not configure import migration rules", () => {
+    for (const entry of config) {
+      for (const name of [
+        "import-bullmq",
+        "import-queue",
+        "import-mikro-orm",
+        "import-database",
+        "import-graphql",
+      ]) {
+        expect(entry.rules ?? {}).not.toHaveProperty(`@nest-boot/${name}`);
+        expect(entry.rules ?? {}).not.toHaveProperty(
+          `@nest-boot/queue/${name}`,
+        );
+      }
+    }
   });
 
   it("keeps the intentional TypeScript rule overrides", () => {

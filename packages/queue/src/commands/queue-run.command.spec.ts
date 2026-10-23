@@ -50,8 +50,9 @@ it("cleans signal handlers when startup fails", async () => {
   const command = new QueueRunCommand({ start } as unknown as QueueRegistrar);
   command.context = { stdout } as never;
   await expect(command.execute()).rejects.toThrow("invalid queue");
-  for (const [event, handler] of on.mock.calls)
+  for (const [event, handler] of on.mock.calls) {
     expect(off).toHaveBeenCalledWith(event, handler);
+  }
 });
 
 it("returns when interrupted while startup is pending", async () => {

@@ -16,7 +16,9 @@ describe("post-commit request authorization", () => {
     async (failure) => {
       const options: AuthModuleOptions = {
         buildAbility: (_rules) => {
-          if (failure) throw new Error("Invalid ability configuration");
+          if (failure) {
+            throw new Error("Invalid ability configuration");
+          }
         },
 
         user: {
@@ -56,8 +58,11 @@ describe("post-commit request authorization", () => {
         const refresh = () => {
           RequestIdentity.refresh(options);
         };
-        if (failure) expect(refresh).toThrow("Invalid ability configuration");
-        else refresh();
+        if (failure) {
+          expect(refresh).toThrow("Invalid ability configuration");
+        } else {
+          refresh();
+        }
         expect(RequestContext.get(AuthAbility)?.can("delete", User)).toBe(
           false,
         );

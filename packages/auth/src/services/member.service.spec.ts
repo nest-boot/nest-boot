@@ -316,7 +316,9 @@ describe("MemberService", () => {
     });
     em.findOne.mockResolvedValueOnce(member).mockResolvedValueOnce(locked);
     vi.mocked(authorization.authorize).mockImplementation((action) => {
-      if (action === "read") throw new ForbiddenException();
+      if (action === "read") {
+        throw new ForbiddenException();
+      }
     });
     await expect(
       memberService.updateMember(member.id, { name: " Updated " }),
@@ -352,7 +354,9 @@ describe("MemberService", () => {
     async (stage) => {
       const { memberService, em } = createWorkspaceServices();
       const member = createTestMember();
-      if (stage === "lock") em.findOne.mockResolvedValueOnce(member);
+      if (stage === "lock") {
+        em.findOne.mockResolvedValueOnce(member);
+      }
       em.findOne.mockResolvedValue(null);
       await expect(
         memberService.setMemberRoles(member.id, ["admin"]),
@@ -372,7 +376,9 @@ describe("MemberService", () => {
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
-          if (present) RequestContext.set(Member, createTestMember());
+          if (present) {
+            RequestContext.set(Member, createTestMember());
+          }
           await expect(
             service.leaveWorkspace(undefined as unknown as Member),
           ).rejects.toThrow(ForbiddenException);
@@ -917,8 +923,9 @@ describe("MemberService", () => {
     em.findOne.mockResolvedValue(promotedMember);
     vi.mocked(authorization.authorize).mockImplementation(
       (_action, subject, field) => {
-        if (subject === promotedMember && field === "status")
+        if (subject === promotedMember && field === "status") {
           throw new ForbiddenException();
+        }
       },
     );
 
@@ -1164,7 +1171,9 @@ describe("MemberService", () => {
     em.findOne.mockResolvedValue(managed);
     vi.mocked(authorization.authorize).mockImplementation(
       (_action, subject) => {
-        if (subject === managed) throw new ForbiddenException();
+        if (subject === managed) {
+          throw new ForbiddenException();
+        }
       },
     );
 
@@ -1253,7 +1262,9 @@ describe("MemberService", () => {
     em.findOne.mockResolvedValue(promotedMember);
     vi.mocked(authorization.authorize).mockImplementation(
       (_action, subject) => {
-        if (subject === promotedMember) throw new ForbiddenException();
+        if (subject === promotedMember) {
+          throw new ForbiddenException();
+        }
       },
     );
 
@@ -1325,12 +1336,16 @@ describe("MemberService", () => {
     em.findOne.mockResolvedValue(promotedMember);
     vi.mocked(authorization.authorize).mockImplementation(
       (_action, subject) => {
-        if (subject === promotedMember) throw new ForbiddenException();
+        if (subject === promotedMember) {
+          throw new ForbiddenException();
+        }
       },
     );
     vi.mocked(authorization.assertCurrentMember).mockImplementation(
       (member) => {
-        if (member === promotedMember) throw new ForbiddenException();
+        if (member === promotedMember) {
+          throw new ForbiddenException();
+        }
       },
     );
 

@@ -100,10 +100,11 @@ export class MemberResolver {
     @Args("input") input: AddMemberInput,
   ): Promise<AddMemberPayload> {
     if (input.type === MemberType.SERVICE_ACCOUNT) {
-      if (!input.name || input.email !== undefined)
+      if (!input.name || input.email !== undefined) {
         throw new BadRequestException(
           "Service accounts require a name and cannot link a login email",
         );
+      }
       const member = await this.memberService.addServiceAccount(
         workspace,
         input.name,
@@ -111,8 +112,9 @@ export class MemberResolver {
       );
       return { id: member.id };
     }
-    if (!input.email)
+    if (!input.email) {
       throw new BadRequestException("User members require an email");
+    }
     const member = await this.memberService.addMemberByEmail(
       workspace,
       input.email,

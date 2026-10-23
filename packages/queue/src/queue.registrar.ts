@@ -94,14 +94,18 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
     const queues = this.queues;
     const seen = new Set<unknown>();
     for (const provider of this.discovery.getProviders()) {
-      if (provider.isAlias) continue;
+      if (provider.isAlias) {
+        continue;
+      }
       const target = (
         !provider.metatype || provider.inject
           ? (provider.instance?.constructor ??
             (typeof provider.token === "function" ? provider.token : undefined))
           : provider.metatype
       ) as Type | undefined;
-      if (!target) continue;
+      if (!target) {
+        continue;
+      }
       if (
         Reflect.hasMetadata(QUEUE_OPTIONS, target) &&
         (!provider.isDependencyTreeStatic() ||
@@ -115,10 +119,11 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
       if (provider.instance instanceof BaseQueue) {
         const queue = provider.instance;
         const previous = queues.get(queue.name);
-        if (previous && previous !== queue)
+        if (previous && previous !== queue) {
           throw new Error(
             `Queue "${queue.name}" has multiple providers. Export and reuse a single queue provider.`,
           );
+        }
         queues.set(queue.name, queue);
       }
       const processor = Reflect.getMetadata(PROCESSOR_OPTIONS, target) as
@@ -128,7 +133,9 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
         | QueueEventsDefinition
         | undefined;
       const definition = processor ?? events;
-      if (!definition || seen.has(provider.instance ?? provider)) continue;
+      if (!definition || seen.has(provider.instance ?? provider)) {
+        continue;
+      }
       seen.add(provider.instance ?? provider);
       const { name } = getQueueDefinition(definition.queue);
       let queue: BaseQueue | undefined;
@@ -146,28 +153,31 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
         processor &&
         !(provider.instance instanceof BaseProcessor) &&
         !(target.prototype instanceof BaseProcessor)
-      )
+      ) {
         throw new Error(
           `Processor "${target.name}" must extend BaseProcessor.`,
         );
+      }
       if (
         events &&
         (!(provider.instance instanceof QueueEventsHost) ||
           !provider.isDependencyTreeStatic() ||
           provider.isTransient)
-      )
+      ) {
         throw new Error(
           `Queue listener "${target.name}" must be a singleton QueueEventsHost.`,
         );
-      if (processor)
+      }
+      if (processor) {
         bindings.push({
           provider,
           definition: processor,
           queue,
           listener: false,
         });
-      else if (events)
+      } else if (events) {
         bindings.push({ provider, definition: events, queue, listener: true });
+      }
     }
     this.bindings = bindings;
   }
@@ -178,20 +188,23 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
    * @returns Names of queues with active consumers or listeners.
    */
   start(queueNames?: readonly string[]): Promise<string[]> {
-    if (this.stopping)
+    if (this.stopping) {
       return Promise.reject(new Error("Queue consumers are shutting down."));
-    if (this.startup)
+    }
+    if (this.startup) {
       return Promise.reject(
         new Error("Queue consumers have already been started."),
       );
+    }
     const selected = queueNames?.length ? new Set(queueNames) : undefined;
     for (const name of selected ?? []) {
-      if (!this.queues.has(name))
+      if (!this.queues.has(name)) {
         return Promise.reject(
           new Error(
             `Unknown queue "${name}". Available queues: ${[...this.queues.keys()].join(", ")}.`,
           ),
         );
+      }
     }
     const bindings = this.bindings.filter(
       ({ queue }) => !selected || selected.has(queue.name),
@@ -244,10 +257,11 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
                     provider.token,
                     context,
                   );
-                  if (!(consumer instanceof BaseProcessor))
+                  if (!(consumer instanceof BaseProcessor)) {
                     throw new Error(
                       `Processor "${String(provider.name)}" must resolve to BaseProcessor.`,
                     );
+                  }
                   consumer[WORKER_REF] = worker;
                 }
                 return await consumer.process(job, token, signal);
@@ -255,9 +269,12 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
             { ...options, ...connection, autorun: false },
           );
           this.workers.add(worker);
-          if (instance) instance[WORKER_REF] = worker;
-          if (!scoped) this.bindEvents(instance, worker, ON_WORKER_EVENT);
-          else {
+          if (instance) {
+            instance[WORKER_REF] = worker;
+          }
+          if (!scoped) {
+            this.bindEvents(instance, worker, ON_WORKER_EVENT);
+          } else {
             worker.on("error", (error) => {
               this.logger.error(error);
             });
@@ -274,7 +291,9 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
         ]),
         this.lifetime,
       ]);
-      if (this.stopping) return [];
+      if (this.stopping) {
+        return [];
+      }
       for (const { provider, listener } of bindings) {
         if (listener) {
           void (provider.instance as QueueEventsHost).queueEvents
@@ -317,7 +336,9 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
       const event = Reflect.getMetadata(metadata, handler) as
         | string
         | undefined;
-      if (event) transport.on(event, handler.bind(instance));
+      if (event) {
+        transport.on(event, handler.bind(instance));
+      }
     }
   }
 
@@ -333,10 +354,11 @@ export class QueueRegistrar implements OnModuleInit, OnModuleDestroy {
       this.workers.clear();
       this.listeners.clear();
       for (const { provider, listener } of this.bindings) {
-        if (listener)
+        if (listener) {
           (provider.instance as QueueEventsHost)[QUEUE_EVENTS_REF] = undefined;
-        else if (provider.instance)
+        } else if (provider.instance) {
           (provider.instance as BaseProcessor)[WORKER_REF] = undefined;
+        }
       }
     }
   }

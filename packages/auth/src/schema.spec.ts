@@ -4,7 +4,6 @@ import {
   GraphQLSchemaFactory,
   Resolver,
 } from "@nest-boot/graphql";
-// eslint-disable-next-line @nest-boot/import-graphql -- Verify that the public exports are the native decorators.
 import { Args as NestArgs, Resolver as NestResolver } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
 import type { GraphQLInputObjectType, GraphQLObjectType } from "graphql";
@@ -73,7 +72,9 @@ describe("auth GraphQL schema", () => {
           resolver.prototype,
           name,
         )?.value;
-        if (typeof method !== "function") continue;
+        if (typeof method !== "function") {
+          continue;
+        }
         expect(Reflect.getMetadata(CAN_METADATA, method)).toBeUndefined();
       }
     }
@@ -166,7 +167,9 @@ describe("auth GraphQL schema", () => {
     );
 
     const queries = schema.getQueryType()?.getFields();
-    if (!queries) throw new Error("Query type is missing");
+    if (!queries) {
+      throw new Error("Query type is missing");
+    }
     expect(queries.member?.type.toString()).toBe("Member");
     expect(queries.invitation?.type.toString()).toBe("Invitation");
     expect(queries.currentMember?.type.toString()).toBe("Member");
@@ -262,8 +265,9 @@ describe("auth GraphQL schema", () => {
       ];
       expect(resolved?.type.toString()).toBe(`${connection}!`);
       expect(resolved?.args.map(({ name }) => name)).toContain("first");
-      if (field === "apiKeys")
+      if (field === "apiKeys") {
         expect(resolved.args.map(({ name }) => name)).toContain("filter");
+      }
     }
     for (const [type, keyType] of [
       ["User", "UserApiKey"],
@@ -277,7 +281,9 @@ describe("auth GraphQL schema", () => {
       ).toEqual([["id", "ID!"]]);
     }
     const mutations = schema.getMutationType()?.getFields();
-    if (!mutations) throw new Error("Mutation type is missing");
+    if (!mutations) {
+      throw new Error("Mutation type is missing");
+    }
     expect(queries.currentSession?.type.toString()).toBe("Session");
     expect(
       Object.keys(

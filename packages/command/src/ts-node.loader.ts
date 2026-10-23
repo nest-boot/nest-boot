@@ -69,7 +69,9 @@ export async function load(...args: Parameters<typeof hooks.load>) {
     return await hooks.load(...args);
   } catch (error) {
     // TSError's custom properties do not survive Node's loader-thread transfer.
-    if (error instanceof Error) throw new Error(error.message);
+    if (error instanceof Error) {
+      throw new Error(error.message);
+    }
     throw error;
   }
 }

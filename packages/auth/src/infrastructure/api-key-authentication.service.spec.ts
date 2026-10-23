@@ -117,8 +117,11 @@ describe("API-key authentication", () => {
         const { service, rows, userKey, memberKey } = fixture();
         rows[scope === "user" ? "member" : "user"] = null;
         const key = scope === "user" ? userKey : memberKey;
-        if (state === "disabled") key.enabled = false;
-        else key.expiresAt = new Date(0);
+        if (state === "disabled") {
+          key.enabled = false;
+        } else {
+          key.expiresAt = new Date(0);
+        }
         await expect(service.validate("plaintext")).rejects.toBeInstanceOf(
           UnauthorizedException,
         );

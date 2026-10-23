@@ -97,8 +97,9 @@ describe("auth service execution boundaries", () => {
       isolated.findOne.mockResolvedValue(
         state === "missing" ? null : administrator,
       );
-      if (state === "failure")
+      if (state === "failure") {
         isolated.flush.mockRejectedValueOnce(new Error("Commit failed"));
+      }
       const provider = authServiceProviders.find(
         (candidate) =>
           typeof candidate === "object" &&
@@ -119,13 +120,15 @@ describe("auth service execution boundaries", () => {
           ]);
           RequestContext.set(AuthAbility, ability);
           const result = service.stopImpersonating(session);
-          if (state === "missing") await expect(result).resolves.toBeNull();
-          else
+          if (state === "missing") {
+            await expect(result).resolves.toBeNull();
+          } else {
             await expect(result).rejects.toThrow(
               state === "banned"
                 ? "Banned administrators cannot restore their session"
                 : "Commit failed",
             );
+          }
           expect(RequestContext.get(EntityManager)).toBe(em);
           if (state === "failure") {
             expect(RequestContext.get(User)).toBe(user);
@@ -133,8 +136,9 @@ describe("auth service execution boundaries", () => {
             expect(RequestContext.get(AuthAbility)).toBe(ability);
             expect(em.setSessionContext).not.toHaveBeenCalled();
           } else {
-            for (const token of [User, Session, Workspace, Member])
+            for (const token of [User, Session, Workspace, Member]) {
               expect(RequestContext.get(token)).toBeNull();
+            }
             expect(RequestContext.get(AuthAbility)?.can("update", User)).toBe(
               false,
             );
@@ -165,8 +169,9 @@ describe("auth service execution boundaries", () => {
       const ability = new AuthAbility([
         { action: "delete", subject: Workspace },
       ]);
-      if (failure)
+      if (failure) {
         em.transactional.mockRejectedValueOnce(new Error("Commit failed"));
+      }
       const provider = authServiceProviders.find(
         (candidate) =>
           typeof candidate === "object" &&
@@ -182,8 +187,11 @@ describe("auth service execution boundaries", () => {
           RequestContext.set(Workspace, workspace);
           RequestContext.set(AuthAbility, ability);
           const result = service.deleteWorkspace(workspace);
-          if (failure) await expect(result).rejects.toThrow("Commit failed");
-          else await expect(result).resolves.toBe(workspace);
+          if (failure) {
+            await expect(result).rejects.toThrow("Commit failed");
+          } else {
+            await expect(result).resolves.toBe(workspace);
+          }
           expect(RequestContext.get(EntityManager)).toBe(em);
           expect(em.fork).not.toHaveBeenCalled();
           expect(RequestContext.get(Member)).toBe(failure ? member : null);
@@ -193,13 +201,15 @@ describe("auth service execution boundaries", () => {
           expect(
             RequestContext.get(AuthAbility)?.can("delete", Workspace),
           ).toBe(failure);
-          if (failure) expect(em.setSessionContext).not.toHaveBeenCalled();
-          else
+          if (failure) {
+            expect(em.setSessionContext).not.toHaveBeenCalled();
+          } else {
             expect(em.setSessionContext).toHaveBeenCalledWith(
               expect.objectContaining({
                 variables: expect.objectContaining({ "app.workspace.id": "" }),
               }),
             );
+          }
         },
       );
     },
@@ -245,8 +255,11 @@ describe("auth service execution boundaries", () => {
             new User(),
             "user@example.com",
           );
-          if (failure) await expect(result).rejects.toThrow("Lookup failed");
-          else await expect(result).resolves.toBe("user-1");
+          if (failure) {
+            await expect(result).rejects.toThrow("Lookup failed");
+          } else {
+            await expect(result).resolves.toBe("user-1");
+          }
           expect(RequestContext.get(EntityManager)).toBe(current);
         },
       );
@@ -262,13 +275,14 @@ describe("auth service execution boundaries", () => {
         "run",
         transaction,
       );
-      if (!failure)
+      if (!failure) {
         expect(execute).toHaveBeenLastCalledWith(
           'set local role "authenticated"',
           [],
           "run",
           transaction,
         );
+      }
       expect(reader.findOne).toHaveBeenCalledWith(
         User,
         { email: "user@example.com" },
@@ -364,8 +378,9 @@ describe("auth service execution boundaries", () => {
           candidate.provide === type,
       ) as FactoryProvider<object>;
       const service = provider.useFactory({}, {});
-      for (const name of special)
+      for (const name of special) {
         expect(Object.hasOwn(service, name)).toBe(true);
+      }
       for (const name of ordinary) {
         expect(Object.hasOwn(service, name)).toBe(false);
         expect(typeof Reflect.get(service, name)).toBe("function");

@@ -125,7 +125,9 @@ describe("LoggerModule - e2e", () => {
       });
       const error = new Error("operation failed");
       const stack = error.stack;
-      if (!stack) throw new Error("Expected the test Error to have a stack");
+      if (!stack) {
+        throw new Error("Expected the test Error to have a stack");
+      }
       const logErrors = () => {
         logger.error("explicit stack", stack, "OrdersService");
         logger.error("stack only", stack);

@@ -30,10 +30,14 @@ function getTimezoneOffset(): number {
       }>(REQUEST)
     : undefined;
   const header = request?.headers?.["x-timezone-offset"];
-  if (header === undefined) return 0;
+  if (header === undefined) {
+    return 0;
+  }
   if (typeof header === "string" && /^-?\d{1,3}$/.test(header)) {
     const offset = Number(header);
-    if (Math.abs(offset) <= 14 * 60) return offset;
+    if (Math.abs(offset) <= 14 * 60) {
+      return offset;
+    }
   }
   throw new GraphQLError(
     "Invalid X-Timezone-Offset header: expected integer minutes between -840 and 840",

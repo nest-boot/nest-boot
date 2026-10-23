@@ -33,8 +33,12 @@ describe("auth decorators", () => {
     const user = new BaseUser();
     const session = new BaseSession();
     const get = vi.fn((token: { name?: string }) => {
-      if (token.name === "User") return user;
-      if (token.name === "Session") return session;
+      if (token.name === "User") {
+        return user;
+      }
+      if (token.name === "Session") {
+        return session;
+      }
       return undefined;
     });
 

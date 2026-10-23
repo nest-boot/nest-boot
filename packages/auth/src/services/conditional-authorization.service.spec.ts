@@ -25,7 +25,9 @@ describe("conditional service authorization", () => {
           kind === "member"
             ? RequestContext.get(Member)
             : RequestContext.get(Workspace);
-        if (!entity) throw new Error("Missing test identity");
+        if (!entity) {
+          throw new Error("Missing test identity");
+        }
         const read = () =>
           kind === "member"
             ? memberService.getCurrentMember()
@@ -57,7 +59,9 @@ describe("conditional service authorization", () => {
   it("does not require current-member read ability to remove another member", async () => {
     await withIdentity(async ({ memberService, workspace, em }) => {
       const actor = RequestContext.get(Member);
-      if (!actor) throw new Error("Missing test member");
+      if (!actor) {
+        throw new Error("Missing test member");
+      }
       actor.id = "blocked";
       const target = Object.assign(new Member(), {
         id: "target",

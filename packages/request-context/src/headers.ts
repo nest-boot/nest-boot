@@ -12,7 +12,9 @@ export function headers(): Headers {
 
   for (const [name, value] of Object.entries(request.headers)) {
     if (Array.isArray(value)) {
-      for (const item of value) result.append(name, item);
+      for (const item of value) {
+        result.append(name, item);
+      }
     } else if (value !== undefined) {
       result.set(name, value);
     }

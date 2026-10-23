@@ -75,7 +75,9 @@ export class MemberService {
    */
   getCurrentMember(): Member | null {
     const member = RequestIdentity.getCurrentMember();
-    if (member) authorize("read", member);
+    if (member) {
+      authorize("read", member);
+    }
     return member;
   }
 
@@ -150,7 +152,9 @@ export class MemberService {
     }
     const where = this.getMemberListFilter(workspace);
     const member = await this.em.findOne(Member, { ...where, id });
-    if (member) authorize("read", member);
+    if (member) {
+      authorize("read", member);
+    }
     return member;
   }
 
@@ -160,7 +164,9 @@ export class MemberService {
    * @returns User associated with the membership, or null for a service account.
    */
   async getMemberUser(member: Member): Promise<User | null> {
-    if (member.type === "SERVICE_ACCOUNT") return null;
+    if (member.type === "SERVICE_ACCOUNT") {
+      return null;
+    }
     const workspace = this.unwrapWorkspace(member);
     const actor = RequestContext.isActive() ? RequestContext.get(User) : null;
     const actorId = actor?.id;
@@ -181,13 +187,17 @@ export class MemberService {
       },
       { refresh: true },
     );
-    if (!current?.user?.id) return null;
+    if (!current?.user?.id) {
+      return null;
+    }
     const user = await this.em.findOne(
       User,
       { id: current.user.id },
       { refresh: true },
     );
-    if (user && !ownMember) authorize("read", user);
+    if (user && !ownMember) {
+      authorize("read", user);
+    }
     return user;
   }
 
@@ -219,7 +229,9 @@ export class MemberService {
           { user, workspace },
           { filters: false },
         );
-        if (existing) throw new ConflictException("User is already a member");
+        if (existing) {
+          throw new ConflictException("User is already a member");
+        }
         const member = em.create(Member, {
           name: user.name,
           email: user.email.trim().toLowerCase(),
@@ -266,10 +278,11 @@ export class MemberService {
         type: MemberType.SERVICE_ACCOUNT,
       }),
     );
-    if (!name.trim() || name.trim().length > 255)
+    if (!name.trim() || name.trim().length > 255) {
       throw new BadRequestException(
         "A service account name is required (maximum 255 characters)",
       );
+    }
     const permissions = this.normalizePermissions(input.permissions ?? []);
     assertCanGrantPermissions(this.authOptions, "workspace", permissions);
     const roles =
@@ -341,7 +354,9 @@ export class MemberService {
       { email: email.trim().toLowerCase() },
       { filters: false },
     );
-    if (!user) throw new NotFoundException("User not found");
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
     return user;
   }
 
@@ -349,14 +364,18 @@ export class MemberService {
     member: Member | string,
     action: string,
   ): Promise<Member> {
-    if (typeof member !== "string") return member;
+    if (typeof member !== "string") {
+      return member;
+    }
     authorize(action, Member);
     const entity = await this.em.findOne(
       Member,
       { id: member },
       { populate: ["workspace"], refresh: true },
     );
-    if (!entity) throw new NotFoundException("Workspace member not found");
+    if (!entity) {
+      throw new NotFoundException("Workspace member not found");
+    }
     return entity;
   }
 
@@ -554,10 +573,13 @@ export class MemberService {
   async leaveWorkspace(member: Member): Promise<Member> {
     RequestIdentity.assertCurrentMember(member);
     const user = RequestContext.get(User);
-    if (!user) throw new ForbiddenException("A user identity is required");
+    if (!user) {
+      throw new ForbiddenException("A user identity is required");
+    }
     RequestIdentity.assertUserSession(user);
-    if (member.user?.id !== user.id)
+    if (member.user?.id !== user.id) {
       throw new ForbiddenException("The membership belongs to another user");
+    }
     const workspace = this.unwrapWorkspace(member);
     RequestIdentity.assertCurrentWorkspace(workspace);
     // Session context can only be restaged after the removal's top-level commit.
@@ -599,7 +621,9 @@ export class MemberService {
    */
   listRoles(): WorkspaceRoleOption[] {
     const canAssign = can("write", Invitation) || can("set-roles", Member);
-    if (!canAssign) authorize("read", Member);
+    if (!canAssign) {
+      authorize("read", Member);
+    }
     return Object.entries(this.roles).map(([role, permissions]) => ({
       role,
       grantable:
@@ -614,7 +638,9 @@ export class MemberService {
    */
   listPermissions(): WorkspacePermissionOption[] {
     const canAssign = can("set-permissions", Member);
-    if (!canAssign) authorize("read", Member);
+    if (!canAssign) {
+      authorize("read", Member);
+    }
     return listAuthPermissions(this.permissions).map((permission) => ({
       permission,
       grantable:

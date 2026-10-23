@@ -23,7 +23,9 @@ export class ReportService {
 
   private async loadReport(id: string): Promise<Report> {
     const report = await this.repository.findOne(id);
-    if (!report) throw new NotFoundException('Report not found');
+    if (!report) {
+      throw new NotFoundException('Report not found');
+    }
     return report;
   }
 }
