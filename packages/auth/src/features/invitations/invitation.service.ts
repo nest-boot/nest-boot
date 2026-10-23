@@ -256,7 +256,9 @@ export class InvitationService {
       { id },
       { refresh: true },
     );
-    if (invitation) this.assertInvitationReadAccess(invitation);
+    if (invitation) {
+      this.assertInvitationReadAccess(invitation);
+    }
     return invitation;
   }
 
@@ -269,14 +271,20 @@ export class InvitationService {
     const current = await this.getInvitationForRelation(invitation);
     const actor = RequestContext.isActive() ? RequestContext.get(User) : null;
     const self = !getCurrentApiKey() && actor?.id === current.inviter.id;
-    if (!self) authorize("read", User);
+    if (!self) {
+      authorize("read", User);
+    }
     const user = await this.em.findOne(
       User,
       { id: current.inviter.id },
       { refresh: true },
     );
-    if (!user) throw new NotFoundException("Invitation inviter not found");
-    if (!self) authorize("read", user);
+    if (!user) {
+      throw new NotFoundException("Invitation inviter not found");
+    }
+    if (!self) {
+      authorize("read", user);
+    }
     return user;
   }
 
@@ -292,8 +300,9 @@ export class InvitationService {
       { id: current.workspace.id },
       { refresh: true },
     );
-    if (!workspace)
+    if (!workspace) {
       throw new NotFoundException("Invitation workspace not found");
+    }
     return workspace;
   }
 
@@ -308,7 +317,9 @@ export class InvitationService {
       { id: invitation.id },
       { refresh: true },
     );
-    if (!current) throw new NotFoundException("Workspace invitation not found");
+    if (!current) {
+      throw new NotFoundException("Workspace invitation not found");
+    }
     this.assertInvitationReadAccess(current);
     return current;
   }
@@ -361,7 +372,9 @@ export class InvitationService {
       id,
       workspace,
     });
-    if (invitation) authorize("read", invitation);
+    if (invitation) {
+      authorize("read", invitation);
+    }
     return invitation;
   }
 
@@ -439,7 +452,9 @@ export class InvitationService {
             populate: ["workspace"],
           },
         );
-        if (!invitation) return null;
+        if (!invitation) {
+          return null;
+        }
         if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
           throw new ForbiddenException(
             "Workspace invitation belongs to another email address",
@@ -472,7 +487,9 @@ export class InvitationService {
           { user, workspace },
           { filters: false },
         );
-        if (existing) throw new ConflictException("User is already a member");
+        if (existing) {
+          throw new ConflictException("User is already a member");
+        }
 
         const member = em.create(Member, {
           name: user.name,
@@ -560,13 +577,17 @@ export class InvitationService {
   private async resolveInvitationForAction(
     invitation: Invitation | string,
   ): Promise<Invitation> {
-    if (typeof invitation !== "string") return invitation;
+    if (typeof invitation !== "string") {
+      return invitation;
+    }
     const entity = await this.em.findOne(
       Invitation,
       { id: invitation },
       { populate: ["workspace"], refresh: true },
     );
-    if (!entity) throw new NotFoundException("Workspace invitation not found");
+    if (!entity) {
+      throw new NotFoundException("Workspace invitation not found");
+    }
     return entity;
   }
 

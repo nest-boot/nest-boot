@@ -23,12 +23,13 @@ describe("auth entities", () => {
       const metadata = Object.values(MetadataStorage.getMetadata()).find(
         (meta) => meta.class === entity,
       );
-      for (const field of fields)
+      for (const field of fields) {
         expect(
           Object.values(metadata?.properties ?? {}).find(
             (property) => property.name === field,
           )?.type,
         ).toBe(t.array);
+      }
     }
   });
   it.each([
@@ -178,8 +179,9 @@ describe("built-in auth entity field ownership", () => {
       ).find((property) => property.name === field);
       expect(property).toMatchObject(options);
       expect(property?.cascade ?? []).not.toContain("remove");
-      if (typeof property?.entity !== "function")
+      if (typeof property?.entity !== "function") {
         throw new Error("Missing class relation");
+      }
       expect(property.entity()).toBe(target);
     },
   );
@@ -200,7 +202,8 @@ describe("built-in auth entity field ownership", () => {
       (meta) => meta.class === entity,
     );
     expect(metadata?.abstract).not.toBe(true);
-    for (const field of fields)
+    for (const field of fields) {
       expect(metadata?.properties).toHaveProperty(field);
+    }
   });
 });

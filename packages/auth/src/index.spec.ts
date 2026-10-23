@@ -202,8 +202,9 @@ describe("public API", () => {
     expect(publicApi.entities).toHaveLength(names.length);
     for (const name of names) {
       expect(publicApi.entities).toContain(publicApi[name]);
-      if (name !== "Verification")
+      if (name !== "Verification") {
         expect(publicApi).toHaveProperty(`${name}Connection`);
+      }
     }
   });
   it("exports the GraphQL module and resolvers", () => {

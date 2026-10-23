@@ -53,8 +53,12 @@ async function waitForOutput(
 ) {
   await vi.waitFor(
     () => {
-      if (process.child.exitCode !== null || process.child.signalCode !== null)
+      if (
+        process.child.exitCode !== null ||
+        process.child.signalCode !== null
+      ) {
         throw new Error(process.output());
+      }
       expect(process.output()).toContain(expected);
     },
     { timeout: 10_000 },

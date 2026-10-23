@@ -182,10 +182,15 @@ describe("unified request ability", () => {
     async (state) => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         const current = identity();
-        if (state === "disabled") current.member.status = "DISABLED";
-        if (state === "other-workspace")
+        if (state === "disabled") {
+          current.member.status = "DISABLED";
+        }
+        if (state === "other-workspace") {
           current.member.workspace = ref(Workspace, new Workspace());
-        if (state === "other-user") current.member.user = ref(User, new User());
+        }
+        if (state === "other-user") {
+          current.member.user = ref(User, new User());
+        }
         RequestIdentity.stage({
           ...current,
           member: state === "missing" ? null : current.member,
@@ -247,12 +252,13 @@ describe("unified request ability", () => {
         expect(ability.can("read", User)).toBe(false);
         expect(ability.can("read", current.member)).toBe(true);
         expect(ability.can("write", current.member)).toBe(false);
-        if (Entity === MemberApiKey)
+        if (Entity === MemberApiKey) {
           expect(configure.mock.calls[0][1]).toMatchObject({
             user: null,
             member: current.member,
             userPermissions: [],
           });
+        }
       });
     },
   );
@@ -264,10 +270,11 @@ describe("unified request ability", () => {
       const options: AuthModuleOptions = {
         workspace: { permissions: ["report:read"] },
         buildAbility: ({ can }, { workspace }) => {
-          if (workspace)
+          if (workspace) {
             can({ workspace: "report:read" }, "read", "Report", {
               workspaceId: workspace.id,
             });
+          }
         },
       };
       RequestIdentity.stage(current);

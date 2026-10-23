@@ -76,8 +76,11 @@ function listen(app: ReturnType<typeof express>): Promise<Server> {
 function close(server: Server): Promise<void> {
   return new Promise((resolve, reject) => {
     server.close((error) => {
-      if (error) reject(error);
-      else resolve();
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
     });
   });
 }

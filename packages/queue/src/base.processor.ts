@@ -23,10 +23,11 @@ export abstract class BaseProcessor<T extends Worker = Worker> {
    */
   get worker(): T {
     const worker = this[WORKER_REF];
-    if (!worker)
+    if (!worker) {
       throw new Error(
         "Worker is not initialized; call QueueRegistrar.start() first.",
       );
+    }
     return worker;
   }
 

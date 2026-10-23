@@ -604,7 +604,9 @@ it.each([false, true])(
           expect(this.name).toBe("inner");
           expect(this.loud).toBe(true);
           this.context.stdout.write("INNER");
-          if (fails) throw new UsageError("Nested failure");
+          if (fails) {
+            throw new UsageError("Nested failure");
+          }
         }
       }
     }

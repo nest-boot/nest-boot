@@ -77,16 +77,7 @@ For package contents or release infrastructure, also consider:
 ```bash
 pnpm --filter @nest-boot/<package> pack --dry-run
 pnpm release:status
-pnpm test:release
 ```
-
-After building packages, run `pnpm test:consumer` to install all public tarballs
-and their declared peers in a temporary project outside the workspace. This
-check uses strict peer and engine validation without `.pnpmfile.cjs` or repository
-overrides. It compiles an application with the published TypeScript preset,
-imports package entry points, starts Nest, and checks HTTP request context,
-health, password hashing, mail generation, and the published ESLint config.
-CI runs it on Node 24.21.0 and the current Node 24 release before permitting release.
 
 Applications extending `@nest-boot/tsconfig` must install its compiler and global
 type peers: `typescript@^6`, `@types/node@^24`, and `vitest@^4.1.11`.
@@ -178,26 +169,26 @@ creates beta versions and publishes them to the `beta` npm dist-tag. Unchanged
 packages can remain stable; Changesets manages dependent bumps.
 
 To graduate, run `pnpm changeset pre exit`, restore `baseBranch` to `main`, and
-include these changes in the PR from `beta` to `main`. Do not delete the archived
-changesets in `.changeset/pre`: they describe the stable release. The beta release
-workflow intentionally stops once exit is requested. After merging into `main`,
+remove the `beta` push trigger from the release workflow before committing the
+exit state. Include these changes in the PR from `beta` to `main`, as described in
+the Changesets prerelease guide. Do not delete the archived changesets in
+`.changeset/pre`: they describe the stable release. After merging into `main`,
 Changesets creates the stable version PR; review and merge it to publish to
-`latest`. Synchronize this stable baseline back into `beta` before a new cycle.
-The branch guard refuses active prerelease mode on `main`, and refuses beta
-publication without an active `beta` prerelease state.
+`latest`. Synchronize this stable baseline back into `beta` before a new cycle
+and restore its release trigger only after entering prerelease mode again.
+Before merging, verify that `main` has no active prerelease state and that `beta`
+has an active `beta` prerelease state before publication.
 
 ### Recovery and npm authorization
 
 If publication partially fails, use **Re-run failed jobs** on the original Release
 run. The publish job reuses its original packed artifacts; already-published npm
-versions are not overwritten. A metadata recovery step checks each original
-planned version on npm and creates missing GitHub tags/releases at the original
-workflow commit. This also repairs a failure after npm succeeded but before
-GitHub metadata was created. Existing tags and releases are never overwritten.
-Do not start a fresh workflow to repair missing metadata: a fresh npm publish plan
-cannot include versions that are already published. Keep the original run's
-artifacts available until recovery completes (30-day retention). Never edit an
-already published version or add a changeset solely to retry a failed upload.
+versions are not overwritten. Custom release metadata recovery is no longer
+provided. If publication succeeds but tags or GitHub releases are missing, inspect
+the original run and repair the metadata at that run's commit without overwriting
+existing tags or releases. A fresh workflow may not include already-published
+versions in its publish plan. Never edit an already published version or add a
+changeset solely to retry a failed upload.
 
 Existing npm Trusted Publishers continue to use `nest-boot/nest-boot` and workflow
 `release.yml`. No workflow rename or npm token is needed. For a new or renamed

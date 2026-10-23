@@ -146,7 +146,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
     await vi.waitFor(
       () => {
-        if (workerProcess.exitCode !== null) throw new Error(workerOutput);
+        if (workerProcess.exitCode !== null) {
+          throw new Error(workerOutput);
+        }
         expect(workerOutput).toContain('Queue workers running:');
       },
       { timeout: 15_000 },
@@ -154,7 +156,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
   }, 60_000);
 
   afterAll(async () => {
-    if (workerProcess) await stopServer(workerProcess);
+    if (workerProcess) {
+      await stopServer(workerProcess);
+    }
     if (serverProcess) {
       await stopServer(serverProcess);
     }
@@ -798,7 +802,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expect(passwordResetCallback.status).toBe(302);
     expect(passwordResetToken).toBeTypeOf('string');
-    if (!passwordResetToken) throw new Error('Password reset token is missing');
+    if (!passwordResetToken) {
+      throw new Error('Password reset token is missing');
+    }
 
     const resetPassword = 'graphql-reset-password';
     const passwordReset = await gql(
@@ -2101,8 +2107,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
               async lookup() {
                 const connection = manager.getConnection();
                 const ctx = manager.getTransactionContext();
-                if (failure)
+                if (failure) {
                   await connection.execute('select 1 / 0', [], 'all', ctx);
+                }
                 return await connection.execute(
                   'select id, pg_backend_pid() as pid from "user" where id = ?',
                   [user.user.id],
@@ -2113,11 +2120,13 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             }),
             { lookup: 'invitation-identity' },
           );
-          if (failure) await expect(service.lookup()).rejects.toThrow();
-          else
+          if (failure) {
+            await expect(service.lookup()).rejects.toThrow();
+          } else {
             expect(await service.lookup()).toEqual([
               { id: user.user.id, pid: before.pid },
             ]);
+          }
           expect(
             await transaction.execute(
               'select current_user as role, pg_backend_pid() as pid',
@@ -2317,14 +2326,16 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           `select enabled, permissions, last_used_at from ${table} where id = ?`,
           [key.entity.id],
         );
-        if (action === 'delete') expect(rows).toEqual([]);
-        else if (action === 'disable') {
+        if (action === 'delete') {
+          expect(rows).toEqual([]);
+        } else if (action === 'disable') {
           expect(rows[0].enabled).toBe(false);
           expect(rows[0].last_used_at).not.toBeNull();
-        } else
+        } else {
           expect(rows[0].permissions).toEqual([
             scope === 'user' ? 'user-api-key:write' : 'member-api-key:write',
           ]);
+        }
       }
     },
   );
@@ -2612,7 +2623,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         expectGraphQLError(response);
         expect(response.body.errors[0].path).toEqual(['stopImpersonating']);
         expect(response.body.errors[0].extensions.code).toBe('UNAUTHORIZED');
-      } else expectNoGraphQLErrors(response);
+      } else {
+        expectNoGraphQLErrors(response);
+      }
       expect(await readKey()).toEqual([]);
       const rejected = await gql('query { currentWorkspace { id } }', {
         bearerToken: key.apiKey,
@@ -4390,7 +4403,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         if (operation === 'read') {
           expectNoGraphQLErrors(result);
           expect(result.body.data.owner.result).toBeNull();
-        } else expectForbidden(result);
+        } else {
+          expectForbidden(result);
+        }
       }
       const listed = await call('list', manager.apiKey);
       expectNoGraphQLErrors(listed);
@@ -5160,7 +5175,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       let invitee = registered
         ? await createAuthenticatedUser('Registered invitee', email)
         : null;
-      if (invitee) await createWorkspace(invitee, 'Different membership');
+      if (invitee) {
+        await createWorkspace(invitee, 'Different membership');
+      }
       const connection = migrationOrm.em.getConnection();
       await connection.execute(
         'update member set email = ? where workspace_id = ? and user_id = ?',
@@ -5947,7 +5964,9 @@ async function waitForEmailUrl(
 
       const { Text: text } = (await messageResponse.json()) as MailpitMessage;
       const match = /https?:\/\/\S+/u.exec(text);
-      if (match?.[0]) return match[0];
+      if (match?.[0]) {
+        return match[0];
+      }
     }
 
     await new Promise((resolve) => setTimeout(resolve, 50));

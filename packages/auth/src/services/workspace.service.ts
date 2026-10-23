@@ -48,7 +48,9 @@ export class WorkspaceService {
    * @returns Selected workspace, or null when none is available.
    */
   getCurrentWorkspace(): Workspace | null {
-    if (!RequestContext.isActive()) return null;
+    if (!RequestContext.isActive()) {
+      return null;
+    }
     const workspace = RequestContext.get(Workspace);
     const user = RequestContext.get(User);
     const member = RequestIdentity.getCurrentMember();
@@ -57,7 +59,9 @@ export class WorkspaceService {
         "The authenticated user is not a member of this workspace",
       );
     }
-    if (workspace) authorize("read", workspace);
+    if (workspace) {
+      authorize("read", workspace);
+    }
     return workspace ?? null;
   }
 
@@ -69,12 +73,16 @@ export class WorkspaceService {
    */
   async getUserWorkspace(id: string, user: User): Promise<Workspace | null> {
     RequestIdentity.assertCurrentUser(user);
-    if (getCurrentApiKey()) return await this.findOne({ id });
+    if (getCurrentApiKey()) {
+      return await this.findOne({ id });
+    }
     RequestIdentity.assertUserSession(user);
     const workspace = await this.em.findOne(Workspace, {
       id,
     });
-    if (!workspace) return null;
+    if (!workspace) {
+      return null;
+    }
     return (await this.findActiveMemberByUser(workspace, user))
       ? workspace
       : null;
@@ -117,13 +125,17 @@ export class WorkspaceService {
     const current = RequestContext.isActive()
       ? RequestContext.get(Workspace)
       : null;
-    if (!current) throw new ForbiddenException("A workspace must be selected");
+    if (!current) {
+      throw new ForbiddenException("A workspace must be selected");
+    }
     RequestIdentity.assertCurrentWorkspace(current);
     authorize("read", current);
     const workspace = await this.em.findOne(Workspace, {
       $and: [where, { id: current.id }],
     });
-    if (workspace) authorize("read", workspace);
+    if (workspace) {
+      authorize("read", workspace);
+    }
     return workspace;
   }
 
@@ -168,14 +180,18 @@ export class WorkspaceService {
     workspace: Workspace | string,
     action: string,
   ): Promise<Workspace> {
-    if (typeof workspace !== "string") return workspace;
+    if (typeof workspace !== "string") {
+      return workspace;
+    }
     authorize(action, Workspace);
     const entity = await this.em.findOne(
       Workspace,
       { id: workspace },
       { refresh: true },
     );
-    if (!entity) throw new NotFoundException("Workspace not found");
+    if (!entity) {
+      throw new NotFoundException("Workspace not found");
+    }
     return entity;
   }
 
@@ -233,7 +249,9 @@ export class WorkspaceService {
         const count = await em.nativeDelete(Workspace, {
           id: workspace.id,
         });
-        if (count !== 1) throw new NotFoundException("Workspace not found");
+        if (count !== 1) {
+          throw new NotFoundException("Workspace not found");
+        }
       },
       { clear: true },
     );

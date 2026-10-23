@@ -52,7 +52,9 @@ export function createEntityMetadataResolver(
     const defaultModelName = getDefaultModelName(model);
     const cached = metadataCache.get(defaultModelName);
 
-    if (cached) return cached;
+    if (cached) {
+      return cached;
+    }
 
     const metadata = em.getMetadata().get(getEntityClass(model));
     const properties = metadata.properties as Record<string, EntityProperty>;
@@ -74,9 +76,15 @@ export function createEntityMetadataResolver(
     const properties = getProperties(model);
 
     // Better Auth uses scalar userId fields; application entities use relations.
-    if (isUserRelation(model, defaultFieldName)) return "user";
-    if (properties[defaultFieldName]) return defaultFieldName;
-    if (properties[field]) return field;
+    if (isUserRelation(model, defaultFieldName)) {
+      return "user";
+    }
+    if (properties[defaultFieldName]) {
+      return defaultFieldName;
+    }
+    if (properties[field]) {
+      return field;
+    }
 
     return (
       Object.entries(properties).find(([, property]) =>
@@ -102,7 +110,9 @@ export function createEntityMetadataResolver(
     const defaultModelName = getDefaultModelName(model);
     const fields = context.schema[defaultModelName]?.fields;
 
-    if (!fields) return entity;
+    if (!fields) {
+      return entity;
+    }
 
     const entityRecord = entity as EntityRecord;
     const adapterRecord: EntityRecord = { ...entityRecord };
@@ -129,7 +139,9 @@ export function createEntityMetadataResolver(
         continue;
       }
 
-      if (adapterFieldName === propertyName) continue;
+      if (adapterFieldName === propertyName) {
+        continue;
+      }
 
       adapterRecord[adapterFieldName] = entityRecord[propertyName];
       hasAliases = true;

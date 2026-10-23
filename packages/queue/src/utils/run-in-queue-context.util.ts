@@ -27,7 +27,9 @@ export async function runInQueueContext<T>(
     type: "queue",
   });
 
-  if (options.job) context.set(JOB_REF, options.job);
+  if (options.job) {
+    context.set(JOB_REF, options.job);
+  }
 
   return await RequestContext.run(context, callback);
 }

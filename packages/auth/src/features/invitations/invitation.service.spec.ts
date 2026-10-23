@@ -59,11 +59,14 @@ describe("InvitationService", () => {
       return Promise.resolve(entity);
     });
     em.findOne.mockImplementation((entity) => {
-      if (entity === User)
+      if (entity === User) {
         return Promise.resolve(
           locked ? Object.assign(new User(), { id: "new-member" }) : null,
         );
-      if (entity === Member) return Promise.resolve(createTestMember());
+      }
+      if (entity === Member) {
+        return Promise.resolve(createTestMember());
+      }
       return Promise.resolve(null);
     });
     await expect(
@@ -196,7 +199,9 @@ describe("InvitationService", () => {
     em.findOne.mockResolvedValue(invitation);
     vi.mocked(authorization.authorize).mockImplementation(
       (_action, subject) => {
-        if (subject === User) throw new ForbiddenException();
+        if (subject === User) {
+          throw new ForbiddenException();
+        }
       },
     );
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
@@ -296,8 +301,9 @@ describe("InvitationService", () => {
         invitationService.getInvitationConnectionByUser(user, { first: 20 }),
       () => invitationService.acceptInvitation(user, "id"),
       () => invitationService.rejectInvitation(user, invitation),
-    ])
+    ]) {
       await expect(operation()).rejects.toBeInstanceOf(ForbiddenException);
+    }
     expect(authorization.assertUserSession).toHaveBeenCalledWith(user);
     expect(authorization.assertUserSession).toHaveBeenCalledTimes(4);
     expect(em.find).not.toHaveBeenCalled();
@@ -337,7 +343,9 @@ describe("InvitationService", () => {
       });
       em.findOne.mockResolvedValueOnce(invitation);
       em.refreshOrFail.mockImplementation((entity) => {
-        if (entity === invitation) Object.assign(invitation, changes);
+        if (entity === invitation) {
+          Object.assign(invitation, changes);
+        }
         return Promise.resolve(entity);
       });
       await expect(
@@ -448,7 +456,9 @@ describe("InvitationService", () => {
         email: contactEmail,
       });
       em.findOne.mockImplementation((entity, where) => {
-        if (entity === User) return Promise.resolve(user);
+        if (entity === User) {
+          return Promise.resolve(user);
+        }
         if (entity === Member && "user" in where && where.user === user.id) {
           return Promise.resolve(member);
         }
@@ -492,7 +502,9 @@ describe("InvitationService", () => {
         user: createTestUser(),
       });
       em.findOne.mockImplementation((entity, where) => {
-        if (entity === User) return Promise.resolve(registered ? user : null);
+        if (entity === User) {
+          return Promise.resolve(registered ? user : null);
+        }
         if (entity === Member && "email" in where && where.email === email) {
           return Promise.resolve(unrelatedMember);
         }

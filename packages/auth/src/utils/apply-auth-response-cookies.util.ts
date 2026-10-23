@@ -7,7 +7,9 @@ import { parseSetCookie } from "cookie";
  */
 export function applyAuthResponseCookies(responseHeaders: Headers): void {
   const values = responseHeaders.getSetCookie();
-  if (values.length === 0) return;
+  if (values.length === 0) {
+    return;
+  }
 
   const cookieStore = cookies();
   for (const value of values) {

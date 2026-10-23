@@ -11,10 +11,14 @@ import { type MailerModuleOptions } from "../mailer-module-options.interface.js"
 export function loadMailerOptionsFromEnv(
   options?: MailerModuleOptions,
 ): MailerModuleOptions {
-  if (options) return options;
+  if (options) {
+    return options;
+  }
 
   const url = process.env.SMTP_URL?.trim();
-  if (url) return { url };
+  if (url) {
+    return { url };
+  }
 
   const environmentOptions: SMTPTransport.Options = {};
   const host = process.env.SMTP_HOST;
@@ -23,9 +27,15 @@ export function loadMailerOptionsFromEnv(
   const username = process.env.SMTP_USERNAME;
   const password = process.env.SMTP_PASSWORD;
 
-  if (host) environmentOptions.host = host;
-  if (port !== undefined) environmentOptions.port = port;
-  if (secure !== undefined) environmentOptions.secure = secure;
+  if (host) {
+    environmentOptions.host = host;
+  }
+  if (port !== undefined) {
+    environmentOptions.port = port;
+  }
+  if (secure !== undefined) {
+    environmentOptions.secure = secure;
+  }
   if (username || password) {
     environmentOptions.auth = {
       pass: password ?? "",
@@ -50,7 +60,9 @@ export function loadMailerDefaultsFromEnv(): MailDefaults | undefined {
  * @returns Validated SMTP port, or undefined when absent.
  */
 function parsePort(value?: string): number | undefined {
-  if (!value) return undefined;
+  if (!value) {
+    return undefined;
+  }
   const port = Number(value);
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
     throw new Error("SMTP_PORT must be an integer between 1 and 65535");
@@ -68,9 +80,15 @@ function parseBoolean(
   value: string | undefined,
   name: string,
 ): boolean | undefined {
-  if (value === undefined || value === "") return undefined;
+  if (value === undefined || value === "") {
+    return undefined;
+  }
   const normalized = value.trim().toLowerCase();
-  if (normalized === "true") return true;
-  if (normalized === "false") return false;
+  if (normalized === "true") {
+    return true;
+  }
+  if (normalized === "false") {
+    return false;
+  }
   throw new Error(`${name} must be either true or false`);
 }

@@ -57,7 +57,9 @@ export async function runAuthQuery<T>(
     });
     // Publish an explicit, successful credential revocation back to the caller.
     // Other failed operations leave its identity and scoped manager unchanged.
-    if (revoked) RequestIdentity.clear(current);
+    if (revoked) {
+      RequestIdentity.clear(current);
+    }
     return result;
   }
   return await RequestContext.run(

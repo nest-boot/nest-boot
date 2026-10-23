@@ -28,11 +28,9 @@
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
     "test:e2e": "pnpm -r --filter './packages/**' --if-present test:e2e",
-    "test:consumer": "node .github/scripts/verify-consumer.mjs",
     "changeset": "changeset",
     "release:status": "changeset status",
-    "release:version": "changeset version && pnpm install --lockfile-only",
-    "test:release": "node --test .github/scripts/release-*.test.mjs"
+    "release:version": "changeset version && pnpm install --lockfile-only"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",

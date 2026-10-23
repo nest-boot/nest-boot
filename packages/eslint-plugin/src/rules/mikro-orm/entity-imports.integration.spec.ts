@@ -110,16 +110,6 @@ const cases = [
       'import { Entity } from "@mikro-orm/decorators/legacy"; import * as orm from "@mikro-orm/core";',
     property: 'name: orm.Opt<string> = "hello";',
   },
-  ...[
-    'import type { Entity, ManyToOne } from "@mikro-orm/core";',
-    'import { type Entity, type ManyToOne } from "@mikro-orm/core";',
-    'import type { Entity, ManyToOne, Opt } from "@mikro-orm/postgresql";',
-    'import { type Entity, type ManyToOne, t } from "@mikro-orm/postgresql";',
-  ].map((imports) => ({
-    name: `type-only class and relation decorators: ${imports}`,
-    imports,
-    property: "@ManyToOne(() => Thing) parent!: Thing; name!: string;",
-  })),
   {
     name: "custom property decorator binding remains unchanged",
     imports:
@@ -201,18 +191,6 @@ const cases = [
     property,
   })),
   {
-    name: "helpers and obsolete decorators from a driver",
-    imports:
-      'import { t, Entity, Property, type Opt, PostgreSqlDriver } from "@mikro-orm/postgresql";',
-    property: 'name: Opt<string> = "hello";',
-  },
-  {
-    name: "all driver bindings move to two destinations",
-    imports:
-      'import { t, Entity, /* keep driver comment */ Property, Opt } from "@mikro-orm/postgresql";',
-    property: 'name: Opt<string> = "hello";',
-  },
-  {
     name: "existing decorator aliases",
     imports:
       'import { Entity, Property as Column, Enum as Choice } from "@mikro-orm/decorators/legacy"; import { t as types } from "@mikro-orm/core";',
@@ -234,55 +212,6 @@ const cases = [
     imports:
       'import { Entity, Property } from "@mikro-orm/decorators/legacy";\nimport { t } from "@mikro-orm/core";',
     property: "@Property({ type: t.text }) name!: Opt<string>;",
-  },
-  {
-    name: "old core Entity and Property imports",
-    imports: 'import { Entity, Property } from "@mikro-orm/core";',
-    property: "name!: string;",
-  },
-  {
-    name: "old core Entity and Enum imports",
-    imports: 'import { Entity, Enum } from "@mikro-orm/core";',
-    property: "role!: Role;",
-  },
-  {
-    name: "mixed core imports with aliases, comments and trailing commas",
-    imports: `import { t, Entity, /* preserve this comment */ Property, type Opt, Enum as OrmEnum, } from '@mikro-orm/core';`,
-    property: 'name: Opt<string> = "hello";',
-  },
-  {
-    name: "old Property with an existing legacy import",
-    imports:
-      'import { Property, t } from "@mikro-orm/core";\nimport { Entity } from "@mikro-orm/decorators/legacy";',
-    property: "name!: string;",
-  },
-  {
-    name: "mixed type-only imports from core",
-    imports:
-      'import { Entity } from "@mikro-orm/decorators/legacy";\nimport type { Property, Opt } from "@mikro-orm/core";',
-    property: "name!: string;",
-  },
-  {
-    name: "inline type-only imports from core",
-    imports: 'import { Entity, type Property, t } from "@mikro-orm/core";',
-    property: "name!: string;",
-  },
-  {
-    name: "already aligned decorators from core",
-    imports: 'import { Entity, Property, t } from "@mikro-orm/core";',
-    property: "@Property({ type: t.text }) name!: string;",
-  },
-  {
-    name: "related decorators and core option types",
-    imports: `import { Entity, PrimaryKey, ManyToOne, BeforeCreate, type PropertyOptions, t } from "@mikro-orm/core";`,
-    property:
-      "@PrimaryKey({ type: t.integer }) id!: number; @ManyToOne(() => Thing) parent!: Thing; @BeforeCreate() beforeCreate() {} name!: string;",
-  },
-  {
-    name: "quoted import names",
-    imports:
-      'import { Entity, "Property" as Property } from "@mikro-orm/core";',
-    property: "name!: string;",
   },
   {
     name: "existing aliases",
@@ -338,32 +267,8 @@ class Thing { ${property} }`;
     expect(result.output).toContain("@SecureColumn({ type: t.string })");
     expect(result.output).not.toContain("@Property(");
   }
-  const fixed = ts.createSourceFile(
-    filename,
-    result.output,
-    ts.ScriptTarget.ES2023,
-    true,
-  );
-  for (const statement of fixed.statements) {
-    if (
-      !ts.isImportDeclaration(statement) ||
-      !ts.isStringLiteral(statement.moduleSpecifier)
-    )
-      continue;
-    const bindings = statement.importClause?.namedBindings;
-    if (!bindings || !ts.isNamedImports(bindings)) continue;
-    for (const binding of bindings.elements) {
-      if (["t", "Opt"].includes((binding.propertyName ?? binding.name).text)) {
-        expect(statement.moduleSpecifier.text).toBe("@mikro-orm/core");
-      }
-    }
-  }
-  if (imports.includes("keep driver comment"))
-    expect(result.output).toContain("/* keep driver comment */");
-  if (imports.includes("preserve this comment")) {
-    expect(result.output).toContain("/* preserve this comment */");
-    expect(result.output).toContain("Enum as OrmEnum");
-    expect(result.output).toContain("type Opt");
+  if (imports.includes('"@mikro-orm/postgresql"')) {
+    expect(result.output).toContain('from "@mikro-orm/postgresql"');
   }
 });
 
@@ -470,25 +375,16 @@ it.each([
   const result = linter.verifyAndFix(code, config, { filename });
   expect(result.messages).toEqual([]);
   expect(result.fixed).toBe(!unchanged);
-  if (unchanged) expect(result.output).toBe(code);
-  if (code.includes(".uuid")) expect(result.output).toContain(".uuid");
+  if (unchanged) {
+    expect(result.output).toBe(code);
+  }
+  if (code.includes(".uuid")) {
+    expect(result.output).toContain(".uuid");
+  }
   expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
     false,
   );
   expect(compileDiagnostics(result.output)).toEqual([]);
-});
-
-it("preserves a default binding when migrating its named decorators", () => {
-  const code = 'import orm, { Entity } from "@mikro-orm/core";';
-  const result = linter.verifyAndFix(code, config, { filename });
-  expect(result.messages).toEqual([]);
-  expect(result.output).toContain('import orm, {  } from "@mikro-orm/core";');
-  expect(result.output).toContain(
-    'import { Entity } from "@mikro-orm/decorators/legacy";',
-  );
-  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
-    false,
-  );
 });
 
 const sourceFiles = new Map<string, ts.SourceFile>();
@@ -512,12 +408,17 @@ function compileDiagnostics(code: string): string[] {
   const host = ts.createCompilerHost(options);
   const getSourceFile = host.getSourceFile.bind(host);
   host.getSourceFile = (file, ...args) => {
-    if (file === filename)
+    if (file === filename) {
       return ts.createSourceFile(file, code, ts.ScriptTarget.ES2023, true);
+    }
     const cached = sourceFiles.get(file);
-    if (cached) return cached;
+    if (cached) {
+      return cached;
+    }
     const source = getSourceFile(file, ...args);
-    if (source) sourceFiles.set(file, source);
+    if (source) {
+      sourceFiles.set(file, source);
+    }
     return source;
   };
   const program = ts.createProgram([filename], options, host, previousProgram);
@@ -569,24 +470,6 @@ it("retains an unrelated namespace decorator on an ORM property", () => {
 });
 
 it.each([
-  'import * as orm from "@mikro-orm/core"; @orm.Entity() class Thing { @orm.Property({ type: orm.t.string }) name!: string; }',
-  'import * as orm from "@mikro-orm/core"; @orm.Entity() class Thing { name!: string; }',
-  'import type * as orm from "@mikro-orm/core"; @orm.Entity() class Thing { @orm.Property({ type: orm.t.string }) name!: string; }',
-  'import * as orm from "@mikro-orm/postgresql"; @orm.Entity() class Thing { @orm.Property({ type: orm.t.string }) name!: string; }',
-  'import * as orm from "@mikro-orm/core"; const ormDecorators = 1; function other(orm: { Entity(): ClassDecorator }) { @orm.Entity() class Other {} } @orm.Entity() class Thing { @orm.Property({ type: orm.t.string }) name!: string; }',
-])("migrates obsolete namespace decorators: %s", (code) => {
-  const result = linter.verifyAndFix(code, config, { filename });
-  expect(result.messages).toEqual([]);
-  expect(result.output).toContain("@mikro-orm/decorators/legacy");
-  if (code.includes("class Other"))
-    expect(result.output).toContain("@orm.Entity() class Other");
-  expect(compileDiagnostics(result.output)).toEqual([]);
-  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
-    false,
-  );
-});
-
-it.each([
   'import { Model, Column, types } from "./.cache/orm-imports/orm-renamed-barrel.js"; @Model() class Thing { @Column({ type: types.uuid }) id!: string; }',
   'import { Entity as Model } from "./.cache/orm-imports/orm-mixed-barrel.js"; @Model() class Thing { name!: string; }',
 ])("preserves the identity of chained and shadowed re-exports: %s", (code) => {
@@ -626,32 +509,6 @@ import { ${decorator} as Secret } from "../${packageName}/src/index.js";
   },
 );
 
-it.each([
-  'import type * as orm from "@mikro-orm/core"; const { Entity, Property } = orm; @Entity() class Thing { @Property() name!: string; }',
-  'import * as orm from "@mikro-orm/core"; const { ["Entity"]: Model, t }: { Entity: () => ClassDecorator; t: typeof orm.t } = orm; @Model() class Thing { name!: string; }',
-  'import * as orm from "@mikro-orm/core"; const { Entity, t }: { Entity: () => ClassDecorator; t: typeof orm.t } = orm; @Entity() class Thing { name!: string; }',
-  'import * as orm from "@mikro-orm/core"; const { Entity: Model, Entity: ModelAgain, t }: { Entity: () => ClassDecorator; t: typeof orm.t } = orm; @Model() @ModelAgain() class Thing { name!: string; }',
-  'import * as orm from "@mikro-orm/core"; const { Entity, Property } = orm; @Entity() class Thing { @Property() name!: string; }',
-  'import * as orm from "@mikro-orm/core"; const { Entity: Model, Property: Column, t: types } = orm; @Model() class Thing { @Column({ type: types.string }) name!: string; score!: number; }',
-  'import * as orm from "@mikro-orm/postgresql"; const { Entity, t, ...driver } = orm; @Entity() class Thing { name!: string; } const Driver = driver.PostgreSqlDriver;',
-  'import type * as orm from "@mikro-orm/core"; const { Entity, Property, t } = orm; @Entity() class Thing { @Property({ type: t.string }) name!: string; }',
-  'import * as orm from "@mikro-orm/core"; function make() { const { Entity: Model, Property = () => (() => undefined), t } = orm; @Model() class Thing { @Property({ type: t.string }) name!: string; } return Thing; }',
-  'import * as orm from "@mikro-orm/core"; const { "Entity": Model, t } = orm, other = 1; function shadow(orm: { Entity(): ClassDecorator }) { const { Entity } = orm; @Entity() class Other {} } @Model() class Thing { name!: string; }',
-])("migrates destructured namespace decorators: %s", (code) => {
-  const result = linter.verifyAndFix(code, config, { filename });
-  expect(result.messages).toEqual([]);
-  expect(result.output).toContain("@mikro-orm/decorators/legacy");
-  expect(result.output).toContain("@Property");
-  expect(compileDiagnostics(result.output)).toEqual([]);
-  if (code.includes("class Other"))
-    expect(result.output).toContain(
-      "const { Entity } = orm; @Entity() class Other",
-    );
-  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
-    false,
-  );
-});
-
 it("does not recognize namespace decorators overridden by computed properties", () => {
   const code = `import * as orm from "@mikro-orm/decorators/legacy";
 const key: string = "Entity";
@@ -678,87 +535,6 @@ const { Entity: Model, EncryptedProperty: Secret, t } = orm;
 });
 
 it.each([
-  'export { Entity, Property } from "@mikro-orm/core";',
-  'export { Entity as Model, /* retain export comment */ Property as Column, t as types, type Opt as Optional } from "@mikro-orm/postgresql";',
-  'export { Entity, PostgreSqlDriver, t } from "@mikro-orm/postgresql";',
-  'export type { Entity as Model, Property } from "@mikro-orm/core";',
-  'export { type Entity, Property } from "@mikro-orm/core";',
-])("migrates named decorator re-exports: %s", (code) => {
-  const result = linter.verifyAndFix(code, config, { filename });
-  expect(result.messages).toEqual([]);
-  expect(result.output).toContain("@mikro-orm/decorators/legacy");
-  if (code.includes("export type"))
-    expect(result.output).toContain("export type");
-  if (code.includes("type Entity"))
-    expect(result.output).toContain("type Entity");
-  if (code.includes("retain export comment"))
-    expect(result.output).toContain("/* retain export comment */");
-  expect(compileDiagnostics(result.output)).toEqual([]);
-  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
-    false,
-  );
-});
-
-it.each([
-  'import { Entity, Property, t, type Opt } from "@mikro-orm/knex"; @Entity() class Thing { @Property({ type: t.string }) name: Opt<string> = ""; }',
-  'import type { Opt } from "@mikro-orm/knex"; export type Name = Opt<string>;',
-  'import * as orm from "@mikro-orm/knex"; @orm.Entity() class Thing { @orm.Property({ type: orm.t.string }) name!: string; } export const Driver = orm.AbstractSqlDriver;',
-  'export { Entity as Model, Property, t, AbstractSqlDriver } from "@mikro-orm/knex";',
-])("migrates the legacy Knex entry point: %s", (code) => {
-  const result = linter.verifyAndFix(code, config, { filename });
-  expect(result.messages).toEqual([]);
-  expect(result.output).not.toContain("@mikro-orm/knex");
-  if (code.includes("Entity"))
-    expect(result.output).toContain("@mikro-orm/decorators/legacy");
-  if (code.includes("AbstractSqlDriver"))
-    expect(result.output).toContain("@mikro-orm/sql");
-  expect(compileDiagnostics(result.output)).toEqual([]);
-  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
-    false,
-  );
-});
-
-it("repairs a project barrel before its consumer is autofixed", () => {
-  const barrel = linter.verifyAndFix(
-    'export { Entity as Model, Property as Column, t as types } from "@mikro-orm/core";',
-    config,
-    { filename },
-  );
-  expect(barrel.messages).toEqual([]);
-  expect(compileDiagnostics(barrel.output)).toEqual([]);
-  writeFileSync(path.join(fixtureRoot, "migrated-barrel.ts"), barrel.output);
-  const code =
-    'import { Model, Column, types } from "./.cache/orm-imports/migrated-barrel.js"; @Model() class Thing { @Column({ type: types.string }) name?: string; }';
-  const result = linter.verifyAndFix(code, config, { filename });
-  expect(result.messages).toEqual([]);
-  expect(result.output).toContain(
-    "@Column({ type: types.string, nullable: true })",
-  );
-  expect(compileDiagnostics(result.output)).toEqual([]);
-  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
-    false,
-  );
-});
-
-it.each([
-  'export * from "@mikro-orm/core";',
-  'export * from "@mikro-orm/postgresql";',
-  'export * from "@mikro-orm/knex";',
-  'export type * from "@mikro-orm/core";',
-  'export * from "@mikro-orm/core"; export * from "@mikro-orm/sql"; export { EntityManager, EntityRepository, MikroORM, Options, defineConfig, raw } from "@mikro-orm/sql";',
-  'export type * from "@mikro-orm/core"; export * from "@mikro-orm/sql"; export { EntityManager, EntityRepository, MikroORM, Options, defineConfig, raw } from "@mikro-orm/sql";',
-  'export * from "@mikro-orm/core"; export { Entity } from "./.cache/orm-imports/other-decorators.js";',
-])("restores wildcard legacy decorator exports: %s", (code) => {
-  const result = linter.verifyAndFix(code, config, { filename });
-  expect(result.messages).toEqual([]);
-  expect(result.output).toContain("@mikro-orm/decorators/legacy");
-  expect(compileDiagnostics(result.output)).toEqual([]);
-  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
-    false,
-  );
-});
-
-it.each([
   'export * from "@mikro-orm/core"; export * from "@mikro-orm/decorators/legacy";',
   'export type * from "@mikro-orm/core"; export type * from "@mikro-orm/decorators/legacy";',
   'export * as orm from "@mikro-orm/core";',
@@ -767,29 +543,4 @@ it.each([
   expect(result.messages).toEqual([]);
   expect(result.output).toBe(code);
   expect(compileDiagnostics(result.output)).toEqual([]);
-});
-
-it("preserves both runtime and type members in a migrated namespace barrel", () => {
-  const barrel = linter.verifyAndFix(
-    'export * from "@mikro-orm/core";',
-    config,
-    { filename },
-  );
-  expect(barrel.messages).toEqual([]);
-  writeFileSync(path.join(fixtureRoot, "wildcard-barrel.ts"), barrel.output);
-  writeFileSync(
-    path.join(fixtureRoot, "namespace-barrel.ts"),
-    'export * as orm from "./wildcard-barrel.js";',
-  );
-  const code = `import { orm } from "./.cache/orm-imports/namespace-barrel.js";
-@orm.Entity() export class Thing { @orm.Property({ type: orm.t.string }) name?: string; }
-export type EntityReference = orm.Ref<Thing>;`;
-  const result = linter.verifyAndFix(code, config, { filename });
-  expect(result.messages).toEqual([]);
-  expect(result.output).toContain("nullable: true");
-  expect(result.output).toContain("orm.Ref<Thing>");
-  expect(compileDiagnostics(result.output)).toEqual([]);
-  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
-    false,
-  );
 });

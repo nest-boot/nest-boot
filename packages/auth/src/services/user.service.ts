@@ -172,7 +172,9 @@ export class UserService {
     const user = await this.em.findOne(User, {
       id: userId,
     });
-    if (user) authorize("read", user);
+    if (user) {
+      authorize("read", user);
+    }
     return user;
   }
 
@@ -186,7 +188,9 @@ export class UserService {
     const user = await this.em.findOne(User, {
       email: email.trim().toLowerCase(),
     });
-    if (user) authorize("read", user);
+    if (user) {
+      authorize("read", user);
+    }
     return user;
   }
 
@@ -314,10 +318,14 @@ export class UserService {
     user: User | string,
     action: string,
   ): Promise<User> {
-    if (typeof user !== "string") return user;
+    if (typeof user !== "string") {
+      return user;
+    }
     authorize(action, User);
     const entity = await this.em.findOne(User, { id: user }, { refresh: true });
-    if (!entity) throw new NotFoundException("User not found");
+    if (!entity) {
+      throw new NotFoundException("User not found");
+    }
     return entity;
   }
 
@@ -438,7 +446,9 @@ export class UserService {
       Object.assign(user, previous);
       throw error;
     }
-    if (this.affectsCurrentAuthentication(user)) RequestIdentity.clear(this.em);
+    if (this.affectsCurrentAuthentication(user)) {
+      RequestIdentity.clear(this.em);
+    }
     return user;
   }
 
@@ -516,7 +526,9 @@ export class UserService {
   ): Promise<AuthenticatedSession | null> {
     RequestIdentity.assertCurrentSession(currentSession);
     const impersonatedByReference = currentSession.impersonatedBy;
-    if (!impersonatedByReference) return null;
+    if (!impersonatedByReference) {
+      return null;
+    }
     this.assertIdentityRevocationCanCommit(
       Reference.unwrapReference(impersonatedByReference),
     );
@@ -531,7 +543,9 @@ export class UserService {
           { id: String(impersonatedBy.id) },
           { filters: false },
         );
-        if (!administrator) return null;
+        if (!administrator) {
+          return null;
+        }
         if (this.isActivelyBanned(administrator)) {
           await em.remove(currentSession).flush();
           return "banned-administrator" as const;
@@ -545,7 +559,9 @@ export class UserService {
       { clear: true },
     );
     // A missing administrator has already cascaded deletion to this session.
-    if (result === null) RequestIdentity.clear(this.em);
+    if (result === null) {
+      RequestIdentity.clear(this.em);
+    }
     // Publish the committed revocation even when restoration returns an error.
     if (result === "banned-administrator") {
       RequestIdentity.clear(this.em);
@@ -566,8 +582,12 @@ export class UserService {
     authorize("delete", user);
     this.assertIdentityRevocationCanCommit(user);
     const deleted = await this.userDeletionService.deleteUser(String(user.id));
-    if (deleted === null) throw new NotFoundException("User not found");
-    if (this.affectsCurrentAuthentication(user)) RequestIdentity.clear(this.em);
+    if (deleted === null) {
+      throw new NotFoundException("User not found");
+    }
+    if (this.affectsCurrentAuthentication(user)) {
+      RequestIdentity.clear(this.em);
+    }
     return user;
   }
 

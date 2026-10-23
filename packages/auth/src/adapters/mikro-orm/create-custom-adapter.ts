@@ -56,7 +56,9 @@ export function createMikroOrmCustomAdapter({
       em: EntityManager,
       callback: (transactionalEntityManager: EntityManager) => Promise<T>,
     ): Promise<T> => {
-      if (inTransaction) return await callback(em);
+      if (inTransaction) {
+        return await callback(em);
+      }
       return await em.transactional(callback);
     };
 
@@ -87,7 +89,9 @@ export function createMikroOrmCustomAdapter({
             convertWhere(model, where),
           );
 
-          if (!entity) return null;
+          if (!entity) {
+            return null;
+          }
 
           em.assign(
             entity,
@@ -131,7 +135,9 @@ export function createMikroOrmCustomAdapter({
                 where,
               );
 
-              if (!entity) return null;
+              if (!entity) {
+                return null;
+              }
 
               await transactionalEntityManager.remove(entity).flush();
               return resolver.toAdapterRecord(model, entity) as any;
@@ -147,7 +153,9 @@ export function createMikroOrmCustomAdapter({
                 where,
               );
 
-              if (!entity) return null;
+              if (!entity) {
+                return null;
+              }
 
               const record = entity as Record<string, unknown>;
               const mappedIncrement = resolver.toEntityData(model, increment);

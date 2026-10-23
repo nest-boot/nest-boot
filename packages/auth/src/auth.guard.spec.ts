@@ -91,9 +91,12 @@ describe("AuthGuard", () => {
       vi.fn(() => false),
       {
         buildAbility: ({ cannot }, { user, workspace }) => {
-          if (user) cannot("read", BaseUser, { id: { $ne: user.id } });
-          if (workspace)
+          if (user) {
+            cannot("read", BaseUser, { id: { $ne: user.id } });
+          }
+          if (workspace) {
             cannot("update", Workspace, { id: { $ne: workspace.id } });
+          }
         },
       },
     );
@@ -323,7 +326,9 @@ describe("AuthGuard", () => {
   it("requires class-level and handler-level permissions together", async () => {
     class Subject {}
     const getAllAndOverride = vi.fn((key) => {
-      if (key === IS_PUBLIC_KEY) return false;
+      if (key === IS_PUBLIC_KEY) {
+        return false;
+      }
       return key === CAN_METADATA
         ? [{ action: "read", subjectCallback: () => Subject }]
         : undefined;

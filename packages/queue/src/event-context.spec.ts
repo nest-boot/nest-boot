@@ -17,7 +17,9 @@ describe("Queue event request contexts", () => {
       "queue-event-tests",
       async (ctx, next) => {
         middlewareContexts.push(ctx);
-        if (middlewareError) throw middlewareError;
+        if (middlewareError) {
+          throw middlewareError;
+        }
         ctx.set(middlewareToken, ctx.id);
         await Promise.resolve();
         try {
@@ -152,7 +154,9 @@ describe("Queue event request contexts", () => {
           const context = RequestContext.current();
           const parentValue = context.get(token);
           context.set(token, value);
-          if (value === 2) markEntered();
+          if (value === 2) {
+            markEntered();
+          }
           await released;
           return {
             context,

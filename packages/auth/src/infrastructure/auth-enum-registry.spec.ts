@@ -207,8 +207,9 @@ describe("auth enum registration", () => {
       "query($role: UserRole!, $permissions: [UserApiKeyPermission!]!) { userRole(role: $role) apiKeyPermissions(permissions: $permissions) }",
     );
     const operation = document.definitions[0];
-    if (operation.kind !== Kind.OPERATION_DEFINITION)
+    if (operation.kind !== Kind.OPERATION_DEFINITION) {
       throw new Error("Missing operation");
+    }
     expect(
       getVariableValues(schema, operation.variableDefinitions ?? [], {
         role: "SUPER_ADMIN",

@@ -200,7 +200,9 @@ class RequestCookieStore implements CookieStore {
  * @returns Serializable cookies parsed from the request header.
  */
 function parseRequestCookies(header: string | undefined): RequestCookie[] {
-  if (!header) return [];
+  if (!header) {
+    return [];
+  }
 
   return header.split(";").flatMap((pair) =>
     Object.entries(parseCookie(pair))

@@ -33,6 +33,7 @@ const config = [
     },
     rules: {
       // 基础规则
+      curly: ["error", "all"],
       "no-void": "off",
       "no-use-before-define": "off",
 
@@ -71,8 +72,6 @@ const config = [
       "@nest-boot/entity-property-config-from-types": "error",
       "@nest-boot/graphql-field-definite-assignment": "error",
       "@nest-boot/graphql-field-config-from-types": "error",
-      "@nest-boot/import-graphql": "error",
-      "@nest-boot/import-database": "error",
     },
   },
 ];

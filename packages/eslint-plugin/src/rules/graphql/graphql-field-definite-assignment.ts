@@ -57,14 +57,20 @@ export default createRule<
       member: TSESTree.PropertyDefinition,
     ): boolean => {
       // Check the AST node's optional flag
-      if (member.optional) return true;
+      if (member.optional) {
+        return true;
+      }
 
       // Check if there is a ? symbol in the source code (between property name and colon)
       const keyEnd = member.key.range[1];
       const text = source.text;
       for (let i = keyEnd; i < member.range[1]; i++) {
-        if (text[i] === "?") return true;
-        if (text[i] === ":" || text[i] === "!") break;
+        if (text[i] === "?") {
+          return true;
+        }
+        if (text[i] === ":" || text[i] === "!") {
+          break;
+        }
       }
 
       return false;
@@ -78,18 +84,30 @@ export default createRule<
 
     return {
       ClassDeclaration(node) {
-        if (!isGraphqlModelClass(node)) return;
+        if (!isGraphqlModelClass(node)) {
+          return;
+        }
 
         node.body.body.forEach((member: TSESTree.ClassElement) => {
-          if (member.type !== AST_NODE_TYPES.PropertyDefinition) return;
-          if (!hasPropertyDecorator(member, "Field")) return;
+          if (member.type !== AST_NODE_TYPES.PropertyDefinition) {
+            return;
+          }
+          if (!hasPropertyDecorator(member, "Field")) {
+            return;
+          }
 
           const propertyName = getPropertyName(member);
-          if (!propertyName) return;
+          if (!propertyName) {
+            return;
+          }
 
           // Optional properties (?:) do not need a definite assignment assertion
-          if (isOptionalProperty(member)) return;
-          if (isDeclareProperty(member)) return;
+          if (isOptionalProperty(member)) {
+            return;
+          }
+          if (isDeclareProperty(member)) {
+            return;
+          }
 
           const hasInit = hasInitializer(member);
           const hasDefinite = hasDefiniteAssignment(member);

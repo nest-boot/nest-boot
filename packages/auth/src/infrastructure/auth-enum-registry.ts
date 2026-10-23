@@ -67,8 +67,9 @@ export class AuthEnumRegistry implements OnModuleDestroy {
       );
     }
     for (const [target, values] of enums) {
-      for (const key of Object.keys(target))
+      for (const key of Object.keys(target)) {
         Reflect.deleteProperty(target, key);
+      }
       Object.assign(target, values);
     }
     activeSignature = signature;
@@ -76,7 +77,9 @@ export class AuthEnumRegistry implements OnModuleDestroy {
   }
 
   onModuleDestroy(): void {
-    if (this.released) return;
+    if (this.released) {
+      return;
+    }
     this.released = true;
     activeApplications--;
   }

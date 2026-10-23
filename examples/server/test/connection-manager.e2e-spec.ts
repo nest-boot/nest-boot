@@ -68,8 +68,11 @@ describe('GraphQL connection and official SQL driver integration', () => {
           expect(result.totalCount).toBe(5);
           expect(result.edges).toHaveLength(1);
           const pageIds = result.edges.map(({ node }) => node.id);
-          if (backward) ids.unshift(...pageIds);
-          else ids.push(...pageIds);
+          if (backward) {
+            ids.unshift(...pageIds);
+          } else {
+            ids.push(...pageIds);
+          }
           cursor = backward
             ? result.pageInfo.startCursor
             : result.pageInfo.endCursor;

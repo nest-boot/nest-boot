@@ -29,8 +29,12 @@ describe("WorkspaceService and cross-domain coordination", () => {
     async (principal) => {
       const { workspaceService, em } = createWorkspaceServices({
         buildAbility: ({ cannot }, { workspace }) => {
-          if (!workspace) return;
-          if (workspace.name === "Locked") cannot("delete", Workspace);
+          if (!workspace) {
+            return;
+          }
+          if (workspace.name === "Locked") {
+            cannot("delete", Workspace);
+          }
         },
       });
       const workspace = createTestWorkspace();
@@ -98,7 +102,9 @@ describe("WorkspaceService and cross-domain coordination", () => {
     const workspace = createTestWorkspace();
     em.findOne.mockResolvedValue(workspace);
     vi.mocked(authorization.authorize).mockImplementation((action) => {
-      if (action === "read") throw new ForbiddenException();
+      if (action === "read") {
+        throw new ForbiddenException();
+      }
     });
 
     await expect(
@@ -141,8 +147,9 @@ describe("WorkspaceService and cross-domain coordination", () => {
           if (
             (failure === "type" && subject === Workspace) ||
             (failure === "instance" && subject === workspace)
-          )
+          ) {
             throw new ForbiddenException();
+          }
         },
       );
       await expect(
@@ -502,8 +509,12 @@ describe("WorkspaceService and cross-domain coordination", () => {
                 ? new UserApiKey()
                 : null;
           RequestContext.set(API_KEY, key);
-          if (kind !== "member-key") RequestContext.set(User, user);
-          if (kind === "session") RequestContext.set(Session, session);
+          if (kind !== "member-key") {
+            RequestContext.set(User, user);
+          }
+          if (kind === "session") {
+            RequestContext.set(Session, session);
+          }
           RequestContext.set(Workspace, workspace);
           RequestContext.set(Member, createTestMember());
           em.nativeDelete.mockImplementation(() => {
@@ -532,8 +543,9 @@ describe("WorkspaceService and cross-domain coordination", () => {
           } else {
             expect(RequestContext.get(API_KEY)).toBe(key);
             expect(RequestContext.get(User)).toBe(user);
-            if (kind === "session")
+            if (kind === "session") {
               expect(RequestContext.get(Session)).toBe(session);
+            }
             expect(em.setSessionContext).toHaveBeenCalledWith(
               expect.objectContaining({
                 variables: expect.objectContaining({ "app.workspace.id": "" }),

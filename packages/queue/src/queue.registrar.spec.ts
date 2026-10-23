@@ -159,18 +159,21 @@ it("waits for every transport to become ready before running consumers", async (
     await vi.waitFor(() => {
       expect(finishEmail).toBeTypeOf("function");
     });
-    for (const transport of [...workers, ...streams])
+    for (const transport of [...workers, ...streams]) {
       expect(transport.run).not.toHaveBeenCalled();
+    }
     finishEmail();
     await vi.waitFor(() => {
       expect(finishReports).toBeTypeOf("function");
     });
-    for (const transport of [...workers, ...streams])
+    for (const transport of [...workers, ...streams]) {
       expect(transport.run).not.toHaveBeenCalled();
+    }
     finishReports();
     await starting;
-    for (const transport of [...workers, ...streams])
+    for (const transport of [...workers, ...streams]) {
       expect(transport.run).toHaveBeenCalledOnce();
+    }
   } finally {
     await app.close();
   }
@@ -188,8 +191,9 @@ it("closes all partially created transports when readiness fails", async () => {
   } finally {
     await app.close();
   }
-  for (const transport of [...workers, ...streams])
+  for (const transport of [...workers, ...streams]) {
     expect(transport.close).toHaveBeenCalledOnce();
+  }
 });
 
 it("closes the application while readiness is pending and never starts consumers", async () => {

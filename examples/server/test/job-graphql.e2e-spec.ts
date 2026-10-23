@@ -40,7 +40,9 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
     const client = await orm.em.getConnection().getNativeClient();
     await runMigrations({
       async query<R>(sql: string, params?: readonly unknown[]) {
-        if (params?.length) return await client.query<R>(sql, [...params]);
+        if (params?.length) {
+          return await client.query<R>(sql, [...params]);
+        }
         const results = await client.exec(sql);
         return { rows: (results.at(-1)?.rows ?? []) as R[] };
       },
@@ -161,11 +163,12 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
       if (authenticated) {
         context.set(Session, new Session());
         context.set(User, Object.assign(new User(), { id: userId }));
-        if (workspaceId)
+        if (workspaceId) {
           context.set(
             Workspace,
             Object.assign(new Workspace(), { id: workspaceId }),
           );
+        }
       }
       void RequestContext.run(context, () => {
         next();
@@ -269,8 +272,9 @@ describe('example Job GraphQL API with native BullMQ tables', () => {
     const { body } = await query(`query { ${selection} }`);
     expect(body.data).toBeUndefined();
     expect(body.errors).toHaveLength(8);
-    for (const error of body.errors)
+    for (const error of body.errors) {
       expect(error.message).toContain('Cannot query field');
+    }
   });
 
   it.each([

@@ -82,15 +82,17 @@ describe("AccountService", () => {
         await RequestContext.run(
           new RequestContext({ type: "test" }),
           async () => {
-            if (identity !== "anonymous")
+            if (identity !== "anonymous") {
               RequestContext.set(
                 User,
                 identity === "foreign-user"
                   ? Object.assign(new User(), { id: "other" })
                   : user,
               );
-            if (identity === "api-key")
+            }
+            if (identity === "api-key") {
               RequestContext.set(API_KEY, new MemberApiKey());
+            }
             await check();
           },
         );

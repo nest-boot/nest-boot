@@ -59,7 +59,9 @@ export class ScheduleRegistry implements OnApplicationBootstrap {
     try {
       await this.register();
     } catch (error) {
-      if (!(error instanceof SchemaMigrationRequiredError)) throw error;
+      if (!(error instanceof SchemaMigrationRequiredError)) {
+        throw error;
+      }
       // The migration command bootstraps the same application before it creates
       // BullMQ's tables. A subsequent entry registers the schedules after migration.
       this.logger.warn(

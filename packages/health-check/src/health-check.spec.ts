@@ -165,7 +165,9 @@ describe("registered health checks", () => {
     async (kind) => {
       const failure = new Error("unexpected failure");
       registry.register(() => {
-        if (kind === "unexpected") throw failure;
+        if (kind === "unexpected") {
+          throw failure;
+        }
         return { cache: { status: "down" } };
       });
       const { adapter, middleware } = createMiddleware();

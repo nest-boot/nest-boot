@@ -8,7 +8,9 @@ describe("MailerHealthIndicator", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    for (const mailer of mailers.splice(0)) mailer.close();
+    for (const mailer of mailers.splice(0)) {
+      mailer.close();
+    }
   });
 
   /**
@@ -122,8 +124,11 @@ describe("MailerHealthIndicator", () => {
       expect(close).not.toHaveBeenCalled();
 
       const recovery = indicator.check();
-      if (settlement === "resolve") pending.resolve(true);
-      else pending.reject(new Error("Late SMTP failure"));
+      if (settlement === "resolve") {
+        pending.resolve(true);
+      } else {
+        pending.reject(new Error("Late SMTP failure"));
+      }
       expect(await recovery).toMatchObject({
         mailer: { status: settlement === "resolve" ? "up" : "down" },
       });

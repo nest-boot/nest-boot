@@ -58,7 +58,9 @@ it.each([false, true])(
         visited.push(meta.className);
         meta.schema = "application";
       };
-      if (asyncHook) return Promise.resolve().then(update);
+      if (asyncHook) {
+        return Promise.resolve().then(update);
+      }
       update();
     };
     const config = withQueueDatabaseConfig(
@@ -76,10 +78,11 @@ it.each([false, true])(
       expect(visited).toContain("Custom");
       expect(visited).toContain("Job");
       expect(orm.getMetadata().get(custom).schema).toBe("application");
-      for (const entity of entities)
+      for (const entity of entities) {
         expect(orm.getMetadata().get<object>(entity).schema).toBe(
           "task's schema",
         );
+      }
       expect(orm.getMetadata(QueueEvent).properties.id.defaultRaw).toBe(
         `nextval('"task''s schema".event_seq'::regclass)`,
       );

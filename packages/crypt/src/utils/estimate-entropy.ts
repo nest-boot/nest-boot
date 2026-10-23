@@ -6,6 +6,8 @@
  */
 export function estimateEntropy(str: string): number {
   const unique = new Set(str).size;
-  if (unique === 0) return 0;
+  if (unique === 0) {
+    return 0;
+  }
   return Math.log2(Math.pow(unique, str.length));
 }

@@ -26,10 +26,11 @@ export abstract class BaseQueue<
     );
     delete declaredOptions.expose;
     const context = queueConstructionContext.getStore();
-    if (context?.target !== new.target)
+    if (context?.target !== new.target) {
       throw new Error(
         `Queue "${new.target.name}" must be created by Nest; register its class as a provider or use ModuleRef.create().`,
       );
+    }
     const root = { ...context.options };
     delete root.graphql;
     const local = { ...declaredOptions, ...options };

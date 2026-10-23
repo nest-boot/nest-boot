@@ -212,21 +212,25 @@ describe("API-key management services", () => {
     it(`checks the member owner before issuing a key: ${kind}`, async () => {
       const { service, em } = createService();
       const target = Object.assign(createTestMember(), { id: "target-member" });
-      if (kind === "other-user")
+      if (kind === "other-user") {
         target.user = ref(
           User,
           Object.assign(createTestUser(), { id: "other-user" }),
         );
+      }
       if (kind === "service-account") {
         target.type = MemberType.SERVICE_ACCOUNT;
         target.user = null;
       }
-      if (kind === "disabled") target.status = "DISABLED";
-      if (kind === "foreign-workspace")
+      if (kind === "disabled") {
+        target.status = "DISABLED";
+      }
+      if (kind === "foreign-workspace") {
         target.workspace = ref(
           Workspace,
           Object.assign(createTestWorkspace(), { id: "foreign" }),
         );
+      }
       em.findOne.mockResolvedValue(kind === "missing" ? null : target);
       const create = service.createMemberApiKey(createTestWorkspace(), {
         name: "Key",
@@ -682,7 +686,9 @@ describe("API-key management services", () => {
             member: ref(Member, createTestMember()),
           },
         );
-        if (scope === "user") RequestContext.set(User, user);
+        if (scope === "user") {
+          RequestContext.set(User, user);
+        }
         RequestContext.set(API_KEY, key);
         const ability = new AuthAbility([
           { action: "update", subject: Workspace },
@@ -725,13 +731,15 @@ describe("API-key management services", () => {
         em.flush.mockImplementationOnce(() => {
           expect(RequestContext.get(API_KEY)).toBe(key);
           expect(em.setSessionContext).not.toHaveBeenCalled();
-          if (operation === "disable")
+          if (operation === "disable") {
             expect(key.lastUsedAt?.getTime()).toBeGreaterThan(0);
+          }
           return Promise.resolve();
         });
         await invoke();
-        if (operation === "disable")
+        if (operation === "disable") {
           expect(key.lastUsedAt?.getTime()).toBeGreaterThan(0);
+        }
         expect(RequestContext.get(AuthAbility)?.can("update", Workspace)).toBe(
           false,
         );
@@ -770,7 +778,9 @@ describe("API-key management services", () => {
         const assertion =
           scope === "user" ? authorization.authorize : authorization.authorize;
         vi.mocked(assertion).mockImplementation((_action, subject) => {
-          if (subject === key) throw new ForbiddenException();
+          if (subject === key) {
+            throw new ForbiddenException();
+          }
         });
 
         const operation =
@@ -961,7 +971,9 @@ describe("API-key management services", () => {
     const { em, service } = createService();
     const workspace = createTestWorkspace();
     const member = RequestContext.get(Member);
-    if (!member) throw new Error("Missing test member");
+    if (!member) {
+      throw new Error("Missing test member");
+    }
     member.workspace = workspace as never;
 
     const result = await service.createMemberApiKey(workspace, {
@@ -1313,7 +1325,9 @@ describe("API-key management services", () => {
     const { em, service } = createService();
     const workspace = createTestWorkspace();
     const member = RequestContext.get(Member);
-    if (!member) throw new Error("Missing test member");
+    if (!member) {
+      throw new Error("Missing test member");
+    }
     member.roles = ["admin"];
 
     await expect(
@@ -1366,7 +1380,9 @@ describe("API-key management services", () => {
   it("enforces owner permission ceilings when API-key permissions are updated", async () => {
     const { em, service } = createService();
     const member = RequestContext.get(Member);
-    if (!member) throw new Error("Missing test member");
+    if (!member) {
+      throw new Error("Missing test member");
+    }
     member.roles = ["admin"];
     const memberKey = createTestApiKey();
     em.findOne.mockResolvedValue(memberKey);

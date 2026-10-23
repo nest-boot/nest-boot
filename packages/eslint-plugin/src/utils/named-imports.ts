@@ -32,12 +32,15 @@ function importsFrom(source: Readonly<SourceCode>, modules: Modules) {
 function visibleScopes(source: Readonly<SourceCode>, location: TSESTree.Node) {
   const scopes = [];
   let scope: Scope.Scope | null = source.getScope(location);
-  if (location === source.ast)
+  if (location === source.ast) {
     scope =
       source.scopeManager?.scopes.find(
         (candidate) => candidate.type === Scope.ScopeType.module,
       ) ?? scope;
-  for (; scope; scope = scope.upper) scopes.push(scope);
+  }
+  for (; scope; scope = scope.upper) {
+    scopes.push(scope);
+  }
   return scopes;
 }
 
@@ -95,7 +98,9 @@ export function namedImportBinding(
   location: TSESTree.Node = source.ast,
 ): string {
   const existing = findImport(source, modules, name, location);
-  if (existing) return existing.specifier.local.name;
+  if (existing) {
+    return existing.specifier.local.name;
+  }
   const occupied = new Set(
     [
       ...new Set([
@@ -109,8 +114,9 @@ export function namedImportBinding(
     ),
   );
   let local = name;
-  for (let suffix = 2; occupied.has(local); suffix++)
+  for (let suffix = 2; occupied.has(local); suffix++) {
     local = `${name}${String(suffix)}`;
+  }
   return local;
 }
 
@@ -139,10 +145,13 @@ function destructuredReference(variable: Scope.Variable): {
       definition.parent.kind !== "const" ||
       definition.node.id.type !== AST_NODE_TYPES.ObjectPattern ||
       definition.node.init === null
-    )
+    ) {
       continue;
+    }
     for (const property of definition.node.id.properties) {
-      if (property.type !== AST_NODE_TYPES.Property) continue;
+      if (property.type !== AST_NODE_TYPES.Property) {
+        continue;
+      }
       const binding =
         property.value.type === AST_NODE_TYPES.AssignmentPattern
           ? property.value.left
@@ -150,24 +159,37 @@ function destructuredReference(variable: Scope.Variable): {
       if (
         binding.type !== AST_NODE_TYPES.Identifier ||
         !variable.identifiers.includes(binding)
-      )
+      ) {
         continue;
+      }
       const member = staticPropertyName(property);
-      if (!member) continue;
+      if (!member) {
+        continue;
+      }
       const init = definition.node.init;
-      if (init.type === AST_NODE_TYPES.Identifier)
+      if (init.type === AST_NODE_TYPES.Identifier) {
         return { namespace: init, member };
-      if (init.type !== AST_NODE_TYPES.ObjectExpression) continue;
+      }
+      if (init.type !== AST_NODE_TYPES.ObjectExpression) {
+        continue;
+      }
       for (const entry of init.properties.toReversed()) {
-        if (entry.type === AST_NODE_TYPES.SpreadElement) break;
+        if (entry.type === AST_NODE_TYPES.SpreadElement) {
+          break;
+        }
         const key = staticPropertyName(entry);
-        if (!key) break;
-        if (key !== member) continue;
+        if (!key) {
+          break;
+        }
+        if (key !== member) {
+          continue;
+        }
         if (
           entry.value.type !== AST_NODE_TYPES.MemberExpression ||
           entry.value.object.type !== AST_NODE_TYPES.Identifier
-        )
+        ) {
           return null;
+        }
         const selected = staticPropertyName(entry.value);
         return selected
           ? { namespace: entry.value.object, member: selected }
@@ -200,9 +222,12 @@ function referenceImports(
     variable && node.type === AST_NODE_TYPES.Identifier
       ? destructuredReference(variable)
       : null;
-  if (destructuredOnly && !destructured) return [];
-  if (destructured)
+  if (destructuredOnly && !destructured) {
+    return [];
+  }
+  if (destructured) {
     variable = referenceVariable(source, destructured.namespace);
+  }
   return (variable?.defs ?? []).flatMap((definition) =>
     definition.type === Scope.DefinitionType.ImportBinding &&
     definition.parent.type === AST_NODE_TYPES.ImportDeclaration &&
@@ -234,7 +259,9 @@ export function importedBindingName(
             node.left.type === AST_NODE_TYPES.Identifier
           ? node.left
           : null;
-  if (!identifier) return null;
+  if (!identifier) {
+    return null;
+  }
   const member =
     namespaceMember ??
     (node.type === AST_NODE_TYPES.MemberExpression &&
@@ -254,39 +281,45 @@ export function importedBindingName(
     .find((candidate) => candidate.identifier === identifier);
   const variable = reference?.resolved;
   // Preserve the rules' support for unresolved ambient decorator names.
-  if (!variable)
+  if (!variable) {
     return !namespaceMember && node === identifier ? identifier.name : null;
+  }
   if (!namespaceMember && node === identifier) {
     const destructured = destructuredReference(variable);
-    if (destructured)
+    if (destructured) {
       return importedBindingName(
         source,
         modules,
         destructured.namespace,
         destructured.member,
       );
+    }
   }
   for (const definition of variable.defs) {
     if (
       definition.type !== Scope.DefinitionType.ImportBinding ||
       definition.parent.type !== AST_NODE_TYPES.ImportDeclaration
-    )
+    ) {
       continue;
+    }
     if (
       namespaceMember &&
       definition.node.type !== AST_NODE_TYPES.ImportNamespaceSpecifier
-    )
+    ) {
       return null;
-    if (!matchesModule(modules, definition.parent.source.value))
+    }
+    if (!matchesModule(modules, definition.parent.source.value)) {
       return reexportedImportName(source, modules, node, namespaceMember);
+    }
     if (
       node === identifier &&
       definition.node.type === AST_NODE_TYPES.ImportSpecifier
     ) {
       return importedName(definition.node);
     }
-    if (definition.node.type === AST_NODE_TYPES.ImportNamespaceSpecifier)
+    if (definition.node.type === AST_NODE_TYPES.ImportNamespaceSpecifier) {
       return member;
+    }
   }
   return null;
 }
@@ -443,7 +476,9 @@ function promotionEdits(
           promoted.has(specifier.local.name)
         ) {
           const typeToken = source.getFirstToken(specifier);
-          if (typeToken) edits.push({ range: typeToken.range, text: "" });
+          if (typeToken) {
+            edits.push({ range: typeToken.range, text: "" });
+          }
         }
       }
     }

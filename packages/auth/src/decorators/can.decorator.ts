@@ -19,8 +19,9 @@ export function Can<
   action: string,
   subjectCallback: CanSubjectCallback<T, TSelf, TArgs>,
 ): CustomDecorator<typeof CAN_METADATA> {
-  if (typeof subjectCallback !== "function")
+  if (typeof subjectCallback !== "function") {
     throw new TypeError("Permission subject callback is required.");
+  }
   const metadata = { action, subjectCallback };
   return appendMetadata(CAN_METADATA, metadata);
 }

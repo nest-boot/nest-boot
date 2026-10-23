@@ -43,7 +43,9 @@ export class AuthMiddleware implements NestMiddleware {
     const current = RequestContext.isActive()
       ? RequestContext.get(Session)
       : null;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     try {
       const session = await this.em.findOne(
         Session,
@@ -54,7 +56,9 @@ export class AuthMiddleware implements NestMiddleware {
         },
         { refresh: true },
       );
-      if (!session) RequestIdentity.clear(this.em);
+      if (!session) {
+        RequestIdentity.clear(this.em);
+      }
     } catch (error) {
       RequestIdentity.clear(this.em);
       throw error;
@@ -64,17 +68,20 @@ export class AuthMiddleware implements NestMiddleware {
   /** Reloads a profile written by Better Auth without changing its authentication method. */
   async refreshCurrentUser(): Promise<void> {
     const current = RequestContext.isActive() ? RequestContext.get(User) : null;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     try {
       const user = await this.em.findOne(
         User,
         { id: current.id },
         { refresh: true },
       );
-      if (!user)
+      if (!user) {
         throw new UnauthorizedException(
           "The current user is no longer available",
         );
+      }
       RequestIdentity.update(this.em, this.options, { user });
     } catch (error) {
       RequestIdentity.clear(this.em);
@@ -157,7 +164,9 @@ export class AuthMiddleware implements NestMiddleware {
     try {
       await this.resolveSelectedWorkspace(req);
       const hasSession = await this.resolveSession();
-      if (!hasSession) await this.resolveApiKey(req);
+      if (!hasSession) {
+        await this.resolveApiKey(req);
+      }
       await this.resolveMember();
       RequestIdentity.syncDatabase(this.em);
       next();
@@ -179,17 +188,23 @@ export class AuthMiddleware implements NestMiddleware {
         ? headerWorkspaceId[0]
         : headerWorkspaceId) ?? cookieWorkspaceId
     )?.trim();
-    if (!workspaceId) return;
+    if (!workspaceId) {
+      return;
+    }
 
     const workspace = await this.em.findOne(Workspace, {
       id: workspaceId,
     });
-    if (workspace) RequestIdentity.stage({ workspace });
+    if (workspace) {
+      RequestIdentity.stage({ workspace });
+    }
   }
 
   private async resolveSession(): Promise<boolean> {
     const data = await this.sessionService.getCurrentAuthenticatedSession();
-    if (!data) return false;
+    if (!data) {
+      return false;
+    }
 
     RequestIdentity.stage({ user: data.user, session: data.session });
     return true;
@@ -197,7 +212,9 @@ export class AuthMiddleware implements NestMiddleware {
 
   private async resolveApiKey(req: Request): Promise<void> {
     const plaintextApiKey = extractApiKey(req);
-    if (!plaintextApiKey) return;
+    if (!plaintextApiKey) {
+      return;
+    }
 
     const validation = await this.apiKeyService.validate(plaintextApiKey);
     if (validation.ownerType === "user") {
@@ -223,10 +240,14 @@ export class AuthMiddleware implements NestMiddleware {
   }
 
   private async resolveMember(): Promise<void> {
-    if (RequestContext.get(Member)) return;
+    if (RequestContext.get(Member)) {
+      return;
+    }
     const user = RequestContext.get(User);
     const workspace = RequestContext.get(Workspace);
-    if (!user || !workspace) return;
+    if (!user || !workspace) {
+      return;
+    }
 
     const member = await runAuthQuery(
       this.em,
@@ -237,7 +258,9 @@ export class AuthMiddleware implements NestMiddleware {
           workspace,
         }),
     );
-    if (!member) return;
+    if (!member) {
+      return;
+    }
 
     RequestIdentity.stage({ member });
   }

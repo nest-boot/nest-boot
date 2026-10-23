@@ -140,8 +140,12 @@ export class Logger implements LoggerService {
         : typeof data === "object" && data !== null
           ? { ...data }
           : {};
-    if (message instanceof Error) bindings.err = message;
-    if (stack !== undefined) bindings.stack = stack;
+    if (message instanceof Error) {
+      bindings.err = message;
+    }
+    if (stack !== undefined) {
+      bindings.stack = stack;
+    }
 
     this.call(
       "error",

@@ -332,13 +332,14 @@ it("links nb during a fresh workspace installation before compiled output exists
     }),
   );
   const binDirectory = join(packageDirectory, "bin");
-  if (existsSync(binDirectory))
+  if (existsSync(binDirectory)) {
     for (const name of readdirSync(binDirectory)) {
       write(
         `workspace/packages/command/bin/${name}`,
         readFileSync(join(binDirectory, name), "utf8"),
       );
     }
+  }
   write(
     "workspace/packages/app/package.json",
     JSON.stringify({

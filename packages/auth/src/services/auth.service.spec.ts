@@ -129,8 +129,9 @@ describe("password policy", () => {
         authMiddleware.assertAuthenticationCanChange,
       ).not.toHaveBeenCalled();
       expect(authMiddleware.authenticateSession).not.toHaveBeenCalled();
-      for (const method of Object.values(api))
+      for (const method of Object.values(api)) {
         expect(method).not.toHaveBeenCalled();
+      }
     },
   );
 });

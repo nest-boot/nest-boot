@@ -26,8 +26,9 @@ export function serializeAbilityRules(
  * @returns One subject name or an array of subject names.
  */
 function serializeSubject(subject: unknown): SerializedAbilityRule["subject"] {
-  if (Array.isArray(subject))
+  if (Array.isArray(subject)) {
     return [...new Set(subject.map(serializeSingleSubject))];
+  }
   return serializeSingleSubject(subject);
 }
 
@@ -37,8 +38,12 @@ function serializeSubject(subject: unknown): SerializedAbilityRule["subject"] {
  * @returns Name of the subject class or string subject.
  */
 function serializeSingleSubject(subject: unknown): string {
-  if (typeof subject === "string") return subject;
-  if (typeof subject === "function" && subject.name) return subject.name;
+  if (typeof subject === "string") {
+    return subject;
+  }
+  if (typeof subject === "function" && subject.name) {
+    return subject.name;
+  }
 
   throw new TypeError("CASL rule subject must be a string or named class");
 }

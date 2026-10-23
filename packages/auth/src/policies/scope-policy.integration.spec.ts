@@ -178,10 +178,11 @@ describe("scope policy factories with native PGlite RLS", () => {
   it("preserves callbacks across rediscovery and produces no schema drift", async () => {
     const second = await initialize();
     try {
-      for (const { entity } of fixtures)
+      for (const { entity } of fixtures) {
         expect(second.getMetadata(entity).policies).toEqual(
           orm.getMetadata(entity).policies,
         );
+      }
       expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe("");
     } finally {
       await second.close();

@@ -35,14 +35,18 @@ export class UserDeletionService {
             ? { refresh: true }
             : { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
         );
-        if (!user) return null;
+        if (!user) {
+          return null;
+        }
 
         await beforeDelete?.();
         // Delete only the root; foreign keys clean up dependants even under RLS.
         const count = await em.nativeDelete(User, {
           id: userId,
         });
-        if (count !== 1) throw new NotFoundException("User not found");
+        if (count !== 1) {
+          throw new NotFoundException("User not found");
+        }
         return user;
       },
       scoped ? { clear: true } : {},

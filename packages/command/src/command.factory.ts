@@ -42,7 +42,9 @@ export class CommandFactory {
       try {
         const cli = new Cli({ binaryName: "nb", ...options });
         cli.register(Builtins.HelpCommand);
-        if (options.binaryVersion) cli.register(Builtins.VersionCommand);
+        if (options.binaryVersion) {
+          cli.register(Builtins.VersionCommand);
+        }
         app.get(CommandRegistry, { strict: false }).register(cli);
         const args = options.args ?? process.argv.slice(2);
         exitCode = await RequestContext.run(
@@ -56,8 +58,9 @@ export class CommandFactory {
                 if (
                   error instanceof UnknownElementException ||
                   error instanceof InvalidClassScopeException
-                )
+                ) {
                   return undefined;
+                }
                 throw error;
               }
             },

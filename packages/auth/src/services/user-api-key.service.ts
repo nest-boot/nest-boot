@@ -313,7 +313,9 @@ export class UserApiKeyService {
   }
 
   private unwrapUser(apiKey: ApiKeyMetadata<UserApiKey>): User {
-    if (!apiKey.user) throw new ForbiddenException("API key owner is missing");
+    if (!apiKey.user) {
+      throw new ForbiddenException("API key owner is missing");
+    }
     return Reference.unwrapReference(apiKey.user);
   }
 

@@ -19,7 +19,9 @@ const REQUEST_PERMISSIONS = Symbol("auth.requestPermissions");
  * @internal
  */
 export function invalidateRequestPermissions(): void {
-  if (RequestContext.isActive()) RequestContext.set(REQUEST_PERMISSIONS, null);
+  if (RequestContext.isActive()) {
+    RequestContext.set(REQUEST_PERMISSIONS, null);
+  }
 }
 
 /**
@@ -31,13 +33,16 @@ export function invalidateRequestPermissions(): void {
 export function resolveRequestPermissions(
   options: AuthModuleOptions,
 ): RequestPermissions {
-  if (!RequestContext.isActive())
+  if (!RequestContext.isActive()) {
     return { user: [], workspace: [], apiKey: null };
+  }
   const cached = RequestContext.get<{
     options: AuthModuleOptions;
     permissions: RequestPermissions;
   }>(REQUEST_PERMISSIONS);
-  if (cached?.options === options) return cached.permissions;
+  if (cached?.options === options) {
+    return cached.permissions;
+  }
   const user = RequestContext.get(User);
   const member = resolveRequestMember();
   const apiKey = getCurrentApiKey();

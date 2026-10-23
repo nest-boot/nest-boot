@@ -282,8 +282,12 @@ describe("LoggerModule", () => {
     const res = {};
     const ctx = {
       get: vi.fn((token) => {
-        if (token === REQUEST) return req;
-        if (token === RESPONSE) return res;
+        if (token === REQUEST) {
+          return req;
+        }
+        if (token === RESPONSE) {
+          return res;
+        }
         return undefined;
       }),
       id: "ctx-id",

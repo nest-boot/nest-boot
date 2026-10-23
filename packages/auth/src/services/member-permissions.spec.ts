@@ -76,7 +76,7 @@ describe("MemberService direct permission authorization", () => {
         const user = createTestUser();
         RequestContext.set(User, user);
         RequestContext.set(Workspace, workspace);
-        if (key !== "workspace")
+        if (key !== "workspace") {
           RequestContext.set(
             Member,
             Object.assign(createTestMember(), {
@@ -85,7 +85,8 @@ describe("MemberService direct permission authorization", () => {
               permissions: direct,
             }),
           );
-        if (key)
+        }
+        if (key) {
           RequestContext.set(
             API_KEY,
             Object.assign(
@@ -99,6 +100,7 @@ describe("MemberService direct permission authorization", () => {
               },
             ),
           );
+        }
         RequestContext.set(
           AuthAbility,
           new AuthAbility([{ action: "write", subject: Invitation }]),

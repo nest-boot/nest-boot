@@ -12,8 +12,9 @@ export class GreetingService implements OnApplicationShutdown {
    * @returns The formatted name.
    */
   format(name: string, loud: boolean): string {
-    if (RequestContext.current().type !== "command")
+    if (RequestContext.current().type !== "command") {
       throw new Error("Missing command context");
+    }
     return loud ? name.toUpperCase() : name;
   }
 

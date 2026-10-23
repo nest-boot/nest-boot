@@ -30,12 +30,16 @@ export function Queue(options: Partial<QueueDefinition> = {}): ClassDecorator {
       ...(Reflect.getMetadata(PARAMTYPES_METADATA, target) ?? []),
     ];
     // Inherited queue constructors already contain the framework's hidden argument.
-    if (dependencies.at(-1) === MODULE_OPTIONS_TOKEN) dependencies.pop();
+    if (dependencies.at(-1) === MODULE_OPTIONS_TOKEN) {
+      dependencies.pop();
+    }
     const explicit = Reflect.getMetadata(
       SELF_DECLARED_DEPS_METADATA,
       target,
     ) as { index: number; param: unknown }[] | undefined;
-    for (const { index, param } of explicit ?? []) dependencies[index] = param;
+    for (const { index, param } of explicit ?? []) {
+      dependencies[index] = param;
+    }
     const optionsIndex = dependencies.length;
     const Parent = target as unknown as Type;
     class QueueProvider extends Parent {
@@ -46,10 +50,11 @@ export function Queue(options: Partial<QueueDefinition> = {}): ClassDecorator {
           const moduleOptions = args[optionsIndex] as
             | QueueModuleOptions
             | undefined;
-          if (!moduleOptions)
+          if (!moduleOptions) {
             throw new Error(
               `Queue "${target.name}" must be created by Nest; register its class as a provider or use ModuleRef.create().`,
             );
+          }
           return queueConstructionContext.run(
             { target: new.target, options: moduleOptions },
             () =>
@@ -63,12 +68,13 @@ export function Queue(options: Partial<QueueDefinition> = {}): ClassDecorator {
       }
     }
     Object.defineProperty(QueueProvider, "name", { value: target.name });
-    for (const key of Reflect.getOwnMetadataKeys(target))
+    for (const key of Reflect.getOwnMetadataKeys(target)) {
       Reflect.defineMetadata(
         key,
         Reflect.getOwnMetadata(key, target),
         QueueProvider,
       );
+    }
     if (
       !Reflect.hasOwnMetadata(PARAMTYPES_METADATA, target) &&
       !Reflect.hasOwnMetadata(SELF_DECLARED_DEPS_METADATA, target)
@@ -109,9 +115,10 @@ export function getQueueDefinition(
   const definition = Reflect.getMetadata(QUEUE_OPTIONS, target) as
     | QueueDefinition
     | undefined;
-  if (!definition?.name)
+  if (!definition?.name) {
     throw new Error(
       `Queue class "${target.name}" requires @Queue() with a non-empty name.`,
     );
+  }
   return definition;
 }

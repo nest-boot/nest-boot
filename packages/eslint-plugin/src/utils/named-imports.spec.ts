@@ -26,8 +26,9 @@ const rule = createRule<[], "missing">({
         const edits = namedImportEdits(context.sourceCode, "node:fs", [
           "readFileSync",
         ]);
-        if (edits.length)
+        if (edits.length) {
           context.report({ node, messageId: "missing", fix: () => edits });
+        }
       },
     };
   },
@@ -216,7 +217,9 @@ it.each([
       true,
     );
     const declaration = source.statements.find(ts.isClassDeclaration);
-    if (!declaration) throw new Error("Missing class declaration");
+    if (!declaration) {
+      throw new Error("Missing class declaration");
+    }
     expect(ts.getJSDocCommentsAndTags(declaration)).toHaveLength(1);
   }
   expect(linter.verifyAndFix(result.output, config).fixed).toBe(false);

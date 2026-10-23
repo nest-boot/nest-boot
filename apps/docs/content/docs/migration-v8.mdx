@@ -44,9 +44,11 @@ Custom request-context middleware must depend on `"database"` instead of
 `RequestContext.registerMiddleware()` to preserve EntityManager initialization
 order.
 
-Custom ESLint configurations should use `@nest-boot/import-database` instead of
-`@nest-boot/import-mikro-orm`. Its autofix migrates compatible named imports and preserves
-local aliases. Redis configuration types (`BullModuleOptions` and the old `QueueModuleOptions`), queue registration, processor decorators, removed helpers and namespace imports require manual migration.
+Remove the old ESLint import migration rules: `@nest-boot/import-mikro-orm`,
+`@nest-boot/import-database`, `@nest-boot/import-graphql`, `@nest-boot/import-bullmq`
+and `@nest-boot/import-queue`, including disabled entries. Import paths and APIs
+must be migrated manually. Entity field rules no longer migrate old MikroORM
+imports or re-exports; they continue checking current field configuration.
 
 ## Enable ESM
 

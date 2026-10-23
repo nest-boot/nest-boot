@@ -155,9 +155,15 @@ describe("Logger", () => {
     async (mode) => {
       const requestLogger = { error: vi.fn() };
       vi.spyOn(RequestContext, "get").mockImplementation((token) => {
-        if (mode === "fallback") throw new Error("No request");
-        if (token === PINO_LOGGER) return requestLogger;
-        if (token === BINDINGS) return { requestId: "request-1" };
+        if (mode === "fallback") {
+          throw new Error("No request");
+        }
+        if (token === PINO_LOGGER) {
+          return requestLogger;
+        }
+        if (token === BINDINGS) {
+          return { requestId: "request-1" };
+        }
         return undefined;
       });
       const logger = await createLogger();
@@ -244,7 +250,9 @@ describe("Logger", () => {
       warn: vi.fn(),
     };
     vi.spyOn(RequestContext, "get").mockImplementation((token) => {
-      if (token === PINO_LOGGER) return requestLogger;
+      if (token === PINO_LOGGER) {
+        return requestLogger;
+      }
       if (token === BINDINGS) {
         return {
           requestId: "request-1",
@@ -270,7 +278,9 @@ describe("Logger", () => {
       debug: vi.fn(),
     };
     vi.spyOn(RequestContext, "get").mockImplementation((token) => {
-      if (token === PINO_LOGGER) return requestLogger;
+      if (token === PINO_LOGGER) {
+        return requestLogger;
+      }
       return undefined;
     });
     const logger = await createLogger();

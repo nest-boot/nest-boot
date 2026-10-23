@@ -6,7 +6,9 @@ import { cookies, headers, RequestContext } from '@nest-boot/request-context';
  * @returns Initial database role and scope variables for the request.
  */
 export function createSessionContext(): ForkOptions['session'] {
-  if (RequestContext.current().type !== 'http') return undefined;
+  if (RequestContext.current().type !== 'http') {
+    return undefined;
+  }
 
   return {
     role: 'anonymous',

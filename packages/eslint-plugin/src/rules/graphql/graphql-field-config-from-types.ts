@@ -162,7 +162,9 @@ export default createRule<
             t.type === AST_NODE_TYPES.TSUndefinedKeyword
           );
         });
-        if (hasNullish) isNullable = true;
+        if (hasNullish) {
+          isNullable = true;
+        }
 
         baseTypeNode =
           baseTypeNode.types.find((t: TSESTree.TypeNode) => {
@@ -187,7 +189,9 @@ export default createRule<
               t.type === AST_NODE_TYPES.TSUndefinedKeyword
             );
           });
-          if (hasNullish) isNullable = true;
+          if (hasNullish) {
+            isNullable = true;
+          }
           inner =
             inner.types.find((t: TSESTree.TypeNode) => {
               return (
@@ -215,12 +219,15 @@ export default createRule<
         if (property.value?.type === AST_NODE_TYPES.Literal) {
           const value = property.value.value;
           const typeOf = typeof value;
-          if (typeOf === "boolean")
+          if (typeOf === "boolean") {
             return { typeName: "Boolean", isArray, isNullable };
-          if (typeOf === "number")
+          }
+          if (typeOf === "number") {
             return { typeName: "Float", isArray, isNullable };
-          if (typeOf === "string")
+          }
+          if (typeOf === "string") {
             return { typeName: "String", isArray, isNullable };
+          }
         }
         return null;
       }
@@ -321,7 +328,7 @@ export default createRule<
         true,
         importLocation,
       );
-      if (expected === "GraphQLJSONObject")
+      if (expected === "GraphQLJSONObject") {
         edits.push(
           ...namedImportEdits(
             source,
@@ -331,6 +338,7 @@ export default createRule<
             importLocation,
           ),
         );
+      }
       fixes.push(
         ...edits.map((edit) => ({ ...edit, type: "replace" as const })),
       );
@@ -479,7 +487,9 @@ export default createRule<
 
     return {
       ClassDeclaration(node) {
-        if (!isGraphqlModelClass(node)) return;
+        if (!isGraphqlModelClass(node)) {
+          return;
+        }
         importLocation = node;
         const modelImports = promoteImportReferences(
           source,
@@ -500,7 +510,9 @@ export default createRule<
         }
 
         node.body.body.forEach((member: TSESTree.ClassElement) => {
-          if (member.type !== AST_NODE_TYPES.PropertyDefinition) return;
+          if (member.type !== AST_NODE_TYPES.PropertyDefinition) {
+            return;
+          }
 
           const decoratorConfig = options.decorators ?? {
             HideField: "remove",
@@ -535,7 +547,9 @@ export default createRule<
           }
 
           // If behavior is "ignore", skip directly
-          if (foundBehavior === "ignore") return;
+          if (foundBehavior === "ignore") {
+            return;
+          }
 
           const fieldDecorator = member.decorators.find(
             (decorator) =>
@@ -573,10 +587,14 @@ export default createRule<
           }
 
           // If behavior is "remove" but no @Field, skip
-          if (foundBehavior === "remove") return;
+          if (foundBehavior === "remove") {
+            return;
+          }
 
           const typeInfo = computeTypeInfo(member);
-          if (!typeInfo?.typeName) return;
+          if (!typeInfo?.typeName) {
+            return;
+          }
           const customImports = customTypeImportEdits(typeInfo);
           if (customImports.length) {
             context.report({
@@ -602,7 +620,9 @@ export default createRule<
 
           // If there is an existing ArrowFunction but it doesn't match expectations, fix it
           const callExpr = fieldDecorator.expression;
-          if (callExpr.type !== AST_NODE_TYPES.CallExpression) return;
+          if (callExpr.type !== AST_NODE_TYPES.CallExpression) {
+            return;
+          }
 
           let needReport = true;
           let scalarReference: TSESTree.Node | null = null;
@@ -657,7 +677,9 @@ export default createRule<
               ["Int", "Float"].includes(explicitScalar) &&
               typeInfo.isArray ===
                 (firstArg.body.type === AST_NODE_TYPES.ArrayExpression);
-            if (isValidNumberType) typeInfo.typeName = explicitScalar;
+            if (isValidNumberType) {
+              typeInfo.typeName = explicitScalar;
+            }
             const isValidScalar =
               !typeInfo.isCustomType &&
               !!explicitScalar &&
@@ -667,7 +689,9 @@ export default createRule<
               explicitScalar === typeInfo.typeName &&
               typeInfo.isArray ===
                 (firstArg.body.type === AST_NODE_TYPES.ArrayExpression);
-            if (isValidScalar) verifiedScalarReference = scalarNode;
+            if (isValidScalar) {
+              verifiedScalarReference = scalarNode;
+            }
             if (
               isValidScalar &&
               scalarNode &&
@@ -740,7 +764,9 @@ export default createRule<
                   true,
                   importLocation,
                 ));
-            if (!typeOnlyScalar && !typeOnlyField) return;
+            if (!typeOnlyScalar && !typeOnlyField) {
+              return;
+            }
           }
 
           context.report({

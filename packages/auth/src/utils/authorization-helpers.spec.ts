@@ -26,12 +26,15 @@ describe("request ability helpers", () => {
         return;
       }
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
-        if (missing !== "identity") RequestContext.set(User, new User());
-        if (missing !== "ability")
+        if (missing !== "identity") {
+          RequestContext.set(User, new User());
+        }
+        if (missing !== "ability") {
           RequestContext.set(
             AuthAbility,
             new AuthAbility([{ action: "read", subject: TestSubject }]),
           );
+        }
         check();
       });
     },

@@ -22,7 +22,9 @@ export class ApiKeyAuthenticationService {
    * @throws {UnauthorizedException} When the credential or its owner is invalid.
    */
   async validate(plaintext: string): Promise<ApiKeyValidation> {
-    if (!plaintext) throw new UnauthorizedException("Missing API key");
+    if (!plaintext) {
+      throw new UnauthorizedException("Missing API key");
+    }
     const key = hashApiKey(plaintext);
     const userKey = await this.em.findOne(
       UserApiKey,
@@ -38,10 +40,15 @@ export class ApiKeyAuthenticationService {
       throw new UnauthorizedException("Invalid API key");
     }
     const apiKey = userKey ?? memberKey;
-    if (!apiKey) throw new UnauthorizedException("Invalid API key");
-    if (!apiKey.enabled) throw new UnauthorizedException("API key is disabled");
-    if (apiKey.expiresAt && apiKey.expiresAt <= new Date())
+    if (!apiKey) {
+      throw new UnauthorizedException("Invalid API key");
+    }
+    if (!apiKey.enabled) {
+      throw new UnauthorizedException("API key is disabled");
+    }
+    if (apiKey.expiresAt && apiKey.expiresAt <= new Date()) {
       throw new UnauthorizedException("API key has expired");
+    }
     if (userKey) {
       const user = Reference.unwrapReference(userKey.user);
       if (
@@ -52,8 +59,12 @@ export class ApiKeyAuthenticationService {
       }
       return { apiKey: userKey, ownerType: "user", user };
     }
-    if (!memberKey) throw new UnauthorizedException("Invalid API key");
-    if (!memberKey.member) throw new UnauthorizedException("Invalid API key");
+    if (!memberKey) {
+      throw new UnauthorizedException("Invalid API key");
+    }
+    if (!memberKey.member) {
+      throw new UnauthorizedException("Invalid API key");
+    }
     const member = Reference.unwrapReference(memberKey.member);
     const user = member.user ? Reference.unwrapReference(member.user) : null;
     if (

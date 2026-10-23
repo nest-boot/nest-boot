@@ -238,8 +238,12 @@ describe("UserService", () => {
     async (target) => {
       const { service, em } = createService(true, {
         buildAbility: ({ cannot }, { user }) => {
-          if (!user) return;
-          if (!user.emailVerified) cannot("delete", User);
+          if (!user) {
+            return;
+          }
+          if (!user.emailVerified) {
+            cannot("delete", User);
+          }
         },
       });
       const previous = {
@@ -315,8 +319,12 @@ describe("UserService", () => {
   it("refreshes ban-dependent abilities only after an own unban commits", async () => {
     const { em, options, userDeletionService } = createService(true, {
       buildAbility: ({ cannot }, { user }) => {
-        if (!user) return;
-        if (!user.banned) cannot("delete", User);
+        if (!user) {
+          return;
+        }
+        if (!user.banned) {
+          cannot("delete", User);
+        }
       },
     });
     const provider = authServiceProviders.find(
@@ -558,7 +566,9 @@ describe("UserService", () => {
         Entity === User ? new User() : new Account(),
         input,
       );
-      if (Entity === User) Reflect.deleteProperty(entity, "id");
+      if (Entity === User) {
+        Reflect.deleteProperty(entity, "id");
+      }
       return entity;
     });
     em.flush.mockImplementationOnce(() => {

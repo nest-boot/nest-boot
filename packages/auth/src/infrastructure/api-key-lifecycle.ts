@@ -80,13 +80,22 @@ export class ApiKeyLifecycle {
       permissions: apiKey.permissions,
       lastUsedAt: apiKey.lastUsedAt,
     };
-    if (input.name !== undefined) apiKey.name = input.name;
-    if (input.enabled !== undefined) apiKey.enabled = input.enabled;
-    if (input.expiresAt !== undefined) apiKey.expiresAt = input.expiresAt;
-    if (permissions !== undefined) apiKey.permissions = permissions;
+    if (input.name !== undefined) {
+      apiKey.name = input.name;
+    }
+    if (input.enabled !== undefined) {
+      apiKey.enabled = input.enabled;
+    }
+    if (input.expiresAt !== undefined) {
+      apiKey.expiresAt = input.expiresAt;
+    }
+    if (permissions !== undefined) {
+      apiKey.permissions = permissions;
+    }
     // Commit the final use before revocation removes the interceptor's identity.
-    if (input.enabled === false && RequestIdentity.isCurrentApiKey(apiKey))
+    if (input.enabled === false && RequestIdentity.isCurrentApiKey(apiKey)) {
       apiKey.lastUsedAt = new Date();
+    }
     try {
       await em.persist(apiKey).flush();
     } catch (error) {

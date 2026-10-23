@@ -37,7 +37,9 @@ export function resolveAuthCatalog(
   const configured = options[scope];
   const key = configured ?? defaults.roles;
   const cached = catalogs[scope].get(key);
-  if (cached) return cached;
+  if (cached) {
+    return cached;
+  }
   const builtInRoles: AuthModuleRoles = defaults.roles;
   const roleNames = new Set([
     ...Object.keys(builtInRoles),

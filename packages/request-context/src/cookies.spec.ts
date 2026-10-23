@@ -314,7 +314,9 @@ async function runWithHttpContext(
 ): Promise<void> {
   await RequestContext.run(new RequestContext({ type: "http" }), (context) => {
     context.set(REQUEST, request);
-    if (response !== undefined) context.set(RESPONSE, response);
+    if (response !== undefined) {
+      context.set(RESPONSE, response);
+    }
     callback();
   });
 }

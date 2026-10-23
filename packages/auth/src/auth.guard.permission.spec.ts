@@ -412,7 +412,9 @@ describe("AuthGuard permissions", () => {
     async (kind) => {
       const error = new Error("Subject lookup failed");
       const subjectCallback = vi.fn(() => {
-        if (kind === "throw") throw error;
+        if (kind === "throw") {
+          throw error;
+        }
         return Promise.reject(error);
       });
       const canMock = vi.fn(() => true);
@@ -1479,14 +1481,16 @@ async function createGuard(
     rules: AbilityRules,
     context: import("./interfaces/ability-context.interface.js").AbilityContext,
   ) => {
-    if (context.user)
+    if (context.user) {
       configureUserRules(rules, context.userPermissions, context.user);
-    if (context.workspace)
+    }
+    if (context.workspace) {
       configureWorkspaceRules(
         rules,
         context.workspacePermissions,
         context.workspace,
       );
+    }
   };
   if (ability) {
     vi.spyOn(AuthAbilityFactory, "createAbility").mockImplementation(
@@ -1706,8 +1710,12 @@ function createRequestMember(): BaseMember {
   const workspace = RequestContext.isActive()
     ? RequestContext.get(BaseWorkspace)
     : null;
-  if (user) member.user = ref(BaseUser, user);
-  if (workspace) member.workspace = ref(BaseWorkspace, workspace);
+  if (user) {
+    member.user = ref(BaseUser, user);
+  }
+  if (workspace) {
+    member.workspace = ref(BaseWorkspace, workspace);
+  }
   return member;
 }
 /**

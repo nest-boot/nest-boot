@@ -50,16 +50,18 @@ export function assertApiKeyPermissionCeiling(
   requested: readonly string[],
 ): void {
   const ceiling = resolveRequestPermissions(options).apiKey;
-  if (ceiling !== null && !requested.length)
+  if (ceiling !== null && !requested.length) {
     throw new ForbiddenException(
       "Unrestricted API keys exceed authenticating API key permissions",
     );
-  if (ceiling !== null)
+  }
+  if (ceiling !== null) {
     assertPermissionCeiling(
       requested,
       ceiling,
       "API key permissions exceed authenticating API key permissions",
     );
+  }
 }
 
 /**
@@ -78,6 +80,7 @@ export function assertPermissionCeiling(
   const excessive = requested.filter(
     (permission) => !permissions.has(permission),
   );
-  if (excessive.length)
+  if (excessive.length) {
     throw new ForbiddenException(`${message}: ${excessive.join(", ")}`);
+  }
 }
