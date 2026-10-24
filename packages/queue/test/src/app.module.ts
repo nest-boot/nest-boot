@@ -8,16 +8,13 @@ import { WorkerModule } from "./app/worker/worker.module.js";
 @Module({
   imports: [
     CommandModule,
-    QueueModule.forRootAsync({
+    QueueModule,
+    ScheduleModule.forRootAsync({
       useFactory: () => ({
-        connection: {
-          connectionString: process.env.QUEUE_DATABASE_URL,
-          schema: process.env.QUEUE_TEST_SCHEMA,
-        },
-        graphql: false,
+        concurrency: 3,
+        prefix: process.env.QUEUE_TEST_PREFIX,
       }),
     }),
-    ScheduleModule.forRoot({ concurrency: 3 }),
     WorkerModule,
   ],
 })

@@ -90,6 +90,43 @@ export function identity<T>(value: T): T {
     expect(results[0]?.messages).toEqual([]);
   });
 
+  it("checks processor names through the queue plugin namespace", async () => {
+    const validFile = join(fixtureDirectory, "processor.ts");
+    const invalidFile = join(fixtureDirectory, "wrong-processor.ts");
+    const code = `import { Processor as Consume } from "@nest-boot/queue";
+class EmailQueue {}
+@Consume(EmailQueue)
+export class EmailProcessor {}
+`;
+    await Promise.all([
+      writeFile(validFile, code),
+      writeFile(
+        invalidFile,
+        code.replace("class EmailProcessor", "class SmsProcessor"),
+      ),
+    ]);
+    const eslint = new ESLint({
+      cwd: fixtureDirectory,
+      overrideConfig: config,
+      overrideConfigFile: true,
+    });
+    const results = await eslint.lintFiles([validFile, invalidFile]);
+    const namingMessages = results
+      .flatMap((result) => result.messages)
+      .filter(
+        (message) => message.ruleId === "@nest-boot/queue/processor-name",
+      );
+    expect(namingMessages).toEqual([
+      expect.objectContaining({
+        severity: 2,
+        message: 'Processor for "EmailQueue" must be named "EmailProcessor".',
+      }),
+    ]);
+    expect(
+      results.find((result) => result.filePath === validFile)?.messages,
+    ).toEqual([]);
+  });
+
   it.each([
     ["@typeParam T - The value type.", "jsdoc/check-tag-names"],
     ["@param {T} value - The value to return.", "jsdoc/no-types"],

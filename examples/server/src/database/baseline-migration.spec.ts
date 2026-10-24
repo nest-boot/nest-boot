@@ -4,17 +4,21 @@ import type { Migration } from '@mikro-orm/migrations';
 
 import { Migration00000000000000_Initial } from './migrations/Migration00000000000000_Initial.js';
 import { Migration20261009070926 } from './migrations/Migration20261009070926.js';
+import { Migration20261013084101_QueueHistory } from './migrations/Migration20261013084101_QueueHistory.js';
 import { Migration20261013084102_QueueJobs } from './migrations/Migration20261013084102_QueueJobs.js';
 import { Migration20261013084103_QueueJobAccess } from './migrations/Migration20261013084103_QueueJobAccess.js';
+import { Migration20261023000000_RedisJobHistory } from './migrations/Migration20261023000000_RedisJobHistory.js';
 
 const migrations = [
   Migration00000000000000_Initial,
   Migration20261009070926,
+  Migration20261013084101_QueueHistory,
   Migration20261013084102_QueueJobs,
   Migration20261013084103_QueueJobAccess,
+  Migration20261023000000_RedisJobHistory,
 ];
 /**
- * Returns sQL emitted by the selected migration direction.
+ * Returns SQL emitted by the selected migration direction.
  * @param MigrationClass - Migration class whose generated SQL is inspected.
  * @param direction - Migration direction to execute.
  * @returns SQL emitted by the selected migration direction.
@@ -31,7 +35,7 @@ async function sqlFor(
     .join('\n');
 }
 
-describe('ordered auth migrations', () => {
+describe('ordered application migrations', () => {
   it('allows shared member contact emails in the generated baseline', async () => {
     expect(await sqlFor(Migration20261009070926)).not.toContain(
       'member_email_workspace_id_unique',

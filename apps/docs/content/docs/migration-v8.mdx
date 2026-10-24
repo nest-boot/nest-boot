@@ -72,49 +72,15 @@ provide a CommonJS `require` entry.
 
 ## Rename queue packages
 
-| Previous package              | Version 8 package                    |
-| ----------------------------- | ------------------------------------ |
-| `@nest-boot/bullmq`           | `@nest-boot/queue`                   |
-| `@nest-boot/bullmq-mikro-orm` | `@nest-boot/queue` (job persistence) |
+Replace `@nest-boot/bullmq` with `@nest-boot/queue`. Use `QueueModule`, `@Queue(name)` and `BaseQueue`; consumers extend `BaseProcessor` with `@Processor(QueueClass)` and register the queue class. Processors must be singletons; Workers stay managed by BaseProcessor. Move runtime settings to constructor `super(options)`, import QueueModule directly, and remove forRoot/forRootAsync and module option tokens. Worker and QueueEvents references use read-only getters backed by internal Symbols; remove event decorators, QueueEventsHost and Processor `.on()` subscriptions. Remove `@nestjs/bullmq`, `BullMQMikroORMModule` and `QueueDatabaseModule`. Queue rules use the @nest-boot/queue namespace; processor-name is enabled by the shared config.
 
-Use `QueueModule`, `QueueModuleOptions`, and `QueueHealthIndicator` in place of
-`BullModule`, `BullModuleOptions`, and `BullMQHealthIndicator`. Queues use BullMQ 6's
-PostgreSQL backend. Configure `QUEUE_DATABASE_URL`, `DATABASE_URL` or explicit
-connection options, and run BullMQ's official migrations. Use native
-`removeOnComplete` / `removeOnFail` retention; persistence switches and mirror TTL
-cleanup are removed. Existing Redis jobs and mirror rows are not migrated automatically.
+Queues use Redis through `REDIS_URL` or explicit `connection` options. Keep `bullmq`; remove `queue:migrate`. `nb queue:start` starts consumers, with optional `--queue` selection.
 
-Replace `registerQueue` / `registerQueueAsync` with queue classes decorated by
-`@Queue({ name, ...options })` and extending `BaseQueue`. Add them to module
-`providers` and inject the class directly; `InjectQueue` is removed. Custom
-constructors inject business dependencies and call
-`super(localOptions)` for dynamic settings; `@Queue()` supplies global options automatically. Register the global
-QueueModule once; ScheduleModule uses its global services without importing it internally.
+Every registered Queue starts native QueueEvents without database dependencies. To persist records and expose authenticated GraphQL queries, install `@nest-boot/queue-api`, import `QueueApiModule`, and import `JobEntity`, `JobStatus` and `JobService` from that package. Configure the application's global DatabaseModule, GraphQLModule and AuthModule. Register JobEntity as an ordinary entity and use standard application migrations. The extension forwards events to the deduplicated `job` queue and schedules daily cleanup directly through BullMQ; it does not depend on schedule. Job UUIDs are database-generated; bigint last_event_ms and last_event_seq prevent out-of-order overwrites. QueueModule alone needs no EntityManager or API modules. Remove withQueueDatabaseConfig and separate queue schema configuration.
 
-The Job API exposes only the global `id`, `queue`, `name`, `status`, finite numeric `progress` and timestamps. Remove selections of `jobId`, `data`, `returnValue`, `failedReason` and `priority`; provide business results through application APIs. Non-numeric progress returns null.
+Replace the `expose` option with the parameterless `@QueueVisible()` decorator from `@nest-boot/queue-api`. Register each source queue provider in the API application and explicitly mark its concrete class to allow history queries. Unmarked or unregistered queues remain hidden from single-record reads, pagination and counts, while their records still synchronize and clean up. Replace job/jobs with userJob/userJobs and workspaceJob/workspaceJobs, scoped by JobService using trusted auth identity. systemJob/systemJobs require a configured administrator and return only records with neither owner. Remove the Job RLS policy through an ordinary application migration; Job reads no longer switch database scope. Single rows, lists and counts use the same service filter. GraphQL exposes only ID, queue, name, status, numeric progress and timestamps. History IDs are UUIDs; statuses include `PRIORITIZED` and `UNKNOWN`. Drain or migrate PostgreSQL jobs and preserve needed history before switching transports. See the [queue tutorial](/docs/tutorial/queue).
 
-`JobStatus` uses the six native PostgreSQL states. Waiting jobs with a priority return `WAITING`; `PRIORITIZED` and `UNKNOWN` are removed. Missing or inaccessible jobs return null. Status filters and ordering use the native `state` column directly.
-
-Queue jobs are hidden from the API by default. Declare `@Queue({ expose: true })` and register that queue provider in the API application to enable queries; database RLS controls user/workspace access through the request EntityManager session.
-
-Consumers use `@Processor(QueueClass)` and extend `BaseProcessor`; `WorkerHost` is
-removed. Consumer-only deployments also register the queue class. Missing queues
-fail startup before workers start. Request/transient scopes, dependency scope
-propagation and durable contexts remain supported. Read the current context
-through `RequestContext.current()` or static accessors inside handlers.
-
-Remove `BullMQMikroORMModule` / `QueueDatabaseModule` imports. Optional MikroORM
-queries map the native BullMQ table through the built-in `Job` from
-`@nest-boot/queue`. Use `withQueueDatabaseConfig(config)` in runtime and CLI
-ORM options to register the full entity set and schema settings. Install the required `@mikro-orm/core` and `@mikro-orm/decorators` peers. All 11 BullMQ tables
-participate in native migration comparison; `ignoreRoutines: true` leaves existing
-functions unchanged across all schemas. Keep migration snapshots enabled and
-review live-generated rollback SQL for unwanted function definitions. Run BullMQ migrations before application migrations; the first
-Job migration adds user/workspace ownership indexes and an authenticated RLS SELECT policy. Create the `authenticated` role first and configure verified `app.user.id` / `app.workspace.id` request sessions. BullMQ connections must use the table owner or a `BYPASSRLS` role. Keep application read authorization. See the [queue tutorial](/docs/tutorial/queue).
-Keep `bullmq`; install MikroORM/GraphQL peers only for the optional query features.
-Remove `@nestjs/bullmq`; the queue integration uses BullMQ directly.
-
-Remove `@nest-boot/import-bullmq` and `@nest-boot/import-queue` from custom ESLint configurations. Queue imports, registration, processor decorators and PostgreSQL connection settings require explicit migration to the new API described above.
+Queue job contracts now live in `readonly jobSchemas`, replacing BaseQueue's Data/Result/Name generics. Each entry requires a Zod object data schema and may declare a result schema; omission means void. Processors declare a method for every job, such as `async processSend(job: Job<EmailQueue, "send">)`, with a checked parameter and Promise result. Remove generic process(job) methods; processors require concrete jobSchemas. Hyphenated names map to PascalCase methods (`send-email` → `processSendEmail`); colliding names are rejected. Unknown jobs and missing handlers fail at runtime without automatic retries. Queue names use `@Queue(name)` or the generated default `@Queue()`.
 
 ## Update related integrations
 
@@ -220,7 +186,7 @@ SQL execution under either role. Review `SECURITY DEFINER` functions separately:
 they execute with their owner's privileges. See PostgreSQL's
 [row security documentation](https://www.postgresql.org/docs/current/ddl-rowsecurity.html).
 
-All application tables must enable RLS and declare policies; `Verification`
+Application tables declare RLS policies; Job history is an explicit exception with service-enforced scoped queries. `Verification`
 explicitly denies request roles. Services and GraphQL control credential fields
 and writable properties; database column-level protection is no longer configured.
 

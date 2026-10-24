@@ -4,7 +4,6 @@ import {
   type OnApplicationBootstrap,
 } from "@nestjs/common";
 import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
-import { SchemaMigrationRequiredError } from "bullmq";
 
 import { SCHEDULE_METADATA_KEY } from "./schedule.module-definition.js";
 import { ScheduleQueue } from "./schedule.queue.js";
@@ -56,18 +55,7 @@ export class ScheduleRegistry implements OnApplicationBootstrap {
 
   /** Registers schedulers without starting their worker. */
   async onApplicationBootstrap(): Promise<void> {
-    try {
-      await this.register();
-    } catch (error) {
-      if (!(error instanceof SchemaMigrationRequiredError)) {
-        throw error;
-      }
-      // The migration command bootstraps the same application before it creates
-      // BullMQ's tables. A subsequent entry registers the schedules after migration.
-      this.logger.warn(
-        `Schedule registration awaits PostgreSQL schema "${error.schema}". Run nb queue:migrate and restart the application.`,
-      );
-    }
+    await this.register();
   }
 
   /**
@@ -122,11 +110,11 @@ export class ScheduleRegistry implements OnApplicationBootstrap {
     const jobSchedulers = await this.queue.getJobSchedulers();
 
     for (const jobScheduler of jobSchedulers) {
-      if (!this.schedules.get(jobScheduler.name)) {
-        await this.queue.removeJobScheduler(jobScheduler.name);
+      if (!this.schedules.has(jobScheduler.key)) {
+        await this.queue.removeJobScheduler(jobScheduler.key);
 
         this.logger.log(
-          `Removed {${jobScheduler.name}, ${jobScheduler.pattern ? "cron" : "interval"}, ${String(jobScheduler.pattern ?? jobScheduler.every)}}`,
+          `Removed {${jobScheduler.key}, ${jobScheduler.pattern ? "cron" : "interval"}, ${String(jobScheduler.pattern ?? jobScheduler.every)}}`,
         );
       }
     }
@@ -156,7 +144,8 @@ export class ScheduleRegistry implements OnApplicationBootstrap {
               }),
         },
         {
-          name,
+          name: "run",
+          data: { name },
           opts: jobOptions,
         },
       );

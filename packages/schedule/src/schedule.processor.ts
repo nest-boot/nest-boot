@@ -1,6 +1,6 @@
-import { BaseProcessor, Processor } from "@nest-boot/queue";
+import { BaseProcessor, type Job, Processor } from "@nest-boot/queue";
 import { Inject, Optional } from "@nestjs/common";
-import { Job } from "bullmq";
+import { UnrecoverableError } from "bullmq";
 
 import { MODULE_OPTIONS_TOKEN } from "./schedule.module-definition.js";
 import { ScheduleQueue } from "./schedule.queue.js";
@@ -18,7 +18,13 @@ export class ScheduleProcessor extends BaseProcessor {
     super({ concurrency: options?.concurrency ?? 1 });
   }
 
-  async process(job: Job): Promise<void> {
-    await this.scheduleRegistry.get(job.name)?.handler();
+  async processRun(job: Job<ScheduleQueue, "run">) {
+    const schedule = this.scheduleRegistry.get(job.data.name);
+    if (!schedule) {
+      throw new UnrecoverableError(
+        `No schedule handler for job "${job.data.name}".`,
+      );
+    }
+    await schedule.handler();
   }
 }

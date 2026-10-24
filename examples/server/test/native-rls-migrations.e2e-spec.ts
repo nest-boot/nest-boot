@@ -37,10 +37,7 @@ import {
   Workspace,
 } from '@nest-boot/auth';
 import { getDatabaseConfig } from '@nest-boot/database';
-import {
-  entities as queueEntities,
-  withQueueDatabaseConfig,
-} from '@nest-boot/queue';
+import { entities as queueEntities } from '@nest-boot/queue-api';
 import { REQUEST, RequestContext } from '@nest-boot/request-context';
 import { type FactoryProvider, ForbiddenException } from '@nestjs/common';
 import type { Request } from 'express';
@@ -1036,29 +1033,27 @@ describe('example native RLS migrations with PGlite', () => {
     await access('./src/database/migrations/.snapshot-postgres.json');
     // The shared snapshot includes Queue and the preserved Redis mirror too.
     // Compare it with the complete example metadata, without synchronizing a DB.
-    const complete = await MikroORM.init(
-      withQueueDatabaseConfig({
-        ...orm.config.getAll(),
-        // The Auth-only fixture excludes job; this comparison covers every table.
-        schemaGenerator: {
-          ...orm.config.get('schemaGenerator'),
-          skipTables: [],
-        },
-        entities: [
-          User,
-          Account,
-          Session,
-          Verification,
-          Workspace,
-          Member,
-          Invitation,
-          UserApiKey,
-          MemberApiKey,
-          LegacyJob,
-          ...queueEntities,
-        ],
-      }),
-    );
+    const complete = await MikroORM.init({
+      ...orm.config.getAll(),
+      // The Auth-only fixture excludes job; this comparison covers every table.
+      schemaGenerator: {
+        ...orm.config.get('schemaGenerator'),
+        skipTables: [],
+      },
+      entities: [
+        User,
+        Account,
+        Session,
+        Verification,
+        Workspace,
+        Member,
+        Invitation,
+        UserApiKey,
+        MemberApiKey,
+        LegacyJob,
+        ...queueEntities,
+      ],
+    });
     try {
       expect(await complete.migrator.checkSchema()).toBe(false);
     } finally {

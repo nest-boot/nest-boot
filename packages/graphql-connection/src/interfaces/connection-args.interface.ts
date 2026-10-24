@@ -14,7 +14,7 @@ import { OrderInterface } from "./order.interface.js";
  * const args: ConnectionArgsInterface<User> = {
  *   first: 10,
  *   after: "cursor123",
- *   orderBy: { field: "CREATED_AT", direction: OrderDirection.DESC },
+ *   orderBy: { field: "createdAt", direction: OrderDirection.DESC },
  * };
  * ```
  * @example Backward pagination

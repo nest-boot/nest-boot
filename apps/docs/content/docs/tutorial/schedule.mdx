@@ -8,7 +8,7 @@ The `@nest-boot/schedule` module discovers decorated providers and controllers, 
 ## Installation
 
 ```bash
-pnpm add @nest-boot/schedule @nest-boot/queue bullmq
+pnpm add @nest-boot/schedule @nest-boot/queue bullmq zod
 ```
 
 ## Module Registration
@@ -29,12 +29,12 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-Import `QueueModule` once anywhere in the application module tree, for example in `CommonModule`; it does not have to be in `AppModule`. `ScheduleModule` uses its global services and does not import it internally. `QueueModule` uses PostgreSQL configured by `QUEUE_DATABASE_URL` or `DATABASE_URL`. `ScheduleModule` also accepts an explicit BullMQ `connection` and `concurrency`. Scheduled handlers register during application startup, without creating a worker. The schedule worker starts when `nb queue:run` selects its queue. Run `nb queue:run --queue schedule` for the default queue, or select the configured `queueName`. To leave scheduled jobs waiting, select only the business consumers you want to run. Before the BullMQ schema exists, registration is deferred so `nb queue:migrate` can initialize it; restart the application after migration to register schedules.
+Import `QueueModule` once anywhere in the application module tree, for example in `CommonModule`; it does not have to be in `AppModule`. `ScheduleModule` uses its global services and does not import it internally. `QueueModule` uses Redis configured by `REDIS_URL`. `ScheduleModule` also accepts an explicit BullMQ `connection` and `concurrency`. Scheduled handlers register during application startup, without creating a worker. The schedule worker starts when `nb queue:start` selects its queue. Run `nb queue:start --queue schedule` for the fixed queue name. To leave scheduled jobs waiting, select only the business consumers you want to run. Queue storage and scheduler registration do not require a database or migrations.
 
-Applications sharing a PostgreSQL database and schema must configure distinct `queueName` values. Replicas of the same application use the same name. Workers and scheduler cleanup operate only on that queue:
+Applications sharing Redis should configure distinct `prefix` values. Replicas of one application share a prefix. The static queue name is `schedule`; workers and scheduler cleanup operate only within that namespace:
 
 ```ts
-ScheduleModule.forRoot({ queueName: "billing-schedule" });
+ScheduleModule.forRoot({ prefix: "billing" });
 ```
 
 ## Defining Scheduled Tasks
@@ -63,7 +63,7 @@ export class CleanupService {
 }
 ```
 
-Each schedule is named `<ClassName>.<methodName>`. At application bootstrap, the registry upserts the discovered schedules and removes stale schedulers that no longer exist in the codebase. Additional decorator options are forwarded as BullMQ job template options.
+Each scheduler ID is `<ClassName>.<methodName>`. Every scheduler submits a `run` job with `{ name: "<ClassName>.<methodName>" }` as its data; `ScheduleProcessor.processRun` invokes the registered handler. Scheduler cleanup uses scheduler IDs, independently of the shared job name. At application bootstrap, the registry upserts the discovered schedules and removes stale schedulers that no longer exist in the codebase. Additional decorator options are forwarded as BullMQ job template options.
 
 ## Long-running Tasks
 

@@ -1,5 +1,5 @@
 import { type OrderDirection } from "../enums/index.js";
-import { OrderFieldKey } from "./order-field.type.js";
+import { OrderFieldValue } from "./order-field.type.js";
 
 /**
  * Specifies the ordering for a connection query.
@@ -7,16 +7,16 @@ import { OrderFieldKey } from "./order-field.type.js";
  * @example
  * ```typescript
  * const order: OrderInterface<User> = {
- *   field: "CREATED_AT",
+ *   field: "createdAt",
  *   direction: OrderDirection.DESC,
  * };
  * ```
  */
 export interface OrderInterface<T> {
   /**
-   * The field to order by (uppercase with underscores, e.g., "CREATED_AT").
+   * The entity field path to order by after GraphQL enum coercion, e.g., "createdAt".
    */
-  field: OrderFieldKey<T>;
+  field: OrderFieldValue<T>;
 
   /**
    * The direction to order (ASC or DESC).

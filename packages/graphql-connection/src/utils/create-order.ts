@@ -5,8 +5,8 @@ import { humanize, pluralize, underscore } from "inflection";
 import { OrderDirection } from "../enums/index.js";
 import type {
   ConnectionFieldOptions,
-  OrderFieldKey,
   OrderFieldType,
+  OrderFieldValue,
   OrderInterface,
   SortableFieldOptions,
 } from "../interfaces/index.js";
@@ -34,7 +34,8 @@ export interface CreateOrderResult<Entity extends object> {
  * - `field`: Which field to order by (from the OrderField enum)
  * - `direction`: ASC or DESC
  *
- * Only fields marked as `sortable: true` in field options are included.
+ * Includes fields marked as `sortable: true`, plus ID by default.
+ * Explicitly declaring id with `sortable: false` hides it from public ordering.
  *
  * Used by ConnectionBuilder.build()
  * @template Entity - The entity type being ordered
@@ -63,7 +64,9 @@ export function createOrder<Entity extends object>(
           fieldOptions.field,
       };
     },
-    { ID: "id" } as unknown as OrderFieldType<Entity>,
+    (fieldOptionsMap.get("id")?.sortable === false
+      ? {}
+      : { ID: "id" }) as OrderFieldType<Entity>,
   );
 
   registerEnumType(OrderField, {
@@ -79,7 +82,7 @@ export function createOrder<Entity extends object>(
     @Field(() => OrderField as object, {
       description: `The field to order ${humanizeAndPluralizeEntityName} by.`,
     })
-    field!: OrderFieldKey<Entity>;
+    field!: OrderFieldValue<Entity>;
 
     @Field(() => OrderDirection, { description: `The ordering direction.` })
     direction!: OrderDirection;

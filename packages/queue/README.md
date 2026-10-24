@@ -1,57 +1,105 @@
 # @nest-boot/queue
 
-`QueueModule` configures BullMQ 6 queues and workers using the official PostgreSQL backend.
-Set `QUEUE_DATABASE_URL` or `DATABASE_URL`, and run BullMQ migrations before startup.
-Optional MikroORM and GraphQL queries read the native table. Use `withQueueDatabaseConfig(config)` from `@nest-boot/queue` in both runtime and CLI ORM configuration; it registers the entities and composes schema settings and discovery hooks. MikroORM core and decorators are required peers; DatabaseModule and GraphQL remain optional integrations. The read-only entities map all 11 native BullMQ tables, including defaults, enums, foreign keys and operational indexes. MikroORM uses its standard schema generator to add user/workspace ownership indexes. Run BullMQ migrations first; its functions and independent sequences remain owned by BullMQ. The helper uses native `ignoreRoutines: true`, which applies to all schemas, so existing application functions also require explicit migrations for changes. Keep MikroORM migration snapshots enabled; review live-generated rollback SQL because MikroORM 7.2.0 can restore ignored routines in `down`.
-See the [queue tutorial](https://github.com/nest-boot/nest-boot/blob/main/apps/docs/content/docs/tutorial/queue.mdx) for configuration. When the application
-also imports `HealthCheckModule`, it automatically registers a health indicator
-for each discovered `Queue` provider, including custom subclasses:
+Redis queues and singleton processors for Nest, built on BullMQ. Queue state and
+processing require Redis only. Database records and authenticated GraphQL queries
+are provided separately by [`@nest-boot/queue-api`](../queue-api/README.md).
+
+## Usage
+
+Set `REDIS_URL`, import `QueueModule` and register queue and processor providers:
 
 ```ts
-import { BaseQueue, Queue, QueueModule } from "@nest-boot/queue";
-import { HealthCheckModule } from "@nest-boot/health-check";
+import {
+  BaseProcessor,
+  BaseQueue,
+  type Job,
+  Processor,
+  Queue,
+  QueueModule,
+} from "@nest-boot/queue";
 import { Module } from "@nestjs/common";
+import { z } from "zod";
 
 @Queue()
-class EmailQueue extends BaseQueue {}
+class EmailQueue extends BaseQueue {
+  readonly jobSchemas = {
+    send: { data: z.object({ to: z.email() }) },
+  };
+}
+
+@Processor(EmailQueue)
+class EmailProcessor extends BaseProcessor {
+  async processSend(job: Job<EmailQueue, "send">): Promise<void> {
+    console.log(job.data.to);
+  }
+}
 
 @Module({
-  imports: [HealthCheckModule, QueueModule],
-  providers: [EmailQueue],
+  imports: [QueueModule],
+  providers: [EmailQueue, EmailProcessor],
 })
-export class AppModule {}
+export class EmailModule {}
 ```
 
-Queues are discovered after application modules initialize. Provider aliases of
-the same instance produce one check. Keys use `queue.<name>`, for example
-`queue.email` and `queue.upload`, matching the application's registered queue names.
+`@Queue()` removes the trailing `Queue` and converts the class name to kebab-case;
+`EmailQueue` becomes `email`. Use `@Queue("name")` to choose a static name. Pass
+Redis connection settings and default job options to `super(options)`. Explicit
+`connection` options override `REDIS_URL`. Worker settings belong in the
+Processor constructor, for example `super({ concurrency: 5 })`.
 
-Each check uses the existing queue connection, requires it to be ready, and reads
-the queue's pause state. Readiness and reading together are limited to 1000 ms.
-Closing queues, unavailable connections, read failures, and timeouts report
-`down`; later checks can recover. A paused queue reports `up` with `paused: true`.
-The probe checks queue access, not worker availability, processing throughput,
-backlog, or historical failed jobs. It does not create jobs or change queue state.
-Repeated probes share any still-pending read for the same queue, including after
-a timeout; separate queues continue to be checked independently.
+Keep providers singleton and queue names unique. Export and reuse the same queue
+provider across modules. Each handler gets an independent `RequestContext`; do
+not store current-job state on the singleton Processor.
 
-Without `HealthCheckModule`, no queues are discovered for health checks and no
-checks run. The module does not import it or add a health endpoint. The exported
-`QueueHealthIndicator` also supports explicit `check(key, queue, timeout)` calls.
+## Job contracts
 
-Queues default to `expose: false`. Set `@Queue({ expose: true })` and register the
-queue provider in the API application to include its jobs in the optional Job API.
-The public fields are `id`, `queue`, `name`, `status`, numeric `progress` and
-`createdAt` / `startedAt` / `finishedAt`. Other progress formats return null.
-Payloads, raw results, failure details and operational fields stay private;
-applications expose business results through their own authorized API.
-Database RLS scopes nodes, lists and counts to the verified user or workspace.
-Configure the request EntityManager session with the non-owner `authenticated`
-role and trusted `app.user.id` / `app.workspace.id` variables, and apply the Job
-RLS migration. Empty identities match no rows. BullMQ workers use a separate
-owner or `BYPASSRLS` connection.
-The flag affects API visibility, not BullMQ storage or direct queue operations.
+`readonly jobSchemas` determines allowed names, data and results. Each job needs
+an object data schema; an omitted result schema means `void`. Implement one
+`processXXX` method per job: `send` maps to `processSend`, and `send-email` maps to
+`processSendEmail`. The decorator checks every required method's exact Job
+parameter and Promise result. Colliding handler names are rejected. Unknown jobs
+and missing handlers fail without automatic retries.
 
-QueueModule also registers `nb queue:migrate` for CLI modules importing `CommandModule` from `@nest-boot/command`. The command uses the configured database and schema, accepts `--schema`, and runs BullMQ migrations before MikroORM application migrations.
+Submission, processing and completion validate with Zod `parseAsync()`. Parsed
+results are discarded: stored values, handler parameters and results use the
+original schema inputs (`z.input`). Defaults, transforms, coercions and field
+stripping do not replace payloads. Keep schema callbacks free of side effects and
+perform business conversions explicitly. Native BullMQ `updateData()` remains
+unchanged; updated data is validated before the next processing attempt.
 
-Workers and event listeners are disabled by default in every application entry. Run a separate foreground worker process with `nb queue:run`, or select queues with `nb queue:run --queue email-queue --queue report-queue`. Unknown queue names fail before consumer creation. Queue providers remain injectable in HTTP, REPL and ordinary commands, including commands that enqueue work. Scheduled handlers register at application startup; their worker starts only when selected. SIGINT and SIGTERM drain active jobs before closing application dependencies. Programmatic applications can inject `QueueRegistrar` and call `start(queueNames?)` after initialization.
+## Consumers and events
+
+Workers start explicitly. Configure a CLI with `CommandModule`, then run:
+
+```bash
+nb queue:start
+nb queue:start --queue email
+```
+
+Without filters, all registered consumers start. Filters apply uniformly,
+including queue-api's `job` consumer; select it explicitly when filtering if the
+same process should persist history. Unknown queue names or a CLI selection with
+no consumers fail before Workers start. Applications can also inject
+`QueueManager` and call `start(queueNames?)` after initialization.
+
+Every registered queue has a native QueueEvents reader, including producer-only
+applications. Readers listen for new events using BullMQ's default starting
+position, without startup replay. Use the read-only `queue.queueEvents` getter
+after application initialization and `processor.worker` after Worker startup.
+The framework creates and closes these transports. Import native classes from
+`bullmq` when needed.
+
+## Health checks
+
+Import `HealthCheckModule` to register a check for each discovered queue. Provider
+aliases share one check. Keys use `queue.<name>`, for example `queue.email`.
+Checks use the existing connection, require readiness and read pause state within
+1000 ms. A paused queue is healthy with `paused: true`; connection errors, closing
+queues and timeouts report `down`. Repeated probes share a pending read for the
+same queue. Checks do not measure Worker availability or job throughput.
+
+Without HealthCheckModule, no checks or health endpoint are added. The exported
+QueueHealthIndicator also supports explicit `check(key, queue, timeout)` calls.
+
+See the [queue tutorial](https://github.com/nest-boot/nest-boot/blob/main/apps/docs/content/docs/tutorial/queue.mdx)
+for configuration, request context and typed API examples.

@@ -7,10 +7,10 @@ import {
   Property,
 } from '@mikro-orm/decorators/legacy';
 
-/** Preserves the v8 Redis job mirror; current queue APIs read bullmq.job. */
+/** Preserves the v8 Redis job mirror; current queue APIs use the built-in Job entity. */
 @Entity({
-  tableName: 'job',
-  schema: 'public',
+  tableName: 'redis_job',
+  schema: 'queue_legacy',
   readonly: true,
   policies: [
     {

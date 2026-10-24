@@ -29,23 +29,25 @@ describe("ScheduleProcessor", () => {
     });
     const processor = await createProcessor(registry);
 
-    await processor.process({
-      name: "Tasks.run",
+    await processor.processRun({
+      name: "run",
+      data: { name: "Tasks.run" },
     } as never);
 
     expect(get).toHaveBeenCalledWith("Tasks.run");
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it("should ignore jobs with no registered handler", async () => {
+  it("rejects jobs with no registered handler", async () => {
     const { get, registry } = createRegistry();
     const processor = await createProcessor(registry);
 
     await expect(
-      processor.process({
-        name: "Missing.run",
+      processor.processRun({
+        name: "run",
+        data: { name: "Missing.run" },
       } as never),
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow('No schedule handler for job "Missing.run"');
 
     expect(get).toHaveBeenCalledWith("Missing.run");
   });

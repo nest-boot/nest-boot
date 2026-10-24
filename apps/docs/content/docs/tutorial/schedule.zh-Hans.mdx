@@ -8,7 +8,7 @@ description: "使用 BullMQ Job Scheduler 为 NestJS 提供持久化 Cron 和间
 ## 安装
 
 ```bash
-pnpm add @nest-boot/schedule @nest-boot/queue bullmq
+pnpm add @nest-boot/schedule @nest-boot/queue bullmq zod
 ```
 
 ## 模块注册
@@ -29,12 +29,12 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-`QueueModule` 在模块树中注册一次，例如放在 `CommonModule` 中。`ScheduleModule` 使用其全局服务，支持 `connection` 和 `concurrency`。定时任务在应用初始化时注册，此时不会创建 worker；运行 `nb queue:run --queue schedule` 后才启动消费者。设置了 `queueName` 时使用对应名称；不传 `--queue` 时也会启动定时任务队列。不需要消费定时任务时，只选择要启动的业务消费者。BullMQ schema 尚不存在时暂缓登记，允许先运行 `nb queue:migrate`，迁移后重新启动应用即可登记定时任务。
+`QueueModule` 在模块树中注册一次，例如放在 `CommonModule` 中。`ScheduleModule` 使用其全局服务，支持 `connection` 和 `concurrency`。定时任务在应用初始化时注册，此时不会创建 worker；运行 `nb queue:start --queue schedule` 后才启动消费者。队列名称固定为 `schedule`；不传 `--queue` 时也会启动定时任务队列。不需要消费定时任务时，只选择要启动的业务消费者。队列存储和调度登记使用 Redis 的 `REDIS_URL`，不依赖数据库或迁移。
 
-共享 PostgreSQL 数据库和 schema 的不同应用必须配置不同的 `queueName`；同一应用的副本使用相同名称。Worker 和旧 scheduler 清理都只作用于该队列：
+共享 Redis 连接的不同应用应使用不同的 `prefix`；同一应用的副本使用相同 prefix。Worker 和旧 scheduler 清理都只作用于该命名空间的 schedule 队列：
 
 ```ts
-ScheduleModule.forRoot({ queueName: "billing-schedule" });
+ScheduleModule.forRoot({ prefix: "billing" });
 ```
 
 ## 定义定时任务
@@ -63,7 +63,7 @@ export class CleanupService {
 }
 ```
 
-每个任务的名称为 `<类名>.<方法名>`。应用启动时，注册器会更新所有已发现的调度，并移除代码中已不存在的旧 scheduler。其他装饰器选项会作为 BullMQ job template 选项传递。
+每个 scheduler 的 ID 为 `<类名>.<方法名>`。它们统一提交 run 任务，data 为 `{ name: "<类名>.<方法名>" }`，由 `ScheduleProcessor.processRun` 执行对应处理器。旧 scheduler 按 ID 清理，与统一的 job name 独立。应用启动时，注册器会更新所有已发现的调度，并移除代码中已不存在的旧 scheduler。其他装饰器选项会作为 BullMQ job template 选项传递。
 
 ## 长耗时任务
 

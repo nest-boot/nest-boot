@@ -8,9 +8,9 @@ import {
   type OnApplicationBootstrap,
   Optional,
 } from "@nestjs/common";
-import { DiscoveryService } from "@nestjs/core";
 
-import { BaseQueue } from "./base.queue.js";
+import { QueueManager } from "./queue.manager.js";
+import { BaseQueue } from "./queues/base.queue.js";
 
 /** Registers health checks for the application's existing BullMQ queues. */
 @Injectable()
@@ -19,12 +19,12 @@ export class QueueHealthIndicator implements OnApplicationBootstrap {
   private readonly pendingReads = new WeakMap<BaseQueue, Promise<boolean>>();
 
   /**
-   * Creates a queue health indicator without creating queues or PostgreSQL connections.
-   * @param discoveryService - Provider discovery for registered queue instances
+   * Creates a queue health indicator without creating queues or Redis connections.
+   * @param manager - Manager of validated queue instances
    * @param registry - Optional application health check registry
    */
   constructor(
-    private readonly discoveryService: DiscoveryService,
+    private readonly manager: QueueManager,
     @Optional() private readonly registry?: HealthCheckRegistry,
   ) {}
 
@@ -33,13 +33,7 @@ export class QueueHealthIndicator implements OnApplicationBootstrap {
     if (!this.registry) {
       return;
     }
-    const queues = new Set<BaseQueue>();
-    for (const provider of this.discoveryService.getProviders()) {
-      if (provider.instance instanceof BaseQueue) {
-        queues.add(provider.instance);
-      }
-    }
-    for (const queue of queues) {
+    for (const queue of this.manager.getQueues()) {
       this.registry.register(() => this.check(`queue.${queue.name}`, queue));
     }
   }
@@ -64,7 +58,7 @@ export class QueueHealthIndicator implements OnApplicationBootstrap {
         }
         await queue.waitUntilReady();
         signal.throwIfAborted();
-        if (queue.closing || queue.getBackend().connection.isClosing) {
+        if (queue.closing || queue.getBackend().connection.closing) {
           throw new Error("Queue connection is closing");
         }
         // Share commands that outlive a timeout instead of queueing more reads.

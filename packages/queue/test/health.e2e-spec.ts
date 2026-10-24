@@ -12,10 +12,10 @@ import {
   QueueHealthIndicator,
   QueueModule,
 } from "../dist/index.js";
-import { createPostgresFixture } from "./postgres.fixture.js";
+import { createRedisFixture } from "./redis.fixture.js";
 
 describe("Queue health HTTP integration", () => {
-  let fixture: Awaited<ReturnType<typeof createPostgresFixture>>;
+  let fixture: Awaited<ReturnType<typeof createRedisFixture>>;
   let app: INestApplication;
 
   afterEach(async () => {
@@ -31,22 +31,24 @@ describe("Queue health HTTP integration", () => {
    */
   async function createApp(
     enabled = true,
-    registration: "default" | "sync" | "async" = "default",
+    registration: "class" | "factory" = "class",
   ) {
-    fixture = await createPostgresFixture();
-    const connection = { ...fixture.connection, max: 1 };
-    const rootModule =
-      registration === "sync"
-        ? QueueModule.forRoot({})
-        : registration === "async"
-          ? QueueModule.forRootAsync({ useFactory: () => ({}) })
-          : QueueModule;
-    @Queue({ name: "email", connection })
-    class EmailQueue extends BaseQueue {}
-    @Queue({ name: "upload", connection })
-    class UploadQueue extends BaseQueue {}
+    fixture = await createRedisFixture();
+    const connection = fixture.connection;
+    @Queue("email")
+    class EmailQueue extends BaseQueue {
+      constructor() {
+        super({ connection, prefix: fixture.prefix });
+      }
+    }
+    @Queue("upload")
+    class UploadQueue extends BaseQueue {
+      constructor() {
+        super({ connection, prefix: fixture.prefix });
+      }
+    }
     const queues = [EmailQueue, UploadQueue].map((queue) =>
-      registration === "async"
+      registration === "factory"
         ? {
             provide: queue,
             inject: [ModuleRef],
@@ -56,12 +58,13 @@ describe("Queue health HTTP integration", () => {
         : queue,
     );
     const module = await Test.createTestingModule({
-      imports: [rootModule, ...(enabled ? [HealthCheckModule] : [])],
+      imports: [QueueModule, ...(enabled ? [HealthCheckModule] : [])],
       providers: [
         ...queues,
         { provide: "QUEUE_ALIAS", useExisting: EmailQueue },
       ],
     })
+
       .setLogger({ log: vi.fn(), warn: vi.fn(), error: vi.fn() })
       .compile();
     app = module.createNestApplication();
@@ -74,7 +77,7 @@ describe("Queue health HTTP integration", () => {
   }
 
   /**
-   * Returns hTTP status and body returned by the health endpoint.
+   * Returns HTTP status and body returned by the health endpoint.
    * @returns HTTP status and body returned by the health endpoint.
    */
   async function health() {
@@ -143,8 +146,8 @@ describe("Queue health HTTP integration", () => {
     });
   });
 
-  it.each(["sync", "async"] as const)(
-    "discovers queues with %s module configuration",
+  it.each(["class", "factory"] as const)(
+    "discovers queues with %s provider registration",
     async (registration) => {
       await createApp(true, registration);
       expect(app.get(HealthCheckRegistry).healthIndicators).toHaveLength(2);
@@ -155,10 +158,11 @@ describe("Queue health HTTP integration", () => {
   it("bounds stalled reads, shares each pending command, and recovers", async () => {
     const { email, read } = await createApp();
     const indicator = app.get(QueueHealthIndicator);
-    // Occupy only this queue's single-connection pool while health reads queue up.
-    const pending = email
-      .getBackend()
-      .connection.pool.query("select pg_sleep(1.3)");
+    let release!: (value: boolean) => void;
+    const pending = new Promise<boolean>((resolve) => {
+      release = resolve;
+    });
+    read.mockReturnValueOnce(pending);
     try {
       expect((await health()).status).toBe(503);
       expect(await indicator.check("queue.email", email, 10)).toMatchObject({
@@ -166,6 +170,7 @@ describe("Queue health HTTP integration", () => {
       });
       expect(read).toHaveBeenCalledOnce();
     } finally {
+      release(false);
       await pending;
     }
     await vi.waitFor(async () => {

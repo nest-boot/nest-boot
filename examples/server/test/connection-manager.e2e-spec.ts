@@ -63,7 +63,7 @@ describe('GraphQL connection and official SQL driver integration', () => {
               ? { last: 1, before: cursor }
               : { first: 1, after: cursor }),
             // GraphQL resolves order enums to their entity property paths.
-            orderBy: { field: 'lastUsedAt' as never, direction },
+            orderBy: { field: 'lastUsedAt', direction },
           });
           expect(result.totalCount).toBe(5);
           expect(result.edges).toHaveLength(1);

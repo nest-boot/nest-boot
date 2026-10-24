@@ -435,7 +435,7 @@ type JobEdge {
 
 """
 A filter for Job that accepts MongoDB query syntax.
-Supported fields: queue, name, status, created_at
+Supported fields: id, queue, name, status, created_at
 """
 scalar JobFilter
 
@@ -459,10 +459,6 @@ Properties by which job connections can be ordered.
 """
 enum JobOrderField {
   CREATED_AT
-  ID
-  NAME
-  QUEUE
-  STATUS
 }
 
 enum JobStatus {
@@ -470,6 +466,8 @@ enum JobStatus {
   COMPLETED
   DELAYED
   FAILED
+  PRIORITIZED
+  UNKNOWN
   WAITING
   WAITING_CHILDREN
 }
@@ -772,8 +770,12 @@ type Query {
   currentUser: User!
   currentWorkspace: Workspace
   invitation(id: ID!): Invitation
-  job(id: ID!): Job
-  jobs(
+  member(id: ID!): Member
+  memberApiKeyPermissions: [MemberApiKeyPermissionOption!]!
+  passwordPolicy: PasswordPolicy!
+  socialProviders: [AuthSocialProviderType!]!
+  systemJob(id: ID!): Job
+  systemJobs(
     """
     Returns the elements that come after the specified cursor.
     """
@@ -811,12 +813,47 @@ type Query {
     """
     query: String
   ): JobConnection!
-  member(id: ID!): Member
-  memberApiKeyPermissions: [MemberApiKeyPermissionOption!]!
-  passwordPolicy: PasswordPolicy!
-  socialProviders: [AuthSocialProviderType!]!
   user(id: ID!): User
   userApiKeyPermissions: [UserApiKeyPermissionOption!]!
+  userJob(id: ID!): Job
+  userJobs(
+    """
+    Returns the elements that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the elements that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Filter jobs using MongoDB query syntax.
+    """
+    filter: JobFilter
+
+    """
+    Returns up to the first `n` elements from the list.
+    """
+    first: Int
+
+    """
+    Returns up to the last `n` elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for the returned jobs.
+    """
+    orderBy: JobOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `queue`, `name`, `status`, `created_at`
+    """
+    query: String
+  ): JobConnection!
   userPermissions: [UserPermissionOption!]!
   userRoles: [UserRoleOption!]!
   users(
@@ -858,6 +895,45 @@ type Query {
     query: String
   ): UserConnection!
   workspace(id: ID!): Workspace
+  workspaceJob(id: ID!): Job
+  workspaceJobs(
+    """
+    Returns the elements that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the elements that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Filter jobs using MongoDB query syntax.
+    """
+    filter: JobFilter
+
+    """
+    Returns up to the first `n` elements from the list.
+    """
+    first: Int
+
+    """
+    Returns up to the last `n` elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for the returned jobs.
+    """
+    orderBy: JobOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `queue`, `name`, `status`, `created_at`
+    """
+    query: String
+  ): JobConnection!
   workspacePermissions: [WorkspacePermissionOption!]!
   workspaceRoles: [WorkspaceRoleOption!]!
 }

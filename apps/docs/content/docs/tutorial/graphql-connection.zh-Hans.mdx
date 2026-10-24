@@ -181,3 +181,5 @@ Connection 同时提供 `totalCount` 和 `totalCountRelation`。不超过 10,000
 - **MongoDB 风格过滤** - 强大的过滤语法和验证
 - **搜索语法** - 人性化的搜索查询解析
 - **游标分页** - 使用不透明游标进行稳定分页
+
+ID 默认可作为排序键。使用 `.addField({ field: "id", type: "string", sortable: false })` 可从公开排序选项中移除 ID，内部仍用它打破同值和定位游标。直接调用时 `orderBy.field` 使用解码后的实体路径，例如 `createdAt`；GraphQL 客户端使用对应枚举，例如 `CREATED_AT`。

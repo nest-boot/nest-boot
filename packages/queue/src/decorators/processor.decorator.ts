@@ -1,37 +1,19 @@
-import { Injectable, type ScopeOptions, type Type } from "@nestjs/common";
-import type { WorkerOptions } from "bullmq";
+import type { Type } from "@nestjs/common";
 
-import type { BaseQueue } from "../base.queue.js";
-import { PROCESSOR_OPTIONS } from "../queue.constants.js";
-
-/** Consumer options; connection and namespace always come from its queue. */
-export type ProcessorOptions = Omit<
-  WorkerOptions,
-  "connection" | "prefix" | "telemetry" | "autorun"
-> &
-  ScopeOptions;
+import type { ProcessorContract } from "../interfaces/processor-methods.interface.js";
+import type { BaseProcessor } from "../processors/base.processor.js";
+import { PROCESSOR_QUEUE } from "../queue.constants.js";
+import type { BaseQueue } from "../queues/base.queue.js";
 
 /**
- * Consumer declaration read during startup.
- * @internal
+ * Binds a singleton processor and checks all of its named job methods.
+ * @param queue - Queue provider consumed by this processor.
+ * @returns Class decorator enforcing the queue's handler contracts.
  */
-export interface ProcessorDefinition {
-  queue: Type<BaseQueue>;
-  options: ProcessorOptions;
-}
-
-/**
- * Declares a consumer of the given queue class.
- * @param queue - Queue class registered as a provider in this application.
- * @param options - Worker and Nest injection scope options.
- * @returns Consumer class decorator.
- */
-export function Processor(
-  queue: Type<BaseQueue>,
-  options: ProcessorOptions = {},
-): ClassDecorator {
-  return (target) => {
-    Reflect.defineMetadata(PROCESSOR_OPTIONS, { queue, options }, target);
-    Injectable({ scope: options.scope, durable: options.durable })(target);
+export function Processor<Q extends Type<BaseQueue>>(queue: Q) {
+  return <P extends Type<BaseProcessor>>(
+    target: P & ProcessorContract<InstanceType<P>, InstanceType<Q>>,
+  ): void => {
+    Reflect.defineMetadata(PROCESSOR_QUEUE, queue, target);
   };
 }

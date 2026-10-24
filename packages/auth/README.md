@@ -10,8 +10,8 @@ Apply the complete migration sequence to a fresh database.
 
 Use `withAuthDatabaseConfig(config)` from the package root to register Auth entities
 in runtime and MikroORM CLI configuration. Compose it with
-`await getDatabaseConfig()` from `@nest-boot/database` and, when needed,
-`withQueueDatabaseConfig()` from `@nest-boot/queue`. It returns a new configuration
+`await getDatabaseConfig()` from `@nest-boot/database` and register `JobEntity` from `@nest-boot/queue-api` as an ordinary entity when queue history is needed.
+The Auth helper returns a new configuration
 and deduplicates both runtime and TypeScript entity lists.
 
 ## Feature organization
