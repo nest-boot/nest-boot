@@ -38,7 +38,6 @@
     "@nest-boot/health-check": "workspace:^",
     "dataloader": "^2.2.3",
     "lodash-es": "^4.18.1",
-    "pgvector": "^0.2.1",
     "prettier": "^3.6.2",
     "sql-formatter": "^15.6.9"
   },
