@@ -1,6 +1,7 @@
 import {
   EntityProperty,
   Platform,
+  type TransformContext,
   Type,
   ValidationError,
 } from "@mikro-orm/core";
@@ -46,13 +47,34 @@ export class VectorType extends Type<
    * Converts a vector to its PostgreSQL text representation.
    * @param value - The vector, null, or undefined
    * @param _platform - The database platform
+   * @param context - Query conversion context
    * @returns The serialized vector, preserving null and undefined
    * @throws {ValidationError} If the vector is empty or contains non-finite numbers
    */
   convertToDatabaseValue(
     value: number[] | null | undefined,
     _platform: Platform,
-  ): string | null | undefined {
+    context?: TransformContext,
+  ): string | null | undefined;
+  convertToDatabaseValue(
+    value: boolean,
+    _platform: Platform,
+    context: TransformContext & { fromQuery: true; key: "$exists" },
+  ): boolean;
+  convertToDatabaseValue(
+    value: number[] | boolean | null | undefined,
+    _platform: Platform,
+    context?: TransformContext,
+  ): string | boolean | null | undefined {
+    // Existence operands are query instructions, not vector values to serialize.
+    if (
+      context?.fromQuery &&
+      context.key === "$exists" &&
+      typeof value === "boolean"
+    ) {
+      return value;
+    }
+
     if (value == null) {
       return value;
     }

@@ -86,6 +86,24 @@ describe("VectorType", () => {
     expect(type.convertToJSValue(undefined, platform)).toBeUndefined();
   });
 
+  it.each([true, false])("should reject boolean vector values: %s", (value) => {
+    const type = new VectorType();
+    const invalid = value as unknown as number[];
+
+    expect(() => type.convertToDatabaseValue(invalid, platform)).toThrow(
+      ValidationError,
+    );
+    expect(() =>
+      type.convertToDatabaseValue(invalid, platform, {
+        fromQuery: true,
+        key: "$eq",
+      }),
+    ).toThrow(ValidationError);
+    expect(() =>
+      type.convertToDatabaseValue(invalid, platform, { key: "$exists" }),
+    ).toThrow(ValidationError);
+  });
+
   it("should parse whitespace and scientific notation", () => {
     expect(
       new VectorType().convertToJSValue(" [ 1e-3, -2.5, 0 ] ", platform),
