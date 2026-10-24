@@ -1,16 +1,24 @@
 import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20261009070926 extends Migration {
-  override name = 'Migration20261009070926';
+export class Migration20261024072513 extends Migration {
+  override name = 'Migration20261024072513';
 
   override up(): void | Promise<void> {
     this.addSql(
-      `create table "job" ("id" varchar(255) not null, "queue_name" varchar(255) not null, "name" varchar(255) not null, "data" jsonb not null, "return_value" jsonb null, "failed_reason" varchar(255) null, "priority" int not null, "progress" jsonb not null, "status" text not null, "started_at" timestamptz null, "finished_at" timestamptz null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), primary key ("id"));`,
+      `create table "job" ("id" uuid not null default gen_random_uuid(), "queue" text not null, "job_id" text not null, "name" text not null, "data" jsonb not null default '{}', "status" text not null, "progress" jsonb null, "return_value" jsonb null, "failed_reason" text null, "created_at" timestamptz not null, "started_at" timestamptz null, "finished_at" timestamptz null, "last_event_ms" bigint not null default '0', "last_event_seq" bigint not null default '0', primary key ("id"));`,
     );
-    this.addSql(`create index "job_name_index" on "job" ("name");`);
-    this.addSql(`create index "job_status_index" on "job" ("status");`);
-    this.addSql(`create index "job_created_at_index" on "job" ("created_at");`);
-    this.addSql(`create index "job_updated_at_index" on "job" ("updated_at");`);
+    this.addSql(
+      `create index "job_created_at_id_index" on "job" ("created_at", "id") where "data"->>'userId' is null and "data"->>'workspaceId' is null;`,
+    );
+    this.addSql(
+      `create index "job_data_workspaceId_created_at_id_index" on "job" (("data"->>'workspaceId'), created_at, id);`,
+    );
+    this.addSql(
+      `create index "job_data_userId_created_at_id_index" on "job" (("data"->>'userId'), created_at, id);`,
+    );
+    this.addSql(
+      `alter table "job" add constraint "job_queue_job_id_unique" unique ("queue", "job_id");`,
+    );
 
     this.addSql(
       `create table "user" ("id" bigserial primary key, "name" varchar(255) not null, "email" varchar(255) not null, "email_verified" boolean not null, "image" varchar(255) null, "roles" text[] not null, "permissions" text[] not null, "banned" boolean not null default false, "ban_reason" varchar(255) null, "ban_expires_at" timestamptz null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
@@ -128,11 +136,7 @@ export class Migration20261009070926 extends Migration {
     );
 
     this.addSql(
-      `alter table "job" add constraint "job_status_check" check ("status" in ('active', 'completed', 'delayed', 'failed', 'prioritized', 'unknown', 'waiting', 'waiting-children'));`,
-    );
-    this.addSql(`alter table "job" enable row level security;`);
-    this.addSql(
-      `create policy "job_all_policy" on "job" to "authenticated" using (("data" ->> 'userId' = nullif(current_setting('app.user.id', true), '') OR "data" ->> 'workspaceId' = nullif(current_setting('app.workspace.id', true), ''))) with check (("data" ->> 'userId' = nullif(current_setting('app.user.id', true), '') OR "data" ->> 'workspaceId' = nullif(current_setting('app.workspace.id', true), '')));`,
+      `alter table "job" add constraint "job_status_check" check ("status" in ('prioritized', 'unknown', 'waiting', 'active', 'completed', 'failed', 'delayed', 'waiting-children'));`,
     );
 
     this.addSql(`alter table "user" enable row level security;`);

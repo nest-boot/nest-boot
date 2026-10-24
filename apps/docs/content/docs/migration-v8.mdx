@@ -158,7 +158,7 @@ Queue job contracts now live in `readonly jobSchemas`, replacing BaseQueue's Dat
 - Rebuild generated files and migrations after switching TypeScript module
   resolution so generated imports include valid ESM extensions.
 
-The server example's historical migrations have been replaced with a two-step baseline:
+The server example keeps a two-step baseline:
 handwritten infrastructure initialization followed by a schema generated from the
 current entities. Use a fresh database for this example; the
 new baseline is not an upgrade path for databases that ran the removed migrations.
@@ -172,7 +172,7 @@ unit and end-to-end suites with `pnpm test` and `pnpm test:e2e`.
 ### API-key ownership and database cascades
 
 Run `Migration00000000000000_Initial` before the MikroORM-generated
-`Migration20261009070926`. Initialization grants schema `USAGE` and sets default
+`Migration20261024072513`. Initialization grants schema `USAGE` and sets default
 `ALL` privileges on tables, functions, and sequences in `public` for both
 `anonymous` and `authenticated`. These defaults apply only to future objects
 created by the same migration role, not existing objects or objects created by

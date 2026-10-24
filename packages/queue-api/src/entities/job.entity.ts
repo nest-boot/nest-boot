@@ -1,6 +1,6 @@
 /* eslint-disable @nest-boot/graphql-field-config-from-types -- Persist arbitrary progress but expose only numeric values via the resolver. */
 /* eslint-disable @nest-boot/entity-property-config-from-types -- History uses explicit SQL UUID, JSON and bigint types. */
-import { BigIntType, raw, t } from "@mikro-orm/core";
+import { BigIntType, t } from "@mikro-orm/core";
 import {
   Entity,
   Enum,
@@ -19,41 +19,18 @@ import { JobStatus } from "../enums/job-status.enum.js";
 @Entity()
 @Unique({ properties: ["queue", "jobId"] })
 @Index({
-  name: "job_user_idx",
-  expression: (columns, table, indexName) =>
-    raw("create index ?? on ?? ((??->>'userId'), ??, ??)", [
-      indexName,
-      table.qualifiedName,
-      columns.data,
-      columns.createdAt,
-      columns.id,
-    ]),
+  columns: [{ name: "data.userId" }, { name: "createdAt" }, { name: "id" }],
 })
 @Index({
-  name: "job_workspace_idx",
-  expression: (columns, table, indexName) =>
-    raw("create index ?? on ?? ((??->>'workspaceId'), ??, ??)", [
-      indexName,
-      table.qualifiedName,
-      columns.data,
-      columns.createdAt,
-      columns.id,
-    ]),
+  columns: [
+    { name: "data.workspaceId" },
+    { name: "createdAt" },
+    { name: "id" },
+  ],
 })
 @Index({
-  name: "job_system_idx",
-  expression: (columns, table, indexName) =>
-    raw(
-      "create index ?? on ?? (??, ??) where ??->>'userId' is null and ??->>'workspaceId' is null",
-      [
-        indexName,
-        table.qualifiedName,
-        columns.createdAt,
-        columns.id,
-        columns.data,
-        columns.data,
-      ],
-    ),
+  properties: ["createdAt", "id"],
+  where: `"data"->>'userId' is null and "data"->>'workspaceId' is null`,
 })
 export class Job {
   /** Database-generated UUID, stable across synchronization events. */

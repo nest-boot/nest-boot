@@ -103,17 +103,17 @@ it("uses ordered scope indexes for cross-queue cursor reads without sorting or o
     await client.query("analyze job");
     for (const scope of [
       {
-        index: "job_user_idx",
+        index: "job_data_userId_created_at_id_index",
         where: "data->>'userId' = $1",
         values: ["user-1"],
       },
       {
-        index: "job_workspace_idx",
+        index: "job_data_workspaceId_created_at_id_index",
         where: "data->>'workspaceId' = $1",
         values: ["workspace-1"],
       },
       {
-        index: "job_system_idx",
+        index: "job_created_at_id_index",
         where: "data->>'userId' is null and data->>'workspaceId' is null",
         values: [],
       },
