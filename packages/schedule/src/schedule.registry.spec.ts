@@ -10,7 +10,6 @@ vi.mock("@nest-boot/queue", () => ({
 import { Logger } from "@nestjs/common";
 import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
-import { SchemaMigrationRequiredError } from "bullmq";
 
 import { Cron, Interval } from "./schedule.decorator.js";
 import { ScheduleRegistry } from "./schedule.registry.js";
@@ -49,6 +48,7 @@ describe("ScheduleRegistry", () => {
     controller = new ControllerSchedules(),
     provider = new ProviderSchedules(),
     schedulers: {
+      key: string;
       name: string;
       pattern?: string;
       every?: number;
@@ -142,29 +142,9 @@ describe("ScheduleRegistry", () => {
     await moduleRef.close();
   });
 
-  it("allows migration commands to initialize an application before the BullMQ schema exists", async () => {
-    const { queue, registry, moduleRef } = await createRegistry();
-    const warning = vi
-      .spyOn(Logger.prototype, "warn")
-      .mockImplementation(vi.fn());
-    queue.getJobSchedulers.mockRejectedValue(
-      new SchemaMigrationRequiredError("tasks"),
-    );
-    try {
-      await moduleRef.init();
-      expect(queue.upsertJobScheduler).not.toHaveBeenCalled();
-      expect(registry.get("ControllerSchedules.syncUsers")).toBeDefined();
-      expect(warning).toHaveBeenCalledWith(
-        expect.stringContaining("nb queue:migrate"),
-      );
-    } finally {
-      await moduleRef.close();
-    }
-  });
-
-  it("propagates schedule registration errors other than an uninitialized schema", async () => {
+  it("propagates Redis schedule registration errors", async () => {
     const { queue, registry } = await createRegistry();
-    const failure = new Error("database permission denied");
+    const failure = new Error("Redis unavailable");
     queue.getJobSchedulers.mockRejectedValue(failure);
     await expect(registry.onApplicationBootstrap()).rejects.toBe(failure);
   });
@@ -174,15 +154,18 @@ describe("ScheduleRegistry", () => {
       undefined,
       [
         {
-          name: "Old.cron",
+          key: "Old.cron",
+          name: "run",
           pattern: "0 0 * * *",
         },
         {
-          name: "Old.interval",
+          key: "Old.interval",
+          name: "run",
           every: 5000,
         },
         {
-          name: "ControllerSchedules.syncUsers",
+          key: "ControllerSchedules.syncUsers",
+          name: "run",
           pattern: "*/5 * * * *",
         },
       ],
@@ -202,7 +185,8 @@ describe("ScheduleRegistry", () => {
         tz: "Asia/Shanghai",
       },
       {
-        name: "ControllerSchedules.syncUsers",
+        name: "run",
+        data: { name: "ControllerSchedules.syncUsers" },
         opts: {
           attempts: 2,
         },
@@ -215,7 +199,8 @@ describe("ScheduleRegistry", () => {
         tz: "UTC",
       },
       {
-        name: "ProviderSchedules.refreshCache",
+        name: "run",
+        data: { name: "ProviderSchedules.refreshCache" },
         opts: {
           removeOnComplete: true,
         },

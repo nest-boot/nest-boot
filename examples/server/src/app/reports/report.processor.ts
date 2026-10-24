@@ -1,17 +1,15 @@
-import { BaseProcessor, Processor } from '@nest-boot/queue';
+import { BaseProcessor, type Job, Processor } from '@nest-boot/queue';
 import { RequestContext } from '@nest-boot/request-context';
 import { Logger } from '@nestjs/common';
-import type { Job } from 'bullmq';
 
-import {
-  type ReportData,
-  ReportQueue,
-  type ReportResult,
-} from './report.queue.js';
+import { ReportQueue } from './report.queue.js';
 
 /** Reads each job's context through the static RequestContext API. */
-@Processor(ReportQueue, { concurrency: 2 })
+@Processor(ReportQueue)
 export class ReportProcessor extends BaseProcessor {
+  constructor() {
+    super({ concurrency: 2 });
+  }
   private readonly logger = new Logger(ReportProcessor.name);
 
   /**
@@ -19,9 +17,7 @@ export class ReportProcessor extends BaseProcessor {
    * @param job - Persisted report input.
    * @returns The summary, stored by BullMQ for server-side use.
    */
-  async process(
-    job: Job<ReportData, ReportResult, 'summarize'>,
-  ): Promise<ReportResult> {
+  async processSummarize(job: Job<ReportQueue, 'summarize'>) {
     const context = RequestContext.current();
     const { values } = job.data;
     const total = values.reduce((sum, value) => sum + value, 0);

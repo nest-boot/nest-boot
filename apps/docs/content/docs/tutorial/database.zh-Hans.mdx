@@ -101,15 +101,21 @@ if (existsSync(".env")) {
 export default getDatabaseConfig();
 ```
 
-使用 Auth 和 Queue 时可组合配置函数。它们返回新配置，合并并去重实体列表，并保留应用设置；Queue 还会合并 schema 选项，串联同步或异步 discovery 回调。运行时通过 `DatabaseModule.forRootAsync()` 复用此工厂，并在该处补充请求 `session`。将 `loadConfigFromEnv` 的导入和调用改为 `getDatabaseConfig`。
+使用 `withAuthDatabaseConfig` 注册 Auth 实体。需要队列历史时，将 `@nest-boot/queue-api` 的 `JobEntity` 像普通实体一样加入运行时和 CLI 的实体列表，并在 `DatabaseModule.forRootAsync()` 复用此配置。
 
 ```typescript
 import { withAuthDatabaseConfig } from "@nest-boot/auth";
 import { getDatabaseConfig } from "@nest-boot/database";
-import { withQueueDatabaseConfig } from "@nest-boot/queue";
+import { JobEntity } from "@nest-boot/queue-api";
 
-export default async () =>
-  withQueueDatabaseConfig(withAuthDatabaseConfig(await getDatabaseConfig()));
+export default async () => {
+  const config = withAuthDatabaseConfig(await getDatabaseConfig());
+  return {
+    ...config,
+    entities: [...config.entities, JobEntity],
+    entitiesTs: [...config.entitiesTs, JobEntity],
+  };
+};
 ```
 
 ## 健康检查

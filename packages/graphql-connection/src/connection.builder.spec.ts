@@ -183,3 +183,20 @@ describe("ConnectionBuilder", () => {
     ).toEqual(["field", "direction"]);
   });
 });
+
+it("can exclude ID from public sorting while preserving another sortable field", () => {
+  class Timeline {
+    id!: string;
+    createdAt!: Date;
+  }
+  const result = new ConnectionBuilder(Timeline)
+    .addField({ field: "id", type: "string", sortable: false })
+    .addField({
+      field: "created_at",
+      replacement: "createdAt",
+      type: "date",
+      sortable: true,
+    })
+    .build();
+  expect(result.OrderField).toEqual({ CREATED_AT: "createdAt" });
+});

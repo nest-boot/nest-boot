@@ -1,9 +1,21 @@
 import { BaseQueue, Queue } from "@nest-boot/queue";
+import { z } from "zod";
 
-export interface ReportData {
-  delay?: number;
-  userId?: string;
+@Queue("reports")
+export class ReportsQueue extends BaseQueue {
+  readonly jobSchemas = {
+    report: {
+      data: z.object({
+        delay: z.number().optional(),
+        userId: z.string().optional(),
+      }),
+      result: z.string(),
+    },
+  };
+
+  constructor() {
+    super({ prefix: process.env.QUEUE_TEST_PREFIX });
+  }
 }
 
-@Queue({ name: "reports", expose: true })
-export class ReportsQueue extends BaseQueue<ReportData, string> {}
+export type ReportData = z.input<ReportsQueue["jobSchemas"]["report"]["data"]>;

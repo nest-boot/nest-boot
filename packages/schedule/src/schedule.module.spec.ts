@@ -47,7 +47,6 @@ describe("ScheduleModule", () => {
         );
         expect(createQueue).toHaveBeenCalledExactlyOnceWith(
           mode === "default" ? {} : { connection: options.connection },
-          undefined,
         );
       } finally {
         await module.close();
@@ -58,7 +57,7 @@ describe("ScheduleModule", () => {
   it.each(["sync", "async"])(
     "namespaces the schedule queue with %s options",
     async (mode) => {
-      const options = { queueName: "billing-schedule", concurrency: 2 };
+      const options = { prefix: "billing-schedule", concurrency: 2 };
       const module = await Test.createTestingModule({
         imports: [
           mode === "sync"
@@ -67,12 +66,11 @@ describe("ScheduleModule", () => {
         ],
       }).compile();
       try {
-        expect(createQueue).toHaveBeenCalledExactlyOnceWith(
-          {},
-          "billing-schedule",
-        );
+        expect(createQueue).toHaveBeenCalledExactlyOnceWith({
+          prefix: "billing-schedule",
+        });
         expect(options).toEqual({
-          queueName: "billing-schedule",
+          prefix: "billing-schedule",
           concurrency: 2,
         });
       } finally {

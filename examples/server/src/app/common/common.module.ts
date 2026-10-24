@@ -8,6 +8,7 @@ import { HealthCheckModule } from '@nest-boot/health-check';
 import { LoggerModule } from '@nest-boot/logger';
 import { MailerModule } from '@nest-boot/mailer';
 import { QueueModule } from '@nest-boot/queue';
+import { QueueApiModule } from '@nest-boot/queue-api';
 import { RequestContextModule } from '@nest-boot/request-context';
 import { ScheduleModule } from '@nest-boot/schedule';
 import { Global, Module } from '@nestjs/common';
@@ -37,7 +38,7 @@ const DatabaseDynamicModule = DatabaseModule.forRootAsync({
   }),
 });
 
-const QueueDynamicModule = QueueModule.forRoot({});
+const QueueDynamicModule = QueueModule;
 
 const ScheduleDynamicModule = ScheduleModule.forRoot({ concurrency: 2 });
 
@@ -56,6 +57,7 @@ const ScheduleDynamicModule = ScheduleModule.forRoot({ concurrency: 2 });
     GraphQLConnectionModule,
     LoggerModule,
     QueueDynamicModule,
+    QueueApiModule,
     ScheduleDynamicModule,
   ],
   providers: [GreetCommand],

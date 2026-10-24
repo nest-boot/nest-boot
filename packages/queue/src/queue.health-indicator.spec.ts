@@ -1,13 +1,12 @@
-import type { DiscoveryService } from "@nestjs/core";
-
-import { BaseQueue } from "./base.queue.js";
 import { QueueHealthIndicator } from "./queue.health-indicator.js";
+import type { QueueManager } from "./queue.manager.js";
+import { BaseQueue } from "./queues/base.queue.js";
 
 describe("QueueHealthIndicator", () => {
   /**
    * Returns queue configured for the test.
    * @param name - Name used to identify the resource.
-   * @param ready - Pending readiness of the PostgreSQL connection.
+   * @param ready - Pending readiness of the Redis connection.
    * @returns BaseQueue configured for the test.
    */
   function createQueue(
@@ -31,10 +30,10 @@ describe("QueueHealthIndicator", () => {
     return { queue, isPaused };
   }
 
-  /** @returns Health indicator with unused provider discovery stubbed. */
+  /** @returns Health indicator with the queue manager stubbed. */
   function createIndicator() {
-    const discovery = { getProviders: vi.fn() };
-    return new QueueHealthIndicator(discovery as unknown as DiscoveryService);
+    const manager = { getQueues: vi.fn() };
+    return new QueueHealthIndicator(manager as unknown as QueueManager);
   }
 
   it("reports read failures and recovery, and treats pausing as queue metadata", async () => {

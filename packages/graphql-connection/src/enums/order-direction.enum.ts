@@ -5,7 +5,7 @@ import { registerEnumType } from "@nest-boot/graphql";
  * @example
  * ```typescript
  * const order = {
- *   field: "CREATED_AT",
+ *   field: "createdAt",
  *   direction: OrderDirection.DESC,
  * };
  * ```

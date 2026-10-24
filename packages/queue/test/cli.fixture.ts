@@ -2,20 +2,20 @@ import { spawn } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { createPostgresFixture } from "./postgres.fixture.js";
+import type { createRedisFixture } from "./redis.fixture.js";
 
 const project = dirname(fileURLToPath(import.meta.url));
 
 /**
  * Runs the committed test application's CLI in an independent Node process.
  * @param args - CLI arguments.
- * @param connection - Isolated test database.
+ * @param connection - Isolated Redis namespace.
  * @param env - Additional process configuration for the scenario.
  * @returns Process, captured output and termination notification.
  */
 export function runCli(
   args: string[],
-  connection: Awaited<ReturnType<typeof createPostgresFixture>>["connection"],
+  connection: Awaited<ReturnType<typeof createRedisFixture>>,
   env: NodeJS.ProcessEnv = {},
 ) {
   const child = spawn(
@@ -27,8 +27,8 @@ export function runCli(
         ...process.env,
         NODE_ENV: "development",
         NODE_OPTIONS: "",
-        QUEUE_DATABASE_URL: connection.connectionString,
-        QUEUE_TEST_SCHEMA: connection.schema,
+        REDIS_URL: process.env.REDIS_URL ?? "redis://127.0.0.1:6379",
+        QUEUE_TEST_PREFIX: connection.prefix,
         ...env,
       },
     },

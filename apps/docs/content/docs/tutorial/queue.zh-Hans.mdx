@@ -1,35 +1,45 @@
 ---
 title: "队列"
-description: "通过 BullMQ 提供可注入的队列类、PostgreSQL 后台消费者与可选的 MikroORM 查询。"
+description: "Redis 队列、单例 Processor、Job 历史同步与 GraphQL 查询。"
 ---
 
-`@nest-boot/queue` 直接基于 [BullMQ](https://docs.bullmq.io/) 集成 Nest。队列类是可注入的 provider，消费者引用同一个队列类，不再依赖 `@nestjs/bullmq`。
+`@nest-boot/queue` 基于 BullMQ 的 Redis 后端。`@Queue(name)` 固定名称，`@Processor(QueueClass)` 固定消费者绑定，其余运行配置放进构造函数。无需 `@nestjs/bullmq`。
 
 ## 安装
 
 ```bash
-pnpm add @nest-boot/queue @nest-boot/command @nest-boot/request-context bullmq @mikro-orm/core @mikro-orm/decorators
+pnpm add @nest-boot/queue @nest-boot/command @nest-boot/request-context bullmq zod
 ```
 
-## 定义与注入队列
-
-`@Queue()` 默认将类名转换为 kebab-case 作为队列名称，例如 `EmailQueue` 转为 `email-queue`。可直接向装饰器传入队列配置，并通过可选的 `name` 覆盖名称。
+## 声明和注入队列
 
 ```ts
 import { BaseQueue, Queue } from "@nest-boot/queue";
+import { z } from "zod";
 
-export interface EmailData {
-  to: string;
-  subject: string;
+@Queue("email")
+export class EmailQueue extends BaseQueue {
+  readonly jobSchemas = {
+    send: {
+      data: z.object({ to: z.email(), subject: z.string() }),
+      result: z.object({ messageId: z.string() }),
+    },
+    welcome: {
+      data: z.object({ userId: z.string() }),
+    },
+  };
+
+  constructor() {
+    super({ defaultJobOptions: { attempts: 3 } });
+  }
 }
 
-@Queue({
-  defaultJobOptions: { attempts: 3, removeOnComplete: { age: 3600 } },
-})
-export class EmailQueue extends BaseQueue<EmailData> {}
+export type EmailData = z.input<EmailQueue["jobSchemas"]["send"]["data"]>;
 ```
 
-把队列类加入 `providers`，直接通过构造函数注入。在应用模块树的任意一个模块中导入一次 `QueueModule` 即可，例如 `CommonModule`、`JobsModule` 或下面的业务模块，不要求放在 `AppModule`。可以直接导入，或使用 `forRoot()` / `forRootAsync()` 配置。其 provider 为全局服务，其他模块和 `ScheduleModule` 直接复用，无需重复导入。应用仍需这次导入，以提供配置、发现消费者并管理 worker：
+`@Queue()` 可以省略名称：去掉类名末尾的 Queue 后转为 kebab-case，例如 EmailQueue → email、JobQueue → job。`@Queue("email")` 可显式指定名称。没有额外配置时可以省略构造函数。`BaseQueue` 默认读取 `REDIS_URL`，构造函数的 `connection` 优先。`prefix`、`defaultJobOptions` 等配置传给 `super(options)`；名称必须由 `@Queue(name)` 声明，每个具体队列类都需要自己的名称声明。
+
+在模块树中导入一次全局 `QueueModule`，将队列类注册为普通 provider。队列运行只需 Redis，不依赖数据库、GraphQL、认证或调度模块。
 
 ```ts
 import { QueueModule } from "@nest-boot/queue";
@@ -53,242 +63,154 @@ export class EmailService {
 export class EmailModule {}
 ```
 
-不需要 `registerQueue()` 或 `@InjectQueue()`。`QueueModule` 自动读取 `QUEUE_DATABASE_URL` / `DATABASE_URL`；通过 `forRoot()` / `forRootAsync()` 可以指定连接和共享默认配置，全局配置只定义一份。队列类继承 BullMQ 的方法，也可以添加业务方法。
+队列类继承 BullMQ 方法，可以添加业务方法。无需 `registerQueue()` 或 `@InjectQueue()`。队列必须是单例，应用内名称唯一；通过导出 provider 复用同一实例。Nest 关闭应用时关闭队列连接。
 
-队列 provider 必须保持单例，队列名称在应用内必须唯一。需要跨模块使用时，导出队列类并导入所属模块，不要重复创建实例。应用关闭时会关闭队列连接。
+## Job schema 与类型推导
 
-队列会自动取得全局配置。自定义构造函数只注入业务依赖，并调用 `super(localOptions)`；装饰器配置足够时，可完全省略构造函数。
+从 `@nest-boot/queue` 导入任务类型 `Job<Q, N>`；可选数据库实体 `JobEntity` 从 `@nest-boot/queue-api` 导入。`JobEntity` 是原实体类的导出别名，数据库表名仍为 `job`，GraphQL 类型名仍为 `Job`。内部 BullMQ 原生类统一使用 `BullmqJob`、`BullmqQueue`、`BullmqWorker` 和 `BullmqQueueEvents` 别名。
 
-## 消费任务
+在实例属性 `readonly jobSchemas` 中声明允许的任务名称，不需要 BaseQueue 泛型或 `as const`。不要将属性显式标注为宽泛的 JobSchemas，否则会丢失具体任务名。
+
+每个任务的 `data` 必填且必须为 `z.object()`；`result` 可选，允许其他 Zod 类型，省略时表示无业务返回值，类型为 void。name 直接从对象键推导，无需 z.literal。生产端的 add、addBulk、upsertJobScheduler 自动约束 name 和 data，消费端为每种任务定义对应方法，例如 `processSend(job: Job<EmailQueue, "send">)`。参数类型必须标注；后续可选参数按 `token?: string`、`signal?: AbortSignal` 声明，不能增加额外必填参数。返回类型可以推导，但必须符合这一种任务的 result schema。
 
 ```ts
-import { BaseProcessor, OnWorkerEvent, Processor } from "@nest-boot/queue";
-import { Job } from "bullmq";
-import { EmailQueue, type EmailData } from "./email.queue";
-import { NotificationService } from "./notification.service";
-
-@Processor(EmailQueue, { concurrency: 5 })
-export class EmailProcessor extends BaseProcessor {
-  constructor(private readonly notifications: NotificationService) {
-    super();
-  }
-
-  async process(job: Job<EmailData>) {
-    await this.notifications.send(job.data);
-  }
-
-  @OnWorkerEvent("completed")
-  onCompleted(job: Job<EmailData>) {
-    console.log(`Completed ${job.id}`);
-  }
-}
+await queue.add("send", { to: "user@example.com", subject: "Hello" });
+await queue.add("welcome", { userId: "123" });
+// queue.add("unknown", {});                 // 类型错误
+// queue.add("send", { userId: "123" });      // 类型错误
 ```
 
-将 `EmailProcessor` 与 `EmailQueue` 都注册为 provider，或者导入导出队列的模块。纯消费者部署也必须注册队列类。注册只创建客户端，不会自动入队；缺少队列 provider 时会在启动任何 worker 前报错。消费者的PostgreSQL 连接和 telemetry 都来自队列实例，worker 配置不能指向不同的数据库或 schema。使用 `BaseProcessor` 替代已移除的 `WorkerHost` 导出。
+入队前校验数据；批量入队会先校验整批再提交。Scheduler 标识与 job name 独立，声明了 schema 的队列必须提供包含 name 和 data 的模板。消费端再次校验源任务，阻止绕过封装写入的未知名称或非法参数；处理结束后校验 result，未声明 result 时要求返回 undefined。校验失败交给 BullMQ 标记失败和按配置重试。支持异步校验。
 
-### Scope 与 RequestContext
+schema 用于校验稳定的 JSON 契约。队列在入队前、每次处理前，以及声明了 result 时完成任务前调用 `parseAsync()`，但丢弃解析结果。校验失败会保留 ZodError 中的具体原因。Redis、处理器的 `job.data`、`updateData()` 和持久化返回值统一使用 schema 的原始输入类型（`z.input`），生产端和消费端共用 `Job`。
 
-每次任务执行都创建独立的 `RequestContext`，类型为 `"queue"`，并绑定 `JOB_REF`。上下文及其中间件会在 Nest **解析消费者依赖之前**建立。`process()` 的错误继续交给 BullMQ 重试。
+队列不会采用默认值、类型强制转换、transform 或未知字段剔除的结果。Zod 仍会在校验时执行 schema 中的回调，因此应避免副作用，将业务转换显式放在业务代码中。需要拒绝未知字段时，使用 `z.strictObject()`。`updateData()` 保持 BullMQ 原生行为，更新后的数据在下一次处理前校验。schema 应描述 JSON 传输格式，避免 Date、BigInt 等无法原样通过 JSON 传输的值。未声明 jobSchemas 的队列可以用于生产任务；定义 Processor 时必须声明具体的 jobSchemas，并为每种任务实现 processXXX，不再支持通用 process(job) 方法。
 
-支持单例、REQUEST 和 TRANSIENT 消费者。注入 request-scoped 服务时，作用域会沿依赖链传递；框架会通过 `ContextIdFactory.getByRequest()` 和消费者所属模块的 `ModuleRef.resolve()` 为任务解析实例，也支持应用定义的 durable context 策略。
-
-在处理方法内通过静态 API 读取当前上下文：
+## 处理任务
 
 ```ts
-import { BaseProcessor, Processor } from "@nest-boot/queue";
-import { RequestContext } from "@nest-boot/request-context";
-import type { Job } from "bullmq";
-import { EmailQueue, type EmailData } from "./email.queue";
+import { BaseProcessor, Processor, type Job } from "@nest-boot/queue";
+import { EmailQueue } from "./email.queue";
+import { NotificationService } from "./notification.service";
 
 @Processor(EmailQueue)
 export class EmailProcessor extends BaseProcessor {
-  async process(job: Job<EmailData>) {
-    const context = RequestContext.current();
-    return { contextId: context.id, recipient: job.data.to };
+  constructor(private readonly notifications: NotificationService) {
+    super({ concurrency: 5 });
+  }
+
+  async processSend(job: Job<EmailQueue, "send">) {
+    const messageId = await this.notifications.send(job.data);
+    return { messageId };
+  }
+
+  async processWelcome(job: Job<EmailQueue, "welcome">) {
+    await this.notifications.welcome(job.data.userId);
   }
 }
 ```
 
-单例服务可以继续在方法中使用 `RequestContext.current()` 或 `RequestContext.get(JOB_REF)`，不要在单例构造函数中捕获任务上下文。durable 依赖只适合有意共享的状态，不能保存当前任务数据。`worker` getter 可在`QueueRegistrar.start()` 完成后及 scoped 消费者的 `process()` 中使用。
+Worker 按 `process${PascalCase<name>}` 分发：send 对应 processSend，send-email 对应 processSendEmail。编译期要求每种任务都有对应方法，参数准确声明为 `Job<QueueClass, "name">`，并返回符合该任务 result schema 的 Promise；省略 result 的任务返回 void。send-email 与 sendEmail 等转换后重名的任务在编译期和运行时 schema 检查中都会被拒绝。
 
-## 动态队列配置
+运行时遇到未知任务名或缺少处理方法时，抛出 `UnrecoverableError`，将任务标记为失败、保留错误原因，并跳过自动重试。外部生产者或旧部署写入的任务同样适用。其他校验或处理异常按配置重试。
 
-在队列构造函数中注入配置服务，只向 `super()` 传递当前队列的配置。BaseQueue 按全局配置、装饰器配置、构造函数配置的顺序合并，后者优先且不修改原始对象。`@Queue()` 自动提供全局配置，继承构造函数时也一样。
+注册 Processor 和对应 Queue provider；仅消费任务的应用也需要注册 Queue。缺少队列时初始化失败，尚未创建 Worker。并发等 Worker 配置传给 `super(workerOptions)`，连接、prefix 和 telemetry 继承对应队列。Worker 仍由 BaseProcessor 配合 QueueManager 管理，无需单独声明 Worker 类。需要原生 `Job`、`Queue`、`Worker`、`QueueEvents` 时直接从 `bullmq` 导入。
+
+共享 ESLint 配置默认启用 `@nest-boot/queue/processor-name`：处理器类名必须将队列类名末尾的 Queue 替换为 Processor。例如 `@Processor(EmailQueue)` 要求类名为 EmailProcessor，JobQueue 对应 JobProcessor。该约束在 lint 时检查，与 Redis 队列名称无关。
+
+Processor 必须为单例。request、transient 或被 request 依赖传播作用域的 Processor 会在初始化时被拒绝。同一实例处理所有任务，避免在实例字段中保存当前任务数据。
+
+每次任务处理都建立独立的 `RequestContext`，类型为 `queue`，并设置当前 `JOB_REF`；并发任务互不影响。上下文中间件在处理任务前执行。通过 `RequestContext.current()` 或 `RequestContext.get(JOB_REF)` 在方法内读取当前任务，不要在单例构造函数中捕获上下文或注入 `JOB_REF`。处理异常交给 BullMQ，可恢复错误按配置重试。
+
+## 启动消费者
+
+自动历史事件读取器在所有应用入口运行。业务 Worker 通过 QueueManager 启动。按照[命令教程](/docs/tutorial/command) 配置 `CommandModule` 和 CLI 入口后运行：
+
+```bash
+pnpm exec nb queue:start
+pnpm exec nb queue:start --queue email --queue report-queue
+pnpm exec nb queue:start --queue job
+```
+
+`queue:start` 是唯一的 `queue:*` 命令。不指定 `--queue` 时启动所有消费者；指定时仅运行匹配的 Processor，`job` 也遵循同一个过滤规则。需要同时处理业务任务和同步历史时，显式选择两者，例如 `--queue email --queue job`。已注册但没有 Processor 的队列不会匹配；过滤后没有消费者时，命令报错且不创建 Worker。未知名称在创建消费者前报错。HTTP、REPL 和普通命令仍然可以注入队列提交任务。定时任务在应用启动时注册，选中 schedule 后才启动其 Worker。SIGINT、SIGTERM 会先等待正在执行的任务完成再关闭依赖。
+
+程序内可在应用初始化后调用 `await manager.start(["email"])`；所有选中的连接就绪后才开始消费。`worker` getter 此后可用；`manager.waitForStop()` 在消费者循环致命错误时拒绝。
+
+## 运行配置
+
+通过普通 Nest 依赖注入业务配置，名称保持静态：
 
 ```ts
 import { BaseQueue, Queue } from "@nest-boot/queue";
-import { Module } from "@nestjs/common";
-import { ConfigModule, ConfigService } from "@nestjs/config";
+import { ConfigService } from "@nestjs/config";
 
-@Queue()
+@Queue("email")
 export class EmailQueue extends BaseQueue {
   constructor(config: ConfigService) {
     super({
+      connection: { host: config.getOrThrow<string>("REDIS_HOST") },
       defaultJobOptions: {
         attempts: config.get<number>("EMAIL_JOB_ATTEMPTS", 3),
       },
     });
   }
 }
-
-@Module({
-  imports: [ConfigModule],
-  providers: [EmailQueue],
-  exports: [EmailQueue],
-})
-export class EmailModule {}
 ```
 
-应用统一注册一次全局 `QueueModule`。共享配置需要异步加载时，使用 `QueueModule.forRootAsync()`。单个队列需要异步配置时，通过 `useFactory: async ...` 注册其依赖的配置 provider，Nest 会等待该 provider 就绪后再构造队列。
+异步配置可通过异步工厂 provider 注入，Nest 会等待其完成。测试与自定义工厂也可以直接 `new` 队列实例。
 
-队列实例由 Nest 创建，以自动提供全局配置和业务依赖。需要自定义 factory provider 时，注入 `ModuleRef` 并返回 `moduleRef.create(EmailQueue)`。将队列类注册为 provider，无需自行 `new` 实例。
+## Redis 与 Job 同步
 
-## 队列事件
+队列状态存储在 Redis，不需要队列数据库或 `queue:migrate`。每个已注册 Queue 都持有一个 QueueEvents，在 HTTP、REPL 和仅生产者实例中自动启动，读取 `<prefix>:<queue>:events`。仅导入 QueueModule 时不注册 `job` 队列，也不提交数据库快照；额外导入 QueueApiModule 后才开启持久化同步。
 
-`@OnWorkerEvent()` 监听本地 worker。显式监听 PostgreSQL 队列事件时使用独立的单例 `QueueEventsHost`：
+`processor.worker` 和 `queue.queueEvents` 通过只读 getter 访问，分别在 `QueueManager.start()` 和应用初始化后可用。实例通过内部 Symbol 引用创建和管理，Processor 不提供事件订阅封装。
 
-```ts
-import {
-  OnQueueEvent,
-  QueueEventsHost,
-  QueueEventsListener,
-} from "@nest-boot/queue";
-import { RequestContext } from "@nest-boot/request-context";
-import { EmailQueue } from "./email.queue";
+回调第二个参数为 `毫秒-序号` 流 ID，在单个队列内跨实例严格递增。Job 同步使用带 prefix 的源队列名与流 ID 做 BullMQ deduplication，去重窗口 24 小时。queue-api 不转发自身 `job` 队列的事件，避免递归。应用初始化会等待读取器连接就绪。读取器使用 BullMQ 默认起点监听新事件，应用启动或重启时不回放历史事件；连接就绪不代表首次流读取已开始，首次读取之前的事件不会补同步。需要完整快照时，应保留源任务足够长时间；任务提前自动删除时，只能保留终态事件携带的部分信息。
 
-@QueueEventsListener(EmailQueue)
-export class EmailEvents extends QueueEventsHost {
-  @OnQueueEvent("completed")
-  completed(event: { jobId: string }) {
-    console.log(event.jobId, RequestContext.id);
-  }
-}
-```
+`JobQueue` 和 `JobProcessor` 位于 queue-api 包内，采用标准的 `@Queue()` / `@Processor(JobQueue)` 声明。QueueManager 统一发现队列并创建原生事件读取器；JobService 在读取器启动前订阅事件，同时提供数据库查询。关闭时依次排空来源 Worker、停止来源读取器并提交完待同步快照，最后排空 Job Worker。同步 schema 在入队前拒绝错误状态、时间戳和元数据。数据库写入失败时最多重试 20 次，指数退避；暂时写入失败仍可提交 Redis 业务任务。
 
-将 `EmailEvents` 及其队列注册为 provider。Worker 事件仅绑定单例消费者，scoped 消费者的事件方法会被跳过；QueueEvents listener 必须是单例。任务查询直接读取原生表，无需事件监听器。
+内置 `job` 队列承载 `sync` 和 `cleanup`。JobService 通过 BullMQ Job Scheduler 注册每天 UTC 00:00 执行一次的清理任务，多实例共享同一个 scheduler。JobProcessor 每批最多删除 1000 条最后事件时间超过 30 天的记录，不区分状态；`lastEventMs = 0` 时回退到 `createdAt`。清理只删除数据库记录，不影响 Redis 任务。长期执行或延迟的任务也可能被清理，后续事件会重新创建记录并生成新的 UUID。清理需要运行 `job` Worker，无需依赖 `@nest-boot/schedule`。
 
-每个事件回调都有独立上下文并运行上下文中间件。携带 Job 的 worker 事件绑定 `JOB_REF`；`stalled` 只有任务 ID。QueueEvents 使用 payload 中的 `jobId`，不绑定 `JOB_REF`。其他事件生成上下文 ID。事件处理器及中间件的错误会记录并抑制，因为 BullMQ 不等待异步监听器。直接调用 `.on()` 时，需要自行处理上下文及异步错误。
+## 数据库历史和 GraphQL
 
-## PostgreSQL 存储与迁移
+数据库记录和 GraphQL 查询由可选的 `@nest-boot/queue-api` 提供。安装该包及 Database、GraphQL、GraphQL Connection、Auth peer 依赖，在应用配置对应的全局模块后导入 QueueApiModule。QueueApiModule 直接注入全局 EntityManager，复用已配置的 AuthModule，不重复注册数据库或认证模块；它不依赖 schedule。CLI 使用相同配置。
 
-所有队列使用 BullMQ 6 官方 PostgreSQL 后端。优先读取 `QUEUE_DATABASE_URL`，其次使用 `DATABASE_URL`；都未设置时使用 node-postgres 默认连接参数。显式 `connection` 支持 PostgreSQL 配置、URL 或调用方管理的连接池。自定义 schema 请传配置对象中的 `schema`；默认是 `bullmq`，不再使用 Redis prefix。
-
-启动生产者、消费者或查询服务之前，执行 BullMQ 官方迁移。队列表、函数、索引和迁移记录均由它管理：
-
-使用 [`@nest-boot/command`](./command) 创建 `src/cli.ts`，通过 `CommandFactory.run()` 启动共享的 `AppModule`。在应用模块树中导入 `CommandModule` 和配置好的 `QueueModule` 后执行：
-
-```bash
-pnpm exec nb queue:migrate
-pnpm exec nb queue:migrate --schema tasks
-```
-
-`queue:migrate` 使用 QueueModule 的连接和 schema，`--schema` 可覆盖 schema。不要在 CLI 模块中导入会在初始化时查询尚未迁移数据库的业务模块。也可以直接调用 BullMQ 的 `runMigrations(client, schema)`。
-
-迁移需要独占一个连接，不能通过 `pool.query()` 在多个会话间切换。也可显式配置 `connection: { connectionString, migrate: true }`；Nest Boot 默认不会自动执行迁移。连接同一个数据库并不意味着入队和业务写入自动处于同一个事务。
-
-传入调用方管理的 `pg.Pool` 时，需要提前设置正确的 `search_path`（如 `options: "-c search_path=bullmq,public"`），并在队列和 worker 停止后自行关闭连接池。自定义 `schema` 使用配置对象，不直接传裸 Pool。
-
-## 可选 MikroORM 与 GraphQL 查询
-
-PostgreSQL 后端本身负责持久化，`add()` 和 `addBulk()` 完成后原生任务立即可查。不再维护事件同步表、持久化开关、同步监听器或额外清理定时器。任务保留时间通过 BullMQ 的 `removeOnComplete` / `removeOnFail` 设置，`age` 单位为秒。任务被移除后，ORM 和 GraphQL 也查询不到。重复使用仍存在的 job ID 会保留原任务；确实需要复用 ID 时先移除旧任务。
-
-| 应用配置                       | 行为                                         |
-| ------------------------------ | -------------------------------------------- |
-| 仅 QueueModule                 | PostgreSQL 队列和消费者，无需 ORM 或 GraphQL |
-| DatabaseModule 和内置 Job 实体 | 同时提供只读 JobService                      |
-| 再注册 GraphQLModule           | 暴露 job(id) 和 jobs，除非 graphql 为 false  |
-
-队列默认 `expose: false`。只有在 API 应用中注册并显式声明 `@Queue({ expose: true })` 的队列，才参与 JobService 和 GraphQL 查询，包括单条任务、筛选、分页和数量统计。服务层限制已开放队列，数据库 RLS 校验任务归属；客户端筛选不能绕过这两层限制。Schedule 等内部队列默认隐藏。此设置不影响 BullMQ 持久化或直接操作队列。
-
-生产者、消费者与 API 分开部署时，API 应用也需要在 `providers` 中注册要开放的队列类；Processor 只需在消费者应用中注册。`expose` 是应用配置，不是 BullMQ 任务表字段。`QueueModule.graphql` 单独控制是否注册 GraphQL 接口。
-
-`@nest-boot/database`、`@nest-boot/graphql` 和 `@nest-boot/graphql-connection` 仍为可选对等依赖，按功能安装各自所需的依赖。仅安装包不会启用功能。只查询单个实体可以不安装 GraphQL；连接分页查询需要 GraphQL 相关依赖。
+按普通实体方式注册 `JobEntity`，运行时和 MikroORM CLI 使用相同实体列表；表、字段和 schema 使用 ORM 默认命名。建表、索引与后续变更走标准应用迁移；Job 表不设置 RLS，由服务层限制查询范围。
 
 ```ts
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { DatabaseModule } from "@nest-boot/database";
-import { GraphQLModule } from "@nest-boot/graphql";
-import {
-  BaseQueue,
-  Queue,
-  QueueModule,
-  withQueueDatabaseConfig,
-} from "@nest-boot/queue";
-import { Module } from "@nestjs/common";
+import { QueueModule } from "@nest-boot/queue";
+import { JobEntity, QueueApiModule } from "@nest-boot/queue-api";
 
-@Queue({ expose: true })
-export class ReportsQueue extends BaseQueue {}
-
-@Module({
-  imports: [
-    DatabaseModule.forRoot(
-      withQueueDatabaseConfig({
-        driver: PostgreSqlDriver,
-        session: () => ({
-          role: "anonymous",
-          variables: { "app.user.id": "", "app.workspace.id": "" },
-        }),
-      }),
-    ),
-    GraphQLModule,
-    QueueModule.forRoot({
-      graphql: true,
-    }),
-  ],
-  providers: [ReportsQueue],
-})
-export class JobsModule {}
+const database = DatabaseModule.forRoot({
+  driver: PostgreSqlDriver,
+  clientUrl: process.env.DATABASE_URL,
+  entities: [JobEntity],
+});
+const queues = QueueModule;
+const jobApi = QueueApiModule;
 ```
 
-运行时和 MikroORM CLI 配置都使用 `withQueueDatabaseConfig(config)`，统一注册全部原生实体和 schema 设置。Job 完整映射原生字段、默认值、PostgreSQL 枚举和 BullMQ 的 7 个运行索引，并声明 `(queue, data->>'userId')`、`(queue, data->>'workspaceId')` 两个归属索引。先执行 BullMQ 迁移，再生成并执行应用迁移：首次 Job 差异添加这两个索引，并启用 RLS、创建 authenticated 的 SELECT 策略。应用迁移前先创建 `authenticated` 数据库角色，此后再次比较为空。
+Job 仅保存 `id`、`queue`、`jobId`、`name`、`data`、`status`、`progress`、`returnValue`、`failedReason`、`createdAt`、`startedAt`、`finishedAt`、`lastEventMs`、`lastEventSeq`。三个时间戳使用标准数据库日期字段；锁、调度、依赖和重试配置留在 Redis。
 
-导出的 `entities` 数组完整映射 BullMQ 的 11 张表，包含迁移记录、任务日志、依赖、事件、元数据、指标、限流、去重和调度器。与 Auth 模块一样，每张表对应独立的只读实体文件；只有 Job 提供 GraphQL API。MikroORM 原生 schema generator 比较字段、默认值、枚举、外键和索引，不再安装自定义生成器。原生 schema、函数及独立序列仍由 BullMQ 官方迁移创建和升级。`readonly` 只关闭 flush 变更追踪，不影响迁移生成，也不阻止显式原生写入；所有任务修改继续调用 BullMQ。
+主键 UUID 由数据库 `gen_random_uuid()` 生成。BullMQ 原始 ID 保存在 jobId，`(queue, jobId)` 唯一约束识别同一任务。bigint 字段 `last_event_ms` 与 `last_event_seq` 保存流 ID，插入冲突时忽略，更新时原子比较二元组，仅接受严格更新的事件。重复和乱序事件不会覆盖新状态或改变 UUID，Redis 去重过期后同样成立。历史查询异步更新；删除 Redis 任务不会删除历史。
 
-`withQueueDatabaseConfig(config)` 使用原生 `schemaGenerator.ignoreRoutines: true` 并设置实体 schema。该选项作用于**所有 schema**：已有业务函数的修改也需要显式迁移。保留 MikroORM 默认的迁移快照，在执行 BullMQ 和应用迁移后更新快照，再生成后续迁移。MikroORM 7.2.0 直接从在线数据库生成 `down` 时，可能带入被忽略的函数定义；应检查这些 SQL，不将 BullMQ 函数放入应用回滚。示例保留完整表快照，将 Job 索引与 RLS 合并为一份自动生成的迁移，请求角色权限放在单独的迁移中。回滚先撤销请求访问权限，再由生成的迁移关闭 RLS，均不修改 BullMQ 函数。升级 BullMQ 后应检查 schema 差异，再接受生成的迁移。
+GraphQL 查询分为 `userJob` / `userJobs`、`workspaceJob` / `workspaceJobs`、`systemJob` / `systemJobs`，全部使用 AuthGuard。用户查询固定匹配当前用户的 data.userId；工作空间查询通过当前工作空间的有效成员和读取权限校验后，固定匹配 data.workspaceId。系统查询要求管理员身份（复用 auth 的 user.adminRoles 配置），且两个归属字段都不存在或为 JSON null；空字符串不属于系统任务。API Key 不会继承持有者的管理员访问权限。不提供通用 job / jobs 或管理员全量查询。
 
-自定义 schema（如 `tasks`）时，两处 ORM 配置均使用 `withQueueDatabaseConfig(config, "tasks")`，设置 `QueueModule.connection: { connectionString, schema: "tasks" }`，并执行 `runMigrations(client, "tasks")`。不要再将 Job 表或其 schema 加入 `skipTables` / `ignoreSchema`。直接 ORM 查询使用实体配置的 schema；JobService 使用根 Queue 连接配置中的 schema，默认 `bullmq`。ORM 必须连接根队列配置对应的同一个数据库。单个队列覆盖到其他数据库或 schema 时，不会被根 JobService 自动聚合。
+使用 `@nest-boot/queue-api` 导出的无参数 `@QueueVisible()` 标记允许通过 API 查询的队列。只有在 API 应用中注册、且具体类显式标记的队列才可见；子类需要重新标记。单条查询、分页和计数都会排除隐藏队列，客户端筛选条件不能绕过限制。没有可见队列时返回空结果。可见性不替代身份授权；未标记的队列仍然同步和清理数据库记录。
 
-| 实体字段                           | 原生映射                                 |
-| ---------------------------------- | ---------------------------------------- |
-| queue                              | queue 列                                 |
-| jobId                              | id 列                                    |
-| id                                 | formula 计算 queue:jobId，不新增数据库列 |
-| status                             | 直接映射原生 state 列                    |
-| createdAt / startedAt / finishedAt | 毫秒时间戳转换为 Date                    |
+```ts
+import { BaseQueue, Queue } from "@nest-boot/queue";
+import { QueueVisible } from "@nest-boot/queue-api";
 
-`JobStatus` 与 PostgreSQL 的六种状态一致：`WAITING`、`ACTIVE`、`COMPLETED`、`FAILED`、`DELAYED` 和 `WAITING_CHILDREN`。实体的 `status` 直接映射 `state`，筛选和排序使用原生列。有优先级的等待任务也返回 `WAITING`，API 不提供 `PRIORITIZED` 和 `UNKNOWN` 状态。任务不存在或无权访问时返回 null。
-
-数据库保持 `(queue, id)` 复合主键，计算出的 API ID 用于跨队列唯一标识和游标排序。原生表没有最后更新时间，因此不提供 `updatedAt` 字段或筛选。GraphQL 只暴露 `id`、`queue`、`name`、`status`、`progress`、`createdAt`、`startedAt` 和 `finishedAt`。可空的 `progress: Float` 通过 resolver 只返回有限数值；JSON 对象、字符串、布尔值及非有限数值均返回 null。`jobId`、任务入参、原始结果、错误和运行参数不公开。业务结果由应用通过有明确类型和授权逻辑的字段或 API 提供。筛选和排序支持 `queue`、`name`、`status`、`created_at`。
-
-数据库 RLS 根据请求 EntityManager session 控制单条任务、筛选、分页和数量统计。入队数据的身份必须来自可信应用上下文。Job 实体为 `authenticated` 声明 RLS SELECT 策略：`data.userId` 匹配 `app.user.id`，或 `data.workspaceId` 匹配 `app.workspace.id`。缺失或空身份不会匹配；服务账户无需用户身份即可读取所属工作区的任务。没有允许请求写入或匿名读取的策略。先创建 `anonymous` 和 `authenticated` 角色，再只授予 `authenticated` schema usage 和 job 表 SELECT，示例迁移已包含这些配置。Auth 通过请求 EntityManager session 提供已验证身份；不使用 Auth 的应用也可自行设置相同的可信 session 变量。
-
-BullMQ 生产者和 Worker 使用独立连接，以表所有者或具备 `BYPASSRLS` 的角色运行，才能处理所有租户及没有归属字段的后台任务。Job 启用 RLS，但不启用 `FORCE ROW LEVEL SECURITY`。请求查询必须切换到既非表所有者、也不绕过 RLS 的角色。RLS 只保护 Job；BullMQ 内部表不开放请求 API，也不应向请求角色授权。JobService 保留队列开放范围限制；身份授权统一由 RLS 执行，无需应用筛选回调。
-
-实体和 JobService 从 `@nest-boot/queue` 导入；JobConnectionService、GraphQL 类型和 Resolver 从 `@nest-boot/queue/graphql` 导入。JobConnectionService 继承 JobService，通过 `getJobConnection()` 提供使用同一授权范围的分页查询。Queue 需要安装 MikroORM core 和 decorators；GraphQL 入口继续隔离可选的 GraphQL 依赖。
-
-### 迁移现有队列
-
-此 API 保持 v8。移除 `@nest-boot/queue-database`、`QueueDatabaseModule`、旧同步实体和 Resolver、persistence/TTL 配置与 Redis prefix，改为注册队列类 provider，配置 PostgreSQL 并执行官方迁移；注册原生实体，并配置请求 session 以执行 RLS 授权。旧 Redis 任务和同步表数据不会自动搬迁，切换部署前应单独排空或迁移。旧业务表的清理另行审核，以保留需要的历史数据。
-
-## 最佳实践
-
-1. **独立队列** — 为不同的任务类型使用独立队列（邮件、文件操作等），配置适当的并发数。
-
-2. **任务 ID** — 使用确定性或 Sonyflake 的任务 ID 实现幂等性和可追踪性。
-
-3. **结构化日志** — 在处理器中使用 `Logger.assign()` 将任务上下文附加到日志条目。
-
-4. **自动清理** — 设置 `removeOnComplete` 和 `removeOnFail` 自动清理旧任务。
-
-## 独立运行 worker
-
-HTTP、REPL 和普通命令默认不创建 worker 或队列事件监听器。按照 [Command](/docs/tutorial/command) 配置 `src/cli.ts`，调用 `CommandFactory.run(AppModule)`，并导入 `CommandModule`。随后在独立进程中运行：
-
-```bash
-pnpm exec nb queue:run
-pnpm exec nb queue:run --queue email-queue --queue report-queue
+@QueueVisible()
+@Queue()
+export class EmailQueue extends BaseQueue {}
 ```
 
-不传 `--queue` 时启动所有注册的消费者和事件监听器；重复传入可选择配置的队列名称。未知名称会在创建任何 worker 前报错。所有入口都可以注入队列并投递任务，普通命令也可以下发任务。定时任务在应用初始化时注册，选中定时任务队列的 worker 后才会消费。SIGINT 和 SIGTERM 会等待活动任务完成并关闭应用。
+JobService 直接注入 EntityManager，提供 getUserJob、getWorkspaceJob、getSystemJob 及对应的 get\*JobConnection，不暴露通用 CRUD 方法。单条记录、分页节点和计数都将固定身份条件与客户端筛选条件相交；缺少身份或工作空间权限时拒绝访问。一个 GraphQL 请求可以并行查询多个范围，无需切换数据库上下文。Job 表不启用 RLS，也不使用数据库 session 身份变量；直接 ORM 属于可信内部 API，不提供归属隔离，对外处理器只能调用这些限定范围的方法。
 
-也可在应用初始化后注入 `QueueRegistrar`，调用 `await registrar.start(["email-queue"])`；省略参数表示全部队列。所有选中的 worker 和事件监听器都会在连接就绪后启动；不需要运行的消费者不加入选择列表，其对应队列仍然可以投递任务。消费循环失败时，QueueRegistrar 会通知 `queue:run` 退出。
+公开字段仍只有 ID、queue、name、status、数值进度和时间；原始参数、结果、错误与内部 ID 不公开。支持队列、名称、状态、创建时间筛选，仅允许 CREATED_AT 排序，默认创建时间倒序，ID 仅在内部打破同时间戳的并列。用户和工作空间索引分别以身份表达式开头，后接 created_at、id；无归属的系统任务使用 (created_at, id) 部分索引。
+
+已有 PostgreSQL 队列在切换前应排空或迁移运行中的任务，并保留所需历史；数据库迁移不会自动将待处理任务搬入 Redis。客户端历史 ID 需切换为 UUID。Redis prefix 与 ORM 数据库配置独立。

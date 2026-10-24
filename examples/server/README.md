@@ -2,7 +2,7 @@
 
 NestJS API used by the full-stack Nest Boot example. It demonstrates
 authentication, permission checks, GraphQL connections, MikroORM,
-PostgreSQL row-level security, PostgreSQL-backed BullMQ jobs, middleware, request context,
+PostgreSQL row-level security, Redis-backed BullMQ jobs, middleware, request context,
 logging, and application commands.
 
 ## Run locally
@@ -13,7 +13,6 @@ and run the server:
 ```bash
 docker compose up -d
 cp examples/server/.env.example examples/server/.env
-pnpm --filter @nest-boot/example-server queue:migrate
 pnpm --filter @nest-boot/example-server migration:up
 pnpm --filter @nest-boot/example-server dev
 ```
@@ -73,172 +72,9 @@ does not require a login.
 
 ## Jobs
 
-`CommonModule` configures `QueueModule` with BullMQ 6's official PostgreSQL backend, configured through
-`QUEUE_DATABASE_URL` or `DATABASE_URL`. `ScheduleModule` uses the same backend.
-`src/cli.ts` bootstraps the same `AppModule` as `main.ts` and `repl.ts` through `CommandFactory.run()`. Queue workers and event listeners are created only by `queue:run`; queue providers remain injectable in every entry, including ordinary commands that enqueue jobs. Scheduled handlers register during application startup. Run `pnpm --filter @nest-boot/example-server queue:migrate` first to create or
-upgrade BullMQ's schema. Then run application migrations to add ownership indexes,
-enable Job RLS and grant the `authenticated` database role schema usage and SELECT on `bullmq.job`.
+`CommonModule` configures the global DatabaseModule and Redis-backed QueueModule through REDIS_URL, and imports QueueApiModule for authenticated Job queries and persistence. QueueModule itself requires no database, GraphQL or auth modules; queue-api reuses the application’s configured global modules. `ScheduleModule` uses the same Redis connection. Queue storage and processing require no database migrations. Automatic QueueEvents readers run in every application entry; business workers are started with `queue:start`.
 
-The built-in `Job` from `@nest-boot/queue` maps that native table through
-MikroORM. The CLI configuration composes `withQueueDatabaseConfig(withAuthDatabaseConfig(await getDatabaseConfig()))`.
-CommonModule reuses this factory through `DatabaseModule.forRootAsync()` and adds the request session.
-The helpers register the Auth entities and all 11 native Queue entities so Job participates in ORM migration comparison.
-Its native columns, defaults, enum and operational indexes match BullMQ. The
-application migrations add indexes for `data.userId` and `data.workspaceId` and
-an authenticated SELECT policy; subsequent comparisons are empty. Supporting tables, enums and foreign keys are mapped by read-only entities.
-The standard MikroORM schema generator is used, with native `ignoreRoutines: true`
-to preserve existing functions. This option applies to application functions too.
-Keep migration snapshots enabled; MikroORM 7.2.0 live-generated rollback SQL can
-include ignored routines and must be reviewed. BullMQ owns functions and sequences.
-There is no mirror table, event synchronization or extra cleanup timer.
-Use BullMQ's `removeOnComplete` / `removeOnFail` options for retention; removing a
-job also removes it from queries. Existing legacy mirror rows are not imported.
-The read-only `LegacyJob` entity preserves the old `public.job` table and its
-historical data until it is archived and removed separately. It has no API.
-
-Register classes extending `BaseQueue` as providers and inject them directly.
-Consumers use `@Processor(QueueClass)` and extend `BaseProcessor`. A consumer-only
-application also registers its queue provider. For dynamic queue settings, inject business dependencies in a queue constructor
-and pass local overrides to `super(localOptions)`; `@Queue()` supplies global configuration automatically. PostgreSQL persistence is always
-active; the database and GraphQL integrations are optional read features.
-`QueueModule.graphql` defaults to true when the corresponding modules and entity are registered.
-Queue declarations default to `expose: false`: the example opts `ReportQueue` in
-with `@Queue({ expose: true })`, while the internal Schedule queue stays hidden.
-Job API nodes, lists and counts require both queue exposure and the RLS ownership policy.
-Direct BullMQ queue operations and persistence remain available for hidden queues.
-
-### Runnable Queue and Schedule example
-
-`AppModule` imports `CommonModule` for shared configuration and `ReportsModule` for
-the business providers. In the HTTP application, `QueueModule` is imported only by `CommonModule`; its global
-services are available to `ReportsModule` without another registration.
-
-| File                                                         | Responsibility                                                                                                                                                                                |
-| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`report.queue.ts`](src/app/reports/report.queue.ts)         | `@Queue()` and a typed `BaseQueue` subclass named `report-queue`, with retry, backoff and retention defaults. No constructor is needed.                                                       |
-| [`report.processor.ts`](src/app/reports/report.processor.ts) | `@Processor(ReportQueue)` and `BaseProcessor`, with concurrency 2. Updates progress and returns count, total and average. Injecting `RequestContext` gives each job its own scoped processor. |
-| [`report.schedule.ts`](src/app/reports/report.schedule.ts)   | Directly injects `ReportQueue`. A UTC midnight `@Cron` and five-minute `@Interval` enqueue sample reports. Scheduled handlers only enqueue; the report worker performs the work.              |
-| [`reports.module.ts`](src/app/reports/reports.module.ts)     | Registers the queue, processor and scheduled provider, and exports the queue for other modules.                                                                                               |
-
-The scheduled inputs are fixed demonstration values, with no external side effects.
-The report calculation is safe to repeat. Real tasks with side effects should also
-be idempotent because failed or stalled jobs can run again.
-
-After migrations, start the application with `pnpm --filter @nest-boot/example-server dev`.
-Start consumers in a second terminal with `pnpm --filter @nest-boot/example-server queue:run`.
-HTTP and REPL processes leave workers inactive. Application initialization registers the two schedules; the selected workers consume scheduled jobs and reports. Use `queue:run --queue report-queue` to run only
-the report consumer, or `queue:run --queue schedule` to run only scheduled triggers.
-To enqueue a report manually, start the example's Nest REPL:
-
-```bash
-pnpm --filter @nest-boot/example-server repl
-```
-
-```js
-const reports = get(ReportQueue);
-const task = await reports.add('summarize', { values: [10, 20, 30] });
-// Read a fresh job after the worker processes it.
-const completed = await reports.getJob(task.id);
-await completed.getState(); // 'completed' once processing finishes
-completed.progress; // 100
-completed.returnvalue; // { count: 3, total: 60, average: 20 }
-```
-
-These background samples have no user/workspace ownership and are hidden from the
-authenticated Job API by RLS. To expose a user's report, enqueue it
-from trusted application code using the verified identity as shown below. The
-worker gets a fresh queue context; it does not inherit the producer's HTTP session.
-
-Assign ownership using the verified server-side identity when enqueueing:
-
-```ts
-await reports.add('summarize', {
-  userId: user.id,
-  workspaceId: workspace.id,
-  values: [10, 20, 30],
-});
-```
-
-The Job RLS policy allows a job when either `data.userId` matches the current user
-or `data.workspaceId` matches the selected workspace. Personal tasks can omit the
-workspace ID; workspace tasks can omit the user ID. Jobs without a matching identity
-are hidden. JobService restricts reads to the exposed-queue allowlist, while RLS
-compares those payload fields with
-verified `app.user.id` / `app.workspace.id` session variables. Missing or empty
-identities match no rows; anonymous reads and request writes have no policy.
-BullMQ producers and workers use a separate connection as the table owner (or a
-role with `BYPASSRLS`) to process all tenants and background jobs. RLS is not forced
-on the owner. Request queries switch to the non-owner `authenticated` role; do not
-grant request roles access to the other internal BullMQ tables.
-
-### GraphQL queries
-
-The authenticated `/api/graphql` endpoint exposes `job(id: ID!)` and the `jobs`
-connection. Both use the current request's EntityManager session and RLS, so the same
-`data.userId OR data.workspaceId` scope applies to returned rows and counts.
-An inaccessible or missing job returns `null`. Anonymous requests are rejected
-by the application's global `AuthGuard`. Member API keys use their workspace
-scope when reading jobs.
-
-```graphql
-query Jobs($id: ID!, $after: String, $filter: JobFilter) {
-  job(id: $id) {
-    id
-    queue
-    name
-    status
-    progress
-    startedAt
-    finishedAt
-    createdAt
-  }
-  jobs(
-    first: 20
-    after: $after
-    filter: $filter
-    orderBy: { field: CREATED_AT, direction: DESC }
-  ) {
-    edges {
-      cursor
-      node {
-        id
-        queue
-        name
-        status
-        progress
-      }
-    }
-    pageInfo {
-      endCursor
-      hasNextPage
-    }
-    totalCount
-  }
-}
-```
-
-Example variables:
-
-```json
-{
-  "id": "report-queue:42",
-  "filter": { "queue": "report-queue", "status": "completed" }
-}
-```
-
-IDs use the computed `queue:jobId` form; the separate `jobId` is not public.
-The API exposes only `id`, `queue`, `name`, `status`, numeric `progress` and the
-three timestamps. The progress resolver returns null for objects, strings,
-booleans and non-finite numbers. Payloads, raw results, failure details and
-operational fields stay private. Read the report result through BullMQ on the
-server; client-facing business results belong in a separate typed, authorized API.
-Output status uses the
-`JobStatus` enum (for example `COMPLETED`); status filters use stored values
-(for example `completed`). The six statuses map directly to the native `state` column;
-waiting jobs with a priority also return `WAITING`. Filters and sorting support `queue`, `name`,
-`status` and `created_at`; sorting also supports `ID`. The connection
-supports `first`/`after`, `last`/`before`, and search syntax such as
-`query: "name:summarize"`. These queries read native BullMQ rows directly; single and bulk enqueues are visible as soon as they complete.
+The Job history table is managed by the application's ordinary database migrations. A database-generated UUID identifies history records; the original BullMQ ID is stored as `jobId`. The built-in `job` worker consumes deduplicated snapshots and cleanup tasks and runs with `queue:start` when no queue filter is provided. Run it alone with `nb queue:start --queue job`. Reads are asynchronous; removing a Redis job leaves its history intact. A daily scheduler at 00:00 UTC removes records whose last event is more than 30 days old in batches of 1000, regardless of status. Records with `lastEventMs = 0` use `createdAt` instead. Redis jobs remain intact; a later event recreates a deleted record with a new UUID.
 
 ## Member profiles and User privacy
 
@@ -270,12 +106,12 @@ before deployment so removed migration files are not discovered from `dist`.
 
 ## Migration ownership
 
-Run all migrations in order:
+The example has two migrations:
 
-1. `Migration00000000000000_Initial`: installs `uuid-ossp` and `pgcrypto` in the `extensions` schema, creates request roles and schema grants, and sets ALL default privileges on public tables, functions and sequences for anonymous and authenticated.
-2. `Migration20261009070926`: generated by MikroORM from the final beta entities, including auth and job tables, indexes, foreign-key cascades, service account type checks, and RLS policies. It creates separate user and member API-key tables directly. Membership is unique by `(user, workspace)`; contact emails may be shared. No handwritten grants or function definitions are mixed in.
-3. `Migration20261013084102_QueueJobs`: generated from the Job entity to add ownership indexes, enable RLS, and allow reads of matching user or workspace jobs, after BullMQ's official migrations. Its generated rollback restores the previous indexes and RLS state.
-4. `Migration20261013084103_QueueJobAccess`: grants authenticated schema usage and Job SELECT privileges after RLS is installed. Rollback revokes those privileges before the generated schema migration disables RLS, keeping request reads denied.
+1. `Migration00000000000000_Initial`: installs `uuid-ossp` and `pgcrypto` in `extensions`, creates request roles and schema grants, and sets default privileges for future public tables, functions and sequences.
+2. `Migration20261024072513`: generated by MikroORM from the current Auth and Job entities. It creates tables, indexes, foreign-key cascades, service account checks and Auth RLS policies directly, without historical queue tables or conversion steps.
+
+Job history has database-generated UUIDs, bigint event versions and scoped cursor indexes. Its table has no RLS; JobService enforces ownership and administrator access. ReportQueue uses `@QueueVisible()` to enable API reads. Unmarked queues still persist but remain hidden. Queue-api owns the focused query and authorization tests; the example integration suite verifies the configured application with real sessions and member API keys.
 
 `migration:create` generates subsequent schema changes from metadata and the
 committed snapshot. Handwritten SQL should remain in dedicated migrations.
@@ -287,7 +123,7 @@ protect against TRUNCATE; request roles must not be exposed through unrestricted
 SQL execution. Both roles can execute functions and use, read and update sequences.
 Review SECURITY DEFINER functions separately: function execution grants are not
 restricted by table RLS, and such functions run with their owner's privileges.
-New application tables must declare RLS policies. Verification tokens have an
+New application tables declare RLS policies; Job history is an explicit exception protected by its scoped service queries. Verification tokens have an
 explicit deny policy for request roles. Credential fields remain excluded from
 Service results and GraphQL, but are no longer blocked by database column grants.
 A full rollback drops generated tables. Initial has a no-op `down()`, so extensions,

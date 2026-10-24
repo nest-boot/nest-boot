@@ -66,46 +66,15 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 
 ## 队列包改名
 
-| 原包名                        | 版本 8 包名                      |
-| ----------------------------- | -------------------------------- |
-| `@nest-boot/bullmq`           | `@nest-boot/queue`               |
-| `@nest-boot/bullmq-mikro-orm` | `@nest-boot/queue`（任务持久化） |
+将 `@nest-boot/bullmq` 改为 `@nest-boot/queue`。使用 `QueueModule`、`@Queue(name)` 和 `BaseQueue`，消费者通过 `@Processor(QueueClass)` 继承 `BaseProcessor`，并注册对应队列类。Processor 必须为单例，Worker 不单独拆分。运行参数改为构造函数 `super(options)`；删除 QueueModule.forRoot/forRootAsync 和模块配置 token，直接导入 QueueModule。Worker 和 QueueEvents 通过内部 Symbol 引用保存并提供只读 getter，移除事件装饰器、QueueEventsHost 和 Processor `.on()` 订阅。移除 `@nestjs/bullmq`、`BullMQMikroORMModule` 和 `QueueDatabaseModule`。Queue 规则统一使用 @nest-boot/queue 命名空间，共享配置默认启用 processor-name。
 
-`BullModule`、`BullModuleOptions`、`BullMQHealthIndicator` 分别改为
-`QueueModule`、`QueueModuleOptions`、`QueueHealthIndicator`。队列使用 BullMQ 6
-官方 PostgreSQL 后端，通过 `QUEUE_DATABASE_URL`、`DATABASE_URL` 或显式连接配置，
-并单独执行 BullMQ 官方迁移。保留策略使用 `removeOnComplete` / `removeOnFail`；
-移除持久化开关和同步表 TTL 清理。旧 Redis 任务及同步表数据不会自动迁移。
+队列使用 Redis，配置 `REDIS_URL` 或显式 `connection`。保留 `bullmq` 依赖，移除 `queue:migrate`。`nb queue:start` 启动消费者，也可通过 `--queue` 选择队列。
 
-将 `registerQueue` / `registerQueueAsync` 改为 `@Queue({ name, ...options })`
-装饰、继承 `BaseQueue` 的队列类，加入模块 `providers` 并直接注入，移除 `InjectQueue`。
-动态配置在自定义构造函数中注入业务依赖，调用
-`super(localOptions)`；`@Queue()` 自动提供全局配置。应用只注册一次全局 QueueModule，ScheduleModule
-直接复用全局服务，不在内部重复导入。
+每个已注册 Queue 都启动原生 QueueEvents，不依赖数据库。需要持久化记录和认证保护的 GraphQL 查询时，安装 `@nest-boot/queue-api` 并导入 QueueApiModule，JobEntity、JobStatus 和 JobService 改从该包导入。应用配置全局 DatabaseModule、GraphQLModule 和 AuthModule，将 JobEntity 作为普通实体注册并走标准应用迁移。扩展通过去重的 job 队列同步记录，直接使用 BullMQ 调度每日清理，不依赖 schedule。UUID 由数据库生成，bigint last_event_ms 和 last_event_seq 防止乱序覆盖。仅导入 QueueModule 不再需要 EntityManager 或 API 模块。移除 withQueueDatabaseConfig 和单独的队列 schema 配置。
 
-Job API 只公开全局 `id`、`queue`、`name`、`status`、有限数值 `progress` 和时间字段。移除查询中的 `jobId`、`data`、`returnValue`、`failedReason`、`priority`，业务结果由应用 API 提供；非数值进度返回 null。
+使用 `@nest-boot/queue-api` 的无参数 `@QueueVisible()` 装饰器替代 `expose` 参数。API 应用需要注册来源队列 provider，并在具体类上显式标记，才能查询其历史。未标记或未注册的队列不会出现在单条查询、分页和计数中，但仍会同步和清理记录；将 job/jobs 替换为 userJob/userJobs、workspaceJob/workspaceJobs，由 JobService 从可信认证身份注入固定范围。systemJob/systemJobs 仅允许配置的管理员查询两个归属都缺失的记录。通过普通应用迁移移除 Job 的 RLS；Job 查询无需切换数据库上下文，单条、列表和计数共用服务层条件。GraphQL 只公开 ID、队列、名称、状态、数值进度和时间。历史 ID 为 UUID，状态包含 `PRIORITIZED` 和 `UNKNOWN`。从 PostgreSQL 队列切换前先排空或迁移任务，并保存所需历史。详见[队列教程](/docs/tutorial/queue)。
 
-`JobStatus` 使用 PostgreSQL 原生的六种状态。有优先级的等待任务返回 `WAITING`，移除 `PRIORITIZED` 和 `UNKNOWN`。任务不存在或无权访问时返回 null；状态筛选和排序直接使用原生 `state` 列。
-
-队列任务默认不出现在 API 中。需要查询时，声明 `@Queue({ expose: true })` 并在 API 应用中注册该队列 provider；用户和工作区权限通过请求 EntityManager session 交由数据库 RLS 控制。
-
-消费者使用 `@Processor(QueueClass)` 并继承 `BaseProcessor`，移除 `WorkerHost`。
-纯消费者部署也必须注册队列类，缺少时在启动 worker 前报错。保留 REQUEST、TRANSIENT、
-作用域传递和 durable context 策略。在处理方法内通过 `RequestContext.current()`
-或静态访问器读取当前上下文。
-
-移除 `BullMQMikroORMModule` / `QueueDatabaseModule` 导入。可选的 MikroORM 查询通过
-`@nest-boot/queue` 内置 `Job` 完整映射 BullMQ 原生表。运行时和 CLI ORM 配置
-使用 `withQueueDatabaseConfig(config)` 注册全部实体及 schema 设置，使 11 张表参与原生迁移比较；安装必需的 `@mikro-orm/core` 和 `@mikro-orm/decorators` peer。
-`ignoreRoutines: true` 保留所有 schema 中的已有函数；继续启用迁移快照，
-并检查直接从在线数据库生成的回滚 SQL，避免带入 BullMQ 函数定义。
-先执行 BullMQ 迁移，再执行应用迁移来添加用户、工作区归属索引及 authenticated RLS SELECT 策略。
-先创建 `authenticated` 角色，请求 session 设置已验证的 `app.user.id` / `app.workspace.id`；
-BullMQ 连接使用表所有者或 `BYPASSRLS` 角色，并继续保留应用查询授权，
-详见[队列教程](/docs/tutorial/queue)。保留 `bullmq`，
-仅在启用查询功能时安装对应 MikroORM/GraphQL 依赖。移除 `@nestjs/bullmq`。
-
-从自定义 ESLint 配置中移除 `@nest-boot/import-bullmq` 和 `@nest-boot/import-queue`。队列导入、注册、processor 装饰器和 PostgreSQL 连接配置需按照上面的新 API 显式迁移。
+任务契约改在 `readonly jobSchemas` 中声明，替代 BaseQueue 的 Data/Result/Name 泛型。data 必须为 Zod 对象，result 可选且省略时表示 void。消费端为每种任务声明方法，例如 `async processSend(job: Job<EmailQueue, "send">)`，编译期检查参数和 Promise 返回值。移除通用 process(job) 方法，Processor 必须绑定声明了具体 jobSchemas 的队列。带连字符的名称转换为 PascalCase 方法名（send-email → processSendEmail），转换后重名会报错。运行时未知任务或缺少处理方法会直接失败，跳过自动重试。队列名称使用 `@Queue(name)`，也可通过 `@Queue()` 自动生成。
 
 ## 更新相关集成
 
@@ -179,7 +148,7 @@ Nest Boot 版本 8 使用基于 SWC 的 Vitest 替代 Jest。贡献者可以通�
 ### API Key 归属与数据库级联
 
 先执行 `Migration00000000000000_Initial`，再执行 MikroORM 生成的
-`Migration20261009070926`。初始化迁移向 `anonymous` 和 `authenticated`
+`Migration20261024072513`。初始化迁移向 `anonymous` 和 `authenticated`
 授予 schema `USAGE`，并为 `public` 中的表、函数和序列统一配置默认 `ALL` 权限。
 这些默认权限只适用于同一迁移角色以后创建的对象，不会修改现有对象或其他角色创建的对象的权限。
 
@@ -190,7 +159,7 @@ RLS 不保护 `TRUNCATE` 或 `REFERENCES`，表策略也不限制序列操作。
 需要单独审查。详见 PostgreSQL 的
 [行级安全文档](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)。
 
-所有业务表必须启用 RLS 并声明策略；`Verification` 明确拒绝普通请求访问。
+业务表声明 RLS 策略；Job 记录是明确例外，使用服务层限定范围的查询。`Verification` 明确拒绝普通请求访问。
 凭证字段与可更新属性由 Service 和 GraphQL 控制，数据库不再提供列级保护。
 
 `BaseApiKey.owner` 已移除。`UserApiKey` 与 `MemberApiKey` 使用独立的表，

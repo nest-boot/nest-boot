@@ -1,11 +1,10 @@
-import { BaseProcessor, Processor } from "@nest-boot/queue";
-import type { Job } from "bullmq";
+import { BaseProcessor, type Job, Processor } from "@nest-boot/queue";
 
-import { type ReportData, ReportsQueue } from "./reports.queue.js";
+import { ReportsQueue } from "./reports.queue.js";
 
 @Processor(ReportsQueue)
 export class ReportsProcessor extends BaseProcessor {
-  async process(job: Job<ReportData>): Promise<string> {
+  async processReport(job: Job<ReportsQueue, "report">) {
     console.log(`ACTIVE:${String(job.id)}`);
     await new Promise((resolve) => setTimeout(resolve, job.data.delay ?? 0));
     console.log(`DONE:${String(job.id)}`);

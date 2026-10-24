@@ -104,15 +104,21 @@ if (existsSync(".env")) {
 export default getDatabaseConfig();
 ```
 
-Compose configuration helpers when using Auth and Queue. They return new configurations, merge and deduplicate entity lists, and retain your application settings. Queue also composes schema options and synchronous or asynchronous discovery hooks. Reuse this factory in `DatabaseModule.forRootAsync()`; add the request `session` there. Replace imports and calls of `loadConfigFromEnv` with `getDatabaseConfig`.
+Use `withAuthDatabaseConfig` to register Auth entities. Add `JobEntity` from `@nest-boot/queue-api` to the ordinary runtime and CLI entity lists when queue history is needed. Reuse this configuration in `DatabaseModule.forRootAsync()`.
 
 ```typescript
 import { withAuthDatabaseConfig } from "@nest-boot/auth";
 import { getDatabaseConfig } from "@nest-boot/database";
-import { withQueueDatabaseConfig } from "@nest-boot/queue";
+import { JobEntity } from "@nest-boot/queue-api";
 
-export default async () =>
-  withQueueDatabaseConfig(withAuthDatabaseConfig(await getDatabaseConfig()));
+export default async () => {
+  const config = withAuthDatabaseConfig(await getDatabaseConfig());
+  return {
+    ...config,
+    entities: [...config.entities, JobEntity],
+    entitiesTs: [...config.entitiesTs, JobEntity],
+  };
+};
 ```
 
 ## Health Checks

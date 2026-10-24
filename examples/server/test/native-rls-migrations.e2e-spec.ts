@@ -37,10 +37,7 @@ import {
   Workspace,
 } from '@nest-boot/auth';
 import { getDatabaseConfig } from '@nest-boot/database';
-import {
-  entities as queueEntities,
-  withQueueDatabaseConfig,
-} from '@nest-boot/queue';
+import { entities as queueEntities } from '@nest-boot/queue-api';
 import { REQUEST, RequestContext } from '@nest-boot/request-context';
 import { type FactoryProvider, ForbiddenException } from '@nestjs/common';
 import type { Request } from 'express';
@@ -51,9 +48,8 @@ import { ApiKeyAuthenticationService } from '../../../packages/auth/dist/infrast
 import { createContextualAuthService } from '../../../packages/auth/dist/infrastructure/create-contextual-auth-service.js';
 import { RequestIdentity } from '../../../packages/auth/dist/infrastructure/request-identity.js';
 import { UserDeletionService } from '../../../packages/auth/dist/services/user-deletion.service.js';
-import { LegacyJob } from '../src/database/entities/legacy-job.entity.js';
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20261009070926 } from '../src/database/migrations/Migration20261009070926.js';
+import { Migration20261024072513 } from '../src/database/migrations/Migration20261024072513.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
@@ -77,7 +73,6 @@ describe('example native RLS migrations with PGlite', () => {
         driverOptions: { extensions: { pgcrypto, uuid_ossp } },
         metadataProvider: TsMorphMetadataProvider,
         metadataCache,
-        schemaGenerator: { skipTables: ['job'] },
         entities: [
           User,
           Account,
@@ -88,12 +83,13 @@ describe('example native RLS migrations with PGlite', () => {
           Invitation,
           UserApiKey,
           MemberApiKey,
+          ...queueEntities,
         ],
         extensions: [Migrator],
         migrations: {
           migrationsList: [
             Migration00000000000000_Initial,
-            Migration20261009070926,
+            Migration20261024072513,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',
@@ -560,7 +556,7 @@ describe('example native RLS migrations with PGlite', () => {
   it('protects all auth tables with RLS and denies request access to verification tokens', async () => {
     expect(
       await orm.em.execute(
-        "select relname from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r' and relname <> 'mikro_orm_migrations' and not relrowsecurity",
+        "select relname from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r' and relname not in ('mikro_orm_migrations', 'job') and not relrowsecurity",
       ),
     ).toEqual([]);
     const admin = orm.em.fork();
@@ -1002,7 +998,13 @@ describe('example native RLS migrations with PGlite', () => {
     >(
       "select policyname, qual, with_check from pg_policies where qual like '%app.workspace.id%'",
     );
-    expect(policies).toHaveLength(6);
+    expect(policies.map(({ policyname }) => policyname).sort()).toEqual([
+      'invitation_all_policy',
+      'member_all_policy',
+      'member_api_key_all_policy',
+      'workspace_delete_policy',
+      'workspace_update_policy',
+    ]);
     for (const policy of policies) {
       expect(policy.qual).toContain('app.workspace.id');
       expect(policy.qual).not.toContain('app.workspace_id');
@@ -1034,36 +1036,7 @@ describe('example native RLS migrations with PGlite', () => {
 
   it('matches the committed snapshot without generating another migration', async () => {
     await access('./src/database/migrations/.snapshot-postgres.json');
-    // The shared snapshot includes Queue and the preserved Redis mirror too.
-    // Compare it with the complete example metadata, without synchronizing a DB.
-    const complete = await MikroORM.init(
-      withQueueDatabaseConfig({
-        ...orm.config.getAll(),
-        // The Auth-only fixture excludes job; this comparison covers every table.
-        schemaGenerator: {
-          ...orm.config.get('schemaGenerator'),
-          skipTables: [],
-        },
-        entities: [
-          User,
-          Account,
-          Session,
-          Verification,
-          Workspace,
-          Member,
-          Invitation,
-          UserApiKey,
-          MemberApiKey,
-          LegacyJob,
-          ...queueEntities,
-        ],
-      }),
-    );
-    try {
-      expect(await complete.migrator.checkSchema()).toBe(false);
-    } finally {
-      await complete.close();
-    }
+    expect(await orm.migrator.checkSchema()).toBe(false);
   });
 
   it('generates distinct policy names for composed policies', async () => {
