@@ -64,7 +64,7 @@ class Document {
   vector!: number[];
 }
 
-const type: Type<number[] | null, string | null> = new VectorType(3);
+const type: Type<number[] | null | undefined, string | null | undefined> = new VectorType(3);
 const cached: VectorType = Type.getType(VectorType);
 `,
       );

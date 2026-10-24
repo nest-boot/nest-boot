@@ -1,4 +1,9 @@
-import { EntityProperty, Platform, Type } from "@mikro-orm/core";
+import {
+  EntityProperty,
+  Platform,
+  Type,
+  ValidationError,
+} from "@mikro-orm/core";
 
 import { VectorType } from "./vector.type.js";
 
@@ -32,11 +37,31 @@ describe("VectorType", () => {
     expect(new VectorType().getColumnType(property, platform)).toBe("vector");
   });
 
-  it("should reject non-integer dimensions", () => {
-    expect(() => new VectorType(1.5).getColumnType(property, platform)).toThrow(
-      "expected integer",
+  it.each([0, -1, 1.5, NaN, Infinity])(
+    "should reject invalid dimensions: %s",
+    (dimensions) => {
+      expect(() =>
+        new VectorType(dimensions).getColumnType(property, platform),
+      ).toThrow("Vector dimensions must be a positive integer");
+    },
+  );
+
+  it("should validate dimensions provided by property metadata", () => {
+    const prop = { dimensions: 1.5 } as unknown as EntityProperty;
+
+    expect(() => new VectorType(3).getColumnType(prop, platform)).toThrow(
+      "Vector dimensions must be a positive integer",
     );
   });
+
+  it.each([null, undefined])(
+    "should allow property dimensions of %s to disable configured dimensions",
+    (dimensions) => {
+      const prop = { dimensions } as unknown as EntityProperty;
+
+      expect(new VectorType(3).getColumnType(prop, platform)).toBe("vector");
+    },
+  );
 
   it("should round-trip vectors through their database representation", () => {
     const type = new VectorType(3);
@@ -53,4 +78,43 @@ describe("VectorType", () => {
     expect(type.convertToDatabaseValue(null, platform)).toBeNull();
     expect(type.convertToJSValue(null, platform)).toBeNull();
   });
+
+  it("should preserve undefined values", () => {
+    const type = new VectorType();
+
+    expect(type.convertToDatabaseValue(undefined, platform)).toBeUndefined();
+    expect(type.convertToJSValue(undefined, platform)).toBeUndefined();
+  });
+
+  it("should parse whitespace and scientific notation", () => {
+    expect(
+      new VectorType().convertToJSValue(" [ 1e-3, -2.5, 0 ] ", platform),
+    ).toEqual([0.001, -2.5, 0]);
+  });
+
+  it.each(
+    [
+      [],
+      [NaN],
+      [Infinity],
+      [-Infinity],
+      [1, undefined],
+      ["1", "2"],
+      new Array(2),
+      "[1,2]",
+    ].map((value) => ({ value })),
+  )("should reject invalid vector input: $value", ({ value }) => {
+    expect(() =>
+      new VectorType().convertToDatabaseValue(value as number[], platform),
+    ).toThrow(ValidationError);
+  });
+
+  it.each(["[]", "[1oops]", "[NaN]", "[1e400]", "[null]", "[1,]", "{}", '"x"'])(
+    "should reject invalid database vector text: %s",
+    (value) => {
+      expect(() => new VectorType().convertToJSValue(value, platform)).toThrow(
+        ValidationError,
+      );
+    },
+  );
 });
