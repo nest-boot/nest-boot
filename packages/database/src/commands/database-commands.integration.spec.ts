@@ -110,15 +110,61 @@ it("generates, applies, checks, reverts, and lists migrations using the module's
       "database:migration:create",
       "--name",
       "initial",
+      "--dump",
     );
     expect(generated.code).toBe(0);
     expect(generated.output).toContain("Created Migration");
+    expect(generated.output).toContain('create table "command_record"');
+    const migrationName =
+      (await readdir(join(app.directory, "migrations")))
+        .find((name) => name.endsWith("_initial.js"))
+        ?.replace(/\.js$/, "") ?? "";
+    expect(migrationName).not.toBe("");
     expect((await app.run("database:migration:pending")).output).toContain(
       "initial",
     );
-    expect((await app.run("database:migration:up")).output).toContain(
-      "Applied 1",
+    const invalidRange = await app.run(
+      "database:migration:up",
+      "--only",
+      migrationName,
+      "--from",
+      "0",
     );
+    expect(invalidRange.code).toBe(1);
+    expect(invalidRange.output).toContain("Use --only or --from/--to");
+    expect((await app.run("database:migration:list")).output).toContain(
+      "No executed migrations.",
+    );
+    expect(
+      (
+        await app.run(
+          "database:migration:up",
+          "--from",
+          "0",
+          "--to",
+          migrationName,
+          "--schema",
+          "public",
+        )
+      ).output,
+    ).toContain("Applied 1");
+    expect((await app.run("database:migration:up")).output).toContain(
+      "Applied 0",
+    );
+    expect((await app.run("database:migration:pending")).output).toContain(
+      "No pending migrations.",
+    );
+    expect((await app.run("database:migration:create")).output).toContain(
+      "Schema is up-to-date.",
+    );
+    expect(
+      (await app.run("database:migration:down", "--only", migrationName))
+        .output,
+    ).toContain("Reverted 1");
+    expect(
+      (await app.run("database:migration:up", "--only", `${migrationName}, `))
+        .output,
+    ).toContain("Applied 1");
     expect((await app.run("database:migration:list")).output).toContain(
       "initial",
     );
@@ -126,6 +172,9 @@ it("generates, applies, checks, reverts, and lists migrations using the module's
     expect((await app.run("database:seeder:run")).output).toContain(
       "FixtureSeeder",
     );
+    expect(
+      await app.run("database:seeder:run", "--class", "FixtureSeeder"),
+    ).toMatchObject({ code: 0, output: "Executed FixtureSeeder.\n" });
     app.addEntity();
     expect((await app.run("database:migration:check")).code).toBe(1);
     expect(

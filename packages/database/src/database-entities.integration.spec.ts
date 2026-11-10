@@ -4,6 +4,7 @@ import { Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
 import { DatabaseModule } from "./database.module.js";
+import { DatabaseEntityRegistry } from "./infrastructure/database-entity-registry.js";
 
 class CoreRecord {
   id!: number;
@@ -104,6 +105,40 @@ it("resolves optional configuration dependencies without instantiating feature s
   }).compile();
   try {
     expect(factory).toHaveBeenCalledExactlyOnceWith(undefined);
+  } finally {
+    await app.close();
+  }
+});
+
+it("isolates feature registrations by connection and shares concurrent resolutions", async () => {
+  const factory = vi.fn(async () => {
+    await Promise.resolve();
+    return [optional];
+  });
+  const app = await Test.createTestingModule({
+    imports: [
+      DatabaseModule.forRoot({
+        driver: PgliteDriver,
+        dbName: "memory://",
+        entities: [core],
+      }),
+      DatabaseModule.forFeatureAsync({
+        contextName: "reporting",
+        useFactory: factory,
+      }),
+    ],
+  }).compile();
+  try {
+    expect(app.get(MikroORM).getMetadata().has(OptionalRecord)).toBe(false);
+    expect(factory).not.toHaveBeenCalled();
+    const registry = app.get(DatabaseEntityRegistry);
+    const [first, second] = await Promise.all([
+      registry.getEntities("reporting"),
+      registry.getEntities("reporting"),
+    ]);
+    expect(first).toEqual([optional]);
+    expect(second).toBe(first);
+    expect(factory).toHaveBeenCalledOnce();
   } finally {
     await app.close();
   }
