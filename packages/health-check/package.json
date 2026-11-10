@@ -28,10 +28,10 @@
     "dev": "tsc -w -p tsconfig.build.json",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
-    "test": "pnpm build && vitest run",
-    "test:cov": "pnpm build && vitest run --coverage",
+    "test": "pnpm build && vitest run --passWithNoTests",
+    "test:cov": "pnpm build && vitest run --coverage --passWithNoTests",
     "test:watch": "pnpm build && vitest",
-    "test:debug": "pnpm build && vitest --inspect-brk --no-file-parallelism",
+    "test:debug": "pnpm build && vitest --inspect-brk --no-file-parallelism --passWithNoTests",
     "test:e2e": "pnpm build && vitest run --config ./vitest.config.e2e.ts --coverage"
   },
   "devDependencies": {

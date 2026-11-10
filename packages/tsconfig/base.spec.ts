@@ -1,0 +1,27 @@
+import config from "./base.json" with { type: "json" };
+it("declares the base preset", () => {
+  expect(config).toEqual({
+    $schema: "https://json.schemastore.org/tsconfig",
+    display: "Default",
+    compilerOptions: {
+      module: "nodenext",
+      moduleResolution: "nodenext",
+      resolvePackageJsonExports: true,
+      esModuleInterop: true,
+      isolatedModules: true,
+      declaration: true,
+      removeComments: true,
+      emitDecoratorMetadata: true,
+      experimentalDecorators: true,
+      allowSyntheticDefaultImports: true,
+      target: "ES2023",
+      sourceMap: true,
+      outDir: "${configDir}/dist",
+      incremental: true,
+      skipLibCheck: true,
+      strict: true,
+      strictPropertyInitialization: false,
+      types: ["vitest/globals", "node"],
+    },
+  });
+});

@@ -14,7 +14,7 @@ import { Test } from "@nestjs/testing";
 import { Liquid } from "liquidjs";
 import request from "supertest";
 
-import { ViewModule } from "../src/index.js";
+import { ViewModule } from "../dist/index.js";
 
 @Controller()
 class ViewController {

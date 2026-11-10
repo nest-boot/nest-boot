@@ -14,7 +14,7 @@ import {
   Logger,
   LoggerModule,
   type LoggerModuleOptions,
-} from "../src/index.js";
+} from "../dist/index.js";
 import { AppModule } from "./src/app.module.js";
 import { CUSTOM_CONTENT_NAME } from "./src/constants.js";
 import { TestService } from "./src/test.service.js";

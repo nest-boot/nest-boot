@@ -7,7 +7,7 @@ import request from "supertest";
 import {
   TemporaryDirectoryModule,
   TemporaryDirectoryService,
-} from "../src/index.js";
+} from "../dist/index.js";
 
 @Controller("temporary-directory")
 class TemporaryDirectoryController {

@@ -2,6 +2,7 @@ import { BadRequestException } from "@nestjs/common";
 
 import {
   assertAuthPermissionSubset,
+  assertAuthRolePermissions,
   assertAuthRolesExist,
   normalizeAuthPermissions,
   normalizeAuthRoles,
@@ -18,13 +19,11 @@ describe("assertAuthRolesExist", () => {
       );
     }).not.toThrow();
   });
-
   it("rejects unknown configured role names", () => {
     expect(() => {
       assertAuthRolesExist({ user: [] }, ["admin"], "user.adminRoles");
     }).toThrow('user.adminRoles references unknown role "admin"');
   });
-
   it.each(["constructor", "toString"])(
     "rejects inherited lifecycle role %s",
     (role) => {
@@ -44,7 +43,6 @@ describe("role assignment", () => {
       );
     },
   );
-
   it("ignores inherited role names when resolving persisted assignments", () => {
     expect(
       resolveAuthPermissions(["toString", "user"], ["profile:update"], {
@@ -56,7 +54,6 @@ describe("role assignment", () => {
 
 describe("normalizeAuthPermissions", () => {
   const availablePermissions = ["project:read", "project:update"];
-
   it("returns valid permissions without changing their order", () => {
     expect(
       normalizeAuthPermissions(
@@ -66,7 +63,6 @@ describe("normalizeAuthPermissions", () => {
       ),
     ).toEqual(["project:update", "project:read"]);
   });
-
   it.each([
     [[""], "permissions must contain non-empty strings"],
     [[" project:read"], "permissions must contain non-empty strings"],
@@ -86,7 +82,6 @@ describe("normalizeAuthPermissions", () => {
       ),
     ).toThrow(new BadRequestException(`Workspace member ${message}`));
   });
-
   it("preserves arbitrary configured identifiers and distinguishes case variants", () => {
     const permissions = [
       "User:read",
@@ -104,7 +99,6 @@ describe("normalizeAuthPermissions", () => {
       }),
     ).toEqual(["User:read", "user:read", "user:READ"]);
   });
-
   it("compares permission ceilings by exact strings", () => {
     expect(() => {
       assertAuthPermissionSubset(["User:read"], ["User:read"], "API key");
@@ -114,5 +108,57 @@ describe("normalizeAuthPermissions", () => {
     }).toThrow(
       "contains permissions outside apiKey.allowedPermissions: User:read",
     );
+  });
+});
+
+describe("auth-names.util.spec.ts", () => {
+  describe("auth configuration names", () => {
+    it.each([
+      "Owner",
+      "team_admin",
+      "super--admin",
+      "super---admin",
+      "2admin",
+      "_admin",
+      "true",
+      "false",
+      "null",
+      "admin\n",
+      "",
+    ])("rejects role %j", (role) => {
+      expect(() => {
+        assertAuthRolePermissions({ [role]: [] }, [], "user");
+      }).toThrow("Invalid user role name");
+    });
+    it.each([
+      "User:read",
+      "user:Read",
+      "read",
+      "user:",
+      ":read",
+      "user:read:extra",
+      "user:read\n",
+      "2user:read",
+      "user:_read",
+      "api_key:read",
+      "user:set_role",
+      "api--key:read",
+      "api---key:read",
+      "user:set--role",
+      "user:set---role",
+    ])("rejects permission %j", (permission) => {
+      expect(() => {
+        assertAuthRolePermissions({ user: [] }, [permission], "user");
+      }).toThrow("Invalid user permission name");
+    });
+    it("accepts exact lowercase identifiers", () => {
+      expect(() => {
+        assertAuthRolePermissions(
+          { "super-admin": ["api-key:set-role"] },
+          ["api-key:set-role"],
+          "user",
+        );
+      }).not.toThrow();
+    });
   });
 });

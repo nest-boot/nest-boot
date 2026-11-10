@@ -102,7 +102,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      # Storage e2e suites create their buckets through the AWS SDK.
+      - name: Test layout
+        run: pnpm test:layout
+
       - name: Test
         run: pnpm test:cov
         env:
@@ -115,6 +117,7 @@ jobs:
           STORAGE_ACCESS_KEY_ID: rustfs
           STORAGE_SECRET_ACCESS_KEY: secretsecret
 
+      # Storage e2e suites create their buckets through the AWS SDK.
       - name: End-to-end test
         run: pnpm test:e2e
         env:

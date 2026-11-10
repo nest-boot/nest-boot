@@ -3,5 +3,5 @@
   "compilerOptions": {
     "rootDir": "."
   },
-  "include": ["test", "vitest.config.ts", "vitest.config.e2e.ts"]
+  "include": ["*.spec.ts", "test", "vitest.config.ts", "vitest.config.e2e.ts"]
 }

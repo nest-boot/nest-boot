@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import { Test, type TestingModule } from "@nestjs/testing";
 
-import { type StagedUploadService } from "../src/staged-upload.service.js";
+import { type StagedUploadService } from "../dist/staged-upload.service.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -116,10 +116,9 @@ describeIfS3Configured("StagedUploadModule - e2e", () => {
   const mimeType = "image/jpeg";
   const filePath = "./attachments/test.jpeg";
 
-  let stagedUploadArgs: {
-    url: string;
-    fields: Record<string, string>[];
-  };
+  let stagedUploadArgs: Awaited<
+    ReturnType<StagedUploadService["create"]>
+  >[number];
 
   // Temporary file URL
   let fileTmpUrl: string;
@@ -127,7 +126,7 @@ describeIfS3Configured("StagedUploadModule - e2e", () => {
   beforeAll(async () => {
     const [{ AppModule }, { StagedUploadService }] = await Promise.all([
       import("./src/app.module.js"),
-      import("../src/staged-upload.service.js"),
+      import("../dist/staged-upload.service.js"),
     ]);
     moduleRef = await Test.createTestingModule({
       imports: [AppModule],

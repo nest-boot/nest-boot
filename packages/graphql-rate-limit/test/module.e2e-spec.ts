@@ -3,7 +3,7 @@ import { type DynamicModule, type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 
-import { GraphQLRateLimitModule } from "../src/graphql-rate-limit.module.js";
+import { GraphQLRateLimitModule } from "../dist/graphql-rate-limit.module.js";
 
 interface GraphQLResponse {
   data?: { hello: string };

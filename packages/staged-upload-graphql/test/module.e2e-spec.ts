@@ -5,7 +5,7 @@ import { type INestApplication, Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 
-import { StagedUploadGraphQLModule } from "../src/index.js";
+import { StagedUploadGraphQLModule } from "../dist/index.js";
 
 @Resolver()
 class TestResolver {

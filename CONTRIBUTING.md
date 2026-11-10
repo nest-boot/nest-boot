@@ -57,6 +57,16 @@ pnpm turbo run lint --filter=@nest-boot/<package>
 
 Do not run both test commands unless useful. Not every package defines every target or contains tests; run only available targets, then add checks for affected dependants and documentation.
 
+## Test organization
+
+- Unit tests focus on one implementation using test doubles for infrastructure. Place them beside that implementation and keep the same filename stem: `foo.service.ts` has `foo.service.spec.ts`. Root JavaScript or JSON configuration files use the same convention.
+- Tests that assemble complete modules, exercise command or HTTP entry points, or use real databases, Redis, SMTP, or compiler projects belong under the package's `test/` directory as `*.e2e-spec.ts`. Running in the same process does not make such a test a unit test.
+- Split mixed suites at the behavior boundary while preserving their assertions. Share setup and test doubles through fixtures under `test/`; do not publish fixtures with production code.
+- Keep compile-time-only contracts in `test/*.type-test.ts` and include them in the package's TypeScript check.
+- Run ordinary tests through `test`/`test:cov` and E2E tests through `test:e2e`. Build affected packages before E2E tests, which exercise the compiled package outputs. Keep their coverage reports in separate directories so neither run overwrites the other; CI collects both.
+
+`pnpm test:layout` checks unit filenames against adjacent implementations and verifies that E2E files live under `test/`.
+
 ## Match pull request CI
 
 The pull request workflow runs:

@@ -1,4 +1,5 @@
 import { MikroORM } from "@mikro-orm/core";
+import { Args, Resolver } from "@nest-boot/graphql";
 import { HashService } from "@nest-boot/hash";
 import { Mailer } from "@nest-boot/mailer";
 import { MiddlewareManager } from "@nest-boot/middleware";
@@ -7,9 +8,35 @@ import {
   RequestContextMiddleware,
 } from "@nest-boot/request-context";
 import { MODULE_METADATA } from "@nestjs/common/constants";
+import { Args as NestArgs, Resolver as NestResolver } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
 
+import { AUTH_TOKEN } from "./auth.constants.js";
+import { AuthGuard } from "./auth.guard.js";
+import { AuthMiddleware } from "./auth.middleware.js";
+import { AuthModule } from "./auth.module.js";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { authEntityMap } from "./entities/auth-entity-map.js";
+import { User as BaseUser } from "./entities/user.entity.js";
+import { Workspace as BaseWorkspace } from "./entities/workspace.entity.js";
+import { InvitationResolver } from "./features/invitations/invitation.resolver.js";
+import { InvitationService } from "./features/invitations/invitation.service.js";
+import { CAN_METADATA } from "./permission.constants.js";
+import { AuthResolver } from "./resolvers/auth.resolver.js";
+import { MemberResolver } from "./resolvers/member.resolver.js";
+import { MemberApiKeyResolver } from "./resolvers/member-api-key.resolver.js";
+import { SessionResolver } from "./resolvers/session.resolver.js";
+import { UserResolver } from "./resolvers/user.resolver.js";
+import { UserApiKeyResolver } from "./resolvers/user-api-key.resolver.js";
+import { WorkspaceResolver } from "./resolvers/workspace.resolver.js";
+import { AuthService } from "./services/auth.service.js";
+import { MemberService } from "./services/member.service.js";
+import { MemberApiKeyService } from "./services/member-api-key.service.js";
+import { SessionService } from "./services/session.service.js";
+import { UserService } from "./services/user.service.js";
+import { UserDeletionService } from "./services/user-deletion.service.js";
+import { WorkspaceService } from "./services/workspace.service.js";
 
 const {
   mockBetterAuth,
@@ -38,41 +65,35 @@ const {
 vi.mock("better-auth", () => ({
   betterAuth: mockBetterAuth,
 }));
+
 vi.mock("better-auth/node", () => ({
   toNodeHandler: mockToNodeHandler,
 }));
+
 vi.mock("better-auth/plugins", () => ({
   genericOAuth: mockGenericOAuth,
 }));
+
 vi.mock("./adapters/mikro-orm-adapter.js", () => ({
   mikroOrmAdapter: mockMikroOrmAdapter,
 }));
 
-import { AUTH_TOKEN } from "./auth.constants.js";
-import { AuthGuard } from "./auth.guard.js";
-import { AuthMiddleware } from "./auth.middleware.js";
-import { AuthModule } from "./auth.module.js";
-import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
-import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
-import { User as BaseUser } from "./entities/user.entity.js";
-import { Workspace as BaseWorkspace } from "./entities/workspace.entity.js";
-import { InvitationService } from "./features/invitations/invitation.service.js";
-import { AuthService } from "./services/auth.service.js";
-import { MemberService } from "./services/member.service.js";
-import { MemberApiKeyService } from "./services/member-api-key.service.js";
-import { SessionService } from "./services/session.service.js";
-import { UserService } from "./services/user.service.js";
-import { UserDeletionService } from "./services/user-deletion.service.js";
-import { WorkspaceService } from "./services/workspace.service.js";
-
 class Account {}
+
 class UserApiKey {}
+
 class MemberApiKey {}
+
 class Session {}
+
 class User {}
+
 class Verification {}
+
 class Workspace {}
+
 class Invitation {}
+
 class Member {}
 
 const entities = {
@@ -125,7 +146,6 @@ function getAuthProvider() {
     MODULE_METADATA.PROVIDERS,
     AuthModule,
   ) as any[];
-
   return providers.find((provider) => provider.provide === AUTH_TOKEN);
 }
 
@@ -158,7 +178,6 @@ function createMiddlewareManager() {
     ),
     globalExclude: vi.fn(),
   };
-
   return {
     authProxy,
     middlewareManager,
@@ -202,7 +221,6 @@ async function createAuthModule(
       AuthHandlerMiddleware,
     ],
   }).compile();
-
   return {
     authModule: moduleRef.get(AuthModule),
     authHandlerMiddleware: moduleRef.get(AuthHandlerMiddleware),
@@ -212,7 +230,6 @@ async function createAuthModule(
 describe("AuthModule", () => {
   const secret =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_abcdefghijklmnopqrstuvwxyz";
-
   beforeEach(() => {
     mockBetterAuth.mockClear();
     mockGenericOAuth.mockClear();
@@ -243,7 +260,6 @@ describe("AuthModule", () => {
     delete process.env.APP_URL;
     delete process.env.AUTH_URL;
   });
-
   it("provides and exports the combined auth guard", () => {
     const providers = Reflect.getMetadata(
       MODULE_METADATA.PROVIDERS,
@@ -253,7 +269,6 @@ describe("AuthModule", () => {
       MODULE_METADATA.EXPORTS,
       AuthModule,
     ) as unknown[];
-
     expect(providers).toContain(AuthGuard);
     expect(providers).toContain(AuthHandlerMiddleware);
     expect(providers).toContainEqual(
@@ -290,14 +305,12 @@ describe("AuthModule", () => {
     expect(exports).toContain(MemberService);
     expect(exports).toContain(InvitationService);
   });
-
   it("should register synchronous options", () => {
     const options = {
       entities,
       secret,
     };
     const dynamicModule = AuthModule.forRoot(options);
-
     expect(dynamicModule.module).toBe(AuthModule);
     expect(dynamicModule.providers).toEqual(
       expect.arrayContaining([
@@ -308,7 +321,6 @@ describe("AuthModule", () => {
       ]),
     );
   });
-
   it("should register asynchronous options without wrapping the factory", async () => {
     class AsyncUser extends BaseUser {}
     class AsyncWorkspace extends BaseWorkspace {}
@@ -333,7 +345,6 @@ describe("AuthModule", () => {
         "provide" in provider &&
         provider.provide === MODULE_OPTIONS_TOKEN,
     );
-
     expect(dynamicModule.module).toBe(AuthModule);
     expect(optionsProvider).toEqual(
       expect.objectContaining({
@@ -345,7 +356,6 @@ describe("AuthModule", () => {
     if (!optionsProvider || !("useFactory" in optionsProvider)) {
       throw new TypeError("Auth module options provider is unavailable");
     }
-
     await expect(optionsProvider.useFactory()).resolves.toEqual({
       entities: asyncEntities,
       secret,
@@ -353,7 +363,6 @@ describe("AuthModule", () => {
     expect(useFactory).toHaveBeenCalledTimes(1);
     expect(optionsProvider.useFactory).toBe(useFactory);
   });
-
   it("should create better-auth with validated options and MikroORM adapter", () => {
     process.env.AUTH_URL = "https://auth.example.com";
     const orm = {
@@ -363,7 +372,6 @@ describe("AuthModule", () => {
     const mailer = {
       sendMail: vi.fn(),
     } as unknown as Mailer;
-
     const auth = authProvider.useFactory(
       {
         entities,
@@ -372,7 +380,6 @@ describe("AuthModule", () => {
       orm,
       mailer,
     );
-
     expect(auth).toEqual({
       api: {},
       options: expect.any(Object),
@@ -406,7 +413,6 @@ describe("AuthModule", () => {
       UserDeletionService,
     ]);
   });
-
   it("preserves explicit upstream options ahead of environment defaults", () => {
     process.env.APP_NAME = "Environment app";
     process.env.AUTH_URL = "https://environment.example.com";
@@ -427,7 +433,6 @@ describe("AuthModule", () => {
       options.trustedOrigins,
     );
   });
-
   it("preserves hyphenated lifecycle roles in the auth adapter configuration", () => {
     const authProvider = getAuthProvider();
     authProvider.useFactory(
@@ -449,7 +454,6 @@ describe("AuthModule", () => {
       }),
     );
   });
-
   it.each([
     { apiKey: {} },
     {
@@ -501,7 +505,6 @@ describe("AuthModule", () => {
       expect(mockBetterAuth).toHaveBeenCalledOnce();
     },
   );
-
   it.each([
     [
       "user",
@@ -527,7 +530,6 @@ describe("AuthModule", () => {
     "rejects %s roles outside their permission catalog",
     (_, config, error) => {
       const authProvider = getAuthProvider();
-
       expect(() =>
         authProvider.useFactory(
           { entities, secret, ...config },
@@ -539,7 +541,6 @@ describe("AuthModule", () => {
       expect(mockBetterAuth).not.toHaveBeenCalled();
     },
   );
-
   it.each([
     [
       "user defaultRole",
@@ -587,7 +588,6 @@ describe("AuthModule", () => {
     ],
   ])("rejects an unknown %s", (_, config, error) => {
     const authProvider = getAuthProvider();
-
     expect(() =>
       authProvider.useFactory(
         { entities, secret, ...config },
@@ -598,7 +598,6 @@ describe("AuthModule", () => {
     ).toThrow(error);
     expect(mockBetterAuth).not.toHaveBeenCalled();
   });
-
   it.each([
     [
       "user-only defaults that cannot be applied to member keys",
@@ -648,7 +647,6 @@ describe("AuthModule", () => {
     ],
   ])("rejects API-key %s", (_, config, error) => {
     const authProvider = getAuthProvider();
-
     expect(() =>
       authProvider.useFactory(
         { entities, secret, ...config },
@@ -659,10 +657,8 @@ describe("AuthModule", () => {
     ).toThrow(error);
     expect(mockBetterAuth).not.toHaveBeenCalled();
   });
-
   it("should forward account options without weakening OAuth state checks", () => {
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         account: {
@@ -678,7 +674,6 @@ describe("AuthModule", () => {
         },
       },
     );
-
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
         account: {
@@ -687,10 +682,8 @@ describe("AuthModule", () => {
       }),
     );
   });
-
   it("should allow explicitly opting out of the OAuth state cookie check", () => {
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         account: {
@@ -706,7 +699,6 @@ describe("AuthModule", () => {
         },
       },
     );
-
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
         account: {
@@ -715,14 +707,12 @@ describe("AuthModule", () => {
       }),
     );
   });
-
   it("should coordinate Better Auth user deletion through one transaction", async () => {
     const beforeDelete = vi.fn();
     const deleteUser = vi.fn();
     const authProvider = getAuthProvider();
     const user = { id: "user-1" };
     const request = new Request("https://app.example.com/api/auth/delete-user");
-
     authProvider.useFactory(
       {
         entities,
@@ -741,18 +731,15 @@ describe("AuthModule", () => {
       {},
       { deleteUser },
     );
-
     await mockBetterAuth.mock.calls[0]?.[0].user.deleteUser.beforeDelete(
       user,
       request,
     );
-
     expect(deleteUser).toHaveBeenCalledWith("user-1", expect.any(Function));
     const lifecycle = deleteUser.mock.calls[0]?.[1];
     await lifecycle();
     expect(beforeDelete).toHaveBeenCalledWith(user, request);
   });
-
   it.each(["current", "other", "failure"] as const)(
     "publishes a committed deletion to the request identity (%s)",
     async (state) => {
@@ -795,12 +782,10 @@ describe("AuthModule", () => {
       );
     },
   );
-
   it("should propagate transactional user deletion failures to Better Auth", async () => {
     const authProvider = getAuthProvider();
     const error = new Error("database unavailable");
     const deleteUser = vi.fn().mockRejectedValue(error);
-
     authProvider.useFactory(
       {
         entities,
@@ -817,7 +802,6 @@ describe("AuthModule", () => {
       {},
       { deleteUser },
     );
-
     await expect(
       mockBetterAuth.mock.calls[0]?.[0].user.deleteUser.beforeDelete(
         { id: "owner-1" },
@@ -825,11 +809,9 @@ describe("AuthModule", () => {
       ),
     ).rejects.toBe(error);
   });
-
   it("should send verification emails through the injected mailer", async () => {
     const sendMail = vi.fn().mockResolvedValue(undefined);
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         entities,
@@ -843,7 +825,6 @@ describe("AuthModule", () => {
       },
       { sendMail },
     );
-
     await mockBetterAuth.mock.calls[0]?.[0].emailVerification.sendVerificationEmail(
       {
         token: "verification-token",
@@ -854,21 +835,17 @@ describe("AuthModule", () => {
       },
       undefined,
     );
-
     expect(sendMail).toHaveBeenCalledWith({
       subject: "Verify your email address",
       text: "Click the link to verify your email: https://app.example.com/verify-email",
       to: "user@example.com",
     });
   });
-
   it("should not pass Nest module extensions to better-auth", () => {
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         buildAbility: vi.fn(),
-
         apiKey: {
           user: {
             allowedPermissions: ["user:read"],
@@ -896,7 +873,6 @@ describe("AuthModule", () => {
         },
       },
     );
-
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("user");
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("entities");
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("apiKey");
@@ -909,13 +885,11 @@ describe("AuthModule", () => {
       "unexpectedOption",
     );
   });
-
   it("should enable email auth by default when AUTH_EMAIL_ENABLED is unset", () => {
     const orm = {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         entities,
@@ -923,7 +897,6 @@ describe("AuthModule", () => {
       },
       orm,
     );
-
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
         emailAndPassword: {
@@ -939,7 +912,6 @@ describe("AuthModule", () => {
       }),
     );
   });
-
   it("should disable email, OIDC, and social signup when the global signup disable flag is enabled", () => {
     process.env.AUTH_DISABLE_SIGN_UP = "true";
     setGithubEnv();
@@ -949,7 +921,6 @@ describe("AuthModule", () => {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         entities,
@@ -957,7 +928,6 @@ describe("AuthModule", () => {
       },
       orm,
     );
-
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
         emailAndPassword: expect.objectContaining({
@@ -982,7 +952,6 @@ describe("AuthModule", () => {
       ],
     });
   });
-
   it("should create dedicated Google and GitHub social providers from env", () => {
     setGithubEnv();
     setGoogleEnv();
@@ -990,7 +959,6 @@ describe("AuthModule", () => {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         entities,
@@ -998,7 +966,6 @@ describe("AuthModule", () => {
       },
       orm,
     );
-
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
         socialProviders: {
@@ -1019,7 +986,6 @@ describe("AuthModule", () => {
     );
     expect(mockGenericOAuth).not.toHaveBeenCalled();
   });
-
   it("should disable signup for provider-specific social provider flags", () => {
     process.env.AUTH_GITHUB_DISABLE_SIGN_UP = "true";
     process.env.AUTH_GOOGLE_DISABLE_SIGN_UP = "true";
@@ -1029,7 +995,6 @@ describe("AuthModule", () => {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         entities,
@@ -1037,7 +1002,6 @@ describe("AuthModule", () => {
       },
       orm,
     );
-
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
         socialProviders: {
@@ -1051,14 +1015,12 @@ describe("AuthModule", () => {
       }),
     );
   });
-
   it("should apply provider-specific social provider enabled flags", () => {
     setGoogleEnv();
     const orm = {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         entities,
@@ -1066,7 +1028,6 @@ describe("AuthModule", () => {
       },
       orm,
     );
-
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
         socialProviders: {
@@ -1077,14 +1038,12 @@ describe("AuthModule", () => {
       }),
     );
   });
-
   it("should disable manually configured social providers when provider enabled env is false", () => {
     process.env.AUTH_GITHUB_ENABLED = "false";
     const orm = {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         entities,
@@ -1100,7 +1059,6 @@ describe("AuthModule", () => {
       },
       orm,
     );
-
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
         socialProviders: {
@@ -1113,7 +1071,6 @@ describe("AuthModule", () => {
       }),
     );
   });
-
   it.each([
     ["AUTH_GOOGLE_CLIENT_ID", setGoogleEnv],
     ["AUTH_GOOGLE_CLIENT_SECRET", setGoogleEnv],
@@ -1128,7 +1085,6 @@ describe("AuthModule", () => {
         em: {},
       } as unknown as MikroORM;
       const authProvider = getAuthProvider();
-
       expect(() =>
         authProvider.useFactory(
           {
@@ -1140,7 +1096,6 @@ describe("AuthModule", () => {
       ).toThrow(envName);
     },
   );
-
   it("should keep signup enabled when the global signup disable flag is not true", () => {
     process.env.AUTH_DISABLE_SIGN_UP = "false";
     setOidcEnv();
@@ -1148,7 +1103,6 @@ describe("AuthModule", () => {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         entities,
@@ -1156,7 +1110,6 @@ describe("AuthModule", () => {
       },
       orm,
     );
-
     expect(mockGenericOAuth).toHaveBeenCalledWith({
       config: [
         expect.objectContaining({
@@ -1166,7 +1119,6 @@ describe("AuthModule", () => {
       ],
     });
   });
-
   it("should register custom Generic OAuth providers alongside environment OIDC", () => {
     setOidcEnv();
     const orm = {
@@ -1181,7 +1133,6 @@ describe("AuthModule", () => {
       discoveryUrl:
         "https://accounts.example.com/.well-known/openid-configuration",
     };
-
     authProvider.useFactory(
       {
         entities,
@@ -1190,7 +1141,6 @@ describe("AuthModule", () => {
       },
       orm,
     );
-
     expect(mockGenericOAuth).toHaveBeenCalledWith({
       config: [
         {
@@ -1204,14 +1154,12 @@ describe("AuthModule", () => {
       ],
     });
   });
-
   it("should apply the global signup restriction to custom Generic OAuth providers", () => {
     process.env.AUTH_DISABLE_SIGN_UP = "true";
     const orm = {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         entities,
@@ -1229,7 +1177,6 @@ describe("AuthModule", () => {
       },
       orm,
     );
-
     expect(mockGenericOAuth).toHaveBeenCalledWith({
       config: [
         expect.objectContaining({
@@ -1239,14 +1186,12 @@ describe("AuthModule", () => {
       ],
     });
   });
-
   it("should reject duplicate Generic OAuth provider identifiers", () => {
     setOidcEnv();
     const orm = {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
-
     expect(() =>
       authProvider.useFactory(
         {
@@ -1266,13 +1211,11 @@ describe("AuthModule", () => {
       ),
     ).toThrow('Generic OAuth provider ID "oidc" is configured more than once.');
   });
-
   it("should skip OIDC plugin registration when OIDC env is not configured", () => {
     const orm = {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         entities,
@@ -1280,10 +1223,8 @@ describe("AuthModule", () => {
       },
       orm,
     );
-
     expect(mockGenericOAuth).not.toHaveBeenCalled();
   });
-
   it("should skip OIDC plugin registration when OIDC credentials are configured but AUTH_OIDC_ENABLED is unset", () => {
     process.env.AUTH_OIDC_CLIENT_ID = "oidc-client-id";
     process.env.AUTH_OIDC_CLIENT_SECRET = "oidc-client-secret";
@@ -1293,7 +1234,6 @@ describe("AuthModule", () => {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         entities,
@@ -1301,29 +1241,24 @@ describe("AuthModule", () => {
       },
       orm,
     );
-
     expect(mockGenericOAuth).not.toHaveBeenCalled();
   });
-
   it("propagates OIDC configuration errors before initializing Better Auth", () => {
     setOidcEnv();
     process.env.AUTH_OIDC_CLIENT_ID = "";
     const authProvider = getAuthProvider();
     const orm = { em: {} } as unknown as MikroORM;
-
     expect(() => authProvider.useFactory({ secret }, orm)).toThrow(
       "AUTH_OIDC_CLIENT_ID",
     );
     expect(mockBetterAuth).not.toHaveBeenCalled();
   });
-
   it("should merge email auth options without dropping email signup disable env flags", () => {
     process.env.AUTH_EMAIL_DISABLE_SIGN_UP = "true";
     const orm = {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         emailAndPassword: {
@@ -1335,7 +1270,6 @@ describe("AuthModule", () => {
       },
       orm,
     );
-
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
         emailAndPassword: {
@@ -1352,14 +1286,12 @@ describe("AuthModule", () => {
       }),
     );
   });
-
   it("should merge social provider options without dropping env signup disable flags", () => {
     process.env.AUTH_DISABLE_SIGN_UP = "true";
     const orm = {
       em: {},
     } as unknown as MikroORM;
     const authProvider = getAuthProvider();
-
     authProvider.useFactory(
       {
         entities,
@@ -1380,7 +1312,6 @@ describe("AuthModule", () => {
       },
       orm,
     );
-
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
         socialProviders: {
@@ -1398,17 +1329,14 @@ describe("AuthModule", () => {
       }),
     );
   });
-
   it("validates the secret before initializing Better Auth", () => {
     const authProvider = getAuthProvider();
     const orm = { em: {} } as unknown as MikroORM;
-
     expect(() => authProvider.useFactory({ secret: "short" }, orm)).toThrow(
       "Auth secret must be at least 32 characters long",
     );
     expect(mockBetterAuth).not.toHaveBeenCalled();
   });
-
   it("should register auth handler and auth middleware routes", async () => {
     const auth = {
       api: {},
@@ -1417,7 +1345,6 @@ describe("AuthModule", () => {
     Object.setPrototypeOf(authMiddleware, AuthMiddleware.prototype);
     const { authProxy, middlewareManager, middlewareProxy } =
       createMiddlewareManager();
-
     const { authHandlerMiddleware } = await createAuthModule(
       auth,
       {
@@ -1431,7 +1358,6 @@ describe("AuthModule", () => {
       middlewareManager,
       authMiddleware,
     );
-
     expect(middlewareManager.globalExclude).toHaveBeenCalledWith("/auth");
     expect(mockToNodeHandler).toHaveBeenCalledWith(auth);
     expect(middlewareManager.apply).toHaveBeenCalledWith(authHandlerMiddleware);
@@ -1446,7 +1372,6 @@ describe("AuthModule", () => {
     expect(middlewareProxy.exclude).toHaveBeenCalledWith("/public");
     expect(middlewareProxy.forRoutes).toHaveBeenCalledWith("/private");
   });
-
   it("should use defaults and skip auth middleware registration when disabled", async () => {
     const auth = {
       api: {},
@@ -1455,7 +1380,6 @@ describe("AuthModule", () => {
     Object.setPrototypeOf(authMiddleware, AuthMiddleware.prototype);
     const { authProxy, middlewareManager, middlewareProxy } =
       createMiddlewareManager();
-
     await createAuthModule(
       auth,
       {
@@ -1467,9 +1391,72 @@ describe("AuthModule", () => {
       middlewareManager,
       authMiddleware,
     );
-
     expect(middlewareManager.globalExclude).toHaveBeenCalledWith("/api/auth/");
     expect(authProxy.forRoutes).toHaveBeenCalledWith("/api/auth/");
     expect(middlewareProxy.dependencies).not.toHaveBeenCalled();
+  });
+});
+
+describe("GraphQL registration metadata", () => {
+  // Filter-scalar execution is covered by the example's real-server e2e tests.
+  describe("auth GraphQL schema", () => {
+    it("uses native Nest Resolver and Args decorators", () => {
+      expect(Resolver).toBe(NestResolver);
+      expect(Args).toBe(NestArgs);
+    });
+    it("binds every resolver to its GraphQL object name", () => {
+      for (const [resolver, name] of [
+        [AuthResolver, "User"],
+        [UserResolver, "User"],
+        [SessionResolver, "Session"],
+        [UserApiKeyResolver, "UserApiKey"],
+        [MemberApiKeyResolver, "MemberApiKey"],
+        [WorkspaceResolver, "Workspace"],
+        [MemberResolver, "Member"],
+        [InvitationResolver, "Invitation"],
+      ] as const) {
+        expect(Reflect.getMetadata("graphql:resolver_type", resolver)).toBe(
+          name,
+        );
+      }
+    });
+    it("registers all root APIs in AuthModule", () => {
+      expect(AuthModule).toHaveProperty("forRoot");
+      expect(Reflect.getMetadata("providers", AuthModule)).toEqual(
+        expect.arrayContaining([
+          AuthResolver,
+          UserResolver,
+          SessionResolver,
+          UserApiKeyResolver,
+          MemberApiKeyResolver,
+          WorkspaceResolver,
+          MemberResolver,
+          InvitationResolver,
+        ]),
+      );
+    });
+    it("leaves authorization to services without resolver permission metadata", () => {
+      for (const resolver of [
+        AuthResolver,
+        UserResolver,
+        SessionResolver,
+        UserApiKeyResolver,
+        MemberApiKeyResolver,
+        WorkspaceResolver,
+        MemberResolver,
+        InvitationResolver,
+      ]) {
+        for (const name of Object.getOwnPropertyNames(resolver.prototype)) {
+          const method = Object.getOwnPropertyDescriptor(
+            resolver.prototype,
+            name,
+          )?.value;
+          if (typeof method !== "function") {
+            continue;
+          }
+          expect(Reflect.getMetadata(CAN_METADATA, method)).toBeUndefined();
+        }
+      }
+    });
   });
 });

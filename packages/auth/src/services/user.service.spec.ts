@@ -9,22 +9,27 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
-import type { GraphQLResolveInfo } from "graphql";
+import { type GraphQLResolveInfo } from "graphql";
 import { expectTypeOf, type Mocked } from "vitest";
 
+import { withIdentity } from "../../test/fixtures/conditional-authorization.fixture.js";
 import { mockAuthorization } from "../../test/mock-authorization.js";
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { AuthAbility } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
-import type { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { type AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
 import { Account } from "../entities/account.entity.js";
+import { Invitation } from "../entities/invitation.entity.js";
+import { Member } from "../entities/member.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
+import { Workspace } from "../entities/workspace.entity.js";
 import { authServiceProviders } from "../infrastructure/auth-service.providers.js";
-import type { CreateUserOptions } from "../interfaces/create-user-options.interface.js";
+import { type CreateUserOptions } from "../interfaces/create-user-options.interface.js";
 import { DEFAULT_USER_PERMISSIONS } from "../user.constants.js";
+import { omitCredentials } from "../utils/omit-credentials.util.js";
 import { UserService } from "./user.service.js";
 import { UserDeletionService } from "./user-deletion.service.js";
 
@@ -76,7 +81,6 @@ describe("UserService", () => {
       expect(RequestContext.get(User)).toBeNull();
     });
   });
-
   it("finishes password hashing before acquiring a transaction", async () => {
     const { service, em, hash } = createService();
     const user = Object.assign(new User(), { id: "user" });
@@ -101,7 +105,6 @@ describe("UserService", () => {
     );
     expect(em.transactional).not.toHaveBeenCalled();
   });
-
   it.each(["self", "impersonator"] as const)(
     "revokes %s identity only after a ban commits",
     async (target) => {
@@ -146,7 +149,6 @@ describe("UserService", () => {
       );
     },
   );
-
   it.each(["roles", "permissions"] as const)(
     "refreshes own %s and abilities only after persistence succeeds",
     async (field) => {
@@ -197,7 +199,6 @@ describe("UserService", () => {
       );
     },
   );
-
   it.each(["roles", "permissions", "profile", "ban"] as const)(
     "rejects own %s changes inside an outer transaction before modifying the identity",
     async (field) => {
@@ -232,7 +233,6 @@ describe("UserService", () => {
       );
     },
   );
-
   it.each(["entity", "id"] as const)(
     "refreshes profile-dependent abilities after an own %s update commits, restoring fields on failure",
     async (target) => {
@@ -296,7 +296,6 @@ describe("UserService", () => {
       );
     },
   );
-
   it("keeps the caller's identity when updating another user inside a transaction", async () => {
     const { service, em } = createService();
     const current = Object.assign(new User(), { id: "self" });
@@ -315,7 +314,6 @@ describe("UserService", () => {
       expect(RequestContext.get(AuthAbility)).toBe(ability);
     });
   });
-
   it("refreshes ban-dependent abilities only after an own unban commits", async () => {
     const { em, options, userDeletionService } = createService(true, {
       buildAbility: ({ cannot }, { user }) => {
@@ -370,13 +368,11 @@ describe("UserService", () => {
       expect(em.getSessionContext()).toEqual(session);
     });
   });
-
   it("does not expose unmapped data in create-user options", () => {
     expectTypeOf<
       Extract<keyof CreateUserOptions, "data">
     >().toEqualTypeOf<never>();
   });
-
   it("loads mutation targets by ID without requiring user:read and preserves RLS", async () => {
     const { service, em, authorization } = createService();
     const user = Object.assign(new User(), { id: "target" });
@@ -446,7 +442,6 @@ describe("UserService", () => {
     expect(em.create).not.toHaveBeenCalled();
     expect(hash).not.toHaveBeenCalled();
   });
-
   it.each([undefined, { fieldNodes: [] } as unknown as GraphQLResolveInfo])(
     "paginates users with list authorization and the request RLS context (selection: %j)",
     async (info) => {
@@ -482,7 +477,6 @@ describe("UserService", () => {
       }
     },
   );
-
   it.each(["roles", "permissions"] as const)(
     "checks initial %s with its own grant-setting action",
     async (field) => {
@@ -518,18 +512,15 @@ describe("UserService", () => {
       }
     },
   );
-
   it("creates a user and credential account with the configured hasher", async () => {
     const { em, hash, service } = createService();
     hash.mockResolvedValue("hashed-password");
-
     const user = await service.createUser({
       email: " Alice@Example.com ",
       name: "Alice",
       password: "password",
       permissions: ["user:read"],
     });
-
     expect(hash).toHaveBeenCalledWith("password");
     expect(em.create).toHaveBeenNthCalledWith(
       1,
@@ -554,7 +545,6 @@ describe("UserService", () => {
     expect(em.flush).toHaveBeenCalledTimes(2);
     expect(user.email).toBe("alice@example.com");
   });
-
   it("flushes a database-generated user id before creating the credential account", async () => {
     const { em, hash, service } = createService();
     hash.mockResolvedValue("hashed-password");
@@ -576,13 +566,11 @@ describe("UserService", () => {
       user.id = "generated-user-id";
       return Promise.resolve();
     });
-
     await service.createUser({
       email: "alice@example.com",
       name: "Alice",
       password: "password",
     });
-
     expect(em.create).toHaveBeenNthCalledWith(
       2,
       Account,
@@ -592,7 +580,6 @@ describe("UserService", () => {
       }),
     );
   });
-
   it("uses the configured default user role", async () => {
     const { em, hash, service } = createService(true, {
       defaultRole: "customer",
@@ -600,13 +587,11 @@ describe("UserService", () => {
       roles: { customer: [] },
     });
     hash.mockResolvedValue("hashed-password");
-
     await service.createUser({
       email: "alice@example.com",
       name: "Alice",
       password: "password",
     });
-
     expect(em.create).toHaveBeenNthCalledWith(
       1,
       User,
@@ -618,12 +603,10 @@ describe("UserService", () => {
       ),
     ).toEqual([]);
   });
-
   it("gets and updates configured user entities", async () => {
     const { authorization, em, service } = createService();
     const user = Object.assign(new User(), { id: "user-1" });
     em.findOne.mockResolvedValue(user);
-
     await expect(service.getUser("user-1")).resolves.toBe(user);
     await expect(service.updateUser(user, { name: "Renamed" })).resolves.toBe(
       user,
@@ -631,7 +614,6 @@ describe("UserService", () => {
     await expect(service.setUserPermissions(user, ["user:read"])).resolves.toBe(
       user,
     );
-
     expect(em.findOne).toHaveBeenCalledWith(User, { id: "user-1" });
     expect(em.assign).toHaveBeenCalledWith(user, { name: "Renamed" });
     expect(user.permissions).toEqual(["user:read"]);
@@ -641,20 +623,16 @@ describe("UserService", () => {
       service.updateUser(user, { roles: ["admin"] } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
-
   it("normalizes email addresses when updating a user", async () => {
     const { authorization, em, service } = createService();
     const user = Object.assign(new User(), { email: "old@example.com" });
-
     await service.updateUser(user, { email: " New@Example.com " });
-
     expect(em.assign).toHaveBeenCalledWith(user, {
       email: "new@example.com",
     });
     expect(user.email).toBe("new@example.com");
     expect(authorization.authorize).toHaveBeenCalledWith("set-email", user);
   });
-
   it("ignores omitted DTO fields without requiring email permission or clearing profile values", async () => {
     const { authorization, em, service } = createService();
     const user = Object.assign(new User(), {
@@ -679,11 +657,9 @@ describe("UserService", () => {
     expect(user.name).toBe("Renamed");
     expect(user.image).toBeNull();
   });
-
   it("only updates documented user fields", async () => {
     const { em, service } = createService();
     const user = Object.assign(new User(), { id: "user-1" });
-
     for (const field of ["id", "createdAt", "banned", "locale"]) {
       await expect(
         service.updateUser(user, { [field]: "overwritten" }),
@@ -692,15 +668,12 @@ describe("UserService", () => {
     expect(user.id).toBe("user-1");
     expect(em.assign).not.toHaveBeenCalled();
   });
-
   it("requires set-email permission when changing email verification", async () => {
     const { authorization, service } = createService();
     const user = Object.assign(new User(), { emailVerified: false });
-
     await service.updateUser(user, { emailVerified: true });
     expect(authorization.authorize).toHaveBeenCalledWith("set-email", user);
   });
-
   it("stores configured permission casing and compares grants exactly", async () => {
     const { service } = createService(true, {
       permissions: ["User:READ", "user:read"],
@@ -719,11 +692,9 @@ describe("UserService", () => {
       service.setUserPermissions(user, ["User:read"]),
     ).rejects.toThrow("contains unknown permissions: User:read");
   });
-
   it("validates direct user permissions against the configured catalog", async () => {
     const { em, hash, service } = createService();
     hash.mockResolvedValue("hashed-password");
-
     await expect(
       service.createUser({
         email: "invalid@example.com",
@@ -733,7 +704,6 @@ describe("UserService", () => {
       }),
     ).rejects.toThrow("User contains unknown permissions: workspace:update");
     expect(em.create).not.toHaveBeenCalled();
-
     const user = new User();
     await expect(
       service.setUserPermissions(user, ["user:read", "user:read"]),
@@ -743,7 +713,6 @@ describe("UserService", () => {
     );
     expect(user.permissions).toEqual(["user:read"]);
   });
-
   it("gets a configured user by normalized email", async () => {
     const { em, service } = createService();
     const user = Object.assign(new User(), {
@@ -751,7 +720,6 @@ describe("UserService", () => {
       id: "user-1",
     });
     em.findOne.mockResolvedValue(user);
-
     await expect(service.getUserByEmail(" Alice@Example.com ")).resolves.toBe(
       user,
     );
@@ -759,7 +727,6 @@ describe("UserService", () => {
       email: "alice@example.com",
     });
   });
-
   it("lists configured roles and assigns only known roles", async () => {
     const { service } = createService(true, {
       permissions: [
@@ -778,7 +745,6 @@ describe("UserService", () => {
       permissions: ["session:read"],
       roles: ["user"],
     });
-
     expect(service.listRoles()).toEqual([
       { role: "admin", grantable: true },
       { role: "user", grantable: true },
@@ -790,7 +756,6 @@ describe("UserService", () => {
         grantable: true,
       })),
     );
-
     await expect(service.setUserRoles(user, ["auditor", "user"])).resolves.toBe(
       user,
     );
@@ -804,7 +769,6 @@ describe("UserService", () => {
       service.setUserRoles(user, ["unknown"]),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
-
   it("keeps all role and permission options while marking grant availability", () => {
     const { service, authorization } = createService(true, {
       permissions: ["user:read", "user:delete"],
@@ -835,14 +799,12 @@ describe("UserService", () => {
     expect(() => service.listRoles()).toThrow(ForbiddenException);
     expect(() => service.listPermissions()).toThrow(ForbiddenException);
   });
-
   it("classifies users with any configured admin role as administrators", () => {
     const { service } = createService(true, {
       adminRoles: ["admin", "superadmin"],
       permissions: [],
       roles: { admin: [], superadmin: [], user: [] },
     });
-
     expect(
       service.isAdmin(Object.assign(new User(), { roles: ["auditor"] })),
     ).toBe(false);
@@ -852,7 +814,6 @@ describe("UserService", () => {
       ),
     ).toBe(true);
   });
-
   it("resolves administration targets by ID with action permissions, not user:read", async () => {
     const { em, service, authorization } = createService();
     const user = Object.assign(new User(), { id: "user-1" });
@@ -879,7 +840,6 @@ describe("UserService", () => {
     const { em, service } = createService();
     const user = new User();
     em.nativeDelete.mockResolvedValue(1);
-
     await service.banUser(user, {
       banExpiresIn: 3600,
       banReason: "abuse",
@@ -891,20 +851,17 @@ describe("UserService", () => {
     expect(em.nativeDelete).toHaveBeenCalledWith(Session, {
       $or: [{ user: user.id }, { impersonatedBy: user }],
     });
-
     await service.unbanUser(user);
     expect(user.banned).toBe(false);
     expect(user.banReason).toBeNull();
     expect(user.banExpiresAt).toBeNull();
     vi.useRealTimers();
   });
-
   it.each([0, -1, 1.5, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER])(
     "rejects an invalid ban lifetime of %s seconds",
     async (banExpiresIn) => {
       const { em, service } = createService();
       const user = new User();
-
       await expect(service.banUser(user, { banExpiresIn })).rejects.toThrow(
         "Ban duration must be a positive integer",
       );
@@ -913,7 +870,6 @@ describe("UserService", () => {
       expect(em.flush).not.toHaveBeenCalled();
     },
   );
-
   it("creates and restores impersonation sessions", async () => {
     const { em, service } = createService();
     const administrator = Object.assign(new User(), {
@@ -921,21 +877,18 @@ describe("UserService", () => {
       roles: ["admin"],
     });
     const user = Object.assign(new User(), { id: "user-1" });
-
     const impersonation = await service.impersonateUser(administrator, user, {
       ipAddress: "127.0.0.1",
     });
     expect(impersonation.user).toBe(user);
     expect(impersonation.session.impersonatedBy).toBe(administrator);
     expect(impersonation.session.user.id).toBe("user-1");
-
     em.findOne.mockResolvedValue(administrator);
     const restored = await service.stopImpersonating(impersonation.session);
     expect(restored?.user).toBe(administrator);
     expect(restored?.session.user.id).toBe("admin-1");
     expect(em.remove).toHaveBeenCalledWith(impersonation.session);
   });
-
   it("checks the scoped ability when impersonating an administrator", async () => {
     const { authorization, service } = createService();
     const target = Object.assign(new User(), { roles: ["admin"] });
@@ -947,7 +900,6 @@ describe("UserService", () => {
         throw new ForbiddenException();
       }
     });
-
     await expect(
       service.impersonateUser(administrator, target),
     ).rejects.toBeInstanceOf(ForbiddenException);
@@ -962,7 +914,6 @@ describe("UserService", () => {
       target,
     );
   });
-
   it("revokes an impersonation session instead of restoring a banned administrator", async () => {
     const { em, service } = createService();
     const administrator = Object.assign(new User(), {
@@ -983,7 +934,6 @@ describe("UserService", () => {
       committed = true;
       return result;
     });
-
     await expect(
       service.stopImpersonating(impersonation.session),
     ).rejects.toBeInstanceOf(ForbiddenException);
@@ -991,7 +941,6 @@ describe("UserService", () => {
     expect(em.flush).toHaveBeenCalled();
     expect(committed).toBe(true);
   });
-
   it("rejects banned targets and handles incomplete impersonation state", async () => {
     const { em, service } = createService();
     const administrator = Object.assign(new User(), {
@@ -1002,46 +951,35 @@ describe("UserService", () => {
       banned: true,
       id: "user-1",
     });
-
     await expect(
       service.impersonateUser(administrator, bannedUser),
     ).rejects.toThrow("Banned users cannot be impersonated");
-
     const session = new Session();
     session.impersonatedBy = null;
     await expect(service.stopImpersonating(session)).resolves.toBeNull();
-
     session.impersonatedBy = ref(User, administrator);
     em.findOne.mockResolvedValue(null);
     await expect(service.stopImpersonating(session)).resolves.toBeNull();
   });
-
   it("propagates unexpected user deletion failures", async () => {
     const { service, userDeletionService } = createService();
     const error = new Error("database unavailable");
     userDeletionService.deleteUser.mockRejectedValue(error);
-
     await expect(service.deleteUser(new User())).rejects.toBe(error);
   });
-
   it("delegates user deletion to the transactional deletion coordinator", async () => {
     const { service, userDeletionService } = createService();
     const user = Object.assign(new User(), { id: "user-1" });
-
     await expect(service.deleteUser(user)).resolves.toBe(user);
-
     expect(userDeletionService.deleteUser).toHaveBeenCalledWith("user-1");
   });
-
   it("does not report success when the user disappears before deletion", async () => {
     const { service, userDeletionService } = createService();
     userDeletionService.deleteUser.mockResolvedValue(null);
-
     await expect(service.deleteUser(new User())).rejects.toBeInstanceOf(
       NotFoundException,
     );
   });
-
   it("sets an existing credential password or creates the account", async () => {
     const { em, hash, service } = createService();
     const user = Object.assign(new User(), { id: "user-1" });
@@ -1050,10 +988,8 @@ describe("UserService", () => {
     });
     hash.mockResolvedValueOnce("new-hash").mockResolvedValueOnce("first-hash");
     em.findOne.mockResolvedValueOnce(account).mockResolvedValueOnce(null);
-
     await service.setUserPassword(user, "new-password");
     expect(account.password).toBe("new-hash");
-
     await service.setUserPassword(user, "first-password");
     expect(em.create).toHaveBeenLastCalledWith(
       Account,
@@ -1065,12 +1001,10 @@ describe("UserService", () => {
       }),
     );
   });
-
   it("accepts shorter passwords only when the configured minimum permits them", async () => {
     const { hash, service } = createService(true, {}, { minPasswordLength: 6 });
     const user = new User();
     hash.mockResolvedValue("password-hash");
-
     await service.createUser({
       email: "alice@example.com",
       name: "Alice",
@@ -1079,19 +1013,16 @@ describe("UserService", () => {
     await service.setUserPassword(user, "123456");
     expect(hash).toHaveBeenCalledTimes(2);
     expect(hash).toHaveBeenLastCalledWith("123456");
-
     await expect(service.setUserPassword(user, "12345")).rejects.toThrow(
       "Password must contain at least 6 characters",
     );
     expect(hash).toHaveBeenCalledTimes(2);
-
     const defaults = createService();
     await expect(
       defaults.service.setUserPassword(user, "123456"),
     ).rejects.toThrow("Password must contain at least 8 characters");
     expect(defaults.hash).not.toHaveBeenCalled();
   });
-
   it("enforces the configured password length before hashing", async () => {
     const { hash, service } = createService(
       true,
@@ -1099,7 +1030,6 @@ describe("UserService", () => {
       { maxPasswordLength: 16, minPasswordLength: 12 },
     );
     const user = new User();
-
     await expect(
       service.createUser({
         email: "alice@example.com",
@@ -1112,26 +1042,21 @@ describe("UserService", () => {
     ).rejects.toThrow("Password must contain at most 16 characters");
     expect(hash).not.toHaveBeenCalled();
   });
-
   it("uses HashService when no Better Auth password override is configured", async () => {
     const { hashServiceHash, service } = createService(false);
     hashServiceHash.mockResolvedValue("hash-service-password");
-
     await service.createUser({
       email: "alice@example.com",
       name: "Alice",
       password: "password",
     });
-
     expect(hashServiceHash).toHaveBeenCalledWith("password");
   });
-
   it("checks flattened permissions without an admin plugin", () => {
     const { service } = createService();
     const user = Object.assign(new User(), {
       permissions: ["user:read", "session:revoke"],
     });
-
     expect(
       service.hasPermissions(user, {
         permissions: { session: ["revoke"], user: ["read"] },
@@ -1210,3 +1135,208 @@ function createService(
     service: new UserService(em, options, hashService, userDeletionService),
   };
 }
+
+describe("conditional authorization", () => {
+  describe("conditional service authorization", () => {
+    it.each(
+      (
+        [
+          "member",
+          "user-invitation",
+          "workspace-invitation",
+          "user",
+          "workspace",
+          "session",
+        ] as const
+      ).filter((_row, index) => index === 3),
+    )(
+      "uses the ownership or instance-ability boundary for %s connections",
+      async (kind) => {
+        await withIdentity(
+          async ({
+            memberService,
+            invitationService,
+            workspaceService,
+            userService,
+            sessionService,
+            user,
+            workspace,
+          }) => {
+            const Entity =
+              kind === "member"
+                ? Member
+                : kind === "user"
+                  ? User
+                  : kind === "workspace"
+                    ? Workspace
+                    : kind === "session"
+                      ? Session
+                      : Invitation;
+            const node = Object.assign(new Entity(), { id: "allowed" });
+            const result = {
+              edges: [{ node, cursor: "cursor" }],
+              pageInfo: { hasNextPage: true },
+              totalCount: 2,
+            };
+            vi.spyOn(ConnectionManager.prototype, "find").mockResolvedValue(
+              result as never,
+            );
+            const read = () =>
+              kind === "member"
+                ? memberService.getMemberConnectionByWorkspace(workspace, {
+                    first: 1,
+                  })
+                : kind === "user"
+                  ? userService.getUserConnection({ first: 1 })
+                  : kind === "workspace"
+                    ? workspaceService.getWorkspaceConnectionByUser(user, {
+                        first: 1,
+                      })
+                    : kind === "session"
+                      ? sessionService.getSessionConnectionByUser(
+                          Object.assign(new User(), { id: "other" }),
+                          { first: 1 },
+                        )
+                      : kind === "user-invitation"
+                        ? invitationService.getInvitationConnectionByUser(
+                            user,
+                            {
+                              first: 1,
+                            },
+                          )
+                        : invitationService.getInvitationConnectionByWorkspace(
+                            workspace,
+                            { first: 1 },
+                          );
+            await expect(read()).resolves.toEqual({
+              ...result,
+              edges: result.edges.map((edge) => ({
+                ...edge,
+                node: omitCredentials(edge.node, [
+                  "key",
+                  "token",
+                  "password",
+                  "accessToken",
+                  "refreshToken",
+                  "idToken",
+                ]),
+              })),
+            });
+            node.id = "blocked";
+            if (kind === "workspace") {
+              await expect(read()).resolves.toEqual({
+                ...result,
+                edges: result.edges.map((edge) => ({
+                  ...edge,
+                  node: omitCredentials(edge.node, [
+                    "key",
+                    "token",
+                    "password",
+                    "accessToken",
+                    "refreshToken",
+                    "idToken",
+                  ]),
+                })),
+              });
+              expect(ConnectionManager.prototype.find).toHaveBeenLastCalledWith(
+                expect.anything(),
+                { first: 1 },
+                expect.objectContaining({
+                  where: expect.objectContaining({ id: expect.anything() }),
+                }),
+              );
+            } else if (kind === "user-invitation") {
+              await expect(read()).resolves.toEqual({
+                ...result,
+                edges: result.edges.map((edge) => ({
+                  ...edge,
+                  node: omitCredentials(edge.node, [
+                    "key",
+                    "token",
+                    "password",
+                    "accessToken",
+                    "refreshToken",
+                    "idToken",
+                  ]),
+                })),
+              });
+              expect(ConnectionManager.prototype.find).toHaveBeenLastCalledWith(
+                expect.anything(),
+                { first: 1 },
+                expect.objectContaining({
+                  where: expect.objectContaining({
+                    email: user.email.toLowerCase(),
+                    status: "pending",
+                  }),
+                }),
+              );
+            } else {
+              await expect(read()).rejects.toThrow(ForbiddenException);
+            }
+            expect(result.edges).toHaveLength(1);
+            expect(result.totalCount).toBe(2);
+          },
+        );
+      },
+    );
+    it.each(
+      (
+        [
+          "user",
+          "workspace",
+          "member",
+          "invitation",
+          "user-key",
+          "member-key",
+        ] as const
+      ).filter((_row, index) => index === 0),
+    )("checks proposed %s fields before creation", async (kind) => {
+      await withIdentity(
+        async ({
+          em,
+          user,
+          workspace,
+          memberService,
+          invitationService,
+          workspaceService,
+          userService,
+          userApiKeyService,
+          memberApiKeyService,
+        }) => {
+          em.findOne.mockResolvedValue(null);
+          const create = () =>
+            kind === "user"
+              ? userService.createUser({
+                  name: "blocked",
+                  email: "new@example.com",
+                  password: "valid-password",
+                })
+              : kind === "workspace"
+                ? workspaceService.createWorkspace(user, { name: "blocked" })
+                : kind === "member"
+                  ? memberService.addMember(
+                      workspace,
+                      Object.assign(new User(), {
+                        id: "invitee",
+                        name: "blocked",
+                        email: "new@example.com",
+                      }),
+                    )
+                  : kind === "invitation"
+                    ? invitationService.createInvitation(workspace, user, {
+                        email: "blocked@example.com",
+                      })
+                    : kind === "user-key"
+                      ? userApiKeyService.createUserApiKey(user, {
+                          name: "blocked",
+                        })
+                      : memberApiKeyService.createMemberApiKey(workspace, {
+                          name: "blocked",
+                        });
+          await expect(create()).rejects.toThrow(ForbiddenException);
+          expect(em.persist).not.toHaveBeenCalled();
+        },
+      );
+    });
+  });
+});

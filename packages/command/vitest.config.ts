@@ -1,6 +1,5 @@
 import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
-
 export default defineConfig({
   // Resolves the path aliases declared in tsconfig.json, including the ones
   // added by `nest g library`.
@@ -17,6 +16,7 @@ export default defineConfig({
         "**/*.spec.ts",
         "src/{cli,run-cli,project-loader,ts-node.loader}.ts",
       ],
+      reportsDirectory: "coverage/unit",
       reporter: ["text", "json", "lcov"],
     },
   },

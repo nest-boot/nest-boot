@@ -1,7 +1,8 @@
 import { ForbiddenException } from "@nestjs/common";
-import type { Mocked } from "vitest";
+import { type Mocked } from "vitest";
 
-import { Member } from "../entities/member.entity.js";
+import { Member as BaseMember, Member } from "../entities/member.entity.js";
+import { User as BaseUser } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { MemberStatus } from "../enums/member-status.enum.js";
 import { MemberType } from "../enums/member-type.enum.js";
@@ -43,7 +44,6 @@ describe("MemberResolver", () => {
     expect(memberService.addMemberByEmail).not.toHaveBeenCalled();
     expect(memberService.addServiceAccount).toHaveBeenCalledOnce();
   });
-
   it("returns the current workspace member from request context", () => {
     const member = { id: "member_1" } as Member;
     const { resolver } = createResolver({
@@ -51,16 +51,12 @@ describe("MemberResolver", () => {
         getCurrentMember: vi.fn(() => member),
       },
     });
-
     expect(resolver.currentMember()).toBe(member);
   });
-
   it("returns null when no current workspace member is available", () => {
     const { resolver } = createResolver();
-
     expect(resolver.currentMember()).toBeNull();
   });
-
   it("finds a member by id through the service", async () => {
     const member = { id: "member_1" } as Member;
     const { resolver, memberService } = createResolver({
@@ -68,12 +64,9 @@ describe("MemberResolver", () => {
         getMember: vi.fn(async () => member),
       },
     });
-
     await expect(resolver.member("member_1")).resolves.toBe(member);
-
     expect(memberService.getMember).toHaveBeenCalledWith("member_1");
   });
-
   it("delegates adding an existing user to MemberService", async () => {
     const workspace = { id: "workspace_1" } as Workspace;
     const createdMember = { id: "member_2" } as Member;
@@ -82,11 +75,9 @@ describe("MemberResolver", () => {
         addMemberByEmail: vi.fn(async () => createdMember),
       },
     });
-
     await expect(
       resolver.addMember(workspace, { email: "alice@example.com" }),
     ).resolves.toEqual({ id: createdMember.id });
-
     expect(memberService.addMemberByEmail).toHaveBeenCalledWith(
       workspace,
       "alice@example.com",
@@ -100,7 +91,6 @@ describe("MemberResolver", () => {
         setMemberPermissions: vi.fn().mockRejectedValue(denied),
       },
     });
-
     await expect(
       resolver.setMemberPermissions("member_2", {
         permissions: [],
@@ -111,7 +101,6 @@ describe("MemberResolver", () => {
       [],
     );
   });
-
   it("forwards member updates without a preliminary lookup", async () => {
     const updated = {
       id: "member_2",
@@ -122,30 +111,25 @@ describe("MemberResolver", () => {
         updateMember: vi.fn(async () => updated),
       },
     });
-
     await expect(
       resolver.updateMember("member_2", {
         status: MemberStatus.DISABLED,
       }),
     ).resolves.toEqual({ id: updated.id });
-
     expect(memberService.updateMember).toHaveBeenCalledWith(updated.id, {
       status: MemberStatus.DISABLED,
     });
     expect(memberService.getMember).not.toHaveBeenCalled();
   });
-
   it("propagates update errors from MemberService", async () => {
     const denied = new ForbiddenException();
     const input = { status: MemberStatus.DISABLED };
     const { resolver, memberService } = createResolver({
       memberService: { updateMember: vi.fn().mockRejectedValue(denied) },
     });
-
     await expect(resolver.updateMember("member_2", input)).rejects.toBe(denied);
     expect(memberService.updateMember).toHaveBeenCalledWith("member_2", input);
   });
-
   it("lists roles and updates member roles through MemberService", async () => {
     const member = { id: "member_2", roles: ["member"] } as Member;
     const roles = [{ role: "admin", grantable: false }];
@@ -157,7 +141,6 @@ describe("MemberResolver", () => {
         setMemberRoles: vi.fn(async () => member),
       },
     });
-
     expect(resolver.workspaceRoles()).toEqual(roles);
     expect(resolver.workspacePermissions()).toEqual(permissions);
     await expect(
@@ -170,7 +153,6 @@ describe("MemberResolver", () => {
       "admin",
     ]);
   });
-
   it("propagates removal errors from MemberService", async () => {
     const denied = new ForbiddenException();
     const { resolver, memberService } = createResolver({
@@ -178,12 +160,9 @@ describe("MemberResolver", () => {
         removeMember: vi.fn().mockRejectedValue(denied),
       },
     });
-
     await expect(resolver.removeMember("member_1")).rejects.toBe(denied);
-
     expect(memberService.removeMember).toHaveBeenCalledWith("member_1");
   });
-
   it("returns only the removed member identifier", async () => {
     const member = { id: "member_2", name: "Removed member" } as Member;
     const { resolver, memberService } = createResolver({
@@ -191,11 +170,9 @@ describe("MemberResolver", () => {
         removeMember: vi.fn(async () => member),
       },
     });
-
     await expect(resolver.removeMember("member_2")).resolves.toEqual({
       id: member.id,
     });
-
     expect(memberService.removeMember).toHaveBeenCalledWith(member.id);
   });
 });
@@ -224,9 +201,27 @@ function createResolver(overrides?: {
     ...overrides?.memberService,
   } as unknown as Mocked<MemberService>;
   const resolver = new MemberResolver(memberService);
-
   return {
     resolver,
     memberService,
   };
 }
+
+describe("relation fields", () => {
+  describe("workspace relation fields", () => {
+    it("delegates member users, including null, to the service", async () => {
+      const user = new BaseUser();
+      const member = new BaseMember();
+      const service = {
+        getMemberUser: vi
+          .fn()
+          .mockResolvedValueOnce(user)
+          .mockResolvedValueOnce(null),
+      };
+      const resolver = new MemberResolver(service as unknown as MemberService);
+      await expect(resolver.user(member)).resolves.toBe(user);
+      await expect(resolver.user(member)).resolves.toBeNull();
+      expect(service.getMemberUser).toHaveBeenCalledWith(member);
+    });
+  });
+});

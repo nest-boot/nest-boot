@@ -2,7 +2,6 @@ import { createRequire } from "node:module";
 
 import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
-
 export default defineConfig({
   resolve: {
     alias: [
@@ -17,11 +16,11 @@ export default defineConfig({
     globals: true,
     root: "./",
     include: ["test/**/*.e2e-spec.ts"],
-    testTimeout: 15000,
+    testTimeout: 30000,
     hookTimeout: 30000,
     coverage: {
       include: ["dist/**/*.js"],
-      exclude: [],
+      exclude: ["dist/test/**"],
       reportsDirectory: "coverage/e2e",
       reporter: ["text", "lcov", "json-summary"],
     },

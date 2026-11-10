@@ -7,7 +7,7 @@ import { Test } from "@nestjs/testing";
 import { type RegistryContentType } from "prom-client";
 import request from "supertest";
 
-import { MetricsModule, Registry } from "../src/index.js";
+import { MetricsModule, Registry } from "../dist/index.js";
 
 describe("MetricsModule HTTP integration", () => {
   const apps: INestApplication[] = [];

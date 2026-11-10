@@ -2,7 +2,7 @@ import { StorageModule } from "@nest-boot/storage";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 
-import { StagedUploadModule } from "../../src/index.js";
+import { StagedUploadModule } from "../../dist/index.js";
 
 const ConfigDynamicModule = ConfigModule.forRoot({ isGlobal: true });
 

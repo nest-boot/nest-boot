@@ -1,4 +1,4 @@
-import { Query, Resolver } from "../src/index.js";
+import { Query, Resolver } from "../dist/index.js";
 
 @Resolver()
 export class TestResolver {

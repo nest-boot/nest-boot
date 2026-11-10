@@ -24,7 +24,8 @@
     "test": "vitest run --testTimeout=15000",
     "test:cov": "vitest run --coverage --testTimeout=15000",
     "test:watch": "vitest",
-    "test:debug": "vitest --inspect-brk --no-file-parallelism"
+    "test:debug": "vitest --inspect-brk --no-file-parallelism",
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts --coverage"
   },
   "dependencies": {
     "@typescript-eslint/utils": "^8.71.1"

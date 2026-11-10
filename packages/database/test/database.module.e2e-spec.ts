@@ -5,7 +5,7 @@ import {
 } from "@mikro-orm/pglite";
 import { Test } from "@nestjs/testing";
 
-import { DatabaseModule } from "../src/index.js";
+import { DatabaseModule } from "../dist/index.js";
 import { TestEntity } from "./entities/test.entity.js";
 
 describe("DatabaseModule driver integration", () => {

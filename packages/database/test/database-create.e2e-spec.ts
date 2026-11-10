@@ -9,7 +9,7 @@ import {
   HealthCheckRegistry,
 } from "@nest-boot/health-check";
 
-import { DatabaseModule } from "../src/database.module.js";
+import { DatabaseModule } from "../dist/database.module.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const record = new EntitySchema({
