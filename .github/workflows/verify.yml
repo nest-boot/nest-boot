@@ -105,6 +105,9 @@ jobs:
       - name: Test layout
         run: pnpm test:layout
 
+      - name: Test example client units
+        run: pnpm --filter @nest-boot/example-client test
+
       - name: Test
         run: pnpm test:cov
         env:

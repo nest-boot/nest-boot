@@ -2,8 +2,8 @@ import { readdir } from 'node:fs/promises';
 
 import type { Migration } from '@mikro-orm/migrations';
 
-import { Migration00000000000000_Initial } from './migrations/Migration00000000000000_Initial.js';
-import { Migration20261024072513 } from './migrations/Migration20261024072513.js';
+import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
+import { Migration20261024072513 } from '../src/database/migrations/Migration20261024072513.js';
 
 const migrations = [Migration00000000000000_Initial, Migration20261024072513];
 /**
@@ -31,7 +31,9 @@ describe('ordered application migrations', () => {
     );
   });
   it('keeps default privileges and generated schema in execution order', async () => {
-    const files = await readdir(new URL('./migrations/', import.meta.url));
+    const files = await readdir(
+      new URL('../src/database/migrations/', import.meta.url),
+    );
     expect(
       files.filter((file) => /^Migration.*\.ts$/.test(file)).sort(),
     ).toEqual(
