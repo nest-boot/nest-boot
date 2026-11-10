@@ -1,4 +1,5 @@
 import { MikroORM } from "@mikro-orm/core";
+import { DatabaseModule } from "@nest-boot/database";
 import { HashService } from "@nest-boot/hash";
 import { Mailer } from "@nest-boot/mailer";
 import {
@@ -30,6 +31,7 @@ import {
 } from "./auth.module-definition.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { type AuthModuleOptions } from "./auth-module-options.interface.js";
+import { entities } from "./entities/index.js";
 import { InvitationResolver } from "./features/invitations/invitation.resolver.js";
 import { InvitationService } from "./features/invitations/invitation.service.js";
 import { AuthEnumRegistry } from "./infrastructure/auth-enum-registry.js";
@@ -68,7 +70,11 @@ import {
  */
 @Global()
 @Module({
-  imports: [RequestContextModule, MiddlewareModule],
+  imports: [
+    RequestContextModule,
+    MiddlewareModule,
+    DatabaseModule.forFeatureAsync({ useFactory: () => entities }),
+  ],
   providers: [
     {
       provide: AuthEnumRegistry,

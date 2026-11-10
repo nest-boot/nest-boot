@@ -8,7 +8,7 @@ The `@nest-boot/database` module wraps [`@mikro-orm/nestjs`](https://mikro-orm.i
 ## Installation
 
 ```bash
-pnpm add @nest-boot/database @mikro-orm/core @mikro-orm/decorators @mikro-orm/nestjs @mikro-orm/reflection @mikro-orm/migrations
+pnpm add @nest-boot/database @nest-boot/command @mikro-orm/core @mikro-orm/decorators @mikro-orm/nestjs @mikro-orm/reflection @mikro-orm/migrations @mikro-orm/seeder
 
 # Install the driver matching DATABASE_URL
 pnpm add @mikro-orm/postgresql
@@ -87,39 +87,52 @@ import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 export class CommonModule {}
 ```
 
-### CLI Configuration
+### Database commands and entity registration
 
-For MikroORM CLI (migrations, schema generation), create a `mikro-orm.config.ts`:
+`@nest-boot/database` provides `nb database:*` commands. The CLI entry calls
+`CommandFactory.run(AppModule)` to load the shared module graph without a
+`mikro-orm.config.ts`. Configure connections, migration paths, and seeder settings
+in `DatabaseModule.forRoot/forRootAsync`. Follow the [Command tutorial](/docs/tutorial/command)
+to register `CommandModule` and the CLI entry first.
 
-```typescript
-import { existsSync } from "node:fs";
-import { loadEnvFile } from "node:process";
-
-import { getDatabaseConfig } from "@nest-boot/database";
-
-if (existsSync(".env")) {
-  loadEnvFile();
-}
-
-export default getDatabaseConfig();
+```bash
+pnpm exec nb database:migration:create --name add-posts
+pnpm exec nb database:migration:up
+pnpm exec nb database:migration:down --to 0
+pnpm exec nb database:migration:list
+pnpm exec nb database:migration:pending
+pnpm exec nb database:migration:check
+pnpm exec nb database:seeder:create DemoSeeder
+pnpm exec nb database:seeder:run --class DemoSeeder
 ```
 
-Use `withAuthDatabaseConfig` to register Auth entities. Add `JobEntity` from `@nest-boot/queue-api` to the ordinary runtime and CLI entity lists when queue history is needed. Reuse this configuration in `DatabaseModule.forRootAsync()`.
+`database:migration:check` exits with status 1 when a new migration is needed, otherwise 0.
+Migration creation supports `--blank`, `--initial`, `--name`, `--path`, and `--dump`.
+`up/down` support `--from`, `--to`, `--only` (comma-separated names), and `--schema`.
+
+`database:schema:create/update/drop` print SQL by default; pass `--run` to execute it.
+Schema updates also support `--safe` and `--no-drop-tables`.
+`database:schema:fresh --run` drops and recreates the schema;
+`database:migration:fresh` drops it and reapplies all migrations. Both fresh commands
+accept `--seed SeederName`. `database:create` creates the configured database.
+
+`DatabaseModule` enables `autoLoadEntities` by default and collects business entities
+registered through `forFeature()`:
 
 ```typescript
-import { withAuthDatabaseConfig } from "@nest-boot/auth";
-import { getDatabaseConfig } from "@nest-boot/database";
-import { JobEntity } from "@nest-boot/queue-api";
-
-export default async () => {
-  const config = withAuthDatabaseConfig(await getDatabaseConfig());
-  return {
-    ...config,
-    entities: [...config.entities, JobEntity],
-    entitiesTs: [...config.entitiesTs, JobEntity],
-  };
-};
+@Module({ imports: [DatabaseModule.forFeature([Post])] })
+export class PostModule {}
 ```
+
+Framework features can select entities before ORM initialization with
+`forFeatureAsync({ imports, inject, useFactory })`. Its factory must depend only on
+configuration services, not MikroORM or EntityManager.
+Auth and QueueApi automatically contribute their entities; applications need no manual
+registration of those packages' entity arrays.
+
+Commands use the existing `nb` lifecycle: initialize the application, execute, then close it.
+Other application initialization hooks still run, sharing configuration and infrastructure
+with the HTTP entry.
 
 ## Health Checks
 

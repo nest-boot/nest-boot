@@ -8,7 +8,7 @@ description: "MikroORM 集成，支持请求作用域实体管理器、EntitySer
 ## 安装
 
 ```bash
-pnpm add @nest-boot/database @mikro-orm/core @mikro-orm/decorators @mikro-orm/nestjs @mikro-orm/reflection @mikro-orm/migrations
+pnpm add @nest-boot/database @nest-boot/command @mikro-orm/core @mikro-orm/decorators @mikro-orm/nestjs @mikro-orm/reflection @mikro-orm/migrations @mikro-orm/seeder
 
 # 安装与 DATABASE_URL 匹配的驱动
 pnpm add @mikro-orm/postgresql
@@ -84,39 +84,46 @@ import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 export class CommonModule {}
 ```
 
-### CLI 配置
+### 数据库命令与实体注册
 
-用于 MikroORM CLI（迁移、Schema 生成），创建 `mikro-orm.config.ts`：
+`@nest-boot/database` 提供 `nb database:*` 命令。CLI 入口通过
+`CommandFactory.run(AppModule)` 启动共享模块，无需 `mikro-orm.config.ts`。
+连接、迁移目录和 seeder 选项均在 `DatabaseModule.forRoot/forRootAsync` 中配置。
+请先按 [Command 教程](/docs/tutorial/command) 注册 `CommandModule` 与 CLI 入口。
 
-```typescript
-import { existsSync } from "node:fs";
-import { loadEnvFile } from "node:process";
-
-import { getDatabaseConfig } from "@nest-boot/database";
-
-if (existsSync(".env")) {
-  loadEnvFile();
-}
-
-export default getDatabaseConfig();
+```bash
+pnpm exec nb database:migration:create --name add-posts
+pnpm exec nb database:migration:up
+pnpm exec nb database:migration:down --to 0
+pnpm exec nb database:migration:list
+pnpm exec nb database:migration:pending
+pnpm exec nb database:migration:check
+pnpm exec nb database:seeder:create DemoSeeder
+pnpm exec nb database:seeder:run --class DemoSeeder
 ```
 
-使用 `withAuthDatabaseConfig` 注册 Auth 实体。需要队列历史时，将 `@nest-boot/queue-api` 的 `JobEntity` 像普通实体一样加入运行时和 CLI 的实体列表，并在 `DatabaseModule.forRootAsync()` 复用此配置。
+`database:migration:check` 在需要新迁移时返回退出码 1，否则返回 0。
+`database:migration:create` 支持 `--blank`、`--initial`、`--name`、`--path` 和 `--dump`。
+`up/down` 支持 `--from`、`--to`、`--only`（逗号分隔名称）与 `--schema`。
+
+`database:schema:create/update/drop` 默认打印 SQL，使用 `--run` 执行；
+`update` 还支持 `--safe` 和 `--no-drop-tables`。`database:schema:fresh --run`
+删除并重建 schema；`database:migration:fresh` 删除 schema 后重新应用所有迁移。
+两种 fresh 命令均支持 `--seed SeederName`。`database:create` 创建配置的数据库。
+
+`DatabaseModule` 默认启用 `autoLoadEntities`，收集业务模块通过 `forFeature()` 注册的实体：
 
 ```typescript
-import { withAuthDatabaseConfig } from "@nest-boot/auth";
-import { getDatabaseConfig } from "@nest-boot/database";
-import { JobEntity } from "@nest-boot/queue-api";
-
-export default async () => {
-  const config = withAuthDatabaseConfig(await getDatabaseConfig());
-  return {
-    ...config,
-    entities: [...config.entities, JobEntity],
-    entitiesTs: [...config.entitiesTs, JobEntity],
-  };
-};
+@Module({ imports: [DatabaseModule.forFeature([Post])] })
+export class PostModule {}
 ```
+
+框架功能可通过 `forFeatureAsync({ imports, inject, useFactory })` 在 ORM 初始化前
+根据配置决定实体。工厂只能依赖配置服务，不应依赖 MikroORM 或 EntityManager。
+Auth 与 QueueApi 会自动注册自身实体，应用无需手动导入它们的实体数组。
+
+命令遵循现有 `nb` 生命周期：初始化应用、执行命令、关闭应用。应用的其他模块初始化钩子
+仍会运行，CLI 和 HTTP 使用相同的配置与基础设施。
 
 ## 健康检查
 

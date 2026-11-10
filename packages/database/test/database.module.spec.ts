@@ -26,6 +26,7 @@ import { TestEntity } from "./entities/test.entity.js";
 
 type RootOptionsFactory = (
   options: Parameters<typeof DatabaseModule.forRoot>[0],
+  registry?: { getEntities: () => Promise<never[]> },
 ) => Promise<Record<string, unknown>>;
 
 /**
@@ -38,7 +39,8 @@ function getRootOptionsFactory(): RootOptionsFactory {
     { useFactory: RootOptionsFactory },
   ];
 
-  return rootOptions.useFactory;
+  return (options) =>
+    rootOptions.useFactory(options, { getEntities: () => Promise.resolve([]) });
 }
 
 /**

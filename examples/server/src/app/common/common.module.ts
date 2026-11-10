@@ -15,7 +15,6 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import type { Request, Response } from 'express';
 
-import getDatabaseConfig from '../../mikro-orm.config.js';
 import { GreetCommand } from './commands/greet.command.js';
 import { createSessionContext } from './session-context.js';
 
@@ -32,8 +31,7 @@ const GraphQLDynamicModule = GraphQLModule.forRoot({
 
 const DatabaseDynamicModule = DatabaseModule.forRootAsync({
   driverHint: PostgreSqlDriver,
-  useFactory: async () => ({
-    ...(await getDatabaseConfig()),
+  useFactory: () => ({
     session: createSessionContext,
   }),
 });

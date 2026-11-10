@@ -191,19 +191,12 @@ Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
 metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 
-Register the exported `entities` array in both your runtime MikroORM configuration
-and the configuration loaded by the migration CLI. The CLI does not initialize Nest:
-
-```typescript
-import { entities as authEntities } from "@nest-boot/auth";
-import { defineConfig } from "@mikro-orm/postgresql";
-
-export default defineConfig({
-  entities: [...authEntities, "dist/**/*.entity.js"],
-  entitiesTs: [...authEntities, "src/**/*.entity.ts"],
-  // Connection and migration options...
-});
-```
+`AuthModule` automatically registers its built-in entities through
+`DatabaseModule.forFeatureAsync()`. The CLI entry calls `CommandFactory.run(AppModule)`
+to load the same modules for `nb database:migration:*`, `nb database:schema:*`, and
+`nb database:seeder:*` commands. Configure connections and migrations in
+`DatabaseModule.forRoot/forRootAsync` without a separate MikroORM configuration file.
+Direct MikroORM consumers can still register the exported `entities` array explicitly.
 
 Use separate related business entities and additional field resolvers to extend
 these models. Import the built-in classes directly for relation targets; do not

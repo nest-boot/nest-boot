@@ -121,3 +121,6 @@ nb --help
 ```
 
 在应用目录运行 `nb`。项目自身仍需安装 `@nest-boot/command` 及其 peer dependencies，并提供 CLI 入口和 `CommandModule` 注册。全局安装提供执行入口；命令与依赖注入使用项目自己的实现。
+
+导入 `DatabaseModule.forRoot/forRootAsync` 后，可直接使用 `nb database:migration:*`、
+`nb database:schema:*` 和 `nb database:seeder:*`，详见 [数据库教程](/docs/tutorial/database)。

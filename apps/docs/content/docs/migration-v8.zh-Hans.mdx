@@ -6,6 +6,15 @@ description: "将 Nest Boot 应用升级到 NestJS 12 和原生 ESM。"
 版本 8 是所有 `@nest-boot/*` 包面向 NestJS 12 的发布线。所有包均以原生
 ESM 发布，并要求 Node.js 24.21.0 或更高版本。
 
+## 数据库命令与实体自动注册
+
+使用 `nb database:migration:*`、`nb database:schema:*` 和 `nb database:seeder:*`，
+CLI 入口通过 `CommandFactory.run(AppModule)` 复用运行时模块配置。
+将独立 MikroORM 配置文件中的定制选项移入 `DatabaseModule.forRoot/forRootAsync`，
+然后删除该配置文件、package.json 中的 `mikro-orm` 配置以及旧 CLI 依赖。
+Auth 与 QueueApi 会自动注册自身实体；已移除 `withAuthDatabaseConfig`，请删除调用与导入。
+直接使用 MikroORM 的项目仍可显式注册导出的实体数组。
+
 ## 升级依赖
 
 同时升级 Nest Boot 与 NestJS 包：
@@ -35,7 +44,7 @@ GraphQL 应用还应使用 `@nestjs/graphql@^14` 与 `@nestjs/apollo@^14`；
 
 模块类和配置类型分别改为 `DatabaseModule`、`DatabaseModuleOptions`，替代
 `MikroOrmModule`、`MikroOrmModuleOptions`。数据库集成仍使用 MikroORM；上游依赖和
-CLI 配置继续使用 `@mikro-orm/*`、`mikro-orm.config.ts`。
+CLI 使用 `nb database:*`，与运行时共享 DatabaseModule 配置。
 
 自定义请求上下文中间件的依赖名称从 `"mikro-orm"` 改为 `"database"`。请更新
 `RequestContext.registerMiddleware()` 的依赖参数，确保实体管理器先完成初始化。

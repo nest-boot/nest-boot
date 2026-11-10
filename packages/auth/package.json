@@ -72,7 +72,8 @@
     "@nestjs/apollo": "^14.0.0",
     "@nestjs/graphql": "^14.0.3",
     "graphql": "^16.11.0",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "@nest-boot/database": "workspace:^"
   },
   "peerDependencies": {
     "@casl/ability": "^7.0.0",
@@ -94,7 +95,8 @@
     "@nest-boot/graphql": "workspace:^",
     "@nestjs/graphql": "^14.0.3",
     "graphql": "^16.0.0",
-    "zod": "^4.0.0"
+    "zod": "^4.0.0",
+    "@nest-boot/database": "workspace:^"
   },
   "publishConfig": {
     "access": "public"
