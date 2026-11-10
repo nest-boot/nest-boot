@@ -62,7 +62,7 @@ describe("DatabaseModule feature entities", () => {
         await app.close();
       }
     }
-  }, 15000);
+  });
 
   it("keeps explicit entities when automatic feature collection is disabled", async () => {
     const factory = vi.fn(() => [optional]);
