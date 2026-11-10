@@ -13,6 +13,7 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 
+import { databaseCommands } from "./commands/index.js";
 import { DatabaseHealthIndicator } from "./database.health-indicator.js";
 import {
   ASYNC_OPTIONS_TYPE,
@@ -21,6 +22,10 @@ import {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./database.module-definition.js";
+import { DatabaseEntitiesModule } from "./infrastructure/database-entities.module.js";
+import { DatabaseEntityRegistry } from "./infrastructure/database-entity-registry.js";
+import { DatabaseEntityRegistryModule } from "./infrastructure/database-entity-registry.module.js";
+import type { DatabaseFeatureOptions } from "./interfaces/database-feature-options.interface.js";
 import type { DatabaseModuleOptions } from "./interfaces/database-module-options.interface.js";
 import { getDatabaseConfig } from "./utils/get-database-config.util.js";
 import { loadDefaultConfig } from "./utils/load-default-config.util.js";
@@ -65,6 +70,7 @@ function hasExplicitConnectionTarget(options: DatabaseModuleOptions): boolean {
   imports: [RequestContextModule],
   providers: [
     DatabaseHealthIndicator,
+    ...databaseCommands,
     {
       provide: MODULE_OPTIONS_TOKEN,
       inject: [{ token: BASE_MODULE_OPTIONS_TOKEN, optional: true }],
@@ -130,9 +136,12 @@ export class DatabaseModule
   ) {
     return BaseDatabaseModule.forRootAsync({
       driver,
-      imports: [optionsModule],
-      inject: [BASE_MODULE_OPTIONS_TOKEN],
-      useFactory: async (options: DatabaseModuleOptions) => {
+      imports: [optionsModule, DatabaseEntityRegistryModule],
+      inject: [BASE_MODULE_OPTIONS_TOKEN, DatabaseEntityRegistry],
+      useFactory: async (
+        options: DatabaseModuleOptions,
+        registry: DatabaseEntityRegistry,
+      ) => {
         const ormOptions = { ...options };
         delete ormOptions.session;
         const logger = new Logger("Database");
@@ -141,6 +150,7 @@ export class DatabaseModule
           : await getDatabaseConfig();
 
         const resolvedOptions = {
+          autoLoadEntities: true,
           registerRequestContext: false,
           context: () => {
             if (RequestContext.isActive()) {
@@ -152,6 +162,12 @@ export class DatabaseModule
           },
           ...envOptions,
           ...ormOptions,
+          extensions: [
+            ...new Set([
+              ...(envOptions.extensions ?? []),
+              ...(ormOptions.extensions ?? []),
+            ]),
+          ],
           metadataCache: {
             ...envOptions.metadataCache,
             ...ormOptions.metadataCache,
@@ -169,6 +185,15 @@ export class DatabaseModule
           resolvedOptions.entitiesTs = options.entities;
         }
 
+        const contributed = resolvedOptions.autoLoadEntities
+          ? await registry.getEntities(options.contextName)
+          : [];
+        resolvedOptions.entities = [
+          ...new Set([...(resolvedOptions.entities ?? []), ...contributed]),
+        ];
+        resolvedOptions.entitiesTs = [
+          ...new Set([...(resolvedOptions.entitiesTs ?? []), ...contributed]),
+        ];
         return resolvedOptions;
       },
     });
@@ -194,6 +219,15 @@ export class DatabaseModule
    */
   static forFeature(...args: Parameters<typeof BaseDatabaseModule.forFeature>) {
     return BaseDatabaseModule.forFeature(...args);
+  }
+
+  /**
+   * Registers feature entities from asynchronous configuration before ORM initialization.
+   * @param options - Feature configuration imports and an entity factory.
+   * @returns Module contributing entities to the configured database.
+   */
+  static forFeatureAsync(options: DatabaseFeatureOptions): DynamicModule {
+    return DatabaseEntitiesModule.register(options);
   }
 
   /**

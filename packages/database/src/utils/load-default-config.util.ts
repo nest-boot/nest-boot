@@ -1,5 +1,7 @@
 import { DataloaderType } from "@mikro-orm/core";
+import { Migrator } from "@mikro-orm/migrations";
 import { TsMorphMetadataProvider } from "@mikro-orm/reflection";
+import { SeedManager } from "@mikro-orm/seeder";
 
 import type { DatabaseModuleOptions } from "../interfaces/database-module-options.interface.js";
 
@@ -9,6 +11,7 @@ import type { DatabaseModuleOptions } from "../interfaces/database-module-option
  */
 export function loadDefaultConfig() {
   return {
+    extensions: [Migrator, SeedManager],
     colors: false,
     debug: false,
     dataloader: DataloaderType.ALL,

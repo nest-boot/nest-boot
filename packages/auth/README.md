@@ -8,11 +8,11 @@ The example's handwritten `Initial` migration creates roles and default
 privileges; generated migrations create and evolve tables and RLS policies.
 Apply the complete migration sequence to a fresh database.
 
-Use `withAuthDatabaseConfig(config)` from the package root to register Auth entities
-in runtime and MikroORM CLI configuration. Compose it with
-`await getDatabaseConfig()` from `@nest-boot/database` and register `JobEntity` from `@nest-boot/queue-api` as an ordinary entity when queue history is needed.
-The Auth helper returns a new configuration
-and deduplicates both runtime and TypeScript entity lists.
+AuthModule automatically registers its entities with DatabaseModule. QueueApiModule
+also registers its Job history entity. Use `nb database:*` commands through the
+application CLI to share runtime connection settings, migration options, and entities.
+A separate MikroORM config file or auth configuration helper is no longer needed.
+Direct MikroORM consumers can register the exported `entities` array explicitly.
 
 ## Feature organization
 

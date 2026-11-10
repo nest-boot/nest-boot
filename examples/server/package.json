@@ -27,11 +27,11 @@
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
-    "migration:create": "mikro-orm migration:create",
-    "migration:up": "mikro-orm migration:up",
-    "migration:down": "mikro-orm migration:down",
-    "seeder:create": "mikro-orm seeder:create",
-    "seeder:run": "mikro-orm seeder:run",
+    "migration:create": "nb database:migration:create",
+    "migration:up": "nb database:migration:up",
+    "migration:down": "nb database:migration:down",
+    "seeder:create": "nb database:seeder:create",
+    "seeder:run": "nb database:seeder:run",
     "queue:start": "nb queue:start",
     "command": "nb"
   },
@@ -87,7 +87,6 @@
     "@electric-sql/pglite": "0.5.8",
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
-    "@mikro-orm/cli": "7.2.0",
     "@mikro-orm/pglite": "7.2.0",
     "@nest-boot/eslint-config": "workspace:^",
     "@nest-boot/eslint-plugin": "workspace:^",
@@ -111,12 +110,5 @@
     "typescript": "^6.0.3",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.11"
-  },
-  "mikro-orm": {
-    "useTsNode": true,
-    "configPaths": [
-      "./src/mikro-orm.config.ts",
-      "./dist/mikro-orm.config.js"
-    ]
   }
 }

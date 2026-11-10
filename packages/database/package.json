@@ -32,14 +32,16 @@
     "test:cov": "vitest run --coverage",
     "test:watch": "vitest",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts --coverage"
   },
   "dependencies": {
     "@nest-boot/health-check": "workspace:^",
     "dataloader": "^2.2.3",
     "lodash-es": "^4.18.1",
     "prettier": "^3.6.2",
-    "sql-formatter": "^15.6.9"
+    "sql-formatter": "^15.6.9",
+    "@mikro-orm/migrations": "7.2.0",
+    "@mikro-orm/seeder": "7.2.0"
   },
   "devDependencies": {
     "@mikro-orm/core": "7.2.0",
@@ -66,7 +68,8 @@
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "@nest-boot/command": "workspace:^"
   },
   "peerDependencies": {
     "@mikro-orm/core": "^7.2.0",
@@ -77,7 +80,8 @@
     "@nestjs/common": "^12.0.0",
     "@nestjs/core": "^12.0.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.0.0"
+    "rxjs": "^7.0.0",
+    "@nest-boot/command": "workspace:^"
   },
   "publishConfig": {
     "access": "public"

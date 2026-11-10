@@ -6,6 +6,14 @@ export default defineConfig({
   test: {
     globals: true,
     root: "./",
-    include: ["**/*.e2e-spec.ts"],
+    include: ["test/**/*.e2e-spec.ts"],
+    testTimeout: 30000,
+    hookTimeout: 30000,
+    coverage: {
+      include: ["src/**/*.ts"],
+      exclude: ["src/**/*.spec.ts"],
+      reportsDirectory: "coverage/e2e",
+      reporter: ["text", "html", "clover", "json"],
+    },
   },
 });
