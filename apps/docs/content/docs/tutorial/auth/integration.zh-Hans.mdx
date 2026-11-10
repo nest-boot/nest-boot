@@ -46,12 +46,14 @@ Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
 `Member`、`Invitation`、`UserApiKey` 和 `MemberApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
-`AuthModule` 自动向 `DatabaseModule` 注册内置实体，`QueueApiModule` 同样注册任务历史实体。
-通过 `nb database:*` 命令复用应用模块和运行时配置，无需独立的 MikroORM 配置文件。
-普通业务模块可使用 `DatabaseModule.forFeature()` 注册实体。
+`AuthModule` 使用 `DatabaseModule.forFeatureAsync()` 自动注册启用的实体，
+工作区开关仅在 Auth 配置一次。普通业务模块可使用 `DatabaseModule.forFeature()` 注册实体。
+`QueueApiModule` 同样会自动注册任务历史实体。
 
-自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，
-不要重新声明或注册同名认证实体。角色、权限目录、Ability 构造器、邮件回调和 Provider 配置仍可自定义。
+应用的 HTTP、REPL 和 CLI 入口导入相同模块，通过 `nb database:*` 执行数据库命令，
+不再需要独立的 MikroORM 配置文件。自定义字段请使用独立业务关联实体与额外字段 Resolver。
+关联目标直接导入内置实体，不要重新声明或注册同名实体。`User.members` 已移除，
+请通过 `MemberService` 查询成员关系。工作区服务与 resolver 仅在功能开启后可用。
 
 ## 传输适配器
 

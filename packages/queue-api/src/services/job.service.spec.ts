@@ -70,9 +70,10 @@ function source(name: string): BaseQueue {
 /**
  * Creates the service with registered queues and an observable snapshot sink.
  * @param sources - Validated singleton queues, including the internal queue.
+ * @param workspaceEnabled - Whether Auth provides workspace services.
  * @returns Service and snapshot submission mock.
  */
-function createService(sources: BaseQueue[]) {
+function createService(sources: BaseQueue[], workspaceEnabled = true) {
   const add = vi
     .fn<(...args: unknown[]) => Promise<void>>()
     .mockResolvedValue(undefined);
@@ -94,7 +95,7 @@ function createService(sources: BaseQueue[]) {
     queue as unknown as JobQueue,
     manager as unknown as QueueManager,
     auth.users,
-    auth.workspaces,
+    workspaceEnabled ? auth.workspaces : null,
   );
   return {
     add,
@@ -359,3 +360,13 @@ it.each(["id", "queue", "name", "status", "progress", "finishedAt"] as const)(
     ).rejects.toThrow("Jobs can only be ordered by CREATED_AT.");
   },
 );
+
+it("denies workspace queries when Auth workspace services are disabled", async () => {
+  const { service } = createService([], false);
+  await expect(service.getWorkspaceJob("ignored")).rejects.toThrow(
+    "An authorized current workspace is required.",
+  );
+  await expect(
+    service.getWorkspaceJobConnection({ first: 10 }),
+  ).rejects.toThrow("An authorized current workspace is required.");
+});

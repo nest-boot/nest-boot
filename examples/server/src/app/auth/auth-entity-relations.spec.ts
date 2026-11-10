@@ -9,6 +9,7 @@ import {
   User,
   UserApiKey,
   Workspace,
+  workspaceEntities,
 } from '@nest-boot/auth';
 
 describe('built-in auth entity discovery', () => {
@@ -16,16 +17,15 @@ describe('built-in auth entity discovery', () => {
     const orm = new MikroORM({
       dbName: 'auth_entity_relations',
       driver: PostgreSqlDriver,
-      entities,
+      entities: [...entities, ...workspaceEntities],
     });
     try {
-      for (const entity of entities) {
+      for (const entity of [...entities, ...workspaceEntities]) {
         const metadata = orm.getMetadata<object>(entity);
         expect(metadata.abstract).not.toBe(true);
         expect(metadata.policies?.length).toBeGreaterThan(0);
       }
       for (const [entity, property, target] of [
-        [User, 'members', Member],
         [Workspace, 'members', Member],
         [Member, 'user', User],
         [Member, 'workspace', Workspace],

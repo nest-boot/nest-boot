@@ -3,7 +3,7 @@ import { ConnectionBuilder } from "@nest-boot/graphql-connection";
 
 import { Workspace } from "../entities/workspace.entity.js";
 
-const { Connection, ConnectionArgs } = new ConnectionBuilder(Workspace)
+const { Connection, ConnectionArgs, Edge } = new ConnectionBuilder(Workspace)
   .addField({
     field: "name",
     searchable: true,
@@ -19,6 +19,13 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(Workspace)
   })
   .build();
 
+// Optional connections must not pull workspace types into a base-only schema.
+ObjectType("WorkspaceEdge", {
+  isAbstract: true,
+  description:
+    "An auto-generated type which holds one Workspace and a cursor during pagination.",
+})(Edge);
+
 /**
  * Workspace pagination arguments.
  */
@@ -28,5 +35,5 @@ export class WorkspaceConnectionArgs extends ConnectionArgs {}
 /**
  * A page of visible workspaces.
  */
-@ObjectType()
+@ObjectType({ isAbstract: true })
 export class WorkspaceConnection extends Connection {}

@@ -202,9 +202,14 @@ describe("public API", () => {
       "UserApiKey",
       "MemberApiKey",
     ] as const;
-    expect(publicApi.entities).toHaveLength(names.length);
+    expect([
+      ...publicApi.entities,
+      ...publicApi.workspaceEntities,
+    ]).toHaveLength(names.length);
     for (const name of names) {
-      expect(publicApi.entities).toContain(publicApi[name]);
+      expect([...publicApi.entities, ...publicApi.workspaceEntities]).toContain(
+        publicApi[name],
+      );
       if (name !== "Verification") {
         expect(publicApi).toHaveProperty(`${name}Connection`);
       }

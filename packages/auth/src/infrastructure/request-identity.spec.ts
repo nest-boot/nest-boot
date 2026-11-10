@@ -60,7 +60,7 @@ describe("RequestIdentity", () => {
       "uses the same %s member for abilities, delegation and database scope",
       async (state) => {
         const em = manager();
-        const options = {};
+        const options = { workspace: { enabled: true } };
         const workspace = new Workspace();
         const user =
           credential === "service-account-key"
@@ -128,7 +128,7 @@ describe("RequestIdentity", () => {
       roles: ["owner"],
     });
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      const options = {};
+      const options = { workspace: { enabled: true } };
       RequestIdentity.stage({ workspace, member });
       RequestIdentity.prepare(options);
       expect(RequestContext.get(AuthAbility)?.can("read", Workspace)).toBe(
@@ -165,7 +165,11 @@ describe("RequestIdentity", () => {
           "app.member.id": first.id,
         },
       });
-      RequestIdentity.update(em, {}, { member: second });
+      RequestIdentity.update(
+        em,
+        { workspace: { enabled: true } },
+        { member: second },
+      );
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "authenticated",
         variables: {
@@ -175,7 +179,11 @@ describe("RequestIdentity", () => {
         },
       });
       second.status = "DISABLED";
-      RequestIdentity.updateMember(em, {}, second);
+      RequestIdentity.updateMember(
+        em,
+        { workspace: { enabled: true } },
+        second,
+      );
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "authenticated",
         variables: {
@@ -196,7 +204,8 @@ describe("RequestIdentity", () => {
     });
   });
   it("shares one immutable permission snapshot between abilities and delegation until publication", async () => {
-    const options: AuthModuleOptions = {};
+    const options: AuthModuleOptions = { workspace: { enabled: true } };
+
     const roles = vi.fn(() => ["admin"]);
     const user = Object.assign(new User(), { id: "user", permissions: [] });
     Object.defineProperty(user, "roles", { get: roles });
@@ -259,7 +268,7 @@ describe("RequestIdentity", () => {
     });
   });
   it("isolates child-context snapshots from the parent identity", async () => {
-    const options = {};
+    const options = { workspace: { enabled: true } };
     const user = Object.assign(new User(), { roles: ["admin"] });
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestIdentity.stage({ user });
@@ -284,7 +293,8 @@ describe("RequestIdentity", () => {
             throw new Error("Ability failed");
           }
         },
-        workspace: {},
+
+        workspace: { enabled: true },
       };
       if (failure === "database") {
         vi.mocked(em.setSessionContext).mockImplementationOnce(() => {
@@ -330,7 +340,8 @@ describe("RequestIdentity", () => {
       buildAbility: (_rules) => {
         throw new Error("Failed");
       },
-      workspace: {},
+
+      workspace: { enabled: true },
     };
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestIdentity.stage({
@@ -349,7 +360,7 @@ describe("RequestIdentity", () => {
     "clears workspace scope with the correct credential lifetime for %s",
     async (Key) => {
       const em = manager();
-      const options = {};
+      const options = { workspace: { enabled: true } };
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         const key = Object.assign(new Key(), {
           permissions: ["user:read", "workspace:delete"],
@@ -367,7 +378,7 @@ describe("RequestIdentity", () => {
           workspace: new Workspace(),
         });
         RequestIdentity.prepare(options);
-        RequestIdentity.clearWorkspace(em, {});
+        RequestIdentity.clearWorkspace(em, { workspace: { enabled: true } });
         expect(resolveRequestPermissions(options).workspace).toEqual([]);
         expect(RequestContext.get(AuthAbility)?.can("delete", Workspace)).toBe(
           false,
@@ -386,17 +397,31 @@ describe("RequestIdentity", () => {
   it("does not stage authorization outside an active request", () => {
     const em = manager();
     RequestIdentity.stage({ user: new User() });
-    RequestIdentity.prepare({});
-    RequestIdentity.refresh({});
-    RequestIdentity.update(em, {}, { user: new User() });
-    RequestIdentity.updateUser(em, {}, new User());
-    RequestIdentity.updateMember(em, {}, new Member());
+    RequestIdentity.prepare({ workspace: { enabled: true } });
+    RequestIdentity.refresh({ workspace: { enabled: true } });
+    RequestIdentity.update(
+      em,
+      { workspace: { enabled: true } },
+      { user: new User() },
+    );
+    RequestIdentity.updateUser(
+      em,
+      { workspace: { enabled: true } },
+      new User(),
+    );
+    RequestIdentity.updateMember(
+      em,
+      { workspace: { enabled: true } },
+      new Member(),
+    );
     expect(em.setSessionContext).not.toHaveBeenCalled();
-    expect(resolveRequestPermissions({})).toEqual({
-      user: [],
-      workspace: [],
-      apiKey: null,
-    });
+    expect(resolveRequestPermissions({ workspace: { enabled: true } })).toEqual(
+      {
+        user: [],
+        workspace: [],
+        apiKey: null,
+      },
+    );
   });
 });
 
@@ -411,10 +436,12 @@ describe("post-commit authorization", () => {
               throw new Error("Invalid ability configuration");
             }
           },
+
           user: {
             roles: { admin: ["user:read", "user:delete"] },
           },
           workspace: {
+            enabled: true,
             roles: { owner: ["workspace:read", "workspace:delete"] },
           },
         };
@@ -571,18 +598,37 @@ describe("unified request abilities", () => {
           permissions: ["member:read", "member:write"],
         });
         RequestIdentity.stage({ ...current, apiKey });
-        expect(buildRequestAbility({}).can("read", current.member)).toBe(true);
-        expect(buildRequestAbility({}).can("write", current.member)).toBe(
-          false,
-        );
+        expect(
+          buildRequestAbility({ workspace: { enabled: true } }).can(
+            "read",
+            current.member,
+          ),
+        ).toBe(true);
+        expect(
+          buildRequestAbility({ workspace: { enabled: true } }).can(
+            "write",
+            current.member,
+          ),
+        ).toBe(false);
         current.member.permissions = [];
         RequestIdentity.stage({ member: current.member });
-        expect(buildRequestAbility({}).can("read", current.member)).toBe(false);
+        expect(
+          buildRequestAbility({ workspace: { enabled: true } }).can(
+            "read",
+            current.member,
+          ),
+        ).toBe(false);
         current.member.status = "DISABLED";
         RequestIdentity.stage({ member: current.member });
-        expect(buildRequestAbility({}).can("read", Member)).toBe(false);
+        expect(
+          buildRequestAbility({ workspace: { enabled: true } }).can(
+            "read",
+            Member,
+          ),
+        ).toBe(false);
       });
     });
+
     it("applies shared restrictions after grants from either permission source", async () => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         const current = identity();
@@ -591,7 +637,7 @@ describe("unified request abilities", () => {
         RequestIdentity.stage(current);
         const ability = buildRequestAbility({
           user: { permissions: ["report:read"] },
-          workspace: { permissions: ["report:read"] },
+          workspace: { enabled: true, permissions: ["report:read"] },
           buildAbility: ({ can, cannot }) => {
             can({ user: "report:read" }, "read", "Report");
             cannot("read", "Report", { private: true });
@@ -608,11 +654,12 @@ describe("unified request abilities", () => {
         expect(ability.can("update", current.user)).toBe(false);
       });
     });
+
     it("replaces workspace conditions instead of accumulating grants on a switch", async () => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         const first = identity();
         RequestIdentity.stage(first);
-        RequestIdentity.prepare({});
+        RequestIdentity.prepare({ workspace: { enabled: true } });
         const second = identity();
         second.member.user = ref(User, first.user);
         const em = {
@@ -621,7 +668,7 @@ describe("unified request abilities", () => {
         };
         RequestIdentity.update(
           em as never,
-          {},
+          { workspace: { enabled: true } },
           { workspace: second.workspace, member: second.member },
         );
         const ability = RequestContext.get(AuthAbility);
@@ -639,13 +686,20 @@ describe("unified request abilities", () => {
         });
       });
     });
+
     it("builds user and workspace rules once with the complete identity context", async () => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         const current = identity();
         const configure = vi.fn();
         RequestIdentity.stage(current);
-        RequestIdentity.prepare({ buildAbility: configure });
-        RequestIdentity.prepare({ buildAbility: configure });
+        RequestIdentity.prepare({
+          workspace: { enabled: true },
+          buildAbility: configure,
+        });
+        RequestIdentity.prepare({
+          workspace: { enabled: true },
+          buildAbility: configure,
+        });
         const ability = RequestContext.get(AuthAbility);
         assert(ability);
         expect(configure).toHaveBeenCalledOnce();
@@ -661,11 +715,12 @@ describe("unified request abilities", () => {
         expect(ability.can("write", current.member)).toBe(true);
       });
     });
+
     it("keeps workspace conditions on entities and serialized client subjects", async () => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         const current = identity();
         RequestIdentity.stage(current);
-        const ability = buildRequestAbility({});
+        const ability = buildRequestAbility({ workspace: { enabled: true } });
         const restored = createMongoAbility(serializeAbilityRules(ability));
         for (const Entity of [Member, Invitation, MemberApiKey]) {
           const own = Object.assign(new Entity(), {
@@ -704,6 +759,7 @@ describe("unified request abilities", () => {
         expect(ability.can("update", new Workspace())).toBe(false);
       });
     });
+
     it.each(["missing", "disabled", "other-workspace", "other-user"])(
       "omits workspace grants for a %s membership",
       async (state) => {
@@ -723,7 +779,10 @@ describe("unified request abilities", () => {
             member: state === "missing" ? null : current.member,
           });
           const configure = vi.fn();
-          const ability = buildRequestAbility({ buildAbility: configure });
+          const ability = buildRequestAbility({
+            workspace: { enabled: true },
+            buildAbility: configure,
+          });
           expect(ability.can("read", User)).toBe(true);
           expect(ability.can("write", Member)).toBe(false);
           expect(configure.mock.calls[0][1]).toMatchObject({
@@ -734,6 +793,7 @@ describe("unified request abilities", () => {
         });
       },
     );
+
     it.each(["user", "workspace"] as const)(
       "keeps same-name business permission bindings in their %s source",
       async (scope) => {
@@ -747,7 +807,7 @@ describe("unified request abilities", () => {
           RequestIdentity.stage(current);
           const ability = buildRequestAbility({
             user: { permissions: ["report:read"] },
-            workspace: { permissions: ["report:read"] },
+            workspace: { enabled: true, permissions: ["report:read"] },
             buildAbility: ({ can }) => {
               can({ user: "report:read" }, "read", "PersonalReport");
               can({ workspace: "report:read" }, "read", "WorkspaceReport");
@@ -760,6 +820,7 @@ describe("unified request abilities", () => {
         });
       },
     );
+
     it.each([UserApiKey, MemberApiKey])(
       "bounds combined rules by %s credentials",
       async (Entity) => {
@@ -773,7 +834,10 @@ describe("unified request abilities", () => {
           });
           RequestIdentity.stage({ ...current, apiKey });
           const configure = vi.fn();
-          const ability = buildRequestAbility({ buildAbility: configure });
+          const ability = buildRequestAbility({
+            workspace: { enabled: true },
+            buildAbility: configure,
+          });
           expect(ability.can("read", User)).toBe(false);
           expect(ability.can("read", current.member)).toBe(true);
           expect(ability.can("write", current.member)).toBe(false);
@@ -787,12 +851,13 @@ describe("unified request abilities", () => {
         });
       },
     );
+
     it("rebuilds after workspace exit, retaining user grants but removing workspace business rules", async () => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         const current = identity();
         current.member.permissions = ["report:read"];
         const options: AuthModuleOptions = {
-          workspace: { permissions: ["report:read"] },
+          workspace: { enabled: true, permissions: ["report:read"] },
           buildAbility: ({ can }, { workspace }) => {
             if (workspace) {
               can({ workspace: "report:read" }, "read", "Report", {

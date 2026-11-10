@@ -26,6 +26,7 @@ import { Module } from '@nestjs/common';
         },
       },
       workspace: {
+        enabled: true,
         sendInvitationEmail: async ({ email, id, inviter, workspace }) => {
           const url = new URL(
             '/invite',

@@ -6,15 +6,21 @@ description: "Upgrade Nest Boot applications to NestJS 12 and native ESM."
 Version 8 is the NestJS 12 release line for all `@nest-boot/*` packages. It is
 published as native ESM and requires Node.js 24.21.0 or newer.
 
-## Database commands and automatic entity registration
+## Workspace opt-in and database commands
 
-Use `nb database:migration:*`, `nb database:schema:*`, and `nb database:seeder:*`
-through a CLI entry calling `CommandFactory.run(AppModule)`. Move custom MikroORM
-configuration into `DatabaseModule.forRoot/forRootAsync`, then remove the standalone
-configuration file, its package.json settings, and the old CLI dependency.
-Auth and QueueApi automatically register their own entities. `withAuthDatabaseConfig`
-has been removed; delete its imports and calls. Direct MikroORM consumers can still
-register the exported entity arrays explicitly.
+Workspaces are disabled by default. Existing workspace applications must set
+`workspace: { enabled: true }` in AuthModule, which automatically registers the enabled
+entities with DatabaseModule. `withAuthDatabaseConfig` has been removed; delete its calls
+and imports.
+
+Use `nb database:migration:*`, `nb database:schema:*`, and `nb database:seeder:*` through
+the CLI entry calling `CommandFactory.run(AppModule)`. Move custom options from
+`mikro-orm.config.ts` into `DatabaseModule.forRoot/forRootAsync`, then remove that file
+and its package.json configuration. Auth and QueueApi register their own entities;
+business modules use `DatabaseModule.forFeature()`. Direct MikroORM consumers can still
+explicitly register `entities` and `workspaceEntities`.
+`User.members` is removed to prevent discovery of disabled entities; use MemberService
+for membership queries.
 
 ## Upgrade dependencies
 
@@ -46,7 +52,7 @@ Rename database configuration imports and calls from `loadConfigFromEnv()` to
 
 Import `DatabaseModule` and `DatabaseModuleOptions` instead of
 `MikroOrmModule` and `MikroOrmModuleOptions`. The database integration continues
-using MikroORM and its `@mikro-orm/*` dependencies. Database commands use
+using MikroORM and its `@mikro-orm/*` dependencies. Database commands now use
 `nb database:*` with runtime module configuration.
 
 Custom request-context middleware must depend on `"database"` instead of

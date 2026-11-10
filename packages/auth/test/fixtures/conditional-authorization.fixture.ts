@@ -83,12 +83,16 @@ function fixture() {
     workspace,
     userService: new UserService(
       result.em,
-      {},
+      { workspace: { enabled: true } },
       { hash: vi.fn().mockResolvedValue("hash") } as never,
       {} as never,
     ),
     sessionService: new SessionService({}, result.em),
-    userApiKeyService: new UserApiKeyService(result.em, {}),
-    memberApiKeyService: new MemberApiKeyService(result.em, {}),
+    userApiKeyService: new UserApiKeyService(result.em, {
+      workspace: { enabled: true },
+    }),
+    memberApiKeyService: new MemberApiKeyService(result.em, {
+      workspace: { enabled: true },
+    }),
   };
 }

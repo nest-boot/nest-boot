@@ -3,6 +3,11 @@ title: "Workspaces"
 description: "Resolve workspace context and manage workspace membership."
 ---
 
+Workspaces are disabled by default. Enable them with
+`AuthModule.forRoot({ workspace: { enabled: true } })`.
+AuthModule registers the corresponding entities automatically; `nb database:*` commands
+use the same configuration.
+
 ## Selecting a Workspace
 
 Clients select a workspace with the `x-workspace-id` header or `workspace_id`

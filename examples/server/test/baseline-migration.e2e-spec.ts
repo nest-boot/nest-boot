@@ -1,7 +1,7 @@
 import { Migrator } from '@mikro-orm/migrations';
 import { MikroORM } from '@mikro-orm/postgresql';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
-import { entities as authEntities } from '@nest-boot/auth';
+import { entities as authEntities, workspaceEntities } from '@nest-boot/auth';
 import { JobEntity } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
@@ -11,7 +11,7 @@ it('builds the current example schema from two migrations and can roll back and 
   const fixture = await createDatabaseFixture();
   const orm = await MikroORM.init({
     clientUrl: fixture.connectionString,
-    entities: [...authEntities, JobEntity],
+    entities: [...authEntities, ...workspaceEntities, JobEntity],
     metadataProvider: TsMorphMetadataProvider,
     metadataCache: { enabled: false },
     extensions: [Migrator],

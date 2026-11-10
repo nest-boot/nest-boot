@@ -10,11 +10,11 @@ export function createAuthServices(em: EntityManager = {} as EntityManager) {
   return {
     users: new UserService(
       em,
-      {},
+      { workspace: { enabled: true } },
       {} as ConstructorParameters<typeof UserService>[2],
       { deleteUser: () => Promise.resolve(null) },
     ),
-    workspaces: new WorkspaceService(em, {}),
+    workspaces: new WorkspaceService(em, { workspace: { enabled: true } }),
   };
 }
 

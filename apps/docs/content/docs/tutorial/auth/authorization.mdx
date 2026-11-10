@@ -55,6 +55,7 @@ It is optional and is not registered in the demo application or its database.
 ```typescript
 AuthModule.forRoot({
   workspace: {
+    enabled: true,
     permissions: ["report:read", "report:archive"],
     roles: {
       owner: ["report:read", "report:archive"],
@@ -203,6 +204,7 @@ const workspacePermissions = [
 
 AuthModule.forRoot({
   workspace: {
+    enabled: true,
     permissions: workspacePermissions,
     roles: workspaceRoles,
   },

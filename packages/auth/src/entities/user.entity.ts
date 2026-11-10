@@ -1,18 +1,16 @@
-import { BaseEntity, Collection, type Opt, t } from "@mikro-orm/core";
+import { BaseEntity, type Opt, t } from "@mikro-orm/core";
 import {
   Entity,
   Index,
-  OneToMany,
   PrimaryKey,
   Property,
   Unique,
 } from "@mikro-orm/decorators/legacy";
-import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
+import { Field, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
 import { UserPermission } from "../enums/user-permission.enum.js";
 import { UserRole } from "../enums/user-role.enum.js";
-import { Member } from "./member.entity.js";
 
 /** Built-in User entity with authentication persistence and access policies. */
 @ObjectType()
@@ -120,9 +118,4 @@ export class User extends BaseEntity {
   })
   @Field(() => Date)
   updatedAt: Opt<Date> = new Date();
-
-  /** Memberships owned by this user; reads retain the caller's RLS scope. */
-  @OneToMany(() => Member, "user")
-  @HideField()
-  members: Collection<Member> = new Collection<Member>(this);
 }

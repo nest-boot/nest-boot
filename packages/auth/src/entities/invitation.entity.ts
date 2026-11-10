@@ -27,7 +27,7 @@ export type AuthInvitationStatus =
   | "rejected";
 
 /** Built-in Invitation entity with authentication persistence and access policies. */
-@ObjectType()
+@ObjectType({ isAbstract: true })
 @Entity({
   policies: [
     workspaceScopePolicy(),

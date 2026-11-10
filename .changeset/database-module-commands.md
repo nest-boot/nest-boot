@@ -1,6 +1,6 @@
 ---
 "@nest-boot/database": minor
-"@nest-boot/auth": major
+"@nest-boot/auth": minor
 "@nest-boot/queue-api": patch
 ---
 

@@ -3,6 +3,25 @@ title: "Configuration"
 description: "Configure AuthModule, environment variables, and MikroORM entities."
 ---
 
+## Optional workspaces
+
+Workspace features are **disabled by default**. Set `workspace: { enabled: true }`
+in `forRoot()` or in the options returned by `forRootAsync()` to enable workspaces,
+members, invitations, service accounts, and member API keys. Omitting `workspace`,
+passing `{}`, or setting `enabled: false` keeps them disabled.
+
+This setting is evaluated at startup. Restart the process when changing it.
+
+```typescript
+AuthModule.forRoot({ workspace: { enabled: true } });
+```
+
+Disabled applications retain users, sessions, user API keys, and user authorization.
+They expose no workspace APIs or `User.workspaces` / `User.invitations` fields,
+ignore workspace headers and cookies, and do not grant `workspace:create`.
+`apiKey.member` requires this feature. Inject workspace services only in applications
+that enable it. Entities are registered automatically from this feature configuration.
+
 ## Module Options
 
 Register `AuthModule` with `forRoot()` or `forRootAsync()`. Every public option is
@@ -30,7 +49,7 @@ Important Nest Boot options include:
 - **`account`** — configures OAuth account linking, storage, and state validation;
 - **`providers`** — configures built-in social, custom OAuth 2.0, and OpenID Connect providers.
 
-`user.permissions` defaults to `user:*`, `session:*`, `user-api-key:*`, and `workspace:create`.
+When workspaces are enabled, `user.permissions` defaults to `user:*`, `session:*`, `user-api-key:*`, and `workspace:create`.
 `user.roles` defaults to `admin` and `user`. The `admin` role grants the full
 default catalog, while `user` grants `workspace:create`. Configured permissions extend the
 catalog; configured roles add new roles or append grants to existing roles.
@@ -191,12 +210,30 @@ Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
 metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 
-`AuthModule` automatically registers its built-in entities through
-`DatabaseModule.forFeatureAsync()`. The CLI entry calls `CommandFactory.run(AppModule)`
-to load the same modules for `nb database:migration:*`, `nb database:schema:*`, and
-`nb database:seeder:*` commands. Configure connections and migrations in
-`DatabaseModule.forRoot/forRootAsync` without a separate MikroORM configuration file.
-Direct MikroORM consumers can still register the exported `entities` array explicitly.
+`AuthModule` automatically contributes enabled entities to `DatabaseModule`.
+Configure the workspace switch once; no separate MikroORM config file or auth
+configuration helper is needed.
+
+```typescript
+@Module({
+  imports: [
+    CommandModule,
+    DatabaseModule.forRoot({ driver: PostgreSqlDriver }),
+    AuthModule.forRoot({ workspace: { enabled: true } }),
+  ],
+})
+export class AppModule {}
+```
+
+The CLI entry calls `CommandFactory.run(AppModule)` to load the same modules:
+
+```bash
+pnpm exec nb database:migration:create --name add-auth
+pnpm exec nb database:migration:up
+```
+
+For direct MikroORM consumers, `entities` contains base models and `workspaceEntities`
+contains the optional workspace models.
 
 Use separate related business entities and additional field resolvers to extend
 these models. Import the built-in classes directly for relation targets; do not

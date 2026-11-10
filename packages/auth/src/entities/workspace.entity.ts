@@ -13,7 +13,7 @@ import { workspaceScopePolicy } from "../policies/workspace-scope.policy.js";
 import { Member } from "./member.entity.js";
 
 /** Built-in Workspace entity with authentication persistence and access policies. */
-@ObjectType()
+@ObjectType({ isAbstract: true })
 @Entity({
   policies: [
     {

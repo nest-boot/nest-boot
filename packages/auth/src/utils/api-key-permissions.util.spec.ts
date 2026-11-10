@@ -9,6 +9,7 @@ describe("API key catalog snapshots", () => {
     (scope) => {
       const permission = scope === "user" ? "user:read" : "workspace:update";
       const options = {
+        workspace: { enabled: true },
         apiKey: {
           [scope]: {
             allowedPermissions: [permission],
@@ -35,6 +36,7 @@ describe("API key catalog snapshots", () => {
 
   it("reuses immutable catalogs and isolates scopes and module configurations", () => {
     const options = {
+      workspace: { enabled: true },
       apiKey: {
         user: { allowedPermissions: [], defaultPermissions: [] },
         member: {
@@ -59,8 +61,9 @@ describe("API key catalog snapshots", () => {
     }
     options.apiKey.member.defaultPermissions.push("workspace:delete");
     expect(workspace.defaults).toEqual(["workspace:update"]);
-    expect(resolveApiKeyPermissionCatalog({}, "user").allowed).toContain(
-      "user:read",
-    );
+    expect(
+      resolveApiKeyPermissionCatalog({ workspace: { enabled: true } }, "user")
+        .allowed,
+    ).toContain("user:read");
   });
 });

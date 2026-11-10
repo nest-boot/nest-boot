@@ -39,11 +39,15 @@ export class AuthAbilityFactory {
   ): AuthAbility {
     const snapshot = Object.freeze({
       ...context,
+      workspace: options.workspace?.enabled === true ? context.workspace : null,
+      member: options.workspace?.enabled === true ? context.member : null,
       userPermissions: Object.freeze(
         context.user ? [...context.userPermissions] : [],
       ),
       workspacePermissions: Object.freeze(
-        context.workspace ? [...context.workspacePermissions] : [],
+        options.workspace?.enabled === true && context.workspace
+          ? [...context.workspacePermissions]
+          : [],
       ),
     });
     const builder = new AbilityBuilder(AuthAbility);
@@ -55,7 +59,11 @@ export class AuthAbilityFactory {
       workspace: Workspace,
     };
     for (const permission of DEFAULT_USER_PERMISSIONS) {
-      if (!snapshot.userPermissions.includes(permission)) {
+      if (
+        (permission === "workspace:create" &&
+          options.workspace?.enabled !== true) ||
+        !snapshot.userPermissions.includes(permission)
+      ) {
         continue;
       }
       const [resource, action] = permission.split(":");

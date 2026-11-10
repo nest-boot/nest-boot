@@ -23,37 +23,43 @@ export const authServiceProviders: Provider[] = [
     provide: WorkspaceService,
     inject: [EntityManager, MODULE_OPTIONS_TOKEN],
     useFactory: (em: EntityManager, options: AuthModuleOptions) =>
-      createContextualAuthService(
-        em,
-        (manager) => new WorkspaceService(manager, options),
-        {
-          createWorkspace: "authentication",
-        },
-      ),
+      options.workspace?.enabled !== true
+        ? null
+        : createContextualAuthService(
+            em,
+            (manager) => new WorkspaceService(manager, options),
+            {
+              createWorkspace: "authentication",
+            },
+          ),
   },
   {
     provide: MemberService,
     inject: [EntityManager, MODULE_OPTIONS_TOKEN],
     useFactory: (em: EntityManager, options: AuthModuleOptions) =>
-      createContextualAuthService(
-        em,
-        (manager) => new MemberService(manager, options),
-        { getUserForMembership: "authentication" },
-      ),
+      options.workspace?.enabled !== true
+        ? null
+        : createContextualAuthService(
+            em,
+            (manager) => new MemberService(manager, options),
+            { getUserForMembership: "authentication" },
+          ),
   },
   {
     provide: InvitationService,
     inject: [EntityManager, MODULE_OPTIONS_TOKEN],
     useFactory: (em: EntityManager, options: AuthModuleOptions) =>
-      createContextualAuthService(
-        em,
-        (manager) => new InvitationService(manager, options),
-        {
-          getUserIdForInvitation: "invitation-identity",
-          acceptInvitation: "authentication",
-          rejectInvitation: "authentication",
-        },
-      ),
+      options.workspace?.enabled !== true
+        ? null
+        : createContextualAuthService(
+            em,
+            (manager) => new InvitationService(manager, options),
+            {
+              getUserIdForInvitation: "invitation-identity",
+              acceptInvitation: "authentication",
+              rejectInvitation: "authentication",
+            },
+          ),
   },
   {
     provide: UserService,
@@ -83,11 +89,11 @@ export const authServiceProviders: Provider[] = [
   },
   {
     provide: ApiKeyAuthenticationService,
-    inject: [EntityManager],
-    useFactory: (em: EntityManager) =>
+    inject: [EntityManager, MODULE_OPTIONS_TOKEN],
+    useFactory: (em: EntityManager, options: AuthModuleOptions) =>
       createContextualAuthService(
         em,
-        (manager) => new ApiKeyAuthenticationService(manager),
+        (manager) => new ApiKeyAuthenticationService(manager, options),
         {
           validate: "authentication",
         },

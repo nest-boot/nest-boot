@@ -7,7 +7,7 @@ import { Global, Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
 import { AuthModule } from "../src/auth.module.js";
-import { entities, User } from "../src/entities/index.js";
+import { entities, User, workspaceEntities } from "../src/entities/index.js";
 
 @Global()
 @Module({
@@ -23,6 +23,7 @@ it.each([false, true])(
   "registers every existing auth entity without a CLI config (async: %s)",
   async (asyncOptions) => {
     const options = {
+      workspace: { enabled: true },
       secret:
         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_",
       baseURL: "http://localhost:3000",
@@ -44,7 +45,7 @@ it.each([false, true])(
     }).compile();
     try {
       const orm = app.get<PgliteORM>(MikroORM);
-      for (const entity of entities) {
+      for (const entity of [...entities, ...workspaceEntities]) {
         expect(orm.getMetadata().has<object>(entity)).toBe(true);
       }
       expect(factory).toHaveBeenCalledTimes(asyncOptions ? 1 : 0);

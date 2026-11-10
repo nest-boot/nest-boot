@@ -145,6 +145,7 @@ User Key 中的工作区权限会在每次请求时再次与所选工作区的�
 ```typescript
 AuthModule.forRoot({
   // ...other auth options
+  workspace: { enabled: true },
   apiKey: {
     user: {
       defaultPrefix: "user_",

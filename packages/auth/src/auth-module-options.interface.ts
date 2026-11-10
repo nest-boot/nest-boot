@@ -63,7 +63,7 @@ export interface AuthModuleOptions<
   /** Email verification delivery and lifecycle options. */
   emailVerification?: AuthModuleEmailVerificationOptions;
 
-  /** Workspace lifecycle and invitation-delivery options. */
+  /** Optional workspace features. Set `enabled: true` to enable them. */
   workspace?: AuthModuleWorkspaceOptions<
     WorkspacePermission | (typeof DEFAULT_WORKSPACE_PERMISSIONS)[number],
     WorkspaceRole | keyof typeof DEFAULT_WORKSPACE_ROLES

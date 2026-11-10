@@ -19,7 +19,8 @@ export function buildRequestAbility(options: AuthModuleOptions): AuthAbility {
   const apiKey = getCurrentApiKey();
   const memberKey = apiKey instanceof MemberApiKey;
   const user = memberKey ? null : (RequestContext.get(User) ?? null);
-  const member = resolveRequestMember();
+  const member =
+    options.workspace?.enabled === true ? resolveRequestMember() : null;
   const workspace = member ? (RequestContext.get(Workspace) ?? null) : null;
   const permissions = resolveRequestPermissions(options);
   return AuthAbilityFactory.createAbility(

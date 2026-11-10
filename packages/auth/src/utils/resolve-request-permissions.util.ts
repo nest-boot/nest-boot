@@ -44,7 +44,8 @@ export function resolveRequestPermissions(
     return cached.permissions;
   }
   const user = RequestContext.get(User);
-  const member = resolveRequestMember();
+  const member =
+    options.workspace?.enabled === true ? resolveRequestMember() : null;
   const apiKey = getCurrentApiKey();
   const keyPermissions = Array.isArray(apiKey?.permissions)
     ? apiKey.permissions

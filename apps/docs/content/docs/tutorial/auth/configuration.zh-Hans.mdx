@@ -3,6 +3,23 @@ title: "配置"
 description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 ---
 
+## 可选工作区
+
+工作区功能**默认关闭**。在 `forRoot()` 或 `forRootAsync()` 返回的配置中设置
+`workspace: { enabled: true }`，开启工作区、成员、邀请、服务账号和成员 API Key。
+省略 `workspace`、传 `{}` 或设置 `enabled: false` 均保持关闭。
+
+此配置在应用启动时生效，修改后请重启进程。
+
+```typescript
+AuthModule.forRoot({ workspace: { enabled: true } });
+```
+
+关闭时保留用户、会话、个人 API Key 和用户授权；不暴露工作区 API 或
+`User.workspaces` / `User.invitations` 字段，不解析工作区请求头和 Cookie，也不授予
+`workspace:create`。配置 `apiKey.member` 必须先开启工作区。仅在开启功能的应用中注入
+工作区相关服务。实体会按此开关自动注册，见下文。
+
 ## 模块选项
 
 通过 `forRoot()` 或 `forRootAsync()` 注册 `AuthModule`。所有公开选项都由 Nest Boot
@@ -29,7 +46,7 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 - **`account`** — 配置 OAuth 账号关联、存储与 state 校验；
 - **`providers`** — 配置内置社交、自定义 OAuth 2.0 与 OpenID Connect Provider。
 
-`user.permissions` 默认包含 `user:*`、`session:*`、`user-api-key:*` 与 `workspace:create`。
+开启工作区时，`user.permissions` 默认包含 `user:*`、`session:*`、`user-api-key:*` 与 `workspace:create`。
 `user.roles` 默认包含 `admin` 与 `user` 两个角色。`admin` 拥有完整默认权限目录，
 `user` 仅授予 `workspace:create`，不包含管理其他用户的权限。配置的权限追加到内置目录，配置的角色新增角色或向同名角色追加授权。
 `user.defaultRole` 默认为 `user`；`user.adminRoles` 默认为 `['admin']`，用于识别
@@ -169,11 +186,28 @@ Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
 `Member`、`Invitation`、`UserApiKey` 和 `MemberApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
-`AuthModule` 会通过 `DatabaseModule.forFeatureAsync()` 自动注册内置实体，
-无需在运行时与 CLI 配置中重复列举实体。CLI 入口通过 `CommandFactory.run(AppModule)`
-加载相同模块，然后运行 `nb database:migration:*`、`nb database:schema:*` 或
-`nb database:seeder:*`。连接与迁移选项统一配置在 `DatabaseModule.forRoot/forRootAsync`，
-无需独立的 MikroORM 配置文件。直接使用 MikroORM 时仍可显式注册导出的 `entities` 数组。
+`AuthModule` 会按配置向 `DatabaseModule` 自动注册实体。无需重复传入工作区开关，
+也不再需要独立的 MikroORM 配置文件或认证配置 helper。
+
+```typescript
+@Module({
+  imports: [
+    CommandModule,
+    DatabaseModule.forRoot({ driver: PostgreSqlDriver }),
+    AuthModule.forRoot({ workspace: { enabled: true } }),
+  ],
+})
+export class AppModule {}
+```
+
+CLI 入口通过 `CommandFactory.run(AppModule)` 加载相同模块，然后执行：
+
+```bash
+pnpm exec nb database:migration:create --name add-auth
+pnpm exec nb database:migration:up
+```
+
+直接使用 MikroORM 时，导出的 `entities` 包含基础实体，`workspaceEntities` 包含可选工作区实体。
 
 自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，
 不要重新声明或注册同名认证实体。角色、权限目录、Ability 构造器、邮件回调和 Provider 配置仍可自定义。

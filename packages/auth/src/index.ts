@@ -176,6 +176,7 @@ export * from "./resolvers/member-api-key.resolver.js";
 export * from "./resolvers/session.resolver.js";
 export * from "./resolvers/user.resolver.js";
 export * from "./resolvers/user-api-key.resolver.js";
+export * from "./resolvers/user-workspace.resolver.js";
 export * from "./resolvers/workspace.resolver.js";
 export * from "./services/account.service.js";
 export * from "./services/auth.service.js";

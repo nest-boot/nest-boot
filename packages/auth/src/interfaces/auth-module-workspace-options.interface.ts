@@ -7,6 +7,8 @@ export interface AuthModuleWorkspaceOptions<
   Permission extends string = string,
   Role extends string = string,
 > {
+  /** Enables workspace, membership, invitation, and member API-key features. Defaults to false. */
+  enabled?: boolean;
   /** Role assigned to members and invitations when none is supplied. Defaults to `member`. */
   defaultRole?: NoInfer<Role>;
   /** Role assigned to a workspace creator. Defaults to `owner`. */

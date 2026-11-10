@@ -7,7 +7,10 @@ import { genericOAuth } from "better-auth/plugins";
 
 import { mikroOrmAdapter } from "../adapters/mikro-orm-adapter.js";
 import { type AuthModuleOptions } from "../auth-module-options.interface.js";
-import { authEntityMap } from "../entities/auth-entity-map.js";
+import {
+  authEntityMap,
+  workspaceEntityMap,
+} from "../entities/auth-entity-map.js";
 import { User } from "../entities/user.entity.js";
 import type { UserDeletionService } from "../services/user-deletion.service.js";
 import {
@@ -119,7 +122,10 @@ export function resolveBetterAuthOptions(
     database: mikroOrmAdapter({
       defaultUserRole: options.user?.defaultRole ?? DEFAULT_USER_ROLE,
       orm,
-      entities: authEntityMap,
+      entities:
+        options.workspace?.enabled === true
+          ? { ...authEntityMap, ...workspaceEntityMap }
+          : authEntityMap,
     }),
   };
 
@@ -168,7 +174,16 @@ function validateAuthOptions(options: AuthModuleOptions): void {
     resolveAuthCatalog(options, "workspace");
 
   assertAuthRolePermissions(userRoles, userPermissions, "user");
-  assertAuthRolePermissions(workspaceRoles, workspacePermissions, "workspace");
+  if (options.workspace?.enabled === true) {
+    assertAuthRolePermissions(
+      workspaceRoles,
+      workspacePermissions,
+      "workspace",
+    );
+  }
+  if (options.workspace?.enabled !== true && options.apiKey?.member) {
+    throw new Error("apiKey.member requires workspace.enabled: true");
+  }
   if (
     options.apiKey &&
     ("defaultPermissions" in options.apiKey ||
@@ -212,6 +227,9 @@ function validateAuthOptions(options: AuthModuleOptions): void {
     options.user?.adminRoles ?? DEFAULT_USER_ADMIN_ROLES,
     "user.adminRoles",
   );
+  if (options.workspace?.enabled !== true) {
+    return;
+  }
   assertAuthRolesExist(
     workspaceRoles,
     [options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE],

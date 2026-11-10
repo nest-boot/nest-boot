@@ -121,6 +121,7 @@ export function createService(
   em.transactional.mockImplementation(async (callback) => await callback(em));
   const options = {
     ...configuration,
+    workspace: { ...configuration.workspace, enabled: true },
   } as unknown as AuthModuleOptions;
   const authorization = {
     assertCurrentUser: vi

@@ -2,31 +2,31 @@ import { EntityManager } from "@mikro-orm/core";
 import { REQUEST, RequestContext } from "@nest-boot/request-context";
 import { Test } from "@nestjs/testing";
 import { NextFunction, Request } from "express";
-import type { Mock } from "vitest";
+import { type Mock } from "vitest";
 
 import { mockRlsContext } from "../test/mock-rls-context.js";
 import { AuthAbility } from "./auth.ability.js";
 import { API_KEY } from "./auth.constants.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
-import type { AuthModuleOptions } from "./auth-module-options.interface.js";
+import { type AuthModuleOptions } from "./auth-module-options.interface.js";
 import {
   Account as AccountEntity,
   Account as BaseAccount,
 } from "./entities/account.entity.js";
-import { authEntityMap } from "./entities/auth-entity-map.js";
 import {
   Invitation as BaseInvitation,
   Invitation as InvitationEntity,
 } from "./entities/invitation.entity.js";
 import {
   Member as BaseMember,
+  Member,
   Member as MemberEntity,
 } from "./entities/member.entity.js";
-import { MemberApiKey } from "./entities/member-api-key.entity.js";
 import {
   MemberApiKey as ApiKeyEntity,
   MemberApiKey as BaseApiKey,
+  MemberApiKey,
 } from "./entities/member-api-key.entity.js";
 import {
   Session as BaseSession,
@@ -34,6 +34,7 @@ import {
 } from "./entities/session.entity.js";
 import {
   User as BaseUser,
+  User,
   User as UserEntity,
 } from "./entities/user.entity.js";
 import { UserApiKey } from "./entities/user-api-key.entity.js";
@@ -43,19 +44,30 @@ import {
 } from "./entities/verification.entity.js";
 import {
   Workspace as BaseWorkspace,
+  Workspace,
   Workspace as WorkspaceEntity,
 } from "./entities/workspace.entity.js";
 import { ApiKeyAuthenticationService } from "./infrastructure/api-key-authentication.service.js";
 import { SessionService } from "./services/session.service.js";
+
 const TestApiKey = BaseApiKey;
+
 type TestApiKey = BaseApiKey;
+
 const TestUser = BaseUser;
+
 type TestUser = BaseUser;
+
 const TestSession = BaseSession;
+
 type TestSession = BaseSession;
+
 const TestWorkspace = BaseWorkspace;
+
 type TestWorkspace = BaseWorkspace;
+
 const TestMember = BaseMember;
+
 type TestMember = BaseMember;
 
 const testEntities = {
@@ -83,8 +95,8 @@ async function createMiddleware(
   getCurrentAuthenticatedSession: Mock,
   findOne: Mock,
   validate = vi.fn(),
-  entities: typeof authEntityMap = testEntities,
-  options: Partial<AuthModuleOptions> = {},
+  entities: typeof testEntities = testEntities,
+  options: Partial<AuthModuleOptions> = { workspace: { enabled: true } },
 ) {
   const sessionService = {
     getCurrentAuthenticatedSession,
@@ -104,6 +116,7 @@ async function createMiddleware(
         provide: MODULE_OPTIONS_TOKEN,
         useValue: {
           ...options,
+          workspace: { ...options.workspace, enabled: true },
           entities,
         },
       },
@@ -121,7 +134,6 @@ async function createMiddleware(
       },
     ],
   }).compile();
-
   return {
     em,
     middleware: moduleRef.get(AuthMiddleware),
@@ -212,7 +224,6 @@ describe("AuthMiddleware", () => {
       );
     },
   );
-
   it("does not replace API-key or anonymous identity while revalidating a session", async () => {
     const { middleware, em } = await createMiddleware(vi.fn(), vi.fn());
     await middleware.revalidateCurrentSession();
@@ -225,13 +236,12 @@ describe("AuthMiddleware", () => {
     expect(em.findOne).not.toHaveBeenCalled();
     expect(em.setSessionContext).not.toHaveBeenCalled();
   });
-
   it("revokes the replacement identity when its ability cannot be built", async () => {
     const user = Object.assign(new TestUser(), { id: "replacement" });
     const session = Object.assign(new TestSession(), {
       user,
       token: "replacement",
-      expiresAt: new Date(Date.now() + 60_000),
+      expiresAt: new Date(Date.now() + 60000),
     });
     const { middleware, em } = await createMiddleware(
       vi.fn(),
@@ -239,10 +249,10 @@ describe("AuthMiddleware", () => {
       vi.fn(),
       testEntities,
       {
+        workspace: { enabled: true },
         buildAbility: (_rules) => {
           throw new Error("Invalid rules");
         },
-
         user: {},
       },
     );
@@ -266,7 +276,6 @@ describe("AuthMiddleware", () => {
       });
     });
   });
-
   it("hydrates registration results without authenticating the request or widening its database scope", async () => {
     const { middleware, em } = await createMiddleware(vi.fn(), vi.fn());
     const session = mockRlsContext(em);
@@ -292,7 +301,6 @@ describe("AuthMiddleware", () => {
       expect(em.findOne).not.toHaveBeenCalled();
     });
   });
-
   it("clears identity, abilities and database scope through the sign-out middleware boundary", async () => {
     const { middleware, em } = await createMiddleware(vi.fn(), vi.fn());
     mockRlsContext(em);
@@ -309,9 +317,7 @@ describe("AuthMiddleware", () => {
           { action: "delete", subject: WorkspaceEntity },
         ]),
       );
-
       middleware.clearAuthentication();
-
       for (const token of [
         UserEntity,
         SessionEntity,
@@ -337,7 +343,6 @@ describe("AuthMiddleware", () => {
       });
     });
   });
-
   it.each([false, true])(
     "preserves case in RLS grants and API-key intersections (key: %s)",
     async (useKey) => {
@@ -371,7 +376,10 @@ describe("AuthMiddleware", () => {
         testEntities,
         {
           user: { roles: { editor: ["User:READ"] } },
-          workspace: { roles: { manager: ["Workspace:UPDATE"] } },
+          workspace: {
+            enabled: true,
+            roles: { manager: ["Workspace:UPDATE"] },
+          },
         },
       );
       const request = {
@@ -395,7 +403,6 @@ describe("AuthMiddleware", () => {
       });
     },
   );
-
   it.each([
     ["anonymous", false],
     ["session", true],
@@ -453,6 +460,7 @@ describe("AuthMiddleware", () => {
         {
           user: { roles: { editor: ["user:read", "user:update"] } },
           workspace: {
+            enabled: true,
             roles: { manager: ["member:read", "workspace:update"] },
           },
         },
@@ -485,7 +493,6 @@ describe("AuthMiddleware", () => {
       });
     },
   );
-
   it("refreshes the current profile without dropping its API-key permission ceiling", async () => {
     const user = Object.assign(new TestUser(), {
       id: "user",
@@ -499,7 +506,7 @@ describe("AuthMiddleware", () => {
       findOne,
       vi.fn(),
       testEntities,
-      {},
+      { workspace: { enabled: true } },
     );
     mockRlsContext(em).variables = {
       "app.user.id": user.id,
@@ -541,7 +548,6 @@ describe("AuthMiddleware", () => {
       });
     });
   });
-
   it("rejects identity changes inside an existing transaction", async () => {
     const { middleware, em } = await createMiddleware(vi.fn(), vi.fn());
     em.isInTransaction.mockReturnValue(true);
@@ -550,7 +556,6 @@ describe("AuthMiddleware", () => {
     }).toThrow("outside an active transaction");
     expect(em.setSessionContext).not.toHaveBeenCalled();
   });
-
   it("replaces stale identity and abilities when adopting a newly issued session", async () => {
     const user = Object.assign(new TestUser(), {
       id: "new-user",
@@ -596,7 +601,6 @@ describe("AuthMiddleware", () => {
       });
     });
   });
-
   it("does not adopt missing or banned sessions", async () => {
     const findOne = vi.fn().mockResolvedValue(null);
     const { middleware, em } = await createMiddleware(vi.fn(), findOne);
@@ -618,7 +622,6 @@ describe("AuthMiddleware", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
-
   it.each([
     ["anonymous", false, false, "workspace-1"],
     ["session", true, true, "workspace-1"],
@@ -691,7 +694,6 @@ describe("AuthMiddleware", () => {
       }
     },
   );
-
   it("stages a database session even when the application did not configure one", async () => {
     const { middleware, em } = await createMiddleware(
       vi.fn().mockResolvedValue({
@@ -715,7 +717,6 @@ describe("AuthMiddleware", () => {
     });
     expect(next).toHaveBeenCalledExactlyOnceWith();
   });
-
   it("clears the selected workspace variable when no workspace resolves", async () => {
     const { middleware, em } = await createMiddleware(
       vi.fn().mockResolvedValue(null),
@@ -737,7 +738,6 @@ describe("AuthMiddleware", () => {
       },
     });
   });
-
   it("forwards session staging errors without running the handler", async () => {
     const { middleware, em } = await createMiddleware(
       vi.fn().mockResolvedValue(null),
@@ -755,7 +755,6 @@ describe("AuthMiddleware", () => {
     );
     expect(next).toHaveBeenCalledExactlyOnceWith(error);
   });
-
   it("should continue without context when no session is returned", async () => {
     const getCurrentAuthenticatedSession = vi.fn().mockResolvedValue(null);
     const findOne = vi.fn();
@@ -770,16 +769,13 @@ describe("AuthMiddleware", () => {
         "x-test": ["a", "b"],
       },
     } as unknown as Request;
-
     await runInRequestContext(request, async () => {
       await middleware.use(request, {} as never, next);
     });
-
     expect(getCurrentAuthenticatedSession).toHaveBeenCalledWith();
     expect(findOne).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledTimes(1);
   });
-
   it("does not register self aliases when base entities are configured", async () => {
     const next = vi.fn() as NextFunction;
     const alias = vi.spyOn(RequestContext, "alias");
@@ -800,15 +796,12 @@ describe("AuthMiddleware", () => {
       },
     );
     const request = { headers: {} } as Request;
-
     await runInRequestContext(request, async () => {
       await middleware.use(request, {} as never, next);
     });
-
     expect(alias).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledOnce();
   });
-
   it("should store authenticated user and session in request context", async () => {
     const user = {
       id: "user-1",
@@ -833,23 +826,19 @@ describe("AuthMiddleware", () => {
         authorization: "Bearer token",
       },
     } as unknown as Request;
-
     await runInRequestContext(request, async () => {
       await middleware.use(request, {} as never, next);
-
       expect(RequestContext.get(BaseUser)).toBe(user);
       expect(RequestContext.get(UserEntity)).toBe(user);
       expect(RequestContext.get(BaseSession)).toBe(session);
       expect(RequestContext.get(SessionEntity)).toBe(session);
     });
-
     expect(requestContextAlias).not.toHaveBeenCalled();
     expect(findOne).not.toHaveBeenCalled();
     expect(requestContextSet).toHaveBeenCalledWith(BaseUser, user);
     expect(requestContextSet).toHaveBeenCalledWith(BaseSession, session);
     expect(next).toHaveBeenCalledTimes(1);
   });
-
   it("gives a valid session precedence over a Bearer API key", async () => {
     const user = Object.assign(new TestUser(), { id: "user-1" });
     const session = Object.assign(new TestSession(), {
@@ -868,14 +857,11 @@ describe("AuthMiddleware", () => {
     const request = {
       headers: { authorization: "Bearer sk-key" },
     } as Request;
-
     await runInRequestContext(request, async () => {
       await middleware.use(request, {} as never, vi.fn());
     });
-
     expect(validate).not.toHaveBeenCalled();
   });
-
   it("restores a user key and resolves membership in the selected workspace", async () => {
     const workspace = Object.assign(new TestWorkspace(), {
       id: "workspace-1",
@@ -907,16 +893,13 @@ describe("AuthMiddleware", () => {
         "x-workspace-id": "workspace-1",
       },
     } as unknown as Request;
-
     await runInRequestContext(request, async () => {
       await middleware.use(request, {} as never, vi.fn());
-
       expect(RequestContext.get(WorkspaceEntity)).toBe(workspace);
       expect(RequestContext.get(API_KEY)).toBe(apiKey);
       expect(RequestContext.get(UserEntity)).toBe(user);
       expect(RequestContext.get(MemberEntity)).toBe(member);
     });
-
     expect(validate).toHaveBeenCalledWith("sk-key");
     expect(set).toHaveBeenCalledWith(BaseWorkspace, workspace);
     expect(set).toHaveBeenCalledWith(API_KEY, apiKey);
@@ -928,7 +911,6 @@ describe("AuthMiddleware", () => {
     });
     expect(set).toHaveBeenCalledWith(BaseMember, member);
   });
-
   it("does not restore a disabled membership into the auth context", async () => {
     const workspace = Object.assign(new TestWorkspace(), {
       id: "workspace-1",
@@ -955,11 +937,9 @@ describe("AuthMiddleware", () => {
         "x-workspace-id": "workspace-1",
       },
     } as unknown as Request;
-
     await runInRequestContext(request, async () => {
       await middleware.use(request, {} as never, vi.fn());
     });
-
     expect(findOne).toHaveBeenLastCalledWith(expect.any(Function), {
       status: "ACTIVE",
       user,
@@ -967,7 +947,6 @@ describe("AuthMiddleware", () => {
     });
     expect(set).not.toHaveBeenCalledWith(BaseMember, expect.anything());
   });
-
   it("restores a workspace key and rejects a conflicting workspace selector", async () => {
     const selectedWorkspace = Object.assign(new TestWorkspace(), {
       id: "workspace-1",
@@ -994,14 +973,11 @@ describe("AuthMiddleware", () => {
         "x-workspace-id": "workspace-1",
       },
     } as unknown as Request;
-
     await runInRequestContext(request, async () => {
       await middleware.use(request, {} as never, next);
     });
-
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 401 }));
   });
-
   it("reads the selected workspace from the raw Cookie header", async () => {
     const workspace = Object.assign(new TestWorkspace(), {
       id: "workspace-1",
@@ -1017,14 +993,72 @@ describe("AuthMiddleware", () => {
         cookie: "unrelated=value; workspace_id=workspace-1",
       },
     } as unknown as Request;
-
     await runInRequestContext(request, async () => {
       await middleware.use(request, {} as never, vi.fn());
       expect(RequestContext.get(BaseWorkspace)).toBe(workspace);
     });
-
     expect(findOne).toHaveBeenCalledWith(WorkspaceEntity, {
       id: "workspace-1",
     });
   });
+});
+
+describe("optional workspace behavior", () => {
+  it.each(["session", "user-key", "anonymous"])(
+    "ignores workspace selectors and membership lookup for disabled %s authentication",
+    async (kind) => {
+      const user = new User();
+      const sessionService = {
+        getCurrentAuthenticatedSession: vi
+          .fn()
+          .mockResolvedValue(kind === "session" ? { user, session: {} } : null),
+      };
+      const apiKeys = {
+        validate: vi.fn().mockResolvedValue({
+          ownerType: "user",
+          user,
+          apiKey: new UserApiKey(),
+        }),
+      };
+      const em = { findOne: vi.fn(), setSessionContext: vi.fn() };
+      const middleware = new AuthMiddleware(
+        {},
+        sessionService as unknown as SessionService,
+        apiKeys as unknown as ApiKeyAuthenticationService,
+        em as unknown as EntityManager,
+      );
+      const request = {
+        headers: {
+          "x-workspace-id": "123",
+          cookie: "workspace_id=456",
+          ...(kind === "user-key"
+            ? { authorization: "Bearer personal-key" }
+            : {}),
+        },
+      } as unknown as Request;
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(REQUEST, request);
+          const next = vi.fn();
+          await middleware.use(request, {} as never, next);
+          expect(next).toHaveBeenCalledExactlyOnceWith();
+          expect(RequestContext.get(Workspace)).toBeFalsy();
+          expect(RequestContext.get(Member)).toBeFalsy();
+          expect(RequestContext.get(User)).toBe(
+            kind === "anonymous" ? undefined : user,
+          );
+          expect(em.findOne).not.toHaveBeenCalled();
+          expect(em.setSessionContext).toHaveBeenCalledWith(
+            expect.objectContaining({
+              variables: expect.objectContaining({
+                "app.workspace.id": "",
+                "app.member.id": "",
+              }),
+            }),
+          );
+        },
+      );
+    },
+  );
 });

@@ -31,19 +31,16 @@ import {
 } from "./auth.module-definition.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { type AuthModuleOptions } from "./auth-module-options.interface.js";
-import { entities } from "./entities/index.js";
-import { InvitationResolver } from "./features/invitations/invitation.resolver.js";
+import { entities, workspaceEntities } from "./entities/index.js";
 import { InvitationService } from "./features/invitations/invitation.service.js";
 import { AuthEnumRegistry } from "./infrastructure/auth-enum-registry.js";
 import { authServiceProviders } from "./infrastructure/auth-service.providers.js";
 import { createAuthInstance } from "./infrastructure/create-auth-instance.js";
+import { workspaceProviders } from "./infrastructure/workspace.providers.js";
 import { AuthResolver } from "./resolvers/auth.resolver.js";
-import { MemberResolver } from "./resolvers/member.resolver.js";
-import { MemberApiKeyResolver } from "./resolvers/member-api-key.resolver.js";
 import { SessionResolver } from "./resolvers/session.resolver.js";
 import { UserResolver } from "./resolvers/user.resolver.js";
 import { UserApiKeyResolver } from "./resolvers/user-api-key.resolver.js";
-import { WorkspaceResolver } from "./resolvers/workspace.resolver.js";
 import { AccountService } from "./services/account.service.js";
 import { AuthService } from "./services/auth.service.js";
 import { MemberService } from "./services/member.service.js";
@@ -62,6 +59,9 @@ import {
   DEFAULT_WORKSPACE_ROLES,
 } from "./workspace.constants.js";
 
+@Module({})
+class AuthOptionsHostModule {}
+
 /**
  * Authentication module based on better-auth.
  *
@@ -70,11 +70,7 @@ import {
  */
 @Global()
 @Module({
-  imports: [
-    RequestContextModule,
-    MiddlewareModule,
-    DatabaseModule.forFeatureAsync({ useFactory: () => entities }),
-  ],
+  imports: [RequestContextModule, MiddlewareModule],
   providers: [
     {
       provide: AuthEnumRegistry,
@@ -85,13 +81,9 @@ import {
     UserResolver,
     SessionResolver,
     UserApiKeyResolver,
-    MemberApiKeyResolver,
-    WorkspaceResolver,
-    MemberResolver,
-    InvitationResolver,
     ...authServiceProviders,
     UserApiKeyService,
-    MemberApiKeyService,
+    ...workspaceProviders,
     AccountService,
     ApiKeyUsageInterceptor,
     AuthService,
@@ -117,7 +109,6 @@ import {
   ],
   exports: [
     AccountService,
-    MODULE_OPTIONS_TOKEN,
     UserService,
     UserApiKeyService,
     MemberApiKeyService,
@@ -150,7 +141,9 @@ export class AuthModule extends ConfigurableModuleClass {
       WorkspaceRole
     >,
   ): DynamicModule {
-    return super.forRoot(options as unknown as AuthModuleOptions);
+    return this.createRootModule(
+      super.forRoot(options as unknown as AuthModuleOptions),
+    );
   }
 
   /**
@@ -175,9 +168,37 @@ export class AuthModule extends ConfigurableModuleClass {
       >
     >,
   ): DynamicModule {
-    return super.forRootAsync(
-      options as unknown as ConfigurableModuleAsyncOptions<AuthModuleOptions>,
+    return this.createRootModule(
+      super.forRootAsync(
+        options as unknown as ConfigurableModuleAsyncOptions<AuthModuleOptions>,
+      ),
     );
+  }
+
+  private static createRootModule(
+    configurableModule: DynamicModule,
+  ): DynamicModule {
+    const optionsModule: DynamicModule = {
+      module: AuthOptionsHostModule,
+      imports: configurableModule.imports,
+      providers: configurableModule.providers,
+      exports: [MODULE_OPTIONS_TOKEN],
+    };
+    return {
+      module: AuthModule,
+      imports: [
+        optionsModule,
+        DatabaseModule.forFeatureAsync({
+          imports: [optionsModule],
+          inject: [MODULE_OPTIONS_TOKEN],
+          useFactory: (options: AuthModuleOptions) =>
+            options.workspace?.enabled === true
+              ? [...entities, ...workspaceEntities]
+              : entities,
+        }),
+      ],
+      exports: [optionsModule],
+    };
   }
 
   /**

@@ -39,6 +39,7 @@ const fieldNames = (fields: { name: string }[]) =>
   fields.map(({ name }) => name);
 
 const authOptions: AuthModuleOptions = {
+  workspace: { enabled: true },
   user: { adminRoles: ["operator"], roles: { operator: [] } },
 };
 

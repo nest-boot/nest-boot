@@ -5,7 +5,6 @@ import { type Mocked } from "vitest";
 import { MemberApiKey as BaseApiKey } from "../entities/member-api-key.entity.js";
 import { User as BaseUser, User } from "../entities/user.entity.js";
 import { Workspace as BaseWorkspace } from "../entities/workspace.entity.js";
-import { type InvitationService } from "../features/invitations/invitation.service.js";
 import { type AccountService } from "../services/account.service.js";
 import { type MemberApiKeyService } from "../services/member-api-key.service.js";
 import { type SessionService } from "../services/session.service.js";
@@ -61,8 +60,6 @@ describe("UserResolver", () => {
       {} as never,
       {} as never,
       {} as never,
-      {} as never,
-      {} as never,
       { getAccountConnectionByUser } as unknown as AccountService,
     );
     await expect(resolver.accounts(user, args)).resolves.toBe(result);
@@ -91,28 +88,6 @@ describe("UserResolver", () => {
     const denied = new Error("session access denied");
     getSessionConnectionByUser.mockRejectedValueOnce(denied);
     await expect(resolver.sessions(user, { first: 10 })).rejects.toBe(denied);
-  });
-  it("passes the parent user and connection arguments to the workspace service", async () => {
-    const user = { id: "parent-user" } as BaseUser;
-    const args = { first: 10, after: "cursor" };
-    const connection = { edges: [], pageInfo: {} };
-    const getInvitationConnectionByUser = vi.fn().mockResolvedValue(connection);
-    const resolver = new UserResolver(
-      {} as UserService,
-      {} as WorkspaceService,
-      {} as never,
-      {} as never,
-      {
-        getInvitationConnectionByUser,
-      } as unknown as InvitationService,
-      {} as never,
-    );
-    await expect(resolver.invitations(user, args)).resolves.toBe(connection);
-    expect(getInvitationConnectionByUser).toHaveBeenCalledWith(
-      user,
-      args,
-      undefined,
-    );
   });
   it("delegates deletion to UserService.deleteUser", async () => {
     const user = { id: "user-1", name: "Deleted user" } as BaseUser;
@@ -194,10 +169,8 @@ function createResolver(
     service,
     resolver: new UserResolver(
       service,
-      {} as WorkspaceService,
       {} as never,
       sessionOverrides as SessionService,
-      {} as never,
       {} as never,
     ),
   };
@@ -223,9 +196,7 @@ describe("API-key field delegation", () => {
             ? () =>
                 new UserResolver(
                   {} as UserService,
-                  {} as WorkspaceService,
                   service as unknown as UserApiKeyService,
-                  {} as never,
                   {} as never,
                   {} as never,
                 ).apiKey(user, "key_1")
@@ -258,13 +229,10 @@ describe("connection-selection.spec.ts", () => {
         getUserConnection: vi.fn().mockResolvedValue(result),
         getSessionConnectionByUser: vi.fn().mockResolvedValue(result),
         getAccountConnectionByUser: vi.fn().mockResolvedValue(result),
-        getWorkspaceConnectionByUser: vi.fn().mockResolvedValue(result),
-        getInvitationConnectionByUser: vi.fn().mockResolvedValue(result),
+
         getUserApiKeyConnection: vi.fn().mockResolvedValue(result),
       };
       const resolver = new UserResolver(
-        services as never,
-        services as never,
         services as never,
         services as never,
         services as never,
@@ -280,12 +248,7 @@ describe("connection-selection.spec.ts", () => {
       await expect(resolver.users(args, info)).resolves.toBe(result);
       await expect(resolver.sessions(parent, args, info)).resolves.toBe(result);
       await expect(resolver.accounts(parent, args, info)).resolves.toBe(result);
-      await expect(resolver.workspaces(parent, args, info)).resolves.toBe(
-        result,
-      );
-      await expect(resolver.invitations(parent, args, info)).resolves.toBe(
-        result,
-      );
+
       await expect(resolver.apiKeys(parent, args, info)).resolves.toBe(result);
       expect(services.getUserConnection).toHaveBeenCalledExactlyOnceWith(
         args,
@@ -297,12 +260,7 @@ describe("connection-selection.spec.ts", () => {
       expect(
         services.getAccountConnectionByUser,
       ).toHaveBeenCalledExactlyOnceWith(parent, args, info);
-      expect(
-        services.getWorkspaceConnectionByUser,
-      ).toHaveBeenCalledExactlyOnceWith(parent, args, info);
-      expect(
-        services.getInvitationConnectionByUser,
-      ).toHaveBeenCalledExactlyOnceWith(parent, args, info);
+
       expect(services.getUserApiKeyConnection).toHaveBeenCalledExactlyOnceWith(
         parent,
         args,
@@ -320,12 +278,7 @@ describe("connection-selection.spec.ts", () => {
       await expect(
         resolver.accounts(parent, args, info),
       ).rejects.toBeInstanceOf(ForbiddenException);
-      await expect(
-        resolver.workspaces(parent, args, info),
-      ).rejects.toBeInstanceOf(ForbiddenException);
-      await expect(
-        resolver.invitations(parent, args, info),
-      ).rejects.toBeInstanceOf(ForbiddenException);
+
       await expect(resolver.apiKeys(parent, args, info)).rejects.toBeInstanceOf(
         ForbiddenException,
       );

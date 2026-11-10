@@ -1,6 +1,7 @@
 import { EntityManager, Reference } from "@mikro-orm/core";
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 
+import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
@@ -13,7 +14,10 @@ import { hashApiKey } from "../utils/api-key-credential.util.js";
  */
 @Injectable()
 export class ApiKeyAuthenticationService {
-  constructor(private readonly em: EntityManager) {}
+  constructor(
+    private readonly em: EntityManager,
+    private readonly options: AuthModuleOptions,
+  ) {}
 
   /**
    * Resolves one unambiguous, active credential and its owner.
@@ -31,11 +35,14 @@ export class ApiKeyAuthenticationService {
       { key },
       { populate: ["user"] },
     );
-    const memberKey = await this.em.findOne(
-      MemberApiKey,
-      { key },
-      { populate: ["member.workspace", "member.user"] },
-    );
+    const memberKey =
+      this.options.workspace?.enabled === true
+        ? await this.em.findOne(
+            MemberApiKey,
+            { key },
+            { populate: ["member.workspace", "member.user"] },
+          )
+        : null;
     if ((!userKey && !memberKey) || (userKey && memberKey)) {
       throw new UnauthorizedException("Invalid API key");
     }
@@ -96,6 +103,7 @@ export class ApiKeyAuthenticationService {
     // An existing transaction remains attached; unrelated pending writes do not.
     const recorder = new ApiKeyAuthenticationService(
       this.em.fork({ useContext: false, keepTransactionContext: true }),
+      this.options,
     );
     return () => recorder.recordUsage(apiKey);
   }

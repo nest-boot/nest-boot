@@ -5,7 +5,7 @@ import type {
   MongoQuery,
 } from "@casl/ability";
 
-import { entities } from "../entities/index.js";
+import { entities, workspaceEntities } from "../entities/index.js";
 import type { AbilityContext } from "../interfaces/ability-context.interface.js";
 import type { AbilityRules } from "../interfaces/ability-rules.interface.js";
 
@@ -60,7 +60,7 @@ export function extendAbility(
         subjects.some(
           (target) =>
             target === "all" ||
-            entities.some((entity) =>
+            [...entities, ...workspaceEntities].some((entity) =>
               typeof target === "string"
                 ? target === entity.name
                 : target === entity ||

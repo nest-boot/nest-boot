@@ -81,13 +81,16 @@ describe("MemberService", () => {
           RequestContext.set(Workspace, workspace);
           RequestContext.set(
             AuthAbility,
-            AuthAbilityFactory.createAbility({
-              user: createTestUser(),
-              member: null,
-              workspace,
-              userPermissions: [],
-              workspacePermissions: [permission],
-            }),
+            AuthAbilityFactory.createAbility(
+              {
+                user: createTestUser(),
+                member: null,
+                workspace,
+                userPermissions: [],
+                workspacePermissions: [permission],
+              },
+              { workspace: { enabled: true } },
+            ),
           );
           expect(memberService.getMemberListFilter(workspace)).toEqual({
             workspace,
@@ -112,13 +115,16 @@ describe("MemberService", () => {
       RequestContext.set(Workspace, workspace);
       RequestContext.set(
         AuthAbility,
-        AuthAbilityFactory.createAbility({
-          user: createTestUser(),
-          member: null,
-          workspace,
-          userPermissions: [],
-          workspacePermissions: ["member:write"],
-        }),
+        AuthAbilityFactory.createAbility(
+          {
+            user: createTestUser(),
+            member: null,
+            workspace,
+            userPermissions: [],
+            workspacePermissions: ["member:write"],
+          },
+          { workspace: { enabled: true } },
+        ),
       );
       await expect(
         memberService.addServiceAccount(workspace, "CI"),
@@ -147,13 +153,16 @@ describe("MemberService", () => {
           RequestContext.set(Workspace, workspace);
           RequestContext.set(
             AuthAbility,
-            AuthAbilityFactory.createAbility({
-              user: createTestUser(),
-              member: null,
-              workspace,
-              userPermissions: [],
-              workspacePermissions: [permission],
-            }),
+            AuthAbilityFactory.createAbility(
+              {
+                user: createTestUser(),
+                member: null,
+                workspace,
+                userPermissions: [],
+                workspacePermissions: [permission],
+              },
+              { workspace: { enabled: true } },
+            ),
           );
           await expect(
             memberService.updateMember(target, { name: "Changed" }),
@@ -255,13 +264,16 @@ describe("MemberService", () => {
           RequestContext.set(Workspace, workspace);
           RequestContext.set(
             AuthAbility,
-            AuthAbilityFactory.createAbility({
-              user: createTestUser(),
-              workspace,
-              member: current,
-              userPermissions: [],
-              workspacePermissions: ["member:write"],
-            }),
+            AuthAbilityFactory.createAbility(
+              {
+                user: createTestUser(),
+                workspace,
+                member: current,
+                userPermissions: [],
+                workspacePermissions: ["member:write"],
+              },
+              { workspace: { enabled: true } },
+            ),
           );
           await expect(
             memberService.updateMember(target === "id" ? member.id : member, {
@@ -287,13 +299,16 @@ describe("MemberService", () => {
       restoreAuthorization();
       RequestContext.set(User, createTestUser());
       const workspace = createTestWorkspace();
-      const ability = AuthAbilityFactory.createAbility({
-        user: createTestUser(),
-        workspace,
-        member: current,
-        userPermissions: [],
-        workspacePermissions: ["member:write"],
-      });
+      const ability = AuthAbilityFactory.createAbility(
+        {
+          user: createTestUser(),
+          workspace,
+          member: current,
+          userPermissions: [],
+          workspacePermissions: ["member:write"],
+        },
+        { workspace: { enabled: true } },
+      );
       RequestContext.set(Member, current);
       RequestContext.set(Workspace, workspace);
       RequestContext.set(AuthAbility, ability);
@@ -371,7 +386,7 @@ describe("MemberService", () => {
     async (present) => {
       const { em } = createWorkspaceServices();
       restoreAuthorization();
-      const service = new MemberService(em, {});
+      const service = new MemberService(em, { workspace: { enabled: true } });
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -394,7 +409,7 @@ describe("MemberService", () => {
     const workspace = createTestWorkspace();
     const member = Object.assign(createTestMember(), { workspace });
     const lockedMember = Object.assign(createTestMember(), { workspace });
-    const service = new MemberService(em, {});
+    const service = new MemberService(em, { workspace: { enabled: true } });
     em.findOne.mockResolvedValue(lockedMember);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(Workspace, workspace);
@@ -430,7 +445,7 @@ describe("MemberService", () => {
     em.isInTransaction.mockReturnValue(true);
     const workspace = createTestWorkspace();
     const member = Object.assign(createTestMember(), { workspace });
-    const service = new MemberService(em, {});
+    const service = new MemberService(em, { workspace: { enabled: true } });
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(Workspace, workspace);
       RequestContext.set(Member, member);
@@ -452,7 +467,7 @@ describe("MemberService", () => {
       restoreAuthorization();
       const workspace = createTestWorkspace();
       const member = Object.assign(createTestMember(), { workspace });
-      const service = new MemberService(em, {});
+      const service = new MemberService(em, { workspace: { enabled: true } });
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -485,7 +500,7 @@ describe("MemberService", () => {
     const session = mockRlsContext(em);
     const workspace = createTestWorkspace();
     const member = Object.assign(createTestMember(), { workspace });
-    const service = new MemberService(em, {});
+    const service = new MemberService(em, { workspace: { enabled: true } });
     em.findOne.mockResolvedValue(null);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(Workspace, workspace);
@@ -1334,6 +1349,7 @@ describe("permission management", () => {
     ];
     const options = {
       workspace: {
+        enabled: true,
         permissions,
         creatorRole: "founder",
         roles: {
@@ -1343,6 +1359,7 @@ describe("permission management", () => {
         },
       },
     };
+
     it.each([
       {
         role: "admin",
@@ -1459,6 +1476,7 @@ describe("permission management", () => {
         });
       },
     );
+
     it.each([
       {
         name: "administrator",
@@ -1534,6 +1552,7 @@ describe("permission management", () => {
               ? ["member:write", "workspace:update"]
               : [],
         });
+
         await RequestContext.run(
           new RequestContext({ type: "test" }),
           async () => {

@@ -175,6 +175,7 @@ Configure defaults and grant allowlists independently for each key scope:
 ```typescript
 AuthModule.forRoot({
   // ...other auth options
+  workspace: { enabled: true },
   apiKey: {
     user: {
       defaultPrefix: "user_",

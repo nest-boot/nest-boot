@@ -85,7 +85,7 @@ export function createWorkspaceServices(
   em.nativeDelete.mockResolvedValue(1);
   em.transactional.mockImplementation(async (callback) => await callback(em));
   const options = {
-    workspace,
+    workspace: { ...workspace, enabled: true },
     buildAbility: workspace.buildAbility,
   } as unknown as AuthModuleOptions;
   const authorization = mockAuthorization();
