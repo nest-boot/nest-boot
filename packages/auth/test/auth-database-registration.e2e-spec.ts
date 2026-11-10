@@ -65,5 +65,4 @@ it.each([false, true])(
       await app.close();
     }
   },
-  15000,
 );
