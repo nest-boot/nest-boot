@@ -1110,6 +1110,7 @@ function createService(
     hash: hashServiceHash,
   } as unknown as HashService;
   const options = {
+    workspace: { enabled: true },
     emailAndPassword: {
       ...emailAndPassword,
       password: {

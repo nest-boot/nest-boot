@@ -172,9 +172,7 @@ describe("API-key field delegation", () => {
             ? () =>
                 new UserResolver(
                   {} as UserService,
-                  {} as WorkspaceService,
                   service as unknown as UserApiKeyService,
-                  {} as never,
                   {} as never,
                   {} as never,
                 ).apiKey(user, "key_1")

@@ -12,6 +12,7 @@ import { RequestContext } from "@nest-boot/request-context";
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   type OnModuleDestroy,
@@ -43,7 +44,8 @@ export class JobService implements OnModuleInit, OnModuleDestroy {
     private readonly queue: JobQueue,
     private readonly manager: QueueManager,
     private readonly users: UserService,
-    private readonly workspaces: WorkspaceService,
+    @Inject(WorkspaceService)
+    private readonly workspaces: WorkspaceService | null,
   ) {
     this.queue.on("error", (error) => {
       this.logger.error(error);
@@ -137,7 +139,7 @@ export class JobService implements OnModuleInit, OnModuleDestroy {
   }
 
   private workspaceFilter(): FilterQuery<JobEntity> {
-    const workspace = this.workspaces.getCurrentWorkspace();
+    const workspace = this.workspaces?.getCurrentWorkspace();
     if (!workspace?.id) {
       throw new ForbiddenException(
         "An authorized current workspace is required.",

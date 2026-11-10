@@ -109,6 +109,7 @@ AuthModule.forRoot({
     adminRoles: ["super-admin"],
   },
   workspace: {
+    enabled: true,
     permissions: ["member-api-key:write"],
     roles: { "team-owner": ["member-api-key:write", "workspace:update"] },
     creatorRole: "team-owner",
@@ -135,6 +136,7 @@ AuthModule.forRoot({
 });
 AuthModule.forRoot({
   workspace: {
+    enabled: true,
     roles: { leader: [], guest: [] },
     // @ts-expect-error The creator role must reference a configured key.
     creatorRole: "missing-role",
@@ -191,7 +193,7 @@ AuthModule.forRootAsync({
 declare const dynamicPermission: string;
 AuthModule.forRoot({
   user: { permissions: ["report:read"] },
-  workspace: { permissions: ["project:read"] },
+  workspace: { enabled: true, permissions: ["project:read"] },
   apiKey: {
     user: { defaultPermissions: ["user:read", "report:read", "project:read"] },
     member: { defaultPermissions: ["project:read"] },
@@ -223,7 +225,7 @@ AuthModule.forRoot({
 });
 AuthModule.forRoot({
   user: { permissions: ["report:read"] },
-  workspace: { permissions: ["project:read"] },
+  workspace: { enabled: true, permissions: ["project:read"] },
   buildAbility: (
     { can },
     { user, workspace, member, userPermissions, workspacePermissions },

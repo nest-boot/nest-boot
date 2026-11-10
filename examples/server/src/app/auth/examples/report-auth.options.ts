@@ -20,6 +20,7 @@ export const reportAuthOptions = {
   },
 
   workspace: {
+    enabled: true,
     permissions: reportPermissions,
     roles: {
       owner: ['report:read', 'report:archive'],

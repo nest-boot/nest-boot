@@ -21,7 +21,9 @@ describe("permission delegation", () => {
     "checks %s roles, direct grants, and credential limits through one snapshot",
     async (scope) => {
       const options = {
+        workspace: { enabled: true },
         [scope]: {
+          ...(scope === "workspace" ? { enabled: true } : {}),
           permissions: ["report:read", "report:write", "report:delete"],
           roles: { reader: ["report:read"] },
         },
@@ -77,7 +79,9 @@ describe("permission delegation", () => {
   it("keeps member keys out of user grants and enforces credential ceilings", async () => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       expect(() => {
-        assertApiKeyPermissionCeiling({}, ["report:write"]);
+        assertApiKeyPermissionCeiling({ workspace: { enabled: true } }, [
+          "report:write",
+        ]);
       }).not.toThrow();
       const workspace = new Workspace();
       const member = Object.assign(new Member(), {
@@ -94,21 +98,39 @@ describe("permission delegation", () => {
           permissions: ["report:read"],
         }),
       });
-      expect(canGrantPermissions({}, "workspace", ["report:read"])).toBe(true);
-      expect(canGrantPermissions({}, "user", ["report:read"])).toBe(false);
+      expect(
+        canGrantPermissions({ workspace: { enabled: true } }, "workspace", [
+          "report:read",
+        ]),
+      ).toBe(true);
+      expect(
+        canGrantPermissions({ workspace: { enabled: true } }, "user", [
+          "report:read",
+        ]),
+      ).toBe(false);
       expect(() => {
-        assertApiKeyPermissionCeiling({}, ["report:read"]);
+        assertApiKeyPermissionCeiling({ workspace: { enabled: true } }, [
+          "report:read",
+        ]);
       }).not.toThrow();
       expect(() => {
-        assertApiKeyPermissionCeiling({}, ["report:write"]);
+        assertApiKeyPermissionCeiling({ workspace: { enabled: true } }, [
+          "report:write",
+        ]);
       }).toThrow("authenticating API key permissions: report:write");
       RequestIdentity.stage({
         apiKey: Object.assign(new MemberApiKey(), { member, permissions: [] }),
       });
       expect(() => {
-        assertApiKeyPermissionCeiling({}, ["report:read"]);
+        assertApiKeyPermissionCeiling({ workspace: { enabled: true } }, [
+          "report:read",
+        ]);
       }).not.toThrow();
-      expect(canGrantPermissions({}, "workspace", ["report:read"])).toBe(true);
+      expect(
+        canGrantPermissions({ workspace: { enabled: true } }, "workspace", [
+          "report:read",
+        ]),
+      ).toBe(true);
     });
   });
 

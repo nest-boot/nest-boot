@@ -25,6 +25,7 @@ describe("framework-owned request abilities", () => {
     const fields = ["title", "secret"];
     let saved: AbilityRules | undefined;
     const ability = buildRequestAbility({
+      workspace: { enabled: true },
       buildAbility: (rules) => {
         saved = rules;
         rules.cannot("update", "Article", "secret");
@@ -65,6 +66,7 @@ describe("framework-owned request abilities", () => {
     RequestContext.set(User, new User());
     expect(() =>
       buildRequestAbility({
+        workspace: { enabled: true },
         buildAbility: (rules) => {
           rules.can({ user: "unknown:read" }, "read", "Article");
         },
@@ -98,10 +100,27 @@ describe("framework-owned request abilities", () => {
         permissions: ["user:read", "workspace:update"],
       }),
     });
-    expect(buildRequestAbility({})?.can("read", User)).toBe(true);
-    expect(buildRequestAbility({})?.can("delete", User)).toBe(false);
-    expect(buildRequestAbility({})?.can("update", Workspace)).toBe(true);
-    expect(buildRequestAbility({})?.can("delete", Workspace)).toBe(false);
+    expect(
+      buildRequestAbility({ workspace: { enabled: true } })?.can("read", User),
+    ).toBe(true);
+    expect(
+      buildRequestAbility({ workspace: { enabled: true } })?.can(
+        "delete",
+        User,
+      ),
+    ).toBe(false);
+    expect(
+      buildRequestAbility({ workspace: { enabled: true } })?.can(
+        "update",
+        Workspace,
+      ),
+    ).toBe(true);
+    expect(
+      buildRequestAbility({ workspace: { enabled: true } })?.can(
+        "delete",
+        Workspace,
+      ),
+    ).toBe(false);
   });
 
   it.each(["USER", "SERVICE_ACCOUNT"] as const)(
@@ -124,7 +143,7 @@ describe("framework-owned request abilities", () => {
         permissions: ["workspace:read", "workspace:update", "workspace:delete"],
       });
       RequestIdentity.stage({ user, member, workspace, apiKey });
-      const ability = buildRequestAbility({});
+      const ability = buildRequestAbility({ workspace: { enabled: true } });
       expect(ability?.can("read", Workspace)).toBe(true);
       expect(ability?.can("update", Workspace)).toBe(true);
       expect(ability?.can("delete", Workspace)).toBe(false);
@@ -132,7 +151,12 @@ describe("framework-owned request abilities", () => {
       expect(ability?.can("read", User)).toBe(false);
       member.permissions = [];
       RequestIdentity.stage({ member });
-      expect(buildRequestAbility({})?.can("update", Workspace)).toBe(false);
+      expect(
+        buildRequestAbility({ workspace: { enabled: true } })?.can(
+          "update",
+          Workspace,
+        ),
+      ).toBe(false);
     },
   );
 
@@ -142,6 +166,7 @@ describe("framework-owned request abilities", () => {
       Object.assign(new User(), { roles: [], permissions: ["article:read"] }),
     );
     const options = {
+      workspace: { enabled: true },
       buildAbility: (rules: AbilityRules) => {
         rules.can({ user: "article:read" }, "read", "Article", {
           authorId: "me",
@@ -178,6 +203,7 @@ describe("framework-owned request abilities", () => {
       RequestContext.set(User, new User());
       expect(() =>
         buildRequestAbility({
+          workspace: { enabled: true },
           buildAbility: (rules) => {
             rules.can({ user: "article:read" }, "manage", target);
           },
@@ -193,6 +219,7 @@ describe("framework-owned request abilities", () => {
   it("allows restrictions but does not expose the builder or accept a replacement ability", () => {
     RequestContext.set(User, Object.assign(new User(), { roles: ["admin"] }));
     const ability = buildRequestAbility({
+      workspace: { enabled: true },
       buildAbility: (rules) => {
         expect(rules).not.toHaveProperty("build");
         expect(rules).not.toHaveProperty("rules");
@@ -205,6 +232,7 @@ describe("framework-owned request abilities", () => {
     expect(ability?.can("delete", User)).toBe(false);
     expect(() =>
       buildRequestAbility({
+        workspace: { enabled: true },
         buildAbility: () => ({ can: () => true }),
 
         user: {},

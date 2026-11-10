@@ -3,7 +3,7 @@ import { ConnectionBuilder } from "@nest-boot/graphql-connection";
 
 import { MemberApiKey } from "../entities/member-api-key.entity.js";
 
-const { Connection, ConnectionArgs } = new ConnectionBuilder(MemberApiKey)
+const { Connection, ConnectionArgs, Edge } = new ConnectionBuilder(MemberApiKey)
   .addField({
     field: "name",
     searchable: true,
@@ -36,6 +36,13 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(MemberApiKey)
   })
   .build();
 
+// Optional connections must not pull workspace types into a base-only schema.
+ObjectType("MemberApiKeyEdge", {
+  isAbstract: true,
+  description:
+    "An auto-generated type which holds one MemberApiKey and a cursor during pagination.",
+})(Edge);
+
 /**
  * API key pagination arguments.
  */
@@ -45,5 +52,5 @@ export class MemberApiKeyConnectionArgs extends ConnectionArgs {}
 /**
  * A page of visible API keys.
  */
-@ObjectType()
+@ObjectType({ isAbstract: true })
 export class MemberApiKeyConnection extends Connection {}

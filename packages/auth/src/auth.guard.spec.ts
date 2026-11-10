@@ -66,7 +66,7 @@ describe("AuthGuard", () => {
     const { guard } = await createGuard(
       AuthGuard,
       vi.fn(() => true),
-      {},
+      { workspace: { enabled: true } },
       vi.fn((key) =>
         key === CAN_METADATA ? [{ action: "read", subjectCallback }] : [],
       ),
@@ -82,7 +82,7 @@ describe("AuthGuard", () => {
     const { guard, access } = await createGuard(
       AuthGuard,
       vi.fn(() => false),
-      {},
+      { workspace: { enabled: true } },
       vi.fn((key) =>
         key === CAN_METADATA
           ? [{ action: "read", subjectCallback: () => BaseUser }]
@@ -106,6 +106,7 @@ describe("AuthGuard", () => {
       AuthGuard,
       vi.fn(() => false),
       {
+        workspace: { enabled: true },
         buildAbility: ({ cannot }, { user, workspace }) => {
           if (user) {
             cannot("read", BaseUser, { id: { $ne: user.id } });
@@ -275,7 +276,7 @@ describe("AuthGuard", () => {
             ]
           : false,
       ),
-      { buildAbility },
+      { workspace: { enabled: true }, buildAbility },
     );
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
       await expect(guard.canActivate(createContext())).rejects.toBeInstanceOf(
@@ -305,7 +306,11 @@ describe("AuthGuard", () => {
         }
         return undefined;
       }),
-      { buildAbility, user: { permissions: ["subject:read"] } },
+      {
+        workspace: { enabled: true },
+        buildAbility,
+        user: { permissions: ["subject:read"] },
+      },
     );
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
       RequestContext.set(
@@ -338,6 +343,7 @@ describe("AuthGuard", () => {
       AuthGuard,
       getAllAndOverride,
       {
+        workspace: { enabled: true },
         buildAbility: (rules) => {
           rules.can({ user: "subject:read" }, "read", Subject);
         },
@@ -374,7 +380,7 @@ describe("AuthGuard", () => {
 async function createGuard<T extends AuthGuard>(
   guardType: Type<T>,
   getAllAndOverride: Mock,
-  options: Partial<AuthModuleOptions> = {},
+  options: Partial<AuthModuleOptions> = { workspace: { enabled: true } },
   getAllAndMerge: Mock = getAllAndOverride,
 ) {
   const moduleRef = await Test.createTestingModule({
@@ -1833,6 +1839,7 @@ describe("permission checks", () => {
               permissions: businessPermissions,
             },
             workspace: {
+              enabled: true,
               roles: roles.workspace,
               permissions: businessPermissions,
             },

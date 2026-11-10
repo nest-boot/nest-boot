@@ -181,6 +181,9 @@ export class AuthMiddleware implements NestMiddleware {
   }
 
   private async resolveSelectedWorkspace(req: Request): Promise<void> {
+    if (this.options.workspace?.enabled !== true) {
+      return;
+    }
     const headerWorkspaceId = req.headers["x-workspace-id"];
     const cookieWorkspaceId = cookies().get("workspace_id")?.value;
     const workspaceId = (
@@ -240,7 +243,10 @@ export class AuthMiddleware implements NestMiddleware {
   }
 
   private async resolveMember(): Promise<void> {
-    if (RequestContext.get(Member)) {
+    if (
+      this.options.workspace?.enabled !== true ||
+      RequestContext.get(Member)
+    ) {
       return;
     }
     const user = RequestContext.get(User);

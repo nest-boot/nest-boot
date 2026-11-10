@@ -13,9 +13,13 @@ export const authEntityMap = {
   account: Account,
   session: Session,
   verification: Verification,
+  userApiKey: UserApiKey,
+};
+
+/** Workspace models added only for enabled workspace features. */
+export const workspaceEntityMap = {
   workspace: Workspace,
   member: Member,
   invitation: Invitation,
-  userApiKey: UserApiKey,
   memberApiKey: MemberApiKey,
 };

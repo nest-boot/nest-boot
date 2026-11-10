@@ -47,7 +47,9 @@ describe("auth service execution boundaries", () => {
         "provide" in candidate &&
         candidate.provide === ApiKeyAuthenticationService,
     ) as FactoryProvider<ApiKeyAuthenticationService>;
-    const service = await provider.useFactory(em);
+    const service = await provider.useFactory(em, {
+      workspace: { enabled: true },
+    });
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(EntityManager, em);
       await expect(service.validate("credential")).resolves.toMatchObject({
@@ -178,7 +180,9 @@ describe("auth service execution boundaries", () => {
           "provide" in candidate &&
           candidate.provide === WorkspaceService,
       ) as FactoryProvider<WorkspaceService>;
-      const service = await provider.useFactory(em, {});
+      const service = await provider.useFactory(em, {
+        workspace: { enabled: true },
+      });
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -245,7 +249,9 @@ describe("auth service execution boundaries", () => {
         clearSessionContext: vi.fn(),
       } as unknown as EntityManager;
       mockAuthorization();
-      const service = await provider.useFactory(current, {});
+      const service = await provider.useFactory(current, {
+        workspace: { enabled: true },
+      });
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -298,7 +304,7 @@ describe("auth service execution boundaries", () => {
         candidate.provide === SessionService,
     ) as FactoryProvider<SessionService>;
     mockAuthorization();
-    const service = provider.useFactory({}, {});
+    const service = provider.useFactory({}, { workspace: { enabled: true } });
     for (const name of [
       "getCurrentAuthenticatedSession",
       "listCurrentUserSessions",
@@ -377,7 +383,7 @@ describe("auth service execution boundaries", () => {
           "provide" in candidate &&
           candidate.provide === type,
       ) as FactoryProvider<object>;
-      const service = provider.useFactory({}, {});
+      const service = provider.useFactory({}, { workspace: { enabled: true } });
       for (const name of special) {
         expect(Object.hasOwn(service, name)).toBe(true);
       }

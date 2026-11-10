@@ -3,7 +3,7 @@ import { ConnectionBuilder } from "@nest-boot/graphql-connection";
 
 import { Member } from "../entities/member.entity.js";
 
-const { Connection, ConnectionArgs } = new ConnectionBuilder(Member)
+const { Connection, ConnectionArgs, Edge } = new ConnectionBuilder(Member)
   .addField({
     field: "name",
     searchable: true,
@@ -33,10 +33,17 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(Member)
   })
   .build();
 
+// Optional connection nodes enter the schema through enabled resolvers only.
+ObjectType("MemberEdge", {
+  isAbstract: true,
+  description:
+    "An auto-generated type which holds one Member and a cursor during pagination.",
+})(Edge);
+
 /** Workspace member pagination arguments. */
 @ArgsType()
 export class MemberConnectionArgs extends ConnectionArgs {}
 
 /** A page of visible workspace members. */
-@ObjectType()
+@ObjectType({ isAbstract: true })
 export class MemberConnection extends Connection {}

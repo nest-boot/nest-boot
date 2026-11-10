@@ -8,11 +8,31 @@ The example's handwritten `Initial` migration creates roles and default
 privileges; generated migrations create and evolve tables and RLS policies.
 Apply the complete migration sequence to a fresh database.
 
-AuthModule automatically registers its entities with DatabaseModule. QueueApiModule
-also registers its Job history entity. Use `nb database:*` commands through the
-application CLI to share runtime connection settings, migration options, and entities.
-A separate MikroORM config file or auth configuration helper is no longer needed.
-Direct MikroORM consumers can register the exported `entities` array explicitly.
+## Optional workspaces
+
+Workspace features are disabled by default. Enable them with
+`AuthModule.forRoot({ workspace: { enabled: true } })`, or return the same options
+from `forRootAsync()`. Omission, `{}`, and `enabled: false` all keep them disabled.
+
+This is a startup setting. Use a fresh process when changing workspace mode,
+because Nest GraphQL retains type and resolver metadata for the process lifetime.
+
+AuthModule automatically registers its enabled entities through `DatabaseModule`.
+Use `nb database:migration:*`, `nb database:schema:*`, and `nb database:seeder:*`
+from your application's CLI entry to share runtime configuration and entity metadata.
+No separate MikroORM config file or auth configuration helper is needed.
+The `entities` export contains the base models; `workspaceEntities` contains
+Workspace, Member, Invitation, and MemberApiKey for direct ORM consumers.
+
+Disabled applications expose no workspace/member/invitation/member-key GraphQL APIs
+or user workspace/invitation relation fields. Their middleware ignores workspace
+selectors, authenticates only user API keys, and grants no workspace permissions.
+`apiKey.member` configuration requires workspace features. Workspace services resolve
+to `null` when disabled and should only be injected by applications enabling the feature.
+
+Existing applications must set `workspace.enabled: true` before generating migrations
+to retain workspace tables. `User.members` was removed to prevent automatic discovery
+of optional entities; use `MemberService` for membership queries.
 
 ## Feature organization
 
@@ -29,7 +49,7 @@ to avoid circular imports. Future feature moves can follow this pattern independ
 
 This is a breaking rename without compatibility aliases. Use `Member`,
 `Invitation`, `MemberService`, `InvitationService`, and `CurrentMember`.
-The inverse user collection is `User.members`. Workspace ownership remains the
+Workspace ownership remains the
 `workspace` relation, and workspace-role configuration still lives under
 `workspace`.
 
@@ -53,19 +73,11 @@ Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
 metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 
-Register the exported `entities` array in both your runtime MikroORM configuration
-and the configuration loaded by the migration CLI. The CLI does not initialize Nest:
-
-```typescript
-import { entities as authEntities } from "@nest-boot/auth";
-import { defineConfig } from "@mikro-orm/postgresql";
-
-export default defineConfig({
-  entities: [...authEntities, "dist/**/*.entity.js"],
-  entitiesTs: [...authEntities, "src/**/*.entity.ts"],
-  // Connection and migration options...
-});
-```
+`AuthModule` registers the core entities through `DatabaseModule` automatically and
+adds `workspaceEntities` when `workspace.enabled` is true. Use the application's
+`nb database:*` commands for schema, migration, and seeding operations; no separate
+`mikro-orm.config.ts` is needed. Direct MikroORM consumers can register `entities`
+and, when using workspaces, `workspaceEntities` in their own ORM configuration.
 
 Use separate related business entities and additional field resolvers to extend
 these models. Import the built-in classes directly for relation targets; do not

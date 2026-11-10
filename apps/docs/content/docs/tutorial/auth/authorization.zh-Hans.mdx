@@ -52,6 +52,7 @@ API Key 不继承这些会话专属入口。
 ```typescript
 AuthModule.forRoot({
   workspace: {
+    enabled: true,
     permissions: ["report:read", "report:archive"],
     roles: {
       owner: ["report:read", "report:archive"],
@@ -186,6 +187,7 @@ const workspacePermissions = [
 
 AuthModule.forRoot({
   workspace: {
+    enabled: true,
     permissions: workspacePermissions,
     roles: workspaceRoles,
   },

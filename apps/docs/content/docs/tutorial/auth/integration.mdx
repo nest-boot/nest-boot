@@ -40,7 +40,8 @@ export class AccountApplicationService {
 
 ## Built-in entities and GraphQL
 
-`AuthModule` registers domain services and all standard resolvers. Remove
+`AuthModule` registers base authentication services and resolvers. Workspace services
+and resolvers require `workspace: { enabled: true }`. Remove
 `AuthGraphQLModule` and import entities, inputs, payloads and connections from
 `@nest-boot/auth`. Configure your GraphQL module and `AuthModule.forRoot()`;
 no application auth entities or named connection registration are required.
@@ -51,16 +52,16 @@ Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
 metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 
-`AuthModule` automatically contributes its entities to `DatabaseModule`;
-`QueueApiModule` also registers its Job history entity. Run `nb database:*` commands
-through the application CLI to share runtime configuration without a separate
-MikroORM configuration file. Business modules can register entities with
-`DatabaseModule.forFeature()`.
+`AuthModule` registers its enabled entities using `DatabaseModule.forFeatureAsync()`.
+The workspace switch is configured only in Auth. Ordinary business modules can use
+`DatabaseModule.forFeature()`; `QueueApiModule` also registers its own Job history entity.
 
-Use separate related business entities and additional field resolvers to extend
-these models. Import the built-in classes directly for relation targets; do not
-redeclare or register replacement auth entities. Role/permission catalogs, ability
-builders, delivery callbacks, and provider settings remain configurable.
+The HTTP, REPL, and CLI entries import the same modules. Run `nb database:*` commands
+through the application CLI without a separate MikroORM configuration file.
+Extend models with separate related business entities and additional field resolvers;
+import built-in classes for relation targets rather than replacing them.
+`User.members` is removed; use `MemberService` to query memberships.
+Workspace services and resolvers are available only when enabled.
 
 ## Transport Adapters
 

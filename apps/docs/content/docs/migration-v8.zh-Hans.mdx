@@ -6,14 +6,19 @@ description: "将 Nest Boot 应用升级到 NestJS 12 和原生 ESM。"
 版本 8 是所有 `@nest-boot/*` 包面向 NestJS 12 的发布线。所有包均以原生
 ESM 发布，并要求 Node.js 24.21.0 或更高版本。
 
-## 数据库命令与实体自动注册
+## 工作区开关与数据库命令
 
-使用 `nb database:migration:*`、`nb database:schema:*` 和 `nb database:seeder:*`，
-CLI 入口通过 `CommandFactory.run(AppModule)` 复用运行时模块配置。
-将独立 MikroORM 配置文件中的定制选项移入 `DatabaseModule.forRoot/forRootAsync`，
-然后删除该配置文件、package.json 中的 `mikro-orm` 配置以及旧 CLI 依赖。
-Auth 与 QueueApi 会自动注册自身实体；已移除 `withAuthDatabaseConfig`，请删除调用与导入。
-直接使用 MikroORM 的项目仍可显式注册导出的实体数组。
+工作区默认关闭。已有工作区应用应在 `AuthModule` 中设置
+`workspace: { enabled: true }`，Auth 会向 DatabaseModule 自动注册启用的实体。
+已移除 `withAuthDatabaseConfig`，请删除调用与导入。
+
+改用 `nb database:migration:*`、`nb database:schema:*` 与 `nb database:seeder:*`。
+CLI 入口通过 `CommandFactory.run(AppModule)` 使用运行时模块配置。将旧
+`mikro-orm.config.ts` 中的定制选项移入 `DatabaseModule.forRoot/forRootAsync`，
+然后删除独立配置文件及 package.json 中的 `mikro-orm` 配置。
+Auth 与 QueueApi 自动注册实体，普通业务模块使用 `DatabaseModule.forFeature()`。
+直接使用 MikroORM 时仍可显式注册导出的 `entities` 和 `workspaceEntities`。
+为避免自动发现可选实体，已移除 `User.members`，请通过 `MemberService` 查询成员关系。
 
 ## 升级依赖
 

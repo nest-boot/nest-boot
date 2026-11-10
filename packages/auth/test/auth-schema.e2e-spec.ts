@@ -12,6 +12,7 @@ import { MemberApiKeyResolver } from "../src/resolvers/member-api-key.resolver.j
 import { SessionResolver } from "../src/resolvers/session.resolver.js";
 import { UserResolver } from "../src/resolvers/user.resolver.js";
 import { UserApiKeyResolver } from "../src/resolvers/user-api-key.resolver.js";
+import { UserWorkspaceResolver } from "../src/resolvers/user-workspace.resolver.js";
 import { WorkspaceResolver } from "../src/resolvers/workspace.resolver.js";
 
 // Filter-scalar execution is covered by the example's real-server e2e tests.
@@ -24,6 +25,7 @@ describe("auth GraphQL schema", () => {
     const schema = await schemaFactory.create([
       AuthResolver,
       UserResolver,
+      UserWorkspaceResolver,
       SessionResolver,
       WorkspaceResolver,
       MemberResolver,

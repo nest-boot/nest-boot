@@ -3,6 +3,9 @@ title: "工作区"
 description: "解析工作区上下文并管理工作区成员。"
 ---
 
+工作区默认关闭，通过 `AuthModule.forRoot({ workspace: { enabled: true } })` 开启。
+AuthModule 会自动注册对应实体，`nb database:*` 命令复用相同配置。
+
 ## 选择工作区
 
 客户端通过 `x-workspace-id` 请求头或 `workspace_id` Cookie 选择工作区。

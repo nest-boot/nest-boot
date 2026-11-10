@@ -29,7 +29,7 @@ export type AuthMemberStatus = "ACTIVE" | "DISABLED";
 export type AuthMemberType = "USER" | "SERVICE_ACCOUNT";
 
 /** Built-in Member entity with authentication persistence and access policies. */
-@ObjectType()
+@ObjectType({ isAbstract: true })
 @Entity({
   policies: [
     // Allow users to read their own memberships across workspaces without granting writes.

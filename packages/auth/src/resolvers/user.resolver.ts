@@ -27,21 +27,10 @@ import {
   UserApiKeyConnection,
   UserApiKeyConnectionArgs,
 } from "../connections/user-api-key.connection-definition.js";
-import {
-  WorkspaceConnection,
-  WorkspaceConnectionArgs,
-} from "../connections/workspace.connection-definition.js";
 import { type Account } from "../entities/account.entity.js";
-import { type Invitation } from "../entities/invitation.entity.js";
 import { type Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
-import { type Workspace } from "../entities/workspace.entity.js";
-import {
-  InvitationConnection,
-  InvitationConnectionArgs,
-} from "../features/invitations/invitation.connection-definition.js";
-import { InvitationService } from "../features/invitations/invitation.service.js";
 import { BanUserInput } from "../inputs/ban-user.input.js";
 import { CreateUserInput } from "../inputs/create-user.input.js";
 import { SetUserPasswordInput } from "../inputs/set-user-password.input.js";
@@ -61,7 +50,6 @@ import { AccountService } from "../services/account.service.js";
 import { SessionService } from "../services/session.service.js";
 import { UserService } from "../services/user.service.js";
 import { UserApiKeyService } from "../services/user-api-key.service.js";
-import { WorkspaceService } from "../services/workspace.service.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
 /** GraphQL transport for user administration. */
@@ -70,18 +58,14 @@ export class UserResolver {
   /**
    * Creates the user-management GraphQL resolver.
    * @param userService - Service for user profiles and permissions.
-   * @param workspaceService - Service for workspace queries and mutations.
    * @param apiKeyService - Service for validating or managing API keys.
    * @param sessionService - Service for session queries and revocation.
-   * @param invitationService - Service for invitation queries and mutations.
    * @param accountService - Service for linked authentication accounts.
    */
   constructor(
     private readonly userService: UserService,
-    private readonly workspaceService: WorkspaceService,
     private readonly apiKeyService: UserApiKeyService,
     private readonly sessionService: SessionService,
-    private readonly invitationService: InvitationService,
     private readonly accountService: AccountService,
   ) {}
 
@@ -128,27 +112,6 @@ export class UserResolver {
   }
 
   /**
-   * Paginates workspaces joined by the parent user.
-   * @param user - The user whose account is being accessed.
-   * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
-   * @returns Paginated workspaces accessible to the user.
-   */
-  @ResolveField(() => WorkspaceConnection)
-  async workspaces(
-    @Parent() user: User,
-    @Args({ type: () => WorkspaceConnectionArgs })
-    args: ConnectionArgsInterface<Workspace>,
-    @Info() info?: GraphQLResolveInfo,
-  ) {
-    return await this.workspaceService.getWorkspaceConnectionByUser(
-      user,
-      args,
-      info,
-    );
-  }
-
-  /**
    * Returns an accessible API key owned by the parent user.
    * @param user - The user whose account is being accessed.
    * @param id - Identifier of the record to access.
@@ -177,27 +140,6 @@ export class UserResolver {
     @Info() info?: GraphQLResolveInfo,
   ) {
     return await this.apiKeyService.getUserApiKeyConnection(user, args, info);
-  }
-
-  /**
-   * Paginates pending invitations addressed to the parent user.
-   * @param user - The user whose account is being accessed.
-   * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
-   * @returns Paginated invitations visible to the current principal.
-   */
-  @ResolveField(() => InvitationConnection)
-  async invitations(
-    @Parent() user: User,
-    @Args({ type: () => InvitationConnectionArgs })
-    args: ConnectionArgsInterface<Invitation>,
-    @Info() info?: GraphQLResolveInfo,
-  ) {
-    return await this.invitationService.getInvitationConnectionByUser(
-      user,
-      args,
-      info,
-    );
   }
 
   /**

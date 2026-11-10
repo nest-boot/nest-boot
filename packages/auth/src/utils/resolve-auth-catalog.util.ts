@@ -9,10 +9,19 @@ import {
   DEFAULT_WORKSPACE_ROLES,
 } from "../workspace.constants.js";
 
-const catalogs = {
+const enabledCatalogs = {
   user: new WeakMap<object, ReturnType<typeof resolveAuthCatalog>>(),
   workspace: new WeakMap<object, ReturnType<typeof resolveAuthCatalog>>(),
 };
+
+const disabledCatalogs: typeof enabledCatalogs = {
+  user: new WeakMap(),
+  workspace: new WeakMap(),
+};
+const emptyWorkspaceCatalog = Object.freeze({
+  permissions: Object.freeze([] as string[]),
+  roles: Object.freeze({}),
+});
 
 /**
  * Resolves one immutable catalog per scope configuration, shared by startup, services and abilities.
@@ -27,6 +36,11 @@ export function resolveAuthCatalog(
   readonly permissions: readonly string[];
   readonly roles: AuthModuleRoles;
 } {
+  const enabled = options.workspace?.enabled === true;
+  if (scope === "workspace" && !enabled) {
+    return emptyWorkspaceCatalog;
+  }
+  const catalogs = enabled ? enabledCatalogs : disabledCatalogs;
   const defaults =
     scope === "user"
       ? { permissions: DEFAULT_USER_PERMISSIONS, roles: DEFAULT_USER_ROLES }
@@ -40,14 +54,32 @@ export function resolveAuthCatalog(
   if (cached) {
     return cached;
   }
-  const builtInRoles: AuthModuleRoles = defaults.roles;
+  const builtInRoles: AuthModuleRoles = enabled
+    ? defaults.roles
+    : Object.fromEntries(
+        Object.entries(defaults.roles as AuthModuleRoles).map(
+          ([role, permissions]) => [
+            role,
+            permissions.filter(
+              (permission) => permission !== "workspace:create",
+            ),
+          ],
+        ),
+      );
   const roleNames = new Set([
     ...Object.keys(builtInRoles),
     ...Object.keys(configured?.roles ?? {}),
   ]);
   const catalog = Object.freeze({
     permissions: Object.freeze([
-      ...new Set([...defaults.permissions, ...(configured?.permissions ?? [])]),
+      ...new Set([
+        ...(enabled
+          ? defaults.permissions
+          : defaults.permissions.filter(
+              (permission) => permission !== "workspace:create",
+            )),
+        ...(configured?.permissions ?? []),
+      ]),
     ]),
     roles: Object.freeze(
       Object.fromEntries(

@@ -1,6 +1,5 @@
-import { Collection, MetadataStorage, t } from "@mikro-orm/core";
+import { MetadataStorage, t } from "@mikro-orm/core";
 
-import { Member } from "./member.entity.js";
 import { User } from "./user.entity.js";
 
 describe("entity metadata", () => {
@@ -19,21 +18,12 @@ describe("entity metadata", () => {
     );
   });
   describe("built-in auth entity field ownership", () => {
-    it.each([[User, "members", Member, { mappedBy: "user" }]] as const)(
-      "%s.%s targets the built-in class",
-      (entity, field, target, options) => {
-        const metadata = Object.values(MetadataStorage.getMetadata());
-        const property = Object.values(
-          metadata.find((meta) => meta.class === entity)?.properties ?? {},
-        ).find((property) => property.name === field);
-        expect(property).toMatchObject(options);
-        expect(property?.cascade ?? []).not.toContain("remove");
-        if (typeof property?.entity !== "function") {
-          throw new Error("Missing class relation");
-        }
-        expect(property.entity()).toBe(target);
-      },
-    );
+    it("keeps workspace relations out of the core user metadata", () => {
+      const metadata = Object.values(MetadataStorage.getMetadata()).find(
+        (meta) => meta.class === User,
+      );
+      expect(metadata?.properties).not.toHaveProperty("members");
+    });
   });
 });
 
@@ -50,7 +40,7 @@ describe("entity defaults", () => {
     expect(entity.banned).toBe(false);
     expect(entity.banReason).toBeNull();
     expect(entity.banExpiresAt).toBeNull();
-    expect(entity.members).toBeInstanceOf(Collection);
+    expect(entity).not.toHaveProperty("members");
   });
 
   it("keeps role and permission columns as arrays, independent of GraphQL enums", () => {

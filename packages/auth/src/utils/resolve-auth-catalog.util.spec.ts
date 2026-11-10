@@ -10,8 +10,16 @@ describe("additive auth configuration", () => {
       permissions: ["article:read"],
       roles: { editor: ["article:read"] },
     };
-    const first = resolveAuthCatalog({ user: configured }, "user");
-    expect(resolveAuthCatalog({ user: configured }, "user")).toBe(first);
+    const first = resolveAuthCatalog(
+      { workspace: { enabled: true }, user: configured },
+      "user",
+    );
+    expect(
+      resolveAuthCatalog(
+        { workspace: { enabled: true }, user: configured },
+        "user",
+      ),
+    ).toBe(first);
     expect(Object.isFrozen(first)).toBe(true);
     expect(Object.isFrozen(first.permissions)).toBe(true);
     expect(Object.isFrozen(first.roles)).toBe(true);
@@ -20,14 +28,17 @@ describe("additive auth configuration", () => {
       first,
     );
     expect(
-      resolveAuthCatalog({ user: { permissions: ["other:read"] } }, "user")
-        .permissions,
+      resolveAuthCatalog(
+        { workspace: { enabled: true }, user: { permissions: ["other:read"] } },
+        "user",
+      ).permissions,
     ).not.toContain("article:read");
     configured.roles.editor.push("article:write");
     expect(first.roles.editor).toEqual(["article:read"]);
   });
   it("extends permission catalogs and same-name roles while preserving built-in roles", () => {
     const options = {
+      workspace: { enabled: true },
       user: {
         permissions: ["article:read", "user:read"],
         roles: { admin: ["article:read"], editor: ["article:read"] },
@@ -46,15 +57,30 @@ describe("additive auth configuration", () => {
     expect(options.user.roles.admin).toEqual(["article:read"]);
     expect(options.user.permissions).toEqual(["article:read", "user:read"]);
   });
-
   it.each(["user", "workspace"] as const)(
     "treats empty %s additions as unchanged defaults and never automatically grants custom permissions",
     (scope) => {
       expect(
-        resolveAuthCatalog({ [scope]: { permissions: [], roles: {} } }, scope),
-      ).toEqual(resolveAuthCatalog({}, scope));
+        resolveAuthCatalog(
+          {
+            workspace: { enabled: true },
+            [scope]: {
+              ...(scope === "workspace" ? { enabled: true } : {}),
+              permissions: [],
+              roles: {},
+            },
+          },
+          scope,
+        ),
+      ).toEqual(resolveAuthCatalog({ workspace: { enabled: true } }, scope));
       const result = resolveAuthCatalog(
-        { [scope]: { permissions: ["article:read"] } },
+        {
+          workspace: { enabled: true },
+          [scope]: {
+            ...(scope === "workspace" ? { enabled: true } : {}),
+            permissions: ["article:read"],
+          },
+        },
         scope,
       );
       for (const permissions of Object.values(result.roles)) {
@@ -62,4 +88,18 @@ describe("additive auth configuration", () => {
       }
     },
   );
+});
+
+describe("optional workspace behavior", () => {
+  it("isolates cached user catalogs across enabled and disabled workspace configurations", () => {
+    const user = { permissions: ["report:read"] };
+    const disabled = resolveAuthCatalog({ user }, "user");
+    const enabled = resolveAuthCatalog(
+      { user, workspace: { enabled: true } },
+      "user",
+    );
+    expect(enabled.permissions).toContain("workspace:create");
+    expect(disabled.permissions).not.toContain("workspace:create");
+    expect(resolveAuthCatalog({ user }, "user")).toBe(disabled);
+  });
 });

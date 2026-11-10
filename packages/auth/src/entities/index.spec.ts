@@ -1,7 +1,7 @@
 import { MetadataStorage } from "@mikro-orm/core";
 
 import { Account } from "./account.entity.js";
-import { entities } from "./index.js";
+import { entities, workspaceEntities } from "./index.js";
 import { Invitation } from "./invitation.entity.js";
 import { Member } from "./member.entity.js";
 import { MemberApiKey } from "./member-api-key.entity.js";
@@ -17,13 +17,13 @@ describe("built-in auth entity field ownership", () => {
     [UserApiKey, ["user", "permissions"]],
     [MemberApiKey, ["member", "permissions"]],
     [Session, ["user", "token", "expiresAt"]],
-    [User, ["name", "email", "members"]],
+    [User, ["name", "email"]],
     [Verification, ["identifier", "value"]],
     [Workspace, ["name", "members"]],
     [Invitation, ["email", "workspace", "inviter"]],
     [Member, ["name", "email", "user", "workspace"]],
   ] as const)("%s owns its persistence fields", (entity, fields) => {
-    expect(entities).toContain(entity);
+    expect([...entities, ...workspaceEntities]).toContain(entity);
     const metadata = Object.values(MetadataStorage.getMetadata()).find(
       (meta) => meta.class === entity,
     );

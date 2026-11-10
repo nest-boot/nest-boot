@@ -79,6 +79,7 @@ describe("API-key management", () => {
         `checks conditional read restrictions on the loaded ${scope} key`,
         async () => {
           const options: AuthModuleOptions = {
+            workspace: { enabled: true },
             buildAbility: ({ cannot }) => {
               cannot("read", UserApiKey, { enabled: false });
               cannot("read", MemberApiKey, { enabled: false });
@@ -118,6 +119,7 @@ describe("API-key management", () => {
         `rejects a ${scope} connection page containing a conditionally denied key without changing pagination`,
         async () => {
           const options: AuthModuleOptions = {
+            workspace: { enabled: true },
             buildAbility: ({ cannot }) => {
               cannot("read", UserApiKey, { enabled: false });
               cannot("read", MemberApiKey, { enabled: false });
@@ -177,6 +179,7 @@ describe("API-key management", () => {
             const options: AuthModuleOptions =
               reason === "catalog"
                 ? {
+                    workspace: { enabled: true },
                     apiKey: {
                       user: { allowedPermissions: ["user-api-key:write"] },
                       member: {
@@ -184,7 +187,7 @@ describe("API-key management", () => {
                       },
                     },
                   }
-                : {};
+                : { workspace: { enabled: true } };
             const { service, em, authorization } = createService(options);
             vi.mocked(authorization.authorize).mockRestore();
             const user = Object.assign(createTestUser(), {

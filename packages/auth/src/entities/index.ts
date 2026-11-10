@@ -18,14 +18,7 @@ export * from "./verification.entity.js";
 export * from "./workspace.entity.js";
 
 /** Built-in authentication entities for MikroORM runtime and migration discovery. */
-export const entities = [
-  User,
-  Account,
-  Session,
-  Verification,
-  Workspace,
-  Member,
-  Invitation,
-  UserApiKey,
-  MemberApiKey,
-];
+export const entities = [User, Account, Session, Verification, UserApiKey];
+
+/** Workspace entities, registered only when `workspace.enabled` is true. */
+export const workspaceEntities = [Workspace, Member, Invitation, MemberApiKey];

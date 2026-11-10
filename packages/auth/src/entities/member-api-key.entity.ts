@@ -24,7 +24,7 @@ const matchesApiKeyOwner: PolicyCallback<MemberApiKey> = (columns) =>
   `(EXISTS (SELECT 1 FROM "member" WHERE "member"."id" = "${columns.member}" AND "member"."workspace_id" = nullif(current_setting('app.workspace.id', true), '')::bigint))`;
 
 /** Built-in MemberApiKey entity with authentication persistence and access policies. */
-@ObjectType()
+@ObjectType({ isAbstract: true })
 @Entity<typeof MemberApiKey>({
   policies: [
     {

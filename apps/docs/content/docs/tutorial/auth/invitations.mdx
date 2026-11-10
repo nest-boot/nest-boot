@@ -26,6 +26,7 @@ import { RequestContext } from "@nest-boot/request-context";
 AuthModule.forRoot({
   // ...
   workspace: {
+    enabled: true,
     async sendInvitationEmail({ email, id, inviter, workspace }) {
       const url = new URL(
         "/invite",

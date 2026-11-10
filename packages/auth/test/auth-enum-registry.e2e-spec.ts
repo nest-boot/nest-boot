@@ -64,7 +64,10 @@ class EnumTestResolver {
 describe("auth enum registration", () => {
   const registrations: AuthEnumRegistry[] = [];
   const register = (options: AuthModuleOptions) => {
-    const registry = new AuthEnumRegistry(options);
+    const registry = new AuthEnumRegistry({
+      ...options,
+      workspace: { ...options.workspace, enabled: true },
+    });
     registrations.push(registry);
     return registry;
   };
@@ -103,7 +106,10 @@ describe("auth enum registration", () => {
   it("keeps stored API-key grants serializable after tightening the allowlist", async () => {
     register({
       user: { permissions: ["user:read"] },
-      workspace: { permissions: ["project:read", "project:write"] },
+      workspace: {
+        enabled: true,
+        permissions: ["project:read", "project:write"],
+      },
       apiKey: {
         user: { allowedPermissions: ["user:read", "project:read"] },
         member: { allowedPermissions: ["user:read", "project:read"] },
@@ -135,7 +141,7 @@ describe("auth enum registration", () => {
   it("uses the full scope catalog for empty API-key enum configuration", async () => {
     register({
       user: { permissions: ["user:read"] },
-      workspace: { permissions: ["project:read"] },
+      workspace: { enabled: true, permissions: ["project:read"] },
       apiKey: {
         user: { allowedPermissions: [] },
         member: { allowedPermissions: [] },
@@ -164,6 +170,7 @@ describe("auth enum registration", () => {
         permissions: ["user:read", "user-api-key:read"],
       },
       workspace: {
+        enabled: true,
         roles: { "team-owner": [] },
         permissions: ["project:write"],
       },

@@ -154,6 +154,7 @@ describe('example native RLS migrations with PGlite', () => {
       }
       let resetToken = '';
       const options: AuthModuleOptions = {
+        workspace: { enabled: true },
         baseURL: 'http://localhost:4100',
         secret: 'password-reset-integration-secret-long-enough',
         emailAndPassword: {
@@ -260,6 +261,7 @@ describe('example native RLS migrations with PGlite', () => {
     async (phase) => {
       const hookError = new Error(`${phase} deletion hook failed`);
       const options: AuthModuleOptions = {
+        workspace: { enabled: true },
         baseURL: 'http://localhost:4100',
         secret: 'delete-hook-integration-secret-long-enough',
         emailAndPassword: {
@@ -925,7 +927,7 @@ describe('example native RLS migrations with PGlite', () => {
       permissions: ['workspace:update'],
     });
     await admin.persist([user, workspace, member]).flush();
-    const options: AuthModuleOptions = {};
+    const options: AuthModuleOptions = { workspace: { enabled: true } };
     const readContext = async (authenticated: boolean) => {
       const em = orm.em.fork({ session: { role: 'anonymous' } });
       const middleware = new AuthMiddleware(
@@ -1018,14 +1020,11 @@ describe('example native RLS migrations with PGlite', () => {
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
   });
 
-  it('inherits member collections from auth base entities and resolves concrete targets', () => {
-    expect(orm.getMetadata(User).properties.members.targetMeta?.class).toBe(
-      Member,
-    );
+  it('keeps workspace member collections without introducing a user-to-member discovery dependency', () => {
+    expect(orm.getMetadata(User).properties).not.toHaveProperty('members');
     expect(
       orm.getMetadata(Workspace).properties.members.targetMeta?.class,
     ).toBe(Member);
-    expect(orm.getMetadata(User).properties.members.mappedBy).toBe('user');
     expect(orm.getMetadata(Workspace).properties.members.mappedBy).toBe(
       'workspace',
     );
@@ -1149,7 +1148,9 @@ describe('example native RLS migrations with PGlite', () => {
               },
             },
       );
-      const options = {} satisfies AuthModuleOptions;
+      const options = {
+        workspace: { enabled: true },
+      } satisfies AuthModuleOptions;
       const middleware = new AuthMiddleware(
         options,
         {
@@ -1258,13 +1259,13 @@ describe('example native RLS migrations with PGlite', () => {
           },
         },
       });
-      const service = new MemberService(em, {});
+      const service = new MemberService(em, { workspace: { enabled: true } });
       await RequestContext.run(
         new RequestContext({ type: 'test' }),
         async () => {
           RequestContext.set(EntityManager, em);
           RequestIdentity.stage({ user, workspace, member: actor });
-          RequestIdentity.prepare({});
+          RequestIdentity.prepare({ workspace: { enabled: true } });
           const page = await service.getMemberConnectionByWorkspace(workspace, {
             first: 10,
           });
@@ -1317,11 +1318,12 @@ describe('example native RLS migrations with PGlite', () => {
         role === 'automation'
           ? {
               workspace: {
+                enabled: true,
                 defaultRole: 'automation',
                 roles: { automation: ['workspace:read'] },
               },
             }
-          : {};
+          : { workspace: { enabled: true } };
       const em = orm.em.fork({
         session: {
           role: 'authenticated',
@@ -1476,8 +1478,10 @@ describe('example native RLS migrations with PGlite', () => {
         workspace,
         apiKey: limited,
       });
-      RequestIdentity.prepare({});
-      const service = new MemberApiKeyService(em, {});
+      RequestIdentity.prepare({ workspace: { enabled: true } });
+      const service = new MemberApiKeyService(em, {
+        workspace: { enabled: true },
+      });
       const page = await service.getMemberApiKeyConnection(workspace, {
         first: 10,
       });
@@ -1493,7 +1497,7 @@ describe('example native RLS migrations with PGlite', () => {
         'Unrestricted API keys',
       );
       RequestIdentity.stage({ apiKey: inherited });
-      RequestIdentity.prepare({});
+      RequestIdentity.prepare({ workspace: { enabled: true } });
       const fullPage = await service.getMemberApiKeyConnection(workspace, {
         first: 10,
       });
@@ -1523,7 +1527,7 @@ describe('example native RLS migrations with PGlite', () => {
       variables: { 'app.workspace.id': workspace.id, 'app.user.id': '' },
     };
     const scoped = orm.em.fork({ session });
-    const service = new MemberService(scoped, {});
+    const service = new MemberService(scoped, { workspace: { enabled: true } });
     const context = new RequestContext({ type: 'test' });
     context.set(EntityManager, scoped);
     context.set(BaseWorkspace, workspace);
@@ -1534,7 +1538,7 @@ describe('example native RLS migrations with PGlite', () => {
     );
 
     await RequestContext.run(context, async () => {
-      RequestIdentity.prepare({});
+      RequestIdentity.prepare({ workspace: { enabled: true } });
       const pendingWorkspace = await scoped.findOneOrFail(
         Workspace,
         workspace.id,
@@ -1853,7 +1857,7 @@ describe('example native RLS migrations with PGlite', () => {
           variables: { 'app.user.id': userId, 'app.workspace.id': workspaceId },
         },
       });
-    const options = {};
+    const options = { workspace: { enabled: true } };
     const workspaceServiceFor = (em: EntityManager) =>
       createContextualAuthService(
         em,
@@ -2372,6 +2376,7 @@ describe('example native RLS migrations with PGlite', () => {
     expect(await anonymous.findOne(User, target.id)).toBeNull();
 
     const options: AuthModuleOptions = {
+      workspace: { enabled: true },
       buildAbility: (rules) => {
         rules.cannot(['read'], User, { id: { $ne: target.id } });
       },
@@ -2441,6 +2446,7 @@ describe('example native RLS migrations with PGlite', () => {
     });
     await admin.persist([actor, target, session]).flush();
     const options: AuthModuleOptions = {
+      workspace: { enabled: true },
       user: {
         permissions: ['account-admin:manage'],
         roles: { user: [] },

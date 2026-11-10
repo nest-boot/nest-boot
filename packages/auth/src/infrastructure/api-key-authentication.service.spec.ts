@@ -43,7 +43,9 @@ function fixture() {
     memberKey,
     rows,
     em,
-    service: new ApiKeyAuthenticationService(em as unknown as EntityManager),
+    service: new ApiKeyAuthenticationService(em as unknown as EntityManager, {
+      workspace: { enabled: true },
+    }),
   };
 }
 
@@ -66,7 +68,6 @@ describe("API-key authentication", () => {
       await expect(service.validate("key")).rejects.toThrow("Invalid API key");
     },
   );
-
   it("rejects member keys while their login user is banned", async () => {
     const { service, rows, user } = fixture();
     rows.user = null;
@@ -75,7 +76,6 @@ describe("API-key authentication", () => {
     user.banExpiresAt = new Date(0);
     await expect(service.validate("key")).resolves.toMatchObject({ user });
   });
-
   it("fails closed for missing, unknown, and ambiguous credentials", async () => {
     const { service, rows, em } = fixture();
     await expect(service.validate("")).rejects.toThrow("Missing API key");
@@ -89,7 +89,6 @@ describe("API-key authentication", () => {
       "Invalid API key",
     );
   });
-
   for (const scope of ["user", "member"] as const) {
     it(`authenticates a ${scope} key by hash with only its owner populated`, async () => {
       const { service, rows, em } = fixture();
@@ -110,7 +109,6 @@ describe("API-key authentication", () => {
         { populate: ["member.workspace", "member.user"] },
       );
     });
-
     it.each(["disabled", "expired"])(
       `rejects %s ${scope} keys`,
       async (state) => {
@@ -127,7 +125,6 @@ describe("API-key authentication", () => {
         );
       },
     );
-
     it(`records usage only in the ${scope} table`, async () => {
       const { service, userKey, memberKey, em } = fixture();
       const key = scope === "user" ? userKey : memberKey;
@@ -139,7 +136,6 @@ describe("API-key authentication", () => {
       );
     });
   }
-
   it("rejects active user bans but permits expired bans", async () => {
     const { service, rows, user, userKey } = fixture();
     rows.member = null;
@@ -149,7 +145,6 @@ describe("API-key authentication", () => {
     user.banExpiresAt = new Date(0);
     await expect(service.validate("user")).resolves.toMatchObject({ user });
   });
-
   it("captures a scoped recorder without updating or flushing the caller's manager", async () => {
     const { service, em, userKey } = fixture();
     const scoped = { nativeUpdate: vi.fn().mockResolvedValue(1) };
@@ -168,5 +163,32 @@ describe("API-key authentication", () => {
       { lastUsedAt: expect.any(Date), updatedAt: expect.any(Date) },
     );
     expect(em.nativeUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("optional workspace behavior", () => {
+  it("authenticates user keys without touching optional member tables", async () => {
+    const user = new User();
+    const key = Object.assign(new UserApiKey(), { user });
+    const em = { findOne: vi.fn().mockResolvedValue(key) };
+    const service = new ApiKeyAuthenticationService(
+      em as unknown as EntityManager,
+      {},
+    );
+    await expect(service.validate("personal-key")).resolves.toMatchObject({
+      ownerType: "user",
+      user,
+      apiKey: key,
+    });
+    expect(em.findOne).toHaveBeenCalledExactlyOnceWith(
+      UserApiKey,
+      expect.anything(),
+      { populate: ["user"] },
+    );
+    em.findOne.mockResolvedValue(null);
+    await expect(service.validate("member-key")).rejects.toThrow(
+      "Invalid API key",
+    );
+    expect(em.findOne).toHaveBeenCalledTimes(2);
   });
 });
