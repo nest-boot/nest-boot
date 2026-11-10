@@ -16,7 +16,7 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       exclude: ["src/**/*.spec.ts"],
       reportsDirectory: "coverage/e2e",
-      reporter: ["text", "lcov", "json-summary"],
+      reporter: ["text", "html", "clover", "json"],
     },
   },
 });

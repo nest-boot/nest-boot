@@ -20,7 +20,7 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       exclude: ["src/**/*.spec.ts"],
       reportsDirectory: "coverage/unit",
-      reporter: ["text", "lcov", "json-summary"],
+      reporter: ["text", "html", "clover", "json"],
     },
   },
 });
