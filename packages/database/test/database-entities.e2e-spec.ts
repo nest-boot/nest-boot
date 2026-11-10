@@ -3,8 +3,8 @@ import { PgliteDriver } from "@mikro-orm/pglite";
 import { Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { DatabaseModule } from "./database.module.js";
-import { DatabaseEntityRegistry } from "./infrastructure/database-entity-registry.js";
+import { DatabaseModule } from "../src/database.module.js";
+import { DatabaseEntityRegistry } from "../src/infrastructure/database-entity-registry.js";
 
 class CoreRecord {
   id!: number;

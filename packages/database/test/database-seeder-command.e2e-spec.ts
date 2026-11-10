@@ -4,7 +4,7 @@ import { join } from "node:path";
 import {
   type DatabaseCommandFixture,
   databaseCommandFixture,
-} from "../../test/fixtures/database-command.fixture.js";
+} from "./fixtures/database-command.fixture.js";
 
 describe("database seeder commands", { timeout: 30000 }, () => {
   let app: DatabaseCommandFixture;
