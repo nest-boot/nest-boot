@@ -4,7 +4,7 @@ import { EntityManager } from "@mikro-orm/core";
 import { MikroORM } from "@mikro-orm/pglite";
 import { RequestContext } from "@nest-boot/request-context";
 
-import { EntityService } from "../dist/services/entity.service.js";
+import { EntityService } from "../src/services/entity.service.js";
 import { TestEntity } from "./entities/test.entity.js";
 
 describe("EntityService request context integration", () => {

@@ -5,7 +5,7 @@ import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
 import { MikroORM } from "@mikro-orm/pglite";
 import { HashService } from "@nest-boot/hash";
 
-import { HashedProperty } from "../dist/index.js";
+import { HashedProperty } from "../src/index.js";
 
 /**
  * Returns unique in-memory database name for this test.

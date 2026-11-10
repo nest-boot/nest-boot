@@ -31,14 +31,14 @@ vi.mock("pino", () => ({
   default: mockPino,
 }));
 
-vi.mock("../dist/pino-http.js", () => ({
+vi.mock("../src/pino-http.js", () => ({
   __esModule: true,
   default: mockPinoHttp,
 }));
 
-import { LoggerModule } from "../dist/logger.module.js";
-import { PINO_HTTP } from "../dist/logger.module-definition.js";
-import { type LoggerModuleOptions } from "../dist/logger-module-options.interface.js";
+import { LoggerModule } from "../src/logger.module.js";
+import { PINO_HTTP } from "../src/logger.module-definition.js";
+import { type LoggerModuleOptions } from "../src/logger-module-options.interface.js";
 
 describe("LoggerModule", () => {
   afterEach(() => {

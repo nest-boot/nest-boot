@@ -6,8 +6,8 @@ import { Mailer } from "@nest-boot/mailer";
 import { Global, Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { AuthModule } from "../dist/auth.module.js";
-import { entities, User } from "../dist/entities/index.js";
+import { AuthModule } from "../src/auth.module.js";
+import { entities, User } from "../src/entities/index.js";
 
 @Global()
 @Module({

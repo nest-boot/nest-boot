@@ -2,10 +2,10 @@ import { RedisModule } from "@nest-boot/redis";
 import { Test } from "@nestjs/testing";
 import { Redis } from "ioredis";
 
-import { GraphQLRateLimitDriver } from "../dist/drivers/index.js";
-import { RedisGraphQLRateLimitDriver } from "../dist/drivers/redis-graphql-rate-limit.driver.js";
-import { GraphQLRateLimitModule } from "../dist/graphql-rate-limit.module.js";
-import { GraphQLRateLimitPlugin } from "../dist/graphql-rate-limit.plugin.js";
+import { GraphQLRateLimitDriver } from "../src/drivers/index.js";
+import { RedisGraphQLRateLimitDriver } from "../src/drivers/redis-graphql-rate-limit.driver.js";
+import { GraphQLRateLimitModule } from "../src/graphql-rate-limit.module.js";
+import { GraphQLRateLimitPlugin } from "../src/graphql-rate-limit.plugin.js";
 
 const redisUrl = process.env.REDIS_URL;
 const describeWithRedis = redisUrl ? describe : describe.skip;

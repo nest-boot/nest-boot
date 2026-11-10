@@ -2,8 +2,8 @@ import { StorageModule } from "@nest-boot/storage";
 import { Injectable, Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { StagedUploadModule } from "../dist/staged-upload.module.js";
-import { StagedUploadService } from "../dist/staged-upload.service.js";
+import { StagedUploadModule } from "../src/staged-upload.module.js";
+import { StagedUploadService } from "../src/staged-upload.service.js";
 
 @Injectable()
 class StagedUploadConsumer {

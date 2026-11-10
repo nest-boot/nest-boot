@@ -1,6 +1,6 @@
 import { EntitySchema, MikroORM } from "@mikro-orm/pglite";
 
-import { omitCredentials } from "../dist/utils/omit-credentials.util.js";
+import { omitCredentials } from "../src/utils/omit-credentials.util.js";
 
 class CredentialRecord {
   id!: number;

@@ -7,7 +7,7 @@ import {
 } from "@mikro-orm/decorators/legacy";
 import { MikroORM } from "@mikro-orm/postgresql";
 
-import { VectorType } from "../dist/property-types/vector.type.js";
+import { VectorType } from "../src/property-types/vector.type.js";
 
 @Entity()
 class VectorRecord {

@@ -5,7 +5,7 @@ import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import { type INestApplication, Injectable, Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { Storage, StorageModule } from "../dist/index.js";
+import { Storage, StorageModule } from "../src/index.js";
 
 const requiredS3Env = [
   "STORAGE_ACCESS_KEY_ID",

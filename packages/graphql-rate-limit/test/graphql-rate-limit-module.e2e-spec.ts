@@ -7,11 +7,11 @@ import {
   GraphQLRateLimitDriver,
   MemoryGraphQLRateLimitDriver,
   RedisGraphQLRateLimitDriver,
-} from "../dist/drivers/index.js";
-import { GraphQLRateLimitModule } from "../dist/graphql-rate-limit.module.js";
-import { OPTIONS_TOKEN } from "../dist/graphql-rate-limit.module-definition.js";
-import { GraphQLRateLimitPlugin } from "../dist/graphql-rate-limit.plugin.js";
-import { GraphQLRateLimitOptions } from "../dist/interfaces/index.js";
+} from "../src/drivers/index.js";
+import { GraphQLRateLimitModule } from "../src/graphql-rate-limit.module.js";
+import { OPTIONS_TOKEN } from "../src/graphql-rate-limit.module-definition.js";
+import { GraphQLRateLimitPlugin } from "../src/graphql-rate-limit.plugin.js";
+import { GraphQLRateLimitOptions } from "../src/interfaces/index.js";
 
 describe("GraphQLRateLimitModule", () => {
   const originalRedisUrl = process.env.REDIS_URL;

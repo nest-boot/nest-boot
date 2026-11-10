@@ -14,7 +14,7 @@ import {
   parse,
 } from "graphql";
 
-import type { AuthModuleOptions } from "../dist/auth-module-options.interface.js";
+import type { AuthModuleOptions } from "../src/auth-module-options.interface.js";
 import {
   MemberApiKeyPermission,
   UserApiKeyPermission,
@@ -22,10 +22,10 @@ import {
   UserRole,
   WorkspacePermission,
   WorkspaceRole,
-} from "../dist/enums/index.js";
-import { AuthEnumRegistry } from "../dist/infrastructure/auth-enum-registry.js";
-import { DEFAULT_USER_PERMISSIONS } from "../dist/user.constants.js";
-import { DEFAULT_WORKSPACE_PERMISSIONS } from "../dist/workspace.constants.js";
+} from "../src/enums/index.js";
+import { AuthEnumRegistry } from "../src/infrastructure/auth-enum-registry.js";
+import { DEFAULT_USER_PERMISSIONS } from "../src/user.constants.js";
+import { DEFAULT_WORKSPACE_PERMISSIONS } from "../src/workspace.constants.js";
 
 @Resolver()
 class EnumTestResolver {

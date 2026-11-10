@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
 import { Liquid } from "liquidjs";
 
-import { ViewModule } from "../dist/view.module.js";
+import { ViewModule } from "../src/view.module.js";
 
 @Injectable()
 class LiquidConsumer {

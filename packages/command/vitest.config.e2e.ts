@@ -8,5 +8,15 @@ export default defineConfig({
     include: ["test/**/*.e2e-spec.ts"],
     testTimeout: 30000,
     hookTimeout: 30000,
+    coverage: {
+      include: ["src/**/*.ts"],
+      exclude: [
+        "src/test/**",
+        "**/*.spec.ts",
+        "src/{cli,run-cli,project-loader,ts-node.loader}.ts",
+      ],
+      reportsDirectory: "coverage/e2e",
+      reporter: ["text", "json", "lcov"],
+    },
   },
 });

@@ -7,11 +7,11 @@ import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
 import { MikroORM } from "@mikro-orm/pglite";
 import { RequestContext } from "@nest-boot/request-context";
 
-import { Session } from "../dist/entities/session.entity.js";
-import { User } from "../dist/entities/user.entity.js";
-import { createContextualAuthService } from "../dist/infrastructure/create-contextual-auth-service.js";
-import { RequestIdentity } from "../dist/infrastructure/request-identity.js";
-import { runAuthQuery } from "../dist/utils/run-auth-query.js";
+import { Session } from "../src/entities/session.entity.js";
+import { User } from "../src/entities/user.entity.js";
+import { createContextualAuthService } from "../src/infrastructure/create-contextual-auth-service.js";
+import { RequestIdentity } from "../src/infrastructure/request-identity.js";
+import { runAuthQuery } from "../src/utils/run-auth-query.js";
 
 @Entity({
   policies: [

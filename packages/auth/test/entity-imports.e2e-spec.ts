@@ -3,25 +3,25 @@ it("should load entities in an isolated module", async () => {
   vi.resetModules();
 
   expect(
-    (await import("../dist/entities/account.entity.js")).Account,
+    (await import("../src/entities/account.entity.js")).Account,
   ).toBeDefined();
   expect(
-    (await import("../dist/entities/member-api-key.entity.js")).MemberApiKey,
+    (await import("../src/entities/member-api-key.entity.js")).MemberApiKey,
   ).toBeDefined();
   expect(
-    (await import("../dist/entities/session.entity.js")).Session,
+    (await import("../src/entities/session.entity.js")).Session,
   ).toBeDefined();
-  expect((await import("../dist/entities/user.entity.js")).User).toBeDefined();
+  expect((await import("../src/entities/user.entity.js")).User).toBeDefined();
   expect(
-    (await import("../dist/entities/verification.entity.js")).Verification,
-  ).toBeDefined();
-  expect(
-    (await import("../dist/entities/member.entity.js")).Member,
+    (await import("../src/entities/verification.entity.js")).Verification,
   ).toBeDefined();
   expect(
-    (await import("../dist/entities/invitation.entity.js")).Invitation,
+    (await import("../src/entities/member.entity.js")).Member,
   ).toBeDefined();
   expect(
-    (await import("../dist/entities/workspace.entity.js")).Workspace,
+    (await import("../src/entities/invitation.entity.js")).Invitation,
+  ).toBeDefined();
+  expect(
+    (await import("../src/entities/workspace.entity.js")).Workspace,
   ).toBeDefined();
 });

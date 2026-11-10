@@ -6,7 +6,7 @@ import parser from "@typescript-eslint/parser";
 import { Linter, type Rule } from "eslint";
 import * as ts from "typescript";
 
-import rule from "../dist/rules/mikro-orm/entity-property-config-from-types.js";
+import rule from "../src/rules/mikro-orm/entity-property-config-from-types.js";
 
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 // Keep executable compiler fixtures isolated from the workspace packages.

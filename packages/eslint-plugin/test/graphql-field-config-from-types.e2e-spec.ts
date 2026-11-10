@@ -6,7 +6,7 @@ import parser from "@typescript-eslint/parser";
 import { Linter, type Rule } from "eslint";
 import * as ts from "typescript";
 
-import rule from "../dist/rules/graphql/graphql-field-config-from-types.js";
+import rule from "../src/rules/graphql/graphql-field-config-from-types.js";
 
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 // Real re-exports let the parser and compiler verify the same symbol origins.

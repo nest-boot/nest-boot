@@ -12,7 +12,7 @@ import { RequestContext } from "@nest-boot/request-context";
 import type { TestingModule } from "@nestjs/testing";
 import { Test } from "@nestjs/testing";
 
-import { DatabaseModule } from "../dist/index.js";
+import { DatabaseModule } from "../src/index.js";
 
 describe("native RLS with PGlite", () => {
   const suffix = randomUUID().replaceAll("-", "").slice(0, 10);

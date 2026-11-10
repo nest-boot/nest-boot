@@ -10,8 +10,7 @@ export default defineConfig({
     hookTimeout: 30000,
     coverage: {
       reportsDirectory: "coverage/e2e",
-      include: ["eslint.config.mjs"],
-      exclude: ["dist/test/**"],
+
       reporter: ["text", "html", "clover", "json"],
     },
   },

@@ -37,7 +37,7 @@ vi.mock("@nestjs/graphql", async () => {
 import { type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { GraphQLModule } from "../dist/index.js";
+import { GraphQLModule } from "../src/index.js";
 import { TestResolver } from "./test.resolver.js";
 
 describe("GraphQLModule", () => {

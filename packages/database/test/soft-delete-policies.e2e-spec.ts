@@ -1,6 +1,6 @@
 import { EntitySchema, MikroORM } from "@mikro-orm/pglite";
 
-import { softDeletePolicies } from "../dist/policies/soft-delete.policies.js";
+import { softDeletePolicies } from "../src/policies/soft-delete.policies.js";
 
 describe("softDeletePolicies database behavior", () => {
   let orm: MikroORM;

@@ -5,8 +5,8 @@ import { basename, dirname, join } from "node:path";
 import { RequestContext } from "@nest-boot/request-context";
 import { Test, type TestingModule } from "@nestjs/testing";
 
-import { TEMPORARY_DIRECTORY_ROOT } from "../dist/temporary-directory.constants.js";
-import { TemporaryDirectoryModule } from "../dist/temporary-directory.module.js";
+import { TEMPORARY_DIRECTORY_ROOT } from "../src/temporary-directory.constants.js";
+import { TemporaryDirectoryModule } from "../src/temporary-directory.module.js";
 
 describe("TemporaryDirectoryModule", () => {
   const modules: TestingModule[] = [];

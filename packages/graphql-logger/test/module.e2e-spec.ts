@@ -10,7 +10,7 @@ import { type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 
-import { GraphQLLoggerModule } from "../dist/index.js";
+import { GraphQLLoggerModule } from "../src/index.js";
 
 @ObjectType()
 class TestResult {

@@ -13,7 +13,7 @@ import {
   CommandFactory,
   CommandModule,
   Option,
-} from "../dist/index.js";
+} from "../src/index.js";
 
 const events: string[] = [];
 

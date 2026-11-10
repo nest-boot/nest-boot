@@ -9,8 +9,8 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     coverage: {
-      include: ["dist/**/*.js"],
-      exclude: ["dist/test/**"],
+      include: ["src/**/*.ts"],
+      exclude: ["src/**/*.spec.ts"],
       reportsDirectory: "coverage/e2e",
       reporter: ["text", "html", "clover", "json"],
     },

@@ -1,7 +1,7 @@
 import { EntitySchema, MikroORM } from "@mikro-orm/pglite";
 
-import { userScopePolicy } from "../dist/policies/user-scope.policy.js";
-import { workspaceScopePolicy } from "../dist/policies/workspace-scope.policy.js";
+import { userScopePolicy } from "../src/policies/user-scope.policy.js";
+import { workspaceScopePolicy } from "../src/policies/workspace-scope.policy.js";
 
 const types = [
   { type: "bigint", own: "11", other: "12" },

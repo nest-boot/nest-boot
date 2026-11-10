@@ -2,8 +2,8 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { Injectable, Module } from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
 
-import { Storage } from "../dist/storage.js";
-import { StorageModule } from "../dist/storage.module.js";
+import { Storage } from "../src/storage.js";
+import { StorageModule } from "../src/storage.module.js";
 
 @Injectable()
 class StorageConsumer {

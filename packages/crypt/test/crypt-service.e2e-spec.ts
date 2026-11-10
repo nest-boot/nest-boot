@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
 
-import { CryptModule, CryptService } from "../dist/index.js";
+import { CryptModule, CryptService } from "../src/index.js";
 
 const TEST_SECRET = "myTestSecretThatIsAtLeast32Chars!";
 

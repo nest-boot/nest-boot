@@ -2,9 +2,9 @@ import type { Server } from "node:http";
 
 import express from "express";
 
-import { cookies } from "../dist/cookies.js";
-import { headers } from "../dist/headers.js";
-import { RequestContextMiddleware } from "../dist/request-context.middleware.js";
+import { cookies } from "../src/cookies.js";
+import { headers } from "../src/headers.js";
+import { RequestContextMiddleware } from "../src/request-context.middleware.js";
 
 describe("HTTP request helpers", () => {
   it("reads request data and appends separate cookies through Express", async () => {

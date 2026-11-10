@@ -13,9 +13,9 @@ vi.mock("@nest-boot/queue", () => ({
   BaseProcessor: class BaseProcessor {},
 }));
 
-import { ScheduleModule } from "../dist/schedule.module.js";
-import { MODULE_OPTIONS_TOKEN } from "../dist/schedule.module-definition.js";
-import { ScheduleQueue } from "../dist/schedule.queue.js";
+import { ScheduleModule } from "../src/schedule.module.js";
+import { MODULE_OPTIONS_TOKEN } from "../src/schedule.module-definition.js";
+import { ScheduleQueue } from "../src/schedule.queue.js";
 
 describe("ScheduleModule", () => {
   beforeEach(() => {

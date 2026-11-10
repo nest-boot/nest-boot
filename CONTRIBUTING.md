@@ -63,7 +63,7 @@ Do not run both test commands unless useful. Not every package defines every tar
 - Tests that assemble complete modules, exercise command or HTTP entry points, or use real databases, Redis, SMTP, or compiler projects belong under the package's `test/` directory as `*.e2e-spec.ts`. Running in the same process does not make such a test a unit test.
 - Split mixed suites at the behavior boundary while preserving their assertions. Share setup and test doubles through fixtures under `test/`; do not publish fixtures with production code.
 - Keep compile-time-only contracts in `test/*.type-test.ts` and include them in the package's TypeScript check.
-- Run ordinary tests through `test`/`test:cov` and E2E tests through `test:e2e`. Build affected packages before E2E tests, which exercise the compiled package outputs. Keep their coverage reports in separate directories so neither run overwrites the other; CI collects both.
+- Run ordinary tests through `test`/`test:cov` and E2E tests through `test:e2e`. Build affected packages before E2E tests; CLI subprocesses and some package suites exercise compiled outputs. Keep their coverage reports in separate directories so neither run overwrites the other; CI collects both. In the command package, Vitest measures in-process E2E flows while c8 writes CLI subprocess coverage to `coverage/cli`; raw c8 snapshots stay in `node_modules/.cache/c8`.
 
 `pnpm test:layout` checks unit filenames against adjacent implementations and verifies that E2E files live under `test/`.
 

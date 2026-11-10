@@ -5,14 +5,14 @@ import {
 import { Test } from "@nestjs/testing";
 import type { GraphQLInputObjectType, GraphQLObjectType } from "graphql";
 
-import { InvitationResolver } from "../dist/features/invitations/invitation.resolver.js";
-import { AuthResolver } from "../dist/resolvers/auth.resolver.js";
-import { MemberResolver } from "../dist/resolvers/member.resolver.js";
-import { MemberApiKeyResolver } from "../dist/resolvers/member-api-key.resolver.js";
-import { SessionResolver } from "../dist/resolvers/session.resolver.js";
-import { UserResolver } from "../dist/resolvers/user.resolver.js";
-import { UserApiKeyResolver } from "../dist/resolvers/user-api-key.resolver.js";
-import { WorkspaceResolver } from "../dist/resolvers/workspace.resolver.js";
+import { InvitationResolver } from "../src/features/invitations/invitation.resolver.js";
+import { AuthResolver } from "../src/resolvers/auth.resolver.js";
+import { MemberResolver } from "../src/resolvers/member.resolver.js";
+import { MemberApiKeyResolver } from "../src/resolvers/member-api-key.resolver.js";
+import { SessionResolver } from "../src/resolvers/session.resolver.js";
+import { UserResolver } from "../src/resolvers/user.resolver.js";
+import { UserApiKeyResolver } from "../src/resolvers/user-api-key.resolver.js";
+import { WorkspaceResolver } from "../src/resolvers/workspace.resolver.js";
 
 // Filter-scalar execution is covered by the example's real-server e2e tests.
 describe("auth GraphQL schema", () => {

@@ -2,7 +2,7 @@ import { EntitySchema, wrap } from "@mikro-orm/core";
 import { MikroORM } from "@mikro-orm/pglite";
 import { NotFoundException } from "@nestjs/common";
 
-import { EntityService } from "../dist/services/entity.service.js";
+import { EntityService } from "../src/services/entity.service.js";
 
 class ReferenceItem {
   id!: number;

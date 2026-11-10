@@ -1,9 +1,9 @@
 import { LoggerModule } from "@nest-boot/logger";
 import { Test } from "@nestjs/testing";
 
-import { GraphQLLoggerModule } from "../dist/graphql-logger.module.js";
-import { MODULE_OPTIONS_TOKEN } from "../dist/graphql-logger.module-definition.js";
-import { GraphQLLoggerPlugin } from "../dist/graphql-logger.plugin.js";
+import { GraphQLLoggerModule } from "../src/graphql-logger.module.js";
+import { MODULE_OPTIONS_TOKEN } from "../src/graphql-logger.module-definition.js";
+import { GraphQLLoggerPlugin } from "../src/graphql-logger.plugin.js";
 
 describe("GraphQLLoggerModule", () => {
   it("registers the plugin synchronously", async () => {

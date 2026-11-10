@@ -4,10 +4,10 @@ import { Injectable, Module, type ModuleMetadata, Scope } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { Cli } from "clipanion";
 
-import { BaseCommand } from "../dist/base.command.js";
-import { CommandModule } from "../dist/command.module.js";
-import { CommandRegistry } from "../dist/command.registry.js";
-import { Command } from "../dist/decorators/command.decorator.js";
+import { BaseCommand } from "../src/base.command.js";
+import { CommandModule } from "../src/command.module.js";
+import { CommandRegistry } from "../src/command.registry.js";
+import { Command } from "../src/decorators/command.decorator.js";
 
 /**
  * Validates providers using the actual Nest discovery service.

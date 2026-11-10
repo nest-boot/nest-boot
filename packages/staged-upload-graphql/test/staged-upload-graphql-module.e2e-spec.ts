@@ -18,8 +18,8 @@ import {
 import { StorageModule } from "@nest-boot/storage";
 import { Test } from "@nestjs/testing";
 
-import { StagedUploadResolver } from "../dist/staged-upload.resolver.js";
-import { StagedUploadGraphQLModule } from "../dist/staged-upload-graphql.module.js";
+import { StagedUploadResolver } from "../src/staged-upload.resolver.js";
+import { StagedUploadGraphQLModule } from "../src/staged-upload-graphql.module.js";
 
 describe("StagedUploadGraphQLModule", () => {
   it("uses the globally registered staged upload service", async () => {

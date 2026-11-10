@@ -8,7 +8,7 @@ import {
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { DatabaseHealthIndicator, DatabaseModule } from "../dist/index.js";
+import { DatabaseHealthIndicator, DatabaseModule } from "../src/index.js";
 import { TestEntity } from "./entities/test.entity.js";
 
 describe("Database health HTTP integration", () => {

@@ -5,7 +5,7 @@ import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
 import { MikroORM } from "@mikro-orm/pglite";
 import { CryptService } from "@nest-boot/crypt";
 
-import { EncryptedProperty } from "../dist/index.js";
+import { EncryptedProperty } from "../src/index.js";
 
 const TEST_SECRET = "myTestSecretThatIsAtLeast32Chars!";
 

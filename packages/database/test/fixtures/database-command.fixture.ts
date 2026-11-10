@@ -10,7 +10,7 @@ import { Seeder } from "@mikro-orm/seeder";
 import { CommandFactory, CommandModule } from "@nest-boot/command";
 import { Module } from "@nestjs/common";
 
-import { DatabaseModule } from "../../dist/database.module.js";
+import { DatabaseModule } from "../../src/database.module.js";
 
 class CommandRecord {
   id!: number;
