@@ -1,10 +1,16 @@
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
-import type { Mocked } from "vitest";
+import { type Mocked } from "vitest";
 
-import { Invitation } from "../../entities/invitation.entity.js";
+import {
+  Invitation as BaseInvitation,
+  Invitation,
+} from "../../entities/invitation.entity.js";
 import { Member } from "../../entities/member.entity.js";
-import { User } from "../../entities/user.entity.js";
-import { Workspace } from "../../entities/workspace.entity.js";
+import { User as BaseUser, User } from "../../entities/user.entity.js";
+import {
+  Workspace as BaseWorkspace,
+  Workspace,
+} from "../../entities/workspace.entity.js";
 import { InvitationResolver } from "./invitation.resolver.js";
 import { type InvitationService } from "./invitation.service.js";
 
@@ -28,7 +34,6 @@ describe("InvitationResolver", () => {
     const { resolver, invitationService } = createResolver({
       createInvitation: vi.fn(async () => invitation),
     });
-
     await expect(
       resolver.createInvitation(workspace, user, input),
     ).resolves.toEqual({ id: invitation.id });
@@ -38,7 +43,6 @@ describe("InvitationResolver", () => {
       input,
     );
   });
-
   it("propagates invitation creation errors from InvitationService", async () => {
     const denied = new ForbiddenException();
     const workspace = { id: "workspace_1" } as Workspace;
@@ -47,7 +51,6 @@ describe("InvitationResolver", () => {
     const { resolver, invitationService } = createResolver({
       createInvitation: vi.fn().mockRejectedValue(denied),
     });
-
     await expect(
       resolver.createInvitation(workspace, user, input),
     ).rejects.toBe(denied);
@@ -57,7 +60,6 @@ describe("InvitationResolver", () => {
       input,
     );
   });
-
   it("forwards nullable invitation results and service errors", async () => {
     const denied = new ForbiddenException();
     const getInvitation = vi
@@ -68,7 +70,6 @@ describe("InvitationResolver", () => {
     await expect(resolver.invitation("hidden")).resolves.toBeNull();
     await expect(resolver.invitation("denied")).rejects.toBe(denied);
   });
-
   it("returns only accepted invitation identifiers", async () => {
     const invitation = {
       id: "invitation_1",
@@ -79,7 +80,6 @@ describe("InvitationResolver", () => {
     const { resolver, invitationService } = createResolver({
       acceptInvitation: vi.fn(async () => ({ invitation, member })),
     });
-
     await expect(
       resolver.acceptInvitation(invitation.id, user),
     ).resolves.toEqual({
@@ -92,17 +92,14 @@ describe("InvitationResolver", () => {
       invitation.id,
     );
   });
-
   it("reports missing invitations when accepting", async () => {
     const { resolver } = createResolver({
       acceptInvitation: vi.fn(async () => null),
     });
-
     await expect(
       resolver.acceptInvitation("missing", {} as User),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
-
   it("forwards the current user and invitation ID when rejecting", async () => {
     const user = { id: "user_1" } as User;
     const invitation = { id: "invitation_1" } as Invitation;
@@ -113,7 +110,6 @@ describe("InvitationResolver", () => {
     const { resolver, invitationService } = createResolver({
       rejectInvitation: vi.fn(async () => rejectedInvitation),
     });
-
     await expect(
       resolver.rejectInvitation(invitation.id, user),
     ).resolves.toEqual({ id: invitation.id });
@@ -122,12 +118,10 @@ describe("InvitationResolver", () => {
       invitation.id,
     );
   });
-
   it("reports missing invitations when rejecting", async () => {
     const { resolver, invitationService } = createResolver({
       rejectInvitation: vi.fn().mockRejectedValue(new NotFoundException()),
     });
-
     await expect(
       resolver.rejectInvitation("missing", {} as User),
     ).rejects.toBeInstanceOf(NotFoundException);
@@ -136,13 +130,11 @@ describe("InvitationResolver", () => {
       "missing",
     );
   });
-
   it("propagates cancellation errors from InvitationService", async () => {
     const missing = new NotFoundException();
     const { resolver, invitationService } = createResolver({
       cancelInvitation: vi.fn().mockRejectedValue(missing),
     });
-
     await expect(resolver.cancelInvitation("invitation_1")).rejects.toBe(
       missing,
     );
@@ -166,9 +158,31 @@ function createResolver(overrides: Record<string, unknown> = {}) {
     rejectInvitation: vi.fn(),
     ...overrides,
   } as unknown as Mocked<InvitationService>;
-
   return {
     resolver: new InvitationResolver(invitationService),
     invitationService,
   };
 }
+
+describe("relation fields", () => {
+  describe("workspace relation fields", () => {
+    it("delegates invitation relations and propagates authorization failures", async () => {
+      const invitation = new BaseInvitation();
+      const user = new BaseUser();
+      const workspace = new BaseWorkspace();
+      const service = {
+        getInvitationInviter: vi.fn().mockResolvedValue(user),
+        getInvitationWorkspace: vi.fn().mockResolvedValue(workspace),
+      };
+      const resolver = new InvitationResolver(
+        service as unknown as InvitationService,
+      );
+      await expect(resolver.inviter(invitation)).resolves.toBe(user);
+      await expect(resolver.workspace(invitation)).resolves.toBe(workspace);
+      expect(service.getInvitationInviter).toHaveBeenCalledWith(invitation);
+      expect(service.getInvitationWorkspace).toHaveBeenCalledWith(invitation);
+      service.getInvitationInviter.mockRejectedValueOnce(new Error("denied"));
+      await expect(resolver.inviter(invitation)).rejects.toThrow("denied");
+    });
+  });
+});

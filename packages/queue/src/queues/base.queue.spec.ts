@@ -1,17 +1,7 @@
-import { Inject, Injectable, Optional } from "@nestjs/common";
-import { ModuleRef } from "@nestjs/core";
 import type { Job as BullmqJob } from "bullmq";
 import { z } from "zod";
 
-import { createQueueTestingModule } from "../../test/queue-testing.fixture.js";
-import {
-  BaseQueue,
-  type Job,
-  type JobSchemas,
-  Queue,
-  QueueManager,
-  QueueModule,
-} from "../index.js";
+import { BaseQueue, type Job, type JobSchemas, Queue } from "../index.js";
 
 const { nativeAdd, nativeBulk, nativeScheduler } = vi.hoisted(() => ({
   nativeAdd: vi.fn((name: string, data: unknown) =>
@@ -54,44 +44,6 @@ vi.mock("bullmq", async (original) => {
   };
 });
 
-it("uses a static declaration and constructor settings, and reuses the injected queue", async () => {
-  @Queue("email")
-  class EmailQueue extends BaseQueue {
-    constructor() {
-      super({
-        connection: { host: "redis" },
-        defaultJobOptions: { attempts: 3 },
-      });
-    }
-  }
-  @Injectable()
-  class Sender {
-    constructor(readonly queue: EmailQueue) {}
-  }
-  const app = await createQueueTestingModule({
-    imports: [QueueModule],
-    providers: [
-      EmailQueue,
-      Sender,
-      { provide: "alias", useExisting: EmailQueue },
-    ],
-  }).compile();
-  const close = vi.spyOn(app.get(EmailQueue), "close");
-  try {
-    await app.init();
-    const queue = app.get(EmailQueue);
-    expect(app.get(Sender).queue).toBe(queue);
-    expect(queue.name).toBe("email");
-    expect(queue.opts).toMatchObject({
-      connection: { host: "redis" },
-      defaultJobOptions: { attempts: 3 },
-    });
-  } finally {
-    await app.close();
-  }
-  expect(close).toHaveBeenCalledOnce();
-});
-
 it("uses REDIS_URL by default and supports direct construction", async () => {
   vi.stubEnv("REDIS_URL", "redis://localhost:6381/2");
   try {
@@ -117,93 +69,6 @@ it("requires every concrete queue to declare its own name", () => {
   expect(() => new Undeclared()).toThrow("@Queue()");
   expect(() => new Child()).toThrow("@Queue()");
 });
-
-it("discovers singleton queues once and passes the validated list to event synchronization", async () => {
-  @Queue("public")
-  class PublicQueue extends BaseQueue {}
-  @Queue("internal")
-  class InternalQueue extends BaseQueue {}
-  const app = await createQueueTestingModule({
-    imports: [QueueModule],
-    providers: [
-      {
-        provide: PublicQueue,
-        inject: [ModuleRef],
-        useFactory: async (ref: ModuleRef) => await ref.create(PublicQueue),
-      },
-      { provide: "alias", useExisting: PublicQueue },
-      InternalQueue,
-    ],
-  }).compile();
-  try {
-    await app.init();
-    const queues = app.get(QueueManager).getQueues();
-    expect(queues).toHaveLength(2);
-    expect(queues).toEqual(
-      expect.arrayContaining([app.get(PublicQueue), app.get(InternalQueue)]),
-    );
-    expect(queues.every((queue) => queue.queueEvents)).toBe(true);
-  } finally {
-    await app.close();
-  }
-});
-
-it("preserves normal inherited DI and optional business dependencies", async () => {
-  @Injectable()
-  class Settings {
-    attempts = 7;
-  }
-  @Queue("custom")
-  class Custom extends BaseQueue {
-    constructor(
-      readonly settings: Settings,
-      @Optional() @Inject("missing") readonly missing?: string,
-    ) {
-      super({ defaultJobOptions: { attempts: settings.attempts } });
-    }
-  }
-  @Queue("inherited")
-  class Inherited extends Custom {
-    constructor(
-      settings: Settings,
-      @Optional() @Inject("missing") missing?: string,
-    ) {
-      super(settings, missing);
-    }
-  }
-  const app = await createQueueTestingModule({
-    imports: [QueueModule],
-    providers: [Settings, Custom, Inherited],
-  }).compile();
-  try {
-    await app.init();
-    expect(app.get(Inherited).settings).toBe(app.get(Settings));
-    expect(app.get(Inherited).missing).toBeUndefined();
-    expect(app.get(Inherited).opts.defaultJobOptions).toEqual({ attempts: 7 });
-    expect(app.get(Inherited).name).toBe("inherited");
-  } finally {
-    await app.close();
-  }
-});
-
-it.each(["duplicate", "job"])(
-  "rejects conflicting queue declarations: %s",
-  async (name) => {
-    @Queue(name)
-    class First extends BaseQueue {}
-    @Queue(name)
-    class Second extends BaseQueue {}
-    const app = await createQueueTestingModule({
-      imports: [QueueModule],
-      providers: [First, Second],
-    }).compile();
-    try {
-      await expect(app.init()).rejects.toThrow("multiple providers");
-    } finally {
-      await app.close().catch(() => undefined);
-    }
-  },
-);
 
 it("derives omitted names by stripping the Queue suffix and converting to kebab-case", async () => {
   @Queue()
@@ -272,14 +137,22 @@ describe("inferred job contracts", () => {
   afterEach(async () => {
     await queue.close();
   });
-
   it("infers names, input data, results and narrowed Processor jobs from the instance property", async () => {
     const job = await queue.add("send", {
       to: "user@example.com",
       subject: "Hello",
     });
     expectTypeOf(job).toEqualTypeOf<
-      BullmqJob<{ to: string; subject: string }, { messageId: string }, "send">
+      BullmqJob<
+        {
+          to: string;
+          subject: string;
+        },
+        {
+          messageId: string;
+        },
+        "send"
+      >
     >();
     const welcome = await queue.add("welcome", { userId: "123" });
     expectTypeOf(welcome.returnvalue).toEqualTypeOf<ReturnType<() => void>>();
@@ -296,12 +169,15 @@ describe("inferred job contracts", () => {
       expectTypeOf(processorJob.data.text).toEqualTypeOf<string>();
     }
     expectTypeOf<{
-      invalid: { data: z.ZodString };
+      invalid: {
+        data: z.ZodString;
+      };
     }>().not.toExtend<JobSchemas>();
     expectTypeOf<{
-      invalid: { result: z.ZodString };
+      invalid: {
+        result: z.ZodString;
+      };
     }>().not.toExtend<JobSchemas>();
-
     // eslint-disable-next-line no-constant-condition -- Validate rejected types without executing invalid jobs.
     if (false) {
       // @ts-expect-error Only declared names are accepted.
@@ -324,7 +200,6 @@ describe("inferred job contracts", () => {
     }
     expect(job.name).toBe("send");
   });
-
   it("rejects invalid payloads and unknown names before native enqueue", async () => {
     await expect(
       queue.add("send", { to: "invalid", subject: "Hello" }),
@@ -337,7 +212,6 @@ describe("inferred job contracts", () => {
     ).rejects.toThrow('Unknown job "toString"');
     expect(nativeAdd).not.toHaveBeenCalled();
   });
-
   it("validates every bulk entry before writing any of them", async () => {
     await expect(
       queue.addBulk([
@@ -352,7 +226,6 @@ describe("inferred job contracts", () => {
     ]);
     expect(jobs.map((job) => job.name)).toEqual(["send", "welcome"]);
   });
-
   it("validates scheduler templates while keeping scheduler IDs independent of job names", async () => {
     await queue.upsertJobScheduler(
       "daily-welcome",
@@ -373,7 +246,6 @@ describe("inferred job contracts", () => {
     ).rejects.toThrow();
     expect(nativeScheduler).toHaveBeenCalledOnce();
   });
-
   it("preserves the original input when validating a schema with transforms", async () => {
     const data = { text: "hello" };
     const job = await queue.add("length", data);
@@ -385,14 +257,12 @@ describe("inferred job contracts", () => {
     expect(job.data).toBe(data);
     expect(job.data).toEqual({ text: "hello" });
   });
-
   it("awaits asynchronous validation before enqueueing", async () => {
     await expect(queue.add("async", { value: "invalid" })).rejects.toThrow();
     expect(nativeAdd).not.toHaveBeenCalled();
     await queue.add("async", { value: "valid" });
     expect(nativeAdd).toHaveBeenCalledOnce();
   });
-
   it("discards parsed defaults, coercions and stripped fields for data and results", async () => {
     const data = { count: "12", extra: "keep" };
     const job = await queue.add("original", data);

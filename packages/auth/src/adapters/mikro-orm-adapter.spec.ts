@@ -1,6 +1,22 @@
-import { EntityManager } from "@mikro-orm/core";
+import { EntityManager, LockMode, MikroORM, Raw } from "@mikro-orm/core";
+import { RequestContext } from "@nest-boot/request-context";
+import { type BetterAuthOptions } from "better-auth";
 
+import { mockRlsContext } from "../../test/mock-rls-context.js";
+import { Account as BaseAccount } from "../entities/account.entity.js";
+import { Invitation as BaseInvitation } from "../entities/invitation.entity.js";
+import { Member as BaseMember } from "../entities/member.entity.js";
+import { MemberApiKey as BaseApiKey } from "../entities/member-api-key.entity.js";
+import { Session as BaseSession } from "../entities/session.entity.js";
+import { User as BaseUser } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
+import { Verification as BaseVerification } from "../entities/verification.entity.js";
+import { Workspace as BaseWorkspace } from "../entities/workspace.entity.js";
+import {
+  convertWhereToMikroOrm,
+  mikroOrmAdapter,
+} from "./mikro-orm-adapter.js";
+
 /**
  * Unit tests for convertWhereToMikroOrm
  *
@@ -8,7 +24,6 @@ import { UserApiKey } from "../entities/user-api-key.entity.js";
  * that MikroORM interprets as OR (which caused an OIDC login identity
  * collision bug in production).
  */
-
 // Mock better-auth/adapters to avoid ESM compatibility issues.
 const { mockCreateAdapterFactory } = vi.hoisted(() => ({
   mockCreateAdapterFactory: vi.fn(
@@ -18,27 +33,10 @@ const { mockCreateAdapterFactory } = vi.hoisted(() => ({
     }),
   ),
 }));
+
 vi.mock("better-auth/adapters", () => ({
   createAdapterFactory: mockCreateAdapterFactory,
 }));
-
-// Import the function under test
-import { LockMode, MikroORM, Raw } from "@mikro-orm/core";
-import { RequestContext } from "@nest-boot/request-context";
-
-import { mockRlsContext } from "../../test/mock-rls-context.js";
-import { Account as BaseAccount } from "../entities/account.entity.js";
-import { Invitation as BaseInvitation } from "../entities/invitation.entity.js";
-import { Member as BaseMember } from "../entities/member.entity.js";
-import { MemberApiKey as BaseApiKey } from "../entities/member-api-key.entity.js";
-import { Session as BaseSession } from "../entities/session.entity.js";
-import { User as BaseUser } from "../entities/user.entity.js";
-import { Verification as BaseVerification } from "../entities/verification.entity.js";
-import { Workspace as BaseWorkspace } from "../entities/workspace.entity.js";
-import {
-  convertWhereToMikroOrm,
-  mikroOrmAdapter,
-} from "./mikro-orm-adapter.js";
 
 /**
  * Helper to construct a Where condition
@@ -68,9 +66,7 @@ describe("convertWhereToMikroOrm", () => {
         makeWhere("accountId", "eq", "w9mj34kow1sc", "AND"),
         makeWhere("providerId", "eq", "oidc", "AND"),
       ];
-
       const result = convertWhereToMikroOrm(where);
-
       // Must be a $and object, not an array (arrays are interpreted as $or by MikroORM)
       expect(result).toEqual({
         $and: [
@@ -80,28 +76,22 @@ describe("convertWhereToMikroOrm", () => {
       });
       expect(Array.isArray(result)).toBe(false);
     });
-
     it("should default to AND when connector is omitted", () => {
       const where = [
         { field: "name", operator: "eq", value: "test" },
         { field: "age", operator: "gt", value: 18 },
       ] as Parameters<typeof convertWhereToMikroOrm>[0];
-
       const result = convertWhereToMikroOrm(where);
-
       expect(result).toEqual({
         $and: [{ name: { $eq: "test" } }, { age: { $gt: 18 } }],
       });
     });
-
     it("should handle duplicate fields correctly (range query, no key override)", () => {
       const where = [
         makeWhere("createdAt", "gte", "2024-01-01"),
         makeWhere("createdAt", "lt", "2025-01-01"),
       ];
-
       const result = convertWhereToMikroOrm(where);
-
       expect(result).toEqual({
         $and: [
           { createdAt: { $gte: "2024-01-01" } },
@@ -110,16 +100,13 @@ describe("convertWhereToMikroOrm", () => {
       });
     });
   });
-
   describe("OR connector", () => {
     it("should wrap all OR conditions in a $or object", () => {
       const where = [
         makeWhere("email", "eq", "a@test.com", "OR"),
         makeWhere("email", "eq", "b@test.com", "OR"),
       ];
-
       const result = convertWhereToMikroOrm(where);
-
       expect(result).toEqual({
         $or: [
           { email: { $eq: "a@test.com" } },
@@ -128,7 +115,6 @@ describe("convertWhereToMikroOrm", () => {
       });
     });
   });
-
   describe("mixed AND/OR", () => {
     it("combines AND conditions with the OR group", () => {
       const where = [
@@ -136,9 +122,7 @@ describe("convertWhereToMikroOrm", () => {
         makeWhere("providerId", "eq", "oidc", "AND"),
         makeWhere("status", "eq", "active", "OR"),
       ];
-
       const result = convertWhereToMikroOrm(where);
-
       expect(result).toEqual({
         $and: [
           { accountId: { $eq: "xxx" } },
@@ -147,7 +131,6 @@ describe("convertWhereToMikroOrm", () => {
         ],
       });
     });
-
     it("keeps every OR condition in one group", () => {
       const where = [
         makeWhere("a", "eq", "1", "AND"),
@@ -155,9 +138,7 @@ describe("convertWhereToMikroOrm", () => {
         makeWhere("c", "eq", "3", "OR"),
         makeWhere("d", "eq", "4", "OR"),
       ];
-
       const result = convertWhereToMikroOrm(where);
-
       expect(result).toEqual({
         $and: [
           { a: { $eq: "1" } },
@@ -168,30 +149,26 @@ describe("convertWhereToMikroOrm", () => {
         ],
       });
     });
-
     it("should flatten when only one branch exists", () => {
       const where = [makeWhere("a", "eq", "1", "OR")];
-
       const result = convertWhereToMikroOrm(where);
-
       expect(result).toEqual({ a: { $eq: "1" } });
     });
   });
-
   describe("case-insensitive mode", () => {
     it("normalizes string equality through a LOWER expression", () => {
       const result = convertWhereToMikroOrm([
         makeWhere("email", "eq", "User@Example.COM", "AND", "insensitive"),
-      ]) as { $and: Record<string, unknown>[] };
+      ]) as {
+        $and: Record<string, unknown>[];
+      };
       const condition = result.$and[0];
       const key = Reflect.ownKeys(condition)[0];
-
       expect(Raw.getKnownFragment(key)).toMatchObject({ sql: "lower(??)" });
       expect(Reflect.get(condition, key)).toEqual({
         $eq: "user@example.com",
       });
     });
-
     it("normalizes string arrays for in queries", () => {
       const result = convertWhereToMikroOrm([
         makeWhere(
@@ -201,28 +178,28 @@ describe("convertWhereToMikroOrm", () => {
           "AND",
           "insensitive",
         ),
-      ]) as { $and: Record<string, unknown>[] };
+      ]) as {
+        $and: Record<string, unknown>[];
+      };
       const condition = result.$and[0];
       const key = Reflect.ownKeys(condition)[0];
-
       expect(Reflect.get(condition, key)).toEqual({
         $in: ["a@example.com", "b@example.com"],
       });
     });
-
     it("uses the resolved database field name in LOWER expressions", () => {
       const result = convertWhereToMikroOrm(
         [makeWhere("displayName", "eq", "Alice", "AND", "insensitive")],
         (field) => (field === "displayName" ? "display_name" : field),
-      ) as { $and: Record<string, unknown>[] };
+      ) as {
+        $and: Record<string, unknown>[];
+      };
       const condition = result.$and[0];
       const key = Reflect.ownKeys(condition)[0];
-
       expect(Raw.getKnownFragment(key)?.params).toEqual(["display_name"]);
       expect(Reflect.get(condition, key)).toEqual({ $eq: "alice" });
     });
   });
-
   describe("operator mapping", () => {
     const testOperator = (
       operator: string,
@@ -233,7 +210,6 @@ describe("convertWhereToMikroOrm", () => {
       const result = convertWhereToMikroOrm(where);
       expect(result).toEqual({ $and: [{ f: { [mikroOp]: value } }] });
     };
-
     it("eq → $eq", () => {
       testOperator("eq", "$eq");
     });
@@ -258,21 +234,18 @@ describe("convertWhereToMikroOrm", () => {
     it("not_in → $nin", () => {
       testOperator("not_in", "$nin", [1, 2]);
     });
-
     it("contains → $like %value%", () => {
       const result = convertWhereToMikroOrm([
         makeWhere("name", "contains", "test"),
       ]);
       expect(result).toEqual({ $and: [{ name: { $like: "%test%" } }] });
     });
-
     it("starts_with → $like value%", () => {
       const result = convertWhereToMikroOrm([
         makeWhere("name", "starts_with", "test"),
       ]);
       expect(result).toEqual({ $and: [{ name: { $like: "test%" } }] });
     });
-
     it("ends_with → $like %value", () => {
       const result = convertWhereToMikroOrm([
         makeWhere("name", "ends_with", "test"),
@@ -280,26 +253,22 @@ describe("convertWhereToMikroOrm", () => {
       expect(result).toEqual({ $and: [{ name: { $like: "%test" } }] });
     });
   });
-
   describe("string type validation", () => {
     it("should throw when contains receives a non-string value", () => {
       expect(() =>
         convertWhereToMikroOrm([makeWhere("f", "contains", 123)]),
       ).toThrow("Value must be a string");
     });
-
     it("should throw when starts_with receives a non-string value", () => {
       expect(() =>
         convertWhereToMikroOrm([makeWhere("f", "starts_with", 123)]),
       ).toThrow("Value must be a string");
     });
-
     it("should throw when ends_with receives a non-string value", () => {
       expect(() =>
         convertWhereToMikroOrm([makeWhere("f", "ends_with", 123)]),
       ).toThrow("Value must be a string");
     });
-
     it.each(["in", "not_in"])(
       "should throw when %s receives a non-array value",
       (operator) => {
@@ -309,7 +278,6 @@ describe("convertWhereToMikroOrm", () => {
       },
     );
   });
-
   describe("unsupported operator", () => {
     it("should throw on unknown operator", () => {
       expect(() =>
@@ -320,20 +288,35 @@ describe("convertWhereToMikroOrm", () => {
 });
 
 const TestAccount = BaseAccount;
+
 type TestAccount = BaseAccount;
+
 const TestApiKey = BaseApiKey;
+
 type TestApiKey = BaseApiKey;
+
 const TestSession = BaseSession;
+
 type TestSession = BaseSession;
+
 const TestUser = BaseUser;
+
 type TestUser = BaseUser;
+
 const TestVerification = BaseVerification;
+
 type TestVerification = BaseVerification;
+
 const TestWorkspace = BaseWorkspace;
+
 type TestWorkspace = BaseWorkspace;
+
 const TestMember = BaseMember;
+
 type TestMember = BaseMember;
+
 const TestInvitation = BaseInvitation;
+
 type TestInvitation = BaseInvitation;
 
 const entities = {
@@ -382,7 +365,6 @@ function createOrm() {
     transactional: vi.fn(),
   };
   em.transactional.mockImplementation(async (callback) => await callback(em));
-
   return {
     em,
     flush,
@@ -409,7 +391,12 @@ function createAdapter(
     getDefaultFieldName?: (input: { field: string; model: string }) => string;
     getDefaultModelName?: (model: string) => string;
     getFieldName?: (input: { field: string; model: string }) => string;
-    schema?: Record<string, { fields: Record<string, unknown> }>;
+    schema?: Record<
+      string,
+      {
+        fields: Record<string, unknown>;
+      }
+    >;
   } = {},
   defaultUserRole?: string,
 ) {
@@ -419,7 +406,6 @@ function createAdapter(
       context: unknown,
     ) => Record<string, (...args: any[]) => Promise<any>>;
   };
-
   return adapterOptions.adapter(createAdapterContext(context));
 }
 
@@ -437,7 +423,12 @@ function createAdapterContext(
     getDefaultFieldName?: (input: { field: string; model: string }) => string;
     getDefaultModelName?: (model: string) => string;
     getFieldName?: (input: { field: string; model: string }) => string;
-    schema?: Record<string, { fields: Record<string, unknown> }>;
+    schema?: Record<
+      string,
+      {
+        fields: Record<string, unknown>;
+      }
+    >;
   } = {},
 ) {
   return {
@@ -453,16 +444,13 @@ describe("mikroOrmAdapter", () => {
   beforeEach(() => {
     mockCreateAdapterFactory.mockClear();
   });
-
   it("should configure better-auth adapter capabilities", () => {
     const { orm } = createOrm();
-
     mikroOrmAdapter({
       debugLogs: true,
       entities,
       orm,
     })({});
-
     expect(mockCreateAdapterFactory).toHaveBeenCalledWith(
       expect.objectContaining({
         config: expect.objectContaining({
@@ -480,7 +468,6 @@ describe("mikroOrmAdapter", () => {
       }),
     );
   });
-
   it("runs Better Auth transactions on one transactional entity manager", async () => {
     const { em, orm } = createOrm();
     const verification = { id: "verification-1", value: "one-time-token" };
@@ -494,7 +481,6 @@ describe("mikroOrmAdapter", () => {
         ) => Promise<T>;
       };
     };
-
     await expect(
       rootAdapterOptions.config.transaction(async (transactionAdapter) => {
         const nestedAdapterOptions = transactionAdapter as {
@@ -503,31 +489,29 @@ describe("mikroOrmAdapter", () => {
           }) => Record<string, (...args: any[]) => Promise<any>>;
         };
         const adapter = nestedAdapterOptions.adapter(createAdapterContext());
-
         return await adapter.consumeOne({
           model: "verification",
           where: [makeWhere("value", "eq", "one-time-token")],
         });
       }),
     ).resolves.toBe(verification);
-
     expect(em.transactional).toHaveBeenCalledTimes(1);
     expect(mockCreateAdapterFactory).toHaveBeenCalledTimes(2);
     expect(
       (
         mockCreateAdapterFactory.mock.calls[1][0] as {
-          config: { transaction: boolean };
+          config: {
+            transaction: boolean;
+          };
         }
       ).config.transaction,
     ).toBe(false);
   });
-
   it("isolates transaction options between Better Auth instances", async () => {
     const { orm } = createOrm();
     const factory = mikroOrmAdapter({ entities, orm });
     const firstOptions = { appName: "First" } as never;
     const secondOptions = { appName: "Second" } as never;
-
     factory(firstOptions);
     const firstAdapterOptions = mockCreateAdapterFactory.mock.calls[0][0] as {
       config: {
@@ -537,18 +521,15 @@ describe("mikroOrmAdapter", () => {
       };
     };
     factory(secondOptions);
-
     await expect(
       firstAdapterOptions.config.transaction(
         async (adapter) => await Promise.resolve(adapter.options),
       ),
     ).resolves.toBe(firstOptions);
   });
-
   it("should create and persist entities", async () => {
     const { em, flush, orm } = createOrm();
     const adapter = createAdapter(orm);
-
     await expect(
       adapter.create({
         data: {
@@ -559,7 +540,6 @@ describe("mikroOrmAdapter", () => {
     ).resolves.toEqual({
       email: "user@example.com",
     });
-
     expect(em.create).toHaveBeenCalledWith(TestUser, {
       email: "user@example.com",
     });
@@ -568,29 +548,23 @@ describe("mikroOrmAdapter", () => {
     });
     expect(flush).toHaveBeenCalledTimes(1);
   });
-
   it("applies the configured default role to users created by Better Auth", async () => {
     const { em, orm } = createOrm();
     const adapter = createAdapter(orm, {}, "customer");
-
     await adapter.create({
       data: { email: "user@example.com" },
       model: "user",
     });
-
     expect(em.create).toHaveBeenCalledWith(TestUser, {
       email: "user@example.com",
       roles: ["customer"],
     });
   });
-
   it("should resolve workspace and API key entities", async () => {
     const { em, orm } = createOrm();
     const adapter = createAdapter(orm);
-
     await adapter.create({ data: { name: "Workspace" }, model: "workspace" });
     await adapter.create({ data: { name: "Key" }, model: "memberApiKey" });
-
     expect(em.create).toHaveBeenNthCalledWith(1, TestWorkspace, {
       name: "Workspace",
     });
@@ -598,23 +572,19 @@ describe("mikroOrmAdapter", () => {
       name: "Key",
     });
   });
-
   it("resolves customized Better Auth model names to configured entities", async () => {
     const { em, orm } = createOrm();
     const adapter = createAdapter(orm, {
       getDefaultModelName: (model) => (model === "auth_users" ? "user" : model),
     });
-
     await adapter.create({
       data: { email: "user@example.com" },
       model: "auth_users",
     });
-
     expect(em.create).toHaveBeenCalledWith(TestUser, {
       email: "user@example.com",
     });
   });
-
   it("maps customized Better Auth field names to MikroORM properties", async () => {
     const { em, orm } = createOrm();
     const entity = {
@@ -647,7 +617,6 @@ describe("mikroOrmAdapter", () => {
         },
       },
     });
-
     await adapter.create({
       data: { email_address: "created@example.com" },
       model: "user",
@@ -667,7 +636,6 @@ describe("mikroOrmAdapter", () => {
       sortBy: { direction: "desc", field: "created_at" },
       where: [makeWhere("email_address", "eq", "user@example.com")],
     });
-
     expect(em.create).toHaveBeenCalledWith(TestUser, {
       email: "created@example.com",
     });
@@ -696,19 +664,16 @@ describe("mikroOrmAdapter", () => {
       }),
     ]);
   });
-
   it("uses MikroORM column metadata for case-insensitive queries", async () => {
     const { em, orm } = createOrm();
     em.findOne.mockResolvedValue({ email: "user@example.com" });
     const adapter = createAdapter(orm);
-
     await adapter.findOne({
       model: "user",
       where: [
         makeWhere("email", "eq", "User@Example.COM", "AND", "insensitive"),
       ],
     });
-
     const query = em.findOne.mock.calls[0][1] as {
       $and: Record<string, unknown>[];
     };
@@ -719,18 +684,15 @@ describe("mikroOrmAdapter", () => {
       $eq: "user@example.com",
     });
   });
-
   it("fails with an actionable error for an unconfigured model", async () => {
     const { orm } = createOrm();
     const adapter = createAdapter(orm);
-
     await expect(
       adapter.create({ data: {}, model: "unknown" }),
     ).rejects.toThrow(
       'No MikroORM entity is configured for Better Auth model "unknown"',
     );
   });
-
   it("should update an existing entity", async () => {
     const { em, orm } = createOrm();
     const entity = {
@@ -739,7 +701,6 @@ describe("mikroOrmAdapter", () => {
     };
     em.findOne.mockResolvedValue(entity);
     const adapter = createAdapter(orm);
-
     await expect(
       adapter.update({
         model: "user",
@@ -749,7 +710,6 @@ describe("mikroOrmAdapter", () => {
         where: [makeWhere("id", "eq", "user-1")],
       }),
     ).resolves.toBe(entity);
-
     expect(em.findOne).toHaveBeenCalledWith(TestUser, {
       $and: [
         {
@@ -764,7 +724,6 @@ describe("mikroOrmAdapter", () => {
     });
     expect(em.flush).toHaveBeenCalledTimes(1);
   });
-
   it("runs Better Auth persistence outside application RLS", async () => {
     const { em, orm } = createOrm();
     const entity = { id: "user-1", name: "Old" };
@@ -781,25 +740,20 @@ describe("mikroOrmAdapter", () => {
       return Promise.resolve();
     });
     const adapter = createAdapter(orm);
-
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       const sessionContext = mockRlsContext(em);
-
       await adapter.update({
         model: "user",
         update: { name: "New" },
         where: [makeWhere("id", "eq", "user-1")],
       });
-
       expect(em.getSessionContext()).toEqual(sessionContext);
     });
   });
-
   it("should return null when update cannot find an entity", async () => {
     const { em, orm } = createOrm();
     em.findOne.mockResolvedValue(null);
     const adapter = createAdapter(orm);
-
     await expect(
       adapter.update({
         model: "user",
@@ -809,18 +763,15 @@ describe("mikroOrmAdapter", () => {
         where: [makeWhere("id", "eq", "missing")],
       }),
     ).resolves.toBeNull();
-
     expect(em.assign).not.toHaveBeenCalled();
     expect(em.flush).not.toHaveBeenCalled();
   });
-
   it("should update and delete many entities", async () => {
     const { em, orm } = createOrm();
     em.nativeUpdate.mockResolvedValue(2);
     em.nativeDelete.mockResolvedValue(3);
     const adapter = createAdapter(orm);
     const where = [makeWhere("providerId", "eq", "oidc")];
-
     await expect(
       adapter.updateMany({
         model: "account",
@@ -840,7 +791,6 @@ describe("mikroOrmAdapter", () => {
       model: "account",
       where,
     });
-
     expect(em.nativeUpdate).toHaveBeenCalledWith(
       TestAccount,
       {
@@ -858,18 +808,15 @@ describe("mikroOrmAdapter", () => {
     );
     expect(em.nativeDelete).toHaveBeenCalledTimes(2);
   });
-
   it("should atomically consume one entity inside a pessimistic transaction", async () => {
     const { em, orm } = createOrm();
     const verification = { id: "verification-1", value: "one-time-token" };
     em.findOne.mockResolvedValue(verification);
     const adapter = createAdapter(orm);
     const where = [makeWhere("value", "eq", "one-time-token")];
-
     await expect(
       adapter.consumeOne({ model: "verification", where }),
     ).resolves.toBe(verification);
-
     expect(em.transactional).toHaveBeenCalledTimes(1);
     expect(em.findOne).toHaveBeenCalledWith(
       TestVerification,
@@ -879,13 +826,11 @@ describe("mikroOrmAdapter", () => {
     expect(em.remove).toHaveBeenCalledWith(verification);
     expect(em.flush).toHaveBeenCalledTimes(1);
   });
-
   it("should atomically increment and set one guarded entity", async () => {
     const { em, orm } = createOrm();
     const record = { attempts: 2, id: "verification-1", status: "pending" };
     em.findOne.mockResolvedValue(record);
     const adapter = createAdapter(orm);
-
     await expect(
       adapter.incrementOne({
         increment: { attempts: 1 },
@@ -894,7 +839,6 @@ describe("mikroOrmAdapter", () => {
         where: [makeWhere("attempts", "lt", 3)],
       }),
     ).resolves.toBe(record);
-
     expect(em.transactional).toHaveBeenCalledTimes(1);
     expect(em.assign).toHaveBeenCalledWith(record, {
       attempts: 3,
@@ -902,28 +846,23 @@ describe("mikroOrmAdapter", () => {
     });
     expect(em.flush).toHaveBeenCalledTimes(1);
   });
-
   it("gives increments precedence when set contains the same field", async () => {
     const { em, orm } = createOrm();
     const record = { attempts: 2, id: "verification-1" };
     em.findOne.mockResolvedValue(record);
     const adapter = createAdapter(orm);
-
     await adapter.incrementOne({
       increment: { attempts: 1 },
       model: "verification",
       set: { attempts: 100 },
       where: [makeWhere("id", "eq", "verification-1")],
     });
-
     expect(em.assign).toHaveBeenCalledWith(record, { attempts: 3 });
   });
-
   it("should return null without mutating when an atomic selector misses", async () => {
     const { em, orm } = createOrm();
     em.findOne.mockResolvedValue(null);
     const adapter = createAdapter(orm);
-
     await expect(
       adapter.consumeOne({
         model: "verification",
@@ -937,12 +876,10 @@ describe("mikroOrmAdapter", () => {
         where: [makeWhere("value", "eq", "missing")],
       }),
     ).resolves.toBeNull();
-
     expect(em.remove).not.toHaveBeenCalled();
     expect(em.assign).not.toHaveBeenCalled();
     expect(em.flush).not.toHaveBeenCalled();
   });
-
   it("should find one and many entities", async () => {
     const { em, orm } = createOrm();
     const session = {
@@ -952,7 +889,6 @@ describe("mikroOrmAdapter", () => {
     em.findOne.mockResolvedValue(session);
     em.findAll.mockResolvedValue(sessions);
     const adapter = createAdapter(orm);
-
     await expect(
       adapter.findOne({
         model: "session",
@@ -970,7 +906,6 @@ describe("mikroOrmAdapter", () => {
         where: [makeWhere("token", "eq", "session-token")],
       }),
     ).resolves.toBe(sessions);
-
     expect(em.findAll).toHaveBeenCalledWith(TestSession, {
       limit: 10,
       offset: 0,
@@ -988,29 +923,24 @@ describe("mikroOrmAdapter", () => {
       },
     });
   });
-
   it("should find many entities without optional filters", async () => {
     const { em, orm } = createOrm();
     em.findAll.mockResolvedValue([]);
     const adapter = createAdapter(orm);
-
     await expect(
       adapter.findMany({
         model: "verification",
       }),
     ).resolves.toEqual([]);
-
     expect(em.findAll).toHaveBeenCalledWith(TestVerification, {
       limit: undefined,
       offset: 0,
     });
   });
-
   it("should count entities with and without filters", async () => {
     const { em, orm } = createOrm();
     em.count.mockResolvedValueOnce(1).mockResolvedValueOnce(4);
     const adapter = createAdapter(orm);
-
     await expect(
       adapter.count({
         model: "user",
@@ -1022,7 +952,6 @@ describe("mikroOrmAdapter", () => {
         model: "user",
       }),
     ).resolves.toBe(4);
-
     expect(em.count).toHaveBeenNthCalledWith(1, TestUser, {
       $and: [
         {
@@ -1033,5 +962,173 @@ describe("mikroOrmAdapter", () => {
       ],
     });
     expect(em.count).toHaveBeenNthCalledWith(2, TestUser, undefined);
+  });
+});
+
+describe("Better Auth field mapping", () => {
+  let previousFactory: ReturnType<
+    typeof mockCreateAdapterFactory.getMockImplementation
+  >;
+  beforeAll(async () => {
+    previousFactory = mockCreateAdapterFactory.getMockImplementation();
+    const actual = await vi.importActual<typeof import("better-auth/adapters")>(
+      "better-auth/adapters",
+    );
+    mockCreateAdapterFactory.mockImplementation(
+      actual.createAdapterFactory as never,
+    );
+  });
+  afterAll(() => {
+    mockCreateAdapterFactory.mockReset();
+    if (previousFactory) {
+      mockCreateAdapterFactory.mockImplementation(previousFactory);
+    }
+  });
+  const TestUser = BaseUser;
+
+  type TestUser = BaseUser;
+
+  const TestAccount = BaseAccount;
+
+  type TestAccount = BaseAccount;
+
+  const TestSession = BaseSession;
+
+  type TestSession = BaseSession;
+
+  describe("mikroOrmAdapter field mapping", () => {
+    describe.each(["account", "session"] as const)("%s ownership", (model) => {
+      it.each([false, true])(
+        "round-trips userId through user (aliases: %s)",
+        async (aliases) => {
+          const entityClass = model === "account" ? TestAccount : TestSession;
+          const user = Object.assign(new TestUser(), {
+            id: "user-1",
+            email: "private@example.com",
+          });
+          const persisted = { id: "record-1", user };
+          const flush = vi.fn();
+          const em = {
+            getContext: vi.fn().mockReturnThis(),
+            getSessionContext: vi.fn(),
+            create: vi.fn(() => persisted),
+            findOne: vi.fn().mockResolvedValue(persisted),
+            findAll: vi.fn().mockResolvedValue([persisted]),
+            assign: vi.fn(),
+            nativeUpdate: vi.fn().mockResolvedValue(1),
+            nativeDelete: vi.fn().mockResolvedValue(1),
+            count: vi.fn().mockResolvedValue(1),
+            flush,
+            persist: vi.fn(() => ({ flush })),
+            getMetadata: vi.fn(() => ({
+              get: vi.fn(() => ({
+                properties: { user: { fieldNames: ["user_id"] } },
+              })),
+            })),
+          };
+          const options: BetterAuthOptions = aliases
+            ? {
+                [model]: {
+                  modelName: `auth_${model}`,
+                  fields: { userId: "owner_id" },
+                },
+              }
+            : {};
+          const adapter = mikroOrmAdapter({
+            entities: { [model]: entityClass } as never,
+            orm: { em } as unknown as MikroORM,
+          })(options);
+          const where = [{ field: "userId", value: user.id }];
+          const expectedWhere = { $and: [{ user: { $eq: user.id } }] };
+          const created = await adapter.create({
+            model,
+            data: { userId: user.id },
+          });
+          expect(em.create).toHaveBeenCalledWith(
+            entityClass,
+            expect.objectContaining({ user: user.id }),
+          );
+          expect(created).toMatchObject({ userId: user.id });
+          expect(created).not.toHaveProperty("user");
+          const found = await adapter.findOne({ model, where });
+          expect(em.findOne).toHaveBeenCalledWith(entityClass, expectedWhere);
+          expect(found).toMatchObject({ userId: user.id });
+          expect(found).not.toHaveProperty("user");
+          expect(await adapter.findMany({ model, where })).toEqual([created]);
+          expect(await adapter.count({ model, where })).toBe(1);
+          expect(em.count).toHaveBeenCalledWith(entityClass, expectedWhere);
+          await adapter.update({ model, where, update: { userId: "user-2" } });
+          expect(em.assign).toHaveBeenCalledWith(
+            persisted,
+            expect.objectContaining({ user: "user-2" }),
+          );
+          await adapter.updateMany({
+            model,
+            where,
+            update: { userId: "user-2" },
+          });
+          expect(em.nativeUpdate).toHaveBeenCalledWith(
+            entityClass,
+            expectedWhere,
+            expect.objectContaining({ user: "user-2" }),
+          );
+          await adapter.delete({ model, where });
+          expect(em.nativeDelete).toHaveBeenCalledWith(
+            entityClass,
+            expectedWhere,
+          );
+          expect(persisted.user).toBe(user);
+        },
+      );
+    });
+    it("round-trips Better Auth model and field aliases", async () => {
+      const flush = vi.fn();
+      const persistedUser = {
+        email: "user@example.com",
+        emailVerified: false,
+        name: "User",
+      };
+      const em = {
+        getContext: vi.fn().mockReturnThis(),
+        getSessionContext: vi.fn(),
+        create: vi.fn((_entity, data) => ({ ...data })),
+        findOne: vi.fn().mockResolvedValue(persistedUser),
+        flush,
+        getMetadata: vi.fn(() => ({
+          get: vi.fn(() => ({
+            properties: {
+              email: { fieldNames: ["email_address"] },
+            },
+          })),
+        })),
+        persist: vi.fn(() => ({ flush })),
+      };
+      const orm = { em } as unknown as MikroORM;
+      const entities = { user: TestUser } as never;
+      const options = {
+        user: {
+          fields: { email: "email_address" },
+          modelName: "auth_users",
+        },
+      } satisfies BetterAuthOptions;
+      const adapter = mikroOrmAdapter({ entities, orm })(options);
+      const created = await adapter.create({
+        data: persistedUser,
+        model: "user",
+      });
+      const found = await adapter.findOne({
+        model: "user",
+        where: [{ field: "email", value: "user@example.com" }],
+      });
+      expect(em.create).toHaveBeenCalledWith(
+        TestUser,
+        expect.objectContaining({ email: "user@example.com" }),
+      );
+      expect(em.findOne).toHaveBeenCalledWith(TestUser, {
+        $and: [{ email: { $eq: "user@example.com" } }],
+      });
+      expect(created).toMatchObject(persistedUser);
+      expect(found).toMatchObject(persistedUser);
+    });
   });
 });

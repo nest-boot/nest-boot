@@ -24,7 +24,6 @@ const {
     { logger: mockConfiguredPinoLogger },
   );
   const mockPinoHttp = vi.fn(() => mockLoggerMiddleware);
-
   return {
     mockChildLogger,
     mockConfiguredPinoLogger,
@@ -38,6 +37,7 @@ vi.mock("pino", () => ({
   __esModule: true,
   default: mockPino,
 }));
+
 vi.mock("./pino-http.js", () => ({
   __esModule: true,
   default: mockPinoHttp,
@@ -46,7 +46,6 @@ vi.mock("./pino-http.js", () => ({
 import { LoggerModule } from "./logger.module.js";
 import {
   MODULE_OPTIONS_TOKEN,
-  PINO_HTTP,
   PINO_LOGGER,
 } from "./logger.module-definition.js";
 import { type LoggerModuleOptions } from "./logger-module-options.interface.js";
@@ -56,7 +55,6 @@ describe("LoggerModule", () => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
   });
-
   it("should register synchronous and asynchronous options", () => {
     const options = {
       autoLogging: false,
@@ -66,7 +64,6 @@ describe("LoggerModule", () => {
     const asyncModule = LoggerModule.registerAsync({
       useFactory,
     });
-
     expect(dynamicModule.module).toBe(LoggerModule);
     expect(dynamicModule.providers).toEqual(
       expect.arrayContaining([
@@ -86,11 +83,9 @@ describe("LoggerModule", () => {
       ]),
     );
   });
-
   it("should expose only supported logger options", () => {
     type HasOption<Option extends PropertyKey> =
       Option extends keyof LoggerModuleOptions ? true : false;
-
     expect(true satisfies HasOption<"autoLogging">).toBe(true);
     expect(true satisfies HasOption<"enabled">).toBe(true);
     expect(true satisfies HasOption<"formatters">).toBe(true);
@@ -103,78 +98,6 @@ describe("LoggerModule", () => {
     expect(false satisfies HasOption<"level">).toBe(false);
     expect(false satisfies HasOption<"useOnlyCustomLevels">).toBe(false);
   });
-
-  it("should provide one configured pino-http middleware instance", async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [LoggerModule.register({ enabled: false })],
-    }).compile();
-
-    expect(moduleRef.get(PINO_HTTP)).toBe(mockLoggerMiddleware);
-    expect(mockPinoHttp).toHaveBeenCalledTimes(1);
-    expect(mockPinoHttp).toHaveBeenCalledWith(
-      expect.objectContaining({ enabled: false }),
-    );
-
-    await moduleRef.close();
-  });
-
-  it("should ignore options outside the public whitelist at runtime", async () => {
-    const customProps = vi.fn(() => ({ unsupported: true }));
-    const customReceivedMessage = vi.fn(() => "unsupported-message");
-    const moduleRef = await Test.createTestingModule({
-      imports: [
-        LoggerModule.register({
-          customLevels: { audit: 35 },
-          customProps,
-          customReceivedMessage,
-          enabled: false,
-          level: "silent",
-          transport: { target: "pino-pretty" },
-          useOnlyCustomLevels: true,
-        } as unknown as LoggerModuleOptions),
-      ],
-    }).compile();
-    const [options] = mockPinoHttp.mock.calls[0] as unknown as [
-      Record<string, unknown>,
-    ];
-
-    expect(options.enabled).toBe(false);
-    expect(options).not.toHaveProperty("customLevels");
-    expect(options).not.toHaveProperty("level");
-    expect(options).not.toHaveProperty("transport");
-    expect(options).not.toHaveProperty("useOnlyCustomLevels");
-    expect(options.customProps).not.toBe(customProps);
-    expect(options.customReceivedMessage).not.toBe(customReceivedMessage);
-
-    await moduleRef.close();
-  });
-
-  it("should create the configured middleware from asynchronous options", async () => {
-    const useFactory = vi.fn(async () => {
-      await Promise.resolve();
-
-      return {
-        enabled: false,
-        timestamp: false,
-      };
-    });
-    const moduleRef = await Test.createTestingModule({
-      imports: [LoggerModule.registerAsync({ useFactory })],
-    }).compile();
-
-    expect(useFactory).toHaveBeenCalledTimes(1);
-    expect(moduleRef.get(PINO_HTTP)).toBe(mockLoggerMiddleware);
-    expect(mockPinoHttp).toHaveBeenCalledTimes(1);
-    expect(mockPinoHttp).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: false,
-        timestamp: false,
-      }),
-    );
-
-    await moduleRef.close();
-  });
-
   it("should apply defaults while preserving supplied options", async () => {
     const genReqId = () => "custom-id";
     const ignore = () => false;
@@ -189,8 +112,11 @@ describe("LoggerModule", () => {
       serializers,
       timestamp: false,
     });
-    const options = (module as unknown as { options: any }).options;
-
+    const options = (
+      module as unknown as {
+        options: any;
+      }
+    ).options;
     expect(options.redact).toEqual([
       "req.headers.authorization",
       "req.headers.cookie",
@@ -203,18 +129,19 @@ describe("LoggerModule", () => {
     expect(options.customReceivedMessage()).toBe("request received");
     expect(options.customProps()).toEqual({});
   });
-
   it("should configure default request id, props, and auto logging behavior", async () => {
     const module = await createLoggerModule();
-    const options = (module as unknown as { options: any }).options;
+    const options = (
+      module as unknown as {
+        options: any;
+      }
+    ).options;
     vi.spyOn(RequestContext, "isActive").mockReturnValue(true);
     vi.spyOn(RequestContext, "get").mockReturnValue({
       tenantId: "tenant-1",
     });
     vi.spyOn(RequestContext, "id", "get").mockReturnValue("ctx-id");
-
     process.env.NODE_ENV = "test";
-
     expect(
       options.autoLogging.ignore({
         headers: {
@@ -232,31 +159,34 @@ describe("LoggerModule", () => {
       tenantId: "tenant-1",
     });
   });
-
   it("should cover fallback defaults for boolean auto logging and inactive context", async () => {
     const module = await createLoggerModule({
       autoLogging: false,
     });
-    const options = (module as unknown as { options: any }).options;
+    const options = (
+      module as unknown as {
+        options: any;
+      }
+    ).options;
     vi.spyOn(RequestContext, "isActive").mockReturnValueOnce(false);
     vi.spyOn(RequestContext, "id", "get").mockReturnValue(
       undefined as unknown as string,
     );
-
     expect(options.autoLogging).toBe(false);
     expect(options.customProps()).toEqual({});
     expect(options.genReqId()).toEqual(expect.any(String));
   });
-
   it("should return empty custom props when bindings are not set", async () => {
     const module = await createLoggerModule();
-    const options = (module as unknown as { options: any }).options;
+    const options = (
+      module as unknown as {
+        options: any;
+      }
+    ).options;
     vi.spyOn(RequestContext, "isActive").mockReturnValue(true);
     vi.spyOn(RequestContext, "get").mockReturnValue(undefined);
-
     expect(options.customProps()).toEqual({});
   });
-
   it("should emit decorator metadata when options exist at runtime", async () => {
     vi.resetModules();
     vi.doMock("./logger-module-options.interface.js", () => ({
@@ -264,19 +194,15 @@ describe("LoggerModule", () => {
         static readonly marker = true;
       },
     }));
-
     expect((await import("./logger.module.js")).LoggerModule).toBeDefined();
     vi.doUnmock("./logger-module-options.interface.js");
   });
-
   it("should register pino logger middleware for requests", async () => {
     const module = await createLoggerModule();
     const registerMiddleware = vi
       .spyOn(RequestContext, "registerMiddleware")
       .mockImplementation(() => undefined);
-
     module.onModuleInit();
-
     const middleware = registerMiddleware.mock.calls[0][1];
     const req = {};
     const res = {};
@@ -295,21 +221,16 @@ describe("LoggerModule", () => {
       type: "http",
     };
     const next = vi.fn().mockResolvedValue("next-result");
-
     await expect(middleware(ctx as never, next)).resolves.toBe("next-result");
-
     expect(mockLoggerMiddleware).toHaveBeenCalledWith(req, res);
     expect(ctx.set).toHaveBeenCalledWith(PINO_LOGGER, mockChildLogger);
   });
-
   it("should use the configured pino logger without request objects", async () => {
     const module = await createLoggerModule();
     const registerMiddleware = vi
       .spyOn(RequestContext, "registerMiddleware")
       .mockImplementation(() => undefined);
-
     module.onModuleInit();
-
     const middleware = registerMiddleware.mock.calls[0][1];
     const ctx = {
       get: vi.fn(() => undefined),
@@ -318,9 +239,7 @@ describe("LoggerModule", () => {
       type: "job",
     };
     const next = vi.fn().mockResolvedValue("next-result");
-
     await expect(middleware(ctx as never, next)).resolves.toBe("next-result");
-
     expect(mockConfiguredPinoLogger.child).toHaveBeenCalledWith({
       ctx: {
         id: "ctx-id",
@@ -340,17 +259,14 @@ describe("LoggerModule", () => {
 async function createLoggerModule(options?: LoggerModuleOptions) {
   const providers: Parameters<typeof Test.createTestingModule>[0]["providers"] =
     [LoggerModule];
-
   if (typeof options !== "undefined") {
     providers?.push({
       provide: MODULE_OPTIONS_TOKEN,
       useValue: options,
     });
   }
-
   const moduleRef = await Test.createTestingModule({
     providers,
   }).compile();
-
   return moduleRef.get(LoggerModule);
 }

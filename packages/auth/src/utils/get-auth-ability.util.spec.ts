@@ -40,3 +40,30 @@ describe("getAuthAbility().rules", () => {
     },
   );
 });
+
+describe("request authorization helpers", () => {
+  class TestSubject {}
+
+  describe("explicit ability access", () => {
+    it("returns the concrete instance with unchanged CASL event and update behavior", async () => {
+      await RequestContext.run(new RequestContext({ type: "test" }), () => {
+        RequestContext.set(User, new User());
+        const ability = new AuthAbility();
+        RequestContext.set(AuthAbility, ability);
+        expect(getAuthAbility()).toBe(ability);
+        const handler = vi.fn();
+        const unsubscribe = getAuthAbility().on("updated", handler);
+        const rules = [{ action: "read", subject: TestSubject }];
+        expect(getAuthAbility().update(rules)).toBe(ability);
+        expect(handler).toHaveBeenCalledWith({
+          target: ability,
+          ability,
+          rules,
+        });
+        unsubscribe();
+        getAuthAbility().update([]);
+        expect(handler).toHaveBeenCalledTimes(1);
+      });
+    });
+  });
+});

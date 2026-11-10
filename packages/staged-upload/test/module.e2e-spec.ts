@@ -116,10 +116,9 @@ describeIfS3Configured("StagedUploadModule - e2e", () => {
   const mimeType = "image/jpeg";
   const filePath = "./attachments/test.jpeg";
 
-  let stagedUploadArgs: {
-    url: string;
-    fields: Record<string, string>[];
-  };
+  let stagedUploadArgs: Awaited<
+    ReturnType<StagedUploadService["create"]>
+  >[number];
 
   // Temporary file URL
   let fileTmpUrl: string;

@@ -1,0 +1,22 @@
+import config from "./library.json" with { type: "json" };
+it("declares the library preset", () => {
+  expect(config).toEqual({
+    $schema: "https://json.schemastore.org/tsconfig",
+    display: "Library",
+    extends: "./base.json",
+    compilerOptions: {
+      composite: true,
+      declaration: true,
+      removeComments: false,
+      rootDir: "${configDir}/src",
+      outDir: "${configDir}/dist",
+    },
+    include: ["${configDir}/src/**/*"],
+    exclude: [
+      "${configDir}/node_modules",
+      "${configDir}/dist",
+      "${configDir}/test",
+      "${configDir}/**/*.spec.ts",
+    ],
+  });
+});

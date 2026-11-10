@@ -2,7 +2,6 @@ import { fileURLToPath } from "node:url";
 
 import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
-
 export default defineConfig({
   // Match Nest's Node entry point instead of loading a second GraphQL scalar implementation.
   resolve: {
@@ -15,7 +14,7 @@ export default defineConfig({
     setupFiles: ["./test/setup.ts"],
     globals: true,
     root: "./",
-    include: ["**/*.spec.ts"],
+    include: ["src/**/*.spec.ts"],
     coverage: {
       include: ["src/**/*.ts"],
       exclude: ["src/**/*.spec.ts"],

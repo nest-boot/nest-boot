@@ -15,13 +15,13 @@
   ],
   "scripts": {
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf coverage && rm -rf dist",
-    "lint": "eslint \"test/**/*.ts\" \"vitest.config*.ts\"",
-    "lint:fix": "eslint \"test/**/*.ts\" \"vitest.config*.ts\" --fix",
+    "lint": "eslint \"test/**/*.ts\" \"vitest.config*.ts\" \"*.spec.ts\"",
+    "lint:fix": "eslint \"test/**/*.ts\" \"vitest.config*.ts\" \"*.spec.ts\" --fix",
     "test": "vitest run",
     "test:cov": "vitest run --coverage",
     "test:watch": "vitest",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts --coverage"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
