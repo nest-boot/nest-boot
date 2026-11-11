@@ -25,7 +25,7 @@ import { UpdateMemberApiKeyInput } from "../inputs/update-member-api-key.input.j
 import { ApiKey } from "../objects/api-key.object.js";
 import { CreateMemberApiKeyResult } from "../objects/create-member-api-key-result.object.js";
 import { MemberApiKeyPermissionOption } from "../objects/member-api-key-permission-option.object.js";
-import { MemberApiKeyService } from "../services/member-api-key.service.js";
+import { WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
 import { type ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
 /** Optional workspace member credential API. */
@@ -37,7 +37,7 @@ export class MemberApiKeyResolver {
    */
   constructor(
     /** Member API-key domain service. */
-    readonly apiKeyService: MemberApiKeyService,
+    readonly apiKeyService: WorkspaceApiKeyService,
   ) {}
 
   /**

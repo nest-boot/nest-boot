@@ -14,7 +14,7 @@ description: "将 Auth 服务接入传输适配器与 RequestContext。"
 | `WorkspaceService`                           | 工作区查询与生命周期管理                               |
 | `MemberService`                              | 成员查询、分页、资料、角色、权限及加入/退出            |
 | `InvitationService`                          | 邀请查询、分页、创建、接受、拒绝及取消                 |
-| `UserApiKeyService` 和 `MemberApiKeyService` | 各自作用域的 API Key 生命周期和连接查询                |
+| `UserApiKeyService` 和 `WorkspaceApiKeyService` | 各自作用域的 API Key 生命周期和连接查询                |
 
 `UserService`、`AccountService`、`WorkspaceService`、`MemberService` 和 `InvitationService` 直接操作 `AuthModule` 内置的 MikroORM 实体，
 不依赖 Better Auth 的 admin 或 organization 插件。
@@ -31,7 +31,7 @@ export class AccountApplicationService {
     private readonly memberService: MemberService,
     private readonly invitationService: InvitationService,
     private readonly userApiKeyService: UserApiKeyService,
-    private readonly memberApiKeyService: MemberApiKeyService,
+    private readonly memberApiKeyService: WorkspaceApiKeyService,
   ) {}
 }
 ```

@@ -23,7 +23,7 @@ import { ApiKeyAuthenticationService } from "../src/infrastructure/api-key-authe
 import { RequestIdentity } from "../src/infrastructure/request-identity.js";
 import type { SessionService } from "../src/services/session.service.js";
 import { SystemAccountService } from "../src/services/system-account.service.js";
-import { SystemAccountApiKeyService } from "../src/services/system-account-api-key.service.js";
+import { SystemApiKeyService } from "../src/services/system-api-key.service.js";
 import { UserService } from "../src/services/user.service.js";
 import { WorkspaceService } from "../src/services/workspace.service.js";
 import { hashApiKey } from "../src/utils/api-key-credential.util.js";
@@ -100,7 +100,7 @@ describe("independent system accounts with real persistence and authentication",
   const asAdministrator = async <T>(
     callback: (
       accounts: SystemAccountService,
-      keys: SystemAccountApiKeyService,
+      keys: SystemApiKeyService,
       em: EntityManager,
     ) => Promise<T>,
     user = administrator,
@@ -118,7 +118,7 @@ describe("independent system accounts with real persistence and authentication",
       RequestIdentity.prepare(withAuthTestFeatures(options));
       return await callback(
         new SystemAccountService(em, withAuthTestFeatures(options)),
-        new SystemAccountApiKeyService(em, withAuthTestFeatures(options)),
+        new SystemApiKeyService(em, withAuthTestFeatures(options)),
         em,
       );
     });
@@ -267,10 +267,7 @@ describe("independent system accounts with real persistence and authentication",
           em,
           withAuthTestFeatures(options),
         );
-        const keys = new SystemAccountApiKeyService(
-          em,
-          withAuthTestFeatures(options),
-        );
+        const keys = new SystemApiKeyService(em, withAuthTestFeatures(options));
         await expect(
           accounts.createSystemAccount({
             name: "Escalation",
@@ -547,7 +544,7 @@ describe("independent system accounts with real persistence and authentication",
         name: "Limited issuer",
         permissions: ["user:read"],
       });
-      const keys = new SystemAccountApiKeyService(
+      const keys = new SystemApiKeyService(
         em,
         withAuthTestFeatures(configuration),
       );
@@ -659,7 +656,7 @@ describe("independent system accounts with real persistence and authentication",
     });
     await asAdministrator(async (_accounts, _keys, em) => {
       RequestIdentity.refresh(withAuthTestFeatures(configuration));
-      const keys = new SystemAccountApiKeyService(
+      const keys = new SystemApiKeyService(
         em,
         withAuthTestFeatures(configuration),
       );
@@ -689,7 +686,7 @@ describe("independent system accounts with real persistence and authentication",
         em,
         withAuthTestFeatures(configuration),
       );
-      const keys = new SystemAccountApiKeyService(
+      const keys = new SystemApiKeyService(
         em,
         withAuthTestFeatures(configuration),
       );
@@ -733,7 +730,7 @@ describe("independent system accounts with real persistence and authentication",
         em,
         withAuthTestFeatures(configuration),
       );
-      const keys = new SystemAccountApiKeyService(
+      const keys = new SystemApiKeyService(
         em,
         withAuthTestFeatures(configuration),
       );
@@ -782,7 +779,7 @@ describe("independent system accounts with real persistence and authentication",
         }),
       ).rejects.toThrow(/session/i);
       await expect(
-        new SystemAccountApiKeyService(
+        new SystemApiKeyService(
           scoped,
           withAuthTestFeatures(options),
         ).createSystemAccountApiKey("1", { name: "Denied" }),
@@ -793,7 +790,7 @@ describe("independent system accounts with real persistence and authentication",
   it("rejects disabled administration and missing human sessions despite administrator context", async () => {
     await asAdministrator(async (accounts, _keys, em) => {
       await expect(
-        new SystemAccountApiKeyService(em, {
+        new SystemApiKeyService(em, {
           apiKey: { enabled: true, system: { enabled: true } },
         }).getSystemAccountApiKeyPermissions(),
       ).rejects.toThrow("Administration is disabled");

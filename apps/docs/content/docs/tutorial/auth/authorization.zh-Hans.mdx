@@ -382,7 +382,7 @@ Auth 自动映射内置权限。业务扩展显式绑定权限，例如 `can({ u
 ## Service 授权边界
 
 `UserService`、`SessionService`、`WorkspaceService`、`MemberService`、
-`InvitationService` 与 `UserApiKeyService` 和 `MemberApiKeyService` 会在读取或修改认证数据前强制校验
+`InvitationService` 与 `UserApiKeyService` 和 `WorkspaceApiKeyService` 会在读取或修改认证数据前强制校验
 权限。Resolver 和 Controller 上的装饰器用于提前拒绝并声明接口意图，但不是安全边界；
 即使遗漏装饰器，受保护的 Service 操作也不会变成公开操作。
 

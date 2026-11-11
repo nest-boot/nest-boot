@@ -18,7 +18,7 @@ import { CurrentWorkspace } from "../decorators/current-workspace.decorator.js";
 import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { ApiKey } from "../objects/api-key.object.js";
-import { MemberApiKeyService } from "../services/member-api-key.service.js";
+import { WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
 import { type ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
 /** Optional selected-workspace credential aggregation. */
@@ -28,7 +28,7 @@ export class WorkspaceApiKeyResolver {
    * Creates this resolver.
    * @param apiKeyService - Workspace credential operations.
    */
-  constructor(readonly apiKeyService: MemberApiKeyService) {}
+  constructor(readonly apiKeyService: WorkspaceApiKeyService) {}
 
   /**
    * Returns an accessible API key owned by the parent workspace.

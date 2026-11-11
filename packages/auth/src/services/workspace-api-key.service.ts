@@ -55,8 +55,8 @@ import { resolveRequestPermissions } from "../utils/resolve-request-permissions.
 
 /** Manages member-owned, workspace-scoped API keys within the current request's authorization scope. */
 @Injectable()
-export class MemberApiKeyService {
-  private readonly logger = new Logger(MemberApiKeyService.name);
+export class WorkspaceApiKeyService {
+  private readonly logger = new Logger(WorkspaceApiKeyService.name);
 
   /**
    * Creates an API-key domain service.

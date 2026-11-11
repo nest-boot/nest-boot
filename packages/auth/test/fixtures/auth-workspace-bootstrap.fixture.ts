@@ -25,8 +25,8 @@ import { Workspace } from "../../src/entities/workspace.entity.js";
 import { InvitationService } from "../../src/features/invitations/invitation.service.js";
 import { ApiKeyAuthenticationService } from "../../src/infrastructure/api-key-authentication.service.js";
 import { MemberService } from "../../src/services/member.service.js";
-import { MemberApiKeyService } from "../../src/services/member-api-key.service.js";
 import { WorkspaceService } from "../../src/services/workspace.service.js";
+import { WorkspaceApiKeyService } from "../../src/services/workspace-api-key.service.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 
 /**
@@ -218,7 +218,7 @@ export async function verifyAuthBootstrap(
       WorkspaceService,
       MemberService,
       InvitationService,
-      MemberApiKeyService,
+      WorkspaceApiKeyService,
     ]) {
       expect(!!app.get(service)).toBe(enabled);
     }

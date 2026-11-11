@@ -24,7 +24,6 @@ import {
   Member as BaseMember,
   Member,
   MemberApiKey,
-  MemberApiKeyService,
   MemberService,
   MemberStatus,
   MemberType,
@@ -36,6 +35,7 @@ import {
   Verification,
   Workspace as BaseWorkspace,
   Workspace,
+  WorkspaceApiKeyService,
   WorkspaceService,
 } from "../src/index.js";
 import { ApiKeyAuthenticationService } from "../src/infrastructure/api-key-authentication.service.js";
@@ -1134,7 +1134,7 @@ describe("Auth services and native RLS boundaries", () => {
               ...(permissions.length ? { roles: [] } : {}),
             },
           );
-          const service = new MemberApiKeyService(
+          const service = new WorkspaceApiKeyService(
             em,
             withAuthTestFeatures(options),
           );
@@ -1271,7 +1271,7 @@ describe("Auth services and native RLS boundaries", () => {
       RequestIdentity.prepare(
         withAuthTestFeatures({ workspace: { enabled: true } }),
       );
-      const service = new MemberApiKeyService(
+      const service = new WorkspaceApiKeyService(
         em,
         withAuthTestFeatures({
           workspace: { enabled: true },

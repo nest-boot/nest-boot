@@ -52,14 +52,14 @@ import { UserResolver } from "./resolvers/user.resolver.js";
 import { AccountService } from "./services/account.service.js";
 import { AuthService } from "./services/auth.service.js";
 import { MemberService } from "./services/member.service.js";
-import { MemberApiKeyService } from "./services/member-api-key.service.js";
 import { SessionService } from "./services/session.service.js";
 import { SystemAccountService } from "./services/system-account.service.js";
-import { SystemAccountApiKeyService } from "./services/system-account-api-key.service.js";
+import { SystemApiKeyService } from "./services/system-api-key.service.js";
 import { UserService } from "./services/user.service.js";
 import { UserApiKeyService } from "./services/user-api-key.service.js";
 import { UserDeletionService } from "./services/user-deletion.service.js";
 import { WorkspaceService } from "./services/workspace.service.js";
+import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
 import {
   DEFAULT_USER_PERMISSIONS,
   DEFAULT_USER_ROLES,
@@ -139,10 +139,10 @@ class AuthOptionsHostModule {}
   exports: [
     AccountService,
     SystemAccountService,
-    SystemAccountApiKeyService,
+    SystemApiKeyService,
     UserService,
     UserApiKeyService,
-    MemberApiKeyService,
+    WorkspaceApiKeyService,
     AuthGuard,
     AuthService,
     SessionService,

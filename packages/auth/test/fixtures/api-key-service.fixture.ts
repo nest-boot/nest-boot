@@ -8,8 +8,8 @@ import { MemberApiKey } from "../../src/entities/member-api-key.entity.js";
 import { User } from "../../src/entities/user.entity.js";
 import { Workspace } from "../../src/entities/workspace.entity.js";
 import { RequestIdentity } from "../../src/infrastructure/request-identity.js";
-import { MemberApiKeyService } from "../../src/services/member-api-key.service.js";
 import { UserApiKeyService } from "../../src/services/user-api-key.service.js";
+import { WorkspaceApiKeyService } from "../../src/services/workspace-api-key.service.js";
 import * as abilityHelpers from "../../src/utils/authorize.util.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 /**
@@ -141,7 +141,7 @@ export function createService(
       .mockImplementation(vi.fn()),
   };
   const userService = new UserApiKeyService(em, withAuthTestFeatures(options));
-  const workspaceService = new MemberApiKeyService(
+  const workspaceService = new WorkspaceApiKeyService(
     em,
     withAuthTestFeatures(options),
   );

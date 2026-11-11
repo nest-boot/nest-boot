@@ -430,7 +430,7 @@ final serialized rules instead of maintaining a separate permission mapping.
 ## Service Authorization Boundary
 
 `UserService`, `SessionService`, `WorkspaceService`, `MemberService`,
-`InvitationService`, and `UserApiKeyService` and `MemberApiKeyService` enforce their permissions
+`InvitationService`, and `UserApiKeyService` and `WorkspaceApiKeyService` enforce their permissions
 before reading or mutating authentication data. Resolver and controller
 decorators provide early rejection and declare intent, but they are not the
 security boundary: omitting one does not make a protected service operation

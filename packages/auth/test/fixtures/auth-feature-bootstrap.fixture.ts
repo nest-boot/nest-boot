@@ -22,11 +22,11 @@ import {
   User,
 } from "../../src/entities/index.js";
 import { ApiKeyAuthenticationService } from "../../src/infrastructure/api-key-authentication.service.js";
-import { MemberApiKeyService } from "../../src/services/member-api-key.service.js";
 import { SystemAccountService } from "../../src/services/system-account.service.js";
-import { SystemAccountApiKeyService } from "../../src/services/system-account-api-key.service.js";
+import { SystemApiKeyService } from "../../src/services/system-api-key.service.js";
 import { UserService } from "../../src/services/user.service.js";
 import { UserApiKeyService } from "../../src/services/user-api-key.service.js";
+import { WorkspaceApiKeyService } from "../../src/services/workspace-api-key.service.js";
 import { hashApiKey } from "../../src/utils/api-key-credential.util.js";
 
 /** An application-owned endpoint whose authorization does not require the admin GraphQL API. */
@@ -157,8 +157,8 @@ export async function verifyAuthFeatures(
       [ApiKeyAuthenticationService, expected.owners.length > 0],
       [SystemAccountService, expected.admin],
       [UserApiKeyService, expected.owners.includes("User")],
-      [MemberApiKeyService, expected.owners.includes("Member")],
-      [SystemAccountApiKeyService, systemManagement],
+      [WorkspaceApiKeyService, expected.owners.includes("Member")],
+      [SystemApiKeyService, systemManagement],
     ] as const) {
       expect(!!app.get(token)).toBe(enabled);
     }

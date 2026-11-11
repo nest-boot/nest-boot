@@ -43,7 +43,7 @@ import { runAuthQuery } from "../utils/run-auth-query.js";
 
 /** Human-administrator management of credentials owned by independent system accounts. */
 @Injectable()
-export class SystemAccountApiKeyService {
+export class SystemApiKeyService {
   constructor(
     private readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN) private readonly options: AuthModuleOptions,

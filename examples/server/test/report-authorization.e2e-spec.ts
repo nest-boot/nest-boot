@@ -5,10 +5,10 @@ import {
   AuthResolver,
   type AuthService,
   Member,
-  MemberApiKeyService,
   User,
   UserApiKey,
   Workspace,
+  WorkspaceApiKeyService,
 } from '@nest-boot/auth';
 import { RequestContext } from '@nest-boot/request-context';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
@@ -159,7 +159,7 @@ describe('business authorization recipe', () => {
             NotFoundException,
           );
 
-          const catalog = new MemberApiKeyService(
+          const catalog = new WorkspaceApiKeyService(
             {} as EntityManager,
             reportAuthOptions,
           ).getMemberApiKeyPermissions(workspace);

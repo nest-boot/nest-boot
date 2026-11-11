@@ -3,7 +3,7 @@ title: "API Keys"
 description: "Authenticate personal and workspace automation with scoped API keys."
 ---
 
-`UserApiKeyService` and `MemberApiKeyService` manage personal keys owned by users and workspace-scoped keys owned by members.
+`UserApiKeyService` and `WorkspaceApiKeyService` manage personal keys owned by users and workspace-scoped keys owned by members.
 
 - A **user key** restores its user and may access a selected workspace only
   while that user remains an active member.
@@ -40,7 +40,7 @@ mutation {
 }
 ```
 
-`MemberApiKeyService.createMemberApiKey(workspace, { member, ...options })`
+`WorkspaceApiKeyService.createMemberApiKey(workspace, { member, ...options })`
 accepts a member entity or ID; GraphQL accepts optional `input.memberId`.
 A user can issue keys for their own membership or an active service account
 in the selected workspace, never another user's membership. Omitting the owner
@@ -75,7 +75,7 @@ their own migration.
 
 - `getUserApiKey`, `createUserApiKey`, `updateUserApiKey`, and `deleteUserApiKey`;
 - `getMemberApiKey`, `createMemberApiKey`, `updateMemberApiKey`, and `deleteMemberApiKey`;
-- `UserApiKeyService.getUserApiKeyConnection(user, args)` and `MemberApiKeyService.getMemberApiKeyConnection(workspace, args)` return connections;
+- `UserApiKeyService.getUserApiKeyConnection(user, args)` and `WorkspaceApiKeyService.getMemberApiKeyConnection(workspace, args)` return connections;
   Authentication and usage tracking are internal infrastructure responsibilities; consumers use the two management services.
 
 GraphQL exposes the connections as `User.apiKeys` and `workspaceApiKeys`,
@@ -138,7 +138,7 @@ Prefixes are concatenated directly with the random suffix; separators are not ad
 ## Permission Values
 
 The auth package stores and evaluates permissions as `string[]`. Applications
-define closed user and workspace permission catalogs. `UserApiKeyService` and `MemberApiKeyService` validates
+define closed user and workspace permission catalogs. `UserApiKeyService` and `WorkspaceApiKeyService` validates
 permission values against those catalogs during key creation and updates.
 Permission identifiers use lowercase `resource:action` names; each segment starts
 with a letter and may contain lowercase letters, digits, and single hyphens.
@@ -300,7 +300,7 @@ mutation {
 }
 ```
 
-Use the returned ID with `createSystemAccountApiKey(systemAccountId, input)`. Its creation result contains `{ entity, apiKey }`; send the plaintext as `Authorization: Bearer <key>`. Subsequent queries expose only metadata. Use `SystemAccountService` and `SystemAccountApiKeyService` for programmatic management; `SystemAccount.apiKeys` provides cursor pagination.
+Use the returned ID with `createSystemAccountApiKey(systemAccountId, input)`. Its creation result contains `{ entity, apiKey }`; send the plaintext as `Authorization: Bearer <key>`. Subsequent queries expose only metadata. Use `SystemAccountService` and `SystemApiKeyService` for programmatic management; `SystemAccount.apiKeys` provides cursor pagination.
 
 Configure defaults and ceilings under `apiKey.system` (`defaultPrefix`, `defaultPermissions`, `allowedPermissions`), with default prefix `sys_`. Effective permissions are the intersection of the account, explicit key grants and configured ceiling. Empty grants authorize nothing. Account disablement invalidates all owned credentials, while key disablement/expiry/deletion affects one credential. A system credential creates no user or membership identity.
 

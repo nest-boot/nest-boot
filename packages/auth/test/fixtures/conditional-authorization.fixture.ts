@@ -4,10 +4,10 @@ import { AuthAbility } from "../../src/auth.ability.js";
 import { Member } from "../../src/entities/member.entity.js";
 import { User } from "../../src/entities/user.entity.js";
 import { Workspace } from "../../src/entities/workspace.entity.js";
-import { MemberApiKeyService } from "../../src/services/member-api-key.service.js";
 import { SessionService } from "../../src/services/session.service.js";
 import { UserService } from "../../src/services/user.service.js";
 import { UserApiKeyService } from "../../src/services/user-api-key.service.js";
+import { WorkspaceApiKeyService } from "../../src/services/workspace-api-key.service.js";
 import { createWorkspaceServices } from "../workspace-service.fixture.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 /**
@@ -95,7 +95,7 @@ function fixture() {
         workspace: { enabled: true },
       }),
     ),
-    memberApiKeyService: new MemberApiKeyService(
+    memberApiKeyService: new WorkspaceApiKeyService(
       result.em,
       withAuthTestFeatures({
         workspace: { enabled: true },

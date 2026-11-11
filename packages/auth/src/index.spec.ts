@@ -24,11 +24,11 @@ import * as publicApi from "./index.js";
 import { AccountService } from "./services/account.service.js";
 import { AuthService } from "./services/auth.service.js";
 import { MemberService } from "./services/member.service.js";
-import { MemberApiKeyService } from "./services/member-api-key.service.js";
 import { SessionService } from "./services/session.service.js";
 import { UserService } from "./services/user.service.js";
 import { UserApiKeyService } from "./services/user-api-key.service.js";
 import { WorkspaceService } from "./services/workspace.service.js";
+import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
 import { authorize } from "./utils/authorize.util.js";
 import { can } from "./utils/can.util.js";
 import { getAuthAbility } from "./utils/get-auth-ability.util.js";
@@ -52,7 +52,7 @@ vi.mock("./adapters/mikro-orm-adapter.js", () => ({
 describe("public API", () => {
   it("exports separate API-key domain services", () => {
     expect(publicApi.UserApiKeyService).toBe(UserApiKeyService);
-    expect(publicApi.MemberApiKeyService).toBe(MemberApiKeyService);
+    expect(publicApi.WorkspaceApiKeyService).toBe(WorkspaceApiKeyService);
     for (const method of [
       "getUserApiKey",
       "getUserApiKeyConnection",
@@ -61,7 +61,7 @@ describe("public API", () => {
       "deleteUserApiKey",
     ]) {
       expect(UserApiKeyService.prototype).toHaveProperty(method);
-      expect(MemberApiKeyService.prototype).not.toHaveProperty(method);
+      expect(WorkspaceApiKeyService.prototype).not.toHaveProperty(method);
     }
     expect(UserApiKeyService.prototype).not.toHaveProperty("getMemberApiKey");
   });
@@ -140,8 +140,8 @@ describe("public API", () => {
       ],
     },
     {
-      name: "MemberApiKeyService",
-      service: MemberApiKeyService,
+      name: "WorkspaceApiKeyService",
+      service: WorkspaceApiKeyService,
       methods: [
         "getMemberApiKeyConnection",
         "createMemberApiKey",
@@ -254,7 +254,7 @@ describe("public API", () => {
   it("should export auth modules, services, decorators, and entities", () => {
     expect(publicApi.UserService).toBe(UserService);
     expect(publicApi.IS_PUBLIC_KEY).toBe(IS_PUBLIC_KEY);
-    expect(publicApi.MemberApiKeyService).toBe(MemberApiKeyService);
+    expect(publicApi.WorkspaceApiKeyService).toBe(WorkspaceApiKeyService);
     expect(publicApi.AuthGuard).toBe(AuthGuard);
     expect(publicApi.AuthMiddleware).toBe(AuthMiddleware);
     expect(publicApi.AuthModule).toBe(AuthModule);

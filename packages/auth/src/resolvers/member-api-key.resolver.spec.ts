@@ -2,7 +2,7 @@ import type { Mocked } from "vitest";
 
 import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { type MemberApiKeyService } from "../services/member-api-key.service.js";
+import { type WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
 import { MemberApiKeyResolver } from "./member-api-key.resolver.js";
 
 describe("MemberApiKeyResolver", () => {
@@ -81,13 +81,13 @@ describe("MemberApiKeyResolver", () => {
  * @param overrides - Fixture values that replace the defaults.
  * @returns Test resolver and its mocked dependencies.
  */
-function createResolver(overrides: Partial<MemberApiKeyService> = {}) {
+function createResolver(overrides: Partial<WorkspaceApiKeyService> = {}) {
   const apiKeyService = {
     createMemberApiKey: vi.fn(),
     deleteMemberApiKey: vi.fn(),
     updateMemberApiKey: vi.fn(),
     ...overrides,
-  } as unknown as Mocked<MemberApiKeyService>;
+  } as unknown as Mocked<WorkspaceApiKeyService>;
 
   return {
     resolver: new MemberApiKeyResolver(apiKeyService),

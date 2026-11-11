@@ -7,11 +7,11 @@ import { SystemAccountApiKeyResolver } from "../resolvers/system-account-api-key
 import { UserApiKeyResolver } from "../resolvers/user-api-key.resolver.js";
 import { WorkspaceApiKeyResolver } from "../resolvers/workspace-api-key.resolver.js";
 import { MemberService } from "../services/member.service.js";
-import { MemberApiKeyService } from "../services/member-api-key.service.js";
 import { SystemAccountService } from "../services/system-account.service.js";
-import { SystemAccountApiKeyService } from "../services/system-account-api-key.service.js";
+import { SystemApiKeyService } from "../services/system-api-key.service.js";
 import { UserService } from "../services/user.service.js";
 import { UserApiKeyService } from "../services/user-api-key.service.js";
+import { WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
 import { featureProvider } from "./feature-provider.js";
 
 /** Credential scopes are registered independently from their owning identity features. */
@@ -23,16 +23,16 @@ export const apiKeyProviders: Provider[] = [
     (options, em: EntityManager) => new UserApiKeyService(em, options),
   ),
   featureProvider(
-    MemberApiKeyService,
+    WorkspaceApiKeyService,
     "workspaceApiKey",
     [EntityManager],
-    (options, em: EntityManager) => new MemberApiKeyService(em, options),
+    (options, em: EntityManager) => new WorkspaceApiKeyService(em, options),
   ),
   featureProvider(
-    SystemAccountApiKeyService,
+    SystemApiKeyService,
     "systemAccountApiKeyManagement",
     [EntityManager],
-    (options, em: EntityManager) => new SystemAccountApiKeyService(em, options),
+    (options, em: EntityManager) => new SystemApiKeyService(em, options),
   ),
   featureProvider(
     UserApiKeyResolver,
@@ -43,20 +43,21 @@ export const apiKeyProviders: Provider[] = [
   featureProvider(
     MemberApiKeyResolver,
     "workspaceApiKey",
-    [MemberApiKeyService],
-    (_options, keys: MemberApiKeyService) => new MemberApiKeyResolver(keys),
+    [WorkspaceApiKeyService],
+    (_options, keys: WorkspaceApiKeyService) => new MemberApiKeyResolver(keys),
   ),
   featureProvider(
     WorkspaceApiKeyResolver,
     "workspaceApiKey",
-    [MemberApiKeyService],
-    (_options, keys: MemberApiKeyService) => new WorkspaceApiKeyResolver(keys),
+    [WorkspaceApiKeyService],
+    (_options, keys: WorkspaceApiKeyService) =>
+      new WorkspaceApiKeyResolver(keys),
   ),
   featureProvider(
     SystemAccountApiKeyResolver,
     "systemAccountApiKeyManagement",
-    [SystemAccountApiKeyService],
-    (_options, keys: SystemAccountApiKeyService) =>
+    [SystemApiKeyService],
+    (_options, keys: SystemApiKeyService) =>
       new SystemAccountApiKeyResolver(keys),
   ),
   featureProvider(

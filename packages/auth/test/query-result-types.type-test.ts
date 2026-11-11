@@ -5,10 +5,10 @@ import type { MemberApiKey } from "../src/entities/member-api-key.entity.js";
 import type { SystemAccountApiKey } from "../src/entities/system-account-api-key.entity.js";
 import type { UserApiKey } from "../src/entities/user-api-key.entity.js";
 import type { AccountService } from "../src/services/account.service.js";
-import type { MemberApiKeyService } from "../src/services/member-api-key.service.js";
 import type { SessionService } from "../src/services/session.service.js";
-import type { SystemAccountApiKeyService } from "../src/services/system-account-api-key.service.js";
+import type { SystemApiKeyService } from "../src/services/system-api-key.service.js";
 import type { UserApiKeyService } from "../src/services/user-api-key.service.js";
+import type { WorkspaceApiKeyService } from "../src/services/workspace-api-key.service.js";
 import type { ApiKey } from "../src/types/api-key.type.js";
 import type { ApiKeyMetadata } from "../src/types/api-key-metadata.type.js";
 
@@ -49,7 +49,7 @@ describe("Credential-free query result types", () => {
   });
 
   it("omits credential hashes from member-key reads and mutations", () => {
-    type Service = MemberApiKeyService;
+    type Service = WorkspaceApiKeyService;
     type Result = ApiKeyMetadata<MemberApiKey>;
     expectTypeOf<
       Awaited<ReturnType<Service["getMemberApiKey"]>>
@@ -71,7 +71,7 @@ describe("Credential-free query result types", () => {
   });
 
   it("omits hashes from system-key management results and retains the system owner", () => {
-    type Service = SystemAccountApiKeyService;
+    type Service = SystemApiKeyService;
     type Result = ApiKeyMetadata<SystemAccountApiKey>;
     expectTypeOf<
       Awaited<ReturnType<Service["getSystemAccountApiKey"]>>
@@ -98,7 +98,9 @@ describe("Credential-free query result types", () => {
       Awaited<ReturnType<UserApiKeyService["createUserApiKey"]>>["entity"]
     >().toEqualTypeOf<UserApiKey>();
     expectTypeOf<
-      Awaited<ReturnType<MemberApiKeyService["createMemberApiKey"]>>["entity"]
+      Awaited<
+        ReturnType<WorkspaceApiKeyService["createMemberApiKey"]>
+      >["entity"]
     >().toEqualTypeOf<MemberApiKey>();
   });
 });

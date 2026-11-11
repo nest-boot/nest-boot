@@ -2,7 +2,7 @@ import { ForbiddenException } from "@nestjs/common";
 import type { GraphQLResolveInfo } from "graphql";
 
 import { Workspace } from "../entities/workspace.entity.js";
-import type { MemberApiKeyService } from "../services/member-api-key.service.js";
+import type { WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
 import { WorkspaceApiKeyResolver } from "./workspace-api-key.resolver.js";
 
 describe("WorkspaceApiKeyResolver", () => {
@@ -12,7 +12,7 @@ describe("WorkspaceApiKeyResolver", () => {
     const getMemberApiKey = vi.fn().mockResolvedValue(key);
     const resolver = new WorkspaceApiKeyResolver({
       getMemberApiKey,
-    } as unknown as MemberApiKeyService);
+    } as unknown as WorkspaceApiKeyService);
     await expect(resolver.apiKey(parent, "key")).resolves.toBe(key);
     expect(getMemberApiKey).toHaveBeenCalledExactlyOnceWith("key", parent);
     getMemberApiKey.mockResolvedValueOnce(null);
@@ -34,7 +34,7 @@ describe("WorkspaceApiKeyResolver", () => {
     const getMemberApiKeyConnection = vi.fn().mockResolvedValue(result);
     const resolver = new WorkspaceApiKeyResolver({
       getMemberApiKeyConnection,
-    } as unknown as MemberApiKeyService);
+    } as unknown as WorkspaceApiKeyService);
     await expect(
       resolver.workspaceApiKeys(workspace, args, info),
     ).resolves.toBe(result);

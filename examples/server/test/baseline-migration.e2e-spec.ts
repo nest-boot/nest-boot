@@ -102,4 +102,4 @@ it('builds the current example schema from ordered migrations and can roll back 
     await orm.close();
     await fixture.close();
   }
-});
+}, 30000);

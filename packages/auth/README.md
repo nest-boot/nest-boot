@@ -118,7 +118,7 @@ Service methods use explicit domain names without deprecated aliases:
 - `UserService.setUserRoles` replaces roles, while `setUserPermissions` replaces
   direct grants. `getEffectiveUserPermissions` and
   `MemberService.getEffectiveMemberPermissions` include role-derived grants.
-- `UserApiKeyService` and `MemberApiKeyService` uses `createUserApiKey`, `updateUserApiKey`, `deleteUserApiKey`
+- `UserApiKeyService` and `WorkspaceApiKeyService` uses `createUserApiKey`, `updateUserApiKey`, `deleteUserApiKey`
   and their workspace counterparts, matching its existing lookup names.
 - `MemberService.getMemberByUser(workspace, user)` finds only active
   memberships; `getMember(id)` reads a member in the request's selected workspace.
@@ -148,7 +148,7 @@ pagination behavior are unchanged.
 
 Use `WorkspaceService.getWorkspaceConnectionByUser(user, args)` and
 `MemberService.getMemberConnectionByWorkspace(workspace, args)` for workspace/member connections, and
-`UserApiKeyService.getUserApiKeyConnection(user, args)` / `MemberApiKeyService.getMemberApiKeyConnection(workspace, args)`
+`UserApiKeyService.getUserApiKeyConnection(user, args)` / `WorkspaceApiKeyService.getMemberApiKeyConnection(workspace, args)`
 for API-key connections. Services own authorization, query scopes and
 `ConnectionManager` execution. User, session, workspace, member, API-key and
 invitation connection reads retain the request's native RLS scope. API-key ownership and credential permission ceilings still apply.
@@ -222,7 +222,7 @@ connection definition is required. Its GraphQL transport exposes these connectio
       authenticating API key from delegating permissions it does not have.
 - [x] Enforce user and workspace abilities inside authorization-sensitive
       `UserService`, `WorkspaceService`, `MemberService`,
-      `InvitationService`, and `UserApiKeyService` and `MemberApiKeyService` operations, so
+      `InvitationService`, and `UserApiKeyService` and `WorkspaceApiKeyService` operations, so
       direct service injection cannot bypass Resolver or Controller metadata.
       Authentication middleware primitives remain internal identity-resolution
       paths rather than privileged business operations.
@@ -307,7 +307,7 @@ AuthService methods remain available.
 
 ## Member API-key creation
 
-`MemberApiKeyService.createMemberApiKey(workspace, { member, ...options })`
+`WorkspaceApiKeyService.createMemberApiKey(workspace, { member, ...options })`
 accepts an existing member entity or ID. GraphQL accepts `input.memberId`.
 Only the caller's own USER member or an active SERVICE_ACCOUNT member in the
 selected workspace may own the new key.
@@ -494,7 +494,7 @@ field resolvers may target these classes without replacing built-in fields.
 
 ## Native query migration
 
-- Single-key queries move from root `userApiKey(id)` to `User.apiKey(id)` and from root `apiKey(id)` to `Workspace.apiKey(id)`. They resolve `UserApiKey` and `MemberApiKey`, respectively, with nullable field results and pass their parent to `UserApiKeyService` and `MemberApiKeyService`; mutation authorization is unchanged (see the operation naming migration below). Query through `currentUser { apiKey(id: ...) { id } }` or `currentWorkspace { apiKey(id: ...) { id } }`. Service authorization, ownership filters, permission ceilings and request RLS remain in effect.
+- Single-key queries move from root `userApiKey(id)` to `User.apiKey(id)` and from root `apiKey(id)` to `Workspace.apiKey(id)`. They resolve `UserApiKey` and `MemberApiKey`, respectively, with nullable field results and pass their parent to `UserApiKeyService` and `WorkspaceApiKeyService`; mutation authorization is unchanged (see the operation naming migration below). Query through `currentUser { apiKey(id: ...) { id } }` or `currentWorkspace { apiKey(id: ...) { id } }`. Service authorization, ownership filters, permission ceilings and request RLS remain in effect.
 - `users` uses `UserConnectionArgs` / `UserConnection` (first/after or last/before, query/filter/orderBy). `ListUsersInput` and `UserListType` are removed.
 - `User.accounts` now returns `AccountConnection!` through `AccountService.getAccountConnectionByUser(user, args)`: use `currentUser { accounts(first: 20) { edges { node { id providerId scopes } } pageInfo { hasNextPage endCursor } } }`. The array shape and `UserService.listUserAccounts` are removed. Account inspection requires the owning browser session; API keys are rejected and credentials are excluded.
 - Registration/sign-in payloads reference the built-in `User`, not `AuthUserType`. The entity-oriented AuthService methods establish the newly issued session and refresh RLS and abilities before resolving nested fields. Registration without a session does not authenticate the request; protected nested fields still require authentication.
@@ -766,7 +766,7 @@ const keys = await em.find(ApiKeyEntity, {
 });
 ```
 
-A User with an administrator role and the explicit `system-account:read/write` and `system-account-api-key:read/write` permissions manages system identities. Management requires a human user session; user, member and system API keys cannot issue system credentials. Use `SystemAccountService` for create/read/paginate/update/delete and `SystemAccountApiKeyService` for key lifecycle operations. GraphQL exposes `systemAccounts`, `systemAccount`, `createSystemAccount`, `updateSystemAccount`, `deleteSystemAccount`, `systemAccountApiKey`, and the corresponding key mutations. `User.apiKeys`, `Member.apiKeys`, and `SystemAccount.apiKeys` provide credential pagination with the same `ApiKeyConnection` output. Root `workspaceApiKeys` and `systemApiKeys` provide scoped aggregate lists. `ApiKey.owner` is a nullable `ApiKeyOwner` union drawn from the enabled scopes and registered identity APIs. Disabled features do not enter the union or its schema dependencies. Owner details use the same authorization as direct identity queries, including existing self-profile access; inaccessible owners return null. No separate owner ID, discriminator or owner-specific identifier fields are exposed on the key.
+A User with an administrator role and the explicit `system-account:read/write` and `system-account-api-key:read/write` permissions manages system identities. Management requires a human user session; user, member and system API keys cannot issue system credentials. Use `SystemAccountService` for create/read/paginate/update/delete and `SystemApiKeyService` for key lifecycle operations. GraphQL exposes `systemAccounts`, `systemAccount`, `createSystemAccount`, `updateSystemAccount`, `deleteSystemAccount`, `systemAccountApiKey`, and the corresponding key mutations. `User.apiKeys`, `Member.apiKeys`, and `SystemAccount.apiKeys` provide credential pagination with the same `ApiKeyConnection` output. Root `workspaceApiKeys` and `systemApiKeys` provide scoped aggregate lists. `ApiKey.owner` is a nullable `ApiKeyOwner` union drawn from the enabled scopes and registered identity APIs. Disabled features do not enter the union or its schema dependencies. Owner details use the same authorization as direct identity queries, including existing self-profile access; inaccessible owners return null. No separate owner ID, discriminator or owner-specific identifier fields are exposed on the key.
 
 SystemAccount holds a name, enabled state, explicit permission ceiling and creator audit reference. A workspace service account remains a Member with `type: SERVICE_ACCOUNT`; it is separate from this platform identity. Creator references use `ON DELETE SET NULL`, so deleting a creator does not delete the system account or its keys.
 

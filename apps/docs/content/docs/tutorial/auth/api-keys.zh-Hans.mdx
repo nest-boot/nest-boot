@@ -3,7 +3,7 @@ title: "API Key"
 description: "使用带权限范围的 API Key 认证个人和工作区自动化任务。"
 ---
 
-`UserApiKeyService` 和 `MemberApiKeyService` 管理归属于用户的个人 Key 和归属于 member 的工作区范围 Key。
+`UserApiKeyService` 和 `WorkspaceApiKeyService` 管理归属于用户的个人 Key 和归属于 member 的工作区范围 Key。
 
 - **User Key** 会恢复所属用户；只有该用户仍是所选工作区的活动成员时，才能访问工作区资源。
 - **Member Key** 会恢复所属 member 和工作区。用户成员还会恢复登录用户；服务账号没有登录用户。停用成员或封禁其登录用户后，Key 不能继续认证。
@@ -60,7 +60,7 @@ beta 示例保留 init，其余迁移按最终模型重新生成为 `Migration20
 
 - `getUserApiKey`、`createUserApiKey`、`updateUserApiKey` 与 `deleteUserApiKey`；
 - `getMemberApiKey`、`createMemberApiKey`、`updateMemberApiKey` 与 `deleteMemberApiKey`；
-- `UserApiKeyService.getUserApiKeyConnection(user, args)` 与 `MemberApiKeyService.getMemberApiKeyConnection(workspace, args)` 返回连接分页；
+- `UserApiKeyService.getUserApiKeyConnection(user, args)` 与 `WorkspaceApiKeyService.getMemberApiKeyConnection(workspace, args)` 返回连接分页；
   认证和使用时间更新由内部基础设施负责；业务代码使用两个管理 Service。
 
 GraphQL 连接字段为 `User.apiKeys` 和 `workspaceApiKeys`，通常通过 `currentUser`
@@ -116,7 +116,7 @@ Bearer 请求头。
 ## 权限值
 
 auth 包以 `string[]` 存储和判断权限。应用负责定义封闭的用户与工作区权限目录；
-`UserApiKeyService` 和 `MemberApiKeyService` 会在创建和更新 Key 时依据这些目录校验权限值。
+`UserApiKeyService` 和 `WorkspaceApiKeyService` 会在创建和更新 Key 时依据这些目录校验权限值。
 权限标识使用小写 `resource:action`，每段以字母开头，可包含小写字母、数字和中划线。
 启动时拒绝下划线、连续中划线和混合大小写。权限目录、授权上限与
 Key 权限交集只做精确字符串匹配，不做规范化转换。
@@ -250,7 +250,7 @@ mutation {
 }
 ```
 
-使用返回的 ID 调用 `createSystemAccountApiKey(systemAccountId, input)`，结果为 `{ entity, apiKey }`。明文只在创建时返回一次，通过 `Authorization: Bearer <key>` 使用；后续查询不公开哈希或明文。程序调用使用 `SystemAccountService` 和 `SystemAccountApiKeyService`；`SystemAccount.apiKeys` 提供游标分页。
+使用返回的 ID 调用 `createSystemAccountApiKey(systemAccountId, input)`，结果为 `{ entity, apiKey }`。明文只在创建时返回一次，通过 `Authorization: Bearer <key>` 使用；后续查询不公开哈希或明文。程序调用使用 `SystemAccountService` 和 `SystemApiKeyService`；`SystemAccount.apiKeys` 提供游标分页。
 
 `apiKey.system` 支持 `defaultPrefix`、`defaultPermissions`、`allowedPermissions`，默认前缀为 `sys_`。有效权限取“账户当前权限 ∩ 密钥显式授权 ∩ 配置上限”，空权限列表不授予任何访问能力。禁用账户会使全部所属密钥失效；禁用、过期或删除密钥只影响该密钥。认证不会伪造 User、Member 或选中的 workspace 身份。
 

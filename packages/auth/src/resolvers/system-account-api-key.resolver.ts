@@ -22,7 +22,7 @@ import { UpdateSystemAccountApiKeyInput } from "../inputs/update-system-account-
 import { ApiKey } from "../objects/api-key.object.js";
 import { CreateSystemAccountApiKeyResult } from "../objects/create-system-account-api-key-result.object.js";
 import { SystemAccountPermissionOption } from "../objects/system-account-permission-option.object.js";
-import { SystemAccountApiKeyService } from "../services/system-account-api-key.service.js";
+import { SystemApiKeyService } from "../services/system-api-key.service.js";
 
 /** Optional system-account credential API. */
 @Resolver(() => SystemAccount)
@@ -31,7 +31,7 @@ export class SystemAccountApiKeyResolver {
    * Creates this resolver.
    * @param keys - System credential administration.
    */
-  constructor(private readonly keys: SystemAccountApiKeyService) {}
+  constructor(private readonly keys: SystemApiKeyService) {}
 
   /**
    * Lists key grant defaults and ceilings for the parent account.

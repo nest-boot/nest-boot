@@ -36,11 +36,11 @@ import { UserApiKeyResolver } from "./resolvers/user-api-key.resolver.js";
 import { WorkspaceResolver } from "./resolvers/workspace.resolver.js";
 import { AuthService } from "./services/auth.service.js";
 import { MemberService } from "./services/member.service.js";
-import { MemberApiKeyService } from "./services/member-api-key.service.js";
 import { SessionService } from "./services/session.service.js";
 import { UserService } from "./services/user.service.js";
 import { UserDeletionService } from "./services/user-deletion.service.js";
 import { WorkspaceService } from "./services/workspace.service.js";
+import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
 
 const {
   mockBetterAuth,
@@ -280,7 +280,7 @@ describe("AuthModule", () => {
     );
     expect(providers).toContain(UserDeletionService);
     expect(providers).toContainEqual(
-      expect.objectContaining({ provide: MemberApiKeyService }),
+      expect.objectContaining({ provide: WorkspaceApiKeyService }),
     );
     expect(providers).toContain(AuthService);
     expect(providers).not.toContainEqual(
@@ -302,7 +302,7 @@ describe("AuthModule", () => {
       MODULE_OPTIONS_TOKEN,
     );
     expect(exports).toContain(UserService);
-    expect(exports).toContain(MemberApiKeyService);
+    expect(exports).toContain(WorkspaceApiKeyService);
     expect(exports).toContain(AuthGuard);
     expect(exports).toContain(AuthService);
     expect(exports).not.toContainEqual(
