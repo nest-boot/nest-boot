@@ -7,7 +7,6 @@ import { SystemAccountPermission } from "@/gql/graphql";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import {
   DELETE_SYSTEM_KEY,
-  SYSTEM_ACCOUNT_DETAILS,
   SYSTEM_KEY_DETAILS,
   SYSTEM_KEY_PERMISSIONS,
   UPDATE_SYSTEM_KEY,
@@ -45,24 +44,13 @@ export const Route = createFileRoute(
       )
     )
       throw denied();
-    const canReadAccount = context.ability.can("read", "SystemAccount");
-    const owner = canReadAccount
-      ? await context.apolloClient.query({
-          query: SYSTEM_ACCOUNT_DETAILS,
-          variables: { id: apiKey.systemAccountId },
-          fetchPolicy: "network-only",
-        })
-      : undefined;
-    const choices = canReadAccount
-      ? await context.apolloClient.query({
-          query: SYSTEM_KEY_PERMISSIONS,
-          variables: { systemAccountId: apiKey.systemAccountId },
-          fetchPolicy: "network-only",
-        })
-      : undefined;
+    const choices = await context.apolloClient.query({
+      query: SYSTEM_KEY_PERMISSIONS,
+      variables: { apiKeyId: apiKey.id },
+      fetchPolicy: "network-only",
+    });
     return {
       apiKey,
-      account: owner?.data?.systemAccount,
       permissionOptions:
         choices?.data?.systemAccountApiKeyPermissions ??
         context.keyPermissionOptions,
@@ -71,7 +59,7 @@ export const Route = createFileRoute(
   },
 });
 function Details() {
-  const { account, apiKey, permissionOptions } = Route.useRouteContext();
+  const { apiKey, permissionOptions } = Route.useRouteContext();
   const ability = useAbility();
   const router = useRouter();
   const navigate = Route.useNavigate();
@@ -84,6 +72,11 @@ function Details() {
   const [remove] = useMutation(DELETE_SYSTEM_KEY);
   return (
     <ApiKeyFormPage
+      ownerName={
+        apiKey.owner?.__typename === "SystemAccount"
+          ? apiKey.owner.name
+          : undefined
+      }
       key={apiKey.id + apiKey.enabled + apiKey.permissions.join()}
       apiKey={apiKey}
       canWrite={ability.can(
@@ -101,7 +94,6 @@ function Details() {
         "permissions",
       )}
       listPath="/admin/api-keys"
-      systemAccountName={account?.name ?? apiKey.systemAccountId}
       listSearch={backSearch}
       permissionValues={Object.values(SystemAccountPermission)}
       permissionOptions={getPermissionOptions(permissionOptions)}

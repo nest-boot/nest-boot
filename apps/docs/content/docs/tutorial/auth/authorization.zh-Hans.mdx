@@ -257,8 +257,9 @@ GraphQL 根据配置生成 `UserRole`、`WorkspaceRole`、`UserPermission`、
 Service、Ability 构建器和数据库继续使用原始值。修改目录后需要重新生成客户端类型，
 已有数据中的角色和权限也必须保留在配置目录中，才能由 GraphQL 正常序列化。
 
+统一的 `ApiKey.permissions` 输出使用三个作用域目录并集生成的 `ApiKeyPermission`。输入仍按作用域校验：
 `UserApiKeyPermission` 取用户与工作区权限目录的并集；`MemberApiKeyPermission` 使用工作区目录。
-这两个枚举不会随相应的 `apiKey.user.allowedPermissions` 或 `apiKey.member.allowedPermissions`
+这两个枚举不会随相应的 `apiKey.user.allowedPermissions` 或 `apiKey.workspace.allowedPermissions`
 缩小，确保收紧允许列表后仍能读取已有授权。
 Service 在写入时校验允许列表。用户与工作区权限目录追加到内置默认目录；省略配置，
 或显式配置 `user.permissions: []`、`workspace.permissions: []`，都会保留默认目录。

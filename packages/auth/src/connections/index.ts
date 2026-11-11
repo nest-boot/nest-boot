@@ -1,5 +1,6 @@
 export * from "../features/invitations/invitation.connection-definition.js";
 export * from "./account.connection-definition.js";
+export * from "./api-key.connection-definition.js";
 export * from "./member.connection-definition.js";
 export * from "./member-api-key.connection-definition.js";
 export * from "./session.connection-definition.js";

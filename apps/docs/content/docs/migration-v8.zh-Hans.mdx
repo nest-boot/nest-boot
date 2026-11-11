@@ -128,17 +128,20 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   工作区隔离，不再检查应用权限名。
 - 认证 Session 现在只使用主数据库；请移除 `AuthModuleOptions.secondaryStorage` 配置。
 - 将 API Key 的 `defaultPermissions` 与 `allowedPermissions` 移到 `apiKey.user`
-  和 `apiKey.member` 下。旧的扁平配置会在启动时报错，两个作用域互不继承。
+  和 `apiKey.workspace` 下。旧的扁平配置会在启动时报错，两个作用域互不继承。
   用户 Key 可使用用户和工作区权限；成员 Key 仅接受工作区权限，通过
   `member:invite` 管理邀请。授予权限同时受目标成员和签发者限制，运行时再与成员权限取交集。例如：
 
   ```ts
   apiKey: {
+    enabled: true,
     user: {
+      enabled: true,
       defaultPermissions: ["user:read"],
       allowedPermissions: ["user:read", "workspace:update"],
     },
-    member: {
+    workspace: {
+      enabled: true,
       defaultPermissions: ["workspace:update"],
       allowedPermissions: ["workspace:update", "workspace:delete"],
     },
@@ -162,7 +165,7 @@ Nest Boot 版本 8 使用基于 SWC 的 Vitest 替代 Jest。贡献者可以通�
 ### API Key 归属与数据库级联
 
 先执行 `Migration00000000000000_Initial`，再执行 MikroORM 生成的
-`Migration20261111061111`。初始化迁移向 `anonymous` 和 `authenticated`
+`Migration20261111092714`。初始化迁移向 `anonymous` 和 `authenticated`
 授予 schema `USAGE`，并为 `public` 中的表、函数和序列统一配置默认 `ALL` 权限。
 这些默认权限只适用于同一迁移角色以后创建的对象，不会修改现有对象或其他角色创建的对象的权限。
 
@@ -196,12 +199,21 @@ Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
 `Member`、`Invitation`、`SystemAccount` 和 `ApiKeyEntity` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
-在运行时和迁移 CLI 的 MikroORM 配置中注册导出的 `entities` 数组；CLI 不会启动 Nest 模块：
+AuthModule 通过 DatabaseModule 注册已启用实体。应用使用 `nb database:*` 命令共享运行时配置，无需单独的 MikroORM 配置文件。
+直接使用 ORM 时，通过 `getAuthEntities` 传入相同的功能开关：
 
 ```typescript
 import { getAuthEntities } from "@nest-boot/auth";
 
-const authEntities = getAuthEntities({ workspace: { enabled: true } });
+const authEntities = getAuthEntities({
+  admin: { enabled: true },
+  workspace: { enabled: true },
+  apiKey: {
+    enabled: true,
+    user: { enabled: true },
+    workspace: { enabled: true },
+  },
+});
 import { defineConfig } from "@mikro-orm/postgresql";
 
 export default defineConfig({
@@ -235,6 +247,10 @@ GraphQL `signUp` 现在返回 `SignUpPayload { id, token }`，不再返回
 需要单独迁移及明确的数据保留方案。
 
 ## 8.x 中的 ApiKey 合表迁移
+
+管理功能和密钥功能均需显式启用：分别配置 `admin.enabled`、`apiKey.enabled`。个人和工作区密钥还需开启 `apiKey.user.enabled`、`apiKey.workspace.enabled`，后者另需 `workspace.enabled`；这些开关均默认关闭。系统密钥要求管理功能和密钥总开关。
+
+GraphQL 密钥输出统一为 `ApiKey`，可空的 `owner` 联合字段仅包含已启用的身份类型。工作区跨成员列表和系统列表分别为 `workspaceApiKeys`、`systemApiKeys`。
 
 `UserApiKey`、`MemberApiKey`、`SystemAccountApiKey` 是各自的公共视图和 Service，统一持久化实体为 `ApiKeyEntity`。直接 ORM 查询使用 `ownerType` 和多态 `owner` 引用。独立 ORM 使用 `getAuthEntities(options)`；AuthModule 自动注册。系统账户的权限与管理员会话要求见 [API Key](/docs/tutorial/auth/api-keys)。
 

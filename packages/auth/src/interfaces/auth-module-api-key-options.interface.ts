@@ -6,6 +6,8 @@ export interface AuthModuleApiKeyOptions<
   UserPermission extends string = string,
   WorkspacePermission extends string = string,
 > {
+  /** Master switch for API-key authentication and management. Disabled by default. */
+  enabled?: boolean;
   /** Credential defaults and ceiling for independent system accounts. Empty key grants mean no access. */
   systemAccount?: AuthModuleApiKeyScopeOptions<
     (typeof DEFAULT_SYSTEM_ACCOUNT_PERMISSIONS)[number]
@@ -13,5 +15,5 @@ export interface AuthModuleApiKeyOptions<
   /** User keys may carry both user and workspace permissions, limited again by their owner's grants at use time. */
   user?: AuthModuleApiKeyScopeOptions<UserPermission | WorkspacePermission>;
   /** Requires `workspace.enabled: true`. Member keys only carry workspace permissions; creating an invitation additionally requires a user identity. */
-  member?: AuthModuleApiKeyScopeOptions<WorkspacePermission>;
+  workspace?: AuthModuleApiKeyScopeOptions<WorkspacePermission>;
 }

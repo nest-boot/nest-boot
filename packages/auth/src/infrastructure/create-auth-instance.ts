@@ -32,6 +32,7 @@ import { createSocialProvidersConfig } from "../utils/create-social-providers-co
 import { createUserConfig } from "../utils/create-user-config.js";
 import { isEnvTrue } from "../utils/is-env-true.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
+import { resolveAuthFeatures } from "../utils/resolve-auth-features.util.js";
 import { resolveSecret } from "../utils/resolve-secret.js";
 import { runAuthQuery } from "../utils/run-auth-query.js";
 import { splitAuthProviders } from "../utils/split-auth-providers.js";
@@ -166,6 +167,7 @@ export function createAuthInstance(
  * @param options - Authentication module configuration.
  */
 function validateAuthOptions(options: AuthModuleOptions): void {
+  const features = resolveAuthFeatures(options);
   const { roles: userRoles, permissions: userPermissions } = resolveAuthCatalog(
     options,
     "user",
@@ -181,8 +183,12 @@ function validateAuthOptions(options: AuthModuleOptions): void {
       "workspace",
     );
   }
-  if (options.workspace?.enabled !== true && options.apiKey?.member) {
-    throw new Error("apiKey.member requires workspace.enabled: true");
+  if (
+    options.apiKey?.enabled === true &&
+    options.apiKey.workspace?.enabled === true &&
+    !features.workspace
+  ) {
+    throw new Error("apiKey.workspace requires workspace.enabled: true");
   }
   if (
     options.apiKey &&
@@ -190,31 +196,52 @@ function validateAuthOptions(options: AuthModuleOptions): void {
       "allowedPermissions" in options.apiKey)
   ) {
     throw new Error(
-      "Configure API key permissions under apiKey.user or apiKey.member",
+      "Configure API key permissions under apiKey.user or apiKey.workspace",
     );
   }
+  if (options.apiKey && "member" in options.apiKey) {
+    throw new Error("apiKey.member has been removed; use apiKey.workspace");
+  }
+  if (
+    options.apiKey?.enabled === true &&
+    options.apiKey.systemAccount?.enabled === true &&
+    !features.admin
+  ) {
+    throw new Error("apiKey.systemAccount requires admin.enabled: true");
+  }
   for (const scope of ["user", "member", "systemAccount"] as const) {
+    const scopeName = scope === "member" ? "workspace" : scope;
+    const active =
+      scope === "user"
+        ? features.userApiKey
+        : scope === "member"
+          ? features.workspaceApiKey
+          : features.systemAccountApiKey;
+    if (!active) {
+      continue;
+    }
     const { permissions: catalog, defaults } = resolveApiKeyPermissionCatalog(
       options,
       scope,
     );
-    const configured = options.apiKey?.[scope];
+    const configured =
+      options.apiKey?.[scope === "member" ? "workspace" : scope];
     const allowed = configured?.allowedPermissions ?? catalog;
     assertAuthPermissionList(
       allowed,
       catalog,
-      `apiKey.${scope}.allowedPermissions`,
+      `apiKey.${scopeName}.allowedPermissions`,
     );
     assertAuthPermissionList(
       defaults,
       catalog,
-      `apiKey.${scope}.defaultPermissions`,
+      `apiKey.${scopeName}.defaultPermissions`,
     );
     assertAuthPermissionSubset(
       defaults,
       allowed,
-      `apiKey.${scope}.defaultPermissions`,
-      `apiKey.${scope}.allowedPermissions`,
+      `apiKey.${scopeName}.defaultPermissions`,
+      `apiKey.${scopeName}.allowedPermissions`,
     );
   }
   assertAuthRolesExist(

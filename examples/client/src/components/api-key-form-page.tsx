@@ -45,7 +45,8 @@ import {
 import { getFormErrorMessage } from "@/lib/form-errors";
 
 interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
-  apiKey?: ApiKeyRow<Permission>;
+  apiKey?: Omit<ApiKeyRow<UserApiKeyPermission>, "owner">;
+  ownerName?: string;
   canWrite: boolean;
   canEditName?: boolean;
   canEditPermissions?: boolean;
@@ -57,7 +58,6 @@ interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
   permissionOptions: ReadonlyArray<PermissionOption<Permission>>;
   memberOptions?: Array<{ value: string; label: string }>;
   systemAccountOptions?: Array<{ value: string; label: string }>;
-  systemAccountName?: string;
   canCreateSystemAccount?: boolean;
   onSystemAccountChange?: (id: string) => ReadonlyArray<Permission>;
   canCreateServiceAccount?: boolean;
@@ -76,6 +76,7 @@ interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
 /** All owner scopes use the same editor; only creation can reveal the full secret. */
 export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
   apiKey,
+  ownerName,
   canWrite,
   canEditName = canWrite,
   canEditPermissions = canWrite,
@@ -88,7 +89,6 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
   defaultPermissions = [],
   memberOptions,
   systemAccountOptions,
-  systemAccountName,
   canCreateSystemAccount = true,
   onSystemAccountChange,
   canCreateServiceAccount = true,
@@ -117,13 +117,14 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
       name: apiKey?.name ?? "",
       memberId: "",
       systemAccountId: "",
-      permissions: (apiKey?.permissions ??
+      permissions:
+        apiKey?.permissions ??
         defaultPermissions.filter((permission) =>
           permissionOptions.some(
             (option) =>
               option.value === permission && option.grantable !== false,
           ),
-        )) as Array<UserApiKeyPermission>,
+        ),
     },
     validators: {
       onSubmit: z.object({
@@ -485,11 +486,11 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                         </form.Field>
                       </FormLayoutItem>
                     )}
-                  {apiKey && systemAccountName && (
+                  {apiKey && ownerName && (
                     <FormLayoutItem>
                       <Input
-                        label={t("admin:system_accounts.select_label")}
-                        value={systemAccountName}
+                        label={t("api-key:form.owner.label")}
+                        value={ownerName}
                         disabled
                       />
                     </FormLayoutItem>

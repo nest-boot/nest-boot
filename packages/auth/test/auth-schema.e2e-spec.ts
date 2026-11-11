@@ -5,25 +5,47 @@ import {
 import { Test } from "@nestjs/testing";
 import type { GraphQLInputObjectType, GraphQLObjectType } from "graphql";
 
+import { Member, SystemAccount, User } from "../src/entities/index.js";
 import { InvitationResolver } from "../src/features/invitations/invitation.resolver.js";
+import { AuthEnumRegistry } from "../src/infrastructure/auth-enum-registry.js";
+import { AdminSessionResolver } from "../src/resolvers/admin-session.resolver.js";
+import { AdminUserResolver } from "../src/resolvers/admin-user.resolver.js";
+import { ApiKeyResolver } from "../src/resolvers/api-key.resolver.js";
 import { AuthResolver } from "../src/resolvers/auth.resolver.js";
 import { MemberResolver } from "../src/resolvers/member.resolver.js";
 import { MemberApiKeyResolver } from "../src/resolvers/member-api-key.resolver.js";
 import { SessionResolver } from "../src/resolvers/session.resolver.js";
+import { SystemAccountResolver } from "../src/resolvers/system-account.resolver.js";
+import { SystemAccountApiKeyResolver } from "../src/resolvers/system-account-api-key.resolver.js";
 import { UserResolver } from "../src/resolvers/user.resolver.js";
 import { UserApiKeyResolver } from "../src/resolvers/user-api-key.resolver.js";
 import { UserWorkspaceResolver } from "../src/resolvers/user-workspace.resolver.js";
 import { WorkspaceResolver } from "../src/resolvers/workspace.resolver.js";
+import { WorkspaceApiKeyResolver } from "../src/resolvers/workspace-api-key.resolver.js";
 
 // Filter-scalar execution is covered by the example's real-server e2e tests.
 describe("auth GraphQL schema", () => {
+  let registry: AuthEnumRegistry;
+  afterEach(() => {
+    registry?.onModuleDestroy();
+  });
   it("builds the built-in schema without application type registration", async () => {
+    registry = new AuthEnumRegistry({ workspace: { enabled: true } }, [
+      User,
+      Member,
+      SystemAccount,
+    ]);
     const moduleRef = await Test.createTestingModule({
       imports: [GraphQLSchemaBuilderModule],
     }).compile();
     const schemaFactory = moduleRef.get(GraphQLSchemaFactory);
     const schema = await schemaFactory.create([
       AuthResolver,
+      SystemAccountApiKeyResolver,
+      WorkspaceApiKeyResolver,
+      AdminSessionResolver,
+      AdminUserResolver,
+      ApiKeyResolver,
       UserResolver,
       UserWorkspaceResolver,
       SessionResolver,
@@ -32,6 +54,7 @@ describe("auth GraphQL schema", () => {
       UserApiKeyResolver,
       MemberApiKeyResolver,
       InvitationResolver,
+      SystemAccountResolver,
     ]);
     expect(schema.getQueryType()?.getFields().currentUser.type.toString()).toBe(
       "User!",
@@ -147,8 +170,7 @@ describe("auth GraphQL schema", () => {
       ["Member", "roles", "WorkspaceRole"],
       ["Member", "permissions", "WorkspacePermission"],
       ["Invitation", "roles", "WorkspaceRole"],
-      ["UserApiKey", "permissions", "UserApiKeyPermission"],
-      ["MemberApiKey", "permissions", "MemberApiKeyPermission"],
+      ["ApiKey", "permissions", "ApiKeyPermission"],
       ["CreateMemberApiKeyInput", "permissions", "MemberApiKeyPermission"],
       ["UpdateMemberApiKeyInput", "permissions", "MemberApiKeyPermission"],
       ["CreateUserInput", "roles", "UserRole"],
@@ -188,9 +210,10 @@ describe("auth GraphQL schema", () => {
     ).not.toHaveProperty("token");
     for (const [type, field, connection] of [
       ["User", "workspaces", "WorkspaceConnection"],
-      ["User", "apiKeys", "UserApiKeyConnection"],
+      ["User", "apiKeys", "ApiKeyConnection"],
       ["Workspace", "members", "MemberConnection"],
-      ["Workspace", "apiKeys", "MemberApiKeyConnection"],
+      ["Member", "apiKeys", "ApiKeyConnection"],
+      ["SystemAccount", "apiKeys", "ApiKeyConnection"],
     ]) {
       const resolved = (schema.getType(type) as GraphQLObjectType).getFields()[
         field
@@ -202,8 +225,8 @@ describe("auth GraphQL schema", () => {
       }
     }
     for (const [type, keyType] of [
-      ["User", "UserApiKey"],
-      ["Workspace", "MemberApiKey"],
+      ["User", "ApiKey"],
+      ["Workspace", "ApiKey"],
     ]) {
       const field = (schema.getType(type) as GraphQLObjectType).getFields()
         .apiKey;
@@ -216,6 +239,38 @@ describe("auth GraphQL schema", () => {
     if (!mutations) {
       throw new Error("Mutation type is missing");
     }
+    for (const scope of ["User", "Member", "SystemAccount"]) {
+      expect(mutations[`create${scope}ApiKey`].type.toString()).toBe(
+        "CreateApiKeyResult!",
+      );
+      expect(mutations[`update${scope}ApiKey`].type.toString()).toBe("ApiKey!");
+      expect(mutations[`delete${scope}ApiKey`].type.toString()).toBe("ApiKey!");
+      expect(schema.getType(`${scope}ApiKey`)).toBeUndefined();
+      expect(schema.getType(`${scope}ApiKeyConnection`)).toBeUndefined();
+      expect(schema.getType(`Create${scope}ApiKeyResult`)).toBeUndefined();
+    }
+    const keyFields = (
+      schema.getType("ApiKey") as GraphQLObjectType
+    ).getFields();
+    for (const field of [
+      "ownerType",
+      "ownerId",
+      "user",
+      "member",
+      "systemAccount",
+      "memberId",
+      "workspaceId",
+      "systemAccountId",
+      "key",
+    ]) {
+      expect(keyFields).not.toHaveProperty(field);
+    }
+    expect(keyFields.owner.type.toString()).toBe("ApiKeyOwner");
+    expect(queries.workspaceApiKeys.type.toString()).toBe("ApiKeyConnection!");
+    expect(queries.systemApiKeys.type.toString()).toBe("ApiKeyConnection!");
+    expect(
+      (schema.getType("Workspace") as GraphQLObjectType).getFields(),
+    ).not.toHaveProperty("apiKeys");
     expect(queries.currentSession?.type.toString()).toBe("Session");
     expect(
       Object.keys(
@@ -225,10 +280,10 @@ describe("auth GraphQL schema", () => {
       ),
     ).toEqual(["name", "email", "status"]);
     expect(mutations.createMemberApiKey?.type.toString()).toBe(
-      "CreateMemberApiKeyResult!",
+      "CreateApiKeyResult!",
     );
-    expect(mutations.updateMemberApiKey?.type.toString()).toBe("MemberApiKey!");
-    expect(mutations.deleteMemberApiKey?.type.toString()).toBe("MemberApiKey!");
+    expect(mutations.updateMemberApiKey?.type.toString()).toBe("ApiKey!");
+    expect(mutations.deleteMemberApiKey?.type.toString()).toBe("ApiKey!");
     expect(
       (schema.getType("AuthSignInResultType") as GraphQLObjectType)
         .getFields()
@@ -290,7 +345,7 @@ describe("auth GraphQL schema", () => {
       "CreateWorkspacePayload!",
     );
     expect(mutations.createMemberApiKey.type.toString()).toBe(
-      "CreateMemberApiKeyResult!",
+      "CreateApiKeyResult!",
     );
     const accepted = schema.getType(
       "AcceptInvitationPayload",

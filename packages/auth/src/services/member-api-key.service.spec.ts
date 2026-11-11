@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 
 import { ref, Reference } from "@mikro-orm/core";
-import { ConnectionManager } from "@nest-boot/graphql-connection";
+import {
+  ConnectionManager,
+  TotalCountRelation,
+} from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 
@@ -14,6 +17,7 @@ import {
   createTestWorkspace,
 } from "../../test/fixtures/api-key-service.fixture.js";
 import { withIdentity } from "../../test/fixtures/conditional-authorization.fixture.js";
+import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { AuthAbility } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
@@ -32,6 +36,58 @@ import { omitCredentials } from "../utils/omit-credentials.util.js";
 /* eslint-disable @typescript-eslint/unbound-method */
 describe("API-key management", () => {
   describe("API-key management services", () => {
+    apiKeyTest(
+      "restricts a parent member connection without losing the workspace scope",
+      async () => {
+        const { service } = createService();
+        const member = createTestMember();
+        const find = vi
+          .spyOn(ConnectionManager.prototype, "find")
+          .mockResolvedValue({
+            edges: [],
+            pageInfo: {
+              hasNextPage: false,
+              hasPreviousPage: false,
+              startCursor: null,
+              endCursor: null,
+            },
+            totalCount: 0,
+            totalCountRelation: TotalCountRelation.EQ,
+          });
+        await service.getMemberApiKeyConnection(
+          createTestWorkspace(),
+          { first: 10 },
+          undefined,
+          member,
+        );
+        expect(find).toHaveBeenCalledWith(
+          MemberApiKeyConnection,
+          { first: 10 },
+          expect.objectContaining({
+            where: expect.objectContaining({
+              ownerType: "member",
+              owner: member,
+            }),
+            exclude: ["key"],
+          }),
+        );
+        const foreign = createTestMember();
+        foreign.workspace = ref(
+          Workspace,
+          Object.assign(createTestWorkspace(), { id: "other-workspace" }),
+        );
+        await expect(
+          service.getMemberApiKeyConnection(
+            createTestWorkspace(),
+            { first: 10 },
+            undefined,
+            foreign,
+          ),
+        ).rejects.toThrow("selected workspace");
+        expect(find).toHaveBeenCalledOnce();
+      },
+    );
+
     apiKeyTest(
       "uses the current member when no owner is supplied",
       async () => {
@@ -110,7 +166,7 @@ describe("API-key management", () => {
         `rejects ${source} grants above the target service account even when the issuer has them`,
         async () => {
           const { service, em } = createService({
-            apiKey: { member: { defaultPermissions: ["workspace:delete"] } },
+            apiKey: { workspace: { defaultPermissions: ["workspace:delete"] } },
           });
           const target: Member = Object.assign(createTestMember(), {
             id: "service-member",
@@ -250,7 +306,7 @@ describe("API-key management", () => {
         const { service } = createService({
           apiKey: {
             user: { allowedPermissions: [], defaultPermissions: [] },
-            member: {
+            workspace: {
               allowedPermissions: ["workspace:update"],
               defaultPermissions: ["workspace:update"],
             },
@@ -290,7 +346,7 @@ describe("API-key management", () => {
         const { service } = createService({
           apiKey: {
             user: { defaultPermissions: ["workspace:update", "member:write"] },
-            member: {
+            workspace: {
               defaultPermissions: ["workspace:update", "member:write"],
             },
           },
@@ -356,7 +412,7 @@ describe("API-key management", () => {
                 "member:invite",
               ],
             },
-            member: {
+            workspace: {
               allowedPermissions: [
                 "member:write",
                 "user:read",
@@ -472,7 +528,7 @@ describe("API-key management", () => {
           vi.mocked(authorization.authorize).mockRestore();
           const user = Object.assign(createTestUser(), { roles: ["admin"] });
           RequestIdentity.stage({ user });
-          RequestIdentity.prepare(options);
+          RequestIdentity.prepare(withAuthTestFeatures(options));
           const key = Object.assign(
             scope === "user" ? new UserApiKey() : new MemberApiKey(),
             {
@@ -514,7 +570,7 @@ describe("API-key management", () => {
           vi.mocked(authorization.authorize).mockRestore();
           const user = Object.assign(createTestUser(), { roles: ["admin"] });
           RequestIdentity.stage({ user });
-          RequestIdentity.prepare(options);
+          RequestIdentity.prepare(withAuthTestFeatures(options));
           const key = Object.assign(
             scope === "user" ? new UserApiKey() : new MemberApiKey(),
             { enabled: true, member: ref(Member, createTestMember()) },
@@ -567,7 +623,7 @@ describe("API-key management", () => {
                     workspace: { enabled: true },
                     apiKey: {
                       user: { allowedPermissions: ["user-api-key:write"] },
-                      member: {
+                      workspace: {
                         allowedPermissions: ["member-api-key:write"],
                       },
                     },
@@ -584,7 +640,7 @@ describe("API-key management", () => {
               permissions: ["member-api-key:write"],
             });
             RequestIdentity.stage({ user, member });
-            RequestIdentity.prepare(options);
+            RequestIdentity.prepare(withAuthTestFeatures(options));
             const permissions = [
               scope === "user" ? "user:read" : "workspace:delete",
             ];
@@ -1076,7 +1132,7 @@ describe("API-key management", () => {
             user: {
               defaultPermissions: ["user:read"],
             },
-            member: {
+            workspace: {
               defaultPermissions: ["workspace:update"],
             },
           },
@@ -1136,7 +1192,7 @@ describe("API-key management", () => {
                 "workspace:update",
               ],
             },
-            member: {
+            workspace: {
               allowedPermissions: [
                 "User:READ",
                 "user:read",
@@ -1194,7 +1250,7 @@ describe("API-key management", () => {
             user: {
               allowedPermissions: ["workspace:update"],
             },
-            member: {
+            workspace: {
               allowedPermissions: ["workspace:update"],
             },
           },
@@ -1663,7 +1719,7 @@ describe("API-key management", () => {
         const { service } = createService({
           apiKey: {
             user: { defaultPrefix: "personal_" },
-            member: { defaultPrefix: "team_" },
+            workspace: { defaultPrefix: "team_" },
           },
         });
         const userKey = await service.createUserApiKey(createTestUser(), {
@@ -1713,7 +1769,7 @@ describe("API-key management", () => {
         const { service, em } = createService({
           apiKey: {
             user: { defaultPrefix: "_invalid" },
-            member: { defaultPrefix: "invalid prefix" },
+            workspace: { defaultPrefix: "invalid prefix" },
           },
         });
         await expect(

@@ -8,6 +8,7 @@ import { Test } from "@nestjs/testing";
 
 import { AuthModule } from "../src/auth.module.js";
 import { entities, User, workspaceEntities } from "../src/entities/index.js";
+import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 
 @Global()
 @Module({
@@ -29,7 +30,7 @@ it.each([false, true])(
       baseURL: "http://localhost:3000",
       middleware: { register: false },
     };
-    const factory = vi.fn(() => Promise.resolve(options));
+    const factory = vi.fn(() => Promise.resolve(withAuthTestFeatures(options)));
     const app = await Test.createTestingModule({
       imports: [
         AuthInfrastructureModule,
@@ -40,7 +41,7 @@ it.each([false, true])(
         }),
         asyncOptions
           ? AuthModule.forRootAsync({ useFactory: factory })
-          : AuthModule.forRoot(options),
+          : AuthModule.forRoot(withAuthTestFeatures(options)),
       ],
     }).compile();
     try {

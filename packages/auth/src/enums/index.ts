@@ -1,4 +1,5 @@
 export * from "../features/invitations/invitation-status.enum.js";
+export * from "./api-key-permission.enum.js";
 export * from "./member-api-key-permission.enum.js";
 export * from "./member-status.enum.js";
 export * from "./member-type.enum.js";

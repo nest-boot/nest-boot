@@ -25,7 +25,6 @@ import { isAccessDenied } from "@/lib/auth-errors";
 const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
   mutation deleteMemberApiKeyFromApiKeysRoute($id: ID!) {
     deleteMemberApiKey(id: $id) {
-      workspaceId
       id
       name
       start
@@ -48,7 +47,13 @@ const GET_MEMBER_API_KEY = graphql(`
     }
     currentWorkspace {
       apiKey(id: $id) {
-        workspaceId
+        owner {
+          __typename
+          ... on Member {
+            id
+            name
+          }
+        }
         id
         name
         start
@@ -66,38 +71,38 @@ const GET_MEMBER_API_KEY = graphql(`
 const GET_MEMBER_API_KEY_NEIGHBORS = graphql(`
   query getMemberApiKeyNeighbors(
     $cursor: String!
-    $filter: MemberApiKeyFilter
-    $orderBy: MemberApiKeyOrder
+    $filter: ApiKeyFilter
+    $orderBy: ApiKeyOrder
     $query: String
   ) {
     currentWorkspace {
       id
-      previous: apiKeys(
-        last: 1
-        before: $cursor
-        filter: $filter
-        orderBy: $orderBy
-        query: $query
-      ) {
-        edges {
-          cursor
-          node {
-            id
-          }
+    }
+    previous: workspaceApiKeys(
+      last: 1
+      before: $cursor
+      filter: $filter
+      orderBy: $orderBy
+      query: $query
+    ) {
+      edges {
+        cursor
+        node {
+          id
         }
       }
-      next: apiKeys(
-        first: 1
-        after: $cursor
-        filter: $filter
-        orderBy: $orderBy
-        query: $query
-      ) {
-        edges {
-          cursor
-          node {
-            id
-          }
+    }
+    next: workspaceApiKeys(
+      first: 1
+      after: $cursor
+      filter: $filter
+      orderBy: $orderBy
+      query: $query
+    ) {
+      edges {
+        cursor
+        node {
+          id
         }
       }
     }
@@ -125,9 +130,13 @@ export const Route = createFileRoute(
         if (isAccessDenied(error)) throw denied();
         throw error;
       });
-    const apiKey = data?.currentWorkspace?.apiKey;
+    const metadata = data?.currentWorkspace?.apiKey;
+    const apiKey = metadata
+      ? { ...metadata, workspaceId: params.workspaceId }
+      : undefined;
     if (
       !apiKey ||
+      !data ||
       !context.ability.can("read", createAbilitySubject("MemberApiKey", apiKey))
     )
       throw denied();
@@ -149,7 +158,7 @@ function ApiKeyDetailsPage() {
   const [deleteApiKey] = useMutation(DELETE_API_KEY_FROM_API_KEYS_ROUTE);
   const [updateApiKey] = useMutation(UPDATE_MEMBER_API_KEY);
   const [loadNeighbors] = useLazyQuery(GET_MEMBER_API_KEY_NEIGHBORS, {
-    fetchPolicy: "network-only",
+    fetchPolicy: "no-cache",
   });
   const currentUser = useCurrentUserContext();
   const query = useCallback(
@@ -165,12 +174,15 @@ function ApiKeyDetailsPage() {
           orderBy,
           cursor,
         },
-        context: { headers: { "x-workspace-id": workspaceId } },
+        context: {
+          headers: { "x-workspace-id": workspaceId },
+          queryDeduplication: false,
+        },
       });
       if (data?.currentWorkspace?.id !== workspaceId) return undefined;
       return {
-        previousEdge: data.currentWorkspace.previous.edges[0],
-        nextEdge: data.currentWorkspace.next.edges[0],
+        previousEdge: data.previous.edges[0],
+        nextEdge: data.next.edges[0],
       };
     },
     [apiKey, loadNeighbors, workspaceId],
@@ -187,6 +199,9 @@ function ApiKeyDetailsPage() {
     <ApiKeyFormPage
       key={`Workspace-${workspaceId}-${apiKey.id}`}
       apiKey={apiKey}
+      ownerName={
+        apiKey.owner?.__typename === "Member" ? apiKey.owner.name : undefined
+      }
       canWrite={ability.can(
         "write",
         createAbilitySubject("MemberApiKey", apiKey),

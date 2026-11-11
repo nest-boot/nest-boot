@@ -35,17 +35,20 @@ import {
 } from "./auth.module-definition.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { type AuthModuleOptions } from "./auth-module-options.interface.js";
-import { getAuthEntities } from "./entities/index.js";
+import { getAuthEntities, Member, User } from "./entities/index.js";
 import { InvitationService } from "./features/invitations/invitation.service.js";
+import { adminProviders } from "./infrastructure/admin.providers.js";
+import { apiKeyProviders } from "./infrastructure/api-key.providers.js";
 import { AuthEnumRegistry } from "./infrastructure/auth-enum-registry.js";
 import { authServiceProviders } from "./infrastructure/auth-service.providers.js";
 import { createAuthInstance } from "./infrastructure/create-auth-instance.js";
 import { workspaceProviders } from "./infrastructure/workspace.providers.js";
+import { getRegisteredApiKeyOwnerTypes } from "./objects/api-key-owner.union.js";
 import { AuthResolver } from "./resolvers/auth.resolver.js";
+import { MemberResolver } from "./resolvers/member.resolver.js";
 import { SessionResolver } from "./resolvers/session.resolver.js";
 import { SystemAccountResolver } from "./resolvers/system-account.resolver.js";
 import { UserResolver } from "./resolvers/user.resolver.js";
-import { UserApiKeyResolver } from "./resolvers/user-api-key.resolver.js";
 import { AccountService } from "./services/account.service.js";
 import { AuthService } from "./services/auth.service.js";
 import { MemberService } from "./services/member.service.js";
@@ -81,20 +84,36 @@ class AuthOptionsHostModule {}
   providers: [
     {
       provide: AuthEnumRegistry,
-      inject: [MODULE_OPTIONS_TOKEN, AUTH_TOKEN],
-      useFactory: (options: AuthModuleOptions) => new AuthEnumRegistry(options),
+      inject: [
+        MODULE_OPTIONS_TOKEN,
+        AUTH_TOKEN,
+        MikroORM,
+        { token: MemberResolver, optional: true },
+        { token: SystemAccountResolver, optional: true },
+      ],
+      useFactory: (
+        options: AuthModuleOptions,
+        _auth: unknown,
+        orm: MikroORM,
+        members?: MemberResolver,
+        systems?: SystemAccountResolver,
+      ) =>
+        new AuthEnumRegistry(
+          options,
+          getRegisteredApiKeyOwnerTypes(orm).filter(
+            (owner) =>
+              owner === User || (owner === Member ? !!members : !!systems),
+          ),
+        ),
     },
     AuthResolver,
     UserResolver,
     SessionResolver,
-    UserApiKeyResolver,
     ...authServiceProviders,
-    UserApiKeyService,
+    ...adminProviders,
+    ...apiKeyProviders,
     ...workspaceProviders,
     AccountService,
-    SystemAccountService,
-    SystemAccountApiKeyService,
-    SystemAccountResolver,
     ApiKeyUsageInterceptor,
     AuthService,
     UserDeletionService,

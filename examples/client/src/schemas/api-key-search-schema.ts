@@ -1,5 +1,5 @@
 import z from "zod";
-import { UserApiKeyOrderField } from "@/gql/graphql";
+import { ApiKeyOrderField } from "@/gql/graphql";
 
 import {
   OrderDirection,
@@ -18,8 +18,8 @@ export const apiKeySearchSchema = createConnectionSearchSchema({
     created_at: createDateFilterItemSearchSchema(),
   }),
   pageSize: 20,
-  orderField: UserApiKeyOrderField,
-  defaultOrderField: UserApiKeyOrderField.CREATED_AT,
+  orderField: ApiKeyOrderField,
+  defaultOrderField: ApiKeyOrderField.CREATED_AT,
   defaultOrderDirection: OrderDirection.DESC,
 });
 export type ApiKeySearch = z.infer<typeof apiKeySearchSchema>;

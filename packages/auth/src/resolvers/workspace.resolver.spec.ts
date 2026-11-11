@@ -1,24 +1,55 @@
 import { ForbiddenException } from "@nestjs/common";
-import { type GraphQLResolveInfo } from "graphql";
+import type { GraphQLResolveInfo } from "graphql";
 import { type Mocked } from "vitest";
 
 import { Member } from "../entities/member.entity.js";
-import { MemberApiKey as BaseApiKey } from "../entities/member-api-key.entity.js";
-import { User as BaseUser, User } from "../entities/user.entity.js";
-import {
-  Workspace as BaseWorkspace,
-  Workspace,
-} from "../entities/workspace.entity.js";
+import { User } from "../entities/user.entity.js";
+import { Workspace } from "../entities/workspace.entity.js";
 import { type InvitationService } from "../features/invitations/invitation.service.js";
 import { type MemberService } from "../services/member.service.js";
-import { type MemberApiKeyService } from "../services/member-api-key.service.js";
-import { type UserService } from "../services/user.service.js";
-import { type UserApiKeyService } from "../services/user-api-key.service.js";
 import { type WorkspaceService } from "../services/workspace.service.js";
-import { UserResolver } from "./user.resolver.js";
 import { WorkspaceResolver } from "./workspace.resolver.js";
 
 describe("WorkspaceResolver", () => {
+  it("forwards pagination selection to authorized member and invitation queries", async () => {
+    const workspace = new Workspace();
+    const args = { first: 10, after: "cursor" };
+    const info = {
+      fieldNodes: [],
+      fragments: {},
+      variableValues: {},
+    } as unknown as GraphQLResolveInfo;
+    const result = { edges: [], pageInfo: {} };
+    const getMemberConnectionByWorkspace = vi.fn().mockResolvedValue(result);
+    const getInvitationConnectionByWorkspace = vi
+      .fn()
+      .mockResolvedValue(result);
+    const { resolver } = createResolver(
+      {},
+      { getMemberConnectionByWorkspace },
+      { getInvitationConnectionByWorkspace },
+    );
+    await expect(resolver.members(workspace, args, info)).resolves.toBe(result);
+    await expect(resolver.invitations(workspace, args, info)).resolves.toBe(
+      result,
+    );
+    expect(getMemberConnectionByWorkspace).toHaveBeenCalledExactlyOnceWith(
+      workspace,
+      args,
+      info,
+    );
+    expect(getInvitationConnectionByWorkspace).toHaveBeenCalledExactlyOnceWith(
+      workspace,
+      args,
+      info,
+    );
+    getMemberConnectionByWorkspace.mockRejectedValueOnce(
+      new ForbiddenException(),
+    );
+    await expect(
+      resolver.members(workspace, args, info),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
   it("passes the parent workspace and pagination to the service and propagates denial", async () => {
     const workspace = { id: "parent-workspace" } as Workspace;
     const args = { first: 10, after: "cursor" };
@@ -142,7 +173,6 @@ function createResolver(
   return {
     resolver: new WorkspaceResolver(
       workspaceService,
-      {} as never,
       memberService,
       invitationService,
     ),
@@ -151,100 +181,3 @@ function createResolver(
     invitationService,
   };
 }
-
-describe("API-key field delegation", () => {
-  describe("API-key field delegation", () => {
-    it.each(
-      (["user", "workspace"] as const).filter((_row, index) => index === 1),
-    )(
-      "passes the %s parent and ID to the service, preserving null and authorization errors",
-      async (scope) => {
-        const key = new BaseApiKey();
-        const getKey = vi.fn().mockResolvedValue(key);
-        const service = {
-          getUserApiKey: getKey,
-          getMemberApiKey: getKey,
-        } as unknown as MemberApiKeyService;
-        const user = new BaseUser();
-        const workspace = new BaseWorkspace();
-        const resolve =
-          scope === "user"
-            ? () =>
-                new UserResolver(
-                  {} as UserService,
-                  service as unknown as UserApiKeyService,
-                  {} as never,
-                  {} as never,
-                ).apiKey(user, "key_1")
-            : () =>
-                new WorkspaceResolver(
-                  {} as WorkspaceService,
-                  service,
-                  {} as never,
-                  {} as never,
-                ).apiKey(workspace, "key_1");
-        await expect(resolve()).resolves.toBe(key);
-        expect(getKey).toHaveBeenCalledWith(
-          "key_1",
-          scope === "user" ? user : workspace,
-        );
-        getKey.mockResolvedValue(null);
-        await expect(resolve()).resolves.toBeNull();
-        getKey.mockRejectedValue(new ForbiddenException());
-        await expect(resolve()).rejects.toBeInstanceOf(ForbiddenException);
-      },
-    );
-  });
-});
-
-describe("connection-selection.spec.ts", () => {
-  describe("WorkspaceResolver connection fields", () => {
-    it("preserves parents, pagination, selection, results and authorization errors", async () => {
-      const result = { edges: [], pageInfo: {} };
-      const services = {
-        getMemberConnectionByWorkspace: vi.fn().mockResolvedValue(result),
-        getInvitationConnectionByWorkspace: vi.fn().mockResolvedValue(result),
-        getMemberApiKeyConnection: vi.fn().mockResolvedValue(result),
-      };
-      const resolver = new WorkspaceResolver(
-        services as never,
-        services as never,
-        services as never,
-        services as never,
-      );
-      const parent = Object.assign(new Workspace(), { id: "workspace" });
-      const args = { first: 10, after: "cursor" };
-      const info = {
-        fieldNodes: [],
-        fragments: {},
-        variableValues: {},
-      } as unknown as GraphQLResolveInfo;
-      await expect(resolver.members(parent, args, info)).resolves.toBe(result);
-      await expect(resolver.invitations(parent, args, info)).resolves.toBe(
-        result,
-      );
-      await expect(resolver.apiKeys(parent, args, info)).resolves.toBe(result);
-      expect(
-        services.getMemberConnectionByWorkspace,
-      ).toHaveBeenCalledExactlyOnceWith(parent, args, info);
-      expect(
-        services.getInvitationConnectionByWorkspace,
-      ).toHaveBeenCalledExactlyOnceWith(parent, args, info);
-      expect(
-        services.getMemberApiKeyConnection,
-      ).toHaveBeenCalledExactlyOnceWith(parent, args, info);
-      for (const method of Object.values(services)) {
-        method.mockRejectedValue(new ForbiddenException());
-      }
-      await expect(resolver.members(parent, args, info)).rejects.toBeInstanceOf(
-        ForbiddenException,
-      );
-      await expect(
-        resolver.invitations(parent, args, info),
-      ).rejects.toBeInstanceOf(ForbiddenException);
-      await expect(resolver.apiKeys(parent, args, info)).rejects.toBeInstanceOf(
-        ForbiddenException,
-      );
-    });
-  });
-});

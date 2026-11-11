@@ -17,8 +17,8 @@ const GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE = graphql(`
     $before: String
     $first: Int
     $last: Int
-    $filter: UserApiKeyFilter
-    $orderBy: UserApiKeyOrder
+    $filter: ApiKeyFilter
+    $orderBy: ApiKeyOrder
     $query: String
   ) {
     currentUser {

@@ -28,11 +28,14 @@ export const reportAuthOptions = {
     },
   },
   apiKey: {
+    enabled: true,
     user: {
+      enabled: true,
       defaultPermissions: ['report:read'],
       allowedPermissions: reportPermissions,
     },
-    member: {
+    workspace: {
+      enabled: true,
       defaultPermissions: ['report:read'],
       allowedPermissions: reportPermissions,
     },

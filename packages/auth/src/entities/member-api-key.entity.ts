@@ -1,13 +1,9 @@
-/* eslint-disable @nest-boot/graphql-field-config-from-types -- Dynamic permission enums use stored string arrays. */
 import { type Opt, type Ref } from "@mikro-orm/core";
-import { Field, ID, ObjectType } from "@nest-boot/graphql";
 
-import { MemberApiKeyPermission } from "../enums/member-api-key-permission.enum.js";
 import { ApiKeyFields } from "./api-key-fields.js";
 import { Member } from "./member.entity.js";
 
-/** Member-key GraphQL view of a credential persisted as ApiKeyEntity. */
-@ObjectType({ isAbstract: true })
+/** Member-key authorization view of a credential persisted as ApiKeyEntity. */
 export class MemberApiKey extends ApiKeyFields {
   /**
    * Owner kind represented by this API view.
@@ -32,23 +28,20 @@ export class MemberApiKey extends ApiKeyFields {
   }
 
   /** Operations allowed by this credential. */
-  @Field(() => [MemberApiKeyPermission])
   declare permissions: Opt<string[]>;
 
   /**
-   * Member identifier available to GraphQL clients.
+   * Member identifier available to management clients.
    * @returns Identifier of the member owning the credential.
    */
-  @Field(() => ID)
   override get memberId(): Opt<string> {
     return super.memberId;
   }
 
   /**
-   * Workspace identifier available to GraphQL clients and abilities.
+   * Workspace identifier available to management clients and abilities.
    * @returns Identifier of the owning member’s workspace.
    */
-  @Field(() => ID)
   override get workspaceId(): Opt<string> {
     return super.workspaceId;
   }

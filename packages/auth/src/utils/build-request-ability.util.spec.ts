@@ -2,6 +2,7 @@ import { createMongoAbility, subject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
 import { assert } from "vitest";
 
+import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { Member } from "../entities/member.entity.js";
 import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
@@ -24,25 +25,27 @@ describe("framework-owned request abilities", () => {
     const conditions = { authorId: "me" };
     const fields = ["title", "secret"];
     let saved: AbilityRules | undefined;
-    const ability = buildRequestAbility({
-      workspace: { enabled: true },
-      buildAbility: (rules) => {
-        saved = rules;
-        rules.cannot("update", "Article", "secret");
-        rules.can(
-          { user: "article:update" },
-          "update",
-          "Article",
-          fields,
-          conditions,
-        );
-        rules.cannot("delete", "User");
-      },
+    const ability = buildRequestAbility(
+      withAuthTestFeatures({
+        workspace: { enabled: true },
+        buildAbility: (rules) => {
+          saved = rules;
+          rules.cannot("update", "Article", "secret");
+          rules.can(
+            { user: "article:update" },
+            "update",
+            "Article",
+            fields,
+            conditions,
+          );
+          rules.cannot("delete", "User");
+        },
 
-      user: {
-        permissions: ["article:update"],
-      },
-    });
+        user: {
+          permissions: ["article:update"],
+        },
+      }),
+    );
     if (!ability) {
       throw new Error("Expected user ability");
     }
@@ -65,14 +68,16 @@ describe("framework-owned request abilities", () => {
   it("rejects unknown permission bindings even if the principal lacks the grant", () => {
     RequestContext.set(User, new User());
     expect(() =>
-      buildRequestAbility({
-        workspace: { enabled: true },
-        buildAbility: (rules) => {
-          rules.can({ user: "unknown:read" }, "read", "Article");
-        },
+      buildRequestAbility(
+        withAuthTestFeatures({
+          workspace: { enabled: true },
+          buildAbility: (rules) => {
+            rules.can({ user: "unknown:read" }, "read", "Article");
+          },
 
-        user: {},
-      }),
+          user: {},
+        }),
+      ),
     ).toThrow("Unknown user ability permission: unknown:read");
   });
 
@@ -101,25 +106,24 @@ describe("framework-owned request abilities", () => {
       }),
     });
     expect(
-      buildRequestAbility({ workspace: { enabled: true } })?.can("read", User),
+      buildRequestAbility(
+        withAuthTestFeatures({ workspace: { enabled: true } }),
+      )?.can("read", User),
     ).toBe(true);
     expect(
-      buildRequestAbility({ workspace: { enabled: true } })?.can(
-        "delete",
-        User,
-      ),
+      buildRequestAbility(
+        withAuthTestFeatures({ workspace: { enabled: true } }),
+      )?.can("delete", User),
     ).toBe(false);
     expect(
-      buildRequestAbility({ workspace: { enabled: true } })?.can(
-        "update",
-        Workspace,
-      ),
+      buildRequestAbility(
+        withAuthTestFeatures({ workspace: { enabled: true } }),
+      )?.can("update", Workspace),
     ).toBe(true);
     expect(
-      buildRequestAbility({ workspace: { enabled: true } })?.can(
-        "delete",
-        Workspace,
-      ),
+      buildRequestAbility(
+        withAuthTestFeatures({ workspace: { enabled: true } }),
+      )?.can("delete", Workspace),
     ).toBe(false);
   });
 
@@ -143,7 +147,9 @@ describe("framework-owned request abilities", () => {
         permissions: ["workspace:read", "workspace:update", "workspace:delete"],
       });
       RequestIdentity.stage({ user, member, workspace, apiKey });
-      const ability = buildRequestAbility({ workspace: { enabled: true } });
+      const ability = buildRequestAbility(
+        withAuthTestFeatures({ workspace: { enabled: true } }),
+      );
       expect(ability?.can("read", Workspace)).toBe(true);
       expect(ability?.can("update", Workspace)).toBe(true);
       expect(ability?.can("delete", Workspace)).toBe(false);
@@ -152,10 +158,9 @@ describe("framework-owned request abilities", () => {
       member.permissions = [];
       RequestIdentity.stage({ member });
       expect(
-        buildRequestAbility({ workspace: { enabled: true } })?.can(
-          "update",
-          Workspace,
-        ),
+        buildRequestAbility(
+          withAuthTestFeatures({ workspace: { enabled: true } }),
+        )?.can("update", Workspace),
       ).toBe(false);
     },
   );
@@ -178,7 +183,7 @@ describe("framework-owned request abilities", () => {
         permissions: ["article:read"],
       },
     };
-    const ability = buildRequestAbility(options);
+    const ability = buildRequestAbility(withAuthTestFeatures(options));
     if (!ability) {
       throw new Error("Expected a user ability");
     }
@@ -194,7 +199,12 @@ describe("framework-owned request abilities", () => {
     RequestIdentity.stage({
       apiKey: Object.assign(new UserApiKey(), { permissions: [] }),
     });
-    expect(buildRequestAbility(options)?.can("read", "Article")).toBe(true);
+    expect(
+      buildRequestAbility(withAuthTestFeatures(options))?.can(
+        "read",
+        "Article",
+      ),
+    ).toBe(true);
   });
 
   it.each([User, "User", MemberApiKey, "all", ["Article", User]])(
@@ -202,41 +212,47 @@ describe("framework-owned request abilities", () => {
     (target) => {
       RequestContext.set(User, new User());
       expect(() =>
-        buildRequestAbility({
-          workspace: { enabled: true },
-          buildAbility: (rules) => {
-            rules.can({ user: "article:read" }, "manage", target);
-          },
+        buildRequestAbility(
+          withAuthTestFeatures({
+            workspace: { enabled: true },
+            buildAbility: (rules) => {
+              rules.can({ user: "article:read" }, "manage", target);
+            },
 
-          user: {
-            permissions: ["article:read"],
-          },
-        }),
+            user: {
+              permissions: ["article:read"],
+            },
+          }),
+        ),
       ).toThrow("built-in auth");
     },
   );
 
   it("allows restrictions but does not expose the builder or accept a replacement ability", () => {
     RequestContext.set(User, Object.assign(new User(), { roles: ["admin"] }));
-    const ability = buildRequestAbility({
-      workspace: { enabled: true },
-      buildAbility: (rules) => {
-        expect(rules).not.toHaveProperty("build");
-        expect(rules).not.toHaveProperty("rules");
-        rules.cannot("delete", User);
-      },
-
-      user: {},
-    });
-    expect(ability?.can("read", User)).toBe(true);
-    expect(ability?.can("delete", User)).toBe(false);
-    expect(() =>
-      buildRequestAbility({
+    const ability = buildRequestAbility(
+      withAuthTestFeatures({
         workspace: { enabled: true },
-        buildAbility: () => ({ can: () => true }),
+        buildAbility: (rules) => {
+          expect(rules).not.toHaveProperty("build");
+          expect(rules).not.toHaveProperty("rules");
+          rules.cannot("delete", User);
+        },
 
         user: {},
       }),
+    );
+    expect(ability?.can("read", User)).toBe(true);
+    expect(ability?.can("delete", User)).toBe(false);
+    expect(() =>
+      buildRequestAbility(
+        withAuthTestFeatures({
+          workspace: { enabled: true },
+          buildAbility: () => ({ can: () => true }),
+
+          user: {},
+        }),
+      ),
     ).toThrow("must not return");
   });
 });

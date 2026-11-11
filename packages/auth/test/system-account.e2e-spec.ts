@@ -30,6 +30,7 @@ import { hashApiKey } from "../src/utils/api-key-credential.util.js";
 import { getAuthAbility } from "../src/utils/get-auth-ability.util.js";
 import { getCurrentApiKey } from "../src/utils/get-current-api-key.util.js";
 import { resolveRequestPermissions } from "../src/utils/resolve-request-permissions.util.js";
+import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 
 const options: AuthModuleOptions = {
   workspace: { enabled: true },
@@ -58,7 +59,7 @@ describe("independent system accounts with real persistence and authentication",
       dbName: "memory://",
       metadataProvider,
       metadataCache: { enabled: false },
-      entities: getAuthEntities(options),
+      entities: getAuthEntities(withAuthTestFeatures(options)),
     });
     await orm.em.execute("create role authenticated nologin noinherit");
     await orm.em.execute("create role anonymous nologin noinherit");
@@ -113,10 +114,10 @@ describe("independent system accounts with real persistence and authentication",
       RequestContext.set(EntityManager, em);
       RequestContext.set(User, user);
       RequestContext.set(Session, Object.assign(new Session(), { user }));
-      RequestIdentity.prepare(options);
+      RequestIdentity.prepare(withAuthTestFeatures(options));
       return await callback(
-        new SystemAccountService(em, options),
-        new SystemAccountApiKeyService(em, options),
+        new SystemAccountService(em, withAuthTestFeatures(options)),
+        new SystemAccountApiKeyService(em, withAuthTestFeatures(options)),
         em,
       );
     });
@@ -150,11 +151,14 @@ describe("independent system accounts with real persistence and authentication",
         },
       } as unknown as Request);
       const middleware = new AuthMiddleware(
-        options,
+        withAuthTestFeatures(options),
         {
           getCurrentAuthenticatedSession: () => Promise.resolve(null),
         } as unknown as SessionService,
-        new ApiKeyAuthenticationService(orm.em.fork(), options),
+        new ApiKeyAuthenticationService(
+          orm.em.fork(),
+          withAuthTestFeatures(options),
+        ),
         em,
       );
       let error: unknown;
@@ -168,7 +172,7 @@ describe("independent system accounts with real persistence and authentication",
           ? error
           : new Error("Authentication failed", { cause: error });
       }
-      RequestIdentity.prepare(options);
+      RequestIdentity.prepare(withAuthTestFeatures(options));
       return await callback(em);
     });
 
@@ -236,7 +240,7 @@ describe("independent system accounts with real persistence and authentication",
       ).toMatchObject({ id: otherWorkspace.id });
       const users = await new UserService(
         em,
-        options,
+        withAuthTestFeatures(options),
         {} as never,
         {} as never,
       ).getUserConnection({ first: 100 });
@@ -249,7 +253,9 @@ describe("independent system accounts with real persistence and authentication",
       await expect(
         service.updatePlatformWorkspace(workspace.id, { name: "Denied" }),
       ).rejects.toThrow(/not allowed/i);
-      expect(resolveRequestPermissions(options).workspace).toEqual([]);
+      expect(
+        resolveRequestPermissions(withAuthTestFeatures(options)).workspace,
+      ).toEqual([]);
     });
   });
 
@@ -257,8 +263,14 @@ describe("independent system accounts with real persistence and authentication",
     "denies %s credentials access to system-account and key management",
     async (kind) => {
       const attempt = async (em: EntityManager) => {
-        const accounts = new SystemAccountService(em, options);
-        const keys = new SystemAccountApiKeyService(em, options);
+        const accounts = new SystemAccountService(
+          em,
+          withAuthTestFeatures(options),
+        );
+        const keys = new SystemAccountApiKeyService(
+          em,
+          withAuthTestFeatures(options),
+        );
         await expect(
           accounts.createSystemAccount({
             name: "Escalation",
@@ -291,7 +303,9 @@ describe("independent system accounts with real persistence and authentication",
       keys.createSystemAccountApiKey(account.id, { name: "No grants" }),
     );
     await withKey(created.apiKey, async (em) => {
-      expect(resolveRequestPermissions(options).user).toEqual([]);
+      expect(
+        resolveRequestPermissions(withAuthTestFeatures(options)).user,
+      ).toEqual([]);
       await expect(
         new WorkspaceService(em, options).getPlatformWorkspaceConnection({
           first: 1,
@@ -344,7 +358,9 @@ describe("independent system accounts with real persistence and authentication",
       }),
     );
     await withKey(issued.apiKey, async (em) => {
-      expect(resolveRequestPermissions(options).user).toEqual(["user:read"]);
+      expect(
+        resolveRequestPermissions(withAuthTestFeatures(options)).user,
+      ).toEqual(["user:read"]);
       await expect(
         new WorkspaceService(em, options).getPlatformWorkspace(
           otherWorkspace.id,
@@ -516,8 +532,11 @@ describe("independent system accounts with real persistence and authentication",
       roles: ["operator"],
     });
     await asAdministrator(async (_accounts, _keys, em) => {
-      RequestIdentity.refresh(configuration);
-      const accounts = new SystemAccountService(em, configuration);
+      RequestIdentity.refresh(withAuthTestFeatures(configuration));
+      const accounts = new SystemAccountService(
+        em,
+        withAuthTestFeatures(configuration),
+      );
       await expect(
         accounts.createSystemAccount({
           name: "Excessive",
@@ -528,7 +547,10 @@ describe("independent system accounts with real persistence and authentication",
         name: "Limited issuer",
         permissions: ["user:read"],
       });
-      const keys = new SystemAccountApiKeyService(em, configuration);
+      const keys = new SystemAccountApiKeyService(
+        em,
+        withAuthTestFeatures(configuration),
+      );
       await expect(
         keys.createSystemAccountApiKey(account.id, {
           name: "Excessive",
@@ -554,8 +576,11 @@ describe("independent system accounts with real persistence and authentication",
       roles: ["operator"],
     });
     await asAdministrator(async (_accounts, _keys, em) => {
-      RequestIdentity.refresh(configuration);
-      const accounts = new SystemAccountService(em, configuration);
+      RequestIdentity.refresh(withAuthTestFeatures(configuration));
+      const accounts = new SystemAccountService(
+        em,
+        withAuthTestFeatures(configuration),
+      );
       await expect(
         accounts.updateSystemAccount(issued.account.id, { enabled: true }),
       ).rejects.toThrow(/exceed issuer permissions/i);
@@ -579,8 +604,11 @@ describe("independent system accounts with real persistence and authentication",
       }),
     );
     await asAdministrator(async (_accounts, _keys, em) => {
-      RequestIdentity.refresh(configuration);
-      const accounts = new SystemAccountService(em, configuration);
+      RequestIdentity.refresh(withAuthTestFeatures(configuration));
+      const accounts = new SystemAccountService(
+        em,
+        withAuthTestFeatures(configuration),
+      );
       expect(
         (
           await accounts.updateSystemAccount(issued.account.id, {
@@ -630,8 +658,11 @@ describe("independent system accounts with real persistence and authentication",
       },
     });
     await asAdministrator(async (_accounts, _keys, em) => {
-      RequestIdentity.refresh(configuration);
-      const keys = new SystemAccountApiKeyService(em, configuration);
+      RequestIdentity.refresh(withAuthTestFeatures(configuration));
+      const keys = new SystemAccountApiKeyService(
+        em,
+        withAuthTestFeatures(configuration),
+      );
       await expect(
         keys.updateSystemAccountApiKey(issued.entity.id, { enabled: true }),
       ).rejects.toThrow(/exceed issuer permissions/i);
@@ -653,9 +684,15 @@ describe("independent system accounts with real persistence and authentication",
       },
     };
     await asAdministrator(async (_accounts, _keys, em) => {
-      RequestIdentity.refresh(configuration);
-      const accounts = new SystemAccountService(em, configuration);
-      const keys = new SystemAccountApiKeyService(em, configuration);
+      RequestIdentity.refresh(withAuthTestFeatures(configuration));
+      const accounts = new SystemAccountService(
+        em,
+        withAuthTestFeatures(configuration),
+      );
+      const keys = new SystemAccountApiKeyService(
+        em,
+        withAuthTestFeatures(configuration),
+      );
       await expect(
         accounts.createSystemAccount({ name: "Blocked" }),
       ).rejects.toThrow(/not allowed/i);
@@ -691,9 +728,15 @@ describe("independent system accounts with real persistence and authentication",
       // Exercise runAuthQuery's unscoped fast path and a subsequent unrelated flush.
       const em = orm.em.fork({ useContext: false });
       RequestContext.set(EntityManager, em);
-      RequestIdentity.refresh(configuration);
-      const accounts = new SystemAccountService(em, configuration);
-      const keys = new SystemAccountApiKeyService(em, configuration);
+      RequestIdentity.refresh(withAuthTestFeatures(configuration));
+      const accounts = new SystemAccountService(
+        em,
+        withAuthTestFeatures(configuration),
+      );
+      const keys = new SystemAccountApiKeyService(
+        em,
+        withAuthTestFeatures(configuration),
+      );
       await expect(
         accounts.createSystemAccount({ name: "Blocked" }),
       ).rejects.toThrow(/not allowed/i);
@@ -731,14 +774,17 @@ describe("independent system accounts with real persistence and authentication",
     await withKey(plaintext, async (scoped) => {
       expect(RequestContext.get(User)?.id).toBe(administrator.id);
       await expect(
-        new SystemAccountService(scoped, options).createSystemAccount({
+        new SystemAccountService(
+          scoped,
+          withAuthTestFeatures(options),
+        ).createSystemAccount({
           name: "Denied",
         }),
       ).rejects.toThrow(/session/i);
       await expect(
         new SystemAccountApiKeyService(
           scoped,
-          options,
+          withAuthTestFeatures(options),
         ).createSystemAccountApiKey("1", { name: "Denied" }),
       ).rejects.toThrow(/session/i);
     });
@@ -761,7 +807,7 @@ describe("independent system accounts with real persistence and authentication",
       },
     };
     await asAdministrator(async (_accounts, _keys, em) => {
-      RequestIdentity.refresh(configuration);
+      RequestIdentity.refresh(withAuthTestFeatures(configuration));
       await expect(
         new WorkspaceService(em, configuration).updatePlatformWorkspace(
           otherWorkspace.id,
@@ -802,7 +848,7 @@ describe("independent system accounts with real persistence and authentication",
           variables: { "app.system_account.id": issued.account.id },
         },
       }),
-      options,
+      withAuthTestFeatures(options),
     );
     await authentication.captureUsage(stored)();
     expect(

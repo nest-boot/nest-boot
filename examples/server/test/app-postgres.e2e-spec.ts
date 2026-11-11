@@ -3445,7 +3445,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       scoped.body.data.currentWorkspace.invitations.pageInfo.hasNextPage,
     ).toBe(true);
 
-    for (const field of ['invitations', 'members', 'apiKeys']) {
+    for (const field of ['invitations', 'members']) {
       const wrongWorkspace = await gql(
         `query($id: ID!) { workspace(id: $id) { ${field}(first: 1) { totalCount } } }`,
         {
@@ -3968,7 +3968,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expectNoGraphQLErrors(byBearer);
     expect(byBearer.body.data.currentWorkspace).toEqual(workspace);
     expect(byBearer.body.data.currentMember).toEqual({
-      id: createdKey.entity.memberId,
+      id: createdKey.memberId,
     });
 
     const membersByBearer = await gql(
@@ -4035,7 +4035,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
     expectNoGraphQLErrors(serviceIdentity);
     expect(serviceIdentity.body.data.currentMember).toEqual({
-      id: serviceAccountKey.entity.memberId,
+      id: serviceAccountKey.memberId,
       type: 'SERVICE_ACCOUNT',
     });
     const serviceCurrentUser = await gql('query { currentUser { id } }', {
@@ -4364,7 +4364,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             };
       const queries = {
         read: `query($id: ID!) { owner: ${names.parent} { result: apiKey(id: $id) { id permissions } } }`,
-        list: `query { owner: ${names.parent} { result: apiKeys(first: 100) { totalCount edges { node { id } } } } }`,
+        list:
+          scope === 'user'
+            ? `query { owner: currentUser { result: apiKeys(first: 100) { totalCount edges { node { id } } } } }`
+            : `query { result: workspaceApiKeys(first: 100) { totalCount edges { node { id } } } }`,
         create: `mutation($input: Create${scope === 'user' ? 'User' : 'Member'}ApiKeyInput!) { result: ${names.create}(input: $input) { entity { id permissions } } }`,
         update: `mutation($id: ID!, $input: Update${scope === 'user' ? 'User' : 'Member'}ApiKeyInput!) { result: ${names.update}(id: $id, input: $input) { id permissions name } }`,
         delete: `mutation($id: ID!) { result: ${names.delete}(id: $id) { id } }`,
@@ -4417,7 +4420,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       }
       const inheritedList = await call('list', empty.apiKey);
       expectNoGraphQLErrors(inheritedList);
-      expect(inheritedList.body.data.owner.result.totalCount).toBe(4);
+      expect(
+        (scope === 'user'
+          ? inheritedList.body.data.owner.result
+          : inheritedList.body.data.result
+        ).totalCount,
+      ).toBe(4);
       for (const operation of ['read', 'update', 'delete'] as const) {
         const result = await call(operation, manager.apiKey, {
           id: empty.entity.id,
@@ -4432,9 +4440,17 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       }
       const listed = await call('list', manager.apiKey);
       expectNoGraphQLErrors(listed);
-      expect(listed.body.data.owner.result.totalCount).toBe(2);
       expect(
-        listed.body.data.owner.result.edges
+        (scope === 'user'
+          ? listed.body.data.owner.result
+          : listed.body.data.result
+        ).totalCount,
+      ).toBe(2);
+      expect(
+        (scope === 'user'
+          ? listed.body.data.owner.result
+          : listed.body.data.result
+        ).edges
           .map((edge: { node: { id: string } }) => edge.node.id)
           .sort(),
       ).toEqual([manager.entity.id, narrow.entity.id].sort());
@@ -4516,7 +4532,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         workspaceId: workspace.id,
       });
       expectNoGraphQLErrors(sessionList);
-      expect(sessionList.body.data.owner.result.totalCount).toBe(4);
+      expect(
+        (scope === 'user'
+          ? sessionList.body.data.owner.result
+          : sessionList.body.data.result
+        ).totalCount,
+      ).toBe(4);
     },
   );
 
@@ -5744,7 +5765,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             apiKey
             entity {
               id
-              memberId
               name
               enabled
               permissions
@@ -5777,11 +5797,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       start: response.body.data.createMemberApiKey.apiKey.slice(0, 8),
     });
 
-    return response.body.data.createMemberApiKey as {
+    return {
+      ...response.body.data.createMemberApiKey,
+      memberId: input.memberId ?? memberId,
+    } as {
       apiKey: string;
+      memberId: string;
       entity: {
         id: string;
-        memberId: string;
         name: string;
         enabled: boolean;
         permissions: string[];

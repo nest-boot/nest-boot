@@ -11,6 +11,7 @@ import { MODULE_METADATA } from "@nestjs/common/constants";
 import { Args as NestArgs, Resolver as NestResolver } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
 
+import { withAuthTestFeatures } from "../test/fixtures/enabled-auth-features.fixture.js";
 import { AUTH_TOKEN } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
@@ -324,13 +325,21 @@ describe("AuthModule", () => {
     },
   );
 
+  it("rejects the removed apiKey.member configuration with its replacement path", () => {
+    expect(() =>
+      getAuthProvider().useFactory(
+        { secret, apiKey: { enabled: true, member: { enabled: true } } },
+        { em: {} },
+      ),
+    ).toThrow("apiKey.member has been removed; use apiKey.workspace");
+  });
   it("rejects member API-key configuration without enabled workspace features", () => {
     expect(() =>
       getAuthProvider().useFactory(
-        { secret, apiKey: { member: {} } },
+        { secret, apiKey: { enabled: true, workspace: { enabled: true } } },
         { em: {} },
       ),
-    ).toThrow("apiKey.member requires workspace.enabled: true");
+    ).toThrow("apiKey.workspace requires workspace.enabled: true");
     expect(mockBetterAuth).not.toHaveBeenCalled();
   });
 
@@ -491,7 +500,7 @@ describe("AuthModule", () => {
           allowedPermissions: ["user:read", "workspace:update"],
           defaultPermissions: ["workspace:update"],
         },
-        member: {
+        workspace: {
           allowedPermissions: ["workspace:update"],
           defaultPermissions: ["workspace:update"],
         },
@@ -500,13 +509,13 @@ describe("AuthModule", () => {
     {
       apiKey: {
         user: { allowedPermissions: ["user:read"] },
-        member: { allowedPermissions: [] },
+        workspace: { allowedPermissions: [] },
       },
     },
     {
       apiKey: {
         user: { defaultPermissions: ["user:read", "member:invite"] },
-        member: { defaultPermissions: ["workspace:update"] },
+        workspace: { defaultPermissions: ["workspace:update"] },
       },
     },
   ])(
@@ -563,7 +572,12 @@ describe("AuthModule", () => {
       const authProvider = getAuthProvider();
       expect(() =>
         authProvider.useFactory(
-          { workspace: { enabled: true }, entities, secret, ...config },
+          withAuthTestFeatures({
+            workspace: { enabled: true },
+            entities,
+            secret,
+            ...config,
+          }),
           {
             em: {},
           },
@@ -623,7 +637,12 @@ describe("AuthModule", () => {
     const authProvider = getAuthProvider();
     expect(() =>
       authProvider.useFactory(
-        { workspace: { enabled: true }, entities, secret, ...config },
+        withAuthTestFeatures({
+          workspace: { enabled: true },
+          entities,
+          secret,
+          ...config,
+        }),
         {
           em: {},
         },
@@ -637,17 +656,17 @@ describe("AuthModule", () => {
       {
         apiKey: {
           user: { defaultPermissions: ["user:read"] },
-          member: { defaultPermissions: ["user:read"] },
+          workspace: { defaultPermissions: ["user:read"] },
         },
       },
-      "apiKey.member.defaultPermissions contains unknown permissions: user:read",
+      "apiKey.workspace.defaultPermissions contains unknown permissions: user:read",
     ],
     [
       "allowed permissions outside the configured catalogs",
       {
         apiKey: {
           user: { allowedPermissions: ["unknown:read"] },
-          member: { allowedPermissions: ["unknown:read"] },
+          workspace: { allowedPermissions: ["unknown:read"] },
         },
       },
       "apiKey.user.allowedPermissions contains unknown permissions: unknown:read",
@@ -657,7 +676,7 @@ describe("AuthModule", () => {
       {
         apiKey: {
           user: { defaultPermissions: ["unknown:read"] },
-          member: { defaultPermissions: ["unknown:read"] },
+          workspace: { defaultPermissions: ["unknown:read"] },
         },
       },
       "apiKey.user.defaultPermissions contains unknown permissions: unknown:read",
@@ -670,7 +689,7 @@ describe("AuthModule", () => {
             allowedPermissions: ["workspace:update"],
             defaultPermissions: ["workspace:delete"],
           },
-          member: {
+          workspace: {
             allowedPermissions: ["workspace:update"],
             defaultPermissions: ["workspace:delete"],
           },
@@ -682,7 +701,12 @@ describe("AuthModule", () => {
     const authProvider = getAuthProvider();
     expect(() =>
       authProvider.useFactory(
-        { workspace: { enabled: true }, entities, secret, ...config },
+        withAuthTestFeatures({
+          workspace: { enabled: true },
+          entities,
+          secret,
+          ...config,
+        }),
         {
           em: {},
         },
@@ -890,7 +914,7 @@ describe("AuthModule", () => {
             allowedPermissions: ["user:read"],
             defaultPermissions: [],
           },
-          member: {
+          workspace: {
             allowedPermissions: [],
             defaultPermissions: [],
           },
@@ -1430,8 +1454,8 @@ describe("GraphQL registration metadata", () => {
         [AuthResolver, "User"],
         [UserResolver, "User"],
         [SessionResolver, "Session"],
-        [UserApiKeyResolver, "UserApiKey"],
-        [MemberApiKeyResolver, "MemberApiKey"],
+        [UserApiKeyResolver, "User"],
+        [MemberApiKeyResolver, "Member"],
         [WorkspaceResolver, "Workspace"],
         [MemberResolver, "Member"],
         [InvitationResolver, "Invitation"],

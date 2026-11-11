@@ -7,7 +7,7 @@ description: "Configure AuthModule, environment variables, and MikroORM entities
 
 Workspace features are **disabled by default**. Set `workspace: { enabled: true }`
 in `forRoot()` or in the options returned by `forRootAsync()` to enable workspaces,
-members, invitations, service accounts, and member API keys. Omitting `workspace`,
+members, invitations and service accounts. Workspace credentials require separate explicit key switches. Omitting `workspace`,
 passing `{}`, or setting `enabled: false` keeps them disabled.
 
 This setting is evaluated at startup. Restart the process when changing it.
@@ -16,11 +16,29 @@ This setting is evaluated at startup. Restart the process when changing it.
 AuthModule.forRoot({ workspace: { enabled: true } });
 ```
 
-Disabled applications retain users, sessions, user API keys, and user authorization.
+Disabled workspace applications retain basic user/session flows and independently enabled personal or system credentials.
 They expose no workspace APIs or `User.workspaces` / `User.invitations` fields,
 ignore workspace headers and cookies, and do not grant `workspace:create`.
-`apiKey.member` requires this feature. Inject workspace services only in applications
+`apiKey.workspace` requires this feature. Inject workspace services only in applications
 that enable it. Entities are registered automatically from this feature configuration.
+
+## Optional administration and credentials
+
+`admin.enabled` defaults to false and enables user/session administration, impersonation and independent system accounts. `apiKey.enabled` is the master credential switch and also defaults to false. User and workspace scopes require `apiKey.user.enabled: true` and `apiKey.workspace.enabled: true`, respectively; workspace credentials additionally require the workspace feature. System credentials require administration and the master switch, and can be disabled separately with `apiKey.systemAccount.enabled: false`. Replace the former `apiKey.member.*` configuration with `apiKey.workspace.*`.
+
+```typescript
+AuthModule.forRoot({
+  admin: { enabled: true },
+  workspace: { enabled: true },
+  apiKey: {
+    enabled: true,
+    user: { enabled: true },
+    workspace: { enabled: true },
+  },
+});
+```
+
+Disabled features register no corresponding services, GraphQL APIs or persistence tables. `ApiKey.owner` includes only active owner types and is nullable when identity access is unavailable; it does not pull disabled features into the schema.
 
 ## Module Options
 
@@ -42,7 +60,7 @@ Important Nest Boot options include:
 - **`buildAbility`** — builds one request Ability from user, workspace, member, and the two effective-permission sources.
 - **`workspace.sendInvitationEmail`** — delivers persisted workspace invitations;
 - **`apiKey.user`** — user-key defaults and grant limits;
-- **`apiKey.member`** — member-key defaults and grant limits;
+- **`apiKey.workspace`** — member-key defaults and grant limits;
 - **`middleware`** — controls auth middleware registration and route selection;
 - **`basePath`** — changes the auth endpoint path from `/api/auth/`;
 - **`trustedOrigins`** — configures allowed browser origins;
@@ -77,6 +95,8 @@ Entity mutations such as `setUserRoles` and `setMemberPermissions` still replace
 the stored values. API-key `allowedPermissions` remains a ceiling, not an
 additive catalog; `allowedPermissions: []` permits no explicit selections but retains the full output enum.
 Empty key `permissions` inherit owner grants and are not capped by that allowlist.
+
+Role and permission enums retain their catalogs for stored-value serialization. Effective permissions exclude framework grants for disabled features; custom business permissions remain available.
 
 Every permission granted by a configured role must be present in the matching
 permission catalog. `forRoot()` infers literal permission unions and rejects

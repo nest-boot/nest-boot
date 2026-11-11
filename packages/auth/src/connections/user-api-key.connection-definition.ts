@@ -1,52 +1,13 @@
-import { ArgsType, ObjectType } from "@nest-boot/graphql";
-import { ConnectionBuilder } from "@nest-boot/graphql-connection";
+import type {
+  ConnectionClass,
+  ConnectionInterface,
+} from "@nest-boot/graphql-connection";
 
-import { ApiKeyEntity } from "../entities/api-key.entity.js";
-import { UserApiKey } from "../entities/user-api-key.entity.js";
+import type { UserApiKey } from "../entities/user-api-key.entity.js";
+import { ApiKeyConnection } from "./api-key.connection-definition.js";
 
-const { Connection, ConnectionArgs } = new ConnectionBuilder(UserApiKey, {
-  entity: ApiKeyEntity,
-})
-  .addField({
-    field: "name",
-    searchable: true,
-    filterable: true,
-    type: "string",
-  })
-  .addField({
-    field: "prefix",
-    filterable: true,
-    type: "string",
-  })
-  .addField({
-    field: "enabled",
-    filterable: true,
-    type: "boolean",
-  })
-  .addField({
-    field: "last_used_at",
-    replacement: "lastUsedAt",
-    filterable: true,
-    sortable: true,
-    type: "date",
-  })
-  .addField({
-    field: "created_at",
-    replacement: "createdAt",
-    filterable: true,
-    sortable: true,
-    type: "date",
-  })
-  .build();
-
-/**
- * API key pagination arguments.
- */
-@ArgsType()
-export class UserApiKeyConnectionArgs extends ConnectionArgs {}
-
-/**
- * A page of visible API keys.
- */
-@ObjectType()
-export class UserApiKeyConnection extends Connection {}
+/** Shared GraphQL connection, narrowed by the scoped service's mandatory owner filter. */
+export const UserApiKeyConnection =
+  ApiKeyConnection as ConnectionClass<UserApiKey>;
+export type UserApiKeyConnection = ConnectionInterface<UserApiKey>;
+export { ApiKeyConnectionArgs as UserApiKeyConnectionArgs } from "./api-key.connection-definition.js";

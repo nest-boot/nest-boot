@@ -1,17 +1,35 @@
-import { Args, ID, Mutation, Query, Resolver } from "@nest-boot/graphql";
+import { Reference } from "@mikro-orm/core";
+import {
+  Args,
+  ID,
+  Info,
+  Mutation,
+  Parent,
+  Query,
+  ResolveField,
+  Resolver,
+} from "@nest-boot/graphql";
+import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
+import { type GraphQLResolveInfo } from "graphql";
 
+import {
+  ApiKeyConnection,
+  ApiKeyConnectionArgs,
+} from "../connections/api-key.connection-definition.js";
 import { CurrentWorkspace } from "../decorators/current-workspace.decorator.js";
+import { Member } from "../entities/member.entity.js";
 import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { CreateMemberApiKeyInput } from "../inputs/create-member-api-key.input.js";
 import { UpdateMemberApiKeyInput } from "../inputs/update-member-api-key.input.js";
+import { ApiKey } from "../objects/api-key.object.js";
 import { CreateMemberApiKeyResult } from "../objects/create-member-api-key-result.object.js";
 import { MemberApiKeyPermissionOption } from "../objects/member-api-key-permission-option.object.js";
 import { MemberApiKeyService } from "../services/member-api-key.service.js";
-import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
+import { type ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
-/** GraphQL mutations for member-owned, workspace-scoped API keys. */
-@Resolver(() => MemberApiKey)
+/** Optional workspace member credential API. */
+@Resolver(() => Member)
 export class MemberApiKeyResolver {
   /**
    * Creates the member API-key resolver.
@@ -58,7 +76,7 @@ export class MemberApiKeyResolver {
    * @param input - Requested field values for the operation.
    * @returns Updated API key metadata without the stored credential hash.
    */
-  @Mutation(() => MemberApiKey)
+  @Mutation(() => ApiKey)
   async updateMemberApiKey(
     @Args("id", { type: () => ID }) id: string,
     @Args("input") input: UpdateMemberApiKeyInput,
@@ -71,10 +89,32 @@ export class MemberApiKeyResolver {
    * @param id - Identifier of the record to access.
    * @returns Deleted API key metadata without the stored credential hash.
    */
-  @Mutation(() => MemberApiKey)
+  @Mutation(() => ApiKey)
   async deleteMemberApiKey(
     @Args("id", { type: () => ID }) id: string,
   ): Promise<ApiKeyMetadata<MemberApiKey>> {
     return await this.apiKeyService.deleteMemberApiKey(id);
+  }
+
+  /**
+   * Lists credentials belonging to this member within the selected workspace.
+   * @param member - Owning workspace identity.
+   * @param args - Pagination, filtering and ordering arguments.
+   * @param info - GraphQL selection information.
+   * @returns Authorized metadata belonging to this member only.
+   */
+  @ResolveField(() => ApiKeyConnection)
+  apiKeys(
+    @Parent() member: Member,
+    @Args({ type: () => ApiKeyConnectionArgs })
+    args: ConnectionArgsInterface<MemberApiKey>,
+    @Info() info?: GraphQLResolveInfo,
+  ) {
+    return this.apiKeyService.getMemberApiKeyConnection(
+      Reference.unwrapReference(member.workspace),
+      args,
+      info,
+      member,
+    );
   }
 }

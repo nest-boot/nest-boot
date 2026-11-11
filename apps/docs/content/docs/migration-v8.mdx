@@ -148,7 +148,7 @@ Queue job contracts now live in `readonly jobSchemas`, replacing BaseQueue's Dat
 - Auth sessions now use the primary database exclusively; remove any
   `AuthModuleOptions.secondaryStorage` configuration.
 - Move API-key `defaultPermissions` and `allowedPermissions` under `apiKey.user`
-  and `apiKey.member`. The old flat options are rejected at startup; the two
+  and `apiKey.workspace`. The old flat options are rejected at startup; the two
   scopes do not inherit from each other. User keys may use user and workspace
   permissions; member keys accept only workspace permissions and use
   `member:invite` for invitation management. Their grants are bounded by both
@@ -156,11 +156,14 @@ Queue job contracts now live in `readonly jobSchemas`, replacing BaseQueue's Dat
 
   ```ts
   apiKey: {
+    enabled: true,
     user: {
+      enabled: true,
       defaultPermissions: ["user:read"],
       allowedPermissions: ["user:read", "workspace:update"],
     },
-    member: {
+    workspace: {
+      enabled: true,
       defaultPermissions: ["workspace:update"],
       allowedPermissions: ["workspace:update", "workspace:delete"],
     },
@@ -188,7 +191,7 @@ unit and end-to-end suites with `pnpm test` and `pnpm test:e2e`.
 ### API-key ownership and database cascades
 
 Run `Migration00000000000000_Initial` before the MikroORM-generated
-`Migration20261111061111`. Initialization grants schema `USAGE` and sets default
+`Migration20261111092714`. Initialization grants schema `USAGE` and sets default
 `ALL` privileges on tables, functions, and sequences in `public` for both
 `anonymous` and `authenticated`. These defaults apply only to future objects
 created by the same migration role, not existing objects or objects created by
@@ -234,13 +237,22 @@ Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
 metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 
-Register the exported `entities` array in both your runtime MikroORM configuration
-and the configuration loaded by the migration CLI. The CLI does not initialize Nest:
+AuthModule registers enabled entities through DatabaseModule. Use the application’s
+`nb database:*` commands to share runtime options; no separate MikroORM config is required.
+Standalone ORM consumers pass matching feature options to `getAuthEntities`:
 
 ```typescript
 import { getAuthEntities } from "@nest-boot/auth";
 
-const authEntities = getAuthEntities({ workspace: { enabled: true } });
+const authEntities = getAuthEntities({
+  admin: { enabled: true },
+  workspace: { enabled: true },
+  apiKey: {
+    enabled: true,
+    user: { enabled: true },
+    workspace: { enabled: true },
+  },
+});
 import { defineConfig } from "@mikro-orm/postgresql";
 
 export default defineConfig({
@@ -282,6 +294,10 @@ uniqueness in an existing database requires a separate migration and an explicit
 data-preserving reconciliation plan.
 
 ## Shared API-key storage in 8.x
+
+Administration and API keys are opt-in. Enable `admin.enabled` for management, and `apiKey.enabled` for credentials. Personal and workspace keys additionally require their respective `apiKey.user.enabled` / `apiKey.workspace.enabled` flags; workspace keys also require `workspace.enabled`. All of these switches default to false. System keys require administration and the credential master switch.
+
+GraphQL credential outputs are unified as `ApiKey`, with a nullable `owner` union containing only active identity types. Workspace-wide and system-wide lists are `workspaceApiKeys` and `systemApiKeys`.
 
 `UserApiKey`, `MemberApiKey`, and `SystemAccountApiKey` are owner-specific public views and services; their persistent entity is `ApiKeyEntity`. Direct ORM filters use `ownerType` and the polymorphic `owner` reference. Register `getAuthEntities(options)` for standalone ORM usage; AuthModule handles registration automatically. See [API keys](/docs/tutorial/auth/api-keys) for the system-account permission and administrator-session model.
 

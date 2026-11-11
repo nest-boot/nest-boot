@@ -11,6 +11,7 @@ import {
   apiKeyOwnerTrigger,
 } from "../infrastructure/api-key-triggers.js";
 import { apiKeyOwnerPolicy } from "../policies/api-key-owner.policy.js";
+import { resolveAuthFeatures } from "../utils/resolve-auth-features.util.js";
 import { Account } from "./account.entity.js";
 import { ApiKeyEntity } from "./api-key.entity.js";
 import { Invitation } from "./invitation.entity.js";
@@ -28,10 +29,11 @@ import { Workspace } from "./workspace.entity.js";
  * @returns Classes and local schemas suitable for MikroORM runtime and migrations.
  */
 export function getAuthEntities(
-  options: Pick<AuthModuleOptions, "workspace"> = {},
+  options: Pick<AuthModuleOptions, "admin" | "workspace" | "apiKey"> = {},
   schema = "public",
 ): NonNullable<Options["entities"]> {
-  const workspace = options.workspace?.enabled === true;
+  const features = resolveAuthFeatures(options);
+  const workspace = features.workspace;
   const local = <T extends object>(entity: new (...args: never[]) => T) => {
     const metadata = Object.values(MetadataStorage.getMetadata()).find(
       (meta) => meta.class === entity,
@@ -45,52 +47,63 @@ export function getAuthEntities(
     definition.meta.schema = schema;
     return definition;
   };
-  const apiKey = local(ApiKeyEntity);
-  // Discovery supports union targets; EntityProperty.entity still exposes a single-target callback type.
-  apiKey.meta.properties.owner.entity = (() =>
-    workspace
-      ? [User, Member, SystemAccount]
-      : [
-          User,
-          SystemAccount,
-        ]) as unknown as typeof apiKey.meta.properties.owner.entity;
-  apiKey.meta.properties.owner.type = workspace
-    ? "User | Member | SystemAccount"
-    : "User | SystemAccount";
-  apiKey.meta.policies = [apiKeyOwnerPolicy(workspace, schema)];
-  apiKey.meta.checks = [
-    {
-      name: "api_key_owner_type_check",
-      expression: workspace
-        ? `"owner_type" in ('user', 'member', 'system_account')`
-        : `"owner_type" in ('user', 'system_account')`,
-    },
+  const owners = [
+    ...(features.userApiKey ? [User] : []),
+    ...(features.workspaceApiKey ? [Member] : []),
+    ...(features.systemAccountApiKey ? [SystemAccount] : []),
   ];
-  apiKey.meta.triggers = [apiKeyOwnerTrigger(workspace, schema)];
+  const kinds = [
+    ...(features.userApiKey ? ["user" as const] : []),
+    ...(features.systemAccountApiKey ? ["system_account" as const] : []),
+    ...(features.workspaceApiKey ? ["member" as const] : []),
+  ];
   const user = local(User);
   user.meta.triggers = [
     ...user.meta.triggers.filter(
       (trigger) => trigger.name !== "user_api_key_cleanup",
     ),
-    apiKeyCleanupTrigger("user", schema),
+    ...(features.userApiKey ? [apiKeyCleanupTrigger("user", schema)] : []),
   ];
-  const system = local(SystemAccount);
-  system.meta.triggers = [apiKeyCleanupTrigger("system_account", schema)];
   const result: NonNullable<Options["entities"]> = [
     user,
     local(Account),
     local(Session),
     local(Verification),
-    apiKey,
-    system,
   ];
+  if (features.apiKey) {
+    const apiKey = local(ApiKeyEntity);
+    // The decorator type exposes a single-target callback, while discovery accepts a union.
+    apiKey.meta.properties.owner.entity = (() =>
+      owners) as unknown as typeof apiKey.meta.properties.owner.entity;
+    apiKey.meta.properties.owner.type = owners
+      .map((owner) => owner.name)
+      .join(" | ");
+    apiKey.meta.policies = [apiKeyOwnerPolicy(workspace, schema)];
+    apiKey.meta.checks = [
+      {
+        name: "api_key_owner_type_check",
+        expression: `"owner_type" in (${kinds.map((kind) => `'${kind}'`).join(", ")})`,
+      },
+    ];
+    apiKey.meta.triggers = [apiKeyOwnerTrigger(workspace, schema, kinds)];
+    result.push(apiKey);
+  }
+  if (features.admin) {
+    const system = local(SystemAccount);
+    system.meta.triggers = features.systemAccountApiKey
+      ? [apiKeyCleanupTrigger("system_account", schema)]
+      : [];
+    result.push(system);
+  }
   if (workspace) {
     const member = local(Member);
     member.meta.triggers = [
       ...member.meta.triggers.filter(
         (trigger) => trigger.name !== "member_api_key_cleanup",
       ),
-      apiKeyCleanupTrigger("member", schema),
+      ...(features.workspaceApiKey
+        ? [apiKeyCleanupTrigger("member", schema)]
+        : []),
     ];
     result.push(local(Workspace), member, local(Invitation));
   }

@@ -65,8 +65,14 @@ export const SYSTEM_KEY_DETAILS = graphql(`
   query managedSystemAccountKey($id: ID!) {
     systemAccountApiKey(id: $id) {
       id
-      systemAccountId
       name
+      owner {
+        __typename
+        ... on SystemAccount {
+          id
+          name
+        }
+      }
       enabled
       permissions
       prefix
@@ -96,8 +102,11 @@ export const DELETE_SYSTEM_KEY = graphql(`
 `);
 
 export const SYSTEM_KEY_PERMISSIONS = graphql(`
-  query systemKeyPermissionChoices($systemAccountId: ID) {
-    systemAccountApiKeyPermissions(systemAccountId: $systemAccountId) {
+  query systemKeyPermissionChoices($systemAccountId: ID, $apiKeyId: ID) {
+    systemAccountApiKeyPermissions(
+      systemAccountId: $systemAccountId
+      apiKeyId: $apiKeyId
+    ) {
       permission
       grantable
       default

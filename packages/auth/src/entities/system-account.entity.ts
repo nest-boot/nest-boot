@@ -16,7 +16,7 @@ import { apiKeyCleanupTrigger } from "../infrastructure/api-key-triggers.js";
 import { User } from "./user.entity.js";
 
 /** Platform identity owned independently of the administrator that created it. */
-@ObjectType()
+@ObjectType({ isAbstract: true })
 @Trigger(apiKeyCleanupTrigger("system_account", "public"))
 @Entity({
   tableName: "system_account",

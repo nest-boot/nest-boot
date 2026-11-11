@@ -1,6 +1,6 @@
 import {
   EntityManager,
-  type FilterQuery,
+  type FilterObject,
   raw,
   Reference,
 } from "@mikro-orm/core";
@@ -39,6 +39,7 @@ import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
 } from "../utils/api-key-permissions.util.js";
+import { assertApiKeyFeature } from "../utils/assert-api-key-feature.util.js";
 import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
 import { authorize } from "../utils/authorize.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
@@ -77,6 +78,7 @@ export class MemberApiKeyService {
   getMemberApiKeyPermissions(
     workspace: Workspace,
   ): MemberApiKeyPermissionOption[] {
+    assertApiKeyFeature(this.authOptions, "workspaceApiKey");
     RequestIdentity.assertCurrentWorkspace(workspace);
     const { permissions, allowed, defaults } = resolveApiKeyPermissionCatalog(
       this.authOptions,
@@ -102,6 +104,7 @@ export class MemberApiKeyService {
     id: string,
     workspace: Workspace,
   ): Promise<ApiKeyMetadata<MemberApiKey> | null> {
+    assertApiKeyFeature(this.authOptions, "workspaceApiKey");
     this.assertWorkspacePrincipal(workspace);
     authorize("read", MemberApiKey);
     const apiKey = await this.getVisibleApiKey(id, workspace);
@@ -116,16 +119,28 @@ export class MemberApiKeyService {
    * @param workspace - The workspace that scopes this operation.
    * @param args - Pagination, filtering, and ordering arguments.
    * @param info - GraphQL selection information used to shape the query.
+   * @param member - Optional parent member whose keys are being listed.
    * @returns Paginated member API key metadata with credential hashes omitted.
    */
   async getMemberApiKeyConnection(
     workspace: Workspace,
     args: ConnectionArgsInterface<MemberApiKey>,
     info?: GraphQLResolveInfo,
+    member?: Member,
   ): Promise<ConnectionResult<ApiKeyMetadata<MemberApiKey>>> {
+    assertApiKeyFeature(this.authOptions, "workspaceApiKey");
     this.assertWorkspacePrincipal(workspace);
     authorize("read", MemberApiKey);
     const where = this.getOwnedListFilter(workspace);
+    if (member) {
+      authorize("read", member);
+      if (member.workspace.id !== workspace.id) {
+        throw new ForbiddenException(
+          "Member does not belong to the selected workspace",
+        );
+      }
+      where.owner = member;
+    }
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find(MemberApiKeyConnection, args, {
@@ -157,6 +172,7 @@ export class MemberApiKeyService {
     workspace: Workspace,
     options: CreateMemberApiKeyOptions,
   ): Promise<CreatedApiKey<MemberApiKey>> {
+    assertApiKeyFeature(this.authOptions, "workspaceApiKey");
     this.assertWorkspacePrincipal(workspace);
     authorize("write", MemberApiKey);
     const permissions = normalizeApiKeyPermissions(
@@ -179,6 +195,7 @@ export class MemberApiKeyService {
     id: string,
     input: UpdateApiKeyOptions,
   ): Promise<ApiKeyMetadata<MemberApiKey>> {
+    assertApiKeyFeature(this.authOptions, "workspaceApiKey");
     authorize("write", MemberApiKey);
     const apiKey = await this.findWritableApiKey(id);
     authorize("write", apiKey);
@@ -222,6 +239,7 @@ export class MemberApiKeyService {
    * @returns Deleted API key metadata without the stored credential hash.
    */
   async deleteMemberApiKey(id: string): Promise<ApiKeyMetadata<MemberApiKey>> {
+    assertApiKeyFeature(this.authOptions, "workspaceApiKey");
     authorize("write", MemberApiKey);
     const apiKey = await this.findWritableApiKey(id);
     authorize("write", apiKey);
@@ -275,7 +293,7 @@ export class MemberApiKeyService {
     const { apiKey, data } = ApiKeyLifecycle.prepareCreation(
       options,
       permissions,
-      this.authOptions.apiKey?.member?.defaultPrefix ??
+      this.authOptions.apiKey?.workspace?.defaultPrefix ??
         process.env.API_KEY_PREFIX ??
         "ws_",
     );
@@ -352,7 +370,7 @@ export class MemberApiKeyService {
     return apiKey;
   }
 
-  private getOwnedListFilter(workspace: Workspace): FilterQuery<MemberApiKey> {
+  private getOwnedListFilter(workspace: Workspace): FilterObject<MemberApiKey> {
     const ceiling = resolveRequestPermissions(this.authOptions).apiKey;
     return {
       ownerType: "member",

@@ -18,10 +18,10 @@ const LIST = graphql(`
     $after: String
     $before: String
     $query: String
-    $filter: SystemAccountApiKeyFilter
-    $orderBy: SystemAccountApiKeyOrder
+    $filter: ApiKeyFilter
+    $orderBy: ApiKeyOrder
   ) {
-    systemAccountApiKeys(
+    systemApiKeys(
       first: $first
       last: $last
       after: $after
@@ -33,8 +33,14 @@ const LIST = graphql(`
       edges {
         node {
           id
-          systemAccountId
           name
+          owner {
+            __typename
+            ... on SystemAccount {
+              id
+              name
+            }
+          }
           enabled
           permissions
           prefix
@@ -71,7 +77,7 @@ function Keys() {
     variables: search,
     fetchPolicy: "network-only",
   });
-  const connection = data?.systemAccountApiKeys;
+  const connection = data?.systemApiKeys;
   if (error)
     return (
       <OverviewError
@@ -82,6 +88,13 @@ function Keys() {
     );
   return (
     <ApiKeysPage
+      showOwner
+      ownerPath={(owner) =>
+        owner.__typename === "SystemAccount" &&
+        ability.can("read", "SystemAccount")
+          ? `/admin/system-accounts/${owner.id}`
+          : undefined
+      }
       canCreate={
         ability.can("write", "SystemAccountApiKey") &&
         (ability.can("read", "SystemAccount") ||
@@ -92,7 +105,12 @@ function Keys() {
       title={t("api-key:title")}
       description={t("admin:system_accounts.keys_description")}
       search={search}
-      apiKeys={connection?.edges.map(({ node }) => node) ?? []}
+      apiKeys={
+        connection?.edges.map(({ node }) => ({
+          ...node,
+          owner: node.owner?.__typename === "SystemAccount" ? node.owner : null,
+        })) ?? []
+      }
       pageInfo={connection?.pageInfo}
       createPath="/admin/api-keys/create"
       detailPath={(id) => `/admin/api-keys/${id}`}

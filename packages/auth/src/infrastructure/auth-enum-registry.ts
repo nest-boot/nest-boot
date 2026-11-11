@@ -2,6 +2,7 @@ import type { OnModuleDestroy } from "@nestjs/common";
 
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import {
+  ApiKeyPermission,
   MemberApiKeyPermission,
   SystemAccountPermission,
   UserApiKeyPermission,
@@ -10,9 +11,14 @@ import {
   WorkspacePermission,
   WorkspaceRole,
 } from "../enums/index.js";
+import {
+  type ApiKeyOwnerClass,
+  configureApiKeyOwnerTypes,
+} from "../objects/api-key-owner.union.js";
 import { resolveApiKeyPermissionCatalog } from "../utils/api-key-permissions.util.js";
 import { createPermissionEnum } from "../utils/create-permission-enum.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
+import { resolveAuthFeatures } from "../utils/resolve-auth-features.util.js";
 
 let activeSignature: string | undefined;
 let activeApplications = 0;
@@ -24,7 +30,7 @@ let activeApplications = 0;
 export class AuthEnumRegistry implements OnModuleDestroy {
   private released = false;
 
-  constructor(options: AuthModuleOptions) {
+  constructor(options: AuthModuleOptions, owners: readonly ApiKeyOwnerClass[]) {
     const users = resolveAuthCatalog(options, "user").permissions;
     const workspaces = resolveAuthCatalog(options, "workspace").permissions;
     const roleValues = (roles: object) =>
@@ -35,6 +41,15 @@ export class AuthEnumRegistry implements OnModuleDestroy {
         ]),
       );
     const enums = [
+      [
+        ApiKeyPermission,
+        createPermissionEnum([
+          ...resolveApiKeyPermissionCatalog(options, "user").permissions,
+          ...resolveApiKeyPermissionCatalog(options, "member").permissions,
+          ...resolveApiKeyPermissionCatalog(options, "systemAccount")
+            .permissions,
+        ]),
+      ],
       [
         SystemAccountPermission,
         createPermissionEnum(
@@ -63,11 +78,13 @@ export class AuthEnumRegistry implements OnModuleDestroy {
         ),
       ],
     ] as const;
-    const signature = JSON.stringify(
+    const signature = JSON.stringify([
+      resolveAuthFeatures(options),
+      owners.map((owner) => owner.name).sort(),
       enums.map(([, values]) =>
         Object.entries(values).sort(([a], [b]) => a.localeCompare(b)),
       ),
-    );
+    ]);
     if (activeApplications > 0 && activeSignature !== signature) {
       throw new Error(
         "Concurrent AuthModule applications must use the same role and permission enums",
@@ -78,6 +95,9 @@ export class AuthEnumRegistry implements OnModuleDestroy {
         Reflect.deleteProperty(target, key);
       }
       Object.assign(target, values);
+    }
+    if (owners.length) {
+      configureApiKeyOwnerTypes(owners);
     }
     activeSignature = signature;
     activeApplications++;

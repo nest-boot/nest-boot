@@ -18,7 +18,7 @@ import { getDatabaseConfig } from '@nest-boot/database';
 import { entities as queueEntities } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20261111061111 } from '../src/database/migrations/Migration20261111061111.js';
+import { Migration20261111092714 } from '../src/database/migrations/Migration20261111092714.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
@@ -45,14 +45,22 @@ describe('example native RLS migrations with PGlite', () => {
         metadataProvider: TsMorphMetadataProvider,
         metadataCache,
         entities: [
-          ...getAuthEntities({ workspace: { enabled: true } }),
+          ...getAuthEntities({
+            admin: { enabled: true },
+            workspace: { enabled: true },
+            apiKey: {
+              enabled: true,
+              user: { enabled: true },
+              workspace: { enabled: true },
+            },
+          }),
           ...queueEntities,
         ],
         extensions: [Migrator],
         migrations: {
           migrationsList: [
             Migration00000000000000_Initial,
-            Migration20261111061111,
+            Migration20261111092714,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',

@@ -1,5 +1,6 @@
 import { createMongoAbility, subject } from "@casl/ability";
 
+import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { type AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
@@ -29,7 +30,7 @@ const buildUserPermissionAbility = (permissions: readonly string[]) =>
       user: new User(),
       userPermissions: permissions,
     },
-    { workspace: { enabled: true } },
+    withAuthTestFeatures({ workspace: { enabled: true } }),
   );
 
 const buildWorkspacePermissionAbility = (permissions: readonly string[]) =>
@@ -41,10 +42,31 @@ const buildWorkspacePermissionAbility = (permissions: readonly string[]) =>
       workspace: new Workspace(),
       workspacePermissions: permissions,
     },
-    { workspace: { enabled: true } },
+    withAuthTestFeatures({ workspace: { enabled: true } }),
   );
 
 describe("permission ability builders", () => {
+  it("suppresses disabled framework grants while preserving configured business grants", () => {
+    const ability = AuthAbilityFactory.createAbility(
+      {
+        user: new User(),
+        member: null,
+        workspace: null,
+        userPermissions: [...DEFAULT_USER_PERMISSIONS, "project:read"],
+        workspacePermissions: [],
+      },
+      {
+        user: { permissions: ["project:read"] },
+        buildAbility: (rules) => {
+          rules.can({ user: "project:read" }, "read", "Project");
+        },
+      },
+    );
+    expect(ability.can("read", User)).toBe(false);
+    expect(ability.can("write", UserApiKey)).toBe(false);
+    expect(ability.can("read", "SystemAccount")).toBe(false);
+    expect(ability.can("read", "Project")).toBe(true);
+  });
   it("denies the current member's status field while preserving profile and other member writes", () => {
     const workspace = Object.assign(new Workspace(), { id: "workspace-1" });
     const member = Object.assign(new Member(), { id: "member-1", workspace });
@@ -56,7 +78,7 @@ describe("permission ability builders", () => {
         userPermissions: [],
         workspacePermissions: ["member:write"],
       },
-      { workspace: { enabled: true } },
+      withAuthTestFeatures({ workspace: { enabled: true } }),
     );
     const other = Object.assign(new Member(), { id: "member-2", workspace });
     expect(ability.can("write", member)).toBe(true);
@@ -110,7 +132,7 @@ describe("permission ability builders", () => {
             userPermissions: [],
             workspacePermissions: permissions,
           },
-          { workspace: { enabled: true } },
+          withAuthTestFeatures({ workspace: { enabled: true } }),
         );
       const memberAbility = build([`member:${action}`]);
       expect(memberAbility.can(action, userMember)).toBe(true);
@@ -169,7 +191,7 @@ describe("permission ability builders", () => {
             userPermissions: [],
             workspacePermissions: permissions,
           },
-          { workspace: { enabled: true } },
+          withAuthTestFeatures({ workspace: { enabled: true } }),
         );
         expect(ability.can(action, serviceAccount)).toBe(
           permissions.length === 2,
@@ -304,7 +326,7 @@ describe("explicit permission catalog", () => {
             user: new User(),
             userPermissions: [],
           },
-          { workspace: { enabled: true } },
+          withAuthTestFeatures({ workspace: { enabled: true } }),
         ),
         AuthAbilityFactory.createAbility(
           {
@@ -314,7 +336,7 @@ describe("explicit permission catalog", () => {
             workspace: new Workspace(),
             workspacePermissions: [],
           },
-          { workspace: { enabled: true } },
+          withAuthTestFeatures({ workspace: { enabled: true } }),
         ),
       ];
       for (const ability of abilities) {
@@ -355,7 +377,7 @@ describe("explicit permission catalog", () => {
             workspace: new Workspace(),
             workspacePermissions: [`${resource}:write`],
           },
-          { workspace: { enabled: true } },
+          withAuthTestFeatures({ workspace: { enabled: true } }),
         );
         expect(ability.can("write", subject)).toBe(true);
         expect(ability.can("read", subject)).toBe(false);
@@ -373,7 +395,7 @@ describe("explicit permission catalog", () => {
           workspace: new Workspace(),
           workspacePermissions: ["member:invite"],
         },
-        { workspace: { enabled: true } },
+        withAuthTestFeatures({ workspace: { enabled: true } }),
       );
       expect(ability.can("read", Invitation)).toBe(true);
       expect(ability.can("write", Invitation)).toBe(true);
@@ -388,7 +410,7 @@ describe("explicit permission catalog", () => {
           workspace: new Workspace(),
           workspacePermissions: ["member:write"],
         },
-        { workspace: { enabled: true } },
+        withAuthTestFeatures({ workspace: { enabled: true } }),
       );
       expect(memberWriter.can("read", Invitation)).toBe(false);
       expect(memberWriter.can("write", Invitation)).toBe(false);
@@ -403,7 +425,7 @@ describe("explicit permission catalog", () => {
           user: new User(),
           userPermissions: ["user-api-key:write", "member-api-key:read"],
         },
-        { workspace: { enabled: true } },
+        withAuthTestFeatures({ workspace: { enabled: true } }),
       );
       const workspaceAbility = AuthAbilityFactory.createAbility(
         {
@@ -413,7 +435,7 @@ describe("explicit permission catalog", () => {
           workspace: new Workspace(),
           workspacePermissions: ["user-api-key:write", "member-api-key:read"],
         },
-        { workspace: { enabled: true } },
+        withAuthTestFeatures({ workspace: { enabled: true } }),
       );
       expect(userAbility.can("write", UserApiKey)).toBe(true);
       expect(userAbility.can("read", UserApiKey)).toBe(false);
@@ -431,12 +453,12 @@ describe("explicit permission catalog", () => {
           workspace,
           workspacePermissions: ["member:invite"],
         },
-        {
+        withAuthTestFeatures({
           workspace: { enabled: true },
           buildAbility({ cannot }) {
             cannot("write", Invitation, { status: "accepted" });
           },
-        },
+        }),
       );
       expect(
         ability.can(
@@ -468,7 +490,7 @@ describe("explicit permission catalog", () => {
           user: new User(),
           userPermissions: ["workspace:create"],
         },
-        { workspace: { enabled: true } },
+        withAuthTestFeatures({ workspace: { enabled: true } }),
       );
       expect(ability.can("create", Workspace)).toBe(true);
       expect(ability.can("read", Workspace)).toBe(false);
@@ -513,7 +535,7 @@ describe("optional workspace behavior", () => {
           userPermissions: ["user:read", "workspace:create"],
           workspacePermissions: ["workspace:delete"],
         },
-        options,
+        withAuthTestFeatures(options),
       );
       expect(ability.can("read", User)).toBe(true);
       expect(ability.can("create", Workspace)).toBe(false);

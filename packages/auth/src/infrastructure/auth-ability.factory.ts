@@ -22,6 +22,7 @@ import type { AbilityContext } from "../interfaces/ability-context.interface.js"
 import { DEFAULT_USER_PERMISSIONS } from "../user.constants.js";
 import { extendAbility } from "../utils/extend-ability.util.js";
 import { resolveAuthCatalog } from "../utils/resolve-auth-catalog.util.js";
+import { isAuthPermissionEnabled } from "../utils/resolve-auth-features.util.js";
 import { DEFAULT_WORKSPACE_PERMISSIONS } from "../workspace.constants.js";
 
 /**
@@ -45,12 +46,20 @@ export class AuthAbilityFactory {
       member: options.workspace?.enabled === true ? context.member : null,
       userPermissions: Object.freeze(
         context.user || context.systemAccount
-          ? [...context.userPermissions]
+          ? [
+              ...context.userPermissions.filter((permission) =>
+                isAuthPermissionEnabled(options, "user", permission),
+              ),
+            ]
           : [],
       ),
       workspacePermissions: Object.freeze(
         options.workspace?.enabled === true && context.workspace
-          ? [...context.workspacePermissions]
+          ? [
+              ...context.workspacePermissions.filter((permission) =>
+                isAuthPermissionEnabled(options, "workspace", permission),
+              ),
+            ]
           : [],
       ),
     });

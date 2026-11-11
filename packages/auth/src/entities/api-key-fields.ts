@@ -104,7 +104,7 @@ export abstract class ApiKeyFields extends BaseEntity {
   }
 
   /**
-   * Identifier exposed by system-account key GraphQL views.
+   * Identifier used internally by system-account key authorization.
    * @returns Identifier of the system account owning the credential.
    */
   get systemAccountId(): Opt<string> {
@@ -116,7 +116,7 @@ export abstract class ApiKeyFields extends BaseEntity {
   }
 
   /**
-   * Identifier used by member-key GraphQL fields.
+   * Identifier used internally by member-key authorization.
    * @returns Identifier of the member owning the credential.
    */
   get memberId(): Opt<string> {

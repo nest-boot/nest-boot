@@ -5,6 +5,7 @@ import { DEFAULT_USER_ROLE } from "../user.constants.js";
 import { DEFAULT_WORKSPACE_ROLE } from "../workspace.constants.js";
 import { resolveAuthPermissions } from "./auth-role.util.js";
 import { resolveAuthCatalog } from "./resolve-auth-catalog.util.js";
+import { isAuthPermissionEnabled } from "./resolve-auth-features.util.js";
 
 /**
  * Resolves an owner's grants independently of the requesting credential.
@@ -21,6 +22,8 @@ export function resolveUserPermissions(
     user.roles ?? [options.user?.defaultRole ?? DEFAULT_USER_ROLE],
     user.permissions ?? [],
     resolveAuthCatalog(options, "user").roles,
+  ).filter((permission) =>
+    isAuthPermissionEnabled(options, "user", permission),
   );
 }
 
@@ -39,6 +42,8 @@ export function resolveMemberPermissions(
     member.roles ?? [options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE],
     member.permissions ?? [],
     resolveAuthCatalog(options, "workspace").roles,
+  ).filter((permission) =>
+    isAuthPermissionEnabled(options, "workspace", permission),
   );
 }
 

@@ -78,6 +78,107 @@ type AddMemberPayload {
   id: ID!
 }
 
+type ApiKey {
+  createdAt: DateTime!
+  createdById: ID
+  enabled: Boolean!
+  expiresAt: DateTime
+  id: ID!
+  lastUsedAt: DateTime
+  name: String!
+  owner: ApiKeyOwner
+  permissions: [ApiKeyPermission!]!
+  prefix: String
+  start: String
+  updatedAt: DateTime!
+}
+
+type ApiKeyConnection {
+  """A list of edges."""
+  edges: [ApiKeyEdge!]!
+
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """
+  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
+  """
+  totalCount: Int!
+
+  """Indicates whether totalCount is exact or a lower bound."""
+  totalCountRelation: TotalCountRelation!
+}
+
+type ApiKeyEdge {
+  """A cursor for use in pagination."""
+  cursor: String!
+
+  """The item at the end of ApiKeyEdge."""
+  node: ApiKey!
+}
+
+"""
+A filter for ApiKey that accepts MongoDB query syntax.
+Supported fields: name, prefix, enabled, last_used_at, created_at
+"""
+scalar ApiKeyFilter
+
+"""Ordering options for apikey connections"""
+input ApiKeyOrder {
+  """The ordering direction."""
+  direction: OrderDirection!
+
+  """The field to order apikeys by."""
+  field: ApiKeyOrderField!
+}
+
+"""Properties by which apikey connections can be ordered."""
+enum ApiKeyOrderField {
+  CREATED_AT
+  ID
+  LAST_USED_AT
+}
+
+union ApiKeyOwner = Member | SystemAccount | User
+
+enum ApiKeyPermission {
+  MEMBER_API_KEY__READ
+  MEMBER_API_KEY__WRITE
+  MEMBER__INVITE
+  MEMBER__READ
+  MEMBER__SET_PERMISSIONS
+  MEMBER__SET_ROLES
+  MEMBER__WRITE
+  SERVICE_ACCOUNT__READ
+  SERVICE_ACCOUNT__WRITE
+  SESSION__READ
+  SESSION__REVOKE
+  SYSTEM_ACCOUNT_API_KEY__READ
+  SYSTEM_ACCOUNT_API_KEY__WRITE
+  SYSTEM_ACCOUNT__READ
+  SYSTEM_ACCOUNT__WRITE
+  USER_API_KEY__READ
+  USER_API_KEY__WRITE
+  USER__BAN
+  USER__CREATE
+  USER__DELETE
+  USER__IMPERSONATE
+  USER__IMPERSONATE_ADMIN
+  USER__READ
+  USER__SET_EMAIL
+  USER__SET_PASSWORD
+  USER__SET_PERMISSIONS
+  USER__SET_ROLES
+  USER__UPDATE
+  WORKSPACE__CREATE
+  WORKSPACE__DELETE
+  WORKSPACE__DELETE_ANY
+  WORKSPACE__READ
+  WORKSPACE__READ_ANY
+  WORKSPACE__UPDATE
+  WORKSPACE__UPDATE_ANY
+}
+
 type AuthAbilityRuleType {
   actions: [String!]!
   conditions: JSONObject
@@ -209,6 +310,11 @@ type CancelInvitationPayload {
   id: ID!
 }
 
+type CreateApiKeyResult {
+  apiKey: String!
+  entity: ApiKey!
+}
+
 input CreateInvitationInput {
   email: String!
   expiresIn: Int
@@ -227,21 +333,11 @@ input CreateMemberApiKeyInput {
   prefix: String
 }
 
-type CreateMemberApiKeyResult {
-  apiKey: String!
-  entity: MemberApiKey!
-}
-
 input CreateSystemAccountApiKeyInput {
   expiresAt: DateTime
   name: String!
   permissions: [SystemAccountPermission!]
   prefix: String
-}
-
-type CreateSystemAccountApiKeyResult {
-  apiKey: String!
-  entity: SystemAccountApiKey!
 }
 
 input CreateSystemAccountInput {
@@ -254,11 +350,6 @@ input CreateUserApiKeyInput {
   name: String!
   permissions: [UserApiKeyPermission!]
   prefix: String
-}
-
-type CreateUserApiKeyResult {
-  apiKey: String!
-  entity: UserApiKey!
 }
 
 input CreateUserInput {
@@ -440,6 +531,32 @@ type LeaveWorkspacePayload {
 }
 
 type Member {
+  apiKeys(
+    """Returns the elements that come after the specified cursor."""
+    after: String
+
+    """Returns the elements that come before the specified cursor."""
+    before: String
+
+    """Filter apikeys using MongoDB query syntax."""
+    filter: ApiKeyFilter
+
+    """Returns up to the first `n` elements from the list."""
+    first: Int
+
+    """Returns up to the last `n` elements from the list."""
+    last: Int
+
+    """Ordering options for the returned apikeys."""
+    orderBy: ApiKeyOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
+    """
+    query: String
+  ): ApiKeyConnection!
   createdAt: DateTime!
   email: String
   id: ID!
@@ -451,71 +568,6 @@ type Member {
   updatedAt: DateTime!
   user: User
   workspaceId: ID!
-}
-
-type MemberApiKey {
-  createdAt: DateTime!
-  createdById: ID
-  enabled: Boolean!
-  expiresAt: DateTime
-  id: ID!
-  lastUsedAt: DateTime
-  memberId: ID!
-  name: String!
-  permissions: [MemberApiKeyPermission!]!
-  prefix: String
-  start: String
-  updatedAt: DateTime!
-  workspaceId: ID!
-}
-
-type MemberApiKeyConnection {
-  """A list of edges."""
-  edges: [MemberApiKeyEdge!]!
-
-  """Information to aid in pagination."""
-  pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
-}
-
-"""
-An auto-generated type which holds one MemberApiKey and a cursor during pagination.
-"""
-type MemberApiKeyEdge {
-  """A cursor for use in pagination."""
-  cursor: String!
-
-  """The item at the end of MemberApiKeyEdge."""
-  node: MemberApiKey!
-}
-
-"""
-A filter for MemberApiKey that accepts MongoDB query syntax.
-Supported fields: name, prefix, enabled, last_used_at, created_at
-"""
-scalar MemberApiKeyFilter
-
-"""Ordering options for memberapikey connections"""
-input MemberApiKeyOrder {
-  """The ordering direction."""
-  direction: OrderDirection!
-
-  """The field to order memberapikeys by."""
-  field: MemberApiKeyOrderField!
-}
-
-"""Properties by which memberapikey connections can be ordered."""
-enum MemberApiKeyOrderField {
-  CREATED_AT
-  ID
-  LAST_USED_AT
 }
 
 enum MemberApiKeyPermission {
@@ -605,19 +657,19 @@ type Mutation {
   changeCurrentUserEmail(input: AuthChangeEmailInput!): Boolean!
   changeCurrentUserPassword(input: AuthChangePasswordInput!): AuthChangePasswordResultType!
   createInvitation(input: CreateInvitationInput!): CreateInvitationPayload!
-  createMemberApiKey(input: CreateMemberApiKeyInput!): CreateMemberApiKeyResult!
+  createMemberApiKey(input: CreateMemberApiKeyInput!): CreateApiKeyResult!
   createSystemAccount(input: CreateSystemAccountInput!): SystemAccount!
-  createSystemAccountApiKey(input: CreateSystemAccountApiKeyInput!, systemAccountId: ID!): CreateSystemAccountApiKeyResult!
+  createSystemAccountApiKey(input: CreateSystemAccountApiKeyInput!, systemAccountId: ID!): CreateApiKeyResult!
   createUser(input: CreateUserInput!): CreateUserPayload!
-  createUserApiKey(input: CreateUserApiKeyInput!): CreateUserApiKeyResult!
+  createUserApiKey(input: CreateUserApiKeyInput!): CreateApiKeyResult!
   createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload!
   deleteCurrentUser(input: AuthDeleteUserInput = {}): AuthDeleteUserResultType!
-  deleteMemberApiKey(id: ID!): MemberApiKey!
+  deleteMemberApiKey(id: ID!): ApiKey!
   deletePlatformWorkspace(id: ID!): Workspace!
   deleteSystemAccount(id: ID!): SystemAccount!
-  deleteSystemAccountApiKey(id: ID!): SystemAccountApiKey!
+  deleteSystemAccountApiKey(id: ID!): ApiKey!
   deleteUser(id: ID!): DeleteUserPayload!
-  deleteUserApiKey(id: ID!): UserApiKey!
+  deleteUserApiKey(id: ID!): ApiKey!
   deleteWorkspace(id: ID!): DeleteWorkspacePayload!
   impersonateUser(id: ID!): User!
   leaveWorkspace: LeaveWorkspacePayload!
@@ -647,12 +699,12 @@ type Mutation {
   unlinkCurrentUserAccount(id: ID!): Boolean!
   updateCurrentUser(input: AuthUpdateUserInput!): Boolean!
   updateMember(id: ID!, input: UpdateMemberInput!): UpdateMemberPayload
-  updateMemberApiKey(id: ID!, input: UpdateMemberApiKeyInput!): MemberApiKey!
+  updateMemberApiKey(id: ID!, input: UpdateMemberApiKeyInput!): ApiKey!
   updatePlatformWorkspace(id: ID!, input: UpdateWorkspaceInput!): Workspace!
   updateSystemAccount(id: ID!, input: UpdateSystemAccountInput!): SystemAccount!
-  updateSystemAccountApiKey(id: ID!, input: UpdateSystemAccountApiKeyInput!): SystemAccountApiKey!
+  updateSystemAccountApiKey(id: ID!, input: UpdateSystemAccountApiKeyInput!): ApiKey!
   updateUser(id: ID!, input: UpdateUserInput!): UpdateUserPayload!
-  updateUserApiKey(id: ID!, input: UpdateUserApiKeyInput!): UserApiKey!
+  updateUserApiKey(id: ID!, input: UpdateUserApiKeyInput!): ApiKey!
   updateWorkspace(id: ID!, input: UpdateWorkspaceInput!): UpdateWorkspacePayload!
 }
 
@@ -693,34 +745,8 @@ type Query {
   platformWorkspace(id: ID!): Workspace
   socialProviders: [AuthSocialProviderType!]!
   systemAccount(id: ID!): SystemAccount
-  systemAccountApiKey(id: ID!): SystemAccountApiKey
-  systemAccountApiKeyPermissions(systemAccountId: ID): [SystemAccountPermissionOption!]!
-  systemAccountApiKeys(
-    """Returns the elements that come after the specified cursor."""
-    after: String
-
-    """Returns the elements that come before the specified cursor."""
-    before: String
-
-    """Filter systemaccountapikeys using MongoDB query syntax."""
-    filter: SystemAccountApiKeyFilter
-
-    """Returns up to the first `n` elements from the list."""
-    first: Int
-
-    """Returns up to the last `n` elements from the list."""
-    last: Int
-
-    """Ordering options for the returned systemaccountapikeys."""
-    orderBy: SystemAccountApiKeyOrder
-
-    """
-    Apply one or multiple filters to the query.
-    Supported filter parameters:
-    `name`, `prefix`, `enabled`
-    """
-    query: String
-  ): SystemAccountApiKeyConnection!
+  systemAccountApiKey(id: ID!): ApiKey
+  systemAccountApiKeyPermissions(apiKeyId: ID, systemAccountId: ID): [SystemAccountPermissionOption!]!
   systemAccountPermissions: [SystemAccountPermissionOption!]!
   systemAccounts(
     """Returns the elements that come after the specified cursor."""
@@ -748,6 +774,32 @@ type Query {
     """
     query: String
   ): SystemAccountConnection!
+  systemApiKeys(
+    """Returns the elements that come after the specified cursor."""
+    after: String
+
+    """Returns the elements that come before the specified cursor."""
+    before: String
+
+    """Filter apikeys using MongoDB query syntax."""
+    filter: ApiKeyFilter
+
+    """Returns up to the first `n` elements from the list."""
+    first: Int
+
+    """Returns up to the last `n` elements from the list."""
+    last: Int
+
+    """Ordering options for the returned apikeys."""
+    orderBy: ApiKeyOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
+    """
+    query: String
+  ): ApiKeyConnection!
   systemJob(id: ID!): Job
   systemJobs(
     """Returns the elements that come after the specified cursor."""
@@ -833,6 +885,32 @@ type Query {
     query: String
   ): UserConnection!
   workspace(id: ID!): Workspace
+  workspaceApiKeys(
+    """Returns the elements that come after the specified cursor."""
+    after: String
+
+    """Returns the elements that come before the specified cursor."""
+    before: String
+
+    """Filter apikeys using MongoDB query syntax."""
+    filter: ApiKeyFilter
+
+    """Returns up to the first `n` elements from the list."""
+    first: Int
+
+    """Returns up to the last `n` elements from the list."""
+    last: Int
+
+    """Ordering options for the returned apikeys."""
+    orderBy: ApiKeyOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
+    """
+    query: String
+  ): ApiKeyConnection!
   workspaceJob(id: ID!): Job
   workspaceJobs(
     """Returns the elements that come after the specified cursor."""
@@ -1008,8 +1086,8 @@ type SystemAccount {
     """Returns the elements that come before the specified cursor."""
     before: String
 
-    """Filter systemaccountapikeys using MongoDB query syntax."""
-    filter: SystemAccountApiKeyFilter
+    """Filter apikeys using MongoDB query syntax."""
+    filter: ApiKeyFilter
 
     """Returns up to the first `n` elements from the list."""
     first: Int
@@ -1017,16 +1095,16 @@ type SystemAccount {
     """Returns up to the last `n` elements from the list."""
     last: Int
 
-    """Ordering options for the returned systemaccountapikeys."""
-    orderBy: SystemAccountApiKeyOrder
+    """Ordering options for the returned apikeys."""
+    orderBy: ApiKeyOrder
 
     """
     Apply one or multiple filters to the query.
     Supported filter parameters:
-    `name`, `prefix`, `enabled`
+    `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
     """
     query: String
-  ): SystemAccountApiKeyConnection!
+  ): ApiKeyConnection!
   createdAt: DateTime!
   createdById: ID
   enabled: Boolean!
@@ -1034,70 +1112,6 @@ type SystemAccount {
   name: String!
   permissions: [SystemAccountPermission!]!
   updatedAt: DateTime!
-}
-
-type SystemAccountApiKey {
-  createdAt: DateTime!
-  createdById: ID
-  enabled: Boolean!
-  expiresAt: DateTime
-  id: ID!
-  lastUsedAt: DateTime
-  name: String!
-  permissions: [SystemAccountPermission!]!
-  prefix: String
-  start: String
-  systemAccountId: ID!
-  updatedAt: DateTime!
-}
-
-type SystemAccountApiKeyConnection {
-  """A list of edges."""
-  edges: [SystemAccountApiKeyEdge!]!
-
-  """Information to aid in pagination."""
-  pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
-}
-
-"""
-An auto-generated type which holds one SystemAccountApiKey and a cursor during pagination.
-"""
-type SystemAccountApiKeyEdge {
-  """A cursor for use in pagination."""
-  cursor: String!
-
-  """The item at the end of SystemAccountApiKeyEdge."""
-  node: SystemAccountApiKey!
-}
-
-"""
-A filter for SystemAccountApiKey that accepts MongoDB query syntax.
-Supported fields: name, prefix, last_used_at, enabled, created_at
-"""
-scalar SystemAccountApiKeyFilter
-
-"""Ordering options for systemaccountapikey connections"""
-input SystemAccountApiKeyOrder {
-  """The ordering direction."""
-  direction: OrderDirection!
-
-  """The field to order systemaccountapikeys by."""
-  field: SystemAccountApiKeyOrderField!
-}
-
-"""Properties by which systemaccountapikey connections can be ordered."""
-enum SystemAccountApiKeyOrderField {
-  CREATED_AT
-  ID
-  LAST_USED_AT
 }
 
 type SystemAccountConnection {
@@ -1116,9 +1130,6 @@ type SystemAccountConnection {
   totalCountRelation: TotalCountRelation!
 }
 
-"""
-An auto-generated type which holds one SystemAccount and a cursor during pagination.
-"""
 type SystemAccountEdge {
   """A cursor for use in pagination."""
   cursor: String!
@@ -1255,7 +1266,7 @@ type User {
     """
     query: String
   ): AccountConnection!
-  apiKey(id: ID!): UserApiKey
+  apiKey(id: ID!): ApiKey
   apiKeys(
     """Returns the elements that come after the specified cursor."""
     after: String
@@ -1263,8 +1274,8 @@ type User {
     """Returns the elements that come before the specified cursor."""
     before: String
 
-    """Filter userapikeys using MongoDB query syntax."""
-    filter: UserApiKeyFilter
+    """Filter apikeys using MongoDB query syntax."""
+    filter: ApiKeyFilter
 
     """Returns up to the first `n` elements from the list."""
     first: Int
@@ -1272,8 +1283,8 @@ type User {
     """Returns up to the last `n` elements from the list."""
     last: Int
 
-    """Ordering options for the returned userapikeys."""
-    orderBy: UserApiKeyOrder
+    """Ordering options for the returned apikeys."""
+    orderBy: ApiKeyOrder
 
     """
     Apply one or multiple filters to the query.
@@ -1281,7 +1292,7 @@ type User {
     `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
     """
     query: String
-  ): UserApiKeyConnection!
+  ): ApiKeyConnection!
   banExpiresAt: DateTime
   banReason: String
   banned: Boolean!
@@ -1366,69 +1377,6 @@ type User {
     """
     query: String
   ): WorkspaceConnection!
-}
-
-type UserApiKey {
-  createdAt: DateTime!
-  createdById: ID
-  enabled: Boolean!
-  expiresAt: DateTime
-  id: ID!
-  lastUsedAt: DateTime
-  name: String!
-  permissions: [UserApiKeyPermission!]!
-  prefix: String
-  start: String
-  updatedAt: DateTime!
-}
-
-type UserApiKeyConnection {
-  """A list of edges."""
-  edges: [UserApiKeyEdge!]!
-
-  """Information to aid in pagination."""
-  pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
-}
-
-"""
-An auto-generated type which holds one UserApiKey and a cursor during pagination.
-"""
-type UserApiKeyEdge {
-  """A cursor for use in pagination."""
-  cursor: String!
-
-  """The item at the end of UserApiKeyEdge."""
-  node: UserApiKey!
-}
-
-"""
-A filter for UserApiKey that accepts MongoDB query syntax.
-Supported fields: name, prefix, enabled, last_used_at, created_at
-"""
-scalar UserApiKeyFilter
-
-"""Ordering options for userapikey connections"""
-input UserApiKeyOrder {
-  """The ordering direction."""
-  direction: OrderDirection!
-
-  """The field to order userapikeys by."""
-  field: UserApiKeyOrderField!
-}
-
-"""Properties by which userapikey connections can be ordered."""
-enum UserApiKeyOrderField {
-  CREATED_AT
-  ID
-  LAST_USED_AT
 }
 
 enum UserApiKeyPermission {
@@ -1565,33 +1513,7 @@ type UserRoleOption {
 }
 
 type Workspace {
-  apiKey(id: ID!): MemberApiKey
-  apiKeys(
-    """Returns the elements that come after the specified cursor."""
-    after: String
-
-    """Returns the elements that come before the specified cursor."""
-    before: String
-
-    """Filter memberapikeys using MongoDB query syntax."""
-    filter: MemberApiKeyFilter
-
-    """Returns up to the first `n` elements from the list."""
-    first: Int
-
-    """Returns up to the last `n` elements from the list."""
-    last: Int
-
-    """Ordering options for the returned memberapikeys."""
-    orderBy: MemberApiKeyOrder
-
-    """
-    Apply one or multiple filters to the query.
-    Supported filter parameters:
-    `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
-    """
-    query: String
-  ): MemberApiKeyConnection!
+  apiKey(id: ID!): ApiKey
   createdAt: DateTime!
   id: ID!
   invitations(

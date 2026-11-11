@@ -11,6 +11,7 @@ import { RequestIdentity } from "../../src/infrastructure/request-identity.js";
 import { MemberApiKeyService } from "../../src/services/member-api-key.service.js";
 import { UserApiKeyService } from "../../src/services/user-api-key.service.js";
 import * as abilityHelpers from "../../src/utils/authorize.util.js";
+import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 /**
  * Returns workspace fixture with deterministic identifiers.
  * @returns Workspace fixture with deterministic identifiers.
@@ -139,8 +140,11 @@ export function createService(
       .spyOn(abilityHelpers, "authorize")
       .mockImplementation(vi.fn()),
   };
-  const userService = new UserApiKeyService(em, options);
-  const workspaceService = new MemberApiKeyService(em, options);
+  const userService = new UserApiKeyService(em, withAuthTestFeatures(options));
+  const workspaceService = new MemberApiKeyService(
+    em,
+    withAuthTestFeatures(options),
+  );
   return {
     authorization,
     em,

@@ -11,21 +11,16 @@ import {
 import { CurrentSession } from "../decorators/current-session.decorator.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
-import { AuthService } from "../services/auth.service.js";
 import { SessionService } from "../services/session.service.js";
 
-/** GraphQL transport for session inspection, revocation and impersonation. */
+/** Self-service session inspection and revocation. */
 @Resolver(() => Session)
 export class SessionResolver {
   /**
-   * Creates the session-management resolver.
-   * @param sessionService - Service for session queries and revocation.
-   * @param authService - Service for authentication operations.
+   * Creates this resolver.
+   * @param sessionService - Self-service session operations.
    */
-  constructor(
-    private readonly sessionService: SessionService,
-    private readonly authService: AuthService,
-  ) {}
+  constructor(private readonly sessionService: SessionService) {}
 
   /**
    * Returns the session represented by the current request.
@@ -51,26 +46,6 @@ export class SessionResolver {
     @CurrentSession() currentSession: Session | null,
   ): boolean {
     return session.id === currentSession?.id;
-  }
-
-  /**
-   * Administrator that started the parent impersonation session.
-   * @param session - Session whose metadata is being accessed.
-   * @returns Identifier of the impersonating administrator, or null.
-   */
-  @ResolveField(() => ID, { nullable: true })
-  impersonatedById(@Parent() session: Session): string | null {
-    return session.impersonatedBy ? String(session.impersonatedBy.id) : null;
-  }
-
-  /**
-   * Resolves the administrator after Service-level profile authorization.
-   * @param session - Session whose metadata is being accessed.
-   * @returns Administrator who started impersonation, or null.
-   */
-  @ResolveField(() => User, { nullable: true })
-  async impersonatedBy(@Parent() session: Session): Promise<User | null> {
-    return await this.sessionService.getSessionImpersonator(session);
   }
 
   /**
@@ -104,50 +79,22 @@ export class SessionResolver {
   }
 
   /**
-   * Revokes one user session by its public ID.
-   * @param userId - Identifier of the user that owns the resource.
-   * @param id - Identifier of the record to access.
-   * @returns Whether the selected session was revoked.
+   * Administrator that started the parent impersonation session.
+   * @param session - Session whose metadata is being accessed.
+   * @returns Identifier of the impersonating administrator, or null.
    */
-  @Mutation(() => Boolean)
-  async revokeSession(
-    @Args("userId", { type: () => ID }) userId: string,
-    @Args("id", { type: () => ID }) id: string,
-  ): Promise<boolean> {
-    return await this.sessionService.revokeSession(userId, id);
+  @ResolveField(() => ID, { nullable: true })
+  impersonatedById(@Parent() session: Session): string | null {
+    return session.impersonatedBy ? String(session.impersonatedBy.id) : null;
   }
 
   /**
-   * Revokes all sessions belonging to a user.
-   * @param userId - Identifier of the user that owns the resource.
-   * @returns True after the requested sessions are revoked.
+   * Resolves the administrator after Service-level profile authorization.
+   * @param session - Session whose metadata is being accessed.
+   * @returns Administrator who started impersonation, or null.
    */
-  @Mutation(() => Boolean)
-  async revokeUserSessions(
-    @Args("userId", { type: () => ID }) userId: string,
-  ): Promise<boolean> {
-    await this.sessionService.revokeUserSessions(userId);
-    return true;
-  }
-
-  /**
-   * Starts a browser session that acts as another user.
-   * @param id - Identifier of the record to access.
-   * @returns User represented by the new impersonation session.
-   */
-  @Mutation(() => User)
-  async impersonateUser(
-    @Args("id", { type: () => ID }) id: string,
-  ): Promise<User> {
-    return await this.authService.impersonateUser(id);
-  }
-
-  /**
-   * Restores the administrator session that started impersonation.
-   * @returns Restored administrator, or null when there was no impersonation session.
-   */
-  @Mutation(() => User, { nullable: true })
-  async stopImpersonating(): Promise<User | null> {
-    return await this.authService.stopImpersonating();
+  @ResolveField(() => User, { nullable: true })
+  async impersonatedBy(@Parent() session: Session): Promise<User | null> {
+    return await this.sessionService.getSessionImpersonator(session);
   }
 }

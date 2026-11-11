@@ -9,6 +9,7 @@ import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { ApiKeysPage } from "@/components/api-keys-page";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
+import { createAbilitySubject } from "@/lib/ability";
 import { getMemberApiKeysResourceKey } from "@/lib/resource-keys";
 
 const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
@@ -17,40 +18,46 @@ const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
     $before: String
     $first: Int
     $last: Int
-    $filter: MemberApiKeyFilter
-    $orderBy: MemberApiKeyOrder
+    $filter: ApiKeyFilter
+    $orderBy: ApiKeyOrder
     $query: String
   ) {
-    currentWorkspace {
-      apiKeys(
-        after: $after
-        before: $before
-        first: $first
-        last: $last
-        orderBy: $orderBy
-        filter: $filter
-        query: $query
-      ) {
-        edges {
-          node {
-            workspaceId
-            id
-            name
-            start
-            prefix
-            enabled
-            permissions
-            createdAt
-            lastUsedAt
-            expiresAt
+    workspaceApiKeys(
+      after: $after
+      before: $before
+      first: $first
+      last: $last
+      orderBy: $orderBy
+      filter: $filter
+      query: $query
+    ) {
+      edges {
+        node {
+          id
+          owner {
+            __typename
+            ... on Member {
+              id
+              name
+              type
+              workspaceId
+            }
           }
+          name
+          start
+          prefix
+          enabled
+          permissions
+          createdAt
+          lastUsedAt
+          expiresAt
         }
-        pageInfo {
-          endCursor
-          hasNextPage
-          hasPreviousPage
-          startCursor
-        }
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+        hasPreviousPage
+        startCursor
       }
     }
   }
@@ -80,13 +87,27 @@ function ApiKeysComponent() {
     search,
   });
   const { data } = useQuery(GET_API_KEYS_FROM_API_KEYS_ROUTE, {
-    fetchPolicy: "network-only",
+    fetchPolicy: "no-cache",
+    context: {
+      headers: { "x-workspace-id": workspaceId },
+      queryDeduplication: false,
+    },
     variables: search,
   });
-  const connection = data?.currentWorkspace?.apiKeys;
+  const connection = data?.workspaceApiKeys;
 
   return (
     <ApiKeysPage
+      showOwner
+      ownerPath={(owner) =>
+        owner.__typename === "Member" &&
+        ability.can(
+          "read",
+          createAbilitySubject("Member", { ...owner, workspaceId }),
+        )
+          ? `/workspaces/${workspaceId}/members/${owner.id}`
+          : undefined
+      }
       subject="MemberApiKey"
       ability={ability}
       title={t("api-key:title")}
@@ -94,7 +115,14 @@ function ApiKeysComponent() {
       createPath={`/workspaces/${workspaceId}/api-keys/create`}
       detailPath={(id) => `/workspaces/${workspaceId}/api-keys/${id}`}
       search={search}
-      apiKeys={connection?.edges.map((edge) => edge.node) ?? []}
+      apiKeys={
+        connection?.edges.map((edge) => ({
+          ...edge.node,
+          workspaceId,
+          owner:
+            edge.node.owner?.__typename === "Member" ? edge.node.owner : null,
+        })) ?? []
+      }
       pageInfo={connection?.pageInfo}
     />
   );

@@ -8,17 +8,13 @@ import {
   ResolveField,
   Resolver,
 } from "@nest-boot/graphql";
-import type { ConnectionArgsInterface } from "@nest-boot/graphql-connection";
-import type { GraphQLResolveInfo } from "graphql";
+import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
+import { type GraphQLResolveInfo } from "graphql";
 
 import {
   MemberConnection,
   MemberConnectionArgs,
 } from "../connections/member.connection-definition.js";
-import {
-  MemberApiKeyConnection,
-  MemberApiKeyConnectionArgs,
-} from "../connections/member-api-key.connection-definition.js";
 import {
   WorkspaceConnection,
   WorkspaceConnectionArgs,
@@ -27,7 +23,6 @@ import { CurrentMember } from "../decorators/current-member.decorator.js";
 import { CurrentUser } from "../decorators/current-user.decorator.js";
 import { type Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
-import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import {
@@ -42,25 +37,19 @@ import { DeleteWorkspacePayload } from "../objects/delete-workspace-payload.obje
 import { LeaveWorkspacePayload } from "../objects/leave-workspace-payload.object.js";
 import { UpdateWorkspacePayload } from "../objects/update-workspace-payload.object.js";
 import { MemberService } from "../services/member.service.js";
-import { MemberApiKeyService } from "../services/member-api-key.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
-import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
-/**
- * GraphQL operations for querying, creating, updating, and deleting workspaces.
- */
+/** Workspace and membership API. */
 @Resolver(() => Workspace)
 export class WorkspaceResolver {
   /**
-   * Creates the workspace resolver.
-   * @param workspaceService - Workspace domain service.
-   * @param apiKeyService - API key domain service.
-   * @param memberService - Workspace member domain service.
-   * @param invitationService - Workspace invitation domain service.
+   * Creates this resolver.
+   * @param workspaceService - Workspace lifecycle.
+   * @param memberService - Workspace memberships.
+   * @param invitationService - Workspace invitations.
    */
   constructor(
     readonly workspaceService: WorkspaceService,
-    readonly apiKeyService: MemberApiKeyService,
     readonly memberService: MemberService,
     readonly invitationService: InvitationService,
   ) {}
@@ -80,41 +69,6 @@ export class WorkspaceResolver {
     @Info() info?: GraphQLResolveInfo,
   ) {
     return await this.memberService.getMemberConnectionByWorkspace(
-      workspace,
-      args,
-      info,
-    );
-  }
-
-  /**
-   * Returns an accessible API key owned by the parent workspace.
-   * @param workspace - The workspace that scopes this operation.
-   * @param id - Identifier of the record to access.
-   * @returns Accessible API key metadata, or null if unavailable.
-   */
-  @ResolveField(() => MemberApiKey, { nullable: true })
-  async apiKey(
-    @Parent() workspace: Workspace,
-    @Args("id", { type: () => ID }) id: string,
-  ): Promise<ApiKeyMetadata<MemberApiKey> | null> {
-    return await this.apiKeyService.getMemberApiKey(id, workspace);
-  }
-
-  /**
-   * Paginates API keys owned by the parent workspace.
-   * @param workspace - The workspace that scopes this operation.
-   * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
-   * @returns Paginated API key metadata with credential hashes omitted.
-   */
-  @ResolveField(() => MemberApiKeyConnection)
-  async apiKeys(
-    @Parent() workspace: Workspace,
-    @Args({ type: () => MemberApiKeyConnectionArgs })
-    args: ConnectionArgsInterface<MemberApiKey>,
-    @Info() info?: GraphQLResolveInfo,
-  ) {
-    return await this.apiKeyService.getMemberApiKeyConnection(
       workspace,
       args,
       info,

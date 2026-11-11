@@ -13,6 +13,7 @@ import { Test } from "@nestjs/testing";
 import { AuthGuard } from "../src/auth.guard.js";
 import { AuthModule } from "../src/auth.module.js";
 import { ApiKeyEntity, User, Workspace } from "../src/entities/index.js";
+import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 
 @Global()
 @Module({
@@ -89,17 +90,19 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
           entities: [],
         }),
         GraphQLModule.forRoot({ driver: ApolloDriver, autoSchemaFile: true }),
-        AuthModule.forRoot({
-          secret:
-            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_",
-          baseURL: "http://localhost:3000",
-          workspace: { enabled: true },
-          user: {
-            adminRoles: ["admin", "key-reader"],
-            roles: { "key-reader": ["system-account-api-key:read"] },
-          },
-          emailAndPassword: { requireEmailVerification: false },
-        }),
+        AuthModule.forRoot(
+          withAuthTestFeatures({
+            secret:
+              "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_",
+            baseURL: "http://localhost:3000",
+            workspace: { enabled: true },
+            user: {
+              adminRoles: ["admin", "key-reader"],
+              roles: { "key-reader": ["system-account-api-key:read"] },
+            },
+            emailAndPassword: { requireEmailVerification: false },
+          }),
+        ),
       ],
     }).compile();
     app = module.createNestApplication();
@@ -217,21 +220,66 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
       await em.persist(unrelated).flush();
       try {
         const query =
-          '{ systemAccountApiKeys(first: 1, filter: { name: "Global list" }) { totalCount edges { node { id systemAccountId } } pageInfo { hasNextPage endCursor } } systemAccountApiKeyPermissions { permission grantable default } }';
+          '{ systemApiKeys(first: 1, filter: { name: "Global list" }) { totalCount edges { node { id owner { __typename ... on SystemAccount { id name } } } } pageInfo { hasNextPage endCursor } } systemAccountApiKeyPermissions { permission grantable default } }';
         const result = data(await graphql(query));
-        expect(result.systemAccountApiKeys.totalCount).toBe(2);
-        expect(result.systemAccountApiKeys.pageInfo.hasNextPage).toBe(true);
-        const after = result.systemAccountApiKeys.pageInfo.endCursor;
+        expect(result.systemApiKeys.totalCount).toBe(2);
+        expect(result.systemApiKeys.edges[0].node.owner.__typename).toBe(
+          "SystemAccount",
+        );
+        expect([first, second]).toContain(
+          result.systemApiKeys.edges[0].node.owner.id,
+        );
+        const userOwner = data(
+          await graphql(
+            "query($id: ID!) { currentUser { apiKey(id: $id) { owner { __typename ... on User { id } } } } }",
+            { id: unrelated.id },
+          ),
+        );
+        expect(userOwner.currentUser.apiKey.owner).toEqual({
+          __typename: "User",
+          id: admin.id,
+        });
+        const choicesQuery =
+          "query($id: ID!) { systemAccountApiKeyPermissions(apiKeyId: $id) { permission grantable default } }";
+        const choices = data(
+          await graphql(choicesQuery, { id: ids[0] }),
+        ).systemAccountApiKeyPermissions;
+        expect(
+          choices.find(
+            (option: { permission: string }) =>
+              option.permission === "USER__READ",
+          ).grantable,
+        ).toBe(true);
+        expect(
+          choices.find(
+            (option: { permission: string }) =>
+              option.permission === "WORKSPACE__READ_ANY",
+          ).grantable,
+        ).toBe(false);
+        expect(
+          (await graphql(choicesQuery, { id: unrelated.id })).errors?.[0]
+            ?.message,
+        ).toMatch(/not found/i);
+        expect(
+          (
+            await graphql(
+              "query($owner: ID!, $key: ID!) { systemAccountApiKeyPermissions(systemAccountId: $owner, apiKeyId: $key) { permission } }",
+              { owner: first, key: ids[0] },
+            )
+          ).errors?.[0]?.message,
+        ).toMatch(/not both/i);
+        expect(result.systemApiKeys.pageInfo.hasNextPage).toBe(true);
+        const after = result.systemApiKeys.pageInfo.endCursor;
         const next = data(
           await graphql(
-            'query($after: String) { systemAccountApiKeys(first: 1, after: $after, filter: { name: "Global list" }) { edges { node { id systemAccountId } } } }',
+            'query($after: String) { systemApiKeys(first: 1, after: $after, filter: { name: "Global list" }) { edges { node { id } } } }',
             { after },
           ),
         );
         expect(
           [
-            result.systemAccountApiKeys.edges[0].node.id,
-            next.systemAccountApiKeys.edges[0].node.id,
+            result.systemApiKeys.edges[0].node.id,
+            next.systemApiKeys.edges[0].node.id,
           ].sort(),
         ).toEqual(ids.sort());
         expect(
@@ -250,7 +298,15 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
         await em.nativeUpdate(User, ordinary.id, { roles: ["key-reader"] });
         try {
           const readOnly = data(await graphql(query, {}, ordinaryCookies));
-          expect(readOnly.systemAccountApiKeys.totalCount).toBe(2);
+          expect(readOnly.systemApiKeys.totalCount).toBe(2);
+          expect(readOnly.systemApiKeys.edges[0].node.owner).toBeNull();
+          expect(
+            data(
+              await graphql(choicesQuery, { id: ids[0] }, ordinaryCookies),
+            ).systemAccountApiKeyPermissions.every(
+              (option: { grantable: boolean }) => !option.grantable,
+            ),
+          ).toBe(true);
           expect(
             readOnly.systemAccountApiKeyPermissions.every(
               (option: { grantable: boolean }) => !option.grantable,
@@ -295,22 +351,19 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
       permissions: ["USER__READ", "WORKSPACE__READ_ANY"],
     });
     const key = await graphql(
-      'mutation($id: ID!) { createSystemAccountApiKey(systemAccountId: $id, input: {name: "Deployment", permissions: [USER__READ, WORKSPACE__READ_ANY]}) { apiKey entity { id name systemAccountId createdById } } }',
+      'mutation($id: ID!) { createSystemAccountApiKey(systemAccountId: $id, input: {name: "Deployment", permissions: [USER__READ, WORKSPACE__READ_ANY]}) { apiKey entity { id name createdById } } }',
       { id: accountId },
     );
     expect(key.errors).toBeUndefined();
     const keyId: string = data(key).createSystemAccountApiKey.entity.id;
     const plaintext: string = data(key).createSystemAccountApiKey.apiKey;
     expect(plaintext).toMatch(/^sys_[A-Za-z0-9_-]{64}$/u);
-    expect(data(key).createSystemAccountApiKey.entity.systemAccountId).toBe(
-      accountId,
-    );
     const stored = await orm.em.fork().findOneOrFail(ApiKeyEntity, keyId);
     expect(stored.key).not.toBe(plaintext);
     expect(stored.key).toMatch(/^[A-Za-z0-9_-]{43}$/u);
 
     const result = await graphql(
-      "query($id: ID!, $key: ID!) { systemAccounts(first: 10) { totalCount edges { node { id } } } systemAccount(id: $id) { id apiKeyPermissions { permission grantable default } apiKeys(first: 10) { totalCount edges { node { id name systemAccountId createdById } } } } systemAccountApiKey(id: $key) { id name } }",
+      "query($id: ID!, $key: ID!) { systemAccounts(first: 10) { totalCount edges { node { id } } } systemAccount(id: $id) { id apiKeyPermissions { permission grantable default } apiKeys(first: 10) { totalCount edges { node { id name createdById } } } } systemAccountApiKey(id: $key) { id name } }",
       { id: accountId, key: keyId },
     );
     expect(result.errors).toBeUndefined();
@@ -330,9 +383,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     expect(JSON.stringify(result)).not.toContain(plaintext);
     expect(
       data(
-        await graphql(
-          '{ __type(name: "SystemAccountApiKey") { fields { name } } }',
-        ),
+        await graphql('{ __type(name: "ApiKey") { fields { name } } }'),
       ).__type.fields.map((field: { name: string }) => field.name),
     ).not.toContain("key");
 

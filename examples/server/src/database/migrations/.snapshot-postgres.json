@@ -591,8 +591,8 @@
       "checks": [
         {
           "name": "api_key_owner_type_check",
-          "expression": "\"owner_type\" in ('user', 'member', 'system_account')",
-          "definition": "check (\"owner_type\" in ('user', 'member', 'system_account'))"
+          "expression": "\"owner_type\" in ('user', 'system_account', 'member')",
+          "definition": "check (\"owner_type\" in ('user', 'system_account', 'member'))"
         }
       ],
       "triggers": [

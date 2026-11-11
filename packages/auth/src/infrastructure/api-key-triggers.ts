@@ -67,15 +67,25 @@ export function apiKeyCleanupTrigger(
  * Rejects dangling owners and serializes insertion with concurrent owner deletion.
  * @param workspace - Whether member owners are registered.
  * @param schema - PostgreSQL schema containing the authentication tables.
+ * @param owners - Active credential owner kinds.
  * @returns Owner integrity trigger.
  */
 export function apiKeyOwnerTrigger(
   workspace: boolean,
   schema: string,
+  owners?: readonly ("user" | "member" | "system_account")[],
 ): TriggerDef {
-  const member = workspace
-    ? `elsif NEW."owner_type" = 'member' then perform 1 from ${quote(schema)}."member" where "id" = NEW."owner_id" for key share;`
-    : "";
+  const kinds = owners ?? [
+    "user",
+    "system_account",
+    ...(workspace ? ["member"] : []),
+  ];
+  const branches = kinds
+    .map(
+      (kind, index) =>
+        `${index === 0 ? "if" : "elsif"} NEW."owner_type" = '${kind}' then perform 1 from ${quote(schema)}.${quote(kind)} where "id" = NEW."owner_id" for key share;`,
+    )
+    .join("\n    ");
   return trigger(
     "api_key",
     "api_key_owner_exists",
@@ -84,9 +94,7 @@ export function apiKeyOwnerTrigger(
     if TG_OP = 'UPDATE' then
       if NEW."owner_type" is not distinct from OLD."owner_type" and NEW."owner_id" is not distinct from OLD."owner_id" then return NEW; end if;
     end if;
-    if NEW."owner_type" = 'user' then perform 1 from ${quote(schema)}."user" where "id" = NEW."owner_id" for key share;
-    elsif NEW."owner_type" = 'system_account' then perform 1 from ${quote(schema)}."system_account" where "id" = NEW."owner_id" for key share;
-    ${member}
+    ${branches}
     else raise exception 'Invalid API-key owner type' using errcode = '23514'; end if;
     if not found then raise exception 'API-key owner does not exist' using errcode = '23503'; end if;
     return NEW;`,

@@ -12,6 +12,7 @@ import {
   createTestWorkspace,
 } from "../../test/fixtures/api-key-service.fixture.js";
 import { withIdentity } from "../../test/fixtures/conditional-authorization.fixture.js";
+import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { AuthAbility } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
@@ -90,7 +91,7 @@ describe("API-key management", () => {
           vi.mocked(authorization.authorize).mockRestore();
           const user = Object.assign(createTestUser(), { roles: ["admin"] });
           RequestIdentity.stage({ user });
-          RequestIdentity.prepare(options);
+          RequestIdentity.prepare(withAuthTestFeatures(options));
           const key = Object.assign(
             scope === "user" ? new UserApiKey() : new MemberApiKey(),
             {
@@ -132,7 +133,7 @@ describe("API-key management", () => {
           vi.mocked(authorization.authorize).mockRestore();
           const user = Object.assign(createTestUser(), { roles: ["admin"] });
           RequestIdentity.stage({ user });
-          RequestIdentity.prepare(options);
+          RequestIdentity.prepare(withAuthTestFeatures(options));
           const key = Object.assign(
             scope === "user" ? new UserApiKey() : new MemberApiKey(),
             { enabled: true, member: ref(Member, createTestMember()) },
@@ -185,7 +186,7 @@ describe("API-key management", () => {
                     workspace: { enabled: true },
                     apiKey: {
                       user: { allowedPermissions: ["user-api-key:write"] },
-                      member: {
+                      workspace: {
                         allowedPermissions: ["member-api-key:write"],
                       },
                     },
@@ -202,7 +203,7 @@ describe("API-key management", () => {
               permissions: ["member-api-key:write"],
             });
             RequestIdentity.stage({ user, member });
-            RequestIdentity.prepare(options);
+            RequestIdentity.prepare(withAuthTestFeatures(options));
             const permissions = [
               scope === "user" ? "user:read" : "workspace:delete",
             ];

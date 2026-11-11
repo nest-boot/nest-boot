@@ -31,10 +31,10 @@ const GET_OVERVIEW = graphql(`
         totalCount
         totalCountRelation
       }
-      apiKeys(first: 1) @include(if: $includeApiKeys) {
-        totalCount
-        totalCountRelation
-      }
+    }
+    workspaceApiKeys(first: 1) @include(if: $includeApiKeys) {
+      totalCount
+      totalCountRelation
     }
   }
 `);
@@ -57,7 +57,7 @@ function Overview() {
       includeApiKeys: canReadApiKeys,
     },
     context: { headers: { "x-workspace-id": workspace.id } },
-    fetchPolicy: "network-only",
+    fetchPolicy: "no-cache",
   });
   const summary =
     !error && data?.workspace?.id === workspace.id ? data.workspace : undefined;
@@ -125,7 +125,7 @@ function Overview() {
                 }
               >
                 <OverviewCount
-                  connection={summary?.apiKeys}
+                  connection={summary ? data?.workspaceApiKeys : undefined}
                   loading={loading}
                 />
               </OverviewCard>

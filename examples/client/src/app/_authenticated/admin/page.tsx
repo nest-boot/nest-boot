@@ -36,7 +36,7 @@ const SYSTEM_OVERVIEW = graphql(`
 `);
 const KEY_OVERVIEW = graphql(`
   query getAdminSystemKeyOverview {
-    systemAccountApiKeys(first: 1) {
+    systemApiKeys(first: 1) {
       totalCount
       totalCountRelation
     }
@@ -111,7 +111,7 @@ function Overview() {
               }
             >
               <OverviewCount
-                connection={keyOverview.data?.systemAccountApiKeys}
+                connection={keyOverview.data?.systemApiKeys}
                 loading={keyOverview.loading}
               />
               {keyOverview.error && (

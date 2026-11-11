@@ -31,6 +31,7 @@ import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
 } from "../utils/api-key-permissions.util.js";
+import { assertApiKeyFeature } from "../utils/assert-api-key-feature.util.js";
 import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
 import { authorize } from "../utils/authorize.util.js";
 import { omitCredentials } from "../utils/omit-credentials.util.js";
@@ -66,6 +67,7 @@ export class UserApiKeyService {
    * @returns User API key permission choices with defaults and grant availability.
    */
   getUserApiKeyPermissions(user: User): UserApiKeyPermissionOption[] {
+    assertApiKeyFeature(this.authOptions, "userApiKey");
     RequestIdentity.assertCurrentUser(user);
     const { permissions, allowed, defaults } = resolveApiKeyPermissionCatalog(
       this.authOptions,
@@ -97,6 +99,7 @@ export class UserApiKeyService {
     id: string,
     user: User,
   ): Promise<ApiKeyMetadata<UserApiKey> | null> {
+    assertApiKeyFeature(this.authOptions, "userApiKey");
     RequestIdentity.assertCurrentUser(user);
     authorize("read", UserApiKey);
     const apiKey = await this.getVisibleApiKey(id, user);
@@ -118,6 +121,7 @@ export class UserApiKeyService {
     args: ConnectionArgsInterface<UserApiKey>,
     info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<ApiKeyMetadata<UserApiKey>>> {
+    assertApiKeyFeature(this.authOptions, "userApiKey");
     RequestIdentity.assertCurrentUser(user);
     authorize("read", UserApiKey);
     const where = this.getOwnedListFilter(user);
@@ -151,6 +155,7 @@ export class UserApiKeyService {
     user: User,
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<UserApiKey>> {
+    assertApiKeyFeature(this.authOptions, "userApiKey");
     RequestIdentity.assertCurrentUser(user);
     authorize("write", UserApiKey);
     const permissions = normalizeApiKeyPermissions(
@@ -172,6 +177,7 @@ export class UserApiKeyService {
     id: string,
     input: UpdateApiKeyOptions,
   ): Promise<ApiKeyMetadata<UserApiKey>> {
+    assertApiKeyFeature(this.authOptions, "userApiKey");
     authorize("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
     authorize("write", apiKey);
@@ -213,6 +219,7 @@ export class UserApiKeyService {
    * @returns Deleted API key metadata without the stored credential hash.
    */
   async deleteUserApiKey(id: string): Promise<ApiKeyMetadata<UserApiKey>> {
+    assertApiKeyFeature(this.authOptions, "userApiKey");
     authorize("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
     authorize("write", apiKey);

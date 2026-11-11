@@ -11,13 +11,16 @@ import {
   User,
   Workspace,
 } from "../dist/index.js";
+import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 
 describe("built-in auth entity discovery", () => {
   it("discovers concrete relations without AuthModule initialization or application entity declarations", async () => {
     const orm = new MikroORM({
       dbName: "auth_entity_relations",
       driver: PgliteDriver,
-      entities: getAuthEntities({ workspace: { enabled: true } }),
+      entities: getAuthEntities(
+        withAuthTestFeatures({ workspace: { enabled: true } }),
+      ),
     });
     try {
       for (const [entity, property, target] of [

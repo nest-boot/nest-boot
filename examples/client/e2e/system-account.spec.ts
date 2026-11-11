@@ -46,18 +46,26 @@ test("manages system identities and credentials under admin, with one-time secre
   const secret = await secretField.inputValue();
   expect(attempts).toBe(2);
   expect(accountsCreated).toBe(1);
+  await expect(page.getByLabel("Owned by", { exact: true })).toHaveValue(name);
   const keyId = new URL(page.url()).pathname.split("/").filter(Boolean).at(-1);
-  const { systemAccountApiKey: metadata } = await graphqlRequest<{
-    systemAccountApiKey: { systemAccountId: string };
+  const { systemAccounts } = await graphqlRequest<{
+    systemAccounts: {
+      edges: Array<{
+        node: {
+          id: string;
+          apiKeys: { edges: Array<{ node: { id: string } }> };
+        };
+      }>;
+    };
   }>(
     page.request,
-    "query($id: ID!) { systemAccountApiKey(id: $id) { systemAccountId } }",
-    { id: keyId },
+    "query($filter: SystemAccountFilter) { systemAccounts(first: 10, filter: $filter) { edges { node { id apiKeys(first: 10) { edges { node { id } } } } } } }",
+    { filter: { name } },
   );
-  const accountId = metadata.systemAccountId;
-  await expect(page.getByLabel("System account", { exact: true })).toHaveValue(
-    name,
-  );
+  const accountId = systemAccounts.edges[0].node.id;
+  expect(
+    systemAccounts.edges[0].node.apiKeys.edges.map(({ node }) => node.id),
+  ).toContain(keyId);
   await expect(
     getPermissionCheckbox(page, "WORKSPACE__READ_ANY"),
   ).toBeDisabled();
@@ -321,9 +329,9 @@ test("selects an existing system account and refreshes its key permission ceilin
     await expect(page.getByLabel("Key", { exact: true })).toHaveValue(
       /^sys_[A-Za-z0-9_-]{64}$/,
     );
-    await expect(
-      page.getByLabel("System account", { exact: true }),
-    ).toHaveValue(name);
+    await expect(page.getByLabel("Owned by", { exact: true })).toHaveValue(
+      name,
+    );
     expect(createdAccounts).toBe(0);
     await page
       .getByRole("link", { name: "API Keys", exact: true })

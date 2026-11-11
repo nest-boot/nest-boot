@@ -8,6 +8,7 @@ import type { ApiKeyValidation } from "../types/api-key-validation.type.js";
 import { hashApiKey } from "../utils/api-key-credential.util.js";
 import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
 import { omitCredentials } from "../utils/omit-credentials.util.js";
+import { resolveAuthFeatures } from "../utils/resolve-auth-features.util.js";
 
 /**
  * Authenticates all three credential kinds; management stays in their domain services.
@@ -30,22 +31,21 @@ export class ApiKeyAuthenticationService {
     if (!plaintext) {
       throw new UnauthorizedException("Missing API key");
     }
+    const features = resolveAuthFeatures(this.options);
+    if (!features.apiKey) {
+      throw new UnauthorizedException("API keys are disabled");
+    }
+    const owners: ("user" | "member" | "system_account")[] = [
+      ...(features.userApiKey ? ["user" as const] : []),
+      ...(features.workspaceApiKey ? ["member" as const] : []),
+      ...(features.systemAccountApiKey ? ["system_account" as const] : []),
+    ];
     const key = hashApiKey(plaintext);
     const apiKey = await this.em.findOne(ApiKeyEntity, {
       key,
-      ...(this.options.workspace?.enabled === true
-        ? {}
-        : { ownerType: { $in: ["user", "system_account"] } }),
+      ownerType: { $in: owners },
     });
-    if (
-      !apiKey ||
-      (apiKey.ownerType !== "user" &&
-        apiKey.ownerType !== "system_account" &&
-        !(
-          apiKey.ownerType === "member" &&
-          this.options.workspace?.enabled === true
-        ))
-    ) {
+    if (!apiKey || !owners.includes(apiKey.ownerType)) {
       throw new UnauthorizedException("Invalid API key");
     }
     if (!apiKey.enabled) {

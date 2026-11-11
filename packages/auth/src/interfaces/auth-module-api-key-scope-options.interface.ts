@@ -2,6 +2,8 @@
 export interface AuthModuleApiKeyScopeOptions<
   Permission extends string = string,
 > {
+  /** Enables this owner scope when its prerequisites are enabled. User and workspace scopes are opt-in. */
+  enabled?: boolean;
   /** Literal prefix, including separators. Falls back to API_KEY_PREFIX, then user_ for user keys, ws_ for member keys, or sys_ for system-account keys. */
   defaultPrefix?: string;
   /** Permissions used only when creation omits permissions. Defaults to an empty list. */

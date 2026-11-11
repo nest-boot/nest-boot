@@ -1,17 +1,33 @@
-import { Args, ID, Mutation, Query, Resolver } from "@nest-boot/graphql";
+import {
+  Args,
+  ID,
+  Info,
+  Mutation,
+  Parent,
+  Query,
+  ResolveField,
+  Resolver,
+} from "@nest-boot/graphql";
+import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
+import { type GraphQLResolveInfo } from "graphql";
 
+import {
+  UserApiKeyConnection,
+  UserApiKeyConnectionArgs,
+} from "../connections/user-api-key.connection-definition.js";
 import { CurrentUser } from "../decorators/current-user.decorator.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { CreateUserApiKeyInput } from "../inputs/create-user-api-key.input.js";
 import { UpdateUserApiKeyInput } from "../inputs/update-user-api-key.input.js";
+import { ApiKey } from "../objects/api-key.object.js";
 import { CreateUserApiKeyResult } from "../objects/create-user-api-key-result.object.js";
 import { UserApiKeyPermissionOption } from "../objects/user-api-key-permission-option.object.js";
 import { UserApiKeyService } from "../services/user-api-key.service.js";
-import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
+import { type ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
-/** GraphQL mutations for user-owned API keys. */
-@Resolver(() => UserApiKey)
+/** Optional personal credential API. */
+@Resolver(() => User)
 export class UserApiKeyResolver {
   /**
    * Creates the user API-key resolver.
@@ -54,7 +70,7 @@ export class UserApiKeyResolver {
    * @param input - Requested field values for the operation.
    * @returns Updated API key metadata without the stored credential hash.
    */
-  @Mutation(() => UserApiKey)
+  @Mutation(() => ApiKey)
   async updateUserApiKey(
     @Args("id", { type: () => ID }) id: string,
     @Args("input") input: UpdateUserApiKeyInput,
@@ -67,10 +83,41 @@ export class UserApiKeyResolver {
    * @param id - Identifier of the record to access.
    * @returns Deleted API key metadata without the stored credential hash.
    */
-  @Mutation(() => UserApiKey)
+  @Mutation(() => ApiKey)
   async deleteUserApiKey(
     @Args("id", { type: () => ID }) id: string,
   ): Promise<ApiKeyMetadata<UserApiKey>> {
     return await this.apiKeyService.deleteUserApiKey(id);
+  }
+
+  /**
+   * Returns an accessible API key owned by the parent user.
+   * @param user - The user whose account is being accessed.
+   * @param id - Identifier of the record to access.
+   * @returns Accessible API key metadata, or null if unavailable.
+   */
+  @ResolveField(() => ApiKey, { nullable: true })
+  async apiKey(
+    @Parent() user: User,
+    @Args("id", { type: () => ID }) id: string,
+  ): Promise<ApiKeyMetadata<UserApiKey> | null> {
+    return await this.apiKeyService.getUserApiKey(id, user);
+  }
+
+  /**
+   * Paginates API keys owned by the parent user.
+   * @param user - The user whose account is being accessed.
+   * @param args - Pagination, filtering, and ordering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Paginated API key metadata with credential hashes omitted.
+   */
+  @ResolveField(() => UserApiKeyConnection)
+  async apiKeys(
+    @Parent() user: User,
+    @Args({ type: () => UserApiKeyConnectionArgs })
+    args: ConnectionArgsInterface<UserApiKey>,
+    @Info() info?: GraphQLResolveInfo,
+  ) {
+    return await this.apiKeyService.getUserApiKeyConnection(user, args, info);
   }
 }

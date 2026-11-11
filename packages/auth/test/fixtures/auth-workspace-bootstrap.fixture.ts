@@ -10,7 +10,11 @@ import { Global, Module } from "@nestjs/common";
 import { GraphQLModule, GraphQLSchemaHost } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
 import type { betterAuth } from "better-auth";
-import type { GraphQLEnumType, GraphQLObjectType } from "graphql";
+import type {
+  GraphQLEnumType,
+  GraphQLObjectType,
+  GraphQLUnionType,
+} from "graphql";
 
 import { AUTH_TOKEN } from "../../src/auth.constants.js";
 import { AuthModule } from "../../src/auth.module.js";
@@ -23,6 +27,7 @@ import { ApiKeyAuthenticationService } from "../../src/infrastructure/api-key-au
 import { MemberService } from "../../src/services/member.service.js";
 import { MemberApiKeyService } from "../../src/services/member-api-key.service.js";
 import { WorkspaceService } from "../../src/services/workspace.service.js";
+import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 
 /**
  * Boots one isolated Auth application and verifies persistence, login, API keys and schema exposure.
@@ -35,13 +40,13 @@ export async function verifyAuthBootstrap(
   asyncOptions: boolean,
   schemaName = "public",
 ) {
-  const options: AuthModuleOptions = {
+  const options: AuthModuleOptions = withAuthTestFeatures({
     secret: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_",
     baseURL: "http://localhost:3000",
     workspace,
     emailAndPassword: { requireEmailVerification: false },
     middleware: { register: false },
-  };
+  });
   @Global()
   @Module({
     providers: [
@@ -91,7 +96,7 @@ export async function verifyAuthBootstrap(
             inject: [optionsToken],
             useFactory: factory,
           })
-        : AuthModule.forRoot(options),
+        : AuthModule.forRoot(withAuthTestFeatures(options)),
     ],
   }).compile();
   const orm = moduleRef.get<PgliteORM>(MikroORM);
@@ -166,12 +171,21 @@ export async function verifyAuthBootstrap(
       "Invalid API key",
     );
     expect(schema.getQueryType()?.getFields().currentUser).toBeDefined();
+    expect(
+      (schema.getType("ApiKeyOwner") as GraphQLUnionType)
+        .getTypes()
+        .map((type) => type.name)
+        .sort(),
+    ).toEqual(
+      enabled ? ["Member", "SystemAccount", "User"] : ["SystemAccount", "User"],
+    );
     expect(schema.getMutationType()?.getFields().signIn).toBeDefined();
     expect(
       schema.getMutationType()?.getFields().createUserApiKey,
     ).toBeDefined();
     for (const name of [
       "currentWorkspace",
+      "workspaceApiKeys",
       "currentMember",
       "workspaceRoles",
       "workspacePermissions",
@@ -192,7 +206,6 @@ export async function verifyAuthBootstrap(
       "Workspace",
       "Member",
       "Invitation",
-      "MemberApiKey",
       "WorkspaceRole",
       "WorkspacePermission",
     ]) {

@@ -13,6 +13,7 @@ import { type GraphQLResolveInfo } from "graphql";
 import { expectTypeOf, type Mocked } from "vitest";
 
 import { withIdentity } from "../../test/fixtures/conditional-authorization.fixture.js";
+import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { mockAuthorization } from "../../test/mock-authorization.js";
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { AuthAbility } from "../auth.ability.js";
@@ -1135,7 +1136,12 @@ function createService(
     hash,
     hashServiceHash,
     userDeletionService,
-    service: new UserService(em, options, hashService, userDeletionService),
+    service: new UserService(
+      em,
+      withAuthTestFeatures(options),
+      hashService,
+      userDeletionService,
+    ),
   };
 }
 

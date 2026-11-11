@@ -3,6 +3,7 @@ import { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import type { FactoryProvider } from "@nestjs/common";
 
+import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { mockAuthorization } from "../../test/mock-authorization.js";
 import {
   createTestMember,
@@ -48,9 +49,12 @@ describe("auth service execution boundaries", () => {
         "provide" in candidate &&
         candidate.provide === ApiKeyAuthenticationService,
     ) as FactoryProvider<ApiKeyAuthenticationService>;
-    const service = await provider.useFactory(em, {
-      workspace: { enabled: true },
-    });
+    const service = await provider.useFactory(
+      em,
+      withAuthTestFeatures({
+        workspace: { enabled: true },
+      }),
+    );
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(EntityManager, em);
       await expect(service.validate("credential")).resolves.toMatchObject({

@@ -27,17 +27,14 @@ import { WorkspacePermissionOption } from "../objects/workspace-permission-optio
 import { WorkspaceRoleOption } from "../objects/workspace-role-option.object.js";
 import { MemberService } from "../services/member.service.js";
 
-/** GraphQL resolver for workspace members. */
+/** Workspace membership API. */
 @Resolver(() => Member)
 export class MemberResolver {
   /**
-   * Creates the workspace member resolver.
-   * @param memberService - Service for workspace memberships and service accounts.
+   * Creates this resolver.
+   * @param memberService - Workspace member and service-account operations.
    */
-  constructor(
-    /** Auth-owned workspace role and permission operations. */
-    readonly memberService: MemberService,
-  ) {}
+  constructor(readonly memberService: MemberService) {}
 
   /**
    * Resolves the user associated with a workspace member.

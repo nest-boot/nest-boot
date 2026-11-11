@@ -26,7 +26,6 @@ const CREATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
     createMemberApiKey(input: $input) {
       apiKey
       entity {
-        workspaceId
         id
         name
         start

@@ -6,7 +6,6 @@ export const UPDATE_MEMBER_API_KEY = graphql(`
     $input: UpdateMemberApiKeyInput!
   ) {
     updateMemberApiKey(id: $id, input: $input) {
-      workspaceId
       id
       name
       start

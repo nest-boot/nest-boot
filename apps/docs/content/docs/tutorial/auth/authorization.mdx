@@ -282,9 +282,10 @@ names; services, ability builders, and the database retain the original values.
 Regenerate client types after changing a catalog. Existing stored assignments
 must remain in the configured catalog to be serialized by GraphQL.
 
+The unified `ApiKey.permissions` output uses `ApiKeyPermission`, built from all three scope catalogs. Scoped input enums remain separate:
 `UserApiKeyPermission` uses the combined user and workspace catalogs;
 `MemberApiKeyPermission` uses the workspace catalog. Neither enum narrows with
-the corresponding `apiKey.user.allowedPermissions` or `apiKey.member.allowedPermissions`,
+the corresponding `apiKey.user.allowedPermissions` or `apiKey.workspace.allowedPermissions`,
 so previously stored grants remain readable after
 the allowlist changes. Services enforce the allowlist on writes.
 User and workspace permission catalogs extend the built-in defaults. Omitting

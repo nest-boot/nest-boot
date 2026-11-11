@@ -9,6 +9,12 @@ import { Module } from '@nestjs/common';
 @Module({
   imports: [
     BaseAuthModule.forRoot({
+      admin: { enabled: true },
+      apiKey: {
+        enabled: true,
+        user: { enabled: true },
+        workspace: { enabled: true },
+      },
       trustedOrigins: [process.env.APP_URL ?? 'http://localhost:3000'],
       emailAndPassword: {
         enabled: true,

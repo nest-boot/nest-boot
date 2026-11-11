@@ -11,7 +11,7 @@ describe("API key catalog snapshots", () => {
       const options = {
         workspace: { enabled: true },
         apiKey: {
-          [scope]: {
+          [scope === "member" ? "workspace" : scope]: {
             allowedPermissions: [permission],
             defaultPermissions: [permission],
           },
@@ -39,7 +39,7 @@ describe("API key catalog snapshots", () => {
       workspace: { enabled: true },
       apiKey: {
         user: { allowedPermissions: [], defaultPermissions: [] },
-        member: {
+        workspace: {
           allowedPermissions: ["workspace:update"],
           defaultPermissions: ["workspace:update"],
         },
@@ -59,7 +59,7 @@ describe("API key catalog snapshots", () => {
     ]) {
       expect(Object.isFrozen(value)).toBe(true);
     }
-    options.apiKey.member.defaultPermissions.push("workspace:delete");
+    options.apiKey.workspace.defaultPermissions.push("workspace:delete");
     expect(workspace.defaults).toEqual(["workspace:update"]);
     expect(
       resolveApiKeyPermissionCatalog({ workspace: { enabled: true } }, "user")

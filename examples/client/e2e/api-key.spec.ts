@@ -61,23 +61,37 @@ test.describe("API keys", () => {
       const id = new URL(issuer.url()).pathname.split("/").at(-1)!;
       const data = await graphqlRequest<{
         currentWorkspace: {
-          apiKey: { memberId: string; permissions: Array<string> };
+          apiKey: {
+            id: string;
+            permissions: Array<string>;
+            owner: { __typename: string; id: string } | null;
+          };
           members: { totalCount: number };
         };
       }>(
         page.request,
         `query ($id: ID!, $memberFilter: MemberFilter) { currentWorkspace {
-        apiKey(id: $id) { memberId permissions }
+        apiKey(id: $id) { id permissions owner { __typename ... on Member { id } } }
         members(first: 10, filter: $memberFilter) { totalCount }
       } }`,
         { id, memberFilter: { type: { $eq: "SERVICE_ACCOUNT" } } },
         headers,
       );
       expect(data.currentWorkspace.apiKey).toEqual({
-        memberId,
+        id,
         permissions: [],
+        owner: { __typename: "Member", id: memberId },
       });
       expect(data.currentWorkspace.members.totalCount).toBe(0);
+      const { member } = await graphqlRequest<{
+        member: { apiKeys: { edges: Array<{ node: { id: string } }> } };
+      }>(
+        page.request,
+        "query($id: ID!) { member(id: $id) { apiKeys(first: 10) { edges { node { id } } } } }",
+        { id: memberId },
+        headers,
+      );
+      expect(member.apiKeys.edges.map(({ node }) => node.id)).toContain(id);
     } finally {
       await context.close();
     }
@@ -206,11 +220,15 @@ test.describe("API keys", () => {
     const readKey = (id: string) =>
       graphqlRequest<{
         currentWorkspace: {
-          apiKey: { memberId: string; permissions: Array<string> };
+          apiKey: {
+            id: string;
+            permissions: Array<string>;
+            owner: { __typename: string; id: string } | null;
+          };
         };
       }>(
         page.request,
-        `query ($id: ID!) { currentWorkspace { apiKey(id: $id) { memberId permissions } } }`,
+        `query ($id: ID!) { currentWorkspace { apiKey(id: $id) { id permissions owner { __typename ... on Member { id } } } } }`,
         { id },
         headers,
       );
@@ -237,8 +255,9 @@ test.describe("API keys", () => {
     expect(creationOperations).toEqual(["createMemberApiKeyFromApiKeysRoute"]);
     const existingId = new URL(page.url()).pathname.split("/").at(-1)!;
     expect((await readKey(existingId)).currentWorkspace.apiKey).toEqual({
-      memberId: addMember.id,
+      id: existingId,
       permissions: [],
+      owner: { __typename: "Member", id: addMember.id },
     });
 
     await page.goto(`/workspaces/${workspaceId}/api-keys/create`);
@@ -264,21 +283,35 @@ test.describe("API keys", () => {
     ]);
     const automaticId = new URL(page.url()).pathname.split("/").at(-1)!;
     const key = (await readKey(automaticId)).currentWorkspace.apiKey;
-    expect(key.memberId).not.toBe(addMember.id);
     expect(key.permissions).toEqual([]);
-    const { member } = await graphqlRequest<{
-      member: {
-        name: string;
-        type: string;
-        roles: Array<string>;
-        permissions: Array<string>;
+    const { currentWorkspace: createdOwner } = await graphqlRequest<{
+      currentWorkspace: {
+        members: {
+          edges: Array<{
+            node: {
+              id: string;
+              name: string;
+              type: string;
+              roles: Array<string>;
+              permissions: Array<string>;
+              apiKeys: { edges: Array<{ node: { id: string } }> };
+            };
+          }>;
+        };
       };
     }>(
       page.request,
-      `query ($id: ID!) { member(id: $id) { name type roles permissions } }`,
-      { id: key.memberId },
+      "query($filter: MemberFilter) { currentWorkspace { members(first: 10, filter: $filter) { edges { node { id name type roles permissions apiKeys(first: 10) { edges { node { id } } } } } } } }",
+      { filter: { name, type: "SERVICE_ACCOUNT" } },
       headers,
     );
+    const {
+      id: automaticOwnerId,
+      apiKeys: ownerKeys,
+      ...member
+    } = createdOwner.members.edges[0].node;
+    expect(automaticOwnerId).not.toBe(addMember.id);
+    expect(ownerKeys.edges.map(({ node }) => node.id)).toContain(automaticId);
     expect(member).toEqual({
       name,
       type: "SERVICE_ACCOUNT",
@@ -304,8 +337,16 @@ test.describe("API keys", () => {
     const { currentMember } = await graphqlRequest<{
       currentMember: { id: string };
     }>(page.request, "query { currentMember { id } }", {}, headers);
-    expect((await readKey(youId)).currentWorkspace.apiKey.memberId).toBe(
-      currentMember.id,
+    const { member: yourMembership } = await graphqlRequest<{
+      member: { apiKeys: { edges: Array<{ node: { id: string } }> } };
+    }>(
+      page.request,
+      "query($id: ID!) { member(id: $id) { apiKeys(first: 10) { edges { node { id } } } } }",
+      { id: currentMember.id },
+      headers,
+    );
+    expect(yourMembership.apiKeys.edges.map(({ node }) => node.id)).toContain(
+      youId,
     );
     expect(creationOperations).toEqual([
       "createMemberApiKeyFromApiKeysRoute",

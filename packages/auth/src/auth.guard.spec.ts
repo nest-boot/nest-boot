@@ -13,6 +13,7 @@ import { type Request, type Response } from "express";
 import { firstValueFrom, of } from "rxjs";
 import { assert, type Mock, type MockedFunction } from "vitest";
 
+import { withAuthTestFeatures } from "../test/fixtures/enabled-auth-features.fixture.js";
 import { AuthAbility } from "./auth.ability.js";
 import { API_KEY, IS_PUBLIC_KEY } from "./auth.constants.js";
 import { AuthGuard } from "./auth.guard.js";
@@ -396,7 +397,7 @@ async function createGuard<T extends AuthGuard>(
       },
       {
         provide: MODULE_OPTIONS_TOKEN,
-        useValue: options,
+        useValue: withAuthTestFeatures(options),
       },
     ],
   }).compile();
@@ -1830,7 +1831,7 @@ describe("permission checks", () => {
         },
         {
           provide: MODULE_OPTIONS_TOKEN,
-          useValue: {
+          useValue: withAuthTestFeatures({
             ...(ability || buildFromPermissions
               ? { buildAbility: configure }
               : {}),
@@ -1843,7 +1844,7 @@ describe("permission checks", () => {
               roles: roles.workspace,
               permissions: businessPermissions,
             },
-          },
+          }),
         },
         {
           provide: ModuleRef,

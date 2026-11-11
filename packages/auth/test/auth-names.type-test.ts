@@ -196,13 +196,13 @@ AuthModule.forRoot({
   workspace: { enabled: true, permissions: ["project:read"] },
   apiKey: {
     user: { defaultPermissions: ["user:read", "report:read", "project:read"] },
-    member: { defaultPermissions: ["project:read"] },
+    workspace: { defaultPermissions: ["project:read"] },
   },
 });
 AuthModule.forRoot({
   user: { permissions: ["report:read"] },
   apiKey: {
-    member: {
+    workspace: {
       // @ts-expect-error Member keys cannot carry user-only permissions.
       defaultPermissions: ["report:read"],
     },
@@ -247,3 +247,15 @@ AuthModule.forRoot({
     workspacePermissions.includes("report:read");
   },
 });
+
+/** Checks legacy-option rejection without executing the invalid module configuration. */
+function removedApiKeyConfiguration() {
+  AuthModule.forRoot({
+    apiKey: {
+      enabled: true,
+      // @ts-expect-error use apiKey.workspace instead of the removed member configuration
+      member: { enabled: true },
+    },
+  });
+}
+removedApiKeyConfiguration;

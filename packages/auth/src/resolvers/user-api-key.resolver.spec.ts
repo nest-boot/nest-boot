@@ -1,3 +1,5 @@
+import { ForbiddenException } from "@nestjs/common";
+import type { GraphQLResolveInfo } from "graphql";
 import type { Mocked } from "vitest";
 
 import { User } from "../entities/user.entity.js";
@@ -6,6 +8,37 @@ import { type UserApiKeyService } from "../services/user-api-key.service.js";
 import { UserApiKeyResolver } from "./user-api-key.resolver.js";
 
 describe("UserApiKeyResolver", () => {
+  it("preserves parent scope, selection and access failures on credential relations", async () => {
+    const user = new User();
+    const key = { id: "key" };
+    const result = { edges: [], pageInfo: {} };
+    const args = { first: 10, after: "cursor" };
+    const info = {
+      fieldNodes: [],
+      fragments: {},
+      variableValues: {},
+    } as unknown as GraphQLResolveInfo;
+    const getUserApiKey = vi.fn().mockResolvedValue(key);
+    const getUserApiKeyConnection = vi.fn().mockResolvedValue(result);
+    const resolver = new UserApiKeyResolver({
+      getUserApiKey,
+      getUserApiKeyConnection,
+    } as unknown as UserApiKeyService);
+    await expect(resolver.apiKey(user, "key")).resolves.toBe(key);
+    expect(getUserApiKey).toHaveBeenCalledExactlyOnceWith("key", user);
+    getUserApiKey.mockResolvedValueOnce(null);
+    await expect(resolver.apiKey(user, "hidden")).resolves.toBeNull();
+    await expect(resolver.apiKeys(user, args, info)).resolves.toBe(result);
+    expect(getUserApiKeyConnection).toHaveBeenCalledExactlyOnceWith(
+      user,
+      args,
+      info,
+    );
+    getUserApiKeyConnection.mockRejectedValueOnce(new ForbiddenException());
+    await expect(resolver.apiKeys(user, args, info)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
   it("returns the service's permission choices for the current user", () => {
     const owner = { id: "user_1" } as User;
     const result = [

@@ -5,6 +5,7 @@ import {
   ConnectionManager,
   type ConnectionResult,
 } from "@nest-boot/graphql-connection";
+import { ForbiddenException } from "@nestjs/common";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { GraphQLResolveInfo } from "graphql";
 
@@ -21,6 +22,7 @@ import {
   assertCanGrantPermissions,
   canGrantPermissions,
 } from "../utils/permission-grants.util.js";
+import { resolveAuthFeatures } from "../utils/resolve-auth-features.util.js";
 import { runAuthQuery } from "../utils/run-auth-query.js";
 
 /** Input shared by programmatic and GraphQL system-account management. */
@@ -214,6 +216,9 @@ export class SystemAccountService {
   }
 
   private assertAccess(action: "read" | "write") {
+    if (!resolveAuthFeatures(this.options).admin) {
+      throw new ForbiddenException("Administration is disabled");
+    }
     const user = assertSystemAccountAdministrator(this.options);
     authorize(action, SystemAccount);
     return user;

@@ -1,6 +1,7 @@
 import { EntityManager, ref, Reference } from "@mikro-orm/core";
 import { UnauthorizedException } from "@nestjs/common";
 
+import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { ApiKeyEntity } from "../entities/api-key.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { MemberApiKey } from "../entities/member-api-key.entity.js";
@@ -43,9 +44,12 @@ function fixture() {
     memberKey,
     rows,
     em,
-    service: new ApiKeyAuthenticationService(em as unknown as EntityManager, {
-      workspace: { enabled: true },
-    }),
+    service: new ApiKeyAuthenticationService(
+      em as unknown as EntityManager,
+      withAuthTestFeatures({
+        workspace: { enabled: true },
+      }),
+    ),
   };
 }
 
@@ -97,6 +101,7 @@ describe("API-key authentication", () => {
       });
       expect(em.findOne).toHaveBeenCalledExactlyOnceWith(ApiKeyEntity, {
         key: hashApiKey("plaintext"),
+        ownerType: { $in: ["user", "member", "system_account"] },
       });
       expect(em.populate).toHaveBeenCalledWith(key, ["owner"]);
       if (scope === "member") {
@@ -164,6 +169,26 @@ describe("API-key authentication", () => {
 });
 
 describe("optional workspace behavior", () => {
+  it.each([
+    {},
+    { apiKey: { enabled: true } },
+    { apiKey: { enabled: false, user: { enabled: true } } },
+  ])(
+    "rejects disabled credentials before querying persistence (%j)",
+    async (options) => {
+      const { em } = fixture();
+      const service = new ApiKeyAuthenticationService(
+        em as unknown as EntityManager,
+        options,
+      );
+      await expect(service.validate("personal-key")).rejects.toThrow(
+        "API keys are disabled",
+      );
+      expect(em.findOne).not.toHaveBeenCalled();
+      expect(em.populate).not.toHaveBeenCalled();
+    },
+  );
+
   it("authenticates user keys without touching optional member tables", async () => {
     const user = new User();
     const key = Object.assign(new UserApiKey(), { user });
@@ -173,7 +198,7 @@ describe("optional workspace behavior", () => {
     };
     const service = new ApiKeyAuthenticationService(
       em as unknown as EntityManager,
-      {},
+      { apiKey: { enabled: true, user: { enabled: true } } },
     );
     await expect(service.validate("personal-key")).resolves.toMatchObject({
       ownerType: "user",
@@ -182,7 +207,7 @@ describe("optional workspace behavior", () => {
     });
     expect(em.findOne).toHaveBeenCalledExactlyOnceWith(ApiKeyEntity, {
       key: hashApiKey("personal-key"),
-      ownerType: { $in: ["user", "system_account"] },
+      ownerType: { $in: ["user"] },
     });
     expect(em.populate).toHaveBeenCalledExactlyOnceWith(key, ["owner"]);
     em.findOne.mockResolvedValue(new MemberApiKey());

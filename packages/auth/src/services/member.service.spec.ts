@@ -5,6 +5,7 @@ import { RequestContext } from "@nest-boot/request-context";
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 
 import { withIdentity } from "../../test/fixtures/conditional-authorization.fixture.js";
+import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { restoreAuthorization } from "../../test/mock-authorization.js";
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import {
@@ -89,7 +90,7 @@ describe("MemberService", () => {
                 userPermissions: [],
                 workspacePermissions: [permission],
               },
-              { workspace: { enabled: true } },
+              withAuthTestFeatures({ workspace: { enabled: true } }),
             ),
           );
           expect(memberService.getMemberListFilter(workspace)).toEqual({
@@ -123,7 +124,7 @@ describe("MemberService", () => {
             userPermissions: [],
             workspacePermissions: ["member:write"],
           },
-          { workspace: { enabled: true } },
+          withAuthTestFeatures({ workspace: { enabled: true } }),
         ),
       );
       await expect(
@@ -161,7 +162,7 @@ describe("MemberService", () => {
                 userPermissions: [],
                 workspacePermissions: [permission],
               },
-              { workspace: { enabled: true } },
+              withAuthTestFeatures({ workspace: { enabled: true } }),
             ),
           );
           await expect(
@@ -273,7 +274,7 @@ describe("MemberService", () => {
                 userPermissions: [],
                 workspacePermissions: ["member:write"],
               },
-              { workspace: { enabled: true } },
+              withAuthTestFeatures({ workspace: { enabled: true } }),
             ),
           );
           await expect(
@@ -308,7 +309,7 @@ describe("MemberService", () => {
           userPermissions: [],
           workspacePermissions: ["member:write"],
         },
-        { workspace: { enabled: true } },
+        withAuthTestFeatures({ workspace: { enabled: true } }),
       );
       RequestContext.set(Member, current);
       RequestContext.set(Workspace, workspace);
@@ -1444,7 +1445,11 @@ describe("permission management", () => {
                     role as keyof typeof options.workspace.roles
                   ];
             expect(() => {
-              assertCanGrantPermissions(options, "workspace", grants);
+              assertCanGrantPermissions(
+                withAuthTestFeatures(options),
+                "workspace",
+                grants,
+              );
             }).not.toThrow();
           }
           RequestContext.set(AuthAbility, new AuthAbility());
@@ -1469,9 +1474,11 @@ describe("permission management", () => {
           expect(service.listPermissions()).toEqual(
             DEFAULT_WORKSPACE_PERMISSIONS.map((permission) => ({
               permission,
-              grantable: canGrantPermissions(options, "workspace", [
-                permission,
-              ]),
+              grantable: canGrantPermissions(
+                withAuthTestFeatures(options),
+                "workspace",
+                [permission],
+              ),
             })),
           );
         });

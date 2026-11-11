@@ -32,6 +32,11 @@ export type Scalars = {
    * Supported fields: created_at, provider_id
    */
   AccountFilter: { input: any; output: any };
+  /**
+   * A filter for ApiKey that accepts MongoDB query syntax.
+   * Supported fields: name, prefix, enabled, last_used_at, created_at
+   */
+  ApiKeyFilter: { input: any; output: any };
   /** A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format. */
   DateTime: { input: any; output: any };
   /**
@@ -50,11 +55,6 @@ export type Scalars = {
    */
   JobFilter: { input: any; output: any };
   /**
-   * A filter for MemberApiKey that accepts MongoDB query syntax.
-   * Supported fields: name, prefix, enabled, last_used_at, created_at
-   */
-  MemberApiKeyFilter: { input: any; output: any };
-  /**
    * A filter for Member that accepts MongoDB query syntax.
    * Supported fields: name, email, type, status, created_at
    */
@@ -65,20 +65,10 @@ export type Scalars = {
    */
   SessionFilter: { input: any; output: any };
   /**
-   * A filter for SystemAccountApiKey that accepts MongoDB query syntax.
-   * Supported fields: name, prefix, last_used_at, enabled, created_at
-   */
-  SystemAccountApiKeyFilter: { input: any; output: any };
-  /**
    * A filter for SystemAccount that accepts MongoDB query syntax.
    * Supported fields: name, enabled, created_at
    */
   SystemAccountFilter: { input: any; output: any };
-  /**
-   * A filter for UserApiKey that accepts MongoDB query syntax.
-   * Supported fields: name, prefix, enabled, last_used_at, created_at
-   */
-  UserApiKeyFilter: { input: any; output: any };
   /**
    * A filter for User that accepts MongoDB query syntax.
    * Supported fields: name, email, created_at
@@ -159,6 +149,101 @@ export type AddMemberPayload = {
   id: Scalars["ID"]["output"];
 };
 
+export type ApiKey = {
+  __typename?: "ApiKey";
+  createdAt: Scalars["DateTime"]["output"];
+  createdById?: Maybe<Scalars["ID"]["output"]>;
+  enabled: Scalars["Boolean"]["output"];
+  expiresAt?: Maybe<Scalars["DateTime"]["output"]>;
+  id: Scalars["ID"]["output"];
+  lastUsedAt?: Maybe<Scalars["DateTime"]["output"]>;
+  name: Scalars["String"]["output"];
+  owner?: Maybe<ApiKeyOwner>;
+  permissions: Array<ApiKeyPermission>;
+  prefix?: Maybe<Scalars["String"]["output"]>;
+  start?: Maybe<Scalars["String"]["output"]>;
+  updatedAt: Scalars["DateTime"]["output"];
+};
+
+export type ApiKeyConnection = {
+  __typename?: "ApiKeyConnection";
+  /** A list of edges. */
+  edges: Array<ApiKeyEdge>;
+  /** Information to aid in pagination. */
+  pageInfo: PageInfo;
+  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
+  totalCount: Scalars["Int"]["output"];
+  /** Indicates whether totalCount is exact or a lower bound. */
+  totalCountRelation: TotalCountRelation;
+};
+
+export type ApiKeyEdge = {
+  __typename?: "ApiKeyEdge";
+  /** A cursor for use in pagination. */
+  cursor: Scalars["String"]["output"];
+  /** The item at the end of ApiKeyEdge. */
+  node: ApiKey;
+};
+
+/** Ordering options for apikey connections */
+export type ApiKeyOrder = {
+  /** The ordering direction. */
+  direction: OrderDirection;
+  /** The field to order apikeys by. */
+  field: ApiKeyOrderField;
+};
+
+/** Properties by which apikey connections can be ordered. */
+export const ApiKeyOrderField = {
+  CREATED_AT: "CREATED_AT",
+  ID: "ID",
+  LAST_USED_AT: "LAST_USED_AT",
+} as const;
+
+export type ApiKeyOrderField =
+  (typeof ApiKeyOrderField)[keyof typeof ApiKeyOrderField];
+export type ApiKeyOwner = Member | SystemAccount | User;
+
+export const ApiKeyPermission = {
+  MEMBER_API_KEY__READ: "MEMBER_API_KEY__READ",
+  MEMBER_API_KEY__WRITE: "MEMBER_API_KEY__WRITE",
+  MEMBER__INVITE: "MEMBER__INVITE",
+  MEMBER__READ: "MEMBER__READ",
+  MEMBER__SET_PERMISSIONS: "MEMBER__SET_PERMISSIONS",
+  MEMBER__SET_ROLES: "MEMBER__SET_ROLES",
+  MEMBER__WRITE: "MEMBER__WRITE",
+  SERVICE_ACCOUNT__READ: "SERVICE_ACCOUNT__READ",
+  SERVICE_ACCOUNT__WRITE: "SERVICE_ACCOUNT__WRITE",
+  SESSION__READ: "SESSION__READ",
+  SESSION__REVOKE: "SESSION__REVOKE",
+  SYSTEM_ACCOUNT_API_KEY__READ: "SYSTEM_ACCOUNT_API_KEY__READ",
+  SYSTEM_ACCOUNT_API_KEY__WRITE: "SYSTEM_ACCOUNT_API_KEY__WRITE",
+  SYSTEM_ACCOUNT__READ: "SYSTEM_ACCOUNT__READ",
+  SYSTEM_ACCOUNT__WRITE: "SYSTEM_ACCOUNT__WRITE",
+  USER_API_KEY__READ: "USER_API_KEY__READ",
+  USER_API_KEY__WRITE: "USER_API_KEY__WRITE",
+  USER__BAN: "USER__BAN",
+  USER__CREATE: "USER__CREATE",
+  USER__DELETE: "USER__DELETE",
+  USER__IMPERSONATE: "USER__IMPERSONATE",
+  USER__IMPERSONATE_ADMIN: "USER__IMPERSONATE_ADMIN",
+  USER__READ: "USER__READ",
+  USER__SET_EMAIL: "USER__SET_EMAIL",
+  USER__SET_PASSWORD: "USER__SET_PASSWORD",
+  USER__SET_PERMISSIONS: "USER__SET_PERMISSIONS",
+  USER__SET_ROLES: "USER__SET_ROLES",
+  USER__UPDATE: "USER__UPDATE",
+  WORKSPACE__CREATE: "WORKSPACE__CREATE",
+  WORKSPACE__DELETE: "WORKSPACE__DELETE",
+  WORKSPACE__DELETE_ANY: "WORKSPACE__DELETE_ANY",
+  WORKSPACE__READ: "WORKSPACE__READ",
+  WORKSPACE__READ_ANY: "WORKSPACE__READ_ANY",
+  WORKSPACE__UPDATE: "WORKSPACE__UPDATE",
+  WORKSPACE__UPDATE_ANY: "WORKSPACE__UPDATE_ANY",
+} as const;
+
+export type ApiKeyPermission =
+  (typeof ApiKeyPermission)[keyof typeof ApiKeyPermission];
 export type AuthAbilityRuleType = {
   __typename?: "AuthAbilityRuleType";
   actions: Array<Scalars["String"]["output"]>;
@@ -300,6 +385,12 @@ export type CancelInvitationPayload = {
   id: Scalars["ID"]["output"];
 };
 
+export type CreateApiKeyResult = {
+  __typename?: "CreateApiKeyResult";
+  apiKey: Scalars["String"]["output"];
+  entity: ApiKey;
+};
+
 export type CreateInvitationInput = {
   email: Scalars["String"]["input"];
   expiresIn?: InputMaybe<Scalars["Int"]["input"]>;
@@ -319,23 +410,11 @@ export type CreateMemberApiKeyInput = {
   prefix?: InputMaybe<Scalars["String"]["input"]>;
 };
 
-export type CreateMemberApiKeyResult = {
-  __typename?: "CreateMemberApiKeyResult";
-  apiKey: Scalars["String"]["output"];
-  entity: MemberApiKey;
-};
-
 export type CreateSystemAccountApiKeyInput = {
   expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
   name: Scalars["String"]["input"];
   permissions?: InputMaybe<Array<SystemAccountPermission>>;
   prefix?: InputMaybe<Scalars["String"]["input"]>;
-};
-
-export type CreateSystemAccountApiKeyResult = {
-  __typename?: "CreateSystemAccountApiKeyResult";
-  apiKey: Scalars["String"]["output"];
-  entity: SystemAccountApiKey;
 };
 
 export type CreateSystemAccountInput = {
@@ -348,12 +427,6 @@ export type CreateUserApiKeyInput = {
   name: Scalars["String"]["input"];
   permissions?: InputMaybe<Array<UserApiKeyPermission>>;
   prefix?: InputMaybe<Scalars["String"]["input"]>;
-};
-
-export type CreateUserApiKeyResult = {
-  __typename?: "CreateUserApiKeyResult";
-  apiKey: Scalars["String"]["output"];
-  entity: UserApiKey;
 };
 
 export type CreateUserInput = {
@@ -513,6 +586,7 @@ export type LeaveWorkspacePayload = {
 
 export type Member = {
   __typename?: "Member";
+  apiKeys: ApiKeyConnection;
   createdAt: Scalars["DateTime"]["output"];
   email?: Maybe<Scalars["String"]["output"]>;
   id: Scalars["ID"]["output"];
@@ -526,61 +600,16 @@ export type Member = {
   workspaceId: Scalars["ID"]["output"];
 };
 
-export type MemberApiKey = {
-  __typename?: "MemberApiKey";
-  createdAt: Scalars["DateTime"]["output"];
-  createdById?: Maybe<Scalars["ID"]["output"]>;
-  enabled: Scalars["Boolean"]["output"];
-  expiresAt?: Maybe<Scalars["DateTime"]["output"]>;
-  id: Scalars["ID"]["output"];
-  lastUsedAt?: Maybe<Scalars["DateTime"]["output"]>;
-  memberId: Scalars["ID"]["output"];
-  name: Scalars["String"]["output"];
-  permissions: Array<MemberApiKeyPermission>;
-  prefix?: Maybe<Scalars["String"]["output"]>;
-  start?: Maybe<Scalars["String"]["output"]>;
-  updatedAt: Scalars["DateTime"]["output"];
-  workspaceId: Scalars["ID"]["output"];
+export type MemberApiKeysArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<ApiKeyOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
-export type MemberApiKeyConnection = {
-  __typename?: "MemberApiKeyConnection";
-  /** A list of edges. */
-  edges: Array<MemberApiKeyEdge>;
-  /** Information to aid in pagination. */
-  pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
-};
-
-/** An auto-generated type which holds one MemberApiKey and a cursor during pagination. */
-export type MemberApiKeyEdge = {
-  __typename?: "MemberApiKeyEdge";
-  /** A cursor for use in pagination. */
-  cursor: Scalars["String"]["output"];
-  /** The item at the end of MemberApiKeyEdge. */
-  node: MemberApiKey;
-};
-
-/** Ordering options for memberapikey connections */
-export type MemberApiKeyOrder = {
-  /** The ordering direction. */
-  direction: OrderDirection;
-  /** The field to order memberapikeys by. */
-  field: MemberApiKeyOrderField;
-};
-
-/** Properties by which memberapikey connections can be ordered. */
-export const MemberApiKeyOrderField = {
-  CREATED_AT: "CREATED_AT",
-  ID: "ID",
-  LAST_USED_AT: "LAST_USED_AT",
-} as const;
-
-export type MemberApiKeyOrderField =
-  (typeof MemberApiKeyOrderField)[keyof typeof MemberApiKeyOrderField];
 export const MemberApiKeyPermission = {
   MEMBER_API_KEY__READ: "MEMBER_API_KEY__READ",
   MEMBER_API_KEY__WRITE: "MEMBER_API_KEY__WRITE",
@@ -663,19 +692,19 @@ export type Mutation = {
   changeCurrentUserEmail: Scalars["Boolean"]["output"];
   changeCurrentUserPassword: AuthChangePasswordResultType;
   createInvitation: CreateInvitationPayload;
-  createMemberApiKey: CreateMemberApiKeyResult;
+  createMemberApiKey: CreateApiKeyResult;
   createSystemAccount: SystemAccount;
-  createSystemAccountApiKey: CreateSystemAccountApiKeyResult;
+  createSystemAccountApiKey: CreateApiKeyResult;
   createUser: CreateUserPayload;
-  createUserApiKey: CreateUserApiKeyResult;
+  createUserApiKey: CreateApiKeyResult;
   createWorkspace: CreateWorkspacePayload;
   deleteCurrentUser: AuthDeleteUserResultType;
-  deleteMemberApiKey: MemberApiKey;
+  deleteMemberApiKey: ApiKey;
   deletePlatformWorkspace: Workspace;
   deleteSystemAccount: SystemAccount;
-  deleteSystemAccountApiKey: SystemAccountApiKey;
+  deleteSystemAccountApiKey: ApiKey;
   deleteUser: DeleteUserPayload;
-  deleteUserApiKey: UserApiKey;
+  deleteUserApiKey: ApiKey;
   deleteWorkspace: DeleteWorkspacePayload;
   impersonateUser: User;
   leaveWorkspace: LeaveWorkspacePayload;
@@ -705,12 +734,12 @@ export type Mutation = {
   unlinkCurrentUserAccount: Scalars["Boolean"]["output"];
   updateCurrentUser: Scalars["Boolean"]["output"];
   updateMember?: Maybe<UpdateMemberPayload>;
-  updateMemberApiKey: MemberApiKey;
+  updateMemberApiKey: ApiKey;
   updatePlatformWorkspace: Workspace;
   updateSystemAccount: SystemAccount;
-  updateSystemAccountApiKey: SystemAccountApiKey;
+  updateSystemAccountApiKey: ApiKey;
   updateUser: UpdateUserPayload;
-  updateUserApiKey: UserApiKey;
+  updateUserApiKey: ApiKey;
   updateWorkspace: UpdateWorkspacePayload;
 };
 
@@ -972,11 +1001,11 @@ export type Query = {
   platformWorkspace?: Maybe<Workspace>;
   socialProviders: Array<AuthSocialProviderType>;
   systemAccount?: Maybe<SystemAccount>;
-  systemAccountApiKey?: Maybe<SystemAccountApiKey>;
+  systemAccountApiKey?: Maybe<ApiKey>;
   systemAccountApiKeyPermissions: Array<SystemAccountPermissionOption>;
-  systemAccountApiKeys: SystemAccountApiKeyConnection;
   systemAccountPermissions: Array<SystemAccountPermissionOption>;
   systemAccounts: SystemAccountConnection;
+  systemApiKeys: ApiKeyConnection;
   systemJob?: Maybe<Job>;
   systemJobs: JobConnection;
   user?: Maybe<User>;
@@ -987,6 +1016,7 @@ export type Query = {
   userRoles: Array<UserRoleOption>;
   users: UserConnection;
   workspace?: Maybe<Workspace>;
+  workspaceApiKeys: ApiKeyConnection;
   workspaceJob?: Maybe<Job>;
   workspaceJobs: JobConnection;
   workspacePermissions: Array<WorkspacePermissionOption>;
@@ -1015,17 +1045,8 @@ export type QuerySystemAccountApiKeyArgs = {
 };
 
 export type QuerySystemAccountApiKeyPermissionsArgs = {
+  apiKeyId?: InputMaybe<Scalars["ID"]["input"]>;
   systemAccountId?: InputMaybe<Scalars["ID"]["input"]>;
-};
-
-export type QuerySystemAccountApiKeysArgs = {
-  after?: InputMaybe<Scalars["String"]["input"]>;
-  before?: InputMaybe<Scalars["String"]["input"]>;
-  filter?: InputMaybe<Scalars["SystemAccountApiKeyFilter"]["input"]>;
-  first?: InputMaybe<Scalars["Int"]["input"]>;
-  last?: InputMaybe<Scalars["Int"]["input"]>;
-  orderBy?: InputMaybe<SystemAccountApiKeyOrder>;
-  query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type QuerySystemAccountsArgs = {
@@ -1035,6 +1056,16 @@ export type QuerySystemAccountsArgs = {
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
   orderBy?: InputMaybe<SystemAccountOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type QuerySystemApiKeysArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<ApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
@@ -1082,6 +1113,16 @@ export type QueryUsersArgs = {
 
 export type QueryWorkspaceArgs = {
   id: Scalars["ID"]["input"];
+};
+
+export type QueryWorkspaceApiKeysArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<ApiKeyOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type QueryWorkspaceJobArgs = {
@@ -1217,7 +1258,7 @@ export type SignUpPayload = {
 export type SystemAccount = {
   __typename?: "SystemAccount";
   apiKeyPermissions: Array<SystemAccountPermissionOption>;
-  apiKeys: SystemAccountApiKeyConnection;
+  apiKeys: ApiKeyConnection;
   createdAt: Scalars["DateTime"]["output"];
   createdById?: Maybe<Scalars["ID"]["output"]>;
   enabled: Scalars["Boolean"]["output"];
@@ -1230,67 +1271,13 @@ export type SystemAccount = {
 export type SystemAccountApiKeysArgs = {
   after?: InputMaybe<Scalars["String"]["input"]>;
   before?: InputMaybe<Scalars["String"]["input"]>;
-  filter?: InputMaybe<Scalars["SystemAccountApiKeyFilter"]["input"]>;
+  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
-  orderBy?: InputMaybe<SystemAccountApiKeyOrder>;
+  orderBy?: InputMaybe<ApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
-export type SystemAccountApiKey = {
-  __typename?: "SystemAccountApiKey";
-  createdAt: Scalars["DateTime"]["output"];
-  createdById?: Maybe<Scalars["ID"]["output"]>;
-  enabled: Scalars["Boolean"]["output"];
-  expiresAt?: Maybe<Scalars["DateTime"]["output"]>;
-  id: Scalars["ID"]["output"];
-  lastUsedAt?: Maybe<Scalars["DateTime"]["output"]>;
-  name: Scalars["String"]["output"];
-  permissions: Array<SystemAccountPermission>;
-  prefix?: Maybe<Scalars["String"]["output"]>;
-  start?: Maybe<Scalars["String"]["output"]>;
-  systemAccountId: Scalars["ID"]["output"];
-  updatedAt: Scalars["DateTime"]["output"];
-};
-
-export type SystemAccountApiKeyConnection = {
-  __typename?: "SystemAccountApiKeyConnection";
-  /** A list of edges. */
-  edges: Array<SystemAccountApiKeyEdge>;
-  /** Information to aid in pagination. */
-  pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
-};
-
-/** An auto-generated type which holds one SystemAccountApiKey and a cursor during pagination. */
-export type SystemAccountApiKeyEdge = {
-  __typename?: "SystemAccountApiKeyEdge";
-  /** A cursor for use in pagination. */
-  cursor: Scalars["String"]["output"];
-  /** The item at the end of SystemAccountApiKeyEdge. */
-  node: SystemAccountApiKey;
-};
-
-/** Ordering options for systemaccountapikey connections */
-export type SystemAccountApiKeyOrder = {
-  /** The ordering direction. */
-  direction: OrderDirection;
-  /** The field to order systemaccountapikeys by. */
-  field: SystemAccountApiKeyOrderField;
-};
-
-/** Properties by which systemaccountapikey connections can be ordered. */
-export const SystemAccountApiKeyOrderField = {
-  CREATED_AT: "CREATED_AT",
-  ID: "ID",
-  LAST_USED_AT: "LAST_USED_AT",
-} as const;
-
-export type SystemAccountApiKeyOrderField =
-  (typeof SystemAccountApiKeyOrderField)[keyof typeof SystemAccountApiKeyOrderField];
 export type SystemAccountConnection = {
   __typename?: "SystemAccountConnection";
   /** A list of edges. */
@@ -1303,7 +1290,6 @@ export type SystemAccountConnection = {
   totalCountRelation: TotalCountRelation;
 };
 
-/** An auto-generated type which holds one SystemAccount and a cursor during pagination. */
 export type SystemAccountEdge = {
   __typename?: "SystemAccountEdge";
   /** A cursor for use in pagination. */
@@ -1420,8 +1406,8 @@ export type UpdateWorkspacePayload = {
 export type User = {
   __typename?: "User";
   accounts: AccountConnection;
-  apiKey?: Maybe<UserApiKey>;
-  apiKeys: UserApiKeyConnection;
+  apiKey?: Maybe<ApiKey>;
+  apiKeys: ApiKeyConnection;
   banExpiresAt?: Maybe<Scalars["DateTime"]["output"]>;
   banReason?: Maybe<Scalars["String"]["output"]>;
   banned: Scalars["Boolean"]["output"];
@@ -1456,10 +1442,10 @@ export type UserApiKeyArgs = {
 export type UserApiKeysArgs = {
   after?: InputMaybe<Scalars["String"]["input"]>;
   before?: InputMaybe<Scalars["String"]["input"]>;
-  filter?: InputMaybe<Scalars["UserApiKeyFilter"]["input"]>;
+  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
-  orderBy?: InputMaybe<UserApiKeyOrder>;
+  orderBy?: InputMaybe<ApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
@@ -1493,59 +1479,6 @@ export type UserWorkspacesArgs = {
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
-export type UserApiKey = {
-  __typename?: "UserApiKey";
-  createdAt: Scalars["DateTime"]["output"];
-  createdById?: Maybe<Scalars["ID"]["output"]>;
-  enabled: Scalars["Boolean"]["output"];
-  expiresAt?: Maybe<Scalars["DateTime"]["output"]>;
-  id: Scalars["ID"]["output"];
-  lastUsedAt?: Maybe<Scalars["DateTime"]["output"]>;
-  name: Scalars["String"]["output"];
-  permissions: Array<UserApiKeyPermission>;
-  prefix?: Maybe<Scalars["String"]["output"]>;
-  start?: Maybe<Scalars["String"]["output"]>;
-  updatedAt: Scalars["DateTime"]["output"];
-};
-
-export type UserApiKeyConnection = {
-  __typename?: "UserApiKeyConnection";
-  /** A list of edges. */
-  edges: Array<UserApiKeyEdge>;
-  /** Information to aid in pagination. */
-  pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
-};
-
-/** An auto-generated type which holds one UserApiKey and a cursor during pagination. */
-export type UserApiKeyEdge = {
-  __typename?: "UserApiKeyEdge";
-  /** A cursor for use in pagination. */
-  cursor: Scalars["String"]["output"];
-  /** The item at the end of UserApiKeyEdge. */
-  node: UserApiKey;
-};
-
-/** Ordering options for userapikey connections */
-export type UserApiKeyOrder = {
-  /** The ordering direction. */
-  direction: OrderDirection;
-  /** The field to order userapikeys by. */
-  field: UserApiKeyOrderField;
-};
-
-/** Properties by which userapikey connections can be ordered. */
-export const UserApiKeyOrderField = {
-  CREATED_AT: "CREATED_AT",
-  ID: "ID",
-  LAST_USED_AT: "LAST_USED_AT",
-} as const;
-
-export type UserApiKeyOrderField =
-  (typeof UserApiKeyOrderField)[keyof typeof UserApiKeyOrderField];
 export const UserApiKeyPermission = {
   MEMBER_API_KEY__READ: "MEMBER_API_KEY__READ",
   MEMBER_API_KEY__WRITE: "MEMBER_API_KEY__WRITE",
@@ -1678,8 +1611,7 @@ export type UserRoleOption = {
 
 export type Workspace = {
   __typename?: "Workspace";
-  apiKey?: Maybe<MemberApiKey>;
-  apiKeys: MemberApiKeyConnection;
+  apiKey?: Maybe<ApiKey>;
   createdAt: Scalars["DateTime"]["output"];
   id: Scalars["ID"]["output"];
   invitations: InvitationConnection;
@@ -1690,16 +1622,6 @@ export type Workspace = {
 
 export type WorkspaceApiKeyArgs = {
   id: Scalars["ID"]["input"];
-};
-
-export type WorkspaceApiKeysArgs = {
-  after?: InputMaybe<Scalars["String"]["input"]>;
-  before?: InputMaybe<Scalars["String"]["input"]>;
-  filter?: InputMaybe<Scalars["MemberApiKeyFilter"]["input"]>;
-  first?: InputMaybe<Scalars["Int"]["input"]>;
-  last?: InputMaybe<Scalars["Int"]["input"]>;
-  orderBy?: InputMaybe<MemberApiKeyOrder>;
-  query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type WorkspaceInvitationsArgs = {
@@ -1801,28 +1723,32 @@ export type ManagedSystemAccountKeysQueryVariables = Exact<{
   after?: InputMaybe<Scalars["String"]["input"]>;
   before?: InputMaybe<Scalars["String"]["input"]>;
   query?: InputMaybe<Scalars["String"]["input"]>;
-  filter?: InputMaybe<Scalars["SystemAccountApiKeyFilter"]["input"]>;
-  orderBy?: InputMaybe<SystemAccountApiKeyOrder>;
+  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  orderBy?: InputMaybe<ApiKeyOrder>;
 }>;
 
 export type ManagedSystemAccountKeysQuery = {
   __typename?: "Query";
-  systemAccountApiKeys: {
-    __typename?: "SystemAccountApiKeyConnection";
+  systemApiKeys: {
+    __typename?: "ApiKeyConnection";
     edges: Array<{
-      __typename?: "SystemAccountApiKeyEdge";
+      __typename?: "ApiKeyEdge";
       node: {
-        __typename?: "SystemAccountApiKey";
+        __typename?: "ApiKey";
         id: string;
-        systemAccountId: string;
         name: string;
         enabled: boolean;
-        permissions: Array<SystemAccountPermission>;
+        permissions: Array<ApiKeyPermission>;
         prefix?: string | null;
         start?: string | null;
         createdAt: any;
         lastUsedAt?: any | null;
         expiresAt?: any | null;
+        owner?:
+          | { __typename: "Member" }
+          | { __typename: "SystemAccount"; id: string; name: string }
+          | { __typename: "User" }
+          | null;
       };
     }>;
     pageInfo: {
@@ -1867,8 +1793,8 @@ export type GetAdminSystemKeyOverviewQueryVariables = Exact<{
 
 export type GetAdminSystemKeyOverviewQuery = {
   __typename?: "Query";
-  systemAccountApiKeys: {
-    __typename?: "SystemAccountApiKeyConnection";
+  systemApiKeys: {
+    __typename?: "ApiKeyConnection";
     totalCount: number;
     totalCountRelation: TotalCountRelation;
   };
@@ -2218,13 +2144,13 @@ export type DeleteUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
 export type DeleteUserApiKeyFromUserApiKeysRouteMutation = {
   __typename?: "Mutation";
   deleteUserApiKey: {
-    __typename?: "UserApiKey";
+    __typename?: "ApiKey";
     id: string;
     name: string;
     start?: string | null;
     prefix?: string | null;
     enabled: boolean;
-    permissions: Array<UserApiKeyPermission>;
+    permissions: Array<ApiKeyPermission>;
     createdAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
@@ -2246,13 +2172,13 @@ export type GetUserApiKeyDetailsQuery = {
   currentUser: {
     __typename?: "User";
     apiKey?: {
-      __typename?: "UserApiKey";
+      __typename?: "ApiKey";
       id: string;
       name: string;
       start?: string | null;
       prefix?: string | null;
       enabled: boolean;
-      permissions: Array<UserApiKeyPermission>;
+      permissions: Array<ApiKeyPermission>;
       createdAt: any;
       lastUsedAt?: any | null;
       expiresAt?: any | null;
@@ -2262,8 +2188,8 @@ export type GetUserApiKeyDetailsQuery = {
 
 export type GetUserApiKeyNeighborsQueryVariables = Exact<{
   cursor: Scalars["String"]["input"];
-  filter?: InputMaybe<Scalars["UserApiKeyFilter"]["input"]>;
-  orderBy?: InputMaybe<UserApiKeyOrder>;
+  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  orderBy?: InputMaybe<ApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
 }>;
 
@@ -2273,19 +2199,19 @@ export type GetUserApiKeyNeighborsQuery = {
     __typename?: "User";
     id: string;
     previous: {
-      __typename?: "UserApiKeyConnection";
+      __typename?: "ApiKeyConnection";
       edges: Array<{
-        __typename?: "UserApiKeyEdge";
+        __typename?: "ApiKeyEdge";
         cursor: string;
-        node: { __typename?: "UserApiKey"; id: string };
+        node: { __typename?: "ApiKey"; id: string };
       }>;
     };
     next: {
-      __typename?: "UserApiKeyConnection";
+      __typename?: "ApiKeyConnection";
       edges: Array<{
-        __typename?: "UserApiKeyEdge";
+        __typename?: "ApiKeyEdge";
         cursor: string;
-        node: { __typename?: "UserApiKey"; id: string };
+        node: { __typename?: "ApiKey"; id: string };
       }>;
     };
   };
@@ -2298,16 +2224,16 @@ export type CreateUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
 export type CreateUserApiKeyFromUserApiKeysRouteMutation = {
   __typename?: "Mutation";
   createUserApiKey: {
-    __typename?: "CreateUserApiKeyResult";
+    __typename?: "CreateApiKeyResult";
     apiKey: string;
     entity: {
-      __typename?: "UserApiKey";
+      __typename?: "ApiKey";
       id: string;
       name: string;
       start?: string | null;
       prefix?: string | null;
       enabled: boolean;
-      permissions: Array<UserApiKeyPermission>;
+      permissions: Array<ApiKeyPermission>;
       createdAt: any;
       lastUsedAt?: any | null;
       expiresAt?: any | null;
@@ -2334,8 +2260,8 @@ export type GetUserApiKeysFromUserApiKeysRouteQueryVariables = Exact<{
   before?: InputMaybe<Scalars["String"]["input"]>;
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
-  filter?: InputMaybe<Scalars["UserApiKeyFilter"]["input"]>;
-  orderBy?: InputMaybe<UserApiKeyOrder>;
+  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  orderBy?: InputMaybe<ApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
 }>;
 
@@ -2344,17 +2270,17 @@ export type GetUserApiKeysFromUserApiKeysRouteQuery = {
   currentUser: {
     __typename?: "User";
     apiKeys: {
-      __typename?: "UserApiKeyConnection";
+      __typename?: "ApiKeyConnection";
       edges: Array<{
-        __typename?: "UserApiKeyEdge";
+        __typename?: "ApiKeyEdge";
         node: {
-          __typename?: "UserApiKey";
+          __typename?: "ApiKey";
           id: string;
           name: string;
           start?: string | null;
           prefix?: string | null;
           enabled: boolean;
-          permissions: Array<UserApiKeyPermission>;
+          permissions: Array<ApiKeyPermission>;
           createdAt: any;
           lastUsedAt?: any | null;
           expiresAt?: any | null;
@@ -2391,7 +2317,7 @@ export type GetUserOverviewQuery = {
       totalCountRelation: TotalCountRelation;
     };
     apiKeys?: {
-      __typename?: "UserApiKeyConnection";
+      __typename?: "ApiKeyConnection";
       totalCount: number;
       totalCountRelation: TotalCountRelation;
     };
@@ -2655,14 +2581,13 @@ export type DeleteMemberApiKeyFromApiKeysRouteMutationVariables = Exact<{
 export type DeleteMemberApiKeyFromApiKeysRouteMutation = {
   __typename?: "Mutation";
   deleteMemberApiKey: {
-    __typename?: "MemberApiKey";
-    workspaceId: string;
+    __typename?: "ApiKey";
     id: string;
     name: string;
     start?: string | null;
     prefix?: string | null;
     enabled: boolean;
-    permissions: Array<MemberApiKeyPermission>;
+    permissions: Array<ApiKeyPermission>;
     createdAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
@@ -2684,50 +2609,51 @@ export type GetMemberApiKeyDetailsQuery = {
   currentWorkspace?: {
     __typename?: "Workspace";
     apiKey?: {
-      __typename?: "MemberApiKey";
-      workspaceId: string;
+      __typename?: "ApiKey";
       id: string;
       name: string;
       start?: string | null;
       prefix?: string | null;
       enabled: boolean;
-      permissions: Array<MemberApiKeyPermission>;
+      permissions: Array<ApiKeyPermission>;
       createdAt: any;
       lastUsedAt?: any | null;
       expiresAt?: any | null;
+      owner?:
+        | { __typename: "Member"; id: string; name: string }
+        | { __typename: "SystemAccount" }
+        | { __typename: "User" }
+        | null;
     } | null;
   } | null;
 };
 
 export type GetMemberApiKeyNeighborsQueryVariables = Exact<{
   cursor: Scalars["String"]["input"];
-  filter?: InputMaybe<Scalars["MemberApiKeyFilter"]["input"]>;
-  orderBy?: InputMaybe<MemberApiKeyOrder>;
+  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  orderBy?: InputMaybe<ApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
 }>;
 
 export type GetMemberApiKeyNeighborsQuery = {
   __typename?: "Query";
-  currentWorkspace?: {
-    __typename?: "Workspace";
-    id: string;
-    previous: {
-      __typename?: "MemberApiKeyConnection";
-      edges: Array<{
-        __typename?: "MemberApiKeyEdge";
-        cursor: string;
-        node: { __typename?: "MemberApiKey"; id: string };
-      }>;
-    };
-    next: {
-      __typename?: "MemberApiKeyConnection";
-      edges: Array<{
-        __typename?: "MemberApiKeyEdge";
-        cursor: string;
-        node: { __typename?: "MemberApiKey"; id: string };
-      }>;
-    };
-  } | null;
+  currentWorkspace?: { __typename?: "Workspace"; id: string } | null;
+  previous: {
+    __typename?: "ApiKeyConnection";
+    edges: Array<{
+      __typename?: "ApiKeyEdge";
+      cursor: string;
+      node: { __typename?: "ApiKey"; id: string };
+    }>;
+  };
+  next: {
+    __typename?: "ApiKeyConnection";
+    edges: Array<{
+      __typename?: "ApiKeyEdge";
+      cursor: string;
+      node: { __typename?: "ApiKey"; id: string };
+    }>;
+  };
 };
 
 export type CreateMemberApiKeyFromApiKeysRouteMutationVariables = Exact<{
@@ -2737,17 +2663,16 @@ export type CreateMemberApiKeyFromApiKeysRouteMutationVariables = Exact<{
 export type CreateMemberApiKeyFromApiKeysRouteMutation = {
   __typename?: "Mutation";
   createMemberApiKey: {
-    __typename?: "CreateMemberApiKeyResult";
+    __typename?: "CreateApiKeyResult";
     apiKey: string;
     entity: {
-      __typename?: "MemberApiKey";
-      workspaceId: string;
+      __typename?: "ApiKey";
       id: string;
       name: string;
       start?: string | null;
       prefix?: string | null;
       enabled: boolean;
-      permissions: Array<MemberApiKeyPermission>;
+      permissions: Array<ApiKeyPermission>;
       createdAt: any;
       lastUsedAt?: any | null;
       expiresAt?: any | null;
@@ -2800,42 +2725,49 @@ export type GetApiKeysFromApiKeysRouteQueryVariables = Exact<{
   before?: InputMaybe<Scalars["String"]["input"]>;
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
-  filter?: InputMaybe<Scalars["MemberApiKeyFilter"]["input"]>;
-  orderBy?: InputMaybe<MemberApiKeyOrder>;
+  filter?: InputMaybe<Scalars["ApiKeyFilter"]["input"]>;
+  orderBy?: InputMaybe<ApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
 }>;
 
 export type GetApiKeysFromApiKeysRouteQuery = {
   __typename?: "Query";
-  currentWorkspace?: {
-    __typename?: "Workspace";
-    apiKeys: {
-      __typename?: "MemberApiKeyConnection";
-      edges: Array<{
-        __typename?: "MemberApiKeyEdge";
-        node: {
-          __typename?: "MemberApiKey";
-          workspaceId: string;
-          id: string;
-          name: string;
-          start?: string | null;
-          prefix?: string | null;
-          enabled: boolean;
-          permissions: Array<MemberApiKeyPermission>;
-          createdAt: any;
-          lastUsedAt?: any | null;
-          expiresAt?: any | null;
-        };
-      }>;
-      pageInfo: {
-        __typename?: "PageInfo";
-        endCursor?: string | null;
-        hasNextPage: boolean;
-        hasPreviousPage: boolean;
-        startCursor?: string | null;
+  workspaceApiKeys: {
+    __typename?: "ApiKeyConnection";
+    edges: Array<{
+      __typename?: "ApiKeyEdge";
+      node: {
+        __typename?: "ApiKey";
+        id: string;
+        name: string;
+        start?: string | null;
+        prefix?: string | null;
+        enabled: boolean;
+        permissions: Array<ApiKeyPermission>;
+        createdAt: any;
+        lastUsedAt?: any | null;
+        expiresAt?: any | null;
+        owner?:
+          | {
+              __typename: "Member";
+              id: string;
+              name: string;
+              type: MemberType;
+              workspaceId: string;
+            }
+          | { __typename: "SystemAccount" }
+          | { __typename: "User" }
+          | null;
       };
+    }>;
+    pageInfo: {
+      __typename?: "PageInfo";
+      endCursor?: string | null;
+      hasNextPage: boolean;
+      hasPreviousPage: boolean;
+      startCursor?: string | null;
     };
-  } | null;
+  };
 };
 
 export type GetCurrentWorkspaceFromWorkspaceLayoutQueryVariables = Exact<{
@@ -3120,12 +3052,12 @@ export type GetWorkspaceOverviewQuery = {
       totalCount: number;
       totalCountRelation: TotalCountRelation;
     };
-    apiKeys?: {
-      __typename?: "MemberApiKeyConnection";
-      totalCount: number;
-      totalCountRelation: TotalCountRelation;
-    };
   } | null;
+  workspaceApiKeys?: {
+    __typename?: "ApiKeyConnection";
+    totalCount: number;
+    totalCountRelation: TotalCountRelation;
+  };
 };
 
 export type UpdateWorkspaceFromSettingsRouteMutationVariables = Exact<{
@@ -3318,14 +3250,13 @@ export type UpdateMemberApiKeyFromApiKeysRouteMutationVariables = Exact<{
 export type UpdateMemberApiKeyFromApiKeysRouteMutation = {
   __typename?: "Mutation";
   updateMemberApiKey: {
-    __typename?: "MemberApiKey";
-    workspaceId: string;
+    __typename?: "ApiKey";
     id: string;
     name: string;
     start?: string | null;
     prefix?: string | null;
     enabled: boolean;
-    permissions: Array<MemberApiKeyPermission>;
+    permissions: Array<ApiKeyPermission>;
     createdAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
@@ -3340,13 +3271,13 @@ export type UpdateUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
 export type UpdateUserApiKeyFromUserApiKeysRouteMutation = {
   __typename?: "Mutation";
   updateUserApiKey: {
-    __typename?: "UserApiKey";
+    __typename?: "ApiKey";
     id: string;
     name: string;
     start?: string | null;
     prefix?: string | null;
     enabled: boolean;
-    permissions: Array<UserApiKeyPermission>;
+    permissions: Array<ApiKeyPermission>;
     createdAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
@@ -3420,9 +3351,9 @@ export type CreateManagedSystemAccountKeyMutationVariables = Exact<{
 export type CreateManagedSystemAccountKeyMutation = {
   __typename?: "Mutation";
   createSystemAccountApiKey: {
-    __typename?: "CreateSystemAccountApiKeyResult";
+    __typename?: "CreateApiKeyResult";
     apiKey: string;
-    entity: { __typename?: "SystemAccountApiKey"; id: string };
+    entity: { __typename?: "ApiKey"; id: string };
   };
 };
 
@@ -3433,17 +3364,21 @@ export type ManagedSystemAccountKeyQueryVariables = Exact<{
 export type ManagedSystemAccountKeyQuery = {
   __typename?: "Query";
   systemAccountApiKey?: {
-    __typename?: "SystemAccountApiKey";
+    __typename?: "ApiKey";
     id: string;
-    systemAccountId: string;
     name: string;
     enabled: boolean;
-    permissions: Array<SystemAccountPermission>;
+    permissions: Array<ApiKeyPermission>;
     prefix?: string | null;
     start?: string | null;
     createdAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
+    owner?:
+      | { __typename: "Member" }
+      | { __typename: "SystemAccount"; id: string; name: string }
+      | { __typename: "User" }
+      | null;
   } | null;
 };
 
@@ -3454,7 +3389,7 @@ export type UpdateManagedSystemAccountKeyMutationVariables = Exact<{
 
 export type UpdateManagedSystemAccountKeyMutation = {
   __typename?: "Mutation";
-  updateSystemAccountApiKey: { __typename?: "SystemAccountApiKey"; id: string };
+  updateSystemAccountApiKey: { __typename?: "ApiKey"; id: string };
 };
 
 export type DeleteManagedSystemAccountKeyMutationVariables = Exact<{
@@ -3463,11 +3398,12 @@ export type DeleteManagedSystemAccountKeyMutationVariables = Exact<{
 
 export type DeleteManagedSystemAccountKeyMutation = {
   __typename?: "Mutation";
-  deleteSystemAccountApiKey: { __typename?: "SystemAccountApiKey"; id: string };
+  deleteSystemAccountApiKey: { __typename?: "ApiKey"; id: string };
 };
 
 export type SystemKeyPermissionChoicesQueryVariables = Exact<{
   systemAccountId?: InputMaybe<Scalars["ID"]["input"]>;
+  apiKeyId?: InputMaybe<Scalars["ID"]["input"]>;
 }>;
 
 export type SystemKeyPermissionChoicesQuery = {
@@ -3574,7 +3510,7 @@ export const ManagedSystemAccountKeysDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "SystemAccountApiKeyFilter" },
+            name: { kind: "Name", value: "ApiKeyFilter" },
           },
         },
         {
@@ -3585,7 +3521,7 @@ export const ManagedSystemAccountKeysDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "SystemAccountApiKeyOrder" },
+            name: { kind: "Name", value: "ApiKeyOrder" },
           },
         },
       ],
@@ -3594,7 +3530,7 @@ export const ManagedSystemAccountKeysDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "systemAccountApiKeys" },
+            name: { kind: "Name", value: "systemApiKeys" },
             arguments: [
               {
                 kind: "Argument",
@@ -3674,11 +3610,43 @@ export const ManagedSystemAccountKeysDocument = {
                             },
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "systemAccountId" },
+                              name: { kind: "Name", value: "name" },
                             },
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "name" },
+                              name: { kind: "Name", value: "owner" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "__typename" },
+                                  },
+                                  {
+                                    kind: "InlineFragment",
+                                    typeCondition: {
+                                      kind: "NamedType",
+                                      name: {
+                                        kind: "Name",
+                                        value: "SystemAccount",
+                                      },
+                                    },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "id" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "name" },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
                             },
                             {
                               kind: "Field",
@@ -3873,7 +3841,7 @@ export const GetAdminSystemKeyOverviewDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "systemAccountApiKeys" },
+            name: { kind: "Name", value: "systemApiKeys" },
             arguments: [
               {
                 kind: "Argument",
@@ -5934,7 +5902,7 @@ export const GetUserApiKeyNeighborsDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "UserApiKeyFilter" },
+            name: { kind: "Name", value: "ApiKeyFilter" },
           },
         },
         {
@@ -5945,7 +5913,7 @@ export const GetUserApiKeyNeighborsDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "UserApiKeyOrder" },
+            name: { kind: "Name", value: "ApiKeyOrder" },
           },
         },
         {
@@ -6293,7 +6261,7 @@ export const GetUserApiKeysFromUserApiKeysRouteDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "UserApiKeyFilter" },
+            name: { kind: "Name", value: "ApiKeyFilter" },
           },
         },
         {
@@ -6304,7 +6272,7 @@ export const GetUserApiKeysFromUserApiKeysRouteDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "UserApiKeyOrder" },
+            name: { kind: "Name", value: "ApiKeyOrder" },
           },
         },
         {
@@ -7875,7 +7843,6 @@ export const DeleteMemberApiKeyFromApiKeysRouteDocument = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [
-                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "start" } },
@@ -7952,7 +7919,36 @@ export const GetMemberApiKeyDetailsDocument = {
                     selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "workspaceId" },
+                        name: { kind: "Name", value: "owner" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "__typename" },
+                            },
+                            {
+                              kind: "InlineFragment",
+                              typeCondition: {
+                                kind: "NamedType",
+                                name: { kind: "Name", value: "Member" },
+                              },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "name" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
                       },
                       { kind: "Field", name: { kind: "Name", value: "id" } },
                       { kind: "Field", name: { kind: "Name", value: "name" } },
@@ -8025,7 +8021,7 @@ export const GetMemberApiKeyNeighborsDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "MemberApiKeyFilter" },
+            name: { kind: "Name", value: "ApiKeyFilter" },
           },
         },
         {
@@ -8036,7 +8032,7 @@ export const GetMemberApiKeyNeighborsDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "MemberApiKeyOrder" },
+            name: { kind: "Name", value: "ApiKeyOrder" },
           },
         },
         {
@@ -8058,74 +8054,74 @@ export const GetMemberApiKeyNeighborsDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            alias: { kind: "Name", value: "previous" },
+            name: { kind: "Name", value: "workspaceApiKeys" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "last" },
+                value: { kind: "IntValue", value: "1" },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "before" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "cursor" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "filter" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "filter" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "orderBy" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "query" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "query" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
                 {
                   kind: "Field",
-                  alias: { kind: "Name", value: "previous" },
-                  name: { kind: "Name", value: "apiKeys" },
-                  arguments: [
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "last" },
-                      value: { kind: "IntValue", value: "1" },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "before" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "cursor" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "filter" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "filter" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "orderBy" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "orderBy" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "query" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "query" },
-                      },
-                    },
-                  ],
+                  name: { kind: "Name", value: "edges" },
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "edges" },
+                        name: { kind: "Name", value: "cursor" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "cursor" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "node" },
-                              selectionSet: {
-                                kind: "SelectionSet",
-                                selections: [
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "id" },
-                                  },
-                                ],
-                              },
+                              name: { kind: "Name", value: "id" },
                             },
                           ],
                         },
@@ -8133,74 +8129,74 @@ export const GetMemberApiKeyNeighborsDocument = {
                     ],
                   },
                 },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            alias: { kind: "Name", value: "next" },
+            name: { kind: "Name", value: "workspaceApiKeys" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: { kind: "IntValue", value: "1" },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "after" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "cursor" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "filter" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "filter" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "orderBy" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "query" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "query" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
                 {
                   kind: "Field",
-                  alias: { kind: "Name", value: "next" },
-                  name: { kind: "Name", value: "apiKeys" },
-                  arguments: [
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "first" },
-                      value: { kind: "IntValue", value: "1" },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "after" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "cursor" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "filter" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "filter" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "orderBy" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "orderBy" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "query" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "query" },
-                      },
-                    },
-                  ],
+                  name: { kind: "Name", value: "edges" },
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "edges" },
+                        name: { kind: "Name", value: "cursor" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "cursor" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "node" },
-                              selectionSet: {
-                                kind: "SelectionSet",
-                                selections: [
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "id" },
-                                  },
-                                ],
-                              },
+                              name: { kind: "Name", value: "id" },
                             },
                           ],
                         },
@@ -8268,10 +8264,6 @@ export const CreateMemberApiKeyFromApiKeysRouteDocument = {
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "workspaceId" },
-                      },
                       { kind: "Field", name: { kind: "Name", value: "id" } },
                       { kind: "Field", name: { kind: "Name", value: "name" } },
                       { kind: "Field", name: { kind: "Name", value: "start" } },
@@ -8578,7 +8570,7 @@ export const GetApiKeysFromApiKeysRouteDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "MemberApiKeyFilter" },
+            name: { kind: "Name", value: "ApiKeyFilter" },
           },
         },
         {
@@ -8589,7 +8581,7 @@ export const GetApiKeysFromApiKeysRouteDocument = {
           },
           type: {
             kind: "NamedType",
-            name: { kind: "Name", value: "MemberApiKeyOrder" },
+            name: { kind: "Name", value: "ApiKeyOrder" },
           },
         },
         {
@@ -8606,162 +8598,187 @@ export const GetApiKeysFromApiKeysRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentWorkspace" },
+            name: { kind: "Name", value: "workspaceApiKeys" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "after" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "after" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "before" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "before" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "first" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "last" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "last" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "orderBy" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "filter" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "filter" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "query" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "query" },
+                },
+              },
+            ],
             selectionSet: {
               kind: "SelectionSet",
               selections: [
                 {
                   kind: "Field",
-                  name: { kind: "Name", value: "apiKeys" },
-                  arguments: [
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "after" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "after" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "before" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "before" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "first" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "first" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "last" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "last" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "orderBy" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "orderBy" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "filter" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "filter" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "query" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "query" },
-                      },
-                    },
-                  ],
+                  name: { kind: "Name", value: "edges" },
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "edges" },
+                        name: { kind: "Name", value: "node" },
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "node" },
+                              name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "owner" },
                               selectionSet: {
                                 kind: "SelectionSet",
                                 selections: [
                                   {
                                     kind: "Field",
-                                    name: {
-                                      kind: "Name",
-                                      value: "workspaceId",
+                                    name: { kind: "Name", value: "__typename" },
+                                  },
+                                  {
+                                    kind: "InlineFragment",
+                                    typeCondition: {
+                                      kind: "NamedType",
+                                      name: { kind: "Name", value: "Member" },
                                     },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "id" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "name" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "start" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "prefix" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "enabled" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: {
-                                      kind: "Name",
-                                      value: "permissions",
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "id" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "type" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "workspaceId",
+                                          },
+                                        },
+                                      ],
                                     },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "createdAt" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "lastUsedAt" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "expiresAt" },
                                   },
                                 ],
                               },
                             },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "name" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "start" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "prefix" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "enabled" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "permissions" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "createdAt" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "lastUsedAt" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "expiresAt" },
+                            },
                           ],
                         },
                       },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "pageInfo" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "pageInfo" },
-                        selectionSet: {
-                          kind: "SelectionSet",
-                          selections: [
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "endCursor" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "hasNextPage" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "hasPreviousPage" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "startCursor" },
-                            },
-                          ],
-                        },
+                        name: { kind: "Name", value: "endCursor" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasNextPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasPreviousPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "startCursor" },
                       },
                     ],
                   },
@@ -10231,45 +10248,42 @@ export const GetWorkspaceOverviewDocument = {
                     ],
                   },
                 },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "workspaceApiKeys" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: { kind: "IntValue", value: "1" },
+              },
+            ],
+            directives: [
+              {
+                kind: "Directive",
+                name: { kind: "Name", value: "include" },
+                arguments: [
+                  {
+                    kind: "Argument",
+                    name: { kind: "Name", value: "if" },
+                    value: {
+                      kind: "Variable",
+                      name: { kind: "Name", value: "includeApiKeys" },
+                    },
+                  },
+                ],
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "totalCount" } },
                 {
                   kind: "Field",
-                  name: { kind: "Name", value: "apiKeys" },
-                  arguments: [
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "first" },
-                      value: { kind: "IntValue", value: "1" },
-                    },
-                  ],
-                  directives: [
-                    {
-                      kind: "Directive",
-                      name: { kind: "Name", value: "include" },
-                      arguments: [
-                        {
-                          kind: "Argument",
-                          name: { kind: "Name", value: "if" },
-                          value: {
-                            kind: "Variable",
-                            name: { kind: "Name", value: "includeApiKeys" },
-                          },
-                        },
-                      ],
-                    },
-                  ],
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "totalCount" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "totalCountRelation" },
-                      },
-                    ],
-                  },
+                  name: { kind: "Name", value: "totalCountRelation" },
                 },
               ],
             },
@@ -11128,7 +11142,6 @@ export const UpdateMemberApiKeyFromApiKeysRouteDocument = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [
-                { kind: "Field", name: { kind: "Name", value: "workspaceId" } },
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "start" } },
@@ -11602,11 +11615,40 @@ export const ManagedSystemAccountKeyDocument = {
               kind: "SelectionSet",
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
                 {
                   kind: "Field",
-                  name: { kind: "Name", value: "systemAccountId" },
+                  name: { kind: "Name", value: "owner" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "__typename" },
+                      },
+                      {
+                        kind: "InlineFragment",
+                        typeCondition: {
+                          kind: "NamedType",
+                          name: { kind: "Name", value: "SystemAccount" },
+                        },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "name" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
                 },
-                { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "enabled" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
                 { kind: "Field", name: { kind: "Name", value: "prefix" } },
@@ -11759,6 +11801,14 @@ export const SystemKeyPermissionChoicesDocument = {
           },
           type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
         },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "apiKeyId" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+        },
       ],
       selectionSet: {
         kind: "SelectionSet",
@@ -11773,6 +11823,14 @@ export const SystemKeyPermissionChoicesDocument = {
                 value: {
                   kind: "Variable",
                   name: { kind: "Name", value: "systemAccountId" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "apiKeyId" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "apiKeyId" },
                 },
               },
             ],

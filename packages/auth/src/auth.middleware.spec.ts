@@ -4,6 +4,7 @@ import { Test } from "@nestjs/testing";
 import { NextFunction, Request } from "express";
 import { type Mock } from "vitest";
 
+import { withAuthTestFeatures } from "../test/fixtures/enabled-auth-features.fixture.js";
 import { mockRlsContext } from "../test/mock-rls-context.js";
 import { AuthAbility } from "./auth.ability.js";
 import { API_KEY } from "./auth.constants.js";
@@ -114,11 +115,11 @@ async function createMiddleware(
       AuthMiddleware,
       {
         provide: MODULE_OPTIONS_TOKEN,
-        useValue: {
+        useValue: withAuthTestFeatures({
           ...options,
           workspace: { ...options.workspace, enabled: true },
           entities,
-        },
+        }),
       },
       {
         provide: SessionService,
@@ -1033,7 +1034,7 @@ describe("optional workspace behavior", () => {
       };
       const em = { findOne: vi.fn(), setSessionContext: vi.fn() };
       const middleware = new AuthMiddleware(
-        {},
+        withAuthTestFeatures({}),
         sessionService as unknown as SessionService,
         apiKeys as unknown as ApiKeyAuthenticationService,
         em as unknown as EntityManager,

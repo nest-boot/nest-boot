@@ -1,6 +1,7 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
+import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import {
   Member,
   MemberApiKey,
@@ -28,9 +29,15 @@ describe("permission delegation", () => {
           roles: { reader: ["report:read"] },
         },
       };
-      expect(canGrantPermissions(options, scope, ["report:read"])).toBe(false);
+      expect(
+        canGrantPermissions(withAuthTestFeatures(options), scope, [
+          "report:read",
+        ]),
+      ).toBe(false);
       expect(() => {
-        assertCanGrantPermissions(options, scope, ["report:read"]);
+        assertCanGrantPermissions(withAuthTestFeatures(options), scope, [
+          "report:read",
+        ]);
       }).toThrow(ForbiddenException);
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         const user = Object.assign(new User(), {
@@ -46,32 +53,47 @@ describe("permission delegation", () => {
         });
         RequestIdentity.stage({ user, member, workspace });
         expect(
-          canGrantPermissions(options, scope, ["report:read", "report:write"]),
+          canGrantPermissions(withAuthTestFeatures(options), scope, [
+            "report:read",
+            "report:write",
+          ]),
         ).toBe(true);
-        expect(canGrantPermissions(options, scope, ["report:delete"])).toBe(
-          false,
-        );
+        expect(
+          canGrantPermissions(withAuthTestFeatures(options), scope, [
+            "report:delete",
+          ]),
+        ).toBe(false);
         expect(() => {
-          assertCanGrantPermissions(options, scope, [
+          assertCanGrantPermissions(withAuthTestFeatures(options), scope, [
             "report:read",
             "report:write",
           ]);
         }).not.toThrow();
         expect(() => {
-          assertCanGrantPermissions(options, scope, ["report:delete"]);
+          assertCanGrantPermissions(withAuthTestFeatures(options), scope, [
+            "report:delete",
+          ]);
         }).toThrow("permissions exceed issuer permissions");
         RequestIdentity.stage({
           apiKey: Object.assign(new UserApiKey(), {
             permissions: ["report:read", "report:delete"],
           }),
         });
-        expect(canGrantPermissions(options, scope, ["report:read"])).toBe(true);
-        expect(canGrantPermissions(options, scope, ["report:write"])).toBe(
-          false,
-        );
-        expect(canGrantPermissions(options, scope, ["report:delete"])).toBe(
-          false,
-        );
+        expect(
+          canGrantPermissions(withAuthTestFeatures(options), scope, [
+            "report:read",
+          ]),
+        ).toBe(true);
+        expect(
+          canGrantPermissions(withAuthTestFeatures(options), scope, [
+            "report:write",
+          ]),
+        ).toBe(false);
+        expect(
+          canGrantPermissions(withAuthTestFeatures(options), scope, [
+            "report:delete",
+          ]),
+        ).toBe(false);
       });
     },
   );
@@ -99,14 +121,18 @@ describe("permission delegation", () => {
         }),
       });
       expect(
-        canGrantPermissions({ workspace: { enabled: true } }, "workspace", [
-          "report:read",
-        ]),
+        canGrantPermissions(
+          withAuthTestFeatures({ workspace: { enabled: true } }),
+          "workspace",
+          ["report:read"],
+        ),
       ).toBe(true);
       expect(
-        canGrantPermissions({ workspace: { enabled: true } }, "user", [
-          "report:read",
-        ]),
+        canGrantPermissions(
+          withAuthTestFeatures({ workspace: { enabled: true } }),
+          "user",
+          ["report:read"],
+        ),
       ).toBe(false);
       expect(() => {
         assertApiKeyPermissionCeiling({ workspace: { enabled: true } }, [
@@ -127,9 +153,11 @@ describe("permission delegation", () => {
         ]);
       }).not.toThrow();
       expect(
-        canGrantPermissions({ workspace: { enabled: true } }, "workspace", [
-          "report:read",
-        ]),
+        canGrantPermissions(
+          withAuthTestFeatures({ workspace: { enabled: true } }),
+          "workspace",
+          ["report:read"],
+        ),
       ).toBe(true);
     });
   });

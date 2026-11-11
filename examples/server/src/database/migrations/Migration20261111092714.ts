@@ -1,7 +1,7 @@
 import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20261111061111 extends Migration {
-  override name = 'Migration20261111061111';
+export class Migration20261111092714 extends Migration {
+  override name = 'Migration20261111092714';
 
   override up(): void | Promise<void> {
     this.addSql(
@@ -175,7 +175,7 @@ export class Migration20261111061111 extends Migration {
       `alter table "api_key" add constraint "api_key_created_by_id_foreign" foreign key ("created_by_id") references "user" ("id") on delete set null;`,
     );
     this.addSql(
-      `alter table "api_key" add constraint "api_key_owner_type_check" check ("owner_type" in ('user', 'member', 'system_account'));`,
+      `alter table "api_key" add constraint "api_key_owner_type_check" check ("owner_type" in ('user', 'system_account', 'member'));`,
     );
     this
       .addSql(`create or replace function "public"."api_key_api_key_owner_exists_fn"() returns trigger language plpgsql security definer set search_path = pg_catalog as \$\$ begin

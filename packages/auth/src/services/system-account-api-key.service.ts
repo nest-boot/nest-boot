@@ -5,7 +5,12 @@ import {
   ConnectionManager,
   type ConnectionResult,
 } from "@nest-boot/graphql-connection";
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import type { GraphQLResolveInfo } from "graphql";
 
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
@@ -24,6 +29,7 @@ import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
 } from "../utils/api-key-permissions.util.js";
+import { assertApiKeyFeature } from "../utils/assert-api-key-feature.util.js";
 import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
 import { assertSystemAccountAdministrator } from "../utils/assert-system-account-administrator.util.js";
 import { authorize } from "../utils/authorize.util.js";
@@ -46,20 +52,40 @@ export class SystemAccountApiKeyService {
   /**
    * Lists configured key grants within the account and administrator ceilings.
    * @param systemAccountId - Optional account ceiling; omit for the administrator-wide catalog.
+   * @param apiKeyId - Optional existing key whose account supplies the ceiling.
    * @returns Key permission choices and their creation defaults.
    */
   async getSystemAccountApiKeyPermissions(
     systemAccountId?: string,
+    apiKeyId?: string,
   ): Promise<SystemAccountPermissionOption[]> {
     this.assertAccess("read");
+    if (systemAccountId && apiKeyId) {
+      throw new BadRequestException(
+        "Choose a system account or an API key, not both",
+      );
+    }
     return await runAuthQuery(this.em, async (em) => {
-      const account = systemAccountId
-        ? await em.findOne(SystemAccount, systemAccountId)
+      let ownerId = systemAccountId;
+      if (apiKeyId) {
+        const key = await em.findOne(
+          ApiKeyEntity,
+          { id: apiKeyId, ownerType: "system_account" },
+          { exclude: ["key"] },
+        );
+        if (!key) {
+          throw new NotFoundException("System account API key not found");
+        }
+        authorize("read", key);
+        ownerId = key.owner.id;
+      }
+      const account = ownerId
+        ? await em.findOne(SystemAccount, ownerId)
         : undefined;
-      if (systemAccountId && !account) {
+      if (ownerId && !account) {
         throw new NotFoundException("System account not found");
       }
-      if (account) {
+      if (account && systemAccountId) {
         authorize("read", account);
       }
       const catalog = resolveApiKeyPermissionCatalog(
@@ -323,6 +349,7 @@ export class SystemAccountApiKeyService {
   }
 
   private assertAccess(action: "read" | "write") {
+    assertApiKeyFeature(this.options, "systemAccountApiKey");
     const user = assertSystemAccountAdministrator(this.options);
     authorize(action, SystemAccountApiKey);
     return user;

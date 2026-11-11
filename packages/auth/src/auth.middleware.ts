@@ -225,6 +225,9 @@ export class AuthMiddleware implements NestMiddleware {
       return;
     }
 
+    if (!this.apiKeyService) {
+      throw new UnauthorizedException("API keys are disabled");
+    }
     const validation = await this.apiKeyService.validate(plaintextApiKey);
     if (validation.ownerType === "system_account") {
       RequestIdentity.stage({

@@ -11,6 +11,7 @@ import { SessionService } from "../services/session.service.js";
 import { UserService } from "../services/user.service.js";
 import { UserDeletionService } from "../services/user-deletion.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
+import { resolveAuthFeatures } from "../utils/resolve-auth-features.util.js";
 import { ApiKeyAuthenticationService } from "./api-key-authentication.service.js";
 import { createContextualAuthService } from "./create-contextual-auth-service.js";
 
@@ -91,13 +92,15 @@ export const authServiceProviders: Provider[] = [
     provide: ApiKeyAuthenticationService,
     inject: [EntityManager, MODULE_OPTIONS_TOKEN],
     useFactory: (em: EntityManager, options: AuthModuleOptions) =>
-      createContextualAuthService(
-        em,
-        (manager) => new ApiKeyAuthenticationService(manager, options),
-        {
-          validate: "authentication",
-        },
-      ),
+      !resolveAuthFeatures(options).apiKey
+        ? null
+        : createContextualAuthService(
+            em,
+            (manager) => new ApiKeyAuthenticationService(manager, options),
+            {
+              validate: "authentication",
+            },
+          ),
   },
   {
     provide: SessionService,

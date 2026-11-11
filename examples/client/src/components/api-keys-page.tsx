@@ -6,7 +6,7 @@ import { isEmpty } from "lodash";
 import type { ComponentProps } from "react";
 
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
-import type { UserApiKey, UserApiKeyPermission } from "@/gql/graphql";
+import type { ApiKey, UserApiKeyPermission } from "@/gql/graphql";
 import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
 import type { PageInfo } from "@/lib/graphql-connection";
 import type { createAbility } from "@/lib/ability";
@@ -21,9 +21,17 @@ import { Page } from "@/components/thread-ui/page";
 import { Card, CardContent } from "@/components/ui/card";
 import { getNextSearch, getPreviousSearch } from "@/lib/graphql-connection";
 
+export type ApiKeyOwnerRow = {
+  __typename?: string;
+  id: string;
+  name: string;
+  type?: string;
+  workspaceId?: string;
+};
+
 export type ApiKeyRow<Permission extends UserApiKeyPermission> = Omit<
   Pick<
-    UserApiKey,
+    ApiKey,
     | "id"
     | "name"
     | "start"
@@ -35,7 +43,10 @@ export type ApiKeyRow<Permission extends UserApiKeyPermission> = Omit<
     | "expiresAt"
   >,
   "permissions"
-> & { permissions: Array<Permission> };
+> & {
+  permissions: Array<Permission>;
+  owner?: ApiKeyOwnerRow | null;
+};
 
 interface ApiKeysPageProps<Permission extends UserApiKeyPermission> {
   subject: "UserApiKey" | "MemberApiKey" | "SystemAccountApiKey";
@@ -48,6 +59,8 @@ interface ApiKeysPageProps<Permission extends UserApiKeyPermission> {
   createPath: string;
   breadcrumbActions?: ComponentProps<typeof Page>["breadcrumbActions"];
   canCreate?: boolean;
+  showOwner?: boolean;
+  ownerPath?: (owner: ApiKeyOwnerRow) => string | undefined;
   detailPath: (id: string) => string;
 }
 
@@ -63,6 +76,8 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
   createPath,
   breadcrumbActions,
   canCreate: allowCreate,
+  showOwner = false,
+  ownerPath,
   detailPath,
 }: ApiKeysPageProps<Permission>) {
   const { t, i18n } = useTranslation();
@@ -155,6 +170,28 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
                     );
                   },
                 }),
+                ...(showOwner
+                  ? [
+                      apiKeysColumnHelper.column("owner", {
+                        header: t("api-key:form.owner.label"),
+                        render: (props, { row }) => {
+                          const owner = row.original.owner;
+                          const path = owner ? ownerPath?.(owner) : undefined;
+                          return owner && path ? (
+                            <Link
+                              {...props}
+                              to={path}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              {owner.name}
+                            </Link>
+                          ) : (
+                            <span {...props}>{owner?.name ?? "—"}</span>
+                          );
+                        },
+                      }),
+                    ]
+                  : []),
                 apiKeysColumnHelper.column("status", {
                   field: null,
                   header: t("api-key:table.status"),

@@ -1,4 +1,5 @@
 import type { AuthModuleAccountOptions } from "./interfaces/auth-module-account-options.interface.js";
+import type { AuthModuleAdminOptions } from "./interfaces/auth-module-admin-options.interface.js";
 import type { AuthModuleApiKeyOptions } from "./interfaces/auth-module-api-key-options.interface.js";
 import type { AuthModuleEmailAndPasswordOptions } from "./interfaces/auth-module-email-and-password-options.interface.js";
 import type { AuthModuleEmailVerificationOptions } from "./interfaces/auth-module-email-verification-options.interface.js";
@@ -47,6 +48,8 @@ export interface AuthModuleOptions<
 
   /** OAuth account persistence and state-validation options. */
   account?: AuthModuleAccountOptions;
+  /** Optional administration APIs and independent system accounts. Disabled by default. */
+  admin?: AuthModuleAdminOptions;
 
   /** Session lifecycle and Cookie cache options. */
   session?: AuthModuleSessionOptions;

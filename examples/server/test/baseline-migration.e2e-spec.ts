@@ -11,7 +11,18 @@ it('builds the current example schema from ordered migrations and can roll back 
   const fixture = await createDatabaseFixture();
   const orm = await MikroORM.init({
     clientUrl: fixture.connectionString,
-    entities: [...getAuthEntities({ workspace: { enabled: true } }), JobEntity],
+    entities: [
+      ...getAuthEntities({
+        admin: { enabled: true },
+        workspace: { enabled: true },
+        apiKey: {
+          enabled: true,
+          user: { enabled: true },
+          workspace: { enabled: true },
+        },
+      }),
+      JobEntity,
+    ],
     metadataProvider: TsMorphMetadataProvider,
     metadataCache: { enabled: false },
     extensions: [Migrator],

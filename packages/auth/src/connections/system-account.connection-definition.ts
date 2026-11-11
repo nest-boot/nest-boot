@@ -3,7 +3,9 @@ import { ConnectionBuilder } from "@nest-boot/graphql-connection";
 
 import { SystemAccount } from "../entities/system-account.entity.js";
 
-const { Connection, ConnectionArgs } = new ConnectionBuilder(SystemAccount)
+const { Connection, ConnectionArgs, Edge } = new ConnectionBuilder(
+  SystemAccount,
+)
   .addField({
     field: "name",
     searchable: true,
@@ -18,9 +20,12 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(SystemAccount)
     type: "date",
   })
   .build();
+
+// Referenced only by enabled system-account management APIs.
+ObjectType("SystemAccountEdge", { isAbstract: true })(Edge);
 /** Pagination arguments for SystemAccount. */
 @ArgsType()
 export class SystemAccountConnectionArgs extends ConnectionArgs {}
 /** A page of authorized SystemAccount records. */
-@ObjectType()
+@ObjectType({ isAbstract: true })
 export class SystemAccountConnection extends Connection {}

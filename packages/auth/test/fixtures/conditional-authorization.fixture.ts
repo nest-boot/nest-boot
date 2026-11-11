@@ -9,6 +9,7 @@ import { SessionService } from "../../src/services/session.service.js";
 import { UserService } from "../../src/services/user.service.js";
 import { UserApiKeyService } from "../../src/services/user-api-key.service.js";
 import { createWorkspaceServices } from "../workspace-service.fixture.js";
+import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 /**
  * Runs a test with the fixture's user and workspace identity.
  * @param callback - Work to execute in the supplied context.
@@ -83,16 +84,22 @@ function fixture() {
     workspace,
     userService: new UserService(
       result.em,
-      { workspace: { enabled: true } },
+      withAuthTestFeatures({ workspace: { enabled: true } }),
       { hash: vi.fn().mockResolvedValue("hash") } as never,
       {} as never,
     ),
     sessionService: new SessionService({}, result.em),
-    userApiKeyService: new UserApiKeyService(result.em, {
-      workspace: { enabled: true },
-    }),
-    memberApiKeyService: new MemberApiKeyService(result.em, {
-      workspace: { enabled: true },
-    }),
+    userApiKeyService: new UserApiKeyService(
+      result.em,
+      withAuthTestFeatures({
+        workspace: { enabled: true },
+      }),
+    ),
+    memberApiKeyService: new MemberApiKeyService(
+      result.em,
+      withAuthTestFeatures({
+        workspace: { enabled: true },
+      }),
+    ),
   };
 }
