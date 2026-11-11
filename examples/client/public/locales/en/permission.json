@@ -115,5 +115,33 @@
   "service_account_write": {
     "name": "Manage Service Accounts",
     "description": "Create, update, disable, and remove service accounts; changing roles or permissions also requires the corresponding member permission"
+  },
+  "system_account_read": {
+    "name": "Read System Accounts",
+    "description": "View independent platform system accounts"
+  },
+  "system_account_write": {
+    "name": "Manage System Accounts",
+    "description": "Create, update, enable, disable, and delete system accounts through an administrator session"
+  },
+  "system_account_api_key_read": {
+    "name": "Read System Account API Keys",
+    "description": "View system account API key metadata through an administrator session"
+  },
+  "system_account_api_key_write": {
+    "name": "Manage System Account API Keys",
+    "description": "Create, update, enable, disable, and delete system account API keys through an administrator session"
+  },
+  "workspace_read_any": {
+    "name": "Read All Workspaces",
+    "description": "View workspaces without requiring membership"
+  },
+  "workspace_update_any": {
+    "name": "Update Any Workspace",
+    "description": "Change any workspace through platform administration"
+  },
+  "workspace_delete_any": {
+    "name": "Delete Any Workspace",
+    "description": "Permanently delete any workspace through platform administration"
   }
 }

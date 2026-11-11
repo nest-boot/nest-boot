@@ -174,7 +174,7 @@ Queue job contracts now live in `readonly jobSchemas`, replacing BaseQueue's Dat
 - Rebuild generated files and migrations after switching TypeScript module
   resolution so generated imports include valid ESM extensions.
 
-The server example preserves its two-step baseline and adds an ordered API-key upgrade migration:
+The server example uses a regenerated two-step baseline for a fresh database:
 handwritten infrastructure initialization followed by a schema generated from the
 current entities. Use a fresh database for this example; the
 new baseline is not an upgrade path for databases that ran the removed migrations.
@@ -188,7 +188,7 @@ unit and end-to-end suites with `pnpm test` and `pnpm test:e2e`.
 ### API-key ownership and database cascades
 
 Run `Migration00000000000000_Initial` before the MikroORM-generated
-`Migration20261024072513`. Initialization grants schema `USAGE` and sets default
+`Migration20261111061111`. Initialization grants schema `USAGE` and sets default
 `ALL` privileges on tables, functions, and sequences in `public` for both
 `anonymous` and `authenticated`. These defaults apply only to future objects
 created by the same migration role, not existing objects or objects created by
@@ -206,13 +206,13 @@ Application tables declare RLS policies; Job history is an explicit exception wi
 explicitly denies request roles. Services and GraphQL control credential fields
 and writable properties; database column-level protection is no longer configured.
 
-The earlier 8.x baseline replaced `BaseApiKey.owner` with separate user and member credential tables. The current 8.x upgrade unifies them under `ApiKeyEntity.owner`; apply the data migration described below, and use the owner-specific GraphQL views and services for management. User deletion uses foreign-key cascades for related records and owner cleanup triggers for polymorphic keys. Workspaces, independent system accounts and other members' keys survive. User SELECT
+API keys use `ApiKeyEntity.owner` as a polymorphic relation to User, Member or SystemAccount. User deletion uses foreign-key cascades for related records and owner cleanup triggers for polymorphic keys. Workspaces, independent system accounts and other members' keys survive. User SELECT
 permits authenticated roles; Services enforce profile access through Ability,
 including custom permission names. User writes and Session reads likewise rely
 on Service authorization; database request variables no longer carry application
 permissions. Do not expose direct User queries without Service authorization.
 
-The earlier beta baseline created separate user/member key tables. The current example retains that history and appends `Migration20261111023442` to unify the tables without recreating the database. Existing application
+The example baseline creates the current shared API-key table and system accounts directly. Existing application
 databases require their own data-preserving migration.
 
 Workspace deletion is now permanent. Remove `Workspace.deletedAt` selections,
@@ -285,6 +285,6 @@ data-preserving reconciliation plan.
 
 `UserApiKey`, `MemberApiKey`, and `SystemAccountApiKey` are owner-specific public views and services; their persistent entity is `ApiKeyEntity`. Direct ORM filters use `ownerType` and the polymorphic `owner` reference. Register `getAuthEntities(options)` for standalone ORM usage; AuthModule handles registration automatically. See [API keys](/docs/tutorial/auth/api-keys) for the system-account permission and administrator-session model.
 
-An existing two-table database needs a forward data-copy migration, not only generated table DDL. The example's `Migration20261111023442` preserves legacy IDs, hashes, grants, status and timestamps, adds global hash uniqueness and owner integrity/cleanup triggers, and then drops the old tables. Conflicting IDs or hashes abort the transaction. Resolve ID collisions deliberately; delete both ambiguous credentials sharing a hash and issue fresh ones. Adapt external references to the old tables in your own application migration.
+The example schema is regenerated from the current entities for a fresh database. It creates the shared API-key table, system accounts, global hash uniqueness and owner integrity/cleanup triggers directly.
 
-Rollback copies legacy credential columns back and refuses to discard system accounts. Export/remove those accounts and their keys before rollback; the old schema cannot retain new key-creator audit data. Raw trigger-expression changes also require explicit migrations, since schema diffing does not compare their bodies. The release remains in the 8.x series.
+Rolling back the generated schema removes its tables and data. Raw trigger-expression changes require explicit migrations because schema diffing does not compare their bodies. The release remains in the 8.x series.

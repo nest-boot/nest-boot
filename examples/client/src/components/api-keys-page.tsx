@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
+import type { ComponentProps } from "react";
 
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import type { UserApiKey, UserApiKeyPermission } from "@/gql/graphql";
@@ -37,7 +38,7 @@ export type ApiKeyRow<Permission extends UserApiKeyPermission> = Omit<
 > & { permissions: Array<Permission> };
 
 interface ApiKeysPageProps<Permission extends UserApiKeyPermission> {
-  subject: "UserApiKey" | "MemberApiKey";
+  subject: "UserApiKey" | "MemberApiKey" | "SystemAccountApiKey";
   ability: ReturnType<typeof createAbility>;
   title: string;
   description: string;
@@ -45,6 +46,8 @@ interface ApiKeysPageProps<Permission extends UserApiKeyPermission> {
   apiKeys: Array<ApiKeyRow<Permission>>;
   pageInfo?: PageInfo;
   createPath: string;
+  breadcrumbActions?: ComponentProps<typeof Page>["breadcrumbActions"];
+  canCreate?: boolean;
   detailPath: (id: string) => string;
 }
 
@@ -58,12 +61,14 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
   apiKeys,
   pageInfo,
   createPath,
+  breadcrumbActions,
+  canCreate: allowCreate,
   detailPath,
 }: ApiKeysPageProps<Permission>) {
   const { t, i18n } = useTranslation();
   const apiKeysColumnHelper =
     createDataTableColumnHelper<(typeof apiKeys)[number]>();
-  const canCreate = ability.can("write", subject);
+  const canCreate = allowCreate ?? ability.can("write", subject);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -101,6 +106,7 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
 
   return (
     <Page
+      breadcrumbActions={breadcrumbActions}
       title={title}
       description={description}
       primaryAction={{

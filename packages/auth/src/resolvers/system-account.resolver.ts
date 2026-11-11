@@ -26,6 +26,7 @@ import { CreateSystemAccountApiKeyInput } from "../inputs/create-system-account-
 import { UpdateSystemAccountInput } from "../inputs/update-system-account.input.js";
 import { UpdateSystemAccountApiKeyInput } from "../inputs/update-system-account-api-key.input.js";
 import { CreateSystemAccountApiKeyResult } from "../objects/create-system-account-api-key-result.object.js";
+import { SystemAccountPermissionOption } from "../objects/system-account-permission-option.object.js";
 import { SystemAccountService } from "../services/system-account.service.js";
 import { SystemAccountApiKeyService } from "../services/system-account-api-key.service.js";
 
@@ -36,6 +37,25 @@ export class SystemAccountResolver {
     private readonly accounts: SystemAccountService,
     private readonly keys: SystemAccountApiKeyService,
   ) {}
+
+  /**
+   * Lists platform grants available to the administrator creating an account.
+   * @returns Permission choices with the current issuer ceiling.
+   */
+  @Query(() => [SystemAccountPermissionOption])
+  systemAccountPermissions() {
+    return this.accounts.getSystemAccountPermissions();
+  }
+
+  /**
+   * Lists key grant defaults and ceilings for the parent account.
+   * @param account - Owning system account.
+   * @returns Configured permission choices bounded by account and issuer.
+   */
+  @ResolveField(() => [SystemAccountPermissionOption])
+  apiKeyPermissions(@Parent() account: SystemAccount) {
+    return this.keys.getSystemAccountApiKeyPermissions(account.id);
+  }
 
   /**
    * Finds one system account.

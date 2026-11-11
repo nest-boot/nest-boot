@@ -12,11 +12,15 @@ import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { SystemAccountConnection } from "../connections/system-account.connection-definition.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
+import type { SystemAccountPermissionOption } from "../objects/system-account-permission-option.object.js";
 import { resolveApiKeyPermissionCatalog } from "../utils/api-key-permissions.util.js";
 import { assertSystemAccountAdministrator } from "../utils/assert-system-account-administrator.util.js";
 import { normalizeAuthPermissions } from "../utils/auth-role.util.js";
 import { authorize } from "../utils/authorize.util.js";
-import { assertCanGrantPermissions } from "../utils/permission-grants.util.js";
+import {
+  assertCanGrantPermissions,
+  canGrantPermissions,
+} from "../utils/permission-grants.util.js";
 import { runAuthQuery } from "../utils/run-auth-query.js";
 
 /** Input shared by programmatic and GraphQL system-account management. */
@@ -38,6 +42,25 @@ export class SystemAccountService {
     private readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN) private readonly options: AuthModuleOptions,
   ) {}
+
+  /**
+   * Lists platform grants that the current administrator may delegate.
+   * @returns Active platform permission choices and issuer grantability.
+   */
+  getSystemAccountPermissions(): SystemAccountPermissionOption[] {
+    this.assertAccess("read");
+    return resolveApiKeyPermissionCatalog(this.options, "systemAccount")
+      .permissions.filter(
+        (permission) =>
+          this.options.workspace?.enabled === true ||
+          !permission.startsWith("workspace:"),
+      )
+      .map((permission) => ({
+        permission,
+        default: false,
+        grantable: canGrantPermissions(this.options, "user", [permission]),
+      }));
+  }
 
   /**
    * Returns an account after verifying the human administrator's read grant.
@@ -136,6 +159,14 @@ export class SystemAccountService {
             throw new NotFoundException("System account not found");
           }
           authorize("write", account);
+          if (input.enabled === true && !account.enabled) {
+            // Re-enabling restores every enabled key, so it is a delegation operation.
+            assertCanGrantPermissions(
+              this.options,
+              "user",
+              permissions ?? account.permissions,
+            );
+          }
           tx.assign(
             account,
             { name: input.name, enabled: input.enabled, permissions },

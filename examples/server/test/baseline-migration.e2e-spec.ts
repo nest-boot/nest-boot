@@ -24,7 +24,7 @@ it('builds the current example schema from ordered migrations and can roll back 
   });
   try {
     const migrated = await orm.migrator.up();
-    expect(migrated).toHaveLength(3);
+    expect(migrated).toHaveLength(2);
     expect(migrated[0].name).toBe(Migration00000000000000_Initial.name);
     expect(await orm.migrator.getPending()).toEqual([]);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
@@ -83,7 +83,7 @@ it('builds the current example schema from ordered migrations and can roll back 
       ).rows.map(({ extname }) => extname),
     ).toEqual(['pgcrypto', 'uuid-ossp']);
 
-    expect(await orm.migrator.up()).toHaveLength(3);
+    expect(await orm.migrator.up()).toHaveLength(2);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
     expect(await orm.migrator.checkSchema()).toBe(false);
   } finally {

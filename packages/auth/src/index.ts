@@ -167,6 +167,7 @@ export * from "./objects/set-member-roles-payload.object.js";
 export * from "./objects/set-user-permissions-payload.object.js";
 export * from "./objects/set-user-roles-payload.object.js";
 export * from "./objects/sign-up-payload.object.js";
+export * from "./objects/system-account-permission-option.object.js";
 export * from "./objects/unban-user-payload.object.js";
 export * from "./objects/update-member-payload.object.js";
 export * from "./objects/update-user-payload.object.js";

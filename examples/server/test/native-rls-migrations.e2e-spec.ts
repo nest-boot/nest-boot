@@ -18,8 +18,7 @@ import { getDatabaseConfig } from '@nest-boot/database';
 import { entities as queueEntities } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20261024072513 } from '../src/database/migrations/Migration20261024072513.js';
-import { Migration20261111023442 } from '../src/database/migrations/Migration20261111023442.js';
+import { Migration20261111061111 } from '../src/database/migrations/Migration20261111061111.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
@@ -53,8 +52,7 @@ describe('example native RLS migrations with PGlite', () => {
         migrations: {
           migrationsList: [
             Migration00000000000000_Initial,
-            Migration20261024072513,
-            Migration20261111023442,
+            Migration20261111061111,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',
@@ -212,7 +210,7 @@ describe('example native RLS migrations with PGlite', () => {
 
   it('creates the complete baseline through the official Migrator', async () => {
     expect(await orm.migrator.getPending()).toEqual([]);
-    expect(await orm.migrator.getExecuted()).toHaveLength(3);
+    expect(await orm.migrator.getExecuted()).toHaveLength(2);
     const policies = await orm.em.execute<
       {
         policyname: string;

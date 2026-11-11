@@ -46,11 +46,11 @@ GraphQL 接口接收 `input.memberId`。用户只能为自己的 USER 成员或�
 具备 `member-api-key:read` 或 `member-api-key:write` 时，可分别查看或删除同工作区
 其他成员的 Key，仍受对象权限和当前凭证权限上限约束。明文只在创建时返回。
 
-`MemberApiKey.member` 是唯一持久化归属关联；`memberId` 与派生的 `workspaceId`
+`ApiKeyEntity.owner` 持久化多态归属，`MemberApiKey.member` 视图提供成员引用；`memberId` 与派生的 `workspaceId`
 用于客户端和授权条件。删除 member 会级联删除其 Key；停用 member 后 Key 无法认证。
 角色和直接权限变更会在 Key 的下一次请求中生效。
 
-beta 示例保留 init，其余迁移按最终模型重新生成为 `Migration20261024072513`，
+beta 示例保留 init，其余迁移按最终模型重新生成为 `Migration20261111061111`，
 直接创建成员 Key 与服务账号约束，不再保留旧表转换迁移。业务项目的已有数据需单独迁移。
 
 ## 服务 API
@@ -249,6 +249,8 @@ mutation {
 
 内置平台权限为 `user:read`、`user:update`、`user:delete`、`workspace:read-any`、`workspace:update-any`、`workspace:delete-any`。用户操作仍经过 User Service 授权；平台工作区入口单独提供 `workspaces`、`platformWorkspace(id)`、`updatePlatformWorkspace(id, input)`、`deletePlatformWorkspace(id)`。关闭 workspace 后对应权限不生效，也不会自动开放业务表。
 
-多态 owner 无法建立普通外键，因此元数据声明了 owner 存在性检查和删除清理触发器，覆盖原生 SQL 删除及 workspace→member 联级删除，并通过行锁处理创建与删除的并发。触发器函数限定 search_path、使用完整表名并校验触发表，由可信迁移角色持有；原始触发器表达式的变更需要显式迁移。已有两张 Key 表的应用须编写数据复制迁移，可参考示例 `Migration20261111023442`；结构差异生成不会自动搬迁数据。ID 或哈希冲突会原子失败。回滚保留旧版凭证字段，但必须先移除或导出系统账户及其密钥；旧结构无法保留新增的密钥创建者审计列。
+多态 owner 无法建立普通外键，因此元数据声明了 owner 存在性检查和删除清理触发器，覆盖原生 SQL 删除及 workspace→member 联级删除，并通过行锁处理创建与删除的并发。触发器函数限定 search_path、使用完整表名并校验触发表，由可信迁移角色持有；原始触发器表达式的变更需要显式迁移。示例基线针对全新数据库，直接创建当前模型。
 
 请求数据库角色无法直接访问系统账户和系统密钥，只能通过管理员会话调用管理服务。框架通过独立的内部写入记录已验证密钥的使用时间，目标固定为捕获的密钥 ID。
+
+示例前端在 `/admin/system-accounts` 管理独立系统账户：账户页编辑权限上限和启用状态，下级 `api-keys` 页面管理密钥，明文只在创建后展示一次。可选权限和密钥默认值由服务端提供，并受管理员、账户和配置范围限制。

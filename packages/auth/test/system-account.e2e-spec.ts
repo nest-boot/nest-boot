@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 
+import type { EventArgs } from "@mikro-orm/core";
 import { EntityManager, MikroORM } from "@mikro-orm/pglite";
 import { getDatabaseConfig } from "@nest-boot/database";
 import { REQUEST, RequestContext } from "@nest-boot/request-context";
@@ -535,6 +536,111 @@ describe("independent system accounts with real persistence and authentication",
         }),
       ).rejects.toThrow(/exceed issuer permissions/i);
     }, operator);
+  });
+
+  it("checks the resulting account grant ceiling when a limited administrator re-enables credentials", async () => {
+    const issued = await issue();
+    await asAdministrator((accounts) =>
+      accounts.updateSystemAccount(issued.account.id, { enabled: false }),
+    );
+    const configuration: AuthModuleOptions = {
+      ...options,
+      user: {
+        adminRoles: ["operator"],
+        roles: { operator: ["system-account:write", "user:read"] },
+      },
+    };
+    const operator = Object.assign(new User(), administrator, {
+      roles: ["operator"],
+    });
+    await asAdministrator(async (_accounts, _keys, em) => {
+      RequestIdentity.refresh(configuration);
+      const accounts = new SystemAccountService(em, configuration);
+      await expect(
+        accounts.updateSystemAccount(issued.account.id, { enabled: true }),
+      ).rejects.toThrow(/exceed issuer permissions/i);
+      expect(
+        (await orm.em.fork().findOneOrFail(SystemAccount, issued.account.id))
+          .enabled,
+      ).toBe(false);
+      const narrowed = await accounts.updateSystemAccount(issued.account.id, {
+        enabled: true,
+        permissions: ["user:read"],
+      });
+      expect(narrowed.enabled).toBe(true);
+      expect(narrowed.permissions).toEqual(["user:read"]);
+      await accounts.updateSystemAccount(issued.account.id, { enabled: false });
+    }, operator);
+    // Revocation stays available even if the administrator cannot re-grant the account's permissions.
+    await asAdministrator((accounts) =>
+      accounts.updateSystemAccount(issued.account.id, {
+        enabled: true,
+        permissions: ["user:read", "workspace:read-any"],
+      }),
+    );
+    await asAdministrator(async (_accounts, _keys, em) => {
+      RequestIdentity.refresh(configuration);
+      const accounts = new SystemAccountService(em, configuration);
+      expect(
+        (
+          await accounts.updateSystemAccount(issued.account.id, {
+            enabled: false,
+          })
+        ).enabled,
+      ).toBe(false);
+      await expect(
+        accounts.updateSystemAccount(issued.account.id, { enabled: true }),
+      ).rejects.toThrow(/exceed issuer permissions/i);
+    }, operator);
+    await expect(withKey(issued.apiKey, () => null)).rejects.toThrow(
+      /Invalid API key/,
+    );
+  });
+
+  it("reloads key grants after locking the account before re-enabling a credential", async () => {
+    const issued = await issue();
+    await asAdministrator((_accounts, keys) =>
+      keys.updateSystemAccountApiKey(issued.entity.id, {
+        enabled: false,
+        permissions: ["user:read"],
+      }),
+    );
+    const configuration: AuthModuleOptions = {
+      ...options,
+      user: {
+        adminRoles: ["operator"],
+        roles: { operator: ["system-account-api-key:write", "user:read"] },
+      },
+    };
+    const operator = Object.assign(new User(), administrator, {
+      roles: ["operator"],
+    });
+    let changed = false;
+    orm.em.getEventManager().registerSubscriber({
+      getSubscribedEntities: () => [SystemAccount],
+      async onLoad({ entity, em }: EventArgs<SystemAccount>) {
+        if (!changed && entity.id === issued.account.id) {
+          changed = true;
+          // Reproduce a stored key changing after hydration, before the account lock.
+          // This uses a database write so a stale managed instance cannot satisfy the check.
+          await em.nativeUpdate(ApiKeyEntity, issued.entity.id, {
+            permissions: ["workspace:read-any"],
+          });
+        }
+      },
+    });
+    await asAdministrator(async (_accounts, _keys, em) => {
+      RequestIdentity.refresh(configuration);
+      const keys = new SystemAccountApiKeyService(em, configuration);
+      await expect(
+        keys.updateSystemAccountApiKey(issued.entity.id, { enabled: true }),
+      ).rejects.toThrow(/exceed issuer permissions/i);
+    }, operator);
+    expect(changed).toBe(true);
+    expect(
+      (await orm.em.fork().findOneOrFail(ApiKeyEntity, issued.entity.id))
+        .enabled,
+    ).toBe(false);
   });
 
   it("honors conditional account and proposed-key restrictions before persisting changes", async () => {

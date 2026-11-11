@@ -14,6 +14,13 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(
     filterable: true,
     type: "string",
   })
+  .addField({ field: "prefix", filterable: true, type: "string" })
+  .addField({
+    field: "last_used_at",
+    replacement: "lastUsedAt",
+    sortable: true,
+    type: "date",
+  })
   .addField({ field: "enabled", filterable: true, type: "boolean" })
   .addField({
     field: "created_at",

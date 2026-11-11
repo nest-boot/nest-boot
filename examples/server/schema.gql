@@ -694,6 +694,7 @@ type Query {
   socialProviders: [AuthSocialProviderType!]!
   systemAccount(id: ID!): SystemAccount
   systemAccountApiKey(id: ID!): SystemAccountApiKey
+  systemAccountPermissions: [SystemAccountPermissionOption!]!
   systemAccounts(
     """Returns the elements that come after the specified cursor."""
     after: String
@@ -972,6 +973,7 @@ type SignUpPayload {
 }
 
 type SystemAccount {
+  apiKeyPermissions: [SystemAccountPermissionOption!]!
   apiKeys(
     """Returns the elements that come after the specified cursor."""
     after: String
@@ -994,7 +996,7 @@ type SystemAccount {
     """
     Apply one or multiple filters to the query.
     Supported filter parameters:
-    `name`, `enabled`
+    `name`, `prefix`, `enabled`
     """
     query: String
   ): SystemAccountApiKeyConnection!
@@ -1051,7 +1053,7 @@ type SystemAccountApiKeyEdge {
 
 """
 A filter for SystemAccountApiKey that accepts MongoDB query syntax.
-Supported fields: name, enabled, created_at
+Supported fields: name, prefix, last_used_at, enabled, created_at
 """
 scalar SystemAccountApiKeyFilter
 
@@ -1068,6 +1070,7 @@ input SystemAccountApiKeyOrder {
 enum SystemAccountApiKeyOrderField {
   CREATED_AT
   ID
+  LAST_USED_AT
 }
 
 type SystemAccountConnection {
@@ -1125,6 +1128,12 @@ enum SystemAccountPermission {
   WORKSPACE__DELETE_ANY
   WORKSPACE__READ_ANY
   WORKSPACE__UPDATE_ANY
+}
+
+type SystemAccountPermissionOption {
+  default: Boolean!
+  grantable: Boolean!
+  permission: SystemAccountPermission!
 }
 
 enum TotalCountRelation {

@@ -167,6 +167,20 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     ).toBe("FORBIDDEN");
   });
 
+  it("returns administrator-scoped permission choices without granting catalog access to ordinary sessions", async () => {
+    const query =
+      "{ systemAccountPermissions { permission default grantable } }";
+    expect(data(await graphql(query)).systemAccountPermissions).toEqual(
+      expect.arrayContaining([
+        { permission: "USER__READ", default: false, grantable: true },
+        { permission: "WORKSPACE__READ_ANY", default: false, grantable: true },
+      ]),
+    );
+    expect(
+      (await graphql(query, {}, ordinaryCookies)).errors?.[0]?.extensions.code,
+    ).toBe("FORBIDDEN");
+  });
+
   it("creates, manages, uses, revokes and deletes independent credentials over HTTP", async () => {
     const account = await graphql(
       'mutation { createSystemAccount(input: {name: "Integration", permissions: [USER__READ, WORKSPACE__READ_ANY]}) { id name enabled createdById permissions } }',
@@ -195,11 +209,19 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     expect(stored.key).toMatch(/^[A-Za-z0-9_-]{43}$/u);
 
     const result = await graphql(
-      "query($id: ID!, $key: ID!) { systemAccounts(first: 10) { totalCount edges { node { id } } } systemAccount(id: $id) { id apiKeys(first: 10) { totalCount edges { node { id name systemAccountId createdById } } } } systemAccountApiKey(id: $key) { id name } }",
+      "query($id: ID!, $key: ID!) { systemAccounts(first: 10) { totalCount edges { node { id } } } systemAccount(id: $id) { id apiKeyPermissions { permission grantable default } apiKeys(first: 10) { totalCount edges { node { id name systemAccountId createdById } } } } systemAccountApiKey(id: $key) { id name } }",
       { id: accountId, key: keyId },
     );
     expect(result.errors).toBeUndefined();
     expect(data(result).systemAccounts.totalCount).toBe(1);
+    expect(
+      data(result)
+        .systemAccount.apiKeyPermissions.filter(
+          (item: { grantable: boolean }) => item.grantable,
+        )
+        .map((item: { permission: string }) => item.permission)
+        .sort(),
+    ).toEqual(["USER__READ", "WORKSPACE__READ_ANY"]);
     expect(data(result).systemAccount.apiKeys.edges[0].node.id).toBe(keyId);
     expect(
       data(result).systemAccount.apiKeys.edges[0].node.createdById,

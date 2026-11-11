@@ -115,5 +115,33 @@
   "service_account_write": {
     "name": "管理服务账号",
     "description": "创建、更新、禁用和移除服务账号；修改角色或权限还需对应的成员权限"
+  },
+  "system_account_read": {
+    "name": "查看系统账户",
+    "description": "查看独立的平台系统账户"
+  },
+  "system_account_write": {
+    "name": "管理系统账户",
+    "description": "通过管理员会话创建、更新、启用、禁用和删除系统账户"
+  },
+  "system_account_api_key_read": {
+    "name": "查看系统账户 API Key",
+    "description": "通过管理员会话查看系统账户 API Key 元数据"
+  },
+  "system_account_api_key_write": {
+    "name": "管理系统账户 API Key",
+    "description": "通过管理员会话创建、更新、启用、禁用和删除系统账户 API Key"
+  },
+  "workspace_read_any": {
+    "name": "查看所有工作区",
+    "description": "无需成员身份即可查看工作区"
+  },
+  "workspace_update_any": {
+    "name": "更新任意工作区",
+    "description": "通过平台管理修改任意工作区"
+  },
+  "workspace_delete_any": {
+    "name": "删除任意工作区",
+    "description": "通过平台管理永久删除任意工作区"
   }
 }

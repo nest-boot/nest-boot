@@ -18,8 +18,12 @@ import { ApiKeyLifecycle } from "../infrastructure/api-key-lifecycle.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
+import type { SystemAccountPermissionOption } from "../objects/system-account-permission-option.object.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
-import { normalizeApiKeyPermissions } from "../utils/api-key-permissions.util.js";
+import {
+  normalizeApiKeyPermissions,
+  resolveApiKeyPermissionCatalog,
+} from "../utils/api-key-permissions.util.js";
 import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
 import { assertSystemAccountAdministrator } from "../utils/assert-system-account-administrator.util.js";
 import { authorize } from "../utils/authorize.util.js";
@@ -27,6 +31,7 @@ import { omitCredentials } from "../utils/omit-credentials.util.js";
 import {
   assertCanGrantPermissions,
   assertPermissionCeiling,
+  canGrantPermissions,
 } from "../utils/permission-grants.util.js";
 import { runAuthQuery } from "../utils/run-auth-query.js";
 
@@ -37,6 +42,36 @@ export class SystemAccountApiKeyService {
     private readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN) private readonly options: AuthModuleOptions,
   ) {}
+
+  /**
+   * Lists configured key grants within the account and administrator ceilings.
+   * @param systemAccountId - Identifier of the owning system account.
+   * @returns Key permission choices and their creation defaults.
+   */
+  async getSystemAccountApiKeyPermissions(
+    systemAccountId: string,
+  ): Promise<SystemAccountPermissionOption[]> {
+    this.assertAccess("read");
+    return await runAuthQuery(this.em, async (em) => {
+      const account = await em.findOne(SystemAccount, systemAccountId);
+      if (!account) {
+        throw new NotFoundException("System account not found");
+      }
+      authorize("read", account);
+      const catalog = resolveApiKeyPermissionCatalog(
+        this.options,
+        "systemAccount",
+      );
+      return catalog.permissions.map((permission) => ({
+        permission,
+        default: catalog.defaults.includes(permission),
+        grantable:
+          catalog.allowed.includes(permission) &&
+          account.permissions.includes(permission) &&
+          canGrantPermissions(this.options, "user", [permission]),
+      }));
+    });
+  }
 
   /**
    * Returns safe metadata, restricted to system-owned rows of the shared table.
@@ -185,20 +220,29 @@ export class SystemAccountApiKeyService {
     return await runAuthQuery(this.em, (em) =>
       em.transactional(
         async (tx) => {
-          const key = await tx.findOne(
+          const located = await tx.findOne(
             ApiKeyEntity,
             { id, ownerType: "system_account" },
-            { populate: ["owner"] },
+            { fields: ["id", "owner"] },
           );
-          if (!key?.systemAccount) {
+          if (!located) {
             throw new NotFoundException("System account API key not found");
           }
-          assertApiKeyOwner(key, "system_account");
           const account = await tx.findOneOrFail(
             SystemAccount,
-            key.systemAccount.id,
+            located.owner.id,
             { lockMode: LockMode.PESSIMISTIC_WRITE, refresh: true },
           );
+          // Lock owners before keys, matching account deletion, then read current grants.
+          // A key loaded before the account lock can contain an obsolete delegation ceiling.
+          const key = await tx.findOne(
+            ApiKeyEntity,
+            { id, ownerType: "system_account", owner: account },
+            { lockMode: LockMode.PESSIMISTIC_WRITE, refresh: true },
+          );
+          if (!key) {
+            throw new NotFoundException("System account API key not found");
+          }
           if (input.enabled !== false) {
             const grants =
               permissions ??

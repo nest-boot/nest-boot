@@ -58,12 +58,12 @@ With `member-api-key:read` or `member-api-key:write`, callers can read or
 delete other members’ keys in that workspace, subject to object rules and
 credential ceilings. Plaintext remains available only at creation.
 
-`MemberApiKey.member` is the only persisted owner relation. `memberId` and
+`ApiKeyEntity.owner` persists the polymorphic owner; the `MemberApiKey.member` view exposes its member reference. `memberId` and
 the derived `workspaceId` support clients and authorization conditions. Removing
 a member deletes its keys; disabling a member rejects future authentication.
 Role and direct-permission changes affect the key on its next request.
 
-The beta example keeps init and generates `Migration20261024072513` from the final
+The example keeps infrastructure initialization and generates `Migration20261111061111` from the final
 model. It creates member-owned keys and service account constraints directly; old
 conversion migrations are removed. Application databases with existing data need
 their own migration.
@@ -299,6 +299,8 @@ Configure defaults and ceilings under `apiKey.systemAccount` (`defaultPrefix`, `
 
 Available platform grants are `user:read`, `user:update`, `user:delete`, `workspace:read-any`, `workspace:update-any`, and `workspace:delete-any`. User services retain their permission checks. The explicit workspace endpoints are `workspaces`, `platformWorkspace(id)`, `updatePlatformWorkspace(id, input)`, and `deletePlatformWorkspace(id)`. Workspace grants have no effect when the feature is disabled, and do not grant access to business tables automatically.
 
-Owner existence and delete cleanup use MikroORM-managed database triggers because polymorphic relations cannot have an owner FK. They cover SQL deletion and workspace→member cascades, and lock owners during insertion to prevent concurrent orphan creation. Raw trigger-expression changes require explicit migrations. Upgrade existing two-table installations with a data-copy migration, using the example's `Migration20261111023442` as a reference; schema generation alone does not backfill rows. Duplicate IDs or hashes abort atomically. Rollback preserves legacy credential columns and refuses to discard system identities; the old schema has no credential-creator audit column.
+Owner existence and delete cleanup use MikroORM-managed database triggers because polymorphic relations cannot have an owner FK. They cover SQL deletion and workspace→member cascades, and lock owners during insertion to prevent concurrent orphan creation. Raw trigger-expression changes require explicit migrations. The example baseline creates the current model directly on a fresh database.
 
 System credentials and accounts are unavailable to request-role SQL; only administrator-session services manage them. The framework records successful usage through an isolated writer scoped to the captured key ID.
+
+Manage independent system accounts under `/admin/system-accounts` in the example client. Account pages edit the permission ceiling and enabled state; nested `api-keys` pages manage credentials and reveal newly created secrets once. Permission choices and key defaults come from the server, bounded by administrator, account and configuration grants.

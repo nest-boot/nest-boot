@@ -66,7 +66,7 @@ export type Scalars = {
   SessionFilter: { input: any; output: any };
   /**
    * A filter for SystemAccountApiKey that accepts MongoDB query syntax.
-   * Supported fields: name, enabled, created_at
+   * Supported fields: name, prefix, last_used_at, enabled, created_at
    */
   SystemAccountApiKeyFilter: { input: any; output: any };
   /**
@@ -973,6 +973,7 @@ export type Query = {
   socialProviders: Array<AuthSocialProviderType>;
   systemAccount?: Maybe<SystemAccount>;
   systemAccountApiKey?: Maybe<SystemAccountApiKey>;
+  systemAccountPermissions: Array<SystemAccountPermissionOption>;
   systemAccounts: SystemAccountConnection;
   systemJob?: Maybe<Job>;
   systemJobs: JobConnection;
@@ -1199,6 +1200,7 @@ export type SignUpPayload = {
 
 export type SystemAccount = {
   __typename?: "SystemAccount";
+  apiKeyPermissions: Array<SystemAccountPermissionOption>;
   apiKeys: SystemAccountApiKeyConnection;
   createdAt: Scalars["DateTime"]["output"];
   createdById?: Maybe<Scalars["ID"]["output"]>;
@@ -1268,6 +1270,7 @@ export type SystemAccountApiKeyOrder = {
 export const SystemAccountApiKeyOrderField = {
   CREATED_AT: "CREATED_AT",
   ID: "ID",
+  LAST_USED_AT: "LAST_USED_AT",
 } as const;
 
 export type SystemAccountApiKeyOrderField =
@@ -1320,6 +1323,13 @@ export const SystemAccountPermission = {
 
 export type SystemAccountPermission =
   (typeof SystemAccountPermission)[keyof typeof SystemAccountPermission];
+export type SystemAccountPermissionOption = {
+  __typename?: "SystemAccountPermissionOption";
+  default: Scalars["Boolean"]["output"];
+  grantable: Scalars["Boolean"]["output"];
+  permission: SystemAccountPermission;
+};
+
 export const TotalCountRelation = {
   EQ: "EQ",
   GTE: "GTE",
@@ -1769,14 +1779,109 @@ export type WorkspaceRoleOption = {
   role: WorkspaceRole;
 };
 
-export type GetAdminOverviewQueryVariables = Exact<{ [key: string]: never }>;
+export type GetAdminOverviewQueryVariables = Exact<{
+  includeUsers?: Scalars["Boolean"]["input"];
+}>;
 
 export type GetAdminOverviewQuery = {
   __typename?: "Query";
-  users: {
+  users?: {
     __typename?: "UserConnection";
     totalCount: number;
     totalCountRelation: TotalCountRelation;
+  };
+};
+
+export type GetAdminSystemAccountOverviewQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GetAdminSystemAccountOverviewQuery = {
+  __typename?: "Query";
+  systemAccounts: {
+    __typename?: "SystemAccountConnection";
+    totalCount: number;
+    totalCountRelation: TotalCountRelation;
+  };
+};
+
+export type ManagedSystemAccountKeysQueryVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["SystemAccountApiKeyFilter"]["input"]>;
+  orderBy?: InputMaybe<SystemAccountApiKeyOrder>;
+}>;
+
+export type ManagedSystemAccountKeysQuery = {
+  __typename?: "Query";
+  systemAccount?: {
+    __typename?: "SystemAccount";
+    id: string;
+    apiKeys: {
+      __typename?: "SystemAccountApiKeyConnection";
+      edges: Array<{
+        __typename?: "SystemAccountApiKeyEdge";
+        node: {
+          __typename?: "SystemAccountApiKey";
+          id: string;
+          name: string;
+          enabled: boolean;
+          permissions: Array<SystemAccountPermission>;
+          prefix?: string | null;
+          start?: string | null;
+          createdAt: any;
+          lastUsedAt?: any | null;
+          expiresAt?: any | null;
+        };
+      }>;
+      pageInfo: {
+        __typename?: "PageInfo";
+        hasNextPage: boolean;
+        hasPreviousPage: boolean;
+        startCursor?: string | null;
+        endCursor?: string | null;
+      };
+    };
+  } | null;
+};
+
+export type ManagedSystemAccountsQueryVariables = Exact<{
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["SystemAccountFilter"]["input"]>;
+  orderBy?: InputMaybe<SystemAccountOrder>;
+}>;
+
+export type ManagedSystemAccountsQuery = {
+  __typename?: "Query";
+  systemAccounts: {
+    __typename?: "SystemAccountConnection";
+    totalCount: number;
+    edges: Array<{
+      __typename?: "SystemAccountEdge";
+      node: {
+        __typename?: "SystemAccount";
+        id: string;
+        name: string;
+        enabled: boolean;
+        permissions: Array<SystemAccountPermission>;
+        createdAt: any;
+      };
+    }>;
+    pageInfo: {
+      __typename?: "PageInfo";
+      hasNextPage: boolean;
+      hasPreviousPage: boolean;
+      startCursor?: string | null;
+      endCursor?: string | null;
+    };
   };
 };
 
@@ -3223,6 +3328,126 @@ export type UpdateUserApiKeyFromUserApiKeysRouteMutation = {
   };
 };
 
+export type SystemAccountPermissionChoicesQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type SystemAccountPermissionChoicesQuery = {
+  __typename?: "Query";
+  systemAccountPermissions: Array<{
+    __typename?: "SystemAccountPermissionOption";
+    permission: SystemAccountPermission;
+    grantable: boolean;
+    default: boolean;
+  }>;
+};
+
+export type ManagedSystemAccountQueryVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  includeKeys: Scalars["Boolean"]["input"];
+}>;
+
+export type ManagedSystemAccountQuery = {
+  __typename?: "Query";
+  systemAccount?: {
+    __typename?: "SystemAccount";
+    id: string;
+    name: string;
+    enabled: boolean;
+    permissions: Array<SystemAccountPermission>;
+    createdById?: string | null;
+    createdAt: any;
+    apiKeyPermissions?: Array<{
+      __typename?: "SystemAccountPermissionOption";
+      permission: SystemAccountPermission;
+      grantable: boolean;
+      default: boolean;
+    }>;
+  } | null;
+};
+
+export type CreateManagedSystemAccountMutationVariables = Exact<{
+  input: CreateSystemAccountInput;
+}>;
+
+export type CreateManagedSystemAccountMutation = {
+  __typename?: "Mutation";
+  createSystemAccount: { __typename?: "SystemAccount"; id: string };
+};
+
+export type UpdateManagedSystemAccountMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  input: UpdateSystemAccountInput;
+}>;
+
+export type UpdateManagedSystemAccountMutation = {
+  __typename?: "Mutation";
+  updateSystemAccount: { __typename?: "SystemAccount"; id: string };
+};
+
+export type DeleteManagedSystemAccountMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
+
+export type DeleteManagedSystemAccountMutation = {
+  __typename?: "Mutation";
+  deleteSystemAccount: { __typename?: "SystemAccount"; id: string };
+};
+
+export type CreateManagedSystemAccountKeyMutationVariables = Exact<{
+  systemAccountId: Scalars["ID"]["input"];
+  input: CreateSystemAccountApiKeyInput;
+}>;
+
+export type CreateManagedSystemAccountKeyMutation = {
+  __typename?: "Mutation";
+  createSystemAccountApiKey: {
+    __typename?: "CreateSystemAccountApiKeyResult";
+    apiKey: string;
+    entity: { __typename?: "SystemAccountApiKey"; id: string };
+  };
+};
+
+export type ManagedSystemAccountKeyQueryVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
+
+export type ManagedSystemAccountKeyQuery = {
+  __typename?: "Query";
+  systemAccountApiKey?: {
+    __typename?: "SystemAccountApiKey";
+    id: string;
+    systemAccountId: string;
+    name: string;
+    enabled: boolean;
+    permissions: Array<SystemAccountPermission>;
+    prefix?: string | null;
+    start?: string | null;
+    createdAt: any;
+    lastUsedAt?: any | null;
+    expiresAt?: any | null;
+  } | null;
+};
+
+export type UpdateManagedSystemAccountKeyMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+  input: UpdateSystemAccountApiKeyInput;
+}>;
+
+export type UpdateManagedSystemAccountKeyMutation = {
+  __typename?: "Mutation";
+  updateSystemAccountApiKey: { __typename?: "SystemAccountApiKey"; id: string };
+};
+
+export type DeleteManagedSystemAccountKeyMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
+
+export type DeleteManagedSystemAccountKeyMutation = {
+  __typename?: "Mutation";
+  deleteSystemAccountApiKey: { __typename?: "SystemAccountApiKey"; id: string };
+};
+
 export type GetPasswordPolicyQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GetPasswordPolicyQuery = {
@@ -3241,12 +3466,84 @@ export const GetAdminOverviewDocument = {
       kind: "OperationDefinition",
       operation: "query",
       name: { kind: "Name", value: "getAdminOverview" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "includeUsers" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "Boolean" },
+            },
+          },
+          defaultValue: { kind: "BooleanValue", value: true },
+        },
+      ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
           {
             kind: "Field",
             name: { kind: "Name", value: "users" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: { kind: "IntValue", value: "1" },
+              },
+            ],
+            directives: [
+              {
+                kind: "Directive",
+                name: { kind: "Name", value: "include" },
+                arguments: [
+                  {
+                    kind: "Argument",
+                    name: { kind: "Name", value: "if" },
+                    value: {
+                      kind: "Variable",
+                      name: { kind: "Name", value: "includeUsers" },
+                    },
+                  },
+                ],
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "totalCount" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "totalCountRelation" },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  GetAdminOverviewQuery,
+  GetAdminOverviewQueryVariables
+>;
+export const GetAdminSystemAccountOverviewDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "getAdminSystemAccountOverview" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "systemAccounts" },
             arguments: [
               {
                 kind: "Argument",
@@ -3270,8 +3567,474 @@ export const GetAdminOverviewDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  GetAdminOverviewQuery,
-  GetAdminOverviewQueryVariables
+  GetAdminSystemAccountOverviewQuery,
+  GetAdminSystemAccountOverviewQueryVariables
+>;
+export const ManagedSystemAccountKeysDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "managedSystemAccountKeys" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "first" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "last" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "after" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "before" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "query" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "filter" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "SystemAccountApiKeyFilter" },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "orderBy" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "SystemAccountApiKeyOrder" },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "systemAccount" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "apiKeys" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "first" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "last" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "last" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "after" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "after" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "before" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "before" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "query" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "query" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "filter" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "filter" },
+                      },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "orderBy" },
+                      },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "edges" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "name" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "enabled" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: {
+                                      kind: "Name",
+                                      value: "permissions",
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "prefix" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "start" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "lastUsedAt" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "expiresAt" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "pageInfo" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasNextPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "hasPreviousPage" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "startCursor" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "endCursor" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  ManagedSystemAccountKeysQuery,
+  ManagedSystemAccountKeysQueryVariables
+>;
+export const ManagedSystemAccountsDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "managedSystemAccounts" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "first" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "last" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "after" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "before" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "query" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "filter" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "SystemAccountFilter" },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "orderBy" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "SystemAccountOrder" },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "systemAccounts" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "first" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "last" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "last" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "after" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "after" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "before" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "before" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "query" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "query" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "filter" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "filter" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "orderBy" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "name" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "enabled" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "permissions" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "createdAt" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "pageInfo" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasNextPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasPreviousPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "startCursor" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "endCursor" },
+                      },
+                    ],
+                  },
+                },
+                { kind: "Field", name: { kind: "Name", value: "totalCount" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  ManagedSystemAccountsQuery,
+  ManagedSystemAccountsQueryVariables
 >;
 export const GetAdminUserNeighborsDocument = {
   kind: "Document",
@@ -10389,6 +11152,573 @@ export const UpdateUserApiKeyFromUserApiKeysRouteDocument = {
 } as unknown as DocumentNode<
   UpdateUserApiKeyFromUserApiKeysRouteMutation,
   UpdateUserApiKeyFromUserApiKeysRouteMutationVariables
+>;
+export const SystemAccountPermissionChoicesDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "systemAccountPermissionChoices" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "systemAccountPermissions" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "permission" } },
+                { kind: "Field", name: { kind: "Name", value: "grantable" } },
+                { kind: "Field", name: { kind: "Name", value: "default" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  SystemAccountPermissionChoicesQuery,
+  SystemAccountPermissionChoicesQueryVariables
+>;
+export const ManagedSystemAccountDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "managedSystemAccount" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "includeKeys" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "Boolean" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "systemAccount" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "enabled" } },
+                { kind: "Field", name: { kind: "Name", value: "permissions" } },
+                { kind: "Field", name: { kind: "Name", value: "createdById" } },
+                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "apiKeyPermissions" },
+                  directives: [
+                    {
+                      kind: "Directive",
+                      name: { kind: "Name", value: "include" },
+                      arguments: [
+                        {
+                          kind: "Argument",
+                          name: { kind: "Name", value: "if" },
+                          value: {
+                            kind: "Variable",
+                            name: { kind: "Name", value: "includeKeys" },
+                          },
+                        },
+                      ],
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "permission" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "grantable" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "default" },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  ManagedSystemAccountQuery,
+  ManagedSystemAccountQueryVariables
+>;
+export const CreateManagedSystemAccountDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "createManagedSystemAccount" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "CreateSystemAccountInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "createSystemAccount" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  CreateManagedSystemAccountMutation,
+  CreateManagedSystemAccountMutationVariables
+>;
+export const UpdateManagedSystemAccountDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "updateManagedSystemAccount" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "UpdateSystemAccountInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "updateSystemAccount" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  UpdateManagedSystemAccountMutation,
+  UpdateManagedSystemAccountMutationVariables
+>;
+export const DeleteManagedSystemAccountDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "deleteManagedSystemAccount" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "deleteSystemAccount" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  DeleteManagedSystemAccountMutation,
+  DeleteManagedSystemAccountMutationVariables
+>;
+export const CreateManagedSystemAccountKeyDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "createManagedSystemAccountKey" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "systemAccountId" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "CreateSystemAccountApiKeyInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "createSystemAccountApiKey" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "systemAccountId" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "systemAccountId" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "apiKey" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "entity" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  CreateManagedSystemAccountKeyMutation,
+  CreateManagedSystemAccountKeyMutationVariables
+>;
+export const ManagedSystemAccountKeyDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "managedSystemAccountKey" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "systemAccountApiKey" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "systemAccountId" },
+                },
+                { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "enabled" } },
+                { kind: "Field", name: { kind: "Name", value: "permissions" } },
+                { kind: "Field", name: { kind: "Name", value: "prefix" } },
+                { kind: "Field", name: { kind: "Name", value: "start" } },
+                { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
+                { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  ManagedSystemAccountKeyQuery,
+  ManagedSystemAccountKeyQueryVariables
+>;
+export const UpdateManagedSystemAccountKeyDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "updateManagedSystemAccountKey" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "UpdateSystemAccountApiKeyInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "updateSystemAccountApiKey" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  UpdateManagedSystemAccountKeyMutation,
+  UpdateManagedSystemAccountKeyMutationVariables
+>;
+export const DeleteManagedSystemAccountKeyDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "deleteManagedSystemAccountKey" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "deleteSystemAccountApiKey" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  DeleteManagedSystemAccountKeyMutation,
+  DeleteManagedSystemAccountKeyMutationVariables
 >;
 export const GetPasswordPolicyDocument = {
   kind: "Document",

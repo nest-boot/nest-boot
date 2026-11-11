@@ -47,9 +47,12 @@ import { getFormErrorMessage } from "@/lib/form-errors";
 interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
   apiKey?: ApiKeyRow<Permission>;
   canWrite: boolean;
+  canEditName?: boolean;
+  canEditPermissions?: boolean;
   listPath: string;
   listSearch?: ApiKeySearch;
   paginationActions?: PagePaginationActionsConfig;
+  permissionsHint?: string;
   permissionValues: ReadonlyArray<Permission>;
   permissionOptions: ReadonlyArray<PermissionOption<Permission>>;
   memberOptions?: Array<{ value: string; label: string }>;
@@ -65,14 +68,17 @@ interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
   }) => Promise<void>;
 }
 
-/** Both scopes use the same editor; only creation can reveal the full secret. */
+/** All owner scopes use the same editor; only creation can reveal the full secret. */
 export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
   apiKey,
   canWrite,
+  canEditName = canWrite,
+  canEditPermissions = canWrite,
   listPath,
   listSearch,
   paginationActions,
   permissionValues,
+  permissionsHint,
   permissionOptions,
   defaultPermissions = [],
   memberOptions,
@@ -342,7 +348,9 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
-                          disabled={!canWrite || submitting || !!pendingAction}
+                          disabled={
+                            !canEditName || submitting || !!pendingAction
+                          }
                           error={getFormErrorMessage(field.state.meta.errors)}
                         />
                       )}
@@ -517,12 +525,14 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                           options={permissionOptions}
                           value={field.state.value}
                           onChange={field.handleChange}
-                          disabled={!canWrite || submitting || !!pendingAction}
+                          disabled={
+                            !canEditPermissions || submitting || !!pendingAction
+                          }
                         />
                       )}
                     </form.Field>
                     <p className="text-muted-foreground text-sm">
-                      {t("api-key:form.permissions_hint")}
+                      {permissionsHint ?? t("api-key:form.permissions_hint")}
                     </p>
                   </FormLayoutItem>
                   {error && (

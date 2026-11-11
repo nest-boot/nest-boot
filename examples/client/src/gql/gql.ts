@@ -14,7 +14,10 @@ import { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
-  "\n  query getAdminOverview {\n    users(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n": typeof types.GetAdminOverviewDocument;
+  "\n  query getAdminOverview($includeUsers: Boolean! = true) {\n    users(first: 1) @include(if: $includeUsers) {\n      totalCount\n      totalCountRelation\n    }\n  }\n": typeof types.GetAdminOverviewDocument;
+  "\n  query getAdminSystemAccountOverview {\n    systemAccounts(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n": typeof types.GetAdminSystemAccountOverviewDocument;
+  "\n  query managedSystemAccountKeys(\n    $id: ID!\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemAccountApiKeyFilter\n    $orderBy: SystemAccountApiKeyOrder\n  ) {\n    systemAccount(id: $id) {\n      id\n      apiKeys(\n        first: $first\n        last: $last\n        after: $after\n        before: $before\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          node {\n            id\n            name\n            enabled\n            permissions\n            prefix\n            start\n            createdAt\n            lastUsedAt\n            expiresAt\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          startCursor\n          endCursor\n        }\n      }\n    }\n  }\n": typeof types.ManagedSystemAccountKeysDocument;
+  "\n  query managedSystemAccounts(\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemAccountFilter\n    $orderBy: SystemAccountOrder\n  ) {\n    systemAccounts(\n      first: $first\n      last: $last\n      after: $after\n      before: $before\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          enabled\n          permissions\n          createdAt\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n      totalCount\n    }\n  }\n": typeof types.ManagedSystemAccountsDocument;
   "\n  query getAdminUserNeighbors(\n    $cursor: String!\n    $query: String\n    $filter: UserFilter\n    $orderBy: UserOrder\n  ) {\n    previous: users(\n      last: 1\n      before: $cursor\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        cursor\n        node {\n          id\n        }\n      }\n    }\n    next: users(\n      first: 1\n      after: $cursor\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        cursor\n        node {\n          id\n        }\n      }\n    }\n  }\n": typeof types.GetAdminUserNeighborsDocument;
   "\n  query getUserFromUserRoute(\n    $id: ID!\n    $sessionsAfter: String\n    $includeSessions: Boolean! = false\n    $includeRoles: Boolean! = false\n    $includePermissions: Boolean! = false\n  ) {\n    user(id: $id) {\n      id\n      name\n      email\n      emailVerified\n      image\n      roles\n      permissions\n      banned\n      banReason\n      banExpiresAt\n      createdAt\n      updatedAt\n      sessions(\n        first: 20\n        after: $sessionsAfter\n        orderBy: { field: CREATED_AT, direction: DESC }\n      ) @include(if: $includeSessions) {\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n        edges {\n          node {\n            id\n            expiresAt\n            ipAddress\n            userAgent\n            createdAt\n          }\n        }\n      }\n    }\n    userRoles @include(if: $includeRoles) {\n      role\n      grantable\n    }\n    userPermissions @include(if: $includePermissions) {\n      permission\n      grantable\n    }\n  }\n": typeof types.GetUserFromUserRouteDocument;
   "\n  mutation updateManagedUserFromUserRoute($id: ID!, $input: UpdateUserInput!) {\n    updateUser(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateManagedUserFromUserRouteDocument;
@@ -94,11 +97,26 @@ type Documents = {
   "\n  mutation addServiceAccountFromMembersRoute($input: AddMemberInput!) {\n    addMember(input: $input) {\n      id\n    }\n  }\n": typeof types.AddServiceAccountFromMembersRouteDocument;
   "\n  mutation updateMemberApiKeyFromApiKeysRoute(\n    $id: ID!\n    $input: UpdateMemberApiKeyInput!\n  ) {\n    updateMemberApiKey(id: $id, input: $input) {\n      workspaceId\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.UpdateMemberApiKeyFromApiKeysRouteDocument;
   "\n  mutation updateUserApiKeyFromUserApiKeysRoute(\n    $id: ID!\n    $input: UpdateUserApiKeyInput!\n  ) {\n    updateUserApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.UpdateUserApiKeyFromUserApiKeysRouteDocument;
+  "\n  query systemAccountPermissionChoices {\n    systemAccountPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n": typeof types.SystemAccountPermissionChoicesDocument;
+  "\n  query managedSystemAccount($id: ID!, $includeKeys: Boolean!) {\n    systemAccount(id: $id) {\n      id\n      name\n      enabled\n      permissions\n      createdById\n      createdAt\n      apiKeyPermissions @include(if: $includeKeys) {\n        permission\n        grantable\n        default\n      }\n    }\n  }\n": typeof types.ManagedSystemAccountDocument;
+  "\n  mutation createManagedSystemAccount($input: CreateSystemAccountInput!) {\n    createSystemAccount(input: $input) {\n      id\n    }\n  }\n": typeof types.CreateManagedSystemAccountDocument;
+  "\n  mutation updateManagedSystemAccount(\n    $id: ID!\n    $input: UpdateSystemAccountInput!\n  ) {\n    updateSystemAccount(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateManagedSystemAccountDocument;
+  "\n  mutation deleteManagedSystemAccount($id: ID!) {\n    deleteSystemAccount(id: $id) {\n      id\n    }\n  }\n": typeof types.DeleteManagedSystemAccountDocument;
+  "\n  mutation createManagedSystemAccountKey(\n    $systemAccountId: ID!\n    $input: CreateSystemAccountApiKeyInput!\n  ) {\n    createSystemAccountApiKey(\n      systemAccountId: $systemAccountId\n      input: $input\n    ) {\n      apiKey\n      entity {\n        id\n      }\n    }\n  }\n": typeof types.CreateManagedSystemAccountKeyDocument;
+  "\n  query managedSystemAccountKey($id: ID!) {\n    systemAccountApiKey(id: $id) {\n      id\n      systemAccountId\n      name\n      enabled\n      permissions\n      prefix\n      start\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.ManagedSystemAccountKeyDocument;
+  "\n  mutation updateManagedSystemAccountKey(\n    $id: ID!\n    $input: UpdateSystemAccountApiKeyInput!\n  ) {\n    updateSystemAccountApiKey(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateManagedSystemAccountKeyDocument;
+  "\n  mutation deleteManagedSystemAccountKey($id: ID!) {\n    deleteSystemAccountApiKey(id: $id) {\n      id\n    }\n  }\n": typeof types.DeleteManagedSystemAccountKeyDocument;
   "\n  query getPasswordPolicy {\n    passwordPolicy {\n      minLength\n      maxLength\n    }\n  }\n": typeof types.GetPasswordPolicyDocument;
 };
 const documents: Documents = {
-  "\n  query getAdminOverview {\n    users(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n":
+  "\n  query getAdminOverview($includeUsers: Boolean! = true) {\n    users(first: 1) @include(if: $includeUsers) {\n      totalCount\n      totalCountRelation\n    }\n  }\n":
     types.GetAdminOverviewDocument,
+  "\n  query getAdminSystemAccountOverview {\n    systemAccounts(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n":
+    types.GetAdminSystemAccountOverviewDocument,
+  "\n  query managedSystemAccountKeys(\n    $id: ID!\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemAccountApiKeyFilter\n    $orderBy: SystemAccountApiKeyOrder\n  ) {\n    systemAccount(id: $id) {\n      id\n      apiKeys(\n        first: $first\n        last: $last\n        after: $after\n        before: $before\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          node {\n            id\n            name\n            enabled\n            permissions\n            prefix\n            start\n            createdAt\n            lastUsedAt\n            expiresAt\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          startCursor\n          endCursor\n        }\n      }\n    }\n  }\n":
+    types.ManagedSystemAccountKeysDocument,
+  "\n  query managedSystemAccounts(\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemAccountFilter\n    $orderBy: SystemAccountOrder\n  ) {\n    systemAccounts(\n      first: $first\n      last: $last\n      after: $after\n      before: $before\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          enabled\n          permissions\n          createdAt\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n      totalCount\n    }\n  }\n":
+    types.ManagedSystemAccountsDocument,
   "\n  query getAdminUserNeighbors(\n    $cursor: String!\n    $query: String\n    $filter: UserFilter\n    $orderBy: UserOrder\n  ) {\n    previous: users(\n      last: 1\n      before: $cursor\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        cursor\n        node {\n          id\n        }\n      }\n    }\n    next: users(\n      first: 1\n      after: $cursor\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        cursor\n        node {\n          id\n        }\n      }\n    }\n  }\n":
     types.GetAdminUserNeighborsDocument,
   "\n  query getUserFromUserRoute(\n    $id: ID!\n    $sessionsAfter: String\n    $includeSessions: Boolean! = false\n    $includeRoles: Boolean! = false\n    $includePermissions: Boolean! = false\n  ) {\n    user(id: $id) {\n      id\n      name\n      email\n      emailVerified\n      image\n      roles\n      permissions\n      banned\n      banReason\n      banExpiresAt\n      createdAt\n      updatedAt\n      sessions(\n        first: 20\n        after: $sessionsAfter\n        orderBy: { field: CREATED_AT, direction: DESC }\n      ) @include(if: $includeSessions) {\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n        edges {\n          node {\n            id\n            expiresAt\n            ipAddress\n            userAgent\n            createdAt\n          }\n        }\n      }\n    }\n    userRoles @include(if: $includeRoles) {\n      role\n      grantable\n    }\n    userPermissions @include(if: $includePermissions) {\n      permission\n      grantable\n    }\n  }\n":
@@ -257,6 +275,24 @@ const documents: Documents = {
     types.UpdateMemberApiKeyFromApiKeysRouteDocument,
   "\n  mutation updateUserApiKeyFromUserApiKeysRoute(\n    $id: ID!\n    $input: UpdateUserApiKeyInput!\n  ) {\n    updateUserApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
     types.UpdateUserApiKeyFromUserApiKeysRouteDocument,
+  "\n  query systemAccountPermissionChoices {\n    systemAccountPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n":
+    types.SystemAccountPermissionChoicesDocument,
+  "\n  query managedSystemAccount($id: ID!, $includeKeys: Boolean!) {\n    systemAccount(id: $id) {\n      id\n      name\n      enabled\n      permissions\n      createdById\n      createdAt\n      apiKeyPermissions @include(if: $includeKeys) {\n        permission\n        grantable\n        default\n      }\n    }\n  }\n":
+    types.ManagedSystemAccountDocument,
+  "\n  mutation createManagedSystemAccount($input: CreateSystemAccountInput!) {\n    createSystemAccount(input: $input) {\n      id\n    }\n  }\n":
+    types.CreateManagedSystemAccountDocument,
+  "\n  mutation updateManagedSystemAccount(\n    $id: ID!\n    $input: UpdateSystemAccountInput!\n  ) {\n    updateSystemAccount(id: $id, input: $input) {\n      id\n    }\n  }\n":
+    types.UpdateManagedSystemAccountDocument,
+  "\n  mutation deleteManagedSystemAccount($id: ID!) {\n    deleteSystemAccount(id: $id) {\n      id\n    }\n  }\n":
+    types.DeleteManagedSystemAccountDocument,
+  "\n  mutation createManagedSystemAccountKey(\n    $systemAccountId: ID!\n    $input: CreateSystemAccountApiKeyInput!\n  ) {\n    createSystemAccountApiKey(\n      systemAccountId: $systemAccountId\n      input: $input\n    ) {\n      apiKey\n      entity {\n        id\n      }\n    }\n  }\n":
+    types.CreateManagedSystemAccountKeyDocument,
+  "\n  query managedSystemAccountKey($id: ID!) {\n    systemAccountApiKey(id: $id) {\n      id\n      systemAccountId\n      name\n      enabled\n      permissions\n      prefix\n      start\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
+    types.ManagedSystemAccountKeyDocument,
+  "\n  mutation updateManagedSystemAccountKey(\n    $id: ID!\n    $input: UpdateSystemAccountApiKeyInput!\n  ) {\n    updateSystemAccountApiKey(id: $id, input: $input) {\n      id\n    }\n  }\n":
+    types.UpdateManagedSystemAccountKeyDocument,
+  "\n  mutation deleteManagedSystemAccountKey($id: ID!) {\n    deleteSystemAccountApiKey(id: $id) {\n      id\n    }\n  }\n":
+    types.DeleteManagedSystemAccountKeyDocument,
   "\n  query getPasswordPolicy {\n    passwordPolicy {\n      minLength\n      maxLength\n    }\n  }\n":
     types.GetPasswordPolicyDocument,
 };
@@ -279,8 +315,26 @@ export function graphql(source: string): unknown;
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  query getAdminOverview {\n    users(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n",
-): (typeof documents)["\n  query getAdminOverview {\n    users(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n"];
+  source: "\n  query getAdminOverview($includeUsers: Boolean! = true) {\n    users(first: 1) @include(if: $includeUsers) {\n      totalCount\n      totalCountRelation\n    }\n  }\n",
+): (typeof documents)["\n  query getAdminOverview($includeUsers: Boolean! = true) {\n    users(first: 1) @include(if: $includeUsers) {\n      totalCount\n      totalCountRelation\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query getAdminSystemAccountOverview {\n    systemAccounts(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n",
+): (typeof documents)["\n  query getAdminSystemAccountOverview {\n    systemAccounts(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query managedSystemAccountKeys(\n    $id: ID!\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemAccountApiKeyFilter\n    $orderBy: SystemAccountApiKeyOrder\n  ) {\n    systemAccount(id: $id) {\n      id\n      apiKeys(\n        first: $first\n        last: $last\n        after: $after\n        before: $before\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          node {\n            id\n            name\n            enabled\n            permissions\n            prefix\n            start\n            createdAt\n            lastUsedAt\n            expiresAt\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          startCursor\n          endCursor\n        }\n      }\n    }\n  }\n",
+): (typeof documents)["\n  query managedSystemAccountKeys(\n    $id: ID!\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemAccountApiKeyFilter\n    $orderBy: SystemAccountApiKeyOrder\n  ) {\n    systemAccount(id: $id) {\n      id\n      apiKeys(\n        first: $first\n        last: $last\n        after: $after\n        before: $before\n        query: $query\n        filter: $filter\n        orderBy: $orderBy\n      ) {\n        edges {\n          node {\n            id\n            name\n            enabled\n            permissions\n            prefix\n            start\n            createdAt\n            lastUsedAt\n            expiresAt\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          startCursor\n          endCursor\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query managedSystemAccounts(\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemAccountFilter\n    $orderBy: SystemAccountOrder\n  ) {\n    systemAccounts(\n      first: $first\n      last: $last\n      after: $after\n      before: $before\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          enabled\n          permissions\n          createdAt\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n      totalCount\n    }\n  }\n",
+): (typeof documents)["\n  query managedSystemAccounts(\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemAccountFilter\n    $orderBy: SystemAccountOrder\n  ) {\n    systemAccounts(\n      first: $first\n      last: $last\n      after: $after\n      before: $before\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          enabled\n          permissions\n          createdAt\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n      totalCount\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -755,6 +809,60 @@ export function graphql(
 export function graphql(
   source: "\n  mutation updateUserApiKeyFromUserApiKeysRoute(\n    $id: ID!\n    $input: UpdateUserApiKeyInput!\n  ) {\n    updateUserApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n",
 ): (typeof documents)["\n  mutation updateUserApiKeyFromUserApiKeysRoute(\n    $id: ID!\n    $input: UpdateUserApiKeyInput!\n  ) {\n    updateUserApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      enabled\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query systemAccountPermissionChoices {\n    systemAccountPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n",
+): (typeof documents)["\n  query systemAccountPermissionChoices {\n    systemAccountPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query managedSystemAccount($id: ID!, $includeKeys: Boolean!) {\n    systemAccount(id: $id) {\n      id\n      name\n      enabled\n      permissions\n      createdById\n      createdAt\n      apiKeyPermissions @include(if: $includeKeys) {\n        permission\n        grantable\n        default\n      }\n    }\n  }\n",
+): (typeof documents)["\n  query managedSystemAccount($id: ID!, $includeKeys: Boolean!) {\n    systemAccount(id: $id) {\n      id\n      name\n      enabled\n      permissions\n      createdById\n      createdAt\n      apiKeyPermissions @include(if: $includeKeys) {\n        permission\n        grantable\n        default\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation createManagedSystemAccount($input: CreateSystemAccountInput!) {\n    createSystemAccount(input: $input) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation createManagedSystemAccount($input: CreateSystemAccountInput!) {\n    createSystemAccount(input: $input) {\n      id\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation updateManagedSystemAccount(\n    $id: ID!\n    $input: UpdateSystemAccountInput!\n  ) {\n    updateSystemAccount(id: $id, input: $input) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation updateManagedSystemAccount(\n    $id: ID!\n    $input: UpdateSystemAccountInput!\n  ) {\n    updateSystemAccount(id: $id, input: $input) {\n      id\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation deleteManagedSystemAccount($id: ID!) {\n    deleteSystemAccount(id: $id) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation deleteManagedSystemAccount($id: ID!) {\n    deleteSystemAccount(id: $id) {\n      id\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation createManagedSystemAccountKey(\n    $systemAccountId: ID!\n    $input: CreateSystemAccountApiKeyInput!\n  ) {\n    createSystemAccountApiKey(\n      systemAccountId: $systemAccountId\n      input: $input\n    ) {\n      apiKey\n      entity {\n        id\n      }\n    }\n  }\n",
+): (typeof documents)["\n  mutation createManagedSystemAccountKey(\n    $systemAccountId: ID!\n    $input: CreateSystemAccountApiKeyInput!\n  ) {\n    createSystemAccountApiKey(\n      systemAccountId: $systemAccountId\n      input: $input\n    ) {\n      apiKey\n      entity {\n        id\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  query managedSystemAccountKey($id: ID!) {\n    systemAccountApiKey(id: $id) {\n      id\n      systemAccountId\n      name\n      enabled\n      permissions\n      prefix\n      start\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n",
+): (typeof documents)["\n  query managedSystemAccountKey($id: ID!) {\n    systemAccountApiKey(id: $id) {\n      id\n      systemAccountId\n      name\n      enabled\n      permissions\n      prefix\n      start\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation updateManagedSystemAccountKey(\n    $id: ID!\n    $input: UpdateSystemAccountApiKeyInput!\n  ) {\n    updateSystemAccountApiKey(id: $id, input: $input) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation updateManagedSystemAccountKey(\n    $id: ID!\n    $input: UpdateSystemAccountApiKeyInput!\n  ) {\n    updateSystemAccountApiKey(id: $id, input: $input) {\n      id\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source: "\n  mutation deleteManagedSystemAccountKey($id: ID!) {\n    deleteSystemAccountApiKey(id: $id) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation deleteManagedSystemAccountKey($id: ID!) {\n    deleteSystemAccountApiKey(id: $id) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
