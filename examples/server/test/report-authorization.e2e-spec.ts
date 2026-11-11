@@ -14,13 +14,13 @@ import { RequestContext } from '@nest-boot/request-context';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { type ModuleRef, Reflector } from '@nestjs/core';
 
-import { Report } from './report.js';
-import { ReportService } from './report.service.js';
-import { reportAuthOptions } from './report-auth.options.js';
+import { Report } from '../src/app/auth/examples/report.js';
+import { ReportService } from '../src/app/auth/examples/report.service.js';
+import { reportAuthOptions } from '../src/app/auth/examples/report-auth.options.js';
 
 // Exercise the real client helper without adding client sources to the server's TS root.
 const { createAbility, createAbilitySubject } = (await import(
-  new URL('../../../../../client/src/lib/ability.ts', import.meta.url).href
+  new URL('../../client/src/lib/ability.ts', import.meta.url).href
 )) as {
   createAbility(rules: object[]): {
     can(action: string, subject: object): boolean;

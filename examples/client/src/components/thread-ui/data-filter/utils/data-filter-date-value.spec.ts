@@ -3,7 +3,7 @@ import {
   getDataFilterDate,
   getDataFilterDateRangeValue,
   getDataFilterDateValue,
-} from "@/components/thread-ui/data-filter/utils/data-filter-date-value";
+} from "./data-filter-date-value";
 
 describe("date filter calendar values", () => {
   it("sends the selected calendar date instead of its UTC timestamp", () => {
