@@ -531,6 +531,7 @@ describe("session management", () => {
               variables: {
                 "app.user.id": "",
                 "app.workspace.id": "",
+                "app.system_account.id": "",
                 "app.member.id": "",
               },
             });

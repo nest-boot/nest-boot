@@ -37,6 +37,13 @@ describe("DEFAULT_USER_ROLES", () => {
         "user-api-key:read",
         "user-api-key:write",
         "workspace:create",
+        "workspace:read-any",
+        "workspace:update-any",
+        "workspace:delete-any",
+        "system-account:read",
+        "system-account:write",
+        "system-account-api-key:read",
+        "system-account-api-key:write",
       ],
       user: ["workspace:create"],
     });

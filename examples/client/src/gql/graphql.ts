@@ -46,7 +46,7 @@ export type Scalars = {
   };
   /**
    * A filter for Job that accepts MongoDB query syntax.
-   * Supported fields: queue, name, status, created_at
+   * Supported fields: id, queue, name, status, created_at
    */
   JobFilter: { input: any; output: any };
   /**
@@ -64,6 +64,16 @@ export type Scalars = {
    * Supported fields: created_at
    */
   SessionFilter: { input: any; output: any };
+  /**
+   * A filter for SystemAccountApiKey that accepts MongoDB query syntax.
+   * Supported fields: name, enabled, created_at
+   */
+  SystemAccountApiKeyFilter: { input: any; output: any };
+  /**
+   * A filter for SystemAccount that accepts MongoDB query syntax.
+   * Supported fields: name, enabled, created_at
+   */
+  SystemAccountFilter: { input: any; output: any };
   /**
    * A filter for UserApiKey that accepts MongoDB query syntax.
    * Supported fields: name, prefix, enabled, last_used_at, created_at
@@ -315,6 +325,24 @@ export type CreateMemberApiKeyResult = {
   entity: MemberApiKey;
 };
 
+export type CreateSystemAccountApiKeyInput = {
+  expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
+  name: Scalars["String"]["input"];
+  permissions?: InputMaybe<Array<SystemAccountPermission>>;
+  prefix?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type CreateSystemAccountApiKeyResult = {
+  __typename?: "CreateSystemAccountApiKeyResult";
+  apiKey: Scalars["String"]["output"];
+  entity: SystemAccountApiKey;
+};
+
+export type CreateSystemAccountInput = {
+  name: Scalars["String"]["input"];
+  permissions?: InputMaybe<Array<SystemAccountPermission>>;
+};
+
 export type CreateUserApiKeyInput = {
   expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
   name: Scalars["String"]["input"];
@@ -463,10 +491,6 @@ export type JobOrder = {
 /** Properties by which job connections can be ordered. */
 export const JobOrderField = {
   CREATED_AT: "CREATED_AT",
-  ID: "ID",
-  NAME: "NAME",
-  QUEUE: "QUEUE",
-  STATUS: "STATUS",
 } as const;
 
 export type JobOrderField = (typeof JobOrderField)[keyof typeof JobOrderField];
@@ -475,6 +499,8 @@ export const JobStatus = {
   COMPLETED: "COMPLETED",
   DELAYED: "DELAYED",
   FAILED: "FAILED",
+  PRIORITIZED: "PRIORITIZED",
+  UNKNOWN: "UNKNOWN",
   WAITING: "WAITING",
   WAITING_CHILDREN: "WAITING_CHILDREN",
 } as const;
@@ -503,6 +529,7 @@ export type Member = {
 export type MemberApiKey = {
   __typename?: "MemberApiKey";
   createdAt: Scalars["DateTime"]["output"];
+  createdById?: Maybe<Scalars["ID"]["output"]>;
   enabled: Scalars["Boolean"]["output"];
   expiresAt?: Maybe<Scalars["DateTime"]["output"]>;
   id: Scalars["ID"]["output"];
@@ -637,11 +664,16 @@ export type Mutation = {
   changeCurrentUserPassword: AuthChangePasswordResultType;
   createInvitation: CreateInvitationPayload;
   createMemberApiKey: CreateMemberApiKeyResult;
+  createSystemAccount: SystemAccount;
+  createSystemAccountApiKey: CreateSystemAccountApiKeyResult;
   createUser: CreateUserPayload;
   createUserApiKey: CreateUserApiKeyResult;
   createWorkspace: CreateWorkspacePayload;
   deleteCurrentUser: AuthDeleteUserResultType;
   deleteMemberApiKey: MemberApiKey;
+  deletePlatformWorkspace: Workspace;
+  deleteSystemAccount: SystemAccount;
+  deleteSystemAccountApiKey: SystemAccountApiKey;
   deleteUser: DeleteUserPayload;
   deleteUserApiKey: UserApiKey;
   deleteWorkspace: DeleteWorkspacePayload;
@@ -674,6 +706,9 @@ export type Mutation = {
   updateCurrentUser: Scalars["Boolean"]["output"];
   updateMember?: Maybe<UpdateMemberPayload>;
   updateMemberApiKey: MemberApiKey;
+  updatePlatformWorkspace: Workspace;
+  updateSystemAccount: SystemAccount;
+  updateSystemAccountApiKey: SystemAccountApiKey;
   updateUser: UpdateUserPayload;
   updateUserApiKey: UserApiKey;
   updateWorkspace: UpdateWorkspacePayload;
@@ -712,6 +747,15 @@ export type MutationCreateMemberApiKeyArgs = {
   input: CreateMemberApiKeyInput;
 };
 
+export type MutationCreateSystemAccountArgs = {
+  input: CreateSystemAccountInput;
+};
+
+export type MutationCreateSystemAccountApiKeyArgs = {
+  input: CreateSystemAccountApiKeyInput;
+  systemAccountId: Scalars["ID"]["input"];
+};
+
 export type MutationCreateUserArgs = {
   input: CreateUserInput;
 };
@@ -729,6 +773,18 @@ export type MutationDeleteCurrentUserArgs = {
 };
 
 export type MutationDeleteMemberApiKeyArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type MutationDeletePlatformWorkspaceArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type MutationDeleteSystemAccountArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type MutationDeleteSystemAccountApiKeyArgs = {
   id: Scalars["ID"]["input"];
 };
 
@@ -848,6 +904,21 @@ export type MutationUpdateMemberApiKeyArgs = {
   input: UpdateMemberApiKeyInput;
 };
 
+export type MutationUpdatePlatformWorkspaceArgs = {
+  id: Scalars["ID"]["input"];
+  input: UpdateWorkspaceInput;
+};
+
+export type MutationUpdateSystemAccountArgs = {
+  id: Scalars["ID"]["input"];
+  input: UpdateSystemAccountInput;
+};
+
+export type MutationUpdateSystemAccountApiKeyArgs = {
+  id: Scalars["ID"]["input"];
+  input: UpdateSystemAccountApiKeyInput;
+};
+
 export type MutationUpdateUserArgs = {
   id: Scalars["ID"]["input"];
   input: UpdateUserInput;
@@ -895,31 +966,66 @@ export type Query = {
   currentUser: User;
   currentWorkspace?: Maybe<Workspace>;
   invitation?: Maybe<Invitation>;
-  job?: Maybe<Job>;
-  jobs: JobConnection;
   member?: Maybe<Member>;
   memberApiKeyPermissions: Array<MemberApiKeyPermissionOption>;
   passwordPolicy: PasswordPolicy;
+  platformWorkspace?: Maybe<Workspace>;
   socialProviders: Array<AuthSocialProviderType>;
+  systemAccount?: Maybe<SystemAccount>;
+  systemAccountApiKey?: Maybe<SystemAccountApiKey>;
+  systemAccounts: SystemAccountConnection;
+  systemJob?: Maybe<Job>;
+  systemJobs: JobConnection;
   user?: Maybe<User>;
   userApiKeyPermissions: Array<UserApiKeyPermissionOption>;
+  userJob?: Maybe<Job>;
+  userJobs: JobConnection;
   userPermissions: Array<UserPermissionOption>;
   userRoles: Array<UserRoleOption>;
   users: UserConnection;
   workspace?: Maybe<Workspace>;
+  workspaceJob?: Maybe<Job>;
+  workspaceJobs: JobConnection;
   workspacePermissions: Array<WorkspacePermissionOption>;
   workspaceRoles: Array<WorkspaceRoleOption>;
+  workspaces: WorkspaceConnection;
 };
 
 export type QueryInvitationArgs = {
   id: Scalars["ID"]["input"];
 };
 
-export type QueryJobArgs = {
+export type QueryMemberArgs = {
   id: Scalars["ID"]["input"];
 };
 
-export type QueryJobsArgs = {
+export type QueryPlatformWorkspaceArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type QuerySystemAccountArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type QuerySystemAccountApiKeyArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type QuerySystemAccountsArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["SystemAccountFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<SystemAccountOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type QuerySystemJobArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type QuerySystemJobsArgs = {
   after?: InputMaybe<Scalars["String"]["input"]>;
   before?: InputMaybe<Scalars["String"]["input"]>;
   filter?: InputMaybe<Scalars["JobFilter"]["input"]>;
@@ -929,12 +1035,22 @@ export type QueryJobsArgs = {
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
-export type QueryMemberArgs = {
+export type QueryUserArgs = {
   id: Scalars["ID"]["input"];
 };
 
-export type QueryUserArgs = {
+export type QueryUserJobArgs = {
   id: Scalars["ID"]["input"];
+};
+
+export type QueryUserJobsArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["JobFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<JobOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type QueryUsersArgs = {
@@ -949,6 +1065,30 @@ export type QueryUsersArgs = {
 
 export type QueryWorkspaceArgs = {
   id: Scalars["ID"]["input"];
+};
+
+export type QueryWorkspaceJobArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type QueryWorkspaceJobsArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["JobFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<JobOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type QueryWorkspacesArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["WorkspaceFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<WorkspaceOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type RejectInvitationPayload = {
@@ -1057,6 +1197,129 @@ export type SignUpPayload = {
   token?: Maybe<Scalars["String"]["output"]>;
 };
 
+export type SystemAccount = {
+  __typename?: "SystemAccount";
+  apiKeys: SystemAccountApiKeyConnection;
+  createdAt: Scalars["DateTime"]["output"];
+  createdById?: Maybe<Scalars["ID"]["output"]>;
+  enabled: Scalars["Boolean"]["output"];
+  id: Scalars["ID"]["output"];
+  name: Scalars["String"]["output"];
+  permissions: Array<SystemAccountPermission>;
+  updatedAt: Scalars["DateTime"]["output"];
+};
+
+export type SystemAccountApiKeysArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["SystemAccountApiKeyFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<SystemAccountApiKeyOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type SystemAccountApiKey = {
+  __typename?: "SystemAccountApiKey";
+  createdAt: Scalars["DateTime"]["output"];
+  createdById?: Maybe<Scalars["ID"]["output"]>;
+  enabled: Scalars["Boolean"]["output"];
+  expiresAt?: Maybe<Scalars["DateTime"]["output"]>;
+  id: Scalars["ID"]["output"];
+  lastUsedAt?: Maybe<Scalars["DateTime"]["output"]>;
+  name: Scalars["String"]["output"];
+  permissions: Array<SystemAccountPermission>;
+  prefix?: Maybe<Scalars["String"]["output"]>;
+  start?: Maybe<Scalars["String"]["output"]>;
+  systemAccountId: Scalars["ID"]["output"];
+  updatedAt: Scalars["DateTime"]["output"];
+};
+
+export type SystemAccountApiKeyConnection = {
+  __typename?: "SystemAccountApiKeyConnection";
+  /** A list of edges. */
+  edges: Array<SystemAccountApiKeyEdge>;
+  /** Information to aid in pagination. */
+  pageInfo: PageInfo;
+  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
+  totalCount: Scalars["Int"]["output"];
+  /** Indicates whether totalCount is exact or a lower bound. */
+  totalCountRelation: TotalCountRelation;
+};
+
+/** An auto-generated type which holds one SystemAccountApiKey and a cursor during pagination. */
+export type SystemAccountApiKeyEdge = {
+  __typename?: "SystemAccountApiKeyEdge";
+  /** A cursor for use in pagination. */
+  cursor: Scalars["String"]["output"];
+  /** The item at the end of SystemAccountApiKeyEdge. */
+  node: SystemAccountApiKey;
+};
+
+/** Ordering options for systemaccountapikey connections */
+export type SystemAccountApiKeyOrder = {
+  /** The ordering direction. */
+  direction: OrderDirection;
+  /** The field to order systemaccountapikeys by. */
+  field: SystemAccountApiKeyOrderField;
+};
+
+/** Properties by which systemaccountapikey connections can be ordered. */
+export const SystemAccountApiKeyOrderField = {
+  CREATED_AT: "CREATED_AT",
+  ID: "ID",
+} as const;
+
+export type SystemAccountApiKeyOrderField =
+  (typeof SystemAccountApiKeyOrderField)[keyof typeof SystemAccountApiKeyOrderField];
+export type SystemAccountConnection = {
+  __typename?: "SystemAccountConnection";
+  /** A list of edges. */
+  edges: Array<SystemAccountEdge>;
+  /** Information to aid in pagination. */
+  pageInfo: PageInfo;
+  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
+  totalCount: Scalars["Int"]["output"];
+  /** Indicates whether totalCount is exact or a lower bound. */
+  totalCountRelation: TotalCountRelation;
+};
+
+/** An auto-generated type which holds one SystemAccount and a cursor during pagination. */
+export type SystemAccountEdge = {
+  __typename?: "SystemAccountEdge";
+  /** A cursor for use in pagination. */
+  cursor: Scalars["String"]["output"];
+  /** The item at the end of SystemAccountEdge. */
+  node: SystemAccount;
+};
+
+/** Ordering options for systemaccount connections */
+export type SystemAccountOrder = {
+  /** The ordering direction. */
+  direction: OrderDirection;
+  /** The field to order systemaccounts by. */
+  field: SystemAccountOrderField;
+};
+
+/** Properties by which systemaccount connections can be ordered. */
+export const SystemAccountOrderField = {
+  CREATED_AT: "CREATED_AT",
+  ID: "ID",
+} as const;
+
+export type SystemAccountOrderField =
+  (typeof SystemAccountOrderField)[keyof typeof SystemAccountOrderField];
+export const SystemAccountPermission = {
+  USER__DELETE: "USER__DELETE",
+  USER__READ: "USER__READ",
+  USER__UPDATE: "USER__UPDATE",
+  WORKSPACE__DELETE_ANY: "WORKSPACE__DELETE_ANY",
+  WORKSPACE__READ_ANY: "WORKSPACE__READ_ANY",
+  WORKSPACE__UPDATE_ANY: "WORKSPACE__UPDATE_ANY",
+} as const;
+
+export type SystemAccountPermission =
+  (typeof SystemAccountPermission)[keyof typeof SystemAccountPermission];
 export const TotalCountRelation = {
   EQ: "EQ",
   GTE: "GTE",
@@ -1085,6 +1348,19 @@ export type UpdateMemberInput = {
 export type UpdateMemberPayload = {
   __typename?: "UpdateMemberPayload";
   id: Scalars["ID"]["output"];
+};
+
+export type UpdateSystemAccountApiKeyInput = {
+  enabled?: InputMaybe<Scalars["Boolean"]["input"]>;
+  expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
+  name?: InputMaybe<Scalars["String"]["input"]>;
+  permissions?: InputMaybe<Array<SystemAccountPermission>>;
+};
+
+export type UpdateSystemAccountInput = {
+  enabled?: InputMaybe<Scalars["Boolean"]["input"]>;
+  name?: InputMaybe<Scalars["String"]["input"]>;
+  permissions?: InputMaybe<Array<SystemAccountPermission>>;
 };
 
 export type UpdateUserApiKeyInput = {
@@ -1194,6 +1470,7 @@ export type UserWorkspacesArgs = {
 export type UserApiKey = {
   __typename?: "UserApiKey";
   createdAt: Scalars["DateTime"]["output"];
+  createdById?: Maybe<Scalars["ID"]["output"]>;
   enabled: Scalars["Boolean"]["output"];
   expiresAt?: Maybe<Scalars["DateTime"]["output"]>;
   id: Scalars["ID"]["output"];
@@ -1255,6 +1532,10 @@ export const UserApiKeyPermission = {
   SERVICE_ACCOUNT__WRITE: "SERVICE_ACCOUNT__WRITE",
   SESSION__READ: "SESSION__READ",
   SESSION__REVOKE: "SESSION__REVOKE",
+  SYSTEM_ACCOUNT_API_KEY__READ: "SYSTEM_ACCOUNT_API_KEY__READ",
+  SYSTEM_ACCOUNT_API_KEY__WRITE: "SYSTEM_ACCOUNT_API_KEY__WRITE",
+  SYSTEM_ACCOUNT__READ: "SYSTEM_ACCOUNT__READ",
+  SYSTEM_ACCOUNT__WRITE: "SYSTEM_ACCOUNT__WRITE",
   USER_API_KEY__READ: "USER_API_KEY__READ",
   USER_API_KEY__WRITE: "USER_API_KEY__WRITE",
   USER__BAN: "USER__BAN",
@@ -1270,8 +1551,11 @@ export const UserApiKeyPermission = {
   USER__UPDATE: "USER__UPDATE",
   WORKSPACE__CREATE: "WORKSPACE__CREATE",
   WORKSPACE__DELETE: "WORKSPACE__DELETE",
+  WORKSPACE__DELETE_ANY: "WORKSPACE__DELETE_ANY",
   WORKSPACE__READ: "WORKSPACE__READ",
+  WORKSPACE__READ_ANY: "WORKSPACE__READ_ANY",
   WORKSPACE__UPDATE: "WORKSPACE__UPDATE",
+  WORKSPACE__UPDATE_ANY: "WORKSPACE__UPDATE_ANY",
 } as const;
 
 export type UserApiKeyPermission =
@@ -1323,6 +1607,10 @@ export type UserOrderField =
 export const UserPermission = {
   SESSION__READ: "SESSION__READ",
   SESSION__REVOKE: "SESSION__REVOKE",
+  SYSTEM_ACCOUNT_API_KEY__READ: "SYSTEM_ACCOUNT_API_KEY__READ",
+  SYSTEM_ACCOUNT_API_KEY__WRITE: "SYSTEM_ACCOUNT_API_KEY__WRITE",
+  SYSTEM_ACCOUNT__READ: "SYSTEM_ACCOUNT__READ",
+  SYSTEM_ACCOUNT__WRITE: "SYSTEM_ACCOUNT__WRITE",
   USER_API_KEY__READ: "USER_API_KEY__READ",
   USER_API_KEY__WRITE: "USER_API_KEY__WRITE",
   USER__BAN: "USER__BAN",
@@ -1337,6 +1625,9 @@ export const UserPermission = {
   USER__SET_ROLES: "USER__SET_ROLES",
   USER__UPDATE: "USER__UPDATE",
   WORKSPACE__CREATE: "WORKSPACE__CREATE",
+  WORKSPACE__DELETE_ANY: "WORKSPACE__DELETE_ANY",
+  WORKSPACE__READ_ANY: "WORKSPACE__READ_ANY",
+  WORKSPACE__UPDATE_ANY: "WORKSPACE__UPDATE_ANY",
 } as const;
 
 export type UserPermission =

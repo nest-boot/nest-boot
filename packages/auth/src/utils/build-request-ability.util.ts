@@ -2,7 +2,6 @@ import { RequestContext } from "@nest-boot/request-context";
 
 import type { AuthAbility } from "../auth.ability.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
-import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { AuthAbilityFactory } from "../infrastructure/auth-ability.factory.js";
@@ -17,7 +16,7 @@ import { resolveRequestPermissions } from "./resolve-request-permissions.util.js
  */
 export function buildRequestAbility(options: AuthModuleOptions): AuthAbility {
   const apiKey = getCurrentApiKey();
-  const memberKey = apiKey instanceof MemberApiKey;
+  const memberKey = apiKey?.ownerType === "member";
   const user = memberKey ? null : (RequestContext.get(User) ?? null);
   const member =
     options.workspace?.enabled === true ? resolveRequestMember() : null;
@@ -28,7 +27,12 @@ export function buildRequestAbility(options: AuthModuleOptions): AuthAbility {
       user,
       workspace,
       member,
-      userPermissions: user ? permissions.user : [],
+      userPermissions:
+        user || apiKey?.ownerType === "system_account" ? permissions.user : [],
+      systemAccount:
+        apiKey?.ownerType === "system_account"
+          ? apiKey.systemAccount?.unwrap()
+          : undefined,
       workspacePermissions: workspace ? permissions.workspace : [],
     },
     options,

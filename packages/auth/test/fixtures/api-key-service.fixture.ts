@@ -111,6 +111,12 @@ export function createService(
     fork: vi.fn(),
     create: vi.fn((_entity, data) => Object.assign(new _entity(), data)),
     findOne: vi.fn(),
+    populate: vi.fn().mockImplementation((entity) => Promise.resolve(entity)),
+    createQueryBuilder: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      toRaw: vi.fn().mockReturnValue("member-query"),
+    })),
     nativeUpdate: vi.fn().mockResolvedValue(1),
     transactional: vi.fn(),
     flush: vi.fn(),

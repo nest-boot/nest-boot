@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 
-import { EntityManager } from "@mikro-orm/core";
+import { EntityManager, ref } from "@mikro-orm/core";
 import { MikroORM } from "@mikro-orm/pglite";
 import { getDatabaseConfig } from "@nest-boot/database";
 import { REQUEST, RequestContext } from "@nest-boot/request-context";
@@ -10,7 +10,7 @@ import type { Request } from "express";
 
 import { mikroOrmAdapter } from "../src/adapters/mikro-orm-adapter.js";
 import { AUTH_TOKEN } from "../src/auth.constants.js";
-import { entities, workspaceEntities } from "../src/entities/index.js";
+import { ApiKeyEntity, getAuthEntities } from "../src/entities/index.js";
 import {
   Account,
   type ApiKey,
@@ -51,7 +51,7 @@ describe("Auth services and native RLS boundaries", () => {
       metadataProvider,
       metadataCache: { enabled: false },
       dbName: "memory://",
-      entities: [...entities, ...workspaceEntities],
+      entities: getAuthEntities({ workspace: { enabled: true } }),
     });
     await orm.em.execute("create role anonymous nologin noinherit");
     await orm.em.execute("create role authenticated nologin noinherit");
@@ -615,18 +615,18 @@ describe("Auth services and native RLS boundaries", () => {
       token: randomUUID(),
       expiresAt: new Date(Date.now() + 60000),
     });
-    const memberKey = admin.create(MemberApiKey, {
-      member,
+    const memberKey = admin.create(ApiKeyEntity, {
+      owner: member,
       name: "Workspace key",
       key: randomUUID(),
     });
-    const key = admin.create(UserApiKey, {
-      user: target,
+    const key = admin.create(ApiKeyEntity, {
+      owner: target,
       name: "Personal",
       key: randomUUID(),
     });
-    const otherKey = admin.create(UserApiKey, {
-      user: other,
+    const otherKey = admin.create(ApiKeyEntity, {
+      owner: other,
       name: "Unrelated",
       key: randomUUID(),
     });
@@ -667,26 +667,26 @@ describe("Auth services and native RLS boundaries", () => {
         }),
       ).toBe(1);
       expect(
-        await scoped(target.id).nativeUpdate(UserApiKey, key.id, {
+        await scoped(target.id).nativeUpdate(ApiKeyEntity, key.id, {
           name: "Scoped key",
         }),
       ).toBe(1);
       expect(
-        await scoped(target.id).nativeUpdate(UserApiKey, otherKey.id, {
+        await scoped(target.id).nativeUpdate(ApiKeyEntity, otherKey.id, {
           name: "Denied",
         }),
       ).toBe(0);
       expect(
-        await scoped(target.id).nativeDelete(UserApiKey, otherKey.id),
+        await scoped(target.id).nativeDelete(ApiKeyEntity, otherKey.id),
       ).toBe(0);
       await expect(
         scoped(target.id).execute(
-          "update user_api_key set user_id = ? where id = ?",
+          "update api_key set owner_id = ? where id = ?",
           [other.id, key.id],
         ),
       ).rejects.toThrow(/row.level security/i);
       expect(
-        await scoped(target.id).nativeUpdate(UserApiKey, key.id, {
+        await scoped(target.id).nativeUpdate(ApiKeyEntity, key.id, {
           key: "replacement",
         }),
       ).toBe(1);
@@ -702,7 +702,7 @@ describe("Auth services and native RLS boundaries", () => {
         }),
       ).rejects.toThrow("Rollback cascade");
       expect(await admin.count(User, target.id)).toBe(1);
-      expect(await admin.count(UserApiKey, key.id)).toBe(1);
+      expect(await admin.count(ApiKeyEntity, key.id)).toBe(1);
       expect(await admin.count(Session, impersonation.id)).toBe(1);
       expect(await scoped(administrator.id).nativeDelete(User, target.id)).toBe(
         1,
@@ -712,7 +712,7 @@ describe("Auth services and native RLS boundaries", () => {
         [Account, account.id],
         [Session, session.id],
         [Session, impersonation.id],
-        [UserApiKey, key.id],
+        [ApiKeyEntity, key.id],
         [Member, member.id],
         [Invitation, invitation.id],
       ] as const) {
@@ -722,8 +722,8 @@ describe("Auth services and native RLS boundaries", () => {
           }>(entity, { id }),
         ).toBe(0);
       }
-      expect(await admin.count(UserApiKey, otherKey.id)).toBe(1);
-      expect(await admin.count(MemberApiKey, memberKey.id)).toBe(0);
+      expect(await admin.count(ApiKeyEntity, otherKey.id)).toBe(1);
+      expect(await admin.count(ApiKeyEntity, memberKey.id)).toBe(0);
       expect(await admin.count(Session, unrelatedSession.id)).toBe(1);
       const retainedWorkspace = await admin.findOneOrFail(
         Workspace,
@@ -1028,6 +1028,7 @@ describe("Auth services and native RLS boundaries", () => {
           variables: {
             "app.workspace.id": workspace.id,
             "app.user.id": user.id,
+            "app.system_account.id": "",
             "app.member.id": actor.id,
           },
         },
@@ -1103,6 +1104,7 @@ describe("Auth services and native RLS boundaries", () => {
           variables: {
             "app.user.id": user.id,
             "app.workspace.id": workspace.id,
+            "app.system_account.id": "",
             "app.member.id": actor.id,
           },
         },
@@ -1130,7 +1132,7 @@ describe("Auth services and native RLS boundaries", () => {
           });
           const owner = await admin.findOneOrFail(
             Member,
-            created.entity.member.id,
+            created.entity.owner.id,
           );
           expect(owner.type).toBe(MemberType.SERVICE_ACCOUNT);
           expect(owner.name).toBe("Deploy");
@@ -1138,7 +1140,7 @@ describe("Auth services and native RLS boundaries", () => {
           expect(owner.roles).toEqual(role ? [role] : []);
           expect(owner.permissions).toEqual(permissions);
           expect(
-            (await admin.findOneOrFail(MemberApiKey, created.entity.id))
+            (await admin.findOneOrFail(ApiKeyEntity, created.entity.id))
               .permissions,
           ).toEqual(permissions);
           RequestIdentity.stage({
@@ -1191,9 +1193,10 @@ describe("Auth services and native RLS boundaries", () => {
             await admin.count(Member, { workspace, name: "Retained account" }),
           ).toBe(1);
           expect(
-            await admin.count(MemberApiKey, {
+            await admin.count(ApiKeyEntity, {
               name: "Rolled back",
-              member: { workspace },
+              ownerType: "member",
+              owner: retainedAccount,
             }),
           ).toBe(0);
           vi.restoreAllMocks();
@@ -1220,14 +1223,14 @@ describe("Auth services and native RLS boundaries", () => {
       name: "Owner",
       roles: ["owner"],
     });
-    const inherited = admin.create(MemberApiKey, {
-      member: actor,
+    const inherited = admin.create(ApiKeyEntity, {
+      owner: actor,
       name: "Full owner grants",
       key: randomUUID(),
       permissions: [],
     });
-    const limited = admin.create(MemberApiKey, {
-      member: actor,
+    const limited = admin.create(ApiKeyEntity, {
+      owner: actor,
       name: "Limited",
       key: randomUUID(),
       permissions: ["member-api-key:read", "member-api-key:write"],
@@ -1239,6 +1242,7 @@ describe("Auth services and native RLS boundaries", () => {
         variables: {
           "app.user.id": user.id,
           "app.workspace.id": workspace.id,
+          "app.system_account.id": "",
           "app.member.id": actor.id,
         },
       },
@@ -1353,8 +1357,8 @@ describe("Auth services and native RLS boundaries", () => {
       ownerId: string,
     ) =>
       em.execute(
-        `insert into ${ownerType}_api_key (id, ${ownerType === "user" ? "user" : "member"}_id, name, key) values (?, ?, ?, ?)`,
-        [id, ownerId, "Policy probe", randomUUID()],
+        `insert into api_key (id, owner_type, owner_id, name, key) values (?, ?, ?, ?, ?)`,
+        [id, ownerType, ownerId, "Policy probe", randomUUID()],
       );
 
     beforeAll(async () => {
@@ -1386,19 +1390,22 @@ describe("Auth services and native RLS boundaries", () => {
       });
       keys = [user, workspace, foreignUser, foreignWorkspace].map((owner) =>
         owner instanceof User
-          ? admin.create(UserApiKey, {
-              user: owner,
+          ? admin.create(ApiKeyEntity, {
+              owner: owner,
               name: "Owner boundary fixture",
               key: randomUUID(),
             })
-          : admin.create(MemberApiKey, {
-              member: admin.create(Member, {
-                id: owner.id,
-                workspace: owner,
-                type: MemberType.SERVICE_ACCOUNT,
-                user: null,
-                name: "Service account",
-              }),
+          : admin.create(ApiKeyEntity, {
+              owner: ref(
+                Member,
+                admin.create(Member, {
+                  id: owner.id,
+                  workspace: owner,
+                  type: MemberType.SERVICE_ACCOUNT,
+                  user: null,
+                  name: "Service account",
+                }),
+              ),
               name: "Owner boundary fixture",
               key: randomUUID(),
             }),
@@ -1415,18 +1422,18 @@ describe("Auth services and native RLS boundaries", () => {
         `grant ${probeRole}, ${anonymousProbeRole} to current_user`,
       );
       await admin.execute(
-        `grant select, insert, update, delete on user_api_key, member_api_key to ${probeRole}, ${anonymousProbeRole}`,
+        `grant select, insert, update, delete on api_key to ${probeRole}, ${anonymousProbeRole}`,
       );
     });
 
     afterAll(async () => {
       const admin = orm.em.fork();
       await admin.execute(
-        `revoke all on user_api_key, member_api_key from ${probeRole}, ${anonymousProbeRole}`,
+        `revoke all on api_key from ${probeRole}, ${anonymousProbeRole}`,
       );
       await admin.execute(`drop role ${probeRole}, ${anonymousProbeRole}`);
-      await admin.nativeDelete(UserApiKey, { id: keys.map((key) => key.id) });
-      await admin.nativeDelete(MemberApiKey, {
+      await admin.nativeDelete(ApiKeyEntity, { id: keys.map((key) => key.id) });
+      await admin.nativeDelete(ApiKeyEntity, {
         id: keys.map((key) => key.id),
       });
       await admin.nativeDelete(User, { id: [userId, foreignId] });
@@ -1436,7 +1443,7 @@ describe("Auth services and native RLS boundaries", () => {
     it.each(["user", "member"])(
       "combines default grants with %s-key RLS and a required foreign key",
       async (ownerType) => {
-        const table = ownerType + "_api_key";
+        const table = "api_key";
         const em = orm.em.fork();
         expect(
           await em.execute(
@@ -1462,7 +1469,7 @@ describe("Auth services and native RLS boundaries", () => {
         ).rejects.toThrow(/not-null constraint/i);
         await expect(
           insertKey(em, "900199", ownerType, "999999999"),
-        ).rejects.toThrow(/foreign key constraint/i);
+        ).rejects.toThrow(/owner does not exist/i);
         const otherType = ownerType === "user" ? "member" : "user";
         expect(
           await em.execute(
@@ -1476,20 +1483,23 @@ describe("Auth services and native RLS boundaries", () => {
     it("cascades member keys on workspace deletion", async () => {
       const em = orm.em.fork();
       const workspace = em.create(Workspace, { name: "Cascade workspace" });
-      const key = em.create(MemberApiKey, {
-        member: em.create(Member, {
-          workspace,
-          name: "Cascade member",
-          type: MemberType.SERVICE_ACCOUNT,
-          user: null,
-        }),
+      const key = em.create(ApiKeyEntity, {
+        owner: ref(
+          Member,
+          em.create(Member, {
+            workspace,
+            name: "Cascade member",
+            type: MemberType.SERVICE_ACCOUNT,
+            user: null,
+          }),
+        ),
         name: "Cascade key",
         key: randomUUID(),
       });
       await em.persist(key).flush();
-      expect(await em.count(MemberApiKey, key.id)).toBe(1);
+      expect(await em.count(ApiKeyEntity, key.id)).toBe(1);
       await em.nativeDelete(Workspace, workspace.id, { filters: false });
-      expect(await em.count(MemberApiKey, key.id)).toBe(0);
+      expect(await em.count(ApiKeyEntity, key.id)).toBe(0);
     });
 
     it.each([
@@ -1513,48 +1523,36 @@ describe("Auth services and native RLS boundaries", () => {
           .map((index) => keys[index].id)
           .sort();
         expect(
-          [
-            ...(await em.find(UserApiKey, {})),
-            ...(await em.find(MemberApiKey, {})),
-          ]
-            .map((key) => key.id)
-            .sort(),
+          [...(await em.find(ApiKeyEntity, {}))].map((key) => key.id).sort(),
         ).toEqual(visibleIds);
         for (const key of keys) {
           expect(
-            await em.nativeUpdate<ApiKey>(
-              key instanceof UserApiKey ? UserApiKey : MemberApiKey,
-              key.id,
-              { name: identity.name },
-            ),
+            await em.nativeUpdate<ApiKey>(ApiKeyEntity, key.id, {
+              name: identity.name,
+            }),
           ).toBe(visibleIds.includes(key.id) ? 1 : 0);
           if (!visibleIds.includes(key.id)) {
-            expect(
-              await em.nativeDelete<ApiKey>(
-                key instanceof UserApiKey ? UserApiKey : MemberApiKey,
-                key.id,
-              ),
-            ).toBe(0);
+            expect(await em.nativeDelete<ApiKey>(ApiKeyEntity, key.id)).toBe(0);
           }
         }
       },
     );
 
     it("denies missing identity and anonymous access even with table privileges", async () => {
-      expect(await scoped().find(UserApiKey, {})).toEqual([]);
-      expect(await scoped().find(MemberApiKey, {})).toEqual([]);
+      expect(await scoped().find(ApiKeyEntity, {})).toEqual([]);
+      expect(await scoped().find(ApiKeyEntity, {})).toEqual([]);
       const anonymous = scoped(
         { "app.user.id": userId, "app.workspace.id": userId },
         anonymousProbeRole,
       );
-      expect(await anonymous.find(UserApiKey, {})).toEqual([]);
-      expect(await anonymous.find(MemberApiKey, {})).toEqual([]);
+      expect(await anonymous.find(ApiKeyEntity, {})).toEqual([]);
+      expect(await anonymous.find(ApiKeyEntity, {})).toEqual([]);
       expect(
-        await anonymous.nativeUpdate(UserApiKey, keys[0].id, {
+        await anonymous.nativeUpdate(ApiKeyEntity, keys[0].id, {
           name: "Denied",
         }),
       ).toBe(0);
-      expect(await anonymous.nativeDelete(UserApiKey, keys[0].id)).toBe(0);
+      expect(await anonymous.nativeDelete(ApiKeyEntity, keys[0].id)).toBe(0);
       await expect(
         insertKey(anonymous, "900100", "user", userId),
       ).rejects.toThrow(/row.level security/i);
@@ -1578,37 +1576,24 @@ describe("Auth services and native RLS boundaries", () => {
           );
           await insertKey(em, id, ownerType, userId);
           await expect(
-            em.execute(
-              `update ${ownerType}_api_key set ${ownerType === "user" ? "user" : "member"}_id = ? where id = ?`,
-              [foreignId, id],
-            ),
+            em.execute(`update api_key set owner_id = ? where id = ?`, [
+              foreignId,
+              id,
+            ]),
           ).rejects.toThrow(/row.level security/i);
-          const stored = await em.findOneOrFail<ApiKey>(
-            ownerType === "user" ? UserApiKey : MemberApiKey,
-            id,
-          );
+          const stored = await em.findOneOrFail<ApiKey>(ApiKeyEntity, id);
           expect(
-            (stored instanceof UserApiKey ? stored.user : stored.member)?.id,
+            (stored.ownerType === "user" ? stored.user : stored.member)?.id,
           ).toBe(userId);
           expect(
-            (stored instanceof UserApiKey
+            (stored.ownerType === "user"
               ? stored.user
               : stored.member
             )?.unwrap(),
           ).toBeInstanceOf(ownerType === "user" ? User : Member);
-          expect(
-            await em.nativeDelete<ApiKey>(
-              ownerType === "user" ? UserApiKey : MemberApiKey,
-              id,
-            ),
-          ).toBe(1);
+          expect(await em.nativeDelete<ApiKey>(ApiKeyEntity, id)).toBe(1);
         } finally {
-          await orm.em
-            .fork()
-            .nativeDelete<ApiKey>(
-              ownerType === "user" ? UserApiKey : MemberApiKey,
-              id,
-            );
+          await orm.em.fork().nativeDelete<ApiKey>(ApiKeyEntity, id);
         }
       },
     );

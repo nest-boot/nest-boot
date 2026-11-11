@@ -26,6 +26,7 @@ import type { CreateWorkspaceOptions } from "../interfaces/create-workspace-opti
 import type { UpdateWorkspaceOptions } from "../interfaces/update-workspace-options.interface.js";
 import { authorize } from "../utils/authorize.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { runAuthQuery } from "../utils/run-auth-query.js";
 import { DEFAULT_WORKSPACE_CREATOR_ROLE } from "../workspace.constants.js";
 
 /** Workspace queries and lifecycle operations. */
@@ -42,6 +43,119 @@ export class WorkspaceService {
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly authOptions: AuthModuleOptions,
   ) {}
+
+  /**
+   * Lists every workspace after an explicit platform read grant.
+   * @param args - Cursor pagination, ordering and filtering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Page of workspaces authorized for platform access.
+   */
+  async getPlatformWorkspaceConnection(
+    args: ConnectionArgsInterface<Workspace>,
+    info?: GraphQLResolveInfo,
+  ): Promise<ConnectionResult<Workspace>> {
+    authorize("read-any", Workspace);
+    return await runAuthQuery(this.em, async (em) => {
+      const page = await new ConnectionManager(em as SqlEntityManager).find(
+        WorkspaceConnection,
+        args,
+        { ...(info && { info }), where: {} },
+      );
+      for (const { node } of page.edges) {
+        authorize("read-any", node);
+      }
+      return page;
+    });
+  }
+
+  /**
+   * Reads a workspace without requiring a membership or selected workspace.
+   * @param id - Identifier of the target record.
+   * @returns Authorized workspace, or null when it is unavailable.
+   */
+  async getPlatformWorkspace(id: string): Promise<Workspace | null> {
+    authorize("read-any", Workspace);
+    return await runAuthQuery(this.em, async (em) => {
+      const workspace = await em.findOne(Workspace, { id });
+      if (workspace) {
+        authorize("read-any", workspace);
+      }
+      return workspace;
+    });
+  }
+
+  /**
+   * Updates a named workspace through the separate platform permission boundary.
+   * @param id - Identifier of the target record.
+   * @param input - Requested metadata and permission changes.
+   * @returns Persisted workspace after the platform-authorized change.
+   */
+  async updatePlatformWorkspace(
+    id: string,
+    input: UpdateWorkspaceOptions,
+  ): Promise<Workspace> {
+    authorize("update-any", Workspace);
+    const workspace = await runAuthQuery(this.em, (em) =>
+      em.transactional(
+        async (tx) => {
+          const workspace = await tx.findOne(
+            Workspace,
+            { id },
+            { lockMode: LockMode.PESSIMISTIC_WRITE },
+          );
+          if (!workspace) {
+            throw new NotFoundException("Workspace not found");
+          }
+          authorize("update-any", workspace);
+          tx.assign(workspace, input, { ignoreUndefined: true });
+          authorize("update-any", workspace);
+          for (const [field, value] of Object.entries(input)) {
+            if (value !== undefined) {
+              authorize("update-any", workspace, field);
+            }
+          }
+          await tx.flush();
+          return workspace;
+        },
+        { clear: true },
+      ),
+    );
+    if (RequestContext.isActive() && RequestContext.get(Workspace)?.id === id) {
+      RequestIdentity.update(this.em, this.authOptions, { workspace });
+    }
+    return workspace;
+  }
+
+  /**
+   * Deletes a named workspace using platform authorization and database cascades.
+   * @param id - Identifier of the target record.
+   * @returns Metadata of the deleted workspace.
+   */
+  async deletePlatformWorkspace(id: string): Promise<Workspace> {
+    authorize("delete-any", Workspace);
+    const workspace = await runAuthQuery(this.em, (em) =>
+      em.transactional(
+        async (tx) => {
+          const workspace = await tx.findOne(
+            Workspace,
+            { id },
+            { lockMode: LockMode.PESSIMISTIC_WRITE },
+          );
+          if (!workspace) {
+            throw new NotFoundException("Workspace not found");
+          }
+          authorize("delete-any", workspace);
+          await tx.nativeDelete(Workspace, { id });
+          return workspace;
+        },
+        { clear: true },
+      ),
+    );
+    if (RequestContext.isActive() && RequestContext.get(Workspace)?.id === id) {
+      RequestIdentity.clearWorkspace(this.em, this.authOptions);
+    }
+    return workspace;
+  }
 
   /**
    * Returns the selected workspace after membership and instance read checks.

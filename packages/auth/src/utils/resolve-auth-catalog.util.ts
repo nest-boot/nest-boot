@@ -61,7 +61,7 @@ export function resolveAuthCatalog(
           ([role, permissions]) => [
             role,
             permissions.filter(
-              (permission) => permission !== "workspace:create",
+              (permission) => !permission.startsWith("workspace:"),
             ),
           ],
         ),
@@ -76,7 +76,7 @@ export function resolveAuthCatalog(
         ...(enabled
           ? defaults.permissions
           : defaults.permissions.filter(
-              (permission) => permission !== "workspace:create",
+              (permission) => !permission.startsWith("workspace:"),
             )),
         ...(configured?.permissions ?? []),
       ]),

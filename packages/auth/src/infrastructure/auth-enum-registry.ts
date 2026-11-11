@@ -3,6 +3,7 @@ import type { OnModuleDestroy } from "@nestjs/common";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import {
   MemberApiKeyPermission,
+  SystemAccountPermission,
   UserApiKeyPermission,
   UserPermission,
   UserRole,
@@ -34,6 +35,12 @@ export class AuthEnumRegistry implements OnModuleDestroy {
         ]),
       );
     const enums = [
+      [
+        SystemAccountPermission,
+        createPermissionEnum(
+          resolveApiKeyPermissionCatalog(options, "systemAccount").permissions,
+        ),
+      ],
       [UserRole, roleValues(resolveAuthCatalog(options, "user").roles)],
       [
         WorkspaceRole,

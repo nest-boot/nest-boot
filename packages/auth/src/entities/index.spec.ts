@@ -1,21 +1,21 @@
 import { MetadataStorage } from "@mikro-orm/core";
 
 import { Account } from "./account.entity.js";
+import { ApiKeyEntity } from "./api-key.entity.js";
 import { entities, workspaceEntities } from "./index.js";
 import { Invitation } from "./invitation.entity.js";
 import { Member } from "./member.entity.js";
-import { MemberApiKey } from "./member-api-key.entity.js";
 import { Session } from "./session.entity.js";
+import { SystemAccount } from "./system-account.entity.js";
 import { User } from "./user.entity.js";
-import { UserApiKey } from "./user-api-key.entity.js";
 import { Verification } from "./verification.entity.js";
 import { Workspace } from "./workspace.entity.js";
 
 describe("built-in auth entity field ownership", () => {
   it.each([
     [Account, ["issuer", "accountId", "user"]],
-    [UserApiKey, ["user", "permissions"]],
-    [MemberApiKey, ["member", "permissions"]],
+    [ApiKeyEntity, ["owner"]],
+    [SystemAccount, ["permissions", "createdBy", "enabled"]],
     [Session, ["user", "token", "expiresAt"]],
     [User, ["name", "email"]],
     [Verification, ["identifier", "value"]],

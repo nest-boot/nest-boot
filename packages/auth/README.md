@@ -21,12 +21,11 @@ AuthModule automatically registers its enabled entities through `DatabaseModule`
 Use `nb database:migration:*`, `nb database:schema:*`, and `nb database:seeder:*`
 from your application's CLI entry to share runtime configuration and entity metadata.
 No separate MikroORM config file or auth configuration helper is needed.
-The `entities` export contains the base models; `workspaceEntities` contains
-Workspace, Member, Invitation, and MemberApiKey for direct ORM consumers.
+For direct ORM consumers, use `getAuthEntities(options)` to match the enabled features and register their polymorphic owner metadata and database triggers. The low-level `entities` and `workspaceEntities` exports remain available for the complete workspace model.
 
 Disabled applications expose no workspace/member/invitation/member-key GraphQL APIs
 or user workspace/invitation relation fields. Their middleware ignores workspace
-selectors, authenticates only user API keys, and grants no workspace permissions.
+selectors, authenticates user and system-account API keys, and grants no workspace permissions.
 `apiKey.member` configuration requires workspace features. Workspace services resolve
 to `null` when disabled and should only be injected by applications enabling the feature.
 
@@ -69,15 +68,14 @@ contexts are preserved.
 ## Built-in entities
 
 Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
-`Workspace`, `Member`, `Invitation`, `UserApiKey` and `MemberApiKey` entities, their GraphQL
+`Workspace`, `Member`, `Invitation`, `SystemAccount` and `ApiKeyEntity` entities, their GraphQL
 metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 
 `AuthModule` registers the core entities through `DatabaseModule` automatically and
-adds `workspaceEntities` when `workspace.enabled` is true. Use the application's
+includes workspace models when `workspace.enabled` is true. Use the application's
 `nb database:*` commands for schema, migration, and seeding operations; no separate
-`mikro-orm.config.ts` is needed. Direct MikroORM consumers can register `entities`
-and, when using workspaces, `workspaceEntities` in their own ORM configuration.
+`mikro-orm.config.ts` is needed. Direct MikroORM consumers should register `getAuthEntities({ workspace: { enabled: true } })`, or `getAuthEntities()` without workspaces. Pass the configured schema as the second argument when using a schema other than `public`.
 
 Use separate related business entities and additional field resolvers to extend
 these models. Import the built-in classes directly for relation targets; do not
@@ -376,8 +374,8 @@ permissions. Custom permission names only grant business abilities through
 explicit permission-bound rules; they cannot redefine built-in auth operations.
 
 Scoped user deletion authorizes the root DELETE with Service checks and RLS;
-auth dependants are cleaned up atomically by database foreign-key cascades.
-`UserApiKey` and `MemberApiKey` have separate tables and required `user` or `member` foreign keys, respectively. Accounts, sessions (including impersonation sessions),
+auth dependants are cleaned up atomically by foreign-key cascades and API-key owner triggers.
+All three key kinds share a polymorphic owner in `api_key`. Accounts, sessions (including impersonation sessions),
 personal keys, memberships and sent invitations cascade from the deleted user.
 Deleting memberships also removes their member keys. Workspaces and other members' keys survive.
 Generate and apply these constraints; child deletes can be silently filtered by RLS.
@@ -428,7 +426,7 @@ Built-in `Member` owns name/email, and `Workspace.members` / `User.members`
 own the inverse collections. Raw ORM collections stay hidden from GraphQL;
 connection field resolvers provide authorized pagination.
 
-Every member requires a user and retains its own `name` and nullable `email`.
+User members reference a User; service-account members have no User. Each member retains its own `name` and nullable `email`.
 These are workspace-visible contact details, initialized from the user's profile
 when membership is created. They are independent thereafter: member edits do not
 change the user's name or login email, and user edits do not synchronize to members.
@@ -683,7 +681,7 @@ This is a breaking schema change; no deprecated aliases are retained:
 | `currentAuthSession` | `currentSession`     |
 | `removeWorkspace`    | `deleteWorkspace`    |
 
-API-key entities, services, resolvers, connections, inputs, and creation results are split into `UserApiKey` and `MemberApiKey` variants. Use `CreateUserApiKeyInput`, `UpdateUserApiKeyInput`, `CreateUserApiKeyResult`, and their `Workspace` counterparts. Permissions use separate `UserApiKeyPermission` and `MemberApiKeyPermission` GraphQL enums; stored values stay unchanged.
+API-key services, GraphQL types, connections, inputs, and creation results have `UserApiKey`, `MemberApiKey`, and `SystemAccountApiKey` variants. All credentials persist through `ApiKeyEntity` in one table. Use `CreateUserApiKeyInput`, `UpdateUserApiKeyInput`, `CreateUserApiKeyResult`, and their `Member` counterparts. Permissions use separate `UserApiKeyPermission` and `MemberApiKeyPermission` GraphQL enums; stored values stay unchanged.
 
 API-key enums cover the full scope catalogs, independently of the current grant
 allowlist, so existing keys remain readable after the allowlist is tightened.
@@ -691,7 +689,7 @@ Member keys may carry `member:invite` to read and cancel invitations.
 Creating an invitation also requires a user as sender; use a personal API key
 for invitation creation.
 
-Update operation documents, ability subject mappings, and generated client types together. The example preserves `Migration00000000000000_Initial` and regenerates the entity baseline with two tables. Recreate development databases before applying this baseline; existing databases require a separate data-preserving upgrade migration.
+Update operation documents, ability subject mappings, and generated client types together. The example preserves its infrastructure and original entity migrations, then applies `Migration20261111023442` to copy the two legacy API-key tables into the shared table. It preserves IDs, hashes, grants, lifecycle flags and timestamps. Apply an equivalent data migration when upgrading another application; generated schema diffs alone do not copy credentials.
 
 Authentication and successful-use tracking are internal infrastructure responsibilities. Credential lookup checks both tables and rejects ambiguous matches. `@CurrentApiKey()` returns the `ApiKey` union type, not an ORM entity class.
 
@@ -717,3 +715,48 @@ Application services retain their public options/results, identity and transacti
 They normalize upstream results and use `applyAuthResponseCookies` to forward response
 cookies; session cookie creation remains in `SessionService`. Contextual service providers
 continue to own request execution and transaction boundaries.
+
+## Independent system accounts and shared credential storage
+
+`UserApiKey`, `MemberApiKey`, and `SystemAccountApiKey` are owner-specific GraphQL views and service contracts. `ApiKeyEntity` is the persistent entity. Its required polymorphic `owner` is a `User`, `Member`, or `SystemAccount`, stored as `owner_type` and `owner_id` in `api_key`. No additional scope column or single-table inheritance is used. Credential hashes are globally unique.
+
+For direct ORM operations, query `ApiKeyEntity` with the owner discriminator and a typed owner reference. The view classes are not separate ORM entities:
+
+```typescript
+import { ApiKeyEntity, getAuthEntities, User } from "@nest-boot/auth";
+
+const authEntities = getAuthEntities({ workspace: { enabled: true } });
+const keys = await em.find(ApiKeyEntity, {
+  ownerType: "user",
+  owner: em.getReference(User, userId),
+});
+```
+
+A User with an administrator role and the explicit `system-account:read/write` and `system-account-api-key:read/write` permissions manages system identities. Management requires a human user session; user, member and system API keys cannot issue system credentials. Use `SystemAccountService` for create/read/paginate/update/delete and `SystemAccountApiKeyService` for key lifecycle operations. GraphQL exposes `systemAccounts`, `systemAccount`, `createSystemAccount`, `updateSystemAccount`, `deleteSystemAccount`, `systemAccountApiKey`, and the corresponding key mutations. `SystemAccount.apiKeys` provides credential pagination.
+
+SystemAccount holds a name, enabled state, explicit permission ceiling and creator audit reference. A workspace service account remains a Member with `type: SERVICE_ACCOUNT`; it is separate from this platform identity. Creator references use `ON DELETE SET NULL`, so deleting a creator does not delete the system account or its keys.
+
+```graphql
+mutation {
+  createSystemAccount(
+    input: {
+      name: "Reporting integration"
+      permissions: [USER__READ, WORKSPACE__READ_ANY]
+    }
+  ) {
+    id
+  }
+}
+```
+
+Create its credential with `createSystemAccountApiKey(systemAccountId, input)` and send the returned plaintext as `Authorization: Bearer <key>`. The plaintext is returned once; metadata queries never return its hash or plaintext. The default prefix is `sys_`, configurable through `apiKey.systemAccount.defaultPrefix` (or `API_KEY_PREFIX`). Its `allowedPermissions` and `defaultPermissions` follow the existing scoped configuration shape.
+
+System-key grants are the intersection of the account's current permissions, the key's explicit permissions and the configured key allowlist. An empty system-key grant list grants nothing. Disabling the account invalidates every owned key on subsequent requests; disabling, expiring or deleting one key affects that key. System authentication creates no User, Member or selected-workspace identity.
+
+The built-in system catalog is `user:read`, `user:update`, `user:delete`, `workspace:read-any`, `workspace:update-any`, and `workspace:delete-any`. Existing user operations enforce their User ability grants. Workspace platform operations are separate: `workspaces`, `platformWorkspace(id)`, `updatePlatformWorkspace(id, input)`, and `deletePlatformWorkspace(id)`. Ordinary membership-scoped APIs retain their existing checks. Workspace grants are ineffective when workspace features are disabled. No system grant automatically authorizes arbitrary business tables.
+
+Polymorphic relations have no native owner FK. MikroORM metadata declares owner-existence and deletion-cleanup triggers, including raw SQL and workspace→member cascades. Owner checks take a key-share row lock to serialize concurrent creation and deletion. Trigger functions run with their migration owner's privileges, pin `search_path`, qualify target tables, and verify the triggering relation. Keep that role trusted. Trigger creation/removal is generated by MikroORM; changes to these raw trigger expressions need an explicit migration because raw-expression body changes are not inferred by schema diffing.
+
+For existing two-table databases, use the example upgrade migration as a reference. Conflicting IDs or hashes abort the migration atomically. Resolve ID collisions deliberately; delete both credentials sharing an ambiguous hash and issue fresh keys instead of selecting one identity. Rollback copies legacy credential fields back, and refuses to discard system accounts: remove/export those accounts and their keys first. The old schema cannot retain the new credential-creator audit column.
+
+System credentials and accounts are unavailable to request-role SQL; their management services require an administrator session. The framework records successful key usage through an isolated writer restricted to the captured key ID.

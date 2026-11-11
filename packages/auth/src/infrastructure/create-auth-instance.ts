@@ -193,7 +193,7 @@ function validateAuthOptions(options: AuthModuleOptions): void {
       "Configure API key permissions under apiKey.user or apiKey.member",
     );
   }
-  for (const scope of ["user", "member"] as const) {
+  for (const scope of ["user", "member", "systemAccount"] as const) {
     const { permissions: catalog, defaults } = resolveApiKeyPermissionCatalog(
       options,
       scope,

@@ -70,6 +70,7 @@ export function createWorkspaceServices(
     create: vi.fn((Entity, data) => Object.assign(new Entity(), data)),
     find: vi.fn(),
     findOne: vi.fn(),
+    populate: vi.fn().mockImplementation((entity) => Promise.resolve(entity)),
     flush: vi.fn(),
     lock: vi.fn(),
     nativeUpdate: vi.fn(),

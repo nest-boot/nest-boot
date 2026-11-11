@@ -19,6 +19,10 @@ import {
   MemberApiKeyConnection,
   MemberApiKeyConnectionArgs,
 } from "../connections/member-api-key.connection-definition.js";
+import {
+  WorkspaceConnection,
+  WorkspaceConnectionArgs,
+} from "../connections/workspace.connection-definition.js";
 import { CurrentMember } from "../decorators/current-member.decorator.js";
 import { CurrentUser } from "../decorators/current-user.decorator.js";
 import { type Invitation } from "../entities/invitation.entity.js";
@@ -136,6 +140,55 @@ export class WorkspaceResolver {
       args,
       info,
     );
+  }
+
+  /**
+   * Lists workspaces through the explicit platform administration boundary.
+   * @param args - Cursor pagination, ordering and filtering arguments.
+   * @param info - GraphQL selection information used to shape the query.
+   * @returns Page of workspaces authorized for platform access.
+   */
+  @Query(() => WorkspaceConnection)
+  workspaces(
+    @Args({ type: () => WorkspaceConnectionArgs })
+    args: ConnectionArgsInterface<Workspace>,
+    @Info() info?: GraphQLResolveInfo,
+  ) {
+    return this.workspaceService.getPlatformWorkspaceConnection(args, info);
+  }
+
+  /**
+   * Reads any workspace only with a platform read permission.
+   * @param id - Identifier of the target record.
+   * @returns Authorized workspace, or null when it is unavailable.
+   */
+  @Query(() => Workspace, { nullable: true })
+  platformWorkspace(@Args("id", { type: () => ID }) id: string) {
+    return this.workspaceService.getPlatformWorkspace(id);
+  }
+
+  /**
+   * Updates any workspace only with the platform write permission.
+   * @param id - Identifier of the target record.
+   * @param input - Requested metadata and permission changes.
+   * @returns Persisted workspace after the platform-authorized change.
+   */
+  @Mutation(() => Workspace)
+  updatePlatformWorkspace(
+    @Args("id", { type: () => ID }) id: string,
+    @Args("input") input: UpdateWorkspaceInput,
+  ) {
+    return this.workspaceService.updatePlatformWorkspace(id, input);
+  }
+
+  /**
+   * Deletes any workspace only with the platform delete permission.
+   * @param id - Identifier of the target record.
+   * @returns Metadata of the deleted workspace.
+   */
+  @Mutation(() => Workspace)
+  deletePlatformWorkspace(@Args("id", { type: () => ID }) id: string) {
+    return this.workspaceService.deletePlatformWorkspace(id);
   }
 
   /**

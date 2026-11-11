@@ -4,6 +4,7 @@ import {
   Index,
   PrimaryKey,
   Property,
+  Trigger,
   Unique,
 } from "@mikro-orm/decorators/legacy";
 import { Field, ID, ObjectType } from "@nest-boot/graphql";
@@ -11,9 +12,11 @@ import { Sonyflake } from "sonyflake-js";
 
 import { UserPermission } from "../enums/user-permission.enum.js";
 import { UserRole } from "../enums/user-role.enum.js";
+import { apiKeyCleanupTrigger } from "../infrastructure/api-key-triggers.js";
 
 /** Built-in User entity with authentication persistence and access policies. */
 @ObjectType()
+@Trigger(apiKeyCleanupTrigger("user", "public"))
 @Entity({
   policies: [
     {

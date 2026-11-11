@@ -7,8 +7,14 @@ import {
   mongoQueryMatcher,
   type RawRuleFrom,
   type Subject,
+  type SubjectType,
 } from "@casl/ability";
 import { ForbiddenException } from "@nestjs/common";
+
+import { ApiKeyEntity } from "./entities/api-key.entity.js";
+import { MemberApiKey } from "./entities/member-api-key.entity.js";
+import { SystemAccountApiKey } from "./entities/system-account-api-key.entity.js";
+import { UserApiKey } from "./entities/user-api-key.entity.js";
 
 /** CASL ability for the authenticated request and its selected workspace. */
 export class AuthAbility extends Ability<AbilityTuple, MongoQuery> {
@@ -26,6 +32,24 @@ export class AuthAbility extends Ability<AbilityTuple, MongoQuery> {
       fieldMatcher: fieldPatternMatcher,
       ...options,
     });
+  }
+
+  /**
+   * Maps shared persistence instances to their owner-specific public authorization subject.
+   * @param object - Resource instance or type being classified.
+   * @returns Authorization subject matching the concrete credential owner.
+   */
+  override detectSubjectType(object?: Subject): SubjectType {
+    if (object instanceof ApiKeyEntity && object.constructor === ApiKeyEntity) {
+      const view =
+        object.ownerType === "user"
+          ? UserApiKey
+          : object.ownerType === "member"
+            ? MemberApiKey
+            : SystemAccountApiKey;
+      return super.detectSubjectType(Object.create(view.prototype) as object);
+    }
+    return super.detectSubjectType(object);
   }
 
   /**

@@ -38,7 +38,10 @@ export class AuthMiddleware implements NestMiddleware {
     RequestIdentity.clear(this.em);
   }
 
-  /** Clears a session revoked by an authentication write, without falling back to another credential. */
+  /**
+   * Clears a session revoked by an authentication write, without falling back to another credential.
+   * @returns Result of the authorized operation.
+   */
   async revalidateCurrentSession(): Promise<void> {
     const current = RequestContext.isActive()
       ? RequestContext.get(Session)
@@ -65,7 +68,10 @@ export class AuthMiddleware implements NestMiddleware {
     }
   }
 
-  /** Reloads a profile written by Better Auth without changing its authentication method. */
+  /**
+   * Reloads a profile written by Better Auth without changing its authentication method.
+   * @returns Result of the authorized operation.
+   */
   async refreshCurrentUser(): Promise<void> {
     const current = RequestContext.isActive() ? RequestContext.get(User) : null;
     if (!current) {
@@ -220,6 +226,16 @@ export class AuthMiddleware implements NestMiddleware {
     }
 
     const validation = await this.apiKeyService.validate(plaintextApiKey);
+    if (validation.ownerType === "system_account") {
+      RequestIdentity.stage({
+        apiKey: validation.apiKey,
+        user: null,
+        session: null,
+        member: null,
+        workspace: null,
+      });
+      return;
+    }
     if (validation.ownerType === "user") {
       RequestIdentity.stage({
         apiKey: validation.apiKey,

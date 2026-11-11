@@ -1,5 +1,4 @@
-import type { MemberApiKey } from "../entities/member-api-key.entity.js";
-import type { UserApiKey } from "../entities/user-api-key.entity.js";
+import type { ApiKeyEntity } from "../entities/api-key.entity.js";
 
-/** A user-owned or member-owned, workspace-scoped API credential. */
-export type ApiKey = UserApiKey | MemberApiKey;
+/** A user-owned, member-owned or system-account-owned API credential in the shared table. */
+export type ApiKey = ApiKeyEntity;

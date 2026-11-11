@@ -1,10 +1,13 @@
 import { expectTypeOf } from "vitest";
 
+import type { ApiKeyEntity } from "../src/entities/api-key.entity.js";
 import type { MemberApiKey } from "../src/entities/member-api-key.entity.js";
+import type { SystemAccountApiKey } from "../src/entities/system-account-api-key.entity.js";
 import type { UserApiKey } from "../src/entities/user-api-key.entity.js";
 import type { AccountService } from "../src/services/account.service.js";
 import type { MemberApiKeyService } from "../src/services/member-api-key.service.js";
 import type { SessionService } from "../src/services/session.service.js";
+import type { SystemAccountApiKeyService } from "../src/services/system-account-api-key.service.js";
 import type { UserApiKeyService } from "../src/services/user-api-key.service.js";
 import type { ApiKey } from "../src/types/api-key.type.js";
 import type { ApiKeyMetadata } from "../src/types/api-key-metadata.type.js";
@@ -64,12 +67,32 @@ describe("Credential-free query result types", () => {
     >().toEqualTypeOf<Result>();
     expectTypeOf<Result>().not.toHaveProperty("key");
     expectTypeOf<Result["member"]>().toEqualTypeOf<MemberApiKey["member"]>();
+    expectTypeOf<Result["member"]>().not.toBeNullable();
   });
 
-  it("preserves both ownership variants and accepts full authenticated entities", () => {
-    expectTypeOf<ApiKeyMetadata>().toEqualTypeOf<
-      Omit<UserApiKey, "key"> | Omit<MemberApiKey, "key">
-    >();
+  it("omits hashes from system-key management results and retains the system owner", () => {
+    type Service = SystemAccountApiKeyService;
+    type Result = ApiKeyMetadata<SystemAccountApiKey>;
+    expectTypeOf<
+      Awaited<ReturnType<Service["getSystemAccountApiKey"]>>
+    >().toEqualTypeOf<Result | null>();
+    expectTypeOf<
+      Awaited<ReturnType<Service["updateSystemAccountApiKey"]>>
+    >().toEqualTypeOf<Result>();
+    expectTypeOf<
+      Awaited<ReturnType<Service["deleteSystemAccountApiKey"]>>
+    >().toEqualTypeOf<Result>();
+    expectTypeOf<
+      Awaited<
+        ReturnType<Service["getSystemAccountApiKeyConnection"]>
+      >["edges"][number]["node"]
+    >().toEqualTypeOf<Result>();
+    expectTypeOf<Result>().not.toHaveProperty("key");
+    expectTypeOf<Result["systemAccount"]>().not.toBeNullable();
+  });
+
+  it("preserves scoped ownership variants and accepts full authenticated entities", () => {
+    expectTypeOf<ApiKeyMetadata>().toEqualTypeOf<Omit<ApiKeyEntity, "key">>();
     expectTypeOf<ApiKey>().toExtend<ApiKeyMetadata>();
     expectTypeOf<
       Awaited<ReturnType<UserApiKeyService["createUserApiKey"]>>["entity"]

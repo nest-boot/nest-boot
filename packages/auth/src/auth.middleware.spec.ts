@@ -216,6 +216,7 @@ describe("AuthMiddleware", () => {
               variables: {
                 "app.user.id": "",
                 "app.workspace.id": "",
+                "app.system_account.id": "",
                 "app.member.id": "",
               },
             });
@@ -271,6 +272,7 @@ describe("AuthMiddleware", () => {
         variables: {
           "app.user.id": "",
           "app.workspace.id": "",
+          "app.system_account.id": "",
           "app.member.id": "",
         },
       });
@@ -338,6 +340,7 @@ describe("AuthMiddleware", () => {
         variables: {
           "app.user.id": "",
           "app.workspace.id": "",
+          "app.system_account.id": "",
           "app.member.id": "",
         },
       });
@@ -398,6 +401,7 @@ describe("AuthMiddleware", () => {
         variables: {
           "app.user.id": user.id,
           "app.workspace.id": workspace.id,
+          "app.system_account.id": "",
           "app.member.id": member.id,
         },
       });
@@ -485,6 +489,7 @@ describe("AuthMiddleware", () => {
             kind === "anonymous" || kind === "member-key" || hasMember
               ? workspace.id
               : "",
+          "app.system_account.id": "",
           "app.member.id":
             kind !== "anonymous" && (kind === "member-key" || hasMember)
               ? member.id
@@ -511,6 +516,7 @@ describe("AuthMiddleware", () => {
     mockRlsContext(em).variables = {
       "app.user.id": user.id,
       "app.workspace.id": "",
+      "app.system_account.id": "",
       "app.member.id": "",
     };
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
@@ -543,6 +549,7 @@ describe("AuthMiddleware", () => {
         variables: {
           "app.user.id": "",
           "app.workspace.id": "",
+          "app.system_account.id": "",
           "app.member.id": "",
         },
       });
@@ -596,6 +603,7 @@ describe("AuthMiddleware", () => {
         variables: {
           "app.user.id": "new-user",
           "app.workspace.id": "",
+          "app.system_account.id": "",
           "app.member.id": "",
         },
       });
@@ -679,6 +687,7 @@ describe("AuthMiddleware", () => {
           variables: {
             "app.user.id": hasUser ? "user-1" : "",
             "app.workspace.id": expectedWorkspace,
+            "app.system_account.id": "",
             "app.member.id": hasMember ? member.id : "",
           },
         });
@@ -712,6 +721,7 @@ describe("AuthMiddleware", () => {
       variables: {
         "app.user.id": expect.any(String),
         "app.workspace.id": "",
+        "app.system_account.id": "",
         "app.member.id": "",
       },
     });
@@ -734,6 +744,7 @@ describe("AuthMiddleware", () => {
       variables: {
         "app.user.id": "",
         "app.workspace.id": "",
+        "app.system_account.id": "",
         "app.member.id": "",
       },
     });
@@ -1053,6 +1064,7 @@ describe("optional workspace behavior", () => {
             expect.objectContaining({
               variables: expect.objectContaining({
                 "app.workspace.id": "",
+                "app.system_account.id": "",
                 "app.member.id": "",
               }),
             }),

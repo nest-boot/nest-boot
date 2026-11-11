@@ -13,3 +13,7 @@ describe.each([
     30000,
   );
 });
+
+it("uses DatabaseModule's custom schema for base-authentication owner triggers", async () => {
+  await verifyAuthBootstrap(undefined, true, "tenant'auth");
+}, 30000);

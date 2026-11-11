@@ -2,6 +2,7 @@ export * from "../features/invitations/invitation-status.enum.js";
 export * from "./member-api-key-permission.enum.js";
 export * from "./member-status.enum.js";
 export * from "./member-type.enum.js";
+export * from "./system-account-permission.enum.js";
 export * from "./user-api-key-permission.enum.js";
 export * from "./user-permission.enum.js";
 export * from "./user-role.enum.js";

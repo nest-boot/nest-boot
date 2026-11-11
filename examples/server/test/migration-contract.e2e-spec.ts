@@ -4,8 +4,13 @@ import type { Migration } from '@mikro-orm/migrations';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
 import { Migration20261024072513 } from '../src/database/migrations/Migration20261024072513.js';
+import { Migration20261111023442 } from '../src/database/migrations/Migration20261111023442.js';
 
-const migrations = [Migration00000000000000_Initial, Migration20261024072513];
+const migrations = [
+  Migration00000000000000_Initial,
+  Migration20261024072513,
+  Migration20261111023442,
+];
 /**
  * Returns SQL emitted by the selected migration direction.
  * @param MigrationClass - Migration class whose generated SQL is inspected.

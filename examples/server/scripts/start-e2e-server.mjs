@@ -105,9 +105,11 @@ async function applyMigrations() {
 
       await migration.up();
 
-      for (const statement of statements) {
-        await orm.em.getConnection().execute(statement);
-      }
+      await orm.em.transactional(async (em) => {
+        for (const statement of statements) {
+          await em.execute(statement);
+        }
+      });
     }
   } finally {
     await orm.close(true);

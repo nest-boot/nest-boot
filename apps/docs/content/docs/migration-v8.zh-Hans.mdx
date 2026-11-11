@@ -151,7 +151,7 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 - 切换 TypeScript 模块解析后，重新生成文件和迁移，确保生成的导入带有有效的
   ESM 扩展名。
 
-服务端示例的历史迁移已替换为两步基线：手写基础设施初始化，再执行按当前实体生成的结构迁移。示例应使用全新数据库；
+服务端示例的保留原有两步基线，再追加 ApiKey 合表迁移：手写基础设施初始化，再执行按当前实体生成的结构迁移。示例应使用全新数据库；
 这份基线不用于升级执行过旧迁移的数据库。重建已有开发数据库前，请先备份需要保留的数据。
 
 ## 仓库测试
@@ -176,11 +176,7 @@ RLS 不保护 `TRUNCATE` 或 `REFERENCES`，表策略也不限制序列操作。
 业务表声明 RLS 策略；Job 记录是明确例外，使用服务层限定范围的查询。`Verification` 明确拒绝普通请求访问。
 凭证字段与可更新属性由 Service 和 GraphQL 控制，数据库不再提供列级保护。
 
-`BaseApiKey.owner` 已移除。`UserApiKey` 与 `MemberApiKey` 使用独立的表，
-各自只有一个必填归属外键（`user` 或 `member`），无需二选一 CHECK 约束。
-实体导入、查询过滤器和测试需同步适配两类密钥。beta 示例保留 init，并按最终模型
-重新生成其余迁移，直接创建 `member_api_key` 与服务账号约束，不再保留旧表转换迁移。
-用户删除由外键级联清理关联记录，不再使用自定义删除函数或触发器；删除的成员所属 Key 也会级联删除；工作区和其他成员的 Key 保留。
+早期 8.x 基线使用独立的 UserApiKey、MemberApiKey 表。当前 8.x 改为 `ApiKeyEntity.owner` 多态关联，并追加数据复制迁移保留旧凭证。关联记录使用普通外键级联，ApiKey 使用 owner 清理触发器；工作区、独立系统账户及其他成员的密钥保留。
 User SELECT 允许 authenticated 角色读取，个人资料访问由 Service 的 Ability 检查限制，支持自定义读取权限名。
 User 写入及 Session 读取同样由 Service 授权；数据库请求上下文不再传递应用权限。
 不要绕过 Service 授权暴露直接 User 查询。
@@ -197,13 +193,15 @@ User 写入及 Session 读取同样由 Service 授权；数据库请求上下文
 输入、Payload、Resolver 和连接全部改从 `@nest-boot/auth` 导入。
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation`、`UserApiKey` 和 `MemberApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`Member`、`Invitation`、`SystemAccount` 和 `ApiKeyEntity` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 在运行时和迁移 CLI 的 MikroORM 配置中注册导出的 `entities` 数组；CLI 不会启动 Nest 模块：
 
 ```typescript
-import { entities as authEntities } from "@nest-boot/auth";
+import { getAuthEntities } from "@nest-boot/auth";
+
+const authEntities = getAuthEntities({ workspace: { enabled: true } });
 import { defineConfig } from "@mikro-orm/postgresql";
 
 export default defineConfig({
@@ -235,3 +233,11 @@ GraphQL `signUp` 现在返回 `SignUpPayload { id, token }`，不再返回
 不存在单独移除邮箱唯一约束的迁移。回滚结构基线会删除其中的表和数据，
 基础设施初始化迁移的 `down()` 为空。已有数据库若要恢复联系邮箱唯一约束，
 需要单独迁移及明确的数据保留方案。
+
+## 8.x 中的 ApiKey 合表迁移
+
+`UserApiKey`、`MemberApiKey`、`SystemAccountApiKey` 是各自的公共视图和 Service，统一持久化实体为 `ApiKeyEntity`。直接 ORM 查询使用 `ownerType` 和多态 `owner` 引用。独立 ORM 使用 `getAuthEntities(options)`；AuthModule 自动注册。系统账户的权限与管理员会话要求见 [API Key](/docs/tutorial/auth/api-keys)。
+
+已有两张 Key 表的数据库需要数据复制迁移，不能只应用结构差异。示例 `Migration20261111023442` 保留旧 ID、哈希、授权、状态及时间，建立哈希全局唯一约束、owner 存在性检查和清理触发器后，再删除旧表。ID 或哈希冲突会使事务原子失败；ID 冲突需按应用引用处理，同一哈希的两条歧义凭证应全部删除并重新签发。应用对旧表的外部引用也需在自己的迁移中适配。
+
+回滚会复制旧版凭证字段，但拒绝丢弃系统账户。须先导出或移除系统账户及其密钥；旧结构无法保留新增的密钥创建者审计信息。原始触发器表达式的修改也需要显式迁移，结构差异不会比较其函数体。版本继续保持 8.x。

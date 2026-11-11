@@ -1,6 +1,7 @@
-import { EntityManager, ref } from "@mikro-orm/core";
+import { EntityManager, ref, Reference } from "@mikro-orm/core";
 import { UnauthorizedException } from "@nestjs/common";
 
+import { ApiKeyEntity } from "../entities/api-key.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
@@ -30,9 +31,8 @@ function fixture() {
     member: memberKey as MemberApiKey | null,
   };
   const em = {
-    findOne: vi.fn((entity) =>
-      Promise.resolve(entity === UserApiKey ? rows.user : rows.member),
-    ),
+    findOne: vi.fn(() => Promise.resolve(rows.user ?? rows.member)),
+    populate: vi.fn().mockImplementation((entity) => Promise.resolve(entity)),
     nativeUpdate: vi.fn().mockResolvedValue(1),
   };
   return {
@@ -76,13 +76,10 @@ describe("API-key authentication", () => {
     user.banExpiresAt = new Date(0);
     await expect(service.validate("key")).resolves.toMatchObject({ user });
   });
-  it("fails closed for missing, unknown, and ambiguous credentials", async () => {
+  it("fails closed for missing and unknown credentials", async () => {
     const { service, rows, em } = fixture();
     await expect(service.validate("")).rejects.toThrow("Missing API key");
     expect(em.findOne).not.toHaveBeenCalled();
-    await expect(service.validate("duplicate")).rejects.toThrow(
-      "Invalid API key",
-    );
     rows.user = null;
     rows.member = null;
     await expect(service.validate("unknown")).rejects.toThrow(
@@ -98,16 +95,16 @@ describe("API-key authentication", () => {
         apiKey: key,
         ownerType: scope,
       });
-      expect(em.findOne).toHaveBeenCalledWith(
-        UserApiKey,
-        { key: hashApiKey("plaintext") },
-        { populate: ["user"] },
-      );
-      expect(em.findOne).toHaveBeenCalledWith(
-        MemberApiKey,
-        { key: hashApiKey("plaintext") },
-        { populate: ["member.workspace", "member.user"] },
-      );
+      expect(em.findOne).toHaveBeenCalledExactlyOnceWith(ApiKeyEntity, {
+        key: hashApiKey("plaintext"),
+      });
+      expect(em.populate).toHaveBeenCalledWith(key, ["owner"]);
+      if (scope === "member") {
+        expect(em.populate).toHaveBeenCalledWith(
+          key?.member && Reference.unwrapReference(key.member),
+          ["workspace", "user"],
+        );
+      }
     });
     it.each(["disabled", "expired"])(
       `rejects %s ${scope} keys`,
@@ -125,13 +122,13 @@ describe("API-key authentication", () => {
         );
       },
     );
-    it(`records usage only in the ${scope} table`, async () => {
+    it(`records usage only for the ${scope} subtype`, async () => {
       const { service, userKey, memberKey, em } = fixture();
       const key = scope === "user" ? userKey : memberKey;
       await expect(service.recordUsage(key)).resolves.toBe(key);
       expect(em.nativeUpdate).toHaveBeenCalledExactlyOnceWith(
-        scope === "user" ? UserApiKey : MemberApiKey,
-        { id: key.id },
+        ApiKeyEntity,
+        { id: key.id, ownerType: scope },
         { updatedAt: expect.any(Date), lastUsedAt: expect.any(Date) },
       );
     });
@@ -158,8 +155,8 @@ describe("API-key authentication", () => {
     expect(scoped.nativeUpdate).not.toHaveBeenCalled();
     await expect(record()).resolves.toBe(userKey);
     expect(scoped.nativeUpdate).toHaveBeenCalledExactlyOnceWith(
-      UserApiKey,
-      { id: userKey.id },
+      ApiKeyEntity,
+      { id: userKey.id, ownerType: "user" },
       { lastUsedAt: expect.any(Date), updatedAt: expect.any(Date) },
     );
     expect(em.nativeUpdate).not.toHaveBeenCalled();
@@ -170,7 +167,10 @@ describe("optional workspace behavior", () => {
   it("authenticates user keys without touching optional member tables", async () => {
     const user = new User();
     const key = Object.assign(new UserApiKey(), { user });
-    const em = { findOne: vi.fn().mockResolvedValue(key) };
+    const em = {
+      findOne: vi.fn().mockResolvedValue(key),
+      populate: vi.fn().mockResolvedValue(key),
+    };
     const service = new ApiKeyAuthenticationService(
       em as unknown as EntityManager,
       {},
@@ -180,15 +180,16 @@ describe("optional workspace behavior", () => {
       user,
       apiKey: key,
     });
-    expect(em.findOne).toHaveBeenCalledExactlyOnceWith(
-      UserApiKey,
-      expect.anything(),
-      { populate: ["user"] },
-    );
-    em.findOne.mockResolvedValue(null);
+    expect(em.findOne).toHaveBeenCalledExactlyOnceWith(ApiKeyEntity, {
+      key: hashApiKey("personal-key"),
+      ownerType: { $in: ["user", "system_account"] },
+    });
+    expect(em.populate).toHaveBeenCalledExactlyOnceWith(key, ["owner"]);
+    em.findOne.mockResolvedValue(new MemberApiKey());
     await expect(service.validate("member-key")).rejects.toThrow(
       "Invalid API key",
     );
     expect(em.findOne).toHaveBeenCalledTimes(2);
+    expect(em.populate).toHaveBeenCalledTimes(1);
   });
 });

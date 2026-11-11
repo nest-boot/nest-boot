@@ -8,6 +8,7 @@ import {
   ManyToOne,
   PrimaryKey,
   Property,
+  Trigger,
   Unique,
 } from "@mikro-orm/decorators/legacy";
 import { Field, ID, ObjectType } from "@nest-boot/graphql";
@@ -17,6 +18,7 @@ import { MemberStatus } from "../enums/member-status.enum.js";
 import { MemberType } from "../enums/member-type.enum.js";
 import { WorkspacePermission } from "../enums/workspace-permission.enum.js";
 import { WorkspaceRole } from "../enums/workspace-role.enum.js";
+import { apiKeyCleanupTrigger } from "../infrastructure/api-key-triggers.js";
 import { userScopePolicy } from "../policies/user-scope.policy.js";
 import { workspaceScopePolicy } from "../policies/workspace-scope.policy.js";
 import { User } from "./user.entity.js";
@@ -30,6 +32,7 @@ export type AuthMemberType = "USER" | "SERVICE_ACCOUNT";
 
 /** Built-in Member entity with authentication persistence and access policies. */
 @ObjectType({ isAbstract: true })
+@Trigger(apiKeyCleanupTrigger("member", "public"))
 @Entity({
   policies: [
     // Allow users to read their own memberships across workspaces without granting writes.

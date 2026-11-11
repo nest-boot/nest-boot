@@ -296,6 +296,339 @@
       "rlsEnabled": true
     },
     {
+      "name": "api_key",
+      "schema": "public",
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": "now()",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "created_by_id": {
+          "name": "created_by_id",
+          "type": "bigint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "bigint"
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "true",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "boolean"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "unsigned": false,
+          "autoincrement": true,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "bigint"
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
+        "last_used_at": {
+          "name": "last_used_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "bigint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "bigint"
+        },
+        "owner_type": {
+          "name": "owner_type",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "permissions": {
+          "name": "permissions",
+          "type": "text[]",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "'{}'",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "array"
+        },
+        "prefix": {
+          "name": "prefix",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "start": {
+          "name": "start",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": "now()",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        }
+      },
+      "indexes": [
+        {
+          "columnNames": ["created_at"],
+          "composite": false,
+          "constraint": false,
+          "keyName": "api_key_created_at_index",
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": ["key"],
+          "composite": false,
+          "constraint": false,
+          "keyName": "api_key_key_index",
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": ["key"],
+          "composite": false,
+          "constraint": true,
+          "keyName": "api_key_key_unique",
+          "primary": false,
+          "unique": true
+        },
+        {
+          "columnNames": ["owner_type", "owner_id"],
+          "composite": true,
+          "constraint": false,
+          "keyName": "api_key_owner_type_owner_id_index",
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": ["id"],
+          "composite": false,
+          "constraint": true,
+          "keyName": "api_key_pkey",
+          "primary": true,
+          "unique": true
+        },
+        {
+          "columnNames": ["prefix"],
+          "composite": false,
+          "constraint": false,
+          "keyName": "api_key_prefix_index",
+          "primary": false,
+          "unique": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "api_key_owner_type_check",
+          "expression": "\"owner_type\" in ('user', 'member', 'system_account')",
+          "definition": "check (\"owner_type\" in ('user', 'member', 'system_account'))"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "api_key_owner_exists",
+          "timing": "after",
+          "events": ["insert", "update"],
+          "forEach": "row",
+          "body": "",
+          "expression": "create or replace function \"public\".\"api_key_api_key_owner_exists_fn\"() returns trigger language plpgsql security definer set search_path = pg_catalog as $$ begin\n      if TG_RELID <> '\"public\".\"api_key\"'::regclass or TG_NAME <> 'api_key_owner_exists' or TG_OP not in ('INSERT', 'UPDATE') or TG_WHEN <> 'AFTER' or TG_LEVEL <> 'ROW' then raise exception 'Unexpected API-key trigger target'; end if;\n      \n    if TG_OP = 'UPDATE' then       if NEW.\"owner_type\" is not distinct from OLD.\"owner_type\" and NEW.\"owner_id\" is not distinct from OLD.\"owner_id\" then return NEW; end if;     end if;     if NEW.\"owner_type\" = 'user' then perform 1 from \"public\".\"user\" where \"id\" = NEW.\"owner_id\" for key share;\n    elsif NEW.\"owner_type\" = 'system_account' then perform 1 from \"public\".\"system_account\" where \"id\" = NEW.\"owner_id\" for key share;\n    elsif NEW.\"owner_type\" = 'member' then perform 1 from \"public\".\"member\" where \"id\" = NEW.\"owner_id\" for key share;\n    else raise exception 'Invalid API-key owner type' using errcode = '23514'; end if;\n    if not found then raise exception 'API-key owner does not exist' using errcode = '23503'; end if;\n    return NEW;\n    end; $$;\n    revoke all on function \"public\".\"api_key_api_key_owner_exists_fn\"() from public;\n    create trigger \"api_key_owner_exists\" after insert or update on \"public\".\"api_key\" for each row execute function \"public\".\"api_key_api_key_owner_exists_fn\"();"
+        }
+      ],
+      "foreignKeys": {
+        "api_key_created_by_id_foreign": {
+          "columnNames": ["created_by_id"],
+          "constraintName": "api_key_created_by_id_foreign",
+          "localTableName": "public.api_key",
+          "referencedColumnNames": ["id"],
+          "referencedTableName": "public.user",
+          "deleteRule": "set null"
+        }
+      },
+      "comment": null,
+      "policies": [
+        {
+          "name": "api_key_all_policy",
+          "command": "all",
+          "type": "permissive",
+          "roles": ["authenticated"],
+          "using": "((\"owner_type\" = 'user' AND \"owner_id\" = nullif(current_setting('app.user.id', true), '')::bigint) OR (\"owner_type\" = 'member' AND EXISTS (SELECT 1 FROM \"member\" WHERE \"member\".\"id\" = \"owner_id\" AND \"member\".\"workspace_id\" = nullif(current_setting('app.workspace.id', true), '')::bigint)))",
+          "check": "((\"owner_type\" = 'user' AND \"owner_id\" = nullif(current_setting('app.user.id', true), '')::bigint) OR (\"owner_type\" = 'member' AND EXISTS (SELECT 1 FROM \"member\" WHERE \"member\".\"id\" = \"owner_id\" AND \"member\".\"workspace_id\" = nullif(current_setting('app.workspace.id', true), '')::bigint)))"
+        }
+      ],
+      "rlsEnabled": true
+    },
+    {
       "name": "invitation",
       "schema": "public",
       "columns": {
@@ -1118,7 +1451,16 @@
           "definition": "check ((\"type\" = 'USER' AND \"user_id\" IS NOT NULL) OR (\"type\" = 'SERVICE_ACCOUNT' AND \"user_id\" IS NULL))"
         }
       ],
-      "triggers": [],
+      "triggers": [
+        {
+          "name": "member_api_key_cleanup",
+          "timing": "after",
+          "events": ["delete"],
+          "forEach": "row",
+          "body": "",
+          "expression": "create or replace function \"public\".\"member_member_api_key_cleanup_fn\"() returns trigger language plpgsql security definer set search_path = pg_catalog as $$ begin\n      if TG_RELID <> '\"public\".\"member\"'::regclass or TG_NAME <> 'member_api_key_cleanup' or TG_OP not in ('DELETE') or TG_WHEN <> 'AFTER' or TG_LEVEL <> 'ROW' then raise exception 'Unexpected API-key trigger target'; end if;\n      delete from \"public\".\"api_key\" where \"owner_type\" = 'member' and \"owner_id\" = OLD.\"id\"; return OLD;\n    end; $$;\n    revoke all on function \"public\".\"member_member_api_key_cleanup_fn\"() from public;\n    create trigger \"member_api_key_cleanup\" after delete on \"public\".\"member\" for each row execute function \"public\".\"member_member_api_key_cleanup_fn\"();"
+        }
+      ],
       "foreignKeys": {
         "member_user_id_foreign": {
           "columnNames": ["user_id"],
@@ -1155,290 +1497,6 @@
           "type": "permissive",
           "roles": ["authenticated"],
           "using": "\"user_id\" = nullif(current_setting('app.user.id', true), '')::bigint"
-        }
-      ],
-      "rlsEnabled": true
-    },
-    {
-      "name": "member_api_key",
-      "schema": "public",
-      "columns": {
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamptz(6)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": 6,
-          "precision": null,
-          "scale": null,
-          "default": "now()",
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "datetime"
-        },
-        "enabled": {
-          "name": "enabled",
-          "type": "boolean",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": "true",
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "boolean"
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamptz(6)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": 6,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "datetime"
-        },
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "unsigned": false,
-          "autoincrement": true,
-          "primary": true,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "bigint"
-        },
-        "key": {
-          "name": "key",
-          "type": "text",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": true,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "text"
-        },
-        "last_used_at": {
-          "name": "last_used_at",
-          "type": "timestamptz(6)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": 6,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "datetime"
-        },
-        "member_id": {
-          "name": "member_id",
-          "type": "bigint",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "bigint"
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(255)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": 255,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
-        },
-        "permissions": {
-          "name": "permissions",
-          "type": "text[]",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": "'{}'",
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "array"
-        },
-        "prefix": {
-          "name": "prefix",
-          "type": "varchar(255)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": 255,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
-        },
-        "start": {
-          "name": "start",
-          "type": "varchar(255)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": 255,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamptz(6)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": 6,
-          "precision": null,
-          "scale": null,
-          "default": "now()",
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "datetime"
-        }
-      },
-      "indexes": [
-        {
-          "columnNames": ["created_at"],
-          "composite": false,
-          "constraint": false,
-          "keyName": "member_api_key_created_at_index",
-          "primary": false,
-          "unique": false
-        },
-        {
-          "columnNames": ["key"],
-          "composite": false,
-          "constraint": false,
-          "keyName": "member_api_key_key_index",
-          "primary": false,
-          "unique": false
-        },
-        {
-          "columnNames": ["key"],
-          "composite": false,
-          "constraint": true,
-          "keyName": "member_api_key_key_unique",
-          "primary": false,
-          "unique": true
-        },
-        {
-          "columnNames": ["member_id"],
-          "composite": false,
-          "constraint": false,
-          "keyName": "member_api_key_member_id_index",
-          "primary": false,
-          "unique": false
-        },
-        {
-          "columnNames": ["id"],
-          "composite": false,
-          "constraint": true,
-          "keyName": "member_api_key_pkey",
-          "primary": true,
-          "unique": true
-        },
-        {
-          "columnNames": ["prefix"],
-          "composite": false,
-          "constraint": false,
-          "keyName": "member_api_key_prefix_index",
-          "primary": false,
-          "unique": false
-        }
-      ],
-      "checks": [],
-      "triggers": [],
-      "foreignKeys": {
-        "member_api_key_member_id_foreign": {
-          "columnNames": ["member_id"],
-          "constraintName": "member_api_key_member_id_foreign",
-          "localTableName": "public.member_api_key",
-          "referencedColumnNames": ["id"],
-          "referencedTableName": "public.member",
-          "deleteRule": "cascade"
-        }
-      },
-      "comment": null,
-      "policies": [
-        {
-          "name": "member_api_key_all_policy",
-          "command": "all",
-          "type": "permissive",
-          "roles": ["authenticated"],
-          "using": "(EXISTS (SELECT 1 FROM \"member\" WHERE \"member\".\"id\" = \"member_id\" AND \"member\".\"workspace_id\" = nullif(current_setting('app.workspace.id', true), '')::bigint))",
-          "check": "(EXISTS (SELECT 1 FROM \"member\" WHERE \"member\".\"id\" = \"member_id\" AND \"member\".\"workspace_id\" = nullif(current_setting('app.workspace.id', true), '')::bigint))"
         }
       ],
       "rlsEnabled": true
@@ -1655,6 +1713,182 @@
           "type": "permissive",
           "roles": ["authenticated"],
           "using": "true"
+        }
+      ],
+      "rlsEnabled": true
+    },
+    {
+      "name": "system_account",
+      "schema": "public",
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": "now()",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "created_by_id": {
+          "name": "created_by_id",
+          "type": "bigint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "bigint"
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "true",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "boolean"
+        },
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "unsigned": false,
+          "autoincrement": true,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "bigint"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "permissions": {
+          "name": "permissions",
+          "type": "text[]",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "'{}'",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "array"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": "now()",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        }
+      },
+      "indexes": [
+        {
+          "columnNames": ["created_at"],
+          "composite": false,
+          "constraint": false,
+          "keyName": "system_account_created_at_index",
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": ["id"],
+          "composite": false,
+          "constraint": true,
+          "keyName": "system_account_pkey",
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "triggers": [
+        {
+          "name": "system_account_api_key_cleanup",
+          "timing": "after",
+          "events": ["delete"],
+          "forEach": "row",
+          "body": "",
+          "expression": "create or replace function \"public\".\"system_account_system_account_api_key_cleanup_fn\"() returns trigger language plpgsql security definer set search_path = pg_catalog as $$ begin\n      if TG_RELID <> '\"public\".\"system_account\"'::regclass or TG_NAME <> 'system_account_api_key_cleanup' or TG_OP not in ('DELETE') or TG_WHEN <> 'AFTER' or TG_LEVEL <> 'ROW' then raise exception 'Unexpected API-key trigger target'; end if;\n      delete from \"public\".\"api_key\" where \"owner_type\" = 'system_account' and \"owner_id\" = OLD.\"id\"; return OLD;\n    end; $$;\n    revoke all on function \"public\".\"system_account_system_account_api_key_cleanup_fn\"() from public;\n    create trigger \"system_account_api_key_cleanup\" after delete on \"public\".\"system_account\" for each row execute function \"public\".\"system_account_system_account_api_key_cleanup_fn\"();"
+        }
+      ],
+      "foreignKeys": {
+        "system_account_created_by_id_foreign": {
+          "columnNames": ["created_by_id"],
+          "constraintName": "system_account_created_by_id_foreign",
+          "localTableName": "public.system_account",
+          "referencedColumnNames": ["id"],
+          "referencedTableName": "public.user",
+          "deleteRule": "set null"
+        }
+      },
+      "comment": null,
+      "policies": [
+        {
+          "name": "system_account_all_policy",
+          "command": "all",
+          "type": "permissive",
+          "roles": ["anonymous", "authenticated"],
+          "using": "false",
+          "check": "false"
         }
       ],
       "rlsEnabled": true
@@ -1895,7 +2129,16 @@
         }
       ],
       "checks": [],
-      "triggers": [],
+      "triggers": [
+        {
+          "name": "user_api_key_cleanup",
+          "timing": "after",
+          "events": ["delete"],
+          "forEach": "row",
+          "body": "",
+          "expression": "create or replace function \"public\".\"user_user_api_key_cleanup_fn\"() returns trigger language plpgsql security definer set search_path = pg_catalog as $$ begin\n      if TG_RELID <> '\"public\".\"user\"'::regclass or TG_NAME <> 'user_api_key_cleanup' or TG_OP not in ('DELETE') or TG_WHEN <> 'AFTER' or TG_LEVEL <> 'ROW' then raise exception 'Unexpected API-key trigger target'; end if;\n      delete from \"public\".\"api_key\" where \"owner_type\" = 'user' and \"owner_id\" = OLD.\"id\"; return OLD;\n    end; $$;\n    revoke all on function \"public\".\"user_user_api_key_cleanup_fn\"() from public;\n    create trigger \"user_api_key_cleanup\" after delete on \"public\".\"user\" for each row execute function \"public\".\"user_user_api_key_cleanup_fn\"();"
+        }
+      ],
       "foreignKeys": {},
       "comment": null,
       "policies": [
@@ -1920,290 +2163,6 @@
           "roles": ["authenticated"],
           "using": "true",
           "check": "true"
-        }
-      ],
-      "rlsEnabled": true
-    },
-    {
-      "name": "user_api_key",
-      "schema": "public",
-      "columns": {
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamptz(6)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": 6,
-          "precision": null,
-          "scale": null,
-          "default": "now()",
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "datetime"
-        },
-        "enabled": {
-          "name": "enabled",
-          "type": "boolean",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": "true",
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "boolean"
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamptz(6)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": 6,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "datetime"
-        },
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "unsigned": false,
-          "autoincrement": true,
-          "primary": true,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "bigint"
-        },
-        "key": {
-          "name": "key",
-          "type": "text",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": true,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "text"
-        },
-        "last_used_at": {
-          "name": "last_used_at",
-          "type": "timestamptz(6)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": 6,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "datetime"
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(255)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": 255,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
-        },
-        "permissions": {
-          "name": "permissions",
-          "type": "text[]",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": "'{}'",
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "array"
-        },
-        "prefix": {
-          "name": "prefix",
-          "type": "varchar(255)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": 255,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
-        },
-        "start": {
-          "name": "start",
-          "type": "varchar(255)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": 255,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamptz(6)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": 6,
-          "precision": null,
-          "scale": null,
-          "default": "now()",
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "datetime"
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "bigint",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "bigint"
-        }
-      },
-      "indexes": [
-        {
-          "columnNames": ["created_at"],
-          "composite": false,
-          "constraint": false,
-          "keyName": "user_api_key_created_at_index",
-          "primary": false,
-          "unique": false
-        },
-        {
-          "columnNames": ["key"],
-          "composite": false,
-          "constraint": false,
-          "keyName": "user_api_key_key_index",
-          "primary": false,
-          "unique": false
-        },
-        {
-          "columnNames": ["key"],
-          "composite": false,
-          "constraint": true,
-          "keyName": "user_api_key_key_unique",
-          "primary": false,
-          "unique": true
-        },
-        {
-          "columnNames": ["id"],
-          "composite": false,
-          "constraint": true,
-          "keyName": "user_api_key_pkey",
-          "primary": true,
-          "unique": true
-        },
-        {
-          "columnNames": ["prefix"],
-          "composite": false,
-          "constraint": false,
-          "keyName": "user_api_key_prefix_index",
-          "primary": false,
-          "unique": false
-        },
-        {
-          "columnNames": ["user_id"],
-          "composite": false,
-          "constraint": false,
-          "keyName": "user_api_key_user_id_index",
-          "primary": false,
-          "unique": false
-        }
-      ],
-      "checks": [],
-      "triggers": [],
-      "foreignKeys": {
-        "user_api_key_user_id_foreign": {
-          "columnNames": ["user_id"],
-          "constraintName": "user_api_key_user_id_foreign",
-          "localTableName": "public.user_api_key",
-          "referencedColumnNames": ["id"],
-          "referencedTableName": "public.user",
-          "deleteRule": "cascade"
-        }
-      },
-      "comment": null,
-      "policies": [
-        {
-          "name": "user_api_key_all_policy",
-          "command": "all",
-          "type": "permissive",
-          "roles": ["authenticated"],
-          "using": "(\"user_id\" = nullif(current_setting('app.user.id', true), '')::bigint)",
-          "check": "(\"user_id\" = nullif(current_setting('app.user.id', true), '')::bigint)"
         }
       ],
       "rlsEnabled": true

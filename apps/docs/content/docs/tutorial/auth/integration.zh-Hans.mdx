@@ -43,7 +43,7 @@ export class AccountApplicationService {
 应用只需配置 GraphQL 模块和 `AuthModule.forRoot()`，无需重新定义认证实体或注册命名连接。
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation`、`UserApiKey` 和 `MemberApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`Member`、`Invitation`、`SystemAccount` 和 `ApiKeyEntity` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 `AuthModule` 使用 `DatabaseModule.forFeatureAsync()` 自动注册启用的实体，
@@ -137,3 +137,5 @@ GraphQL 验证错误使用 `BAD_USER_INPUT`，字段详情位于
 `authRefreshToken` 及其专用输入、返回类型，不保留别名。账号绑定信息通过
 `currentUser { accounts(first: 20) { edges { node { id providerId scopes } } } }` 查询；服务端第三方集成仍可使用
 `AuthService.getAccessToken()`、`refreshToken()` 和 `getAccountInfo()`。
+
+独立 ORM 使用 `getAuthEntities(options)` 与 AuthModule 的功能开关保持一致。三种 ApiKey 的公共视图和 Service 对应同一个持久化实体 `ApiKeyEntity`，系统账户管理见 [API Key](/docs/tutorial/auth/api-keys)。

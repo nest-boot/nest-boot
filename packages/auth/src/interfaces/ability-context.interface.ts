@@ -1,4 +1,5 @@
 import type { Member } from "../entities/member.entity.js";
+import type { SystemAccount } from "../entities/system-account.entity.js";
 import type { User } from "../entities/user.entity.js";
 import type { Workspace } from "../entities/workspace.entity.js";
 
@@ -7,6 +8,8 @@ export interface AbilityContext<
   UserPermission extends string = string,
   WorkspacePermission extends string = string,
 > {
+  /** Independent system principal, absent for human and member credentials. */
+  readonly systemAccount?: SystemAccount | null;
   /** Authenticated user; absent for anonymous and member API-key requests. */
   readonly user: User | null;
   /** Selected workspace with an active membership matching the credential owner. */

@@ -36,8 +36,13 @@ export type AuthInvitationStatus =
       command: "select",
       roles: ["authenticated"],
       // Recipients need not be workspace members; this policy grants reads only, not writes.
-      using: ({ email }) =>
-        `"${email}" = (select lower("recipient"."email") from "user" as "recipient" where "recipient"."id" = nullif(current_setting('app.user.id', true), '')::bigint)`,
+      using: ({ email }, table) => {
+        const users =
+          table.schema && table.schema !== "public"
+            ? `"${table.schema.replaceAll('"', '""')}"."user"`
+            : '"user"';
+        return `"${email}" = (select lower("recipient"."email") from ${users} as "recipient" where "recipient"."id" = nullif(current_setting('app.user.id', true), '')::bigint)`;
+      },
     },
   ],
 })

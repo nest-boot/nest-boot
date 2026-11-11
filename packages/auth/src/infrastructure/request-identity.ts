@@ -6,7 +6,6 @@ import { AuthAbility } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Member } from "../entities/member.entity.js";
-import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
@@ -125,7 +124,7 @@ export class RequestIdentity {
     const current = getCurrentApiKey();
     return (
       !!current &&
-      current.constructor === apiKey.constructor &&
+      current.ownerType === apiKey.ownerType &&
       current.id === apiKey.id
     );
   }
@@ -324,6 +323,7 @@ export class RequestIdentity {
         variables: {
           "app.user.id": "",
           "app.workspace.id": "",
+          "app.system_account.id": "",
           "app.member.id": "",
         },
       });
@@ -336,7 +336,7 @@ export class RequestIdentity {
    * @param options - Authentication module configuration.
    */
   static clearWorkspace(em: EntityManager, options: AuthModuleOptions): void {
-    if (getCurrentApiKey() instanceof MemberApiKey) {
+    if (getCurrentApiKey()?.ownerType === "member") {
       this.clear(em);
       return;
     }
@@ -363,6 +363,10 @@ export class RequestIdentity {
         "app.user.id": user?.id ?? "",
         "app.workspace.id":
           !authenticated || member ? (workspace?.id ?? "") : "",
+        "app.system_account.id":
+          apiKey?.ownerType === "system_account"
+            ? (apiKey.systemAccount?.id ?? "")
+            : "",
         "app.member.id": member?.id ?? "",
       },
     };

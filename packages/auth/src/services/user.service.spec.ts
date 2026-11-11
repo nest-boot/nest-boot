@@ -20,6 +20,7 @@ import { API_KEY } from "../auth.constants.js";
 import { type AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
 import { Account } from "../entities/account.entity.js";
+import { ApiKeyEntity } from "../entities/api-key.entity.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { Session } from "../entities/session.entity.js";
@@ -69,7 +70,7 @@ describe("UserService", () => {
       });
       await service.banUser(user);
       expect(em.nativeUpdate).toHaveBeenLastCalledWith(
-        UserApiKey,
+        ApiKeyEntity,
         { id: key.id },
         {
           lastUsedAt: expect.any(Date),
@@ -167,6 +168,7 @@ describe("UserService", () => {
       mockRlsContext(em).variables = {
         "app.user.id": current.id,
         "app.workspace.id": "",
+        "app.system_account.id": "",
         "app.member.id": "",
       };
       await RequestContext.run(

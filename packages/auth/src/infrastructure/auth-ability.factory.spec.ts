@@ -285,13 +285,13 @@ describe("permission ability builders", () => {
 
 describe("explicit permission catalog", () => {
   describe("explicit auth permission catalog", () => {
-    it("contains 28 distinct, scoped permissions", () => {
+    it("contains 35 distinct, scoped permissions", () => {
       const permissions = [
         ...DEFAULT_USER_PERMISSIONS,
         ...DEFAULT_WORKSPACE_PERMISSIONS,
       ];
-      expect(permissions).toHaveLength(28);
-      expect(new Set(permissions).size).toBe(28);
+      expect(permissions).toHaveLength(35);
+      expect(new Set(permissions).size).toBe(35);
     });
 
     it("does not add baseline abilities to empty credentials", () => {

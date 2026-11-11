@@ -1,17 +1,17 @@
 import { Migrator } from '@mikro-orm/migrations';
 import { MikroORM } from '@mikro-orm/postgresql';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
-import { entities as authEntities, workspaceEntities } from '@nest-boot/auth';
+import { getAuthEntities } from '@nest-boot/auth';
 import { JobEntity } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
 import { createDatabaseFixture } from './postgres.fixture.js';
 
-it('builds the current example schema from two migrations and can roll back and rebuild it', async () => {
+it('builds the current example schema from ordered migrations and can roll back and rebuild it', async () => {
   const fixture = await createDatabaseFixture();
   const orm = await MikroORM.init({
     clientUrl: fixture.connectionString,
-    entities: [...authEntities, ...workspaceEntities, JobEntity],
+    entities: [...getAuthEntities({ workspace: { enabled: true } }), JobEntity],
     metadataProvider: TsMorphMetadataProvider,
     metadataCache: { enabled: false },
     extensions: [Migrator],
@@ -24,7 +24,7 @@ it('builds the current example schema from two migrations and can roll back and 
   });
   try {
     const migrated = await orm.migrator.up();
-    expect(migrated).toHaveLength(2);
+    expect(migrated).toHaveLength(3);
     expect(migrated[0].name).toBe(Migration00000000000000_Initial.name);
     expect(await orm.migrator.getPending()).toEqual([]);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
@@ -35,14 +35,14 @@ it('builds the current example schema from two migrations and can roll back and 
     );
     expect(rows.map(({ tablename }) => tablename)).toEqual([
       'account',
+      'api_key',
       'invitation',
       'job',
       'member',
-      'member_api_key',
       'mikro_orm_migrations',
       'session',
+      'system_account',
       'user',
-      'user_api_key',
       'verification',
       'workspace',
     ]);
@@ -83,7 +83,7 @@ it('builds the current example schema from two migrations and can roll back and 
       ).rows.map(({ extname }) => extname),
     ).toEqual(['pgcrypto', 'uuid-ossp']);
 
-    expect(await orm.migrator.up()).toHaveLength(2);
+    expect(await orm.migrator.up()).toHaveLength(3);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
     expect(await orm.migrator.checkSchema()).toBe(false);
   } finally {

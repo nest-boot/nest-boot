@@ -10,6 +10,7 @@ import {
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
 import { AuthAbility } from "../auth.ability.js";
+import { ApiKeyEntity } from "../entities/api-key.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
@@ -59,12 +60,12 @@ describe("auth service execution boundaries", () => {
       });
       await service.recordUsage(apiKey);
       expect(isolated.clearSessionContext).toHaveBeenCalledOnce();
-      expect(isolated.findOne).toHaveBeenCalledTimes(2);
+      expect(isolated.findOne).toHaveBeenCalledTimes(1);
       expect(em.findOne).not.toHaveBeenCalled();
       expect(isolated.nativeUpdate).not.toHaveBeenCalled();
       expect(em.nativeUpdate).toHaveBeenCalledExactlyOnceWith(
-        UserApiKey,
-        { id: apiKey.id },
+        ApiKeyEntity,
+        { id: apiKey.id, ownerType: "user" },
         { lastUsedAt: expect.any(Date), updatedAt: expect.any(Date) },
       );
       expect(RequestContext.get(EntityManager)).toBe(em);
@@ -149,6 +150,7 @@ describe("auth service execution boundaries", () => {
               variables: {
                 "app.user.id": "",
                 "app.workspace.id": "",
+                "app.system_account.id": "",
                 "app.member.id": "",
               },
             });

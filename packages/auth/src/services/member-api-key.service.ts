@@ -1,4 +1,9 @@
-import { EntityManager, type FilterQuery, Reference } from "@mikro-orm/core";
+import {
+  EntityManager,
+  type FilterQuery,
+  raw,
+  Reference,
+} from "@mikro-orm/core";
 import type { SqlEntityManager } from "@mikro-orm/sql";
 import {
   type ConnectionArgsInterface,
@@ -18,6 +23,7 @@ import type { GraphQLResolveInfo } from "graphql";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { MemberApiKeyConnection } from "../connections/member-api-key.connection-definition.js";
+import { ApiKeyEntity } from "../entities/api-key.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
@@ -33,6 +39,7 @@ import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
 } from "../utils/api-key-permissions.util.js";
+import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
 import { authorize } from "../utils/authorize.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 import { omitCredentials } from "../utils/omit-credentials.util.js";
@@ -124,7 +131,7 @@ export class MemberApiKeyService {
     ).find(MemberApiKeyConnection, args, {
       ...(info && { info }),
       where,
-      populate: ["member.workspace"],
+      populate: ["owner"],
       exclude: ["key"],
     });
     // Reject the whole page rather than silently changing cursor pagination.
@@ -193,7 +200,7 @@ export class MemberApiKeyService {
           apiKey.permissions ?? [],
         );
       this.assertMemberPermissionCeiling(
-        Reference.unwrapReference(apiKey.member),
+        Reference.unwrapReference(apiKey.owner),
         finalPermissions,
       );
     }
@@ -274,10 +281,12 @@ export class MemberApiKeyService {
     );
     const entity = await this.em.transactional(
       async (em) => {
-        const entity = em.create(MemberApiKey, {
+        const entity = em.create(ApiKeyEntity, {
           ...data,
-          member,
+          owner: member,
+          createdBy: RequestContext.get(User)?.id ?? null,
         });
+        assertApiKeyOwner(entity, "member");
         authorize("write", entity);
         await em.persist(entity).flush();
         return entity;
@@ -297,16 +306,23 @@ export class MemberApiKeyService {
     workspace: Workspace,
   ): Promise<ApiKeyMetadata<MemberApiKey> | null> {
     const apiKey = await this.em.findOne(
-      MemberApiKey,
+      ApiKeyEntity,
       {
         $and: [{ id }, this.getOwnedListFilter(workspace)],
       },
-      { populate: ["member.workspace"], exclude: ["key"] },
+      { populate: ["owner"], exclude: ["key"] },
     );
-    if (apiKey) {
-      this.assertWorkspace(apiKey, workspace);
-      assertApiKeyPermissionCeiling(this.authOptions, apiKey.permissions ?? []);
+    if (!apiKey) {
+      return null;
     }
+    assertApiKeyOwner(apiKey, "member");
+    if (apiKey.member) {
+      await this.em.populate(Reference.unwrapReference(apiKey.member), [
+        "workspace",
+      ]);
+    }
+    this.assertWorkspace(apiKey, workspace);
+    assertApiKeyPermissionCeiling(this.authOptions, apiKey.permissions ?? []);
     return apiKey;
   }
 
@@ -314,16 +330,22 @@ export class MemberApiKeyService {
     id: string,
   ): Promise<ApiKeyMetadata<MemberApiKey>> {
     const apiKey = await this.em.findOne(
-      MemberApiKey,
-      { id },
+      ApiKeyEntity,
+      { id, ownerType: "member" },
       {
-        populate: ["member.workspace"],
+        populate: ["owner"],
         exclude: ["key"],
         refresh: true,
       },
     );
-    if (!apiKey) {
+    if (apiKey?.ownerType !== "member") {
       throw new NotFoundException("API key not found");
+    }
+    assertApiKeyOwner(apiKey, "member");
+    if (apiKey.member) {
+      await this.em.populate(Reference.unwrapReference(apiKey.member), [
+        "workspace",
+      ]);
     }
     this.assertWorkspacePrincipal(this.unwrapWorkspace(apiKey));
     assertApiKeyPermissionCeiling(this.authOptions, apiKey.permissions ?? []);
@@ -333,7 +355,14 @@ export class MemberApiKeyService {
   private getOwnedListFilter(workspace: Workspace): FilterQuery<MemberApiKey> {
     const ceiling = resolveRequestPermissions(this.authOptions).apiKey;
     return {
-      member: { workspace },
+      ownerType: "member",
+      [raw((alias) => `${alias}."owner_id"`)]: {
+        $in: (this.em as SqlEntityManager)
+          .createQueryBuilder(Member)
+          .select("id")
+          .where({ workspace: workspace.id })
+          .toRaw(),
+      },
       ...(ceiling !== null
         ? { permissions: { $contained: ceiling, $ne: [] } }
         : {}),
@@ -343,7 +372,7 @@ export class MemberApiKeyService {
   private assertWorkspacePrincipal(workspace: Workspace): void {
     RequestIdentity.assertCurrentWorkspace(workspace);
     const apiKey = getCurrentApiKey();
-    if (apiKey && apiKey instanceof MemberApiKey) {
+    if (apiKey?.ownerType === "member") {
       this.assertWorkspace(apiKey, workspace);
     }
     const member = RequestContext.get(Member);
@@ -359,7 +388,7 @@ export class MemberApiKeyService {
   }
 
   private assertWorkspace(
-    apiKey: ApiKeyMetadata<MemberApiKey>,
+    apiKey: ApiKeyMetadata,
     expectedWorkspace: Workspace,
   ): void {
     const workspace = this.unwrapWorkspace(apiKey);
@@ -370,7 +399,7 @@ export class MemberApiKeyService {
     }
   }
 
-  private unwrapWorkspace(apiKey: ApiKeyMetadata<MemberApiKey>): Workspace {
+  private unwrapWorkspace(apiKey: ApiKeyMetadata): Workspace {
     if (!apiKey.member) {
       throw new ForbiddenException("API key owner is missing");
     }

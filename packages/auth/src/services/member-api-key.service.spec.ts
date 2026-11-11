@@ -1,3 +1,5 @@
+import assert from "node:assert/strict";
+
 import { ref, Reference } from "@mikro-orm/core";
 import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
@@ -18,6 +20,7 @@ import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { MemberApiKeyConnection } from "../connections/member-api-key.connection-definition.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
+import { ApiKeyEntity } from "../entities/api-key.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
@@ -70,15 +73,13 @@ describe("API-key management", () => {
           const user = createTestUser();
           const Key = scope === "user" ? UserApiKey : MemberApiKey;
           const target = Object.assign(new Key(), {
-            member,
-            user,
+            ...(scope === "user" ? { user } : { member }),
             permissions: [],
           });
           em.findOne.mockResolvedValue(target);
           RequestIdentity.stage({
             apiKey: Object.assign(new Key(), {
-              member,
-              user,
+              ...(scope === "user" ? { user } : { member }),
               permissions: ["workspace:read"],
             }),
           });
@@ -219,8 +220,8 @@ describe("API-key management", () => {
               entity: { member: target },
             });
             expect(em.create).toHaveBeenCalledWith(
-              MemberApiKey,
-              expect.objectContaining({ member: target }),
+              ApiKeyEntity,
+              expect.objectContaining({ owner: target }),
             );
           } else {
             await expect(create).rejects.toThrow();
@@ -479,8 +480,10 @@ describe("API-key management", () => {
               key: "already-hydrated-key-hash",
               enabled: true,
               permissions: [],
-              user: ref(User, user),
-              member: ref(Member, createTestMember()),
+              owner:
+                scope === "user"
+                  ? ref(User, user)
+                  : ref(Member, createTestMember()),
             },
           );
           const read = () =>
@@ -701,6 +704,7 @@ describe("API-key management", () => {
             mockRlsContext(em).variables = {
               "app.user.id": user.id,
               "app.workspace.id": createTestWorkspace().id,
+              "app.system_account.id": "",
               "app.member.id": createTestMember().id,
             };
             const update =
@@ -764,6 +768,7 @@ describe("API-key management", () => {
                 variables: {
                   "app.user.id": "",
                   "app.workspace.id": "",
+                  "app.system_account.id": "",
                   "app.member.id": "",
                 },
               });
@@ -829,10 +834,10 @@ describe("API-key management", () => {
         await service.updateMemberApiKey(key.id, { name: "Scoped update" });
         await service.deleteMemberApiKey(key.id);
         expect(em.findOne).toHaveBeenCalledWith(
-          MemberApiKey,
-          { id: key.id },
+          ApiKeyEntity,
+          { id: key.id, ownerType: "member" },
           {
-            populate: ["member.workspace"],
+            populate: ["owner"],
             exclude: ["key"],
             refresh: true,
           },
@@ -921,7 +926,7 @@ describe("API-key management", () => {
           })),
         });
         expect(find).toHaveBeenLastCalledWith(UserApiKeyConnection, args, {
-          where: { user: user },
+          where: { owner: user, ownerType: "user" },
           exclude: ["key"],
         });
         await expect(
@@ -941,8 +946,8 @@ describe("API-key management", () => {
           })),
         });
         expect(find).toHaveBeenLastCalledWith(MemberApiKeyConnection, args, {
-          where: { member: { workspace } },
-          populate: ["member.workspace"],
+          where: expect.objectContaining({ ownerType: "member" }),
+          populate: ["owner"],
           exclude: ["key"],
         });
         expect(find.mock.instances[0]).toHaveProperty("em", em);
@@ -1005,7 +1010,7 @@ describe("API-key management", () => {
         });
         expect(result.apiKey).toMatch(/^nb-[A-Za-z0-9_-]{64}$/);
         expect(em.create).toHaveBeenCalledWith(
-          MemberApiKey,
+          ApiKeyEntity,
           expect.objectContaining({
             enabled: true,
             key: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
@@ -1013,7 +1018,7 @@ describe("API-key management", () => {
             permissions: [],
             prefix: "nb-",
             start: result.apiKey.slice(0, 8),
-            member: member,
+            owner: member,
           }),
         );
         expect(JSON.stringify(result.entity)).not.toContain(result.apiKey);
@@ -1030,7 +1035,7 @@ describe("API-key management", () => {
           permissions: ["member:invite"],
         });
         expect(em.create).toHaveBeenCalledWith(
-          MemberApiKey,
+          ApiKeyEntity,
           expect.objectContaining({ permissions: ["member:invite"] }),
         );
         const existing = createTestApiKey();
@@ -1044,7 +1049,7 @@ describe("API-key management", () => {
           permissions: ["member:invite"],
         });
         expect(em.create).toHaveBeenCalledWith(
-          UserApiKey,
+          ApiKeyEntity,
           expect.objectContaining({ permissions: ["member:invite"] }),
         );
       },
@@ -1059,7 +1064,7 @@ describe("API-key management", () => {
         permissions,
       });
       expect(em.create).toHaveBeenCalledWith(
-        MemberApiKey,
+        ApiKeyEntity,
         expect.objectContaining({ permissions }),
       );
     });
@@ -1094,17 +1099,17 @@ describe("API-key management", () => {
         );
         expect(em.create).toHaveBeenNthCalledWith(
           1,
-          MemberApiKey,
+          ApiKeyEntity,
           expect.objectContaining({ permissions: ["workspace:update"] }),
         );
         expect(em.create).toHaveBeenNthCalledWith(
           2,
-          MemberApiKey,
+          ApiKeyEntity,
           expect.objectContaining({ permissions: [] }),
         );
         expect(em.create).toHaveBeenNthCalledWith(
           3,
-          UserApiKey,
+          ApiKeyEntity,
           expect.objectContaining({ permissions: ["user:read"] }),
         );
       },
@@ -1482,11 +1487,11 @@ describe("API-key management", () => {
           MemberApiKeyConnection,
           { first: 10 },
           {
-            where: {
-              member: { workspace },
+            where: expect.objectContaining({
+              ownerType: "member",
               permissions: { $contained: ["workspace:update"], $ne: [] },
-            },
-            populate: ["member.workspace"],
+            }),
+            populate: ["owner"],
             exclude: ["key"],
           },
         );
@@ -1548,11 +1553,11 @@ describe("API-key management", () => {
           MemberApiKeyConnection,
           { first: 10 },
           {
-            where: {
-              member: { workspace },
+            where: expect.objectContaining({
+              ownerType: "member",
               permissions: { $contained: ["workspace:read"], $ne: [] },
-            },
-            populate: ["member.workspace"],
+            }),
+            populate: ["owner"],
             exclude: ["key"],
           },
         );
@@ -1879,7 +1884,9 @@ describe("API-key management", () => {
       async () => {
         const { em, service } = createService();
         const apiKey = createTestApiKey();
-        Reference.unwrapReference(apiKey.member).workspace = ref(
+        const owner = apiKey.member;
+        assert(owner);
+        Reference.unwrapReference(owner).workspace = ref(
           Workspace,
           Object.assign(createTestWorkspace(), {
             id: "workspace-2",

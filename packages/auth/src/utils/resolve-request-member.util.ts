@@ -1,7 +1,6 @@
 import { RequestContext } from "@nest-boot/request-context";
 
 import { Member } from "../entities/member.entity.js";
-import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { getCurrentApiKey } from "./get-current-api-key.util.js";
@@ -26,7 +25,7 @@ export function resolveRequestMember(): Member | null {
   }
 
   const apiKey = getCurrentApiKey();
-  if (apiKey instanceof MemberApiKey) {
+  if (apiKey?.ownerType === "member") {
     return member.id === apiKey.member?.id ? member : null;
   }
 

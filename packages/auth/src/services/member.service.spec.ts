@@ -206,6 +206,7 @@ describe("MemberService", () => {
       mockRlsContext(em).variables = {
         "app.user.id": user.id,
         "app.workspace.id": workspace.id,
+        "app.system_account.id": "",
         "app.member.id": current.id,
       };
       em.findOne.mockResolvedValue(locked);

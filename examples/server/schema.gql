@@ -19,14 +19,10 @@ type Account {
 }
 
 type AccountConnection {
-  """
-  A list of edges.
-  """
+  """A list of edges."""
   edges: [AccountEdge!]!
 
-  """
-  Information to aid in pagination.
-  """
+  """Information to aid in pagination."""
   pageInfo: PageInfo!
 
   """
@@ -34,9 +30,7 @@ type AccountConnection {
   """
   totalCount: Int!
 
-  """
-  Indicates whether totalCount is exact or a lower bound.
-  """
+  """Indicates whether totalCount is exact or a lower bound."""
   totalCountRelation: TotalCountRelation!
 }
 
@@ -44,14 +38,10 @@ type AccountConnection {
 An auto-generated type which holds one Account and a cursor during pagination.
 """
 type AccountEdge {
-  """
-  A cursor for use in pagination.
-  """
+  """A cursor for use in pagination."""
   cursor: String!
 
-  """
-  The item at the end of AccountEdge.
-  """
+  """The item at the end of AccountEdge."""
   node: Account!
 }
 
@@ -61,24 +51,16 @@ Supported fields: created_at, provider_id
 """
 scalar AccountFilter
 
-"""
-Ordering options for account connections
-"""
+"""Ordering options for account connections"""
 input AccountOrder {
-  """
-  The ordering direction.
-  """
+  """The ordering direction."""
   direction: OrderDirection!
 
-  """
-  The field to order accounts by.
-  """
+  """The field to order accounts by."""
   field: AccountOrderField!
 }
 
-"""
-Properties by which account connections can be ordered.
-"""
+"""Properties by which account connections can be ordered."""
 enum AccountOrderField {
   CREATED_AT
   ID
@@ -250,6 +232,23 @@ type CreateMemberApiKeyResult {
   entity: MemberApiKey!
 }
 
+input CreateSystemAccountApiKeyInput {
+  expiresAt: DateTime
+  name: String!
+  permissions: [SystemAccountPermission!]
+  prefix: String
+}
+
+type CreateSystemAccountApiKeyResult {
+  apiKey: String!
+  entity: SystemAccountApiKey!
+}
+
+input CreateSystemAccountInput {
+  name: String!
+  permissions: [SystemAccountPermission!]
+}
+
 input CreateUserApiKeyInput {
   expiresAt: DateTime
   name: String!
@@ -308,14 +307,10 @@ type Invitation {
 }
 
 type InvitationConnection {
-  """
-  A list of edges.
-  """
+  """A list of edges."""
   edges: [InvitationEdge!]!
 
-  """
-  Information to aid in pagination.
-  """
+  """Information to aid in pagination."""
   pageInfo: PageInfo!
 
   """
@@ -323,9 +318,7 @@ type InvitationConnection {
   """
   totalCount: Int!
 
-  """
-  Indicates whether totalCount is exact or a lower bound.
-  """
+  """Indicates whether totalCount is exact or a lower bound."""
   totalCountRelation: TotalCountRelation!
 }
 
@@ -333,14 +326,10 @@ type InvitationConnection {
 An auto-generated type which holds one Invitation and a cursor during pagination.
 """
 type InvitationEdge {
-  """
-  A cursor for use in pagination.
-  """
+  """A cursor for use in pagination."""
   cursor: String!
 
-  """
-  The item at the end of InvitationEdge.
-  """
+  """The item at the end of InvitationEdge."""
   node: Invitation!
 }
 
@@ -350,24 +339,16 @@ Supported fields: email, status, created_at
 """
 scalar InvitationFilter
 
-"""
-Ordering options for invitation connections
-"""
+"""Ordering options for invitation connections"""
 input InvitationOrder {
-  """
-  The ordering direction.
-  """
+  """The ordering direction."""
   direction: OrderDirection!
 
-  """
-  The field to order invitations by.
-  """
+  """The field to order invitations by."""
   field: InvitationOrderField!
 }
 
-"""
-Properties by which invitation connections can be ordered.
-"""
+"""Properties by which invitation connections can be ordered."""
 enum InvitationOrderField {
   CREATED_AT
   ID
@@ -397,14 +378,10 @@ type Job {
 }
 
 type JobConnection {
-  """
-  A list of edges.
-  """
+  """A list of edges."""
   edges: [JobEdge!]!
 
-  """
-  Information to aid in pagination.
-  """
+  """Information to aid in pagination."""
   pageInfo: PageInfo!
 
   """
@@ -412,9 +389,7 @@ type JobConnection {
   """
   totalCount: Int!
 
-  """
-  Indicates whether totalCount is exact or a lower bound.
-  """
+  """Indicates whether totalCount is exact or a lower bound."""
   totalCountRelation: TotalCountRelation!
 }
 
@@ -422,14 +397,10 @@ type JobConnection {
 An auto-generated type which holds one Job and a cursor during pagination.
 """
 type JobEdge {
-  """
-  A cursor for use in pagination.
-  """
+  """A cursor for use in pagination."""
   cursor: String!
 
-  """
-  The item at the end of JobEdge.
-  """
+  """The item at the end of JobEdge."""
   node: Job!
 }
 
@@ -439,24 +410,16 @@ Supported fields: id, queue, name, status, created_at
 """
 scalar JobFilter
 
-"""
-Ordering options for job connections
-"""
+"""Ordering options for job connections"""
 input JobOrder {
-  """
-  The ordering direction.
-  """
+  """The ordering direction."""
   direction: OrderDirection!
 
-  """
-  The field to order jobs by.
-  """
+  """The field to order jobs by."""
   field: JobOrderField!
 }
 
-"""
-Properties by which job connections can be ordered.
-"""
+"""Properties by which job connections can be ordered."""
 enum JobOrderField {
   CREATED_AT
 }
@@ -492,6 +455,7 @@ type Member {
 
 type MemberApiKey {
   createdAt: DateTime!
+  createdById: ID
   enabled: Boolean!
   expiresAt: DateTime
   id: ID!
@@ -506,14 +470,10 @@ type MemberApiKey {
 }
 
 type MemberApiKeyConnection {
-  """
-  A list of edges.
-  """
+  """A list of edges."""
   edges: [MemberApiKeyEdge!]!
 
-  """
-  Information to aid in pagination.
-  """
+  """Information to aid in pagination."""
   pageInfo: PageInfo!
 
   """
@@ -521,9 +481,7 @@ type MemberApiKeyConnection {
   """
   totalCount: Int!
 
-  """
-  Indicates whether totalCount is exact or a lower bound.
-  """
+  """Indicates whether totalCount is exact or a lower bound."""
   totalCountRelation: TotalCountRelation!
 }
 
@@ -531,14 +489,10 @@ type MemberApiKeyConnection {
 An auto-generated type which holds one MemberApiKey and a cursor during pagination.
 """
 type MemberApiKeyEdge {
-  """
-  A cursor for use in pagination.
-  """
+  """A cursor for use in pagination."""
   cursor: String!
 
-  """
-  The item at the end of MemberApiKeyEdge.
-  """
+  """The item at the end of MemberApiKeyEdge."""
   node: MemberApiKey!
 }
 
@@ -548,24 +502,16 @@ Supported fields: name, prefix, enabled, last_used_at, created_at
 """
 scalar MemberApiKeyFilter
 
-"""
-Ordering options for memberapikey connections
-"""
+"""Ordering options for memberapikey connections"""
 input MemberApiKeyOrder {
-  """
-  The ordering direction.
-  """
+  """The ordering direction."""
   direction: OrderDirection!
 
-  """
-  The field to order memberapikeys by.
-  """
+  """The field to order memberapikeys by."""
   field: MemberApiKeyOrderField!
 }
 
-"""
-Properties by which memberapikey connections can be ordered.
-"""
+"""Properties by which memberapikey connections can be ordered."""
 enum MemberApiKeyOrderField {
   CREATED_AT
   ID
@@ -594,14 +540,10 @@ type MemberApiKeyPermissionOption {
 }
 
 type MemberConnection {
-  """
-  A list of edges.
-  """
+  """A list of edges."""
   edges: [MemberEdge!]!
 
-  """
-  Information to aid in pagination.
-  """
+  """Information to aid in pagination."""
   pageInfo: PageInfo!
 
   """
@@ -609,9 +551,7 @@ type MemberConnection {
   """
   totalCount: Int!
 
-  """
-  Indicates whether totalCount is exact or a lower bound.
-  """
+  """Indicates whether totalCount is exact or a lower bound."""
   totalCountRelation: TotalCountRelation!
 }
 
@@ -619,14 +559,10 @@ type MemberConnection {
 An auto-generated type which holds one Member and a cursor during pagination.
 """
 type MemberEdge {
-  """
-  A cursor for use in pagination.
-  """
+  """A cursor for use in pagination."""
   cursor: String!
 
-  """
-  The item at the end of MemberEdge.
-  """
+  """The item at the end of MemberEdge."""
   node: Member!
 }
 
@@ -636,24 +572,16 @@ Supported fields: name, email, type, status, created_at
 """
 scalar MemberFilter
 
-"""
-Ordering options for member connections
-"""
+"""Ordering options for member connections"""
 input MemberOrder {
-  """
-  The ordering direction.
-  """
+  """The ordering direction."""
   direction: OrderDirection!
 
-  """
-  The field to order members by.
-  """
+  """The field to order members by."""
   field: MemberOrderField!
 }
 
-"""
-Properties by which member connections can be ordered.
-"""
+"""Properties by which member connections can be ordered."""
 enum MemberOrderField {
   CREATED_AT
   ID
@@ -675,29 +603,28 @@ type Mutation {
   banUser(id: ID!, input: BanUserInput = {}): BanUserPayload!
   cancelInvitation(id: ID!): CancelInvitationPayload!
   changeCurrentUserEmail(input: AuthChangeEmailInput!): Boolean!
-  changeCurrentUserPassword(
-    input: AuthChangePasswordInput!
-  ): AuthChangePasswordResultType!
+  changeCurrentUserPassword(input: AuthChangePasswordInput!): AuthChangePasswordResultType!
   createInvitation(input: CreateInvitationInput!): CreateInvitationPayload!
   createMemberApiKey(input: CreateMemberApiKeyInput!): CreateMemberApiKeyResult!
+  createSystemAccount(input: CreateSystemAccountInput!): SystemAccount!
+  createSystemAccountApiKey(input: CreateSystemAccountApiKeyInput!, systemAccountId: ID!): CreateSystemAccountApiKeyResult!
   createUser(input: CreateUserInput!): CreateUserPayload!
   createUserApiKey(input: CreateUserApiKeyInput!): CreateUserApiKeyResult!
   createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload!
   deleteCurrentUser(input: AuthDeleteUserInput = {}): AuthDeleteUserResultType!
   deleteMemberApiKey(id: ID!): MemberApiKey!
+  deletePlatformWorkspace(id: ID!): Workspace!
+  deleteSystemAccount(id: ID!): SystemAccount!
+  deleteSystemAccountApiKey(id: ID!): SystemAccountApiKey!
   deleteUser(id: ID!): DeleteUserPayload!
   deleteUserApiKey(id: ID!): UserApiKey!
   deleteWorkspace(id: ID!): DeleteWorkspacePayload!
   impersonateUser(id: ID!): User!
   leaveWorkspace: LeaveWorkspacePayload!
-  linkCurrentUserAccount(
-    input: AuthLinkSocialAccountInput!
-  ): AuthLinkSocialAccountResultType!
+  linkCurrentUserAccount(input: AuthLinkSocialAccountInput!): AuthLinkSocialAccountResultType!
   rejectInvitation(id: ID!): RejectInvitationPayload!
   removeMember(id: ID!): RemoveMemberPayload!
-  requestPasswordReset(
-    input: AuthRequestPasswordResetInput!
-  ): AuthRequestPasswordResetResultType!
+  requestPasswordReset(input: AuthRequestPasswordResetInput!): AuthRequestPasswordResetResultType!
   resetPassword(input: AuthResetPasswordInput!): Boolean!
   revokeCurrentUserOtherSessions: Boolean!
   revokeCurrentUserSession(id: ID!): Boolean!
@@ -706,16 +633,10 @@ type Mutation {
   revokeUserSessions(userId: ID!): Boolean!
   sendVerificationEmail(input: AuthSendVerificationEmailInput!): Boolean!
   setCurrentUserPassword(newPassword: String!): Boolean!
-  setMemberPermissions(
-    id: ID!
-    input: SetMemberPermissionsInput!
-  ): SetMemberPermissionsPayload!
+  setMemberPermissions(id: ID!, input: SetMemberPermissionsInput!): SetMemberPermissionsPayload!
   setMemberRoles(id: ID!, input: SetMemberRolesInput!): SetMemberRolesPayload!
   setUserPassword(id: ID!, input: SetUserPasswordInput!): Boolean!
-  setUserPermissions(
-    id: ID!
-    input: SetUserPermissionsInput!
-  ): SetUserPermissionsPayload!
+  setUserPermissions(id: ID!, input: SetUserPermissionsInput!): SetUserPermissionsPayload!
   setUserRoles(id: ID!, input: SetUserRolesInput!): SetUserRolesPayload!
   signIn(input: AuthSignInInput!): AuthSignInResultType!
   signInSocial(input: AuthSignInSocialInput!): AuthSignInSocialResultType!
@@ -727,12 +648,12 @@ type Mutation {
   updateCurrentUser(input: AuthUpdateUserInput!): Boolean!
   updateMember(id: ID!, input: UpdateMemberInput!): UpdateMemberPayload
   updateMemberApiKey(id: ID!, input: UpdateMemberApiKeyInput!): MemberApiKey!
+  updatePlatformWorkspace(id: ID!, input: UpdateWorkspaceInput!): Workspace!
+  updateSystemAccount(id: ID!, input: UpdateSystemAccountInput!): SystemAccount!
+  updateSystemAccountApiKey(id: ID!, input: UpdateSystemAccountApiKeyInput!): SystemAccountApiKey!
   updateUser(id: ID!, input: UpdateUserInput!): UpdateUserPayload!
   updateUserApiKey(id: ID!, input: UpdateUserApiKeyInput!): UserApiKey!
-  updateWorkspace(
-    id: ID!
-    input: UpdateWorkspaceInput!
-  ): UpdateWorkspacePayload!
+  updateWorkspace(id: ID!, input: UpdateWorkspaceInput!): UpdateWorkspacePayload!
 }
 
 enum OrderDirection {
@@ -746,14 +667,10 @@ Returns information about pagination in a connection, in accordance with the [Re
 type PageInfo {
   endCursor: String
 
-  """
-  Whether there are more pages to fetch following the current page.
-  """
+  """Whether there are more pages to fetch following the current page."""
   hasNextPage: Boolean!
 
-  """
-  Whether there are any pages prior to the current page.
-  """
+  """Whether there are any pages prior to the current page."""
   hasPreviousPage: Boolean!
   startCursor: String
 }
@@ -773,37 +690,54 @@ type Query {
   member(id: ID!): Member
   memberApiKeyPermissions: [MemberApiKeyPermissionOption!]!
   passwordPolicy: PasswordPolicy!
+  platformWorkspace(id: ID!): Workspace
   socialProviders: [AuthSocialProviderType!]!
-  systemJob(id: ID!): Job
-  systemJobs(
-    """
-    Returns the elements that come after the specified cursor.
-    """
+  systemAccount(id: ID!): SystemAccount
+  systemAccountApiKey(id: ID!): SystemAccountApiKey
+  systemAccounts(
+    """Returns the elements that come after the specified cursor."""
     after: String
 
-    """
-    Returns the elements that come before the specified cursor.
-    """
+    """Returns the elements that come before the specified cursor."""
     before: String
 
-    """
-    Filter jobs using MongoDB query syntax.
-    """
-    filter: JobFilter
+    """Filter systemaccounts using MongoDB query syntax."""
+    filter: SystemAccountFilter
 
-    """
-    Returns up to the first `n` elements from the list.
-    """
+    """Returns up to the first `n` elements from the list."""
     first: Int
 
-    """
-    Returns up to the last `n` elements from the list.
-    """
+    """Returns up to the last `n` elements from the list."""
     last: Int
 
+    """Ordering options for the returned systemaccounts."""
+    orderBy: SystemAccountOrder
+
     """
-    Ordering options for the returned jobs.
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `enabled`
     """
+    query: String
+  ): SystemAccountConnection!
+  systemJob(id: ID!): Job
+  systemJobs(
+    """Returns the elements that come after the specified cursor."""
+    after: String
+
+    """Returns the elements that come before the specified cursor."""
+    before: String
+
+    """Filter jobs using MongoDB query syntax."""
+    filter: JobFilter
+
+    """Returns up to the first `n` elements from the list."""
+    first: Int
+
+    """Returns up to the last `n` elements from the list."""
+    last: Int
+
+    """Ordering options for the returned jobs."""
     orderBy: JobOrder
 
     """
@@ -817,34 +751,22 @@ type Query {
   userApiKeyPermissions: [UserApiKeyPermissionOption!]!
   userJob(id: ID!): Job
   userJobs(
-    """
-    Returns the elements that come after the specified cursor.
-    """
+    """Returns the elements that come after the specified cursor."""
     after: String
 
-    """
-    Returns the elements that come before the specified cursor.
-    """
+    """Returns the elements that come before the specified cursor."""
     before: String
 
-    """
-    Filter jobs using MongoDB query syntax.
-    """
+    """Filter jobs using MongoDB query syntax."""
     filter: JobFilter
 
-    """
-    Returns up to the first `n` elements from the list.
-    """
+    """Returns up to the first `n` elements from the list."""
     first: Int
 
-    """
-    Returns up to the last `n` elements from the list.
-    """
+    """Returns up to the last `n` elements from the list."""
     last: Int
 
-    """
-    Ordering options for the returned jobs.
-    """
+    """Ordering options for the returned jobs."""
     orderBy: JobOrder
 
     """
@@ -857,34 +779,22 @@ type Query {
   userPermissions: [UserPermissionOption!]!
   userRoles: [UserRoleOption!]!
   users(
-    """
-    Returns the elements that come after the specified cursor.
-    """
+    """Returns the elements that come after the specified cursor."""
     after: String
 
-    """
-    Returns the elements that come before the specified cursor.
-    """
+    """Returns the elements that come before the specified cursor."""
     before: String
 
-    """
-    Filter users using MongoDB query syntax.
-    """
+    """Filter users using MongoDB query syntax."""
     filter: UserFilter
 
-    """
-    Returns up to the first `n` elements from the list.
-    """
+    """Returns up to the first `n` elements from the list."""
     first: Int
 
-    """
-    Returns up to the last `n` elements from the list.
-    """
+    """Returns up to the last `n` elements from the list."""
     last: Int
 
-    """
-    Ordering options for the returned users.
-    """
+    """Ordering options for the returned users."""
     orderBy: UserOrder
 
     """
@@ -897,34 +807,22 @@ type Query {
   workspace(id: ID!): Workspace
   workspaceJob(id: ID!): Job
   workspaceJobs(
-    """
-    Returns the elements that come after the specified cursor.
-    """
+    """Returns the elements that come after the specified cursor."""
     after: String
 
-    """
-    Returns the elements that come before the specified cursor.
-    """
+    """Returns the elements that come before the specified cursor."""
     before: String
 
-    """
-    Filter jobs using MongoDB query syntax.
-    """
+    """Filter jobs using MongoDB query syntax."""
     filter: JobFilter
 
-    """
-    Returns up to the first `n` elements from the list.
-    """
+    """Returns up to the first `n` elements from the list."""
     first: Int
 
-    """
-    Returns up to the last `n` elements from the list.
-    """
+    """Returns up to the last `n` elements from the list."""
     last: Int
 
-    """
-    Ordering options for the returned jobs.
-    """
+    """Ordering options for the returned jobs."""
     orderBy: JobOrder
 
     """
@@ -936,6 +834,32 @@ type Query {
   ): JobConnection!
   workspacePermissions: [WorkspacePermissionOption!]!
   workspaceRoles: [WorkspaceRoleOption!]!
+  workspaces(
+    """Returns the elements that come after the specified cursor."""
+    after: String
+
+    """Returns the elements that come before the specified cursor."""
+    before: String
+
+    """Filter workspaces using MongoDB query syntax."""
+    filter: WorkspaceFilter
+
+    """Returns up to the first `n` elements from the list."""
+    first: Int
+
+    """Returns up to the last `n` elements from the list."""
+    last: Int
+
+    """Ordering options for the returned workspaces."""
+    orderBy: WorkspaceOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `created_at`
+    """
+    query: String
+  ): WorkspaceConnection!
 }
 
 type RejectInvitationPayload {
@@ -959,14 +883,10 @@ type Session {
 }
 
 type SessionConnection {
-  """
-  A list of edges.
-  """
+  """A list of edges."""
   edges: [SessionEdge!]!
 
-  """
-  Information to aid in pagination.
-  """
+  """Information to aid in pagination."""
   pageInfo: PageInfo!
 
   """
@@ -974,9 +894,7 @@ type SessionConnection {
   """
   totalCount: Int!
 
-  """
-  Indicates whether totalCount is exact or a lower bound.
-  """
+  """Indicates whether totalCount is exact or a lower bound."""
   totalCountRelation: TotalCountRelation!
 }
 
@@ -984,14 +902,10 @@ type SessionConnection {
 An auto-generated type which holds one Session and a cursor during pagination.
 """
 type SessionEdge {
-  """
-  A cursor for use in pagination.
-  """
+  """A cursor for use in pagination."""
   cursor: String!
 
-  """
-  The item at the end of SessionEdge.
-  """
+  """The item at the end of SessionEdge."""
   node: Session!
 }
 
@@ -1001,24 +915,16 @@ Supported fields: created_at
 """
 scalar SessionFilter
 
-"""
-Ordering options for session connections
-"""
+"""Ordering options for session connections"""
 input SessionOrder {
-  """
-  The ordering direction.
-  """
+  """The ordering direction."""
   direction: OrderDirection!
 
-  """
-  The field to order sessions by.
-  """
+  """The field to order sessions by."""
   field: SessionOrderField!
 }
 
-"""
-Properties by which session connections can be ordered.
-"""
+"""Properties by which session connections can be ordered."""
 enum SessionOrderField {
   CREATED_AT
   ID
@@ -1065,6 +971,162 @@ type SignUpPayload {
   token: String
 }
 
+type SystemAccount {
+  apiKeys(
+    """Returns the elements that come after the specified cursor."""
+    after: String
+
+    """Returns the elements that come before the specified cursor."""
+    before: String
+
+    """Filter systemaccountapikeys using MongoDB query syntax."""
+    filter: SystemAccountApiKeyFilter
+
+    """Returns up to the first `n` elements from the list."""
+    first: Int
+
+    """Returns up to the last `n` elements from the list."""
+    last: Int
+
+    """Ordering options for the returned systemaccountapikeys."""
+    orderBy: SystemAccountApiKeyOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `enabled`
+    """
+    query: String
+  ): SystemAccountApiKeyConnection!
+  createdAt: DateTime!
+  createdById: ID
+  enabled: Boolean!
+  id: ID!
+  name: String!
+  permissions: [SystemAccountPermission!]!
+  updatedAt: DateTime!
+}
+
+type SystemAccountApiKey {
+  createdAt: DateTime!
+  createdById: ID
+  enabled: Boolean!
+  expiresAt: DateTime
+  id: ID!
+  lastUsedAt: DateTime
+  name: String!
+  permissions: [SystemAccountPermission!]!
+  prefix: String
+  start: String
+  systemAccountId: ID!
+  updatedAt: DateTime!
+}
+
+type SystemAccountApiKeyConnection {
+  """A list of edges."""
+  edges: [SystemAccountApiKeyEdge!]!
+
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """
+  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
+  """
+  totalCount: Int!
+
+  """Indicates whether totalCount is exact or a lower bound."""
+  totalCountRelation: TotalCountRelation!
+}
+
+"""
+An auto-generated type which holds one SystemAccountApiKey and a cursor during pagination.
+"""
+type SystemAccountApiKeyEdge {
+  """A cursor for use in pagination."""
+  cursor: String!
+
+  """The item at the end of SystemAccountApiKeyEdge."""
+  node: SystemAccountApiKey!
+}
+
+"""
+A filter for SystemAccountApiKey that accepts MongoDB query syntax.
+Supported fields: name, enabled, created_at
+"""
+scalar SystemAccountApiKeyFilter
+
+"""Ordering options for systemaccountapikey connections"""
+input SystemAccountApiKeyOrder {
+  """The ordering direction."""
+  direction: OrderDirection!
+
+  """The field to order systemaccountapikeys by."""
+  field: SystemAccountApiKeyOrderField!
+}
+
+"""Properties by which systemaccountapikey connections can be ordered."""
+enum SystemAccountApiKeyOrderField {
+  CREATED_AT
+  ID
+}
+
+type SystemAccountConnection {
+  """A list of edges."""
+  edges: [SystemAccountEdge!]!
+
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """
+  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
+  """
+  totalCount: Int!
+
+  """Indicates whether totalCount is exact or a lower bound."""
+  totalCountRelation: TotalCountRelation!
+}
+
+"""
+An auto-generated type which holds one SystemAccount and a cursor during pagination.
+"""
+type SystemAccountEdge {
+  """A cursor for use in pagination."""
+  cursor: String!
+
+  """The item at the end of SystemAccountEdge."""
+  node: SystemAccount!
+}
+
+"""
+A filter for SystemAccount that accepts MongoDB query syntax.
+Supported fields: name, enabled, created_at
+"""
+scalar SystemAccountFilter
+
+"""Ordering options for systemaccount connections"""
+input SystemAccountOrder {
+  """The ordering direction."""
+  direction: OrderDirection!
+
+  """The field to order systemaccounts by."""
+  field: SystemAccountOrderField!
+}
+
+"""Properties by which systemaccount connections can be ordered."""
+enum SystemAccountOrderField {
+  CREATED_AT
+  ID
+}
+
+enum SystemAccountPermission {
+  USER__DELETE
+  USER__READ
+  USER__UPDATE
+  WORKSPACE__DELETE_ANY
+  WORKSPACE__READ_ANY
+  WORKSPACE__UPDATE_ANY
+}
+
 enum TotalCountRelation {
   EQ
   GTE
@@ -1089,6 +1151,19 @@ input UpdateMemberInput {
 
 type UpdateMemberPayload {
   id: ID!
+}
+
+input UpdateSystemAccountApiKeyInput {
+  enabled: Boolean
+  expiresAt: DateTime
+  name: String
+  permissions: [SystemAccountPermission!]
+}
+
+input UpdateSystemAccountInput {
+  enabled: Boolean
+  name: String
+  permissions: [SystemAccountPermission!]
 }
 
 input UpdateUserApiKeyInput {
@@ -1119,34 +1194,22 @@ type UpdateWorkspacePayload {
 
 type User {
   accounts(
-    """
-    Returns the elements that come after the specified cursor.
-    """
+    """Returns the elements that come after the specified cursor."""
     after: String
 
-    """
-    Returns the elements that come before the specified cursor.
-    """
+    """Returns the elements that come before the specified cursor."""
     before: String
 
-    """
-    Filter accounts using MongoDB query syntax.
-    """
+    """Filter accounts using MongoDB query syntax."""
     filter: AccountFilter
 
-    """
-    Returns up to the first `n` elements from the list.
-    """
+    """Returns up to the first `n` elements from the list."""
     first: Int
 
-    """
-    Returns up to the last `n` elements from the list.
-    """
+    """Returns up to the last `n` elements from the list."""
     last: Int
 
-    """
-    Ordering options for the returned accounts.
-    """
+    """Ordering options for the returned accounts."""
     orderBy: AccountOrder
 
     """
@@ -1158,34 +1221,22 @@ type User {
   ): AccountConnection!
   apiKey(id: ID!): UserApiKey
   apiKeys(
-    """
-    Returns the elements that come after the specified cursor.
-    """
+    """Returns the elements that come after the specified cursor."""
     after: String
 
-    """
-    Returns the elements that come before the specified cursor.
-    """
+    """Returns the elements that come before the specified cursor."""
     before: String
 
-    """
-    Filter userapikeys using MongoDB query syntax.
-    """
+    """Filter userapikeys using MongoDB query syntax."""
     filter: UserApiKeyFilter
 
-    """
-    Returns up to the first `n` elements from the list.
-    """
+    """Returns up to the first `n` elements from the list."""
     first: Int
 
-    """
-    Returns up to the last `n` elements from the list.
-    """
+    """Returns up to the last `n` elements from the list."""
     last: Int
 
-    """
-    Ordering options for the returned userapikeys.
-    """
+    """Ordering options for the returned userapikeys."""
     orderBy: UserApiKeyOrder
 
     """
@@ -1204,34 +1255,22 @@ type User {
   id: ID!
   image: String
   invitations(
-    """
-    Returns the elements that come after the specified cursor.
-    """
+    """Returns the elements that come after the specified cursor."""
     after: String
 
-    """
-    Returns the elements that come before the specified cursor.
-    """
+    """Returns the elements that come before the specified cursor."""
     before: String
 
-    """
-    Filter invitations using MongoDB query syntax.
-    """
+    """Filter invitations using MongoDB query syntax."""
     filter: InvitationFilter
 
-    """
-    Returns up to the first `n` elements from the list.
-    """
+    """Returns up to the first `n` elements from the list."""
     first: Int
 
-    """
-    Returns up to the last `n` elements from the list.
-    """
+    """Returns up to the last `n` elements from the list."""
     last: Int
 
-    """
-    Ordering options for the returned invitations.
-    """
+    """Ordering options for the returned invitations."""
     orderBy: InvitationOrder
 
     """
@@ -1245,67 +1284,43 @@ type User {
   permissions: [UserPermission!]!
   roles: [UserRole!]!
   sessions(
-    """
-    Returns the elements that come after the specified cursor.
-    """
+    """Returns the elements that come after the specified cursor."""
     after: String
 
-    """
-    Returns the elements that come before the specified cursor.
-    """
+    """Returns the elements that come before the specified cursor."""
     before: String
 
-    """
-    Filter sessions using MongoDB query syntax.
-    """
+    """Filter sessions using MongoDB query syntax."""
     filter: SessionFilter
 
-    """
-    Returns up to the first `n` elements from the list.
-    """
+    """Returns up to the first `n` elements from the list."""
     first: Int
 
-    """
-    Returns up to the last `n` elements from the list.
-    """
+    """Returns up to the last `n` elements from the list."""
     last: Int
 
-    """
-    Ordering options for the returned sessions.
-    """
+    """Ordering options for the returned sessions."""
     orderBy: SessionOrder
     query: String
   ): SessionConnection!
   updatedAt: DateTime!
   workspaces(
-    """
-    Returns the elements that come after the specified cursor.
-    """
+    """Returns the elements that come after the specified cursor."""
     after: String
 
-    """
-    Returns the elements that come before the specified cursor.
-    """
+    """Returns the elements that come before the specified cursor."""
     before: String
 
-    """
-    Filter workspaces using MongoDB query syntax.
-    """
+    """Filter workspaces using MongoDB query syntax."""
     filter: WorkspaceFilter
 
-    """
-    Returns up to the first `n` elements from the list.
-    """
+    """Returns up to the first `n` elements from the list."""
     first: Int
 
-    """
-    Returns up to the last `n` elements from the list.
-    """
+    """Returns up to the last `n` elements from the list."""
     last: Int
 
-    """
-    Ordering options for the returned workspaces.
-    """
+    """Ordering options for the returned workspaces."""
     orderBy: WorkspaceOrder
 
     """
@@ -1319,6 +1334,7 @@ type User {
 
 type UserApiKey {
   createdAt: DateTime!
+  createdById: ID
   enabled: Boolean!
   expiresAt: DateTime
   id: ID!
@@ -1331,14 +1347,10 @@ type UserApiKey {
 }
 
 type UserApiKeyConnection {
-  """
-  A list of edges.
-  """
+  """A list of edges."""
   edges: [UserApiKeyEdge!]!
 
-  """
-  Information to aid in pagination.
-  """
+  """Information to aid in pagination."""
   pageInfo: PageInfo!
 
   """
@@ -1346,9 +1358,7 @@ type UserApiKeyConnection {
   """
   totalCount: Int!
 
-  """
-  Indicates whether totalCount is exact or a lower bound.
-  """
+  """Indicates whether totalCount is exact or a lower bound."""
   totalCountRelation: TotalCountRelation!
 }
 
@@ -1356,14 +1366,10 @@ type UserApiKeyConnection {
 An auto-generated type which holds one UserApiKey and a cursor during pagination.
 """
 type UserApiKeyEdge {
-  """
-  A cursor for use in pagination.
-  """
+  """A cursor for use in pagination."""
   cursor: String!
 
-  """
-  The item at the end of UserApiKeyEdge.
-  """
+  """The item at the end of UserApiKeyEdge."""
   node: UserApiKey!
 }
 
@@ -1373,24 +1379,16 @@ Supported fields: name, prefix, enabled, last_used_at, created_at
 """
 scalar UserApiKeyFilter
 
-"""
-Ordering options for userapikey connections
-"""
+"""Ordering options for userapikey connections"""
 input UserApiKeyOrder {
-  """
-  The ordering direction.
-  """
+  """The ordering direction."""
   direction: OrderDirection!
 
-  """
-  The field to order userapikeys by.
-  """
+  """The field to order userapikeys by."""
   field: UserApiKeyOrderField!
 }
 
-"""
-Properties by which userapikey connections can be ordered.
-"""
+"""Properties by which userapikey connections can be ordered."""
 enum UserApiKeyOrderField {
   CREATED_AT
   ID
@@ -1409,6 +1407,10 @@ enum UserApiKeyPermission {
   SERVICE_ACCOUNT__WRITE
   SESSION__READ
   SESSION__REVOKE
+  SYSTEM_ACCOUNT_API_KEY__READ
+  SYSTEM_ACCOUNT_API_KEY__WRITE
+  SYSTEM_ACCOUNT__READ
+  SYSTEM_ACCOUNT__WRITE
   USER_API_KEY__READ
   USER_API_KEY__WRITE
   USER__BAN
@@ -1424,8 +1426,11 @@ enum UserApiKeyPermission {
   USER__UPDATE
   WORKSPACE__CREATE
   WORKSPACE__DELETE
+  WORKSPACE__DELETE_ANY
   WORKSPACE__READ
+  WORKSPACE__READ_ANY
   WORKSPACE__UPDATE
+  WORKSPACE__UPDATE_ANY
 }
 
 type UserApiKeyPermissionOption {
@@ -1435,14 +1440,10 @@ type UserApiKeyPermissionOption {
 }
 
 type UserConnection {
-  """
-  A list of edges.
-  """
+  """A list of edges."""
   edges: [UserEdge!]!
 
-  """
-  Information to aid in pagination.
-  """
+  """Information to aid in pagination."""
   pageInfo: PageInfo!
 
   """
@@ -1450,9 +1451,7 @@ type UserConnection {
   """
   totalCount: Int!
 
-  """
-  Indicates whether totalCount is exact or a lower bound.
-  """
+  """Indicates whether totalCount is exact or a lower bound."""
   totalCountRelation: TotalCountRelation!
 }
 
@@ -1460,14 +1459,10 @@ type UserConnection {
 An auto-generated type which holds one User and a cursor during pagination.
 """
 type UserEdge {
-  """
-  A cursor for use in pagination.
-  """
+  """A cursor for use in pagination."""
   cursor: String!
 
-  """
-  The item at the end of UserEdge.
-  """
+  """The item at the end of UserEdge."""
   node: User!
 }
 
@@ -1477,24 +1472,16 @@ Supported fields: name, email, created_at
 """
 scalar UserFilter
 
-"""
-Ordering options for user connections
-"""
+"""Ordering options for user connections"""
 input UserOrder {
-  """
-  The ordering direction.
-  """
+  """The ordering direction."""
   direction: OrderDirection!
 
-  """
-  The field to order users by.
-  """
+  """The field to order users by."""
   field: UserOrderField!
 }
 
-"""
-Properties by which user connections can be ordered.
-"""
+"""Properties by which user connections can be ordered."""
 enum UserOrderField {
   CREATED_AT
   ID
@@ -1503,6 +1490,10 @@ enum UserOrderField {
 enum UserPermission {
   SESSION__READ
   SESSION__REVOKE
+  SYSTEM_ACCOUNT_API_KEY__READ
+  SYSTEM_ACCOUNT_API_KEY__WRITE
+  SYSTEM_ACCOUNT__READ
+  SYSTEM_ACCOUNT__WRITE
   USER_API_KEY__READ
   USER_API_KEY__WRITE
   USER__BAN
@@ -1517,6 +1508,9 @@ enum UserPermission {
   USER__SET_ROLES
   USER__UPDATE
   WORKSPACE__CREATE
+  WORKSPACE__DELETE_ANY
+  WORKSPACE__READ_ANY
+  WORKSPACE__UPDATE_ANY
 }
 
 type UserPermissionOption {
@@ -1537,34 +1531,22 @@ type UserRoleOption {
 type Workspace {
   apiKey(id: ID!): MemberApiKey
   apiKeys(
-    """
-    Returns the elements that come after the specified cursor.
-    """
+    """Returns the elements that come after the specified cursor."""
     after: String
 
-    """
-    Returns the elements that come before the specified cursor.
-    """
+    """Returns the elements that come before the specified cursor."""
     before: String
 
-    """
-    Filter memberapikeys using MongoDB query syntax.
-    """
+    """Filter memberapikeys using MongoDB query syntax."""
     filter: MemberApiKeyFilter
 
-    """
-    Returns up to the first `n` elements from the list.
-    """
+    """Returns up to the first `n` elements from the list."""
     first: Int
 
-    """
-    Returns up to the last `n` elements from the list.
-    """
+    """Returns up to the last `n` elements from the list."""
     last: Int
 
-    """
-    Ordering options for the returned memberapikeys.
-    """
+    """Ordering options for the returned memberapikeys."""
     orderBy: MemberApiKeyOrder
 
     """
@@ -1577,34 +1559,22 @@ type Workspace {
   createdAt: DateTime!
   id: ID!
   invitations(
-    """
-    Returns the elements that come after the specified cursor.
-    """
+    """Returns the elements that come after the specified cursor."""
     after: String
 
-    """
-    Returns the elements that come before the specified cursor.
-    """
+    """Returns the elements that come before the specified cursor."""
     before: String
 
-    """
-    Filter invitations using MongoDB query syntax.
-    """
+    """Filter invitations using MongoDB query syntax."""
     filter: InvitationFilter
 
-    """
-    Returns up to the first `n` elements from the list.
-    """
+    """Returns up to the first `n` elements from the list."""
     first: Int
 
-    """
-    Returns up to the last `n` elements from the list.
-    """
+    """Returns up to the last `n` elements from the list."""
     last: Int
 
-    """
-    Ordering options for the returned invitations.
-    """
+    """Ordering options for the returned invitations."""
     orderBy: InvitationOrder
 
     """
@@ -1615,34 +1585,22 @@ type Workspace {
     query: String
   ): InvitationConnection!
   members(
-    """
-    Returns the elements that come after the specified cursor.
-    """
+    """Returns the elements that come after the specified cursor."""
     after: String
 
-    """
-    Returns the elements that come before the specified cursor.
-    """
+    """Returns the elements that come before the specified cursor."""
     before: String
 
-    """
-    Filter members using MongoDB query syntax.
-    """
+    """Filter members using MongoDB query syntax."""
     filter: MemberFilter
 
-    """
-    Returns up to the first `n` elements from the list.
-    """
+    """Returns up to the first `n` elements from the list."""
     first: Int
 
-    """
-    Returns up to the last `n` elements from the list.
-    """
+    """Returns up to the last `n` elements from the list."""
     last: Int
 
-    """
-    Ordering options for the returned members.
-    """
+    """Ordering options for the returned members."""
     orderBy: MemberOrder
 
     """
@@ -1657,14 +1615,10 @@ type Workspace {
 }
 
 type WorkspaceConnection {
-  """
-  A list of edges.
-  """
+  """A list of edges."""
   edges: [WorkspaceEdge!]!
 
-  """
-  Information to aid in pagination.
-  """
+  """Information to aid in pagination."""
   pageInfo: PageInfo!
 
   """
@@ -1672,9 +1626,7 @@ type WorkspaceConnection {
   """
   totalCount: Int!
 
-  """
-  Indicates whether totalCount is exact or a lower bound.
-  """
+  """Indicates whether totalCount is exact or a lower bound."""
   totalCountRelation: TotalCountRelation!
 }
 
@@ -1682,14 +1634,10 @@ type WorkspaceConnection {
 An auto-generated type which holds one Workspace and a cursor during pagination.
 """
 type WorkspaceEdge {
-  """
-  A cursor for use in pagination.
-  """
+  """A cursor for use in pagination."""
   cursor: String!
 
-  """
-  The item at the end of WorkspaceEdge.
-  """
+  """The item at the end of WorkspaceEdge."""
   node: Workspace!
 }
 
@@ -1699,24 +1647,16 @@ Supported fields: name, created_at
 """
 scalar WorkspaceFilter
 
-"""
-Ordering options for workspace connections
-"""
+"""Ordering options for workspace connections"""
 input WorkspaceOrder {
-  """
-  The ordering direction.
-  """
+  """The ordering direction."""
   direction: OrderDirection!
 
-  """
-  The field to order workspaces by.
-  """
+  """The field to order workspaces by."""
   field: WorkspaceOrderField!
 }
 
-"""
-Properties by which workspace connections can be ordered.
-"""
+"""Properties by which workspace connections can be ordered."""
 enum WorkspaceOrderField {
   CREATED_AT
   ID

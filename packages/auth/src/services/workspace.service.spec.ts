@@ -510,6 +510,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
               variables: {
                 "app.user.id": "",
                 "app.workspace.id": "",
+                "app.system_account.id": "",
                 "app.member.id": "",
               },
             });

@@ -22,9 +22,9 @@ import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
 import { Account } from "../entities/account.entity.js";
+import { ApiKeyEntity } from "../entities/api-key.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
-import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { RequestIdentity } from "../infrastructure/request-identity.js";
 import { RevokedAuthenticationException } from "../infrastructure/revoked-authentication.exception.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
@@ -424,10 +424,10 @@ export class UserService {
       await this.em.transactional(
         async (em) => {
           // Persist the final use in the same transaction before revoking identity.
-          if (apiKey instanceof UserApiKey && apiKey.user.id === user.id) {
+          if (apiKey?.ownerType === "user" && apiKey.user?.id === user.id) {
             const now = new Date();
             await em.nativeUpdate(
-              UserApiKey,
+              ApiKeyEntity,
               { id: apiKey.id },
               {
                 lastUsedAt: now,

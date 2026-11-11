@@ -1,9 +1,9 @@
 import { RequestContext } from "@nest-boot/request-context";
 
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
-import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
 import type { RequestPermissions } from "../interfaces/request-permissions.interface.js";
+import { resolveApiKeyPermissionCatalog } from "./api-key-permissions.util.js";
 import { getCurrentApiKey } from "./get-current-api-key.util.js";
 import {
   intersectPermissions,
@@ -50,7 +50,27 @@ export function resolveRequestPermissions(
   const keyPermissions = Array.isArray(apiKey?.permissions)
     ? apiKey.permissions
     : [];
-  const memberKey = apiKey instanceof MemberApiKey;
+  if (apiKey?.ownerType === "system_account") {
+    const account = apiKey.systemAccount?.unwrap();
+    const allowed = resolveApiKeyPermissionCatalog(
+      options,
+      "systemAccount",
+    ).allowed;
+    const grants = account?.enabled
+      ? intersectPermissions(
+          intersectPermissions(account.permissions, keyPermissions),
+          allowed,
+        )
+      : [];
+    const permissions = Object.freeze({
+      user: Object.freeze(grants),
+      workspace: Object.freeze([] as string[]),
+      apiKey: Object.freeze([...keyPermissions]),
+    });
+    RequestContext.set(REQUEST_PERMISSIONS, { options, permissions });
+    return permissions;
+  }
+  const memberKey = apiKey?.ownerType === "member";
   const unrestricted =
     !apiKey || (Array.isArray(apiKey.permissions) && !keyPermissions.length);
   const limit = (permissions: readonly string[]) =>

@@ -1376,12 +1376,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       ).toEqual([{ user_id: administrator.user.id, roles: ['member'] }]);
       expect(
         await connection.execute(
-          'select k.id from member_api_key k join member m on m.id = k.member_id where m.workspace_id = ?',
+          "select k.id from api_key k join member m on m.id = k.owner_id where k.owner_type = 'member' and m.workspace_id = ?",
           [workspace.id],
         ),
       ).toEqual([{ id: retainedKey.entity.id }]);
       expect(
-        await connection.execute('select id from member_api_key where id = ?', [
+        await connection.execute('select id from api_key where id = ?', [
           deletedKey.entity.id,
         ]),
       ).toEqual([]);
@@ -1400,7 +1400,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           (select count(*)::int from "user" where id = ?) as users,
           (select count(*)::int from account where user_id = ?) as accounts,
           (select count(*)::int from session where user_id = ?) as sessions,
-          (select count(*)::int from user_api_key where user_id = ?) as api_keys,
+          (select count(*)::int from api_key where owner_type = 'user' and owner_id = ?) as api_keys,
           (select count(*)::int from member where user_id = ? and workspace_id = ?) as members
       `,
         [
@@ -2344,7 +2344,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             [workspace.id],
           ),
         ).toEqual([{ id: workspace.id }]);
-        const table = scope === 'user' ? 'user_api_key' : 'member_api_key';
+        const table = 'api_key';
         const rows = await migrationOrm.em.execute(
           `select enabled, permissions, last_used_at from ${table} where id = ?`,
           [key.entity.id],
@@ -2384,7 +2384,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             name: 'Switch key',
             permissions: ['USER__IMPERSONATE'],
           });
-      const table = memberKey ? 'member_api_key' : 'user_api_key';
+      const table = 'api_key';
       expect(
         await connection.execute(
           `select last_used_at from ${table} where id = ?`,
@@ -2439,7 +2439,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
     expect(
       await connection.execute(
-        'select last_used_at from user_api_key where id = ?',
+        'select last_used_at from api_key where id = ?',
         [key.entity.id],
       ),
     ).toEqual([{ last_used_at: null }]);
@@ -2452,7 +2452,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
     expectNoGraphQLErrors(response);
     const [stored] = await connection.execute<{ last_used_at: Date | null }[]>(
-      'select last_used_at from user_api_key where id = ?',
+      'select last_used_at from api_key where id = ?',
       [key.entity.id],
     );
     expect(stored.last_used_at).not.toBeNull();
@@ -2630,7 +2630,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       const connection = migrationOrm.em.getConnection();
       const readKey = () =>
         connection.execute<{ id: string }[]>(
-          'select id from member_api_key where id = ?',
+          'select id from api_key where id = ?',
           [key.entity.id],
         );
       expect(await readKey()).toEqual([{ id: key.entity.id }]);
@@ -4626,7 +4626,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
   });
 
-  it('rejects credentials duplicated across the two API-key tables', async () => {
+  it('prevents duplicate credentials across owner kinds with a global database constraint', async () => {
     const user = await createAuthenticatedUser('Ambiguous Key Owner');
     const workspace = await createWorkspace(user, 'Ambiguous Keys');
     const personal = await createUserApiKey(user, {
@@ -4637,17 +4637,19 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       name: 'Workspace',
       permissions: [],
     });
-    await migrationOrm.em
-      .getConnection()
-      .execute(
-        'update member_api_key set key = (select key from user_api_key where id = ?) where id = ?',
-        [personal.entity.id, shared.entity.id],
-      );
+    await expect(
+      migrationOrm.em
+        .getConnection()
+        .execute(
+          'update api_key set key = (select key from api_key where id = ?) where id = ?',
+          [personal.entity.id, shared.entity.id],
+        ),
+    ).rejects.toThrow(/unique/i);
     const response = await gql('query { currentUser { id } }', {
       bearerToken: personal.apiKey,
     });
-    expect(response.status).toBe(401);
-    expect(response.body.message).toBe('Invalid API key');
+    expectNoGraphQLErrors(response);
+    expect(response.body.data.currentUser.id).toBe(user.user.id);
   });
 
   it('prevents workspace administrators from issuing keys above their permissions', async () => {
@@ -4739,7 +4741,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const connection = migrationOrm.em.getConnection();
     expect(
       await connection.execute(
-        "select id from user_api_key where name = 'Invalid prefix' union all select id from member_api_key where name = 'Invalid prefix'",
+        "select id from api_key where name = 'Invalid prefix'",
       ),
     ).toEqual([]);
     const memberKey = await createMemberApiKey(owner, workspace.id, {
@@ -6071,9 +6073,11 @@ async function applyMigrations(orm: AdminOrm) {
 
     await migration.up();
 
-    for (const statement of migration.getQueries()) {
-      await orm.em.getConnection().execute(statement);
-    }
+    await orm.em.transactional(async (em) => {
+      for (const statement of migration.getQueries()) {
+        await em.execute(statement);
+      }
+    });
   }
 }
 
@@ -6234,6 +6238,7 @@ async function getFreePort() {
  * @param baseUrl - Base URL of the test server.
  * @param serverProcess - Child process running the test server.
  * @param getServerOutput - Callback that retrieves captured server output.
+ * @returns Result of the authorized operation.
  */
 async function waitForServer(
   baseUrl: string,
@@ -6288,6 +6293,7 @@ function formatUnknownError(error: unknown) {
 /**
  * Stops the child process running the integration test server.
  * @param serverProcess - Child process running the test server.
+ * @returns Result of the authorized operation.
  */
 async function stopServer(serverProcess: ChildProcessWithoutNullStreams) {
   if (serverProcess.exitCode !== null || serverProcess.signalCode !== null) {

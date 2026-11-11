@@ -199,8 +199,8 @@ describe("public API", () => {
       "Workspace",
       "Member",
       "Invitation",
-      "UserApiKey",
-      "MemberApiKey",
+      "ApiKeyEntity",
+      "SystemAccount",
     ] as const;
     expect([
       ...publicApi.entities,
@@ -210,7 +210,7 @@ describe("public API", () => {
       expect([...publicApi.entities, ...publicApi.workspaceEntities]).toContain(
         publicApi[name],
       );
-      if (name !== "Verification") {
+      if (name !== "Verification" && name !== "ApiKeyEntity") {
         expect(publicApi).toHaveProperty(`${name}Connection`);
       }
     }
@@ -292,6 +292,45 @@ describe("exported input contracts", () => {
   }
 
   const contracts: InputContract[] = [
+    {
+      name: "CreateSystemAccountInput",
+      values: { name: "Integration", permissions: ["user:read"] },
+      required: ["name"],
+      nullable: ["permissions"],
+    },
+    {
+      name: "UpdateSystemAccountInput",
+      values: {
+        name: "Integration",
+        enabled: false,
+        permissions: ["user:read"],
+      },
+      required: [],
+      nullable: ["permissions"],
+    },
+    {
+      name: "CreateSystemAccountApiKeyInput",
+      values: {
+        name: "Key",
+        permissions: ["user:read"],
+        prefix: "sys_",
+        expiresAt: new Date("2030-01-01T00:00:00Z"),
+      },
+      required: ["name"],
+      nullable: ["permissions", "expiresAt"],
+    },
+    {
+      name: "UpdateSystemAccountApiKeyInput",
+      values: {
+        name: "Key",
+        enabled: false,
+        permissions: ["user:read"],
+        expiresAt: new Date("2030-01-01T00:00:00Z"),
+      },
+      required: [],
+      nullable: ["permissions", "expiresAt"],
+    },
+
     {
       name: "AddMemberInput",
       values: {

@@ -112,6 +112,7 @@ describe("RequestIdentity", () => {
             variables: {
               "app.user.id": user?.id ?? "",
               "app.workspace.id": valid ? workspace.id : "",
+              "app.system_account.id": "",
               "app.member.id": valid ? member.id : "",
             },
           });
@@ -143,6 +144,7 @@ describe("RequestIdentity", () => {
         variables: {
           "app.user.id": "",
           "app.workspace.id": workspace.id,
+          "app.system_account.id": "",
           "app.member.id": "",
         },
       });
@@ -162,6 +164,7 @@ describe("RequestIdentity", () => {
         variables: {
           "app.user.id": user.id,
           "app.workspace.id": workspace.id,
+          "app.system_account.id": "",
           "app.member.id": first.id,
         },
       });
@@ -175,6 +178,7 @@ describe("RequestIdentity", () => {
         variables: {
           "app.user.id": user.id,
           "app.workspace.id": workspace.id,
+          "app.system_account.id": "",
           "app.member.id": second.id,
         },
       });
@@ -189,6 +193,7 @@ describe("RequestIdentity", () => {
         variables: {
           "app.user.id": user.id,
           "app.workspace.id": "",
+          "app.system_account.id": "",
           "app.member.id": "",
         },
       });
@@ -198,6 +203,7 @@ describe("RequestIdentity", () => {
         variables: {
           "app.user.id": "",
           "app.workspace.id": "",
+          "app.system_account.id": "",
           "app.member.id": "",
         },
       });
@@ -329,6 +335,7 @@ describe("RequestIdentity", () => {
           variables: {
             "app.user.id": "",
             "app.workspace.id": "",
+            "app.system_account.id": "",
             "app.member.id": "",
           },
         });
@@ -681,6 +688,7 @@ describe("unified request abilities", () => {
           variables: {
             "app.user.id": first.user.id,
             "app.workspace.id": second.workspace.id,
+            "app.system_account.id": "",
             "app.member.id": second.member.id,
           },
         });

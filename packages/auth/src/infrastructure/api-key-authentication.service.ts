@@ -2,14 +2,15 @@ import { EntityManager, Reference } from "@mikro-orm/core";
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
-import { MemberApiKey } from "../entities/member-api-key.entity.js";
-import { UserApiKey } from "../entities/user-api-key.entity.js";
+import { ApiKeyEntity } from "../entities/api-key.entity.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import type { ApiKeyValidation } from "../types/api-key-validation.type.js";
 import { hashApiKey } from "../utils/api-key-credential.util.js";
+import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
+import { omitCredentials } from "../utils/omit-credentials.util.js";
 
 /**
- * Authenticates both credential kinds; management stays in their domain services.
+ * Authenticates all three credential kinds; management stays in their domain services.
  * @internal
  */
 @Injectable()
@@ -30,24 +31,21 @@ export class ApiKeyAuthenticationService {
       throw new UnauthorizedException("Missing API key");
     }
     const key = hashApiKey(plaintext);
-    const userKey = await this.em.findOne(
-      UserApiKey,
-      { key },
-      { populate: ["user"] },
-    );
-    const memberKey =
-      this.options.workspace?.enabled === true
-        ? await this.em.findOne(
-            MemberApiKey,
-            { key },
-            { populate: ["member.workspace", "member.user"] },
-          )
-        : null;
-    if ((!userKey && !memberKey) || (userKey && memberKey)) {
-      throw new UnauthorizedException("Invalid API key");
-    }
-    const apiKey = userKey ?? memberKey;
-    if (!apiKey) {
+    const apiKey = await this.em.findOne(ApiKeyEntity, {
+      key,
+      ...(this.options.workspace?.enabled === true
+        ? {}
+        : { ownerType: { $in: ["user", "system_account"] } }),
+    });
+    if (
+      !apiKey ||
+      (apiKey.ownerType !== "user" &&
+        apiKey.ownerType !== "system_account" &&
+        !(
+          apiKey.ownerType === "member" &&
+          this.options.workspace?.enabled === true
+        ))
+    ) {
       throw new UnauthorizedException("Invalid API key");
     }
     if (!apiKey.enabled) {
@@ -56,23 +54,41 @@ export class ApiKeyAuthenticationService {
     if (apiKey.expiresAt && apiKey.expiresAt <= new Date()) {
       throw new UnauthorizedException("API key has expired");
     }
-    if (userKey) {
-      const user = Reference.unwrapReference(userKey.user);
+    if (apiKey.ownerType === "system_account") {
+      await this.em.populate(apiKey, ["owner"]);
+      const systemAccount =
+        apiKey.systemAccount && Reference.unwrapReference(apiKey.systemAccount);
+      if (!systemAccount?.enabled) {
+        throw new UnauthorizedException("Invalid API key");
+      }
+      assertApiKeyOwner(apiKey, "system_account");
+      return {
+        apiKey: omitCredentials(apiKey, []),
+        ownerType: "system_account",
+        systemAccount,
+      };
+    }
+    if (apiKey.ownerType === "user") {
+      await this.em.populate(apiKey, ["owner"]);
+      if (!apiKey.user) {
+        throw new UnauthorizedException("Invalid API key");
+      }
+      const user = Reference.unwrapReference(apiKey.user);
       if (
         user.banned &&
         (!user.banExpiresAt || user.banExpiresAt > new Date())
       ) {
         throw new UnauthorizedException("Invalid API key");
       }
-      return { apiKey: userKey, ownerType: "user", user };
+      assertApiKeyOwner(apiKey, "user");
+      return { apiKey: omitCredentials(apiKey, []), ownerType: "user", user };
     }
-    if (!memberKey) {
+    await this.em.populate(apiKey, ["owner"]);
+    if (!apiKey.member) {
       throw new UnauthorizedException("Invalid API key");
     }
-    if (!memberKey.member) {
-      throw new UnauthorizedException("Invalid API key");
-    }
-    const member = Reference.unwrapReference(memberKey.member);
+    const member = Reference.unwrapReference(apiKey.member);
+    await this.em.populate(member, ["workspace", "user"]);
     const user = member.user ? Reference.unwrapReference(member.user) : null;
     if (
       member.status !== "ACTIVE" ||
@@ -84,8 +100,9 @@ export class ApiKeyAuthenticationService {
       throw new UnauthorizedException("Invalid API key");
     }
     const workspace = Reference.unwrapReference(member.workspace);
+    assertApiKeyOwner(apiKey, "member");
     return {
-      apiKey: memberKey,
+      apiKey: omitCredentials(apiKey, []),
       ownerType: "member",
       workspace,
       member,
@@ -99,17 +116,23 @@ export class ApiKeyAuthenticationService {
    * @returns Callback that records usage for the captured key.
    */
   captureUsage(apiKey: ApiKeyMetadata): () => Promise<ApiKeyMetadata> {
-    // Forking copies the session context without changing the request identity.
-    // An existing transaction remains attached; unrelated pending writes do not.
-    const recorder = new ApiKeyAuthenticationService(
-      this.em.fork({ useContext: false, keepTransactionContext: true }),
-      this.options,
-    );
+    const system = apiKey.ownerType === "system_account";
+    // System credentials have no request-role SQL access. Only the framework's
+    // captured usage writer bypasses RLS, with an isolated manager and exact key ID.
+    // Human/member usage retains the caller's transaction and database scope.
+    const manager = this.em.fork({
+      useContext: false,
+      keepTransactionContext: !system,
+    });
+    if (system) {
+      manager.clearSessionContext();
+    }
+    const recorder = new ApiKeyAuthenticationService(manager, this.options);
     return () => recorder.recordUsage(apiKey);
   }
 
   /**
-   * Records successful use in the credential's own table. Deleted keys remain deleted.
+   * Records successful use for the credential's concrete owner type. Deleted keys remain deleted.
    * @param apiKey - API key whose metadata is being accessed.
    * @returns Key metadata after recording its last-used timestamp.
    */
@@ -117,19 +140,11 @@ export class ApiKeyAuthenticationService {
     const now = new Date();
     apiKey.lastUsedAt = now;
     apiKey.updatedAt = now;
-    if (apiKey instanceof UserApiKey) {
-      await this.em.nativeUpdate(
-        UserApiKey,
-        { id: apiKey.id },
-        { lastUsedAt: now, updatedAt: now },
-      );
-    } else {
-      await this.em.nativeUpdate(
-        MemberApiKey,
-        { id: apiKey.id },
-        { lastUsedAt: now, updatedAt: now },
-      );
-    }
+    await this.em.nativeUpdate(
+      ApiKeyEntity,
+      { id: apiKey.id, ownerType: apiKey.ownerType },
+      { lastUsedAt: now, updatedAt: now },
+    );
     return apiKey;
   }
 }

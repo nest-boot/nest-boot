@@ -1,4 +1,5 @@
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { DEFAULT_SYSTEM_ACCOUNT_PERMISSIONS } from "../system-account.constants.js";
 import { normalizeAuthPermissions } from "./auth-role.util.js";
 import { assertPermissionCeiling } from "./permission-grants.util.js";
 import { resolveAuthCatalog } from "./resolve-auth-catalog.util.js";
@@ -6,7 +7,10 @@ import { resolveAuthCatalog } from "./resolve-auth-catalog.util.js";
 const catalogs = new WeakMap<
   AuthModuleOptions,
   Partial<
-    Record<"user" | "member", ReturnType<typeof resolveApiKeyPermissionCatalog>>
+    Record<
+      "user" | "member" | "systemAccount",
+      ReturnType<typeof resolveApiKeyPermissionCatalog>
+    >
   >
 >();
 
@@ -18,7 +22,7 @@ const catalogs = new WeakMap<
  */
 export function resolveApiKeyPermissionCatalog(
   options: AuthModuleOptions,
-  scope: "user" | "member",
+  scope: "user" | "member" | "systemAccount",
 ): {
   readonly permissions: readonly string[];
   readonly allowed: readonly string[];
@@ -32,7 +36,13 @@ export function resolveApiKeyPermissionCatalog(
   const users = resolveAuthCatalog(options, "user").permissions;
   const workspaces = resolveAuthCatalog(options, "workspace").permissions;
   const permissions = [
-    ...new Set(scope === "user" ? [...users, ...workspaces] : workspaces),
+    ...new Set(
+      scope === "systemAccount"
+        ? DEFAULT_SYSTEM_ACCOUNT_PERMISSIONS
+        : scope === "user"
+          ? [...users, ...workspaces]
+          : workspaces,
+    ),
   ];
   const allowlist = new Set(
     options.apiKey?.[scope]?.allowedPermissions ?? permissions,
@@ -43,7 +53,13 @@ export function resolveApiKeyPermissionCatalog(
       ...(options.apiKey?.[scope]?.defaultPermissions ?? []),
     ]),
     allowed: Object.freeze(
-      permissions.filter((permission) => allowlist.has(permission)),
+      permissions.filter(
+        (permission) =>
+          allowlist.has(permission) &&
+          (scope !== "systemAccount" ||
+            options.workspace?.enabled === true ||
+            !permission.startsWith("workspace:")),
+      ),
     ),
   });
   scopes[scope] = catalog;
@@ -61,7 +77,7 @@ export function resolveApiKeyPermissionCatalog(
  */
 export function normalizeApiKeyPermissions(
   options: AuthModuleOptions,
-  scope: "user" | "member",
+  scope: "user" | "member" | "systemAccount",
   requested: readonly string[] | null | undefined,
 ): string[] {
   const { permissions, allowed, defaults } = resolveApiKeyPermissionCatalog(
@@ -71,7 +87,11 @@ export function normalizeApiKeyPermissions(
   const normalized = normalizeAuthPermissions(
     requested === undefined ? defaults : (requested ?? []),
     permissions,
-    scope === "user" ? "User API key" : "Member API key",
+    scope === "user"
+      ? "User API key"
+      : scope === "member"
+        ? "Member API key"
+        : "System account API key",
   );
   assertPermissionCeiling(
     normalized,

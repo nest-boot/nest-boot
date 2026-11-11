@@ -1,9 +1,13 @@
 import { ArgsType, ObjectType } from "@nest-boot/graphql";
 import { ConnectionBuilder } from "@nest-boot/graphql-connection";
 
+import { ApiKeyEntity } from "../entities/api-key.entity.js";
 import { MemberApiKey } from "../entities/member-api-key.entity.js";
 
-const { Connection, ConnectionArgs, Edge } = new ConnectionBuilder(MemberApiKey)
+const { Connection, ConnectionArgs, Edge } = new ConnectionBuilder(
+  MemberApiKey,
+  { entity: ApiKeyEntity },
+)
   .addField({
     field: "name",
     searchable: true,

@@ -17,6 +17,7 @@ import type { GraphQLResolveInfo } from "graphql";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
+import { ApiKeyEntity } from "../entities/api-key.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { ApiKeyLifecycle } from "../infrastructure/api-key-lifecycle.js";
@@ -30,6 +31,7 @@ import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
 } from "../utils/api-key-permissions.util.js";
+import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
 import { authorize } from "../utils/authorize.util.js";
 import { omitCredentials } from "../utils/omit-credentials.util.js";
 import {
@@ -234,10 +236,12 @@ export class UserApiKeyService {
     );
     const entity = await this.em.transactional(
       async (em) => {
-        const entity = em.create(UserApiKey, {
+        const entity = em.create(ApiKeyEntity, {
           ...data,
-          user,
+          owner: user,
+          createdBy: user.id,
         });
+        assertApiKeyOwner(entity, "user");
         authorize("write", entity);
         await em.persist(entity).flush();
         return entity;
@@ -257,16 +261,18 @@ export class UserApiKeyService {
     user: User,
   ): Promise<ApiKeyMetadata<UserApiKey> | null> {
     const apiKey = await this.em.findOne(
-      UserApiKey,
+      ApiKeyEntity,
       {
         $and: [{ id }, this.getOwnedListFilter(user)],
       },
-      { populate: ["user"], exclude: ["key"] },
+      { populate: ["owner"], exclude: ["key"] },
     );
-    if (apiKey) {
-      this.assertUser(apiKey, user);
-      assertApiKeyPermissionCeiling(this.authOptions, apiKey.permissions ?? []);
+    if (!apiKey) {
+      return null;
     }
+    assertApiKeyOwner(apiKey, "user");
+    this.assertUser(apiKey, user);
+    assertApiKeyPermissionCeiling(this.authOptions, apiKey.permissions ?? []);
     return apiKey;
   }
 
@@ -274,17 +280,18 @@ export class UserApiKeyService {
     id: string,
   ): Promise<ApiKeyMetadata<UserApiKey>> {
     const apiKey = await this.em.findOne(
-      UserApiKey,
-      { id },
+      ApiKeyEntity,
+      { id, ownerType: "user" },
       {
-        populate: ["user"],
+        populate: ["owner"],
         exclude: ["key"],
         refresh: true,
       },
     );
-    if (!apiKey) {
+    if (apiKey?.ownerType !== "user") {
       throw new NotFoundException("API key not found");
     }
+    assertApiKeyOwner(apiKey, "user");
     RequestIdentity.assertCurrentUser(this.unwrapUser(apiKey));
     assertApiKeyPermissionCeiling(this.authOptions, apiKey.permissions ?? []);
     return apiKey;
@@ -293,7 +300,8 @@ export class UserApiKeyService {
   private getOwnedListFilter(user: User): FilterQuery<UserApiKey> {
     const ceiling = resolveRequestPermissions(this.authOptions).apiKey;
     return {
-      user,
+      ownerType: "user",
+      owner: user,
       ...(ceiling !== null
         ? { permissions: { $contained: ceiling, $ne: [] } }
         : {}),

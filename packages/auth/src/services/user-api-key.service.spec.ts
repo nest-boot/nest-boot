@@ -17,6 +17,7 @@ import { AuthAbility } from "../auth.ability.js";
 import { API_KEY } from "../auth.constants.js";
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
+import { ApiKeyEntity } from "../entities/api-key.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
@@ -97,8 +98,10 @@ describe("API-key management", () => {
               key: "already-hydrated-key-hash",
               enabled: true,
               permissions: [],
-              user: ref(User, user),
-              member: ref(Member, createTestMember()),
+              owner:
+                scope === "user"
+                  ? ref(User, user)
+                  : ref(Member, createTestMember()),
             },
           );
           const read = () =>
@@ -319,6 +322,7 @@ describe("API-key management", () => {
             mockRlsContext(em).variables = {
               "app.user.id": user.id,
               "app.workspace.id": createTestWorkspace().id,
+              "app.system_account.id": "",
               "app.member.id": createTestMember().id,
             };
             const update =
@@ -382,6 +386,7 @@ describe("API-key management", () => {
                 variables: {
                   "app.user.id": "",
                   "app.workspace.id": "",
+                  "app.system_account.id": "",
                   "app.member.id": "",
                 },
               });
@@ -466,8 +471,8 @@ describe("API-key management", () => {
           permissions: ["user:read", "workspace:update"],
         });
         expect(em.create).toHaveBeenCalledWith(
-          UserApiKey,
-          expect.objectContaining({ user: user }),
+          ApiKeyEntity,
+          expect.objectContaining({ owner: user }),
         );
         em.findOne.mockResolvedValue(created.entity);
         expect(await service.getUserApiKey(created.entity.id, user)).toEqual(
@@ -495,7 +500,7 @@ describe("API-key management", () => {
           permissions,
         });
         expect(em.create).toHaveBeenCalledWith(
-          UserApiKey,
+          ApiKeyEntity,
           expect.objectContaining({ permissions }),
         );
       },
@@ -619,7 +624,8 @@ describe("API-key management", () => {
           { first: 10 },
           {
             where: {
-              user: user,
+              owner: user,
+              ownerType: "user",
               permissions: { $contained: ["user:read"], $ne: [] },
             },
             exclude: ["key"],

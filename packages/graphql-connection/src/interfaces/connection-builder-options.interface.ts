@@ -1,3 +1,4 @@
+import type { EntityClass } from "@mikro-orm/core";
 import type { FilterOptions } from "mikro-orm-filter-query-schema";
 
 /**
@@ -15,6 +16,8 @@ import type { FilterOptions } from "mikro-orm-filter-query-schema";
  * ```
  */
 export interface ConnectionBuilderOptions {
+  /** Persistent entity used when the GraphQL node is a separate projection class. */
+  entity?: EntityClass<object>;
   /**
    * Options for the filter query schema builder.
    * Controls limits on filter complexity to prevent abuse.

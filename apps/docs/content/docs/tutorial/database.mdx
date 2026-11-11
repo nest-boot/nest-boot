@@ -391,3 +391,5 @@ Values are automatically hashed before create and update operations. The decorat
 2. **EntityService as Base** — Extend `EntityService` for all domain services to get CRUD + DataLoader batching out of the box.
 
 3. **Soft Delete** — Configure `softDeleteKey` in `EntityService` for entities that support soft delete.
+
+Feature registration factories can inject `DATABASE_MODULE_OPTIONS` to read user-registered database options before entity discovery, for example to choose the schema for polymorphic relation triggers. This token does not require an initialized MikroORM or EntityManager.

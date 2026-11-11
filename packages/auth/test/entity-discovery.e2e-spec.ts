@@ -3,15 +3,13 @@ import { PgliteDriver } from "@mikro-orm/pglite";
 
 import {
   Account,
-  entities,
+  ApiKeyEntity,
+  getAuthEntities,
   Invitation,
   Member,
-  MemberApiKey,
   Session,
   User,
-  UserApiKey,
   Workspace,
-  workspaceEntities,
 } from "../dist/index.js";
 
 describe("built-in auth entity discovery", () => {
@@ -19,7 +17,7 @@ describe("built-in auth entity discovery", () => {
     const orm = new MikroORM({
       dbName: "auth_entity_relations",
       driver: PgliteDriver,
-      entities: [...entities, ...workspaceEntities],
+      entities: getAuthEntities({ workspace: { enabled: true } }),
     });
     try {
       for (const [entity, property, target] of [
@@ -31,8 +29,6 @@ describe("built-in auth entity discovery", () => {
         [Account, "user", User],
         [Session, "user", User],
         [Session, "impersonatedBy", User],
-        [UserApiKey, "user", User],
-        [MemberApiKey, "member", Member],
       ] as const) {
         expect(
           orm
@@ -40,6 +36,12 @@ describe("built-in auth entity discovery", () => {
             .props.find((entry) => entry.name === property)?.targetMeta?.class,
         ).toBe(target);
       }
+      const owner = orm.getMetadata(ApiKeyEntity).properties.owner;
+      expect(owner.polymorphic).toBe(true);
+      expect(owner.polymorphTargets?.map((meta) => meta.class)).toEqual(
+        expect.arrayContaining([User, Member]),
+      );
+      expect(owner.createForeignKeyConstraint).toBe(false);
     } finally {
       await orm.close();
     }

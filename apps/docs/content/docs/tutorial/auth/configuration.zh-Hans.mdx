@@ -183,7 +183,7 @@ AuthModule.forRoot({
 ## 实体设置
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation`、`UserApiKey` 和 `MemberApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`Member`、`Invitation`、`SystemAccount` 和 `ApiKeyEntity` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 `AuthModule` 会按配置向 `DatabaseModule` 自动注册实体。无需重复传入工作区开关，
@@ -207,7 +207,9 @@ pnpm exec nb database:migration:create --name add-auth
 pnpm exec nb database:migration:up
 ```
 
-直接使用 MikroORM 时，导出的 `entities` 包含基础实体，`workspaceEntities` 包含可选工作区实体。
+直接使用 MikroORM 时，通过 `getAuthEntities(options)` 注册与功能开关一致的多态关联、策略和触发器。
 
 自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，
 不要重新声明或注册同名认证实体。角色、权限目录、Ability 构造器、邮件回调和 Provider 配置仍可自定义。
+
+独立 ORM 使用 `getAuthEntities(options)` 与 AuthModule 的功能开关保持一致。三种 ApiKey 的公共视图和 Service 对应同一个持久化实体 `ApiKeyEntity`，系统账户管理见 [API Key](/docs/tutorial/auth/api-keys)。

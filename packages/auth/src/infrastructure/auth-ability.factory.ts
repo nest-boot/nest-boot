@@ -12,6 +12,8 @@ import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { MemberApiKey } from "../entities/member-api-key.entity.js";
 import { Session } from "../entities/session.entity.js";
+import { SystemAccount } from "../entities/system-account.entity.js";
+import { SystemAccountApiKey } from "../entities/system-account-api-key.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
@@ -42,7 +44,9 @@ export class AuthAbilityFactory {
       workspace: options.workspace?.enabled === true ? context.workspace : null,
       member: options.workspace?.enabled === true ? context.member : null,
       userPermissions: Object.freeze(
-        context.user ? [...context.userPermissions] : [],
+        context.user || context.systemAccount
+          ? [...context.userPermissions]
+          : [],
       ),
       workspacePermissions: Object.freeze(
         options.workspace?.enabled === true && context.workspace
@@ -57,10 +61,12 @@ export class AuthAbilityFactory {
       session: Session,
       "user-api-key": UserApiKey,
       workspace: Workspace,
+      "system-account": SystemAccount,
+      "system-account-api-key": SystemAccountApiKey,
     };
     for (const permission of DEFAULT_USER_PERMISSIONS) {
       if (
-        (permission === "workspace:create" &&
+        (permission.startsWith("workspace:") &&
           options.workspace?.enabled !== true) ||
         !snapshot.userPermissions.includes(permission)
       ) {

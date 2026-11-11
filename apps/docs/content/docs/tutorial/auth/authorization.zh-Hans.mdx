@@ -478,7 +478,7 @@ authenticated 角色的 User 读写及 Session 读取由 Service 授权，不能
 
 `app.member.id` 是已认证请求在当前工作区中的有效成员 ID，也适用于服务账号。匿名请求或没有有效成员时为空；撤销工作区访问或清空认证身份时会清空该变量。
 
-示例 `UserApiKey` 和 `MemberApiKey` 使用两张表，各自只有一个必填归属外键。RLS 将个人 Key 的 `user_id` 与 `app.user.id` 比较；成员 Key 关联 `member_id`，通过成员解析所属工作区并与 `app.workspace.id` 比较。删除归属对象时级联删除 Key，工作区采用永久删除。数据库使用默认表权限；两个管理 Service 排除密钥哈希、禁止修改归属，并保留授权检查。
+三种 Key 共用 `api_key` 表，RLS 通过多态 owner 区分用户、成员与系统账户。User、Member 的管理边界保持不变；SystemAccount 凭证由用户管理员通过会话管理，平台权限不自动开放业务表。删除清理由数据库触发器完成。
 
 这几个函数不是 Filter 或装饰器，运行时与 CLI 都不需要额外 discovery 钩子。
 修改策略后需要生成并执行迁移；使用策略回调时保持元数据缓存关闭。

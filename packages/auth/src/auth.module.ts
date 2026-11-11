@@ -1,5 +1,9 @@
 import { MikroORM } from "@mikro-orm/core";
-import { DatabaseModule } from "@nest-boot/database";
+import {
+  DATABASE_MODULE_OPTIONS,
+  DatabaseModule,
+  type DatabaseModuleOptions,
+} from "@nest-boot/database";
 import { HashService } from "@nest-boot/hash";
 import { Mailer } from "@nest-boot/mailer";
 import {
@@ -31,7 +35,7 @@ import {
 } from "./auth.module-definition.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { type AuthModuleOptions } from "./auth-module-options.interface.js";
-import { entities, workspaceEntities } from "./entities/index.js";
+import { getAuthEntities } from "./entities/index.js";
 import { InvitationService } from "./features/invitations/invitation.service.js";
 import { AuthEnumRegistry } from "./infrastructure/auth-enum-registry.js";
 import { authServiceProviders } from "./infrastructure/auth-service.providers.js";
@@ -39,6 +43,7 @@ import { createAuthInstance } from "./infrastructure/create-auth-instance.js";
 import { workspaceProviders } from "./infrastructure/workspace.providers.js";
 import { AuthResolver } from "./resolvers/auth.resolver.js";
 import { SessionResolver } from "./resolvers/session.resolver.js";
+import { SystemAccountResolver } from "./resolvers/system-account.resolver.js";
 import { UserResolver } from "./resolvers/user.resolver.js";
 import { UserApiKeyResolver } from "./resolvers/user-api-key.resolver.js";
 import { AccountService } from "./services/account.service.js";
@@ -46,6 +51,8 @@ import { AuthService } from "./services/auth.service.js";
 import { MemberService } from "./services/member.service.js";
 import { MemberApiKeyService } from "./services/member-api-key.service.js";
 import { SessionService } from "./services/session.service.js";
+import { SystemAccountService } from "./services/system-account.service.js";
+import { SystemAccountApiKeyService } from "./services/system-account-api-key.service.js";
 import { UserService } from "./services/user.service.js";
 import { UserApiKeyService } from "./services/user-api-key.service.js";
 import { UserDeletionService } from "./services/user-deletion.service.js";
@@ -85,6 +92,9 @@ class AuthOptionsHostModule {}
     UserApiKeyService,
     ...workspaceProviders,
     AccountService,
+    SystemAccountService,
+    SystemAccountApiKeyService,
+    SystemAccountResolver,
     ApiKeyUsageInterceptor,
     AuthService,
     UserDeletionService,
@@ -109,6 +119,8 @@ class AuthOptionsHostModule {}
   ],
   exports: [
     AccountService,
+    SystemAccountService,
+    SystemAccountApiKeyService,
     UserService,
     UserApiKeyService,
     MemberApiKeyService,
@@ -190,11 +202,14 @@ export class AuthModule extends ConfigurableModuleClass {
         optionsModule,
         DatabaseModule.forFeatureAsync({
           imports: [optionsModule],
-          inject: [MODULE_OPTIONS_TOKEN],
-          useFactory: (options: AuthModuleOptions) =>
-            options.workspace?.enabled === true
-              ? [...entities, ...workspaceEntities]
-              : entities,
+          inject: [
+            MODULE_OPTIONS_TOKEN,
+            { token: DATABASE_MODULE_OPTIONS, optional: true },
+          ],
+          useFactory: (
+            options: AuthModuleOptions,
+            database?: DatabaseModuleOptions,
+          ) => getAuthEntities(options, database?.schema ?? "public"),
         }),
       ],
       exports: [optionsModule],

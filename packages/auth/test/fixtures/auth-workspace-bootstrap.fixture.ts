@@ -15,12 +15,7 @@ import type { GraphQLEnumType, GraphQLObjectType } from "graphql";
 import { AUTH_TOKEN } from "../../src/auth.constants.js";
 import { AuthModule } from "../../src/auth.module.js";
 import type { AuthModuleOptions } from "../../src/auth-module-options.interface.js";
-import {
-  entities,
-  User,
-  UserApiKey,
-  workspaceEntities,
-} from "../../src/entities/index.js";
+import { ApiKeyEntity, User } from "../../src/entities/index.js";
 import { Member } from "../../src/entities/member.entity.js";
 import { Workspace } from "../../src/entities/workspace.entity.js";
 import { InvitationService } from "../../src/features/invitations/invitation.service.js";
@@ -33,10 +28,12 @@ import { WorkspaceService } from "../../src/services/workspace.service.js";
  * Boots one isolated Auth application and verifies persistence, login, API keys and schema exposure.
  * @param workspace - Workspace feature settings under test.
  * @param asyncOptions - Whether options are resolved through injected async configuration.
+ * @param schemaName - Database schema supplied to DatabaseModule.
  */
 export async function verifyAuthBootstrap(
   workspace: AuthModuleOptions["workspace"],
   asyncOptions: boolean,
+  schemaName = "public",
 ) {
   const options: AuthModuleOptions = {
     secret: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_",
@@ -82,6 +79,7 @@ export async function verifyAuthBootstrap(
         driver: PgliteDriver,
         dbName: "memory://",
         entities: [],
+        schema: schemaName,
       }),
       GraphQLModule.forRoot({
         driver: ApolloDriver,
@@ -108,11 +106,31 @@ export async function verifyAuthBootstrap(
     const enabled = workspace?.enabled === true;
     expect(orm.getMetadata().has(Workspace)).toBe(enabled);
     expect(orm.getMetadata().has(Member)).toBe(enabled);
-    const expected = (enabled ? [...entities, ...workspaceEntities] : entities)
-      .map((entity) => orm.getMetadata().get<object>(entity).tableName)
-      .sort();
+    const expected = (
+      enabled
+        ? [
+            "user",
+            "account",
+            "session",
+            "verification",
+            "api_key",
+            "system_account",
+            "workspace",
+            "member",
+            "invitation",
+          ]
+        : [
+            "user",
+            "account",
+            "session",
+            "verification",
+            "api_key",
+            "system_account",
+          ]
+    ).sort();
     const tables: { tablename: string }[] = await orm.em.execute(
-      "select tablename from pg_tables where schemaname = 'public'",
+      "select tablename from pg_tables where schemaname = ?",
+      [schemaName],
     );
     expect(tables.map((table) => table.tablename).sort()).toEqual(expected);
     const auth = app.get<ReturnType<typeof betterAuth>>(AUTH_TOKEN);
@@ -131,10 +149,10 @@ export async function verifyAuthBootstrap(
     expect(signin.token).toEqual(expect.any(String));
     const rawKey = "personal-key";
     const em = orm.em.fork();
-    const key = em.create(UserApiKey, {
+    const key = em.create(ApiKeyEntity, {
       name: "Personal",
       key: createHash("sha256").update(rawKey).digest("base64url"),
-      user: em.getReference(User, signup.user.id),
+      owner: em.getReference(User, signup.user.id),
     });
     em.persist(key);
     await em.flush();
