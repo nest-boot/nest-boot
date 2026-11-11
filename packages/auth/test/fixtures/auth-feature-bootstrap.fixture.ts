@@ -338,7 +338,7 @@ export async function verifyAuthFeatures(
       await em.nativeUpdate(SystemAccount, account.id, { enabled: false });
       expect((await machineRequest()).status).toBe(401);
       await em.nativeDelete(SystemAccount, account.id);
-      expect(await em.count(ApiKey, key.id)).toBe(0);
+      expect(await em.count(ApiKey, key.id)).toBe(1);
     }
     // Disabled credential tables must not leave dangling deletion triggers on identities.
     await orm.em.fork().nativeDelete(User, body.user.id);

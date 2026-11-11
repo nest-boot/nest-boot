@@ -179,14 +179,13 @@ RLS 不保护 `TRUNCATE` 或 `REFERENCES`，表策略也不限制序列操作。
 业务表声明 RLS 策略；Job 记录是明确例外，使用服务层限定范围的查询。`Verification` 明确拒绝普通请求访问。
 凭证字段与可更新属性由 Service 和 GraphQL 控制，数据库不再提供列级保护。
 
-ApiKey 通过 `ApiKey.owner` 多态关联到 User、Member 或 SystemAccount。关联记录使用普通外键级联，ApiKey 使用 owner 清理触发器；工作区、独立系统账户及其他成员的密钥保留。
+ApiKey 通过 `ApiKey.owner` 多态关联到 User、Member 或 SystemAccount。账户、会话、成员和邀请使用普通外键级联；所有 ApiKey 记录保留用于审计，认证时重新查询 owner，不存在则拒绝使用。工作区与独立系统账户保留。
 User SELECT 允许 authenticated 角色读取，个人资料访问由 Service 的 Ability 检查限制，支持自定义读取权限名。
 User 写入及 Session 读取同样由 Service 授权；数据库请求上下文不再传递应用权限。
 不要绕过 Service 授权暴露直接 User 查询。
 示例基线仅适用于全新数据库，直接创建共享 ApiKey 表和系统账户。
 
-工作区改为永久删除。移除 `Workspace.deletedAt` 的字段选择、过滤条件和索引；成员、邀请和
-工作区密钥由外键级联删除。DELETE 策略继续限制工作区范围，旧软删除策略和 `app.operation`
+工作区改为永久删除。移除 `Workspace.deletedAt` 的字段选择、过滤条件和索引；成员和邀请由外键级联删除；API Key 记录保留用于审计，所属成员不存在时无法认证。DELETE 策略继续限制工作区范围，旧软删除策略和 `app.operation`
 删除上下文已移除。已有数据库迁移前应备份数据，并明确历史软删除工作区的处理方式；
 示例基线只适用于空库，不会转换已有数据。
 
@@ -255,6 +254,6 @@ GraphQL 分别返回 `UserApiKey`、`WorkspaceApiKey`、`SystemApiKey`，各有�
 
 `UserApiKey`、`WorkspaceApiKey`、`SystemApiKey` 是各自的公共视图和 Service，统一持久化实体为 `ApiKey`。直接 ORM 查询使用 `ownerType` 和多态 `owner` 引用。独立 ORM 使用 `getAuthEntities(options)`；AuthModule 自动注册。系统账户的权限与管理员会话要求见 [API Key](/docs/tutorial/auth/api-keys)。
 
-示例基线按当前实体为全新数据库重新生成，直接建立 ApiKey 共表、系统账户、哈希全局唯一约束及 owner 检查和清理触发器。
+示例基线按当前实体为全新数据库重新生成，直接建立 ApiKey 共表、系统账户、哈希全局唯一约束，不生成 owner 检查或删除清理触发器。
 
-回滚生成的结构迁移会移除其表和数据。原始触发器表达式的修改需要显式迁移，结构差异不会比较其函数体。版本继续保持 8.x。
+回滚生成的结构迁移会移除其表和数据。版本继续保持 8.x。

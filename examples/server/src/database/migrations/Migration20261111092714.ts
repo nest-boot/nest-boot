@@ -123,15 +123,6 @@ export class Migration20261111092714 extends Migration {
       `alter table "job" add constraint "job_status_check" check ("status" in ('prioritized', 'unknown', 'waiting', 'active', 'completed', 'failed', 'delayed', 'waiting-children'));`,
     );
 
-    this
-      .addSql(`create or replace function "public"."user_user_api_key_cleanup_fn"() returns trigger language plpgsql security definer set search_path = pg_catalog as \$\$ begin
-      if TG_RELID <> '"public"."user"'::regclass or TG_NAME <> 'user_api_key_cleanup' or TG_OP not in ('DELETE') or TG_WHEN <> 'AFTER' or TG_LEVEL <> 'ROW' then raise exception 'Unexpected API-key trigger target'; end if;       delete from "public"."api_key" where "owner_type" = 'user' and "owner_id" = OLD."id"; return OLD;     end; \$\$;`);
-    this.addSql(
-      `revoke all on function "public"."user_user_api_key_cleanup_fn"() from public;`,
-    );
-    this.addSql(
-      `create trigger "user_api_key_cleanup" after delete on "public"."user" for each row execute function "public"."user_user_api_key_cleanup_fn"();`,
-    );
     this.addSql(`alter table "user" enable row level security;`);
     this.addSql(
       `create policy "user_select_policy" on "user" for select to "authenticated" using (true);`,
@@ -145,15 +136,6 @@ export class Migration20261111092714 extends Migration {
 
     this.addSql(
       `alter table "system_account" add constraint "system_account_created_by_id_foreign" foreign key ("created_by_id") references "user" ("id") on delete set null;`,
-    );
-    this
-      .addSql(`create or replace function "public"."system_account_system_account_api_key_cleanup_fn"() returns trigger language plpgsql security definer set search_path = pg_catalog as \$\$ begin
-      if TG_RELID <> '"public"."system_account"'::regclass or TG_NAME <> 'system_account_api_key_cleanup' or TG_OP not in ('DELETE') or TG_WHEN <> 'AFTER' or TG_LEVEL <> 'ROW' then raise exception 'Unexpected API-key trigger target'; end if;       delete from "public"."api_key" where "owner_type" = 'system_account' and "owner_id" = OLD."id"; return OLD;     end; \$\$;`);
-    this.addSql(
-      `revoke all on function "public"."system_account_system_account_api_key_cleanup_fn"() from public;`,
-    );
-    this.addSql(
-      `create trigger "system_account_api_key_cleanup" after delete on "public"."system_account" for each row execute function "public"."system_account_system_account_api_key_cleanup_fn"();`,
     );
     this.addSql(`alter table "system_account" enable row level security;`);
     this.addSql(
@@ -176,16 +158,6 @@ export class Migration20261111092714 extends Migration {
     );
     this.addSql(
       `alter table "api_key" add constraint "api_key_owner_type_check" check ("owner_type" in ('user', 'system_account', 'member'));`,
-    );
-    this
-      .addSql(`create or replace function "public"."api_key_api_key_owner_exists_fn"() returns trigger language plpgsql security definer set search_path = pg_catalog as \$\$ begin
-      if TG_RELID <> '"public"."api_key"'::regclass or TG_NAME <> 'api_key_owner_exists' or TG_OP not in ('INSERT', 'UPDATE') or TG_WHEN <> 'AFTER' or TG_LEVEL <> 'ROW' then raise exception 'Unexpected API-key trigger target'; end if;     if TG_OP = 'UPDATE' then
-      if NEW."owner_type" is not distinct from OLD."owner_type" and NEW."owner_id" is not distinct from OLD."owner_id" then return NEW; end if;     end if;     if NEW."owner_type" = 'user' then perform 1 from "public"."user" where "id" = NEW."owner_id" for key share;     elsif NEW."owner_type" = 'system_account' then perform 1 from "public"."system_account" where "id" = NEW."owner_id" for key share;     elsif NEW."owner_type" = 'member' then perform 1 from "public"."member" where "id" = NEW."owner_id" for key share;     else raise exception 'Invalid API-key owner type' using errcode = '23514'; end if;     if not found then raise exception 'API-key owner does not exist' using errcode = '23503'; end if;     return NEW;     end; \$\$;`);
-    this.addSql(
-      `revoke all on function "public"."api_key_api_key_owner_exists_fn"() from public;`,
-    );
-    this.addSql(
-      `create trigger "api_key_owner_exists" after insert or update on "public"."api_key" for each row execute function "public"."api_key_api_key_owner_exists_fn"();`,
     );
     this.addSql(`alter table "api_key" enable row level security;`);
     this.addSql(
@@ -230,15 +202,6 @@ export class Migration20261111092714 extends Migration {
     );
     this.addSql(
       `alter table "member" add constraint "member_status_check" check ("status" in ('ACTIVE', 'DISABLED'));`,
-    );
-    this
-      .addSql(`create or replace function "public"."member_member_api_key_cleanup_fn"() returns trigger language plpgsql security definer set search_path = pg_catalog as \$\$ begin
-      if TG_RELID <> '"public"."member"'::regclass or TG_NAME <> 'member_api_key_cleanup' or TG_OP not in ('DELETE') or TG_WHEN <> 'AFTER' or TG_LEVEL <> 'ROW' then raise exception 'Unexpected API-key trigger target'; end if;       delete from "public"."api_key" where "owner_type" = 'member' and "owner_id" = OLD."id"; return OLD;     end; \$\$;`);
-    this.addSql(
-      `revoke all on function "public"."member_member_api_key_cleanup_fn"() from public;`,
-    );
-    this.addSql(
-      `create trigger "member_api_key_cleanup" after delete on "public"."member" for each row execute function "public"."member_member_api_key_cleanup_fn"();`,
     );
     this.addSql(`alter table "member" enable row level security;`);
     this.addSql(
@@ -296,27 +259,13 @@ export class Migration20261111092714 extends Migration {
     );
 
     this.addSql(`drop table if exists "job" cascade;`);
-    this.addSql(`drop trigger if exists "user_api_key_cleanup" on "user";`);
-    this.addSql(`drop function if exists "user_user_api_key_cleanup_fn"();`);
     this.addSql(`drop table if exists "user" cascade;`);
-    this.addSql(
-      `drop trigger if exists "system_account_api_key_cleanup" on "system_account";`,
-    );
-    this.addSql(
-      `drop function if exists "system_account_system_account_api_key_cleanup_fn"();`,
-    );
     this.addSql(`drop table if exists "system_account" cascade;`);
     this.addSql(`drop table if exists "session" cascade;`);
-    this.addSql(`drop trigger if exists "api_key_owner_exists" on "api_key";`);
-    this.addSql(`drop function if exists "api_key_api_key_owner_exists_fn"();`);
     this.addSql(`drop table if exists "api_key" cascade;`);
     this.addSql(`drop table if exists "account" cascade;`);
     this.addSql(`drop table if exists "verification" cascade;`);
     this.addSql(`drop table if exists "workspace" cascade;`);
-    this.addSql(`drop trigger if exists "member_api_key_cleanup" on "member";`);
-    this.addSql(
-      `drop function if exists "member_member_api_key_cleanup_fn"();`,
-    );
     this.addSql(`drop table if exists "member" cascade;`);
     this.addSql(`drop table if exists "invitation" cascade;`);
   }

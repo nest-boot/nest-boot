@@ -85,6 +85,20 @@ describe("resolveApiKeyRelation", () => {
     }
   });
 
+  it("returns null when a retained audit record has no populated identity", async () => {
+    const read = vi.fn();
+    await expect(
+      resolveApiKeyRelation(
+        new SystemApiKey(),
+        null,
+        SystemAccount,
+        read,
+        false,
+      ),
+    ).resolves.toBeNull();
+    expect(read).not.toHaveBeenCalled();
+  });
+
   it("retains self-profile access without exposing another identity", async () => {
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       const user = new User();

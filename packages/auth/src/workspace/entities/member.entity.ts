@@ -8,13 +8,11 @@ import {
   ManyToOne,
   PrimaryKey,
   Property,
-  Trigger,
   Unique,
 } from "@mikro-orm/decorators/legacy";
 import { Field, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
-import { apiKeyCleanupTrigger } from "../../api-key/entities/api-key-triggers.js";
 import { userScopePolicy } from "../../common/policies/user-scope.policy.js";
 import { workspaceScopePolicy } from "../../common/policies/workspace-scope.policy.js";
 import { User } from "../../core/entities/user.entity.js";
@@ -32,7 +30,6 @@ export type AuthMemberType = "USER" | "SERVICE_ACCOUNT";
 
 /** Built-in Member entity with authentication persistence and access policies. */
 @ObjectType({ isAbstract: true })
-@Trigger(apiKeyCleanupTrigger("member", "public"))
 @Entity({
   policies: [
     // Allow users to read their own memberships across workspaces without granting writes.

@@ -209,7 +209,7 @@ Application tables declare RLS policies; Job history is an explicit exception wi
 explicitly denies request roles. Services and GraphQL control credential fields
 and writable properties; database column-level protection is no longer configured.
 
-API keys use `ApiKey.owner` as a polymorphic relation to User, Member or SystemAccount. User deletion uses foreign-key cascades for related records and owner cleanup triggers for polymorphic keys. Workspaces, independent system accounts and other members' keys survive. User SELECT
+API keys use `ApiKey.owner` as a polymorphic relation to User, Member or SystemAccount. User deletion uses foreign-key cascades for accounts, sessions, memberships and invitations. API-key records remain for audit; a fresh owner lookup prevents deleted identities from authenticating. Workspaces, independent system accounts and other members' keys survive. User SELECT
 permits authenticated roles; Services enforce profile access through Ability,
 including custom permission names. User writes and Session reads likewise rely
 on Service authorization; database request variables no longer carry application
@@ -219,8 +219,7 @@ The example baseline creates the current shared API-key table and system account
 databases require their own data-preserving migration.
 
 Workspace deletion is now permanent. Remove `Workspace.deletedAt` selections,
-filters and indexes; members, invitations and member keys are deleted by
-foreign-key cascades and API-key owner triggers. The workspace DELETE policy retains workspace isolation;
+filters and indexes; members and invitations are deleted by foreign-key cascades. API-key audit records remain, and authentication rejects keys whose owner has been deleted. The workspace DELETE policy retains workspace isolation;
 the old soft-delete policies and `app.operation` deletion context are removed.
 Back up data and decide how to handle legacy soft-deleted workspaces before
 writing a migration for an existing database. The example baseline only targets
@@ -302,6 +301,6 @@ GraphQL returns distinct `UserApiKey`, `WorkspaceApiKey`, and `SystemApiKey` typ
 
 `UserApiKey`, `WorkspaceApiKey`, and `SystemApiKey` are owner-specific public views and services; their persistent entity is `ApiKey`. Direct ORM filters use `ownerType` and the polymorphic `owner` reference. Register `getAuthEntities(options)` for standalone ORM usage; AuthModule handles registration automatically. See [API keys](/docs/tutorial/auth/api-keys) for the system-account permission and administrator-session model.
 
-The example schema is regenerated from the current entities for a fresh database. It creates the shared API-key table, system accounts, global hash uniqueness and owner integrity/cleanup triggers directly.
+The example schema is regenerated from the current entities for a fresh database. It creates the shared API-key table, system accounts and global hash uniqueness directly, without custom owner triggers.
 
-Rolling back the generated schema removes its tables and data. Raw trigger-expression changes require explicit migrations because schema diffing does not compare their bodies. The release remains in the 8.x series.
+Rolling back the generated schema removes its tables and data. The release remains in the 8.x series.

@@ -42,7 +42,7 @@ describe("auth service execution boundaries", () => {
       user,
       enabled: true,
     });
-    isolated.findOne.mockResolvedValueOnce(apiKey).mockResolvedValueOnce(null);
+    isolated.findOne.mockResolvedValueOnce(apiKey).mockResolvedValueOnce(user);
     const provider = authServiceProviders.find(
       (candidate) =>
         typeof candidate === "object" &&
@@ -64,7 +64,7 @@ describe("auth service execution boundaries", () => {
       });
       await service.recordUsage(apiKey);
       expect(isolated.clearSessionContext).toHaveBeenCalledOnce();
-      expect(isolated.findOne).toHaveBeenCalledTimes(1);
+      expect(isolated.findOne).toHaveBeenCalledTimes(2);
       expect(em.findOne).not.toHaveBeenCalled();
       expect(isolated.nativeUpdate).not.toHaveBeenCalled();
       expect(em.nativeUpdate).toHaveBeenCalledExactlyOnceWith(

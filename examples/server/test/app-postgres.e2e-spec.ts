@@ -1298,7 +1298,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
   );
 
   it.each(['self', 'administrator'] as const)(
-    'preserves ownerless workspaces and deletes auth records through %s deletion',
+    'preserves ownerless workspaces and key audit records through %s deletion',
     async (mode) => {
       const administrator = await createAuthenticatedUser(
         'Deletion Administrator',
@@ -1311,7 +1311,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         ]);
 
       const workspace = await createWorkspace(target, 'Deletion Workspace');
-      await createUserApiKey(target, {
+      const personalKey = await createUserApiKey(target, {
         name: 'Deletion target key',
         permissions: ['WORKSPACE__UPDATE'],
       });
@@ -1328,7 +1328,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       const retainedKey = await createWorkspaceApiKey(target, workspace.id, {
         memberId: null,
         name: 'Retained service account key',
-        permissions: [],
+        permissions: ['SERVICE_ACCOUNT__READ'],
       });
       const deleted = await gql(
         mode === 'self'
@@ -1384,7 +1384,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         await connection.execute('select id from api_key where id = ?', [
           deletedKey.entity.id,
         ]),
-      ).toEqual([]);
+      ).toEqual([{ id: deletedKey.entity.id }]);
 
       const [counts] = await migrationOrm.em.getConnection().execute<
         {
@@ -1414,11 +1414,24 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       );
       expect(counts).toEqual({
         accounts: 0,
-        api_keys: 0,
+        api_keys: 1,
         members: 0,
         sessions: 0,
         users: 0,
       });
+      for (const credential of [personalKey, deletedKey]) {
+        const rejected = await gql('query { currentUser { id } }', {
+          bearerToken: credential.apiKey,
+          workspaceId: workspace.id,
+        });
+        expect(rejected.status).toBe(401);
+      }
+      expectNoGraphQLErrors(
+        await gql('query { currentMember { id } }', {
+          bearerToken: retainedKey.apiKey,
+          workspaceId: workspace.id,
+        }),
+      );
     },
   );
 
@@ -2619,7 +2632,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
   );
 
   it.each([false, true])(
-    'revokes a workspace key after workspace deletion (following mutation: %s)',
+    'retains workspace-key audit records and rejects reuse after workspace deletion (following mutation: %s)',
     async (followingMutation) => {
       const owner = await createAuthenticatedUser('Deleting key owner');
       const workspace = await createWorkspace(owner, 'Key deletion audit');
@@ -2649,14 +2662,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       } else {
         expectNoGraphQLErrors(response);
       }
-      expect(await readKey()).toEqual([]);
+      expect(await readKey()).toEqual([{ id: key.entity.id }]);
       const rejected = await gql('query { currentWorkspace { id } }', {
         bearerToken: key.apiKey,
         workspaceId: workspace.id,
       });
       expect(rejected.status).toBe(401);
       expect(rejected.body.message).toBe('Invalid API key');
-      expect(await readKey()).toEqual([]);
+      expect(await readKey()).toEqual([{ id: key.entity.id }]);
     },
   );
 

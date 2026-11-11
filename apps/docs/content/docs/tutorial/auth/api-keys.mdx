@@ -62,8 +62,7 @@ With `member-api-key:read` or `member-api-key:write`, callers can read or
 delete other members’ keys in that workspace, subject to object rules and
 credential ceilings. Plaintext remains available only at creation.
 
-`ApiKey.owner` persists the polymorphic owner; the `WorkspaceApiKey.member` view exposes its member reference. `memberId` and the derived `workspaceId` remain internal service authorization helpers; they are not GraphQL key fields. Removing
-a member deletes its keys; disabling a member rejects future authentication.
+`ApiKey.owner` persists the polymorphic owner; the `WorkspaceApiKey.member` view exposes its member reference. `memberId` and the derived `workspaceId` remain internal service authorization helpers; they are not GraphQL key fields. Removing a member retains its keys for audit; deleted or disabled members cannot authenticate.
 Role and direct-permission changes affect the key on its next request.
 
 The example keeps infrastructure initialization and generates `Migration20261111092714` from the final
@@ -306,7 +305,7 @@ Configure defaults and ceilings under `apiKey.system` (`defaultPrefix`, `default
 
 Available platform grants are `user:read`, `user:update`, `user:delete`, `workspace:read-any`, `workspace:update-any`, and `workspace:delete-any`. User services retain their permission checks. The explicit workspace endpoints are `workspaces`, `platformWorkspace(id)`, `updatePlatformWorkspace(id, input)`, and `deletePlatformWorkspace(id)`. Workspace grants have no effect when the feature is disabled, and do not grant access to business tables automatically.
 
-Owner existence and delete cleanup use MikroORM-managed database triggers because polymorphic relations cannot have an owner FK. They cover SQL deletion and workspace→member cascades, and lock owners during insertion to prevent concurrent orphan creation. Raw trigger-expression changes require explicit migrations. The example baseline creates the current model directly on a fresh database.
+Polymorphic relations have no native owner FK or custom owner triggers. Deleting User, Member, SystemAccount or a workspace retains API-key records and their stored owner identifiers for audit. Authentication reloads the concrete owner with a fresh database query and rejects missing, disabled or banned identities. Failed authentication does not delete the record or update its usage timestamps. There is no lazy or scheduled cleanup. System-key audit queries retain metadata and return a null related account when it has been deleted.
 
 System credentials and accounts are unavailable to request-role SQL; only administrator-session services manage them. The framework records successful usage through an isolated writer scoped to the captured key ID.
 

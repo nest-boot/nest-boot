@@ -189,7 +189,7 @@ export class SystemAccountService {
   }
 
   /**
-   * Deletes an account and its keys atomically through the owner cleanup trigger.
+   * Deletes an account while retaining its key records for audit.
    * @param id - Identifier of the target record.
    * @returns Metadata of the deleted system identity.
    */

@@ -549,7 +549,7 @@ records as an alternative to Services. Old identity keys are no longer supported
 
 `app.member.id` identifies the authenticated active member in the selected workspace, including service accounts. It is empty for anonymous requests or when no active member is available, and is cleared when workspace access or authentication is revoked.
 
-The example `UserApiKey` and `WorkspaceApiKey` use separate tables, each with one required owner foreign key. RLS compares `UserApiKey.user_id` with `app.user.id`; member keys belong to `member_id` and resolve their workspace through the member to compare with `app.workspace.id`. Deleting an owner cascades to its keys; workspace deletion is permanent. Default privileges authorize table operations; both management services hide credential hashes, prevent ownership changes, and enforce authorization.
+All credential scopes share `api_key`. RLS checks the stored owner discriminator and ID: user keys match `app.user.id`, member keys resolve their workspace to match `app.workspace.id`, and system keys remain inaccessible through request-role SQL. Deleting an owner retains the key for audit; authentication freshly reloads the owner and rejects missing identities. Default privileges authorize table operations, while services hide credential hashes, prevent ownership changes and enforce application authorization.
 
 These are plain factories, not filters or decorators. Neither runtime nor CLI
 needs a custom discovery hook. Generate and apply migrations after changing

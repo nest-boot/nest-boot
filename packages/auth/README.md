@@ -12,7 +12,7 @@ Apply the complete migration sequence to a fresh database.
 
 Auth source lives in `common`, `core`, `workspace`, `admin`, and `api-key` feature directories. Each feature retains its own `entities`, `services`, `resolvers`, `inputs`, `objects`, and supporting layers. Unit tests use the tested file's name and sit beside it; HTTP, database and application-bootstrap tests remain under `test`.
 
-Core runtime coordination lives directly under `core`, including provider registration, request identity, enum registration, entity selection and Better Auth setup. Other feature providers live at their feature roots; API-key authentication belongs to `api-key/services`, and ORM triggers belong to `api-key/entities`. `common` contains helpers shared across features. Internal imports point to the owning file. Application imports use `@nest-boot/auth`; the public barrel retains the exported API.
+Core runtime coordination lives directly under `core`, including provider registration, request identity, enum registration, entity selection and Better Auth setup. Other feature providers live at their feature roots; API-key authentication belongs to `api-key/services`. `common` contains helpers shared across features. Internal imports point to the owning file. Application imports use `@nest-boot/auth`; the public barrel retains the exported API.
 
 ## Optional administration and credentials
 
@@ -52,7 +52,7 @@ AuthModule automatically registers its enabled entities through `DatabaseModule`
 Use `nb database:migration:*`, `nb database:schema:*`, and `nb database:seeder:*`
 from your application's CLI entry to share runtime configuration and entity metadata.
 No separate MikroORM config file or auth configuration helper is needed.
-For direct ORM consumers, use `getAuthEntities(options)` to match the enabled features and register their polymorphic owner metadata and database triggers. The low-level `entities` and `workspaceEntities` exports remain available for the complete workspace model.
+For direct ORM consumers, use `getAuthEntities(options)` to match the enabled features and register their polymorphic owner metadata and RLS policies. The low-level `entities` and `workspaceEntities` exports remain available for the complete workspace model.
 
 Disabled applications expose no workspace/member/invitation/member-key GraphQL APIs
 or user workspace/invitation relation fields. Their middleware ignores workspace
@@ -370,11 +370,9 @@ Apply the example's `Initial → generated schema migrations` before using
 these write paths. Custom applications must supply equivalent grants and RLS
 policies for their own data-isolation requirements. Default table privileges do not protect individual columns; Services exclude credential hashes and reject API-key ownership changes.
 Workspace deletion permanently removes the selected workspace through the request's
-RLS-scoped manager. Foreign keys cascade to members, invitations and member API
-keys; users and personal credentials remain. There is no deletion-specific database
+RLS-scoped manager. Foreign keys cascade to members and invitations. Users and API-key audit records remain. There is no deletion-specific database
 context or restore operation. Successful deletion clears the request's workspace
-identity and ability. Deleted keys no longer retain usage timestamps; durable
-deletion auditing belongs in a separate application audit log.
+identity and ability. Keys whose member was deleted retain their metadata and usage timestamps for audit, but cannot authenticate.
 
 Database request contexts use `app.user.id`, `app.workspace.id`, and `app.member.id`.
 `app.member.id` identifies the active member in the selected workspace for authenticated
@@ -394,10 +392,7 @@ permissions. Custom permission names only grant business abilities through
 explicit permission-bound rules; they cannot redefine built-in auth operations.
 
 Scoped user deletion authorizes the root DELETE with Service checks and RLS;
-auth dependants are cleaned up atomically by foreign-key cascades and API-key owner triggers.
-All three key kinds share a polymorphic owner in `api_key`. Accounts, sessions (including impersonation sessions),
-personal keys, memberships and sent invitations cascade from the deleted user.
-Deleting memberships also removes their member keys. Workspaces and other members' keys survive.
+accounts, sessions (including impersonation sessions), memberships and sent invitations are removed atomically by foreign-key cascades. All API-key records remain in `api_key` for audit, including keys belonging to deleted users or members. Authentication reloads the concrete owner and rejects credentials whose owner no longer exists. Workspaces and independent system accounts survive.
 Generate and apply these constraints; child deletes can be silently filtered by RLS.
 Authentication bootstrap,
 creation, invitation acceptance, impersonation and credential administration
@@ -784,7 +779,7 @@ System-key grants are the intersection of the account's current permissions, the
 
 The built-in system catalog is `user:read`, `user:update`, `user:delete`, `workspace:read-any`, `workspace:update-any`, and `workspace:delete-any`. Existing user operations enforce their User ability grants. Workspace platform operations are separate: `workspaces`, `platformWorkspace(id)`, `updatePlatformWorkspace(id, input)`, and `deletePlatformWorkspace(id)`. Ordinary membership-scoped APIs retain their existing checks. Workspace grants are ineffective when workspace features are disabled. No system grant automatically authorizes arbitrary business tables.
 
-Polymorphic relations have no native owner FK. MikroORM metadata declares owner-existence and deletion-cleanup triggers, including raw SQL and workspace→member cascades. Owner checks take a key-share row lock to serialize concurrent creation and deletion. Trigger functions run with their migration owner's privileges, pin `search_path`, qualify target tables, and verify the triggering relation. Keep that role trusted. Trigger creation/removal is generated by MikroORM; changes to these raw trigger expressions need an explicit migration because raw-expression body changes are not inferred by schema diffing.
+Polymorphic relations have no native owner FK or custom owner triggers. Deleting User, Member, SystemAccount or a workspace retains API-key records and their stored owner identifiers for audit. Authentication reloads the concrete owner with a fresh database query and rejects missing, disabled or banned identities. Failed authentication does not delete the record or update its usage timestamps. There is no lazy or scheduled cleanup. System-key audit queries retain metadata and return a null related account when it has been deleted.
 
 System credentials and accounts are unavailable to request-role SQL; their management services require an administrator session. The framework records successful key usage through an isolated writer restricted to the captured key ID.
 

@@ -6,10 +6,6 @@ import {
 } from "@mikro-orm/core";
 
 import { ApiKey } from "../api-key/entities/api-key.entity.js";
-import {
-  apiKeyCleanupTrigger,
-  apiKeyOwnerTrigger,
-} from "../api-key/entities/api-key-triggers.js";
 import { SystemAccount } from "../api-key/entities/system-account.entity.js";
 import { apiKeyOwnerPolicy } from "../api-key/policies/api-key-owner.policy.js";
 import { Invitation } from "../workspace/entities/invitation.entity.js";
@@ -57,15 +53,8 @@ export function getAuthEntities(
     ...(features.systemApiKey ? ["system_account" as const] : []),
     ...(features.workspaceApiKey ? ["member" as const] : []),
   ];
-  const user = local(User);
-  user.meta.triggers = [
-    ...user.meta.triggers.filter(
-      (trigger) => trigger.name !== "user_api_key_cleanup",
-    ),
-    ...(features.userApiKey ? [apiKeyCleanupTrigger("user", schema)] : []),
-  ];
   const result: NonNullable<Options["entities"]> = [
-    user,
+    local(User),
     local(Account),
     local(Session),
     local(Verification),
@@ -85,27 +74,13 @@ export function getAuthEntities(
         expression: `"owner_type" in (${kinds.map((kind) => `'${kind}'`).join(", ")})`,
       },
     ];
-    apiKey.meta.triggers = [apiKeyOwnerTrigger(workspace, schema, kinds)];
     result.push(apiKey);
   }
   if (features.systemAccount) {
-    const system = local(SystemAccount);
-    system.meta.triggers = features.systemApiKey
-      ? [apiKeyCleanupTrigger("system_account", schema)]
-      : [];
-    result.push(system);
+    result.push(local(SystemAccount));
   }
   if (workspace) {
-    const member = local(Member);
-    member.meta.triggers = [
-      ...member.meta.triggers.filter(
-        (trigger) => trigger.name !== "member_api_key_cleanup",
-      ),
-      ...(features.workspaceApiKey
-        ? [apiKeyCleanupTrigger("member", schema)]
-        : []),
-    ];
-    result.push(local(Workspace), member, local(Invitation));
+    result.push(local(Workspace), local(Member), local(Invitation));
   }
   return result;
 }

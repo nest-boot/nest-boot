@@ -229,7 +229,7 @@ pnpm exec nb database:migration:create --name add-auth
 pnpm exec nb database:migration:up
 ```
 
-直接使用 MikroORM 时，通过 `getAuthEntities(options)` 注册与功能开关一致的多态关联、策略和触发器。
+直接使用 MikroORM 时，通过 `getAuthEntities(options)` 注册与功能开关一致的多态关联和策略。
 
 自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，
 不要重新声明或注册同名认证实体。角色、权限目录、Ability 构造器、邮件回调和 Provider 配置仍可自定义。

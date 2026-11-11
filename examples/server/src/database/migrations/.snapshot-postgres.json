@@ -595,16 +595,7 @@
           "definition": "check (\"owner_type\" in ('user', 'system_account', 'member'))"
         }
       ],
-      "triggers": [
-        {
-          "name": "api_key_owner_exists",
-          "timing": "after",
-          "events": ["insert", "update"],
-          "forEach": "row",
-          "body": "",
-          "expression": "create or replace function \"public\".\"api_key_api_key_owner_exists_fn\"() returns trigger language plpgsql security definer set search_path = pg_catalog as $$ begin\n      if TG_RELID <> '\"public\".\"api_key\"'::regclass or TG_NAME <> 'api_key_owner_exists' or TG_OP not in ('INSERT', 'UPDATE') or TG_WHEN <> 'AFTER' or TG_LEVEL <> 'ROW' then raise exception 'Unexpected API-key trigger target'; end if;\n      \n    if TG_OP = 'UPDATE' then\n      if NEW.\"owner_type\" is not distinct from OLD.\"owner_type\" and NEW.\"owner_id\" is not distinct from OLD.\"owner_id\" then return NEW; end if;\n    end if;\n    if NEW.\"owner_type\" = 'user' then perform 1 from \"public\".\"user\" where \"id\" = NEW.\"owner_id\" for key share;\n    elsif NEW.\"owner_type\" = 'system_account' then perform 1 from \"public\".\"system_account\" where \"id\" = NEW.\"owner_id\" for key share;\n    elsif NEW.\"owner_type\" = 'member' then perform 1 from \"public\".\"member\" where \"id\" = NEW.\"owner_id\" for key share;\n    else raise exception 'Invalid API-key owner type' using errcode = '23514'; end if;\n    if not found then raise exception 'API-key owner does not exist' using errcode = '23503'; end if;\n    return NEW;\n    end; $$;\n    revoke all on function \"public\".\"api_key_api_key_owner_exists_fn\"() from public;\n    create trigger \"api_key_owner_exists\" after insert or update on \"public\".\"api_key\" for each row execute function \"public\".\"api_key_api_key_owner_exists_fn\"();"
-        }
-      ],
+      "triggers": [],
       "foreignKeys": {
         "api_key_created_by_id_foreign": {
           "columnNames": ["created_by_id"],
@@ -1451,16 +1442,7 @@
           "definition": "check ((\"type\" = 'USER' AND \"user_id\" IS NOT NULL) OR (\"type\" = 'SERVICE_ACCOUNT' AND \"user_id\" IS NULL))"
         }
       ],
-      "triggers": [
-        {
-          "name": "member_api_key_cleanup",
-          "timing": "after",
-          "events": ["delete"],
-          "forEach": "row",
-          "body": "",
-          "expression": "create or replace function \"public\".\"member_member_api_key_cleanup_fn\"() returns trigger language plpgsql security definer set search_path = pg_catalog as $$ begin\n      if TG_RELID <> '\"public\".\"member\"'::regclass or TG_NAME <> 'member_api_key_cleanup' or TG_OP not in ('DELETE') or TG_WHEN <> 'AFTER' or TG_LEVEL <> 'ROW' then raise exception 'Unexpected API-key trigger target'; end if;\n      delete from \"public\".\"api_key\" where \"owner_type\" = 'member' and \"owner_id\" = OLD.\"id\"; return OLD;\n    end; $$;\n    revoke all on function \"public\".\"member_member_api_key_cleanup_fn\"() from public;\n    create trigger \"member_api_key_cleanup\" after delete on \"public\".\"member\" for each row execute function \"public\".\"member_member_api_key_cleanup_fn\"();"
-        }
-      ],
+      "triggers": [],
       "foreignKeys": {
         "member_user_id_foreign": {
           "columnNames": ["user_id"],
@@ -1860,16 +1842,7 @@
         }
       ],
       "checks": [],
-      "triggers": [
-        {
-          "name": "system_account_api_key_cleanup",
-          "timing": "after",
-          "events": ["delete"],
-          "forEach": "row",
-          "body": "",
-          "expression": "create or replace function \"public\".\"system_account_system_account_api_key_cleanup_fn\"() returns trigger language plpgsql security definer set search_path = pg_catalog as $$ begin\n      if TG_RELID <> '\"public\".\"system_account\"'::regclass or TG_NAME <> 'system_account_api_key_cleanup' or TG_OP not in ('DELETE') or TG_WHEN <> 'AFTER' or TG_LEVEL <> 'ROW' then raise exception 'Unexpected API-key trigger target'; end if;\n      delete from \"public\".\"api_key\" where \"owner_type\" = 'system_account' and \"owner_id\" = OLD.\"id\"; return OLD;\n    end; $$;\n    revoke all on function \"public\".\"system_account_system_account_api_key_cleanup_fn\"() from public;\n    create trigger \"system_account_api_key_cleanup\" after delete on \"public\".\"system_account\" for each row execute function \"public\".\"system_account_system_account_api_key_cleanup_fn\"();"
-        }
-      ],
+      "triggers": [],
       "foreignKeys": {
         "system_account_created_by_id_foreign": {
           "columnNames": ["created_by_id"],
@@ -2129,16 +2102,7 @@
         }
       ],
       "checks": [],
-      "triggers": [
-        {
-          "name": "user_api_key_cleanup",
-          "timing": "after",
-          "events": ["delete"],
-          "forEach": "row",
-          "body": "",
-          "expression": "create or replace function \"public\".\"user_user_api_key_cleanup_fn\"() returns trigger language plpgsql security definer set search_path = pg_catalog as $$ begin\n      if TG_RELID <> '\"public\".\"user\"'::regclass or TG_NAME <> 'user_api_key_cleanup' or TG_OP not in ('DELETE') or TG_WHEN <> 'AFTER' or TG_LEVEL <> 'ROW' then raise exception 'Unexpected API-key trigger target'; end if;\n      delete from \"public\".\"api_key\" where \"owner_type\" = 'user' and \"owner_id\" = OLD.\"id\"; return OLD;\n    end; $$;\n    revoke all on function \"public\".\"user_user_api_key_cleanup_fn\"() from public;\n    create trigger \"user_api_key_cleanup\" after delete on \"public\".\"user\" for each row execute function \"public\".\"user_user_api_key_cleanup_fn\"();"
-        }
-      ],
+      "triggers": [],
       "foreignKeys": {},
       "comment": null,
       "policies": [

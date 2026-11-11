@@ -340,6 +340,58 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     }
   });
 
+  it("retains readable key audit metadata after account deletion and rejects authentication", async () => {
+    const accountId = data(
+      await graphql(
+        'mutation { createSystemAccount(input: {name: "Audit owner", permissions: [USER__READ]}) {id} }',
+      ),
+    ).createSystemAccount.id;
+    const issued: { apiKey: string; entity: { id: string } } = data(
+      await graphql(
+        'mutation($id: ID!) { createSystemApiKey(systemAccountId: $id, input: {name: "Audit credential", permissions: [USER__READ]}) {apiKey entity {id}} }',
+        { id: accountId },
+      ),
+    ).createSystemApiKey;
+    data(
+      await graphql(
+        "mutation($id: ID!) { deleteSystemAccount(id: $id) {id} }",
+        { id: accountId },
+      ),
+    );
+    const audit = data(
+      await graphql(
+        'query($id: ID!) { systemApiKey(id: $id) {id name permissions systemAccount {id}} systemApiKeys(first: 10, filter: {name: "Audit credential"}) {edges {node {id systemAccount {id}}}} systemApiKeyPermissions(apiKeyId: $id) {grantable} }',
+        { id: issued.entity.id },
+      ),
+    );
+    expect(audit.systemApiKey).toEqual({
+      id: issued.entity.id,
+      name: "Audit credential",
+      permissions: ["USER__READ"],
+      systemAccount: null,
+    });
+    expect(audit.systemApiKeys.edges).toEqual([
+      { node: { id: issued.entity.id, systemAccount: null } },
+    ]);
+    expect(
+      audit.systemApiKeyPermissions.every(
+        (choice: { grantable: boolean }) => !choice.grantable,
+      ),
+    ).toBe(true);
+    const response = await fetch(baseURL + "/graphql", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${issued.apiKey}`,
+      },
+      body: JSON.stringify({ query: "{ users(first: 1) {totalCount} }" }),
+    });
+    expect(response.status).toBe(401);
+    const stored = await orm.em.fork().findOneOrFail(ApiKey, issued.entity.id);
+    expect(stored.owner.id).toBe(accountId);
+    expect(stored.lastUsedAt).toBeNull();
+  });
+
   it("creates, manages, uses, revokes and deletes independent credentials over HTTP", async () => {
     const account = await graphql(
       'mutation { createSystemAccount(input: {name: "Integration", permissions: [USER__READ, WORKSPACE__READ_ANY]}) { id name enabled createdById permissions } }',

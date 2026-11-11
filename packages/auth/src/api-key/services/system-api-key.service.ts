@@ -82,7 +82,7 @@ export class SystemApiKeyService {
       const account = ownerId
         ? await em.findOne(SystemAccount, ownerId)
         : undefined;
-      if (ownerId && !account) {
+      if (ownerId && !account && !apiKeyId) {
         throw new NotFoundException("System account not found");
       }
       if (account && systemAccountId) {
@@ -96,6 +96,7 @@ export class SystemApiKeyService {
         permission,
         default: catalog.defaults.includes(permission),
         grantable:
+          (!ownerId || !!account) &&
           catalog.allowed.includes(permission) &&
           (!account || account.permissions.includes(permission)) &&
           canGrantPermissions(this.options, "user", [permission]),
@@ -116,7 +117,7 @@ export class SystemApiKeyService {
       const key = await em.findOne(
         ApiKey,
         { id, ownerType: "system_account" },
-        { populate: ["owner"], exclude: ["key"] },
+        { exclude: ["key"] },
       );
       if (!key) {
         return null;
@@ -152,7 +153,6 @@ export class SystemApiKeyService {
               ? { owner: em.getReference(SystemAccount, systemAccountId) }
               : {}),
           },
-          populate: ["owner"],
           exclude: ["key"],
         },
       );

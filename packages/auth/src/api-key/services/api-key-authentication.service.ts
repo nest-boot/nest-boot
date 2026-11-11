@@ -2,9 +2,12 @@ import { EntityManager, Reference } from "@mikro-orm/core";
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 
 import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
+import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
 import { resolveAuthFeatures } from "../../core/utils/resolve-auth-features.util.js";
+import { Member } from "../../workspace/entities/member.entity.js";
 import { ApiKey } from "../entities/api-key.entity.js";
+import { SystemAccount } from "../entities/system-account.entity.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import type { ApiKeyValidation } from "../types/api-key-validation.type.js";
 import { hashApiKey } from "../utils/api-key-credential.util.js";
@@ -54,10 +57,16 @@ export class ApiKeyAuthenticationService {
     if (apiKey.expiresAt && apiKey.expiresAt <= new Date()) {
       throw new UnauthorizedException("API key has expired");
     }
+    // Owner rows may have been deleted. Re-read them rather than trusting an
+    // uninitialized reference or an identity-map entry retained by this manager.
+    const ownerId = apiKey.owner?.id;
+    if (!ownerId) {
+      throw new UnauthorizedException("Invalid API key");
+    }
     if (apiKey.ownerType === "system_account") {
-      await this.em.populate(apiKey, ["owner"]);
-      const systemAccount =
-        apiKey.systemAccount && Reference.unwrapReference(apiKey.systemAccount);
+      const systemAccount = await this.em.findOne(SystemAccount, ownerId, {
+        refresh: true,
+      });
       if (!systemAccount?.enabled) {
         throw new UnauthorizedException("Invalid API key");
       }
@@ -69,11 +78,10 @@ export class ApiKeyAuthenticationService {
       };
     }
     if (apiKey.ownerType === "user") {
-      await this.em.populate(apiKey, ["owner"]);
-      if (!apiKey.user) {
+      const user = await this.em.findOne(User, ownerId, { refresh: true });
+      if (!user) {
         throw new UnauthorizedException("Invalid API key");
       }
-      const user = Reference.unwrapReference(apiKey.user);
       if (
         user.banned &&
         (!user.banExpiresAt || user.banExpiresAt > new Date())
@@ -83,12 +91,13 @@ export class ApiKeyAuthenticationService {
       assertApiKeyOwner(apiKey, "user");
       return { apiKey: omitCredentials(apiKey, []), ownerType: "user", user };
     }
-    await this.em.populate(apiKey, ["owner"]);
-    if (!apiKey.member) {
+    const member = await this.em.findOne(Member, ownerId, {
+      refresh: true,
+      populate: ["workspace", "user"],
+    });
+    if (!member) {
       throw new UnauthorizedException("Invalid API key");
     }
-    const member = Reference.unwrapReference(apiKey.member);
-    await this.em.populate(member, ["workspace", "user"]);
     const user = member.user ? Reference.unwrapReference(member.user) : null;
     if (
       member.status !== "ACTIVE" ||

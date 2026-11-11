@@ -17,13 +17,16 @@ import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
  */
 export async function resolveApiKeyRelation<T extends { id: string }>(
   key: ApiKeyMetadata,
-  related: Ref<T>,
+  related: Ref<T> | undefined | null,
   type: EntityClass<T>,
   read: (id: string) => Promise<T | null>,
   self = true,
 ): Promise<T | null> {
   try {
     authorize("read", key);
+    if (!related) {
+      return null;
+    }
     const current =
       self && RequestContext.isActive()
         ? RequestContext.get<T>(type)

@@ -44,8 +44,7 @@ different workspaces.
 
 Creating a workspace also creates its active owner membership. Deletion is
 permanent and requires delete ability for the selected workspace. Foreign keys
-cascade to its members, invitations and member API keys; users and their
-personal credentials remain. Workspaces have no `deletedAt` field or restore operation.
+cascade to members and invitations. Users and all API-key audit records remain; keys of deleted members cannot authenticate. Workspaces have no `deletedAt` field or restore operation.
 Deletion, member creation, and invitation creation/acceptance
 lock the workspace row and verify that it still exists inside their transaction.
 Requests that selected a workspace before deletion cannot create new children

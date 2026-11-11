@@ -384,7 +384,7 @@ describe("independent system accounts with real persistence and authentication",
     ).rejects.toThrow(/exceed system account/);
   });
 
-  it("keeps system identities and keys after deleting their creator and cleans them up when the system account is deleted", async () => {
+  it("retains system keys for audit after the creator and system account are deleted", async () => {
     const em = orm.em.fork();
     const creator = em.create(User, {
       name: "Creator",
@@ -417,33 +417,10 @@ describe("independent system accounts with real persistence and authentication",
     await asAdministrator((accounts) =>
       accounts.deleteSystemAccount(issued.account.id),
     );
-    expect(await em.count(ApiKey, issued.entity.id)).toBe(0);
+    expect(await em.count(ApiKey, issued.entity.id)).toBe(1);
     await expect(withKey(issued.apiKey, () => null)).rejects.toThrow(
       /Invalid API key/,
     );
-  });
-
-  it("rejects reuse of privileged owner-cleanup functions by an unexpected trigger", async () => {
-    const em = orm.em.fork();
-    const key = em.create(ApiKey, {
-      owner: administrator,
-      name: "Cleanup guard",
-      key: randomUUID(),
-    });
-    await em.persist(key).flush();
-    await em.execute(
-      'create trigger cleanup_probe after update on "user" for each row execute function public.user_user_api_key_cleanup_fn()',
-    );
-    try {
-      await expect(
-        em.execute('update "user" set name = name where id = ?', [
-          administrator.id,
-        ]),
-      ).rejects.toThrow(/Unexpected API-key trigger target/);
-      expect(await em.count(ApiKey, key.id)).toBe(1);
-    } finally {
-      await em.execute('drop trigger cleanup_probe on "user"');
-    }
   });
 
   it("applies platform write grants independently of membership and keeps the system identity after tenant deletion", async () => {
@@ -487,7 +464,7 @@ describe("independent system accounts with real persistence and authentication",
         /not found/i,
       );
     });
-    expect(await admin.count(ApiKey, memberKey.id)).toBe(0);
+    expect(await admin.count(ApiKey, memberKey.id)).toBe(1);
   });
 
   it("rejects missing accounts and keys and cannot delegate grants beyond a limited administrator", async () => {
@@ -853,16 +830,96 @@ describe("independent system accounts with real persistence and authentication",
     ).toBeInstanceOf(Date);
   });
 
+  it.each(
+    ["user", "member", "workspace", "system_account"].flatMap((kind) => [
+      { kind, removal: "SQL" },
+      { kind, removal: "ORM" },
+    ]),
+  )(
+    "retains $kind-key audit metadata after $removal deletion with a warm identity map",
+    async ({ kind, removal }) => {
+      const em = orm.em.fork();
+      const tenant = em.create(Workspace, { name: "Audit tenant" });
+      const owner =
+        kind === "user"
+          ? em.create(User, {
+              name: "Audit user",
+              email: randomUUID() + "@example.test",
+              emailVerified: true,
+            })
+          : kind === "system_account"
+            ? em.create(SystemAccount, {
+                name: "Audit system",
+                permissions: ["user:read"],
+              })
+            : em.create(Member, {
+                workspace: tenant,
+                name: "Audit member",
+                type: "SERVICE_ACCOUNT",
+                user: null,
+              });
+      const plaintext = randomUUID();
+      const credential = em.create(ApiKey, {
+        owner,
+        name: "Retained audit key",
+        key: hashApiKey(plaintext),
+      });
+      await em.persist(credential).flush();
+      const auth = new ApiKeyAuthenticationService(
+        em,
+        withAuthTestFeatures(options),
+      );
+      await expect(auth.validate(plaintext)).resolves.toMatchObject({
+        apiKey: { id: credential.id },
+      });
+      if (removal === "ORM") {
+        await em.remove(kind === "workspace" ? tenant : owner).flush();
+      } else if (kind === "user") {
+        await em.nativeDelete(User, owner.id);
+      } else if (kind === "system_account") {
+        await em.nativeDelete(SystemAccount, owner.id);
+      } else if (kind === "workspace") {
+        await em.nativeDelete(Workspace, tenant.id);
+      } else {
+        await em.nativeDelete(Member, owner.id);
+      }
+      await expect(auth.validate(plaintext)).rejects.toThrow("Invalid API key");
+      const [audit] = await em.execute(
+        "select name, owner_type, owner_id::text, enabled, last_used_at from api_key where id = ?",
+        [credential.id],
+      );
+      expect(audit).toEqual({
+        name: "Retained audit key",
+        owner_type: kind === "workspace" ? "member" : kind,
+        owner_id: owner.id,
+        enabled: true,
+        last_used_at: null,
+      });
+    },
+  );
   it.each(["user", "member", "system_account"])(
-    "rejects a dangling %s owner even for raw SQL and cascades only matching owner types",
+    "rejects a retained %s key with a missing owner without deleting its audit row",
     async (type) => {
       const em = orm.em.fork();
-      await expect(
-        em.execute(
-          "insert into api_key (name, key, owner_type, owner_id) values ('Dangling', ?, ?, ?)",
-          [randomUUID(), type, "99999999999999"],
-        ),
-      ).rejects.toThrow(/owner does not exist/i);
+      const plaintext = randomUUID();
+      const [{ id }] = await em.execute<{ id: string }[]>(
+        "insert into api_key (name, key, owner_type, owner_id) values ('Retained audit key', ?, ?, ?) returning id::text as id",
+        [hashApiKey(plaintext), type, "99999999999999"],
+      );
+      await expect(withKey(plaintext, () => null)).rejects.toThrow(
+        "Invalid API key",
+      );
+      const [audit] = await em.execute(
+        "select name, owner_type, owner_id::text, enabled, last_used_at from api_key where id = ?",
+        [id],
+      );
+      expect(audit).toEqual({
+        name: "Retained audit key",
+        owner_type: type,
+        owner_id: "99999999999999",
+        enabled: true,
+        last_used_at: null,
+      });
     },
   );
 });

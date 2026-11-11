@@ -13,8 +13,8 @@ export class UserDeletionService {
   constructor(private readonly em: EntityManager) {}
 
   /**
-   * Deletes one user and all auth-owned dependent records atomically.
-   * Workspaces survive user deletion, even when no owner remains.
+   * Deletes one user and its foreign-key dependants atomically.
+   * Workspaces and API-key audit records survive user deletion.
    * When the injected manager has a session, root deletion retains RLS and the
    * built-in foreign keys cascade deletion to auth dependants.
    * @param userId - Identifier of the user that owns the resource.

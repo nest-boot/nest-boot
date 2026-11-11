@@ -718,7 +718,6 @@ describe("Auth services and native RLS boundaries", () => {
         [Account, account.id],
         [Session, session.id],
         [Session, impersonation.id],
-        [ApiKey, key.id],
         [Member, member.id],
         [Invitation, invitation.id],
       ] as const) {
@@ -729,7 +728,8 @@ describe("Auth services and native RLS boundaries", () => {
         ).toBe(0);
       }
       expect(await admin.count(ApiKey, otherKey.id)).toBe(1);
-      expect(await admin.count(ApiKey, memberKey.id)).toBe(0);
+      expect(await admin.count(ApiKey, key.id)).toBe(1);
+      expect(await admin.count(ApiKey, memberKey.id)).toBe(1);
       expect(await admin.count(Session, unrelatedSession.id)).toBe(1);
       const retainedWorkspace = await admin.findOneOrFail(
         Workspace,
@@ -1462,7 +1462,7 @@ describe("Auth services and native RLS boundaries", () => {
     });
 
     it.each(["user", "member"])(
-      "combines default grants with %s-key RLS and a required foreign key",
+      "combines %s-key RLS with required ownership columns and no owner foreign key",
       async (ownerType) => {
         const table = "api_key";
         const em = orm.em.fork();
@@ -1488,9 +1488,10 @@ describe("Auth services and native RLS boundaries", () => {
             randomUUID(),
           ]),
         ).rejects.toThrow(/not-null constraint/i);
-        await expect(
-          insertKey(em, "900199", ownerType, "999999999"),
-        ).rejects.toThrow(/owner does not exist/i);
+        const retainedId = ownerType === "user" ? "900199" : "900200";
+        await insertKey(em, retainedId, ownerType, "999999999");
+        expect(await em.count(ApiKey, retainedId)).toBe(1);
+        await em.nativeDelete(ApiKey, retainedId);
         const otherType = ownerType === "user" ? "member" : "user";
         expect(
           await em.execute(
@@ -1501,7 +1502,7 @@ describe("Auth services and native RLS boundaries", () => {
       },
     );
 
-    it("cascades member keys on workspace deletion", async () => {
+    it("retains member-key audit records after workspace deletion", async () => {
       const em = orm.em.fork();
       const workspace = em.create(Workspace, { name: "Cascade workspace" });
       const key = em.create(ApiKey, {
@@ -1520,7 +1521,7 @@ describe("Auth services and native RLS boundaries", () => {
       await em.persist(key).flush();
       expect(await em.count(ApiKey, key.id)).toBe(1);
       await em.nativeDelete(Workspace, workspace.id, { filters: false });
-      expect(await em.count(ApiKey, key.id)).toBe(0);
+      expect(await em.count(ApiKey, key.id)).toBe(1);
     });
 
     it.each([

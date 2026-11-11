@@ -1,4 +1,4 @@
-import { EntityManager, ref, Reference } from "@mikro-orm/core";
+import { EntityManager, ref } from "@mikro-orm/core";
 import { UnauthorizedException } from "@nestjs/common";
 
 import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
@@ -7,6 +7,8 @@ import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { MemberType } from "../../workspace/enums/member-type.enum.js";
 import { ApiKey } from "../entities/api-key.entity.js";
+import { SystemAccount } from "../entities/system-account.entity.js";
+import { SystemApiKey } from "../entities/system-api-key.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { hashApiKey } from "../utils/api-key-credential.util.js";
@@ -27,12 +29,32 @@ function fixture() {
   const memberKey = Object.assign(new WorkspaceApiKey(), {
     member: ref(Member, member),
   });
+  const systemAccount = new SystemAccount();
+  const systemKey = Object.assign(new SystemApiKey(), {
+    owner: ref(SystemAccount, systemAccount),
+  });
+  const identities = {
+    user: user as User | null,
+    member: member as Member | null,
+    system: systemAccount as SystemAccount | null,
+  };
   const rows = {
     user: userKey as UserApiKey | null,
     member: memberKey as WorkspaceApiKey | null,
+    system: null as SystemApiKey | null,
   };
   const em = {
-    findOne: vi.fn(() => Promise.resolve(rows.user ?? rows.member)),
+    findOne: vi.fn((entity: object) =>
+      Promise.resolve(
+        entity === ApiKey
+          ? (rows.user ?? rows.member ?? rows.system)
+          : entity === User
+            ? identities.user
+            : entity === Member
+              ? identities.member
+              : identities.system,
+      ),
+    ),
     populate: vi.fn().mockImplementation((entity) => Promise.resolve(entity)),
     nativeUpdate: vi.fn().mockResolvedValue(1),
   };
@@ -43,6 +65,9 @@ function fixture() {
     userKey,
     memberKey,
     rows,
+    identities,
+    systemAccount,
+    systemKey,
     em,
     service: new ApiKeyAuthenticationService(
       em as unknown as EntityManager,
@@ -91,7 +116,7 @@ describe("API-key authentication", () => {
     );
   });
   for (const scope of ["user", "member"] as const) {
-    it(`authenticates a ${scope} key by hash with only its owner populated`, async () => {
+    it(`authenticates a ${scope} key by hash with a fresh owner lookup`, async () => {
       const { service, rows, em } = fixture();
       rows[scope === "user" ? "member" : "user"] = null;
       const key = rows[scope];
@@ -99,17 +124,19 @@ describe("API-key authentication", () => {
         apiKey: key,
         ownerType: scope,
       });
-      expect(em.findOne).toHaveBeenCalledExactlyOnceWith(ApiKey, {
+      expect(em.findOne).toHaveBeenCalledWith(ApiKey, {
         key: hashApiKey("plaintext"),
         ownerType: { $in: ["user", "member", "system_account"] },
       });
-      expect(em.populate).toHaveBeenCalledWith(key, ["owner"]);
-      if (scope === "member") {
-        expect(em.populate).toHaveBeenCalledWith(
-          key?.member && Reference.unwrapReference(key.member),
-          ["workspace", "user"],
-        );
-      }
+      expect(em.findOne).toHaveBeenCalledWith(
+        scope === "user" ? User : Member,
+        key?.owner.id,
+        {
+          refresh: true,
+          ...(scope === "member" ? { populate: ["workspace", "user"] } : {}),
+        },
+      );
+      expect(em.findOne).toHaveBeenCalledTimes(2);
     });
     it.each(["disabled", "expired"])(
       `rejects %s ${scope} keys`,
@@ -138,6 +165,33 @@ describe("API-key authentication", () => {
       );
     });
   }
+  it.each(["user", "member", "system"] as const)(
+    "rejects a missing %s identity without updating or deleting its audit key",
+    async (kind) => {
+      const { service, rows, identities, systemKey, em } = fixture();
+      rows.user = kind === "user" ? rows.user : null;
+      rows.member = kind === "member" ? rows.member : null;
+      rows.system = kind === "system" ? systemKey : null;
+      identities[kind] = null;
+      await expect(service.validate("retained-key")).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+      expect(em.nativeUpdate).not.toHaveBeenCalled();
+    },
+  );
+
+  it("propagates database lookup failures without changing the credential", async () => {
+    const { service, em, userKey } = fixture();
+    em.findOne.mockImplementation((entity: object) =>
+      entity === ApiKey
+        ? Promise.resolve(userKey)
+        : Promise.reject(new Error("database unavailable")),
+    );
+    await expect(service.validate("key")).rejects.toThrow(
+      "database unavailable",
+    );
+    expect(em.nativeUpdate).not.toHaveBeenCalled();
+  });
   it("rejects active user bans but permits expired bans", async () => {
     const { service, rows, user, userKey } = fixture();
     rows.member = null;
@@ -193,7 +247,10 @@ describe("optional workspace behavior", () => {
     const user = new User();
     const key = Object.assign(new UserApiKey(), { user });
     const em = {
-      findOne: vi.fn().mockResolvedValue(key),
+      findOne: vi.fn(
+        (entity: object): Promise<User | UserApiKey | WorkspaceApiKey> =>
+          Promise.resolve(entity === ApiKey ? key : user),
+      ),
       populate: vi.fn().mockResolvedValue(key),
     };
     const service = new ApiKeyAuthenticationService(
@@ -205,16 +262,17 @@ describe("optional workspace behavior", () => {
       user,
       apiKey: key,
     });
-    expect(em.findOne).toHaveBeenCalledExactlyOnceWith(ApiKey, {
+    expect(em.findOne).toHaveBeenCalledWith(ApiKey, {
       key: hashApiKey("personal-key"),
       ownerType: { $in: ["user"] },
     });
-    expect(em.populate).toHaveBeenCalledExactlyOnceWith(key, ["owner"]);
+    expect(em.findOne).toHaveBeenCalledWith(User, user.id, { refresh: true });
+    expect(em.populate).not.toHaveBeenCalled();
     em.findOne.mockResolvedValue(new WorkspaceApiKey());
     await expect(service.validate("member-key")).rejects.toThrow(
       "Invalid API key",
     );
-    expect(em.findOne).toHaveBeenCalledTimes(2);
-    expect(em.populate).toHaveBeenCalledTimes(1);
+    expect(em.findOne).toHaveBeenCalledTimes(3);
+    expect(em.populate).not.toHaveBeenCalled();
   });
 });

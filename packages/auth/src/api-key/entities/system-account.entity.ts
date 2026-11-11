@@ -6,18 +6,15 @@ import {
   ManyToOne,
   PrimaryKey,
   Property,
-  Trigger,
 } from "@mikro-orm/decorators/legacy";
 import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
 import { SystemAccountPermission } from "../../admin/enums/system-account-permission.enum.js";
 import { User } from "../../core/entities/user.entity.js";
-import { apiKeyCleanupTrigger } from "./api-key-triggers.js";
 
 /** Platform identity owned independently of the administrator that created it. */
 @ObjectType({ isAbstract: true })
-@Trigger(apiKeyCleanupTrigger("system_account", "public"))
 @Entity({
   tableName: "system_account",
   policies: [

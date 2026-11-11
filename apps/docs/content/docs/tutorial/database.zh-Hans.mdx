@@ -372,5 +372,3 @@ export class User {
 2. **EntityService 作为基类** — 所有领域服务都继承 `EntityService`，开箱即获得 CRUD + DataLoader 批处理。
 
 3. **软删除** — 对支持软删除的实体在 `EntityService` 中配置 `softDeleteKey`。
-
-`DATABASE_MODULE_OPTIONS` 可供功能模块在实体发现之前注入用户注册的 DatabaseModule 配置，例如为多态关系触发器选择 schema。它不是已初始化的 MikroORM 或 EntityManager。
