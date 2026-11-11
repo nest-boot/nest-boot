@@ -32,14 +32,14 @@ import { resolveMemberPermissions } from "../../common/utils/resolve-effective-p
 import { resolveRequestPermissions } from "../../common/utils/resolve-request-permissions.util.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
 import { User } from "../../core/entities/user.entity.js";
-import { RequestIdentity } from "../../core/infrastructure/request-identity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
+import { RequestIdentity } from "../../core/request-identity.js";
 import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
+import { ApiKeyLifecycle } from "../api-key-lifecycle.js";
 import { WorkspaceApiKeyConnection } from "../connections/workspace-api-key.connection-definition.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
-import { ApiKeyLifecycle } from "../infrastructure/api-key-lifecycle.js";
 import type { CreateWorkspaceApiKeyOptions } from "../interfaces/create-workspace-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";

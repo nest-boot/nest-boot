@@ -10,9 +10,11 @@ import { Global, type INestApplication, Module } from "@nestjs/common";
 import { GraphQLModule } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
 
+import { ApiKey } from "../src/api-key/entities/api-key.entity.js";
 import { AuthGuard } from "../src/core/auth.guard.js";
 import { AuthModule } from "../src/core/auth.module.js";
-import { ApiKey, User, Workspace } from "../src/core/entities/index.js";
+import { User } from "../src/core/entities/user.entity.js";
+import { Workspace } from "../src/workspace/entities/workspace.entity.js";
 import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 
 @Global()

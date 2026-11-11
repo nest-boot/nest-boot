@@ -2,14 +2,12 @@ import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
 import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
-import {
-  Member,
-  User,
-  UserApiKey,
-  Workspace,
-  WorkspaceApiKey,
-} from "../../core/entities/index.js";
-import { RequestIdentity } from "../../core/infrastructure/request-identity.js";
+import { UserApiKey } from "../../api-key/entities/user-api-key.entity.js";
+import { WorkspaceApiKey } from "../../api-key/entities/workspace-api-key.entity.js";
+import { User } from "../../core/entities/user.entity.js";
+import { RequestIdentity } from "../../core/request-identity.js";
+import { Member } from "../../workspace/entities/member.entity.js";
+import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import {
   assertApiKeyPermissionCeiling,
   assertCanGrantPermissions,

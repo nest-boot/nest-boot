@@ -1,14 +1,14 @@
 import { EntityManager } from "@mikro-orm/core";
 import type { Provider } from "@nestjs/common";
 
-import { featureProvider } from "../../common/infrastructure/feature-provider.js";
-import { AuthService } from "../../core/services/auth.service.js";
-import { SessionService } from "../../core/services/session.service.js";
-import { UserService } from "../../core/services/user.service.js";
-import { AdminSessionResolver } from "../resolvers/admin-session.resolver.js";
-import { AdminUserResolver } from "../resolvers/admin-user.resolver.js";
-import { SystemAccountResolver } from "../resolvers/system-account.resolver.js";
-import { SystemAccountService } from "../services/system-account.service.js";
+import { featureProvider } from "../common/feature-provider.js";
+import { AuthService } from "../core/services/auth.service.js";
+import { SessionService } from "../core/services/session.service.js";
+import { UserService } from "../core/services/user.service.js";
+import { AdminSessionResolver } from "./resolvers/admin-session.resolver.js";
+import { AdminUserResolver } from "./resolvers/admin-user.resolver.js";
+import { SystemAccountResolver } from "./resolvers/system-account.resolver.js";
+import { SystemAccountService } from "./services/system-account.service.js";
 
 /** Administration is absent unless explicitly enabled. */
 export const adminProviders: Provider[] = [

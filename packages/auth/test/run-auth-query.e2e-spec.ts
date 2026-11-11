@@ -8,10 +8,10 @@ import { MikroORM } from "@mikro-orm/pglite";
 import { RequestContext } from "@nest-boot/request-context";
 
 import { runAuthQuery } from "../src/common/utils/run-auth-query.js";
+import { createContextualAuthService } from "../src/core/create-contextual-auth-service.js";
 import { Session } from "../src/core/entities/session.entity.js";
 import { User } from "../src/core/entities/user.entity.js";
-import { createContextualAuthService } from "../src/core/infrastructure/create-contextual-auth-service.js";
-import { RequestIdentity } from "../src/core/infrastructure/request-identity.js";
+import { RequestIdentity } from "../src/core/request-identity.js";
 
 @Entity({
   policies: [

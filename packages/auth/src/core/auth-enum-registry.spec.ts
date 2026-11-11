@@ -1,6 +1,6 @@
-import { UserPermission } from "../enums/index.js";
-import type { AuthModuleOptions } from "../interfaces/auth-module-options.interface.js";
 import { AuthEnumRegistry } from "./auth-enum-registry.js";
+import { UserPermission } from "./enums/user-permission.enum.js";
+import type { AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
 
 describe("auth enum registration", () => {
   const registrations: AuthEnumRegistry[] = [];

@@ -2,13 +2,13 @@ import { headers, RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 
 import { AuthMiddleware } from "../auth.middleware.js";
-import { AUTH_TOKEN } from "../constants/auth.constants.js";
-import { Session } from "../entities/session.entity.js";
-import { User } from "../entities/user.entity.js";
 import {
   adaptBetterAuth,
   type BetterAuthAdapter,
-} from "../infrastructure/better-auth-adapter.js";
+} from "../better-auth-adapter.js";
+import { AUTH_TOKEN } from "../constants/auth.constants.js";
+import { Session } from "../entities/session.entity.js";
+import { User } from "../entities/user.entity.js";
 import type { AuthAccessToken } from "../interfaces/auth-access-token.interface.js";
 import type { AuthAccount } from "../interfaces/auth-account.interface.js";
 import type { AuthAccountInfo } from "../interfaces/auth-account-info.interface.js";

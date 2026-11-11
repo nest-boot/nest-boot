@@ -28,8 +28,8 @@ import { assertCanGrantPermissions } from "../../common/utils/permission-grants.
 import { resolveAuthCatalog } from "../../common/utils/resolve-auth-catalog.util.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
 import { User } from "../../core/entities/user.entity.js";
-import { RequestIdentity } from "../../core/infrastructure/request-identity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
+import { RequestIdentity } from "../../core/request-identity.js";
 import type { AuthModuleRoles } from "../../core/types/auth-module-roles.type.js";
 import {
   normalizeAuthRoles,

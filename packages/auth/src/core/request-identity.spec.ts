@@ -5,26 +5,26 @@ import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 import { assert } from "vitest";
 
-import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
-import { UserApiKey } from "../../api-key/entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../../api-key/entities/workspace-api-key.entity.js";
-import { AuthAbility } from "../../common/auth.ability.js";
-import { can } from "../../common/utils/can.util.js";
+import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
+import { UserApiKey } from "../api-key/entities/user-api-key.entity.js";
+import { WorkspaceApiKey } from "../api-key/entities/workspace-api-key.entity.js";
+import { AuthAbility } from "../common/auth.ability.js";
+import { can } from "../common/utils/can.util.js";
 import {
   assertApiKeyPermissionCeiling,
   canGrantPermissions,
-} from "../../common/utils/permission-grants.util.js";
-import { resolveRequestPermissions } from "../../common/utils/resolve-request-permissions.util.js";
-import { serializeAbilityRules } from "../../common/utils/serialize-ability-rules.util.js";
-import { Member } from "../../workspace/entities/member.entity.js";
-import { Workspace } from "../../workspace/entities/workspace.entity.js";
-import { API_KEY } from "../constants/auth.constants.js";
-import { Invitation } from "../entities/index.js";
-import { Session } from "../entities/session.entity.js";
-import { User } from "../entities/user.entity.js";
-import { type AuthModuleOptions } from "../interfaces/auth-module-options.interface.js";
-import { buildRequestAbility } from "../utils/build-request-ability.util.js";
+} from "../common/utils/permission-grants.util.js";
+import { resolveRequestPermissions } from "../common/utils/resolve-request-permissions.util.js";
+import { serializeAbilityRules } from "../common/utils/serialize-ability-rules.util.js";
+import { Invitation } from "../workspace/entities/invitation.entity.js";
+import { Member } from "../workspace/entities/member.entity.js";
+import { Workspace } from "../workspace/entities/workspace.entity.js";
+import { API_KEY } from "./constants/auth.constants.js";
+import { Session } from "./entities/session.entity.js";
+import { User } from "./entities/user.entity.js";
+import { type AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
 import { RequestIdentity } from "./request-identity.js";
+import { buildRequestAbility } from "./utils/build-request-ability.util.js";
 
 /**
  * Returns entity manager mock that tracks the active session context.

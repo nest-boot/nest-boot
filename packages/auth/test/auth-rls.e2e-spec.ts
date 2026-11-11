@@ -8,12 +8,13 @@ import { REQUEST, RequestContext } from "@nest-boot/request-context";
 import { type FactoryProvider, ForbiddenException } from "@nestjs/common";
 import type { Request } from "express";
 
-import { ApiKeyAuthenticationService } from "../src/api-key/infrastructure/api-key-authentication.service.js";
+import { ApiKey } from "../src/api-key/entities/api-key.entity.js";
+import { ApiKeyAuthenticationService } from "../src/api-key/services/api-key-authentication.service.js";
 import { mikroOrmAdapter } from "../src/core/adapters/mikro-orm-adapter.js";
 import { AUTH_TOKEN } from "../src/core/constants/auth.constants.js";
-import { ApiKey, getAuthEntities } from "../src/core/entities/index.js";
-import { createContextualAuthService } from "../src/core/infrastructure/create-contextual-auth-service.js";
-import { RequestIdentity } from "../src/core/infrastructure/request-identity.js";
+import { createContextualAuthService } from "../src/core/create-contextual-auth-service.js";
+import { getAuthEntities } from "../src/core/get-auth-entities.js";
+import { RequestIdentity } from "../src/core/request-identity.js";
 import { UserDeletionService } from "../src/core/services/user-deletion.service.js";
 import {
   Account,

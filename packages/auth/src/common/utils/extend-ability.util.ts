@@ -5,14 +5,12 @@ import type {
   MongoQuery,
 } from "@casl/ability";
 
-import {
-  ApiKey,
-  entities,
-  SystemApiKey,
-  UserApiKey,
-  WorkspaceApiKey,
-  workspaceEntities,
-} from "../../core/entities/index.js";
+import { ApiKey } from "../../api-key/entities/api-key.entity.js";
+import { SystemApiKey } from "../../api-key/entities/system-api-key.entity.js";
+import { UserApiKey } from "../../api-key/entities/user-api-key.entity.js";
+import { WorkspaceApiKey } from "../../api-key/entities/workspace-api-key.entity.js";
+import { entities } from "../../core/auth-entities.js";
+import { workspaceEntities } from "../../core/auth-entities.js";
 import type { AbilityContext } from "../interfaces/ability-context.interface.js";
 import type { AbilityRules } from "../interfaces/ability-rules.interface.js";
 

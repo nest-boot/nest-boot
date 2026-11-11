@@ -1,15 +1,16 @@
 import { MetadataStorage } from "@mikro-orm/core";
 
-import { ApiKey } from "../../api-key/entities/api-key.entity.js";
-import { SystemAccount } from "../../api-key/entities/system-account.entity.js";
-import { Invitation } from "../../workspace/entities/invitation.entity.js";
-import { Member } from "../../workspace/entities/member.entity.js";
-import { Workspace } from "../../workspace/entities/workspace.entity.js";
-import { Account } from "./account.entity.js";
-import { entities, workspaceEntities } from "./index.js";
-import { Session } from "./session.entity.js";
-import { User } from "./user.entity.js";
-import { Verification } from "./verification.entity.js";
+import { ApiKey } from "../api-key/entities/api-key.entity.js";
+import { SystemAccount } from "../api-key/entities/system-account.entity.js";
+import { Invitation } from "../workspace/entities/invitation.entity.js";
+import { Member } from "../workspace/entities/member.entity.js";
+import { Workspace } from "../workspace/entities/workspace.entity.js";
+import { entities } from "./auth-entities.js";
+import { workspaceEntities } from "./auth-entities.js";
+import { Account } from "./entities/account.entity.js";
+import { Session } from "./entities/session.entity.js";
+import { User } from "./entities/user.entity.js";
+import { Verification } from "./entities/verification.entity.js";
 
 describe("built-in auth entity field ownership", () => {
   it.each([

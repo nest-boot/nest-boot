@@ -7,11 +7,9 @@ import { Global, Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
 import { AuthModule } from "../src/core/auth.module.js";
-import {
-  entities,
-  User,
-  workspaceEntities,
-} from "../src/core/entities/index.js";
+import { entities } from "../src/core/auth-entities.js";
+import { workspaceEntities } from "../src/core/auth-entities.js";
+import { User } from "../src/core/entities/user.entity.js";
 import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 
 @Global()

@@ -2,7 +2,7 @@ import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
 import { User } from "../../core/entities/user.entity.js";
-import { RequestIdentity } from "../../core/infrastructure/request-identity.js";
+import { RequestIdentity } from "../../core/request-identity.js";
 import { AuthAbility } from "../auth.ability.js";
 import { authorize } from "./authorize.util.js";
 import { can } from "./can.util.js";

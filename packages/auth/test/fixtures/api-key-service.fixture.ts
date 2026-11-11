@@ -7,8 +7,8 @@ import { UserApiKeyService } from "../../src/api-key/services/user-api-key.servi
 import { WorkspaceApiKeyService } from "../../src/api-key/services/workspace-api-key.service.js";
 import * as abilityHelpers from "../../src/common/utils/authorize.util.js";
 import { User } from "../../src/core/entities/user.entity.js";
-import { RequestIdentity } from "../../src/core/infrastructure/request-identity.js";
 import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-options.interface.js";
+import { RequestIdentity } from "../../src/core/request-identity.js";
 import { Member } from "../../src/workspace/entities/member.entity.js";
 import { Workspace } from "../../src/workspace/entities/workspace.entity.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";

@@ -1,7 +1,7 @@
 import { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 
-import { runAuthQuery } from "../../common/utils/run-auth-query.js";
+import { runAuthQuery } from "../common/utils/run-auth-query.js";
 
 type ExecutionContext = "authentication" | "invitation-identity";
 

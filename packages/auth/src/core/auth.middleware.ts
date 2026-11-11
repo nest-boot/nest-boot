@@ -9,7 +9,7 @@ import {
 } from "@nestjs/common";
 import { type NextFunction, type Request, type Response } from "express";
 
-import { ApiKeyAuthenticationService } from "../api-key/infrastructure/api-key-authentication.service.js";
+import { ApiKeyAuthenticationService } from "../api-key/services/api-key-authentication.service.js";
 import { extractApiKey } from "../api-key/utils/extract-api-key.util.js";
 import { runAuthQuery } from "../common/utils/run-auth-query.js";
 import { Member } from "../workspace/entities/member.entity.js";
@@ -17,8 +17,8 @@ import { Workspace } from "../workspace/entities/workspace.entity.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
-import { RequestIdentity } from "./infrastructure/request-identity.js";
 import type { AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
+import { RequestIdentity } from "./request-identity.js";
 import { SessionService } from "./services/session.service.js";
 
 /** Builds the complete authentication context for an incoming request. */

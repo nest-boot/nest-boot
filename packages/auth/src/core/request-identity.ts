@@ -2,19 +2,19 @@ import type { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 
-import type { ApiKeyMetadata } from "../../api-key/types/api-key-metadata.type.js";
-import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
-import { AuthAbility } from "../../common/auth.ability.js";
-import { invalidateRequestPermissions } from "../../common/utils/resolve-request-permissions.util.js";
-import { Member } from "../../workspace/entities/member.entity.js";
-import { Workspace } from "../../workspace/entities/workspace.entity.js";
-import { resolveRequestMember } from "../../workspace/utils/resolve-request-member.util.js";
-import { API_KEY } from "../constants/auth.constants.js";
-import { Session } from "../entities/session.entity.js";
-import { User } from "../entities/user.entity.js";
-import type { AuthModuleOptions } from "../interfaces/auth-module-options.interface.js";
-import type { RequestIdentityPatch } from "../interfaces/request-identity-patch.interface.js";
-import { buildRequestAbility } from "../utils/build-request-ability.util.js";
+import type { ApiKeyMetadata } from "../api-key/types/api-key-metadata.type.js";
+import { getCurrentApiKey } from "../api-key/utils/get-current-api-key.util.js";
+import { AuthAbility } from "../common/auth.ability.js";
+import { invalidateRequestPermissions } from "../common/utils/resolve-request-permissions.util.js";
+import { Member } from "../workspace/entities/member.entity.js";
+import { Workspace } from "../workspace/entities/workspace.entity.js";
+import { resolveRequestMember } from "../workspace/utils/resolve-request-member.util.js";
+import { API_KEY } from "./constants/auth.constants.js";
+import { Session } from "./entities/session.entity.js";
+import { User } from "./entities/user.entity.js";
+import type { AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
+import type { RequestIdentityPatch } from "./interfaces/request-identity-patch.interface.js";
+import { buildRequestAbility } from "./utils/build-request-ability.util.js";
 
 /**
  * Owns request identity publication, authorization invalidation, and database scope.

@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { mergeMap, type Observable } from "rxjs";
 
-import { ApiKeyAuthenticationService } from "../infrastructure/api-key-authentication.service.js";
+import { ApiKeyAuthenticationService } from "../services/api-key-authentication.service.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 
 /** Records successful requests authenticated with an API key. */

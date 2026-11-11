@@ -12,11 +12,12 @@ import { Test } from "@nestjs/testing";
 import type { betterAuth } from "better-auth";
 import type { GraphQLEnumType, GraphQLObjectType } from "graphql";
 
-import { ApiKeyAuthenticationService } from "../../src/api-key/infrastructure/api-key-authentication.service.js";
+import { ApiKey } from "../../src/api-key/entities/api-key.entity.js";
+import { ApiKeyAuthenticationService } from "../../src/api-key/services/api-key-authentication.service.js";
 import { WorkspaceApiKeyService } from "../../src/api-key/services/workspace-api-key.service.js";
 import { AuthModule } from "../../src/core/auth.module.js";
 import { AUTH_TOKEN } from "../../src/core/constants/auth.constants.js";
-import { ApiKey, User } from "../../src/core/entities/index.js";
+import { User } from "../../src/core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-options.interface.js";
 import { Member } from "../../src/workspace/entities/member.entity.js";
 import { Workspace } from "../../src/workspace/entities/workspace.entity.js";

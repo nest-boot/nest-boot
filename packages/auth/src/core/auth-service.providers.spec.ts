@@ -3,27 +3,27 @@ import { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import type { FactoryProvider } from "@nestjs/common";
 
-import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
-import { mockAuthorization } from "../../../test/mock-authorization.js";
+import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
+import { mockAuthorization } from "../../test/mock-authorization.js";
 import {
   createTestMember,
   createTestWorkspace,
   createWorkspaceServices,
-} from "../../../test/workspace-service.fixture.js";
-import { ApiKey } from "../../api-key/entities/api-key.entity.js";
-import { UserApiKey } from "../../api-key/entities/user-api-key.entity.js";
-import { ApiKeyAuthenticationService } from "../../api-key/infrastructure/api-key-authentication.service.js";
-import { AuthAbility } from "../../common/auth.ability.js";
-import { Member } from "../../workspace/entities/member.entity.js";
-import { Workspace } from "../../workspace/entities/workspace.entity.js";
-import { InvitationService } from "../../workspace/services/invitation.service.js";
-import { MemberService } from "../../workspace/services/member.service.js";
-import { WorkspaceService } from "../../workspace/services/workspace.service.js";
-import { Session } from "../entities/session.entity.js";
-import { User } from "../entities/user.entity.js";
-import { SessionService } from "../services/session.service.js";
-import { UserService } from "../services/user.service.js";
+} from "../../test/workspace-service.fixture.js";
+import { ApiKey } from "../api-key/entities/api-key.entity.js";
+import { UserApiKey } from "../api-key/entities/user-api-key.entity.js";
+import { ApiKeyAuthenticationService } from "../api-key/services/api-key-authentication.service.js";
+import { AuthAbility } from "../common/auth.ability.js";
+import { Member } from "../workspace/entities/member.entity.js";
+import { Workspace } from "../workspace/entities/workspace.entity.js";
+import { InvitationService } from "../workspace/services/invitation.service.js";
+import { MemberService } from "../workspace/services/member.service.js";
+import { WorkspaceService } from "../workspace/services/workspace.service.js";
 import { authServiceProviders } from "./auth-service.providers.js";
+import { Session } from "./entities/session.entity.js";
+import { User } from "./entities/user.entity.js";
+import { SessionService } from "./services/session.service.js";
+import { UserService } from "./services/user.service.js";
 
 describe("auth service execution boundaries", () => {
   it("isolates credential lookup but records usage through the caller's scoped manager", async () => {

@@ -3,14 +3,12 @@ import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
 import { mockAuthorization } from "../../../test/mock-authorization.js";
-import {
-  Member,
-  SystemAccount,
-  SystemApiKey,
-  User,
-  UserApiKey,
-  WorkspaceApiKey,
-} from "../../core/entities/index.js";
+import { User } from "../../core/entities/user.entity.js";
+import { Member } from "../../workspace/entities/member.entity.js";
+import { SystemAccount } from "../entities/system-account.entity.js";
+import { SystemApiKey } from "../entities/system-api-key.entity.js";
+import { UserApiKey } from "../entities/user-api-key.entity.js";
+import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import { resolveApiKeyRelation } from "./resolve-api-key-relation.util.js";
 
 describe("resolveApiKeyRelation", () => {

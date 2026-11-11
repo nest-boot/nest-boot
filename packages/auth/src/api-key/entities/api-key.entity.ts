@@ -8,9 +8,9 @@ import {
 
 import { User } from "../../core/entities/user.entity.js";
 import { Member } from "../../workspace/entities/member.entity.js";
-import { apiKeyOwnerTrigger } from "../infrastructure/api-key-triggers.js";
 import { apiKeyOwnerPolicy } from "../policies/api-key-owner.policy.js";
 import { ApiKeyFields } from "./api-key-fields.js";
+import { apiKeyOwnerTrigger } from "./api-key-triggers.js";
 import { SystemAccount } from "./system-account.entity.js";
 
 /** Single persistent API-key entity with a polymorphic owner. */

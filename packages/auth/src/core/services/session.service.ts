@@ -24,16 +24,16 @@ import type { GraphQLResolveInfo } from "graphql";
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
 import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
+import {
+  adaptBetterAuth,
+  type BetterAuthAdapter,
+} from "../better-auth-adapter.js";
 import { SessionConnection } from "../connections/session.connection-definition.js";
 import { AUTH_TOKEN } from "../constants/auth.constants.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
-import {
-  adaptBetterAuth,
-  type BetterAuthAdapter,
-} from "../infrastructure/better-auth-adapter.js";
-import { RequestIdentity } from "../infrastructure/request-identity.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
+import { RequestIdentity } from "../request-identity.js";
 
 /** Application-facing session management operations. */
 @Injectable()

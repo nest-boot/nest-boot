@@ -21,9 +21,9 @@ import {
 } from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 
-import { adminProviders } from "../admin/infrastructure/admin.providers.js";
+import { adminProviders } from "../admin/admin.providers.js";
 import { SystemAccountService } from "../admin/services/system-account.service.js";
-import { apiKeyProviders } from "../api-key/infrastructure/api-key.providers.js";
+import { apiKeyProviders } from "../api-key/api-key.providers.js";
 import { ApiKeyUsageInterceptor } from "../api-key/interceptors/api-key-usage.interceptor.js";
 import { SystemApiKeyService } from "../api-key/services/system-api-key.service.js";
 import { UserApiKeyService } from "../api-key/services/user-api-key.service.js";
@@ -32,26 +32,26 @@ import {
   DEFAULT_WORKSPACE_PERMISSIONS,
   DEFAULT_WORKSPACE_ROLES,
 } from "../workspace/constants/workspace.constants.js";
-import { workspaceProviders } from "../workspace/infrastructure/workspace.providers.js";
 import { InvitationService } from "../workspace/services/invitation.service.js";
 import { MemberService } from "../workspace/services/member.service.js";
 import { WorkspaceService } from "../workspace/services/workspace.service.js";
+import { workspaceProviders } from "../workspace/workspace.providers.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
 } from "./auth.module-definition.js";
+import { AuthEnumRegistry } from "./auth-enum-registry.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
+import { authServiceProviders } from "./auth-service.providers.js";
 import { AUTH_TOKEN } from "./constants/auth.constants.js";
 import {
   DEFAULT_USER_PERMISSIONS,
   DEFAULT_USER_ROLES,
 } from "./constants/user.constants.js";
-import { getAuthEntities } from "./entities/index.js";
-import { AuthEnumRegistry } from "./infrastructure/auth-enum-registry.js";
-import { authServiceProviders } from "./infrastructure/auth-service.providers.js";
-import { createAuthInstance } from "./infrastructure/create-auth-instance.js";
+import { createAuthInstance } from "./create-auth-instance.js";
+import { getAuthEntities } from "./get-auth-entities.js";
 import { type AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
 import { AuthResolver } from "./resolvers/auth.resolver.js";
 import { SessionResolver } from "./resolvers/session.resolver.js";

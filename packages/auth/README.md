@@ -10,7 +10,9 @@ Apply the complete migration sequence to a fresh database.
 
 ## Source organization
 
-Auth source lives in `common`, `core`, `workspace`, `admin`, and `api-key` feature directories. Each feature retains its own `entities`, `services`, `resolvers`, `inputs`, `objects`, and supporting layers. Unit tests use the tested file's name and sit beside it; HTTP, database and application-bootstrap tests remain under `test`. `common` contains shared authorization, policy and projection helpers. Public application imports continue to use `@nest-boot/auth`.
+Auth source lives in `common`, `core`, `workspace`, `admin`, and `api-key` feature directories. Each feature retains its own `entities`, `services`, `resolvers`, `inputs`, `objects`, and supporting layers. Unit tests use the tested file's name and sit beside it; HTTP, database and application-bootstrap tests remain under `test`.
+
+Core runtime coordination lives directly under `core`, including provider registration, request identity, enum registration, entity selection and Better Auth setup. Other feature providers live at their feature roots; API-key authentication belongs to `api-key/services`, and ORM triggers belong to `api-key/entities`. `common` contains helpers shared across features. Internal imports point to the owning file. Application imports use `@nest-boot/auth`; the public barrel retains the exported API.
 
 ## Optional administration and credentials
 
@@ -61,17 +63,6 @@ to `null` when disabled and should only be injected by applications enabling the
 Existing applications must set `workspace.enabled: true` before generating migrations
 to retain workspace tables. `User.members` was removed to prevent automatic discovery
 of optional entities; use `MemberService` for membership queries.
-
-## Feature organization
-
-Invitation behavior is the first feature organized under `src/features/invitations`.
-Its service, resolver, connection definition, inputs, payloads, invitation-specific types
-and adjacent tests live together. Shared entities stay under `src/entities`; contextual
-providers, identity and transaction infrastructure stay under `src/infrastructure`.
-
-Keep package consumers on `@nest-boot/auth`: the root barrel preserves all existing
-exports. Inside the package, import the specific owning file rather than the public barrel
-to avoid circular imports. Future feature moves can follow this pattern independently.
 
 ## Member and Invitation rename
 
@@ -720,7 +711,7 @@ for invitation creation.
 
 Update operation documents, ability subject mappings, and generated client types together. The example uses a fresh-database baseline: infrastructure initialization followed by a MikroORM-generated schema that creates the shared API-key table and system accounts directly.
 
-Authentication and successful-use tracking are internal infrastructure responsibilities. Credential lookup checks both tables and rejects ambiguous matches. `@CurrentApiKey()` returns the `ApiKey` union type, not an ORM entity class.
+Authentication and successful-use tracking are internal infrastructure responsibilities. Credential lookup queries the shared `api_key` table by hash and restricts matches to enabled identity kinds. `@CurrentApiKey()` returns request credential metadata; use the scoped services to mutate credentials.
 
 ## Removed collection APIs
 
@@ -734,9 +725,9 @@ credential-hydration helper for session revocation, not a GraphQL listing API.
 ## Internal BetterAuth integration
 
 `AuthModule` owns Nest provider registration and HTTP middleware wiring.
-`infrastructure/create-auth-instance.ts` validates options, resolves environment/default
+`core/create-auth-instance.ts` validates options, resolves environment/default
 precedence with the existing config helpers, and constructs the BetterAuth instance.
-`infrastructure/better-auth-adapter.ts` derives the auth/session API surface from that
+`core/better-auth-adapter.ts` derives the auth/session API surface from that
 factory's upstream type and owns the untyped injection boundary. Update this boundary
 when changing the BetterAuth integration instead of adding service-local API declarations.
 

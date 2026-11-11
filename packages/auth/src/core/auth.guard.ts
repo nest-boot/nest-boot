@@ -20,8 +20,8 @@ import { getAuthAbility } from "../common/utils/get-auth-ability.util.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { IS_PUBLIC_KEY } from "./constants/auth.constants.js";
 import { Session } from "./entities/session.entity.js";
-import { RequestIdentity } from "./infrastructure/request-identity.js";
 import type { AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
+import { RequestIdentity } from "./request-identity.js";
 import type { CanSubjectCallback } from "./types/can-subject-callback.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
 

@@ -1,8 +1,9 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
-import { User, WorkspaceApiKey } from "../../core/entities/index.js";
-import { RequestIdentity } from "../../core/infrastructure/request-identity.js";
+import { WorkspaceApiKey } from "../../api-key/entities/workspace-api-key.entity.js";
+import { User } from "../../core/entities/user.entity.js";
+import { RequestIdentity } from "../../core/request-identity.js";
 import { AuthAbility } from "../auth.ability.js";
 import { getAuthAbility } from "./get-auth-ability.util.js";
 

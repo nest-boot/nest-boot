@@ -15,7 +15,7 @@ import { UserApiKeyRelationResolver } from "../src/api-key/resolvers/user-api-ke
 import { WorkspaceApiKeyResolver } from "../src/api-key/resolvers/workspace-api-key.resolver.js";
 import { WorkspaceApiKeyConnectionResolver } from "../src/api-key/resolvers/workspace-api-key-connection.resolver.js";
 import { WorkspaceApiKeyRelationResolver } from "../src/api-key/resolvers/workspace-api-key-relation.resolver.js";
-import { AuthEnumRegistry } from "../src/core/infrastructure/auth-enum-registry.js";
+import { AuthEnumRegistry } from "../src/core/auth-enum-registry.js";
 import { AuthResolver } from "../src/core/resolvers/auth.resolver.js";
 import { SessionResolver } from "../src/core/resolvers/session.resolver.js";
 import { UserResolver } from "../src/core/resolvers/user.resolver.js";

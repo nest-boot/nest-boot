@@ -10,7 +10,7 @@ import { serializeAbilityRules } from "../../common/utils/serialize-ability-rule
 import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { User } from "../entities/user.entity.js";
-import { RequestIdentity } from "../infrastructure/request-identity.js";
+import { RequestIdentity } from "../request-identity.js";
 import { buildRequestAbility } from "./build-request-ability.util.js";
 
 describe("framework-owned request abilities", () => {

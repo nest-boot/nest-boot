@@ -8,27 +8,25 @@ import { REQUEST, RequestContext } from "@nest-boot/request-context";
 import type { Request } from "express";
 
 import { SystemAccountService } from "../src/admin/services/system-account.service.js";
+import { ApiKey } from "../src/api-key/entities/api-key.entity.js";
+import { SystemAccount } from "../src/api-key/entities/system-account.entity.js";
 import { SystemApiKey } from "../src/api-key/entities/system-api-key.entity.js";
-import { ApiKeyAuthenticationService } from "../src/api-key/infrastructure/api-key-authentication.service.js";
+import { ApiKeyAuthenticationService } from "../src/api-key/services/api-key-authentication.service.js";
 import { SystemApiKeyService } from "../src/api-key/services/system-api-key.service.js";
 import { hashApiKey } from "../src/api-key/utils/api-key-credential.util.js";
 import { getCurrentApiKey } from "../src/api-key/utils/get-current-api-key.util.js";
 import { getAuthAbility } from "../src/common/utils/get-auth-ability.util.js";
 import { resolveRequestPermissions } from "../src/common/utils/resolve-request-permissions.util.js";
 import { AuthMiddleware } from "../src/core/auth.middleware.js";
-import {
-  ApiKey,
-  getAuthEntities,
-  Member,
-  SystemAccount,
-  User,
-  Workspace,
-} from "../src/core/entities/index.js";
 import { Session } from "../src/core/entities/session.entity.js";
-import { RequestIdentity } from "../src/core/infrastructure/request-identity.js";
+import { User } from "../src/core/entities/user.entity.js";
+import { getAuthEntities } from "../src/core/get-auth-entities.js";
 import type { AuthModuleOptions } from "../src/core/interfaces/auth-module-options.interface.js";
+import { RequestIdentity } from "../src/core/request-identity.js";
 import type { SessionService } from "../src/core/services/session.service.js";
 import { UserService } from "../src/core/services/user.service.js";
+import { Member } from "../src/workspace/entities/member.entity.js";
+import { Workspace } from "../src/workspace/entities/workspace.entity.js";
 import { WorkspaceService } from "../src/workspace/services/workspace.service.js";
 import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 

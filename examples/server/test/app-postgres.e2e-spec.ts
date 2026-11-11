@@ -17,7 +17,7 @@ import {
 import { Queue as BullmqQueue } from 'bullmq';
 import request from 'supertest';
 
-import { createContextualAuthService } from '../../../packages/auth/dist/core/infrastructure/create-contextual-auth-service.js';
+import { createContextualAuthService } from '../../../packages/auth/dist/core/create-contextual-auth-service.js';
 import { ReportQueue } from '../src/app/reports/report.queue.js';
 
 interface DbProbe {

@@ -14,7 +14,7 @@ import {
 import { Field, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
-import { apiKeyCleanupTrigger } from "../../api-key/infrastructure/api-key-triggers.js";
+import { apiKeyCleanupTrigger } from "../../api-key/entities/api-key-triggers.js";
 import { userScopePolicy } from "../../common/policies/user-scope.policy.js";
 import { workspaceScopePolicy } from "../../common/policies/workspace-scope.policy.js";
 import { User } from "../../core/entities/user.entity.js";

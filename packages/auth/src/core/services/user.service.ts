@@ -42,12 +42,12 @@ import {
 import { Account } from "../entities/account.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
-import { RequestIdentity } from "../infrastructure/request-identity.js";
-import { RevokedAuthenticationException } from "../infrastructure/revoked-authentication.exception.js";
 import type { AuthModuleOptions } from "../interfaces/auth-module-options.interface.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
 import type { UserHasPermissionsOptions } from "../interfaces/user-has-permissions-options.interface.js";
 import type { PasswordPolicy } from "../objects/password-policy.object.js";
+import { RequestIdentity } from "../request-identity.js";
+import { RevokedAuthenticationException } from "../revoked-authentication.exception.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
 import {
   listAuthPermissions,

@@ -6,7 +6,7 @@ import type { Mocked } from "vitest";
 
 import { API_KEY } from "../../core/constants/auth.constants.js";
 import { WorkspaceApiKey as BaseApiKey } from "../entities/workspace-api-key.entity.js";
-import type { ApiKeyAuthenticationService } from "../infrastructure/api-key-authentication.service.js";
+import type { ApiKeyAuthenticationService } from "../services/api-key-authentication.service.js";
 import { ApiKeyUsageInterceptor } from "./api-key-usage.interceptor.js";
 
 describe("ApiKeyUsageInterceptor", () => {

@@ -5,8 +5,8 @@ import type { AuthAbility } from "../../common/auth.ability.js";
 import { resolveRequestPermissions } from "../../common/utils/resolve-request-permissions.util.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { resolveRequestMember } from "../../workspace/utils/resolve-request-member.util.js";
+import { AuthAbilityFactory } from "../auth-ability.factory.js";
 import { User } from "../entities/user.entity.js";
-import { AuthAbilityFactory } from "../infrastructure/auth-ability.factory.js";
 import type { AuthModuleOptions } from "../interfaces/auth-module-options.interface.js";
 
 /**

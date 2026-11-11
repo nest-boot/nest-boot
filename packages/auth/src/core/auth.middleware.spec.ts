@@ -12,7 +12,7 @@ import {
   WorkspaceApiKey as BaseApiKey,
   WorkspaceApiKey,
 } from "../api-key/entities/workspace-api-key.entity.js";
-import { ApiKeyAuthenticationService } from "../api-key/infrastructure/api-key-authentication.service.js";
+import { ApiKeyAuthenticationService } from "../api-key/services/api-key-authentication.service.js";
 import { AuthAbility } from "../common/auth.ability.js";
 import {
   Invitation as BaseInvitation,

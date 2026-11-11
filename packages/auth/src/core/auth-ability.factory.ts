@@ -6,24 +6,24 @@ import {
   type SubjectType,
 } from "@casl/ability";
 
-import { SystemAccount } from "../../api-key/entities/system-account.entity.js";
-import { SystemApiKey } from "../../api-key/entities/system-api-key.entity.js";
-import { UserApiKey } from "../../api-key/entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../../api-key/entities/workspace-api-key.entity.js";
-import { AuthAbility } from "../../common/auth.ability.js";
-import type { AbilityContext } from "../../common/interfaces/ability-context.interface.js";
-import { extendAbility } from "../../common/utils/extend-ability.util.js";
-import { resolveAuthCatalog } from "../../common/utils/resolve-auth-catalog.util.js";
-import { DEFAULT_WORKSPACE_PERMISSIONS } from "../../workspace/constants/workspace.constants.js";
-import { Invitation } from "../../workspace/entities/invitation.entity.js";
-import { Member } from "../../workspace/entities/member.entity.js";
-import { Workspace } from "../../workspace/entities/workspace.entity.js";
-import { MemberType } from "../../workspace/enums/member-type.enum.js";
-import { DEFAULT_USER_PERMISSIONS } from "../constants/user.constants.js";
-import { Session } from "../entities/session.entity.js";
-import { User } from "../entities/user.entity.js";
-import type { AuthModuleOptions } from "../interfaces/auth-module-options.interface.js";
-import { isAuthPermissionEnabled } from "../utils/resolve-auth-features.util.js";
+import { SystemAccount } from "../api-key/entities/system-account.entity.js";
+import { SystemApiKey } from "../api-key/entities/system-api-key.entity.js";
+import { UserApiKey } from "../api-key/entities/user-api-key.entity.js";
+import { WorkspaceApiKey } from "../api-key/entities/workspace-api-key.entity.js";
+import { AuthAbility } from "../common/auth.ability.js";
+import type { AbilityContext } from "../common/interfaces/ability-context.interface.js";
+import { extendAbility } from "../common/utils/extend-ability.util.js";
+import { resolveAuthCatalog } from "../common/utils/resolve-auth-catalog.util.js";
+import { DEFAULT_WORKSPACE_PERMISSIONS } from "../workspace/constants/workspace.constants.js";
+import { Invitation } from "../workspace/entities/invitation.entity.js";
+import { Member } from "../workspace/entities/member.entity.js";
+import { Workspace } from "../workspace/entities/workspace.entity.js";
+import { MemberType } from "../workspace/enums/member-type.enum.js";
+import { DEFAULT_USER_PERMISSIONS } from "./constants/user.constants.js";
+import { Session } from "./entities/session.entity.js";
+import { User } from "./entities/user.entity.js";
+import type { AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
+import { isAuthPermissionEnabled } from "./utils/resolve-auth-features.util.js";
 
 /**
  * Owns built-in permission mappings and validates business extensions.

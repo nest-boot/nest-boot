@@ -1,20 +1,18 @@
 import type { OnModuleDestroy } from "@nestjs/common";
 
-import { resolveApiKeyPermissionCatalog } from "../../api-key/utils/api-key-permissions.util.js";
-import { createPermissionEnum } from "../../common/utils/create-permission-enum.util.js";
-import { resolveAuthCatalog } from "../../common/utils/resolve-auth-catalog.util.js";
-import {
-  SystemAccountPermission,
-  SystemApiKeyPermission,
-  UserApiKeyPermission,
-  UserPermission,
-  UserRole,
-  WorkspaceApiKeyPermission,
-  WorkspacePermission,
-  WorkspaceRole,
-} from "../enums/index.js";
-import type { AuthModuleOptions } from "../interfaces/auth-module-options.interface.js";
-import { resolveAuthFeatures } from "../utils/resolve-auth-features.util.js";
+import { SystemAccountPermission } from "../admin/enums/system-account-permission.enum.js";
+import { SystemApiKeyPermission } from "../api-key/enums/system-api-key-permission.enum.js";
+import { UserApiKeyPermission } from "../api-key/enums/user-api-key-permission.enum.js";
+import { WorkspaceApiKeyPermission } from "../api-key/enums/workspace-api-key-permission.enum.js";
+import { resolveApiKeyPermissionCatalog } from "../api-key/utils/api-key-permissions.util.js";
+import { createPermissionEnum } from "../common/utils/create-permission-enum.util.js";
+import { resolveAuthCatalog } from "../common/utils/resolve-auth-catalog.util.js";
+import { WorkspacePermission } from "../workspace/enums/workspace-permission.enum.js";
+import { WorkspaceRole } from "../workspace/enums/workspace-role.enum.js";
+import { UserPermission } from "./enums/user-permission.enum.js";
+import { UserRole } from "./enums/user-role.enum.js";
+import type { AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
+import { resolveAuthFeatures } from "./utils/resolve-auth-features.util.js";
 
 let activeSignature: string | undefined;
 let activeApplications = 0;

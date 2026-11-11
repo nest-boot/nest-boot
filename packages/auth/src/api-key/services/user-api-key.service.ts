@@ -26,12 +26,12 @@ import { resolveUserPermissions } from "../../common/utils/resolve-effective-per
 import { resolveRequestPermissions } from "../../common/utils/resolve-request-permissions.util.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
 import { User } from "../../core/entities/user.entity.js";
-import { RequestIdentity } from "../../core/infrastructure/request-identity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
+import { RequestIdentity } from "../../core/request-identity.js";
+import { ApiKeyLifecycle } from "../api-key-lifecycle.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
-import { ApiKeyLifecycle } from "../infrastructure/api-key-lifecycle.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";

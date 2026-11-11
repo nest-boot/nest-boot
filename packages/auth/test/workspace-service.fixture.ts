@@ -1,13 +1,11 @@
 import { EntityManager } from "@mikro-orm/core";
 import type { Mocked } from "vitest";
 
-import {
-  Invitation,
-  Member,
-  User,
-  Workspace,
-} from "../src/core/entities/index.js";
+import { User } from "../src/core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../src/core/interfaces/auth-module-options.interface.js";
+import { Invitation } from "../src/workspace/entities/invitation.entity.js";
+import { Member } from "../src/workspace/entities/member.entity.js";
+import { Workspace } from "../src/workspace/entities/workspace.entity.js";
 import { InvitationService } from "../src/workspace/services/invitation.service.js";
 import { MemberService } from "../src/workspace/services/member.service.js";
 import { WorkspaceService } from "../src/workspace/services/workspace.service.js";

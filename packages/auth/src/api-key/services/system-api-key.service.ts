@@ -24,11 +24,11 @@ import {
 import { runAuthQuery } from "../../common/utils/run-auth-query.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
+import { ApiKeyLifecycle } from "../api-key-lifecycle.js";
 import { SystemApiKeyConnection } from "../connections/system-api-key.connection-definition.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
 import { SystemApiKey } from "../entities/system-api-key.entity.js";
-import { ApiKeyLifecycle } from "../infrastructure/api-key-lifecycle.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";

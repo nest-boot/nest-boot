@@ -1,8 +1,8 @@
 import type { FactoryProvider, Type } from "@nestjs/common";
 
-import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
-import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
-import { resolveAuthFeatures } from "../../core/utils/resolve-auth-features.util.js";
+import { MODULE_OPTIONS_TOKEN } from "../core/auth.module-definition.js";
+import type { AuthModuleOptions } from "../core/interfaces/auth-module-options.interface.js";
+import { resolveAuthFeatures } from "../core/utils/resolve-auth-features.util.js";
 
 /**
  * Registers an injectable token while omitting disabled resolver instances from schema discovery.

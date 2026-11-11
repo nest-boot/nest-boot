@@ -5,42 +5,42 @@ import { RequestContext } from "@nest-boot/request-context";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { genericOAuth } from "better-auth/plugins";
 
-import { resolveApiKeyPermissionCatalog } from "../../api-key/utils/api-key-permissions.util.js";
-import { resolveAuthCatalog } from "../../common/utils/resolve-auth-catalog.util.js";
-import { runAuthQuery } from "../../common/utils/run-auth-query.js";
+import { resolveApiKeyPermissionCatalog } from "../api-key/utils/api-key-permissions.util.js";
+import { resolveAuthCatalog } from "../common/utils/resolve-auth-catalog.util.js";
+import { runAuthQuery } from "../common/utils/run-auth-query.js";
 import {
   DEFAULT_WORKSPACE_CREATOR_ROLE,
   DEFAULT_WORKSPACE_ROLE,
-} from "../../workspace/constants/workspace.constants.js";
-import { mikroOrmAdapter } from "../adapters/mikro-orm-adapter.js";
+} from "../workspace/constants/workspace.constants.js";
+import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter.js";
 import {
   DEFAULT_USER_ADMIN_ROLES,
   DEFAULT_USER_ROLE,
-} from "../constants/user.constants.js";
+} from "./constants/user.constants.js";
 import {
   authEntityMap,
   workspaceEntityMap,
-} from "../entities/auth-entity-map.js";
-import { User } from "../entities/user.entity.js";
-import { type AuthModuleOptions } from "../interfaces/auth-module-options.interface.js";
-import type { UserDeletionService } from "../services/user-deletion.service.js";
+} from "./entities/auth-entity-map.js";
+import { User } from "./entities/user.entity.js";
+import { type AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
+import { RequestIdentity } from "./request-identity.js";
+import type { UserDeletionService } from "./services/user-deletion.service.js";
 import {
   assertAuthPermissionList,
   assertAuthPermissionSubset,
   assertAuthRolePermissions,
   assertAuthRolesExist,
-} from "../utils/auth-role.util.js";
-import { createEmailAndPasswordConfig } from "../utils/create-email-and-password-config.js";
-import { createEmailVerificationConfig } from "../utils/create-email-verification-config.js";
-import { createGenericOAuthConfig } from "../utils/create-generic-oauth-config.js";
-import { createOidcConfig } from "../utils/create-oidc-config.js";
-import { createSocialProvidersConfig } from "../utils/create-social-providers-config.js";
-import { createUserConfig } from "../utils/create-user-config.js";
-import { isEnvTrue } from "../utils/is-env-true.js";
-import { resolveAuthFeatures } from "../utils/resolve-auth-features.util.js";
-import { resolveSecret } from "../utils/resolve-secret.js";
-import { splitAuthProviders } from "../utils/split-auth-providers.js";
-import { RequestIdentity } from "./request-identity.js";
+} from "./utils/auth-role.util.js";
+import { createEmailAndPasswordConfig } from "./utils/create-email-and-password-config.js";
+import { createEmailVerificationConfig } from "./utils/create-email-verification-config.js";
+import { createGenericOAuthConfig } from "./utils/create-generic-oauth-config.js";
+import { createOidcConfig } from "./utils/create-oidc-config.js";
+import { createSocialProvidersConfig } from "./utils/create-social-providers-config.js";
+import { createUserConfig } from "./utils/create-user-config.js";
+import { isEnvTrue } from "./utils/is-env-true.js";
+import { resolveAuthFeatures } from "./utils/resolve-auth-features.util.js";
+import { resolveSecret } from "./utils/resolve-secret.js";
+import { splitAuthProviders } from "./utils/split-auth-providers.js";
 
 /**
  * Resolves framework configuration before constructing the upstream instance.

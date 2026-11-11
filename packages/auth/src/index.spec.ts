@@ -648,3 +648,18 @@ describe("exported input contracts", () => {
     });
   });
 });
+
+describe("public decorator exports", () => {
+  it("exports the public and current-identity decorators", () => {
+    expect(publicApi.Public).toBe(Public);
+    for (const name of [
+      "CurrentSession",
+      "CurrentUser",
+      "CurrentApiKey",
+      "CurrentWorkspace",
+      "CurrentMember",
+    ]) {
+      expect(publicApi).toHaveProperty(name);
+    }
+  });
+});

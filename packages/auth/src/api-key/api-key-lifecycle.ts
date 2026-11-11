@@ -1,15 +1,12 @@
 import type { EntityManager } from "@mikro-orm/core";
 import { BadRequestException } from "@nestjs/common";
 
-import { RequestIdentity } from "../../core/infrastructure/request-identity.js";
-import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
-import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
-import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
-import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
-import {
-  generateApiKey,
-  hashApiKey,
-} from "../utils/api-key-credential.util.js";
+import type { AuthModuleOptions } from "../core/interfaces/auth-module-options.interface.js";
+import { RequestIdentity } from "../core/request-identity.js";
+import type { CreateApiKeyOptions } from "./interfaces/create-api-key-options.interface.js";
+import type { UpdateApiKeyOptions } from "./interfaces/update-api-key-options.interface.js";
+import type { ApiKeyMetadata } from "./types/api-key-metadata.type.js";
+import { generateApiKey, hashApiKey } from "./utils/api-key-credential.util.js";
 
 /**
  * Persists already-authorized key changes and publishes their committed identity effects.

@@ -3,7 +3,7 @@ import { afterEach, vi } from "vitest";
 import * as authorizeUtil from "../src/common/utils/authorize.util.js";
 import * as canUtil from "../src/common/utils/can.util.js";
 import * as grants from "../src/common/utils/permission-grants.util.js";
-import { RequestIdentity } from "../src/core/infrastructure/request-identity.js";
+import { RequestIdentity } from "../src/core/request-identity.js";
 
 /**
  * Isolates persistence tests from authorization; boundary tests restore the relevant check.

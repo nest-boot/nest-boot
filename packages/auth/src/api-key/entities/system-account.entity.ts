@@ -13,7 +13,7 @@ import { Sonyflake } from "sonyflake-js";
 
 import { SystemAccountPermission } from "../../admin/enums/system-account-permission.enum.js";
 import { User } from "../../core/entities/user.entity.js";
-import { apiKeyCleanupTrigger } from "../infrastructure/api-key-triggers.js";
+import { apiKeyCleanupTrigger } from "./api-key-triggers.js";
 
 /** Platform identity owned independently of the administrator that created it. */
 @ObjectType({ isAbstract: true })

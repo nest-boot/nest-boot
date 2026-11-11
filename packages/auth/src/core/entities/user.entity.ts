@@ -10,7 +10,7 @@ import {
 import { Field, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
-import { apiKeyCleanupTrigger } from "../../api-key/infrastructure/api-key-triggers.js";
+import { apiKeyCleanupTrigger } from "../../api-key/entities/api-key-triggers.js";
 import { UserPermission } from "../enums/user-permission.enum.js";
 import { UserRole } from "../enums/user-role.enum.js";
 

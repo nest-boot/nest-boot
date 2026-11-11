@@ -2,18 +2,18 @@ import { EntityManager } from "@mikro-orm/core";
 import { HashService } from "@nest-boot/hash";
 import type { Provider } from "@nestjs/common";
 
-import { ApiKeyAuthenticationService } from "../../api-key/infrastructure/api-key-authentication.service.js";
-import { InvitationService } from "../../workspace/services/invitation.service.js";
-import { MemberService } from "../../workspace/services/member.service.js";
-import { WorkspaceService } from "../../workspace/services/workspace.service.js";
-import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
-import { AUTH_TOKEN } from "../constants/auth.constants.js";
-import type { AuthModuleOptions } from "../interfaces/auth-module-options.interface.js";
-import { SessionService } from "../services/session.service.js";
-import { UserService } from "../services/user.service.js";
-import { UserDeletionService } from "../services/user-deletion.service.js";
-import { resolveAuthFeatures } from "../utils/resolve-auth-features.util.js";
+import { ApiKeyAuthenticationService } from "../api-key/services/api-key-authentication.service.js";
+import { InvitationService } from "../workspace/services/invitation.service.js";
+import { MemberService } from "../workspace/services/member.service.js";
+import { WorkspaceService } from "../workspace/services/workspace.service.js";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import { AUTH_TOKEN } from "./constants/auth.constants.js";
 import { createContextualAuthService } from "./create-contextual-auth-service.js";
+import type { AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
+import { SessionService } from "./services/session.service.js";
+import { UserService } from "./services/user.service.js";
+import { UserDeletionService } from "./services/user-deletion.service.js";
+import { resolveAuthFeatures } from "./utils/resolve-auth-features.util.js";
 
 /**
  * Explicit internal execution boundaries; ordinary management is deliberately absent.

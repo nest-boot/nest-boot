@@ -35,12 +35,12 @@ import {
 } from "../workspace/entities/workspace.entity.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import { AuthAbilityFactory } from "./auth-ability.factory.js";
 import { API_KEY, IS_PUBLIC_KEY } from "./constants/auth.constants.js";
 import { Session as BaseSession } from "./entities/session.entity.js";
 import { User as BaseUser } from "./entities/user.entity.js";
-import { AuthAbilityFactory } from "./infrastructure/auth-ability.factory.js";
-import { RequestIdentity } from "./infrastructure/request-identity.js";
 import { type AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
+import { RequestIdentity } from "./request-identity.js";
 import { type AuthModuleRoles } from "./types/auth-module-roles.type.js";
 import { type RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
 

@@ -23,10 +23,10 @@ import {
   assertCanGrantPermissions,
   canGrantPermissions,
 } from "../../common/utils/permission-grants.util.js";
+import { AuthAbilityFactory } from "../../core/auth-ability.factory.js";
 import { API_KEY } from "../../core/constants/auth.constants.js";
 import { Session } from "../../core/entities/session.entity.js";
 import { User } from "../../core/entities/user.entity.js";
-import { AuthAbilityFactory } from "../../core/infrastructure/auth-ability.factory.js";
 import {
   DEFAULT_WORKSPACE_PERMISSIONS,
   DEFAULT_WORKSPACE_ROLES,

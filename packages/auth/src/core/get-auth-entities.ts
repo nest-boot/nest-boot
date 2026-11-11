@@ -5,22 +5,22 @@ import {
   Utils,
 } from "@mikro-orm/core";
 
-import { ApiKey } from "../../api-key/entities/api-key.entity.js";
-import { SystemAccount } from "../../api-key/entities/system-account.entity.js";
+import { ApiKey } from "../api-key/entities/api-key.entity.js";
 import {
   apiKeyCleanupTrigger,
   apiKeyOwnerTrigger,
-} from "../../api-key/infrastructure/api-key-triggers.js";
-import { apiKeyOwnerPolicy } from "../../api-key/policies/api-key-owner.policy.js";
-import { Invitation } from "../../workspace/entities/invitation.entity.js";
-import { Member } from "../../workspace/entities/member.entity.js";
-import { Workspace } from "../../workspace/entities/workspace.entity.js";
-import type { AuthModuleOptions } from "../interfaces/auth-module-options.interface.js";
-import { resolveAuthFeatures } from "../utils/resolve-auth-features.util.js";
-import { Account } from "./account.entity.js";
-import { Session } from "./session.entity.js";
-import { User } from "./user.entity.js";
-import { Verification } from "./verification.entity.js";
+} from "../api-key/entities/api-key-triggers.js";
+import { SystemAccount } from "../api-key/entities/system-account.entity.js";
+import { apiKeyOwnerPolicy } from "../api-key/policies/api-key-owner.policy.js";
+import { Invitation } from "../workspace/entities/invitation.entity.js";
+import { Member } from "../workspace/entities/member.entity.js";
+import { Workspace } from "../workspace/entities/workspace.entity.js";
+import { Account } from "./entities/account.entity.js";
+import { Session } from "./entities/session.entity.js";
+import { User } from "./entities/user.entity.js";
+import { Verification } from "./entities/verification.entity.js";
+import type { AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
+import { resolveAuthFeatures } from "./utils/resolve-auth-features.util.js";
 
 /**
  * Returns isolated entity schemas for the enabled authentication features.

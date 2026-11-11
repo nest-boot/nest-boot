@@ -4,8 +4,8 @@ import { RequestContext } from "@nest-boot/request-context";
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { Session } from "../../core/entities/session.entity.js";
 import { User } from "../../core/entities/user.entity.js";
-import { RequestIdentity } from "../../core/infrastructure/request-identity.js";
-import { RevokedAuthenticationException } from "../../core/infrastructure/revoked-authentication.exception.js";
+import { RequestIdentity } from "../../core/request-identity.js";
+import { RevokedAuthenticationException } from "../../core/revoked-authentication.exception.js";
 
 /**
  * Runs service-authorized persistence without the application's database session.

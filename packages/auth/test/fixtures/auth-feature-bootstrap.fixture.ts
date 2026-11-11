@@ -13,24 +13,22 @@ import { Test } from "@nestjs/testing";
 import type { GraphQLObjectType } from "graphql";
 
 import { SystemAccountService } from "../../src/admin/services/system-account.service.js";
-import { ApiKeyAuthenticationService } from "../../src/api-key/infrastructure/api-key-authentication.service.js";
+import { ApiKey } from "../../src/api-key/entities/api-key.entity.js";
+import { SystemAccount } from "../../src/api-key/entities/system-account.entity.js";
+import { SystemApiKey } from "../../src/api-key/entities/system-api-key.entity.js";
+import { UserApiKey } from "../../src/api-key/entities/user-api-key.entity.js";
+import { WorkspaceApiKey } from "../../src/api-key/entities/workspace-api-key.entity.js";
+import { ApiKeyAuthenticationService } from "../../src/api-key/services/api-key-authentication.service.js";
 import { SystemApiKeyService } from "../../src/api-key/services/system-api-key.service.js";
 import { UserApiKeyService } from "../../src/api-key/services/user-api-key.service.js";
 import { WorkspaceApiKeyService } from "../../src/api-key/services/workspace-api-key.service.js";
 import { hashApiKey } from "../../src/api-key/utils/api-key-credential.util.js";
 import { AuthGuard } from "../../src/core/auth.guard.js";
 import { AuthModule } from "../../src/core/auth.module.js";
-import {
-  ApiKey,
-  Member,
-  SystemAccount,
-  SystemApiKey,
-  User,
-  UserApiKey,
-  WorkspaceApiKey,
-} from "../../src/core/entities/index.js";
+import { User } from "../../src/core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-options.interface.js";
 import { UserService } from "../../src/core/services/user.service.js";
+import { Member } from "../../src/workspace/entities/member.entity.js";
 
 /** An application-owned endpoint whose authorization does not require the admin GraphQL API. */
 @Resolver()

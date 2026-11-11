@@ -13,7 +13,7 @@ import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import { AccountConnection } from "../connections/account.connection-definition.js";
 import { type Account } from "../entities/account.entity.js";
 import { type User } from "../entities/user.entity.js";
-import { RequestIdentity } from "../infrastructure/request-identity.js";
+import { RequestIdentity } from "../request-identity.js";
 
 /** Safe account queries scoped to the current user session and application RLS. */
 @Injectable()
