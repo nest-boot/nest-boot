@@ -88,8 +88,9 @@ test("manages system identities and credentials under admin, with one-time secre
     extraHTTPHeaders: { authorization: `Bearer ${secret}` },
   });
   try {
-    const read = () =>
+    const read = (credential = secret) =>
       machine.post("/api/graphql", {
+        headers: { authorization: `Bearer ${credential}` },
         data: { query: "{ users(first: 1) { totalCount } }" },
       });
     expect((await read()).status()).toBe(200);
@@ -136,12 +137,15 @@ test("manages system identities and credentials under admin, with one-time secre
     await expect(page).toHaveURL(/\/admin\/api-keys\/?(?:\?.*)?$/);
     expect((await read()).status()).toBe(401);
     const { createSystemApiKey: dependent } = await graphqlRequest<{
-      createSystemApiKey: { entity: { id: string } };
+      createSystemApiKey: { apiKey: string; entity: { id: string } };
     }>(
       page.request,
-      'mutation($id: ID!) { createSystemApiKey(systemAccountId: $id, input: {name: "Cascade"}) { entity { id } } }',
+      'mutation($id: ID!) { createSystemApiKey(systemAccountId: $id, input: {name: "Retained audit credential", permissions: [USER__READ]}) { apiKey entity { id } } }',
       { id: accountId },
     );
+    const activeCredential = await read(dependent.apiKey);
+    expect(activeCredential.status()).toBe(200);
+    expect((await activeCredential.json()).errors).toBeUndefined();
     await page.goto(`/admin/system-accounts/${accountId}`);
     await clickPageAction(page, "Delete");
     await page
@@ -149,13 +153,29 @@ test("manages system identities and credentials under admin, with one-time secre
       .getByRole("button", { name: "Delete", exact: true })
       .click();
     await expect(page).toHaveURL(/\/admin\/system-accounts\/?(?:\?.*)?$/);
-    expect((await read()).status()).toBe(401);
+    expect((await read(dependent.apiKey)).status()).toBe(401);
     const remaining = await graphqlRequest<{ systemApiKey: unknown }>(
       page.request,
-      "query($id: ID!) { systemApiKey(id: $id) { id } }",
+      "query($id: ID!) { systemApiKey(id: $id) { id systemAccount { id } } }",
       { id: dependent.entity.id },
     );
-    expect(remaining.systemApiKey).toBeNull();
+    expect(remaining.systemApiKey).toEqual({
+      id: dependent.entity.id,
+      systemAccount: null,
+    });
+    await page.goto(`/admin/api-keys/${dependent.entity.id}`);
+    await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
+      "Retained audit credential",
+    );
+    await expect(page.getByLabel("Owned by", { exact: true })).toHaveCount(0);
+    await expect(page.getByLabel("Key", { exact: true })).toBeDisabled();
+    await page
+      .getByRole("link", { name: "API Keys", exact: true })
+      .first()
+      .click();
+    await expect(
+      page.getByText("Retained audit credential", { exact: true }),
+    ).toBeVisible();
   } finally {
     await machine.dispose();
   }
