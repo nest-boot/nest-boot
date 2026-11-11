@@ -18,8 +18,8 @@ const LIST = graphql(`
     $after: String
     $before: String
     $query: String
-    $filter: ApiKeyFilter
-    $orderBy: ApiKeyOrder
+    $filter: SystemApiKeyFilter
+    $orderBy: SystemApiKeyOrder
   ) {
     systemApiKeys(
       first: $first
@@ -34,12 +34,11 @@ const LIST = graphql(`
         node {
           id
           name
-          owner {
+          systemAccount {
             __typename
-            ... on SystemAccount {
-              id
-              name
-            }
+
+            id
+            name
           }
           enabled
           permissions
@@ -96,11 +95,11 @@ function Keys() {
           : undefined
       }
       canCreate={
-        ability.can("write", "SystemAccountApiKey") &&
+        ability.can("write", "SystemApiKey") &&
         (ability.can("read", "SystemAccount") ||
           ability.can("write", "SystemAccount"))
       }
-      subject="SystemAccountApiKey"
+      subject="SystemApiKey"
       ability={ability}
       title={t("api-key:title")}
       description={t("admin:system_accounts.keys_description")}
@@ -108,7 +107,10 @@ function Keys() {
       apiKeys={
         connection?.edges.map(({ node }) => ({
           ...node,
-          owner: node.owner?.__typename === "SystemAccount" ? node.owner : null,
+          owner:
+            node.systemAccount?.__typename === "SystemAccount"
+              ? node.systemAccount
+              : null,
         })) ?? []
       }
       pageInfo={connection?.pageInfo}

@@ -274,7 +274,7 @@ const permission: PermissionName<"user-api-key:read"> = "user-api-key:read";
 ```
 
 GraphQL generates `UserRole`, `WorkspaceRole`, `UserPermission`,
-`WorkspacePermission`, `UserApiKeyPermission`, and `MemberApiKeyPermission` from the configuration.
+`WorkspacePermission`, `UserApiKeyPermission`, and `WorkspaceApiKeyPermission` from the configuration.
 Enum names are uppercase: hyphens become `_` and the permission separator `:`
 becomes `__`. For example, `super-admin` is exposed as `SUPER_ADMIN` and
 `user-api-key:read` as `USER_API_KEY__READ`. GraphQL variables and responses use these enum
@@ -282,9 +282,9 @@ names; services, ability builders, and the database retain the original values.
 Regenerate client types after changing a catalog. Existing stored assignments
 must remain in the configured catalog to be serialized by GraphQL.
 
-The unified `ApiKey.permissions` output uses `ApiKeyPermission`, built from all three scope catalogs. Scoped input enums remain separate:
+Each GraphQL key type uses its own permission enum for both inputs and output grants. `SystemApiKeyPermission` uses the system-account catalog;
 `UserApiKeyPermission` uses the combined user and workspace catalogs;
-`MemberApiKeyPermission` uses the workspace catalog. Neither enum narrows with
+`WorkspaceApiKeyPermission` uses the workspace catalog. Neither enum narrows with
 the corresponding `apiKey.user.allowedPermissions` or `apiKey.workspace.allowedPermissions`,
 so previously stored grants remain readable after
 the allowlist changes. Services enforce the allowlist on writes.
@@ -417,7 +417,7 @@ Member API keys contribute only workspace grants. User API keys contribute
 user grants and, with a live membership, workspace grants. Each source is
 limited by the credential before `buildAbility` runs. The Guard checks the
 resulting `AuthAbility`. Built-in workspace rules match the selected workspace's
-ID; select `workspaceId` on Member, Invitation, and MemberApiKey when checking
+ID; select `workspaceId` on Member, Invitation, and WorkspaceApiKey when checking
 their instances in the client. Business rules must declare their own object
 conditions using the callback context.
 
@@ -549,7 +549,7 @@ records as an alternative to Services. Old identity keys are no longer supported
 
 `app.member.id` identifies the authenticated active member in the selected workspace, including service accounts. It is empty for anonymous requests or when no active member is available, and is cleared when workspace access or authentication is revoked.
 
-The example `UserApiKey` and `MemberApiKey` use separate tables, each with one required owner foreign key. RLS compares `UserApiKey.user_id` with `app.user.id`; member keys belong to `member_id` and resolve their workspace through the member to compare with `app.workspace.id`. Deleting an owner cascades to its keys; workspace deletion is permanent. Default privileges authorize table operations; both management services hide credential hashes, prevent ownership changes, and enforce authorization.
+The example `UserApiKey` and `WorkspaceApiKey` use separate tables, each with one required owner foreign key. RLS compares `UserApiKey.user_id` with `app.user.id`; member keys belong to `member_id` and resolve their workspace through the member to compare with `app.workspace.id`. Deleting an owner cascades to its keys; workspace deletion is permanent. Default privileges authorize table operations; both management services hide credential hashes, prevent ownership changes, and enforce authorization.
 
 These are plain factories, not filters or decorators. Neither runtime nor CLI
 needs a custom discovery hook. Generate and apply migrations after changing

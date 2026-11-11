@@ -125,7 +125,7 @@
       "status": "covered",
       "specs": [
         "user-api-key-navigation.spec.ts",
-        "member-api-key-navigation.spec.ts"
+        "workspace-api-key-navigation.spec.ts"
       ],
       "notes": "Preserves filters, order, page size and cursor through creation and details. Traverses adjacent records across list pages, restores browser history and reloads, and returns the current record as the first row using the preceding cursor. Checks default/direct entry, invalid session data, failed neighbor queries and retry, null sort values, and two workspaces with distinct filters and pagination in the same browser session. After returning from details, alternates next/previous/next list pages and verifies the custom page size, saved cursor, and reload position."
     },

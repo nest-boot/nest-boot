@@ -179,7 +179,7 @@ RLS 不保护 `TRUNCATE` 或 `REFERENCES`，表策略也不限制序列操作。
 业务表声明 RLS 策略；Job 记录是明确例外，使用服务层限定范围的查询。`Verification` 明确拒绝普通请求访问。
 凭证字段与可更新属性由 Service 和 GraphQL 控制，数据库不再提供列级保护。
 
-ApiKey 通过 `ApiKeyEntity.owner` 多态关联到 User、Member 或 SystemAccount。关联记录使用普通外键级联，ApiKey 使用 owner 清理触发器；工作区、独立系统账户及其他成员的密钥保留。
+ApiKey 通过 `ApiKey.owner` 多态关联到 User、Member 或 SystemAccount。关联记录使用普通外键级联，ApiKey 使用 owner 清理触发器；工作区、独立系统账户及其他成员的密钥保留。
 User SELECT 允许 authenticated 角色读取，个人资料访问由 Service 的 Ability 检查限制，支持自定义读取权限名。
 User 写入及 Session 读取同样由 Service 授权；数据库请求上下文不再传递应用权限。
 不要绕过 Service 授权暴露直接 User 查询。
@@ -196,7 +196,7 @@ User 写入及 Session 读取同样由 Service 授权；数据库请求上下文
 输入、Payload、Resolver 和连接全部改从 `@nest-boot/auth` 导入。
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation`、`SystemAccount` 和 `ApiKeyEntity` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`Member`、`Invitation`、`SystemAccount` 和 `ApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 AuthModule 通过 DatabaseModule 注册已启用实体。应用使用 `nb database:*` 命令共享运行时配置，无需单独的 MikroORM 配置文件。
@@ -251,9 +251,9 @@ GraphQL `signUp` 现在返回 `SignUpPayload { id, token }`，不再返回
 
 管理功能和密钥功能均需显式启用：分别配置 `admin.enabled`、`apiKey.enabled`。个人和工作区密钥还需开启 `apiKey.user.enabled`、`apiKey.workspace.enabled`，后者另需 `workspace.enabled`；这些开关均默认关闭。系统凭证认证要求密钥总开关和显式设置 `apiKey.system.enabled: true`，默认关闭且不依赖 `admin.enabled`；管理 API 另需开启 admin。
 
-GraphQL 密钥输出统一为 `ApiKey`，可空的 `owner` 联合字段仅包含已启用的身份类型。工作区跨成员列表和系统列表分别为 `workspaceApiKeys`、`systemApiKeys`。
+GraphQL 分别返回 `UserApiKey`、`WorkspaceApiKey`、`SystemApiKey`，各有独立的权限枚举。可空的具体关联字段分别为 `user`、`member`、`systemAccount`；汇总列表仍为 `workspaceApiKeys` 和 `systemApiKeys`。
 
-`UserApiKey`、`MemberApiKey`、`SystemAccountApiKey` 是各自的公共视图和 Service，统一持久化实体为 `ApiKeyEntity`。直接 ORM 查询使用 `ownerType` 和多态 `owner` 引用。独立 ORM 使用 `getAuthEntities(options)`；AuthModule 自动注册。系统账户的权限与管理员会话要求见 [API Key](/docs/tutorial/auth/api-keys)。
+`UserApiKey`、`WorkspaceApiKey`、`SystemApiKey` 是各自的公共视图和 Service，统一持久化实体为 `ApiKey`。直接 ORM 查询使用 `ownerType` 和多态 `owner` 引用。独立 ORM 使用 `getAuthEntities(options)`；AuthModule 自动注册。系统账户的权限与管理员会话要求见 [API Key](/docs/tutorial/auth/api-keys)。
 
 示例基线按当前实体为全新数据库重新生成，直接建立 ApiKey 共表、系统账户、哈希全局唯一约束及 owner 检查和清理触发器。
 

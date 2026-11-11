@@ -14,29 +14,28 @@ import {
   parse,
 } from "graphql";
 
-import type { AuthModuleOptions } from "../src/auth-module-options.interface.js";
-import { Member, SystemAccount, User } from "../src/entities/index.js";
+import { DEFAULT_USER_PERMISSIONS } from "../src/core/constants/user.constants.js";
 import {
-  ApiKeyPermission,
-  MemberApiKeyPermission,
+  SystemApiKeyPermission,
   UserApiKeyPermission,
   UserPermission,
   UserRole,
+  WorkspaceApiKeyPermission,
   WorkspacePermission,
   WorkspaceRole,
-} from "../src/enums/index.js";
-import { AuthEnumRegistry } from "../src/infrastructure/auth-enum-registry.js";
-import { DEFAULT_USER_PERMISSIONS } from "../src/user.constants.js";
-import { DEFAULT_WORKSPACE_PERMISSIONS } from "../src/workspace.constants.js";
+} from "../src/core/enums/index.js";
+import { AuthEnumRegistry } from "../src/core/infrastructure/auth-enum-registry.js";
+import type { AuthModuleOptions } from "../src/core/interfaces/auth-module-options.interface.js";
+import { DEFAULT_WORKSPACE_PERMISSIONS } from "../src/workspace/constants/workspace.constants.js";
 
 @Resolver()
 class EnumTestResolver {
-  @Query(() => [ApiKeyPermission])
+  @Query(() => [SystemApiKeyPermission])
   storedApiKeyPermissions(): string[] {
     return [];
   }
-  @Query(() => [MemberApiKeyPermission])
-  memberApiKeyPermissions(): string[] {
+  @Query(() => [WorkspaceApiKeyPermission])
+  workspaceApiKeyPermissions(): string[] {
     return [];
   }
   @Query(() => UserRole)
@@ -70,13 +69,10 @@ class EnumTestResolver {
 describe("auth enum registration", () => {
   const registrations: AuthEnumRegistry[] = [];
   const register = (options: AuthModuleOptions) => {
-    const registry = new AuthEnumRegistry(
-      {
-        ...options,
-        workspace: { ...options.workspace, enabled: true },
-      },
-      [User, Member, SystemAccount],
-    );
+    const registry = new AuthEnumRegistry({
+      ...options,
+      workspace: { ...options.workspace, enabled: true },
+    });
     registrations.push(registry);
     return registry;
   };
@@ -105,8 +101,7 @@ describe("auth enum registration", () => {
     for (const name of [
       "WorkspacePermission",
       "UserApiKeyPermission",
-      "MemberApiKeyPermission",
-      "ApiKeyPermission",
+      "WorkspaceApiKeyPermission",
     ]) {
       const permission = enumType(schema, name);
       expect(permission.parseValue("MEMBER__INVITE")).toBe("member:invite");
@@ -136,7 +131,7 @@ describe("auth enum registration", () => {
       "project:read",
       "project:write",
     ]);
-    const workspace = enumType(schema, "MemberApiKeyPermission");
+    const workspace = enumType(schema, "WorkspaceApiKeyPermission");
     expect(workspace.getValues().map(({ value }) => value)).toEqual([
       ...DEFAULT_WORKSPACE_PERMISSIONS,
       "project:read",
@@ -147,8 +142,8 @@ describe("auth enum registration", () => {
     expect(
       enumType(schema, "UserApiKeyPermission").serialize("project:write"),
     ).toBe("PROJECT__WRITE");
-    const output = enumType(schema, "ApiKeyPermission");
-    expect(output.serialize("project:write")).toBe("PROJECT__WRITE");
+    const output = enumType(schema, "SystemApiKeyPermission");
+    expect(() => output.serialize("project:write")).toThrow();
     expect(output.serialize("user:read")).toBe("USER__READ");
     expect(output.serialize("workspace:read-any")).toBe("WORKSPACE__READ_ANY");
   });
@@ -172,7 +167,7 @@ describe("auth enum registration", () => {
       "project:read",
     ]);
     expect(
-      enumType(schema, "MemberApiKeyPermission")
+      enumType(schema, "WorkspaceApiKeyPermission")
         .getValues()
         .map(({ value }) => value),
     ).toEqual([...DEFAULT_WORKSPACE_PERMISSIONS, "project:read"]);

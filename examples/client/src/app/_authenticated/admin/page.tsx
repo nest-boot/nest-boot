@@ -61,7 +61,7 @@ function Overview() {
   });
   const keyOverview = useQuery(KEY_OVERVIEW, {
     fetchPolicy: "network-only",
-    skip: !ability.can("read", "SystemAccountApiKey"),
+    skip: !ability.can("read", "SystemApiKey"),
   });
   const summary = error ? undefined : data;
   return (
@@ -95,7 +95,7 @@ function Overview() {
             </OverviewCard>
           </PageLayoutSection>
         )}
-        {ability.can("read", "SystemAccountApiKey") && (
+        {ability.can("read", "SystemApiKey") && (
           <PageLayoutSection>
             <OverviewCard
               title={t("api-key:title")}

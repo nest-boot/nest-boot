@@ -61,8 +61,8 @@ const GET_USER_API_KEY = graphql(`
 const GET_USER_API_KEY_NEIGHBORS = graphql(`
   query getUserApiKeyNeighbors(
     $cursor: String!
-    $filter: ApiKeyFilter
-    $orderBy: ApiKeyOrder
+    $filter: UserApiKeyFilter
+    $orderBy: UserApiKeyOrder
     $query: String
   ) {
     currentUser {

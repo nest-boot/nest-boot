@@ -10,9 +10,9 @@ import { Global, type INestApplication, Module } from "@nestjs/common";
 import { GraphQLModule } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
 
-import { AuthGuard } from "../src/auth.guard.js";
-import { AuthModule } from "../src/auth.module.js";
-import { ApiKeyEntity, User, Workspace } from "../src/entities/index.js";
+import { AuthGuard } from "../src/core/auth.guard.js";
+import { AuthModule } from "../src/core/auth.module.js";
+import { ApiKey, User, Workspace } from "../src/core/entities/index.js";
 import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 
 @Global()
@@ -203,16 +203,16 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
       const ids: string[] = [];
       for (const owner of [first, second]) {
         const result = await graphql(
-          'mutation($id: ID!) { createSystemAccountApiKey(systemAccountId: $id, input: {name: "Global list", permissions: [USER__READ]}) { entity { id } } }',
+          'mutation($id: ID!) { createSystemApiKey(systemAccountId: $id, input: {name: "Global list", permissions: [USER__READ]}) { entity { id } } }',
           { id: owner },
         );
-        ids.push(data(result).createSystemAccountApiKey.entity.id);
+        ids.push(data(result).createSystemApiKey.entity.id);
       }
       const em = orm.em.fork();
       const admin = await em.findOneOrFail(User, {
         email: "administrator@example.test",
       });
-      const unrelated = em.create(ApiKeyEntity, {
+      const unrelated = em.create(ApiKey, {
         name: "Global list",
         owner: admin,
         key: "unrelated-user-credential",
@@ -220,30 +220,30 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
       await em.persist(unrelated).flush();
       try {
         const query =
-          '{ systemApiKeys(first: 1, filter: { name: "Global list" }) { totalCount edges { node { id owner { __typename ... on SystemAccount { id name } } } } pageInfo { hasNextPage endCursor } } systemAccountApiKeyPermissions { permission grantable default } }';
+          '{ systemApiKeys(first: 1, filter: { name: "Global list" }) { totalCount edges { node { id systemAccount { __typename  id name  } } } pageInfo { hasNextPage endCursor } } systemApiKeyPermissions { permission grantable default } }';
         const result = data(await graphql(query));
         expect(result.systemApiKeys.totalCount).toBe(2);
-        expect(result.systemApiKeys.edges[0].node.owner.__typename).toBe(
-          "SystemAccount",
-        );
+        expect(
+          result.systemApiKeys.edges[0].node.systemAccount.__typename,
+        ).toBe("SystemAccount");
         expect([first, second]).toContain(
-          result.systemApiKeys.edges[0].node.owner.id,
+          result.systemApiKeys.edges[0].node.systemAccount.id,
         );
         const userOwner = data(
           await graphql(
-            "query($id: ID!) { currentUser { apiKey(id: $id) { owner { __typename ... on User { id } } } } }",
+            "query($id: ID!) { currentUser { apiKey(id: $id) { user { __typename  id  } } } }",
             { id: unrelated.id },
           ),
         );
-        expect(userOwner.currentUser.apiKey.owner).toEqual({
+        expect(userOwner.currentUser.apiKey.user).toEqual({
           __typename: "User",
           id: admin.id,
         });
         const choicesQuery =
-          "query($id: ID!) { systemAccountApiKeyPermissions(apiKeyId: $id) { permission grantable default } }";
+          "query($id: ID!) { systemApiKeyPermissions(apiKeyId: $id) { permission grantable default } }";
         const choices = data(
           await graphql(choicesQuery, { id: ids[0] }),
-        ).systemAccountApiKeyPermissions;
+        ).systemApiKeyPermissions;
         expect(
           choices.find(
             (option: { permission: string }) =>
@@ -263,7 +263,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
         expect(
           (
             await graphql(
-              "query($owner: ID!, $key: ID!) { systemAccountApiKeyPermissions(systemAccountId: $owner, apiKeyId: $key) { permission } }",
+              "query($owner: ID!, $key: ID!) { systemApiKeyPermissions(systemAccountId: $owner, apiKeyId: $key) { permission } }",
               { owner: first, key: ids[0] },
             )
           ).errors?.[0]?.message,
@@ -283,7 +283,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
           ].sort(),
         ).toEqual(ids.sort());
         expect(
-          result.systemAccountApiKeyPermissions.some(
+          result.systemApiKeyPermissions.some(
             (option: { permission: string; grantable: boolean }) =>
               option.permission === "USER__READ" && option.grantable,
           ),
@@ -299,23 +299,23 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
         try {
           const readOnly = data(await graphql(query, {}, ordinaryCookies));
           expect(readOnly.systemApiKeys.totalCount).toBe(2);
-          expect(readOnly.systemApiKeys.edges[0].node.owner).toBeNull();
+          expect(readOnly.systemApiKeys.edges[0].node.systemAccount).toBeNull();
           expect(
             data(
               await graphql(choicesQuery, { id: ids[0] }, ordinaryCookies),
-            ).systemAccountApiKeyPermissions.every(
+            ).systemApiKeyPermissions.every(
               (option: { grantable: boolean }) => !option.grantable,
             ),
           ).toBe(true);
           expect(
-            readOnly.systemAccountApiKeyPermissions.every(
+            readOnly.systemApiKeyPermissions.every(
               (option: { grantable: boolean }) => !option.grantable,
             ),
           ).toBe(true);
           for (const denied of [
             "{ systemAccounts(first: 1) { totalCount } }",
             'mutation { createSystemAccount(input: { name: "Denied" }) { id } }',
-            'mutation($id: ID!) { createSystemAccountApiKey(systemAccountId: $id, input: {name: "Denied"}) { entity { id } } }',
+            'mutation($id: ID!) { createSystemApiKey(systemAccountId: $id, input: {name: "Denied"}) { entity { id } } }',
           ]) {
             expect(
               (await graphql(denied, { id: first }, ordinaryCookies))
@@ -326,7 +326,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
           await em.nativeUpdate(User, ordinary.id, { roles: ["user"] });
         }
       } finally {
-        await orm.em.fork().nativeDelete(ApiKeyEntity, unrelated.id);
+        await orm.em.fork().nativeDelete(ApiKey, unrelated.id);
       }
     } finally {
       for (const id of [first, second]) {
@@ -351,19 +351,19 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
       permissions: ["USER__READ", "WORKSPACE__READ_ANY"],
     });
     const key = await graphql(
-      'mutation($id: ID!) { createSystemAccountApiKey(systemAccountId: $id, input: {name: "Deployment", permissions: [USER__READ, WORKSPACE__READ_ANY]}) { apiKey entity { id name createdById } } }',
+      'mutation($id: ID!) { createSystemApiKey(systemAccountId: $id, input: {name: "Deployment", permissions: [USER__READ, WORKSPACE__READ_ANY]}) { apiKey entity { id name createdById } } }',
       { id: accountId },
     );
     expect(key.errors).toBeUndefined();
-    const keyId: string = data(key).createSystemAccountApiKey.entity.id;
-    const plaintext: string = data(key).createSystemAccountApiKey.apiKey;
+    const keyId: string = data(key).createSystemApiKey.entity.id;
+    const plaintext: string = data(key).createSystemApiKey.apiKey;
     expect(plaintext).toMatch(/^sys_[A-Za-z0-9_-]{64}$/u);
-    const stored = await orm.em.fork().findOneOrFail(ApiKeyEntity, keyId);
+    const stored = await orm.em.fork().findOneOrFail(ApiKey, keyId);
     expect(stored.key).not.toBe(plaintext);
     expect(stored.key).toMatch(/^[A-Za-z0-9_-]{43}$/u);
 
     const result = await graphql(
-      "query($id: ID!, $key: ID!) { systemAccounts(first: 10) { totalCount edges { node { id } } } systemAccount(id: $id) { id apiKeyPermissions { permission grantable default } apiKeys(first: 10) { totalCount edges { node { id name createdById } } } } systemAccountApiKey(id: $key) { id name } }",
+      "query($id: ID!, $key: ID!) { systemAccounts(first: 10) { totalCount edges { node { id } } } systemAccount(id: $id) { id apiKeyPermissions { permission grantable default } apiKeys(first: 10) { totalCount edges { node { id name createdById } } } } systemApiKey(id: $key) { id name } }",
       { id: accountId, key: keyId },
     );
     expect(result.errors).toBeUndefined();
@@ -383,7 +383,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     expect(JSON.stringify(result)).not.toContain(plaintext);
     expect(
       data(
-        await graphql('{ __type(name: "ApiKey") { fields { name } } }'),
+        await graphql('{ __type(name: "SystemApiKey") { fields { name } } }'),
       ).__type.fields.map((field: { name: string }) => field.name),
     ).not.toContain("key");
 
@@ -409,11 +409,11 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     expect(denied.errors?.[0]?.extensions.code).toBe("FORBIDDEN");
 
     const changed = await graphql(
-      'mutation($id: ID!) { updateSystemAccountApiKey(id: $id, input: {name: "Renamed", permissions: [USER__READ]}) { id name permissions } }',
+      'mutation($id: ID!) { updateSystemApiKey(id: $id, input: {name: "Renamed", permissions: [USER__READ]}) { id name permissions } }',
       { id: keyId },
     );
     expect(changed.errors).toBeUndefined();
-    expect(data(changed).updateSystemAccountApiKey.name).toBe("Renamed");
+    expect(data(changed).updateSystemApiKey.name).toBe("Renamed");
     const readOnly = await graphql(
       "{ workspaces(first: 1) { totalCount } }",
       {},
@@ -437,11 +437,11 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     expect(response.status).toBe(401);
 
     const removed = await graphql(
-      "mutation($id: ID!) { deleteSystemAccountApiKey(id: $id) { id } }",
+      "mutation($id: ID!) { deleteSystemApiKey(id: $id) { id } }",
       { id: keyId },
     );
     expect(removed.errors).toBeUndefined();
-    expect(await orm.em.fork().count(ApiKeyEntity, keyId)).toBe(0);
+    expect(await orm.em.fork().count(ApiKey, keyId)).toBe(0);
     const deletedAccount = await graphql(
       "mutation($id: ID!) { deleteSystemAccount(id: $id) { id } }",
       { id: accountId },

@@ -11,19 +11,19 @@ import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
-import { getMemberApiKeysResourceKey } from "@/lib/resource-keys";
+import { getWorkspaceApiKeysResourceKey } from "@/lib/resource-keys";
 import {
   getDefaultApiKeyPermissions,
   getPermissionOptions,
-  memberApiKeyPermissionValues,
+  workspaceApiKeyPermissionValues,
 } from "@/lib/permissions";
 import { isAccessDenied } from "@/lib/auth-errors";
 
 const CREATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
-  mutation createMemberApiKeyFromApiKeysRoute(
-    $input: CreateMemberApiKeyInput!
+  mutation createWorkspaceApiKeyFromApiKeysRoute(
+    $input: CreateWorkspaceApiKeyInput!
   ) {
-    createMemberApiKey(input: $input) {
+    createWorkspaceApiKey(input: $input) {
       apiKey
       entity {
         id
@@ -49,7 +49,7 @@ const ADD_SERVICE_ACCOUNT_FOR_API_KEY = graphql(`
 `);
 
 const GET_MEMBER_API_KEY_OPTIONS = graphql(`
-  query getMemberApiKeyOptions(
+  query getWorkspaceApiKeyOptions(
     $includeMembers: Boolean! = false
     $after: String
     $memberFilter: MemberFilter
@@ -68,7 +68,7 @@ const GET_MEMBER_API_KEY_OPTIONS = graphql(`
         }
       }
     }
-    memberApiKeyPermissions {
+    workspaceApiKeyPermissions {
       permission
       grantable
       default
@@ -86,7 +86,7 @@ export const Route = createFileRoute(
         to: "/workspaces/$workspaceId/api-keys",
         params: { workspaceId: params.workspaceId },
       });
-    if (!context.ability.can("write", "MemberApiKey")) throw denied();
+    if (!context.ability.can("write", "WorkspaceApiKey")) throw denied();
     const canCreateServiceAccount = context.ability.can(
       "write",
       createAbilitySubject("Member", {
@@ -139,7 +139,7 @@ export const Route = createFileRoute(
         value: member.id,
         label: member.name,
       })),
-      permissionOptions: data?.memberApiKeyPermissions ?? [],
+      permissionOptions: data?.workspaceApiKeyPermissions ?? [],
       title: t("api-key:create.title"),
     };
   },
@@ -152,7 +152,7 @@ function CreateApiKeyPage() {
   const currentUser = useCurrentUserContext();
   const currentMember = useCurrentMemberContext();
   const { backSearch } = useResourceNavigation({
-    key: [currentUser.id, ...getMemberApiKeysResourceKey(workspaceId)],
+    key: [currentUser.id, ...getWorkspaceApiKeysResourceKey(workspaceId)],
     searchSchema: apiKeySearchSchema,
   });
   const { permissionOptions, memberOptions, canCreateServiceAccount } =
@@ -172,7 +172,7 @@ function CreateApiKeyPage() {
       canCreateServiceAccount={canCreateServiceAccount}
       listPath={`/workspaces/${workspaceId}/api-keys`}
       listSearch={backSearch}
-      permissionValues={memberApiKeyPermissionValues}
+      permissionValues={workspaceApiKeyPermissionValues}
       permissionOptions={getPermissionOptions(permissionOptions)}
       defaultPermissions={getDefaultApiKeyPermissions(permissionOptions)}
       onSave={async (input) => {
@@ -195,7 +195,7 @@ function CreateApiKeyPage() {
         const result = await createApiKey({
           variables: { input: { ...input, memberId } },
         });
-        const created = result.data?.createMemberApiKey;
+        const created = result.data?.createWorkspaceApiKey;
         if (!created) throw new Error(t("api-key:form.save_failed"));
         setCreatedKey({
           pathname: `/workspaces/${workspaceId}/api-keys/${created.entity.id}`,

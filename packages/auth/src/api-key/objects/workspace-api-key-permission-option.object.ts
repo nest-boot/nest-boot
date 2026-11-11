@@ -1,0 +1,19 @@
+import { Field, ObjectType } from "@nest-boot/graphql";
+
+import { WorkspaceApiKeyPermission } from "../enums/workspace-api-key-permission.enum.js";
+
+/** A member API-key permission and whether the caller may grant it. */
+@ObjectType()
+export class WorkspaceApiKeyPermissionOption {
+  /** Permission from the complete member API-key catalog. */
+  @Field(() => WorkspaceApiKeyPermission)
+  permission!: WorkspaceApiKeyPermission;
+
+  /** Includes configuration limits, user-identity requirements and the caller's grant ceiling. */
+  @Field(() => Boolean)
+  grantable!: boolean;
+
+  /** Whether configuration selects this permission by default, independently of grantability. */
+  @Field(() => Boolean)
+  default!: boolean;
+}

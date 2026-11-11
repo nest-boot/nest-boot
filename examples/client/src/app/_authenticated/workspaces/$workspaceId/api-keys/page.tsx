@@ -10,7 +10,7 @@ import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { ApiKeysPage } from "@/components/api-keys-page";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
 import { createAbilitySubject } from "@/lib/ability";
-import { getMemberApiKeysResourceKey } from "@/lib/resource-keys";
+import { getWorkspaceApiKeysResourceKey } from "@/lib/resource-keys";
 
 const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
   query getApiKeysFromApiKeysRoute(
@@ -18,8 +18,8 @@ const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
     $before: String
     $first: Int
     $last: Int
-    $filter: ApiKeyFilter
-    $orderBy: ApiKeyOrder
+    $filter: WorkspaceApiKeyFilter
+    $orderBy: WorkspaceApiKeyOrder
     $query: String
   ) {
     workspaceApiKeys(
@@ -34,14 +34,13 @@ const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
       edges {
         node {
           id
-          owner {
+          member {
             __typename
-            ... on Member {
-              id
-              name
-              type
-              workspaceId
-            }
+
+            id
+            name
+            type
+            workspaceId
           }
           name
           start
@@ -82,7 +81,7 @@ function ApiKeysComponent() {
   const search = Route.useSearch();
   const currentUser = useCurrentUserContext();
   useResourceNavigation({
-    key: [currentUser.id, ...getMemberApiKeysResourceKey(workspaceId)],
+    key: [currentUser.id, ...getWorkspaceApiKeysResourceKey(workspaceId)],
     searchSchema: apiKeySearchSchema,
     search,
   });
@@ -108,7 +107,7 @@ function ApiKeysComponent() {
           ? `/workspaces/${workspaceId}/members/${owner.id}`
           : undefined
       }
-      subject="MemberApiKey"
+      subject="WorkspaceApiKey"
       ability={ability}
       title={t("api-key:title")}
       description={t("api-key:description")}
@@ -120,7 +119,7 @@ function ApiKeysComponent() {
           ...edge.node,
           workspaceId,
           owner:
-            edge.node.owner?.__typename === "Member" ? edge.node.owner : null,
+            edge.node.member?.__typename === "Member" ? edge.node.member : null,
         })) ?? []
       }
       pageInfo={connection?.pageInfo}

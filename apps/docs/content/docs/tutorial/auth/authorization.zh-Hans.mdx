@@ -251,14 +251,14 @@ const permission: PermissionName<"user-api-key:read"> = "user-api-key:read";
 ```
 
 GraphQL 根据配置生成 `UserRole`、`WorkspaceRole`、`UserPermission`、
-`WorkspacePermission` 、`UserApiKeyPermission` 和 `MemberApiKeyPermission`。枚举名称转大写，中划线转 `_`，
+`WorkspacePermission` 、`UserApiKeyPermission` 和 `WorkspaceApiKeyPermission`。枚举名称转大写，中划线转 `_`，
 权限分隔符 `:` 转 `__`。例如 `super-admin` 对应 `SUPER_ADMIN`，
 `user-api-key:read` 对应 `USER_API_KEY__READ`。GraphQL 变量和响应使用枚举名称；
 Service、Ability 构建器和数据库继续使用原始值。修改目录后需要重新生成客户端类型，
 已有数据中的角色和权限也必须保留在配置目录中，才能由 GraphQL 正常序列化。
 
-统一的 `ApiKey.permissions` 输出使用三个作用域目录并集生成的 `ApiKeyPermission`。输入仍按作用域校验：
-`UserApiKeyPermission` 取用户与工作区权限目录的并集；`MemberApiKeyPermission` 使用工作区目录。
+三种 GraphQL 密钥类型的输入与输出均使用各自的权限枚举；`SystemApiKeyPermission` 使用系统账户权限目录。
+`UserApiKeyPermission` 取用户与工作区权限目录的并集；`WorkspaceApiKeyPermission` 使用工作区目录。
 这两个枚举不会随相应的 `apiKey.user.allowedPermissions` 或 `apiKey.workspace.allowedPermissions`
 缩小，确保收紧允许列表后仍能读取已有授权。
 Service 在写入时校验允许列表。用户与工作区权限目录追加到内置默认目录；省略配置，
@@ -372,7 +372,7 @@ updatePost(@Args("id") id: string) {
 
 Member API Key 仅贡献工作区授权。User API Key 贡献用户授权，并在成员关系有效时
 贡献工作区授权；调用回调前，各来源都已受凭证权限上限约束。守卫检查最终的 `AuthAbility`。
-内置工作区规则匹配当前工作区 ID；前端对 Member、Invitation、MemberApiKey 做实例
+内置工作区规则匹配当前工作区 ID；前端对 Member、Invitation、WorkspaceApiKey 做实例
 检查时，应查询 `workspaceId`。自定义业务规则需要使用回调上下文显式声明对象条件。
 
 Auth 自动映射内置权限。业务扩展显式绑定权限，例如 `can({ user: "post:read" }, "read", Post)`。

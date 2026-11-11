@@ -58,7 +58,7 @@ export const AdminSidebar: FC<ComponentProps<typeof AppSidebar>> = (props) => {
                   />
                 </SidebarMenuItem>
               )}
-              {ability.can("read", "SystemAccountApiKey") && (
+              {ability.can("read", "SystemApiKey") && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     tooltip={t("api-key:title")}

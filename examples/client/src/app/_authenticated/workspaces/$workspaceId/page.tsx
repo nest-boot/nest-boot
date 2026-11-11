@@ -49,7 +49,7 @@ function Overview() {
   const ability = useAbility();
   const workspace = useCurrentWorkspaceContext();
   const canReadMembers = ability.can("read", "Member");
-  const canReadApiKeys = ability.can("read", "MemberApiKey");
+  const canReadApiKeys = ability.can("read", "WorkspaceApiKey");
   const { data, loading, error, refetch } = useQuery(GET_OVERVIEW, {
     variables: {
       workspaceId: workspace.id,

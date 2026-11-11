@@ -8,7 +8,3 @@ describe("workspace enabled", () => {
     30000,
   );
 });
-
-it("uses DatabaseModule's custom schema for member policies and owner triggers", async () => {
-  await verifyAuthBootstrap({ enabled: true }, true, 'tenant"auth');
-}, 30000);

@@ -7,29 +7,29 @@ import { getDatabaseConfig } from "@nest-boot/database";
 import { REQUEST, RequestContext } from "@nest-boot/request-context";
 import type { Request } from "express";
 
-import { AuthMiddleware } from "../src/auth.middleware.js";
-import type { AuthModuleOptions } from "../src/auth-module-options.interface.js";
+import { SystemAccountService } from "../src/admin/services/system-account.service.js";
+import { SystemApiKey } from "../src/api-key/entities/system-api-key.entity.js";
+import { ApiKeyAuthenticationService } from "../src/api-key/infrastructure/api-key-authentication.service.js";
+import { SystemApiKeyService } from "../src/api-key/services/system-api-key.service.js";
+import { hashApiKey } from "../src/api-key/utils/api-key-credential.util.js";
+import { getCurrentApiKey } from "../src/api-key/utils/get-current-api-key.util.js";
+import { getAuthAbility } from "../src/common/utils/get-auth-ability.util.js";
+import { resolveRequestPermissions } from "../src/common/utils/resolve-request-permissions.util.js";
+import { AuthMiddleware } from "../src/core/auth.middleware.js";
 import {
-  ApiKeyEntity,
+  ApiKey,
   getAuthEntities,
   Member,
   SystemAccount,
   User,
   Workspace,
-} from "../src/entities/index.js";
-import { Session } from "../src/entities/session.entity.js";
-import { SystemAccountApiKey } from "../src/entities/system-account-api-key.entity.js";
-import { ApiKeyAuthenticationService } from "../src/infrastructure/api-key-authentication.service.js";
-import { RequestIdentity } from "../src/infrastructure/request-identity.js";
-import type { SessionService } from "../src/services/session.service.js";
-import { SystemAccountService } from "../src/services/system-account.service.js";
-import { SystemApiKeyService } from "../src/services/system-api-key.service.js";
-import { UserService } from "../src/services/user.service.js";
-import { WorkspaceService } from "../src/services/workspace.service.js";
-import { hashApiKey } from "../src/utils/api-key-credential.util.js";
-import { getAuthAbility } from "../src/utils/get-auth-ability.util.js";
-import { getCurrentApiKey } from "../src/utils/get-current-api-key.util.js";
-import { resolveRequestPermissions } from "../src/utils/resolve-request-permissions.util.js";
+} from "../src/core/entities/index.js";
+import { Session } from "../src/core/entities/session.entity.js";
+import { RequestIdentity } from "../src/core/infrastructure/request-identity.js";
+import type { AuthModuleOptions } from "../src/core/interfaces/auth-module-options.interface.js";
+import type { SessionService } from "../src/core/services/session.service.js";
+import { UserService } from "../src/core/services/user.service.js";
+import { WorkspaceService } from "../src/workspace/services/workspace.service.js";
 import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 
 const options: AuthModuleOptions = {
@@ -129,7 +129,7 @@ describe("independent system accounts with real persistence and authentication",
         name: randomUUID(),
         permissions,
       });
-      const key = await keys.createSystemAccountApiKey(account.id, {
+      const key = await keys.createSystemApiKey(account.id, {
         name: "Integration",
         permissions,
       });
@@ -185,12 +185,12 @@ describe("independent system accounts with real persistence and authentication",
       user: null,
       name: "Member key owner",
     });
-    const userKey = em.create(ApiKeyEntity, {
+    const userKey = em.create(ApiKey, {
       name: "User",
       owner: administrator,
       key: randomUUID(),
     });
-    const memberKey = em.create(ApiKeyEntity, {
+    const memberKey = em.create(ApiKey, {
       name: "Member",
       owner: member,
       key: randomUUID(),
@@ -278,7 +278,7 @@ describe("independent system accounts with real persistence and authentication",
           accounts.getSystemAccountConnection({ first: 1 }),
         ).rejects.toThrow(/administrator session/i);
         await expect(
-          keys.createSystemAccountApiKey("1", {
+          keys.createSystemApiKey("1", {
             name: "Escalation",
             permissions: ["user:read"],
           }),
@@ -297,7 +297,7 @@ describe("independent system accounts with real persistence and authentication",
   it("requires explicit system-key grants; an empty list never inherits account privileges", async () => {
     const { account } = await issue();
     const created = await asAdministrator((_accounts, keys) =>
-      keys.createSystemAccountApiKey(account.id, { name: "No grants" }),
+      keys.createSystemApiKey(account.id, { name: "No grants" }),
     );
     await withKey(created.apiKey, async (em) => {
       expect(
@@ -318,32 +318,32 @@ describe("independent system accounts with real persistence and authentication",
         permissions: ["user:read"],
       });
       await expect(
-        keys.createSystemAccountApiKey(account.id, {
+        keys.createSystemApiKey(account.id, {
           name: "Too broad",
           permissions: ["workspace:read-any"],
         }),
       ).rejects.toThrow(/exceed system account/i);
       await expect(
-        keys.createSystemAccountApiKey(account.id, {
+        keys.createSystemApiKey(account.id, {
           name: "Config",
           permissions: ["user:delete"],
         }),
       ).rejects.toThrow(/configured allowedPermissions/i);
-      const created = await keys.createSystemAccountApiKey(account.id, {
+      const created = await keys.createSystemApiKey(account.id, {
         name: "Valid",
         permissions: ["user:read"],
       });
       await expect(
-        keys.updateSystemAccountApiKey(created.entity.id, {
+        keys.updateSystemApiKey(created.entity.id, {
           permissions: ["workspace:read-any"],
         }),
       ).rejects.toThrow(/exceed system account/i);
       expect(
-        (await keys.getSystemAccountApiKey(created.entity.id))?.permissions,
+        (await keys.getSystemApiKey(created.entity.id))?.permissions,
       ).toEqual(["user:read"]);
-      expect(
-        await keys.getSystemAccountApiKey(created.entity.id),
-      ).not.toHaveProperty("key");
+      expect(await keys.getSystemApiKey(created.entity.id)).not.toHaveProperty(
+        "key",
+      );
     });
   });
 
@@ -374,14 +374,14 @@ describe("independent system accounts with real persistence and authentication",
       accounts.updateSystemAccount(issued.account.id, { enabled: true }),
     );
     await asAdministrator((_accounts, keys) =>
-      keys.updateSystemAccountApiKey(issued.entity.id, { enabled: false }),
+      keys.updateSystemApiKey(issued.entity.id, { enabled: false }),
     );
     await expect(withKey(issued.apiKey, () => null)).rejects.toThrow(
       /disabled/,
     );
     await expect(
       asAdministrator((_accounts, keys) =>
-        keys.updateSystemAccountApiKey(issued.entity.id, { enabled: true }),
+        keys.updateSystemApiKey(issued.entity.id, { enabled: true }),
       ),
     ).rejects.toThrow(/exceed system account/);
   });
@@ -402,7 +402,7 @@ describe("independent system accounts with real persistence and authentication",
       });
       return {
         account,
-        ...(await keys.createSystemAccountApiKey(account.id, {
+        ...(await keys.createSystemApiKey(account.id, {
           name: "Independent",
           permissions: ["user:read"],
         })),
@@ -419,7 +419,7 @@ describe("independent system accounts with real persistence and authentication",
     await asAdministrator((accounts) =>
       accounts.deleteSystemAccount(issued.account.id),
     );
-    expect(await em.count(ApiKeyEntity, issued.entity.id)).toBe(0);
+    expect(await em.count(ApiKey, issued.entity.id)).toBe(0);
     await expect(withKey(issued.apiKey, () => null)).rejects.toThrow(
       /Invalid API key/,
     );
@@ -427,7 +427,7 @@ describe("independent system accounts with real persistence and authentication",
 
   it("rejects reuse of privileged owner-cleanup functions by an unexpected trigger", async () => {
     const em = orm.em.fork();
-    const key = em.create(ApiKeyEntity, {
+    const key = em.create(ApiKey, {
       owner: administrator,
       name: "Cleanup guard",
       key: randomUUID(),
@@ -442,7 +442,7 @@ describe("independent system accounts with real persistence and authentication",
           administrator.id,
         ]),
       ).rejects.toThrow(/Unexpected API-key trigger target/);
-      expect(await em.count(ApiKeyEntity, key.id)).toBe(1);
+      expect(await em.count(ApiKey, key.id)).toBe(1);
     } finally {
       await em.execute('drop trigger cleanup_probe on "user"');
     }
@@ -462,7 +462,7 @@ describe("independent system accounts with real persistence and authentication",
       user: null,
       name: "Tenant automation",
     });
-    const memberKey = admin.create(ApiKeyEntity, {
+    const memberKey = admin.create(ApiKey, {
       owner: member,
       key: randomUUID(),
       name: "Tenant key",
@@ -489,13 +489,13 @@ describe("independent system accounts with real persistence and authentication",
         /not found/i,
       );
     });
-    expect(await admin.count(ApiKeyEntity, memberKey.id)).toBe(0);
+    expect(await admin.count(ApiKey, memberKey.id)).toBe(0);
   });
 
   it("rejects missing accounts and keys and cannot delegate grants beyond a limited administrator", async () => {
     await asAdministrator(async (accounts, keys) => {
       expect(await accounts.getSystemAccount("9999999999999")).toBeNull();
-      expect(await keys.getSystemAccountApiKey("9999999999999")).toBeNull();
+      expect(await keys.getSystemApiKey("9999999999999")).toBeNull();
       await expect(
         accounts.updateSystemAccount("9999999999999", { name: "Missing" }),
       ).rejects.toThrow(/not found/i);
@@ -503,14 +503,14 @@ describe("independent system accounts with real persistence and authentication",
         accounts.deleteSystemAccount("9999999999999"),
       ).rejects.toThrow(/not found/i);
       await expect(
-        keys.createSystemAccountApiKey("9999999999999", { name: "Missing" }),
+        keys.createSystemApiKey("9999999999999", { name: "Missing" }),
       ).rejects.toThrow(/not found/i);
       await expect(
-        keys.updateSystemAccountApiKey("9999999999999", { name: "Missing" }),
+        keys.updateSystemApiKey("9999999999999", { name: "Missing" }),
       ).rejects.toThrow(/not found/i);
-      await expect(
-        keys.deleteSystemAccountApiKey("9999999999999"),
-      ).rejects.toThrow(/not found/i);
+      await expect(keys.deleteSystemApiKey("9999999999999")).rejects.toThrow(
+        /not found/i,
+      );
     });
     const configuration: AuthModuleOptions = {
       ...options,
@@ -549,7 +549,7 @@ describe("independent system accounts with real persistence and authentication",
         withAuthTestFeatures(configuration),
       );
       await expect(
-        keys.createSystemAccountApiKey(account.id, {
+        keys.createSystemApiKey(account.id, {
           name: "Excessive",
           permissions: ["workspace:read-any"],
         }),
@@ -625,7 +625,7 @@ describe("independent system accounts with real persistence and authentication",
   it("reloads key grants after locking the account before re-enabling a credential", async () => {
     const issued = await issue();
     await asAdministrator((_accounts, keys) =>
-      keys.updateSystemAccountApiKey(issued.entity.id, {
+      keys.updateSystemApiKey(issued.entity.id, {
         enabled: false,
         permissions: ["user:read"],
       }),
@@ -648,7 +648,7 @@ describe("independent system accounts with real persistence and authentication",
           changed = true;
           // Reproduce a stored key changing after hydration, before the account lock.
           // This uses a database write so a stale managed instance cannot satisfy the check.
-          await em.nativeUpdate(ApiKeyEntity, issued.entity.id, {
+          await em.nativeUpdate(ApiKey, issued.entity.id, {
             permissions: ["workspace:read-any"],
           });
         }
@@ -661,13 +661,12 @@ describe("independent system accounts with real persistence and authentication",
         withAuthTestFeatures(configuration),
       );
       await expect(
-        keys.updateSystemAccountApiKey(issued.entity.id, { enabled: true }),
+        keys.updateSystemApiKey(issued.entity.id, { enabled: true }),
       ).rejects.toThrow(/exceed issuer permissions/i);
     }, operator);
     expect(changed).toBe(true);
     expect(
-      (await orm.em.fork().findOneOrFail(ApiKeyEntity, issued.entity.id))
-        .enabled,
+      (await orm.em.fork().findOneOrFail(ApiKey, issued.entity.id)).enabled,
     ).toBe(false);
   });
 
@@ -677,7 +676,7 @@ describe("independent system accounts with real persistence and authentication",
       ...options,
       buildAbility: ({ cannot }) => {
         cannot("write", SystemAccount, { name: "Blocked" });
-        cannot("write", SystemAccountApiKey, { name: "Blocked" });
+        cannot("write", SystemApiKey, { name: "Blocked" });
       },
     };
     await asAdministrator(async (_accounts, _keys, em) => {
@@ -697,10 +696,10 @@ describe("independent system accounts with real persistence and authentication",
         accounts.updateSystemAccount(issued.account.id, { name: "Blocked" }),
       ).rejects.toThrow(/not allowed/i);
       await expect(
-        keys.createSystemAccountApiKey(issued.account.id, { name: "Blocked" }),
+        keys.createSystemApiKey(issued.account.id, { name: "Blocked" }),
       ).rejects.toThrow(/not allowed/i);
       await expect(
-        keys.updateSystemAccountApiKey(issued.entity.id, { name: "Blocked" }),
+        keys.updateSystemApiKey(issued.entity.id, { name: "Blocked" }),
       ).rejects.toThrow(/not allowed/i);
     });
     expect(
@@ -708,7 +707,7 @@ describe("independent system accounts with real persistence and authentication",
         .name,
     ).toBe(issued.account.name);
     expect(
-      (await orm.em.fork().findOneOrFail(ApiKeyEntity, issued.entity.id)).name,
+      (await orm.em.fork().findOneOrFail(ApiKey, issued.entity.id)).name,
     ).toBe("Integration");
   });
 
@@ -718,7 +717,7 @@ describe("independent system accounts with real persistence and authentication",
       ...options,
       buildAbility: ({ cannot }) => {
         cannot("write", SystemAccount, { name: "Blocked" });
-        cannot("write", SystemAccountApiKey, { name: "Blocked" });
+        cannot("write", SystemApiKey, { name: "Blocked" });
       },
     };
     await asAdministrator(async () => {
@@ -741,20 +740,20 @@ describe("independent system accounts with real persistence and authentication",
         accounts.updateSystemAccount(issued.account.id, { name: "Blocked" }),
       ).rejects.toThrow(/not allowed/i);
       await expect(
-        keys.createSystemAccountApiKey(issued.account.id, { name: "Blocked" }),
+        keys.createSystemApiKey(issued.account.id, { name: "Blocked" }),
       ).rejects.toThrow(/not allowed/i);
       await expect(
-        keys.updateSystemAccountApiKey(issued.entity.id, { name: "Blocked" }),
+        keys.updateSystemApiKey(issued.entity.id, { name: "Blocked" }),
       ).rejects.toThrow(/not allowed/i);
       await em.flush();
     });
     const em = orm.em.fork();
     expect(await em.count(SystemAccount, { name: "Blocked" })).toBe(0);
-    expect(await em.count(ApiKeyEntity, { name: "Blocked" })).toBe(0);
+    expect(await em.count(ApiKey, { name: "Blocked" })).toBe(0);
     expect(
       (await em.findOneOrFail(SystemAccount, issued.account.id)).name,
     ).toBe(issued.account.name);
-    expect((await em.findOneOrFail(ApiKeyEntity, issued.entity.id)).name).toBe(
+    expect((await em.findOneOrFail(ApiKey, issued.entity.id)).name).toBe(
       "Integration",
     );
   });
@@ -762,7 +761,7 @@ describe("independent system accounts with real persistence and authentication",
   it("requires a human session even when a user API key belongs to an administrator", async () => {
     const em = orm.em.fork();
     const plaintext = randomUUID();
-    const key = em.create(ApiKeyEntity, {
+    const key = em.create(ApiKey, {
       name: "Administrator API key",
       owner: administrator,
       key: hashApiKey(plaintext),
@@ -782,7 +781,7 @@ describe("independent system accounts with real persistence and authentication",
         new SystemApiKeyService(
           scoped,
           withAuthTestFeatures(options),
-        ).createSystemAccountApiKey("1", { name: "Denied" }),
+        ).createSystemApiKey("1", { name: "Denied" }),
       ).rejects.toThrow(/session/i);
     });
   });
@@ -792,7 +791,7 @@ describe("independent system accounts with real persistence and authentication",
       await expect(
         new SystemApiKeyService(em, {
           apiKey: { enabled: true, system: { enabled: true } },
-        }).getSystemAccountApiKeyPermissions(),
+        }).getSystemApiKeyPermissions(),
       ).rejects.toThrow("Administration is disabled");
       RequestContext.set(Session, null);
       await expect(
@@ -826,12 +825,12 @@ describe("independent system accounts with real persistence and authentication",
     const issued = await issue();
     await withKey(issued.apiKey, async (em) => {
       expect(await em.find(SystemAccount, {})).toEqual([]);
-      expect(await em.find(ApiKeyEntity, {})).toEqual([]);
+      expect(await em.find(ApiKey, {})).toEqual([]);
       await em.execute(
         "update api_key set permissions = array['user:delete'] where id = ?",
         [issued.entity.id],
       );
-      await em.nativeDelete(ApiKeyEntity, issued.entity.id);
+      await em.nativeDelete(ApiKey, issued.entity.id);
       await expect(
         em.execute(
           "insert into api_key (name, key, owner_type, owner_id) values ('Denied', ?, 'system_account', ?)",
@@ -839,9 +838,7 @@ describe("independent system accounts with real persistence and authentication",
         ),
       ).rejects.toThrow(/row.level security/i);
     });
-    const stored = await orm.em
-      .fork()
-      .findOneOrFail(ApiKeyEntity, issued.entity.id);
+    const stored = await orm.em.fork().findOneOrFail(ApiKey, issued.entity.id);
     expect(stored.permissions).toEqual(["user:read", "workspace:read-any"]);
     const authentication = new ApiKeyAuthenticationService(
       orm.em.fork({
@@ -854,7 +851,7 @@ describe("independent system accounts with real persistence and authentication",
     );
     await authentication.captureUsage(stored)();
     expect(
-      (await orm.em.fork().findOneOrFail(ApiKeyEntity, stored.id)).lastUsedAt,
+      (await orm.em.fork().findOneOrFail(ApiKey, stored.id)).lastUsedAt,
     ).toBeInstanceOf(Date);
   });
 

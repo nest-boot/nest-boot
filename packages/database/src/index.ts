@@ -1,6 +1,5 @@
 export { DatabaseHealthIndicator } from "./database.health-indicator.js";
 export { DatabaseModule } from "./database.module.js";
-export { MODULE_OPTIONS_TOKEN as DATABASE_MODULE_OPTIONS } from "./database.module-definition.js";
 export type { DatabaseFeatureOptions } from "./interfaces/database-feature-options.interface.js";
 export type { DatabaseModuleOptions } from "./interfaces/index.js";
 export * from "./interfaces/index.js";

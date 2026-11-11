@@ -1,13 +1,11 @@
 ---
 "@nest-boot/auth": minor
-"@nest-boot/database": minor
-"@nest-boot/graphql-connection": minor
 ---
 
-Store user, member and independent system-account API keys in one table using a polymorphic owner. Add administrator-session management of system accounts and their keys, explicit platform permissions, database owner integrity and cleanup triggers, and a regenerated fresh-database example baseline. Expose database options to feature registration factories and allow GraphQL connections to query a separate persistent entity. Keep the release in the 8.x series.
+Organize Auth by feature (`common`, `core`, `workspace`, `admin`, `api-key`), retaining entities, services, resolvers, inputs and adjacent unit tests within each feature. Public imports remain available from `@nest-boot/auth`.
 
-Unify GraphQL credential metadata, connections and creation results across all owners. Expose scoped parent-to-key pagination and a nullable owner union generated from active entity and API registrations, without redundant owner identifier fields. Keep scoped inputs and authorization.
+Store user, workspace-member and independent system-account API keys in one table using a MikroORM polymorphic relation, global hash uniqueness, and owner integrity/cleanup triggers. GraphQL exposes distinct `UserApiKey`, `WorkspaceApiKey` and `SystemApiKey` types, each with its own permission enum, connection, input and creation result. Their nullable related identities are `user`, `member` and `systemAccount`; no generic owner union or redundant owner identifiers are exposed.
 
-Make administration and credential APIs opt-in with `admin.enabled` and `apiKey.enabled`. Personal credentials additionally require `apiKey.user.enabled`; workspace credentials require the workspace feature and `apiKey.workspace.enabled`. System credentials require explicit `apiKey.system.enabled`, which defaults to false independently of administration; only their management APIs require `admin.enabled`. Rename `apiKey.systemAccount.*` to `apiKey.system.*`. Rename `apiKey.member.*` configuration to `apiKey.workspace.*`. Register only enabled models, services, resolvers and owner-integrity triggers, while preserving basic authentication and self-service sessions.
+Make administration and credentials opt-in. All flags default to false: `admin.enabled`, `apiKey.enabled`, `apiKey.user.enabled`, `apiKey.workspace.enabled` and `apiKey.system.enabled`. Workspace credentials additionally require `workspace.enabled`. System authentication is independent of administration, while management requires an administrator session. Use `apiKey.workspace.*` and `apiKey.system.*`, replacing `apiKey.member.*` and `apiKey.systemAccount.*`. Name scoped services `WorkspaceApiKeyService` and `SystemApiKeyService`.
 
-Name scoped credential services `WorkspaceApiKeyService` and `SystemApiKeyService`, with matching file names and public exports.
+Include example administration pages under `/admin/api-keys` and `/admin/system-accounts`, explicit example feature configuration and a fresh-database migration baseline. Keep the release in the 8.x series.

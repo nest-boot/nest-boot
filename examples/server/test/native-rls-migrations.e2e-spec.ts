@@ -6,7 +6,7 @@ import { Migrator } from '@mikro-orm/migrations';
 import { MikroORM } from '@mikro-orm/pglite';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
 import {
-  ApiKeyEntity,
+  ApiKey,
   getAuthEntities,
   Invitation,
   Member,
@@ -26,7 +26,7 @@ describe('example native RLS migrations with PGlite', () => {
   const readPolicies = (instance: MikroORM) =>
     [
       instance.getMetadata(User),
-      instance.getMetadata(ApiKeyEntity),
+      instance.getMetadata(ApiKey),
       instance.getMetadata(SystemAccount),
       instance.getMetadata(Workspace),
       instance.getMetadata(Member),

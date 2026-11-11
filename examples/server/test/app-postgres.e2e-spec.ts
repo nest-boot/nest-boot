@@ -17,7 +17,7 @@ import {
 import { Queue as BullmqQueue } from 'bullmq';
 import request from 'supertest';
 
-import { createContextualAuthService } from '../../../packages/auth/dist/infrastructure/create-contextual-auth-service.js';
+import { createContextualAuthService } from '../../../packages/auth/dist/core/infrastructure/create-contextual-auth-service.js';
 import { ReportQueue } from '../src/app/reports/report.queue.js';
 
 interface DbProbe {
@@ -356,7 +356,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expect(response.body.data.workspaceJob).toEqual({ id: ids.shared });
     expect(response.body.data.userJobs.totalCount).toBe(1);
     expect(response.body.data.workspaceJobs.totalCount).toBe(1);
-    const key = await createMemberApiKey(user, workspace.id, {
+    const key = await createWorkspaceApiKey(user, workspace.id, {
       memberId: null,
       name: 'Job history key',
     });
@@ -966,7 +966,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     const query = `query {
       userApiKeyPermissions { permission grantable }
-      memberApiKeyPermissions { permission grantable }
+      workspaceApiKeyPermissions { permission grantable }
     }`;
     const result = await gql(query, {
       cookies: issuer.cookies,
@@ -974,7 +974,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
     expectNoGraphQLErrors(result);
     expect(
-      result.body.data.memberApiKeyPermissions.filter(
+      result.body.data.workspaceApiKeyPermissions.filter(
         (option: { grantable: boolean }) => option.grantable,
       ),
     ).toEqual(
@@ -982,7 +982,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         (permission) => ({ permission, grantable: true }),
       ),
     );
-    expect(result.body.data.memberApiKeyPermissions).toContainEqual({
+    expect(result.body.data.workspaceApiKeyPermissions).toContainEqual({
       permission: 'MEMBER__INVITE',
       grantable: false,
     });
@@ -1321,11 +1321,11 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         "insert into member (workspace_id, user_id, name, roles) values (?, ?, ?, array['member'])",
         [workspace.id, administrator.user.id, 'Retained member'],
       );
-      const deletedKey = await createMemberApiKey(target, workspace.id, {
+      const deletedKey = await createWorkspaceApiKey(target, workspace.id, {
         name: 'Deleted user member key',
         permissions: [],
       });
-      const retainedKey = await createMemberApiKey(target, workspace.id, {
+      const retainedKey = await createWorkspaceApiKey(target, workspace.id, {
         memberId: null,
         name: 'Retained service account key',
         permissions: [],
@@ -1497,8 +1497,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     const invalidMemberKey = await gql(
       /* GraphQL */ `
-        mutation CreateApiKey($input: CreateMemberApiKeyInput!) {
-          createMemberApiKey(input: $input) {
+        mutation CreateApiKey($input: CreateWorkspaceApiKeyInput!) {
+          createWorkspaceApiKey(input: $input) {
             apiKey
           }
         }
@@ -2319,8 +2319,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         const key =
           scope === 'user'
             ? await createUserApiKey(owner, input)
-            : await createMemberApiKey(owner, workspace.id, input);
-        const suffix = scope === 'user' ? 'UserApiKey' : 'MemberApiKey';
+            : await createWorkspaceApiKey(owner, workspace.id, input);
+        const suffix = scope === 'user' ? 'UserApiKey' : 'WorkspaceApiKey';
         const first =
           action === 'delete'
             ? `delete${suffix}(id: $keyId)`
@@ -2376,7 +2376,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       const workspace = await createWorkspace(owner, 'Usage scope');
       const memberKey = operation === 'workspace-sign-in';
       const key = memberKey
-        ? await createMemberApiKey(owner, workspace.id, {
+        ? await createWorkspaceApiKey(owner, workspace.id, {
             name: 'Switch key',
             permissions: [],
           })
@@ -2623,7 +2623,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     async (followingMutation) => {
       const owner = await createAuthenticatedUser('Deleting key owner');
       const workspace = await createWorkspace(owner, 'Key deletion audit');
-      const key = await createMemberApiKey(owner, workspace.id, {
+      const key = await createWorkspaceApiKey(owner, workspace.id, {
         name: 'Deletion key',
         permissions: ['WORKSPACE__DELETE'],
       });
@@ -3855,7 +3855,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       'Explicit permission workspace',
     );
     const member = await addMember(owner, workspace.id, target.email);
-    const key = await createMemberApiKey(owner, workspace.id, {
+    const key = await createWorkspaceApiKey(owner, workspace.id, {
       name: 'Member writer',
       permissions: ['MEMBER__WRITE'],
     });
@@ -3907,7 +3907,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       email: uniqueEmail('Other API invitee'),
       roles: ['MEMBER'],
     });
-    const key = await createMemberApiKey(owner, workspace.id, {
+    const key = await createWorkspaceApiKey(owner, workspace.id, {
       name: 'Invitation reader',
       permissions: ['MEMBER__INVITE'],
     });
@@ -3945,7 +3945,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
   it('authenticates member API keys with their owning member identity', async () => {
     const owner = await createAuthenticatedUser('API Owner');
     const workspace = await createWorkspace(owner, 'Workspace API Key');
-    const createdKey = await createMemberApiKey(owner, workspace.id, {
+    const createdKey = await createWorkspaceApiKey(owner, workspace.id, {
       name: 'Runtime key',
       permissions: ['WORKSPACE__READ', 'MEMBER__READ', 'WORKSPACE__UPDATE'],
     });
@@ -4025,7 +4025,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       id: owner.user.id,
     });
 
-    const serviceAccountKey = await createMemberApiKey(owner, workspace.id, {
+    const serviceAccountKey = await createWorkspaceApiKey(owner, workspace.id, {
       memberId: null,
       name: 'Service runtime key',
       permissions: ['WORKSPACE__READ', 'SERVICE_ACCOUNT__READ'],
@@ -4101,8 +4101,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     const renamed = await gql(
       /* GraphQL */ `
-        mutation UpdateApiKey($id: ID!, $input: UpdateMemberApiKeyInput!) {
-          updateMemberApiKey(id: $id, input: $input) {
+        mutation UpdateApiKey($id: ID!, $input: UpdateWorkspaceApiKeyInput!) {
+          updateWorkspaceApiKey(id: $id, input: $input) {
             id
             name
           }
@@ -4126,7 +4126,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectNoGraphQLErrors(renamed);
-    expect(renamed.body.data.updateMemberApiKey).toEqual({
+    expect(renamed.body.data.updateWorkspaceApiKey).toEqual({
       id: createdKey.entity.id,
       name: 'Renamed runtime key',
     });
@@ -4335,7 +4335,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       const createKey = (permissions: string[]) =>
         scope === 'user'
           ? createUserApiKey(user, { name: 'Managed key', permissions })
-          : createMemberApiKey(user, workspace.id, {
+          : createWorkspaceApiKey(user, workspace.id, {
               name: 'Managed key',
               permissions,
             });
@@ -4358,9 +4358,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             }
           : {
               parent: 'currentWorkspace',
-              create: 'createMemberApiKey',
-              update: 'updateMemberApiKey',
-              delete: 'deleteMemberApiKey',
+              create: 'createWorkspaceApiKey',
+              update: 'updateWorkspaceApiKey',
+              delete: 'deleteWorkspaceApiKey',
             };
       const queries = {
         read: `query($id: ID!) { owner: ${names.parent} { result: apiKey(id: $id) { id permissions } } }`,
@@ -4368,8 +4368,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           scope === 'user'
             ? `query { owner: currentUser { result: apiKeys(first: 100) { totalCount edges { node { id } } } } }`
             : `query { result: workspaceApiKeys(first: 100) { totalCount edges { node { id } } } }`,
-        create: `mutation($input: Create${scope === 'user' ? 'User' : 'Member'}ApiKeyInput!) { result: ${names.create}(input: $input) { entity { id permissions } } }`,
-        update: `mutation($id: ID!, $input: Update${scope === 'user' ? 'User' : 'Member'}ApiKeyInput!) { result: ${names.update}(id: $id, input: $input) { id permissions name } }`,
+        create: `mutation($input: Create${scope === 'user' ? 'User' : 'Workspace'}ApiKeyInput!) { result: ${names.create}(input: $input) { entity { id permissions } } }`,
+        update: `mutation($id: ID!, $input: Update${scope === 'user' ? 'User' : 'Workspace'}ApiKeyInput!) { result: ${names.update}(id: $id, input: $input) { id permissions name } }`,
         delete: `mutation($id: ID!) { result: ${names.delete}(id: $id) { id } }`,
       };
       const memberId = (
@@ -4511,7 +4511,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
               name: 'Other key',
               permissions: [],
             })
-          : await createMemberApiKey(otherUser, otherWorkspace.id, {
+          : await createWorkspaceApiKey(otherUser, otherWorkspace.id, {
               name: 'Other key',
               permissions: [],
             });
@@ -4544,7 +4544,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
   it('enforces workspace API-key permissions and enabled state', async () => {
     const owner = await createAuthenticatedUser('Restricted Key Owner');
     const workspace = await createWorkspace(owner, 'Restricted API Workspace');
-    const restrictedKey = await createMemberApiKey(owner, workspace.id, {
+    const restrictedKey = await createWorkspaceApiKey(owner, workspace.id, {
       name: 'Read workspace key',
       permissions: ['WORKSPACE__READ', 'MEMBER__READ', 'WORKSPACE__UPDATE'],
     });
@@ -4609,8 +4609,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     const disabled = await gql(
       /* GraphQL */ `
-        mutation UpdateApiKey($id: ID!, $input: UpdateMemberApiKeyInput!) {
-          updateMemberApiKey(id: $id, input: $input) {
+        mutation UpdateApiKey($id: ID!, $input: UpdateWorkspaceApiKeyInput!) {
+          updateWorkspaceApiKey(id: $id, input: $input) {
             id
             enabled
           }
@@ -4627,7 +4627,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectNoGraphQLErrors(disabled);
-    expect(disabled.body.data.updateMemberApiKey.enabled).toBe(false);
+    expect(disabled.body.data.updateWorkspaceApiKey.enabled).toBe(false);
 
     const rejectedDisabledKey = await gql(
       /* GraphQL */ `
@@ -4654,7 +4654,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       name: 'Personal',
       permissions: [],
     });
-    const shared = await createMemberApiKey(user, workspace.id, {
+    const shared = await createWorkspaceApiKey(user, workspace.id, {
       name: 'Workspace',
       permissions: [],
     });
@@ -4687,8 +4687,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     const rejectedCreate = await gql(
       /* GraphQL */ `
-        mutation CreateApiKey($input: CreateMemberApiKeyInput!) {
-          createMemberApiKey(input: $input) {
+        mutation CreateApiKey($input: CreateWorkspaceApiKeyInput!) {
+          createWorkspaceApiKey(input: $input) {
             apiKey
           }
         }
@@ -4707,14 +4707,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectGraphQLError(rejectedCreate);
 
-    const key = await createMemberApiKey(administrator, workspace.id, {
+    const key = await createWorkspaceApiKey(administrator, workspace.id, {
       name: 'Administrator workspace key',
       permissions: ['WORKSPACE__UPDATE'],
     });
     const rejectedUpdate = await gql(
       /* GraphQL */ `
-        mutation UpdateApiKey($id: ID!, $input: UpdateMemberApiKeyInput!) {
-          updateMemberApiKey(id: $id, input: $input) {
+        mutation UpdateApiKey($id: ID!, $input: UpdateWorkspaceApiKeyInput!) {
+          updateWorkspaceApiKey(id: $id, input: $input) {
             id
           }
         }
@@ -4747,9 +4747,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       'a😀',
       'a'.repeat(33),
     ]) {
-      for (const mutation of ['createMemberApiKey', 'createUserApiKey']) {
+      for (const mutation of ['createWorkspaceApiKey', 'createUserApiKey']) {
         const response = await gql(
-          `mutation ($input: Create${mutation === 'createUserApiKey' ? 'User' : 'Member'}ApiKeyInput!) { ${mutation}(input: $input) { apiKey } }`,
+          `mutation ($input: Create${mutation === 'createUserApiKey' ? 'User' : 'Workspace'}ApiKeyInput!) { ${mutation}(input: $input) { apiKey } }`,
           {
             cookies: owner.cookies,
             workspaceId: workspace.id,
@@ -4757,6 +4757,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           },
         );
         expectGraphQLError(response);
+        expect(response.body.errors[0].extensions.code).not.toBe(
+          'GRAPHQL_VALIDATION_FAILED',
+        );
       }
     }
     const connection = migrationOrm.em.getConnection();
@@ -4765,7 +4768,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         "select id from api_key where name = 'Invalid prefix'",
       ),
     ).toEqual([]);
-    const memberKey = await createMemberApiKey(owner, workspace.id, {
+    const memberKey = await createWorkspaceApiKey(owner, workspace.id, {
       name: 'Custom workspace prefix',
       prefix: 'abc123-',
       permissions: ['WORKSPACE__READ'],
@@ -4796,7 +4799,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           name: `${name} personal key`,
           permissions: ['WORKSPACE__READ', 'MEMBER__READ', 'WORKSPACE__UPDATE'],
         });
-        const memberKey = await createMemberApiKey(owner, workspace.id, {
+        const memberKey = await createWorkspaceApiKey(owner, workspace.id, {
           name: `${name} workspace key`,
           permissions: ['WORKSPACE__READ', 'MEMBER__READ', 'WORKSPACE__UPDATE'],
         });
@@ -4977,7 +4980,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         owner,
         'Other Key Workspace',
       );
-      const key = await createMemberApiKey(owner, workspace.id, {
+      const key = await createWorkspaceApiKey(owner, workspace.id, {
         name: 'Workspace-bound key',
         permissions: ['WORKSPACE__READ'],
       });
@@ -5721,7 +5724,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
    * @param input.prefix - Prefix for the generated API key.
    * @returns Created key metadata and its one-time plaintext credential.
    */
-  async function createMemberApiKey(
+  async function createWorkspaceApiKey(
     user: AuthenticatedUser,
     workspaceId: string,
     input: {
@@ -5760,8 +5763,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     }
     const response = await gql(
       /* GraphQL */ `
-        mutation CreateApiKey($input: CreateMemberApiKeyInput!) {
-          createMemberApiKey(input: $input) {
+        mutation CreateApiKey($input: CreateWorkspaceApiKeyInput!) {
+          createWorkspaceApiKey(input: $input) {
             apiKey
             entity {
               id
@@ -5787,18 +5790,18 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectNoGraphQLErrors(response);
-    expect(response.body.data.createMemberApiKey.apiKey).toMatch(
+    expect(response.body.data.createWorkspaceApiKey.apiKey).toMatch(
       new RegExp(`^${input.prefix ?? 'ws_'}[A-Za-z0-9_-]{64}$`),
     );
-    expect(response.body.data.createMemberApiKey.entity).toMatchObject({
+    expect(response.body.data.createWorkspaceApiKey.entity).toMatchObject({
       enabled: true,
       permissions: input.permissions ?? [],
       prefix: input.prefix ?? 'ws_',
-      start: response.body.data.createMemberApiKey.apiKey.slice(0, 8),
+      start: response.body.data.createWorkspaceApiKey.apiKey.slice(0, 8),
     });
 
     return {
-      ...response.body.data.createMemberApiKey,
+      ...response.body.data.createWorkspaceApiKey,
       memberId: input.memberId ?? memberId,
     } as {
       apiKey: string;

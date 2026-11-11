@@ -6,8 +6,12 @@ import { Mailer } from "@nest-boot/mailer";
 import { Global, Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { AuthModule } from "../src/auth.module.js";
-import { entities, User, workspaceEntities } from "../src/entities/index.js";
+import { AuthModule } from "../src/core/auth.module.js";
+import {
+  entities,
+  User,
+  workspaceEntities,
+} from "../src/core/entities/index.js";
 import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 
 @Global()

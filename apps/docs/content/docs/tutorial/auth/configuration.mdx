@@ -39,7 +39,7 @@ AuthModule.forRoot({
 });
 ```
 
-System-only applications register SystemAccount and ApiKeyEntity for authentication without exposing system-account GraphQL types or management endpoints. Provision credentials through a trusted seeder or internal ORM code and use them on application-owned APIs; built-in user/system management APIs stay disabled until administration is enabled.
+System-only applications register SystemAccount and ApiKey for authentication without exposing system-account GraphQL types or management endpoints. Provision credentials through a trusted seeder or internal ORM code and use them on application-owned APIs; built-in user/system management APIs stay disabled until administration is enabled.
 
 Disabled features register no corresponding services, GraphQL APIs or persistence tables. `ApiKey.owner` includes only active owner types and is nullable when identity access is unavailable; it does not pull disabled features into the schema.
 
@@ -230,7 +230,7 @@ until `AUTH_OIDC_ENABLED=true`; when enabled, its ID is `oidc`.
 ## Entity Setup
 
 Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
-`Workspace`, `Member`, `Invitation`, `SystemAccount`, and `ApiKeyEntity` entities, their GraphQL
+`Workspace`, `Member`, `Invitation`, `SystemAccount`, and `ApiKey` entities, their GraphQL
 metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 
@@ -263,4 +263,4 @@ these models. Import the built-in classes directly for relation targets; do not
 redeclare or register replacement auth entities. Role/permission catalogs, ability
 builders, delivery callbacks, and provider settings remain configurable.
 
-Standalone ORM consumers use `getAuthEntities(options)` to match AuthModule feature flags. The three API-key views and services share the persistent `ApiKeyEntity`; see [API keys](/docs/tutorial/auth/api-keys) for system-account management.
+Standalone ORM consumers use `getAuthEntities(options)` to match AuthModule feature flags. The three API-key views and services share the persistent `ApiKey`; see [API keys](/docs/tutorial/auth/api-keys) for system-account management.

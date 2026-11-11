@@ -4,11 +4,15 @@ import { useTranslation } from "react-i18next";
 import { AlertTriangle, Check, Copy } from "lucide-react";
 import dayjs from "dayjs";
 import z from "zod";
+import type {
+  SystemApiKeyPermission,
+  UserApiKeyPermission,
+  WorkspaceApiKeyPermission,
+} from "@/gql/graphql";
 
 import type { PagePaginationActionsConfig } from "@/components/thread-ui/page";
 import type { ApiKeyRow } from "@/components/api-keys-page";
 import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
-import type { UserApiKeyPermission } from "@/gql/graphql";
 import type { PermissionOption } from "@/lib/permissions";
 import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-context";
 import { Link } from "@/components/link";
@@ -44,8 +48,13 @@ import {
 } from "@/components/ui/input-group";
 import { getFormErrorMessage } from "@/lib/form-errors";
 
-interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
-  apiKey?: Omit<ApiKeyRow<UserApiKeyPermission>, "owner">;
+type CredentialPermission =
+  | UserApiKeyPermission
+  | WorkspaceApiKeyPermission
+  | SystemApiKeyPermission;
+
+interface ApiKeyFormPageProps<Permission extends CredentialPermission> {
+  apiKey?: Omit<ApiKeyRow<Permission>, "owner">;
   ownerName?: string;
   canWrite: boolean;
   canEditName?: boolean;
@@ -74,7 +83,7 @@ interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
 }
 
 /** All owner scopes use the same editor; only creation can reveal the full secret. */
-export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
+export function ApiKeyFormPage<Permission extends CredentialPermission>({
   apiKey,
   ownerName,
   canWrite,
@@ -110,21 +119,21 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
     ? canCreateSystemAccount
     : canCreateServiceAccount;
   const keyStart = apiKey?.start || apiKey?.prefix;
-  const isPermission = (value: UserApiKeyPermission): value is Permission =>
+  const isPermission = (value: string): value is Permission =>
     permissionValues.some((permission) => permission === value);
+  const initialPermissions: Array<CredentialPermission> =
+    apiKey?.permissions ??
+    defaultPermissions.filter((permission) =>
+      permissionOptions.some(
+        (option) => option.value === permission && option.grantable !== false,
+      ),
+    );
   const form = useForm({
     defaultValues: {
       name: apiKey?.name ?? "",
       memberId: "",
       systemAccountId: "",
-      permissions:
-        apiKey?.permissions ??
-        defaultPermissions.filter((permission) =>
-          permissionOptions.some(
-            (option) =>
-              option.value === permission && option.grantable !== false,
-          ),
-        ),
+      permissions: initialPermissions,
     },
     validators: {
       onSubmit: z.object({

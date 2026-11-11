@@ -1,11 +1,16 @@
 import { EntityManager } from "@mikro-orm/core";
 import type { Mocked } from "vitest";
 
-import type { AuthModuleOptions } from "../src/auth-module-options.interface.js";
-import { Invitation, Member, User, Workspace } from "../src/entities/index.js";
-import { InvitationService } from "../src/features/invitations/invitation.service.js";
-import { MemberService } from "../src/services/member.service.js";
-import { WorkspaceService } from "../src/services/workspace.service.js";
+import {
+  Invitation,
+  Member,
+  User,
+  Workspace,
+} from "../src/core/entities/index.js";
+import type { AuthModuleOptions } from "../src/core/interfaces/auth-module-options.interface.js";
+import { InvitationService } from "../src/workspace/services/invitation.service.js";
+import { MemberService } from "../src/workspace/services/member.service.js";
+import { WorkspaceService } from "../src/workspace/services/workspace.service.js";
 import { mockAuthorization } from "./mock-authorization.js";
 /**
  * Returns workspace fixture with deterministic identifiers.

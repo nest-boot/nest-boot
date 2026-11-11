@@ -3,10 +3,15 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
+import type {
+  SystemApiKeyPermission,
+  UserApiKey,
+  UserApiKeyPermission,
+  WorkspaceApiKeyPermission,
+} from "@/gql/graphql";
 import type { ComponentProps } from "react";
 
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
-import type { ApiKey, UserApiKeyPermission } from "@/gql/graphql";
 import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
 import type { PageInfo } from "@/lib/graphql-connection";
 import type { createAbility } from "@/lib/ability";
@@ -29,9 +34,14 @@ export type ApiKeyOwnerRow = {
   workspaceId?: string;
 };
 
-export type ApiKeyRow<Permission extends UserApiKeyPermission> = Omit<
+export type ApiKeyRow<
+  Permission extends
+    | UserApiKeyPermission
+    | WorkspaceApiKeyPermission
+    | SystemApiKeyPermission,
+> = Omit<
   Pick<
-    ApiKey,
+    UserApiKey,
     | "id"
     | "name"
     | "start"
@@ -48,8 +58,13 @@ export type ApiKeyRow<Permission extends UserApiKeyPermission> = Omit<
   owner?: ApiKeyOwnerRow | null;
 };
 
-interface ApiKeysPageProps<Permission extends UserApiKeyPermission> {
-  subject: "UserApiKey" | "MemberApiKey" | "SystemAccountApiKey";
+interface ApiKeysPageProps<
+  Permission extends
+    | UserApiKeyPermission
+    | WorkspaceApiKeyPermission
+    | SystemApiKeyPermission,
+> {
+  subject: "UserApiKey" | "WorkspaceApiKey" | "SystemApiKey";
   ability: ReturnType<typeof createAbility>;
   title: string;
   description: string;
@@ -65,7 +80,12 @@ interface ApiKeysPageProps<Permission extends UserApiKeyPermission> {
 }
 
 /** Shared API-key management UI; routes supply authorization and data. */
-export function ApiKeysPage<Permission extends UserApiKeyPermission>({
+export function ApiKeysPage<
+  Permission extends
+    | UserApiKeyPermission
+    | WorkspaceApiKeyPermission
+    | SystemApiKeyPermission,
+>({
   subject,
   ability,
   title,

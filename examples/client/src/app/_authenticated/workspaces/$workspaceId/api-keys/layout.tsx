@@ -6,7 +6,7 @@ export const Route = createFileRoute(
 )({
   component: Outlet,
   beforeLoad: ({ context, params }) => {
-    if (!context.ability.can("read", "MemberApiKey")) {
+    if (!context.ability.can("read", "WorkspaceApiKey")) {
       throw redirect({
         to: "/workspaces/$workspaceId",
         params: { workspaceId: params.workspaceId },

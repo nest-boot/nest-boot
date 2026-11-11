@@ -6,7 +6,7 @@ import { isAccessDenied } from "@/lib/auth-errors";
 export const Route = createFileRoute("/_authenticated/admin/api-keys")({
   component: Outlet,
   beforeLoad: async ({ context }) => {
-    if (!context.ability.can("read", "SystemAccountApiKey"))
+    if (!context.ability.can("read", "SystemApiKey"))
       throw redirect({ to: "/admin" });
     const { data } = await context.apolloClient
       .query({ query: SYSTEM_KEY_PERMISSIONS, fetchPolicy: "network-only" })
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/admin/api-keys")({
         throw error;
       });
     return {
-      keyPermissionOptions: data?.systemAccountApiKeyPermissions ?? [],
+      keyPermissionOptions: data?.systemApiKeyPermissions ?? [],
       title: t("api-key:title"),
     };
   },

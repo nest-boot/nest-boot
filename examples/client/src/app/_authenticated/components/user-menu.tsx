@@ -95,7 +95,7 @@ export function UserMenu() {
       </SidebarAccountMenuSub>
       {ability.can("read", "User") ||
       ability.can("read", "SystemAccount") ||
-      ability.can("read", "SystemAccountApiKey") ? (
+      ability.can("read", "SystemApiKey") ? (
         <>
           <SidebarAccountMenuSeparator />
           <SidebarAccountMenuItem

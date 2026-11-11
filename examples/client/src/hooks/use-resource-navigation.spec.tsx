@@ -16,7 +16,7 @@ import {
   createConnectionCursor,
   createConnectionSearchSchema,
 } from "@/lib/graphql-connection";
-import { ApiKeyOrderField } from "@/gql/graphql";
+import { UserApiKeyOrderField } from "@/gql/graphql";
 
 describe("saved search", () => {
   const searchSchema = z.object({
@@ -577,7 +577,7 @@ describe("record navigation", () => {
   const conditions = {
     query: "example*",
     filter: { prefix: { $eq: "sk" } },
-    orderBy: { field: ApiKeyOrderField.ID, direction: OrderDirection.ASC },
+    orderBy: { field: UserApiKeyOrderField.ID, direction: OrderDirection.ASC },
   };
 
   function neighbors(
@@ -1152,7 +1152,7 @@ describe("record navigation", () => {
     it("calculates live cursors inside the query closure across record changes and browser back", async () => {
       saveSearch({
         orderBy: {
-          field: ApiKeyOrderField.LAST_USED_AT,
+          field: UserApiKeyOrderField.LAST_USED_AT,
           direction: OrderDirection.DESC,
         },
       });
@@ -1210,7 +1210,7 @@ describe("record navigation", () => {
       expect(result.current.backSearch).toEqual({
         first: 20,
         orderBy: {
-          field: ApiKeyOrderField.CREATED_AT,
+          field: UserApiKeyOrderField.CREATED_AT,
           direction: OrderDirection.DESC,
         },
       });
@@ -1236,7 +1236,7 @@ describe("record navigation", () => {
       );
       await waitFor(() => expect(result.current.loading).toBe(false));
       expect(result.current.search.orderBy.field).toBe(
-        ApiKeyOrderField.CREATED_AT,
+        UserApiKeyOrderField.CREATED_AT,
       );
       expect(result.current.backSearch).toMatchObject({ first: 5 });
       expect(query).toHaveBeenLastCalledWith({

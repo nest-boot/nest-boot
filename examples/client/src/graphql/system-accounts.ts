@@ -48,12 +48,9 @@ export const DELETE_SYSTEM_ACCOUNT = graphql(`
 export const CREATE_SYSTEM_KEY = graphql(`
   mutation createManagedSystemAccountKey(
     $systemAccountId: ID!
-    $input: CreateSystemAccountApiKeyInput!
+    $input: CreateSystemApiKeyInput!
   ) {
-    createSystemAccountApiKey(
-      systemAccountId: $systemAccountId
-      input: $input
-    ) {
+    createSystemApiKey(systemAccountId: $systemAccountId, input: $input) {
       apiKey
       entity {
         id
@@ -63,15 +60,14 @@ export const CREATE_SYSTEM_KEY = graphql(`
 `);
 export const SYSTEM_KEY_DETAILS = graphql(`
   query managedSystemAccountKey($id: ID!) {
-    systemAccountApiKey(id: $id) {
+    systemApiKey(id: $id) {
       id
       name
-      owner {
+      systemAccount {
         __typename
-        ... on SystemAccount {
-          id
-          name
-        }
+
+        id
+        name
       }
       enabled
       permissions
@@ -86,16 +82,16 @@ export const SYSTEM_KEY_DETAILS = graphql(`
 export const UPDATE_SYSTEM_KEY = graphql(`
   mutation updateManagedSystemAccountKey(
     $id: ID!
-    $input: UpdateSystemAccountApiKeyInput!
+    $input: UpdateSystemApiKeyInput!
   ) {
-    updateSystemAccountApiKey(id: $id, input: $input) {
+    updateSystemApiKey(id: $id, input: $input) {
       id
     }
   }
 `);
 export const DELETE_SYSTEM_KEY = graphql(`
   mutation deleteManagedSystemAccountKey($id: ID!) {
-    deleteSystemAccountApiKey(id: $id) {
+    deleteSystemApiKey(id: $id) {
       id
     }
   }
@@ -103,7 +99,7 @@ export const DELETE_SYSTEM_KEY = graphql(`
 
 export const SYSTEM_KEY_PERMISSIONS = graphql(`
   query systemKeyPermissionChoices($systemAccountId: ID, $apiKeyId: ID) {
-    systemAccountApiKeyPermissions(
+    systemApiKeyPermissions(
       systemAccountId: $systemAccountId
       apiKeyId: $apiKeyId
     ) {

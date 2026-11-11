@@ -1,13 +1,13 @@
 import { RequestContext } from "@nest-boot/request-context";
 
-import { AuthAbility } from "../../src/auth.ability.js";
-import { Member } from "../../src/entities/member.entity.js";
-import { User } from "../../src/entities/user.entity.js";
-import { Workspace } from "../../src/entities/workspace.entity.js";
-import { SessionService } from "../../src/services/session.service.js";
-import { UserService } from "../../src/services/user.service.js";
-import { UserApiKeyService } from "../../src/services/user-api-key.service.js";
-import { WorkspaceApiKeyService } from "../../src/services/workspace-api-key.service.js";
+import { UserApiKeyService } from "../../src/api-key/services/user-api-key.service.js";
+import { WorkspaceApiKeyService } from "../../src/api-key/services/workspace-api-key.service.js";
+import { AuthAbility } from "../../src/common/auth.ability.js";
+import { User } from "../../src/core/entities/user.entity.js";
+import { SessionService } from "../../src/core/services/session.service.js";
+import { UserService } from "../../src/core/services/user.service.js";
+import { Member } from "../../src/workspace/entities/member.entity.js";
+import { Workspace } from "../../src/workspace/entities/workspace.entity.js";
 import { createWorkspaceServices } from "../workspace-service.fixture.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 /**
@@ -40,7 +40,13 @@ export async function withIdentity(
       },
       {
         action: ["create", "write"],
-        subject: ["User", "Workspace", "Member", "UserApiKey", "MemberApiKey"],
+        subject: [
+          "User",
+          "Workspace",
+          "Member",
+          "UserApiKey",
+          "WorkspaceApiKey",
+        ],
         inverted: true,
         conditions: { name: "blocked" },
       },
@@ -95,7 +101,7 @@ function fixture() {
         workspace: { enabled: true },
       }),
     ),
-    memberApiKeyService: new WorkspaceApiKeyService(
+    workspaceApiKeyService: new WorkspaceApiKeyService(
       result.em,
       withAuthTestFeatures({
         workspace: { enabled: true },

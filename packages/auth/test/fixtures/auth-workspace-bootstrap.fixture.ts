@@ -10,23 +10,19 @@ import { Global, Module } from "@nestjs/common";
 import { GraphQLModule, GraphQLSchemaHost } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
 import type { betterAuth } from "better-auth";
-import type {
-  GraphQLEnumType,
-  GraphQLObjectType,
-  GraphQLUnionType,
-} from "graphql";
+import type { GraphQLEnumType, GraphQLObjectType } from "graphql";
 
-import { AUTH_TOKEN } from "../../src/auth.constants.js";
-import { AuthModule } from "../../src/auth.module.js";
-import type { AuthModuleOptions } from "../../src/auth-module-options.interface.js";
-import { ApiKeyEntity, User } from "../../src/entities/index.js";
-import { Member } from "../../src/entities/member.entity.js";
-import { Workspace } from "../../src/entities/workspace.entity.js";
-import { InvitationService } from "../../src/features/invitations/invitation.service.js";
-import { ApiKeyAuthenticationService } from "../../src/infrastructure/api-key-authentication.service.js";
-import { MemberService } from "../../src/services/member.service.js";
-import { WorkspaceService } from "../../src/services/workspace.service.js";
-import { WorkspaceApiKeyService } from "../../src/services/workspace-api-key.service.js";
+import { ApiKeyAuthenticationService } from "../../src/api-key/infrastructure/api-key-authentication.service.js";
+import { WorkspaceApiKeyService } from "../../src/api-key/services/workspace-api-key.service.js";
+import { AuthModule } from "../../src/core/auth.module.js";
+import { AUTH_TOKEN } from "../../src/core/constants/auth.constants.js";
+import { ApiKey, User } from "../../src/core/entities/index.js";
+import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-options.interface.js";
+import { Member } from "../../src/workspace/entities/member.entity.js";
+import { Workspace } from "../../src/workspace/entities/workspace.entity.js";
+import { InvitationService } from "../../src/workspace/services/invitation.service.js";
+import { MemberService } from "../../src/workspace/services/member.service.js";
+import { WorkspaceService } from "../../src/workspace/services/workspace.service.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 
 /**
@@ -154,7 +150,7 @@ export async function verifyAuthBootstrap(
     expect(signin.token).toEqual(expect.any(String));
     const rawKey = "personal-key";
     const em = orm.em.fork();
-    const key = em.create(ApiKeyEntity, {
+    const key = em.create(ApiKey, {
       name: "Personal",
       key: createHash("sha256").update(rawKey).digest("base64url"),
       owner: em.getReference(User, signup.user.id),
@@ -171,14 +167,7 @@ export async function verifyAuthBootstrap(
       "Invalid API key",
     );
     expect(schema.getQueryType()?.getFields().currentUser).toBeDefined();
-    expect(
-      (schema.getType("ApiKeyOwner") as GraphQLUnionType)
-        .getTypes()
-        .map((type) => type.name)
-        .sort(),
-    ).toEqual(
-      enabled ? ["Member", "SystemAccount", "User"] : ["SystemAccount", "User"],
-    );
+    expect(schema.getType("ApiKeyOwner")).toBeUndefined();
     expect(schema.getMutationType()?.getFields().signIn).toBeDefined();
     expect(
       schema.getMutationType()?.getFields().createUserApiKey,
@@ -189,7 +178,7 @@ export async function verifyAuthBootstrap(
       "currentMember",
       "workspaceRoles",
       "workspacePermissions",
-      "memberApiKeyPermissions",
+      "workspaceApiKeyPermissions",
       "invitation",
     ]) {
       expect(!!schema.getQueryType()?.getFields()[name]).toBe(enabled);
@@ -198,7 +187,7 @@ export async function verifyAuthBootstrap(
       "createWorkspace",
       "addMember",
       "createInvitation",
-      "createMemberApiKey",
+      "createWorkspaceApiKey",
     ]) {
       expect(!!schema.getMutationType()?.getFields()[name]).toBe(enabled);
     }

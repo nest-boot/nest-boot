@@ -190,7 +190,7 @@ export class ConnectionBuilder<Entity extends object> {
     );
 
     const Connection = createConnection(
-      (this.options.entity ?? this.entityClass) as EntityClass<Entity>,
+      this.entityClass,
       this.entityName,
       Edge,
       this.fieldOptionsMap,

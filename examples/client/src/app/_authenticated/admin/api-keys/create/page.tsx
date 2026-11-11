@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
-import { SystemAccountPermission } from "@/gql/graphql";
+import { SystemApiKeyPermission } from "@/gql/graphql";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import {
   CREATE_SYSTEM_ACCOUNT,
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/admin/api-keys/create/")({
     const canCreateAccount = context.ability.can("write", "SystemAccount");
     const canReadAccounts = context.ability.can("read", "SystemAccount");
     if (
-      !context.ability.can("write", "SystemAccountApiKey") ||
+      !context.ability.can("write", "SystemApiKey") ||
       (!canCreateAccount && !canReadAccounts)
     )
       throw denied();
@@ -82,7 +82,7 @@ function Create() {
       canWrite
       listPath="/admin/api-keys"
       listSearch={backSearch}
-      permissionValues={Object.values(SystemAccountPermission)}
+      permissionValues={Object.values(SystemApiKeyPermission)}
       permissionOptions={getPermissionOptions(permissionOptions)}
       defaultPermissions={getDefaultApiKeyPermissions(permissionOptions)}
       permissionsHint={t("admin:system_accounts.key_permissions_hint")}
@@ -122,7 +122,7 @@ function Create() {
               input: { name, permissions },
             },
           });
-          const created = data?.createSystemAccountApiKey;
+          const created = data?.createSystemApiKey;
           if (!created) throw new Error(t("api-key:form.save_failed"));
           issued.current = { id: created.entity.id, secret: created.apiKey };
         }

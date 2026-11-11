@@ -37,7 +37,7 @@ AuthModule.forRoot({
 });
 ```
 
-只开启 system 时，会注册用于认证的 SystemAccount 和 ApiKeyEntity，但不引入管理员 GraphQL 类型或管理接口。通过可信 seeder 或内部 ORM 代码预置凭证，供应用自己的 API 使用；内置用户、系统账户及密钥管理接口仍由 admin 控制。
+只开启 system 时，会注册用于认证的 SystemAccount 和 ApiKey，但不引入管理员 GraphQL 类型或管理接口。通过可信 seeder 或内部 ORM 代码预置凭证，供应用自己的 API 使用；内置用户、系统账户及密钥管理接口仍由 admin 控制。
 
 关闭的功能不会注册对应服务、GraphQL API 或实体表。`ApiKey.owner` 联合字段只包含实际启用的 owner 类型；没有访问 owner 的权限时返回 null，不会额外引入关闭的功能。
 
@@ -205,7 +205,7 @@ AuthModule.forRoot({
 ## 实体设置
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation`、`SystemAccount` 和 `ApiKeyEntity` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`Member`、`Invitation`、`SystemAccount` 和 `ApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 `AuthModule` 会按配置向 `DatabaseModule` 自动注册实体。无需重复传入工作区开关，
@@ -234,4 +234,4 @@ pnpm exec nb database:migration:up
 自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，
 不要重新声明或注册同名认证实体。角色、权限目录、Ability 构造器、邮件回调和 Provider 配置仍可自定义。
 
-独立 ORM 使用 `getAuthEntities(options)` 与 AuthModule 的功能开关保持一致。三种 ApiKey 的公共视图和 Service 对应同一个持久化实体 `ApiKeyEntity`，系统账户管理见 [API Key](/docs/tutorial/auth/api-keys)。
+独立 ORM 使用 `getAuthEntities(options)` 与 AuthModule 的功能开关保持一致。三种 ApiKey 的公共视图和 Service 对应同一个持久化实体 `ApiKey`，系统账户管理见 [API Key](/docs/tutorial/auth/api-keys)。

@@ -64,14 +64,14 @@ test.describe("API keys", () => {
           apiKey: {
             id: string;
             permissions: Array<string>;
-            owner: { __typename: string; id: string } | null;
+            member: { __typename: string; id: string } | null;
           };
           members: { totalCount: number };
         };
       }>(
         page.request,
         `query ($id: ID!, $memberFilter: MemberFilter) { currentWorkspace {
-        apiKey(id: $id) { id permissions owner { __typename ... on Member { id } } }
+        apiKey(id: $id) { id permissions member { __typename  id  } }
         members(first: 10, filter: $memberFilter) { totalCount }
       } }`,
         { id, memberFilter: { type: { $eq: "SERVICE_ACCOUNT" } } },
@@ -80,7 +80,7 @@ test.describe("API keys", () => {
       expect(data.currentWorkspace.apiKey).toEqual({
         id,
         permissions: [],
-        owner: { __typename: "Member", id: memberId },
+        member: { __typename: "Member", id: memberId },
       });
       expect(data.currentWorkspace.members.totalCount).toBe(0);
       const { member } = await graphqlRequest<{
@@ -212,7 +212,7 @@ test.describe("API keys", () => {
         operation &&
         [
           "addServiceAccountForApiKey",
-          "createMemberApiKeyFromApiKeysRoute",
+          "createWorkspaceApiKeyFromApiKeysRoute",
         ].includes(operation)
       )
         creationOperations.push(operation);
@@ -223,12 +223,12 @@ test.describe("API keys", () => {
           apiKey: {
             id: string;
             permissions: Array<string>;
-            owner: { __typename: string; id: string } | null;
+            member: { __typename: string; id: string } | null;
           };
         };
       }>(
         page.request,
-        `query ($id: ID!) { currentWorkspace { apiKey(id: $id) { id permissions owner { __typename ... on Member { id } } } } }`,
+        `query ($id: ID!) { currentWorkspace { apiKey(id: $id) { id permissions member { __typename  id  } } } }`,
         { id },
         headers,
       );
@@ -252,12 +252,14 @@ test.describe("API keys", () => {
     await expect(page.getByLabel("Key", { exact: true })).toHaveValue(
       /^ws_[A-Za-z0-9_-]{64}$/,
     );
-    expect(creationOperations).toEqual(["createMemberApiKeyFromApiKeysRoute"]);
+    expect(creationOperations).toEqual([
+      "createWorkspaceApiKeyFromApiKeysRoute",
+    ]);
     const existingId = new URL(page.url()).pathname.split("/").at(-1)!;
     expect((await readKey(existingId)).currentWorkspace.apiKey).toEqual({
       id: existingId,
       permissions: [],
-      owner: { __typename: "Member", id: addMember.id },
+      member: { __typename: "Member", id: addMember.id },
     });
 
     await page.goto(`/workspaces/${workspaceId}/api-keys/create`);
@@ -277,9 +279,9 @@ test.describe("API keys", () => {
       /^ws_[A-Za-z0-9_-]{64}$/,
     );
     expect(creationOperations).toEqual([
-      "createMemberApiKeyFromApiKeysRoute",
+      "createWorkspaceApiKeyFromApiKeysRoute",
       "addServiceAccountForApiKey",
-      "createMemberApiKeyFromApiKeysRoute",
+      "createWorkspaceApiKeyFromApiKeysRoute",
     ]);
     const automaticId = new URL(page.url()).pathname.split("/").at(-1)!;
     const key = (await readKey(automaticId)).currentWorkspace.apiKey;
@@ -349,10 +351,10 @@ test.describe("API keys", () => {
       youId,
     );
     expect(creationOperations).toEqual([
-      "createMemberApiKeyFromApiKeysRoute",
+      "createWorkspaceApiKeyFromApiKeysRoute",
       "addServiceAccountForApiKey",
-      "createMemberApiKeyFromApiKeysRoute",
-      "createMemberApiKeyFromApiKeysRoute",
+      "createWorkspaceApiKeyFromApiKeysRoute",
+      "createWorkspaceApiKeyFromApiKeysRoute",
     ]);
   });
 
@@ -425,12 +427,12 @@ test.describe("API keys", () => {
     });
     const workspaceId = await createFirstWorkspace(page, seed);
     const otherWorkspace = await createWorkspaceByApi(page, `${seed}-other`);
-    const { createMemberApiKey: memberKey } = await graphqlRequest<{
-      createMemberApiKey: { entity: { id: string } };
+    const { createWorkspaceApiKey: memberKey } = await graphqlRequest<{
+      createWorkspaceApiKey: { entity: { id: string } };
     }>(
       page.request,
       `mutation {
-      createMemberApiKey(input: { name: "Workspace scoped key", permissions: [] }) { entity { id } }
+      createWorkspaceApiKey(input: { name: "Workspace scoped key", permissions: [] }) { entity { id } }
     }`,
       {},
       { "x-workspace-id": workspaceId },

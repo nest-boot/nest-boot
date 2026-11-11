@@ -135,11 +135,11 @@ test("manages system identities and credentials under admin, with one-time secre
       .click();
     await expect(page).toHaveURL(/\/admin\/api-keys\/?(?:\?.*)?$/);
     expect((await read()).status()).toBe(401);
-    const { createSystemAccountApiKey: dependent } = await graphqlRequest<{
-      createSystemAccountApiKey: { entity: { id: string } };
+    const { createSystemApiKey: dependent } = await graphqlRequest<{
+      createSystemApiKey: { entity: { id: string } };
     }>(
       page.request,
-      'mutation($id: ID!) { createSystemAccountApiKey(systemAccountId: $id, input: {name: "Cascade"}) { entity { id } } }',
+      'mutation($id: ID!) { createSystemApiKey(systemAccountId: $id, input: {name: "Cascade"}) { entity { id } } }',
       { id: accountId },
     );
     await page.goto(`/admin/system-accounts/${accountId}`);
@@ -150,12 +150,12 @@ test("manages system identities and credentials under admin, with one-time secre
       .click();
     await expect(page).toHaveURL(/\/admin\/system-accounts\/?(?:\?.*)?$/);
     expect((await read()).status()).toBe(401);
-    const remaining = await graphqlRequest<{ systemAccountApiKey: unknown }>(
+    const remaining = await graphqlRequest<{ systemApiKey: unknown }>(
       page.request,
-      "query($id: ID!) { systemAccountApiKey(id: $id) { id } }",
+      "query($id: ID!) { systemApiKey(id: $id) { id } }",
       { id: dependent.entity.id },
     );
-    expect(remaining.systemAccountApiKey).toBeNull();
+    expect(remaining.systemApiKey).toBeNull();
   } finally {
     await machine.dispose();
   }
@@ -198,7 +198,7 @@ test("read-only system-account abilities hide writes and reject direct create ro
         (rule: { subjects: Array<string>; actions: Array<string> }) => ({
           ...rule,
           actions: rule.subjects.some((subject) =>
-            ["SystemAccount", "SystemAccountApiKey"].includes(subject),
+            ["SystemAccount", "SystemApiKey"].includes(subject),
           )
             ? rule.actions.filter((action) => action !== "write")
             : rule.actions,

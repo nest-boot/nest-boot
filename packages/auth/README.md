@@ -8,6 +8,10 @@ The example's handwritten `Initial` migration creates roles and default
 privileges; generated migrations create and evolve tables and RLS policies.
 Apply the complete migration sequence to a fresh database.
 
+## Source organization
+
+Auth source lives in `common`, `core`, `workspace`, `admin`, and `api-key` feature directories. Each feature retains its own `entities`, `services`, `resolvers`, `inputs`, `objects`, and supporting layers. Unit tests use the tested file's name and sit beside it; HTTP, database and application-bootstrap tests remain under `test`. `common` contains shared authorization, policy and projection helpers. Public application imports continue to use `@nest-boot/auth`.
+
 ## Optional administration and credentials
 
 Administration, workspaces and API keys are independent startup features, all disabled by default. User and workspace key scopes also require explicit activation:
@@ -27,11 +31,11 @@ AuthModule.forRoot({
 
 `admin.enabled` registers user/session administration and independent system accounts. `apiKey.enabled` is the master switch. User keys require `apiKey.user.enabled: true`; workspace keys additionally require `workspace.enabled` and `apiKey.workspace.enabled: true`. System-account authentication requires the master switch and `apiKey.system.enabled: true`, and defaults to false independently of `admin.enabled`. System-account/key management APIs additionally require administration. Enabling APIs does not grant actor permissions: configure roles as before. The example explicitly enables its features and grants ordinary users personal key read/write permissions.
 
-System-only applications register SystemAccount and ApiKeyEntity for authentication without exposing system-account GraphQL types or management endpoints. Provision credentials through a trusted seeder or internal ORM code and use them on application-owned APIs; built-in user/system management APIs stay disabled until administration is enabled.
+System-only applications register SystemAccount and ApiKey for authentication without exposing system-account GraphQL types or management endpoints. Provision credentials through a trusted seeder or internal ORM code and use them on application-owned APIs; built-in user/system management APIs stay disabled until administration is enabled.
 
 Disabled features register no corresponding services, GraphQL operations or persistence tables. Basic registration, sign-in, user self-service and sessions remain available. Standalone ORM registration must pass the same feature options to `getAuthEntities(options)`.
 
-The former `apiKey.member.*` configuration is removed; use `apiKey.workspace.*`. System credential configuration uses `apiKey.system.*` in place of `apiKey.systemAccount.*`. Member credential services and mutation names retain `MemberApiKey` naming.
+The former `apiKey.member.*` configuration is removed; use `apiKey.workspace.*`. System credential configuration uses `apiKey.system.*` in place of `apiKey.systemAccount.*`. Member credential services and mutation names retain `WorkspaceApiKey` naming.
 
 ## Optional workspaces
 
@@ -93,7 +97,7 @@ contexts are preserved.
 ## Built-in entities
 
 Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
-`Workspace`, `Member`, `Invitation`, `SystemAccount` and `ApiKeyEntity` entities, their GraphQL
+`Workspace`, `Member`, `Invitation`, `SystemAccount` and `ApiKey` entities, their GraphQL
 metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 
@@ -148,7 +152,7 @@ pagination behavior are unchanged.
 
 Use `WorkspaceService.getWorkspaceConnectionByUser(user, args)` and
 `MemberService.getMemberConnectionByWorkspace(workspace, args)` for workspace/member connections, and
-`UserApiKeyService.getUserApiKeyConnection(user, args)` / `WorkspaceApiKeyService.getMemberApiKeyConnection(workspace, args)`
+`UserApiKeyService.getUserApiKeyConnection(user, args)` / `WorkspaceApiKeyService.getWorkspaceApiKeyConnection(workspace, args)`
 for API-key connections. Services own authorization, query scopes and
 `ConnectionManager` execution. User, session, workspace, member, API-key and
 invitation connection reads retain the request's native RLS scope. API-key ownership and credential permission ceilings still apply.
@@ -307,7 +311,7 @@ AuthService methods remain available.
 
 ## Member API-key creation
 
-`WorkspaceApiKeyService.createMemberApiKey(workspace, { member, ...options })`
+`WorkspaceApiKeyService.createWorkspaceApiKey(workspace, { member, ...options })`
 accepts an existing member entity or ID. GraphQL accepts `input.memberId`.
 Only the caller's own USER member or an active SERVICE_ACCOUNT member in the
 selected workspace may own the new key.
@@ -315,7 +319,7 @@ selected workspace may own the new key.
 Omitting the owner uses the current member. The example form defaults to **You**,
 passing the current member ID. Choosing **Service account** displays a searchable
 account dropdown. If no account is selected, the frontend first calls `addMember`
-to create a service account named after the key, then calls `createMemberApiKey`
+to create a service account named after the key, then calls `createWorkspaceApiKey`
 with its `memberId`. Account creation requires `service-account:write`; key creation
 requires `member-api-key:write`. These are separate operations. With selected
 permissions, `addMember` receives `roles: []` and those direct permissions. With
@@ -364,8 +368,8 @@ dedicated ownership-transfer operation is provided. API-key update/delete checks
 type and the loaded instance so conditional abilities remain enforced.
 
 API-key writes use `updateUserApiKey(id, input)`,
-`updateMemberApiKey(id, input)`, `deleteUserApiKey(id)` and
-`deleteMemberApiKey(id)`. The stored owner determines authorization and
+`updateWorkspaceApiKey(id, input)`, `deleteUserApiKey(id)` and
+`deleteWorkspaceApiKey(id)`. The stored owner determines authorization and
 permission normalization. User and member management methods accept either an
 ID or an entity; `updateWorkspace(id, input)` and `deleteWorkspace(id)`
 also accept their existing entity arguments. Passing an ID does not require an
@@ -494,7 +498,7 @@ field resolvers may target these classes without replacing built-in fields.
 
 ## Native query migration
 
-- Single-key queries move from root `userApiKey(id)` to `User.apiKey(id)` and from root `apiKey(id)` to `Workspace.apiKey(id)`. They resolve `UserApiKey` and `MemberApiKey`, respectively, with nullable field results and pass their parent to `UserApiKeyService` and `WorkspaceApiKeyService`; mutation authorization is unchanged (see the operation naming migration below). Query through `currentUser { apiKey(id: ...) { id } }` or `currentWorkspace { apiKey(id: ...) { id } }`. Service authorization, ownership filters, permission ceilings and request RLS remain in effect.
+- Single-key queries move from root `userApiKey(id)` to `User.apiKey(id)` and from root `apiKey(id)` to `Workspace.apiKey(id)`. They resolve `UserApiKey` and `WorkspaceApiKey`, respectively, with nullable field results and pass their parent to `UserApiKeyService` and `WorkspaceApiKeyService`; mutation authorization is unchanged (see the operation naming migration below). Query through `currentUser { apiKey(id: ...) { id } }` or `currentWorkspace { apiKey(id: ...) { id } }`. Service authorization, ownership filters, permission ceilings and request RLS remain in effect.
 - `users` uses `UserConnectionArgs` / `UserConnection` (first/after or last/before, query/filter/orderBy). `ListUsersInput` and `UserListType` are removed.
 - `User.accounts` now returns `AccountConnection!` through `AccountService.getAccountConnectionByUser(user, args)`: use `currentUser { accounts(first: 20) { edges { node { id providerId scopes } } pageInfo { hasNextPage endCursor } } }`. The array shape and `UserService.listUserAccounts` are removed. Account inspection requires the owning browser session; API keys are rejected and credentials are excluded.
 - Registration/sign-in payloads reference the built-in `User`, not `AuthUserType`. The entity-oriented AuthService methods establish the newly issued session and refresh RLS and abilities before resolving nested fields. Registration without a session does not authenticate the request; protected nested fields still require authentication.
@@ -555,7 +559,7 @@ ownership checks and self-service operations remain enforced by Services.
 
 The `userRoles` and `workspaceRoles` queries return `{ role, grantable }` objects;
 `userPermissions` and `workspacePermissions` return `{ permission, grantable }`.
-`userApiKeyPermissions` and `memberApiKeyPermissions` also return
+`userApiKeyPermissions` and `workspaceApiKeyPermissions` also return
 `{ permission, grantable, default }` entries. `grantable` includes the API-key
 allowlist and issuer's grant ceiling; `default` reflects configured defaults.
 Editors preselect only `default && grantable`. `member:invite` allows querying,
@@ -698,15 +702,15 @@ and usage tracking.
 
 This is a breaking schema change; no deprecated aliases are retained:
 
-| Removed name         | Replacement          |
-| -------------------- | -------------------- |
-| `createApiKey`       | `createMemberApiKey` |
-| `updateApiKey`       | `updateMemberApiKey` |
-| `deleteApiKey`       | `deleteMemberApiKey` |
-| `currentAuthSession` | `currentSession`     |
-| `removeWorkspace`    | `deleteWorkspace`    |
+| Removed name         | Replacement             |
+| -------------------- | ----------------------- |
+| `createApiKey`       | `createWorkspaceApiKey` |
+| `updateApiKey`       | `updateWorkspaceApiKey` |
+| `deleteApiKey`       | `deleteWorkspaceApiKey` |
+| `currentAuthSession` | `currentSession`        |
+| `removeWorkspace`    | `deleteWorkspace`       |
 
-GraphQL uses one `ApiKey` output, `ApiKeyConnection`/`ApiKeyFilter`/`ApiKeyOrder`, and `CreateApiKeyResult` for all owner kinds. Inputs and permission choices remain scoped: use `CreateUserApiKeyInput`, `UpdateUserApiKeyInput`, and their `Member`/`SystemAccount` counterparts. Outputs serialize stored grants with the shared `ApiKeyPermission` enum; owner-specific services still validate each input against its own catalog and delegation ceiling. Stored values remain unchanged.
+GraphQL exposes `UserApiKey`, `WorkspaceApiKey`, and `SystemApiKey`. Each scope has its own connection/filter/order, `Create*ApiKeyResult`, inputs and permission enum. For example, `WorkspaceApiKey.permissions` uses `WorkspaceApiKeyPermission` for both input and output. Services validate grants against that scope’s catalog and delegation ceiling; stored permission identifiers remain unchanged.
 
 API-key enums cover the full scope catalogs, independently of the current grant
 allowlist, so existing keys remain readable after the allowlist is tightened.
@@ -743,12 +747,12 @@ continue to own request execution and transaction boundaries.
 
 ## Independent system accounts and shared credential storage
 
-`UserApiKey`, `MemberApiKey`, and `SystemAccountApiKey` remain scoped TypeScript service and authorization views; GraphQL returns the shared `ApiKey` object. `ApiKeyEntity` is the persistent entity. Its required polymorphic `owner` is a `User`, `Member`, or `SystemAccount`, stored as `owner_type` and `owner_id` in `api_key`. No additional scope column or single-table inheritance is used. Credential hashes are globally unique.
+`UserApiKey`, `WorkspaceApiKey`, and `SystemApiKey` remain scoped TypeScript service and authorization views; GraphQL uses these three distinct object types with their own permission enums. `ApiKey` is the persistent entity. Its required polymorphic `owner` is a `User`, `Member`, or `SystemAccount`, stored as `owner_type` and `owner_id` in `api_key`. No additional scope column or single-table inheritance is used. Credential hashes are globally unique.
 
-For direct ORM operations, query `ApiKeyEntity` with the owner discriminator and a typed owner reference. The view classes are not separate ORM entities:
+For direct ORM operations, query `ApiKey` with the owner discriminator and a typed owner reference. The view classes are not separate ORM entities:
 
 ```typescript
-import { ApiKeyEntity, getAuthEntities, User } from "@nest-boot/auth";
+import { ApiKey, getAuthEntities, User } from "@nest-boot/auth";
 
 const authEntities = getAuthEntities({
   admin: { enabled: true },
@@ -760,13 +764,13 @@ const authEntities = getAuthEntities({
     workspace: { enabled: true },
   },
 });
-const keys = await em.find(ApiKeyEntity, {
+const keys = await em.find(ApiKey, {
   ownerType: "user",
   owner: em.getReference(User, userId),
 });
 ```
 
-A User with an administrator role and the explicit `system-account:read/write` and `system-account-api-key:read/write` permissions manages system identities. Management requires a human user session; user, member and system API keys cannot issue system credentials. Use `SystemAccountService` for create/read/paginate/update/delete and `SystemApiKeyService` for key lifecycle operations. GraphQL exposes `systemAccounts`, `systemAccount`, `createSystemAccount`, `updateSystemAccount`, `deleteSystemAccount`, `systemAccountApiKey`, and the corresponding key mutations. `User.apiKeys`, `Member.apiKeys`, and `SystemAccount.apiKeys` provide credential pagination with the same `ApiKeyConnection` output. Root `workspaceApiKeys` and `systemApiKeys` provide scoped aggregate lists. `ApiKey.owner` is a nullable `ApiKeyOwner` union drawn from the enabled scopes and registered identity APIs. Disabled features do not enter the union or its schema dependencies. Owner details use the same authorization as direct identity queries, including existing self-profile access; inaccessible owners return null. No separate owner ID, discriminator or owner-specific identifier fields are exposed on the key.
+A User with an administrator role and the explicit `system-account:read/write` and `system-account-api-key:read/write` permissions manages system identities. Management requires a human user session; user, member and system API keys cannot issue system credentials. Use `SystemAccountService` for create/read/paginate/update/delete and `SystemApiKeyService` for key lifecycle operations. GraphQL exposes `systemAccounts`, `systemAccount`, `createSystemAccount`, `updateSystemAccount`, `deleteSystemAccount`, `systemApiKey`, and the corresponding key mutations. `User.apiKeys`, `Member.apiKeys`, and `SystemAccount.apiKeys` return their own scoped connections. Root `workspaceApiKeys` and `systemApiKeys` provide aggregate lists. GraphQL exposes nullable `UserApiKey.user`, `WorkspaceApiKey.member`, and `SystemApiKey.systemAccount`, with separate identity authorization and self-profile access. Inaccessible identities return null. Disabled credential APIs introduce no schema dependencies; keys expose no generic owner union or redundant identity ID fields.
 
 SystemAccount holds a name, enabled state, explicit permission ceiling and creator audit reference. A workspace service account remains a Member with `type: SERVICE_ACCOUNT`; it is separate from this platform identity. Creator references use `ON DELETE SET NULL`, so deleting a creator does not delete the system account or its keys.
 
@@ -783,7 +787,7 @@ mutation {
 }
 ```
 
-Create its credential with `createSystemAccountApiKey(systemAccountId, input)` and send the returned plaintext as `Authorization: Bearer <key>`. The plaintext is returned once; metadata queries never return its hash or plaintext. The default prefix is `sys_`, configurable through `apiKey.system.defaultPrefix` (or `API_KEY_PREFIX`). Its `allowedPermissions` and `defaultPermissions` follow the existing scoped configuration shape.
+Create its credential with `createSystemApiKey(systemAccountId, input)` and send the returned plaintext as `Authorization: Bearer <key>`. The plaintext is returned once; metadata queries never return its hash or plaintext. The default prefix is `sys_`, configurable through `apiKey.system.defaultPrefix` (or `API_KEY_PREFIX`). Its `allowedPermissions` and `defaultPermissions` follow the existing scoped configuration shape.
 
 System-key grants are the intersection of the account's current permissions, the key's explicit permissions and the configured key allowlist. An empty system-key grant list grants nothing. Disabling the account invalidates every owned key on subsequent requests; disabling, expiring or deleting one key affects that key. System authentication creates no User, Member or selected-workspace identity.
 
@@ -793,4 +797,4 @@ Polymorphic relations have no native owner FK. MikroORM metadata declares owner-
 
 System credentials and accounts are unavailable to request-role SQL; their management services require an administrator session. The framework records successful key usage through an isolated writer restricted to the captured key ID.
 
-The example client manages credentials under `/admin/api-keys` and independent system accounts under `/admin/system-accounts`. Creating a key can select an existing enabled account or create one with the key name and selected permissions, matching workspace service-account key creation. Secrets are displayed once. `systemApiKeys` lists system credentials across accounts, and `systemAccountApiKeyPermissions` returns configured key choices bounded by issuer grants and an optional account ceiling; pass `apiKeyId` to inspect an existing key’s account ceiling without exposing its owner. Supplying both `apiKeyId` and `systemAccountId` is rejected. `systemAccountPermissions` lists account grants; `SystemAccount.apiKeyPermissions` provides account-scoped key choices. Re-enabling a system account validates its resulting delegation ceiling. All management operations require an administrator session and the corresponding Ability permissions.
+The example client manages credentials under `/admin/api-keys` and independent system accounts under `/admin/system-accounts`. Creating a key can select an existing enabled account or create one with the key name and selected permissions, matching workspace service-account key creation. Secrets are displayed once. `systemApiKeys` lists system credentials across accounts, and `systemApiKeyPermissions` returns configured key choices bounded by issuer grants and an optional account ceiling; pass `apiKeyId` to inspect an existing key’s account ceiling without exposing its owner. Supplying both `apiKeyId` and `systemAccountId` is rejected. `systemAccountPermissions` lists account grants; `SystemAccount.apiKeyPermissions` provides account-scoped key choices. Re-enabling a system account validates its resulting delegation ceiling. All management operations require an administrator session and the corresponding Ability permissions.

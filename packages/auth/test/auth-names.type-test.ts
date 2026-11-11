@@ -1,6 +1,6 @@
 import { expectTypeOf } from "vitest";
 
-import { AuthModule } from "../src/auth.module.js";
+import { AuthModule } from "../src/core/auth.module.js";
 import type { PermissionName, RoleName } from "../src/index.js";
 
 // Checked by the auth typecheck task, not by the runtime test runner.

@@ -8,8 +8,8 @@ import {
   getDefaultApiKeyPermissions,
   getPermissionOptions,
   isAuthPermission,
-  memberApiKeyPermissionValues,
   userPermissionValues,
+  workspaceApiKeyPermissionValues,
   workspacePermissionValues,
 } from "./permissions";
 
@@ -60,9 +60,9 @@ describe("permission options", () => {
   });
 
   it("keeps workspace API-key permissions inside the mixed catalog", () => {
-    expect(memberApiKeyPermissionValues).toContain("WORKSPACE__UPDATE");
-    expect(memberApiKeyPermissionValues).toContain("MEMBER__INVITE");
-    expect(memberApiKeyPermissionValues).not.toContain("USER__DELETE");
+    expect(workspaceApiKeyPermissionValues).toContain("WORKSPACE__UPDATE");
+    expect(workspaceApiKeyPermissionValues).toContain("MEMBER__INVITE");
+    expect(workspaceApiKeyPermissionValues).not.toContain("USER__DELETE");
   });
 
   it("exposes user and workspace permissions for personal API keys", () => {
@@ -76,8 +76,8 @@ describe("permission options", () => {
       const workspacePermission = `MEMBER_API_KEY__${action}`;
       expect(userPermissionValues).toContain(userPermission);
       expect(userPermissionValues).not.toContain(workspacePermission);
-      expect(memberApiKeyPermissionValues).toContain(workspacePermission);
-      expect(memberApiKeyPermissionValues).not.toContain(userPermission);
+      expect(workspaceApiKeyPermissionValues).toContain(workspacePermission);
+      expect(workspaceApiKeyPermissionValues).not.toContain(userPermission);
       expect(authPermissionValues).toContain(userPermission);
       expect(authPermissionValues).toContain(workspacePermission);
     }

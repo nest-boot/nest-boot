@@ -10,24 +10,27 @@ import { ApolloDriver } from "@nestjs/apollo";
 import { Global, Module } from "@nestjs/common";
 import { GraphQLModule, GraphQLSchemaHost } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
-import type { GraphQLObjectType, GraphQLUnionType } from "graphql";
+import type { GraphQLObjectType } from "graphql";
 
-import { AuthGuard } from "../../src/auth.guard.js";
-import { AuthModule } from "../../src/auth.module.js";
-import type { AuthModuleOptions } from "../../src/auth-module-options.interface.js";
+import { SystemAccountService } from "../../src/admin/services/system-account.service.js";
+import { ApiKeyAuthenticationService } from "../../src/api-key/infrastructure/api-key-authentication.service.js";
+import { SystemApiKeyService } from "../../src/api-key/services/system-api-key.service.js";
+import { UserApiKeyService } from "../../src/api-key/services/user-api-key.service.js";
+import { WorkspaceApiKeyService } from "../../src/api-key/services/workspace-api-key.service.js";
+import { hashApiKey } from "../../src/api-key/utils/api-key-credential.util.js";
+import { AuthGuard } from "../../src/core/auth.guard.js";
+import { AuthModule } from "../../src/core/auth.module.js";
 import {
-  ApiKeyEntity,
+  ApiKey,
   Member,
   SystemAccount,
+  SystemApiKey,
   User,
-} from "../../src/entities/index.js";
-import { ApiKeyAuthenticationService } from "../../src/infrastructure/api-key-authentication.service.js";
-import { SystemAccountService } from "../../src/services/system-account.service.js";
-import { SystemApiKeyService } from "../../src/services/system-api-key.service.js";
-import { UserService } from "../../src/services/user.service.js";
-import { UserApiKeyService } from "../../src/services/user-api-key.service.js";
-import { WorkspaceApiKeyService } from "../../src/services/workspace-api-key.service.js";
-import { hashApiKey } from "../../src/utils/api-key-credential.util.js";
+  UserApiKey,
+  WorkspaceApiKey,
+} from "../../src/core/entities/index.js";
+import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-options.interface.js";
+import { UserService } from "../../src/core/services/user.service.js";
 
 /** An application-owned endpoint whose authorization does not require the admin GraphQL API. */
 @Resolver()
@@ -137,18 +140,25 @@ export async function verifyAuthFeatures(
     expect(!!queries.workspaceApiKeys).toBe(expected.owners.includes("Member"));
     expect(!!queries.systemApiKeys).toBe(systemManagement);
     expect(!!mutations.createUserApiKey).toBe(expected.owners.includes("User"));
-    expect(!!mutations.createMemberApiKey).toBe(
+    expect(!!mutations.createWorkspaceApiKey).toBe(
       expected.owners.includes("Member"),
     );
-    expect(!!mutations.createSystemAccountApiKey).toBe(systemManagement);
+    expect(!!mutations.createSystemApiKey).toBe(systemManagement);
     expect(
       !!(schema.getType("User") as GraphQLObjectType).getFields().apiKeys,
     ).toBe(expected.owners.includes("User"));
-    expect(!!schema.getType("ApiKey")).toBe(managedOwners.length > 0);
+    expect(schema.getType("ApiKey")).toBeUndefined();
     expect(!!schema.getType("SystemAccount")).toBe(expected.admin);
-    expect(!!orm.getMetadata().find(ApiKeyEntity)).toBe(
-      expected.owners.length > 0,
-    );
+    for (const [type, identity] of [
+      [UserApiKey, "User"],
+      [WorkspaceApiKey, "Member"],
+      [SystemApiKey, "SystemAccount"],
+    ] as const) {
+      expect(!!schema.getType(type.name)).toBe(
+        managedOwners.includes(identity),
+      );
+    }
+    expect(!!orm.getMetadata().find(ApiKey)).toBe(expected.owners.length > 0);
     expect(!!orm.getMetadata().find(SystemAccount)).toBe(
       expected.admin || expected.owners.includes("SystemAccount"),
     );
@@ -162,16 +172,7 @@ export async function verifyAuthFeatures(
     ] as const) {
       expect(!!app.get(token)).toBe(enabled);
     }
-    if (managedOwners.length) {
-      expect(
-        (schema.getType("ApiKeyOwner") as GraphQLUnionType)
-          .getTypes()
-          .map(({ name }) => name)
-          .sort(),
-      ).toEqual([...managedOwners].sort());
-    } else {
-      expect(schema.getType("ApiKeyOwner")).toBeUndefined();
-    }
+    expect(schema.getType("ApiKeyOwner")).toBeUndefined();
 
     await app.listen(0, "127.0.0.1");
     const url = await app.getUrl();
@@ -231,10 +232,10 @@ export async function verifyAuthFeatures(
     }
     if (expected.owners.includes("User")) {
       const key = await graphql(
-        'mutation { createUserApiKey(input: { name: "User key" }) { apiKey entity { id owner { __typename ... on User { id } } } } }',
+        'mutation { createUserApiKey(input: { name: "User key" }) { apiKey entity { id user { __typename  id  } } } }',
       );
       expect(key.errors).toBeUndefined();
-      expect(key.data?.createUserApiKey.entity.owner).toEqual({
+      expect(key.data?.createUserApiKey.entity.user).toEqual({
         __typename: "User",
         id: body.user.id,
       });
@@ -248,12 +249,12 @@ export async function verifyAuthFeatures(
       assert(workspaceId);
       if (expected.owners.includes("Member")) {
         const key = await graphql(
-          'mutation { createMemberApiKey(input: {name: "Workspace key"}) { apiKey entity { id owner { __typename ... on Member { id workspaceId } } } } }',
+          'mutation { createWorkspaceApiKey(input: {name: "Workspace key"}) { apiKey entity { id member { __typename  id workspaceId  } } } }',
           {},
           { "x-workspace-id": workspaceId },
         );
         expect(key.errors).toBeUndefined();
-        expect(key.data?.createMemberApiKey.entity.owner.workspaceId).toBe(
+        expect(key.data?.createWorkspaceApiKey.entity.member.workspaceId).toBe(
           workspaceId,
         );
         const lists = await graphql(
@@ -263,7 +264,7 @@ export async function verifyAuthFeatures(
         );
         expect(lists.errors).toBeUndefined();
         const expectedKeys = [
-          { node: { id: key.data?.createMemberApiKey.entity.id } },
+          { node: { id: key.data?.createWorkspaceApiKey.entity.id } },
         ];
         expect(lists.data?.currentMember.apiKeys.edges).toEqual(expectedKeys);
         expect(lists.data?.workspaceApiKeys.edges).toEqual(expectedKeys);
@@ -279,11 +280,11 @@ export async function verifyAuthFeatures(
       expect(account.errors).toBeUndefined();
       if (expected.owners.includes("SystemAccount")) {
         const key = await graphql(
-          'mutation($id: ID!) { createSystemAccountApiKey(systemAccountId: $id, input: {name: "System key", permissions: [USER__READ]}) {apiKey entity {id owner {__typename ... on SystemAccount {id}}}}}',
+          'mutation($id: ID!) { createSystemApiKey(systemAccountId: $id, input: {name: "System key", permissions: [USER__READ]}) {apiKey entity {id systemAccount { __typename id }}}}',
           { id: account.data?.createSystemAccount.id },
         );
         expect(key.errors).toBeUndefined();
-        expect(key.data?.createSystemAccountApiKey.entity.owner).toEqual({
+        expect(key.data?.createSystemApiKey.entity.systemAccount).toEqual({
           __typename: "SystemAccount",
           id: account.data?.createSystemAccount.id,
         });
@@ -301,7 +302,7 @@ export async function verifyAuthFeatures(
         permissions: ["user:read"],
       });
       const plaintext = "pre-provisioned-system-key";
-      const key = em.create(ApiKeyEntity, {
+      const key = em.create(ApiKey, {
         owner: account,
         name: "Provisioned key",
         key: hashApiKey(plaintext),
@@ -339,7 +340,7 @@ export async function verifyAuthFeatures(
       await em.nativeUpdate(SystemAccount, account.id, { enabled: false });
       expect((await machineRequest()).status).toBe(401);
       await em.nativeDelete(SystemAccount, account.id);
-      expect(await em.count(ApiKeyEntity, key.id)).toBe(0);
+      expect(await em.count(ApiKey, key.id)).toBe(0);
     }
     // Disabled credential tables must not leave dangling deletion triggers on identities.
     await orm.em.fork().nativeDelete(User, body.user.id);

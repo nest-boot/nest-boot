@@ -2,15 +2,15 @@ import { EntityManager, ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { it as baseIt, type Mocked } from "vitest";
 
-import type { AuthModuleOptions } from "../../src/auth-module-options.interface.js";
-import { Member } from "../../src/entities/member.entity.js";
-import { MemberApiKey } from "../../src/entities/member-api-key.entity.js";
-import { User } from "../../src/entities/user.entity.js";
-import { Workspace } from "../../src/entities/workspace.entity.js";
-import { RequestIdentity } from "../../src/infrastructure/request-identity.js";
-import { UserApiKeyService } from "../../src/services/user-api-key.service.js";
-import { WorkspaceApiKeyService } from "../../src/services/workspace-api-key.service.js";
-import * as abilityHelpers from "../../src/utils/authorize.util.js";
+import { WorkspaceApiKey } from "../../src/api-key/entities/workspace-api-key.entity.js";
+import { UserApiKeyService } from "../../src/api-key/services/user-api-key.service.js";
+import { WorkspaceApiKeyService } from "../../src/api-key/services/workspace-api-key.service.js";
+import * as abilityHelpers from "../../src/common/utils/authorize.util.js";
+import { User } from "../../src/core/entities/user.entity.js";
+import { RequestIdentity } from "../../src/core/infrastructure/request-identity.js";
+import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-options.interface.js";
+import { Member } from "../../src/workspace/entities/member.entity.js";
+import { Workspace } from "../../src/workspace/entities/workspace.entity.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 /**
  * Returns workspace fixture with deterministic identifiers.
@@ -57,8 +57,8 @@ export function createTestMember(): Member {
  * Returns api key fixture with deterministic identifiers.
  * @returns Api key fixture with deterministic identifiers.
  */
-export function createTestApiKey(): MemberApiKey {
-  return Object.assign(new MemberApiKey(), {
+export function createTestApiKey(): WorkspaceApiKey {
+  return Object.assign(new WorkspaceApiKey(), {
     id: "api-key-1",
     name: "Deploy key",
     start: "sk012345",
@@ -151,23 +151,24 @@ export function createService(
     service: {
       getUserApiKeyPermissions:
         userService.getUserApiKeyPermissions.bind(userService),
-      getMemberApiKeyPermissions:
-        workspaceService.getMemberApiKeyPermissions.bind(workspaceService),
+      getWorkspaceApiKeyPermissions:
+        workspaceService.getWorkspaceApiKeyPermissions.bind(workspaceService),
       getUserApiKey: userService.getUserApiKey.bind(userService),
-      getMemberApiKey: workspaceService.getMemberApiKey.bind(workspaceService),
+      getWorkspaceApiKey:
+        workspaceService.getWorkspaceApiKey.bind(workspaceService),
       getUserApiKeyConnection:
         userService.getUserApiKeyConnection.bind(userService),
-      getMemberApiKeyConnection:
-        workspaceService.getMemberApiKeyConnection.bind(workspaceService),
+      getWorkspaceApiKeyConnection:
+        workspaceService.getWorkspaceApiKeyConnection.bind(workspaceService),
       createUserApiKey: userService.createUserApiKey.bind(userService),
-      createMemberApiKey:
-        workspaceService.createMemberApiKey.bind(workspaceService),
+      createWorkspaceApiKey:
+        workspaceService.createWorkspaceApiKey.bind(workspaceService),
       updateUserApiKey: userService.updateUserApiKey.bind(userService),
-      updateMemberApiKey:
-        workspaceService.updateMemberApiKey.bind(workspaceService),
+      updateWorkspaceApiKey:
+        workspaceService.updateWorkspaceApiKey.bind(workspaceService),
       deleteUserApiKey: userService.deleteUserApiKey.bind(userService),
-      deleteMemberApiKey:
-        workspaceService.deleteMemberApiKey.bind(workspaceService),
+      deleteWorkspaceApiKey:
+        workspaceService.deleteWorkspaceApiKey.bind(workspaceService),
     },
   };
 }

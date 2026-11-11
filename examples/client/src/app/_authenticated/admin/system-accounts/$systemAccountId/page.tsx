@@ -53,7 +53,7 @@ function Details() {
         createAbilitySubject("SystemAccount", account),
         "enabled",
       )}
-      canReadKeys={ability.can("read", "SystemAccountApiKey")}
+      canReadKeys={ability.can("read", "SystemApiKey")}
       options={getPermissionOptions(accountPermissionOptions)}
       onSave={async (input) => {
         await update({

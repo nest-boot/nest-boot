@@ -3,7 +3,7 @@ import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { t } from "i18next";
 import { adminApiKeysResourceKey } from "@/lib/resource-keys";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
-import { SystemAccountPermission } from "@/gql/graphql";
+import { SystemApiKeyPermission } from "@/gql/graphql";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import {
   DELETE_SYSTEM_KEY,
@@ -35,13 +35,10 @@ export const Route = createFileRoute(
         if (isAccessDenied(error)) throw denied();
         throw error;
       });
-    const apiKey = data?.systemAccountApiKey;
+    const apiKey = data?.systemApiKey;
     if (
       !apiKey ||
-      !context.ability.can(
-        "read",
-        createAbilitySubject("SystemAccountApiKey", apiKey),
-      )
+      !context.ability.can("read", createAbilitySubject("SystemApiKey", apiKey))
     )
       throw denied();
     const choices = await context.apolloClient.query({
@@ -52,8 +49,7 @@ export const Route = createFileRoute(
     return {
       apiKey,
       permissionOptions:
-        choices?.data?.systemAccountApiKeyPermissions ??
-        context.keyPermissionOptions,
+        choices?.data?.systemApiKeyPermissions ?? context.keyPermissionOptions,
       title: t("api-key:edit.title"),
     };
   },
@@ -73,29 +69,29 @@ function Details() {
   return (
     <ApiKeyFormPage
       ownerName={
-        apiKey.owner?.__typename === "SystemAccount"
-          ? apiKey.owner.name
+        apiKey.systemAccount?.__typename === "SystemAccount"
+          ? apiKey.systemAccount.name
           : undefined
       }
       key={apiKey.id + apiKey.enabled + apiKey.permissions.join()}
       apiKey={apiKey}
       canWrite={ability.can(
         "write",
-        createAbilitySubject("SystemAccountApiKey", apiKey),
+        createAbilitySubject("SystemApiKey", apiKey),
       )}
       canEditName={ability.can(
         "write",
-        createAbilitySubject("SystemAccountApiKey", apiKey),
+        createAbilitySubject("SystemApiKey", apiKey),
         "name",
       )}
       canEditPermissions={ability.can(
         "write",
-        createAbilitySubject("SystemAccountApiKey", apiKey),
+        createAbilitySubject("SystemApiKey", apiKey),
         "permissions",
       )}
       listPath="/admin/api-keys"
       listSearch={backSearch}
-      permissionValues={Object.values(SystemAccountPermission)}
+      permissionValues={Object.values(SystemApiKeyPermission)}
       permissionOptions={getPermissionOptions(permissionOptions)}
       permissionsHint={t("admin:system_accounts.key_permissions_hint")}
       onSave={async (input) => {

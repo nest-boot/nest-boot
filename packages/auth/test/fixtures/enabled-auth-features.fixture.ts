@@ -1,4 +1,4 @@
-import type { AuthModuleOptions } from "../../src/auth-module-options.interface.js";
+import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-options.interface.js";
 
 const snapshots = new WeakMap<AuthModuleOptions, AuthModuleOptions>();
 

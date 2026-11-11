@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
     if (
       !ability.can("read", "User") &&
       !ability.can("read", "SystemAccount") &&
-      !ability.can("read", "SystemAccountApiKey")
+      !ability.can("read", "SystemApiKey")
     ) {
       throw redirect({ to: "/user" });
     }

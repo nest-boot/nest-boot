@@ -53,7 +53,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof AppSidebar>> = ({
             activeOptions: { exact: true },
           }),
         },
-        ...(ability.can("read", "MemberApiKey")
+        ...(ability.can("read", "WorkspaceApiKey")
           ? [
               {
                 title: t("sidebar:navigation.api_keys"),

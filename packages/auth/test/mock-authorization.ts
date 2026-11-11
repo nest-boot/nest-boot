@@ -1,9 +1,9 @@
 import { afterEach, vi } from "vitest";
 
-import { RequestIdentity } from "../src/infrastructure/request-identity.js";
-import * as authorizeUtil from "../src/utils/authorize.util.js";
-import * as canUtil from "../src/utils/can.util.js";
-import * as grants from "../src/utils/permission-grants.util.js";
+import * as authorizeUtil from "../src/common/utils/authorize.util.js";
+import * as canUtil from "../src/common/utils/can.util.js";
+import * as grants from "../src/common/utils/permission-grants.util.js";
+import { RequestIdentity } from "../src/core/infrastructure/request-identity.js";
 
 /**
  * Isolates persistence tests from authorization; boundary tests restore the relevant check.

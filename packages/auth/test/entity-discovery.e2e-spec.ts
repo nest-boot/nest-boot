@@ -3,7 +3,7 @@ import { PgliteDriver } from "@mikro-orm/pglite";
 
 import {
   Account,
-  ApiKeyEntity,
+  ApiKey,
   getAuthEntities,
   Invitation,
   Member,
@@ -39,7 +39,7 @@ describe("built-in auth entity discovery", () => {
             .props.find((entry) => entry.name === property)?.targetMeta?.class,
         ).toBe(target);
       }
-      const owner = orm.getMetadata(ApiKeyEntity).properties.owner;
+      const owner = orm.getMetadata(ApiKey).properties.owner;
       expect(owner.polymorphic).toBe(true);
       expect(owner.polymorphTargets?.map((meta) => meta.class)).toEqual(
         expect.arrayContaining([User, Member]),
