@@ -58,6 +58,36 @@ export class SystemAccountResolver {
   }
 
   /**
+   * Lists configured key grants for creation or a selected account.
+   * @param systemAccountId - Optional account permission ceiling.
+   * @returns Permission options bounded by configuration and issuer grants.
+   */
+  @Query(() => [SystemAccountPermissionOption])
+  systemAccountApiKeyPermissions(
+    @Args("systemAccountId", { type: () => ID, nullable: true })
+    systemAccountId?: string,
+  ) {
+    return this.keys.getSystemAccountApiKeyPermissions(
+      systemAccountId ?? undefined,
+    );
+  }
+
+  /**
+   * Lists system keys across independent accounts.
+   * @param args - Cursor pagination, filtering and ordering arguments.
+   * @param info - GraphQL selection information.
+   * @returns Authorized system credential metadata without hashes.
+   */
+  @Query(() => SystemAccountApiKeyConnection)
+  systemAccountApiKeys(
+    @Args({ type: () => SystemAccountApiKeyConnectionArgs })
+    args: ConnectionArgsInterface<SystemAccountApiKey>,
+    @Info() info?: GraphQLResolveInfo,
+  ) {
+    return this.keys.getSystemAccountApiKeyConnection(undefined, args, info);
+  }
+
+  /**
    * Finds one system account.
    * @param id - Identifier of the target record.
    * @returns Authorized system account, or null when it is unavailable.

@@ -150,4 +150,4 @@ pnpm --filter @nest-boot/example-server test
 pnpm --filter @nest-boot/example-server test:e2e
 ```
 
-System accounts are managed in the example client under `/admin/system-accounts`. Administrator sessions can create accounts, set their permission ceilings, and manage the nested API keys. Secrets are displayed once and are kept out of browser storage and URLs.
+The example client manages system keys under `/admin/api-keys` and accounts under `/admin/system-accounts`. Administrator sessions can create a key for an existing enabled account or automatically create an account using the key name and selected permissions. Account pages manage permission ceilings and enabled state. Secrets are displayed once and are kept out of browser storage and URLs.

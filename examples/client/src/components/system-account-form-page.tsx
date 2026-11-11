@@ -189,12 +189,7 @@ export function SystemAccountFormPage({
                   {canReadKeys && (
                     <Button
                       variant="outline"
-                      render={
-                        <Link
-                          to="/admin/system-accounts/$systemAccountId/api-keys"
-                          params={{ systemAccountId: account.id }}
-                        />
-                      }
+                      render={<Link to="/admin/api-keys" />}
                     >
                       {t("api-key:title")}
                     </Button>

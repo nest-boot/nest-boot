@@ -2,7 +2,7 @@ import { useQuery } from "@apollo/client/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useTranslation } from "react-i18next";
-import { Link } from "@/components/link";
+import { adminApiKeysResourceKey } from "@/lib/resource-keys";
 import { ApiKeysPage } from "@/components/api-keys-page";
 import { OverviewError } from "@/components/overview-card";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
@@ -13,7 +13,6 @@ import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-use
 
 const LIST = graphql(`
   query managedSystemAccountKeys(
-    $id: ID!
     $first: Int
     $last: Int
     $after: String
@@ -22,59 +21,57 @@ const LIST = graphql(`
     $filter: SystemAccountApiKeyFilter
     $orderBy: SystemAccountApiKeyOrder
   ) {
-    systemAccount(id: $id) {
-      id
-      apiKeys(
-        first: $first
-        last: $last
-        after: $after
-        before: $before
-        query: $query
-        filter: $filter
-        orderBy: $orderBy
-      ) {
-        edges {
-          node {
-            id
-            name
-            enabled
-            permissions
-            prefix
-            start
-            createdAt
-            lastUsedAt
-            expiresAt
-          }
+    systemAccountApiKeys(
+      first: $first
+      last: $last
+      after: $after
+      before: $before
+      query: $query
+      filter: $filter
+      orderBy: $orderBy
+    ) {
+      edges {
+        node {
+          id
+          systemAccountId
+          name
+          enabled
+          permissions
+          prefix
+          start
+          createdAt
+          lastUsedAt
+          expiresAt
         }
-        pageInfo {
-          hasNextPage
-          hasPreviousPage
-          startCursor
-          endCursor
-        }
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        startCursor
+        endCursor
       }
     }
   }
 `);
-export const Route = createFileRoute(
-  "/_authenticated/admin/system-accounts/$systemAccountId/api-keys/",
-)({ component: Keys, validateSearch: zodValidator(apiKeySearchSchema) });
+export const Route = createFileRoute("/_authenticated/admin/api-keys/")({
+  component: Keys,
+  validateSearch: zodValidator(apiKeySearchSchema),
+});
 function Keys() {
   const { t } = useTranslation();
-  const { account } = Route.useRouteContext();
   const search = Route.useSearch();
   const ability = useAbility();
   const user = useCurrentUserContext();
   useResourceNavigation({
-    key: [user.id, "admin", "system-accounts", account.id, "api-keys"],
+    key: [user.id, ...adminApiKeysResourceKey],
     searchSchema: apiKeySearchSchema,
     search,
   });
   const { data, error, refetch } = useQuery(LIST, {
-    variables: { ...search, id: account.id },
+    variables: search,
     fetchPolicy: "network-only",
   });
-  const connection = data?.systemAccount?.apiKeys;
+  const connection = data?.systemAccountApiKeys;
   if (error)
     return (
       <OverviewError
@@ -85,29 +82,20 @@ function Keys() {
     );
   return (
     <ApiKeysPage
-      breadcrumbActions={[
-        {
-          label: account.name,
-          render: (
-            <Link
-              to="/admin/system-accounts/$systemAccountId"
-              params={{ systemAccountId: account.id }}
-            />
-          ),
-        },
-      ]}
-      canCreate={account.enabled && ability.can("write", "SystemAccountApiKey")}
+      canCreate={
+        ability.can("write", "SystemAccountApiKey") &&
+        (ability.can("read", "SystemAccount") ||
+          ability.can("write", "SystemAccount"))
+      }
       subject="SystemAccountApiKey"
       ability={ability}
       title={t("api-key:title")}
-      description={t("admin:system_accounts.keys_description", {
-        name: account.name,
-      })}
+      description={t("admin:system_accounts.keys_description")}
       search={search}
       apiKeys={connection?.edges.map(({ node }) => node) ?? []}
       pageInfo={connection?.pageInfo}
-      createPath={`/admin/system-accounts/${account.id}/api-keys/create`}
-      detailPath={(id) => `/admin/system-accounts/${account.id}/api-keys/${id}`}
+      createPath="/admin/api-keys/create"
+      detailPath={(id) => `/admin/api-keys/${id}`}
     />
   );
 }

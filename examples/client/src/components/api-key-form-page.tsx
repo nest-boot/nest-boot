@@ -56,6 +56,10 @@ interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
   permissionValues: ReadonlyArray<Permission>;
   permissionOptions: ReadonlyArray<PermissionOption<Permission>>;
   memberOptions?: Array<{ value: string; label: string }>;
+  systemAccountOptions?: Array<{ value: string; label: string }>;
+  systemAccountName?: string;
+  canCreateSystemAccount?: boolean;
+  onSystemAccountChange?: (id: string) => ReadonlyArray<Permission>;
   canCreateServiceAccount?: boolean;
   currentMemberId?: string;
   defaultPermissions?: ReadonlyArray<Permission>;
@@ -64,6 +68,7 @@ interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
   onSave: (input: {
     name: string;
     memberId?: string;
+    systemAccountId?: string;
     permissions: Array<Permission>;
   }) => Promise<void>;
 }
@@ -82,6 +87,10 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
   permissionOptions,
   defaultPermissions = [],
   memberOptions,
+  systemAccountOptions,
+  systemAccountName,
+  canCreateSystemAccount = true,
+  onSystemAccountChange,
   canCreateServiceAccount = true,
   currentMemberId,
   onSave,
@@ -95,6 +104,11 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
   const [pendingAction, setPendingAction] = useState<"toggle" | "delete">();
   const [copied, setCopied] = useState(false);
   const [ownerType, setOwnerType] = useState<"you" | "serviceAccount">("you");
+  const systemOwner = systemAccountOptions !== undefined;
+  const accountOptions = systemAccountOptions ?? memberOptions;
+  const canCreateAccount = systemOwner
+    ? canCreateSystemAccount
+    : canCreateServiceAccount;
   const keyStart = apiKey?.start || apiKey?.prefix;
   const isPermission = (value: UserApiKeyPermission): value is Permission =>
     permissionValues.some((permission) => permission === value);
@@ -102,6 +116,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
     defaultValues: {
       name: apiKey?.name ?? "",
       memberId: "",
+      systemAccountId: "",
       permissions: (apiKey?.permissions ??
         defaultPermissions.filter((permission) =>
           permissionOptions.some(
@@ -118,6 +133,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
           .min(1, t("api-key:form.name.required"))
           .max(255, t("api-key:form.name.too_long")),
         memberId: z.string(),
+        systemAccountId: z.string(),
         permissions: z.array(z.enum(permissionValues)),
       }),
     },
@@ -137,15 +153,32 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
         });
         return;
       }
+      if (systemOwner && !value.systemAccountId && !canCreateSystemAccount) {
+        formApi.setErrorMap({
+          onSubmit: {
+            form: t("admin:system_accounts.select_required"),
+            fields: {},
+          },
+        });
+        return;
+      }
       const memberId = ownerType === "you" ? currentMemberId : value.memberId;
       const input = {
         name: value.name.trim(),
         ...(memberOptions && memberId ? { memberId } : {}),
+        ...(systemOwner && value.systemAccountId
+          ? { systemAccountId: value.systemAccountId }
+          : {}),
         permissions: value.permissions.filter(isPermission),
       };
       try {
         await onSave(input);
-        if (apiKey) formApi.reset({ ...input, memberId: value.memberId });
+        if (apiKey)
+          formApi.reset({
+            ...input,
+            memberId: value.memberId,
+            systemAccountId: value.systemAccountId,
+          });
         toast.add({
           type: "success",
           title: t(
@@ -356,27 +389,47 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                       )}
                     </form.Field>
                   </FormLayoutItem>
-                  {memberOptions &&
+                  {accountOptions &&
                     !apiKey &&
-                    ownerType === "serviceAccount" && (
+                    (systemOwner || ownerType === "serviceAccount") && (
                       <FormLayoutItem>
-                        <form.Field name="memberId">
+                        <form.Field
+                          name={systemOwner ? "systemAccountId" : "memberId"}
+                        >
                           {(field) => (
                             <Field>
                               <FieldLabel htmlFor={`${formId}-member`}>
-                                {t("api-key:form.member.label")}
+                                {t(
+                                  systemOwner
+                                    ? "admin:system_accounts.select_label"
+                                    : "api-key:form.member.label",
+                                )}
                               </FieldLabel>
                               <Combobox
-                                items={memberOptions}
+                                items={accountOptions}
                                 value={
-                                  memberOptions.find(
+                                  accountOptions.find(
                                     (option) =>
                                       option.value === field.state.value,
                                   ) ?? null
                                 }
-                                onValueChange={(option) =>
-                                  field.handleChange(option?.value ?? "")
-                                }
+                                onValueChange={(option) => {
+                                  const id = option?.value ?? "";
+                                  field.handleChange(id);
+                                  const allowed = systemOwner
+                                    ? onSystemAccountChange?.(id)
+                                    : undefined;
+                                  if (allowed)
+                                    form.setFieldValue(
+                                      "permissions",
+                                      (permissions) =>
+                                        permissions.filter((permission) =>
+                                          allowed.some(
+                                            (item) => item === permission,
+                                          ),
+                                        ),
+                                    );
+                                }}
                                 disabled={
                                   !canWrite || submitting || !!pendingAction
                                 }
@@ -386,12 +439,20 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                                     !canWrite || submitting || !!pendingAction
                                   }
                                   id={`${formId}-member`}
-                                  placeholder={t("api-key:form.member.search")}
+                                  placeholder={t(
+                                    systemOwner
+                                      ? "admin:system_accounts.select_search"
+                                      : "api-key:form.member.search",
+                                  )}
                                   showClear
                                 />
                                 <ComboboxContent>
                                   <ComboboxEmpty>
-                                    {t("api-key:form.member.empty")}
+                                    {t(
+                                      systemOwner
+                                        ? "admin:system_accounts.select_empty"
+                                        : "api-key:form.member.empty",
+                                    )}
                                   </ComboboxEmpty>
                                   <ComboboxList>
                                     {(option: {
@@ -410,9 +471,13 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                               </Combobox>
                               <p className="text-muted-foreground text-sm">
                                 {t(
-                                  canCreateServiceAccount
-                                    ? "api-key:form.member.auto_create"
-                                    : "api-key:form.member.required",
+                                  systemOwner
+                                    ? canCreateAccount
+                                      ? "admin:system_accounts.auto_create"
+                                      : "admin:system_accounts.select_required"
+                                    : canCreateAccount
+                                      ? "api-key:form.member.auto_create"
+                                      : "api-key:form.member.required",
                                 )}
                               </p>
                             </Field>
@@ -420,6 +485,15 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                         </form.Field>
                       </FormLayoutItem>
                     )}
+                  {apiKey && systemAccountName && (
+                    <FormLayoutItem>
+                      <Input
+                        label={t("admin:system_accounts.select_label")}
+                        value={systemAccountName}
+                        disabled
+                      />
+                    </FormLayoutItem>
+                  )}
                   {apiKey && (
                     <FormLayoutItem>
                       <Field data-disabled={!createdKey}>

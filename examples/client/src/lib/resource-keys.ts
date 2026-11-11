@@ -9,3 +9,5 @@ export const getMembersResourceKey = (workspaceId: string) =>
   ["workspaces", workspaceId, "members"] as const;
 
 export const workspacesResourceKey = ["user", "workspaces"] as const;
+
+export const adminApiKeysResourceKey = ["admin", "api-keys"] as const;

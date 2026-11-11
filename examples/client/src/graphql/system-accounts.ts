@@ -10,7 +10,7 @@ export const SYSTEM_ACCOUNT_PERMISSIONS = graphql(`
   }
 `);
 export const SYSTEM_ACCOUNT_DETAILS = graphql(`
-  query managedSystemAccount($id: ID!, $includeKeys: Boolean!) {
+  query managedSystemAccount($id: ID!) {
     systemAccount(id: $id) {
       id
       name
@@ -18,11 +18,6 @@ export const SYSTEM_ACCOUNT_DETAILS = graphql(`
       permissions
       createdById
       createdAt
-      apiKeyPermissions @include(if: $includeKeys) {
-        permission
-        grantable
-        default
-      }
     }
   }
 `);
@@ -96,6 +91,37 @@ export const DELETE_SYSTEM_KEY = graphql(`
   mutation deleteManagedSystemAccountKey($id: ID!) {
     deleteSystemAccountApiKey(id: $id) {
       id
+    }
+  }
+`);
+
+export const SYSTEM_KEY_PERMISSIONS = graphql(`
+  query systemKeyPermissionChoices($systemAccountId: ID) {
+    systemAccountApiKeyPermissions(systemAccountId: $systemAccountId) {
+      permission
+      grantable
+      default
+    }
+  }
+`);
+export const SYSTEM_KEY_ACCOUNTS = graphql(`
+  query systemKeyAccountChoices($after: String) {
+    systemAccounts(first: 100, after: $after, filter: { enabled: true }) {
+      edges {
+        node {
+          id
+          name
+          apiKeyPermissions {
+            permission
+            grantable
+            default
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `);

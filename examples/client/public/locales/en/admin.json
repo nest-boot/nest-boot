@@ -106,8 +106,14 @@
     "delete_description": "This permanently deletes the account and all of its API keys.",
     "permissions_hint": "This is the maximum access for all keys owned by this account. Empty permissions grant no access.",
     "key_permissions_hint": "Key permissions are limited by this account and your grants. An empty selection grants no access.",
-    "keys_description": "API keys for {{name}}",
+    "keys_description": "Manage API keys for independent system accounts.",
     "overview": "Manage independent system identities and their credentials.",
-    "manage": "Manage system accounts"
+    "manage": "Manage system accounts",
+    "manage_keys": "Manage API keys",
+    "select_label": "System account",
+    "select_search": "Search system accounts",
+    "select_empty": "No matching system accounts",
+    "select_required": "Select an existing system account.",
+    "auto_create": "Leave empty to create a system account with this key’s name and selected permissions."
   }
 }

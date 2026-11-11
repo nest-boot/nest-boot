@@ -1,6 +1,6 @@
 import { linkOptions } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { Bot, LayoutDashboard, UsersRound } from "lucide-react";
+import { Bot, KeyRound, LayoutDashboard, UsersRound } from "lucide-react";
 import { AppSidebar } from "../../components/app-sidebar";
 import type { ComponentProps, FC } from "react";
 import { useAbility } from "@/contexts/ability-context";
@@ -53,6 +53,22 @@ export const AdminSidebar: FC<ComponentProps<typeof AppSidebar>> = (props) => {
                       <Link {...usersLink} onClick={() => setOpenMobile(false)}>
                         <UsersRound />
                         <span>{t("sidebar:admin.users")}</span>
+                      </Link>
+                    }
+                  />
+                </SidebarMenuItem>
+              )}
+              {ability.can("read", "SystemAccountApiKey") && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip={t("api-key:title")}
+                    render={
+                      <Link
+                        to="/admin/api-keys"
+                        onClick={() => setOpenMobile(false)}
+                      >
+                        <KeyRound />
+                        <span>{t("api-key:title")}</span>
                       </Link>
                     }
                   />

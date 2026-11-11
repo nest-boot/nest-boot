@@ -94,6 +94,10 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
             "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_",
           baseURL: "http://localhost:3000",
           workspace: { enabled: true },
+          user: {
+            adminRoles: ["admin", "key-reader"],
+            roles: { "key-reader": ["system-account-api-key:read"] },
+          },
           emailAndPassword: { requireEmailVerification: false },
         }),
       ],
@@ -179,6 +183,103 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     expect(
       (await graphql(query, {}, ordinaryCookies)).errors?.[0]?.extensions.code,
     ).toBe("FORBIDDEN");
+  });
+
+  it("lists system keys across accounts while keeping other owner kinds and credentials outside the result", async () => {
+    const first = data(
+      await graphql(
+        'mutation { createSystemAccount(input: {name: "First global", permissions: [USER__READ]}) { id } }',
+      ),
+    ).createSystemAccount.id;
+    const second = data(
+      await graphql(
+        'mutation { createSystemAccount(input: {name: "Second global", permissions: [USER__READ]}) { id } }',
+      ),
+    ).createSystemAccount.id;
+    try {
+      const ids: string[] = [];
+      for (const owner of [first, second]) {
+        const result = await graphql(
+          'mutation($id: ID!) { createSystemAccountApiKey(systemAccountId: $id, input: {name: "Global list", permissions: [USER__READ]}) { entity { id } } }',
+          { id: owner },
+        );
+        ids.push(data(result).createSystemAccountApiKey.entity.id);
+      }
+      const em = orm.em.fork();
+      const admin = await em.findOneOrFail(User, {
+        email: "administrator@example.test",
+      });
+      const unrelated = em.create(ApiKeyEntity, {
+        name: "Global list",
+        owner: admin,
+        key: "unrelated-user-credential",
+      });
+      await em.persist(unrelated).flush();
+      try {
+        const query =
+          '{ systemAccountApiKeys(first: 1, filter: { name: "Global list" }) { totalCount edges { node { id systemAccountId } } pageInfo { hasNextPage endCursor } } systemAccountApiKeyPermissions { permission grantable default } }';
+        const result = data(await graphql(query));
+        expect(result.systemAccountApiKeys.totalCount).toBe(2);
+        expect(result.systemAccountApiKeys.pageInfo.hasNextPage).toBe(true);
+        const after = result.systemAccountApiKeys.pageInfo.endCursor;
+        const next = data(
+          await graphql(
+            'query($after: String) { systemAccountApiKeys(first: 1, after: $after, filter: { name: "Global list" }) { edges { node { id systemAccountId } } } }',
+            { after },
+          ),
+        );
+        expect(
+          [
+            result.systemAccountApiKeys.edges[0].node.id,
+            next.systemAccountApiKeys.edges[0].node.id,
+          ].sort(),
+        ).toEqual(ids.sort());
+        expect(
+          result.systemAccountApiKeyPermissions.some(
+            (option: { permission: string; grantable: boolean }) =>
+              option.permission === "USER__READ" && option.grantable,
+          ),
+        ).toBe(true);
+        expect(
+          (await graphql(query, {}, ordinaryCookies)).errors?.[0]?.extensions
+            .code,
+        ).toBe("FORBIDDEN");
+        const ordinary = await em.findOneOrFail(User, {
+          email: "ordinary@example.test",
+        });
+        await em.nativeUpdate(User, ordinary.id, { roles: ["key-reader"] });
+        try {
+          const readOnly = data(await graphql(query, {}, ordinaryCookies));
+          expect(readOnly.systemAccountApiKeys.totalCount).toBe(2);
+          expect(
+            readOnly.systemAccountApiKeyPermissions.every(
+              (option: { grantable: boolean }) => !option.grantable,
+            ),
+          ).toBe(true);
+          for (const denied of [
+            "{ systemAccounts(first: 1) { totalCount } }",
+            'mutation { createSystemAccount(input: { name: "Denied" }) { id } }',
+            'mutation($id: ID!) { createSystemAccountApiKey(systemAccountId: $id, input: {name: "Denied"}) { entity { id } } }',
+          ]) {
+            expect(
+              (await graphql(denied, { id: first }, ordinaryCookies))
+                .errors?.[0]?.extensions.code,
+            ).toBe("FORBIDDEN");
+          }
+        } finally {
+          await em.nativeUpdate(User, ordinary.id, { roles: ["user"] });
+        }
+      } finally {
+        await orm.em.fork().nativeDelete(ApiKeyEntity, unrelated.id);
+      }
+    } finally {
+      for (const id of [first, second]) {
+        await graphql(
+          "mutation($id: ID!) { deleteSystemAccount(id: $id) { id } }",
+          { id },
+        );
+      }
+    }
   });
 
   it("creates, manages, uses, revokes and deletes independent credentials over HTTP", async () => {

@@ -973,6 +973,8 @@ export type Query = {
   socialProviders: Array<AuthSocialProviderType>;
   systemAccount?: Maybe<SystemAccount>;
   systemAccountApiKey?: Maybe<SystemAccountApiKey>;
+  systemAccountApiKeyPermissions: Array<SystemAccountPermissionOption>;
+  systemAccountApiKeys: SystemAccountApiKeyConnection;
   systemAccountPermissions: Array<SystemAccountPermissionOption>;
   systemAccounts: SystemAccountConnection;
   systemJob?: Maybe<Job>;
@@ -1010,6 +1012,20 @@ export type QuerySystemAccountArgs = {
 
 export type QuerySystemAccountApiKeyArgs = {
   id: Scalars["ID"]["input"];
+};
+
+export type QuerySystemAccountApiKeyPermissionsArgs = {
+  systemAccountId?: InputMaybe<Scalars["ID"]["input"]>;
+};
+
+export type QuerySystemAccountApiKeysArgs = {
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["SystemAccountApiKeyFilter"]["input"]>;
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  orderBy?: InputMaybe<SystemAccountApiKeyOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type QuerySystemAccountsArgs = {
@@ -1779,6 +1795,46 @@ export type WorkspaceRoleOption = {
   role: WorkspaceRole;
 };
 
+export type ManagedSystemAccountKeysQueryVariables = Exact<{
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+  last?: InputMaybe<Scalars["Int"]["input"]>;
+  after?: InputMaybe<Scalars["String"]["input"]>;
+  before?: InputMaybe<Scalars["String"]["input"]>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+  filter?: InputMaybe<Scalars["SystemAccountApiKeyFilter"]["input"]>;
+  orderBy?: InputMaybe<SystemAccountApiKeyOrder>;
+}>;
+
+export type ManagedSystemAccountKeysQuery = {
+  __typename?: "Query";
+  systemAccountApiKeys: {
+    __typename?: "SystemAccountApiKeyConnection";
+    edges: Array<{
+      __typename?: "SystemAccountApiKeyEdge";
+      node: {
+        __typename?: "SystemAccountApiKey";
+        id: string;
+        systemAccountId: string;
+        name: string;
+        enabled: boolean;
+        permissions: Array<SystemAccountPermission>;
+        prefix?: string | null;
+        start?: string | null;
+        createdAt: any;
+        lastUsedAt?: any | null;
+        expiresAt?: any | null;
+      };
+    }>;
+    pageInfo: {
+      __typename?: "PageInfo";
+      hasNextPage: boolean;
+      hasPreviousPage: boolean;
+      startCursor?: string | null;
+      endCursor?: string | null;
+    };
+  };
+};
+
 export type GetAdminOverviewQueryVariables = Exact<{
   includeUsers?: Scalars["Boolean"]["input"];
 }>;
@@ -1805,48 +1861,17 @@ export type GetAdminSystemAccountOverviewQuery = {
   };
 };
 
-export type ManagedSystemAccountKeysQueryVariables = Exact<{
-  id: Scalars["ID"]["input"];
-  first?: InputMaybe<Scalars["Int"]["input"]>;
-  last?: InputMaybe<Scalars["Int"]["input"]>;
-  after?: InputMaybe<Scalars["String"]["input"]>;
-  before?: InputMaybe<Scalars["String"]["input"]>;
-  query?: InputMaybe<Scalars["String"]["input"]>;
-  filter?: InputMaybe<Scalars["SystemAccountApiKeyFilter"]["input"]>;
-  orderBy?: InputMaybe<SystemAccountApiKeyOrder>;
+export type GetAdminSystemKeyOverviewQueryVariables = Exact<{
+  [key: string]: never;
 }>;
 
-export type ManagedSystemAccountKeysQuery = {
+export type GetAdminSystemKeyOverviewQuery = {
   __typename?: "Query";
-  systemAccount?: {
-    __typename?: "SystemAccount";
-    id: string;
-    apiKeys: {
-      __typename?: "SystemAccountApiKeyConnection";
-      edges: Array<{
-        __typename?: "SystemAccountApiKeyEdge";
-        node: {
-          __typename?: "SystemAccountApiKey";
-          id: string;
-          name: string;
-          enabled: boolean;
-          permissions: Array<SystemAccountPermission>;
-          prefix?: string | null;
-          start?: string | null;
-          createdAt: any;
-          lastUsedAt?: any | null;
-          expiresAt?: any | null;
-        };
-      }>;
-      pageInfo: {
-        __typename?: "PageInfo";
-        hasNextPage: boolean;
-        hasPreviousPage: boolean;
-        startCursor?: string | null;
-        endCursor?: string | null;
-      };
-    };
-  } | null;
+  systemAccountApiKeys: {
+    __typename?: "SystemAccountApiKeyConnection";
+    totalCount: number;
+    totalCountRelation: TotalCountRelation;
+  };
 };
 
 export type ManagedSystemAccountsQueryVariables = Exact<{
@@ -3344,7 +3369,6 @@ export type SystemAccountPermissionChoicesQuery = {
 
 export type ManagedSystemAccountQueryVariables = Exact<{
   id: Scalars["ID"]["input"];
-  includeKeys: Scalars["Boolean"]["input"];
 }>;
 
 export type ManagedSystemAccountQuery = {
@@ -3357,12 +3381,6 @@ export type ManagedSystemAccountQuery = {
     permissions: Array<SystemAccountPermission>;
     createdById?: string | null;
     createdAt: any;
-    apiKeyPermissions?: Array<{
-      __typename?: "SystemAccountPermissionOption";
-      permission: SystemAccountPermission;
-      grantable: boolean;
-      default: boolean;
-    }>;
   } | null;
 };
 
@@ -3448,6 +3466,50 @@ export type DeleteManagedSystemAccountKeyMutation = {
   deleteSystemAccountApiKey: { __typename?: "SystemAccountApiKey"; id: string };
 };
 
+export type SystemKeyPermissionChoicesQueryVariables = Exact<{
+  systemAccountId?: InputMaybe<Scalars["ID"]["input"]>;
+}>;
+
+export type SystemKeyPermissionChoicesQuery = {
+  __typename?: "Query";
+  systemAccountApiKeyPermissions: Array<{
+    __typename?: "SystemAccountPermissionOption";
+    permission: SystemAccountPermission;
+    grantable: boolean;
+    default: boolean;
+  }>;
+};
+
+export type SystemKeyAccountChoicesQueryVariables = Exact<{
+  after?: InputMaybe<Scalars["String"]["input"]>;
+}>;
+
+export type SystemKeyAccountChoicesQuery = {
+  __typename?: "Query";
+  systemAccounts: {
+    __typename?: "SystemAccountConnection";
+    edges: Array<{
+      __typename?: "SystemAccountEdge";
+      node: {
+        __typename?: "SystemAccount";
+        id: string;
+        name: string;
+        apiKeyPermissions: Array<{
+          __typename?: "SystemAccountPermissionOption";
+          permission: SystemAccountPermission;
+          grantable: boolean;
+          default: boolean;
+        }>;
+      };
+    }>;
+    pageInfo: {
+      __typename?: "PageInfo";
+      hasNextPage: boolean;
+      endCursor?: string | null;
+    };
+  };
+};
+
 export type GetPasswordPolicyQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GetPasswordPolicyQuery = {
@@ -3459,6 +3521,235 @@ export type GetPasswordPolicyQuery = {
   };
 };
 
+export const ManagedSystemAccountKeysDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "managedSystemAccountKeys" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "first" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "last" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "after" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "before" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "query" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "filter" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "SystemAccountApiKeyFilter" },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "orderBy" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "SystemAccountApiKeyOrder" },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "systemAccountApiKeys" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "first" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "last" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "last" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "after" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "after" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "before" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "before" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "query" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "query" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "filter" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "filter" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "orderBy" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "systemAccountId" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "name" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "enabled" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "permissions" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "prefix" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "start" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "createdAt" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "lastUsedAt" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "expiresAt" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "pageInfo" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasNextPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasPreviousPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "startCursor" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "endCursor" },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  ManagedSystemAccountKeysQuery,
+  ManagedSystemAccountKeysQueryVariables
+>;
 export const GetAdminOverviewDocument = {
   kind: "Document",
   definitions: [
@@ -3570,250 +3861,33 @@ export const GetAdminSystemAccountOverviewDocument = {
   GetAdminSystemAccountOverviewQuery,
   GetAdminSystemAccountOverviewQueryVariables
 >;
-export const ManagedSystemAccountKeysDocument = {
+export const GetAdminSystemKeyOverviewDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "query",
-      name: { kind: "Name", value: "managedSystemAccountKeys" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "first" },
-          },
-          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "last" } },
-          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "after" },
-          },
-          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "before" },
-          },
-          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "query" },
-          },
-          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "filter" },
-          },
-          type: {
-            kind: "NamedType",
-            name: { kind: "Name", value: "SystemAccountApiKeyFilter" },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "orderBy" },
-          },
-          type: {
-            kind: "NamedType",
-            name: { kind: "Name", value: "SystemAccountApiKeyOrder" },
-          },
-        },
-      ],
+      name: { kind: "Name", value: "getAdminSystemKeyOverview" },
       selectionSet: {
         kind: "SelectionSet",
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "systemAccount" },
+            name: { kind: "Name", value: "systemAccountApiKeys" },
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "id" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "id" },
-                },
+                name: { kind: "Name", value: "first" },
+                value: { kind: "IntValue", value: "1" },
               },
             ],
             selectionSet: {
               kind: "SelectionSet",
               selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "totalCount" } },
                 {
                   kind: "Field",
-                  name: { kind: "Name", value: "apiKeys" },
-                  arguments: [
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "first" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "first" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "last" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "last" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "after" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "after" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "before" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "before" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "query" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "query" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "filter" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "filter" },
-                      },
-                    },
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "orderBy" },
-                      value: {
-                        kind: "Variable",
-                        name: { kind: "Name", value: "orderBy" },
-                      },
-                    },
-                  ],
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "edges" },
-                        selectionSet: {
-                          kind: "SelectionSet",
-                          selections: [
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "node" },
-                              selectionSet: {
-                                kind: "SelectionSet",
-                                selections: [
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "id" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "name" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "enabled" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: {
-                                      kind: "Name",
-                                      value: "permissions",
-                                    },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "prefix" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "start" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "createdAt" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "lastUsedAt" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "expiresAt" },
-                                  },
-                                ],
-                              },
-                            },
-                          ],
-                        },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "pageInfo" },
-                        selectionSet: {
-                          kind: "SelectionSet",
-                          selections: [
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "hasNextPage" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "hasPreviousPage" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "startCursor" },
-                            },
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "endCursor" },
-                            },
-                          ],
-                        },
-                      },
-                    ],
-                  },
+                  name: { kind: "Name", value: "totalCountRelation" },
                 },
               ],
             },
@@ -3823,8 +3897,8 @@ export const ManagedSystemAccountKeysDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  ManagedSystemAccountKeysQuery,
-  ManagedSystemAccountKeysQueryVariables
+  GetAdminSystemKeyOverviewQuery,
+  GetAdminSystemKeyOverviewQueryVariables
 >;
 export const ManagedSystemAccountsDocument = {
   kind: "Document",
@@ -11199,20 +11273,6 @@ export const ManagedSystemAccountDocument = {
             type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
           },
         },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "includeKeys" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "Boolean" },
-            },
-          },
-        },
       ],
       selectionSet: {
         kind: "SelectionSet",
@@ -11239,43 +11299,6 @@ export const ManagedSystemAccountDocument = {
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
                 { kind: "Field", name: { kind: "Name", value: "createdById" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "apiKeyPermissions" },
-                  directives: [
-                    {
-                      kind: "Directive",
-                      name: { kind: "Name", value: "include" },
-                      arguments: [
-                        {
-                          kind: "Argument",
-                          name: { kind: "Name", value: "if" },
-                          value: {
-                            kind: "Variable",
-                            name: { kind: "Name", value: "includeKeys" },
-                          },
-                        },
-                      ],
-                    },
-                  ],
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "permission" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "grantable" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "default" },
-                      },
-                    ],
-                  },
-                },
               ],
             },
           },
@@ -11719,6 +11742,189 @@ export const DeleteManagedSystemAccountKeyDocument = {
 } as unknown as DocumentNode<
   DeleteManagedSystemAccountKeyMutation,
   DeleteManagedSystemAccountKeyMutationVariables
+>;
+export const SystemKeyPermissionChoicesDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "systemKeyPermissionChoices" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "systemAccountId" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "systemAccountApiKeyPermissions" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "systemAccountId" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "systemAccountId" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "permission" } },
+                { kind: "Field", name: { kind: "Name", value: "grantable" } },
+                { kind: "Field", name: { kind: "Name", value: "default" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  SystemKeyPermissionChoicesQuery,
+  SystemKeyPermissionChoicesQueryVariables
+>;
+export const SystemKeyAccountChoicesDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "systemKeyAccountChoices" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "after" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "systemAccounts" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: { kind: "IntValue", value: "100" },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "after" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "after" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "filter" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "enabled" },
+                      value: { kind: "BooleanValue", value: true },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "name" },
+                            },
+                            {
+                              kind: "Field",
+                              name: {
+                                kind: "Name",
+                                value: "apiKeyPermissions",
+                              },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "permission" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "grantable" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "default" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "pageInfo" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasNextPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "endCursor" },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  SystemKeyAccountChoicesQuery,
+  SystemKeyAccountChoicesQueryVariables
 >;
 export const GetPasswordPolicyDocument = {
   kind: "Document",

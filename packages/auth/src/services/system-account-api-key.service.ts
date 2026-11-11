@@ -45,19 +45,23 @@ export class SystemAccountApiKeyService {
 
   /**
    * Lists configured key grants within the account and administrator ceilings.
-   * @param systemAccountId - Identifier of the owning system account.
+   * @param systemAccountId - Optional account ceiling; omit for the administrator-wide catalog.
    * @returns Key permission choices and their creation defaults.
    */
   async getSystemAccountApiKeyPermissions(
-    systemAccountId: string,
+    systemAccountId?: string,
   ): Promise<SystemAccountPermissionOption[]> {
     this.assertAccess("read");
     return await runAuthQuery(this.em, async (em) => {
-      const account = await em.findOne(SystemAccount, systemAccountId);
-      if (!account) {
+      const account = systemAccountId
+        ? await em.findOne(SystemAccount, systemAccountId)
+        : undefined;
+      if (systemAccountId && !account) {
         throw new NotFoundException("System account not found");
       }
-      authorize("read", account);
+      if (account) {
+        authorize("read", account);
+      }
       const catalog = resolveApiKeyPermissionCatalog(
         this.options,
         "systemAccount",
@@ -67,7 +71,7 @@ export class SystemAccountApiKeyService {
         default: catalog.defaults.includes(permission),
         grantable:
           catalog.allowed.includes(permission) &&
-          account.permissions.includes(permission) &&
+          (!account || account.permissions.includes(permission)) &&
           canGrantPermissions(this.options, "user", [permission]),
       }));
     });
@@ -99,13 +103,13 @@ export class SystemAccountApiKeyService {
 
   /**
    * Lists system-owned key metadata without exposing credential hashes.
-   * @param systemAccountId - Identifier of the owning system account.
+   * @param systemAccountId - Optional owner filter; omit to list all system credentials.
    * @param args - Cursor pagination, ordering and filtering arguments.
    * @param info - GraphQL selection information used to shape the query.
    * @returns Page of system-account credential metadata without hashes.
    */
   async getSystemAccountApiKeyConnection(
-    systemAccountId: string,
+    systemAccountId: string | undefined,
     args: ConnectionArgsInterface<SystemAccountApiKey>,
     info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<ApiKeyMetadata<SystemAccountApiKey>>> {
@@ -118,7 +122,9 @@ export class SystemAccountApiKeyService {
           ...(info && { info }),
           where: {
             ownerType: "system_account",
-            owner: em.getReference(SystemAccount, systemAccountId),
+            ...(systemAccountId
+              ? { owner: em.getReference(SystemAccount, systemAccountId) }
+              : {}),
           },
           populate: ["owner"],
           exclude: ["key"],

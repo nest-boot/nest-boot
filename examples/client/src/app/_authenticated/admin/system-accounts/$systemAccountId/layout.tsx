@@ -14,7 +14,6 @@ export const Route = createFileRoute(
         query: SYSTEM_ACCOUNT_DETAILS,
         variables: {
           id: params.systemAccountId,
-          includeKeys: context.ability.can("read", "SystemAccountApiKey"),
         },
         fetchPolicy: "network-only",
       })

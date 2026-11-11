@@ -694,6 +694,33 @@ type Query {
   socialProviders: [AuthSocialProviderType!]!
   systemAccount(id: ID!): SystemAccount
   systemAccountApiKey(id: ID!): SystemAccountApiKey
+  systemAccountApiKeyPermissions(systemAccountId: ID): [SystemAccountPermissionOption!]!
+  systemAccountApiKeys(
+    """Returns the elements that come after the specified cursor."""
+    after: String
+
+    """Returns the elements that come before the specified cursor."""
+    before: String
+
+    """Filter systemaccountapikeys using MongoDB query syntax."""
+    filter: SystemAccountApiKeyFilter
+
+    """Returns up to the first `n` elements from the list."""
+    first: Int
+
+    """Returns up to the last `n` elements from the list."""
+    last: Int
+
+    """Ordering options for the returned systemaccountapikeys."""
+    orderBy: SystemAccountApiKeyOrder
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `prefix`, `enabled`
+    """
+    query: String
+  ): SystemAccountApiKeyConnection!
   systemAccountPermissions: [SystemAccountPermissionOption!]!
   systemAccounts(
     """Returns the elements that come after the specified cursor."""

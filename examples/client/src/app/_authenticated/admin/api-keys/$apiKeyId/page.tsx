@@ -1,12 +1,15 @@
 import { useMutation } from "@apollo/client/react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { t } from "i18next";
+import { adminApiKeysResourceKey } from "@/lib/resource-keys";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { SystemAccountPermission } from "@/gql/graphql";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import {
   DELETE_SYSTEM_KEY,
+  SYSTEM_ACCOUNT_DETAILS,
   SYSTEM_KEY_DETAILS,
+  SYSTEM_KEY_PERMISSIONS,
   UPDATE_SYSTEM_KEY,
 } from "@/graphql/system-accounts";
 import { getPermissionOptions } from "@/lib/permissions";
@@ -18,15 +21,11 @@ import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 
 export const Route = createFileRoute(
-  "/_authenticated/admin/system-accounts/$systemAccountId/api-keys/$apiKeyId/",
+  "/_authenticated/admin/api-keys/$apiKeyId/",
 )({
   component: Details,
   beforeLoad: async ({ context, params }) => {
-    const denied = () =>
-      redirect({
-        to: "/admin/system-accounts/$systemAccountId/api-keys",
-        params,
-      });
+    const denied = () => redirect({ to: "/admin/api-keys" });
     const { data } = await context.apolloClient
       .query({
         query: SYSTEM_KEY_DETAILS,
@@ -40,24 +39,45 @@ export const Route = createFileRoute(
     const apiKey = data?.systemAccountApiKey;
     if (
       !apiKey ||
-      apiKey.systemAccountId !== params.systemAccountId ||
       !context.ability.can(
         "read",
         createAbilitySubject("SystemAccountApiKey", apiKey),
       )
     )
       throw denied();
-    return { apiKey, title: t("api-key:edit.title") };
+    const canReadAccount = context.ability.can("read", "SystemAccount");
+    const owner = canReadAccount
+      ? await context.apolloClient.query({
+          query: SYSTEM_ACCOUNT_DETAILS,
+          variables: { id: apiKey.systemAccountId },
+          fetchPolicy: "network-only",
+        })
+      : undefined;
+    const choices = canReadAccount
+      ? await context.apolloClient.query({
+          query: SYSTEM_KEY_PERMISSIONS,
+          variables: { systemAccountId: apiKey.systemAccountId },
+          fetchPolicy: "network-only",
+        })
+      : undefined;
+    return {
+      apiKey,
+      account: owner?.data?.systemAccount,
+      permissionOptions:
+        choices?.data?.systemAccountApiKeyPermissions ??
+        context.keyPermissionOptions,
+      title: t("api-key:edit.title"),
+    };
   },
 });
 function Details() {
-  const { account, apiKey } = Route.useRouteContext();
+  const { account, apiKey, permissionOptions } = Route.useRouteContext();
   const ability = useAbility();
   const router = useRouter();
   const navigate = Route.useNavigate();
   const user = useCurrentUserContext();
   const { backSearch } = useResourceNavigation({
-    key: [user.id, "admin", "system-accounts", account.id, "api-keys"],
+    key: [user.id, ...adminApiKeysResourceKey],
     searchSchema: apiKeySearchSchema,
   });
   const [update] = useMutation(UPDATE_SYSTEM_KEY);
@@ -80,10 +100,11 @@ function Details() {
         createAbilitySubject("SystemAccountApiKey", apiKey),
         "permissions",
       )}
-      listPath={`/admin/system-accounts/${account.id}/api-keys`}
+      listPath="/admin/api-keys"
+      systemAccountName={account?.name ?? apiKey.systemAccountId}
       listSearch={backSearch}
       permissionValues={Object.values(SystemAccountPermission)}
-      permissionOptions={getPermissionOptions(account.apiKeyPermissions ?? [])}
+      permissionOptions={getPermissionOptions(permissionOptions)}
       permissionsHint={t("admin:system_accounts.key_permissions_hint")}
       onSave={async (input) => {
         await update({
@@ -109,8 +130,7 @@ function Details() {
       onDelete={async () => {
         await remove({ variables: { id: apiKey.id } });
         await navigate({
-          to: "/admin/system-accounts/$systemAccountId/api-keys",
-          params: { systemAccountId: account.id },
+          to: "/admin/api-keys",
           search: backSearch,
         });
       }}

@@ -106,8 +106,14 @@
     "delete_description": "此操作将永久删除账户及其全部 API Key。",
     "permissions_hint": "这是账户下所有密钥的权限上限。权限为空时不授予任何访问权限。",
     "key_permissions_hint": "密钥权限受账户和当前管理员的权限限制。未选择任何权限时不授予访问权限。",
-    "keys_description": "{{name}} 的 API Key",
+    "keys_description": "管理独立系统账户的 API Key。",
     "overview": "管理独立的系统身份及其密钥。",
-    "manage": "管理系统账户"
+    "manage": "管理系统账户",
+    "manage_keys": "管理 API Key",
+    "select_label": "系统账户",
+    "select_search": "搜索系统账户",
+    "select_empty": "没有匹配的系统账户",
+    "select_required": "请选择已有系统账户。",
+    "auto_create": "留空时，按密钥名称和所选权限创建系统账户。"
   }
 }

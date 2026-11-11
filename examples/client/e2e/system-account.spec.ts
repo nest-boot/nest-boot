@@ -12,20 +12,22 @@ test("manages system identities and credentials under admin, with one-time secre
   test.setTimeout(90_000);
   await signInAsE2eAdministrator(page);
   const name = uniqueSeed("system-account");
-  await page.goto("/admin");
-  await page
-    .getByRole("link", { name: "Manage system accounts", exact: true })
-    .click();
-  await page.getByRole("link", { name: "Create", exact: true }).click();
+  await page.goto("/admin/api-keys");
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(
+    page.getByRole("combobox", { name: "System account", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("tab", { name: "You", exact: true })).toHaveCount(
+    0,
+  );
   await page.getByLabel("Name", { exact: true }).fill(name);
   await getPermissionCheckbox(page, "USER__READ").check();
   let attempts = 0;
+  let accountsCreated = 0;
   await page.route("**/graphql", async (route) => {
-    if (
-      route.request().postDataJSON().operationName ===
-        "createManagedSystemAccount" &&
-      ++attempts === 1
-    ) {
+    const operation = route.request().postDataJSON().operationName;
+    if (operation === "createManagedSystemAccount") accountsCreated++;
+    if (operation === "createManagedSystemAccountKey" && ++attempts === 1) {
       await route.fulfill({
         json: { errors: [{ message: "Temporary creation failure" }] },
       });
@@ -39,30 +41,27 @@ test("manages system identities and credentials under admin, with one-time secre
   ).toBeVisible();
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue(name);
   await page.getByRole("button", { name: "Create", exact: true }).click();
-  await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
-  expect(attempts).toBe(2);
-  const accountId = new URL(page.url()).pathname
-    .split("/")
-    .filter(Boolean)
-    .at(-1);
-  expect(accountId).toBeTruthy();
-  await page.getByRole("link", { name: "API Keys", exact: true }).click();
-  await page.getByRole("button", { name: "Create", exact: true }).click();
-  await expect(
-    getPermissionCheckbox(page, "WORKSPACE__READ_ANY"),
-  ).toBeDisabled();
-  await expect(
-    page.getByText(
-      "Key permissions are limited by this account and your grants. An empty selection grants no access.",
-      { exact: true },
-    ),
-  ).toBeVisible();
-  await page.getByLabel("Name", { exact: true }).fill("Deployment");
-  await getPermissionCheckbox(page, "USER__READ").check();
-  await page.getByRole("button", { name: "Create", exact: true }).click();
   const secretField = page.getByLabel("Key", { exact: true });
   await expect(secretField).toHaveValue(/^sys_[A-Za-z0-9_-]{64}$/);
   const secret = await secretField.inputValue();
+  expect(attempts).toBe(2);
+  expect(accountsCreated).toBe(1);
+  const keyId = new URL(page.url()).pathname.split("/").filter(Boolean).at(-1);
+  const { systemAccountApiKey: metadata } = await graphqlRequest<{
+    systemAccountApiKey: { systemAccountId: string };
+  }>(
+    page.request,
+    "query($id: ID!) { systemAccountApiKey(id: $id) { systemAccountId } }",
+    { id: keyId },
+  );
+  const accountId = metadata.systemAccountId;
+  await expect(page.getByLabel("System account", { exact: true })).toHaveValue(
+    name,
+  );
+  await expect(
+    getPermissionCheckbox(page, "WORKSPACE__READ_ANY"),
+  ).toBeDisabled();
+
   const keyPath = new URL(page.url()).pathname;
   expect(page.url()).not.toContain(secret);
   expect(
@@ -126,9 +125,7 @@ test("manages system identities and credentials under admin, with one-time secre
       .getByRole("alertdialog")
       .getByRole("button", { name: "Delete", exact: true })
       .click();
-    await expect(page).toHaveURL(
-      new RegExp(`/admin/system-accounts/${accountId}/api-keys/?(?:\\?.*)?$`),
-    );
+    await expect(page).toHaveURL(/\/admin\/api-keys\/?(?:\?.*)?$/);
     expect((await read()).status()).toBe(401);
     const { createSystemAccountApiKey: dependent } = await graphqlRequest<{
       createSystemAccountApiKey: { entity: { id: string } };
@@ -138,10 +135,6 @@ test("manages system identities and credentials under admin, with one-time secre
       { id: accountId },
     );
     await page.goto(`/admin/system-accounts/${accountId}`);
-    await page.screenshot({
-      path: "/tmp/review434-system-account.png",
-      fullPage: true,
-    });
     await clickPageAction(page, "Delete");
     await page
       .getByRole("alertdialog")
@@ -218,10 +211,8 @@ test("read-only system-account abilities hide writes and reject direct create ro
     await expect(
       page.getByRole("link", { name: "Create", exact: true }),
     ).toHaveCount(0);
-    await page.goto(`/admin/system-accounts/${account.id}/api-keys/create`);
-    await expect(page).toHaveURL(
-      new RegExp(`/admin/system-accounts/${account.id}/api-keys/?(?:\\?.*)?$`),
-    );
+    await page.goto("/admin/api-keys/create");
+    await expect(page).toHaveURL(/\/admin\/api-keys\/?(?:\?.*)?$/);
     await expect(
       page.getByRole("button", { name: "Create", exact: true }),
     ).toBeDisabled();
@@ -281,6 +272,72 @@ test("respects permission-field restrictions and sends only edited account field
       page.request,
       "mutation($id: ID!) { deleteSystemAccount(id: $id) { id } }",
       { id: account.id },
+    );
+  }
+});
+
+test("selects an existing system account and refreshes its key permission ceiling", async ({
+  page,
+}) => {
+  await signInAsE2eAdministrator(page);
+  const name = uniqueSeed("existing-system-account");
+  await page.goto("/admin/system-accounts/create");
+  await page.getByLabel("Name", { exact: true }).fill(name);
+  await getPermissionCheckbox(page, "USER__READ").check();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  const accountId = new URL(page.url()).pathname
+    .split("/")
+    .filter(Boolean)
+    .at(-1);
+  try {
+    await page.goto("/admin/api-keys/create");
+    await page.getByLabel("Name", { exact: true }).fill("Existing account key");
+    await getPermissionCheckbox(page, "WORKSPACE__READ_ANY").check();
+    const select = page.getByRole("combobox", {
+      name: "System account",
+      exact: true,
+    });
+    await select.fill(name);
+    await page.getByRole("option", { name, exact: true }).click();
+    await expect(
+      getPermissionCheckbox(page, "WORKSPACE__READ_ANY"),
+    ).toBeDisabled();
+    await expect(
+      getPermissionCheckbox(page, "WORKSPACE__READ_ANY"),
+    ).not.toBeChecked();
+    await getPermissionCheckbox(page, "USER__READ").check();
+    let createdAccounts = 0;
+    page.on("request", (request) => {
+      if (
+        request.url().endsWith("/api/graphql") &&
+        request
+          .postData()
+          ?.includes('"operationName":"createManagedSystemAccount"')
+      )
+        createdAccounts++;
+    });
+    await page.getByRole("button", { name: "Create", exact: true }).click();
+    await expect(page.getByLabel("Key", { exact: true })).toHaveValue(
+      /^sys_[A-Za-z0-9_-]{64}$/,
+    );
+    await expect(
+      page.getByLabel("System account", { exact: true }),
+    ).toHaveValue(name);
+    expect(createdAccounts).toBe(0);
+    await page
+      .getByRole("link", { name: "API Keys", exact: true })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/admin\/api-keys\/?(?:\?.*)?$/);
+    await expect(
+      page.getByText("Existing account key", { exact: true }),
+    ).toBeVisible();
+  } finally {
+    await graphqlRequest(
+      page.request,
+      "mutation($id: ID!) { deleteSystemAccount(id: $id) { id } }",
+      { id: accountId },
     );
   }
 });

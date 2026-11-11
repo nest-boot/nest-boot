@@ -2,7 +2,7 @@ import { useQuery } from "@apollo/client/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
-import { Bot, UsersRound } from "lucide-react";
+import { Bot, KeyRound, UsersRound } from "lucide-react";
 import { useAbility } from "@/contexts/ability-context";
 import { Link } from "@/components/link";
 import {
@@ -34,6 +34,14 @@ const SYSTEM_OVERVIEW = graphql(`
     }
   }
 `);
+const KEY_OVERVIEW = graphql(`
+  query getAdminSystemKeyOverview {
+    systemAccountApiKeys(first: 1) {
+      totalCount
+      totalCountRelation
+    }
+  }
+`);
 export const Route = createFileRoute("/_authenticated/admin/")({
   component: Overview,
   beforeLoad: () => ({ title: t("common:overview.title") }),
@@ -50,6 +58,10 @@ function Overview() {
   const systemOverview = useQuery(SYSTEM_OVERVIEW, {
     fetchPolicy: "network-only",
     skip: !ability.can("read", "SystemAccount"),
+  });
+  const keyOverview = useQuery(KEY_OVERVIEW, {
+    fetchPolicy: "network-only",
+    skip: !ability.can("read", "SystemAccountApiKey"),
   });
   const summary = error ? undefined : data;
   return (
@@ -80,6 +92,35 @@ function Overview() {
               }
             >
               <OverviewCount connection={summary?.users} loading={loading} />
+            </OverviewCard>
+          </PageLayoutSection>
+        )}
+        {ability.can("read", "SystemAccountApiKey") && (
+          <PageLayoutSection>
+            <OverviewCard
+              title={t("api-key:title")}
+              description={t("admin:system_accounts.keys_description")}
+              icon={<KeyRound />}
+              action={
+                <Button
+                  variant="outline"
+                  render={<Link to="/admin/api-keys" />}
+                >
+                  {t("admin:system_accounts.manage_keys")}
+                </Button>
+              }
+            >
+              <OverviewCount
+                connection={keyOverview.data?.systemAccountApiKeys}
+                loading={keyOverview.loading}
+              />
+              {keyOverview.error && (
+                <OverviewError
+                  onRetry={() => {
+                    void keyOverview.refetch().catch(() => undefined);
+                  }}
+                />
+              )}
             </OverviewCard>
           </PageLayoutSection>
         )}
