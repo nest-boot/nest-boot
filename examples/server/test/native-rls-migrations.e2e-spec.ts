@@ -50,6 +50,7 @@ describe('example native RLS migrations with PGlite', () => {
             workspace: { enabled: true },
             apiKey: {
               enabled: true,
+              system: { enabled: true },
               user: { enabled: true },
               workspace: { enabled: true },
             },

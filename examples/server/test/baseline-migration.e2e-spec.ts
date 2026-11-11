@@ -17,6 +17,7 @@ it('builds the current example schema from ordered migrations and can roll back 
         workspace: { enabled: true },
         apiKey: {
           enabled: true,
+          system: { enabled: true },
           user: { enabled: true },
           workspace: { enabled: true },
         },

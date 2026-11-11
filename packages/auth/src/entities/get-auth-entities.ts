@@ -88,7 +88,7 @@ export function getAuthEntities(
     apiKey.meta.triggers = [apiKeyOwnerTrigger(workspace, schema, kinds)];
     result.push(apiKey);
   }
-  if (features.admin) {
+  if (features.systemAccount) {
     const system = local(SystemAccount);
     system.meta.triggers = features.systemAccountApiKey
       ? [apiKeyCleanupTrigger("system_account", schema)]

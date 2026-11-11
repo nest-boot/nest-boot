@@ -35,7 +35,8 @@ import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.j
 const options: AuthModuleOptions = {
   workspace: { enabled: true },
   apiKey: {
-    systemAccount: {
+    system: {
+      defaultPrefix: "machine_",
       allowedPermissions: [
         "user:read",
         "workspace:read-any",
@@ -128,13 +129,12 @@ describe("independent system accounts with real persistence and authentication",
         name: randomUUID(),
         permissions,
       });
-      return {
-        account,
-        ...(await keys.createSystemAccountApiKey(account.id, {
-          name: "Integration",
-          permissions,
-        })),
-      };
+      const key = await keys.createSystemAccountApiKey(account.id, {
+        name: "Integration",
+        permissions,
+      });
+      expect(key.apiKey).toMatch(/^machine_/);
+      return { account, ...key };
     });
 
   const withKey = async <T>(
@@ -790,8 +790,13 @@ describe("independent system accounts with real persistence and authentication",
     });
   });
 
-  it("rejects administrator context without a human session", async () => {
-    await asAdministrator(async (accounts) => {
+  it("rejects disabled administration and missing human sessions despite administrator context", async () => {
+    await asAdministrator(async (accounts, _keys, em) => {
+      await expect(
+        new SystemAccountApiKeyService(em, {
+          apiKey: { enabled: true, system: { enabled: true } },
+        }).getSystemAccountApiKeyPermissions(),
+      ).rejects.toThrow("Administration is disabled");
       RequestContext.set(Session, null);
       await expect(
         accounts.createSystemAccount({ name: "No session" }),

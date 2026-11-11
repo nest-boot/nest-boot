@@ -24,7 +24,7 @@ that enable it. Entities are registered automatically from this feature configur
 
 ## Optional administration and credentials
 
-`admin.enabled` defaults to false and enables user/session administration, impersonation and independent system accounts. `apiKey.enabled` is the master credential switch and also defaults to false. User and workspace scopes require `apiKey.user.enabled: true` and `apiKey.workspace.enabled: true`, respectively; workspace credentials additionally require the workspace feature. System credentials require administration and the master switch, and can be disabled separately with `apiKey.systemAccount.enabled: false`. Replace the former `apiKey.member.*` configuration with `apiKey.workspace.*`.
+`admin.enabled` defaults to false and enables user/session administration, impersonation and independent system accounts. `apiKey.enabled` is the master credential switch and also defaults to false. User and workspace scopes require `apiKey.user.enabled: true` and `apiKey.workspace.enabled: true`, respectively; workspace credentials additionally require the workspace feature. System authentication requires the master switch and `apiKey.system.enabled: true`, which also defaults to false and does not depend on `admin.enabled`. System-account/key management APIs additionally require administration. Replace the former `apiKey.member.*` configuration with `apiKey.workspace.*`. System credential configuration uses `apiKey.system.*` in place of `apiKey.systemAccount.*`.
 
 ```typescript
 AuthModule.forRoot({
@@ -33,10 +33,13 @@ AuthModule.forRoot({
   apiKey: {
     enabled: true,
     user: { enabled: true },
+    system: { enabled: true },
     workspace: { enabled: true },
   },
 });
 ```
+
+System-only applications register SystemAccount and ApiKeyEntity for authentication without exposing system-account GraphQL types or management endpoints. Provision credentials through a trusted seeder or internal ORM code and use them on application-owned APIs; built-in user/system management APIs stay disabled until administration is enabled.
 
 Disabled features register no corresponding services, GraphQL APIs or persistence tables. `ApiKey.owner` includes only active owner types and is nullable when identity access is unavailable; it does not pull disabled features into the schema.
 
@@ -61,6 +64,7 @@ Important Nest Boot options include:
 - **`workspace.sendInvitationEmail`** — delivers persisted workspace invitations;
 - **`apiKey.user`** — user-key defaults and grant limits;
 - **`apiKey.workspace`** — member-key defaults and grant limits;
+- **`apiKey.system`** — opt-in system-account keys, defaults and grant limits;
 - **`middleware`** — controls auth middleware registration and route selection;
 - **`basePath`** — changes the auth endpoint path from `/api/auth/`;
 - **`trustedOrigins`** — configures allowed browser origins;

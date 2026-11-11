@@ -30,7 +30,7 @@ export const apiKeyProviders: Provider[] = [
   ),
   featureProvider(
     SystemAccountApiKeyService,
-    "systemAccountApiKey",
+    "systemAccountApiKeyManagement",
     [EntityManager],
     (options, em: EntityManager) => new SystemAccountApiKeyService(em, options),
   ),
@@ -54,14 +54,14 @@ export const apiKeyProviders: Provider[] = [
   ),
   featureProvider(
     SystemAccountApiKeyResolver,
-    "systemAccountApiKey",
+    "systemAccountApiKeyManagement",
     [SystemAccountApiKeyService],
     (_options, keys: SystemAccountApiKeyService) =>
       new SystemAccountApiKeyResolver(keys),
   ),
   featureProvider(
     ApiKeyResolver,
-    "apiKey",
+    "apiKeyGraphQL",
     [
       UserService,
       { token: MemberService, optional: true },

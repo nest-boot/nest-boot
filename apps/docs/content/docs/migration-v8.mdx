@@ -250,6 +250,7 @@ const authEntities = getAuthEntities({
   apiKey: {
     enabled: true,
     user: { enabled: true },
+    system: { enabled: true },
     workspace: { enabled: true },
   },
 });
@@ -295,7 +296,7 @@ data-preserving reconciliation plan.
 
 ## Shared API-key storage in 8.x
 
-Administration and API keys are opt-in. Enable `admin.enabled` for management, and `apiKey.enabled` for credentials. Personal and workspace keys additionally require their respective `apiKey.user.enabled` / `apiKey.workspace.enabled` flags; workspace keys also require `workspace.enabled`. All of these switches default to false. System keys require administration and the credential master switch.
+Administration and API keys are opt-in. Enable `admin.enabled` for management, and `apiKey.enabled` for credentials. Personal and workspace keys additionally require their respective `apiKey.user.enabled` / `apiKey.workspace.enabled` flags; workspace keys also require `workspace.enabled`. All of these switches default to false. System keys additionally require `apiKey.system.enabled: true`; this scope also defaults to false.
 
 GraphQL credential outputs are unified as `ApiKey`, with a nullable `owner` union containing only active identity types. Workspace-wide and system-wide lists are `workspaceApiKeys` and `systemApiKeys`.
 

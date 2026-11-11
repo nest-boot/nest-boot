@@ -257,5 +257,25 @@ function removedApiKeyConfiguration() {
       member: { enabled: true },
     },
   });
+  AuthModule.forRoot({
+    apiKey: {
+      // @ts-expect-error use apiKey.system instead of the removed systemAccount configuration
+      systemAccount: { enabled: true },
+    },
+  });
 }
 removedApiKeyConfiguration;
+
+AuthModule.forRoot({
+  admin: { enabled: true },
+  apiKey: {
+    enabled: true,
+    system: {
+      enabled: true,
+      defaultPrefix: "machine_",
+      defaultPermissions: ["user:read"],
+      // @ts-expect-error system keys accept only the platform permission catalog
+      allowedPermissions: ["report:read"],
+    },
+  },
+});

@@ -211,6 +211,7 @@ const authEntities = getAuthEntities({
   apiKey: {
     enabled: true,
     user: { enabled: true },
+    system: { enabled: true },
     workspace: { enabled: true },
   },
 });
@@ -248,7 +249,7 @@ GraphQL `signUp` 现在返回 `SignUpPayload { id, token }`，不再返回
 
 ## 8.x 中的 ApiKey 合表迁移
 
-管理功能和密钥功能均需显式启用：分别配置 `admin.enabled`、`apiKey.enabled`。个人和工作区密钥还需开启 `apiKey.user.enabled`、`apiKey.workspace.enabled`，后者另需 `workspace.enabled`；这些开关均默认关闭。系统密钥要求管理功能和密钥总开关。
+管理功能和密钥功能均需显式启用：分别配置 `admin.enabled`、`apiKey.enabled`。个人和工作区密钥还需开启 `apiKey.user.enabled`、`apiKey.workspace.enabled`，后者另需 `workspace.enabled`；这些开关均默认关闭。系统凭证认证要求密钥总开关和显式设置 `apiKey.system.enabled: true`，默认关闭且不依赖 `admin.enabled`；管理 API 另需开启 admin。
 
 GraphQL 密钥输出统一为 `ApiKey`，可空的 `owner` 联合字段仅包含已启用的身份类型。工作区跨成员列表和系统列表分别为 `workspaceApiKeys`、`systemApiKeys`。
 

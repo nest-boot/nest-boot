@@ -22,7 +22,7 @@ AuthModule.forRoot({ workspace: { enabled: true } });
 
 ## 可选管理和密钥功能
 
-`admin.enabled` 默认关闭；开启后提供用户管理、会话管理和模拟登录，以及独立系统账户。`apiKey.enabled` 是默认关闭的密钥总开关。`apiKey.user.enabled` 与 `apiKey.workspace.enabled` 也默认关闭；后者另需开启工作区。系统密钥要求管理功能和密钥总开关，可用 `apiKey.systemAccount.enabled: false` 单独关闭。`apiKey.member.*` 改为 `apiKey.workspace.*`。
+`admin.enabled` 默认关闭；开启后提供用户管理、会话管理和模拟登录，以及独立系统账户。`apiKey.enabled` 是默认关闭的密钥总开关。`apiKey.user.enabled` 与 `apiKey.workspace.enabled` 也默认关闭；后者另需开启工作区。系统凭证认证只要求密钥总开关和 `apiKey.system.enabled: true`，不依赖 `admin.enabled`，且默认关闭；系统账户及密钥管理 API 另需开启 admin。`apiKey.member.*` 改为 `apiKey.workspace.*`。系统密钥配置统一使用 `apiKey.system.*`，替代 `apiKey.systemAccount.*`。
 
 ```typescript
 AuthModule.forRoot({
@@ -31,10 +31,13 @@ AuthModule.forRoot({
   apiKey: {
     enabled: true,
     user: { enabled: true },
+    system: { enabled: true },
     workspace: { enabled: true },
   },
 });
 ```
+
+只开启 system 时，会注册用于认证的 SystemAccount 和 ApiKeyEntity，但不引入管理员 GraphQL 类型或管理接口。通过可信 seeder 或内部 ORM 代码预置凭证，供应用自己的 API 使用；内置用户、系统账户及密钥管理接口仍由 admin 控制。
 
 关闭的功能不会注册对应服务、GraphQL API 或实体表。`ApiKey.owner` 联合字段只包含实际启用的 owner 类型；没有访问 owner 的权限时返回 null，不会额外引入关闭的功能。
 
@@ -58,6 +61,7 @@ AuthModule.forRoot({
 - **`workspace.sendInvitationEmail`** — 发送已持久化的工作区邀请；
 - **`apiKey.user`** — 用户 Key 的默认权限与授予上限；
 - **`apiKey.workspace`** — 成员 Key 的默认权限与授予上限；
+- **`apiKey.system`** — 系统账户 Key 的独立开关、默认权限与授予上限；
 - **`middleware`** — 控制认证中间件的注册和路由范围；
 - **`basePath`** — 修改默认的 `/api/auth/` 认证端点路径；
 - **`trustedOrigins`** — 配置允许的浏览器来源；

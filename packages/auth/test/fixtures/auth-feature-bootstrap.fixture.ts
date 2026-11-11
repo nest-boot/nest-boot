@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { MikroORM } from "@mikro-orm/core";
 import { type MikroORM as PgliteORM, PgliteDriver } from "@mikro-orm/pglite";
 import { DatabaseModule } from "@nest-boot/database";
+import { Args, ID, Query, Resolver } from "@nest-boot/graphql";
 import { HashService } from "@nest-boot/hash";
 import { Mailer } from "@nest-boot/mailer";
 import { ApolloDriver } from "@nestjs/apollo";
@@ -20,10 +21,26 @@ import {
   SystemAccount,
   User,
 } from "../../src/entities/index.js";
+import { ApiKeyAuthenticationService } from "../../src/infrastructure/api-key-authentication.service.js";
 import { MemberApiKeyService } from "../../src/services/member-api-key.service.js";
 import { SystemAccountService } from "../../src/services/system-account.service.js";
 import { SystemAccountApiKeyService } from "../../src/services/system-account-api-key.service.js";
+import { UserService } from "../../src/services/user.service.js";
 import { UserApiKeyService } from "../../src/services/user-api-key.service.js";
+import { hashApiKey } from "../../src/utils/api-key-credential.util.js";
+
+/** An application-owned endpoint whose authorization does not require the admin GraphQL API. */
+@Resolver()
+class FeatureUserResolver {
+  constructor(private readonly users: UserService) {}
+
+  @Query(() => User, { nullable: true })
+  async featureUser(
+    @Args("id", { type: () => ID }) id: string,
+  ): Promise<User | null> {
+    return await this.users.getUser(id);
+  }
+}
 
 @Global()
 @Module({
@@ -46,9 +63,9 @@ class Infrastructure {}
  * Boots the actual module graph, checks optional schema/models, and exercises a session.
  * @param options - Feature configuration being tested.
  * @param expected - Independently specified API and persistence expectations.
- * @param expected.admin - Whether management APIs and system identities should exist.
+ * @param expected.admin - Whether administrative management APIs should exist.
  * @param expected.workspace - Whether workspace identities should exist.
- * @param expected.owners - Credential owner types expected in persistence and GraphQL.
+ * @param expected.owners - Credential owner types expected in persistence.
  */
 export async function verifyAuthFeatures(
   options: AuthModuleOptions,
@@ -59,6 +76,7 @@ export async function verifyAuthFeatures(
   },
 ): Promise<void> {
   const module = await Test.createTestingModule({
+    providers: [FeatureUserResolver],
     imports: [
       Infrastructure,
       DatabaseModule.forRoot({
@@ -103,6 +121,11 @@ export async function verifyAuthFeatures(
     await orm.schema.create();
     const schema = app.get(GraphQLSchemaHost).schema;
     const queries = schema.getQueryType()?.getFields();
+    const managedOwners = expected.owners.filter(
+      (owner) => owner !== "SystemAccount" || expected.admin,
+    );
+    const systemManagement =
+      expected.admin && expected.owners.includes("SystemAccount");
     assert(queries);
     const mutations = schema.getMutationType()?.getFields();
     assert(mutations);
@@ -112,40 +135,40 @@ export async function verifyAuthFeatures(
     expect(!!mutations.createSystemAccount).toBe(expected.admin);
     expect(!!queries.currentWorkspace).toBe(expected.workspace);
     expect(!!queries.workspaceApiKeys).toBe(expected.owners.includes("Member"));
-    expect(!!queries.systemApiKeys).toBe(
-      expected.owners.includes("SystemAccount"),
-    );
+    expect(!!queries.systemApiKeys).toBe(systemManagement);
     expect(!!mutations.createUserApiKey).toBe(expected.owners.includes("User"));
     expect(!!mutations.createMemberApiKey).toBe(
       expected.owners.includes("Member"),
     );
-    expect(!!mutations.createSystemAccountApiKey).toBe(
-      expected.owners.includes("SystemAccount"),
-    );
+    expect(!!mutations.createSystemAccountApiKey).toBe(systemManagement);
     expect(
       !!(schema.getType("User") as GraphQLObjectType).getFields().apiKeys,
     ).toBe(expected.owners.includes("User"));
-    expect(!!schema.getType("ApiKey")).toBe(expected.owners.length > 0);
+    expect(!!schema.getType("ApiKey")).toBe(managedOwners.length > 0);
+    expect(!!schema.getType("SystemAccount")).toBe(expected.admin);
     expect(!!orm.getMetadata().find(ApiKeyEntity)).toBe(
       expected.owners.length > 0,
     );
-    expect(!!orm.getMetadata().find(SystemAccount)).toBe(expected.admin);
+    expect(!!orm.getMetadata().find(SystemAccount)).toBe(
+      expected.admin || expected.owners.includes("SystemAccount"),
+    );
     expect(!!orm.getMetadata().find(Member)).toBe(expected.workspace);
     for (const [token, enabled] of [
+      [ApiKeyAuthenticationService, expected.owners.length > 0],
       [SystemAccountService, expected.admin],
       [UserApiKeyService, expected.owners.includes("User")],
       [MemberApiKeyService, expected.owners.includes("Member")],
-      [SystemAccountApiKeyService, expected.owners.includes("SystemAccount")],
+      [SystemAccountApiKeyService, systemManagement],
     ] as const) {
       expect(!!app.get(token)).toBe(enabled);
     }
-    if (expected.owners.length) {
+    if (managedOwners.length) {
       expect(
         (schema.getType("ApiKeyOwner") as GraphQLUnionType)
           .getTypes()
           .map(({ name }) => name)
           .sort(),
-      ).toEqual([...expected.owners].sort());
+      ).toEqual([...managedOwners].sort());
     } else {
       expect(schema.getType("ApiKeyOwner")).toBeUndefined();
     }
@@ -270,6 +293,53 @@ export async function verifyAuthFeatures(
         { id: account.data?.createSystemAccount.id },
       );
       expect(deleted.errors).toBeUndefined();
+    }
+    if (!expected.admin && expected.owners.includes("SystemAccount")) {
+      const em = orm.em.fork();
+      const account = em.create(SystemAccount, {
+        name: "Provisioned machine",
+        permissions: ["user:read"],
+      });
+      const plaintext = "pre-provisioned-system-key";
+      const key = em.create(ApiKeyEntity, {
+        owner: account,
+        name: "Provisioned key",
+        key: hashApiKey(plaintext),
+        permissions: ["user:read"],
+      });
+      await em.persist([account, key]).flush();
+      const machineRequest = () =>
+        fetch(url + "/graphql", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: "Bearer " + plaintext,
+          },
+          body: JSON.stringify({
+            query:
+              "query($id: ID!) { featureUser(id: $id) { id } currentAbilityRules { actions subjects } }",
+            variables: { id: body.user.id },
+          }),
+        });
+      const machine = await machineRequest();
+      expect(machine.status).toBe(200);
+      const result = (await machine.json()) as {
+        data?: {
+          featureUser: { id: string };
+          currentAbilityRules: { actions: string[]; subjects: string[] }[];
+        };
+        errors?: unknown;
+      };
+      expect(result.errors).toBeUndefined();
+      expect(result.data?.featureUser.id).toBe(body.user.id);
+      expect(result.data?.currentAbilityRules).toContainEqual({
+        actions: ["read"],
+        subjects: ["User"],
+      });
+      await em.nativeUpdate(SystemAccount, account.id, { enabled: false });
+      expect((await machineRequest()).status).toBe(401);
+      await em.nativeDelete(SystemAccount, account.id);
+      expect(await em.count(ApiKeyEntity, key.id)).toBe(0);
     }
     // Disabled credential tables must not leave dangling deletion triggers on identities.
     await orm.em.fork().nativeDelete(User, body.user.id);

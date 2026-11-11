@@ -23,7 +23,7 @@ with both `default` and `grantable` set to true.
 
 ## Enable credential scopes
 
-`apiKey.enabled`, `apiKey.user.enabled` and `apiKey.workspace.enabled` default to false. Personal keys require both the master and user switches; workspace keys also require `workspace.enabled: true`. System-account keys require `admin.enabled: true` and the master switch; disable them separately with `apiKey.systemAccount.enabled: false`. The former `apiKey.member.*` configuration is removed; use `apiKey.workspace.*`. Feature activation registers APIs, while actor roles still require the corresponding read/write permissions.
+`apiKey.enabled`, `apiKey.user.enabled`, `apiKey.workspace.enabled` and `apiKey.system.enabled` default to false. Personal keys require both the master and user switches; workspace keys also require `workspace.enabled: true`. System-account authentication requires the master switch and explicit `apiKey.system.enabled: true`, independently of `admin.enabled`; management APIs additionally require administration. All three key scopes default to false. The former `apiKey.member.*` configuration is removed; use `apiKey.workspace.*`. System credential configuration uses `apiKey.system.*` in place of `apiKey.systemAccount.*`. Feature activation registers APIs, while actor roles still require the corresponding read/write permissions.
 
 ## Member ownership and service accounts
 
@@ -302,7 +302,7 @@ mutation {
 
 Use the returned ID with `createSystemAccountApiKey(systemAccountId, input)`. Its creation result contains `{ entity, apiKey }`; send the plaintext as `Authorization: Bearer <key>`. Subsequent queries expose only metadata. Use `SystemAccountService` and `SystemAccountApiKeyService` for programmatic management; `SystemAccount.apiKeys` provides cursor pagination.
 
-Configure defaults and ceilings under `apiKey.systemAccount` (`defaultPrefix`, `defaultPermissions`, `allowedPermissions`), with default prefix `sys_`. Effective permissions are the intersection of the account, explicit key grants and configured ceiling. Empty grants authorize nothing. Account disablement invalidates all owned credentials, while key disablement/expiry/deletion affects one credential. A system credential creates no user or membership identity.
+Configure defaults and ceilings under `apiKey.system` (`defaultPrefix`, `defaultPermissions`, `allowedPermissions`), with default prefix `sys_`. Effective permissions are the intersection of the account, explicit key grants and configured ceiling. Empty grants authorize nothing. Account disablement invalidates all owned credentials, while key disablement/expiry/deletion affects one credential. A system credential creates no user or membership identity.
 
 Available platform grants are `user:read`, `user:update`, `user:delete`, `workspace:read-any`, `workspace:update-any`, and `workspace:delete-any`. User services retain their permission checks. The explicit workspace endpoints are `workspaces`, `platformWorkspace(id)`, `updatePlatformWorkspace(id, input)`, and `deletePlatformWorkspace(id)`. Workspace grants have no effect when the feature is disabled, and do not grant access to business tables automatically.
 

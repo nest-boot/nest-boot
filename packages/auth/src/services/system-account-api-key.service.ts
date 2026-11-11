@@ -189,7 +189,7 @@ export class SystemAccountApiKeyService {
     const { apiKey, data } = ApiKeyLifecycle.prepareCreation(
       input,
       permissions,
-      this.options.apiKey?.systemAccount?.defaultPrefix ??
+      this.options.apiKey?.system?.defaultPrefix ??
         process.env.API_KEY_PREFIX ??
         "sys_",
     );

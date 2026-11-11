@@ -5,6 +5,7 @@ import { type AuthModuleOptions } from "../auth-module-options.interface.js";
 import { Invitation } from "../entities/invitation.entity.js";
 import { Member } from "../entities/member.entity.js";
 import { MemberApiKey } from "../entities/member-api-key.entity.js";
+import { SystemAccount } from "../entities/system-account.entity.js";
 import { User } from "../entities/user.entity.js";
 import { UserApiKey } from "../entities/user-api-key.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
@@ -46,6 +47,35 @@ const buildWorkspacePermissionAbility = (permissions: readonly string[]) =>
   );
 
 describe("permission ability builders", () => {
+  it("keeps machine platform grants independent from human administrative features", () => {
+    const options = { apiKey: { enabled: true, system: { enabled: true } } };
+    const context = {
+      user: null,
+      systemAccount: new SystemAccount(),
+      workspace: null,
+      member: null,
+      userPermissions: ["user:read", "workspace:read-any", "user:set-roles"],
+      workspacePermissions: [],
+    };
+    const machine = AuthAbilityFactory.createAbility(context, options);
+    expect(machine.can("read", User)).toBe(true);
+    expect(machine.can("read-any", Workspace)).toBe(false);
+    const workspaceMachine = AuthAbilityFactory.createAbility(context, {
+      ...options,
+      workspace: { enabled: true },
+    });
+    expect(workspaceMachine.can("read-any", Workspace)).toBe(true);
+    expect(machine.can("set-roles", User)).toBe(false);
+    const human = AuthAbilityFactory.createAbility(
+      { ...context, user: new User(), systemAccount: null },
+      options,
+    );
+    expect(human.can("read", User)).toBe(false);
+    const disabled = AuthAbilityFactory.createAbility(context, {
+      apiKey: { enabled: false, system: { enabled: true } },
+    });
+    expect(disabled.can("read", User)).toBe(false);
+  });
   it("suppresses disabled framework grants while preserving configured business grants", () => {
     const ability = AuthAbilityFactory.createAbility(
       {

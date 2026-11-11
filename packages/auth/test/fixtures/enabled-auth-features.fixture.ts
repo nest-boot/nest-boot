@@ -20,6 +20,7 @@ export function withAuthTestFeatures<Options extends AuthModuleOptions>(
     apiKey: {
       ...options.apiKey,
       enabled: options.apiKey?.enabled ?? true,
+      system: { enabled: true, ...options.apiKey?.system },
       user: { enabled: true, ...options.apiKey?.user },
       workspace: {
         enabled: options.workspace?.enabled === true,

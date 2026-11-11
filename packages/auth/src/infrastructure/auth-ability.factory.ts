@@ -48,7 +48,12 @@ export class AuthAbilityFactory {
         context.user || context.systemAccount
           ? [
               ...context.userPermissions.filter((permission) =>
-                isAuthPermissionEnabled(options, "user", permission),
+                isAuthPermissionEnabled(
+                  options,
+                  "user",
+                  permission,
+                  !!context.systemAccount,
+                ),
               ),
             ]
           : [],

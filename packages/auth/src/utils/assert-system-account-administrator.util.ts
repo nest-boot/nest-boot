@@ -15,6 +15,9 @@ import { DEFAULT_USER_ADMIN_ROLES } from "../user.constants.js";
 export function assertSystemAccountAdministrator(
   options: AuthModuleOptions,
 ): User {
+  if (options.admin?.enabled !== true) {
+    throw new ForbiddenException("Administration is disabled");
+  }
   const user = RequestContext.isActive() ? RequestContext.get(User) : null;
   if (
     !user?.roles.some((role) =>

@@ -18,7 +18,7 @@ description: "使用带权限范围的 API Key 认证个人和工作区自动化
 
 ## 开启密钥范围
 
-`apiKey.enabled`、`apiKey.user.enabled` 和 `apiKey.workspace.enabled` 均默认关闭。用户密钥必须同时开启总开关和 user 范围；工作空间密钥还要求 `workspace.enabled: true`。系统账户密钥要求 `admin.enabled: true` 与总开关，可以通过 `apiKey.systemAccount.enabled: false` 单独关闭。`apiKey.member.*` 已移除，统一使用 `apiKey.workspace.*`。启用功能不等于授予权限，角色仍需对应的读写权限。
+`apiKey.enabled`、`apiKey.user.enabled`、`apiKey.workspace.enabled` 和 `apiKey.system.enabled` 均默认关闭。用户密钥必须同时开启总开关和 user 范围；工作空间密钥还要求 `workspace.enabled: true`。系统凭证认证要求密钥总开关和 `apiKey.system.enabled: true`，不依赖 `admin.enabled`，且默认关闭；系统账户及密钥管理 API 另需开启 admin。`apiKey.member.*` 已移除，统一使用 `apiKey.workspace.*`。系统密钥配置统一使用 `apiKey.system.*`，替代 `apiKey.systemAccount.*`。启用功能不等于授予权限，角色仍需对应的读写权限。
 
 ## Member 归属与服务账号
 
@@ -252,7 +252,7 @@ mutation {
 
 使用返回的 ID 调用 `createSystemAccountApiKey(systemAccountId, input)`，结果为 `{ entity, apiKey }`。明文只在创建时返回一次，通过 `Authorization: Bearer <key>` 使用；后续查询不公开哈希或明文。程序调用使用 `SystemAccountService` 和 `SystemAccountApiKeyService`；`SystemAccount.apiKeys` 提供游标分页。
 
-`apiKey.systemAccount` 支持 `defaultPrefix`、`defaultPermissions`、`allowedPermissions`，默认前缀为 `sys_`。有效权限取“账户当前权限 ∩ 密钥显式授权 ∩ 配置上限”，空权限列表不授予任何访问能力。禁用账户会使全部所属密钥失效；禁用、过期或删除密钥只影响该密钥。认证不会伪造 User、Member 或选中的 workspace 身份。
+`apiKey.system` 支持 `defaultPrefix`、`defaultPermissions`、`allowedPermissions`，默认前缀为 `sys_`。有效权限取“账户当前权限 ∩ 密钥显式授权 ∩ 配置上限”，空权限列表不授予任何访问能力。禁用账户会使全部所属密钥失效；禁用、过期或删除密钥只影响该密钥。认证不会伪造 User、Member 或选中的 workspace 身份。
 
 内置平台权限为 `user:read`、`user:update`、`user:delete`、`workspace:read-any`、`workspace:update-any`、`workspace:delete-any`。用户操作仍经过 User Service 授权；平台工作区入口单独提供 `workspaces`、`platformWorkspace(id)`、`updatePlatformWorkspace(id, input)`、`deletePlatformWorkspace(id)`。关闭 workspace 后对应权限不生效，也不会自动开放业务表。
 

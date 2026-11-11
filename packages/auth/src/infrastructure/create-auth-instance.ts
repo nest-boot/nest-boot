@@ -202,15 +202,16 @@ function validateAuthOptions(options: AuthModuleOptions): void {
   if (options.apiKey && "member" in options.apiKey) {
     throw new Error("apiKey.member has been removed; use apiKey.workspace");
   }
-  if (
-    options.apiKey?.enabled === true &&
-    options.apiKey.systemAccount?.enabled === true &&
-    !features.admin
-  ) {
-    throw new Error("apiKey.systemAccount requires admin.enabled: true");
+  if (options.apiKey && "systemAccount" in options.apiKey) {
+    throw new Error("apiKey.systemAccount has been removed; use apiKey.system");
   }
   for (const scope of ["user", "member", "systemAccount"] as const) {
-    const scopeName = scope === "member" ? "workspace" : scope;
+    const scopeName =
+      scope === "member"
+        ? "workspace"
+        : scope === "systemAccount"
+          ? "system"
+          : scope;
     const active =
       scope === "user"
         ? features.userApiKey
@@ -224,8 +225,7 @@ function validateAuthOptions(options: AuthModuleOptions): void {
       options,
       scope,
     );
-    const configured =
-      options.apiKey?.[scope === "member" ? "workspace" : scope];
+    const configured = options.apiKey?.[scopeName];
     const allowed = configured?.allowedPermissions ?? catalog;
     assertAuthPermissionList(
       allowed,

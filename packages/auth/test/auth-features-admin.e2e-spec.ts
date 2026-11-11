@@ -1,8 +1,24 @@
 import { verifyAuthFeatures } from "./fixtures/auth-feature-bootstrap.fixture.js";
 
-it("enables administration without registering credential models or APIs", async () => {
-  await verifyAuthFeatures(
-    { admin: { enabled: true } },
-    { admin: true, workspace: false, owners: [] },
-  );
-}, 30000);
+it.each([
+  { admin: { enabled: true } },
+  { admin: { enabled: true }, apiKey: { enabled: true } },
+  {
+    admin: { enabled: true },
+    apiKey: { enabled: true, system: { enabled: false } },
+  },
+  {
+    admin: { enabled: true },
+    apiKey: { enabled: false, system: { enabled: true } },
+  },
+])(
+  "enables administration without implicitly enabling system credentials (%j)",
+  async (options) => {
+    await verifyAuthFeatures(options, {
+      admin: true,
+      workspace: false,
+      owners: [],
+    });
+  },
+  30000,
+);

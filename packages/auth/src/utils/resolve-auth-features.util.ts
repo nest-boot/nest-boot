@@ -1,4 +1,5 @@
 import type { AuthModuleOptions } from "../auth-module-options.interface.js";
+import { DEFAULT_SYSTEM_ACCOUNT_PERMISSIONS } from "../system-account.constants.js";
 
 /**
  * Resolves feature dependencies before provider, schema and entity registration.
@@ -14,15 +15,19 @@ export function resolveAuthFeatures(
   const userApiKey = keys && options.apiKey?.user?.enabled === true;
   const workspaceApiKey =
     keys && workspace && options.apiKey?.workspace?.enabled === true;
-  const systemAccountApiKey =
-    keys && admin && options.apiKey?.systemAccount?.enabled !== false;
+  const systemAccountApiKey = keys && options.apiKey?.system?.enabled === true;
+  const systemAccountApiKeyManagement = admin && systemAccountApiKey;
   return {
     admin,
     workspace,
+    systemAccount: admin || systemAccountApiKey,
     userApiKey,
     workspaceApiKey,
     systemAccountApiKey,
+    systemAccountApiKeyManagement,
     apiKey: userApiKey || workspaceApiKey || systemAccountApiKey,
+    apiKeyGraphQL:
+      userApiKey || workspaceApiKey || systemAccountApiKeyManagement,
   };
 }
 
@@ -31,14 +36,25 @@ export function resolveAuthFeatures(
  * @param options - Authentication configuration.
  * @param scope - Identity scope granting the permission.
  * @param permission - Configured permission value.
+ * @param systemAccount - Whether the grants belong to a machine principal.
  * @returns Whether the feature implementing this permission is active.
  */
 export function isAuthPermissionEnabled(
   options: AuthModuleOptions,
   scope: "user" | "workspace",
   permission: string,
+  systemAccount = false,
 ): boolean {
   const features = resolveAuthFeatures(options);
+  if (systemAccount) {
+    return (
+      features.systemAccountApiKey &&
+      DEFAULT_SYSTEM_ACCOUNT_PERMISSIONS.some(
+        (allowed) => allowed === permission,
+      ) &&
+      (features.workspace || !permission.startsWith("workspace:"))
+    );
+  }
   if (scope === "workspace" && !features.workspace) {
     return false;
   }
@@ -49,7 +65,7 @@ export function isAuthPermissionEnabled(
     return features.workspaceApiKey;
   }
   if (permission.startsWith("system-account-api-key:")) {
-    return features.systemAccountApiKey;
+    return features.systemAccountApiKeyManagement;
   }
   if (
     permission.startsWith("system-account:") ||

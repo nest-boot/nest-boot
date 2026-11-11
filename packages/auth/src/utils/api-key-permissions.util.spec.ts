@@ -4,14 +4,18 @@ import {
 } from "./api-key-permissions.util.js";
 
 describe("API key catalog snapshots", () => {
-  it.each(["user", "member"] as const)(
+  it.each(["user", "member", "systemAccount"] as const)(
     "normalizes %s grants with defaults and explicit empty values",
     (scope) => {
-      const permission = scope === "user" ? "user:read" : "workspace:update";
+      const permission = scope === "member" ? "workspace:update" : "user:read";
       const options = {
         workspace: { enabled: true },
         apiKey: {
-          [scope === "member" ? "workspace" : scope]: {
+          [scope === "member"
+            ? "workspace"
+            : scope === "systemAccount"
+              ? "system"
+              : scope]: {
             allowedPermissions: [permission],
             defaultPermissions: [permission],
           },
@@ -26,7 +30,9 @@ describe("API key catalog snapshots", () => {
         normalizeApiKeyPermissions(options, scope, [permission, permission]),
       ).toThrow("duplicate permissions");
       expect(() =>
-        normalizeApiKeyPermissions(options, scope, ["workspace:delete"]),
+        normalizeApiKeyPermissions(options, scope, [
+          scope === "systemAccount" ? "user:delete" : "workspace:delete",
+        ]),
       ).toThrow("configured allowedPermissions");
       expect(() =>
         normalizeApiKeyPermissions(options, scope, ["UNKNOWN"]),

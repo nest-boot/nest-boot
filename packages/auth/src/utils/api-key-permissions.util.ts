@@ -44,16 +44,18 @@ export function resolveApiKeyPermissionCatalog(
           : workspaces,
     ),
   ];
-  const allowlist = new Set(
-    options.apiKey?.[scope === "member" ? "workspace" : scope]
-      ?.allowedPermissions ?? permissions,
-  );
+  const configured =
+    options.apiKey?.[
+      scope === "member"
+        ? "workspace"
+        : scope === "systemAccount"
+          ? "system"
+          : scope
+    ];
+  const allowlist = new Set(configured?.allowedPermissions ?? permissions);
   const catalog = Object.freeze({
     permissions: Object.freeze(permissions),
-    defaults: Object.freeze([
-      ...(options.apiKey?.[scope === "member" ? "workspace" : scope]
-        ?.defaultPermissions ?? []),
-    ]),
+    defaults: Object.freeze([...(configured?.defaultPermissions ?? [])]),
     allowed: Object.freeze(
       permissions.filter(
         (permission) =>

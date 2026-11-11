@@ -19,16 +19,19 @@ AuthModule.forRoot({
   apiKey: {
     enabled: true,
     user: { enabled: true },
+    system: { enabled: true },
     workspace: { enabled: true },
   },
 });
 ```
 
-`admin.enabled` registers user/session administration and independent system accounts. `apiKey.enabled` is the master switch. User keys require `apiKey.user.enabled: true`; workspace keys additionally require `workspace.enabled` and `apiKey.workspace.enabled: true`. System-account keys require administration and the master switch; `apiKey.systemAccount.enabled: false` disables that scope separately. Enabling APIs does not grant actor permissions: configure roles as before. The example explicitly enables its features and grants ordinary users personal key read/write permissions.
+`admin.enabled` registers user/session administration and independent system accounts. `apiKey.enabled` is the master switch. User keys require `apiKey.user.enabled: true`; workspace keys additionally require `workspace.enabled` and `apiKey.workspace.enabled: true`. System-account authentication requires the master switch and `apiKey.system.enabled: true`, and defaults to false independently of `admin.enabled`. System-account/key management APIs additionally require administration. Enabling APIs does not grant actor permissions: configure roles as before. The example explicitly enables its features and grants ordinary users personal key read/write permissions.
+
+System-only applications register SystemAccount and ApiKeyEntity for authentication without exposing system-account GraphQL types or management endpoints. Provision credentials through a trusted seeder or internal ORM code and use them on application-owned APIs; built-in user/system management APIs stay disabled until administration is enabled.
 
 Disabled features register no corresponding services, GraphQL operations or persistence tables. Basic registration, sign-in, user self-service and sessions remain available. Standalone ORM registration must pass the same feature options to `getAuthEntities(options)`.
 
-The former `apiKey.member.*` configuration is removed; use `apiKey.workspace.*`. Member credential services and mutation names retain `MemberApiKey` naming.
+The former `apiKey.member.*` configuration is removed; use `apiKey.workspace.*`. System credential configuration uses `apiKey.system.*` in place of `apiKey.systemAccount.*`. Member credential services and mutation names retain `MemberApiKey` naming.
 
 ## Optional workspaces
 
@@ -753,6 +756,7 @@ const authEntities = getAuthEntities({
   apiKey: {
     enabled: true,
     user: { enabled: true },
+    system: { enabled: true },
     workspace: { enabled: true },
   },
 });
@@ -779,7 +783,7 @@ mutation {
 }
 ```
 
-Create its credential with `createSystemAccountApiKey(systemAccountId, input)` and send the returned plaintext as `Authorization: Bearer <key>`. The plaintext is returned once; metadata queries never return its hash or plaintext. The default prefix is `sys_`, configurable through `apiKey.systemAccount.defaultPrefix` (or `API_KEY_PREFIX`). Its `allowedPermissions` and `defaultPermissions` follow the existing scoped configuration shape.
+Create its credential with `createSystemAccountApiKey(systemAccountId, input)` and send the returned plaintext as `Authorization: Bearer <key>`. The plaintext is returned once; metadata queries never return its hash or plaintext. The default prefix is `sys_`, configurable through `apiKey.system.defaultPrefix` (or `API_KEY_PREFIX`). Its `allowedPermissions` and `defaultPermissions` follow the existing scoped configuration shape.
 
 System-key grants are the intersection of the account's current permissions, the key's explicit permissions and the configured key allowlist. An empty system-key grant list grants nothing. Disabling the account invalidates every owned key on subsequent requests; disabling, expiring or deleting one key affects that key. System authentication creates no User, Member or selected-workspace identity.
 

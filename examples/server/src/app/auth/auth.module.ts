@@ -12,6 +12,7 @@ import { Module } from '@nestjs/common';
       admin: { enabled: true },
       apiKey: {
         enabled: true,
+        system: { enabled: true },
         user: { enabled: true },
         workspace: { enabled: true },
       },

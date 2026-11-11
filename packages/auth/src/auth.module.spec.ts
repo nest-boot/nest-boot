@@ -343,6 +343,24 @@ describe("AuthModule", () => {
     expect(mockBetterAuth).not.toHaveBeenCalled();
   });
 
+  it("rejects the removed system-account key configuration with its replacement path", () => {
+    expect(() =>
+      getAuthProvider().useFactory(
+        { secret, apiKey: { systemAccount: { enabled: true } } },
+        { em: {} },
+      ),
+    ).toThrow("apiKey.systemAccount has been removed; use apiKey.system");
+    expect(mockBetterAuth).not.toHaveBeenCalled();
+  });
+
+  it("accepts system authentication without enabling administrative APIs", () => {
+    getAuthProvider().useFactory(
+      { secret, apiKey: { enabled: true, system: { enabled: true } } },
+      { em: {} },
+    );
+    expect(mockBetterAuth).toHaveBeenCalledOnce();
+  });
+
   it("should register synchronous options", () => {
     const options = { workspace: { enabled: true }, entities, secret };
     const dynamicModule = AuthModule.forRoot(options);
