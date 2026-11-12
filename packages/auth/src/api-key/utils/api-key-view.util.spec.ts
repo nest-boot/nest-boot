@@ -2,7 +2,7 @@ import { BaseEntity, ref } from "@mikro-orm/core";
 
 import { AuthAbility } from "../../common/auth.ability.js";
 import { User } from "../../core/entities/user.entity.js";
-import { Member } from "../../workspace/entities/member.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
 import { SystemApiKey } from "../objects/system-api-key.object.js";
@@ -13,7 +13,10 @@ import { toApiKeyView } from "./api-key-view.util.js";
 describe("API-key public views", () => {
   it.each([
     { owner: () => ref(User, new User()), view: UserApiKey },
-    { owner: () => ref(Member, new Member()), view: WorkspaceApiKey },
+    {
+      owner: () => ref(WorkspaceMember, new WorkspaceMember()),
+      view: WorkspaceApiKey,
+    },
     {
       owner: () => ref(SystemAccount, new SystemAccount()),
       view: SystemApiKey,

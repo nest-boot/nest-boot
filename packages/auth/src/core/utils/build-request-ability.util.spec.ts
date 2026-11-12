@@ -8,8 +8,8 @@ import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
 import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import type { AbilityRules } from "../../common/interfaces/ability-rules.interface.js";
 import { serializeAbilityRules } from "../../common/utils/serialize-ability-rules.util.js";
-import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { RequestIdentity } from "../request-identity.js";
 import { buildRequestAbility } from "./build-request-ability.util.js";
@@ -93,11 +93,11 @@ describe("framework-owned request abilities", () => {
   it("builds built-in abilities without callbacks, using API-key intersections", () => {
     RequestContext.set(User, Object.assign(new User(), { roles: ["admin"] }));
     RequestContext.set(
-      Member,
-      Object.assign(new Member(), { roles: ["owner"] }),
+      WorkspaceMember,
+      Object.assign(new WorkspaceMember(), { roles: ["owner"] }),
     );
     RequestContext.set(Workspace, new Workspace());
-    Object.assign(requireMember(), {
+    Object.assign(requireWorkspaceMember(), {
       user: RequestContext.get(User),
       workspace: RequestContext.get(Workspace),
     });
@@ -136,7 +136,7 @@ describe("framework-owned request abilities", () => {
         type === "USER"
           ? Object.assign(new User(), { roles: ["admin"] })
           : null;
-      const member = Object.assign(new Member(), {
+      const member = Object.assign(new WorkspaceMember(), {
         type,
         user,
         workspace,
@@ -154,7 +154,7 @@ describe("framework-owned request abilities", () => {
       expect(ability?.can("read", Workspace)).toBe(true);
       expect(ability?.can("update", Workspace)).toBe(true);
       expect(ability?.can("delete", Workspace)).toBe(false);
-      expect(ability?.can("read", Member)).toBe(false);
+      expect(ability?.can("read", WorkspaceMember)).toBe(false);
       expect(ability?.can("read", User)).toBe(false);
       member.permissions = [];
       RequestIdentity.stage({ member });
@@ -259,10 +259,10 @@ describe("framework-owned request abilities", () => {
 });
 /**
  * Returns member stored in the current test context.
- * @returns Member stored in the current test context.
+ * @returns WorkspaceMember stored in the current test context.
  */
-function requireMember(): Member {
-  const member = RequestContext.get(Member);
+function requireWorkspaceMember(): WorkspaceMember {
+  const member = RequestContext.get(WorkspaceMember);
   assert(member);
   return member;
 }

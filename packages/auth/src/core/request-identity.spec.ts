@@ -17,9 +17,9 @@ import {
 } from "../common/utils/permission-grants.util.js";
 import { resolveRequestPermissions } from "../common/utils/resolve-request-permissions.util.js";
 import { serializeAbilityRules } from "../common/utils/serialize-ability-rules.util.js";
-import { Invitation } from "../workspace/entities/invitation.entity.js";
-import { Member } from "../workspace/entities/member.entity.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
+import { WorkspaceInvitation } from "../workspace/entities/workspace-invitation.entity.js";
+import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
 import { API_KEY } from "./constants/auth.constants.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
@@ -68,7 +68,7 @@ describe("RequestIdentity", () => {
           credential === "service-account-key"
             ? null
             : Object.assign(new User(), { roles: ["admin"] });
-        const member = Object.assign(new Member(), {
+        const member = Object.assign(new WorkspaceMember(), {
           user,
           workspace,
           type: user ? "USER" : "SERVICE_ACCOUNT",
@@ -92,7 +92,7 @@ describe("RequestIdentity", () => {
         }
         if (state === "wrong-owner") {
           if (apiKey instanceof WorkspaceApiKey) {
-            Object.assign(apiKey, { member: new Member() });
+            Object.assign(apiKey, { member: new WorkspaceMember() });
           } else {
             Object.assign(member, { user: new User() });
           }
@@ -133,7 +133,7 @@ describe("RequestIdentity", () => {
   it("preserves anonymous workspace selection without granting membership", async () => {
     const em = manager();
     const workspace = new Workspace();
-    const member = Object.assign(new Member(), {
+    const member = Object.assign(new WorkspaceMember(), {
       user: new User(),
       workspace,
       roles: ["owner"],
@@ -166,8 +166,8 @@ describe("RequestIdentity", () => {
     const em = manager();
     const workspace = new Workspace();
     const user = new User();
-    const first = Object.assign(new Member(), { user, workspace });
-    const second = Object.assign(new Member(), { user, workspace });
+    const first = Object.assign(new WorkspaceMember(), { user, workspace });
+    const second = Object.assign(new WorkspaceMember(), { user, workspace });
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestIdentity.stage({ user, workspace, member: first });
       RequestIdentity.syncDatabase(em);
@@ -195,7 +195,7 @@ describe("RequestIdentity", () => {
         },
       });
       second.status = "DISABLED";
-      RequestIdentity.updateMember(
+      RequestIdentity.updateWorkspaceMember(
         em,
         withAuthTestFeatures({ workspace: { enabled: true } }),
         second,
@@ -228,7 +228,7 @@ describe("RequestIdentity", () => {
     const user = Object.assign(new User(), { id: "user", permissions: [] });
     Object.defineProperty(user, "roles", { get: roles });
     const workspace = new Workspace();
-    const member = Object.assign(new Member(), {
+    const member = Object.assign(new WorkspaceMember(), {
       id: "member",
       roles: ["owner"],
       status: "ACTIVE",
@@ -363,7 +363,7 @@ describe("RequestIdentity", () => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         RequestIdentity.stage({
           user: Object.assign(new User(), { id: "old" }),
-          member: new Member(),
+          member: new WorkspaceMember(),
           workspace: new Workspace(),
           session: new Session(),
         });
@@ -374,7 +374,7 @@ describe("RequestIdentity", () => {
         }).toThrow();
         expect(RequestContext.get(User)).toBeNull();
         expect(RequestContext.get(Session)).toBeNull();
-        expect(RequestContext.get(Member)).toBeNull();
+        expect(RequestContext.get(WorkspaceMember)).toBeNull();
         expect(RequestContext.get(Workspace)).toBeNull();
         expect(RequestContext.get(API_KEY)).toBeNull();
         expect(RequestContext.get(AuthAbility)?.rules).toEqual([]);
@@ -409,7 +409,7 @@ describe("RequestIdentity", () => {
       RequestIdentity.stage({
         user: Object.assign(new User(), { roles: ["admin"] }),
         workspace: new Workspace(),
-        member: new Member(),
+        member: new WorkspaceMember(),
       });
       expect(() => {
         RequestIdentity.prepare(withAuthTestFeatures(options));
@@ -435,7 +435,7 @@ describe("RequestIdentity", () => {
               : null,
           member:
             Key === UserApiKey
-              ? Object.assign(new Member(), { roles: ["owner"] })
+              ? Object.assign(new WorkspaceMember(), { roles: ["owner"] })
               : null,
           workspace: new Workspace(),
         });
@@ -480,10 +480,10 @@ describe("RequestIdentity", () => {
       withAuthTestFeatures({ workspace: { enabled: true } }),
       new User(),
     );
-    RequestIdentity.updateMember(
+    RequestIdentity.updateWorkspaceMember(
       em,
       withAuthTestFeatures({ workspace: { enabled: true } }),
-      new Member(),
+      new WorkspaceMember(),
     );
     expect(em.setSessionContext).not.toHaveBeenCalled();
     expect(
@@ -524,11 +524,14 @@ describe("post-commit authorization", () => {
             Object.assign(new User(), { roles: ["admin"] }),
           );
           RequestContext.set(
-            Member,
-            Object.assign(new Member(), { roles: ["owner"], status: "ACTIVE" }),
+            WorkspaceMember,
+            Object.assign(new WorkspaceMember(), {
+              roles: ["owner"],
+              status: "ACTIVE",
+            }),
           );
           RequestContext.set(Workspace, new Workspace());
-          Object.assign(requireMember(), {
+          Object.assign(requireWorkspaceMember(), {
             user: RequestContext.get(User),
             workspace: RequestContext.get(Workspace),
           });
@@ -571,10 +574,10 @@ describe("post-commit authorization", () => {
   });
   /**
    * Returns member stored in the current test context.
-   * @returns Member stored in the current test context.
+   * @returns WorkspaceMember stored in the current test context.
    */
-  function requireMember(): Member {
-    const member = RequestContext.get(Member);
+  function requireWorkspaceMember(): WorkspaceMember {
+    const member = RequestContext.get(WorkspaceMember);
     assert(member);
     return member;
   }
@@ -586,7 +589,10 @@ describe("identity assertions", () => {
       [User, RequestIdentity.assertCurrentUser.bind(RequestIdentity)],
       [Session, RequestIdentity.assertCurrentSession.bind(RequestIdentity)],
       [Workspace, RequestIdentity.assertCurrentWorkspace.bind(RequestIdentity)],
-      [Member, RequestIdentity.assertCurrentMember.bind(RequestIdentity)],
+      [
+        WorkspaceMember,
+        RequestIdentity.assertCurrentWorkspaceMember.bind(RequestIdentity),
+      ],
     ] as const)(
       "checks current %s identity inside and outside a request",
       async (Entity, check) => {
@@ -616,10 +622,10 @@ describe("identity assertions", () => {
     );
     it("rejects a missing member before touching its identity", () => {
       expect(() => {
-        RequestIdentity.assertCurrentMember(null);
+        RequestIdentity.assertCurrentWorkspaceMember(null);
       }).toThrow(ForbiddenException);
       expect(() => {
-        RequestIdentity.assertCurrentMember(undefined);
+        RequestIdentity.assertCurrentWorkspaceMember(undefined);
       }).toThrow(ForbiddenException);
     });
     it.each([UserApiKey, WorkspaceApiKey])(
@@ -652,7 +658,7 @@ describe("unified request abilities", () => {
   function identity() {
     const user = Object.assign(new User(), { roles: ["admin"] });
     const workspace = new Workspace();
-    const member = Object.assign(new Member(), {
+    const member = Object.assign(new WorkspaceMember(), {
       roles: ["owner"],
       user: ref(User, user),
       workspace: ref(Workspace, workspace),
@@ -665,10 +671,10 @@ describe("unified request abilities", () => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         const current = identity();
         current.member.roles = [];
-        current.member.permissions = ["member:read"];
+        current.member.permissions = ["workspace-member:read"];
         const apiKey = Object.assign(new WorkspaceApiKey(new ApiKey()), {
-          member: ref(Member, current.member),
-          permissions: ["member:read", "member:write"],
+          member: ref(WorkspaceMember, current.member),
+          permissions: ["workspace-member:read", "workspace-member:write"],
         });
         RequestIdentity.stage({ ...current, apiKey });
         expect(
@@ -693,7 +699,7 @@ describe("unified request abilities", () => {
         expect(
           buildRequestAbility(
             withAuthTestFeatures({ workspace: { enabled: true } }),
-          ).can("read", Member),
+          ).can("read", WorkspaceMember),
         ).toBe(false);
       });
     });
@@ -786,7 +792,7 @@ describe("unified request abilities", () => {
           "user:read",
         );
         expect(configure.mock.calls[0][1].workspacePermissions).toContain(
-          "member:write",
+          "workspace-member:write",
         );
         expect(ability.can("read", User)).toBe(true);
         expect(ability.can("create", Workspace)).toBe(true);
@@ -802,16 +808,20 @@ describe("unified request abilities", () => {
           withAuthTestFeatures({ workspace: { enabled: true } }),
         );
         const restored = createMongoAbility(serializeAbilityRules(ability));
-        for (const Entity of [Member, Invitation, WorkspaceApiKey]) {
+        for (const Entity of [
+          WorkspaceMember,
+          WorkspaceInvitation,
+          WorkspaceApiKey,
+        ]) {
           const own = Object.assign(new Entity(), {
             workspace: ref(Workspace, current.workspace),
-            member: ref(Member, current.member),
+            member: ref(WorkspaceMember, current.member),
           });
           const other = Object.assign(new Entity(), {
             workspace: ref(Workspace, new Workspace()),
             member: ref(
-              Member,
-              Object.assign(new Member(), {
+              WorkspaceMember,
+              Object.assign(new WorkspaceMember(), {
                 workspace: ref(Workspace, new Workspace()),
               }),
             ),
@@ -866,7 +876,7 @@ describe("unified request abilities", () => {
             }),
           );
           expect(ability.can("read", User)).toBe(true);
-          expect(ability.can("write", Member)).toBe(false);
+          expect(ability.can("write", WorkspaceMember)).toBe(false);
           expect(configure.mock.calls[0][1]).toMatchObject({
             workspace: null,
             member: null,
@@ -911,10 +921,10 @@ describe("unified request abilities", () => {
         await RequestContext.run(new RequestContext({ type: "test" }), () => {
           const current = identity();
           const apiKey = Object.assign(new Entity(), {
-            permissions: ["member:read"],
+            permissions: ["workspace-member:read"],
             user: ref(User, current.user),
             workspace: ref(Workspace, current.workspace),
-            member: ref(Member, current.member),
+            member: ref(WorkspaceMember, current.member),
           });
           RequestIdentity.stage({ ...current, apiKey });
           const configure = vi.fn();
@@ -966,7 +976,7 @@ describe("unified request abilities", () => {
         assert(ability);
         expect(ability.can("read", User)).toBe(true);
         expect(ability.can("read", "Report")).toBe(false);
-        expect(ability.can("write", Member)).toBe(false);
+        expect(ability.can("write", WorkspaceMember)).toBe(false);
       });
     });
   });

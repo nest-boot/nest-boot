@@ -6,7 +6,7 @@ import { registerUser } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
 import {
-  addMemberByApi,
+  addWorkspaceMemberByApi,
   createFirstWorkspace,
   createWorkspaceByApi,
 } from "./utils/workspace";
@@ -28,17 +28,20 @@ test.describe("API keys", () => {
       const issuer = await context.newPage();
       const email = `${seed}-issuer@example.com`;
       await registerUser(issuer, { email, name: "Key Issuer" });
-      const memberId = await addMemberByApi(page, workspaceId, email);
+      const memberId = await addWorkspaceMemberByApi(page, workspaceId, email);
       const headers = { "x-workspace-id": workspaceId };
       await graphqlRequest(
         page.request,
-        `mutation ($id: ID!, $input: SetMemberPermissionsInput!) {
-        setMemberPermissions(id: $id, input: $input) { id }
+        `mutation ($id: ID!, $input: SetWorkspaceMemberPermissionsInput!) {
+        setWorkspaceMemberPermissions(id: $id, input: $input) { id }
       }`,
         {
           id: memberId,
           input: {
-            permissions: ["MEMBER_API_KEY__READ", "MEMBER_API_KEY__WRITE"],
+            permissions: [
+              "WORKSPACE_API_KEY__READ",
+              "WORKSPACE_API_KEY__WRITE",
+            ],
           },
         },
         headers,
@@ -70,7 +73,7 @@ test.describe("API keys", () => {
         };
       }>(
         page.request,
-        `query ($id: ID!, $memberFilter: MemberFilter) { currentWorkspace {
+        `query ($id: ID!, $memberFilter: WorkspaceMemberFilter) { currentWorkspace {
         apiKey(id: $id) { id permissions member { __typename  id  } }
         members(first: 10, filter: $memberFilter) { totalCount }
       } }`,
@@ -80,14 +83,16 @@ test.describe("API keys", () => {
       expect(data.currentWorkspace.apiKey).toEqual({
         id,
         permissions: [],
-        member: { __typename: "Member", id: memberId },
+        member: { __typename: "WorkspaceMember", id: memberId },
       });
       expect(data.currentWorkspace.members.totalCount).toBe(0);
-      const { member } = await graphqlRequest<{
-        member: { apiKeys: { edges: Array<{ node: { id: string } }> } };
+      const { workspaceMember: member } = await graphqlRequest<{
+        workspaceMember: {
+          apiKeys: { edges: Array<{ node: { id: string } }> };
+        };
       }>(
         page.request,
-        "query($id: ID!) { member(id: $id) { apiKeys(first: 10) { edges { node { id } } } } }",
+        "query($id: ID!) { workspaceMember(id: $id) { apiKeys(first: 10) { edges { node { id } } } } }",
         { id: memberId },
         headers,
       );
@@ -115,20 +120,20 @@ test.describe("API keys", () => {
       const issuerPage = await issuerContext.newPage();
       const email = `${seed}-issuer@example.com`;
       await registerUser(issuerPage, { email, name: "Limited Key Issuer" });
-      const id = await addMemberByApi(page, workspaceId, email);
+      const id = await addWorkspaceMemberByApi(page, workspaceId, email);
       await graphqlRequest(
         page.request,
-        `mutation ($id: ID!, $input: SetMemberPermissionsInput!) {
-        setMemberPermissions(id: $id, input: $input) { id }
+        `mutation ($id: ID!, $input: SetWorkspaceMemberPermissionsInput!) {
+        setWorkspaceMemberPermissions(id: $id, input: $input) { id }
       }`,
         {
           id,
           input: {
             permissions: [
-              "MEMBER_API_KEY__READ",
-              "MEMBER_API_KEY__WRITE",
-              "SERVICE_ACCOUNT__READ",
-              "SERVICE_ACCOUNT__WRITE",
+              "WORKSPACE_API_KEY__READ",
+              "WORKSPACE_API_KEY__WRITE",
+              "WORKSPACE_SERVICE_ACCOUNT__READ",
+              "WORKSPACE_SERVICE_ACCOUNT__WRITE",
               "WORKSPACE__UPDATE",
             ],
           },
@@ -150,8 +155,8 @@ test.describe("API keys", () => {
         .click();
       for (const permission of [
         "WORKSPACE__DELETE",
-        "MEMBER__WRITE",
-        "MEMBER__INVITE",
+        "WORKSPACE_MEMBER__WRITE",
+        "WORKSPACE_MEMBER__INVITE",
       ]) {
         await expect(
           getPermissionCheckbox(issuerPage, permission),
@@ -187,15 +192,17 @@ test.describe("API keys", () => {
     });
     const workspaceId = await createFirstWorkspace(page, seed);
     const headers = { "x-workspace-id": workspaceId };
-    const { addMember } = await graphqlRequest<{ addMember: { id: string } }>(
+    const { addWorkspaceMember } = await graphqlRequest<{
+      addWorkspaceMember: { id: string };
+    }>(
       page.request,
-      `mutation { addMember(input: { type: SERVICE_ACCOUNT, name: "Build automation" }) { id } }`,
+      `mutation { addWorkspaceMember(input: { type: SERVICE_ACCOUNT, name: "Build automation" }) { id } }`,
       {},
       headers,
     );
     await graphqlRequest(
       page.request,
-      `mutation { addMember(input: { type: SERVICE_ACCOUNT, name: "Deploy automation" }) { id } }`,
+      `mutation { addWorkspaceMember(input: { type: SERVICE_ACCOUNT, name: "Deploy automation" }) { id } }`,
       {},
       headers,
     );
@@ -211,7 +218,7 @@ test.describe("API keys", () => {
       if (
         operation &&
         [
-          "addServiceAccountForApiKey",
+          "addWorkspaceServiceAccountForApiKey",
           "createWorkspaceApiKeyFromApiKeysRoute",
         ].includes(operation)
       )
@@ -259,7 +266,7 @@ test.describe("API keys", () => {
     expect((await readKey(existingId)).currentWorkspace.apiKey).toEqual({
       id: existingId,
       permissions: [],
-      member: { __typename: "Member", id: addMember.id },
+      member: { __typename: "WorkspaceMember", id: addWorkspaceMember.id },
     });
 
     await page.goto(`/workspaces/${workspaceId}/api-keys/create`);
@@ -280,7 +287,7 @@ test.describe("API keys", () => {
     );
     expect(creationOperations).toEqual([
       "createWorkspaceApiKeyFromApiKeysRoute",
-      "addServiceAccountForApiKey",
+      "addWorkspaceServiceAccountForApiKey",
       "createWorkspaceApiKeyFromApiKeysRoute",
     ]);
     const automaticId = new URL(page.url()).pathname.split("/").at(-1)!;
@@ -303,7 +310,7 @@ test.describe("API keys", () => {
       };
     }>(
       page.request,
-      "query($filter: MemberFilter) { currentWorkspace { members(first: 10, filter: $filter) { edges { node { id name type roles permissions apiKeys(first: 10) { edges { node { id } } } } } } } }",
+      "query($filter: WorkspaceMemberFilter) { currentWorkspace { members(first: 10, filter: $filter) { edges { node { id name type roles permissions apiKeys(first: 10) { edges { node { id } } } } } } } }",
       { filter: { name, type: "SERVICE_ACCOUNT" } },
       headers,
     );
@@ -312,7 +319,7 @@ test.describe("API keys", () => {
       apiKeys: ownerKeys,
       ...member
     } = createdOwner.members.edges[0].node;
-    expect(automaticOwnerId).not.toBe(addMember.id);
+    expect(automaticOwnerId).not.toBe(addWorkspaceMember.id);
     expect(ownerKeys.edges.map(({ node }) => node.id)).toContain(automaticId);
     expect(member).toEqual({
       name,
@@ -336,23 +343,23 @@ test.describe("API keys", () => {
       /^ws_[A-Za-z0-9_-]{64}$/,
     );
     const youId = new URL(page.url()).pathname.split("/").at(-1)!;
-    const { currentMember } = await graphqlRequest<{
-      currentMember: { id: string };
-    }>(page.request, "query { currentMember { id } }", {}, headers);
-    const { member: yourMembership } = await graphqlRequest<{
-      member: { apiKeys: { edges: Array<{ node: { id: string } }> } };
+    const { currentWorkspaceMember } = await graphqlRequest<{
+      currentWorkspaceMember: { id: string };
+    }>(page.request, "query { currentWorkspaceMember { id } }", {}, headers);
+    const { workspaceMember: yourWorkspaceMembership } = await graphqlRequest<{
+      workspaceMember: { apiKeys: { edges: Array<{ node: { id: string } }> } };
     }>(
       page.request,
-      "query($id: ID!) { member(id: $id) { apiKeys(first: 10) { edges { node { id } } } } }",
-      { id: currentMember.id },
+      "query($id: ID!) { workspaceMember(id: $id) { apiKeys(first: 10) { edges { node { id } } } } }",
+      { id: currentWorkspaceMember.id },
       headers,
     );
-    expect(yourMembership.apiKeys.edges.map(({ node }) => node.id)).toContain(
-      youId,
-    );
+    expect(
+      yourWorkspaceMembership.apiKeys.edges.map(({ node }) => node.id),
+    ).toContain(youId);
     expect(creationOperations).toEqual([
       "createWorkspaceApiKeyFromApiKeysRoute",
-      "addServiceAccountForApiKey",
+      "addWorkspaceServiceAccountForApiKey",
       "createWorkspaceApiKeyFromApiKeysRoute",
       "createWorkspaceApiKeyFromApiKeysRoute",
     ]);
@@ -520,7 +527,7 @@ async function exerciseApiKeyLifecycle(
   for (const action of ["read", "write"]) {
     const permission = getPermissionCheckbox(
       page,
-      `${scope === "WORKSPACE" ? "MEMBER" : "USER"}_API_KEY__${action.toUpperCase()}`,
+      `${scope}_API_KEY__${action.toUpperCase()}`,
     );
     await expect(permission).toBeVisible();
     await expect(permission).not.toBeChecked();
@@ -616,17 +623,11 @@ async function exerciseApiKeyLifecycle(
   await expect(revealedKey).toHaveValue(`${secret.slice(0, 8)}...`);
   for (const action of ["read", "write"]) {
     await expect(
-      getPermissionCheckbox(
-        page,
-        `${scope === "WORKSPACE" ? "MEMBER" : "USER"}_API_KEY__${action.toUpperCase()}`,
-      ),
+      getPermissionCheckbox(page, `${scope}_API_KEY__${action.toUpperCase()}`),
     ).toBeChecked();
   }
   await page.getByLabel("Name", { exact: true }).fill(names.renamedName);
-  await getPermissionCheckbox(
-    page,
-    `${scope === "WORKSPACE" ? "MEMBER" : "USER"}_API_KEY__WRITE`,
-  ).click();
+  await getPermissionCheckbox(page, `${scope}_API_KEY__WRITE`).click();
   await page.getByLabel("Name", { exact: true }).press("Enter");
   await expect(
     page.getByText("API key updated", { exact: true }),
@@ -636,10 +637,7 @@ async function exerciseApiKeyLifecycle(
     names.renamedName,
   );
   await expect(
-    getPermissionCheckbox(
-      page,
-      `${scope === "WORKSPACE" ? "MEMBER" : "USER"}_API_KEY__WRITE`,
-    ),
+    getPermissionCheckbox(page, `${scope}_API_KEY__WRITE`),
   ).not.toBeChecked();
   await page
     .getByRole("navigation", { name: "Breadcrumbs" })

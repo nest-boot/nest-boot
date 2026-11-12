@@ -25,8 +25,8 @@ import { RequestIdentity } from "../src/core/request-identity.js";
 import type { SessionService } from "../src/core/services/session.service.js";
 import { UserService } from "../src/core/services/user.service.js";
 import { entities, workspaceEntities } from "../src/index.js";
-import { Member } from "../src/workspace/entities/member.entity.js";
 import { Workspace } from "../src/workspace/entities/workspace.entity.js";
+import { WorkspaceMember } from "../src/workspace/entities/workspace-member.entity.js";
 import { WorkspaceService } from "../src/workspace/services/workspace.service.js";
 import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 
@@ -177,11 +177,11 @@ describe("independent system accounts with real persistence and authentication",
   it("stores all three owner kinds in one table and rejects duplicate credentials across kinds", async () => {
     const { account, entity, apiKey } = await issue();
     const em = orm.em.fork();
-    const member = em.create(Member, {
+    const member = em.create(WorkspaceMember, {
       workspace,
       type: "SERVICE_ACCOUNT",
       user: null,
-      name: "Member key owner",
+      name: "WorkspaceMember key owner",
     });
     const userKey = em.create(ApiKey, {
       name: "User",
@@ -189,7 +189,7 @@ describe("independent system accounts with real persistence and authentication",
       key: randomUUID(),
     });
     const memberKey = em.create(ApiKey, {
-      name: "Member",
+      name: "WorkspaceMember",
       owner: member,
       key: randomUUID(),
     });
@@ -199,9 +199,9 @@ describe("independent system accounts with real persistence and authentication",
       [entity.id, userKey.id, memberKey.id],
     );
     expect(rows).toEqual([
-      { owner_type: "member", owner_id: member.id },
       { owner_type: "system_account", owner_id: account.id },
       { owner_type: "user", owner_id: administrator.id },
+      { owner_type: "workspace_member", owner_id: member.id },
     ]);
     await expect(
       em.execute(
@@ -220,7 +220,7 @@ describe("independent system accounts with real persistence and authentication",
     const issued = await issue();
     await withKey(issued.apiKey, async (em) => {
       expect(RequestContext.get(User)).toBeNull();
-      expect(RequestContext.get(Member)).toBeNull();
+      expect(RequestContext.get(WorkspaceMember)).toBeNull();
       expect(RequestContext.get(Workspace)).toBeNull();
       expect(em.getSessionContext()?.variables).toMatchObject({
         "app.user.id": "",
@@ -431,7 +431,7 @@ describe("independent system accounts with real persistence and authentication",
     ]);
     const admin = orm.em.fork();
     const tenant = admin.create(Workspace, { name: "Platform-managed tenant" });
-    const member = admin.create(Member, {
+    const member = admin.create(WorkspaceMember, {
       workspace: tenant,
       type: "SERVICE_ACCOUNT",
       user: null,
@@ -852,7 +852,7 @@ describe("independent system accounts with real persistence and authentication",
                 name: "Audit system",
                 permissions: ["user:read"],
               })
-            : em.create(Member, {
+            : em.create(WorkspaceMember, {
                 workspace: tenant,
                 name: "Audit member",
                 type: "SERVICE_ACCOUNT",
@@ -881,7 +881,7 @@ describe("independent system accounts with real persistence and authentication",
       } else if (kind === "workspace") {
         await em.nativeDelete(Workspace, tenant.id);
       } else {
-        await em.nativeDelete(Member, owner.id);
+        await em.nativeDelete(WorkspaceMember, owner.id);
       }
       await expect(auth.validate(plaintext)).rejects.toThrow("Invalid API key");
       const [audit] = await em.execute(
@@ -890,14 +890,16 @@ describe("independent system accounts with real persistence and authentication",
       );
       expect(audit).toEqual({
         name: "Retained audit key",
-        owner_type: kind === "workspace" ? "member" : kind,
+        owner_type: ["workspace", "member"].includes(kind)
+          ? "workspace_member"
+          : kind,
         owner_id: owner.id,
         enabled: true,
         last_used_at: null,
       });
     },
   );
-  it.each(["user", "member", "system_account"])(
+  it.each(["user", "workspace_member", "system_account"])(
     "rejects a retained %s key with a missing owner without deleting its audit row",
     async (type) => {
       const em = orm.em.fork();

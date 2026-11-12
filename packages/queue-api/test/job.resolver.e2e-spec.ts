@@ -4,13 +4,13 @@ import {
   API_KEY,
   AuthGuard,
   type AuthModuleOptions,
-  Member,
-  MemberStatus,
   Session,
   User,
   UserApiKey,
   UserService,
   Workspace,
+  WorkspaceMember,
+  WorkspaceMemberStatus,
   WorkspaceService,
 } from "@nest-boot/auth";
 import { GraphQLModule } from "@nest-boot/graphql";
@@ -188,13 +188,14 @@ describe("scoped Job GraphQL API", () => {
           context.set(Workspace, workspace);
           if (req.header("x-test-member") !== "false") {
             context.set(
-              Member,
-              Object.assign(new Member(), {
+              WorkspaceMember,
+              Object.assign(new WorkspaceMember(), {
                 id: "301",
                 user,
                 workspace,
                 status:
-                  req.header("x-test-member-status") ?? MemberStatus.ACTIVE,
+                  req.header("x-test-member-status") ??
+                  WorkspaceMemberStatus.ACTIVE,
               }),
             );
           }
@@ -408,7 +409,7 @@ describe("scoped Job GraphQL API", () => {
   it.each([
     { header: "x-test-workspace", value: "" },
     { header: "x-test-member", value: "false" },
-    { header: "x-test-member-status", value: MemberStatus.DISABLED },
+    { header: "x-test-member-status", value: WorkspaceMemberStatus.DISABLED },
   ])(
     "denies workspace reads for invalid membership: $header=$value",
     async ({ header, value }) => {

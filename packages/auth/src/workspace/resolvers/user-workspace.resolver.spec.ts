@@ -7,7 +7,7 @@ import { UserWorkspaceResolver } from "./user-workspace.resolver.js";
 describe("UserWorkspaceResolver", () => {
   it.each([
     ["workspaces", "getWorkspaceConnectionByUser"],
-    ["invitations", "getInvitationConnectionByUser"],
+    ["invitations", "getWorkspaceInvitationConnectionByUser"],
   ] as const)(
     "preserves the parent, selection and authorization for %s",
     async (field, method) => {

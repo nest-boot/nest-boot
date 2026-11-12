@@ -6,7 +6,7 @@ import { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
 
 const views = {
   user: UserApiKey,
-  member: WorkspaceApiKey,
+  workspace_member: WorkspaceApiKey,
   system_account: SystemApiKey,
 };
 

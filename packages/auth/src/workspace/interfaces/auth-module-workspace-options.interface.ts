@@ -1,6 +1,6 @@
 import type { AuthModuleRoles } from "../../core/types/auth-module-roles.type.js";
 import type { PermissionName } from "../../core/types/permission-name.type.js";
-import type { AuthSendInvitationEmail } from "../types/auth-send-invitation-email.type.js";
+import type { AuthSendWorkspaceInvitationEmail } from "../types/auth-send-workspace-invitation-email.type.js";
 
 /** Workspace lifecycle options owned by AuthModule. */
 export interface AuthModuleWorkspaceOptions<
@@ -19,5 +19,5 @@ export interface AuthModuleWorkspaceOptions<
   /** Additional roles and grants; same-name roles extend `DEFAULT_WORKSPACE_ROLES`. */
   roles?: Partial<AuthModuleRoles<NoInfer<Permission>, Role>>;
   /** Sends the invitation link through an application-defined delivery flow. */
-  sendInvitationEmail?: AuthSendInvitationEmail;
+  sendWorkspaceInvitationEmail?: AuthSendWorkspaceInvitationEmail;
 }

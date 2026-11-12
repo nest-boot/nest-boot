@@ -19,7 +19,7 @@ the CLI entry calling `CommandFactory.run(AppModule)`. Move custom options from
 and its package.json configuration. Auth and QueueApi register their own entities;
 business modules use `DatabaseModule.forFeature()`. Direct MikroORM consumers can still
 explicitly register `entities` and `workspaceEntities`.
-`User.members` is removed to prevent discovery of disabled entities; use MemberService
+`User.members` is removed to prevent discovery of disabled entities; use WorkspaceMemberService
 for membership queries.
 
 ## Upgrade dependencies
@@ -126,7 +126,7 @@ Queue job contracts now live in `readonly jobSchemas`, replacing BaseQueue's Dat
 - Auth permission identifiers are application-defined, case-sensitive strings,
   independent of CASL subject types. Catalogs, grant ceilings and API-key
   intersections compare exact strings without changing case. The built-in
-  catalogs use `user:*`, `session:*`, `workspace:*`, `member:*` and
+  catalogs use `user:*`, `session:*`, `workspace:*`, `workspace-member:*` and
   `invitation:*` and `api-key:*`. Custom role and permission names follow the
   lowercase naming contract; invalid names are rejected, not normalized.
   Role grants, direct/API-key permissions and business rules must use the same spelling.
@@ -151,7 +151,7 @@ Queue job contracts now live in `readonly jobSchemas`, replacing BaseQueue's Dat
   and `apiKey.workspace`. The old flat options are rejected at startup; the two
   scopes do not inherit from each other. User keys may use user and workspace
   permissions; member keys accept only workspace permissions and use
-  `member:invite` for invitation management. Their grants are bounded by both
+  `workspace-member:invite` for invitation management. Their grants are bounded by both
   the target member and the issuer, and intersected with the member at runtime. For example:
 
   ```ts
@@ -209,7 +209,7 @@ Application tables declare RLS policies; Job history is an explicit exception wi
 explicitly denies request roles. Services and GraphQL control credential fields
 and writable properties; database column-level protection is no longer configured.
 
-API keys use `ApiKey.owner` as a polymorphic relation to User, Member or SystemAccount. User deletion uses foreign-key cascades for accounts, sessions, memberships and invitations. API-key records remain for audit; a fresh owner lookup prevents deleted identities from authenticating. Workspaces, independent system accounts and other members' keys survive. User SELECT
+API keys use `ApiKey.owner` as a polymorphic relation to User, WorkspaceMember or SystemAccount. User deletion uses foreign-key cascades for accounts, sessions, memberships and invitations. API-key records remain for audit; a fresh owner lookup prevents deleted identities from authenticating. Workspaces, independent system accounts and other members' keys survive. User SELECT
 permits authenticated roles; Services enforce profile access through Ability,
 including custom permission names. User writes and Session reads likewise rely
 on Service authorization; database request variables no longer carry application
@@ -232,7 +232,7 @@ and `AuthGraphQLModule` import; import inputs, payloads, resolvers and connectio
 from `@nest-boot/auth` instead.
 
 Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
-`Workspace`, `Member`, `Invitation`, `SystemAccount`, and `ApiKey` entities, their GraphQL
+`Workspace`, `WorkspaceMember`, `WorkspaceInvitation`, `SystemAccount`, and `ApiKey` entities, their GraphQL
 metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 
@@ -266,7 +266,7 @@ Administrative `createUser`, `updateUser`, `setUserRoles`, `setUserPermissions`,
 `banUser`, and `unbanUser` mutations now return operation-specific payloads
 containing only `id`. Remove profile/relation selections from these mutations
 and refetch the user separately after a successful write.
-`acceptInvitation` returns `AcceptInvitationPayload { id, memberId, workspaceId }`;
+`acceptWorkspaceInvitation` returns `AcceptWorkspaceInvitationPayload { id, memberId, workspaceId }`;
 select the returned workspace in a subsequent request to query its membership.
 Domain Service return values and authorization checks are unchanged.
 

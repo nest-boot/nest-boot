@@ -7,9 +7,9 @@ import {
   apiKeyTest,
   createService,
   createTestApiKey,
-  createTestMember,
   createTestUser,
   createTestWorkspace,
+  createTestWorkspaceMember,
 } from "../../../test/fixtures/api-key-service.fixture.js";
 import { withIdentity } from "../../../test/fixtures/conditional-authorization.fixture.js";
 import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
@@ -20,8 +20,8 @@ import { API_KEY } from "../../core/constants/auth.constants.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
 import { RequestIdentity } from "../../core/request-identity.js";
-import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { UserApiKey } from "../objects/user-api-key.object.js";
@@ -36,7 +36,7 @@ describe("API-key management", () => {
         `prevents a restricted ${scope} key from creating or managing inherited keys`,
         async () => {
           const { service, em } = createService();
-          const member = createTestMember();
+          const member = createTestWorkspaceMember();
           const user = createTestUser();
           const Key = scope === "user" ? UserApiKey : WorkspaceApiKey;
           const target = Object.assign(new Key(), {
@@ -104,7 +104,7 @@ describe("API-key management", () => {
               owner:
                 scope === "user"
                   ? ref(User, user)
-                  : ref(Member, createTestMember()),
+                  : ref(WorkspaceMember, createTestWorkspaceMember()),
             },
           );
           const read = () =>
@@ -140,7 +140,10 @@ describe("API-key management", () => {
             scope === "user"
               ? new UserApiKey(new ApiKey())
               : new WorkspaceApiKey(new ApiKey()),
-            { enabled: true, member: ref(Member, createTestMember()) },
+            {
+              enabled: true,
+              member: ref(WorkspaceMember, createTestWorkspaceMember()),
+            },
           );
           const result = {
             edges: [{ cursor: "cursor", node: key }],
@@ -191,7 +194,7 @@ describe("API-key management", () => {
                     apiKey: {
                       user: { allowedPermissions: ["user-api-key:write"] },
                       workspace: {
-                        allowedPermissions: ["member-api-key:write"],
+                        allowedPermissions: ["workspace-api-key:write"],
                       },
                     },
                   }
@@ -202,9 +205,9 @@ describe("API-key management", () => {
               roles: [reason === "owner" ? "user" : "admin"],
               permissions: ["user-api-key:write"],
             });
-            const member = Object.assign(createTestMember(), {
+            const member = Object.assign(createTestWorkspaceMember(), {
               roles: [reason === "owner" ? "member" : "owner"],
-              permissions: ["member-api-key:write"],
+              permissions: ["workspace-api-key:write"],
             });
             RequestIdentity.stage({ user, member });
             RequestIdentity.prepare(withAuthTestFeatures(options));
@@ -220,7 +223,7 @@ describe("API-key management", () => {
                 enabled: true,
                 permissions,
                 user: ref(User, user),
-                member: ref(Member, createTestMember()),
+                member: ref(WorkspaceMember, createTestWorkspaceMember()),
               },
             );
             em.findOne.mockResolvedValue(key);
@@ -287,7 +290,7 @@ describe("API-key management", () => {
                   expiresAt: new Date(0),
                 })
               : service.createWorkspaceApiKey(createTestWorkspace(), {
-                  member: RequestContext.get(Member),
+                  member: RequestContext.get(WorkspaceMember),
                   name: "Expired",
                   expiresAt: new Date(0),
                 }),
@@ -316,7 +319,7 @@ describe("API-key management", () => {
                 permissions: ["workspace:update", "workspace:read"],
                 lastUsedAt: new Date(0),
                 user: ref(User, user),
-                member: ref(Member, createTestMember()),
+                member: ref(WorkspaceMember, createTestWorkspaceMember()),
               },
             );
             if (scope === "user") {
@@ -332,7 +335,7 @@ describe("API-key management", () => {
               "app.user.id": user.id,
               "app.workspace.id": createTestWorkspace().id,
               "app.system_account.id": "",
-              "app.member.id": createTestMember().id,
+              "app.member.id": createTestWorkspaceMember().id,
             };
             const update =
               scope === "user"
@@ -388,7 +391,7 @@ describe("API-key management", () => {
             } else {
               expect(RequestContext.get(API_KEY)).toBeNull();
               expect(RequestContext.get(User)).toBeNull();
-              expect(RequestContext.get(Member)).toBeNull();
+              expect(RequestContext.get(WorkspaceMember)).toBeNull();
               expect(RequestContext.get(Workspace)).toBeNull();
               expect(em.setSessionContext).toHaveBeenCalledWith({
                 role: "anonymous",
@@ -416,7 +419,7 @@ describe("API-key management", () => {
                 user: scope === "user" ? ref(User, createTestUser()) : null,
                 member:
                   scope === "workspace"
-                    ? ref(Member, createTestMember())
+                    ? ref(WorkspaceMember, createTestWorkspaceMember())
                     : null,
               },
             );
@@ -700,8 +703,8 @@ describe("conditional service authorization", () => {
         em,
         user,
         workspace,
-        memberService,
-        invitationService,
+        workspaceMemberService,
+        workspaceInvitationService,
         workspaceService,
         userService,
         userApiKeyService,
@@ -718,7 +721,7 @@ describe("conditional service authorization", () => {
             : kind === "workspace"
               ? workspaceService.createWorkspace(user, { name: "blocked" })
               : kind === "member"
-                ? memberService.addMember(
+                ? workspaceMemberService.addWorkspaceMember(
                     workspace,
                     Object.assign(new User(), {
                       id: "invitee",
@@ -727,9 +730,13 @@ describe("conditional service authorization", () => {
                     }),
                   )
                 : kind === "invitation"
-                  ? invitationService.createInvitation(workspace, user, {
-                      email: "blocked@example.com",
-                    })
+                  ? workspaceInvitationService.createWorkspaceInvitation(
+                      workspace,
+                      user,
+                      {
+                        email: "blocked@example.com",
+                      },
+                    )
                   : kind === "user-key"
                     ? userApiKeyService.createUserApiKey(user, {
                         name: "blocked",

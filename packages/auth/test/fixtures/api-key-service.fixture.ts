@@ -10,8 +10,8 @@ import * as abilityHelpers from "../../src/common/utils/authorize.util.js";
 import { User } from "../../src/core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-options.interface.js";
 import { RequestIdentity } from "../../src/core/request-identity.js";
-import { Member } from "../../src/workspace/entities/member.entity.js";
 import { Workspace } from "../../src/workspace/entities/workspace.entity.js";
+import { WorkspaceMember } from "../../src/workspace/entities/workspace-member.entity.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 /**
  * Returns workspace fixture with deterministic identifiers.
@@ -39,10 +39,10 @@ export function createTestUser(): User {
 
 /**
  * Returns member fixture with deterministic identifiers.
- * @returns Member fixture with deterministic identifiers.
+ * @returns WorkspaceMember fixture with deterministic identifiers.
  */
-export function createTestMember(): Member {
-  return Object.assign(new Member(), {
+export function createTestWorkspaceMember(): WorkspaceMember {
+  return Object.assign(new WorkspaceMember(), {
     id: "member-1",
     roles: ["owner"],
     status: "ACTIVE",
@@ -50,7 +50,7 @@ export function createTestMember(): Member {
     permissions: [],
     workspace: {
       id: "workspace-1",
-    } as Member["workspace"],
+    } as WorkspaceMember["workspace"],
   });
 }
 
@@ -70,7 +70,7 @@ export function createTestApiKey(): WorkspaceApiKey {
     updatedAt: new Date(),
     lastUsedAt: null,
     expiresAt: null,
-    member: ref(Member, createTestMember()),
+    member: ref(WorkspaceMember, createTestWorkspaceMember()),
   });
 }
 
@@ -87,7 +87,7 @@ export function apiKeyTest(
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(User, createTestUser());
       RequestContext.set(Workspace, createTestWorkspace());
-      RequestContext.set(Member, createTestMember());
+      RequestContext.set(WorkspaceMember, createTestWorkspaceMember());
       await callback();
     });
   });
@@ -135,7 +135,10 @@ export function createService(
     assertCurrentUser: vi
       .spyOn(RequestIdentity, "assertCurrentUser")
       .mockImplementation(vi.fn()),
-    assertCurrentMember: vi.spyOn(RequestIdentity, "assertCurrentMember"),
+    assertCurrentWorkspaceMember: vi.spyOn(
+      RequestIdentity,
+      "assertCurrentWorkspaceMember",
+    ),
     assertCurrentWorkspace: vi.spyOn(RequestIdentity, "assertCurrentWorkspace"),
     authorize: vi
       .spyOn(abilityHelpers, "authorize")

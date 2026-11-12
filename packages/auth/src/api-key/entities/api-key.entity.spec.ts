@@ -1,19 +1,19 @@
 import { ref } from "@mikro-orm/core";
 
 import { User } from "../../core/entities/user.entity.js";
-import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { ApiKey } from "./api-key.entity.js";
 import { SystemAccount } from "./system-account.entity.js";
 
 describe("ApiKey identity accessors", () => {
   it("exposes only the matching owner and its authorization identifiers", () => {
     const workspace = new Workspace();
-    const member = Object.assign(new Member(), {
+    const member = Object.assign(new WorkspaceMember(), {
       workspace: ref(Workspace, workspace),
     });
     const key = Object.assign(new ApiKey(), { member });
-    expect(key.ownerType).toBe("member");
+    expect(key.ownerType).toBe("workspace_member");
     expect(key.member?.id).toBe(member.id);
     expect(key.memberId).toBe(member.id);
     expect(key.workspaceId).toBe(workspace.id);
@@ -24,7 +24,7 @@ describe("ApiKey identity accessors", () => {
 
   it("switches owners through the user setter and rejects member-only identifiers", () => {
     const key = new ApiKey();
-    key.member = new Member();
+    key.member = new WorkspaceMember();
     const user = new User();
     key.user = user;
     expect(key.ownerType).toBe("user");

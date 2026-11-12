@@ -4,7 +4,7 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
 import { resolveAuthFeatures } from "../../core/utils/resolve-auth-features.util.js";
-import { Member } from "../../workspace/entities/member.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
@@ -38,9 +38,9 @@ export class ApiKeyAuthenticationService {
     if (!features.apiKey) {
       throw new UnauthorizedException("API keys are disabled");
     }
-    const owners: ("user" | "member" | "system_account")[] = [
+    const owners: ("user" | "workspace_member" | "system_account")[] = [
       ...(features.userApiKey ? ["user" as const] : []),
-      ...(features.workspaceApiKey ? ["member" as const] : []),
+      ...(features.workspaceApiKey ? ["workspace_member" as const] : []),
       ...(features.systemApiKey ? ["system_account" as const] : []),
     ];
     const key = hashApiKey(plaintext);
@@ -91,7 +91,7 @@ export class ApiKeyAuthenticationService {
       assertApiKeyOwner(apiKey, "user");
       return { apiKey: toApiKeyView(apiKey), ownerType: "user", user };
     }
-    const member = await this.em.findOne(Member, ownerId, {
+    const member = await this.em.findOne(WorkspaceMember, ownerId, {
       refresh: true,
       populate: ["workspace", "user"],
     });
@@ -109,10 +109,10 @@ export class ApiKeyAuthenticationService {
       throw new UnauthorizedException("Invalid API key");
     }
     const workspace = Reference.unwrapReference(member.workspace);
-    assertApiKeyOwner(apiKey, "member");
+    assertApiKeyOwner(apiKey, "workspace_member");
     return {
       apiKey: toApiKeyView(apiKey),
-      ownerType: "member",
+      ownerType: "workspace_member",
       workspace,
       member,
       user,

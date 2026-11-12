@@ -48,7 +48,7 @@ describe("Credential-free query result types", () => {
     expectTypeOf<Result["user"]>().toEqualTypeOf<UserApiKey["user"]>();
   });
 
-  it("omits credential hashes from member-key reads and mutations", () => {
+  it("omits credential hashes from workspace_member-key reads and mutations", () => {
     type Service = WorkspaceApiKeyService;
     type Result = ApiKeyMetadata<WorkspaceApiKey>;
     expectTypeOf<

@@ -9,19 +9,19 @@ import {
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 
-import { useCurrentMemberContext } from "../../contexts/current-member-context";
-import { MemberProfileForm } from "./components/member-profile-form";
-import { MemberRolesForm } from "./components/member-roles-form";
-import { MemberPermissionsForm } from "./components/member-permissions-form";
-import type { MemberFormProps } from "./components/member-form-props";
-import type { GetMemberFromMemberRouteQuery } from "@/gql/graphql";
+import { useCurrentWorkspaceMemberContext } from "../../contexts/current-workspace-member-context";
+import { WorkspaceMemberProfileForm } from "./components/workspace-member-profile-form";
+import { WorkspaceMemberRolesForm } from "./components/workspace-member-roles-form";
+import { WorkspaceMemberPermissionsForm } from "./components/workspace-member-permissions-form";
+import type { WorkspaceMemberFormProps } from "./components/workspace-member-form-props";
+import type { GetWorkspaceMemberFromWorkspaceMemberRouteQuery } from "@/gql/graphql";
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { Link } from "@/components/link";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
-import { getMembersResourceKey } from "@/lib/resource-keys";
-import { memberSearchSchema } from "@/schemas/member-search-schema";
+import { getWorkspaceMembersResourceKey } from "@/lib/resource-keys";
+import { workspaceMemberSearchSchema } from "@/schemas/workspace-member-search-schema";
 import { createConnectionCursor } from "@/lib/graphql-connection";
 import {
   PageLayout,
@@ -32,17 +32,17 @@ import { useAbility } from "@/contexts/ability-context";
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Page } from "@/components/thread-ui/page";
 import { Card } from "@/components/ui/card";
-import { MemberStatus } from "@/gql/graphql";
+import { WorkspaceMemberStatus } from "@/gql/graphql";
 import { graphql } from "@/gql";
 import { createAbilitySubject } from "@/lib/ability";
 import { isAccessDenied } from "@/lib/auth-errors";
 
-const GET_MEMBER_NEIGHBORS = graphql(`
-  query getMemberNeighbors(
+const GET_WORKSPACE_MEMBER_NEIGHBORS = graphql(`
+  query getWorkspaceMemberNeighbors(
     $cursor: String!
     $query: String
-    $filter: MemberFilter
-    $orderBy: MemberOrder
+    $filter: WorkspaceMemberFilter
+    $orderBy: WorkspaceMemberOrder
   ) {
     currentWorkspace {
       id
@@ -78,9 +78,9 @@ const GET_MEMBER_NEIGHBORS = graphql(`
   }
 `);
 
-const GET_MEMBER_FROM_MEMBER_ROUTE = graphql(`
-  query getMemberFromMemberRoute($id: ID!) {
-    member(id: $id) {
+const GET_WORKSPACE_MEMBER_FROM_WORKSPACE_MEMBER_ROUTE = graphql(`
+  query getWorkspaceMemberFromWorkspaceMemberRoute($id: ID!) {
+    workspaceMember(id: $id) {
       workspaceId
       id
       roles
@@ -102,20 +102,20 @@ const GET_MEMBER_FROM_MEMBER_ROUTE = graphql(`
   }
 `);
 
-const REMOVE_MEMBER_FROM_MEMBER_ROUTE = graphql(`
-  mutation removeMemberFromMemberRoute($id: ID!) {
-    removeMember(id: $id) {
+const REMOVE_WORKSPACE_MEMBER_FROM_WORKSPACE_MEMBER_ROUTE = graphql(`
+  mutation removeWorkspaceMemberFromWorkspaceMemberRoute($id: ID!) {
+    removeWorkspaceMember(id: $id) {
       id
     }
   }
 `);
 
-const UPDATE_MEMBER_STATUS_FROM_MEMBERS_ROUTE = graphql(`
-  mutation updateMemberStatusFromMembersRoute(
+const UPDATE_WORKSPACE_MEMBER_STATUS_FROM_WORKSPACE_MEMBERS_ROUTE = graphql(`
+  mutation updateWorkspaceMemberStatusFromWorkspaceMembersRoute(
     $id: ID!
-    $input: UpdateMemberInput!
+    $input: UpdateWorkspaceMemberInput!
   ) {
-    updateMember(id: $id, input: $input) {
+    updateWorkspaceMember(id: $id, input: $input) {
       id
     }
   }
@@ -124,9 +124,9 @@ const UPDATE_MEMBER_STATUS_FROM_MEMBERS_ROUTE = graphql(`
 export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/members/$memberId/",
 )({
-  component: MemberPage,
+  component: WorkspaceMemberPage,
   beforeLoad: async ({
-    context: { apolloClient, ability, currentMember },
+    context: { apolloClient, ability, currentWorkspaceMember },
     params: { memberId, workspaceId },
   }) => {
     const denied = () =>
@@ -134,10 +134,11 @@ export const Route = createFileRoute(
         to: "/workspaces/$workspaceId/members",
         params: { workspaceId },
       });
-    if (!currentMember || !ability.can("read", "Member")) throw denied();
+    if (!currentWorkspaceMember || !ability.can("read", "WorkspaceMember"))
+      throw denied();
     const { data } = await apolloClient
       .query({
-        query: GET_MEMBER_FROM_MEMBER_ROUTE,
+        query: GET_WORKSPACE_MEMBER_FROM_WORKSPACE_MEMBER_ROUTE,
         variables: { id: memberId },
         context: { headers: { "x-workspace-id": workspaceId } },
         fetchPolicy: "network-only",
@@ -147,54 +148,66 @@ export const Route = createFileRoute(
         throw error;
       });
     if (
-      !data?.member ||
-      !ability.can("read", createAbilitySubject("Member", data.member))
+      !data?.workspaceMember ||
+      !ability.can(
+        "read",
+        createAbilitySubject("WorkspaceMember", data.workspaceMember),
+      )
     )
       throw denied();
     return {
-      memberData: { ...data, member: data.member },
-      title: data.member.name || t("member:details.title"),
+      memberData: { ...data, workspaceMember: data.workspaceMember },
+      title: data.workspaceMember.name || t("workspace-member:details.title"),
     };
   },
 });
 
-function MemberPage() {
+function WorkspaceMemberPage() {
   const { memberData } = Route.useRouteContext();
-  return <MemberDetails key={memberData.member.id} data={memberData} />;
+  return (
+    <WorkspaceMemberDetails
+      key={memberData.workspaceMember.id}
+      data={memberData}
+    />
+  );
 }
 
-function MemberDetails({
+function WorkspaceMemberDetails({
   data,
 }: {
-  data: GetMemberFromMemberRouteQuery & {
-    member: NonNullable<GetMemberFromMemberRouteQuery["member"]>;
+  data: GetWorkspaceMemberFromWorkspaceMemberRouteQuery & {
+    workspaceMember: NonNullable<
+      GetWorkspaceMemberFromWorkspaceMemberRouteQuery["workspaceMember"]
+    >;
   };
 }) {
   const { t } = useTranslation();
   const router = useRouter();
   const navigate = useNavigate();
   const { workspaceId } = Route.useParams();
-  const currentMember = useCurrentMemberContext();
+  const currentWorkspaceMember = useCurrentWorkspaceMemberContext();
   const ability = useAbility();
-  const [updateMemberStatus] = useMutation(
-    UPDATE_MEMBER_STATUS_FROM_MEMBERS_ROUTE,
+  const [updateWorkspaceMemberStatus] = useMutation(
+    UPDATE_WORKSPACE_MEMBER_STATUS_FROM_WORKSPACE_MEMBERS_ROUTE,
   );
   const [saving, setSaving] = useState(false);
-  const [removeMember, { loading: removing }] = useMutation(
-    REMOVE_MEMBER_FROM_MEMBER_ROUTE,
+  const [removeWorkspaceMember, { loading: removing }] = useMutation(
+    REMOVE_WORKSPACE_MEMBER_FROM_WORKSPACE_MEMBER_ROUTE,
   );
-  const member = data.member;
-  const [loadNeighbors] = useLazyQuery(GET_MEMBER_NEIGHBORS, {
+  const member = data.workspaceMember;
+  const [loadNeighbors] = useLazyQuery(GET_WORKSPACE_MEMBER_NEIGHBORS, {
     fetchPolicy: "network-only",
   });
   const currentUser = useCurrentUserContext();
   const navigation = useResourceNavigation({
-    key: [currentUser.id, ...getMembersResourceKey(workspaceId)],
-    searchSchema: memberSearchSchema,
+    key: [currentUser.id, ...getWorkspaceMembersResourceKey(workspaceId)],
+    searchSchema: workspaceMemberSearchSchema,
     query: useCallback(
       async ({
         search,
-      }: ResourceNavigationQueryOptions<typeof memberSearchSchema>) => {
+      }: ResourceNavigationQueryOptions<
+        typeof workspaceMemberSearchSchema
+      >) => {
         const { query, filter, orderBy } = search;
         const { data } = await loadNeighbors({
           variables: {
@@ -215,16 +228,16 @@ function MemberDetails({
     ),
   });
   const { previousEdge, nextEdge, backSearch } = navigation;
-  const memberSubject = createAbilitySubject("Member", member);
+  const memberSubject = createAbilitySubject("WorkspaceMember", member);
 
-  const save: MemberFormProps["onSave"] = async (
+  const save: WorkspaceMemberFormProps["onSave"] = async (
     operation,
     changesAuthorization = false,
   ) => {
     setSaving(true);
     try {
       await operation();
-      if (member.id === currentMember.id && changesAuthorization) {
+      if (member.id === currentWorkspaceMember.id && changesAuthorization) {
         // Do not refetch a route that the committed authorization change may have revoked.
         window.location.assign("/user/workspaces");
         return false;
@@ -232,13 +245,13 @@ function MemberDetails({
       await refreshAfterMutation(() => router.invalidate());
       toast.add({
         type: "success",
-        title: t("member:details.toast.updated_success"),
+        title: t("workspace-member:details.toast.updated_success"),
       });
       return true;
     } catch (error) {
       toast.add({
         type: "error",
-        title: t("member:details.toast.update_failed"),
+        title: t("workspace-member:details.toast.update_failed"),
         description: error instanceof Error ? error.message : "Unknown error",
       });
       return false;
@@ -250,22 +263,22 @@ function MemberDetails({
   const handleRemove = async () => {
     if (
       !(await alertDialog({
-        title: t("member:delete.title"),
-        description: t("member:delete.description"),
+        title: t("workspace-member:delete.title"),
+        description: t("workspace-member:delete.description"),
         cancelText: t("action.cancel"),
         confirmText: t("action.confirm"),
       }))
     )
       return;
     try {
-      await removeMember({
+      await removeWorkspaceMember({
         variables: { id: member.id },
         update(cache, result) {
-          if (!result.data?.removeMember) return;
+          if (!result.data?.removeWorkspaceMember) return;
           cache.evict({
             id: cache.identify({
-              __typename: "Member",
-              id: result.data.removeMember.id,
+              __typename: "WorkspaceMember",
+              id: result.data.removeWorkspaceMember.id,
             }),
           });
           cache.gc();
@@ -278,12 +291,12 @@ function MemberDetails({
       });
       toast.add({
         type: "success",
-        title: t("member:details.toast.deleted_success"),
+        title: t("workspace-member:details.toast.deleted_success"),
       });
     } catch (error) {
       toast.add({
         type: "error",
-        title: t("member:details.toast.delete_failed"),
+        title: t("workspace-member:details.toast.delete_failed"),
         description: error instanceof Error ? error.message : "Unknown error",
       });
     }
@@ -295,7 +308,7 @@ function MemberDetails({
       title={member.name ?? member.id}
       breadcrumbActions={[
         {
-          label: t("member:title"),
+          label: t("workspace-member:title"),
           render: (
             <Link
               to="/workspaces/$workspaceId/members"
@@ -327,13 +340,14 @@ function MemberDetails({
         ability.can("write", memberSubject)
           ? [
               ...(ability.can("write", memberSubject, "status") &&
-              [MemberStatus.ACTIVE, MemberStatus.DISABLED].includes(
-                member.status,
-              )
+              [
+                WorkspaceMemberStatus.ACTIVE,
+                WorkspaceMemberStatus.DISABLED,
+              ].includes(member.status)
                 ? [
                     {
                       label: t(
-                        member.status === MemberStatus.DISABLED
+                        member.status === WorkspaceMemberStatus.DISABLED
                           ? "action.enable"
                           : "action.disable",
                       ),
@@ -341,14 +355,15 @@ function MemberDetails({
                       onAction: () =>
                         save(
                           () =>
-                            updateMemberStatus({
+                            updateWorkspaceMemberStatus({
                               variables: {
                                 id: member.id,
                                 input: {
                                   status:
-                                    member.status === MemberStatus.DISABLED
-                                      ? MemberStatus.ACTIVE
-                                      : MemberStatus.DISABLED,
+                                    member.status ===
+                                    WorkspaceMemberStatus.DISABLED
+                                      ? WorkspaceMemberStatus.ACTIVE
+                                      : WorkspaceMemberStatus.DISABLED,
                                 },
                               },
                             }),
@@ -357,7 +372,7 @@ function MemberDetails({
                     },
                   ]
                 : []),
-              ...(member.id !== currentMember.id
+              ...(member.id !== currentWorkspaceMember.id
                 ? [
                     {
                       label: t("action.delete"),
@@ -374,7 +389,7 @@ function MemberDetails({
       <PageLayout>
         <PageLayoutSection>
           <Card>
-            <MemberProfileForm
+            <WorkspaceMemberProfileForm
               member={member}
               onSave={save}
               disabled={
@@ -385,7 +400,7 @@ function MemberDetails({
         </PageLayoutSection>
         <PageLayoutSection>
           <Card>
-            <MemberRolesForm
+            <WorkspaceMemberRolesForm
               member={member}
               onSave={save}
               options={data.workspaceRoles}
@@ -397,7 +412,7 @@ function MemberDetails({
         </PageLayoutSection>
         <PageLayoutSection>
           <Card>
-            <MemberPermissionsForm
+            <WorkspaceMemberPermissionsForm
               member={member}
               onSave={save}
               options={data.workspacePermissions}

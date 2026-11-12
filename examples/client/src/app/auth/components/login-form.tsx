@@ -76,7 +76,7 @@ const AUTH_SIGN_IN_SOCIAL_FROM_LOGIN_FORM = graphql(`
   }
 `);
 
-const INVITATION_ID_KEY = "invitation_id";
+const WORKSPACE_INVITATION_ID_KEY = "invitation_id";
 
 type AuthMode = "login" | "register";
 
@@ -444,15 +444,15 @@ function createRegisterSchema(
 }
 
 function resolvePostAuthUrl(redirect?: string, invitationId?: string | null) {
-  const storedInvitationId =
+  const storedWorkspaceInvitationId =
     invitationId ??
     (typeof window !== "undefined"
-      ? localStorage.getItem(INVITATION_ID_KEY)
+      ? localStorage.getItem(WORKSPACE_INVITATION_ID_KEY)
       : null);
 
   return resolvePostAuthPath(
     redirect,
     typeof window === "undefined" ? "http://localhost" : window.location.origin,
-    storedInvitationId,
+    storedWorkspaceInvitationId,
   );
 }

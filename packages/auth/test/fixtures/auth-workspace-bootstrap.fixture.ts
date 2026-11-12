@@ -19,11 +19,11 @@ import { AuthModule } from "../../src/core/auth.module.js";
 import { AUTH_TOKEN } from "../../src/core/constants/auth.constants.js";
 import { User } from "../../src/core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-options.interface.js";
-import { Member } from "../../src/workspace/entities/member.entity.js";
 import { Workspace } from "../../src/workspace/entities/workspace.entity.js";
-import { InvitationService } from "../../src/workspace/services/invitation.service.js";
-import { MemberService } from "../../src/workspace/services/member.service.js";
+import { WorkspaceMember } from "../../src/workspace/entities/workspace-member.entity.js";
 import { WorkspaceService } from "../../src/workspace/services/workspace.service.js";
+import { WorkspaceInvitationService } from "../../src/workspace/services/workspace-invitation.service.js";
+import { WorkspaceMemberService } from "../../src/workspace/services/workspace-member.service.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 
 /**
@@ -104,7 +104,7 @@ export async function verifyAuthBootstrap(
     const schema = app.get(GraphQLSchemaHost).schema;
     const enabled = workspace?.enabled === true;
     expect(orm.getMetadata().has(Workspace)).toBe(enabled);
-    expect(orm.getMetadata().has(Member)).toBe(enabled);
+    expect(orm.getMetadata().has(WorkspaceMember)).toBe(enabled);
     const expected = (
       enabled
         ? [
@@ -115,8 +115,8 @@ export async function verifyAuthBootstrap(
             "api_key",
             "system_account",
             "workspace",
-            "member",
-            "invitation",
+            "workspace_member",
+            "workspace_invitation",
           ]
         : [
             "user",
@@ -173,26 +173,26 @@ export async function verifyAuthBootstrap(
     for (const name of [
       "currentWorkspace",
       "workspaceApiKeys",
-      "currentMember",
+      "currentWorkspaceMember",
       "workspaceRoles",
       "workspacePermissions",
       "workspaceApiKeyPermissions",
-      "invitation",
+      "workspaceInvitation",
     ]) {
       expect(!!schema.getQueryType()?.getFields()[name]).toBe(enabled);
     }
     for (const name of [
       "createWorkspace",
-      "addMember",
-      "createInvitation",
+      "addWorkspaceMember",
+      "createWorkspaceInvitation",
       "createWorkspaceApiKey",
     ]) {
       expect(!!schema.getMutationType()?.getFields()[name]).toBe(enabled);
     }
     for (const name of [
       "Workspace",
-      "Member",
-      "Invitation",
+      "WorkspaceMember",
+      "WorkspaceInvitation",
       "WorkspaceRole",
       "WorkspacePermission",
     ]) {
@@ -203,8 +203,8 @@ export async function verifyAuthBootstrap(
     expect(!!user.getFields().invitations).toBe(enabled);
     for (const service of [
       WorkspaceService,
-      MemberService,
-      InvitationService,
+      WorkspaceMemberService,
+      WorkspaceInvitationService,
       WorkspaceApiKeyService,
     ]) {
       expect(!!app.get(service)).toBe(enabled);

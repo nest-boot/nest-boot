@@ -15,7 +15,7 @@ describe("DEFAULT_WORKSPACE_ROLES", () => {
 
   it("declares the complete default workspace permission catalog", () => {
     expect(DEFAULT_WORKSPACE_PERMISSIONS).toContain("workspace:delete");
-    expect(DEFAULT_WORKSPACE_PERMISSIONS).toContain("member:invite");
+    expect(DEFAULT_WORKSPACE_PERMISSIONS).toContain("workspace-member:invite");
   });
 
   it("grants full owner access, scoped administration, and explicit member reads", () => {
@@ -24,28 +24,28 @@ describe("DEFAULT_WORKSPACE_ROLES", () => {
         "workspace:read",
         "workspace:update",
         "workspace:delete",
-        "member:read",
-        "member:write",
-        "member:set-roles",
-        "member:set-permissions",
-        "member:invite",
-        "service-account:read",
-        "service-account:write",
-        "member-api-key:read",
-        "member-api-key:write",
+        "workspace-member:read",
+        "workspace-member:write",
+        "workspace-member:set-roles",
+        "workspace-member:set-permissions",
+        "workspace-member:invite",
+        "workspace-service-account:read",
+        "workspace-service-account:write",
+        "workspace-api-key:read",
+        "workspace-api-key:write",
       ],
       admin: [
         "workspace:read",
         "workspace:update",
-        "member:read",
-        "member:write",
-        "member:set-roles",
-        "member:set-permissions",
-        "member:invite",
-        "service-account:read",
-        "service-account:write",
+        "workspace-member:read",
+        "workspace-member:write",
+        "workspace-member:set-roles",
+        "workspace-member:set-permissions",
+        "workspace-member:invite",
+        "workspace-service-account:read",
+        "workspace-service-account:write",
       ],
-      member: ["workspace:read", "member:read"],
+      member: ["workspace:read", "workspace-member:read"],
     });
   });
 });

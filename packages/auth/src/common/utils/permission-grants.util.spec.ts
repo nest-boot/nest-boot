@@ -7,8 +7,8 @@ import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
 import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { User } from "../../core/entities/user.entity.js";
 import { RequestIdentity } from "../../core/request-identity.js";
-import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import {
   assertApiKeyPermissionCeiling,
   assertCanGrantPermissions,
@@ -44,7 +44,7 @@ describe("permission delegation", () => {
           permissions: ["report:write"],
         });
         const workspace = new Workspace();
-        const member = Object.assign(new Member(), {
+        const member = Object.assign(new WorkspaceMember(), {
           user,
           workspace,
           roles: ["reader"],
@@ -105,7 +105,7 @@ describe("permission delegation", () => {
         ]);
       }).not.toThrow();
       const workspace = new Workspace();
-      const member = Object.assign(new Member(), {
+      const member = Object.assign(new WorkspaceMember(), {
         workspace,
         type: "SERVICE_ACCOUNT",
         roles: [],

@@ -6,19 +6,19 @@ import type { FactoryProvider } from "@nestjs/common";
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { mockAuthorization } from "../../test/mock-authorization.js";
 import {
-  createTestMember,
   createTestWorkspace,
+  createTestWorkspaceMember,
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
 import { ApiKey } from "../api-key/entities/api-key.entity.js";
 import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
 import { ApiKeyAuthenticationService } from "../api-key/services/api-key-authentication.service.js";
 import { AuthAbility } from "../common/auth.ability.js";
-import { Member } from "../workspace/entities/member.entity.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
-import { InvitationService } from "../workspace/services/invitation.service.js";
-import { MemberService } from "../workspace/services/member.service.js";
+import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
 import { WorkspaceService } from "../workspace/services/workspace.service.js";
+import { WorkspaceInvitationService } from "../workspace/services/workspace-invitation.service.js";
+import { WorkspaceMemberService } from "../workspace/services/workspace-member.service.js";
 import { authServiceProviders } from "./auth-service.providers.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
@@ -121,7 +121,7 @@ describe("auth service execution boundaries", () => {
           RequestContext.set(User, user);
           RequestContext.set(Session, session);
           RequestContext.set(Workspace, createTestWorkspace());
-          RequestContext.set(Member, createTestMember());
+          RequestContext.set(WorkspaceMember, createTestWorkspaceMember());
           const ability = new AuthAbility([
             { action: "update", subject: User },
           ]);
@@ -143,7 +143,7 @@ describe("auth service execution boundaries", () => {
             expect(RequestContext.get(AuthAbility)).toBe(ability);
             expect(em.setSessionContext).not.toHaveBeenCalled();
           } else {
-            for (const token of [User, Session, Workspace, Member]) {
+            for (const token of [User, Session, Workspace, WorkspaceMember]) {
               expect(RequestContext.get(token)).toBeNull();
             }
             expect(RequestContext.get(AuthAbility)?.can("update", User)).toBe(
@@ -173,7 +173,7 @@ describe("auth service execution boundaries", () => {
         variables: { "app.workspace.id": "workspace-1" },
       });
       const workspace = createTestWorkspace();
-      const member = createTestMember();
+      const member = createTestWorkspaceMember();
       const ability = new AuthAbility([
         { action: "delete", subject: Workspace },
       ]);
@@ -193,7 +193,7 @@ describe("auth service execution boundaries", () => {
         new RequestContext({ type: "test" }),
         async () => {
           RequestContext.set(EntityManager, em);
-          RequestContext.set(Member, member);
+          RequestContext.set(WorkspaceMember, member);
           RequestContext.set(Workspace, workspace);
           RequestContext.set(AuthAbility, ability);
           const result = service.deleteWorkspace(workspace);
@@ -204,7 +204,9 @@ describe("auth service execution boundaries", () => {
           }
           expect(RequestContext.get(EntityManager)).toBe(em);
           expect(em.fork).not.toHaveBeenCalled();
-          expect(RequestContext.get(Member)).toBe(failure ? member : null);
+          expect(RequestContext.get(WorkspaceMember)).toBe(
+            failure ? member : null,
+          );
           expect(RequestContext.get(Workspace)).toBe(
             failure ? workspace : null,
           );
@@ -232,8 +234,8 @@ describe("auth service execution boundaries", () => {
         (candidate) =>
           typeof candidate === "object" &&
           "provide" in candidate &&
-          candidate.provide === InvitationService,
-      ) as FactoryProvider<InvitationService>;
+          candidate.provide === WorkspaceInvitationService,
+      ) as FactoryProvider<WorkspaceInvitationService>;
       const execute = vi.fn().mockResolvedValue([{ role: "authenticated" }]);
       const transaction = {};
       const reader = {
@@ -262,7 +264,7 @@ describe("auth service execution boundaries", () => {
         new RequestContext({ type: "test" }),
         async () => {
           RequestContext.set(EntityManager, current);
-          const result = service.getUserIdForInvitation(
+          const result = service.getUserIdForWorkspaceInvitation(
             new Workspace(),
             new User(),
             "user@example.com",
@@ -345,39 +347,39 @@ describe("auth service execution boundaries", () => {
       ],
     },
     {
-      type: MemberService,
-      special: ["getUserForMembership"],
+      type: WorkspaceMemberService,
+      special: ["getUserForWorkspaceMembership"],
       ordinary: [
-        "getMemberConnectionByWorkspace",
-        "getMember",
-        "getMemberByUser",
-        "getMemberUser",
-        "addMember",
-        "addMemberByEmail",
-        "updateMember",
-        "setMemberRoles",
-        "setMemberPermissions",
-        "removeMember",
+        "getWorkspaceMemberConnectionByWorkspace",
+        "getWorkspaceMember",
+        "getWorkspaceMemberByUser",
+        "getWorkspaceMemberUser",
+        "addWorkspaceMember",
+        "addWorkspaceMemberByEmail",
+        "updateWorkspaceMember",
+        "setWorkspaceMemberRoles",
+        "setWorkspaceMemberPermissions",
+        "removeWorkspaceMember",
         "leaveWorkspace",
       ],
     },
     {
-      type: InvitationService,
+      type: WorkspaceInvitationService,
       special: [
-        "getUserIdForInvitation",
-        "acceptInvitation",
-        "rejectInvitation",
+        "getUserIdForWorkspaceInvitation",
+        "acceptWorkspaceInvitation",
+        "rejectWorkspaceInvitation",
       ],
       ordinary: [
-        "getInvitation",
-        "getInvitationByUser",
-        "getInvitationByWorkspace",
-        "getInvitationInviter",
-        "getInvitationWorkspace",
-        "getInvitationConnectionByWorkspace",
-        "getInvitationConnectionByUser",
-        "createInvitation",
-        "cancelInvitation",
+        "getWorkspaceInvitation",
+        "getWorkspaceInvitationByUser",
+        "getWorkspaceInvitationByWorkspace",
+        "getWorkspaceInvitationInviter",
+        "getWorkspaceInvitationWorkspace",
+        "getWorkspaceInvitationConnectionByWorkspace",
+        "getWorkspaceInvitationConnectionByUser",
+        "createWorkspaceInvitation",
+        "cancelWorkspaceInvitation",
       ],
     },
   ])(

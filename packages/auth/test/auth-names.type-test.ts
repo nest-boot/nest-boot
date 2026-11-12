@@ -37,8 +37,8 @@ type ValidPermissions =
   | "user:read"
   | "user-api-key:read"
   | "user:set-roles"
-  | "member-api-key:write"
-  | "member:set-roles"
+  | "workspace-api-key:write"
+  | "workspace-member:set-roles"
   | "resource2:action3"
   | "true:false"
   | "null:read";
@@ -110,14 +110,18 @@ AuthModule.forRoot({
   },
   workspace: {
     enabled: true,
-    permissions: ["member-api-key:write"],
-    roles: { "team-owner": ["member-api-key:write", "workspace:update"] },
+    permissions: ["workspace-api-key:write"],
+    roles: { "team-owner": ["workspace-api-key:write", "workspace:update"] },
     creatorRole: "team-owner",
     defaultRole: "team-owner",
   },
   apiKey: {
     user: {
-      allowedPermissions: ["report:read", "member-api-key:write", "user:read"],
+      allowedPermissions: [
+        "report:read",
+        "workspace-api-key:write",
+        "user:read",
+      ],
     },
   },
 });
@@ -203,7 +207,7 @@ AuthModule.forRoot({
   user: { permissions: ["report:read"] },
   apiKey: {
     workspace: {
-      // @ts-expect-error Member keys cannot carry user-only permissions.
+      // @ts-expect-error WorkspaceMember keys cannot carry user-only permissions.
       defaultPermissions: ["report:read"],
     },
   },

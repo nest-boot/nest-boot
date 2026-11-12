@@ -17,12 +17,12 @@ import { WorkspaceApiKeyResolver } from "../api-key/resolvers/workspace-api-key.
 import { WorkspaceApiKeyService } from "../api-key/services/workspace-api-key.service.js";
 import { CAN_METADATA } from "../common/constants/permission.constants.js";
 import { Workspace as BaseWorkspace } from "../workspace/entities/workspace.entity.js";
-import { InvitationResolver } from "../workspace/resolvers/invitation.resolver.js";
-import { MemberResolver } from "../workspace/resolvers/member.resolver.js";
 import { WorkspaceResolver } from "../workspace/resolvers/workspace.resolver.js";
-import { InvitationService } from "../workspace/services/invitation.service.js";
-import { MemberService } from "../workspace/services/member.service.js";
+import { WorkspaceInvitationResolver } from "../workspace/resolvers/workspace-invitation.resolver.js";
+import { WorkspaceMemberResolver } from "../workspace/resolvers/workspace-member.resolver.js";
 import { WorkspaceService } from "../workspace/services/workspace.service.js";
+import { WorkspaceInvitationService } from "../workspace/services/workspace-invitation.service.js";
+import { WorkspaceMemberService } from "../workspace/services/workspace-member.service.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { AuthModule } from "./auth.module.js";
@@ -96,9 +96,9 @@ class Verification {}
 
 class Workspace {}
 
-class Invitation {}
+class WorkspaceInvitation {}
 
-class Member {}
+class WorkspaceMember {}
 
 const entities = {
   account: Account,
@@ -108,8 +108,8 @@ const entities = {
   user: User,
   verification: Verification,
   workspace: Workspace,
-  invitation: Invitation,
-  member: Member,
+  invitation: WorkspaceInvitation,
+  member: WorkspaceMember,
 };
 
 /**
@@ -293,10 +293,10 @@ describe("AuthModule", () => {
       expect.objectContaining({ provide: WorkspaceService }),
     );
     expect(providers).toContainEqual(
-      expect.objectContaining({ provide: MemberService }),
+      expect.objectContaining({ provide: WorkspaceMemberService }),
     );
     expect(providers).toContainEqual(
-      expect.objectContaining({ provide: InvitationService }),
+      expect.objectContaining({ provide: WorkspaceInvitationService }),
     );
     expect((AuthModule.forRoot({}).imports?.[0] as any).exports).toContain(
       MODULE_OPTIONS_TOKEN,
@@ -310,8 +310,8 @@ describe("AuthModule", () => {
     );
     expect(exports).toContain(SessionService);
     expect(exports).toContain(WorkspaceService);
-    expect(exports).toContain(MemberService);
-    expect(exports).toContain(InvitationService);
+    expect(exports).toContain(WorkspaceMemberService);
+    expect(exports).toContain(WorkspaceInvitationService);
   });
 
   it.each([undefined, {}, { enabled: false }])(
@@ -532,7 +532,7 @@ describe("AuthModule", () => {
     },
     {
       apiKey: {
-        user: { defaultPermissions: ["user:read", "member:invite"] },
+        user: { defaultPermissions: ["user:read", "workspace-member:invite"] },
         workspace: { defaultPermissions: ["workspace:update"] },
       },
     },
@@ -943,7 +943,7 @@ describe("AuthModule", () => {
         secret,
         unexpectedOption: "must-not-pass-through",
         user: {},
-        workspace: { enabled: true, sendInvitationEmail: vi.fn() },
+        workspace: { enabled: true, sendWorkspaceInvitationEmail: vi.fn() },
       },
       {
         em: {
@@ -1473,10 +1473,10 @@ describe("GraphQL registration metadata", () => {
         [UserResolver, "User"],
         [SessionResolver, "Session"],
         [UserApiKeyResolver, "User"],
-        [WorkspaceApiKeyResolver, "Member"],
+        [WorkspaceApiKeyResolver, "WorkspaceMember"],
         [WorkspaceResolver, "Workspace"],
-        [MemberResolver, "Member"],
-        [InvitationResolver, "Invitation"],
+        [WorkspaceMemberResolver, "WorkspaceMember"],
+        [WorkspaceInvitationResolver, "WorkspaceInvitation"],
       ] as const) {
         expect(Reflect.getMetadata("graphql:resolver_type", resolver)).toBe(
           name,
@@ -1497,8 +1497,8 @@ describe("GraphQL registration metadata", () => {
           UserApiKeyResolver,
           WorkspaceApiKeyResolver,
           WorkspaceResolver,
-          MemberResolver,
-          InvitationResolver,
+          WorkspaceMemberResolver,
+          WorkspaceInvitationResolver,
         ]),
       );
     });
@@ -1510,8 +1510,8 @@ describe("GraphQL registration metadata", () => {
         UserApiKeyResolver,
         WorkspaceApiKeyResolver,
         WorkspaceResolver,
-        MemberResolver,
-        InvitationResolver,
+        WorkspaceMemberResolver,
+        WorkspaceInvitationResolver,
       ]) {
         for (const name of Object.getOwnPropertyNames(resolver.prototype)) {
           const method = Object.getOwnPropertyDescriptor(

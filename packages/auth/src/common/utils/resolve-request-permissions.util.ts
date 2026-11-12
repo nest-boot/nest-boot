@@ -4,12 +4,12 @@ import { resolveApiKeyPermissionCatalog } from "../../api-key/utils/api-key-perm
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
-import { resolveRequestMember } from "../../workspace/utils/resolve-request-member.util.js";
+import { resolveRequestWorkspaceMember } from "../../workspace/utils/resolve-request-workspace-member.util.js";
 import type { RequestPermissions } from "../interfaces/request-permissions.interface.js";
 import {
   intersectPermissions,
-  resolveMemberPermissions,
   resolveUserPermissions,
+  resolveWorkspaceMemberPermissions,
 } from "./resolve-effective-permissions.util.js";
 
 const REQUEST_PERMISSIONS = Symbol("auth.requestPermissions");
@@ -45,7 +45,9 @@ export function resolveRequestPermissions(
   }
   const user = RequestContext.get(User);
   const member =
-    options.workspace?.enabled === true ? resolveRequestMember() : null;
+    options.workspace?.enabled === true
+      ? resolveRequestWorkspaceMember()
+      : null;
   const apiKey = getCurrentApiKey();
   const keyPermissions = Array.isArray(apiKey?.permissions)
     ? apiKey.permissions
@@ -70,7 +72,7 @@ export function resolveRequestPermissions(
     RequestContext.set(REQUEST_PERMISSIONS, { options, permissions });
     return permissions;
   }
-  const memberKey = apiKey?.ownerType === "member";
+  const memberKey = apiKey?.ownerType === "workspace_member";
   const unrestricted =
     !apiKey || (Array.isArray(apiKey.permissions) && !keyPermissions.length);
   const limit = (permissions: readonly string[]) =>
@@ -83,7 +85,7 @@ export function resolveRequestPermissions(
       user && !memberKey ? limit(resolveUserPermissions(options, user)) : [],
     ),
     workspace: Object.freeze(
-      member ? limit(resolveMemberPermissions(options, member)) : [],
+      member ? limit(resolveWorkspaceMemberPermissions(options, member)) : [],
     ),
   });
   RequestContext.set(REQUEST_PERMISSIONS, { options, permissions });

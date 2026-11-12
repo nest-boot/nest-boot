@@ -3,13 +3,13 @@ import { t } from "i18next";
 export function getRoleLabel(role: string) {
   switch (role) {
     case "OWNER":
-      return t("member:role.owner");
+      return t("workspace-member:role.owner");
     case "ADMIN":
-      return t("member:role.admin");
+      return t("workspace-member:role.admin");
     case "USER":
-      return t("member:role.user");
+      return t("workspace-member:role.user");
     case "MEMBER":
-      return t("member:role.member");
+      return t("workspace-member:role.member");
     default:
       return role;
   }

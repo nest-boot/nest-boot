@@ -4,7 +4,7 @@ import type { Provider } from "@nestjs/common";
 import { SystemAccountService } from "../admin/services/system-account.service.js";
 import { featureProvider } from "../common/feature-provider.js";
 import { UserService } from "../core/services/user.service.js";
-import { MemberService } from "../workspace/services/member.service.js";
+import { WorkspaceMemberService } from "../workspace/services/workspace-member.service.js";
 import { SystemApiKeyResolver } from "./resolvers/system-api-key.resolver.js";
 import { SystemApiKeyRelationResolver } from "./resolvers/system-api-key-relation.resolver.js";
 import { UserApiKeyResolver } from "./resolvers/user-api-key.resolver.js";
@@ -72,8 +72,8 @@ export const apiKeyProviders: Provider[] = [
   featureProvider(
     WorkspaceApiKeyRelationResolver,
     "workspaceApiKey",
-    [MemberService],
-    (_options, identities: MemberService) =>
+    [WorkspaceMemberService],
+    (_options, identities: WorkspaceMemberService) =>
       new WorkspaceApiKeyRelationResolver(identities),
   ),
   featureProvider(

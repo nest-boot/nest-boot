@@ -36,15 +36,15 @@ it('builds the current example schema from ordered migrations and can roll back 
     expect(rows.map(({ tablename }) => tablename)).toEqual([
       'account',
       'api_key',
-      'invitation',
       'job',
-      'member',
       'mikro_orm_migrations',
       'session',
       'system_account',
       'user',
       'verification',
       'workspace',
+      'workspace_invitation',
+      'workspace_member',
     ]);
     expect(
       (

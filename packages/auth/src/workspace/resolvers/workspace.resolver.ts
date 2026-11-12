@@ -14,30 +14,30 @@ import { type GraphQLResolveInfo } from "graphql";
 import { CurrentUser } from "../../core/decorators/current-user.decorator.js";
 import { User } from "../../core/entities/user.entity.js";
 import {
-  InvitationConnection,
-  InvitationConnectionArgs,
-} from "../connections/invitation.connection-definition.js";
-import {
-  MemberConnection,
-  MemberConnectionArgs,
-} from "../connections/member.connection-definition.js";
-import {
   WorkspaceConnection,
   WorkspaceConnectionArgs,
 } from "../connections/workspace.connection-definition.js";
-import { CurrentMember } from "../decorators/current-member.decorator.js";
-import { type Invitation } from "../entities/invitation.entity.js";
-import { Member } from "../entities/member.entity.js";
+import {
+  WorkspaceInvitationConnection,
+  WorkspaceInvitationConnectionArgs,
+} from "../connections/workspace-invitation.connection-definition.js";
+import {
+  WorkspaceMemberConnection,
+  WorkspaceMemberConnectionArgs,
+} from "../connections/workspace-member.connection-definition.js";
+import { CurrentWorkspaceMember } from "../decorators/current-workspace-member.decorator.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { type WorkspaceInvitation } from "../entities/workspace-invitation.entity.js";
+import { WorkspaceMember } from "../entities/workspace-member.entity.js";
 import { CreateWorkspaceInput } from "../inputs/create-workspace.input.js";
 import { UpdateWorkspaceInput } from "../inputs/update-workspace.input.js";
 import { CreateWorkspacePayload } from "../objects/create-workspace-payload.object.js";
 import { DeleteWorkspacePayload } from "../objects/delete-workspace-payload.object.js";
 import { LeaveWorkspacePayload } from "../objects/leave-workspace-payload.object.js";
 import { UpdateWorkspacePayload } from "../objects/update-workspace-payload.object.js";
-import { InvitationService } from "../services/invitation.service.js";
-import { MemberService } from "../services/member.service.js";
 import { WorkspaceService } from "../services/workspace.service.js";
+import { WorkspaceInvitationService } from "../services/workspace-invitation.service.js";
+import { WorkspaceMemberService } from "../services/workspace-member.service.js";
 
 /** Workspace and membership API. */
 @Resolver(() => Workspace)
@@ -45,13 +45,13 @@ export class WorkspaceResolver {
   /**
    * Creates this resolver.
    * @param workspaceService - Workspace lifecycle.
-   * @param memberService - Workspace memberships.
-   * @param invitationService - Workspace invitations.
+   * @param workspaceMemberService - Workspace memberships.
+   * @param workspaceInvitationService - Workspace invitations.
    */
   constructor(
     readonly workspaceService: WorkspaceService,
-    readonly memberService: MemberService,
-    readonly invitationService: InvitationService,
+    readonly workspaceMemberService: WorkspaceMemberService,
+    readonly workspaceInvitationService: WorkspaceInvitationService,
   ) {}
 
   /**
@@ -61,14 +61,14 @@ export class WorkspaceResolver {
    * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated members visible in the workspace.
    */
-  @ResolveField(() => MemberConnection)
+  @ResolveField(() => WorkspaceMemberConnection)
   async members(
     @Parent() workspace: Workspace,
-    @Args({ type: () => MemberConnectionArgs })
-    args: ConnectionArgsInterface<Member>,
+    @Args({ type: () => WorkspaceMemberConnectionArgs })
+    args: ConnectionArgsInterface<WorkspaceMember>,
     @Info() info?: GraphQLResolveInfo,
   ) {
-    return await this.memberService.getMemberConnectionByWorkspace(
+    return await this.workspaceMemberService.getWorkspaceMemberConnectionByWorkspace(
       workspace,
       args,
       info,
@@ -82,14 +82,14 @@ export class WorkspaceResolver {
    * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated invitations visible to the current principal.
    */
-  @ResolveField(() => InvitationConnection)
+  @ResolveField(() => WorkspaceInvitationConnection)
   async invitations(
     @Parent() workspace: Workspace,
-    @Args({ type: () => InvitationConnectionArgs })
-    args: ConnectionArgsInterface<Invitation>,
+    @Args({ type: () => WorkspaceInvitationConnectionArgs })
+    args: ConnectionArgsInterface<WorkspaceInvitation>,
     @Info() info?: GraphQLResolveInfo,
   ) {
-    return await this.invitationService.getInvitationConnectionByWorkspace(
+    return await this.workspaceInvitationService.getWorkspaceInvitationConnectionByWorkspace(
       workspace,
       args,
       info,
@@ -218,9 +218,9 @@ export class WorkspaceResolver {
    */
   @Mutation(() => LeaveWorkspacePayload)
   async leaveWorkspace(
-    @CurrentMember() member: Member,
+    @CurrentWorkspaceMember() member: WorkspaceMember,
   ): Promise<LeaveWorkspacePayload> {
-    const removed = await this.memberService.leaveWorkspace(member);
+    const removed = await this.workspaceMemberService.leaveWorkspace(member);
     return { memberId: removed.id };
   }
 }

@@ -6,9 +6,9 @@ import type { ApiKeyMetadata } from "../api-key/types/api-key-metadata.type.js";
 import { getCurrentApiKey } from "../api-key/utils/get-current-api-key.util.js";
 import { AuthAbility } from "../common/auth.ability.js";
 import { invalidateRequestPermissions } from "../common/utils/resolve-request-permissions.util.js";
-import { Member } from "../workspace/entities/member.entity.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
-import { resolveRequestMember } from "../workspace/utils/resolve-request-member.util.js";
+import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
+import { resolveRequestWorkspaceMember } from "../workspace/utils/resolve-request-workspace-member.util.js";
 import { API_KEY } from "./constants/auth.constants.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
@@ -25,8 +25,8 @@ export class RequestIdentity {
    * Returns the active request member, rejecting user API keys outside their membership.
    * @returns Active member in the selected workspace, or null if unavailable.
    */
-  static getCurrentMember(): Member | null {
-    const member = resolveRequestMember();
+  static getCurrentWorkspaceMember(): WorkspaceMember | null {
+    const member = resolveRequestWorkspaceMember();
     if (getCurrentApiKey() && RequestContext.get(User) && !member) {
       throw new ForbiddenException(
         "The API key owner is not a member of this workspace",
@@ -99,15 +99,17 @@ export class RequestIdentity {
    * Throws unless the supplied member is the current workspace member.
    * @param member - The workspace membership to inspect or change.
    */
-  static assertCurrentMember(member: Member | null | undefined): void {
-    const currentMember = RequestContext.isActive()
-      ? RequestContext.get(Member)
+  static assertCurrentWorkspaceMember(
+    member: WorkspaceMember | null | undefined,
+  ): void {
+    const currentWorkspaceMember = RequestContext.isActive()
+      ? RequestContext.get(WorkspaceMember)
       : undefined;
 
     if (
       !member ||
-      !currentMember ||
-      String(currentMember.id) !== String(member.id)
+      !currentWorkspaceMember ||
+      String(currentWorkspaceMember.id) !== String(member.id)
     ) {
       throw new ForbiddenException(
         "The operation belongs to another workspace member",
@@ -171,14 +173,14 @@ export class RequestIdentity {
    * @param options - Authentication module configuration.
    * @param member - The workspace membership to inspect or change.
    */
-  static updateMember(
+  static updateWorkspaceMember(
     em: EntityManager,
     options: AuthModuleOptions,
-    member: Member,
+    member: WorkspaceMember,
   ): void {
     if (
       !RequestContext.isActive() ||
-      RequestContext.get(Member)?.id !== member.id
+      RequestContext.get(WorkspaceMember)?.id !== member.id
     ) {
       return;
     }
@@ -239,7 +241,7 @@ export class RequestIdentity {
       RequestContext.set(User, patch.user ?? null);
     }
     if ("member" in patch) {
-      RequestContext.set(Member, patch.member ?? null);
+      RequestContext.set(WorkspaceMember, patch.member ?? null);
     }
     if ("workspace" in patch) {
       RequestContext.set(Workspace, patch.workspace ?? null);
@@ -336,7 +338,7 @@ export class RequestIdentity {
    * @param options - Authentication module configuration.
    */
   static clearWorkspace(em: EntityManager, options: AuthModuleOptions): void {
-    if (getCurrentApiKey()?.ownerType === "member") {
+    if (getCurrentApiKey()?.ownerType === "workspace_member") {
       this.clear(em);
       return;
     }
@@ -355,7 +357,7 @@ export class RequestIdentity {
     const user = RequestContext.get(User);
     const apiKey = getCurrentApiKey();
     const workspace = RequestContext.get(Workspace);
-    const member = resolveRequestMember();
+    const member = resolveRequestWorkspaceMember();
     const authenticated = Boolean(user ?? apiKey);
     return {
       role: authenticated ? "authenticated" : "anonymous",

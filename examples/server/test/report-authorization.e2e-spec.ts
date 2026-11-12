@@ -4,11 +4,11 @@ import {
   AuthGuard,
   AuthResolver,
   type AuthService,
-  Member,
   User,
   UserApiKey,
   Workspace,
   WorkspaceApiKeyService,
+  WorkspaceMember,
 } from '@nest-boot/auth';
 import { RequestContext } from '@nest-boot/request-context';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
@@ -57,8 +57,8 @@ describe('business authorization recipe', () => {
           RequestContext.set(User, user);
           RequestContext.set(Workspace, workspace);
           RequestContext.set(
-            Member,
-            Object.assign(new Member(), {
+            WorkspaceMember,
+            Object.assign(new WorkspaceMember(), {
               workspace,
               user,
               roles: [role],

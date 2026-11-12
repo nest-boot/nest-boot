@@ -11,3 +11,5 @@ Make administration and credentials opt-in. All flags default to false: `admin.e
 Include example administration pages under `/admin/api-keys` and `/admin/system-accounts`, explicit example feature configuration and a fresh-database migration baseline. Keep the release in the 8.x series.
 
 Define optional API-key owner mappings through native EntitySchema and return ordinary credential-free GraphQL DTOs. Keep other models as decorated entities. Remove global entity metadata rewriting and prototype mutation. Auth shares the application database schema without separate schema options or environment parsing.
+
+Use the Workspace prefix consistently for WorkspaceMember and WorkspaceInvitation entities, services, GraphQL types and root operations, inputs, payloads, enums, decorators and filenames. Use the workspace-member, workspace-service-account and workspace-api-key permission resources. Regenerate example migrations for the automatically named workspace_member and workspace_invitation tables and update the client documents, generated types, permission labels and browser flows.

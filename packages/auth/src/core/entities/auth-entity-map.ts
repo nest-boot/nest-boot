@@ -1,6 +1,6 @@
-import { Invitation } from "../../workspace/entities/invitation.entity.js";
-import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
+import { WorkspaceInvitation } from "../../workspace/entities/workspace-invitation.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { Account } from "./account.entity.js";
 import { Session } from "./session.entity.js";
 import { User } from "./user.entity.js";
@@ -16,6 +16,6 @@ export const authEntityMap = {
 /** Workspace models added only for enabled workspace features. */
 export const workspaceEntityMap = {
   workspace: Workspace,
-  member: Member,
-  invitation: Invitation,
+  member: WorkspaceMember,
+  invitation: WorkspaceInvitation,
 };

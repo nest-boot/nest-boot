@@ -1,8 +1,8 @@
 import { useMutation } from "@apollo/client/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
-import { useCurrentMemberContext } from "../../contexts/current-member-context";
-import { MemberType } from "@/gql/graphql";
+import { useCurrentWorkspaceMemberContext } from "../../contexts/current-workspace-member-context";
+import { WorkspaceMemberType } from "@/gql/graphql";
 import { createAbilitySubject } from "@/lib/ability";
 import { graphql } from "@/gql";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
@@ -40,21 +40,23 @@ const CREATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
   }
 `);
 
-const ADD_SERVICE_ACCOUNT_FOR_API_KEY = graphql(`
-  mutation addServiceAccountForApiKey($input: AddMemberInput!) {
-    addMember(input: $input) {
+const ADD_WORKSPACE_SERVICE_ACCOUNT_FOR_API_KEY = graphql(`
+  mutation addWorkspaceServiceAccountForApiKey(
+    $input: AddWorkspaceMemberInput!
+  ) {
+    addWorkspaceMember(input: $input) {
       id
     }
   }
 `);
 
-const GET_MEMBER_API_KEY_OPTIONS = graphql(`
+const GET_WORKSPACE_API_KEY_OPTIONS = graphql(`
   query getWorkspaceApiKeyOptions(
-    $includeMembers: Boolean! = false
+    $includeWorkspaceMembers: Boolean! = false
     $after: String
-    $memberFilter: MemberFilter
+    $memberFilter: WorkspaceMemberFilter
   ) {
-    currentWorkspace @include(if: $includeMembers) {
+    currentWorkspace @include(if: $includeWorkspaceMembers) {
       members(first: 100, after: $after, filter: $memberFilter) {
         edges {
           node {
@@ -87,18 +89,18 @@ export const Route = createFileRoute(
         params: { workspaceId: params.workspaceId },
       });
     if (!context.ability.can("write", "WorkspaceApiKey")) throw denied();
-    const canCreateServiceAccount = context.ability.can(
+    const canCreateWorkspaceServiceAccount = context.ability.can(
       "write",
-      createAbilitySubject("Member", {
+      createAbilitySubject("WorkspaceMember", {
         workspaceId: params.workspaceId,
-        type: MemberType.SERVICE_ACCOUNT,
+        type: WorkspaceMemberType.SERVICE_ACCOUNT,
       }),
     );
-    const includeMembers = context.ability.can(
+    const includeWorkspaceMembers = context.ability.can(
       "read",
-      createAbilitySubject("Member", {
+      createAbilitySubject("WorkspaceMember", {
         workspaceId: params.workspaceId,
-        type: MemberType.SERVICE_ACCOUNT,
+        type: WorkspaceMemberType.SERVICE_ACCOUNT,
       }),
     );
     const memberFilter = {
@@ -107,8 +109,8 @@ export const Route = createFileRoute(
     };
     const { data } = await context.apolloClient
       .query({
-        query: GET_MEMBER_API_KEY_OPTIONS,
-        variables: { includeMembers, memberFilter },
+        query: GET_WORKSPACE_API_KEY_OPTIONS,
+        variables: { includeWorkspaceMembers, memberFilter },
         fetchPolicy: "network-only",
         context: { headers: { "x-workspace-id": params.workspaceId } },
       })
@@ -121,8 +123,12 @@ export const Route = createFileRoute(
     let pageInfo = data?.currentWorkspace?.members.pageInfo;
     while (pageInfo?.hasNextPage && pageInfo.endCursor) {
       const page = await context.apolloClient.query({
-        query: GET_MEMBER_API_KEY_OPTIONS,
-        variables: { includeMembers, memberFilter, after: pageInfo.endCursor },
+        query: GET_WORKSPACE_API_KEY_OPTIONS,
+        variables: {
+          includeWorkspaceMembers,
+          memberFilter,
+          after: pageInfo.endCursor,
+        },
         fetchPolicy: "network-only",
         context: { headers: { "x-workspace-id": params.workspaceId } },
       });
@@ -134,7 +140,7 @@ export const Route = createFileRoute(
       pageInfo = page.data?.currentWorkspace?.members.pageInfo;
     }
     return {
-      canCreateServiceAccount,
+      canCreateWorkspaceServiceAccount,
       memberOptions: members.map((member) => ({
         value: member.id,
         label: member.name,
@@ -150,16 +156,19 @@ function CreateApiKeyPage() {
   const { setCreatedKey } = useCreatedApiKey();
   const { workspaceId } = Route.useParams();
   const currentUser = useCurrentUserContext();
-  const currentMember = useCurrentMemberContext();
+  const currentWorkspaceMember = useCurrentWorkspaceMemberContext();
   const { backSearch } = useResourceNavigation({
     key: [currentUser.id, ...getWorkspaceApiKeysResourceKey(workspaceId)],
     searchSchema: apiKeySearchSchema,
   });
-  const { permissionOptions, memberOptions, canCreateServiceAccount } =
+  const { permissionOptions, memberOptions, canCreateWorkspaceServiceAccount } =
     Route.useRouteContext();
-  const [addServiceAccount] = useMutation(ADD_SERVICE_ACCOUNT_FOR_API_KEY, {
-    fetchPolicy: "no-cache",
-  });
+  const [addWorkspaceServiceAccount] = useMutation(
+    ADD_WORKSPACE_SERVICE_ACCOUNT_FOR_API_KEY,
+    {
+      fetchPolicy: "no-cache",
+    },
+  );
   const [createApiKey] = useMutation(CREATE_API_KEY_FROM_API_KEYS_ROUTE, {
     fetchPolicy: "no-cache",
   });
@@ -167,9 +176,9 @@ function CreateApiKeyPage() {
     <ApiKeyFormPage
       key={workspaceId}
       canWrite
-      currentMemberId={currentMember.id}
+      currentWorkspaceMemberId={currentWorkspaceMember.id}
       memberOptions={memberOptions}
-      canCreateServiceAccount={canCreateServiceAccount}
+      canCreateWorkspaceServiceAccount={canCreateWorkspaceServiceAccount}
       listPath={`/workspaces/${workspaceId}/api-keys`}
       listSearch={backSearch}
       permissionValues={workspaceApiKeyPermissionValues}
@@ -178,10 +187,10 @@ function CreateApiKeyPage() {
       onSave={async (input) => {
         let memberId = input.memberId;
         if (!memberId) {
-          const result = await addServiceAccount({
+          const result = await addWorkspaceServiceAccount({
             variables: {
               input: {
-                type: MemberType.SERVICE_ACCOUNT,
+                type: WorkspaceMemberType.SERVICE_ACCOUNT,
                 name: input.name,
                 ...(input.permissions.length
                   ? { roles: [], permissions: input.permissions }
@@ -189,7 +198,7 @@ function CreateApiKeyPage() {
               },
             },
           });
-          memberId = result.data?.addMember.id;
+          memberId = result.data?.addWorkspaceMember.id;
           if (!memberId) throw new Error(t("api-key:form.save_failed"));
         }
         const result = await createApiKey({

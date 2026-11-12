@@ -27,13 +27,13 @@ import { type AbilityRules } from "../common/interfaces/ability-rules.interface.
 import * as authorization from "../common/utils/can.util.js";
 import { can } from "../common/utils/can.util.js";
 import {
-  Member as BaseMember,
-  Member,
-} from "../workspace/entities/member.entity.js";
-import {
   Workspace as BaseWorkspace,
   Workspace,
 } from "../workspace/entities/workspace.entity.js";
+import {
+  WorkspaceMember as BaseWorkspaceMember,
+  WorkspaceMember,
+} from "../workspace/entities/workspace-member.entity.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { AuthAbilityFactory } from "./auth-ability.factory.js";
@@ -136,8 +136,8 @@ describe("AuthGuard", () => {
       RequestContext.set(BaseUser, original);
       RequestContext.set(Workspace, workspace);
       RequestContext.set(
-        Member,
-        Object.assign(new Member(), {
+        WorkspaceMember,
+        Object.assign(new WorkspaceMember(), {
           workspace,
           user: original,
           permissions: ["workspace:update"],
@@ -150,7 +150,7 @@ describe("AuthGuard", () => {
         true,
       );
       RequestContext.set(BaseUser, replacement);
-      RequestContext.set<Member | null>(Member, null);
+      RequestContext.set<WorkspaceMember | null>(WorkspaceMember, null);
       RequestContext.set<Workspace | null>(Workspace, null);
       guard.refreshAbility();
       const refreshed = RequestContext.get(AuthAbility);
@@ -482,7 +482,7 @@ describe("permission checks", () => {
       await RequestContext.run(createAuthRequestContext("http"), async () => {
         RequestContext.set(BaseUser, user);
         RequestContext.set(BaseWorkspace, workspace);
-        RequestContext.set(BaseMember, createRequestMember());
+        RequestContext.set(BaseWorkspaceMember, createRequestWorkspaceMember());
         await expect(guard.canActivate(createContext())).resolves.toBe(true);
       });
       expect(configureUserRules).toHaveBeenCalledWith(
@@ -492,7 +492,7 @@ describe("permission checks", () => {
       );
       expect(configureWorkspaceRules).toHaveBeenCalledWith(
         expect.anything(),
-        ["workspace:read", "member:read"],
+        ["workspace:read", "workspace-member:read"],
         workspace,
       );
       expect(configureUserRules.mock.calls[0]?.[0]).not.toHaveProperty("build");
@@ -557,8 +557,8 @@ describe("permission checks", () => {
       await RequestContext.run(createWorkspaceRequestContext(), async () => {
         RequestContext.set(BaseWorkspace, workspace);
         RequestContext.set(
-          BaseMember,
-          Object.assign(createRequestMember(), {
+          BaseWorkspaceMember,
+          Object.assign(createRequestWorkspaceMember(), {
             permissions: [],
             roles: ["member"],
           }),
@@ -568,7 +568,7 @@ describe("permission checks", () => {
       expect(configureWorkspaceRules).toHaveBeenCalledOnce();
       expect(configureWorkspaceRules).toHaveBeenCalledWith(
         expect.anything(),
-        ["workspace:read", "member:read"],
+        ["workspace:read", "workspace-member:read"],
         workspace,
       );
       expect(configureUserRules).toHaveBeenCalledOnce();
@@ -596,8 +596,8 @@ describe("permission checks", () => {
       await RequestContext.run(createAuthRequestContext("http"), async () => {
         RequestContext.set(BaseWorkspace, workspace);
         RequestContext.set(
-          BaseMember,
-          Object.assign(createRequestMember(), {
+          BaseWorkspaceMember,
+          Object.assign(createRequestWorkspaceMember(), {
             permissions: ["project:share", "project:create"],
             roles: ["owner", "auditor"],
           }),
@@ -610,15 +610,15 @@ describe("permission checks", () => {
           "workspace:read",
           "workspace:update",
           "workspace:delete",
-          "member:read",
-          "member:write",
-          "member:set-roles",
-          "member:set-permissions",
-          "member:invite",
-          "service-account:read",
-          "service-account:write",
-          "member-api-key:read",
-          "member-api-key:write",
+          "workspace-member:read",
+          "workspace-member:write",
+          "workspace-member:set-roles",
+          "workspace-member:set-permissions",
+          "workspace-member:invite",
+          "workspace-service-account:read",
+          "workspace-service-account:write",
+          "workspace-api-key:read",
+          "workspace-api-key:write",
           "project:create",
           "project:read",
           "project:share",
@@ -638,7 +638,7 @@ describe("permission checks", () => {
           true,
         );
       const user = new BaseUser();
-      const member = createRequestMember();
+      const member = createRequestWorkspaceMember();
       // Deliberately model incomplete persisted records, not ordinary entity fixtures.
       for (const entity of [user, member]) {
         Reflect.deleteProperty(entity, "roles");
@@ -648,7 +648,7 @@ describe("permission checks", () => {
         RequestContext.set(BaseUser, user);
         member.user = ref(BaseUser, user);
         member.workspace = ref(BaseWorkspace, requireWorkspace());
-        RequestContext.set(BaseMember, member);
+        RequestContext.set(BaseWorkspaceMember, member);
         setCanMetadata(reflector, {
           action: "read",
           subjectCallback: () => Subject,
@@ -667,7 +667,7 @@ describe("permission checks", () => {
       );
       expect(configureWorkspaceRules).toHaveBeenCalledWith(
         expect.anything(),
-        ["workspace:read", "member:read"],
+        ["workspace:read", "workspace-member:read"],
         expect.any(BaseWorkspace),
       );
     });
@@ -799,7 +799,7 @@ describe("permission checks", () => {
       const subjectInstance = new Subject();
       const input = { id: 123 };
       const handlerThis = {
-        memberService: {
+        workspaceMemberService: {
           findOne: vi.fn((_id: number) => Promise.resolve(subjectInstance)),
         },
       };
@@ -809,7 +809,7 @@ describe("permission checks", () => {
           params: {
             input: typeof input;
           },
-        ) => self.memberService.findOne(params.input.id),
+        ) => self.workspaceMemberService.findOne(params.input.id),
       );
       const canMock = vi.fn(() => true);
       const ability = {
@@ -846,7 +846,9 @@ describe("permission checks", () => {
       );
       expect(subjectCallback.mock.contexts[0]).toBeUndefined();
       expect(subjectCallback).toHaveBeenCalledWith(handlerThis, { input });
-      expect(handlerThis.memberService.findOne).toHaveBeenCalledWith(123);
+      expect(handlerThis.workspaceMemberService.findOne).toHaveBeenCalledWith(
+        123,
+      );
       expect(canMock).toHaveBeenCalledWith("read", subjectInstance);
     });
     it("passes GraphQL resolver arguments in decorated parameter order", async () => {
@@ -1545,15 +1547,15 @@ describe("permission checks", () => {
       });
       await RequestContext.run(createWorkspaceRequestContext(), async () => {
         RequestContext.set(
-          BaseMember,
-          Object.assign(createRequestMember(), {
+          BaseWorkspaceMember,
+          Object.assign(createRequestWorkspaceMember(), {
             permissions: ["workspace:update", "post:read"],
           }),
         );
         RequestContext.set(
           API_KEY,
           Object.assign(new WorkspaceApiKey(new ApiKey()), {
-            member: ref(BaseMember, requireMember()),
+            member: ref(BaseWorkspaceMember, requireWorkspaceMember()),
             permissions: ["workspace:update"],
           }),
         );
@@ -1579,15 +1581,15 @@ describe("permission checks", () => {
       });
       await RequestContext.run(createWorkspaceRequestContext(), async () => {
         RequestContext.set(
-          BaseMember,
-          Object.assign(createRequestMember(), {
+          BaseWorkspaceMember,
+          Object.assign(createRequestWorkspaceMember(), {
             permissions: ["workspace:update", "post:read"],
           }),
         );
         RequestContext.set(
           API_KEY,
           Object.assign(new WorkspaceApiKey(new ApiKey()), {
-            member: ref(BaseMember, requireMember()),
+            member: ref(BaseWorkspaceMember, requireWorkspaceMember()),
             permissions: ["post:read"],
           }),
         );
@@ -1617,8 +1619,8 @@ describe("permission checks", () => {
       );
       await RequestContext.run(createAuthRequestContext("http"), async () => {
         RequestContext.set(
-          BaseMember,
-          Object.assign(createRequestMember(), {
+          BaseWorkspaceMember,
+          Object.assign(createRequestWorkspaceMember(), {
             permissions: ["workspace:update"],
             roles: ["member"],
           }),
@@ -1635,8 +1637,8 @@ describe("permission checks", () => {
       });
       await RequestContext.run(createAuthRequestContext("http"), async () => {
         RequestContext.set(
-          BaseMember,
-          Object.assign(createRequestMember(), {
+          BaseWorkspaceMember,
+          Object.assign(createRequestWorkspaceMember(), {
             permissions: ["workspace:update"],
             roles: ["member"],
           }),
@@ -1935,8 +1937,8 @@ describe("permission checks", () => {
     context.set(BaseUser, user);
     context.set(BaseWorkspace, workspace);
     context.set(
-      BaseMember,
-      Object.assign(createRequestMember(), {
+      BaseWorkspaceMember,
+      Object.assign(createRequestWorkspaceMember(), {
         permissions: [],
         roles: ["member"],
         user: ref(BaseUser, user),
@@ -2018,8 +2020,8 @@ describe("permission checks", () => {
    * Returns request member configured for the test.
    * @returns Request member configured for the test.
    */
-  function createRequestMember(): BaseMember {
-    const member = new BaseMember();
+  function createRequestWorkspaceMember(): BaseWorkspaceMember {
+    const member = new BaseWorkspaceMember();
     const user = RequestContext.isActive()
       ? RequestContext.get(BaseUser)
       : null;
@@ -2047,10 +2049,10 @@ describe("permission checks", () => {
 
   /**
    * Returns member stored in the current test context.
-   * @returns Member stored in the current test context.
+   * @returns WorkspaceMember stored in the current test context.
    */
-  function requireMember(): BaseMember {
-    const member = RequestContext.get(BaseMember);
+  function requireWorkspaceMember(): BaseWorkspaceMember {
+    const member = RequestContext.get(BaseWorkspaceMember);
     assert(member);
     return member;
   }

@@ -1,7 +1,7 @@
 import { EntitySchema, t } from "@mikro-orm/core";
 
 import { User } from "../../core/entities/user.entity.js";
-import { Member } from "../../workspace/entities/member.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { apiKeyOwnerPolicy } from "../policies/api-key-owner.policy.js";
 import { ApiKey } from "./api-key.entity.js";
 import { SystemAccount } from "./system-account.entity.js";
@@ -64,13 +64,13 @@ export function createApiKeySchema({
   } as const;
   const owners = [
     ...(user ? [User] : []),
-    ...(workspace ? [Member] : []),
+    ...(workspace ? [WorkspaceMember] : []),
     ...(system ? [SystemAccount] : []),
   ];
   const kinds = [
     ...(user ? ["user"] : []),
     ...(system ? ["system_account"] : []),
-    ...(workspace ? ["member"] : []),
+    ...(workspace ? ["workspace_member"] : []),
   ];
   if (!owners.length) {
     throw new Error("An API-key schema requires at least one enabled owner");

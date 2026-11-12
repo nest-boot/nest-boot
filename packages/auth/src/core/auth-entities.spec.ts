@@ -2,9 +2,9 @@ import { MetadataStorage } from "@mikro-orm/core";
 
 import { ApiKey } from "../api-key/entities/api-key.entity.js";
 import { SystemAccount } from "../api-key/entities/system-account.entity.js";
-import { Invitation } from "../workspace/entities/invitation.entity.js";
-import { Member } from "../workspace/entities/member.entity.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
+import { WorkspaceInvitation } from "../workspace/entities/workspace-invitation.entity.js";
+import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
 import { entities } from "./auth-entities.js";
 import { workspaceEntities } from "./auth-entities.js";
 import { Account } from "./entities/account.entity.js";
@@ -21,8 +21,8 @@ describe("built-in auth entity field ownership", () => {
     [User, ["name", "email"]],
     [Verification, ["identifier", "value"]],
     [Workspace, ["name", "members"]],
-    [Invitation, ["email", "workspace", "inviter"]],
-    [Member, ["name", "email", "user", "workspace"]],
+    [WorkspaceInvitation, ["email", "workspace", "inviter"]],
+    [WorkspaceMember, ["name", "email", "user", "workspace"]],
   ] as const)("%s owns its persistence fields", (entity, fields) => {
     const registered = [...entities, ...workspaceEntities].find(
       (entry) => (typeof entry === "function" ? entry : entry.class) === entity,

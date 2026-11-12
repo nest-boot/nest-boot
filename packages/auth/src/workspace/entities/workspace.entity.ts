@@ -10,7 +10,7 @@ import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
 import { workspaceScopePolicy } from "../../common/policies/workspace-scope.policy.js";
-import { Member } from "./member.entity.js";
+import { WorkspaceMember } from "./workspace-member.entity.js";
 
 /** Built-in Workspace entity with authentication persistence and access policies. */
 @ObjectType({ isAbstract: true })
@@ -56,8 +56,8 @@ export class Workspace extends BaseEntity {
   @Field(() => Date)
   updatedAt: Opt<Date> = new Date();
 
-  /** Members of this workspace; reads retain the caller's RLS scope. */
-  @OneToMany(() => Member, "workspace")
+  /** WorkspaceMembers of this workspace; reads retain the caller's RLS scope. */
+  @OneToMany(() => WorkspaceMember, "workspace")
   @HideField()
-  members: Collection<Member> = new Collection<Member>(this);
+  members: Collection<WorkspaceMember> = new Collection<WorkspaceMember>(this);
 }

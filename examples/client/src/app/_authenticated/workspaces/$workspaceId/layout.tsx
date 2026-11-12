@@ -1,6 +1,6 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { CurrentWorkspaceProvider } from "./contexts/current-workspace-context";
-import { CurrentMemberProvider } from "./contexts/current-member-context";
+import { CurrentWorkspaceMemberProvider } from "./contexts/current-workspace-member-context";
 import { WorkspaceSidebar } from "./components/workspace-sidebar";
 import { graphql } from "@/gql";
 import { Layout, LayoutContent } from "@/components/thread-ui/layout";
@@ -16,7 +16,7 @@ const GET_CURRENT_WORKSPACE_FROM_WORKSPACE_LAYOUT = graphql(`
       createdAt
       updatedAt
     }
-    currentMember {
+    currentWorkspaceMember {
       workspaceId
       id
       roles
@@ -52,7 +52,7 @@ export const Route = createFileRoute("/_authenticated/workspaces/$workspaceId")(
       });
 
       if (error && !isAccessDenied(error)) throw error;
-      if (error || !data?.workspace || !data.currentMember) {
+      if (error || !data?.workspace || !data.currentWorkspaceMember) {
         throw redirect({ to: "/workspaces" });
       }
 
@@ -64,7 +64,7 @@ export const Route = createFileRoute("/_authenticated/workspaces/$workspaceId")(
       }
 
       return {
-        currentMember: data.currentMember,
+        currentWorkspaceMember: data.currentWorkspaceMember,
         currentWorkspace: data.workspace,
         ability,
       };
@@ -73,10 +73,11 @@ export const Route = createFileRoute("/_authenticated/workspaces/$workspaceId")(
 );
 
 function WorkspaceLayout() {
-  const { currentWorkspace, currentMember, ability } = Route.useRouteContext();
+  const { currentWorkspace, currentWorkspaceMember, ability } =
+    Route.useRouteContext();
   return (
     <CurrentWorkspaceProvider value={currentWorkspace}>
-      <CurrentMemberProvider value={currentMember}>
+      <CurrentWorkspaceMemberProvider value={currentWorkspaceMember}>
         <AbilityProvider ability={ability}>
           <Layout>
             <WorkspaceSidebar workspace={currentWorkspace} />
@@ -86,7 +87,7 @@ function WorkspaceLayout() {
             </LayoutContent>
           </Layout>
         </AbilityProvider>
-      </CurrentMemberProvider>
+      </CurrentWorkspaceMemberProvider>
     </CurrentWorkspaceProvider>
   );
 }

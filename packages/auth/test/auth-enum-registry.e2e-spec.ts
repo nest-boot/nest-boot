@@ -102,8 +102,12 @@ describe("auth enum registration", () => {
       "WorkspaceApiKeyPermission",
     ]) {
       const permission = enumType(schema, name);
-      expect(permission.parseValue("MEMBER__INVITE")).toBe("member:invite");
-      expect(permission.serialize("member:invite")).toBe("MEMBER__INVITE");
+      expect(permission.parseValue("WORKSPACE_MEMBER__INVITE")).toBe(
+        "workspace-member:invite",
+      );
+      expect(permission.serialize("workspace-member:invite")).toBe(
+        "WORKSPACE_MEMBER__INVITE",
+      );
     }
   });
   it("keeps stored API-key grants serializable after tightening the allowlist", async () => {
@@ -183,7 +187,7 @@ describe("auth enum registration", () => {
       },
       apiKey: {
         user: { allowedPermissions: ["user-api-key:read"] },
-        workspace: { allowedPermissions: ["member-api-key:read"] },
+        workspace: { allowedPermissions: ["workspace-api-key:read"] },
       },
     });
     const schema = await buildSchema();

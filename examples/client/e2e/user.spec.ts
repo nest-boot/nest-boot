@@ -485,12 +485,12 @@ test.describe("user pages", () => {
         ownerPage,
         rejectedWorkspaceName,
       );
-      await createInvitationByApi(
+      await createWorkspaceInvitationByApi(
         ownerPage,
         acceptedWorkspace.id,
         inviteeEmail,
       );
-      await createInvitationByApi(
+      await createWorkspaceInvitationByApi(
         ownerPage,
         rejectedWorkspace.id,
         inviteeEmail,
@@ -602,7 +602,7 @@ async function createWorkspaceByApi(page: Page, name: string) {
     }>(
       page.request,
       /* GraphQL */ `
-        mutation CreateWorkspaceForUserInvitationTest(
+        mutation CreateWorkspaceForUserWorkspaceInvitationTest(
           $input: CreateWorkspaceInput!
         ) {
           createWorkspace(input: $input) {
@@ -615,21 +615,21 @@ async function createWorkspaceByApi(page: Page, name: string) {
   ).createWorkspace;
 }
 
-async function createInvitationByApi(
+async function createWorkspaceInvitationByApi(
   page: Page,
   workspaceId: string,
   email: string,
 ) {
   return (
     await graphqlRequest<{
-      createInvitation: { id: string };
+      createWorkspaceInvitation: { id: string };
     }>(
       page.request,
       /* GraphQL */ `
-        mutation CreateInvitationForUserInvitationTest(
-          $input: CreateInvitationInput!
+        mutation CreateWorkspaceInvitationForUserWorkspaceInvitationTest(
+          $input: CreateWorkspaceInvitationInput!
         ) {
-          createInvitation(input: $input) {
+          createWorkspaceInvitation(input: $input) {
             id
           }
         }
@@ -642,5 +642,5 @@ async function createInvitationByApi(
       },
       { "x-workspace-id": workspaceId },
     )
-  ).createInvitation;
+  ).createWorkspaceInvitation;
 }

@@ -3,9 +3,9 @@ import { UnauthorizedException } from "@nestjs/common";
 
 import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
 import { User } from "../../core/entities/user.entity.js";
-import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
-import { MemberType } from "../../workspace/enums/member-type.enum.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
+import { WorkspaceMemberType } from "../../workspace/enums/workspace-member-type.enum.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
 import { SystemApiKey } from "../objects/system-api-key.object.js";
@@ -24,12 +24,12 @@ function fixture() {
   const userKey = Object.assign(new UserApiKey(new ApiKey()), {
     user: ref(User, user),
   });
-  const member: Member = Object.assign(new Member(), {
+  const member: WorkspaceMember = Object.assign(new WorkspaceMember(), {
     user: ref(User, user),
     workspace: ref(Workspace, workspace),
   });
   const memberKey = Object.assign(new WorkspaceApiKey(new ApiKey()), {
-    member: ref(Member, member),
+    member: ref(WorkspaceMember, member),
   });
   const systemAccount = new SystemAccount();
   const systemKey = Object.assign(new SystemApiKey(new ApiKey()), {
@@ -37,7 +37,7 @@ function fixture() {
   });
   const identities = {
     user: user as User | null,
-    member: member as Member | null,
+    member: member as WorkspaceMember | null,
     system: systemAccount as SystemAccount | null,
   };
   const rows = {
@@ -52,7 +52,7 @@ function fixture() {
           ? (rows.user ?? rows.member ?? rows.system)
           : entity === User
             ? identities.user
-            : entity === Member
+            : entity === WorkspaceMember
               ? identities.member
               : identities.system,
       ),
@@ -87,7 +87,7 @@ describe("API-key authentication", () => {
       const { service, rows, member, user, workspace } = fixture();
       rows.user = null;
       if (kind === "service-account") {
-        member.type = MemberType.SERVICE_ACCOUNT;
+        member.type = WorkspaceMemberType.SERVICE_ACCOUNT;
         member.user = null;
       }
       await expect(service.validate("key")).resolves.toMatchObject({
@@ -124,14 +124,14 @@ describe("API-key authentication", () => {
       const key = rows[scope];
       await expect(service.validate("plaintext")).resolves.toMatchObject({
         apiKey: key,
-        ownerType: scope,
+        ownerType: scope === "member" ? "workspace_member" : scope,
       });
       expect(em.findOne).toHaveBeenCalledWith(ApiKey, {
         key: hashApiKey("plaintext"),
-        ownerType: { $in: ["user", "member", "system_account"] },
+        ownerType: { $in: ["user", "workspace_member", "system_account"] },
       });
       expect(em.findOne).toHaveBeenCalledWith(
-        scope === "user" ? User : Member,
+        scope === "user" ? User : WorkspaceMember,
         key?.owner.id,
         {
           refresh: true,
@@ -162,7 +162,10 @@ describe("API-key authentication", () => {
       await expect(service.recordUsage(key)).resolves.toBe(key);
       expect(em.nativeUpdate).toHaveBeenCalledExactlyOnceWith(
         ApiKey,
-        { id: key.id, ownerType: scope },
+        {
+          id: key.id,
+          ownerType: scope === "member" ? "workspace_member" : scope,
+        },
         { updatedAt: expect.any(Date), lastUsedAt: expect.any(Date) },
       );
     });

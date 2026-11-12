@@ -3,9 +3,9 @@ import { HashService } from "@nest-boot/hash";
 import type { Provider } from "@nestjs/common";
 
 import { ApiKeyAuthenticationService } from "../api-key/services/api-key-authentication.service.js";
-import { InvitationService } from "../workspace/services/invitation.service.js";
-import { MemberService } from "../workspace/services/member.service.js";
 import { WorkspaceService } from "../workspace/services/workspace.service.js";
+import { WorkspaceInvitationService } from "../workspace/services/workspace-invitation.service.js";
+import { WorkspaceMemberService } from "../workspace/services/workspace-member.service.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { AUTH_TOKEN } from "./constants/auth.constants.js";
 import { createContextualAuthService } from "./create-contextual-auth-service.js";
@@ -35,30 +35,30 @@ export const authServiceProviders: Provider[] = [
           ),
   },
   {
-    provide: MemberService,
+    provide: WorkspaceMemberService,
     inject: [EntityManager, MODULE_OPTIONS_TOKEN],
     useFactory: (em: EntityManager, options: AuthModuleOptions) =>
       options.workspace?.enabled !== true
         ? null
         : createContextualAuthService(
             em,
-            (manager) => new MemberService(manager, options),
-            { getUserForMembership: "authentication" },
+            (manager) => new WorkspaceMemberService(manager, options),
+            { getUserForWorkspaceMembership: "authentication" },
           ),
   },
   {
-    provide: InvitationService,
+    provide: WorkspaceInvitationService,
     inject: [EntityManager, MODULE_OPTIONS_TOKEN],
     useFactory: (em: EntityManager, options: AuthModuleOptions) =>
       options.workspace?.enabled !== true
         ? null
         : createContextualAuthService(
             em,
-            (manager) => new InvitationService(manager, options),
+            (manager) => new WorkspaceInvitationService(manager, options),
             {
-              getUserIdForInvitation: "invitation-identity",
-              acceptInvitation: "authentication",
-              rejectInvitation: "authentication",
+              getUserIdForWorkspaceInvitation: "invitation-identity",
+              acceptWorkspaceInvitation: "authentication",
+              rejectWorkspaceInvitation: "authentication",
             },
           ),
   },

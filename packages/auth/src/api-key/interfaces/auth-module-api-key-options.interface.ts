@@ -14,6 +14,6 @@ export interface AuthModuleApiKeyOptions<
   >;
   /** User keys may carry both user and workspace permissions, limited again by their owner's grants at use time. */
   user?: AuthModuleApiKeyScopeOptions<UserPermission | WorkspacePermission>;
-  /** Requires `workspace.enabled: true`. Member keys only carry workspace permissions; creating an invitation additionally requires a user identity. */
+  /** Requires `workspace.enabled: true`. WorkspaceMember keys only carry workspace permissions; creating an invitation additionally requires a user identity. */
   workspace?: AuthModuleApiKeyScopeOptions<WorkspacePermission>;
 }

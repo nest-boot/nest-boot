@@ -26,7 +26,7 @@ concrete class references. Both the runtime ORM configuration and the migration
 CLI register `entities` imported from `@nest-boot/auth`. The example configures
 abilities and delivery callbacks; it does not redeclare authentication entities.
 
-Workspace invitations are delivered through `workspace.sendInvitationEmail`;
+Workspace invitations are delivered through `workspace.sendWorkspaceInvitationEmail`;
 the example sends acceptance links with the globally configured Mailer.
 
 ## Commands
@@ -76,14 +76,14 @@ does not require a login.
 
 The Job history table is managed by the application's ordinary database migrations. A database-generated UUID identifies history records; the original BullMQ ID is stored as `jobId`. The built-in `job` worker consumes deduplicated snapshots and cleanup tasks and runs with `queue:start` when no queue filter is provided. Run it alone with `nb queue:start --queue job`. Reads are asynchronous; removing a Redis job leaves its history intact. A daily scheduler at 00:00 UTC removes records whose last event is more than 30 days old in batches of 1000, regardless of status. Records with `lastEventMs = 0` use `createdAt` instead. Redis jobs remain intact; a later event recreates a deleted record with a new UUID.
 
-## Member profiles and User privacy
+## WorkspaceMember profiles and User privacy
 
-`Member.name` and `email` are independently stored workspace-visible
+`WorkspaceMember.name` and `email` are independently stored workspace-visible
 contact details, initialized once when joining. Display and search these fields,
 not `member.user`. User profiles require self access or global user-read permission;
 workspace roles and invitation access do not grant private User access.
 
-Built-in `Member` owns name/email, while `Workspace.members` and `User.members`
+Built-in `WorkspaceMember` owns name/email, while `Workspace.members` and `User.members`
 own the inverse relations. `Workspace.features` and its enum have been removed.
 
 The migration sequence is `Initial → generated schema`. It creates
@@ -151,6 +151,6 @@ pnpm --filter @nest-boot/example-server test:e2e
 
 The example client manages system keys under `/admin/api-keys` and accounts under `/admin/system-accounts`. Administrator sessions can create a key for an existing enabled account or automatically create an account using the key name and selected permissions. Account pages manage permission ceilings and enabled state. Secrets are displayed once and are kept out of browser storage and URLs.
 
-GraphQL key queries and lifecycle mutations share `ApiKey`, `ApiKeyConnection`, and `CreateApiKeyResult`. Credential lists are available from User, Member and SystemAccount, with Workspace providing an aggregate. The key object contains common metadata only; owner relations and owner-specific identifiers stay in persistence and authorization.
+GraphQL key queries and lifecycle mutations share `ApiKey`, `ApiKeyConnection`, and `CreateApiKeyResult`. Credential lists are available from User, WorkspaceMember and SystemAccount, with Workspace providing an aggregate. The key object contains common metadata only; owner relations and owner-specific identifiers stay in persistence and authorization.
 
 The example explicitly enables `admin`, `workspace`, the API-key master switch, and the `apiKey.user` / `apiKey.workspace` / `apiKey.system` scopes. These features are opt-in in AuthModule. System authentication requires the master switch and explicit `apiKey.system.enabled: true`; only management APIs additionally require administration. `ApiKey.owner` is a nullable, feature-aware union; the example lists owner names directly without separate ownership IDs.

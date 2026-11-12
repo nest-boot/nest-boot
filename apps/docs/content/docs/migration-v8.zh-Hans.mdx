@@ -18,7 +18,7 @@ CLI 入口通过 `CommandFactory.run(AppModule)` 使用运行时模块配置。�
 然后删除独立配置文件及 package.json 中的 `mikro-orm` 配置。
 Auth 与 QueueApi 自动注册实体，普通业务模块使用 `DatabaseModule.forFeature()`。
 直接使用 MikroORM 时仍可显式注册导出的 `entities` 和 `workspaceEntities`。
-为避免自动发现可选实体，已移除 `User.members`，请通过 `MemberService` 查询成员关系。
+为避免自动发现可选实体，已移除 `User.members`，请通过 `WorkspaceMemberService` 查询成员关系。
 
 ## 升级依赖
 
@@ -113,7 +113,7 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   初始化请求 session，并在业务事务开始前更新。详见 [MikroORM RLS 文档](https://mikro-orm.io/docs/row-level-security)。
 - 认证权限标识由应用定义，是区分大小写的字符串，与 CASL subject type 分离。
   权限目录、授权上限和 API Key 权限交集只做精确字符串匹配，不转换大小写。
-  内置目录使用 `user:*`、`session:*`、`workspace:*`、`member:*` 与
+  内置目录使用 `user:*`、`session:*`、`workspace:*`、`workspace-member:*` 与
   `invitation:*` 与 `api-key:*`。自定义角色和权限遵循小写命名约束，无效名称会被
   拒绝而非自动转换。角色授权、直接权限、API Key 权限与业务规则的拼写必须一致。
 - Auth 统一维护内置能力映射，请移除应用中重复构建 auth 规则的回调。
@@ -130,7 +130,7 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 - 将 API Key 的 `defaultPermissions` 与 `allowedPermissions` 移到 `apiKey.user`
   和 `apiKey.workspace` 下。旧的扁平配置会在启动时报错，两个作用域互不继承。
   用户 Key 可使用用户和工作区权限；成员 Key 仅接受工作区权限，通过
-  `member:invite` 管理邀请。授予权限同时受目标成员和签发者限制，运行时再与成员权限取交集。例如：
+  `workspace-member:invite` 管理邀请。授予权限同时受目标成员和签发者限制，运行时再与成员权限取交集。例如：
 
   ```ts
   apiKey: {
@@ -179,7 +179,7 @@ RLS 不保护 `TRUNCATE` 或 `REFERENCES`，表策略也不限制序列操作。
 业务表声明 RLS 策略；Job 记录是明确例外，使用服务层限定范围的查询。`Verification` 明确拒绝普通请求访问。
 凭证字段与可更新属性由 Service 和 GraphQL 控制，数据库不再提供列级保护。
 
-ApiKey 通过 `ApiKey.owner` 多态关联到 User、Member 或 SystemAccount。账户、会话、成员和邀请使用普通外键级联；所有 ApiKey 记录保留用于审计，认证时重新查询 owner，不存在则拒绝使用。工作区与独立系统账户保留。
+ApiKey 通过 `ApiKey.owner` 多态关联到 User、WorkspaceMember 或 SystemAccount。账户、会话、成员和邀请使用普通外键级联；所有 ApiKey 记录保留用于审计，认证时重新查询 owner，不存在则拒绝使用。工作区与独立系统账户保留。
 User SELECT 允许 authenticated 角色读取，个人资料访问由 Service 的 Ability 检查限制，支持自定义读取权限名。
 User 写入及 Session 读取同样由 Service 授权；数据库请求上下文不再传递应用权限。
 不要绕过 Service 授权暴露直接 User 查询。
@@ -195,7 +195,7 @@ User 写入及 Session 读取同样由 Service 授权；数据库请求上下文
 输入、Payload、Resolver 和连接全部改从 `@nest-boot/auth` 导入。
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation`、`SystemAccount` 和 `ApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`WorkspaceMember`、`WorkspaceInvitation`、`SystemAccount` 和 `ApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 AuthModule 通过 DatabaseModule 注册已启用实体。应用使用 `nb database:*` 命令共享运行时配置，无需单独的 MikroORM 配置文件。
@@ -222,7 +222,7 @@ GraphQL `signUp` 现在返回 `SignUpPayload { id, token }`，不再返回
 管理接口 `createUser`、`updateUser`、`setUserRoles`、`setUserPermissions`、
 `banUser`、`unbanUser` 现在返回各自的 Payload，仅包含 `id`。请移除这些操作的
 资料及关联字段选择，并在写入成功后单独查询用户。
-`acceptInvitation` 返回 `AcceptInvitationPayload { id, memberId, workspaceId }`；
+`acceptWorkspaceInvitation` 返回 `AcceptWorkspaceInvitationPayload { id, memberId, workspaceId }`；
 后续请求选择返回的工作区后再查询成员信息。领域 Service 的返回值与授权检查不变。
 
 生成的基线已允许成员共用联系邮箱，成员关系仍按 `(user, workspace)` 唯一；

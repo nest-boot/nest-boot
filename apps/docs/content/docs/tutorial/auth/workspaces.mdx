@@ -17,12 +17,12 @@ user's active membership, and stores both entities in `RequestContext`.
 ```typescript
 import {
   CurrentWorkspace,
-  CurrentMember,
+  CurrentWorkspaceMember,
 } from "@nest-boot/auth";
 
 currentWorkspace(
   @CurrentWorkspace() workspace: Workspace,
-  @CurrentMember() member: Member,
+  @CurrentWorkspaceMember() member: WorkspaceMember,
 ) {
   return { workspace, member };
 }
@@ -50,42 +50,42 @@ lock the workspace row and verify that it still exists inside their transaction.
 Requests that selected a workspace before deletion cannot create new children
 after the deletion commits.
 
-## Member Lifecycle
+## WorkspaceMember Lifecycle
 
-`MemberService` owns these operations:
+`WorkspaceMemberService` owns these operations:
 
-- `getMemberByUser(workspace, user)`;
-- `getMember(id)` — requires the current workspace and checks read ability;
-- `getMemberConnectionByWorkspace(workspace, args)`;
-- `addMember(workspace, user, input)`;
-- `addServiceAccount(workspace, name, input)`;
-- `addMemberByEmail(workspace, email, input)`;
-- `updateMember(id, input)`;
-- `setMemberRoles(id, roles)`;
-- `setMemberPermissions(id, permissions)`;
-- `removeMember(id)`;
+- `getWorkspaceMemberByUser(workspace, user)`;
+- `getWorkspaceMember(id)` — requires the current workspace and checks read ability;
+- `getWorkspaceMemberConnectionByWorkspace(workspace, args)`;
+- `addWorkspaceMember(workspace, user, input)`;
+- `addWorkspaceServiceAccount(workspace, name, input)`;
+- `addWorkspaceMemberByEmail(workspace, email, input)`;
+- `updateWorkspaceMember(id, input)`;
+- `setWorkspaceMemberRoles(id, roles)`;
+- `setWorkspaceMemberPermissions(id, permissions)`;
+- `removeWorkspaceMember(id)`;
 - `leaveWorkspace(member)`.
 
-USER member reads and writes require `member:read` and `member:write`.
-SERVICE_ACCOUNT members require separate `service-account:read` and
-`service-account:write` permissions. The default OWNER and ADMIN roles have both;
+USER member reads and writes require `workspace-member:read` and `workspace-member:write`.
+SERVICE_ACCOUNT members require separate `workspace-service-account:read` and
+`workspace-service-account:write` permissions. The default OWNER and ADMIN roles have both;
 MEMBER does not. Lists and ID lookups only include readable member types.
 Changing service account roles or direct permissions additionally requires
-`member:set-roles` or `member:set-permissions`, respectively, together with
-`service-account:write` and the existing grant ceiling checks.
+`workspace-member:set-roles` or `workspace-member:set-permissions`, respectively, together with
+`workspace-service-account:write` and the existing grant ceiling checks.
 Any current member may leave, including an owner; the workspace may remain without owners.
 Administrative removal still rejects self-removal; use `leaveWorkspace` instead.
-Member status and role changes lock the affected memberships
+WorkspaceMember status and role changes lock the affected memberships
 and recheck their state in the same transaction.
 GraphQL resolvers and HTTP controllers should map input/output types and leave
 these invariants in the corresponding Service.
-Multiple members may hold the configured creator role. Use `setMemberRoles` to
-assign or remove that role, subject to `member:set-roles` and the caller's permission
+Multiple members may hold the configured creator role. Use `setWorkspaceMemberRoles` to
+assign or remove that role, subject to `workspace-member:set-roles` and the caller's permission
 scope. There is no dedicated ownership-transfer operation; these are separate
 role updates, not an atomic transfer.
 
 Workspace invitation delivery and state transitions are documented separately
-under [Invitations](/docs/tutorial/auth/invitations).
+under [WorkspaceInvitations](/docs/tutorial/auth/invitations).
 
 ## Write Authorization and RLS
 
@@ -122,7 +122,7 @@ invitations. Each service checks its own authorization and retains request RLS.
 
 ## Workspace-visible member profiles
 
-Built-in `Member` owns name/email, and `Workspace.members` / `User.members` own the inverse collections. Applications do not redeclare these fields. Raw ORM collections stay hidden from GraphQL; connection
+Built-in `WorkspaceMember` owns name/email, and `Workspace.members` / `User.members` own the inverse collections. Applications do not redeclare these fields. Raw ORM collections stay hidden from GraphQL; connection
 field resolvers remain responsible for authorized pagination. The example's
 `Workspace.features` field and enum have been removed.
 
@@ -130,22 +130,22 @@ Every member requires a user and retains its own `name` and nullable `email`.
 These are workspace-visible contact details, initialized from the user's profile
 when membership is created. They are independent thereafter: member edits do not
 change the user's name or login email, and user edits do not synchronize to members.
-Authorized callers may update member name, email and status; roles and permissions
+Authorized callers may update workspace_member name, email and status; roles and permissions
 use dedicated setters. Clearing the member email with `null` does not affect login.
 The example displays and filters member fields directly, with exact filters and
 prefix searches such as `name:Alice*`, without joining private user profiles.
 
-`Member.user` remains a private User relation, not a source of shared
+`WorkspaceMember.user` remains a private User relation, not a source of shared
 contact details. Reading another user's profile requires global user-read
 authorization in the Service; workspace roles alone do not grant it.
-The same boundary applies to `Invitation.inviter`: access to an invitation
+The same boundary applies to `WorkspaceInvitation.inviter`: access to an invitation
 does not grant access to the inviter's private profile.
 
-`MemberType` distinguishes `USER` and `SERVICE_ACCOUNT`. User members require a
+`WorkspaceMemberType` distinguishes `USER` and `SERVICE_ACCOUNT`. User members require a
 login user; service accounts require a null user and share the normal profile,
 role, permission, and status operations. Create service accounts with
-`MemberService.addServiceAccount(workspace, name, options)` or
-`addMember(input: { type: SERVICE_ACCOUNT, name: "CI deployer" })`. Creation
+`WorkspaceMemberService.addWorkspaceServiceAccount(workspace, name, options)` or
+`addWorkspaceMember(input: { type: SERVICE_ACCOUNT, name: "CI deployer" })`. Creation
 requires member write permission and checks role/permission grant ceilings.
 The member-owned API-key migration extends the example baseline; see
 [API keys](./api-keys) for migration and credential ownership details.

@@ -56,7 +56,7 @@ const fixtures = scopes.flatMap(({ scope, create }) =>
 describe("scope policy factories with native PGlite RLS", () => {
   let orm: MikroORM;
   const readonlyEntity = new EntitySchema<{ id: number; user: string }>({
-    name: "ReadonlyMembership",
+    name: "ReadonlyWorkspaceMembership",
     tableName: "readonly_membership",
     properties: {
       id: { type: "integer", primary: true },

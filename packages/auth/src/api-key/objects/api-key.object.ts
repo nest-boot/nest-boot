@@ -2,7 +2,7 @@ import { type Ref, ref, Reference } from "@mikro-orm/core";
 import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 
 import { User } from "../../core/entities/user.entity.js";
-import { Member } from "../../workspace/entities/member.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import type { ApiKey } from "../entities/api-key.entity.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
 
@@ -60,7 +60,7 @@ export abstract class ApiKeyObject {
   declare createdById: string | null;
   /** Internal reference for authorized identity resolution; never exposed as a GraphQL owner union. */
   @HideField()
-  declare owner: Ref<User | Member | SystemAccount>;
+  declare owner: Ref<User | WorkspaceMember | SystemAccount>;
 
   /**
    * Copies only public metadata and the internal identity reference.
@@ -103,14 +103,14 @@ export abstract class ApiKeyObject {
    * @returns Value for the credential identity or authorization condition.
    */
   @HideField()
-  get ownerType(): "user" | "member" | "system_account" {
-    const owner = Reference.unwrapReference<User | Member | SystemAccount>(
-      this.owner,
-    );
+  get ownerType(): "user" | "workspace_member" | "system_account" {
+    const owner = Reference.unwrapReference<
+      User | WorkspaceMember | SystemAccount
+    >(this.owner);
     return owner instanceof User
       ? "user"
-      : owner instanceof Member
-        ? "member"
+      : owner instanceof WorkspaceMember
+        ? "workspace_member"
         : "system_account";
   }
   /**
@@ -129,14 +129,14 @@ export abstract class ApiKeyObject {
    * Workspace member identity available to internal authorization.
    * @returns Value for the credential identity or authorization condition.
    */
-  get member(): Ref<Member> | undefined {
-    return this.ownerType === "member"
-      ? (this.owner as Ref<Member>)
+  get member(): Ref<WorkspaceMember> | undefined {
+    return this.ownerType === "workspace_member"
+      ? (this.owner as Ref<WorkspaceMember>)
       : undefined;
   }
-  set member(member: Ref<Member> | Member | undefined) {
+  set member(member: Ref<WorkspaceMember> | WorkspaceMember | undefined) {
     if (member) {
-      this.owner = ref(Member, member);
+      this.owner = ref(WorkspaceMember, member);
     }
   }
   /**

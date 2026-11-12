@@ -5,7 +5,7 @@ import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
 interface OwnerViews {
   user: UserApiKey;
-  member: WorkspaceApiKey;
+  workspace_member: WorkspaceApiKey;
   system_account: SystemApiKey;
 }
 

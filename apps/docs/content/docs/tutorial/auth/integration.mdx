@@ -6,18 +6,18 @@ description: "Connect Auth services to transport adapters and RequestContext."
 The underlying Better Auth instance and injection token are internal. Inject the
 service that owns the required domain:
 
-| Service                                          | Responsibility                                                                              |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| `AuthService`                                    | Authentication, email verification, password recovery, profiles, and provider accounts      |
-| `SessionService`                                 | Session resolution, parent-user connections, impersonator lookup, and self/admin revocation |
-| `UserService`                                    | User administration, permissions, bans, impersonation, and passwords                        |
-| `AccountService`                                 | Safe account connections for the owning user session                                        |
-| `WorkspaceService`                               | Workspace queries and lifecycle operations                                                  |
-| `MemberService`                                  | Member queries, connections, profiles, roles, permissions, adding/removing, and leaving     |
-| `InvitationService`                              | Invitation queries, connections, creation, acceptance, rejection, and cancellation          |
-| `UserApiKeyService` and `WorkspaceApiKeyService` | Scoped API-key lifecycle and connections                                                    |
+| Service                                          | Responsibility                                                                                   |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `AuthService`                                    | Authentication, email verification, password recovery, profiles, and provider accounts           |
+| `SessionService`                                 | Session resolution, parent-user connections, impersonator lookup, and self/admin revocation      |
+| `UserService`                                    | User administration, permissions, bans, impersonation, and passwords                             |
+| `AccountService`                                 | Safe account connections for the owning user session                                             |
+| `WorkspaceService`                               | Workspace queries and lifecycle operations                                                       |
+| `WorkspaceMemberService`                         | WorkspaceMember queries, connections, profiles, roles, permissions, adding/removing, and leaving |
+| `WorkspaceInvitationService`                     | WorkspaceInvitation queries, connections, creation, acceptance, rejection, and cancellation      |
+| `UserApiKeyService` and `WorkspaceApiKeyService` | Scoped API-key lifecycle and connections                                                         |
 
-`UserService`, `AccountService`, `WorkspaceService`, `MemberService` and `InvitationService` operate directly on the MikroORM entities
+`UserService`, `AccountService`, `WorkspaceService`, `WorkspaceMemberService` and `WorkspaceInvitationService` operate directly on the MikroORM entities
 provided by `AuthModule`; they do not require Better Auth's admin or
 organization plugins.
 
@@ -30,8 +30,8 @@ export class AccountApplicationService {
     private readonly userService: UserService,
     private readonly accountService: AccountService,
     private readonly workspaceService: WorkspaceService,
-    private readonly memberService: MemberService,
-    private readonly invitationService: InvitationService,
+    private readonly workspaceMemberService: WorkspaceMemberService,
+    private readonly workspaceInvitationService: WorkspaceInvitationService,
     private readonly userApiKeyService: UserApiKeyService,
     private readonly workspaceApiKeyService: WorkspaceApiKeyService,
   ) {}
@@ -48,7 +48,7 @@ no application auth entities or named connection registration are required.
 Resolvers use concrete class callbacks.
 
 Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
-`Workspace`, `Member`, `Invitation`, `SystemAccount`, and `ApiKey` entities, their GraphQL
+`Workspace`, `WorkspaceMember`, `WorkspaceInvitation`, `SystemAccount`, and `ApiKey` entities, their GraphQL
 metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 
@@ -60,7 +60,7 @@ The HTTP, REPL, and CLI entries import the same modules. Run `nb database:*` com
 through the application CLI without a separate MikroORM configuration file.
 Extend models with separate related business entities and additional field resolvers;
 import built-in classes for relation targets rather than replacing them.
-`User.members` is removed; use `MemberService` to query memberships.
+`User.members` is removed; use `WorkspaceMemberService` to query memberships.
 Workspace services and resolvers are available only when enabled.
 
 ## Transport Adapters
@@ -72,8 +72,8 @@ cookies store. `AuthMiddleware` runs after `RequestContextMiddleware` and stores
 identity under built-in entity classes, for example `RequestContext.get(User)`.
 No auth base-token aliases are registered; prefer the current identity decorators.
 
-`Member` / `Invitation` use `MemberService` / `InvitationService` and the
-`member:*` permission subject, including `member:invite` for invitation management. Existing GraphQL field names,
+`WorkspaceMember` / `WorkspaceInvitation` use `WorkspaceMemberService` / `WorkspaceInvitationService` and the
+`workspace-member:*` permission subject, including `workspace-member:invite` for invitation management. Existing GraphQL field names,
 arguments and authorization behavior are unchanged by the package merge.
 
 ## PostgreSQL RLS

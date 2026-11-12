@@ -80,9 +80,9 @@
       "scenario": "Create, cancel, register through, accept, and reject invitations",
       "status": "covered",
       "specs": [
-        "invitation.spec.ts",
+        "workspace-invitation.spec.ts",
         "user.spec.ts",
-        "invitation-create.spec.ts"
+        "workspace-invitation-create.spec.ts"
       ],
       "notes": "Covers owner and recipient flows, including the personal pending-invitation list. The standalone invite route supports direct navigation/reload, cancellation, mobile layout, email/role validation, unchanged-value retries after a failed request, copy failure recovery, and workspace isolation. Unauthorized creation links redirect and available roles respect the issuer grants."
     },
@@ -90,14 +90,14 @@
       "domain": "Invitations",
       "scenario": "Invalid and expired invitation states",
       "status": "covered",
-      "specs": ["invitation.spec.ts"],
+      "specs": ["workspace-invitation.spec.ts"],
       "notes": "Covers invalid, canceled, and expired invitation states, including cleanup of the pending invitation redirect."
     },
     {
       "domain": "Members",
       "scenario": "Member status actions, removal, role changes, and direct permissions",
       "status": "covered",
-      "specs": ["invitation.spec.ts", "workspace.spec.ts"],
+      "specs": ["workspace-invitation.spec.ts", "workspace.spec.ts"],
       "notes": "Covers status and removal actions, role editing, direct permission editing, persistence after reload, and resulting UI authorization. Self-disabling navigates away without refetching protected fields. Direct permission editing denies members without update ability and allows administrators to update even an owner's direct permissions without enabling protected role edits."
     },
     {
@@ -106,7 +106,7 @@
       "status": "covered",
       "specs": [
         "api-key.spec.ts",
-        "invitation.spec.ts",
+        "workspace-invitation.spec.ts",
         "workspace.spec.ts",
         "admin.spec.ts"
       ],

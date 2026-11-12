@@ -15,12 +15,12 @@ AuthModule 会自动注册对应实体，`nb database:*` 命令复用相同配�
 ```typescript
 import {
   CurrentWorkspace,
-  CurrentMember,
+  CurrentWorkspaceMember,
 } from "@nest-boot/auth";
 
 currentWorkspace(
   @CurrentWorkspace() workspace: Workspace,
-  @CurrentMember() member: Member,
+  @CurrentWorkspaceMember() member: WorkspaceMember,
 ) {
   return { workspace, member };
 }
@@ -48,31 +48,31 @@ currentWorkspace(
 
 ## 成员生命周期
 
-以下方法由 `MemberService` 提供：
+以下方法由 `WorkspaceMemberService` 提供：
 
-- `getMemberByUser(workspace, user)`；
-- `getMember(id)` — 从请求上下文获取当前工作区，并检查读取能力；
-- `getMemberConnectionByWorkspace(workspace, args)`；
-- `addMember(workspace, user, input)`；
-- `addServiceAccount(workspace, name, input)`；
-- `addMemberByEmail(workspace, email, input)`；
-- `updateMember(id, input)`；
-- `setMemberRoles(id, roles)`；
-- `setMemberPermissions(id, permissions)`；
-- `removeMember(id)`；
+- `getWorkspaceMemberByUser(workspace, user)`；
+- `getWorkspaceMember(id)` — 从请求上下文获取当前工作区，并检查读取能力；
+- `getWorkspaceMemberConnectionByWorkspace(workspace, args)`；
+- `addWorkspaceMember(workspace, user, input)`；
+- `addWorkspaceServiceAccount(workspace, name, input)`；
+- `addWorkspaceMemberByEmail(workspace, email, input)`；
+- `updateWorkspaceMember(id, input)`；
+- `setWorkspaceMemberRoles(id, roles)`；
+- `setWorkspaceMemberPermissions(id, permissions)`；
+- `removeWorkspaceMember(id)`；
 - `leaveWorkspace(member)`。
 
-USER 成员的读写分别需要 `member:read` 与 `member:write`；SERVICE_ACCOUNT 成员
-使用独立的 `service-account:read` 与 `service-account:write`。默认 OWNER 和 ADMIN
+USER 成员的读写分别需要 `workspace-member:read` 与 `workspace-member:write`；SERVICE_ACCOUNT 成员
+使用独立的 `workspace-service-account:read` 与 `workspace-service-account:write`。默认 OWNER 和 ADMIN
 拥有这两项服务账号权限，MEMBER 没有。列表和按 ID 查询只包含有读取权限的类型。
-服务账号角色、直接权限修改还需分别拥有 `member:set-roles`、`member:set-permissions`，
-同时要求 `service-account:write`，并保留授权上限检查。当前成员可主动
+服务账号角色、直接权限修改还需分别拥有 `workspace-member:set-roles`、`workspace-member:set-permissions`，
+同时要求 `workspace-service-account:write`，并保留授权上限检查。当前成员可主动
 退出，包括所有者；工作区允许没有所有者。管理删除接口仍禁止删除本人，应使用退出接口。
 成员状态与角色更新会锁定相关
 成员记录，并在同一事务内重新检查状态。GraphQL Resolver 与 HTTP Controller 应只
 负责输入输出映射，把这些约束留在对应的 Service 中。
-同一工作区可以有多名成员持有配置的创建者角色。通过 `setMemberRoles` 授予或移除该角色，
-仍需满足 `member:set-roles` 和操作者的授权范围。不再提供专门的所有权转移操作；两次角色更新是
+同一工作区可以有多名成员持有配置的创建者角色。通过 `setWorkspaceMemberRoles` 授予或移除该角色，
+仍需满足 `workspace-member:set-roles` 和操作者的授权范围。不再提供专门的所有权转移操作；两次角色更新是
 独立操作，不保证原子转移。
 
 邀请投递和状态流转单独记录在[邀请](/docs/tutorial/auth/invitations)章节中。
@@ -105,7 +105,7 @@ GraphQL 工作区更新、成员创建/更新/角色/权限设置返回仅含 `i
 
 ## 用户成员与工作区可见资料
 
-`Member` 内置姓名和邮箱，`Workspace.members` 和 `User.members` 内置反向集合。
+`WorkspaceMember` 内置姓名和邮箱，`Workspace.members` 和 `User.members` 内置反向集合。
 应用无需重复声明这些字段或关联。
 原始 ORM 集合不直接暴露为 GraphQL 字段，分页仍由带权限检查的连接字段解决器提供。
 示例的 `Workspace.features` 字段及枚举已移除。
@@ -117,15 +117,15 @@ User 的姓名或登录邮箱，修改 User 也不会改变成员资料。具有
 仅清空成员联系邮箱，不影响登录。示例页面与过滤器直接读取成员字段，支持精确过滤
 和 `name:Alice*` 形式的前缀搜索，不通过关联 User 搜索私人资料。
 
-`Member.user` 是私有 User 关联，不是工作区共享联系方式的来源。
+`WorkspaceMember.user` 是私有 User 关联，不是工作区共享联系方式的来源。
 只有本人或通过 Service 全局用户读取权限检查的主体可读；
-工作区角色不会授予此权限。`Invitation.inviter` 同样遵循此边界，
+工作区角色不会授予此权限。`WorkspaceInvitation.inviter` 同样遵循此边界，
 持有邀请并不意味着可以读取邀请人的个人资料。
 
-`MemberType` 区分 `USER` 与 `SERVICE_ACCOUNT`。用户成员必须关联登录用户，服务账号的
+`WorkspaceMemberType` 区分 `USER` 与 `SERVICE_ACCOUNT`。用户成员必须关联登录用户，服务账号的
 user 必须为空；两类成员共用资料、角色、权限和状态操作。可通过
-`MemberService.addServiceAccount(workspace, name, options)` 或
-`addMember(input: { type: SERVICE_ACCOUNT, name: "CI deployer" })` 创建服务账号，
+`WorkspaceMemberService.addWorkspaceServiceAccount(workspace, name, options)` 或
+`addWorkspaceMember(input: { type: SERVICE_ACCOUNT, name: "CI deployer" })` 创建服务账号，
 仍需成员写入权限，并检查角色和权限的授予上限。示例基线增加了 member 归属 Key 的迁移，
 详见 [API Key](./api-keys)。
 

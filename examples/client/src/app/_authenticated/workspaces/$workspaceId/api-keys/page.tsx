@@ -99,10 +99,10 @@ function ApiKeysComponent() {
     <ApiKeysPage
       showOwner
       ownerPath={(owner) =>
-        owner.__typename === "Member" &&
+        owner.__typename === "WorkspaceMember" &&
         ability.can(
           "read",
-          createAbilitySubject("Member", { ...owner, workspaceId }),
+          createAbilitySubject("WorkspaceMember", { ...owner, workspaceId }),
         )
           ? `/workspaces/${workspaceId}/members/${owner.id}`
           : undefined
@@ -119,7 +119,9 @@ function ApiKeysComponent() {
           ...edge.node,
           workspaceId,
           owner:
-            edge.node.member?.__typename === "Member" ? edge.node.member : null,
+            edge.node.member?.__typename === "WorkspaceMember"
+              ? edge.node.member
+              : null,
         })) ?? []
       }
       pageInfo={connection?.pageInfo}

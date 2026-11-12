@@ -21,9 +21,9 @@ import { ApiKey } from "../../api-key/entities/api-key.entity.js";
 import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
 import { AuthAbility } from "../../common/auth.ability.js";
 import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
-import { Invitation } from "../../workspace/entities/invitation.entity.js";
-import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
+import { WorkspaceInvitation } from "../../workspace/entities/workspace-invitation.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { authServiceProviders } from "../auth-service.providers.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
 import { API_KEY } from "../constants/auth.constants.js";
@@ -1163,8 +1163,8 @@ describe("conditional authorization", () => {
       async (kind) => {
         await withIdentity(
           async ({
-            memberService,
-            invitationService,
+            workspaceMemberService,
+            workspaceInvitationService,
             workspaceService,
             userService,
             sessionService,
@@ -1173,14 +1173,14 @@ describe("conditional authorization", () => {
           }) => {
             const Entity =
               kind === "member"
-                ? Member
+                ? WorkspaceMember
                 : kind === "user"
                   ? User
                   : kind === "workspace"
                     ? Workspace
                     : kind === "session"
                       ? Session
-                      : Invitation;
+                      : WorkspaceInvitation;
             const node = Object.assign(new Entity(), { id: "allowed" });
             const result = {
               edges: [{ node, cursor: "cursor" }],
@@ -1192,9 +1192,12 @@ describe("conditional authorization", () => {
             );
             const read = () =>
               kind === "member"
-                ? memberService.getMemberConnectionByWorkspace(workspace, {
-                    first: 1,
-                  })
+                ? workspaceMemberService.getWorkspaceMemberConnectionByWorkspace(
+                    workspace,
+                    {
+                      first: 1,
+                    },
+                  )
                 : kind === "user"
                   ? userService.getUserConnection({ first: 1 })
                   : kind === "workspace"
@@ -1207,13 +1210,13 @@ describe("conditional authorization", () => {
                           { first: 1 },
                         )
                       : kind === "user-invitation"
-                        ? invitationService.getInvitationConnectionByUser(
+                        ? workspaceInvitationService.getWorkspaceInvitationConnectionByUser(
                             user,
                             {
                               first: 1,
                             },
                           )
-                        : invitationService.getInvitationConnectionByWorkspace(
+                        : workspaceInvitationService.getWorkspaceInvitationConnectionByWorkspace(
                             workspace,
                             { first: 1 },
                           );
@@ -1305,8 +1308,8 @@ describe("conditional authorization", () => {
           em,
           user,
           workspace,
-          memberService,
-          invitationService,
+          workspaceMemberService,
+          workspaceInvitationService,
           workspaceService,
           userService,
           userApiKeyService,
@@ -1323,7 +1326,7 @@ describe("conditional authorization", () => {
               : kind === "workspace"
                 ? workspaceService.createWorkspace(user, { name: "blocked" })
                 : kind === "member"
-                  ? memberService.addMember(
+                  ? workspaceMemberService.addWorkspaceMember(
                       workspace,
                       Object.assign(new User(), {
                         id: "invitee",
@@ -1332,9 +1335,13 @@ describe("conditional authorization", () => {
                       }),
                     )
                   : kind === "invitation"
-                    ? invitationService.createInvitation(workspace, user, {
-                        email: "blocked@example.com",
-                      })
+                    ? workspaceInvitationService.createWorkspaceInvitation(
+                        workspace,
+                        user,
+                        {
+                          email: "blocked@example.com",
+                        },
+                      )
                     : kind === "user-key"
                       ? userApiKeyService.createUserApiKey(user, {
                           name: "blocked",

@@ -8,7 +8,7 @@ import {
 import { Sonyflake } from "sonyflake-js";
 
 import { User } from "../../core/entities/user.entity.js";
-import { Member } from "../../workspace/entities/member.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { SystemAccount } from "./system-account.entity.js";
 
 /** Credential persistence model, mapped by the native ApiKeySchema. */
@@ -18,19 +18,19 @@ export class ApiKey extends BaseEntity {
    * Polymorphic owner discriminator, maintained by the owner relation.
    * @returns Concrete kind of the polymorphic credential owner.
    */
-  get ownerType(): Opt<"user" | "member" | "system_account"> {
-    const owner = Reference.unwrapReference<User | Member | SystemAccount>(
-      this.owner,
-    );
+  get ownerType(): Opt<"user" | "workspace_member" | "system_account"> {
+    const owner = Reference.unwrapReference<
+      User | WorkspaceMember | SystemAccount
+    >(this.owner);
     return owner instanceof User
       ? "user"
-      : owner instanceof Member
-        ? "member"
+      : owner instanceof WorkspaceMember
+        ? "workspace_member"
         : "system_account";
   }
 
   /** User, workspace member or independent system account that owns the credential. */
-  owner!: Ref<User | Member | SystemAccount>;
+  owner!: Ref<User | WorkspaceMember | SystemAccount>;
 
   /**
    * Owning user exposed by the user-key management API.
@@ -50,15 +50,15 @@ export class ApiKey extends BaseEntity {
    * Owning member exposed by the member-key management API.
    * @returns Owning member reference, or undefined for other owner kinds.
    */
-  get member(): Ref<Member> | undefined {
-    return this.ownerType === "member"
-      ? (this.owner as Ref<Member>)
+  get member(): Ref<WorkspaceMember> | undefined {
+    return this.ownerType === "workspace_member"
+      ? (this.owner as Ref<WorkspaceMember>)
       : undefined;
   }
 
-  set member(member: Ref<Member> | Member | undefined) {
+  set member(member: Ref<WorkspaceMember> | WorkspaceMember | undefined) {
     if (member) {
-      this.owner = ref(Member, member);
+      this.owner = ref(WorkspaceMember, member);
     }
   }
 

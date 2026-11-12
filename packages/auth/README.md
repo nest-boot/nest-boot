@@ -37,7 +37,7 @@ System-only applications register SystemAccount and ApiKey for authentication wi
 
 Disabled features register no corresponding services, GraphQL operations or persistence tables. Basic registration, sign-in, user self-service and sessions remain available. AuthModule registers the enabled entity classes and API-key schema; direct ORM consumers select the required models explicitly.
 
-The former `apiKey.member.*` configuration is removed; use `apiKey.workspace.*`. System credential configuration uses `apiKey.system.*` in place of `apiKey.systemAccount.*`. Member credential services and mutation names retain `WorkspaceApiKey` naming.
+The former `apiKey.member.*` configuration is removed; use `apiKey.workspace.*`. System credential configuration uses `apiKey.system.*` in place of `apiKey.systemAccount.*`. WorkspaceMember credential services and mutation names retain `WorkspaceApiKey` naming.
 
 ## Optional workspaces
 
@@ -62,33 +62,33 @@ to `null` when disabled and should only be injected by applications enabling the
 
 Existing applications must set `workspace.enabled: true` before generating migrations
 to retain workspace tables. `User.members` was removed to prevent automatic discovery
-of optional entities; use `MemberService` for membership queries.
+of optional entities; use `WorkspaceMemberService` for membership queries.
 
-## Member and Invitation rename
+## WorkspaceMember and WorkspaceInvitation rename
 
-Use `Member`,
-`Invitation`, `MemberService`, `InvitationService`, and `CurrentMember`.
+Use `WorkspaceMember`,
+`WorkspaceInvitation`, `WorkspaceMemberService`, `WorkspaceInvitationService`, and `CurrentWorkspaceMember`.
 Workspace ownership remains the
 `workspace` relation, and workspace-role configuration still lives under
 `workspace`.
 
-Member permissions use `member:*`, including `member:invite` for invitation management,
+WorkspaceMember permissions use `workspace-member:*`, including `workspace-member:invite` for invitation management,
 including custom ability builders, stored grants, and application policies.
 The example database tables, foreign keys, indexes, policies, and grants use
-`member` / `invitation` without legacy table names. The regenerated
+`workspace_member` / `workspace_invitation`. The regenerated
 `Initial → generated schema migrations` and snapshot target a fresh database only;
 they are not an in-place migration for existing installations.
 
-`InvitationService.getInvitationByUser(id, user)` and
-`getInvitationByWorkspace(id, workspace)` retain explicit parent-scoped lookups.
-Connection queries use `MemberConnection` / `InvitationConnection`.
+`WorkspaceInvitationService.getWorkspaceInvitationByUser(id, user)` and
+`getWorkspaceInvitationByWorkspace(id, workspace)` retain explicit parent-scoped lookups.
+Connection queries use `WorkspaceMemberConnection` / `WorkspaceInvitationConnection`.
 Service checks, request RLS, transaction boundaries, and special execution
 contexts are preserved.
 
 ## Built-in entities
 
 Auth owns the concrete `User`, `Account`, `Session`, `Verification`,
-`Workspace`, `Member`, `Invitation`, `SystemAccount` and `ApiKey` entities, their GraphQL
+`Workspace`, `WorkspaceMember`, `WorkspaceInvitation`, `SystemAccount` and `ApiKey` entities, their GraphQL
 metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 
@@ -118,12 +118,12 @@ Service methods use explicit domain names without deprecated aliases:
 
 - `UserService.setUserRoles` replaces roles, while `setUserPermissions` replaces
   direct grants. `getEffectiveUserPermissions` and
-  `MemberService.getEffectiveMemberPermissions` include role-derived grants.
+  `WorkspaceMemberService.getEffectiveWorkspaceMemberPermissions` include role-derived grants.
 - `UserApiKeyService` and `WorkspaceApiKeyService` uses `createUserApiKey`, `updateUserApiKey`, `deleteUserApiKey`
   and their workspace counterparts, matching its existing lookup names.
-- `MemberService.getMemberByUser(workspace, user)` finds only active
-  memberships; `getMember(id)` reads a member in the request's selected workspace.
-  It replaces `getMemberById(workspace, memberId)` without an alias. The Service
+- `WorkspaceMemberService.getWorkspaceMemberByUser(workspace, user)` finds only active
+  memberships; `getWorkspaceMember(id)` reads a member in the request's selected workspace.
+  It replaces `getWorkspaceMemberById(workspace, memberId)` without an alias. The Service
   requires a selected workspace, checks its read ability, and queries by both
   member ID and workspace using the RLS-scoped manager.
 - `SessionService.setSessionCookie` writes response cookies without changing the
@@ -133,7 +133,7 @@ Service methods use explicit domain names without deprecated aliases:
   `AuthService.getAccountInfo` reads provider account information server-side.
 
 `update*` methods patch fields, `set*` methods replace a value or collection, and
-domain operations such as `removeMember`, `revokeSession`, and `cancelInvitation`
+domain operations such as `removeWorkspaceMember`, `revokeSession`, and `cancelWorkspaceInvitation`
 keep their distinct meanings. These service API renames do not rename GraphQL
 fields or the underlying Better Auth APIs.
 
@@ -148,7 +148,7 @@ array or offset-based APIs. GraphQL field names, arguments, authorization, and
 pagination behavior are unchanged.
 
 Use `WorkspaceService.getWorkspaceConnectionByUser(user, args)` and
-`MemberService.getMemberConnectionByWorkspace(workspace, args)` for workspace/member connections, and
+`WorkspaceMemberService.getWorkspaceMemberConnectionByWorkspace(workspace, args)` for workspace/member connections, and
 `UserApiKeyService.getUserApiKeyConnection(user, args)` / `WorkspaceApiKeyService.getWorkspaceApiKeyConnection(workspace, args)`
 for API-key connections. Services own authorization, query scopes and
 `ConnectionManager` execution. User, session, workspace, member, API-key and
@@ -158,22 +158,22 @@ Use the member and invitation connection services to query workspace children;
 each service authorizes its own scope. API-key persistence callbacks are private;
 transports call the service's connection methods directly.
 
-## Invitation pagination
+## WorkspaceInvitation pagination
 
-`MemberService.getMemberUser(member)`,
-`InvitationService.getInvitationInviter(invitation)` and
-`getInvitationWorkspace(invitation)` implement the corresponding GraphQL relation
+`WorkspaceMemberService.getWorkspaceMemberUser(member)`,
+`WorkspaceInvitationService.getWorkspaceInvitationInviter(invitation)` and
+`getWorkspaceInvitationWorkspace(invitation)` implement the corresponding GraphQL relation
 fields. Users may read their own member-user association before selecting
 a workspace. Other member-user access, including API keys, requires the selected
-workspace and global user-scoped `user:read`. Invitation parent access allows either
-the recipient's user session or the selected workspace with `member:invite`.
+workspace and global user-scoped `user:read`. WorkspaceInvitation parent access allows either
+the recipient's user session or the selected workspace with `workspace-member:invite`.
 Reading another inviter's User additionally requires global user-read permission. They re-read parents and targets with injected
 `this.em` and request RLS, never using a privileged reference's cached entity.
 
-`InvitationService.getInvitation(id)` is the RLS-backed single-invitation lookup.
-It allows the recipient's session or the selected workspace's `member:invite`
+`WorkspaceInvitationService.getWorkspaceInvitation(id)` is the RLS-backed single-invitation lookup.
+It allows the recipient's session or the selected workspace's `workspace-member:invite`
 permission, then checks recipient ownership or workspace ownership and instance-level ability.
-Member API keys can use the workspace path without a user identity; failing
+WorkspaceMember API keys can use the workspace path without a user identity; failing
 recipient authorization does not prevent independently authorized workspace access.
 It uses the request manager without clearing its native session or disabling filters.
 Applications must define recipient SELECT policies
@@ -182,8 +182,8 @@ Recipient-specific lookup helpers and pagination retain their explicit authoriza
 while reading through the request manager. Acceptance and rejection use authorized
 cross-identity contexts supplied by infrastructure; creation and cancellation retain request RLS.
 
-`InvitationService.getInvitationConnectionByWorkspace(workspace, args)` and
-`getInvitationConnectionByUser(user, args)` return Relay connections rather than arrays.
+`WorkspaceInvitationService.getWorkspaceInvitationConnectionByWorkspace(workspace, args)` and
+`getWorkspaceInvitationConnectionByUser(user, args)` return Relay connections rather than arrays.
 Pass connection arguments such as `{ first: 20, after: cursor }` and read
 `edges`, `pageInfo`, and `totalCount` from the result.
 
@@ -193,7 +193,7 @@ current recipient regardless of caller filters; recipient lists include only
 unexpired pending invitations. Deleting a workspace cascades to its invitations.
 
 `@nest-boot/graphql-connection` and `@mikro-orm/sql` are now peer dependencies.
-`AuthModule` registers the built-in `InvitationConnection`; no application-owned
+`AuthModule` registers the built-in `WorkspaceInvitationConnection`; no application-owned
 connection definition is required. Its GraphQL transport exposes these connections as
 `Workspace.invitations` and `User.invitations` field resolvers.
 
@@ -203,27 +203,27 @@ connection definition is required. Its GraphQL transport exposes these connectio
 
 - [x] Restrict the permissions supplied to configured user and workspace
       Ability builders: User Keys use the intersection with their principal's
-      effective permissions; Member Keys likewise intersect with their member's current grants. Empty key permissions inherit the owner's full grants.
+      effective permissions; WorkspaceMember Keys likewise intersect with their member's current grants. Empty key permissions inherit the owner's full grants.
 - [x] Add one shared permission normalizer and validator for configured user and
       workspace permission catalogs. Reject empty, duplicate, and unknown
       permission values at service boundaries.
 - [x] Apply permission-catalog validation when creating users and workspace
       members and when calling `setUserPermissions()` or
-      `setMemberPermissions()`.
-- [x] Validate API-key permissions by owner type: Member Keys may contain
+      `setWorkspaceMemberPermissions()`.
+- [x] Validate API-key permissions by owner type: WorkspaceMember Keys may contain
       workspace permissions only; User Keys may contain configured user and
       workspace permissions.
 - [x] Prevent API-key privilege escalation on creation and update. User-scoped
       permissions must not exceed the owning user's effective permissions;
-      Member Key permissions must not exceed both the owning member's and the issuer's
+      WorkspaceMember Key permissions must not exceed both the owning member's and the issuer's
       effective workspace permissions. User Key access to a workspace must continue to be
       intersected with the user's current membership permissions at request
       time.
 - [x] Add module-level API-key defaults and grant limits, and prevent an
       authenticating API key from delegating permissions it does not have.
 - [x] Enforce user and workspace abilities inside authorization-sensitive
-      `UserService`, `WorkspaceService`, `MemberService`,
-      `InvitationService`, and `UserApiKeyService` and `WorkspaceApiKeyService` operations, so
+      `UserService`, `WorkspaceService`, `WorkspaceMemberService`,
+      `WorkspaceInvitationService`, and `UserApiKeyService` and `WorkspaceApiKeyService` operations, so
       direct service injection cannot bypass Resolver or Controller metadata.
       Authentication middleware primitives remain internal identity-resolution
       paths rather than privileged business operations.
@@ -278,9 +278,9 @@ Better Auth API names, configuration keys, and input properties are unchanged.
 
 User bans and identity impersonation remain user-administration workflows in
 `UserService`; `AuthService` still coordinates identity adoption and cookies.
-`MemberService` owns member lookups, pagination, profile updates, roles,
+`WorkspaceMemberService` owns member lookups, pagination, profile updates, roles,
 permissions, adding/removing members, and leaving a workspace.
-`InvitationService` owns invitation lookups, pagination, creation,
+`WorkspaceInvitationService` owns invitation lookups, pagination, creation,
 acceptance, rejection, and cancellation. Both are exported and injectable through
 `AuthModule`; the old methods are removed from `WorkspaceService`, without aliases.
 `WorkspaceService` retains workspace queries, lifecycle operations, full workspace
@@ -288,8 +288,8 @@ reads. Creating a workspace still
 creates its owner in the same transaction; accepting an invitation still creates
 its member in the invitation transaction. No service-to-service dependency or
 new privileged context is introduced.
-The internal email lookup context moves to `MemberService.getUserForMembership`;
-acceptance/rejection contexts move to `InvitationService`. Ordinary
+The internal email lookup context moves to `WorkspaceMemberService.getUserForWorkspaceMembership`;
+acceptance/rejection contexts move to `WorkspaceInvitationService`. Ordinary
 member/invitation reads and writes keep request RLS.
 `can()` and `authorize()` evaluate the request-scoped
 `AuthAbility` directly.
@@ -306,7 +306,7 @@ GraphQL registration uses `AuthService.signUpPayload` and returns only
 the registered entity or grant authentication. The original DTO-returning
 AuthService methods remain available.
 
-## Member API-key creation
+## WorkspaceMember API-key creation
 
 `WorkspaceApiKeyService.createWorkspaceApiKey(workspace, { member, ...options })`
 accepts an existing member entity or ID. GraphQL accepts `input.memberId`.
@@ -315,11 +315,11 @@ selected workspace may own the new key.
 
 Omitting the owner uses the current member. The example form defaults to **You**,
 passing the current member ID. Choosing **Service account** displays a searchable
-account dropdown. If no account is selected, the frontend first calls `addMember`
+account dropdown. If no account is selected, the frontend first calls `addWorkspaceMember`
 to create a service account named after the key, then calls `createWorkspaceApiKey`
-with its `memberId`. Account creation requires `service-account:write`; key creation
-requires `member-api-key:write`. These are separate operations. With selected
-permissions, `addMember` receives `roles: []` and those direct permissions. With
+with its `memberId`. Account creation requires `workspace-service-account:write`; key creation
+requires `workspace-api-key:write`. These are separate operations. With selected
+permissions, `addWorkspaceMember` receives `roles: []` and those direct permissions. With
 no selection, it omits roles and permissions to use the configured default
 workspace role (MEMBER by default).
 
@@ -333,16 +333,16 @@ their connection queries also exclude inherited keys.
 
 ## Service account permissions
 
-`member:read` and `member:write` apply to USER members. SERVICE_ACCOUNT members
-use `service-account:read` and `service-account:write` for profile reads and
+`workspace-member:read` and `workspace-member:write` apply to USER members. SERVICE_ACCOUNT members
+use `workspace-service-account:read` and `workspace-service-account:write` for profile reads and
 creation, update, and deletion. The default OWNER and ADMIN workspace roles
-include both service account permissions; MEMBER does not. Member pagination
+include both service account permissions; MEMBER does not. WorkspaceMember pagination
 and lookup only include types the caller can read.
 
 Changing service account roles or direct permissions also requires
-`member:set-roles` or `member:set-permissions`, respectively, together with
-`service-account:write`. Grant ceilings still apply. API-key management keeps
-its separate `member-api-key:read` and `member-api-key:write` permissions.
+`workspace-member:set-roles` or `workspace-member:set-permissions`, respectively, together with
+`workspace-service-account:write`. Grant ceilings still apply. API-key management keeps
+its separate `workspace-api-key:read` and `workspace-api-key:write` permissions.
 
 ## Scoped management writes
 
@@ -359,8 +359,8 @@ Workspace deletion and member profile edits use the target's `delete` and
 role. Editing the creator's shared contact fields follows the same rule;
 disabling/removing a creator checks the same member write ability as other members.
 Any current member may leave, including the last creator; the workspace is retained.
-Creator roles can be assigned or replaced through `setMemberRoles`, subject to
-`member:set-roles` ability and permission-grant checks. Multiple owners are allowed; no
+Creator roles can be assigned or replaced through `setWorkspaceMemberRoles`, subject to
+`workspace-member:set-roles` ability and permission-grant checks. Multiple owners are allowed; no
 dedicated ownership-transfer operation is provided. API-key update/delete checks both the entity
 type and the loaded instance so conditional abilities remain enforced.
 
@@ -393,7 +393,7 @@ direct ORM/SQL access does not enforce those application authorization rules.
 Permission identifiers use lowercase `resource:action` names. Catalog membership,
 grant ceilings and API-key intersections use exact string equality; invalid
 names are rejected rather than case-converted. Auth owns the mappings for
-`user:*`, `session:*`, `workspace:*`, `member:*`, `service-account:*`, and scoped API-key
+`user:*`, `session:*`, `workspace:*`, `workspace-member:*`, `workspace-service-account:*`, and scoped API-key
 permissions. Custom permission names only grant business abilities through
 explicit permission-bound rules; they cannot redefine built-in auth operations.
 
@@ -443,7 +443,7 @@ raw SQL is no longer protected by column-level grants.
 
 ## Workspace-visible member profiles
 
-Built-in `Member` owns name/email, and `Workspace.members` / `User.members`
+Built-in `WorkspaceMember` owns name/email, and `Workspace.members` / `User.members`
 own the inverse collections. Raw ORM collections stay hidden from GraphQL;
 connection field resolvers provide authorized pagination.
 
@@ -451,15 +451,15 @@ User members reference a User; service-account members have no User. Each member
 These are workspace-visible contact details, initialized from the user's profile
 when membership is created. They are independent thereafter: member edits do not
 change the user's name or login email, and user edits do not synchronize to members.
-Authorized callers may update member name, email and status; roles and permissions
+Authorized callers may update workspace_member name, email and status; roles and permissions
 use dedicated setters. Clearing the member email with `null` does not affect login.
 The example displays and filters member fields directly, with exact filters and
 prefix searches such as `name:Alice*`, without joining private user profiles.
 
-`Member.user` remains a private User relation, not a source of shared
+`WorkspaceMember.user` remains a private User relation, not a source of shared
 contact details. Reading another user's profile requires global user-read
 authorization in the Service; workspace roles alone do not grant it.
-The same boundary applies to `Invitation.inviter`: access to an invitation
+The same boundary applies to `WorkspaceInvitation.inviter`: access to an invitation
 does not grant access to the inviter's private profile.
 
 Service-account creation and its options/input exports remain removed without
@@ -538,12 +538,12 @@ constructed instances outside a request. The standalone `assertCan` and
 compatibility aliases. `can` remains available.
 
 The built-in ability denies writing the current member's `status` field, while
-preserving permitted profile edits. `MemberService.updateMember` checks each
+preserving permitted profile edits. `WorkspaceMemberService.updateWorkspaceMember` checks each
 supplied field before updating and again under the row lock. Frontends should use
 `ability.can("write", member, "status")` for enable/disable actions.
 
 Personal keys use `user-api-key:read/write`; member keys use
-`member-api-key:read/write`. Write covers creation, updates, enabling/disabling,
+`workspace-api-key:read/write`. Write covers creation, updates, enabling/disabling,
 and deletion without granting reads.
 User administrators and workspace owners inherit them; ordinary users and
 workspace administrators require explicit role or direct grants. Existing
@@ -554,7 +554,7 @@ The `userRoles` and `workspaceRoles` queries return `{ role, grantable }` object
 `userApiKeyPermissions` and `workspaceApiKeyPermissions` also return
 `{ permission, grantable, default }` entries. `grantable` includes the API-key
 allowlist and issuer's grant ceiling; `default` reflects configured defaults.
-Editors preselect only `default && grantable`. `member:invite` allows querying,
+Editors preselect only `default && grantable`. `workspace-member:invite` allows querying,
 creating, and canceling workspace invitations; it does not grant member writes.
 Accepting or rejecting one's own invitation requires the recipient's user session,
 not invitation management permission.
@@ -582,7 +582,7 @@ options and mark the current principal's grant ceiling, including API-key restri
 They do not authorize changes to a particular target. Disable unavailable new grants
 in the UI and validate complete replacement lists; mutation Services still enforce
 target-specific abilities. `workspaceAssignableRoles` has been removed.
-`UserService` and `MemberService` expose these same option shapes through
+`UserService` and `WorkspaceMemberService` expose these same option shapes through
 `listRoles()` and `listPermissions()`, using configured string values internally.
 The previous `AuthRole { name, permissions }` catalog shape is no longer exposed.
 
@@ -590,7 +590,7 @@ The previous `AuthRole { name, permissions }` catalog shape is no longer exposed
 `unbanUser` return operation-specific payloads containing only `id`. Refetch
 authorized user fields separately after success instead of selecting self-only
 relations on an administrative mutation result.
-`acceptInvitation` returns `AcceptInvitationPayload { id, memberId, workspaceId }`,
+`acceptWorkspaceInvitation` returns `AcceptWorkspaceInvitationPayload { id, memberId, workspaceId }`,
 without inviter/profile relations. Select that workspace in the next request
 before querying membership details. Domain Services still return entities and
 retain their authorization checks.
@@ -618,12 +618,12 @@ separately with the caller's read permissions.
 Clients must remove selections such as `name` or `members` from
 these mutation results and regenerate their GraphQL types.
 
-`deleteUser` and `removeMember` likewise return `DeleteUserPayload` and
-`RemoveMemberPayload`, each containing only `id: ID!`. `leaveWorkspace` returns
+`deleteUser` and `removeWorkspaceMember` likewise return `DeleteUserPayload` and
+`RemoveWorkspaceMemberPayload`, each containing only `id: ID!`. `leaveWorkspace` returns
 `LeaveWorkspacePayload { memberId: ID! }`, identifying the removed member, not
 the workspace. Service return values and authorization are unchanged.
 Remove entity-field selections from these mutation results. When evicting a
-normalized client cache entry, use the original entity type (`User` or `Member`)
+normalized client cache entry, use the original entity type (`User` or `WorkspaceMember`)
 with the returned ID, not the payload's `__typename`.
 
 ### Authentication operation naming
@@ -662,14 +662,14 @@ remains a password-change option. Update client documents and regenerate types.
 ### Target argument naming
 
 GraphQL arguments identifying the operation's target use `id: ID!`:
-`acceptInvitation(id)`, `rejectInvitation(id)`, `cancelInvitation(id)`,
+`acceptWorkspaceInvitation(id)`, `rejectWorkspaceInvitation(id)`, `cancelWorkspaceInvitation(id)`,
 `revokeCurrentUserSession(id)`, `unlinkCurrentUserAccount(id)`, and
 `revokeSession(userId, id)`. The exported `UserIdInput` also uses `id`, not
 `userId`. The old argument names are not retained as aliases. Service signatures
 are unchanged, including the account-unlinking adapter's `accountId` property.
 Related identifiers remain explicit: `revokeSession.userId` checks ownership,
 `revokeUserSessions.userId` selects whose sessions to revoke.
-Workspace owner roles use `setMemberRoles(id, input)` like other roles; multiple
+Workspace owner roles use `setWorkspaceMemberRoles(id, input)` like other roles; multiple
 owners are allowed, with ability and permission-grant checks enforced by the Service.
 
 Apply `Initial → generated schema migrations` to the example database.
@@ -706,7 +706,7 @@ GraphQL exposes `UserApiKey`, `WorkspaceApiKey`, and `SystemApiKey`. Each scope 
 
 API-key enums cover the full scope catalogs, independently of the current grant
 allowlist, so existing keys remain readable after the allowlist is tightened.
-Member keys may carry `member:invite` to read and cancel invitations.
+WorkspaceMember keys may carry `workspace-member:invite` to read and cancel invitations.
 Creating an invitation also requires a user as sender; use a personal API key
 for invitation creation.
 
@@ -739,7 +739,7 @@ continue to own request execution and transaction boundaries.
 
 ## Independent system accounts and shared credential storage
 
-`UserApiKey`, `WorkspaceApiKey`, and `SystemApiKey` remain scoped TypeScript service and authorization views; GraphQL uses these three distinct object types with their own permission enums. `ApiKey` is the persistent entity. Its required polymorphic `owner` is a `User`, `Member`, or `SystemAccount`, stored as `owner_type` and `owner_id` in `api_key`. No additional scope column or single-table inheritance is used. Credential hashes are globally unique.
+`UserApiKey`, `WorkspaceApiKey`, and `SystemApiKey` remain scoped TypeScript service and authorization views; GraphQL uses these three distinct object types with their own permission enums. `ApiKey` is the persistent entity. Its required polymorphic `owner` is a `User`, `WorkspaceMember`, or `SystemAccount`, stored as `owner_type` and `owner_id` in `api_key`. No additional scope column or single-table inheritance is used. Credential hashes are globally unique.
 
 For direct ORM operations, query `ApiKey` with the owner discriminator and a typed owner reference. The view classes are not separate ORM entities:
 
@@ -752,9 +752,9 @@ const keys = await em.find(ApiKey, {
 });
 ```
 
-A User with an administrator role and the explicit `system-account:read/write` and `system-account-api-key:read/write` permissions manages system identities. Management requires a human user session; user, member and system API keys cannot issue system credentials. Use `SystemAccountService` for create/read/paginate/update/delete and `SystemApiKeyService` for key lifecycle operations. GraphQL exposes `systemAccounts`, `systemAccount`, `createSystemAccount`, `updateSystemAccount`, `deleteSystemAccount`, `systemApiKey`, and the corresponding key mutations. `User.apiKeys`, `Member.apiKeys`, and `SystemAccount.apiKeys` return their own scoped connections. Root `workspaceApiKeys` and `systemApiKeys` provide aggregate lists. GraphQL exposes nullable `UserApiKey.user`, `WorkspaceApiKey.member`, and `SystemApiKey.systemAccount`, with separate identity authorization and self-profile access. Inaccessible identities return null. Disabled credential APIs introduce no schema dependencies; keys expose no generic owner union or redundant identity ID fields.
+A User with an administrator role and the explicit `system-account:read/write` and `system-account-api-key:read/write` permissions manages system identities. Management requires a human user session; user, member and system API keys cannot issue system credentials. Use `SystemAccountService` for create/read/paginate/update/delete and `SystemApiKeyService` for key lifecycle operations. GraphQL exposes `systemAccounts`, `systemAccount`, `createSystemAccount`, `updateSystemAccount`, `deleteSystemAccount`, `systemApiKey`, and the corresponding key mutations. `User.apiKeys`, `WorkspaceMember.apiKeys`, and `SystemAccount.apiKeys` return their own scoped connections. Root `workspaceApiKeys` and `systemApiKeys` provide aggregate lists. GraphQL exposes nullable `UserApiKey.user`, `WorkspaceApiKey.member`, and `SystemApiKey.systemAccount`, with separate identity authorization and self-profile access. Inaccessible identities return null. Disabled credential APIs introduce no schema dependencies; keys expose no generic owner union or redundant identity ID fields.
 
-SystemAccount holds a name, enabled state, explicit permission ceiling and creator audit reference. A workspace service account remains a Member with `type: SERVICE_ACCOUNT`; it is separate from this platform identity. Creator references use `ON DELETE SET NULL`, so deleting a creator does not delete the system account or its keys.
+SystemAccount holds a name, enabled state, explicit permission ceiling and creator audit reference. A workspace service account remains a WorkspaceMember with `type: SERVICE_ACCOUNT`; it is separate from this platform identity. Creator references use `ON DELETE SET NULL`, so deleting a creator does not delete the system account or its keys.
 
 ```graphql
 mutation {
@@ -771,11 +771,11 @@ mutation {
 
 Create its credential with `createSystemApiKey(systemAccountId, input)` and send the returned plaintext as `Authorization: Bearer <key>`. The plaintext is returned once; metadata queries never return its hash or plaintext. The default prefix is `sys_`, configurable through `apiKey.system.defaultPrefix` (or `API_KEY_PREFIX`). Its `allowedPermissions` and `defaultPermissions` follow the existing scoped configuration shape.
 
-System-key grants are the intersection of the account's current permissions, the key's explicit permissions and the configured key allowlist. An empty system-key grant list grants nothing. Disabling the account invalidates every owned key on subsequent requests; disabling, expiring or deleting one key affects that key. System authentication creates no User, Member or selected-workspace identity.
+System-key grants are the intersection of the account's current permissions, the key's explicit permissions and the configured key allowlist. An empty system-key grant list grants nothing. Disabling the account invalidates every owned key on subsequent requests; disabling, expiring or deleting one key affects that key. System authentication creates no User, WorkspaceMember or selected-workspace identity.
 
 The built-in system catalog is `user:read`, `user:update`, `user:delete`, `workspace:read-any`, `workspace:update-any`, and `workspace:delete-any`. Existing user operations enforce their User ability grants. Workspace platform operations are separate: `workspaces`, `platformWorkspace(id)`, `updatePlatformWorkspace(id, input)`, and `deletePlatformWorkspace(id)`. Ordinary membership-scoped APIs retain their existing checks. Workspace grants are ineffective when workspace features are disabled. No system grant automatically authorizes arbitrary business tables.
 
-Polymorphic relations have no native owner FK or custom owner triggers. Deleting User, Member, SystemAccount or a workspace retains API-key records and their stored owner identifiers for audit. Authentication reloads the concrete owner with a fresh database query and rejects missing, disabled or banned identities. Failed authentication does not delete the record or update its usage timestamps. There is no lazy or scheduled cleanup. System-key audit queries retain metadata and return a null related account when it has been deleted.
+Polymorphic relations have no native owner FK or custom owner triggers. Deleting User, WorkspaceMember, SystemAccount or a workspace retains API-key records and their stored owner identifiers for audit. Authentication reloads the concrete owner with a fresh database query and rejects missing, disabled or banned identities. Failed authentication does not delete the record or update its usage timestamps. There is no lazy or scheduled cleanup. System-key audit queries retain metadata and return a null related account when it has been deleted.
 
 System credentials and accounts are unavailable to request-role SQL; their management services require an administrator session. The framework records successful key usage through an isolated writer restricted to the captured key ID.
 

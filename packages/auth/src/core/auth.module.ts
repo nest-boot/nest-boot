@@ -34,12 +34,12 @@ import {
   DEFAULT_WORKSPACE_PERMISSIONS,
   DEFAULT_WORKSPACE_ROLES,
 } from "../workspace/constants/workspace.constants.js";
-import { Invitation } from "../workspace/entities/invitation.entity.js";
-import { Member } from "../workspace/entities/member.entity.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
-import { InvitationService } from "../workspace/services/invitation.service.js";
-import { MemberService } from "../workspace/services/member.service.js";
+import { WorkspaceInvitation } from "../workspace/entities/workspace-invitation.entity.js";
+import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
 import { WorkspaceService } from "../workspace/services/workspace.service.js";
+import { WorkspaceInvitationService } from "../workspace/services/workspace-invitation.service.js";
+import { WorkspaceMemberService } from "../workspace/services/workspace-member.service.js";
 import { workspaceProviders } from "../workspace/workspace.providers.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
@@ -130,8 +130,8 @@ class AuthOptionsHostModule {}
     AuthService,
     SessionService,
     WorkspaceService,
-    MemberService,
-    InvitationService,
+    WorkspaceMemberService,
+    WorkspaceInvitationService,
   ],
 })
 export class AuthModule extends ConfigurableModuleClass {
@@ -222,7 +222,9 @@ export class AuthModule extends ConfigurableModuleClass {
                   ]
                 : []),
               ...(features.systemAccount ? [SystemAccount] : []),
-              ...(features.workspace ? [Workspace, Member, Invitation] : []),
+              ...(features.workspace
+                ? [Workspace, WorkspaceMember, WorkspaceInvitation]
+                : []),
             ];
           },
         }),

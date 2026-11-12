@@ -60,7 +60,7 @@ export function isAuthPermissionEnabled(
   if (permission.startsWith("user-api-key:")) {
     return features.userApiKey;
   }
-  if (permission.startsWith("member-api-key:")) {
+  if (permission.startsWith("workspace-api-key:")) {
     return features.workspaceApiKey;
   }
   if (permission.startsWith("system-account-api-key:")) {

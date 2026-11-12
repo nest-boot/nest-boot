@@ -5,9 +5,9 @@ import { type BetterAuthOptions } from "better-auth";
 import { mockRlsContext } from "../../../test/mock-rls-context.js";
 import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
 import { WorkspaceApiKey as BaseApiKey } from "../../api-key/objects/workspace-api-key.object.js";
-import { Invitation as BaseInvitation } from "../../workspace/entities/invitation.entity.js";
-import { Member as BaseMember } from "../../workspace/entities/member.entity.js";
 import { Workspace as BaseWorkspace } from "../../workspace/entities/workspace.entity.js";
+import { WorkspaceInvitation as BaseWorkspaceInvitation } from "../../workspace/entities/workspace-invitation.entity.js";
+import { WorkspaceMember as BaseWorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { Account as BaseAccount } from "../entities/account.entity.js";
 import { Session as BaseSession } from "../entities/session.entity.js";
 import { User as BaseUser } from "../entities/user.entity.js";
@@ -311,13 +311,13 @@ const TestWorkspace = BaseWorkspace;
 
 type TestWorkspace = BaseWorkspace;
 
-const TestMember = BaseMember;
+const TestWorkspaceMember = BaseWorkspaceMember;
 
-type TestMember = BaseMember;
+type TestWorkspaceMember = BaseWorkspaceMember;
 
-const TestInvitation = BaseInvitation;
+const TestWorkspaceInvitation = BaseWorkspaceInvitation;
 
-type TestInvitation = BaseInvitation;
+type TestWorkspaceInvitation = BaseWorkspaceInvitation;
 
 const entities = {
   account: TestAccount,
@@ -327,8 +327,8 @@ const entities = {
   user: TestUser,
   verification: TestVerification,
   workspace: TestWorkspace,
-  invitation: TestInvitation,
-  member: TestMember,
+  invitation: TestWorkspaceInvitation,
+  member: TestWorkspaceMember,
 };
 
 /**

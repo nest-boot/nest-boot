@@ -69,8 +69,8 @@ interface ApiKeyFormPageProps<Permission extends CredentialPermission> {
   systemAccountOptions?: Array<{ value: string; label: string }>;
   canCreateSystemAccount?: boolean;
   onSystemAccountChange?: (id: string) => ReadonlyArray<Permission>;
-  canCreateServiceAccount?: boolean;
-  currentMemberId?: string;
+  canCreateWorkspaceServiceAccount?: boolean;
+  currentWorkspaceMemberId?: string;
   defaultPermissions?: ReadonlyArray<Permission>;
   onToggle?: () => Promise<void>;
   onDelete?: () => Promise<void>;
@@ -100,8 +100,8 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
   systemAccountOptions,
   canCreateSystemAccount = true,
   onSystemAccountChange,
-  canCreateServiceAccount = true,
-  currentMemberId,
+  canCreateWorkspaceServiceAccount = true,
+  currentWorkspaceMemberId,
   onSave,
   onToggle,
   onDelete,
@@ -117,7 +117,7 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
   const accountOptions = systemAccountOptions ?? memberOptions;
   const canCreateAccount = systemOwner
     ? canCreateSystemAccount
-    : canCreateServiceAccount;
+    : canCreateWorkspaceServiceAccount;
   const keyStart = apiKey?.start || apiKey?.prefix;
   const isPermission = (value: string): value is Permission =>
     permissionValues.some((permission) => permission === value);
@@ -156,7 +156,7 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
         memberOptions &&
         ownerType === "serviceAccount" &&
         !value.memberId &&
-        !canCreateServiceAccount
+        !canCreateWorkspaceServiceAccount
       ) {
         formApi.setErrorMap({
           onSubmit: { form: t("api-key:form.member.required"), fields: {} },
@@ -172,7 +172,8 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
         });
         return;
       }
-      const memberId = ownerType === "you" ? currentMemberId : value.memberId;
+      const memberId =
+        ownerType === "you" ? currentWorkspaceMemberId : value.memberId;
       const input = {
         name: value.name.trim(),
         ...(memberOptions && memberId ? { memberId } : {}),
@@ -357,7 +358,7 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
                                 !canWrite ||
                                 submitting ||
                                 !!pendingAction ||
-                                (!canCreateServiceAccount &&
+                                (!canCreateWorkspaceServiceAccount &&
                                   !memberOptions.length)
                               }
                             >

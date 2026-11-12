@@ -24,14 +24,14 @@ import { SessionService } from "./core/services/session.service.js";
 import { UserService } from "./core/services/user.service.js";
 import * as auth from "./index.js";
 import * as publicApi from "./index.js";
-import { CurrentMember } from "./workspace/decorators/current-member.decorator.js";
 import { CurrentWorkspace } from "./workspace/decorators/current-workspace.decorator.js";
-import { Invitation } from "./workspace/entities/invitation.entity.js";
-import { Member } from "./workspace/entities/member.entity.js";
+import { CurrentWorkspaceMember } from "./workspace/decorators/current-workspace-member.decorator.js";
 import { Workspace } from "./workspace/entities/workspace.entity.js";
-import { InvitationService } from "./workspace/services/invitation.service.js";
-import { MemberService } from "./workspace/services/member.service.js";
+import { WorkspaceInvitation } from "./workspace/entities/workspace-invitation.entity.js";
+import { WorkspaceMember } from "./workspace/entities/workspace-member.entity.js";
 import { WorkspaceService } from "./workspace/services/workspace.service.js";
+import { WorkspaceInvitationService } from "./workspace/services/workspace-invitation.service.js";
+import { WorkspaceMemberService } from "./workspace/services/workspace-member.service.js";
 
 vi.mock("better-auth", () => ({
   betterAuth: vi.fn(),
@@ -85,44 +85,44 @@ describe("public API", () => {
       methods: ["getAccountConnectionByUser"],
     },
     {
-      name: "MemberService",
-      service: MemberService,
+      name: "WorkspaceMemberService",
+      service: WorkspaceMemberService,
       methods: [
-        "getCurrentMember",
-        "getMemberListFilter",
-        "getMemberConnectionByWorkspace",
-        "getMemberByUser",
-        "getMember",
-        "getMemberUser",
-        "addMember",
-        "addMemberByEmail",
-        "getUserForMembership",
-        "updateMember",
-        "setMemberRoles",
-        "setMemberPermissions",
-        "removeMember",
+        "getCurrentWorkspaceMember",
+        "getWorkspaceMemberListFilter",
+        "getWorkspaceMemberConnectionByWorkspace",
+        "getWorkspaceMemberByUser",
+        "getWorkspaceMember",
+        "getWorkspaceMemberUser",
+        "addWorkspaceMember",
+        "addWorkspaceMemberByEmail",
+        "getUserForWorkspaceMembership",
+        "updateWorkspaceMember",
+        "setWorkspaceMemberRoles",
+        "setWorkspaceMemberPermissions",
+        "removeWorkspaceMember",
         "leaveWorkspace",
         "hasPermissions",
         "listRoles",
         "listPermissions",
-        "getEffectiveMemberPermissions",
+        "getEffectiveWorkspaceMemberPermissions",
       ],
     },
     {
-      name: "InvitationService",
-      service: InvitationService,
+      name: "WorkspaceInvitationService",
+      service: WorkspaceInvitationService,
       methods: [
-        "createInvitation",
-        "getInvitation",
-        "getInvitationInviter",
-        "getInvitationWorkspace",
-        "getInvitationByUser",
-        "getInvitationByWorkspace",
-        "getInvitationConnectionByWorkspace",
-        "getInvitationConnectionByUser",
-        "acceptInvitation",
-        "cancelInvitation",
-        "rejectInvitation",
+        "createWorkspaceInvitation",
+        "getWorkspaceInvitation",
+        "getWorkspaceInvitationInviter",
+        "getWorkspaceInvitationWorkspace",
+        "getWorkspaceInvitationByUser",
+        "getWorkspaceInvitationByWorkspace",
+        "getWorkspaceInvitationConnectionByWorkspace",
+        "getWorkspaceInvitationConnectionByUser",
+        "acceptWorkspaceInvitation",
+        "cancelWorkspaceInvitation",
+        "rejectWorkspaceInvitation",
       ],
     },
     {
@@ -184,11 +184,11 @@ describe("public API", () => {
   it("exports the member and invitation permission catalog", () => {
     expect(publicApi.DEFAULT_WORKSPACE_PERMISSIONS).toEqual(
       expect.arrayContaining([
-        "member:read",
-        "member:write",
-        "member:set-roles",
-        "member:set-permissions",
-        "member:invite",
+        "workspace-member:read",
+        "workspace-member:write",
+        "workspace-member:set-roles",
+        "workspace-member:set-permissions",
+        "workspace-member:invite",
       ]),
     );
   });
@@ -199,8 +199,8 @@ describe("public API", () => {
       "Session",
       "Verification",
       "Workspace",
-      "Member",
-      "Invitation",
+      "WorkspaceMember",
+      "WorkspaceInvitation",
       "ApiKey",
       "SystemAccount",
     ] as const;
@@ -226,12 +226,12 @@ describe("public API", () => {
     for (const name of [
       "WorkspaceApiKeyResolver",
       "WorkspaceResolver",
-      "MemberResolver",
-      "InvitationResolver",
+      "WorkspaceMemberResolver",
+      "WorkspaceInvitationResolver",
     ]) {
       expect(publicApi).toHaveProperty(name);
     }
-    expect(publicApi).toHaveProperty("SetMemberRolesInput");
+    expect(publicApi).toHaveProperty("SetWorkspaceMemberRolesInput");
   });
   it("exports input and result types", () => {
     for (const name of [
@@ -241,7 +241,7 @@ describe("public API", () => {
       "SetUserRolesPayload",
       "BanUserPayload",
       "UnbanUserPayload",
-      "AcceptInvitationPayload",
+      "AcceptWorkspaceInvitationPayload",
     ]) {
       expect(publicApi).toHaveProperty(name);
     }
@@ -252,7 +252,7 @@ describe("public API", () => {
     expect(publicApi.CreateWorkspacePayload).toBeDefined();
     expect(publicApi.DeleteWorkspacePayload).toBeDefined();
     expect(publicApi.DeleteUserPayload).toBeDefined();
-    expect(publicApi.RemoveMemberPayload).toBeDefined();
+    expect(publicApi.RemoveWorkspaceMemberPayload).toBeDefined();
     expect(publicApi.LeaveWorkspacePayload).toBeDefined();
   });
   it("should export auth modules, services, decorators, and entities", () => {
@@ -266,7 +266,7 @@ describe("public API", () => {
     expect(publicApi.Can).toBe(Can);
     expect(publicApi.CurrentApiKey).toBe(CurrentApiKey);
     expect(publicApi.CurrentWorkspace).toBe(CurrentWorkspace);
-    expect(publicApi.CurrentMember).toBe(CurrentMember);
+    expect(publicApi.CurrentWorkspaceMember).toBe(CurrentWorkspaceMember);
     expect(publicApi.Public).toBe(Public);
     expect(publicApi.Account).toBe(Account);
     expect(publicApi.WorkspaceApiKey).toBe(WorkspaceApiKey);
@@ -274,16 +274,18 @@ describe("public API", () => {
     expect(publicApi.User).toBe(User);
     expect(publicApi.Verification).toBe(Verification);
     expect(publicApi.Workspace).toBe(Workspace);
-    expect(publicApi.Invitation).toBe(Invitation);
-    expect(publicApi.Member).toBe(Member);
+    expect(publicApi.WorkspaceInvitation).toBe(WorkspaceInvitation);
+    expect(publicApi.WorkspaceMember).toBe(WorkspaceMember);
     expect(publicApi.AuthAbility).toBe(AuthAbility);
     expect(publicApi.can).toBe(can);
     expect(publicApi.getAuthAbility).toBe(getAuthAbility);
     expect(publicApi.authorize).toBe(authorize);
     expect(publicApi.SessionService).toBe(SessionService);
     expect(publicApi.WorkspaceService).toBe(WorkspaceService);
-    expect(publicApi.MemberService).toBe(MemberService);
-    expect(publicApi.InvitationService).toBe(InvitationService);
+    expect(publicApi.WorkspaceMemberService).toBe(WorkspaceMemberService);
+    expect(publicApi.WorkspaceInvitationService).toBe(
+      WorkspaceInvitationService,
+    );
   });
 });
 
@@ -336,7 +338,7 @@ describe("exported input contracts", () => {
     },
 
     {
-      name: "AddMemberInput",
+      name: "AddWorkspaceMemberInput",
       values: {
         email: "member@example.com",
         type: "USER",
@@ -461,7 +463,7 @@ describe("exported input contracts", () => {
       nullable: ["expiresAt", "permissions"],
     },
     {
-      name: "CreateInvitationInput",
+      name: "CreateWorkspaceInvitationInput",
       values: {
         email: "user@example.com",
         roles: ["CustomRole"],
@@ -486,12 +488,12 @@ describe("exported input contracts", () => {
       required: ["name"],
     },
     {
-      name: "SetMemberPermissionsInput",
+      name: "SetWorkspaceMemberPermissionsInput",
       values: { permissions: [] },
       required: ["permissions"],
     },
     {
-      name: "SetMemberRolesInput",
+      name: "SetWorkspaceMemberRolesInput",
       values: { roles: ["CustomRole"] },
       required: ["roles"],
     },
@@ -529,8 +531,12 @@ describe("exported input contracts", () => {
       nullable: ["expiresAt", "permissions"],
     },
     {
-      name: "UpdateMemberInput",
-      values: { name: "Member", email: "member@example.com", status: "ACTIVE" },
+      name: "UpdateWorkspaceMemberInput",
+      values: {
+        name: "WorkspaceMember",
+        email: "member@example.com",
+        status: "ACTIVE",
+      },
       required: [],
       nullable: ["email"],
     },
@@ -659,7 +665,7 @@ describe("public decorator exports", () => {
       "CurrentUser",
       "CurrentApiKey",
       "CurrentWorkspace",
-      "CurrentMember",
+      "CurrentWorkspaceMember",
     ]) {
       expect(publicApi).toHaveProperty(name);
     }

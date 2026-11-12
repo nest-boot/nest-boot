@@ -1,17 +1,17 @@
 import { ref } from "@mikro-orm/core";
 
-import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { WorkspaceApiKey } from "./workspace-api-key.object.js";
 
 describe("WorkspaceApiKey", () => {
   it("exposes its concrete identity relation", () => {
-    const owner = new Member();
+    const owner = new WorkspaceMember();
     const key = Object.assign(new WorkspaceApiKey(new ApiKey()), {
-      member: ref(Member, owner),
+      member: ref(WorkspaceMember, owner),
     });
-    expect(key.ownerType).toBe("member");
+    expect(key.ownerType).toBe("workspace_member");
     expect(key.member?.id).toBe(owner.id);
     expect(key.id).toEqual(expect.any(String));
     expect(key.enabled).toBe(true);

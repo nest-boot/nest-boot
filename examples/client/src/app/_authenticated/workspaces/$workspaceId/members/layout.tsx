@@ -7,7 +7,7 @@ export const Route = createFileRoute(
   component: () => <Outlet />,
   beforeLoad: () => {
     return {
-      title: t("member:title"),
+      title: t("workspace-member:title"),
     };
   },
 });

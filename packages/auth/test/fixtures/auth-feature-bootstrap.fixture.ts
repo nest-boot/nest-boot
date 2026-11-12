@@ -28,7 +28,7 @@ import { AuthModule } from "../../src/core/auth.module.js";
 import { User } from "../../src/core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-options.interface.js";
 import { UserService } from "../../src/core/services/user.service.js";
-import { Member } from "../../src/workspace/entities/member.entity.js";
+import { WorkspaceMember } from "../../src/workspace/entities/workspace-member.entity.js";
 
 /** An application-owned endpoint whose authorization does not require the admin GraphQL API. */
 @Resolver()
@@ -73,7 +73,7 @@ export async function verifyAuthFeatures(
   expected: {
     admin: boolean;
     workspace: boolean;
-    owners: ("User" | "Member" | "SystemAccount")[];
+    owners: ("User" | "WorkspaceMember" | "SystemAccount")[];
   },
 ): Promise<void> {
   const module = await Test.createTestingModule({
@@ -135,11 +135,13 @@ export async function verifyAuthFeatures(
     expect(!!mutations.impersonateUser).toBe(expected.admin);
     expect(!!mutations.createSystemAccount).toBe(expected.admin);
     expect(!!queries.currentWorkspace).toBe(expected.workspace);
-    expect(!!queries.workspaceApiKeys).toBe(expected.owners.includes("Member"));
+    expect(!!queries.workspaceApiKeys).toBe(
+      expected.owners.includes("WorkspaceMember"),
+    );
     expect(!!queries.systemApiKeys).toBe(systemManagement);
     expect(!!mutations.createUserApiKey).toBe(expected.owners.includes("User"));
     expect(!!mutations.createWorkspaceApiKey).toBe(
-      expected.owners.includes("Member"),
+      expected.owners.includes("WorkspaceMember"),
     );
     expect(!!mutations.createSystemApiKey).toBe(systemManagement);
     expect(
@@ -149,7 +151,7 @@ export async function verifyAuthFeatures(
     expect(!!schema.getType("SystemAccount")).toBe(expected.admin);
     for (const [type, identity] of [
       [UserApiKey, "User"],
-      [WorkspaceApiKey, "Member"],
+      [WorkspaceApiKey, "WorkspaceMember"],
       [SystemApiKey, "SystemAccount"],
     ] as const) {
       expect(!!schema.getType(type.name)).toBe(
@@ -160,12 +162,12 @@ export async function verifyAuthFeatures(
     expect(!!orm.getMetadata().find(SystemAccount)).toBe(
       expected.admin || expected.owners.includes("SystemAccount"),
     );
-    expect(!!orm.getMetadata().find(Member)).toBe(expected.workspace);
+    expect(!!orm.getMetadata().find(WorkspaceMember)).toBe(expected.workspace);
     for (const [token, enabled] of [
       [ApiKeyAuthenticationService, expected.owners.length > 0],
       [SystemAccountService, expected.admin],
       [UserApiKeyService, expected.owners.includes("User")],
-      [WorkspaceApiKeyService, expected.owners.includes("Member")],
+      [WorkspaceApiKeyService, expected.owners.includes("WorkspaceMember")],
       [SystemApiKeyService, systemManagement],
     ] as const) {
       expect(!!app.get(token)).toBe(enabled);
@@ -245,7 +247,7 @@ export async function verifyAuthFeatures(
       expect(workspace.errors).toBeUndefined();
       const workspaceId = workspace.data?.createWorkspace.id;
       assert(workspaceId);
-      if (expected.owners.includes("Member")) {
+      if (expected.owners.includes("WorkspaceMember")) {
         const key = await graphql(
           'mutation { createWorkspaceApiKey(input: {name: "Workspace key"}) { apiKey entity { id member { __typename  id workspaceId  } } } }',
           {},
@@ -256,7 +258,7 @@ export async function verifyAuthFeatures(
           workspaceId,
         );
         const lists = await graphql(
-          "{ currentMember { apiKeys(first: 10) { edges { node { id } } } } workspaceApiKeys(first: 10) { edges { node { id } } } }",
+          "{ currentWorkspaceMember { apiKeys(first: 10) { edges { node { id } } } } workspaceApiKeys(first: 10) { edges { node { id } } } }",
           {},
           { "x-workspace-id": workspaceId },
         );
@@ -264,7 +266,9 @@ export async function verifyAuthFeatures(
         const expectedKeys = [
           { node: { id: key.data?.createWorkspaceApiKey.entity.id } },
         ];
-        expect(lists.data?.currentMember.apiKeys.edges).toEqual(expectedKeys);
+        expect(lists.data?.currentWorkspaceMember.apiKeys.edges).toEqual(
+          expectedKeys,
+        );
         expect(lists.data?.workspaceApiKeys.edges).toEqual(expectedKeys);
       }
     }

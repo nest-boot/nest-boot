@@ -5,11 +5,11 @@ import { entities, workspaceEntities } from "../dist/index.js";
 import {
   Account,
   ApiKey,
-  Invitation,
-  Member,
   Session,
   User,
   Workspace,
+  WorkspaceInvitation,
+  WorkspaceMember,
 } from "../dist/index.js";
 
 describe("built-in auth entity discovery", () => {
@@ -21,11 +21,11 @@ describe("built-in auth entity discovery", () => {
     });
     try {
       for (const [entity, property, target] of [
-        [Workspace, "members", Member],
-        [Member, "user", User],
-        [Member, "workspace", Workspace],
-        [Invitation, "inviter", User],
-        [Invitation, "workspace", Workspace],
+        [Workspace, "members", WorkspaceMember],
+        [WorkspaceMember, "user", User],
+        [WorkspaceMember, "workspace", Workspace],
+        [WorkspaceInvitation, "inviter", User],
+        [WorkspaceInvitation, "workspace", Workspace],
         [Account, "user", User],
         [Session, "user", User],
         [Session, "impersonatedBy", User],
@@ -39,7 +39,7 @@ describe("built-in auth entity discovery", () => {
       const owner = orm.getMetadata(ApiKey).properties.owner;
       expect(owner.polymorphic).toBe(true);
       expect(owner.polymorphTargets?.map((meta) => meta.class)).toEqual(
-        expect.arrayContaining([User, Member]),
+        expect.arrayContaining([User, WorkspaceMember]),
       );
       expect(owner.createForeignKeyConstraint).toBe(false);
     } finally {

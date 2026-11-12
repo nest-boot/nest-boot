@@ -27,14 +27,14 @@ import {
   assertPermissionCeiling,
   canGrantPermissions,
 } from "../../common/utils/permission-grants.util.js";
-import { resolveMemberPermissions } from "../../common/utils/resolve-effective-permissions.util.js";
+import { resolveWorkspaceMemberPermissions } from "../../common/utils/resolve-effective-permissions.util.js";
 import { resolveRequestPermissions } from "../../common/utils/resolve-request-permissions.util.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
 import { RequestIdentity } from "../../core/request-identity.js";
-import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { ApiKeyLifecycle } from "../api-key-lifecycle.js";
 import { WorkspaceApiKeyConnection } from "../connections/workspace-api-key.connection-definition.js";
 import { ApiKey } from "../entities/api-key.entity.js";
@@ -73,7 +73,7 @@ export class WorkspaceApiKeyService {
   /**
    * Lists API-key grants available to the caller in the selected workspace.
    * @param workspace - The workspace that scopes this operation.
-   * @returns Member API key permission choices with defaults and grant availability.
+   * @returns WorkspaceMember API key permission choices with defaults and grant availability.
    */
   getWorkspaceApiKeyPermissions(
     workspace: Workspace,
@@ -126,7 +126,7 @@ export class WorkspaceApiKeyService {
     workspace: Workspace,
     args: ConnectionArgsInterface<ApiKey>,
     info?: GraphQLResolveInfo,
-    member?: Member,
+    member?: WorkspaceMember,
   ): Promise<ConnectionResult<ApiKeyMetadata<WorkspaceApiKey>>> {
     assertApiKeyFeature(this.authOptions, "workspaceApiKey");
     this.assertWorkspacePrincipal(workspace);
@@ -136,7 +136,7 @@ export class WorkspaceApiKeyService {
       authorize("read", member);
       if (member.workspace.id !== workspace.id) {
         throw new ForbiddenException(
-          "Member does not belong to the selected workspace",
+          "WorkspaceMember does not belong to the selected workspace",
         );
       }
       where.owner = member;
@@ -156,7 +156,7 @@ export class WorkspaceApiKeyService {
     return {
       ...connection,
       edges: connection.edges.map((edge) => {
-        assertApiKeyOwner(edge.node, "member");
+        assertApiKeyOwner(edge.node, "workspace_member");
         return { ...edge, node: toApiKeyView(edge.node) };
       }),
     };
@@ -180,8 +180,11 @@ export class WorkspaceApiKeyService {
       "member",
       options.permissions,
     );
-    const member = await this.getCreationMember(workspace, options.member);
-    this.assertMemberPermissionCeiling(member, permissions);
+    const member = await this.getCreationWorkspaceMember(
+      workspace,
+      options.member,
+    );
+    this.assertWorkspaceMemberPermissionCeiling(member, permissions);
     return await this.createKey(member, options, permissions);
   }
 
@@ -216,7 +219,7 @@ export class WorkspaceApiKeyService {
           "member",
           apiKey.permissions ?? [],
         );
-      this.assertMemberPermissionCeiling(
+      this.assertWorkspaceMemberPermissionCeiling(
         Reference.unwrapReference(apiKey.owner),
         finalPermissions,
       );
@@ -249,18 +252,18 @@ export class WorkspaceApiKeyService {
     );
   }
 
-  private async getCreationMember(
+  private async getCreationWorkspaceMember(
     workspace: Workspace,
-    owner?: Member | string,
-  ): Promise<Member> {
+    owner?: WorkspaceMember | string,
+  ): Promise<WorkspaceMember> {
     const member =
       typeof owner === "string"
         ? await this.em.findOne(
-            Member,
+            WorkspaceMember,
             { id: owner, workspace },
             { populate: ["workspace", "user"], refresh: true },
           )
-        : (owner ?? RequestContext.get(Member));
+        : (owner ?? RequestContext.get(WorkspaceMember));
     if (!member) {
       throw new NotFoundException("Workspace member not found");
     }
@@ -286,7 +289,7 @@ export class WorkspaceApiKeyService {
   }
 
   private async createKey(
-    member: Member,
+    member: WorkspaceMember,
     options: CreateWorkspaceApiKeyOptions,
     permissions: string[],
   ): Promise<CreatedApiKey<WorkspaceApiKey>> {
@@ -304,7 +307,7 @@ export class WorkspaceApiKeyService {
           owner: member,
           createdBy: RequestContext.get(User)?.id ?? null,
         });
-        assertApiKeyOwner(entity, "member");
+        assertApiKeyOwner(entity, "workspace_member");
         authorize("write", entity);
         await em.persist(entity).flush();
         return entity;
@@ -314,7 +317,7 @@ export class WorkspaceApiKeyService {
     this.logger.log("API key created", {
       apiKeyId: entity.id,
       ownerId: member.id,
-      ownerType: "member",
+      ownerType: "workspace_member",
     });
     return { apiKey, entity: toApiKeyView(entity) };
   }
@@ -333,7 +336,7 @@ export class WorkspaceApiKeyService {
     if (!apiKey) {
       return null;
     }
-    assertApiKeyOwner(apiKey, "member");
+    assertApiKeyOwner(apiKey, "workspace_member");
     if (apiKey.member) {
       await this.em.populate(Reference.unwrapReference(apiKey.member), [
         "workspace",
@@ -349,17 +352,17 @@ export class WorkspaceApiKeyService {
   ): Promise<ApiKeyMetadata<WorkspaceApiKey>> {
     const apiKey = await this.em.findOne(
       ApiKey,
-      { id, ownerType: "member" },
+      { id, ownerType: "workspace_member" },
       {
         populate: ["owner"],
         exclude: ["key"],
         refresh: true,
       },
     );
-    if (apiKey?.ownerType !== "member") {
+    if (apiKey?.ownerType !== "workspace_member") {
       throw new NotFoundException("API key not found");
     }
-    assertApiKeyOwner(apiKey, "member");
+    assertApiKeyOwner(apiKey, "workspace_member");
     if (apiKey.member) {
       await this.em.populate(Reference.unwrapReference(apiKey.member), [
         "workspace",
@@ -373,10 +376,10 @@ export class WorkspaceApiKeyService {
   private getOwnedListFilter(workspace: Workspace): FilterObject<ApiKey> {
     const ceiling = resolveRequestPermissions(this.authOptions).apiKey;
     return {
-      ownerType: "member",
+      ownerType: "workspace_member",
       [raw((alias) => `${alias}."owner_id"`)]: {
         $in: (this.em as SqlEntityManager)
-          .createQueryBuilder(Member)
+          .createQueryBuilder(WorkspaceMember)
           .select("id")
           .where({ workspace: workspace.id })
           .toRaw(),
@@ -390,14 +393,14 @@ export class WorkspaceApiKeyService {
   private assertWorkspacePrincipal(workspace: Workspace): void {
     RequestIdentity.assertCurrentWorkspace(workspace);
     const apiKey = getCurrentApiKey();
-    if (apiKey?.ownerType === "member") {
+    if (apiKey?.ownerType === "workspace_member") {
       this.assertWorkspace(apiKey, workspace);
     }
-    const member = RequestContext.get(Member);
+    const member = RequestContext.get(WorkspaceMember);
     if (member?.status !== "ACTIVE") {
       throw new ForbiddenException("An active workspace member is required");
     }
-    RequestIdentity.assertCurrentMember(member);
+    RequestIdentity.assertCurrentWorkspaceMember(member);
     if (Reference.unwrapReference(member.workspace).id !== workspace.id) {
       throw new ForbiddenException(
         "Workspace member does not belong to this workspace",
@@ -426,18 +429,21 @@ export class WorkspaceApiKeyService {
     );
   }
 
-  private assertMemberPermissionCeiling(
-    member: Member,
+  private assertWorkspaceMemberPermissionCeiling(
+    member: WorkspaceMember,
     permissions: readonly string[],
   ): void {
-    const ownerPermissions = resolveMemberPermissions(this.authOptions, member);
+    const ownerPermissions = resolveWorkspaceMemberPermissions(
+      this.authOptions,
+      member,
+    );
     if (!permissions.length) {
       assertApiKeyPermissionCeiling(this.authOptions, permissions);
     }
     assertPermissionCeiling(
       permissions,
       ownerPermissions,
-      "Member API key permissions exceed owner permissions",
+      "WorkspaceMember API key permissions exceed owner permissions",
     );
     assertCanGrantPermissions(
       this.authOptions,

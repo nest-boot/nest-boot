@@ -12,8 +12,8 @@ import { type NextFunction, type Request, type Response } from "express";
 import { ApiKeyAuthenticationService } from "../api-key/services/api-key-authentication.service.js";
 import { extractApiKey } from "../api-key/utils/extract-api-key.util.js";
 import { runAuthQuery } from "../common/utils/run-auth-query.js";
-import { Member } from "../workspace/entities/member.entity.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
+import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
@@ -126,7 +126,7 @@ export class AuthMiddleware implements NestMiddleware {
         user: data.user,
         session: data.session,
       });
-      await this.resolveMember();
+      await this.resolveWorkspaceMember();
       RequestIdentity.syncDatabase(this.em);
       RequestIdentity.refresh(this.options);
     } catch (error) {
@@ -173,7 +173,7 @@ export class AuthMiddleware implements NestMiddleware {
       if (!hasSession) {
         await this.resolveApiKey(req);
       }
-      await this.resolveMember();
+      await this.resolveWorkspaceMember();
       RequestIdentity.syncDatabase(this.em);
       next();
     } catch (error) {
@@ -250,7 +250,7 @@ export class AuthMiddleware implements NestMiddleware {
     const selectedWorkspace = RequestContext.get(Workspace);
     if (selectedWorkspace && selectedWorkspace.id !== validation.workspace.id) {
       throw new UnauthorizedException(
-        "Member API key does not belong to the selected workspace",
+        "WorkspaceMember API key does not belong to the selected workspace",
       );
     }
     RequestIdentity.stage({
@@ -261,10 +261,10 @@ export class AuthMiddleware implements NestMiddleware {
     });
   }
 
-  private async resolveMember(): Promise<void> {
+  private async resolveWorkspaceMember(): Promise<void> {
     if (
       this.options.workspace?.enabled !== true ||
-      RequestContext.get(Member)
+      RequestContext.get(WorkspaceMember)
     ) {
       return;
     }
@@ -277,7 +277,7 @@ export class AuthMiddleware implements NestMiddleware {
     const member = await runAuthQuery(
       this.em,
       async (em) =>
-        await em.findOne(Member, {
+        await em.findOne(WorkspaceMember, {
           status: "ACTIVE",
           user,
           workspace,

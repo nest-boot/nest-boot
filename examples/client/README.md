@@ -268,7 +268,7 @@ synchronization or frozen snapshot of changing records is provided.
 
 Administrator user keys are `[currentUser.id, "admin", "users"]`; member keys
 are `[currentUser.id, "workspaces", workspaceId, "members"]`. List and neighbor
-requests use the same normalized conditions. Member queries explicitly send the
+requests use the same normalized conditions. WorkspaceMember queries explicitly send the
 workspace header and verify the returned workspace ID. Workspace management uses
 `[currentUser.id, "user", "workspaces"]` without `query`; creation return links
 and redirects after leaving or deleting a workspace preserve its saved search.
@@ -278,9 +278,9 @@ and security remain independent compact forms without record navigation.
 Create users at `/admin/users/create` and invite members at
 `/workspaces/$workspaceId/members/invite`. Both routes check the relevant creation
 ability, validate with TanStack Form, and keep submit actions in `CardFooter`.
-User creation returns to the refreshed user list. Invitations show the link in a
+User creation returns to the refreshed user list. WorkspaceInvitations show the link in a
 success Card on the same page; automatic clipboard failures leave the link
-available for manual copying, and returning to Members refreshes the invitation
+available for manual copying, and returning to WorkspaceMembers refreshes the invitation
 list. Role choices are restricted to the caller's grantable workspace roles.
 
 Use TanStack Form (`@tanstack/react-form`) for editable forms, including login,

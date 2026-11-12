@@ -3,12 +3,12 @@ import type { Mocked } from "vitest";
 
 import { User } from "../src/core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../src/core/interfaces/auth-module-options.interface.js";
-import { Invitation } from "../src/workspace/entities/invitation.entity.js";
-import { Member } from "../src/workspace/entities/member.entity.js";
 import { Workspace } from "../src/workspace/entities/workspace.entity.js";
-import { InvitationService } from "../src/workspace/services/invitation.service.js";
-import { MemberService } from "../src/workspace/services/member.service.js";
+import { WorkspaceInvitation } from "../src/workspace/entities/workspace-invitation.entity.js";
+import { WorkspaceMember } from "../src/workspace/entities/workspace-member.entity.js";
 import { WorkspaceService } from "../src/workspace/services/workspace.service.js";
+import { WorkspaceInvitationService } from "../src/workspace/services/workspace-invitation.service.js";
+import { WorkspaceMemberService } from "../src/workspace/services/workspace-member.service.js";
 import { mockAuthorization } from "./mock-authorization.js";
 /**
  * Returns workspace fixture with deterministic identifiers.
@@ -22,16 +22,16 @@ export function createTestWorkspace(): Workspace {
 }
 /**
  * Returns member fixture with deterministic identifiers.
- * @returns Member fixture with deterministic identifiers.
+ * @returns WorkspaceMember fixture with deterministic identifiers.
  */
-export function createTestMember(): Member {
-  return Object.assign(new Member(), {
+export function createTestWorkspaceMember(): WorkspaceMember {
+  return Object.assign(new WorkspaceMember(), {
     id: "member-1",
     roles: ["member"],
     status: "ACTIVE" as const,
     workspace: {
       id: "workspace-1",
-    } as Member["workspace"],
+    } as WorkspaceMember["workspace"],
   });
 }
 /**
@@ -43,14 +43,14 @@ export function createTestUser(): User {
 }
 /**
  * Returns invitation fixture with deterministic identifiers.
- * @returns Invitation fixture with deterministic identifiers.
+ * @returns WorkspaceInvitation fixture with deterministic identifiers.
  */
-export function createTestInvitation(): Invitation {
-  return Object.assign(new Invitation(), {
+export function createTestWorkspaceInvitation(): WorkspaceInvitation {
+  return Object.assign(new WorkspaceInvitation(), {
     id: "invitation-1",
     workspace: {
       id: "workspace-1",
-    } as Invitation["workspace"],
+    } as WorkspaceInvitation["workspace"],
   });
 }
 /**
@@ -97,7 +97,7 @@ export function createWorkspaceServices(
     authorization,
     em,
     workspaceService: new WorkspaceService(em, options),
-    memberService: new MemberService(em, options),
-    invitationService: new InvitationService(em, options),
+    workspaceMemberService: new WorkspaceMemberService(em, options),
+    workspaceInvitationService: new WorkspaceInvitationService(em, options),
   };
 }

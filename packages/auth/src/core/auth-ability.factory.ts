@@ -15,10 +15,10 @@ import type { AbilityContext } from "../common/interfaces/ability-context.interf
 import { extendAbility } from "../common/utils/extend-ability.util.js";
 import { resolveAuthCatalog } from "../common/utils/resolve-auth-catalog.util.js";
 import { DEFAULT_WORKSPACE_PERMISSIONS } from "../workspace/constants/workspace.constants.js";
-import { Invitation } from "../workspace/entities/invitation.entity.js";
-import { Member } from "../workspace/entities/member.entity.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
-import { MemberType } from "../workspace/enums/member-type.enum.js";
+import { WorkspaceInvitation } from "../workspace/entities/workspace-invitation.entity.js";
+import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
+import { WorkspaceMemberType } from "../workspace/enums/workspace-member-type.enum.js";
 import { DEFAULT_USER_PERMISSIONS } from "./constants/user.constants.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
@@ -91,9 +91,9 @@ export class AuthAbilityFactory {
     }
     const workspaceSubjects = {
       workspace: Workspace,
-      member: Member,
-      "service-account": Member,
-      "member-api-key": WorkspaceApiKey,
+      "workspace-member": WorkspaceMember,
+      "workspace-service-account": WorkspaceMember,
+      "workspace-api-key": WorkspaceApiKey,
     };
     for (const permission of DEFAULT_WORKSPACE_PERMISSIONS) {
       if (
@@ -102,9 +102,9 @@ export class AuthAbilityFactory {
       ) {
         continue;
       }
-      // Invitation management is one member permission; keep entity checks for CASL conditions.
-      if (permission === "member:invite") {
-        builder.can(["read", "write"], Invitation, {
+      // WorkspaceInvitation management is one member permission; keep entity checks for CASL conditions.
+      if (permission === "workspace-member:invite") {
+        builder.can(["read", "write"], WorkspaceInvitation, {
           workspaceId: snapshot.workspace.id,
         });
         continue;
@@ -114,19 +114,21 @@ export class AuthAbilityFactory {
         resource === "workspace"
           ? { id: snapshot.workspace.id }
           : { workspaceId: snapshot.workspace.id };
-      if (resource === "member") {
-        conditions.type = MemberType.USER;
+      if (resource === "workspace-member") {
+        conditions.type = WorkspaceMemberType.USER;
         if (
           ["set-roles", "set-permissions"].includes(action) &&
-          snapshot.workspacePermissions.includes("service-account:write")
+          snapshot.workspacePermissions.includes(
+            "workspace-service-account:write",
+          )
         ) {
-          builder.can(action, Member, {
+          builder.can(action, WorkspaceMember, {
             workspaceId: snapshot.workspace.id,
-            type: MemberType.SERVICE_ACCOUNT,
+            type: WorkspaceMemberType.SERVICE_ACCOUNT,
           });
         }
-      } else if (resource === "service-account") {
-        conditions.type = MemberType.SERVICE_ACCOUNT;
+      } else if (resource === "workspace-service-account") {
+        conditions.type = WorkspaceMemberType.SERVICE_ACCOUNT;
       }
       builder.can(
         action,
@@ -152,10 +154,10 @@ export class AuthAbilityFactory {
         (rules) => configure(rules, snapshot),
       );
     }
-    // Members may edit their profile but cannot change their own active state.
+    // WorkspaceMembers may edit their profile but cannot change their own active state.
     // Apply after extensions so the same invariant reaches every consumer.
     if (snapshot.member && snapshot.workspace) {
-      builder.cannot("write", Member, ["status"], {
+      builder.cannot("write", WorkspaceMember, ["status"], {
         id: snapshot.member.id,
         workspaceId: snapshot.workspace.id,
       });

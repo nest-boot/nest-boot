@@ -4,7 +4,7 @@ import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.j
 import type { AuthAbility } from "../../common/auth.ability.js";
 import { resolveRequestPermissions } from "../../common/utils/resolve-request-permissions.util.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
-import { resolveRequestMember } from "../../workspace/utils/resolve-request-member.util.js";
+import { resolveRequestWorkspaceMember } from "../../workspace/utils/resolve-request-workspace-member.util.js";
 import { AuthAbilityFactory } from "../auth-ability.factory.js";
 import { User } from "../entities/user.entity.js";
 import type { AuthModuleOptions } from "../interfaces/auth-module-options.interface.js";
@@ -16,10 +16,12 @@ import type { AuthModuleOptions } from "../interfaces/auth-module-options.interf
  */
 export function buildRequestAbility(options: AuthModuleOptions): AuthAbility {
   const apiKey = getCurrentApiKey();
-  const memberKey = apiKey?.ownerType === "member";
+  const memberKey = apiKey?.ownerType === "workspace_member";
   const user = memberKey ? null : (RequestContext.get(User) ?? null);
   const member =
-    options.workspace?.enabled === true ? resolveRequestMember() : null;
+    options.workspace?.enabled === true
+      ? resolveRequestWorkspaceMember()
+      : null;
   const workspace = member ? (RequestContext.get(Workspace) ?? null) : null;
   const permissions = resolveRequestPermissions(options);
   return AuthAbilityFactory.createAbility(

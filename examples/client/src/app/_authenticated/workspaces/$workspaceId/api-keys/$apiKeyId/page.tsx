@@ -38,7 +38,7 @@ const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
   }
 `);
 
-const GET_MEMBER_API_KEY = graphql(`
+const GET_WORKSPACE_API_KEY = graphql(`
   query getWorkspaceApiKeyDetails($id: ID!) {
     workspaceApiKeyPermissions {
       permission
@@ -67,7 +67,7 @@ const GET_MEMBER_API_KEY = graphql(`
   }
 `);
 
-const GET_MEMBER_API_KEY_NEIGHBORS = graphql(`
+const GET_WORKSPACE_API_KEY_NEIGHBORS = graphql(`
   query getWorkspaceApiKeyNeighbors(
     $cursor: String!
     $filter: WorkspaceApiKeyFilter
@@ -120,7 +120,7 @@ export const Route = createFileRoute(
       });
     const { data } = await context.apolloClient
       .query({
-        query: GET_MEMBER_API_KEY,
+        query: GET_WORKSPACE_API_KEY,
         variables: { id: params.apiKeyId },
         fetchPolicy: "network-only",
         context: { headers: { "x-workspace-id": params.workspaceId } },
@@ -159,7 +159,7 @@ function ApiKeyDetailsPage() {
   const navigate = Route.useNavigate();
   const [deleteApiKey] = useMutation(DELETE_API_KEY_FROM_API_KEYS_ROUTE);
   const [updateApiKey] = useMutation(UPDATE_WORKSPACE_API_KEY);
-  const [loadNeighbors] = useLazyQuery(GET_MEMBER_API_KEY_NEIGHBORS, {
+  const [loadNeighbors] = useLazyQuery(GET_WORKSPACE_API_KEY_NEIGHBORS, {
     fetchPolicy: "no-cache",
   });
   const currentUser = useCurrentUserContext();
@@ -202,7 +202,9 @@ function ApiKeyDetailsPage() {
       key={`Workspace-${workspaceId}-${apiKey.id}`}
       apiKey={apiKey}
       ownerName={
-        apiKey.member?.__typename === "Member" ? apiKey.member.name : undefined
+        apiKey.member?.__typename === "WorkspaceMember"
+          ? apiKey.member.name
+          : undefined
       }
       canWrite={ability.can(
         "write",

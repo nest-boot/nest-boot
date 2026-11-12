@@ -22,26 +22,26 @@ assignments at runtime. API-key ceilings apply before business rules are built.
 
 The catalog contains 28 permissions. Compose each name as `resource:action`:
 
-| Scope     | Resource          | Actions                                                                                                                                      |
-| --------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| User      | `user`            | `create`, `read`, `update`, `delete`, `set-roles`, `set-permissions`, `set-email`, `set-password`, `ban`, `impersonate`, `impersonate-admin` |
-| User      | `session`         | `read`, `revoke`                                                                                                                             |
-| User      | `user-api-key`    | `read`, `write`                                                                                                                              |
-| User      | `workspace`       | `create`                                                                                                                                     |
-| Workspace | `workspace`       | `read`, `update`, `delete`                                                                                                                   |
-| Workspace | `member`          | `read`, `write`, `set-roles`, `set-permissions`, `invite`                                                                                    |
-| Workspace | `service-account` | `read`, `write`                                                                                                                              |
-| Workspace | `member-api-key`  | `read`, `write`                                                                                                                              |
+| Scope     | Resource                    | Actions                                                                                                                                      |
+| --------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| User      | `user`                      | `create`, `read`, `update`, `delete`, `set-roles`, `set-permissions`, `set-email`, `set-password`, `ban`, `impersonate`, `impersonate-admin` |
+| User      | `session`                   | `read`, `revoke`                                                                                                                             |
+| User      | `user-api-key`              | `read`, `write`                                                                                                                              |
+| User      | `workspace`                 | `create`                                                                                                                                     |
+| Workspace | `workspace`                 | `read`, `update`, `delete`                                                                                                                   |
+| Workspace | `workspace-member`          | `read`, `write`, `set-roles`, `set-permissions`, `invite`                                                                                    |
+| Workspace | `workspace-service-account` | `read`, `write`                                                                                                                              |
+| Workspace | `workspace-api-key`         | `read`, `write`                                                                                                                              |
 
 `read` covers single and connection queries. `write` covers ordinary creation,
 updates, and deletion, but does not imply `read` or role/permission changes.
-`member:invite` maps to `read` and `write` on `Invitation`, independently of member
+`workspace-member:invite` maps to `read` and `write` on `WorkspaceInvitation`, independently of member
 writes. Role and direct-permission setters also enforce the caller's grant ceiling.
 `user:ban` covers banning and unbanning; administrator impersonation requires both
 `user:impersonate` and `user:impersonate-admin`.
 
 There are no unconditional baseline abilities. The default `user` role explicitly
-grants `workspace:create`; `member` grants `workspace:read` and `member:read`.
+grants `workspace:create`; `member` grants `workspace:read` and `workspace-member:read`.
 Session-only self-service paths (such as discovering one's memberships and
 accepting/rejecting one's invitations) check identity and ownership separately.
 API keys do not inherit these session-only paths.
@@ -159,7 +159,7 @@ The callback runs once per identity snapshot, synchronously, and returns nothing
 The ability is cached in `RequestContext` and rebuilt after identity or authorization changes.
 
 Class-level checks only gate an operation; conditional rules are also evaluated
-against loaded entities and proposed entities before creation. `currentMember`
+against loaded entities and proposed entities before creation. `currentWorkspaceMember`
 and `currentWorkspace` also check the selected instance's workspace read rules;
 being present in the request context does not bypass authorization. CASL-authorized
 connections validate each returned node and reject the entire page if one is
@@ -227,7 +227,7 @@ AuthModule.forRoot({
       if (member) {
         can({ workspace: "post:archive" }, "archive", Post, {
           workspaceId: workspace.id,
-          assignedMemberId: member.id,
+          assignedWorkspaceMemberId: member.id,
         });
       }
     }
@@ -260,7 +260,7 @@ Role names match `^[a-z][a-z0-9-]*$`; permission names use
 `resource:action`, with each segment matching the same pattern. Underscores,
 uppercase letters, whitespace, and consecutive hyphens (`--` or longer) are
 rejected at startup, not normalized. Both resource and action segments may
-contain single hyphens, for example `member:set-roles`.
+contain single hyphens, for example `workspace-member:set-roles`.
 The role names `true`, `false`, and `null` are reserved.
 `RoleName<T>` and `PermissionName<T>` validate string literals at compile time;
 `AuthModule.forRoot()` and `forRootAsync()` infer catalogs, role keys, and lifecycle
@@ -304,7 +304,7 @@ the registration so a later application can use a different configuration.
 Permission catalogs and role definitions come from `user.permissions`,
 `user.roles`, `workspace.permissions`, and `workspace.roles`; they are not
 stored or managed by a separate role service. `UserService` and
-`MemberService` expose the configured catalogs to transports and validate
+`WorkspaceMemberService` expose the configured catalogs to transports and validate
 role assignments.
 
 `listRoles()` returns `{ role, grantable }` objects and `listPermissions()` returns
@@ -316,16 +316,16 @@ const userRoles = userService.listRoles();
 const userPermissions = userService.listPermissions();
 await userService.setUserRoles(user, ["admin", "auditor"]);
 
-const workspaceRoles = memberService.listRoles();
-const workspacePermissions = memberService.listPermissions();
-await memberService.setMemberRoles(member, ["admin"]);
+const workspaceRoles = workspaceMemberService.listRoles();
+const workspacePermissions = workspaceMemberService.listPermissions();
+await workspaceMemberService.setWorkspaceMemberRoles(member, ["admin"]);
 ```
 
-`setUserRoles()` and `setMemberRoles()` reject empty or unknown role names.
-`setMemberRoles()` can assign or replace any configured role, including
+`setUserRoles()` and `setWorkspaceMemberRoles()` reject empty or unknown role names.
+`setWorkspaceMemberRoles()` can assign or replace any configured role, including
 `workspace.creatorRole`, when update ability and permission-grant checks pass.
 Multiple members may hold the creator role; assigning it does not change other
-members' roles. Member creation and invitations use the same grant checks.
+members' roles. WorkspaceMember creation and invitations use the same grant checks.
 
 `user.defaultRole` and `workspace.defaultRole` provide fallback roles for new
 users and members. `workspace.creatorRole` identifies the ownership role.
@@ -333,11 +333,11 @@ users and members. `workspace.creatorRole` identifies the ownership role.
 `UserService.isAdmin()` to classify administrative users. Every configured
 lifecycle role is validated against its role map at startup.
 
-`getEffectiveUserPermissions()` and `getEffectiveMemberPermissions()` return the deduplicated
+`getEffectiveUserPermissions()` and `getEffectiveWorkspaceMemberPermissions()` return the deduplicated
 union of permissions inherited from every assigned role and permissions stored
 directly on the entity. `hasPermissions()` evaluates against the same result.
-`createUser()`, `addMember()`, `setUserPermissions()`, and
-`setMemberPermissions()` reject malformed, duplicate, or unknown direct
+`createUser()`, `addWorkspaceMember()`, `setUserPermissions()`, and
+`setWorkspaceMemberPermissions()` reject malformed, duplicate, or unknown direct
 permissions instead of persisting values outside the configured catalog.
 
 User administration also enforces a grant ceiling: `createUser()`, `setUserRoles()`,
@@ -351,9 +351,9 @@ alone does not allow promotion to a more privileged role.
 objects. `userPermissions` and `workspacePermissions` similarly return
 `{ permission, grantable }` objects. The enum-valued fields preserve type-safe inputs;
 `grantable` reflects the current principal's grant ceiling, including API-key
-restrictions. Workspace role options require `member:set-roles` or `member:invite`
-to be grantable; direct permission options require `member:set-permissions`.
-Callers with only `member:read` receive workspace options with `grantable: false`.
+restrictions. Workspace role options require `workspace-member:set-roles` or `workspace-member:invite`
+to be grantable; direct permission options require `workspace-member:set-permissions`.
+Callers with only `workspace-member:read` receive workspace options with `grantable: false`.
 User role and permission catalogs require `user:set-roles` and `user:set-permissions`, respectively.
 Use these flags to disable new grants while keeping existing values removable,
 and validate the complete replacement list before submission. Mutation Services
@@ -362,8 +362,8 @@ still enforce target-specific abilities and grant ceilings. The separate
 
 The example GraphQL application exposes `userRoles`, `userPermissions`,
 `workspaceRoles`, and `workspacePermissions` queries. Role changes use the
-dedicated `setUserRoles` and `setMemberRoles` mutations. Direct
-member grants use `setMemberPermissions`; ordinary member
+dedicated `setUserRoles` and `setWorkspaceMemberRoles` mutations. Direct
+member grants use `setWorkspaceMemberPermissions`; ordinary member
 profile updates do not accept authorization fields.
 
 ## Protect Routes
@@ -413,11 +413,11 @@ updatePost(@Args("id") id: string) {
 }
 ```
 
-Member API keys contribute only workspace grants. User API keys contribute
+WorkspaceMember API keys contribute only workspace grants. User API keys contribute
 user grants and, with a live membership, workspace grants. Each source is
 limited by the credential before `buildAbility` runs. The Guard checks the
 resulting `AuthAbility`. Built-in workspace rules match the selected workspace's
-ID; select `workspaceId` on Member, Invitation, and WorkspaceApiKey when checking
+ID; select `workspaceId` on WorkspaceMember, WorkspaceInvitation, and WorkspaceApiKey when checking
 their instances in the client. Business rules must declare their own object
 conditions using the callback context.
 
@@ -429,8 +429,8 @@ final serialized rules instead of maintaining a separate permission mapping.
 
 ## Service Authorization Boundary
 
-`UserService`, `SessionService`, `WorkspaceService`, `MemberService`,
-`InvitationService`, and `UserApiKeyService` and `WorkspaceApiKeyService` enforce their permissions
+`UserService`, `SessionService`, `WorkspaceService`, `WorkspaceMemberService`,
+`WorkspaceInvitationService`, and `UserApiKeyService` and `WorkspaceApiKeyService` enforce their permissions
 before reading or mutating authentication data. Resolver and controller
 decorators provide early rejection and declare intent, but they are not the
 security boundary: omitting one does not make a protected service operation
@@ -440,10 +440,10 @@ The services follow the same split as Better Auth's admin and organization
 access control:
 
 - user administration uses `user:*` and `session:*` permissions;
-- workspace operations use `workspace:*` and `member:*` permissions;
-- `member:invite` manages invitation queries, creation, and cancellation, separately
-  from `member:write`; accepting or rejecting one's own invitation checks recipient identity;
-- member API-key management uses `member-api-key:read/write`;
+- workspace operations use `workspace:*` and `workspace-member:*` permissions;
+- `workspace-member:invite` manages invitation queries, creation, and cancellation, separately
+  from `workspace-member:write`; accepting or rejecting one's own invitation checks recipient identity;
+- member API-key management uses `workspace-api-key:read/write`;
 - current-user authentication, session management, invitation acceptance, and
   leaving a workspace use authenticated identity and ownership checks.
 
@@ -514,7 +514,11 @@ definitions. Every option is optional:
 
 ```typescript
 import { Entity } from "@mikro-orm/decorators/legacy";
-import { Member, userScopePolicy, workspaceScopePolicy } from "@nest-boot/auth";
+import {
+  WorkspaceMember,
+  userScopePolicy,
+  workspaceScopePolicy,
+} from "@nest-boot/auth";
 
 @Entity({
   policies: [
@@ -523,7 +527,7 @@ import { Member, userScopePolicy, workspaceScopePolicy } from "@nest-boot/auth";
     workspaceScopePolicy(),
   ],
 })
-export class Member extends Member {}
+export class WorkspaceMember extends WorkspaceMember {}
 ```
 
 `property` names an entity property, not its SQL column. Native callbacks resolve

@@ -23,13 +23,6 @@ import {
   type AuthModuleOptions,
   AuthService,
   can,
-  Invitation,
-  InvitationService,
-  Member as BaseMember,
-  Member,
-  MemberService,
-  MemberStatus,
-  MemberType,
   Session,
   SessionService,
   User,
@@ -40,6 +33,13 @@ import {
   Workspace,
   WorkspaceApiKey,
   WorkspaceApiKeyService,
+  WorkspaceInvitation,
+  WorkspaceInvitationService,
+  WorkspaceMember as BaseWorkspaceMember,
+  WorkspaceMember,
+  WorkspaceMemberService,
+  WorkspaceMemberStatus,
+  WorkspaceMemberType,
   WorkspaceService,
 } from "../src/index.js";
 import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
@@ -586,13 +586,13 @@ describe("Auth services and native RLS boundaries", () => {
     );
     await admin.persist([administrator, target, other]).flush();
     const workspace = admin.create(Workspace, { name: "Deletion fixture" });
-    const member = admin.create(Member, {
+    const member = admin.create(WorkspaceMember, {
       workspace,
       user: target,
       roles: ["owner"],
-      name: "Member profile",
+      name: "WorkspaceMember profile",
     });
-    const invitation = admin.create(Invitation, {
+    const invitation = admin.create(WorkspaceInvitation, {
       workspace,
       inviter: target,
       email: "cascade@example.test",
@@ -716,8 +716,8 @@ describe("Auth services and native RLS boundaries", () => {
         [Account, account.id],
         [Session, session.id],
         [Session, impersonation.id],
-        [Member, member.id],
-        [Invitation, invitation.id],
+        [WorkspaceMember, member.id],
+        [WorkspaceInvitation, invitation.id],
       ] as const) {
         expect(
           await admin.count<{
@@ -735,9 +735,9 @@ describe("Auth services and native RLS boundaries", () => {
         { refresh: true },
       );
       expect(retainedWorkspace.name).toBe("Deletion fixture");
-      expect(await admin.count(Member, { workspace })).toBe(0);
+      expect(await admin.count(WorkspaceMember, { workspace })).toBe(0);
     } finally {
-      await admin.nativeDelete(Member, member.id);
+      await admin.nativeDelete(WorkspaceMember, member.id);
       await admin.nativeDelete(User, {
         id: [administrator.id, target.id, other.id],
       });
@@ -755,7 +755,7 @@ describe("Auth services and native RLS boundaries", () => {
       permissions: ["user:read"],
     });
     const workspace = admin.create(Workspace, { name: "Context workspace" });
-    const member = admin.create(Member, {
+    const member = admin.create(WorkspaceMember, {
       user,
       workspace,
       name: "Context member",
@@ -828,7 +828,7 @@ describe("Auth services and native RLS boundaries", () => {
     expect(orm.getMetadata(User).properties).not.toHaveProperty("members");
     expect(
       orm.getMetadata(Workspace).properties.members.targetMeta?.class,
-    ).toBe(Member);
+    ).toBe(WorkspaceMember);
     expect(orm.getMetadata(Workspace).properties.members.mappedBy).toBe(
       "workspace",
     );
@@ -849,11 +849,11 @@ describe("Auth services and native RLS boundaries", () => {
     ]);
     expect(
       await orm.em.execute(
-        "select policyname from pg_policies where tablename = 'invitation' order by policyname",
+        "select policyname from pg_policies where tablename = 'workspace_invitation' order by policyname",
       ),
     ).toEqual([
-      { policyname: "invitation_all_policy" },
-      { policyname: "invitation_recipient_select_policy" },
+      { policyname: "workspace_invitation_all_policy" },
+      { policyname: "workspace_invitation_recipient_select_policy" },
     ]);
   });
 
@@ -864,7 +864,7 @@ describe("Auth services and native RLS boundaries", () => {
         with_check: string | null;
       }[]
     >(
-      "select qual, with_check from pg_policies where tablename in ('member', 'invitation')",
+      "select qual, with_check from pg_policies where tablename in ('workspace_member', 'workspace_invitation')",
     );
     expect(policies).toHaveLength(4);
     for (const policy of policies) {
@@ -897,24 +897,24 @@ describe("Auth services and native RLS boundaries", () => {
         roles: ["user"],
       });
       await admin.persist(user).flush();
-      const isMember =
+      const isWorkspaceMember =
         kind === "session" ||
         kind === "user-key" ||
         kind === "unconfigured-session";
-      let member: Member | undefined;
-      if (isMember || kind === "member-key") {
-        member = admin.create(Member, {
+      let member: WorkspaceMember | undefined;
+      if (isWorkspaceMember || kind === "member-key") {
+        member = admin.create(WorkspaceMember, {
           type:
             kind === "member-key"
-              ? MemberType.SERVICE_ACCOUNT
-              : MemberType.USER,
+              ? WorkspaceMemberType.SERVICE_ACCOUNT
+              : WorkspaceMemberType.USER,
           user: kind === "member-key" ? null : user,
           workspace,
-          name: "Member profile",
+          name: "WorkspaceMember profile",
         });
         await admin.persist(member).flush();
       }
-      const hasUser = isMember || kind === "non-member";
+      const hasUser = isWorkspaceMember || kind === "non-member";
       const em = orm.em.fork(
         kind === "unconfigured-session"
           ? {}
@@ -945,7 +945,7 @@ describe("Auth services and native RLS boundaries", () => {
               kind === "member-key"
                 ? Object.assign(new WorkspaceApiKey(new ApiKey()), { member })
                 : Object.assign(new UserApiKey(new ApiKey()), { user }),
-            ownerType: kind === "user-key" ? "user" : "member",
+            ownerType: kind === "user-key" ? "user" : "workspace_member",
             user: kind === "member-key" ? null : user,
             member: kind === "member-key" ? member : null,
             workspace,
@@ -996,32 +996,32 @@ describe("Auth services and native RLS boundaries", () => {
   );
 
   it.each([
-    ["member:read", MemberType.USER],
-    ["service-account:read", MemberType.SERVICE_ACCOUNT],
+    ["workspace-member:read", WorkspaceMemberType.USER],
+    ["workspace-service-account:read", WorkspaceMemberType.SERVICE_ACCOUNT],
   ] as const)(
     "filters member pages and counts by %s under RLS",
     async (permission, type) => {
       const admin = orm.em.fork();
       const workspace = admin.create(Workspace, {
-        name: "Member type permissions",
+        name: "WorkspaceMember type permissions",
       });
       const user = admin.create(User, {
         name: "Reader",
         email: `${randomUUID()}@example.test`,
         emailVerified: true,
       });
-      const actor = admin.create(Member, {
+      const actor = admin.create(WorkspaceMember, {
         workspace,
         user,
         name: "Reader",
         roles: [],
         permissions: [permission],
       });
-      const serviceAccount = admin.create(Member, {
+      const serviceAccount = admin.create(WorkspaceMember, {
         workspace,
         user: null,
         name: "Service",
-        type: MemberType.SERVICE_ACCOUNT,
+        type: WorkspaceMemberType.SERVICE_ACCOUNT,
         roles: [],
         permissions: [],
       });
@@ -1037,7 +1037,9 @@ describe("Auth services and native RLS boundaries", () => {
           },
         },
       });
-      const service = new MemberService(em, { workspace: { enabled: true } });
+      const service = new WorkspaceMemberService(em, {
+        workspace: { enabled: true },
+      });
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -1046,22 +1048,24 @@ describe("Auth services and native RLS boundaries", () => {
           RequestIdentity.prepare(
             withAuthTestFeatures({ workspace: { enabled: true } }),
           );
-          const page = await service.getMemberConnectionByWorkspace(workspace, {
-            first: 10,
-          });
-          expect(page.edges.map(({ node }) => node.id)).toEqual([
-            type === MemberType.USER ? actor.id : serviceAccount.id,
-          ]);
-          expect(page.totalCount).toBe(1);
-          const forbidden = type === MemberType.USER ? serviceAccount : actor;
-          expect(await service.getMember(forbidden.id)).toBeNull();
-          const filtered = await service.getMemberConnectionByWorkspace(
+          const page = await service.getWorkspaceMemberConnectionByWorkspace(
             workspace,
             {
               first: 10,
-              filter: { type: { $eq: forbidden.type } },
             },
           );
+          expect(page.edges.map(({ node }) => node.id)).toEqual([
+            type === WorkspaceMemberType.USER ? actor.id : serviceAccount.id,
+          ]);
+          expect(page.totalCount).toBe(1);
+          const forbidden =
+            type === WorkspaceMemberType.USER ? serviceAccount : actor;
+          expect(await service.getWorkspaceMember(forbidden.id)).toBeNull();
+          const filtered =
+            await service.getWorkspaceMemberConnectionByWorkspace(workspace, {
+              first: 10,
+              filter: { type: { $eq: forbidden.type } },
+            });
           expect(filtered.edges).toEqual([]);
           expect(filtered.totalCount).toBe(0);
         },
@@ -1087,7 +1091,7 @@ describe("Auth services and native RLS boundaries", () => {
       const workspace = admin.create(Workspace, {
         name: "Automatic service account",
       });
-      const actor = admin.create(Member, {
+      const actor = admin.create(WorkspaceMember, {
         user,
         workspace,
         name: "Owner",
@@ -1121,8 +1125,8 @@ describe("Auth services and native RLS boundaries", () => {
           RequestContext.set(EntityManager, em);
           RequestIdentity.stage({ user, workspace, member: actor });
           RequestIdentity.prepare(withAuthTestFeatures(options));
-          const members = new MemberService(em, options);
-          const serviceAccount = await members.addServiceAccount(
+          const members = new WorkspaceMemberService(em, options);
+          const serviceAccount = await members.addWorkspaceServiceAccount(
             workspace,
             "Deploy",
             {
@@ -1140,10 +1144,10 @@ describe("Auth services and native RLS boundaries", () => {
             permissions,
           });
           const owner = await admin.findOneOrFail(
-            Member,
+            WorkspaceMember,
             created.entity.owner.id,
           );
-          expect(owner.type).toBe(MemberType.SERVICE_ACCOUNT);
+          expect(owner.type).toBe(WorkspaceMemberType.SERVICE_ACCOUNT);
           expect(owner.name).toBe("Deploy");
           expect(owner.user).toBeNull();
           expect(owner.roles).toEqual(role ? [role] : []);
@@ -1167,7 +1171,7 @@ describe("Auth services and native RLS boundaries", () => {
             apiKey: null,
           });
           RequestIdentity.prepare(withAuthTestFeatures(options));
-          const retainedAccount = await members.addServiceAccount(
+          const retainedAccount = await members.addWorkspaceServiceAccount(
             workspace,
             "Retained account",
             {
@@ -1198,12 +1202,15 @@ describe("Auth services and native RLS boundaries", () => {
             }),
           ).rejects.toThrow("Commit failure");
           expect(
-            await admin.count(Member, { workspace, name: "Retained account" }),
+            await admin.count(WorkspaceMember, {
+              workspace,
+              name: "Retained account",
+            }),
           ).toBe(1);
           expect(
             await admin.count(ApiKey, {
               name: "Rolled back",
-              ownerType: "member",
+              ownerType: "workspace_member",
               owner: retainedAccount,
             }),
           ).toBe(0);
@@ -1225,7 +1232,7 @@ describe("Auth services and native RLS boundaries", () => {
     const workspace = admin.create(Workspace, {
       name: "Inherited key boundary",
     });
-    const actor = admin.create(Member, {
+    const actor = admin.create(WorkspaceMember, {
       user,
       workspace,
       name: "Owner",
@@ -1241,7 +1248,7 @@ describe("Auth services and native RLS boundaries", () => {
       owner: actor,
       name: "Limited",
       key: randomUUID(),
-      permissions: ["member-api-key:read", "member-api-key:write"],
+      permissions: ["workspace-api-key:read", "workspace-api-key:write"],
     });
     await admin.persist([inherited, limited]).flush();
     const em = orm.em.fork({
@@ -1282,7 +1289,7 @@ describe("Auth services and native RLS boundaries", () => {
       ).toBeNull();
       await expect(
         service.updateWorkspaceApiKey(inherited.id, {
-          permissions: ["member-api-key:read"],
+          permissions: ["workspace-api-key:read"],
         }),
       ).rejects.toThrow("Unrestricted API keys");
       await expect(service.deleteWorkspaceApiKey(inherited.id)).rejects.toThrow(
@@ -1310,10 +1317,10 @@ describe("Auth services and native RLS boundaries", () => {
       email: "permission-target@example.test",
       emailVerified: true,
     });
-    const member = admin.create(Member, {
+    const member = admin.create(WorkspaceMember, {
       workspace,
       user,
-      name: "Member profile",
+      name: "WorkspaceMember profile",
     });
     await admin.persist(member).flush();
     const session = {
@@ -1321,14 +1328,20 @@ describe("Auth services and native RLS boundaries", () => {
       variables: { "app.workspace.id": workspace.id, "app.user.id": "" },
     };
     const scoped = orm.em.fork({ session });
-    const service = new MemberService(scoped, { workspace: { enabled: true } });
+    const service = new WorkspaceMemberService(scoped, {
+      workspace: { enabled: true },
+    });
     const context = new RequestContext({ type: "test" });
     context.set(EntityManager, scoped);
     context.set(BaseWorkspace, workspace);
     context.set(User, user);
     context.set(
-      BaseMember,
-      Object.assign(new Member(), { workspace, user, roles: ["owner"] }),
+      BaseWorkspaceMember,
+      Object.assign(new WorkspaceMember(), {
+        workspace,
+        user,
+        roles: ["owner"],
+      }),
     );
 
     await RequestContext.run(context, async () => {
@@ -1340,15 +1353,21 @@ describe("Auth services and native RLS boundaries", () => {
         workspace.id,
       );
       pendingWorkspace.name = "Unrelated pending change";
-      for (const permissions of [["workspace:update"], ["member:write"], []]) {
-        const detached = await service.getMember(member.id);
+      for (const permissions of [
+        ["workspace:update"],
+        ["workspace-member:write"],
+        [],
+      ]) {
+        const detached = await service.getWorkspaceMember(member.id);
         assert(detached);
-        const updated = await service.setMemberPermissions(
+        const updated = await service.setWorkspaceMemberPermissions(
           detached,
           permissions,
         );
         expect(updated.permissions).toEqual(permissions);
-        const persisted = await orm.em.fork().findOneOrFail(Member, member.id);
+        const persisted = await orm.em
+          .fork()
+          .findOneOrFail(WorkspaceMember, member.id);
         expect(persisted.permissions).toEqual(permissions);
       }
       expect(RequestContext.get(EntityManager)).toBe(scoped);
@@ -1416,11 +1435,11 @@ describe("Auth services and native RLS boundaries", () => {
             })
           : admin.create(ApiKey, {
               owner: ref(
-                Member,
-                admin.create(Member, {
+                WorkspaceMember,
+                admin.create(WorkspaceMember, {
                   id: owner.id,
                   workspace: owner,
-                  type: MemberType.SERVICE_ACCOUNT,
+                  type: WorkspaceMemberType.SERVICE_ACCOUNT,
                   user: null,
                   name: "Service account",
                 }),
@@ -1459,7 +1478,7 @@ describe("Auth services and native RLS boundaries", () => {
       await admin.nativeDelete(Workspace, { id: [userId, foreignId] });
     });
 
-    it.each(["user", "member"])(
+    it.each(["user", "workspace_member"])(
       "combines %s-key RLS with required ownership columns and no owner foreign key",
       async (ownerType) => {
         const table = "api_key";
@@ -1490,7 +1509,7 @@ describe("Auth services and native RLS boundaries", () => {
         await insertKey(em, retainedId, ownerType, "999999999");
         expect(await em.count(ApiKey, retainedId)).toBe(1);
         await em.nativeDelete(ApiKey, retainedId);
-        const otherType = ownerType === "user" ? "member" : "user";
+        const otherType = ownerType === "user" ? "workspace_member" : "user";
         expect(
           await em.execute(
             "select column_name from information_schema.columns where table_name = ? and column_name = ?",
@@ -1505,11 +1524,11 @@ describe("Auth services and native RLS boundaries", () => {
       const workspace = em.create(Workspace, { name: "Cascade workspace" });
       const key = em.create(ApiKey, {
         owner: ref(
-          Member,
-          em.create(Member, {
+          WorkspaceMember,
+          em.create(WorkspaceMember, {
             workspace,
             name: "Cascade member",
-            type: MemberType.SERVICE_ACCOUNT,
+            type: WorkspaceMemberType.SERVICE_ACCOUNT,
             user: null,
           }),
         ),
@@ -1578,14 +1597,14 @@ describe("Auth services and native RLS boundaries", () => {
       ).rejects.toThrow(/row.level security/i);
     });
 
-    it.each(["user", "member"] as const)(
+    it.each(["user", "workspace_member"] as const)(
       "checks the required owner on insert and update for %s keys",
       async (ownerType) => {
         const em = scoped({
           "app.user.id": ownerType === "user" ? userId : "",
-          "app.workspace.id": ownerType === "member" ? userId : "",
+          "app.workspace.id": ownerType === "workspace_member" ? userId : "",
         });
-        const otherType = ownerType === "user" ? "member" : "user";
+        const otherType = ownerType === "user" ? "workspace_member" : "user";
         const id = ownerType === "user" ? "900101" : "900102";
         try {
           await expect(insertKey(em, id, otherType, userId)).rejects.toThrow(
@@ -1610,7 +1629,7 @@ describe("Auth services and native RLS boundaries", () => {
               ? stored.user
               : stored.member
             )?.unwrap(),
-          ).toBeInstanceOf(ownerType === "user" ? User : Member);
+          ).toBeInstanceOf(ownerType === "user" ? User : WorkspaceMember);
           expect(await em.nativeDelete<ApiKey>(ApiKey, id)).toBe(1);
         } finally {
           await orm.em.fork().nativeDelete<ApiKey>(ApiKey, id);
@@ -1624,9 +1643,9 @@ describe("Auth services and native RLS boundaries", () => {
     let current: Workspace;
     let foreign: Workspace;
     let unrelated: Workspace;
-    let ownMember: Member;
-    let foreignMember: Member;
-    let foreignInvitation: Invitation;
+    let ownWorkspaceMember: WorkspaceMember;
+    let foreignWorkspaceMember: WorkspaceMember;
+    let foreignWorkspaceInvitation: WorkspaceInvitation;
 
     const scoped = (workspaceId: string, userId = user.id) =>
       orm.em.fork({
@@ -1647,10 +1666,10 @@ describe("Auth services and native RLS boundaries", () => {
     const invitationServiceFor = (em: EntityManager) =>
       createContextualAuthService(
         em,
-        (manager) => new InvitationService(manager, options),
+        (manager) => new WorkspaceInvitationService(manager, options),
         {
-          acceptInvitation: "authentication",
-          rejectInvitation: "authentication",
+          acceptWorkspaceInvitation: "authentication",
+          rejectWorkspaceInvitation: "authentication",
         },
       );
 
@@ -1666,18 +1685,18 @@ describe("Auth services and native RLS boundaries", () => {
       current = admin.create(Workspace, { name: "Current" });
       foreign = admin.create(Workspace, { name: "Foreign" });
       unrelated = admin.create(Workspace, { name: "Unrelated" });
-      ownMember = admin.create(Member, {
+      ownWorkspaceMember = admin.create(WorkspaceMember, {
         user,
         workspace: current,
-        name: "Member profile",
+        name: "WorkspaceMember profile",
       });
-      foreignMember = admin.create(Member, {
+      foreignWorkspaceMember = admin.create(WorkspaceMember, {
         user,
         workspace: foreign,
-        status: MemberStatus.DISABLED,
-        name: "Member profile",
+        status: WorkspaceMemberStatus.DISABLED,
+        name: "WorkspaceMember profile",
       });
-      foreignInvitation = admin.create(Invitation, {
+      foreignWorkspaceInvitation = admin.create(WorkspaceInvitation, {
         email: user.email,
         inviter: user,
         workspace: foreign,
@@ -1689,9 +1708,9 @@ describe("Auth services and native RLS boundaries", () => {
           current,
           foreign,
           unrelated,
-          ownMember,
-          foreignMember,
-          foreignInvitation,
+          ownWorkspaceMember,
+          foreignWorkspaceMember,
+          foreignWorkspaceInvitation,
         ])
         .flush();
     });
@@ -1700,13 +1719,17 @@ describe("Auth services and native RLS boundaries", () => {
       "allows reading but not changing own foreign memberships with a %s workspace",
       async (selection) => {
         const em = scoped(selection === "selected" ? current.id : "");
-        expect(await em.findOne(Member, foreignMember.id)).not.toBeNull();
         expect(
-          await em.nativeUpdate(Member, foreignMember.id, {
-            status: MemberStatus.ACTIVE,
+          await em.findOne(WorkspaceMember, foreignWorkspaceMember.id),
+        ).not.toBeNull();
+        expect(
+          await em.nativeUpdate(WorkspaceMember, foreignWorkspaceMember.id, {
+            status: WorkspaceMemberStatus.ACTIVE,
           }),
         ).toBe(0);
-        expect(await em.nativeDelete(Member, foreignMember.id)).toBe(0);
+        expect(
+          await em.nativeDelete(WorkspaceMember, foreignWorkspaceMember.id),
+        ).toBe(0);
       },
     );
 
@@ -1715,20 +1738,20 @@ describe("Auth services and native RLS boundaries", () => {
       async (identity) => {
         const em = scoped(current.id, identity === "user" ? user.id : "");
         await expect(
-          em.insert(Member, {
+          em.insert(WorkspaceMember, {
             user: user.id,
             workspace: unrelated.id,
-            name: "Member profile",
+            name: "WorkspaceMember profile",
           }),
         ).rejects.toThrow(/row.level security/i);
         await expect(
-          em.nativeUpdate(Member, ownMember.id, {
+          em.nativeUpdate(WorkspaceMember, ownWorkspaceMember.id, {
             workspace: unrelated.id,
           }),
         ).rejects.toThrow(/row.level security/i);
         expect(
-          await em.nativeUpdate(Member, ownMember.id, {
-            status: MemberStatus.ACTIVE,
+          await em.nativeUpdate(WorkspaceMember, ownWorkspaceMember.id, {
+            status: WorkspaceMemberStatus.ACTIVE,
           }),
         ).toBe(1);
       },
@@ -1738,17 +1761,26 @@ describe("Auth services and native RLS boundaries", () => {
       "isolates invitation reads and writes for a %s identity",
       async (identity) => {
         const em = scoped(current.id, identity === "user" ? user.id : "");
-        expect((await em.find(Invitation, {})).map(({ id }) => id)).toEqual(
-          identity === "user" ? [foreignInvitation.id] : [],
-        );
         expect(
-          await em.nativeUpdate(Invitation, foreignInvitation.id, {
-            email: "must-not-change@example.test",
-          }),
+          (await em.find(WorkspaceInvitation, {})).map(({ id }) => id),
+        ).toEqual(identity === "user" ? [foreignWorkspaceInvitation.id] : []);
+        expect(
+          await em.nativeUpdate(
+            WorkspaceInvitation,
+            foreignWorkspaceInvitation.id,
+            {
+              email: "must-not-change@example.test",
+            },
+          ),
         ).toBe(0);
-        expect(await em.nativeDelete(Invitation, foreignInvitation.id)).toBe(0);
+        expect(
+          await em.nativeDelete(
+            WorkspaceInvitation,
+            foreignWorkspaceInvitation.id,
+          ),
+        ).toBe(0);
         await expect(
-          em.insert(Invitation, {
+          em.insert(WorkspaceInvitation, {
             id: randomUUID(),
             workspace: foreign.id,
             inviter: user.id,
@@ -1757,63 +1789,72 @@ describe("Auth services and native RLS boundaries", () => {
           }),
         ).rejects.toThrow(/row.level security/i);
 
-        const id = await em.insert(Invitation, {
+        const id = await em.insert(WorkspaceInvitation, {
           id: randomUUID(),
           workspace: current.id,
           inviter: user.id,
           email: `${identity}@example.test`,
           expiresAt: new Date(),
         });
-        expect(await em.findOne(Invitation, id)).not.toBeNull();
+        expect(await em.findOne(WorkspaceInvitation, id)).not.toBeNull();
         await expect(
-          em.nativeUpdate(Invitation, id, {
+          em.nativeUpdate(WorkspaceInvitation, id, {
             workspace: foreign.id,
           }),
         ).rejects.toThrow(/row.level security/i);
         expect(
-          await em.nativeUpdate(Invitation, id, {
+          await em.nativeUpdate(WorkspaceInvitation, id, {
             email: `updated-${identity}@example.test`,
           }),
         ).toBe(1);
-        expect(await em.nativeDelete(Invitation, id)).toBe(1);
+        expect(await em.nativeDelete(WorkspaceInvitation, id)).toBe(1);
       },
     );
 
     it("permits recipient reads without workspace membership while denying unrelated identities and writes", async () => {
       const em = scoped("");
-      expect((await em.find(Invitation, {})).map(({ id }) => id)).toEqual([
-        foreignInvitation.id,
-      ]);
-      expect(await em.nativeDelete(Invitation, foreignInvitation.id)).toBe(0);
+      expect(
+        (await em.find(WorkspaceInvitation, {})).map(({ id }) => id),
+      ).toEqual([foreignWorkspaceInvitation.id]);
+      expect(
+        await em.nativeDelete(
+          WorkspaceInvitation,
+          foreignWorkspaceInvitation.id,
+        ),
+      ).toBe(0);
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
           RequestIdentity.stage({ user });
           const service = invitationServiceFor(em);
-          expect((await service.getInvitation(foreignInvitation.id))?.id).toBe(
-            foreignInvitation.id,
-          );
           expect(
-            await invitationServiceFor(scoped("", "")).getInvitation(
-              foreignInvitation.id,
+            (
+              await service.getWorkspaceInvitation(
+                foreignWorkspaceInvitation.id,
+              )
+            )?.id,
+          ).toBe(foreignWorkspaceInvitation.id);
+          expect(
+            await invitationServiceFor(scoped("", "")).getWorkspaceInvitation(
+              foreignWorkspaceInvitation.id,
             ),
           ).toBeNull();
           expect(
-            await invitationServiceFor(scoped("", "999999999")).getInvitation(
-              foreignInvitation.id,
-            ),
+            await invitationServiceFor(
+              scoped("", "999999999"),
+            ).getWorkspaceInvitation(foreignWorkspaceInvitation.id),
           ).toBeNull();
           expect(
             (
-              await service.getInvitationConnectionByUser(user, {
+              await service.getWorkspaceInvitationConnectionByUser(user, {
                 first: 20,
               })
             ).edges.map(({ node }) => node.id),
-          ).toContain(foreignInvitation.id);
+          ).toContain(foreignWorkspaceInvitation.id);
           // Even an authorized service caller cannot override the database identity.
           const hidden = await invitationServiceFor(
             scoped("", "999999999"),
-          ).getInvitationConnectionByUser(user, { first: 20 });
+          ).getWorkspaceInvitationConnectionByUser(user, { first: 20 });
           expect(hidden.edges).toEqual([]);
           expect(hidden.totalCount).toBe(0);
           expect(em.getSessionContext()?.variables?.["app.workspace.id"]).toBe(
@@ -1842,12 +1883,12 @@ describe("Auth services and native RLS boundaries", () => {
         return result;
       });
       const admin = orm.em.fork();
-      const owner = await admin.findOneOrFail(Member, {
+      const owner = await admin.findOneOrFail(WorkspaceMember, {
         user: user.id,
         workspace: workspace.id,
       });
       expect(owner.roles).toEqual(["owner"]);
-      expect(owner.status).toBe(MemberStatus.ACTIVE);
+      expect(owner.status).toBe(WorkspaceMemberStatus.ACTIVE);
       expect((await admin.findOneOrFail(User, user.id)).name).toBe(
         "Policy user",
       );
@@ -1892,11 +1933,13 @@ describe("Auth services and native RLS boundaries", () => {
       ["anonymous", "self", "other-member", "member-key"] as const
     ).flatMap((identity) =>
       (["current", "foreign", "deleted"] as const).flatMap((scope) =>
-        (["member", "invitation"] as const).map((table) => ({
-          identity,
-          scope,
-          table,
-        })),
+        (["workspace_member", "workspace_invitation"] as const).map(
+          (table) => ({
+            identity,
+            scope,
+            table,
+          }),
+        ),
       ),
     );
 
@@ -1914,19 +1957,24 @@ describe("Auth services and native RLS boundaries", () => {
           permissions: [],
           roles: ["user"],
         });
-        const targetMember = admin.create(Member, {
+        const targetWorkspaceMember = admin.create(WorkspaceMember, {
           workspace: targetWorkspace,
           user: identity === "other-member" ? otherUser : user,
-          name: "Member profile",
+          name: "WorkspaceMember profile",
         });
-        const targetInvitation = admin.create(Invitation, {
+        const targetWorkspaceInvitation = admin.create(WorkspaceInvitation, {
           workspace: targetWorkspace,
           inviter: user,
           email: `${randomUUID()}@example.test`,
           expiresAt: new Date(Date.now() + 60000),
         });
         await admin
-          .persist([targetWorkspace, otherUser, targetMember, targetInvitation])
+          .persist([
+            targetWorkspace,
+            otherUser,
+            targetWorkspaceMember,
+            targetWorkspaceInvitation,
+          ])
           .flush();
 
         const em = scoped(
@@ -1941,7 +1989,9 @@ describe("Auth services and native RLS boundaries", () => {
           await admin.nativeDelete(Workspace, targetWorkspace.id);
         }
         const targetId =
-          table === "member" ? targetMember.id : targetInvitation.id;
+          table === "workspace_member"
+            ? targetWorkspaceMember.id
+            : targetWorkspaceInvitation.id;
         const read = () =>
           em.execute(`select id from ${table} where id = ?`, [targetId]);
         const update = () =>
@@ -1954,9 +2004,9 @@ describe("Auth services and native RLS boundaries", () => {
             targetId,
           ]);
         const insert = () =>
-          table === "member"
+          table === "workspace_member"
             ? em.execute(
-                "insert into member (workspace_id, user_id, name) values (?, ?, ?)",
+                "insert into workspace_member (workspace_id, user_id, name) values (?, ?, ?)",
                 [
                   targetWorkspace.id,
                   identity === "other-member" ? user.id : otherUser.id,
@@ -1964,7 +2014,7 @@ describe("Auth services and native RLS boundaries", () => {
                 ],
               )
             : em.execute(
-                "insert into invitation (id, workspace_id, inviter_id, email, expires_at) values (?, ?, ?, ?, now())",
+                "insert into workspace_invitation (id, workspace_id, inviter_id, email, expires_at) values (?, ?, ?, ?, now())",
                 [
                   randomUUID(),
                   targetWorkspace.id,
@@ -1991,7 +2041,9 @@ describe("Auth services and native RLS boundaries", () => {
         const canWrite = scope !== "foreign";
         const canRead =
           canWrite ||
-          (scope === "foreign" && identity === "self" && table === "member");
+          (scope === "foreign" &&
+            identity === "self" &&
+            table === "workspace_member");
         expect(await read()).toHaveLength(canRead ? 1 : 0);
         expect(await update()).toHaveLength(canWrite ? 1 : 0);
         if (canWrite) {
@@ -2008,10 +2060,10 @@ describe("Auth services and native RLS boundaries", () => {
       const workspace = admin.create(Workspace, {
         name: "Deleted before authentication",
       });
-      const member = admin.create(Member, {
+      const member = admin.create(WorkspaceMember, {
         workspace,
         user,
-        name: "Member profile",
+        name: "WorkspaceMember profile",
       });
       await admin.persist([workspace, member]).flush();
       await admin.nativeDelete(Workspace, workspace.id);
@@ -2041,9 +2093,9 @@ describe("Auth services and native RLS boundaries", () => {
           "",
         );
         await expect(
-          em.insert(Member, {
+          em.insert(WorkspaceMember, {
             workspace: workspace.id,
-            name: "Member profile",
+            name: "WorkspaceMember profile",
           }),
         ).rejects.toThrow(/row.level security/i);
       });
@@ -2052,13 +2104,13 @@ describe("Auth services and native RLS boundaries", () => {
     it("permanently deletes through the authorized service with scoped RLS and foreign-key cascades", async () => {
       const admin = orm.em.fork();
       const workspace = admin.create(Workspace, { name: "Permanent deletion" });
-      const owner = admin.create(Member, {
+      const owner = admin.create(WorkspaceMember, {
         workspace,
         user,
         roles: ["owner"],
-        name: "Member profile",
+        name: "WorkspaceMember profile",
       });
-      const invitation = admin.create(Invitation, {
+      const invitation = admin.create(WorkspaceInvitation, {
         workspace,
         inviter: user,
         email: "permanent-delete@example.test",
@@ -2076,7 +2128,7 @@ describe("Auth services and native RLS boundaries", () => {
       );
       expect(result.id).toBe(workspace.id);
       expect(await admin.count(Workspace, workspace.id)).toBe(0);
-      expect(await admin.count(Member, owner.id)).toBe(0);
+      expect(await admin.count(WorkspaceMember, owner.id)).toBe(0);
       expect(await admin.count(User, user.id)).toBe(1);
       expect(
         await scoped(workspace.id).findOne(Workspace, workspace.id),
@@ -2084,7 +2136,7 @@ describe("Auth services and native RLS boundaries", () => {
       expect(
         await em.nativeUpdate(Workspace, workspace.id, { name: "Denied" }),
       ).toBe(0);
-      expect(await admin.count(Invitation, invitation.id)).toBe(0);
+      expect(await admin.count(WorkspaceInvitation, invitation.id)).toBe(0);
     });
   });
 
@@ -2103,14 +2155,14 @@ describe("Auth services and native RLS boundaries", () => {
     const workspace = admin.create(Workspace, {
       name: "Private profile boundary",
     });
-    const owner = admin.create(Member, {
+    const owner = admin.create(WorkspaceMember, {
       name: "Visible owner",
       email: "owner-contact@example.test",
       user: viewer,
       workspace,
       roles: ["owner"],
     });
-    const member = admin.create(Member, {
+    const member = admin.create(WorkspaceMember, {
       name: "Visible member",
       email: "member-contact@example.test",
       user: target,
@@ -2131,7 +2183,7 @@ describe("Auth services and native RLS boundaries", () => {
       const em = scoped(id);
       expect(await em.findOne(User, target.id)).not.toBeNull();
       expect(await em.findOne(User, { email: target.email })).not.toBeNull();
-      expect(await em.findOne(Member, member.id)).toMatchObject({
+      expect(await em.findOne(WorkspaceMember, member.id)).toMatchObject({
         name: "Visible member",
         email: "member-contact@example.test",
       });
@@ -2296,25 +2348,27 @@ describe("Auth services and native RLS boundaries", () => {
     });
     const workspace = admin.create(Workspace, { name: "Baseline membership" });
     await admin.persist([user, workspace]).flush();
-    const member = admin.create(Member, {
+    const member = admin.create(WorkspaceMember, {
       user,
       workspace,
       name: "Shared member",
       email: "shared@example.test",
     });
     await admin.persist(member).flush();
-    expect(await admin.findOneOrFail(Member, member.id)).toMatchObject({
-      name: "Shared member",
-      email: "shared@example.test",
-      user: { id: user.id },
-    });
+    expect(await admin.findOneOrFail(WorkspaceMember, member.id)).toMatchObject(
+      {
+        name: "Shared member",
+        email: "shared@example.test",
+        user: { id: user.id },
+      },
+    );
     for (const [sql, params] of [
       [
-        "insert into member (workspace_id, name) values (?, ?)",
+        "insert into workspace_member (workspace_id, name) values (?, ?)",
         [workspace.id, "Missing user"],
       ],
       [
-        "insert into member (workspace_id, user_id) values (?, ?)",
+        "insert into workspace_member (workspace_id, user_id) values (?, ?)",
         [workspace.id, user.id],
       ],
     ] as const) {
@@ -2324,7 +2378,7 @@ describe("Auth services and native RLS boundaries", () => {
     }
     expect(
       await admin.execute(
-        "select column_name from information_schema.columns where table_schema = 'public' and table_name = 'member' and column_name in ('type', 'searchable_name')",
+        "select column_name from information_schema.columns where table_schema = 'public' and table_name = 'workspace_member' and column_name in ('type', 'searchable_name')",
       ),
     ).toEqual([{ column_name: "type" }]);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe("");

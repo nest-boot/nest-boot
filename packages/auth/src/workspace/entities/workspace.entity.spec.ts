@@ -1,7 +1,7 @@
 import { Collection, MetadataStorage } from "@mikro-orm/core";
 
-import { Member } from "./member.entity.js";
 import { Workspace } from "./workspace.entity.js";
+import { WorkspaceMember } from "./workspace-member.entity.js";
 
 describe("row-level policies", () => {
   describe("auth entity policies and uniqueness", () => {
@@ -61,7 +61,7 @@ describe("entity metadata", () => {
   });
   describe("built-in auth entity field ownership", () => {
     it.each([
-      [Workspace, "members", Member, { mappedBy: "workspace" }],
+      [Workspace, "members", WorkspaceMember, { mappedBy: "workspace" }],
     ] as const)(
       "%s.%s targets the built-in class",
       (entity, field, target, options) => {

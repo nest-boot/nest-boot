@@ -1,8 +1,8 @@
 import { ApiKeySchema } from "../api-key/entities/api-key.entity-schema.js";
 import { SystemAccount } from "../api-key/entities/system-account.entity.js";
-import { Invitation } from "../workspace/entities/invitation.entity.js";
-import { Member } from "../workspace/entities/member.entity.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
+import { WorkspaceInvitation } from "../workspace/entities/workspace-invitation.entity.js";
+import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
 import { Account } from "./entities/account.entity.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
@@ -19,4 +19,8 @@ export const entities = [
 ];
 
 /** Workspace entities, registered only when `workspace.enabled` is true. */
-export const workspaceEntities = [Workspace, Member, Invitation];
+export const workspaceEntities = [
+  Workspace,
+  WorkspaceMember,
+  WorkspaceInvitation,
+];

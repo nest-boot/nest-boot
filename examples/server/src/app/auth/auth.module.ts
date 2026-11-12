@@ -34,7 +34,12 @@ import { Module } from '@nestjs/common';
       },
       workspace: {
         enabled: true,
-        sendInvitationEmail: async ({ email, id, inviter, workspace }) => {
+        sendWorkspaceInvitationEmail: async ({
+          email,
+          id,
+          inviter,
+          workspace,
+        }) => {
           const url = new URL(
             '/invite',
             process.env.APP_URL ?? 'http://localhost:3000',

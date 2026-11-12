@@ -4,7 +4,7 @@ import type { AuthModuleOptions } from "../../core/interfaces/auth-module-option
 import { resolveAuthPermissions } from "../../core/utils/auth-role.util.js";
 import { isAuthPermissionEnabled } from "../../core/utils/resolve-auth-features.util.js";
 import { DEFAULT_WORKSPACE_ROLE } from "../../workspace/constants/workspace.constants.js";
-import type { Member } from "../../workspace/entities/member.entity.js";
+import type { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { resolveAuthCatalog } from "./resolve-auth-catalog.util.js";
 
 /**
@@ -34,9 +34,9 @@ export function resolveUserPermissions(
  * @returns Effective permissions from the member's roles and direct grants.
  * @internal
  */
-export function resolveMemberPermissions(
+export function resolveWorkspaceMemberPermissions(
   options: AuthModuleOptions,
-  member: Member,
+  member: WorkspaceMember,
 ): string[] {
   return resolveAuthPermissions(
     member.roles ?? [options.workspace?.defaultRole ?? DEFAULT_WORKSPACE_ROLE],

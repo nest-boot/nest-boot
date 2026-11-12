@@ -32,8 +32,8 @@ export function mockAuthorization() {
       .spyOn(RequestIdentity, "assertCurrentWorkspace")
       .mockClear()
       .mockImplementation(() => undefined),
-    assertCurrentMember: vi
-      .spyOn(RequestIdentity, "assertCurrentMember")
+    assertCurrentWorkspaceMember: vi
+      .spyOn(RequestIdentity, "assertCurrentWorkspaceMember")
       .mockClear()
       .mockImplementation(() => undefined),
     canGrantPermissions: vi
@@ -58,7 +58,7 @@ export function restoreAuthorization(): void {
         "assertCurrentSession",
         "assertUserSession",
         "assertCurrentWorkspace",
-        "assertCurrentMember",
+        "assertCurrentWorkspaceMember",
       ],
     ],
     [grants, ["canGrantPermissions", "assertCanGrantPermissions"]],

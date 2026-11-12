@@ -46,22 +46,24 @@ describe("permission options", () => {
         "WORKSPACE__READ",
         "WORKSPACE__UPDATE",
         "WORKSPACE__DELETE",
-        "MEMBER__READ",
-        "MEMBER__WRITE",
-        "MEMBER__SET_ROLES",
-        "MEMBER__SET_PERMISSIONS",
-        "MEMBER__INVITE",
-        "SERVICE_ACCOUNT__READ",
-        "SERVICE_ACCOUNT__WRITE",
-        "MEMBER_API_KEY__READ",
-        "MEMBER_API_KEY__WRITE",
+        "WORKSPACE_MEMBER__READ",
+        "WORKSPACE_MEMBER__WRITE",
+        "WORKSPACE_MEMBER__SET_ROLES",
+        "WORKSPACE_MEMBER__SET_PERMISSIONS",
+        "WORKSPACE_MEMBER__INVITE",
+        "WORKSPACE_SERVICE_ACCOUNT__READ",
+        "WORKSPACE_SERVICE_ACCOUNT__WRITE",
+        "WORKSPACE_API_KEY__READ",
+        "WORKSPACE_API_KEY__WRITE",
       ].sort(),
     );
   });
 
   it("keeps workspace API-key permissions inside the mixed catalog", () => {
     expect(workspaceApiKeyPermissionValues).toContain("WORKSPACE__UPDATE");
-    expect(workspaceApiKeyPermissionValues).toContain("MEMBER__INVITE");
+    expect(workspaceApiKeyPermissionValues).toContain(
+      "WORKSPACE_MEMBER__INVITE",
+    );
     expect(workspaceApiKeyPermissionValues).not.toContain("USER__DELETE");
   });
 
@@ -73,7 +75,7 @@ describe("permission options", () => {
     );
     for (const action of ["READ", "WRITE"]) {
       const userPermission = `USER_API_KEY__${action}`;
-      const workspacePermission = `MEMBER_API_KEY__${action}`;
+      const workspacePermission = `WORKSPACE_API_KEY__${action}`;
       expect(userPermissionValues).toContain(userPermission);
       expect(userPermissionValues).not.toContain(workspacePermission);
       expect(workspaceApiKeyPermissionValues).toContain(workspacePermission);

@@ -13,8 +13,8 @@ import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
 import { type GraphQLResolveInfo } from "graphql";
 
 import { CurrentWorkspace } from "../../workspace/decorators/current-workspace.decorator.js";
-import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import {
   WorkspaceApiKeyConnection,
   WorkspaceApiKeyConnectionArgs,
@@ -29,14 +29,14 @@ import { WorkspaceApiKeyService } from "../services/workspace-api-key.service.js
 import { type ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
 /** Optional workspace member credential API. */
-@Resolver(() => Member)
+@Resolver(() => WorkspaceMember)
 export class WorkspaceApiKeyResolver {
   /**
    * Creates the member API-key resolver.
    * @param apiKeyService - Service for validating or managing API keys.
    */
   constructor(
-    /** Member API-key domain service. */
+    /** WorkspaceMember API-key domain service. */
     readonly apiKeyService: WorkspaceApiKeyService,
   ) {}
 
@@ -105,7 +105,7 @@ export class WorkspaceApiKeyResolver {
    */
   @ResolveField(() => WorkspaceApiKeyConnection)
   apiKeys(
-    @Parent() member: Member,
+    @Parent() member: WorkspaceMember,
     @Args({ type: () => WorkspaceApiKeyConnectionArgs })
     args: ConnectionArgsInterface<ApiKey>,
     @Info() info?: GraphQLResolveInfo,

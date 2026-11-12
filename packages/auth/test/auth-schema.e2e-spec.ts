@@ -19,10 +19,10 @@ import { AuthEnumRegistry } from "../src/core/auth-enum-registry.js";
 import { AuthResolver } from "../src/core/resolvers/auth.resolver.js";
 import { SessionResolver } from "../src/core/resolvers/session.resolver.js";
 import { UserResolver } from "../src/core/resolvers/user.resolver.js";
-import { InvitationResolver } from "../src/workspace/resolvers/invitation.resolver.js";
-import { MemberResolver } from "../src/workspace/resolvers/member.resolver.js";
 import { UserWorkspaceResolver } from "../src/workspace/resolvers/user-workspace.resolver.js";
 import { WorkspaceResolver } from "../src/workspace/resolvers/workspace.resolver.js";
+import { WorkspaceInvitationResolver } from "../src/workspace/resolvers/workspace-invitation.resolver.js";
+import { WorkspaceMemberResolver } from "../src/workspace/resolvers/workspace-member.resolver.js";
 
 // Filter-scalar execution is covered by the example's real-server e2e tests.
 describe("auth GraphQL schema", () => {
@@ -49,10 +49,10 @@ describe("auth GraphQL schema", () => {
       UserWorkspaceResolver,
       SessionResolver,
       WorkspaceResolver,
-      MemberResolver,
+      WorkspaceMemberResolver,
       UserApiKeyResolver,
       WorkspaceApiKeyResolver,
-      InvitationResolver,
+      WorkspaceInvitationResolver,
       SystemAccountResolver,
     ]);
     expect(schema.getQueryType()?.getFields().currentUser.type.toString()).toBe(
@@ -79,15 +79,19 @@ describe("auth GraphQL schema", () => {
       ["unbanUser", "UnbanUserPayload", "id"],
       ["createWorkspace", "CreateWorkspacePayload", "id"],
       ["updateWorkspace", "UpdateWorkspacePayload", "id"],
-      ["addMember", "AddMemberPayload", "id"],
-      ["setMemberRoles", "SetMemberRolesPayload", "id"],
-      ["setMemberPermissions", "SetMemberPermissionsPayload", "id"],
-      ["createInvitation", "CreateInvitationPayload", "id"],
-      ["rejectInvitation", "RejectInvitationPayload", "id"],
-      ["cancelInvitation", "CancelInvitationPayload", "id"],
+      ["addWorkspaceMember", "AddWorkspaceMemberPayload", "id"],
+      ["setWorkspaceMemberRoles", "SetWorkspaceMemberRolesPayload", "id"],
+      [
+        "setWorkspaceMemberPermissions",
+        "SetWorkspaceMemberPermissionsPayload",
+        "id",
+      ],
+      ["createWorkspaceInvitation", "CreateWorkspaceInvitationPayload", "id"],
+      ["rejectWorkspaceInvitation", "RejectWorkspaceInvitationPayload", "id"],
+      ["cancelWorkspaceInvitation", "CancelWorkspaceInvitationPayload", "id"],
       ["deleteWorkspace", "DeleteWorkspacePayload", "id"],
       ["deleteUser", "DeleteUserPayload", "id"],
-      ["removeMember", "RemoveMemberPayload", "id"],
+      ["removeWorkspaceMember", "RemoveWorkspaceMemberPayload", "id"],
       ["leaveWorkspace", "LeaveWorkspacePayload", "memberId"],
     ]) {
       expect(
@@ -98,22 +102,25 @@ describe("auth GraphQL schema", () => {
       expect(fields[field].type.toString()).toBe("ID!");
     }
     expect(
-      schema.getMutationType()?.getFields().updateMember.type.toString(),
-    ).toBe("UpdateMemberPayload");
+      schema
+        .getMutationType()
+        ?.getFields()
+        .updateWorkspaceMember.type.toString(),
+    ).toBe("UpdateWorkspaceMemberPayload");
     expect(
       Object.keys(
         (
-          schema.getType("UpdateMemberPayload") as GraphQLObjectType
+          schema.getType("UpdateWorkspaceMemberPayload") as GraphQLObjectType
         ).getFields(),
       ),
     ).toEqual(["id"]);
     expect(
-      (schema.getType("Member") as GraphQLObjectType)
+      (schema.getType("WorkspaceMember") as GraphQLObjectType)
         .getFields()
         .user.type.toString(),
     ).toBe("User");
     const invitationFields = (
-      schema.getType("Invitation") as GraphQLObjectType
+      schema.getType("WorkspaceInvitation") as GraphQLObjectType
     ).getFields();
     expect(invitationFields.inviter.type.toString()).toBe("User!");
     expect(invitationFields.workspace.type.toString()).toBe("Workspace!");
@@ -124,15 +131,21 @@ describe("auth GraphQL schema", () => {
     if (!queries) {
       throw new Error("Query type is missing");
     }
-    expect(queries.member?.type.toString()).toBe("Member");
-    expect(queries.invitation?.type.toString()).toBe("Invitation");
-    expect(queries.currentMember?.type.toString()).toBe("Member");
+    expect(queries.workspaceMember?.type.toString()).toBe("WorkspaceMember");
+    expect(queries.workspaceInvitation?.type.toString()).toBe(
+      "WorkspaceInvitation",
+    );
+    expect(queries.currentWorkspaceMember?.type.toString()).toBe(
+      "WorkspaceMember",
+    );
     for (const [type, field] of [
       ["Workspace", "invitations"],
       ["User", "invitations"],
     ]) {
       const fields = (schema.getType(type) as GraphQLObjectType).getFields();
-      expect(fields[field]?.type.toString()).toBe("InvitationConnection!");
+      expect(fields[field]?.type.toString()).toBe(
+        "WorkspaceInvitationConnection!",
+      );
       expect(fields[field]?.args.map(({ name }) => name)).toContain("first");
     }
     for (const type of [
@@ -166,9 +179,9 @@ describe("auth GraphQL schema", () => {
     for (const [type, field, enumName] of [
       ["User", "roles", "UserRole"],
       ["User", "permissions", "UserPermission"],
-      ["Member", "roles", "WorkspaceRole"],
-      ["Member", "permissions", "WorkspacePermission"],
-      ["Invitation", "roles", "WorkspaceRole"],
+      ["WorkspaceMember", "roles", "WorkspaceRole"],
+      ["WorkspaceMember", "permissions", "WorkspacePermission"],
+      ["WorkspaceInvitation", "roles", "WorkspaceRole"],
       ["UserApiKey", "permissions", "UserApiKeyPermission"],
       ["WorkspaceApiKey", "permissions", "WorkspaceApiKeyPermission"],
       ["SystemApiKey", "permissions", "SystemApiKeyPermission"],
@@ -185,11 +198,15 @@ describe("auth GraphQL schema", () => {
       ],
       ["CreateUserInput", "roles", "UserRole"],
       ["CreateUserInput", "permissions", "UserPermission"],
-      ["CreateInvitationInput", "roles", "WorkspaceRole"],
+      ["CreateWorkspaceInvitationInput", "roles", "WorkspaceRole"],
       ["SetUserRolesInput", "roles", "UserRole"],
-      ["SetMemberRolesInput", "roles", "WorkspaceRole"],
+      ["SetWorkspaceMemberRolesInput", "roles", "WorkspaceRole"],
       ["SetUserPermissionsInput", "permissions", "UserPermission"],
-      ["SetMemberPermissionsInput", "permissions", "WorkspacePermission"],
+      [
+        "SetWorkspaceMemberPermissionsInput",
+        "permissions",
+        "WorkspacePermission",
+      ],
       ["CreateUserApiKeyInput", "permissions", "UserApiKeyPermission"],
       ["UpdateUserApiKeyInput", "permissions", "UserApiKeyPermission"],
     ]) {
@@ -221,8 +238,8 @@ describe("auth GraphQL schema", () => {
     for (const [type, field, connection] of [
       ["User", "workspaces", "WorkspaceConnection"],
       ["User", "apiKeys", "UserApiKeyConnection"],
-      ["Workspace", "members", "MemberConnection"],
-      ["Member", "apiKeys", "WorkspaceApiKeyConnection"],
+      ["Workspace", "members", "WorkspaceMemberConnection"],
+      ["WorkspaceMember", "apiKeys", "WorkspaceApiKeyConnection"],
       ["SystemAccount", "apiKeys", "SystemApiKeyConnection"],
     ]) {
       const resolved = (schema.getType(type) as GraphQLObjectType).getFields()[
@@ -251,7 +268,7 @@ describe("auth GraphQL schema", () => {
     }
     for (const [scope, relation, identity] of [
       ["User", "user", "User"],
-      ["Workspace", "member", "Member"],
+      ["Workspace", "member", "WorkspaceMember"],
       ["System", "systemAccount", "SystemAccount"],
     ]) {
       expect(mutations[`create${scope}ApiKey`].type.toString()).toBe(
@@ -294,7 +311,7 @@ describe("auth GraphQL schema", () => {
     expect(
       Object.keys(
         (
-          schema.getType("UpdateMemberInput") as GraphQLInputObjectType
+          schema.getType("UpdateWorkspaceMemberInput") as GraphQLInputObjectType
         ).getFields(),
       ),
     ).toEqual(["name", "email", "status"]);
@@ -332,10 +349,10 @@ describe("auth GraphQL schema", () => {
       expect(mutations[name]).toBeDefined();
     }
     expect(
-      mutations.setMemberRoles?.args
+      mutations.setWorkspaceMemberRoles?.args
         .find(({ name }) => name === "input")
         ?.type.toString(),
-    ).toBe("SetMemberRolesInput!");
+    ).toBe("SetWorkspaceMemberRolesInput!");
     for (const name of [
       "revokeCurrentUserSession",
       "revokeCurrentUserOtherSessions",
@@ -347,9 +364,9 @@ describe("auth GraphQL schema", () => {
     }
     expect(mutations.impersonateUser.type.toString()).toBe("User!");
     for (const operation of [
-      "acceptInvitation",
-      "rejectInvitation",
-      "cancelInvitation",
+      "acceptWorkspaceInvitation",
+      "rejectWorkspaceInvitation",
+      "cancelWorkspaceInvitation",
       "revokeCurrentUserSession",
       "unlinkCurrentUserAccount",
     ]) {
@@ -371,10 +388,10 @@ describe("auth GraphQL schema", () => {
       "CreateWorkspaceApiKeyResult!",
     );
     const accepted = schema.getType(
-      "AcceptInvitationPayload",
+      "AcceptWorkspaceInvitationPayload",
     ) as GraphQLObjectType;
-    expect(mutations.acceptInvitation.type.toString()).toBe(
-      "AcceptInvitationPayload!",
+    expect(mutations.acceptWorkspaceInvitation.type.toString()).toBe(
+      "AcceptWorkspaceInvitationPayload!",
     );
     expect(Object.keys(accepted.getFields()).sort()).toEqual([
       "id",

@@ -58,7 +58,7 @@ AuthModule.forRoot({
 - **`user.defaultRole`**、**`user.adminRoles`**、**`user.permissions`**、**`user.roles`** — 定义用户角色生命周期与授权；
 - **`workspace.defaultRole`**、**`workspace.creatorRole`**、**`workspace.permissions`**、**`workspace.roles`** — 定义工作区角色生命周期与授权；
 - **`buildAbility`** — 统一构建当前请求的 Ability；上下文包含 user、workspace、member 和两个来源的有效权限数组。
-- **`workspace.sendInvitationEmail`** — 发送已持久化的工作区邀请；
+- **`workspace.sendWorkspaceInvitationEmail`** — 发送已持久化的工作区邀请；
 - **`apiKey.user`** — 用户 Key 的默认权限与授予上限；
 - **`apiKey.workspace`** — 成员 Key 的默认权限与授予上限；
 - **`apiKey.system`** — 系统账户 Key 的独立开关、默认权限与授予上限；
@@ -77,14 +77,14 @@ AuthModule.forRoot({
 `workspace.permissions` 默认为标准工作区权限目录。`workspace.roles` 默认包含
 `owner`、`admin` 与 `member`。`owner` 拥有完整默认权限目录，包括成员 API Key 管理；
 `admin` 拥有除 `workspace:delete` 外的工作区、成员、服务账号和邀请管理权限，默认不授予 API Key 管理；
-`member` 授予 `workspace:read` 与 `member:read`，不拥有写入或邀请管理权限。显式配置权限数组
+`member` 授予 `workspace:read` 与 `workspace-member:read`，不拥有写入或邀请管理权限。显式配置权限数组
 或角色映射时，同样追加到内置配置。`workspace.defaultRole` 默认为 `member`，用于
 新增成员和邀请；`workspace.creatorRole` 默认为 `owner`，指定工作区创建者的初始角色。
 
 空权限数组或空角色映射表示不追加内容，内置权限目录和角色授权仍然保留。同名角色的
 授权合并去重。自定义权限不会自动授予内置管理员或所有者，需要显式追加到对应角色。
 若需要受限权限集合，应定义新角色；设置 `admin: []` 不会清除内置授权。
-`setUserRoles`、`setMemberPermissions` 等实体修改方法仍然替换存储值。
+`setUserRoles`、`setWorkspaceMemberPermissions` 等实体修改方法仍然替换存储值。
 API Key 的 `allowedPermissions` 仍是上限而非追加目录；`allowedPermissions: []` 不允许显式选择权限，
 但输出枚举仍保留完整目录。
 
@@ -205,7 +205,7 @@ AuthModule.forRoot({
 ## 实体设置
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation`、`SystemAccount` 和 `ApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`WorkspaceMember`、`WorkspaceInvitation`、`SystemAccount` 和 `ApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 `AuthModule` 会按配置向 `DatabaseModule` 自动注册实体。无需重复传入工作区开关，

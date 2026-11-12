@@ -65,7 +65,7 @@ export const WorkspaceSidebar: FC<ComponentProps<typeof AppSidebar>> = ({
               },
             ]
           : []),
-        ...(ability.can("read", "Member")
+        ...(ability.can("read", "WorkspaceMember")
           ? [
               {
                 title: t("sidebar:navigation.members"),

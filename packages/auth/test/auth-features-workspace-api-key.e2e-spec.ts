@@ -6,6 +6,6 @@ it("enables workspace credentials without user credentials or administration", a
       workspace: { enabled: true },
       apiKey: { enabled: true, workspace: { enabled: true } },
     },
-    { admin: false, workspace: true, owners: ["Member"] },
+    { admin: false, workspace: true, owners: ["WorkspaceMember"] },
   );
 }, 30000);

@@ -6,8 +6,8 @@ import { AuthAbility } from "../../src/common/auth.ability.js";
 import { User } from "../../src/core/entities/user.entity.js";
 import { SessionService } from "../../src/core/services/session.service.js";
 import { UserService } from "../../src/core/services/user.service.js";
-import { Member } from "../../src/workspace/entities/member.entity.js";
 import { Workspace } from "../../src/workspace/entities/workspace.entity.js";
+import { WorkspaceMember } from "../../src/workspace/entities/workspace-member.entity.js";
 import { createWorkspaceServices } from "../workspace-service.fixture.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 /**
@@ -22,8 +22,8 @@ export async function withIdentity(
     RequestContext.set(User, data.user);
     RequestContext.set(Workspace, data.workspace);
     RequestContext.set(
-      Member,
-      Object.assign(new Member(), {
+      WorkspaceMember,
+      Object.assign(new WorkspaceMember(), {
         id: "member",
         user: data.user,
         workspace: data.workspace,
@@ -34,7 +34,13 @@ export async function withIdentity(
       { action: "manage", subject: "all" },
       {
         action: ["read", "write", "update", "revoke"],
-        subject: ["User", "Workspace", "Member", "Invitation", "Session"],
+        subject: [
+          "User",
+          "Workspace",
+          "WorkspaceMember",
+          "WorkspaceInvitation",
+          "Session",
+        ],
         inverted: true,
         conditions: { id: "blocked" },
       },
@@ -43,7 +49,7 @@ export async function withIdentity(
         subject: [
           "User",
           "Workspace",
-          "Member",
+          "WorkspaceMember",
           "UserApiKey",
           "WorkspaceApiKey",
         ],
@@ -52,7 +58,7 @@ export async function withIdentity(
       },
       {
         action: "write",
-        subject: "Invitation",
+        subject: "WorkspaceInvitation",
         inverted: true,
         conditions: { email: "blocked@example.com" },
       },

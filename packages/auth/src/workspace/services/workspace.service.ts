@@ -24,8 +24,8 @@ import type { AuthModuleOptions } from "../../core/interfaces/auth-module-option
 import { RequestIdentity } from "../../core/request-identity.js";
 import { WorkspaceConnection } from "../connections/workspace.connection-definition.js";
 import { DEFAULT_WORKSPACE_CREATOR_ROLE } from "../constants/workspace.constants.js";
-import { Member } from "../entities/member.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
+import { WorkspaceMember } from "../entities/workspace-member.entity.js";
 import type { CreateWorkspaceOptions } from "../interfaces/create-workspace-options.interface.js";
 import type { UpdateWorkspaceOptions } from "../interfaces/update-workspace-options.interface.js";
 
@@ -167,7 +167,7 @@ export class WorkspaceService {
     }
     const workspace = RequestContext.get(Workspace);
     const user = RequestContext.get(User);
-    const member = RequestIdentity.getCurrentMember();
+    const member = RequestIdentity.getCurrentWorkspaceMember();
     if (user && workspace && !member) {
       throw new ForbiddenException(
         "The authenticated user is not a member of this workspace",
@@ -197,7 +197,7 @@ export class WorkspaceService {
     if (!workspace) {
       return null;
     }
-    return (await this.findActiveMemberByUser(workspace, user))
+    return (await this.findActiveWorkspaceMemberByUser(workspace, user))
       ? workspace
       : null;
   }
@@ -216,7 +216,7 @@ export class WorkspaceService {
   ): Promise<ConnectionResult<Workspace>> {
     RequestIdentity.assertUserSession(user);
     const memberships = (this.em as SqlEntityManager)
-      .createQueryBuilder<Member>(Member)
+      .createQueryBuilder<WorkspaceMember>(WorkspaceMember)
       .select("workspace")
       .where({ status: "ACTIVE", user: user.id });
     const connection = await new ConnectionManager(
@@ -273,7 +273,7 @@ export class WorkspaceService {
           name: input.name,
         });
         authorize("create", workspace);
-        const member = em.create(Member, {
+        const member = em.create(WorkspaceMember, {
           name: user.name,
           email: user.email.trim().toLowerCase(),
           roles: [this.creatorRole],
@@ -379,12 +379,12 @@ export class WorkspaceService {
    * @param user - The user whose account is being accessed.
    * @returns Active membership for the user and workspace, or null.
    */
-  private async findActiveMemberByUser(
+  private async findActiveWorkspaceMemberByUser(
     workspace: Workspace,
     user: User,
-  ): Promise<Member | null> {
+  ): Promise<WorkspaceMember | null> {
     RequestIdentity.assertUserSession(user);
-    return await this.em.findOne(Member, {
+    return await this.em.findOne(WorkspaceMember, {
       status: "ACTIVE",
       user,
       workspace,

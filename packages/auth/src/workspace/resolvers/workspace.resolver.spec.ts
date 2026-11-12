@@ -3,11 +3,11 @@ import type { GraphQLResolveInfo } from "graphql";
 import { type Mocked } from "vitest";
 
 import { User } from "../../core/entities/user.entity.js";
-import { Member } from "../entities/member.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
-import { type InvitationService } from "../services/invitation.service.js";
-import { type MemberService } from "../services/member.service.js";
+import { WorkspaceMember } from "../entities/workspace-member.entity.js";
 import { type WorkspaceService } from "../services/workspace.service.js";
+import { type WorkspaceInvitationService } from "../services/workspace-invitation.service.js";
+import { type WorkspaceMemberService } from "../services/workspace-member.service.js";
 import { WorkspaceResolver } from "./workspace.resolver.js";
 
 describe("WorkspaceResolver", () => {
@@ -20,30 +20,28 @@ describe("WorkspaceResolver", () => {
       variableValues: {},
     } as unknown as GraphQLResolveInfo;
     const result = { edges: [], pageInfo: {} };
-    const getMemberConnectionByWorkspace = vi.fn().mockResolvedValue(result);
-    const getInvitationConnectionByWorkspace = vi
+    const getWorkspaceMemberConnectionByWorkspace = vi
+      .fn()
+      .mockResolvedValue(result);
+    const getWorkspaceInvitationConnectionByWorkspace = vi
       .fn()
       .mockResolvedValue(result);
     const { resolver } = createResolver(
       {},
-      { getMemberConnectionByWorkspace },
-      { getInvitationConnectionByWorkspace },
+      { getWorkspaceMemberConnectionByWorkspace },
+      { getWorkspaceInvitationConnectionByWorkspace },
     );
     await expect(resolver.members(workspace, args, info)).resolves.toBe(result);
     await expect(resolver.invitations(workspace, args, info)).resolves.toBe(
       result,
     );
-    expect(getMemberConnectionByWorkspace).toHaveBeenCalledExactlyOnceWith(
-      workspace,
-      args,
-      info,
-    );
-    expect(getInvitationConnectionByWorkspace).toHaveBeenCalledExactlyOnceWith(
-      workspace,
-      args,
-      info,
-    );
-    getMemberConnectionByWorkspace.mockRejectedValueOnce(
+    expect(
+      getWorkspaceMemberConnectionByWorkspace,
+    ).toHaveBeenCalledExactlyOnceWith(workspace, args, info);
+    expect(
+      getWorkspaceInvitationConnectionByWorkspace,
+    ).toHaveBeenCalledExactlyOnceWith(workspace, args, info);
+    getWorkspaceMemberConnectionByWorkspace.mockRejectedValueOnce(
       new ForbiddenException(),
     );
     await expect(
@@ -54,19 +52,19 @@ describe("WorkspaceResolver", () => {
     const workspace = { id: "parent-workspace" } as Workspace;
     const args = { first: 10, after: "cursor" };
     const connection = { edges: [], pageInfo: {} };
-    const getInvitationConnectionByWorkspace = vi
+    const getWorkspaceInvitationConnectionByWorkspace = vi
       .fn()
       .mockResolvedValueOnce(connection)
       .mockRejectedValueOnce(new ForbiddenException());
     const { resolver } = createResolver(
       {},
       {},
-      { getInvitationConnectionByWorkspace },
+      { getWorkspaceInvitationConnectionByWorkspace },
     );
     await expect(resolver.invitations(workspace, args)).resolves.toBe(
       connection,
     );
-    expect(getInvitationConnectionByWorkspace).toHaveBeenCalledWith(
+    expect(getWorkspaceInvitationConnectionByWorkspace).toHaveBeenCalledWith(
       workspace,
       args,
       undefined,
@@ -133,9 +131,12 @@ describe("WorkspaceResolver", () => {
     );
     expect(workspaceService.deleteWorkspace).toHaveBeenCalledWith(workspace.id);
   });
-  it("delegates leaving a workspace to MemberService", async () => {
-    const member = { id: "member_1", name: "Leaving member" } as Member;
-    const { resolver, memberService } = createResolver(
+  it("delegates leaving a workspace to WorkspaceMemberService", async () => {
+    const member = {
+      id: "member_1",
+      name: "Leaving member",
+    } as WorkspaceMember;
+    const { resolver, workspaceMemberService } = createResolver(
       {},
       {
         leaveWorkspace: vi.fn(async () => member),
@@ -144,9 +145,9 @@ describe("WorkspaceResolver", () => {
     await expect(resolver.leaveWorkspace(member)).resolves.toEqual({
       memberId: member.id,
     });
-    expect(memberService.leaveWorkspace).toHaveBeenCalledWith(member);
+    expect(workspaceMemberService.leaveWorkspace).toHaveBeenCalledWith(member);
     const denied = new ForbiddenException();
-    memberService.leaveWorkspace.mockRejectedValueOnce(denied);
+    workspaceMemberService.leaveWorkspace.mockRejectedValueOnce(denied);
     await expect(resolver.leaveWorkspace(member)).rejects.toBe(denied);
   });
 });
@@ -154,30 +155,30 @@ describe("WorkspaceResolver", () => {
 /**
  * Returns test resolver and its mocked dependencies.
  * @param overrides - Fixture values that replace the defaults.
- * @param memberOverrides - Member service methods replaced for this test.
- * @param invitationOverrides - Invitation service methods replaced for this test.
+ * @param memberOverrides - WorkspaceMember service methods replaced for this test.
+ * @param invitationOverrides - WorkspaceInvitation service methods replaced for this test.
  * @returns Test resolver and its mocked dependencies.
  */
 function createResolver(
   overrides: Partial<WorkspaceService> = {},
-  memberOverrides: Partial<MemberService> = {},
-  invitationOverrides: Partial<InvitationService> = {},
+  memberOverrides: Partial<WorkspaceMemberService> = {},
+  invitationOverrides: Partial<WorkspaceInvitationService> = {},
 ) {
   const workspaceService = { ...overrides } as Mocked<WorkspaceService>;
-  const memberService = {
+  const workspaceMemberService = {
     ...memberOverrides,
-  } as Mocked<MemberService>;
-  const invitationService = {
+  } as Mocked<WorkspaceMemberService>;
+  const workspaceInvitationService = {
     ...invitationOverrides,
-  } as Mocked<InvitationService>;
+  } as Mocked<WorkspaceInvitationService>;
   return {
     resolver: new WorkspaceResolver(
       workspaceService,
-      memberService,
-      invitationService,
+      workspaceMemberService,
+      workspaceInvitationService,
     ),
     workspaceService,
-    memberService,
-    invitationService,
+    workspaceMemberService,
+    workspaceInvitationService,
   };
 }

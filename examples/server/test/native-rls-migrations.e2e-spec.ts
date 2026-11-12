@@ -8,12 +8,12 @@ import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
 import {
   ApiKey,
   entities as authEntities,
-  Invitation,
-  Member,
   SystemAccount,
   User,
   Workspace,
   workspaceEntities,
+  WorkspaceInvitation,
+  WorkspaceMember,
 } from '@nest-boot/auth';
 import { getDatabaseConfig } from '@nest-boot/database';
 import { entities as queueEntities } from '@nest-boot/queue-api';
@@ -30,8 +30,8 @@ describe('example native RLS migrations with PGlite', () => {
       instance.getMetadata(ApiKey),
       instance.getMetadata(SystemAccount),
       instance.getMetadata(Workspace),
-      instance.getMetadata(Member),
-      instance.getMetadata(Invitation),
+      instance.getMetadata(WorkspaceMember),
+      instance.getMetadata(WorkspaceInvitation),
     ].map((metadata) => metadata.policies);
 
   let originalPolicies: ReturnType<typeof readPolicies>;
@@ -220,9 +220,9 @@ describe('example native RLS migrations with PGlite', () => {
     );
     expect(policies.map(({ policyname }) => policyname).sort()).toEqual([
       'api_key_all_policy',
-      'invitation_all_policy',
-      'member_all_policy',
       'workspace_delete_policy',
+      'workspace_invitation_all_policy',
+      'workspace_member_all_policy',
       'workspace_update_policy',
     ]);
     for (const policy of policies) {

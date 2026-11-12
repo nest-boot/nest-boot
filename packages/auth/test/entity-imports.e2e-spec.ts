@@ -19,10 +19,12 @@ it("should load entities in an isolated module", async () => {
     (await import("../src/core/entities/verification.entity.js")).Verification,
   ).toBeDefined();
   expect(
-    (await import("../src/workspace/entities/member.entity.js")).Member,
+    (await import("../src/workspace/entities/workspace-member.entity.js"))
+      .WorkspaceMember,
   ).toBeDefined();
   expect(
-    (await import("../src/workspace/entities/invitation.entity.js")).Invitation,
+    (await import("../src/workspace/entities/workspace-invitation.entity.js"))
+      .WorkspaceInvitation,
   ).toBeDefined();
   expect(
     (await import("../src/workspace/entities/workspace.entity.js")).Workspace,

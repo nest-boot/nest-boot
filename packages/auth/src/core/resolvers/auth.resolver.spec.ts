@@ -3,8 +3,8 @@ import { ForbiddenException } from "@nestjs/common";
 import type { Mocked } from "vitest";
 
 import { AuthAbility } from "../../common/auth.ability.js";
-import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { User } from "../entities/user.entity.js";
 import { type User as BaseUser } from "../entities/user.entity.js";
 import { type AuthService } from "../services/auth.service.js";
@@ -24,7 +24,7 @@ describe("AuthResolver", () => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       expect(() => resolver.currentAbilityRules()).toThrow(ForbiddenException);
       RequestContext.set(User, new User());
-      RequestContext.set(Member, new Member());
+      RequestContext.set(WorkspaceMember, new WorkspaceMember());
       RequestContext.set(Workspace, new Workspace());
       RequestContext.set(
         AuthAbility,
@@ -41,7 +41,10 @@ describe("AuthResolver", () => {
             inverted: true,
             reason: "Protected account",
           },
-          { action: ["read", "update"], subject: [Workspace, "Member"] },
+          {
+            action: ["read", "update"],
+            subject: [Workspace, "WorkspaceMember"],
+          },
         ]),
       );
       const rules = resolver.currentAbilityRules();
@@ -64,7 +67,7 @@ describe("AuthResolver", () => {
         },
         {
           actions: ["read", "update"],
-          subjects: ["Workspace", "Member"],
+          subjects: ["Workspace", "WorkspaceMember"],
           fields: null,
           conditions: null,
           inverted: false,
@@ -74,7 +77,7 @@ describe("AuthResolver", () => {
       expect(JSON.parse(JSON.stringify(rules))).toEqual(rules);
       expect(resolver.currentAbilityRules()).toContainEqual({
         actions: ["read", "update"],
-        subjects: ["Workspace", "Member"],
+        subjects: ["Workspace", "WorkspaceMember"],
         fields: null,
         conditions: null,
         inverted: false,

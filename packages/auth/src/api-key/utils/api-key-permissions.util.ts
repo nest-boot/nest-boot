@@ -94,7 +94,7 @@ export function normalizeApiKeyPermissions(
     scope === "user"
       ? "User API key"
       : scope === "member"
-        ? "Member API key"
+        ? "WorkspaceMember API key"
         : "System account API key",
   );
   assertPermissionCeiling(
