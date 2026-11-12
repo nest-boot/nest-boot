@@ -156,11 +156,12 @@ test("manages system identities and credentials under admin, with one-time secre
     expect((await read(dependent.apiKey)).status()).toBe(401);
     const remaining = await graphqlRequest<{ systemApiKey: unknown }>(
       page.request,
-      "query($id: ID!) { systemApiKey(id: $id) { id systemAccount { id } } }",
+      "query($id: ID!) { systemApiKey(id: $id) { id enabled systemAccount { id } } }",
       { id: dependent.entity.id },
     );
     expect(remaining.systemApiKey).toEqual({
       id: dependent.entity.id,
+      enabled: false,
       systemAccount: null,
     });
     await page.goto(`/admin/api-keys/${dependent.entity.id}`);
@@ -170,11 +171,37 @@ test("manages system identities and credentials under admin, with one-time secre
     await expect(page.getByLabel("Owned by", { exact: true })).toHaveCount(0);
     await expect(page.getByLabel("Key", { exact: true })).toBeDisabled();
     await page
+      .getByLabel("Name", { exact: true })
+      .fill("Archived audit credential");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.reload();
+    await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
+      "Archived audit credential",
+    );
+    await clickPageAction(page, "Enable");
+    await expect(
+      page.getByText("System account not found", { exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    const retained = await graphqlRequest<{
+      systemApiKey: { name: string; enabled: boolean; systemAccount: null };
+    }>(
+      page.request,
+      "query($id: ID!) { systemApiKey(id: $id) { name enabled systemAccount { id } } }",
+      { id: dependent.entity.id },
+    );
+    expect(retained.systemApiKey).toEqual({
+      name: "Archived audit credential",
+      enabled: false,
+      systemAccount: null,
+    });
+    expect((await read(dependent.apiKey)).status()).toBe(401);
+    await page
       .getByRole("link", { name: "API Keys", exact: true })
       .first()
       .click();
     await expect(
-      page.getByText("Retained audit credential", { exact: true }),
+      page.getByText("Archived audit credential", { exact: true }),
     ).toBeVisible();
   } finally {
     await machine.dispose();

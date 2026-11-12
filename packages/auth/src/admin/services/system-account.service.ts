@@ -9,6 +9,7 @@ import { ForbiddenException } from "@nestjs/common";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { GraphQLResolveInfo } from "graphql";
 
+import { ApiKey } from "../../api-key/entities/api-key.entity.js";
 import { SystemAccount } from "../../api-key/entities/system-account.entity.js";
 import { resolveApiKeyPermissionCatalog } from "../../api-key/utils/api-key-permissions.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
@@ -189,7 +190,7 @@ export class SystemAccountService {
   }
 
   /**
-   * Deletes an account while retaining its key records for audit.
+   * Deletes an account and disables its retained audit keys atomically.
    * @param id - Identifier of the target record.
    * @returns Metadata of the deleted system identity.
    */
@@ -207,6 +208,14 @@ export class SystemAccountService {
             throw new NotFoundException("System account not found");
           }
           authorize("write", account);
+          // System-key persistence is only registered when its feature is enabled.
+          if (resolveAuthFeatures(this.options).systemApiKey) {
+            await tx.nativeUpdate(
+              ApiKey,
+              { ownerType: "system_account", owner: account },
+              { enabled: false },
+            );
+          }
           await tx.nativeDelete(SystemAccount, { id });
           return account;
         },

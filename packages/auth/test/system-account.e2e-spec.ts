@@ -418,8 +418,12 @@ describe("independent system accounts with real persistence and authentication",
       accounts.deleteSystemAccount(issued.account.id),
     );
     expect(await em.count(ApiKey, issued.entity.id)).toBe(1);
+    expect(
+      (await em.findOneOrFail(ApiKey, issued.entity.id, { refresh: true }))
+        .enabled,
+    ).toBe(false);
     await expect(withKey(issued.apiKey, () => null)).rejects.toThrow(
-      /Invalid API key/,
+      /API key is disabled/,
     );
   });
 
@@ -899,6 +903,137 @@ describe("independent system accounts with real persistence and authentication",
       });
     },
   );
+  it("rolls back account deletion and key disabling together with the surrounding transaction", async () => {
+    const issued = await issue(["user:read"]);
+    await asAdministrator(async () => {
+      const em = orm.em.fork({ useContext: false });
+      RequestContext.set(EntityManager, em);
+      await expect(
+        em.transactional(async (tx) => {
+          await new SystemAccountService(
+            tx,
+            withAuthTestFeatures(options),
+          ).deleteSystemAccount(issued.account.id);
+          expect(
+            (
+              await tx.findOneOrFail(ApiKey, issued.entity.id, {
+                refresh: true,
+              })
+            ).enabled,
+          ).toBe(false);
+          throw new Error("Abort surrounding operation");
+        }),
+      ).rejects.toThrow("Abort surrounding operation");
+    });
+    const em = orm.em.fork();
+    expect(await em.findOne(SystemAccount, issued.account.id)).not.toBeNull();
+    expect((await em.findOneOrFail(ApiKey, issued.entity.id)).enabled).toBe(
+      true,
+    );
+    await expect(withKey(issued.apiKey, () => null)).resolves.toBeNull();
+  });
+
+  it("allows audit metadata changes and disabling an orphan, but rejects activation and grant changes", async () => {
+    const issued = await issue(["user:read"]);
+    const original = await orm.em
+      .fork()
+      .findOneOrFail(ApiKey, issued.entity.id);
+    const unrelated = await issue(["user:read"]);
+    const seed = orm.em.fork();
+    const sibling = seed.create(ApiKey, {
+      name: "Sibling credential",
+      key: hashApiKey(randomUUID()),
+      owner: issued.account,
+      permissions: ["user:read"],
+    });
+    const otherScope = seed.create(ApiKey, {
+      name: "Other owner type",
+      key: hashApiKey(randomUUID()),
+      owner: administrator,
+      permissions: [],
+    });
+    await seed.persist([sibling, otherScope]).flush();
+    // Match the numeric owner ID across different types to prove discriminator isolation.
+    await seed.execute("update api_key set owner_id = ? where id = ?", [
+      issued.account.id,
+      otherScope.id,
+    ]);
+    await asAdministrator((accounts) =>
+      accounts.deleteSystemAccount(issued.account.id),
+    );
+    const read = orm.em.fork();
+    expect(await read.findOne(SystemAccount, issued.account.id)).toBeNull();
+    expect((await read.findOneOrFail(ApiKey, sibling.id)).enabled).toBe(false);
+    for (const id of [unrelated.entity.id, otherScope.id]) {
+      expect((await read.findOneOrFail(ApiKey, id)).enabled).toBe(true);
+    }
+    await expect(withKey(issued.apiKey, () => null)).rejects.toThrow(
+      "API key is disabled",
+    );
+    await asAdministrator(async (_accounts, keys) => {
+      await expect(
+        keys.updateSystemApiKey(issued.entity.id, {
+          name: "Retained deployment",
+        }),
+      ).resolves.toMatchObject({ name: "Retained deployment" });
+      await expect(
+        keys.updateSystemApiKey(issued.entity.id, { enabled: false }),
+      ).resolves.toMatchObject({ enabled: false });
+      for (const input of [
+        { enabled: true },
+        { permissions: [] },
+        { permissions: null },
+        { permissions: ["user:read"], enabled: false },
+      ]) {
+        await expect(
+          keys.updateSystemApiKey(issued.entity.id, input),
+        ).rejects.toThrow("System account not found");
+      }
+    });
+    const retained = await orm.em
+      .fork()
+      .findOneOrFail(ApiKey, issued.entity.id);
+    expect(retained).toMatchObject({
+      name: "Retained deployment",
+      enabled: false,
+      key: original.key,
+      permissions: original.permissions,
+    });
+    expect(retained.owner.id).toBe(issued.account.id);
+    await expect(withKey(issued.apiKey, () => null)).rejects.toThrow(
+      "API key is disabled",
+    );
+  });
+
+  it("still enforces field restrictions when updating an orphan's audit metadata", async () => {
+    const issued = await issue(["user:read"]);
+    await asAdministrator((accounts) =>
+      accounts.deleteSystemAccount(issued.account.id),
+    );
+    const configuration: AuthModuleOptions = {
+      ...options,
+      buildAbility: ({ cannot }) => {
+        cannot("write", SystemApiKey, ["name"]);
+      },
+    };
+    await asAdministrator(async (_accounts, _keys, em) => {
+      RequestIdentity.refresh(withAuthTestFeatures(configuration));
+      const keys = new SystemApiKeyService(
+        em,
+        withAuthTestFeatures(configuration),
+      );
+      await expect(
+        keys.updateSystemApiKey(issued.entity.id, { name: "Forbidden rename" }),
+      ).rejects.toThrow(/not allowed/i);
+      await expect(
+        keys.updateSystemApiKey(issued.entity.id, { enabled: false }),
+      ).resolves.toMatchObject({ enabled: false });
+    });
+    expect(
+      (await orm.em.fork().findOneOrFail(ApiKey, issued.entity.id)).name,
+    ).toBe("Integration");
+  });
+
   it.each(["user", "workspace_member", "system_account"])(
     "rejects a retained %s key with a missing owner without deleting its audit row",
     async (type) => {

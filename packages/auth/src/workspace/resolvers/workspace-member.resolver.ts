@@ -9,11 +9,13 @@ import {
 } from "@nest-boot/graphql";
 import { BadRequestException } from "@nestjs/common";
 
+import { filterPermissionValues } from "../../common/utils/filter-permission-values.util.js";
 import { User } from "../../core/entities/user.entity.js";
 import { CurrentWorkspace } from "../decorators/current-workspace.decorator.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceMember } from "../entities/workspace-member.entity.js";
 import { WorkspaceMemberType } from "../enums/workspace-member-type.enum.js";
+import { WorkspacePermission } from "../enums/workspace-permission.enum.js";
 import { AddWorkspaceMemberInput } from "../inputs/add-workspace-member.input.js";
 import { SetWorkspaceMemberPermissionsInput } from "../inputs/set-workspace-member-permissions.input.js";
 import { SetWorkspaceMemberRolesInput } from "../inputs/set-workspace-member-roles.input.js";
@@ -30,6 +32,16 @@ import { WorkspaceMemberService } from "../services/workspace-member.service.js"
 /** Workspace membership API. */
 @Resolver(() => WorkspaceMember)
 export class WorkspaceMemberResolver {
+  /**
+   * Resolves grants supported by the current GraphQL permission catalog.
+   * @param member - Identity or credential whose stored grants are being presented.
+   * @returns Serializable permission values without mutating effective grants.
+   */
+  @ResolveField(() => [WorkspacePermission])
+  permissions(@Parent() member: WorkspaceMember): WorkspacePermission[] {
+    return filterPermissionValues(member.permissions, WorkspacePermission);
+  }
+
   /**
    * Creates this resolver.
    * @param workspaceMemberService - Workspace member and service-account operations.

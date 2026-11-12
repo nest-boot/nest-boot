@@ -260,22 +260,29 @@ export class SystemApiKeyService {
           if (!located) {
             throw new NotFoundException("System account API key not found");
           }
-          const account = await tx.findOneOrFail(
-            SystemAccount,
-            located.owner.id,
-            { lockMode: LockMode.PESSIMISTIC_WRITE, refresh: true },
-          );
+          const account = await tx.findOne(SystemAccount, located.owner.id, {
+            lockMode: LockMode.PESSIMISTIC_WRITE,
+            refresh: true,
+          });
           // Lock owners before keys, matching account deletion, then read current grants.
           // A key loaded before the account lock can contain an obsolete delegation ceiling.
           const key = await tx.findOne(
             ApiKey,
-            { id, ownerType: "system_account", owner: account },
+            { id, ownerType: "system_account", owner: located.owner },
             { lockMode: LockMode.PESSIMISTIC_WRITE, refresh: true },
           );
           if (!key) {
             throw new NotFoundException("System account API key not found");
           }
-          if (input.enabled !== false) {
+          // Retained audit keys can be renamed or disabled after account deletion.
+          // Activating a key or changing its grants still requires a live owner.
+          if (
+            !account &&
+            (permissions !== undefined || input.enabled === true)
+          ) {
+            throw new NotFoundException("System account not found");
+          }
+          if (account && input.enabled !== false) {
             const grants =
               permissions ??
               normalizeApiKeyPermissions(

@@ -13,3 +13,5 @@ Include example administration pages under `/admin/api-keys` and `/admin/system-
 Define optional API-key owner mappings through native EntitySchema and return ordinary credential-free GraphQL DTOs. Keep other models as decorated entities. Remove global entity metadata rewriting and prototype mutation. Auth shares the application database schema without separate schema options or environment parsing.
 
 Use the Workspace prefix consistently for WorkspaceMember and WorkspaceInvitation entities, services, GraphQL types and root operations, inputs, payloads, enums, decorators and filenames. Use the workspace-member, workspace-service-account and workspace-api-key permission resources. Regenerate example migrations for the automatically named workspace_member and workspace_invitation tables and update the client documents, generated types, permission labels and browser flows.
+
+Filter retired permissions in GraphQL field resolvers without changing stored or effective grants. System-account deletion atomically disables its retained keys; audit metadata can still be renamed, while re-enablement and grant changes require a live account.

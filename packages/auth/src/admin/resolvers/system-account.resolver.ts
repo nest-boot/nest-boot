@@ -1,12 +1,23 @@
-import { Args, ID, Info, Mutation, Query, Resolver } from "@nest-boot/graphql";
+import {
+  Args,
+  ID,
+  Info,
+  Mutation,
+  Parent,
+  Query,
+  ResolveField,
+  Resolver,
+} from "@nest-boot/graphql";
 import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
 import { type GraphQLResolveInfo } from "graphql";
 
 import { SystemAccount } from "../../api-key/entities/system-account.entity.js";
+import { filterPermissionValues } from "../../common/utils/filter-permission-values.util.js";
 import {
   SystemAccountConnection,
   SystemAccountConnectionArgs,
 } from "../connections/system-account.connection-definition.js";
+import { SystemAccountPermission } from "../enums/system-account-permission.enum.js";
 import { CreateSystemAccountInput } from "../inputs/create-system-account.input.js";
 import { UpdateSystemAccountInput } from "../inputs/update-system-account.input.js";
 import { SystemAccountPermissionOption } from "../objects/system-account-permission-option.object.js";
@@ -15,6 +26,16 @@ import { SystemAccountService } from "../services/system-account.service.js";
 /** Optional independent system-account administration. */
 @Resolver(() => SystemAccount)
 export class SystemAccountResolver {
+  /**
+   * Resolves grants supported by the current GraphQL permission catalog.
+   * @param account - Identity or credential whose stored grants are being presented.
+   * @returns Serializable permission values without mutating effective grants.
+   */
+  @ResolveField(() => [SystemAccountPermission])
+  permissions(@Parent() account: SystemAccount): SystemAccountPermission[] {
+    return filterPermissionValues(account.permissions, SystemAccountPermission);
+  }
+
   /**
    * Creates this resolver.
    * @param accounts - System identity administration.

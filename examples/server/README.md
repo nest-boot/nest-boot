@@ -95,7 +95,7 @@ Service authorization. User, member and system-account API keys share `api_key`,
 with polymorphic `owner_type` and `owner_id` columns and no custom owner triggers.
 Deleting a user cascades to accounts, sessions (also sessions they impersonated),
 members and sent invitations, while workspaces and independent service accounts survive.
-All API-key records and their stored owner identifiers remain for audit.
+All API-key records and their stored owner identifiers remain for audit. Deleting a system account through its service also disables its keys in the same transaction.
 Authentication reloads the concrete owner and rejects credentials whose owner no
 longer exists, without deleting the record or updating its usage timestamps.
 

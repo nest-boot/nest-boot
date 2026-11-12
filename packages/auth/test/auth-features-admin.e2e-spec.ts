@@ -22,3 +22,13 @@ it.each([
   },
   30000,
 );
+
+it("keeps user credentials independent when administration is enabled without system keys", async () => {
+  await verifyAuthFeatures(
+    {
+      admin: { enabled: true },
+      apiKey: { enabled: true, user: { enabled: true } },
+    },
+    { admin: true, workspace: false, owners: ["User"] },
+  );
+}, 30000);
