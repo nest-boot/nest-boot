@@ -225,9 +225,11 @@ export class AuthModule extends ConfigurableModuleClass {
               database.password,
               database.replicas,
             ].some((value) => value !== undefined);
-            const schema =
-              database.schema ??
-              (explicitTarget ? undefined : (await getDatabaseConfig()).schema);
+            const schema = Object.hasOwn(database, "schema")
+              ? database.schema
+              : explicitTarget
+                ? undefined
+                : (await getDatabaseConfig()).schema;
             return [
               User,
               Account,

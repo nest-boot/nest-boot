@@ -34,13 +34,15 @@ import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
  * @param workspace - Workspace feature settings under test.
  * @param asyncOptions - Whether options are resolved through injected async configuration.
  * @param schemaName - Database schema supplied to DatabaseModule.
- * @param databaseOverrides - Optional connection overrides for precedence tests.
+ * @param configureDatabase - Optional local configuration transform for precedence tests.
  */
 export async function verifyAuthBootstrap(
   workspace: AuthModuleOptions["workspace"],
   asyncOptions: boolean,
   schemaName = "public",
-  databaseOverrides: DatabaseModuleOptions = {},
+  configureDatabase: (
+    options: DatabaseModuleOptions,
+  ) => DatabaseModuleOptions = (options) => options,
 ) {
   const options: AuthModuleOptions = withAuthTestFeatures({
     secret: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_",
@@ -79,19 +81,12 @@ export async function verifyAuthBootstrap(
   const factory = vi.fn(
     async (value: AuthModuleOptions) => await Promise.resolve(value),
   );
-  const database: DatabaseModuleOptions = {
+  const database = configureDatabase({
     driver: PgliteDriver,
     dbName: "memory://",
     entities: [],
     schema: schemaName,
-    ...databaseOverrides,
-  };
-  if (database.dbName === undefined) {
-    delete database.dbName;
-  }
-  if (database.schema === undefined) {
-    delete database.schema;
-  }
+  });
   const moduleRef = await Test.createTestingModule({
     imports: [
       InfrastructureModule,

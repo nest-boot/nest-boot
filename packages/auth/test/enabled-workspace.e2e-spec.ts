@@ -24,9 +24,10 @@ it.each([false, true])(
         { enabled: true },
         asyncOptions,
         "auth_environment",
-        {
-          dbName: undefined,
-          schema: undefined,
+        (options) => {
+          delete options.dbName;
+          delete options.schema;
+          return options;
         },
       );
     } finally {
@@ -42,8 +43,25 @@ it("ignores the ambient schema when a connection target is explicit", async () =
     "postgresql://postgres:secret@127.0.0.1:5432/unused?schema=unexpected",
   );
   try {
-    await verifyAuthBootstrap({ enabled: true }, false, "public", {
-      schema: undefined,
+    await verifyAuthBootstrap({ enabled: true }, false, "public", (options) => {
+      delete options.schema;
+      return options;
+    });
+  } finally {
+    vi.unstubAllEnvs();
+  }
+}, 30000);
+
+it("keeps an explicitly undefined schema aligned with the database configuration", async () => {
+  vi.stubEnv(
+    "DATABASE_URL",
+    "postgresql://postgres:secret@127.0.0.1:5432/memory%3A%2F%2F?schema=unexpected",
+  );
+  try {
+    await verifyAuthBootstrap({ enabled: true }, false, "public", (options) => {
+      delete options.dbName;
+      options.schema = undefined;
+      return options;
     });
   } finally {
     vi.unstubAllEnvs();
