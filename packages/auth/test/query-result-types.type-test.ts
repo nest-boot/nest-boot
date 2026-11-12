@@ -1,6 +1,10 @@
 import { expectTypeOf } from "vitest";
 
-import type { ApiKey } from "../src/api-key/entities/api-key.entity.js";
+import type { ApiKeyLifecycle } from "../src/api-key/api-key-lifecycle.js";
+import type {
+  ApiKey,
+  ApiKeyRecord,
+} from "../src/api-key/entities/api-key.entity.js";
 import type { ApiKeyObject } from "../src/api-key/objects/api-key.object.js";
 import type { SystemApiKey } from "../src/api-key/objects/system-api-key.object.js";
 import type { UserApiKey } from "../src/api-key/objects/user-api-key.object.js";
@@ -8,7 +12,6 @@ import type { WorkspaceApiKey } from "../src/api-key/objects/workspace-api-key.o
 import type { SystemApiKeyService } from "../src/api-key/services/system-api-key.service.js";
 import type { UserApiKeyService } from "../src/api-key/services/user-api-key.service.js";
 import type { WorkspaceApiKeyService } from "../src/api-key/services/workspace-api-key.service.js";
-import type { ApiKeyMetadata } from "../src/api-key/types/api-key-metadata.type.js";
 import type { AccountService } from "../src/core/services/account.service.js";
 import type { SessionService } from "../src/core/services/session.service.js";
 
@@ -29,7 +32,7 @@ describe("Credential-free query result types", () => {
 
   it("omits credential hashes from user-key reads and mutations", () => {
     type Service = UserApiKeyService;
-    type Result = ApiKeyMetadata<UserApiKey>;
+    type Result = UserApiKey;
     expectTypeOf<
       Awaited<ReturnType<Service["getUserApiKey"]>>
     >().toEqualTypeOf<Result | null>();
@@ -38,6 +41,9 @@ describe("Credential-free query result types", () => {
     >().toEqualTypeOf<Result>();
     expectTypeOf<
       Awaited<ReturnType<Service["deleteUserApiKey"]>>
+    >().toEqualTypeOf<Result>();
+    expectTypeOf<
+      Awaited<ReturnType<Service["revokeUserApiKey"]>>
     >().toEqualTypeOf<Result>();
     expectTypeOf<
       Awaited<
@@ -50,7 +56,7 @@ describe("Credential-free query result types", () => {
 
   it("omits credential hashes from workspace_member-key reads and mutations", () => {
     type Service = WorkspaceApiKeyService;
-    type Result = ApiKeyMetadata<WorkspaceApiKey>;
+    type Result = WorkspaceApiKey;
     expectTypeOf<
       Awaited<ReturnType<Service["getWorkspaceApiKey"]>>
     >().toEqualTypeOf<Result | null>();
@@ -59,6 +65,9 @@ describe("Credential-free query result types", () => {
     >().toEqualTypeOf<Result>();
     expectTypeOf<
       Awaited<ReturnType<Service["deleteWorkspaceApiKey"]>>
+    >().toEqualTypeOf<Result>();
+    expectTypeOf<
+      Awaited<ReturnType<Service["revokeWorkspaceApiKey"]>>
     >().toEqualTypeOf<Result>();
     expectTypeOf<
       Awaited<
@@ -72,7 +81,7 @@ describe("Credential-free query result types", () => {
 
   it("omits hashes from system-key management results and retains the system owner", () => {
     type Service = SystemApiKeyService;
-    type Result = ApiKeyMetadata<SystemApiKey>;
+    type Result = SystemApiKey;
     expectTypeOf<
       Awaited<ReturnType<Service["getSystemApiKey"]>>
     >().toEqualTypeOf<Result | null>();
@@ -83,6 +92,9 @@ describe("Credential-free query result types", () => {
       Awaited<ReturnType<Service["deleteSystemApiKey"]>>
     >().toEqualTypeOf<Result>();
     expectTypeOf<
+      Awaited<ReturnType<Service["revokeSystemApiKey"]>>
+    >().toEqualTypeOf<Result>();
+    expectTypeOf<
       Awaited<
         ReturnType<Service["getSystemApiKeyConnection"]>
       >["edges"][number]["node"]
@@ -91,10 +103,14 @@ describe("Credential-free query result types", () => {
     expectTypeOf<Result["systemAccount"]>().not.toBeNullable();
   });
 
-  it("preserves scoped ownership variants and accepts full authenticated entities", () => {
-    expectTypeOf<ApiKeyMetadata>().toEqualTypeOf<ApiKeyObject>();
-    expectTypeOf<ApiKey>().toExtend<ApiKeyMetadata>();
-    expectTypeOf<ApiKeyMetadata>().not.toHaveProperty("isInitialized");
+  it("separates native persistence records from public credential views", () => {
+    expectTypeOf<
+      Parameters<typeof ApiKeyLifecycle.update>[2]
+    >().toEqualTypeOf<ApiKeyRecord>();
+    expectTypeOf<UserApiKey>().not.toExtend<ApiKeyRecord>();
+    expectTypeOf<ApiKeyRecord>().toHaveProperty("isInitialized");
+    expectTypeOf<ApiKey>().toExtend<ApiKeyObject>();
+    expectTypeOf<ApiKeyObject>().not.toHaveProperty("isInitialized");
     expectTypeOf<
       Awaited<ReturnType<UserApiKeyService["createUserApiKey"]>>["entity"]
     >().toEqualTypeOf<UserApiKey>();

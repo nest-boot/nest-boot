@@ -1,4 +1,4 @@
-import type { ApiKey } from "../entities/api-key.entity.js";
+import type { ApiKeyRecord, OwnedApiKey } from "../entities/api-key.entity.js";
 import type { ApiKeyObject } from "../objects/api-key.object.js";
 import { SystemApiKey } from "../objects/system-api-key.object.js";
 import { UserApiKey } from "../objects/user-api-key.object.js";
@@ -25,14 +25,20 @@ export function getApiKeyView(ownerType: keyof typeof views) {
  * @param entity - Persisted credential or existing DTO to snapshot.
  * @returns Owner-specific credential-free DTO.
  */
-export function toApiKeyView(entity: UserApiKey): UserApiKey;
-export function toApiKeyView(entity: WorkspaceApiKey): WorkspaceApiKey;
-export function toApiKeyView(entity: SystemApiKey): SystemApiKey;
 export function toApiKeyView(
-  entity: ApiKey | ApiKeyObject,
+  entity: OwnedApiKey<"user"> | UserApiKey,
+): UserApiKey;
+export function toApiKeyView(
+  entity: OwnedApiKey<"workspace_member"> | WorkspaceApiKey,
+): WorkspaceApiKey;
+export function toApiKeyView(
+  entity: OwnedApiKey<"system_account"> | SystemApiKey,
+): SystemApiKey;
+export function toApiKeyView(
+  entity: ApiKeyRecord | ApiKeyObject,
 ): UserApiKey | WorkspaceApiKey | SystemApiKey;
 export function toApiKeyView(
-  entity: ApiKey | ApiKeyObject,
+  entity: ApiKeyRecord | ApiKeyObject,
 ): UserApiKey | WorkspaceApiKey | SystemApiKey {
   const View = getApiKeyView(entity.ownerType);
   return new View(entity);

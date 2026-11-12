@@ -29,13 +29,12 @@ import type { AuthModuleOptions } from "../../core/interfaces/auth-module-option
 import { RequestIdentity } from "../../core/request-identity.js";
 import { ApiKeyLifecycle } from "../api-key-lifecycle.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
-import { ApiKey } from "../entities/api-key.entity.js";
+import { ApiKey, type OwnedApiKey } from "../entities/api-key.entity.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
 import { UserApiKey } from "../objects/user-api-key.object.js";
 import type { UserApiKeyPermissionOption } from "../objects/user-api-key-permission-option.object.js";
-import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
@@ -95,10 +94,7 @@ export class UserApiKeyService {
    * @param user - The user whose account is being accessed.
    * @returns Matching API key metadata with the credential hash omitted, or null.
    */
-  async getUserApiKey(
-    id: string,
-    user: User,
-  ): Promise<ApiKeyMetadata<UserApiKey> | null> {
+  async getUserApiKey(id: string, user: User): Promise<UserApiKey | null> {
     assertApiKeyFeature(this.authOptions, "userApiKey");
     RequestIdentity.assertCurrentUser(user);
     authorize("read", UserApiKey);
@@ -120,7 +116,7 @@ export class UserApiKeyService {
     user: User,
     args: ConnectionArgsInterface<ApiKey>,
     info?: GraphQLResolveInfo,
-  ): Promise<ConnectionResult<ApiKeyMetadata<UserApiKey>>> {
+  ): Promise<ConnectionResult<UserApiKey>> {
     assertApiKeyFeature(this.authOptions, "userApiKey");
     RequestIdentity.assertCurrentUser(user);
     authorize("read", UserApiKey);
@@ -176,7 +172,7 @@ export class UserApiKeyService {
   async updateUserApiKey(
     id: string,
     input: UpdateApiKeyOptions,
-  ): Promise<ApiKeyMetadata<UserApiKey>> {
+  ): Promise<UserApiKey> {
     assertApiKeyFeature(this.authOptions, "userApiKey");
     authorize("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
@@ -218,7 +214,7 @@ export class UserApiKeyService {
    * @param id - Identifier of the credential.
    * @returns Retained metadata with its revocation timestamp.
    */
-  async revokeUserApiKey(id: string): Promise<ApiKeyMetadata<UserApiKey>> {
+  async revokeUserApiKey(id: string): Promise<UserApiKey> {
     assertApiKeyFeature(this.authOptions, "userApiKey");
     authorize("write", UserApiKey);
     const key = await this.findWritableApiKey(id);
@@ -233,7 +229,7 @@ export class UserApiKeyService {
    * @param id - Identifier of the record to access.
    * @returns Deleted API key metadata without the stored credential hash.
    */
-  async deleteUserApiKey(id: string): Promise<ApiKeyMetadata<UserApiKey>> {
+  async deleteUserApiKey(id: string): Promise<UserApiKey> {
     assertApiKeyFeature(this.authOptions, "userApiKey");
     authorize("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
@@ -280,7 +276,7 @@ export class UserApiKeyService {
   private async getVisibleApiKey(
     id: string,
     user: User,
-  ): Promise<ApiKeyMetadata<UserApiKey> | null> {
+  ): Promise<OwnedApiKey<"user"> | null> {
     const apiKey = await this.em.findOne(
       ApiKey,
       {
@@ -297,9 +293,7 @@ export class UserApiKeyService {
     return apiKey;
   }
 
-  private async findWritableApiKey(
-    id: string,
-  ): Promise<ApiKeyMetadata<UserApiKey>> {
+  private async findWritableApiKey(id: string): Promise<OwnedApiKey<"user">> {
     const apiKey = await this.em.findOne(
       ApiKey,
       { id, ownerType: "user" },
@@ -329,10 +323,7 @@ export class UserApiKeyService {
     };
   }
 
-  private assertUser(
-    apiKey: ApiKeyMetadata<UserApiKey>,
-    expectedUser: User,
-  ): void {
+  private assertUser(apiKey: Pick<ApiKey, "user">, expectedUser: User): void {
     const user = this.unwrapUser(apiKey);
     if (user.id !== expectedUser.id) {
       throw new ForbiddenException(
@@ -341,7 +332,7 @@ export class UserApiKeyService {
     }
   }
 
-  private unwrapUser(apiKey: ApiKeyMetadata<UserApiKey>): User {
+  private unwrapUser(apiKey: Pick<ApiKey, "user">): User {
     if (!apiKey.user) {
       throw new ForbiddenException("API key owner is missing");
     }

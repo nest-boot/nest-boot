@@ -4,10 +4,9 @@ import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { authorize } from "../common/utils/authorize.util.js";
 import type { AuthModuleOptions } from "../core/interfaces/auth-module-options.interface.js";
 import { RequestIdentity } from "../core/request-identity.js";
-import { ApiKey } from "./entities/api-key.entity.js";
+import { ApiKey, type ApiKeyRecord } from "./entities/api-key.entity.js";
 import type { CreateApiKeyOptions } from "./interfaces/create-api-key-options.interface.js";
 import type { UpdateApiKeyOptions } from "./interfaces/update-api-key-options.interface.js";
-import type { ApiKeyMetadata } from "./types/api-key-metadata.type.js";
 import { generateApiKey, hashApiKey } from "./utils/api-key-credential.util.js";
 
 /**
@@ -63,7 +62,7 @@ export class ApiKeyLifecycle {
    * @param permissions - Permission names to apply.
    * @returns API key after its changes have been persisted.
    */
-  static async update<Key extends ApiKeyMetadata>(
+  static async update<Key extends ApiKeyRecord>(
     em: EntityManager,
     options: AuthModuleOptions,
     apiKey: Key,
@@ -76,7 +75,6 @@ export class ApiKeyLifecycle {
       name: apiKey.name,
       expiresAt: apiKey.expiresAt,
       permissions: apiKey.permissions,
-      lastUsedAt: apiKey.lastUsedAt,
     };
     if (input.name !== undefined) {
       apiKey.name = input.name;
@@ -104,7 +102,7 @@ export class ApiKeyLifecycle {
    * @param apiKey - Authorized credential to revoke.
    * @returns Retained credential metadata with its original revocation time.
    */
-  static async revoke<Key extends ApiKeyMetadata>(
+  static async revoke<Key extends ApiKeyRecord>(
     em: EntityManager,
     options: AuthModuleOptions,
     apiKey: Key,
@@ -115,11 +113,7 @@ export class ApiKeyLifecycle {
       return apiKey;
     }
     const revokedAt = new Date();
-    const candidate = Object.assign(
-      new (apiKey.constructor as new () => Key)(),
-      apiKey,
-      { revokedAt },
-    );
+    const candidate = Object.assign(new ApiKey(), apiKey, { revokedAt });
     authorize("write", candidate);
     authorize("write", candidate, "revokedAt");
     // A conditional write preserves the first timestamp under concurrent revocation.
@@ -163,7 +157,7 @@ export class ApiKeyLifecycle {
    * @param apiKey - API key whose metadata is being accessed.
    * @returns Metadata of the deleted API key.
    */
-  static async delete<Key extends ApiKeyMetadata>(
+  static async delete<Key extends ApiKeyRecord>(
     em: EntityManager,
     options: AuthModuleOptions,
     apiKey: Key,

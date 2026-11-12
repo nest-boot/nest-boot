@@ -4,7 +4,7 @@ import { ForbiddenException } from "@nestjs/common";
 
 import { authorize } from "../../common/utils/authorize.util.js";
 import { can } from "../../common/utils/can.util.js";
-import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
+import type { ApiKeyObject } from "../objects/api-key.object.js";
 
 /**
  * Reads a related identity without granting access merely through credential metadata.
@@ -16,7 +16,7 @@ import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
  * @returns Visible identity, or null when access is denied.
  */
 export async function resolveApiKeyRelation<T extends { id: string }>(
-  key: ApiKeyMetadata,
+  key: ApiKeyObject,
   related: Ref<T> | undefined | null,
   type: EntityClass<T>,
   read: (id: string) => Promise<T | null>,

@@ -11,6 +11,22 @@ import { User } from "../../core/entities/user.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { SystemAccount } from "./system-account.entity.js";
 
+/** Concrete identity types supported by the native polymorphic owner. */
+export interface ApiKeyOwnerMap {
+  user: User;
+  workspace_member: WorkspaceMember;
+  system_account: SystemAccount;
+}
+
+/** Native ORM record whose credential hash may be omitted from a query. */
+export type ApiKeyRecord = Omit<ApiKey, "key">;
+
+/** Persisted credential narrowed to one validated owner kind. */
+export type OwnedApiKey<Kind extends keyof ApiKeyOwnerMap> = ApiKeyRecord & {
+  readonly ownerType: Kind;
+  owner: Ref<ApiKeyOwnerMap[Kind]>;
+};
+
 /** Credential persistence model, mapped by the native ApiKeySchema. */
 
 export class ApiKey extends BaseEntity {

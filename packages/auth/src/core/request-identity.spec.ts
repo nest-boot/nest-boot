@@ -235,8 +235,9 @@ describe("RequestIdentity", () => {
       user,
       workspace,
     });
-    const apiKey = Object.assign(new UserApiKey(new ApiKey()), {
+    const apiKey = Object.assign(new ApiKey(), {
       id: "key",
+      owner: ref(User, user),
       revokedAt: null,
       permissions: ["user:read", "workspace:delete"],
     });
@@ -245,7 +246,7 @@ describe("RequestIdentity", () => {
         user,
         member,
         workspace,
-        apiKey,
+        apiKey: new UserApiKey(apiKey),
       });
       RequestIdentity.prepare(withAuthTestFeatures(options));
       const first = resolveRequestPermissions(withAuthTestFeatures(options));

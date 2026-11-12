@@ -7,7 +7,7 @@ import { resolveAuthFeatures } from "../../core/utils/resolve-auth-features.util
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
-import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
+import type { ApiKeyObject } from "../objects/api-key.object.js";
 import type { ApiKeyValidation } from "../types/api-key-validation.type.js";
 import { hashApiKey } from "../utils/api-key-credential.util.js";
 import { toApiKeyView } from "../utils/api-key-view.util.js";
@@ -128,7 +128,7 @@ export class ApiKeyAuthenticationService {
    * @param apiKey - API key whose metadata is being accessed.
    * @returns Callback that records usage for the captured key.
    */
-  captureUsage(apiKey: ApiKeyMetadata): () => Promise<ApiKeyMetadata> {
+  captureUsage(apiKey: ApiKeyObject): () => Promise<ApiKeyObject> {
     const system = apiKey.ownerType === "system_account";
     // System credentials have no request-role SQL access. Only the framework's
     // captured usage writer bypasses RLS, with an isolated manager and exact key ID.
@@ -149,7 +149,7 @@ export class ApiKeyAuthenticationService {
    * @param apiKey - API key whose metadata is being accessed.
    * @returns Key metadata after recording its last-used timestamp.
    */
-  async recordUsage(apiKey: ApiKeyMetadata): Promise<ApiKeyMetadata> {
+  async recordUsage(apiKey: ApiKeyObject): Promise<ApiKeyObject> {
     const now = new Date();
     apiKey.lastUsedAt = now;
     apiKey.updatedAt = now;

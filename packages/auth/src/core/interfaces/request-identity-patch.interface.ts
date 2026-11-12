@@ -1,4 +1,4 @@
-import type { ApiKeyMetadata } from "../../api-key/types/api-key-metadata.type.js";
+import type { ApiKeyObject } from "../../api-key/objects/api-key.object.js";
 import type { Workspace } from "../../workspace/entities/workspace.entity.js";
 import type { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import type { Session } from "../entities/session.entity.js";
@@ -13,5 +13,5 @@ export interface RequestIdentityPatch {
   member?: WorkspaceMember | null;
   workspace?: Workspace | null;
   session?: Session | null;
-  apiKey?: ApiKeyMetadata | null;
+  apiKey?: ApiKeyObject | null;
 }

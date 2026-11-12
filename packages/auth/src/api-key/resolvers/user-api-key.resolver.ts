@@ -24,7 +24,6 @@ import { CreateUserApiKeyResult } from "../objects/create-user-api-key-result.ob
 import { UserApiKey } from "../objects/user-api-key.object.js";
 import { UserApiKeyPermissionOption } from "../objects/user-api-key-permission-option.object.js";
 import { UserApiKeyService } from "../services/user-api-key.service.js";
-import { type ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
 /** Optional personal credential API. */
 @Resolver(() => User)
@@ -74,7 +73,7 @@ export class UserApiKeyResolver {
   async updateUserApiKey(
     @Args("id", { type: () => ID }) id: string,
     @Args("input") input: UpdateUserApiKeyInput,
-  ): Promise<ApiKeyMetadata<UserApiKey>> {
+  ): Promise<UserApiKey> {
     return await this.apiKeyService.updateUserApiKey(id, input);
   }
 
@@ -96,7 +95,7 @@ export class UserApiKeyResolver {
   @Mutation(() => UserApiKey)
   async deleteUserApiKey(
     @Args("id", { type: () => ID }) id: string,
-  ): Promise<ApiKeyMetadata<UserApiKey>> {
+  ): Promise<UserApiKey> {
     return await this.apiKeyService.deleteUserApiKey(id);
   }
 
@@ -110,7 +109,7 @@ export class UserApiKeyResolver {
   async apiKey(
     @Parent() user: User,
     @Args("id", { type: () => ID }) id: string,
-  ): Promise<ApiKeyMetadata<UserApiKey> | null> {
+  ): Promise<UserApiKey | null> {
     return await this.apiKeyService.getUserApiKey(id, user);
   }
 

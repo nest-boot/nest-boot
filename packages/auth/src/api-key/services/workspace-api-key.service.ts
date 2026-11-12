@@ -37,13 +37,12 @@ import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { ApiKeyLifecycle } from "../api-key-lifecycle.js";
 import { WorkspaceApiKeyConnection } from "../connections/workspace-api-key.connection-definition.js";
-import { ApiKey } from "../entities/api-key.entity.js";
+import { ApiKey, type OwnedApiKey } from "../entities/api-key.entity.js";
 import type { CreateWorkspaceApiKeyOptions } from "../interfaces/create-workspace-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
 import { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
 import type { WorkspaceApiKeyPermissionOption } from "../objects/workspace-api-key-permission-option.object.js";
-import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
@@ -103,7 +102,7 @@ export class WorkspaceApiKeyService {
   async getWorkspaceApiKey(
     id: string,
     workspace: Workspace,
-  ): Promise<ApiKeyMetadata<WorkspaceApiKey> | null> {
+  ): Promise<WorkspaceApiKey | null> {
     assertApiKeyFeature(this.authOptions, "workspaceApiKey");
     this.assertWorkspacePrincipal(workspace);
     authorize("read", WorkspaceApiKey);
@@ -127,7 +126,7 @@ export class WorkspaceApiKeyService {
     args: ConnectionArgsInterface<ApiKey>,
     info?: GraphQLResolveInfo,
     member?: WorkspaceMember,
-  ): Promise<ConnectionResult<ApiKeyMetadata<WorkspaceApiKey>>> {
+  ): Promise<ConnectionResult<WorkspaceApiKey>> {
     assertApiKeyFeature(this.authOptions, "workspaceApiKey");
     this.assertWorkspacePrincipal(workspace);
     authorize("read", WorkspaceApiKey);
@@ -197,7 +196,7 @@ export class WorkspaceApiKeyService {
   async updateWorkspaceApiKey(
     id: string,
     input: UpdateApiKeyOptions,
-  ): Promise<ApiKeyMetadata<WorkspaceApiKey>> {
+  ): Promise<WorkspaceApiKey> {
     assertApiKeyFeature(this.authOptions, "workspaceApiKey");
     authorize("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
@@ -241,9 +240,7 @@ export class WorkspaceApiKeyService {
    * @param id - Identifier of the credential.
    * @returns Retained metadata with its revocation timestamp.
    */
-  async revokeWorkspaceApiKey(
-    id: string,
-  ): Promise<ApiKeyMetadata<WorkspaceApiKey>> {
+  async revokeWorkspaceApiKey(id: string): Promise<WorkspaceApiKey> {
     assertApiKeyFeature(this.authOptions, "workspaceApiKey");
     authorize("write", WorkspaceApiKey);
     const key = await this.findWritableApiKey(id);
@@ -258,9 +255,7 @@ export class WorkspaceApiKeyService {
    * @param id - Identifier of the record to access.
    * @returns Deleted API key metadata without the stored credential hash.
    */
-  async deleteWorkspaceApiKey(
-    id: string,
-  ): Promise<ApiKeyMetadata<WorkspaceApiKey>> {
+  async deleteWorkspaceApiKey(id: string): Promise<WorkspaceApiKey> {
     assertApiKeyFeature(this.authOptions, "workspaceApiKey");
     authorize("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
@@ -343,7 +338,7 @@ export class WorkspaceApiKeyService {
   private async getVisibleApiKey(
     id: string,
     workspace: Workspace,
-  ): Promise<ApiKeyMetadata<WorkspaceApiKey> | null> {
+  ): Promise<OwnedApiKey<"workspace_member"> | null> {
     const apiKey = await this.em.findOne(
       ApiKey,
       {
@@ -367,7 +362,7 @@ export class WorkspaceApiKeyService {
 
   private async findWritableApiKey(
     id: string,
-  ): Promise<ApiKeyMetadata<WorkspaceApiKey>> {
+  ): Promise<OwnedApiKey<"workspace_member">> {
     const apiKey = await this.em.findOne(
       ApiKey,
       { id, ownerType: "workspace_member" },
@@ -427,7 +422,7 @@ export class WorkspaceApiKeyService {
   }
 
   private assertWorkspace(
-    apiKey: ApiKeyMetadata,
+    apiKey: Pick<ApiKey, "member">,
     expectedWorkspace: Workspace,
   ): void {
     const workspace = this.unwrapWorkspace(apiKey);
@@ -438,7 +433,7 @@ export class WorkspaceApiKeyService {
     }
   }
 
-  private unwrapWorkspace(apiKey: ApiKeyMetadata): Workspace {
+  private unwrapWorkspace(apiKey: Pick<ApiKey, "member">): Workspace {
     if (!apiKey.member) {
       throw new ForbiddenException("API key owner is missing");
     }

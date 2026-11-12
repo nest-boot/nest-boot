@@ -32,7 +32,6 @@ import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
 import { SystemApiKey } from "../objects/system-api-key.object.js";
 import type { SystemApiKeyPermissionOption } from "../objects/system-api-key-permission-option.object.js";
-import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
@@ -109,9 +108,7 @@ export class SystemApiKeyService {
    * @param id - Identifier of the target record.
    * @returns Credential metadata, or null when it is unavailable.
    */
-  async getSystemApiKey(
-    id: string,
-  ): Promise<ApiKeyMetadata<SystemApiKey> | null> {
+  async getSystemApiKey(id: string): Promise<SystemApiKey | null> {
     this.assertAccess("read");
     return await runAuthQuery(this.em, async (em) => {
       const key = await em.findOne(
@@ -139,7 +136,7 @@ export class SystemApiKeyService {
     systemAccountId: string | undefined,
     args: ConnectionArgsInterface<ApiKey>,
     info?: GraphQLResolveInfo,
-  ): Promise<ConnectionResult<ApiKeyMetadata<SystemApiKey>>> {
+  ): Promise<ConnectionResult<SystemApiKey>> {
     this.assertAccess("read");
     return await runAuthQuery(this.em, async (em) => {
       const page = await new ConnectionManager(em as SqlEntityManager).find(
@@ -236,7 +233,7 @@ export class SystemApiKeyService {
   async updateSystemApiKey(
     id: string,
     input: UpdateApiKeyOptions,
-  ): Promise<ApiKeyMetadata<SystemApiKey>> {
+  ): Promise<SystemApiKey> {
     this.assertAccess("write");
     const permissions =
       input.permissions === undefined
@@ -331,7 +328,7 @@ export class SystemApiKeyService {
    * @param id - Identifier of the credential.
    * @returns Retained audit metadata with its revocation timestamp.
    */
-  async revokeSystemApiKey(id: string): Promise<ApiKeyMetadata<SystemApiKey>> {
+  async revokeSystemApiKey(id: string): Promise<SystemApiKey> {
     this.assertAccess("write");
     return await runAuthQuery(this.em, async (em) => {
       const key = await em.findOne(
@@ -353,7 +350,7 @@ export class SystemApiKeyService {
    * @param id - Identifier of the target record.
    * @returns Metadata of the deleted credential.
    */
-  async deleteSystemApiKey(id: string): Promise<ApiKeyMetadata<SystemApiKey>> {
+  async deleteSystemApiKey(id: string): Promise<SystemApiKey> {
     this.assertAccess("write");
     return await runAuthQuery(this.em, async (em) => {
       const key = await em.findOne(ApiKey, {

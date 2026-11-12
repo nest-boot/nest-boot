@@ -1,15 +1,5 @@
 import { OidcPrompt } from "./generic-oauth-provider-config.type.js";
 
-export const OIDC_ENV_NAMES = [
-  "AUTH_OIDC_ENABLED",
-  "AUTH_OIDC_CLIENT_ID",
-  "AUTH_OIDC_CLIENT_SECRET",
-  "AUTH_OIDC_DISCOVERY_URL",
-  "AUTH_OIDC_DISABLE_SIGN_UP",
-  "AUTH_OIDC_PROMPT",
-  "AUTH_OIDC_SCOPES",
-] as const;
-
 export const REQUIRED_OIDC_ENV_NAMES = [
   "AUTH_OIDC_CLIENT_ID",
   "AUTH_OIDC_CLIENT_SECRET",

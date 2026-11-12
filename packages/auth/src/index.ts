@@ -74,7 +74,6 @@ export * from "./api-key/resolvers/workspace-api-key-relation.resolver.js";
 export * from "./api-key/services/system-api-key.service.js";
 export * from "./api-key/services/user-api-key.service.js";
 export * from "./api-key/services/workspace-api-key.service.js";
-export type { ApiKeyMetadata } from "./api-key/types/api-key-metadata.type.js";
 export * from "./api-key/types/api-key-validation.type.js";
 export * from "./api-key/utils/extract-api-key.util.js";
 export { AuthAbility } from "./common/auth.ability.js";

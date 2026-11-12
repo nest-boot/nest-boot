@@ -2,7 +2,12 @@ import type { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 
-import type { ApiKeyMetadata } from "../api-key/types/api-key-metadata.type.js";
+import type {
+  ApiKey,
+  ApiKeyRecord,
+} from "../api-key/entities/api-key.entity.js";
+import type { ApiKeyObject } from "../api-key/objects/api-key.object.js";
+import { toApiKeyView } from "../api-key/utils/api-key-view.util.js";
 import { getCurrentApiKey } from "../api-key/utils/get-current-api-key.util.js";
 import { AuthAbility } from "../common/auth.ability.js";
 import { invalidateRequestPermissions } from "../common/utils/resolve-request-permissions.util.js";
@@ -122,7 +127,7 @@ export class RequestIdentity {
    * @param apiKey - API key whose metadata is being accessed.
    * @returns Whether the key matches the credential authenticating this request.
    */
-  static isCurrentApiKey(apiKey: ApiKeyMetadata): boolean {
+  static isCurrentApiKey(apiKey: Pick<ApiKey, "id" | "ownerType">): boolean {
     const current = getCurrentApiKey();
     return (
       !!current &&
@@ -138,7 +143,7 @@ export class RequestIdentity {
    */
   static assertApiKeyCanCommit(
     em: EntityManager,
-    apiKey: ApiKeyMetadata,
+    apiKey: Pick<ApiKey, "id" | "ownerType">,
   ): void {
     if (this.isCurrentApiKey(apiKey) && em.isInTransaction()) {
       throw new BadRequestException(
@@ -201,7 +206,7 @@ export class RequestIdentity {
   static updateApiKey(
     em: EntityManager,
     options: AuthModuleOptions,
-    apiKey: ApiKeyMetadata,
+    apiKey: ApiKeyRecord,
     deleted = false,
   ): void {
     if (!this.isCurrentApiKey(apiKey)) {
@@ -214,7 +219,7 @@ export class RequestIdentity {
     ) {
       this.clear(em);
     } else {
-      this.update(em, options, { apiKey });
+      this.update(em, options, { apiKey: toApiKeyView(apiKey) });
     }
   }
 
@@ -250,7 +255,7 @@ export class RequestIdentity {
       RequestContext.set(Session, patch.session ?? null);
     }
     if ("apiKey" in patch) {
-      RequestContext.set<ApiKeyMetadata | null>(API_KEY, patch.apiKey ?? null);
+      RequestContext.set<ApiKeyObject | null>(API_KEY, patch.apiKey ?? null);
     }
     invalidateRequestPermissions();
     RequestContext.set(AuthAbility, null);

@@ -19,7 +19,6 @@ import {
 import { ApiKey } from "../entities/api-key.entity.js";
 import { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
 import { WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
-import { type ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
 /** Optional selected-workspace credential aggregation. */
 @Resolver(() => Workspace)
@@ -40,7 +39,7 @@ export class WorkspaceApiKeyConnectionResolver {
   async apiKey(
     @Parent() workspace: Workspace,
     @Args("id", { type: () => ID }) id: string,
-  ): Promise<ApiKeyMetadata<WorkspaceApiKey> | null> {
+  ): Promise<WorkspaceApiKey | null> {
     return await this.apiKeyService.getWorkspaceApiKey(id, workspace);
   }
 

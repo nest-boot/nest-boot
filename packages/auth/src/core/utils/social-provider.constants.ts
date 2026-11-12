@@ -6,12 +6,6 @@ export const SOCIAL_PROVIDER_ENV_CONFIGS = {
     disableSignUp: "AUTH_GITHUB_DISABLE_SIGN_UP",
     enabled: "AUTH_GITHUB_ENABLED",
     envPrefix: "AUTH_GITHUB_*",
-    envNames: [
-      "AUTH_GITHUB_CLIENT_ID",
-      "AUTH_GITHUB_CLIENT_SECRET",
-      "AUTH_GITHUB_DISABLE_SIGN_UP",
-      "AUTH_GITHUB_ENABLED",
-    ],
   },
   google: {
     displayName: "Google",
@@ -20,12 +14,6 @@ export const SOCIAL_PROVIDER_ENV_CONFIGS = {
     disableSignUp: "AUTH_GOOGLE_DISABLE_SIGN_UP",
     enabled: "AUTH_GOOGLE_ENABLED",
     envPrefix: "AUTH_GOOGLE_*",
-    envNames: [
-      "AUTH_GOOGLE_CLIENT_ID",
-      "AUTH_GOOGLE_CLIENT_SECRET",
-      "AUTH_GOOGLE_DISABLE_SIGN_UP",
-      "AUTH_GOOGLE_ENABLED",
-    ],
   },
 } as const;
 
