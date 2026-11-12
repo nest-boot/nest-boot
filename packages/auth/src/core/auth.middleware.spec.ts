@@ -33,7 +33,6 @@ import {
 import { AuthMiddleware } from "./auth.middleware.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { AuthContext } from "./auth-context.js";
-import { AuthTransactionSubscriber } from "./auth-transaction.subscriber.js";
 import { API_KEY } from "./constants/auth.constants.js";
 import {
   Account as AccountEntity,
@@ -119,7 +118,6 @@ async function createMiddleware(
     providers: [
       AuthMiddleware,
       AuthContext,
-      AuthTransactionSubscriber,
       {
         provide: MODULE_OPTIONS_TOKEN,
         useValue: withAuthTestFeatures({

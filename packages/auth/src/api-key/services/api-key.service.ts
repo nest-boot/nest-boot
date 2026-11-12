@@ -79,6 +79,7 @@ export class ApiKeyService {
     input: UpdateApiKeyOptions,
     permissions: string[] | undefined,
   ): Promise<Key> {
+    this.assertCurrentKeyCanChange(apiKey);
     this.assertExpiration(input.expiresAt);
     const data = {
       ...(input.name !== undefined && { name: input.name }),
@@ -111,6 +112,7 @@ export class ApiKeyService {
    * @returns Retained credential metadata with its original revocation time.
    */
   async revoke<Key extends ApiKeyRecord>(apiKey: Key): Promise<Key> {
+    this.assertCurrentKeyCanChange(apiKey);
     authorize("write", apiKey, "revokedAt");
     if (apiKey.revokedAt) {
       this.publish(apiKey);
@@ -159,6 +161,7 @@ export class ApiKeyService {
    * @returns Metadata of the deleted API key.
    */
   async delete<Key extends ApiKeyRecord>(apiKey: Key): Promise<Key> {
+    this.assertCurrentKeyCanChange(apiKey);
     await this.manager.remove(apiKey).flush();
     this.publish(apiKey, true);
     return apiKey;
@@ -184,6 +187,14 @@ export class ApiKeyService {
       this.authContext.clear();
     } else {
       this.authContext.set({ apiKey: toApiKeyView(apiKey) });
+    }
+  }
+
+  private assertCurrentKeyCanChange(apiKey: ApiKeyRecord): void {
+    if (isCurrentApiKey(apiKey) && this.manager.isInTransaction()) {
+      throw new BadRequestException(
+        "Change the current API key outside an active transaction",
+      );
     }
   }
 }

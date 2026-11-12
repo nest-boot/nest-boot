@@ -494,6 +494,43 @@ describe("SessionService", () => {
 describe("session management", () => {
   describe("SessionService management", () => {
     it.each(["one", "all", "impersonator"] as const)(
+      "rejects current %s revocation in an external transaction without RLS before writing",
+      async (scope) => {
+        const { em, service } = createService();
+        const user = Object.assign(new User(), { id: "self" });
+        const administrator = Object.assign(new User(), {
+          id: "administrator",
+        });
+        const session = Object.assign(new Session(), {
+          id: "current",
+          user,
+          impersonatedBy: scope === "impersonator" ? administrator : null,
+        });
+        em.isInTransaction.mockReturnValue(true);
+        await RequestContext.run(
+          new RequestContext({ type: "test" }),
+          async () => {
+            RequestContext.set(User, user);
+            RequestContext.set(Session, session);
+            await expect(
+              scope === "one"
+                ? service.revokeSession(user, session.id)
+                : service.revokeUserSessions(
+                    scope === "impersonator" ? administrator : user,
+                  ),
+            ).rejects.toThrow(
+              "Revoke the current session outside an active transaction",
+            );
+            expect(em.transactional).not.toHaveBeenCalled();
+            expect(em.remove).not.toHaveBeenCalled();
+            expect(em.nativeDelete).not.toHaveBeenCalled();
+            expect(RequestContext.get(User)).toBe(user);
+            expect(RequestContext.get(Session)).toBe(session);
+          },
+        );
+      },
+    );
+    it.each(["one", "all", "impersonator"] as const)(
       "publishes administrative %s revocation only after a successful commit",
       async (scope) => {
         const { em, service } = createService();

@@ -40,7 +40,6 @@ import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import * as abilityFactory from "./auth-ability.factory.js";
 import { AuthContext } from "./auth-context.js";
-import { AuthTransactionSubscriber } from "./auth-transaction.subscriber.js";
 import { API_KEY, IS_PUBLIC_KEY } from "./constants/auth.constants.js";
 import { Session as BaseSession } from "./entities/session.entity.js";
 import { User as BaseUser } from "./entities/user.entity.js";
@@ -395,7 +394,6 @@ async function createGuard<T extends AuthGuard>(
     providers: [
       guardType,
       AuthContext,
-      AuthTransactionSubscriber,
       { provide: EntityManager, useValue: {} },
       TestController,
       {
@@ -1838,7 +1836,6 @@ describe("permission checks", () => {
       providers: [
         PermissionAuthGuard,
         AuthContext,
-        AuthTransactionSubscriber,
         { provide: EntityManager, useValue: {} },
         {
           provide: Reflector,

@@ -95,7 +95,6 @@ export * from "./core/auth.middleware.js";
 export * from "./core/auth.module.js";
 export * from "./core/auth-context.js";
 export { entities, workspaceEntities } from "./core/auth-entities.js";
-export * from "./core/auth-transaction.subscriber.js";
 export * from "./core/connections/account.connection-definition.js";
 export * from "./core/connections/session.connection-definition.js";
 export * from "./core/connections/user.connection-definition.js";

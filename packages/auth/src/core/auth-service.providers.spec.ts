@@ -23,7 +23,6 @@ import { WorkspaceInvitationService } from "../workspace/services/workspace-invi
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { AuthContext } from "./auth-context.js";
 import { authServiceProviders } from "./auth-service.providers.js";
-import { AuthTransactionSubscriber } from "./auth-transaction.subscriber.js";
 import { AUTH_TOKEN } from "./constants/auth.constants.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
@@ -310,7 +309,6 @@ async function createProvider<T>(
     providers: [
       ...authServiceProviders,
       AuthContext,
-      AuthTransactionSubscriber,
       { provide: EntityManager, useValue: em },
       { provide: MODULE_OPTIONS_TOKEN, useValue: options },
       { provide: AUTH_TOKEN, useValue: {} },

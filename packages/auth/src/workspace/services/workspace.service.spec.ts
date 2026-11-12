@@ -28,6 +28,61 @@ import { WorkspaceInvitation } from "../entities/workspace-invitation.entity.js"
 import { WorkspaceMember } from "../entities/workspace-member.entity.js";
 
 describe("WorkspaceService and cross-domain coordination", () => {
+  it.each(["update", "delete"] as const)(
+    "rejects platform %s of the selected workspace in an external transaction before writing",
+    async (operation) => {
+      const { workspaceService, em } = createWorkspaceServices();
+      const workspace = createTestWorkspace();
+      em.isInTransaction.mockReturnValue(true);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(Workspace, workspace);
+          await expect(
+            operation === "update"
+              ? workspaceService.updatePlatformWorkspace(workspace.id, {
+                  name: "Denied",
+                })
+              : workspaceService.deletePlatformWorkspace(workspace.id),
+          ).rejects.toThrow(
+            "Change the current workspace outside an active transaction",
+          );
+          expect(em.findOne).not.toHaveBeenCalled();
+          expect(em.transactional).not.toHaveBeenCalled();
+          expect(em.flush).not.toHaveBeenCalled();
+          expect(em.nativeDelete).not.toHaveBeenCalled();
+          expect(RequestContext.get(Workspace)).toBe(workspace);
+        },
+      );
+    },
+  );
+  it.each(["update", "delete"] as const)(
+    "allows platform %s of another workspace in an external transaction",
+    async (operation) => {
+      const { workspaceService, em } = createWorkspaceServices();
+      const current = createTestWorkspace();
+      const target = Object.assign(new Workspace(), {
+        id: "other",
+        name: "Other",
+      });
+      em.isInTransaction.mockReturnValue(true);
+      em.findOne.mockResolvedValue(target);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(Workspace, current);
+          await expect(
+            operation === "update"
+              ? workspaceService.updatePlatformWorkspace(target.id, {
+                  name: "Updated",
+                })
+              : workspaceService.deletePlatformWorkspace(target.id),
+          ).resolves.toBe(target);
+          expect(RequestContext.get(Workspace)).toBe(current);
+        },
+      );
+    },
+  );
   it.each(["member", "member-key"] as const)(
     "refreshes workspace-profile-dependent abilities after commit for a %s",
     async (principal) => {

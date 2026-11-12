@@ -103,6 +103,7 @@ export class WorkspaceService {
     input: UpdateWorkspaceOptions,
   ): Promise<Workspace> {
     authorize("update-any", Workspace);
+    this.assertCurrentWorkspaceCanChange(id);
     const workspace = await runAuthQuery(this.em, (em) =>
       em.transactional(
         async (tx) => {
@@ -141,6 +142,7 @@ export class WorkspaceService {
    */
   async deletePlatformWorkspace(id: string): Promise<Workspace> {
     authorize("delete-any", Workspace);
+    this.assertCurrentWorkspaceCanChange(id);
     const workspace = await runAuthQuery(this.em, (em) =>
       em.transactional(
         async (tx) => {
@@ -185,6 +187,18 @@ export class WorkspaceService {
       authorize("read", workspace);
     }
     return workspace ?? null;
+  }
+
+  private assertCurrentWorkspaceCanChange(id: string): void {
+    if (
+      RequestContext.isActive() &&
+      RequestContext.get(Workspace)?.id === id &&
+      this.em.isInTransaction()
+    ) {
+      throw new BadRequestException(
+        "Change the current workspace outside an active transaction",
+      );
+    }
   }
 
   /**

@@ -10,7 +10,6 @@ import { Workspace } from "../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
 import { resolveRequestWorkspaceMember } from "../workspace/utils/resolve-request-workspace-member.util.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
-import { AuthTransactionSubscriber } from "./auth-transaction.subscriber.js";
 import { API_KEY } from "./constants/auth.constants.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
@@ -25,7 +24,6 @@ export class AuthContext {
   constructor(
     private readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN) private readonly options: AuthModuleOptions,
-    private readonly transactions: AuthTransactionSubscriber,
   ) {}
 
   get user(): User | null {
@@ -61,36 +59,37 @@ export class AuthContext {
   }
 
   /**
-   * Updates authorization only after the surrounding transaction has committed.
+   * Updates authorization after the service has persisted its changes.
    * @param identity - Identity values to publish.
    */
   set(identity: AuthContextPatch): void {
-    this.transactions.afterCommit(() => {
-      this.assign(identity);
-      try {
-        const current = this.requestManager.getSessionContext();
-        const scope = this.databaseScope();
-        if (
-          current &&
-          (current.role !== scope.role ||
-            Object.entries(scope.variables).some(
-              ([key, value]) => current.variables?.[key] !== value,
-            ))
-        ) {
-          this.requestManager.setSessionContext(scope);
-        }
-        this.refresh();
-      } catch (error) {
-        this.clearNow();
-        throw error;
+    if (!RequestContext.isActive()) {
+      return;
+    }
+    this.assign(identity);
+    try {
+      const current = this.requestManager.getSessionContext();
+      const scope = this.databaseScope();
+      if (
+        current &&
+        (current.role !== scope.role ||
+          Object.entries(scope.variables).some(
+            ([key, value]) => current.variables?.[key] !== value,
+          ))
+      ) {
+        this.requestManager.setSessionContext(scope);
       }
-    });
+      this.refresh();
+    } catch (error) {
+      this.clear();
+      throw error;
+    }
   }
 
   clear(): void {
-    this.transactions.afterCommit(() => {
-      this.clearNow();
-    });
+    if (RequestContext.isActive()) {
+      clearAuthenticationContext(this.requestManager);
+    }
   }
 
   clearWorkspace(): void {
@@ -124,10 +123,6 @@ export class AuthContext {
     return RequestContext.isActive()
       ? (RequestContext.get(EntityManager) ?? this.em)
       : this.em;
-  }
-
-  private clearNow(): void {
-    clearAuthenticationContext(this.requestManager);
   }
 
   private assign(patch: AuthContextPatch): void {

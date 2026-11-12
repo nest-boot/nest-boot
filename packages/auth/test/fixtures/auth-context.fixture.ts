@@ -6,7 +6,6 @@ import { ApiKeyService } from "../../src/api-key/services/api-key.service.js";
 import { AuthAbility } from "../../src/common/auth.ability.js";
 import { invalidateRequestPermissions } from "../../src/common/utils/resolve-request-permissions.util.js";
 import { AuthContext } from "../../src/core/auth-context.js";
-import { AuthTransactionSubscriber } from "../../src/core/auth-transaction.subscriber.js";
 import { API_KEY } from "../../src/core/constants/auth.constants.js";
 import { Session } from "../../src/core/entities/session.entity.js";
 import { User } from "../../src/core/entities/user.entity.js";
@@ -28,19 +27,7 @@ export function createTestAuthContext(
     getSessionContext: vi.fn(),
     setSessionContext: vi.fn(),
   }) as EntityManager;
-  if (!manager.getTransactionContext) {
-    Object.assign(manager, { getTransactionContext: vi.fn() });
-  }
-  const transactions = new AuthTransactionSubscriber(manager);
-  const context = new AuthContext(
-    manager,
-    options as AuthModuleOptions,
-    transactions,
-  );
-  if (typeof manager.getEventManager === "function") {
-    transactions.onModuleInit();
-  }
-  return context;
+  return new AuthContext(manager, options as AuthModuleOptions);
 }
 /**
  * Constructs shared credential persistence with its real context dependency.

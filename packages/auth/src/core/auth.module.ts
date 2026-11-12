@@ -52,7 +52,6 @@ import { AuthContext } from "./auth-context.js";
 import { AuthEnumRegistry } from "./auth-enum-registry.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { authServiceProviders } from "./auth-service.providers.js";
-import { AuthTransactionSubscriber } from "./auth-transaction.subscriber.js";
 import { AUTH_TOKEN } from "./constants/auth.constants.js";
 import {
   DEFAULT_USER_PERMISSIONS,
@@ -100,7 +99,6 @@ class AuthOptionsHostModule {}
     ...apiKeyProviders,
     ...workspaceProviders,
     AuthContext,
-    AuthTransactionSubscriber,
     ApiKeyService,
     AccountService,
     ApiKeyUsageInterceptor,
@@ -128,7 +126,6 @@ class AuthOptionsHostModule {}
   ],
   exports: [
     AuthContext,
-    AuthTransactionSubscriber,
     ApiKeyService,
     AccountService,
     SystemAccountService,

@@ -140,6 +140,9 @@ export class SessionService {
         ? RequestContext.get(Session)
         : null;
       const revokesCurrent = current?.id === id;
+      if (revokesCurrent) {
+        this.assertRevocationCanCommit();
+      }
       const revoked = await em.transactional(
         async (em) => {
           const session = await em.findOne(
@@ -180,6 +183,9 @@ export class SessionService {
         : null;
       const revokesCurrent =
         current?.user.id === user.id || current?.impersonatedBy?.id === user.id;
+      if (revokesCurrent) {
+        this.assertRevocationCanCommit();
+      }
       const count = await em.transactional(
         async (em) => {
           const sessions = await em.find(
@@ -314,7 +320,7 @@ export class SessionService {
    * @returns Whether the selected session was revoked successfully.
    */
   async revokeCurrentUserSession(id: string): Promise<boolean> {
-    this.assertBackendRevocationCanCommit();
+    this.assertRevocationCanCommit();
     const session = (await this.listCurrentUserSessions()).find(
       (candidate) => String(candidate.id) === id,
     );
@@ -342,7 +348,7 @@ export class SessionService {
    * @returns Whether the other sessions were revoked successfully.
    */
   async revokeCurrentUserOtherSessions(): Promise<boolean> {
-    this.assertBackendRevocationCanCommit();
+    this.assertRevocationCanCommit();
     const result = await this.auth.api.revokeOtherSessions({
       headers: headers(),
     });
@@ -354,7 +360,7 @@ export class SessionService {
    * @returns Whether the user's sessions were revoked successfully.
    */
   async revokeCurrentUserSessions(): Promise<boolean> {
-    this.assertBackendRevocationCanCommit();
+    this.assertRevocationCanCommit();
     const result = await this.auth.api.revokeSessions({ headers: headers() });
     if (result.status) {
       this.authContext.clear();
@@ -387,7 +393,7 @@ export class SessionService {
     expireCookieAndChunks(cookieStore, authCookies.sessionData);
     expireCookieAndChunks(cookieStore, authCookies.accountData);
   }
-  private assertBackendRevocationCanCommit(): void {
+  private assertRevocationCanCommit(): void {
     if (this.em.isInTransaction()) {
       throw new BadRequestException(
         "Revoke the current session outside an active transaction",

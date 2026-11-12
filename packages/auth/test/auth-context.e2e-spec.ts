@@ -1,23 +1,21 @@
-import assert from "node:assert/strict";
-
 import { EntityManager, ref } from "@mikro-orm/core";
 import { MikroORM } from "@mikro-orm/pglite";
 import { getDatabaseConfig } from "@nest-boot/database";
 import { RequestContext } from "@nest-boot/request-context";
+import { BadRequestException } from "@nestjs/common";
 
 import { ApiKey } from "../src/api-key/entities/api-key.entity.js";
 import { ApiKeyService } from "../src/api-key/services/api-key.service.js";
 import { UserApiKeyService } from "../src/api-key/services/user-api-key.service.js";
 import { toApiKeyView } from "../src/api-key/utils/api-key-view.util.js";
 import { AuthContext } from "../src/core/auth-context.js";
-import { AuthTransactionSubscriber } from "../src/core/auth-transaction.subscriber.js";
 import { User } from "../src/core/entities/user.entity.js";
 import { entities, workspaceEntities } from "../src/index.js";
 import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 
 const options = withAuthTestFeatures({ workspace: { enabled: true } });
 
-describe("Nest auth providers with native transaction boundaries", () => {
+describe("Auth request identity and persistence boundaries", () => {
   let orm: MikroORM;
   let context: AuthContext;
   let keys: UserApiKeyService;
@@ -43,9 +41,7 @@ describe("Nest auth providers with native transaction boundaries", () => {
       "alter default privileges in schema public grant all on tables to anonymous, authenticated",
     );
     await orm.schema.create();
-    const transactions = new AuthTransactionSubscriber(orm.em);
-    transactions.onModuleInit();
-    context = new AuthContext(orm.em, options, transactions);
+    context = new AuthContext(orm.em, options);
     keys = new UserApiKeyService(
       orm.em,
       options,
@@ -99,207 +95,126 @@ describe("Nest auth providers with native transaction boundaries", () => {
     return await admin.findOneOrFail(ApiKey, id);
   }
 
-  it.each([false, true])(
-    "publishes self-revocation only after the outer commit (rollback=%s)",
-    async (rollback) => {
+  const operations = ["update", "revoke", "delete"] as const;
+  type Operation = (typeof operations)[number];
+
+  /**
+   * Executes a public mutation against a selected credential.
+   * @param operation - Mutation to exercise.
+   * @param id - Credential identifier.
+   * @returns Public credential metadata.
+   */
+  function changeKey(operation: Operation, id: string) {
+    switch (operation) {
+      case "update":
+        return keys.updateUserApiKey(id, { permissions: ["user:read"] });
+      case "revoke":
+        return keys.revokeUserApiKey(id);
+      case "delete":
+        return keys.deleteUserApiKey(id);
+    }
+  }
+
+  it.each(
+    (["scoped", "base", "savepoint", "manual"] as const).flatMap((mode) =>
+      operations.map((operation) => ({ mode, operation })),
+    ),
+  )(
+    "rejects self-$operation before writing in a $mode transaction",
+    async ({ mode, operation }) => {
       await inRequest(async ({ em, key, user }) => {
         const identity = context.apiKey;
-        const mutation = em.transactional(async () => {
-          await keys.revokeUserApiKey(key.id);
+        if (mode !== "scoped") {
+          em.clearSessionContext();
+        }
+        const scope = em.getSessionContext();
+        const denied = async () => {
+          await expect(changeKey(operation, key.id)).rejects.toBeInstanceOf(
+            BadRequestException,
+          );
           expect(context.apiKey).toBe(identity);
           expect(context.user).toBe(user);
-          if (rollback) {
-            throw new Error("Rollback requested");
+        };
+        if (mode === "manual") {
+          await em.begin();
+          try {
+            await denied();
+          } finally {
+            await em.rollback();
           }
-        });
-        if (rollback) {
-          await expect(mutation).rejects.toThrow("Rollback requested");
         } else {
-          await mutation;
+          await em.transactional(async (tx) => {
+            if (mode === "savepoint") {
+              await tx.transactional(denied);
+            } else {
+              await denied();
+            }
+          });
         }
-        const stored = await readStoredKey(key.id);
-        if (rollback) {
-          expect(stored.revokedAt).toBeNull();
-          expect(stored.lastUsedAt).toBeNull();
-          expect(context.apiKey).toBe(identity);
+        expect(await readStoredKey(key.id)).toMatchObject({
+          name: "Original",
+          revokedAt: null,
+          lastUsedAt: null,
+          permissions: ["user-api-key:write", "user:read"],
+        });
+        expect(context.apiKey).toBe(identity);
+        expect(em.getSessionContext()).toEqual(scope);
+      });
+    },
+  );
+
+  it.each(operations)(
+    "publishes self-%s immediately after successful persistence outside a transaction",
+    async (operation) => {
+      await inRequest(async ({ em, key, user }) => {
+        const identity = context.apiKey;
+        const result = await changeKey(operation, key.id);
+        expect(result).not.toHaveProperty("key");
+        if (operation === "update") {
+          expect((await readStoredKey(key.id)).permissions).toEqual([
+            "user:read",
+          ]);
+          expect(context.apiKey).not.toBe(identity);
+          expect(context.apiKey?.permissions).toEqual(["user:read"]);
+          expect(context.user).toBe(user);
           expect(em.getSessionContext()?.role).toBe("authenticated");
         } else {
-          expect(stored.revokedAt).toBeInstanceOf(Date);
-          expect(stored.lastUsedAt).toEqual(stored.revokedAt);
           expect(context.apiKey).toBeNull();
           expect(context.user).toBeNull();
           expect(em.getSessionContext()?.role).toBe("anonymous");
-        }
-      });
-    },
-  );
-
-  it.each(["outer", "savepoint", "none"] as const)(
-    "keeps nested revocation attached to its outer transaction (rollback=%s)",
-    async (rollback) => {
-      await inRequest(async ({ em, key }) => {
-        const identity = context.apiKey;
-        const outer = em.transactional(async (tx) => {
-          const nested = tx.transactional(async () => {
-            await keys.revokeUserApiKey(key.id);
-            expect(context.apiKey).toBe(identity);
-            if (rollback === "savepoint") {
-              throw new Error("Savepoint rollback");
-            }
-          });
-          if (rollback === "savepoint") {
-            await expect(nested).rejects.toThrow("Savepoint rollback");
+          if (operation === "revoke") {
+            expect((await readStoredKey(key.id)).revokedAt).toEqual(
+              result.revokedAt,
+            );
           } else {
-            await nested;
+            expect(await orm.em.fork().count(ApiKey, key.id)).toBe(0);
           }
-          expect(context.apiKey).toBe(identity);
-          if (rollback === "outer") {
-            throw new Error("Outer rollback");
-          }
-        });
-        if (rollback === "outer") {
-          await expect(outer).rejects.toThrow("Outer rollback");
-        } else {
-          await outer;
         }
-        const stored = await readStoredKey(key.id);
-        expect(Boolean(stored.revokedAt)).toBe(rollback === "none");
-        expect(context.apiKey).toBe(rollback === "none" ? null : identity);
       });
     },
   );
 
-  it.each([false, true])(
-    "retains the previous credential snapshot until a permission edit commits (rollback=%s)",
-    async (rollback) => {
-      await inRequest(async ({ em, key }) => {
-        const before = context.apiKey;
-        assert(before);
-        const update = em.transactional(async () => {
-          await keys.updateUserApiKey(key.id, { permissions: ["user:read"] });
-          expect(context.apiKey).toBe(before);
-          expect(context.apiKey?.permissions).toEqual([
-            "user-api-key:write",
-            "user:read",
-          ]);
-          if (rollback) {
-            throw new Error("Update rollback");
-          }
-        });
-        if (rollback) {
-          await expect(update).rejects.toThrow("Update rollback");
-        } else {
-          await update;
-        }
-        expect(context.apiKey?.permissions).toEqual(
-          rollback ? ["user-api-key:write", "user:read"] : ["user:read"],
-        );
-        expect((await readStoredKey(key.id)).permissions).toEqual(
-          context.apiKey?.permissions,
-        );
-        expect(context.apiKey).not.toHaveProperty("key");
+  it("allows changing another key in a transaction and preserves identity on rollback", async () => {
+    await inRequest(async ({ em, user }) => {
+      const other = em.create(ApiKey, {
+        owner: ref(User, user),
+        name: "Other",
+        key: crypto.randomUUID(),
+        permissions: ["user:read"],
       });
-    },
-  );
-  it.each(["outer", "savepoint", "none"] as const)(
-    "does not replay a rolled-back permission change during outer flush (rollback=%s)",
-    async (rollback) => {
-      await inRequest(async ({ em, key }) => {
-        const identity = context.apiKey;
-        const outer = em.transactional(async (tx) => {
-          const nested = tx.transactional(async () => {
-            await keys.updateUserApiKey(key.id, { permissions: ["user:read"] });
-            expect(context.apiKey).toBe(identity);
-            if (rollback === "savepoint") {
-              throw new Error("Savepoint rollback");
-            }
-          });
-          if (rollback === "savepoint") {
-            await expect(nested).rejects.toThrow("Savepoint rollback");
-          } else {
-            await nested;
-          }
+      await em.persist(other).flush();
+      const identity = context.apiKey;
+      await expect(
+        em.transactional(async () => {
+          await keys.updateUserApiKey(other.id, { name: "Rolled back" });
           expect(context.apiKey).toBe(identity);
-          if (rollback === "outer") {
-            throw new Error("Outer rollback");
-          }
-        });
-        if (rollback === "outer") {
-          await expect(outer).rejects.toThrow("Outer rollback");
-        } else {
-          await outer;
-        }
-        const expected =
-          rollback === "none"
-            ? ["user:read"]
-            : ["user-api-key:write", "user:read"];
-        expect((await readStoredKey(key.id)).permissions).toEqual(expected);
-        expect(context.apiKey?.permissions).toEqual(expected);
-      });
-    },
-  );
-
-  it.each(["outer", "savepoint", "none"] as const)(
-    "publishes key deletion after the outer commit (rollback=%s)",
-    async (rollback) => {
-      await inRequest(async ({ em, key }) => {
-        const identity = context.apiKey;
-        const outer = em.transactional(async (tx) => {
-          const nested = tx.transactional(async () => {
-            await keys.deleteUserApiKey(key.id);
-            expect(context.apiKey).toBe(identity);
-            if (rollback === "savepoint") {
-              throw new Error("Savepoint rollback");
-            }
-          });
-          if (rollback === "savepoint") {
-            await expect(nested).rejects.toThrow("Savepoint rollback");
-          } else {
-            await nested;
-          }
-          expect(context.apiKey).toBe(identity);
-          if (rollback === "outer") {
-            throw new Error("Outer rollback");
-          }
-        });
-        if (rollback === "outer") {
-          await expect(outer).rejects.toThrow("Outer rollback");
-        } else {
-          await outer;
-        }
-        const admin = orm.em.fork();
-        admin.clearSessionContext();
-        expect(await admin.count(ApiKey, key.id)).toBe(
-          rollback === "none" ? 0 : 1,
-        );
-        expect(context.apiKey).toBe(rollback === "none" ? null : identity);
-      });
-    },
-  );
-
-  it.each([false, true])(
-    "handles explicit begin/commit and rollback without leaking an uncommitted identity (rollback=%s)",
-    async (rollback) => {
-      await inRequest(async ({ em, key }) => {
-        const identity = context.apiKey;
-        await em.begin();
-        await keys.revokeUserApiKey(key.id);
-        expect(context.apiKey).toBe(identity);
-        if (rollback) {
-          await em.rollback();
-        } else {
-          await em.commit();
-        }
-        expect(Boolean((await readStoredKey(key.id)).revokedAt)).toBe(
-          !rollback,
-        );
-        expect(context.apiKey).toBe(rollback ? identity : null);
-        expect(em.getSessionContext()?.role).toBe(
-          rollback ? "authenticated" : "anonymous",
-        );
-      });
-    },
-  );
+          throw new Error("Rollback requested");
+        }),
+      ).rejects.toThrow("Rollback requested");
+      expect((await readStoredKey(other.id)).name).toBe("Other");
+      expect(context.apiKey).toBe(identity);
+    });
+  });
 
   it("isolates a singleton context and its RLS scopes across concurrent requests", async () => {
     let markOtherReady!: () => void;
@@ -338,19 +253,5 @@ describe("Nest auth providers with native transaction boundaries", () => {
         );
       }),
     ]);
-  });
-  it("does not publish a finished child context's changes into its parent after commit", async () => {
-    await inRequest(async ({ em, key }) => {
-      const identity = context.apiKey;
-      await em.transactional(async () => {
-        await RequestContext.child(async () => {
-          await keys.updateUserApiKey(key.id, { name: "Child change" });
-          expect(context.apiKey).toBe(identity);
-        });
-      });
-      expect((await readStoredKey(key.id)).name).toBe("Child change");
-      expect(context.apiKey).toBe(identity);
-      expect(context.apiKey?.name).toBe("Original");
-    });
   });
 });

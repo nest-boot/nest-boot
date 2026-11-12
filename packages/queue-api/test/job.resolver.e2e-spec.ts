@@ -5,7 +5,6 @@ import {
   AuthContext,
   AuthGuard,
   type AuthModuleOptions,
-  AuthTransactionSubscriber,
   Session,
   User,
   UserApiKey,
@@ -135,11 +134,7 @@ describe("scoped Job GraphQL API", () => {
         ],
       );
     }
-    const context = new AuthContext(
-      orm.em,
-      authOptions,
-      new AuthTransactionSubscriber(orm.em),
-    );
+    const context = new AuthContext(orm.em, authOptions);
     const users = new UserService(
       orm.em,
       authOptions,

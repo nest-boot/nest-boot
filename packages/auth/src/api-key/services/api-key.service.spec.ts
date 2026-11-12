@@ -164,3 +164,34 @@ apiKeyTest(
     expect(getCurrentApiKey()).toBe(before);
   },
 );
+
+for (const operation of ["update", "revoke", "delete"] as const) {
+  apiKeyTest(
+    `rejects self-${operation} in an external transaction before persistence`,
+    async () => {
+      const { em } = createService();
+      const user = createTestUser();
+      const record = Object.assign(new ApiKey(), {
+        owner: ref(User, user),
+        name: "Original",
+      });
+      stageIdentity({ user, apiKey: toApiKeyView(record) });
+      const identity = getCurrentApiKey();
+      em.isInTransaction.mockReturnValue(true);
+      const service = createTestApiKeyService(em);
+      await expect(
+        operation === "update"
+          ? service.update(record, { name: "Denied" }, undefined)
+          : service[operation](record),
+      ).rejects.toThrow(
+        "Change the current API key outside an active transaction",
+      );
+      expect(em.nativeUpdate.mock.calls).toHaveLength(0);
+      expect(em.remove.mock.calls).toHaveLength(0);
+      expect(em.flush.mock.calls).toHaveLength(0);
+      expect(record.name).toBe("Original");
+      expect(getCurrentApiKey()).toBe(identity);
+      expect(RequestContext.get(User)).toBe(user);
+    },
+  );
+}

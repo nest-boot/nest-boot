@@ -4,7 +4,6 @@ import {
   AuthContext,
   AuthResolver,
   type AuthService,
-  AuthTransactionSubscriber,
   User,
   UserApiKey,
   Workspace,
@@ -74,11 +73,7 @@ describe('business authorization recipe', () => {
           }
           // Production requests initialize AuthContext through the middleware.
           const em = {} as EntityManager;
-          new AuthContext(
-            em,
-            reportAuthOptions,
-            new AuthTransactionSubscriber(em),
-          ).refresh();
+          new AuthContext(em, reportAuthOptions).refresh();
           const report = new Report('report-1', workspace.id);
           const repository = {
             findOne: vi.fn(async (id: string) =>
