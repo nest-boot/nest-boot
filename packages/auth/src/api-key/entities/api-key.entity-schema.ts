@@ -11,23 +11,20 @@ export interface ApiKeySchemaOptions {
   user?: boolean;
   workspace?: boolean;
   system?: boolean;
-  schema?: string;
 }
 
 /**
  * Defines the shared credential table through MikroORM's public schema API.
- * @param options - Enabled owner targets and optional database schema.
+ * @param options - Enabled owner targets.
  * @param options.user - Whether user credentials are enabled.
  * @param options.workspace - Whether member credentials are enabled.
  * @param options.system - Whether system credentials are enabled.
- * @param options.schema - Database schema containing the authentication tables.
  * @returns Native schema bound to the ApiKey persistence class.
  */
 export function createApiKeySchema({
   user = true,
   workspace = true,
   system = true,
-  schema,
 }: ApiKeySchemaOptions = {}) {
   const properties = {
     id: { type: new t.bigint("string"), primary: true },
@@ -80,7 +77,6 @@ export function createApiKeySchema({
   }
   return new EntitySchema<Pick<ApiKey, keyof typeof properties>>({
     class: ApiKey,
-    ...(schema !== undefined ? { schema } : {}),
     policies: [apiKeyOwnerPolicy(workspace)],
     checks: [
       {

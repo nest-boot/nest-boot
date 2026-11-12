@@ -156,4 +156,4 @@ types. There are no aliases. Use `currentUser { accounts(first: 20) { edges { no
 for account bindings. Server-side provider integrations can still call
 `AuthService.getAccessToken()`, `refreshToken()` and `getAccountInfo()`.
 
-AuthModule selects native EntitySchema definitions according to its feature flags; standalone ORM consumers select their classes and schemas explicitly. The three API-key views and services share the persistent `ApiKey`; see [API keys](/docs/tutorial/auth/api-keys) for system-account management.
+AuthModule selects entity classes and the native API-key schema according to its feature flags; standalone ORM consumers select the required models explicitly. The three API-key views and services share the persistent `ApiKey`; see [API keys](/docs/tutorial/auth/api-keys) for system-account management.

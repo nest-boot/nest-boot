@@ -122,8 +122,6 @@ export class PostModule {}
 根据配置决定实体。工厂只能依赖配置服务，不应依赖 MikroORM 或 EntityManager。
 Auth 与 QueueApi 会自动注册自身实体，应用无需手动导入它们的实体数组。
 
-实体工厂可注入 `DATABASE_MODULE_OPTIONS`，在 ORM 初始化前读取用户注册的 DatabaseModule 选项。它提供注册值；未指定的选项仍可能由框架的环境默认配置补充。
-
 命令遵循现有 `nb` 生命周期：初始化应用、执行命令、关闭应用。应用的其他模块初始化钩子
 仍会运行，CLI 和 HTTP 使用相同的配置与基础设施。
 

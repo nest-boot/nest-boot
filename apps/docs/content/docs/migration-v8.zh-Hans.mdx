@@ -236,7 +236,7 @@ GraphQL `signUp` 现在返回 `SignUpPayload { id, token }`，不再返回
 
 GraphQL 分别返回 `UserApiKey`、`WorkspaceApiKey`、`SystemApiKey`，各有独立的权限枚举。可空的具体关联字段分别为 `user`、`member`、`systemAccount`；汇总列表仍为 `workspaceApiKeys` 和 `systemApiKeys`。
 
-`UserApiKey`、`WorkspaceApiKey`、`SystemApiKey` 是各自的公共视图和 Service，统一持久化实体为 `ApiKey`。直接 ORM 查询使用 `ownerType` 和多态 `owner` 引用。独立 ORM 显式选择实体类及原生 EntitySchema；AuthModule 自动注册。系统账户的权限与管理员会话要求见 [API Key](/docs/tutorial/auth/api-keys)。
+`UserApiKey`、`WorkspaceApiKey`、`SystemApiKey` 是各自的公共视图和 Service，统一持久化实体为 `ApiKey`。直接 ORM 查询使用 `ownerType` 和多态 `owner` 引用。独立 ORM 显式选择实体类和原生 ApiKey EntitySchema；AuthModule 自动注册。系统账户的权限与管理员会话要求见 [API Key](/docs/tutorial/auth/api-keys)。
 
 示例基线按当前实体为全新数据库重新生成，直接建立 ApiKey 共表、系统账户、哈希全局唯一约束，不生成 owner 检查或删除清理触发器。
 

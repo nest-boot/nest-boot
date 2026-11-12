@@ -229,9 +229,9 @@ pnpm exec nb database:migration:create --name add-auth
 pnpm exec nb database:migration:up
 ```
 
-AuthModule 按功能开关注册原生 EntitySchema。直接使用 MikroORM 时，显式选择实体类、`createApiKeySchema` 和 `createInvitationSchema`，并传入实际 schema。
+AuthModule 按功能开关注册实体类和原生 ApiKey EntitySchema。直接使用 MikroORM 时，显式选择实体类及 `createApiKeySchema({ user, workspace, system })`。所有 Auth 实体共用应用的数据库 schema，无需单独配置 Auth schema。
 
 自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，
 不要重新声明或注册同名认证实体。角色、权限目录、Ability 构造器、邮件回调和 Provider 配置仍可自定义。
 
-AuthModule 按功能开关选择原生 EntitySchema；独立 ORM 显式选择需要的实体类和 Schema。三种 ApiKey 的公共视图和 Service 对应同一个持久化实体 `ApiKey`，系统账户管理见 [API Key](/docs/tutorial/auth/api-keys)。
+AuthModule 按功能开关选择实体类和原生 ApiKey EntitySchema；独立 ORM 显式选择需要的模型。三种 ApiKey 的公共视图和 Service 对应同一个持久化实体 `ApiKey`，系统账户管理见 [API Key](/docs/tutorial/auth/api-keys)。

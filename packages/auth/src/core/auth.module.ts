@@ -1,10 +1,5 @@
 import { MikroORM } from "@mikro-orm/core";
-import {
-  DATABASE_MODULE_OPTIONS,
-  DatabaseModule,
-  type DatabaseModuleOptions,
-  getDatabaseConfig,
-} from "@nest-boot/database";
+import { DatabaseModule } from "@nest-boot/database";
 import { HashService } from "@nest-boot/hash";
 import { Mailer } from "@nest-boot/mailer";
 import {
@@ -39,7 +34,7 @@ import {
   DEFAULT_WORKSPACE_PERMISSIONS,
   DEFAULT_WORKSPACE_ROLES,
 } from "../workspace/constants/workspace.constants.js";
-import { createInvitationSchema } from "../workspace/entities/invitation.entity-schema.js";
+import { Invitation } from "../workspace/entities/invitation.entity.js";
 import { Member } from "../workspace/entities/member.entity.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
 import { InvitationService } from "../workspace/services/invitation.service.js";
@@ -209,27 +204,9 @@ export class AuthModule extends ConfigurableModuleClass {
         optionsModule,
         DatabaseModule.forFeatureAsync({
           imports: [optionsModule],
-          inject: [MODULE_OPTIONS_TOKEN, DATABASE_MODULE_OPTIONS],
-          useFactory: async (
-            options: AuthModuleOptions,
-            database: DatabaseModuleOptions,
-          ) => {
+          inject: [MODULE_OPTIONS_TOKEN],
+          useFactory: (options: AuthModuleOptions) => {
             const features = resolveAuthFeatures(options);
-            // Match DatabaseModule's precedence: explicit connection targets ignore ambient DATABASE_URL.
-            const explicitTarget = [
-              database.dbName,
-              database.clientUrl,
-              database.host,
-              database.port,
-              database.user,
-              database.password,
-              database.replicas,
-            ].some((value) => value !== undefined);
-            const schema = Object.hasOwn(database, "schema")
-              ? database.schema
-              : explicitTarget
-                ? undefined
-                : (await getDatabaseConfig()).schema;
             return [
               User,
               Account,
@@ -241,14 +218,11 @@ export class AuthModule extends ConfigurableModuleClass {
                       user: features.userApiKey,
                       workspace: features.workspaceApiKey,
                       system: features.systemApiKey,
-                      schema,
                     }),
                   ]
                 : []),
               ...(features.systemAccount ? [SystemAccount] : []),
-              ...(features.workspace
-                ? [Workspace, Member, createInvitationSchema(schema)]
-                : []),
+              ...(features.workspace ? [Workspace, Member, Invitation] : []),
             ];
           },
         }),

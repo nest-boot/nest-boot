@@ -219,7 +219,6 @@ export * from "./workspace/constants/workspace.constants.js";
 export * from "./workspace/decorators/current-member.decorator.js";
 export * from "./workspace/decorators/current-workspace.decorator.js";
 export * from "./workspace/entities/invitation.entity.js";
-export * from "./workspace/entities/invitation.entity-schema.js";
 export * from "./workspace/entities/member.entity.js";
 export * from "./workspace/entities/workspace.entity.js";
 export * from "./workspace/enums/invitation-status.enum.js";

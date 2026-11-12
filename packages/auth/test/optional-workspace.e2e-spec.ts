@@ -13,11 +13,3 @@ describe.each([
     30000,
   );
 });
-
-it.each([false, true])(
-  "boots base authentication in the configured schema (async: %s)",
-  async (asyncOptions) => {
-    await verifyAuthBootstrap(undefined, asyncOptions, "auth_custom");
-  },
-  30000,
-);

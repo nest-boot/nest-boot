@@ -1,6 +1,5 @@
 ---
 "@nest-boot/auth": minor
-"@nest-boot/database": minor
 ---
 
 Organize Auth by feature (`common`, `core`, `workspace`, `admin`, `api-key`), retaining entities, services, resolvers, inputs and adjacent unit tests within each feature. Public imports remain available from `@nest-boot/auth`.
@@ -11,4 +10,4 @@ Make administration and credentials opt-in. All flags default to false: `admin.e
 
 Include example administration pages under `/admin/api-keys` and `/admin/system-accounts`, explicit example feature configuration and a fresh-database migration baseline. Keep the release in the 8.x series.
 
-Define optional persistence through native EntitySchema constructors and return ordinary credential-free GraphQL DTOs. Remove global entity metadata rewriting and prototype mutation. Database exposes its existing configuration token so Auth can register schema-qualified policies before discovery.
+Define optional API-key owner mappings through native EntitySchema and return ordinary credential-free GraphQL DTOs. Keep other models as decorated entities. Remove global entity metadata rewriting and prototype mutation. Auth shares the application database schema without separate schema options or environment parsing.

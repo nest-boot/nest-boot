@@ -73,9 +73,7 @@ export function extendAbility(
               ...entities.map((entity) =>
                 typeof entity === "function" ? entity : entity.class,
               ),
-              ...workspaceEntities.map((entity) =>
-                typeof entity === "function" ? entity : entity.class,
-              ),
+              ...workspaceEntities,
             ].some((entity) =>
               typeof target === "string"
                 ? target === entity.name

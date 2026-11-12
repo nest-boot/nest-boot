@@ -35,7 +35,7 @@ AuthModule.forRoot({
 
 System-only applications register SystemAccount and ApiKey for authentication without exposing system-account GraphQL types or management endpoints. Provision credentials through a trusted seeder or internal ORM code and use them on application-owned APIs; built-in user/system management APIs stay disabled until administration is enabled.
 
-Disabled features register no corresponding services, GraphQL operations or persistence tables. Basic registration, sign-in, user self-service and sessions remain available. AuthModule registers native schemas for the enabled features; direct ORM consumers choose schemas explicitly.
+Disabled features register no corresponding services, GraphQL operations or persistence tables. Basic registration, sign-in, user self-service and sessions remain available. AuthModule registers the enabled entity classes and API-key schema; direct ORM consumers select the required models explicitly.
 
 The former `apiKey.member.*` configuration is removed; use `apiKey.workspace.*`. System credential configuration uses `apiKey.system.*` in place of `apiKey.systemAccount.*`. Member credential services and mutation names retain `WorkspaceApiKey` naming.
 
@@ -52,7 +52,7 @@ AuthModule automatically registers its enabled entities through `DatabaseModule`
 Use `nb database:migration:*`, `nb database:schema:*`, and `nb database:seeder:*`
 from your application's CLI entry to share runtime configuration and entity metadata.
 No separate MikroORM config file or auth configuration helper is needed.
-For direct ORM consumers, `entities` and `workspaceEntities` contain the complete model, including native `ApiKeySchema` and `InvitationSchema`. Use `createApiKeySchema({ user, workspace, system, schema })` and `createInvitationSchema(schema)` for an explicit subset or custom database schema. Register the required owner classes alongside these schemas.
+For direct ORM consumers, `entities` and `workspaceEntities` contain the complete model, including the native `ApiKeySchema`. Use `createApiKeySchema({ user, workspace, system })` to select enabled credential owners and register the required owner classes alongside it. Auth entities share the application database schema; Auth has no separate schema configuration.
 
 Disabled applications expose no workspace/member/invitation/member-key GraphQL APIs
 or user workspace/invitation relation fields. Their middleware ignores workspace
@@ -101,7 +101,7 @@ inherit ORM state or expose stored credential hashes.
 `AuthModule` registers the core entities through `DatabaseModule` automatically and
 includes workspace models when `workspace.enabled` is true. Use the application's
 `nb database:*` commands for schema, migration, and seeding operations; no separate
-`mikro-orm.config.ts` is needed. Direct MikroORM consumers register the required classes and native schemas explicitly. Supply custom schema names when constructing cross-table RLS schemas; AuthModule reads the database configuration automatically.
+`mikro-orm.config.ts` is needed. Direct MikroORM consumers register the required entity classes and native API-key schema explicitly. All Auth models share the application database schema; Auth does not read database environment configuration or configure SQL search paths.
 
 Use separate related business entities and additional field resolvers to extend
 these models. Import the built-in classes directly for relation targets; do not

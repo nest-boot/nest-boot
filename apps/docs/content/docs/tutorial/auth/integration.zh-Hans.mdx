@@ -138,4 +138,4 @@ GraphQL 验证错误使用 `BAD_USER_INPUT`，字段详情位于
 `currentUser { accounts(first: 20) { edges { node { id providerId scopes } } } }` 查询；服务端第三方集成仍可使用
 `AuthService.getAccessToken()`、`refreshToken()` 和 `getAccountInfo()`。
 
-AuthModule 按功能开关选择原生 EntitySchema；独立 ORM 显式选择需要的实体类和 Schema。三种 ApiKey 的公共视图和 Service 对应同一个持久化实体 `ApiKey`，系统账户管理见 [API Key](/docs/tutorial/auth/api-keys)。
+AuthModule 按功能开关选择实体类和原生 ApiKey EntitySchema；独立 ORM 显式选择需要的模型。三种 ApiKey 的公共视图和 Service 对应同一个持久化实体 `ApiKey`，系统账户管理见 [API Key](/docs/tutorial/auth/api-keys)。
