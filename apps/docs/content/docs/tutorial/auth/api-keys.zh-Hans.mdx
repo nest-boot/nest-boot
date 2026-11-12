@@ -236,7 +236,7 @@ Service 在普通读取中排除密钥哈希，限制更新字段，不允许修
 
 ## 独立系统账户
 
-三种凭证共用 `api_key` 表。`ApiKey.owner` 使用 MikroORM 多态关联，指向 User、Member 或 SystemAccount；数据库只用 `owner_type` 和 `owner_id` 表示归属，不增加 scope 列，也不使用单表继承。密钥哈希全局唯一。各 owner 的操作名和 Service 名称保持不变，GraphQL 分别输出 `UserApiKey`、`WorkspaceApiKey`、`SystemApiKey`；直接操作 ORM 时查询 `ApiKey`，而不是视图类。独立 ORM 使用 `getAuthEntities(options)` 注册元数据；非 public schema 通过第二个参数指定。AuthModule 会自动注册。
+三种凭证共用 `api_key` 表。`ApiKey.owner` 使用 MikroORM 多态关联，指向 User、Member 或 SystemAccount；数据库只用 `owner_type` 和 `owner_id` 表示归属，不增加 scope 列，也不使用单表继承。密钥哈希全局唯一。各 owner 的操作名和 Service 名称保持不变，GraphQL 分别输出 `UserApiKey`、`WorkspaceApiKey`、`SystemApiKey`；直接操作 ORM 时查询 `ApiKey`，而不是视图类。独立 ORM 显式注册实体类及原生 `createApiKeySchema` / `createInvitationSchema`，并传入实际 schema。AuthModule 自动完成注册。
 
 SystemAccount 是平台级机器身份，与工作区中 `type: SERVICE_ACCOUNT` 的 Member 不同。具备 `system-account:read/write`、`system-account-api-key:read/write` 权限的 User 管理员通过用户会话管理账户和密钥；任何 ApiKey 都不能管理系统凭证。创建者 ID 仅用于审计，删除创建者会将关联置空，不会删除系统账户及其密钥。
 

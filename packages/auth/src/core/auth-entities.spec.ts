@@ -24,10 +24,16 @@ describe("built-in auth entity field ownership", () => {
     [Invitation, ["email", "workspace", "inviter"]],
     [Member, ["name", "email", "user", "workspace"]],
   ] as const)("%s owns its persistence fields", (entity, fields) => {
-    expect([...entities, ...workspaceEntities]).toContain(entity);
-    const metadata = Object.values(MetadataStorage.getMetadata()).find(
-      (meta) => meta.class === entity,
+    const registered = [...entities, ...workspaceEntities].find(
+      (entry) => (typeof entry === "function" ? entry : entry.class) === entity,
     );
+    expect(registered).toBeDefined();
+    const metadata =
+      registered && typeof registered !== "function"
+        ? registered.init().meta
+        : Object.values(MetadataStorage.getMetadata()).find(
+            (meta) => meta.class === entity,
+          );
     expect(metadata?.abstract).not.toBe(true);
     for (const field of fields) {
       expect(metadata?.properties).toHaveProperty(field);

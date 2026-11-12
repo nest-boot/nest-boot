@@ -3,7 +3,7 @@ import type { GraphQLResolveInfo } from "graphql";
 import type { Mocked } from "vitest";
 
 import { User } from "../../core/entities/user.entity.js";
-import { UserApiKey } from "../entities/user-api-key.entity.js";
+import { UserApiKey } from "../objects/user-api-key.object.js";
 import { type UserApiKeyService } from "../services/user-api-key.service.js";
 import { UserApiKeyResolver } from "./user-api-key.resolver.js";
 

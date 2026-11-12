@@ -15,7 +15,6 @@ import {
 import type { GraphQLResolveInfo } from "graphql";
 
 import { authorize } from "../../common/utils/authorize.util.js";
-import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import {
   assertApiKeyPermissionCeiling,
   assertPermissionCeiling,
@@ -31,16 +30,17 @@ import { RequestIdentity } from "../../core/request-identity.js";
 import { ApiKeyLifecycle } from "../api-key-lifecycle.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
 import { ApiKey } from "../entities/api-key.entity.js";
-import { UserApiKey } from "../entities/user-api-key.entity.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
+import { UserApiKey } from "../objects/user-api-key.object.js";
 import type { UserApiKeyPermissionOption } from "../objects/user-api-key-permission-option.object.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
 } from "../utils/api-key-permissions.util.js";
+import { toApiKeyView } from "../utils/api-key-view.util.js";
 import { assertApiKeyFeature } from "../utils/assert-api-key-feature.util.js";
 import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
 
@@ -106,7 +106,7 @@ export class UserApiKeyService {
     if (apiKey) {
       authorize("read", apiKey);
     }
-    return apiKey ? omitCredentials(apiKey, ["key"]) : null;
+    return apiKey ? toApiKeyView(apiKey) : null;
   }
 
   /**
@@ -118,7 +118,7 @@ export class UserApiKeyService {
    */
   async getUserApiKeyConnection(
     user: User,
-    args: ConnectionArgsInterface<UserApiKey>,
+    args: ConnectionArgsInterface<ApiKey>,
     info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<ApiKeyMetadata<UserApiKey>>> {
     assertApiKeyFeature(this.authOptions, "userApiKey");
@@ -138,10 +138,10 @@ export class UserApiKeyService {
     }
     return {
       ...connection,
-      edges: connection.edges.map((edge) => ({
-        ...edge,
-        node: omitCredentials(edge.node, ["key"]),
-      })),
+      edges: connection.edges.map((edge) => {
+        assertApiKeyOwner(edge.node, "user");
+        return { ...edge, node: toApiKeyView(edge.node) };
+      }),
     };
   }
 
@@ -201,7 +201,7 @@ export class UserApiKeyService {
         );
       this.assertUserPermissionCeiling(user, finalPermissions);
     }
-    return omitCredentials(
+    return toApiKeyView(
       await ApiKeyLifecycle.update(
         this.em,
         this.authOptions,
@@ -209,7 +209,6 @@ export class UserApiKeyService {
         input,
         permissions,
       ),
-      ["key"],
     );
   }
 
@@ -223,9 +222,8 @@ export class UserApiKeyService {
     authorize("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
     authorize("write", apiKey);
-    return omitCredentials(
+    return toApiKeyView(
       await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey),
-      ["key"],
     );
   }
 
@@ -260,7 +258,7 @@ export class UserApiKeyService {
       ownerId: user.id,
       ownerType: "user",
     });
-    return { apiKey, entity };
+    return { apiKey, entity: toApiKeyView(entity) };
   }
 
   private async getVisibleApiKey(
@@ -304,7 +302,7 @@ export class UserApiKeyService {
     return apiKey;
   }
 
-  private getOwnedListFilter(user: User): FilterQuery<UserApiKey> {
+  private getOwnedListFilter(user: User): FilterQuery<ApiKey> {
     const ceiling = resolveRequestPermissions(this.authOptions).apiKey;
     return {
       ownerType: "user",

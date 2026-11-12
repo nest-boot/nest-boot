@@ -256,11 +256,11 @@ pnpm exec nb database:migration:create --name add-auth
 pnpm exec nb database:migration:up
 ```
 
-Direct MikroORM consumers use `getAuthEntities(options)` so the polymorphic owner mapping and policies match the enabled features.
+Direct MikroORM consumers explicitly register the required entity classes and native `createApiKeySchema` / `createInvitationSchema` definitions. AuthModule performs feature-specific registration automatically.
 
 Use separate related business entities and additional field resolvers to extend
 these models. Import the built-in classes directly for relation targets; do not
 redeclare or register replacement auth entities. Role/permission catalogs, ability
 builders, delivery callbacks, and provider settings remain configurable.
 
-Standalone ORM consumers use `getAuthEntities(options)` to match AuthModule feature flags. The three API-key views and services share the persistent `ApiKey`; see [API keys](/docs/tutorial/auth/api-keys) for system-account management.
+AuthModule selects native EntitySchema definitions according to its feature flags; standalone ORM consumers select their classes and schemas explicitly. The three API-key views and services share the persistent `ApiKey`; see [API keys](/docs/tutorial/auth/api-keys) for system-account management.

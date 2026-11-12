@@ -2,8 +2,8 @@ import { createMongoAbility, subject } from "@casl/ability";
 
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { SystemAccount } from "../api-key/entities/system-account.entity.js";
-import { UserApiKey } from "../api-key/entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../api-key/entities/workspace-api-key.entity.js";
+import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
+import { WorkspaceApiKey } from "../api-key/objects/workspace-api-key.object.js";
 import { resolveApiKeyPermissionCatalog } from "../api-key/utils/api-key-permissions.util.js";
 import { resolveAuthCatalog } from "../common/utils/resolve-auth-catalog.util.js";
 import { serializeAbilityRules } from "../common/utils/serialize-ability-rules.util.js";

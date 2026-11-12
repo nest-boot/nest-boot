@@ -11,7 +11,7 @@ import {
   createWorkspaceServices,
 } from "../../test/workspace-service.fixture.js";
 import { ApiKey } from "../api-key/entities/api-key.entity.js";
-import { UserApiKey } from "../api-key/entities/user-api-key.entity.js";
+import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
 import { ApiKeyAuthenticationService } from "../api-key/services/api-key-authentication.service.js";
 import { AuthAbility } from "../common/auth.ability.js";
 import { Member } from "../workspace/entities/member.entity.js";
@@ -37,7 +37,7 @@ describe("auth service execution boundaries", () => {
     };
     em.getSessionContext.mockReturnValue(session);
     const user = Object.assign(new User(), { id: "user-1" });
-    const apiKey = Object.assign(new UserApiKey(), {
+    const apiKey = Object.assign(new UserApiKey(new ApiKey()), {
       id: "key-1",
       user,
       enabled: true,

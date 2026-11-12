@@ -12,9 +12,7 @@ import {
 import { ForbiddenException } from "@nestjs/common";
 
 import { ApiKey } from "../api-key/entities/api-key.entity.js";
-import { SystemApiKey } from "../api-key/entities/system-api-key.entity.js";
-import { UserApiKey } from "../api-key/entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../api-key/entities/workspace-api-key.entity.js";
+import { getApiKeyView } from "../api-key/utils/api-key-view.util.js";
 
 /** CASL ability for the authenticated request and its selected workspace. */
 export class AuthAbility extends Ability<AbilityTuple, MongoQuery> {
@@ -41,13 +39,8 @@ export class AuthAbility extends Ability<AbilityTuple, MongoQuery> {
    */
   override detectSubjectType(object?: Subject): SubjectType {
     if (object instanceof ApiKey && object.constructor === ApiKey) {
-      const view =
-        object.ownerType === "user"
-          ? UserApiKey
-          : object.ownerType === "member"
-            ? WorkspaceApiKey
-            : SystemApiKey;
-      return super.detectSubjectType(Object.create(view.prototype) as object);
+      const view = getApiKeyView(object.ownerType);
+      return super.detectSubjectType(new view(object));
     }
     return super.detectSubjectType(object);
   }

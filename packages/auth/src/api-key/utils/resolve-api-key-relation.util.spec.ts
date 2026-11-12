@@ -5,10 +5,11 @@ import { ForbiddenException } from "@nestjs/common";
 import { mockAuthorization } from "../../../test/mock-authorization.js";
 import { User } from "../../core/entities/user.entity.js";
 import { Member } from "../../workspace/entities/member.entity.js";
+import { ApiKey } from "../entities/api-key.entity.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
-import { SystemApiKey } from "../entities/system-api-key.entity.js";
-import { UserApiKey } from "../entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { SystemApiKey } from "../objects/system-api-key.object.js";
+import { UserApiKey } from "../objects/user-api-key.object.js";
+import { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
 import { resolveApiKeyRelation } from "./resolve-api-key-relation.util.js";
 
 describe("resolveApiKeyRelation", () => {
@@ -24,11 +25,13 @@ describe("resolveApiKeyRelation", () => {
     const users = vi.fn().mockResolvedValue(user);
     const members = vi.fn().mockResolvedValue(member);
     const systems = vi.fn().mockResolvedValue(system);
-    const userKey = Object.assign(new UserApiKey(), { user: ref(User, user) });
-    const workspaceKey = Object.assign(new WorkspaceApiKey(), {
+    const userKey = Object.assign(new UserApiKey(new ApiKey()), {
+      user: ref(User, user),
+    });
+    const workspaceKey = Object.assign(new WorkspaceApiKey(new ApiKey()), {
       member: ref(Member, member),
     });
-    const systemKey = Object.assign(new SystemApiKey(), {
+    const systemKey = Object.assign(new SystemApiKey(new ApiKey()), {
       owner: ref(SystemAccount, system),
     });
     await expect(
@@ -58,7 +61,9 @@ describe("resolveApiKeyRelation", () => {
     "lookup failed",
   ])("handles %s without granting identity access", async (state) => {
     const user = new User();
-    const key = Object.assign(new UserApiKey(), { user: ref(User, user) });
+    const key = Object.assign(new UserApiKey(new ApiKey()), {
+      user: ref(User, user),
+    });
     const read = vi.fn().mockResolvedValue(user);
     if (state === "key forbidden") {
       authorization.authorize.mockImplementation(() => {
@@ -89,7 +94,7 @@ describe("resolveApiKeyRelation", () => {
     const read = vi.fn();
     await expect(
       resolveApiKeyRelation(
-        new SystemApiKey(),
+        new SystemApiKey(new ApiKey()),
         null,
         SystemAccount,
         read,
@@ -108,8 +113,10 @@ describe("resolveApiKeyRelation", () => {
       RequestContext.set(Member, member);
       authorization.can.mockReturnValue(false);
       const read = vi.fn();
-      const key = Object.assign(new UserApiKey(), { user: ref(User, user) });
-      const workspaceKey = Object.assign(new WorkspaceApiKey(), {
+      const key = Object.assign(new UserApiKey(new ApiKey()), {
+        user: ref(User, user),
+      });
+      const workspaceKey = Object.assign(new WorkspaceApiKey(new ApiKey()), {
         member: ref(Member, member),
       });
       await expect(

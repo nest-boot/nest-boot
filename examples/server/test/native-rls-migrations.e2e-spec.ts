@@ -7,12 +7,13 @@ import { MikroORM } from '@mikro-orm/pglite';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
 import {
   ApiKey,
-  getAuthEntities,
+  entities as authEntities,
   Invitation,
   Member,
   SystemAccount,
   User,
   Workspace,
+  workspaceEntities,
 } from '@nest-boot/auth';
 import { getDatabaseConfig } from '@nest-boot/database';
 import { entities as queueEntities } from '@nest-boot/queue-api';
@@ -44,19 +45,7 @@ describe('example native RLS migrations with PGlite', () => {
         driverOptions: { extensions: { pgcrypto, uuid_ossp } },
         metadataProvider: TsMorphMetadataProvider,
         metadataCache,
-        entities: [
-          ...getAuthEntities({
-            admin: { enabled: true },
-            workspace: { enabled: true },
-            apiKey: {
-              enabled: true,
-              system: { enabled: true },
-              user: { enabled: true },
-              workspace: { enabled: true },
-            },
-          }),
-          ...queueEntities,
-        ],
+        entities: [...authEntities, ...workspaceEntities, ...queueEntities],
         extensions: [Migrator],
         migrations: {
           migrationsList: [

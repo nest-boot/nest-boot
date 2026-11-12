@@ -1,6 +1,6 @@
 import { ArgsType, ObjectType } from "@nest-boot/graphql";
 
-import { SystemApiKey } from "../entities/system-api-key.entity.js";
+import { SystemApiKey } from "../objects/system-api-key.object.js";
 import { createApiKeyConnection } from "./create-api-key-connection.js";
 
 const { Connection, ConnectionArgs } = createApiKeyConnection(SystemApiKey);

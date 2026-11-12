@@ -1,6 +1,6 @@
 import { Field, ObjectType } from "@nest-boot/graphql";
 
-import { SystemApiKey } from "../entities/system-api-key.entity.js";
+import { SystemApiKey } from "./system-api-key.object.js";
 /** The new system credential and its plaintext returned once. */
 @ObjectType({ isAbstract: true })
 export class CreateSystemApiKeyResult {

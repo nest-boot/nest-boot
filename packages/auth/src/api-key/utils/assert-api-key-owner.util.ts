@@ -1,6 +1,6 @@
-import type { SystemApiKey } from "../entities/system-api-key.entity.js";
-import type { UserApiKey } from "../entities/user-api-key.entity.js";
-import type { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import type { SystemApiKey } from "../objects/system-api-key.object.js";
+import type { UserApiKey } from "../objects/user-api-key.object.js";
+import type { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
 interface OwnerViews {

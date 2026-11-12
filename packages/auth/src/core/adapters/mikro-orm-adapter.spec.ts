@@ -3,8 +3,8 @@ import { RequestContext } from "@nest-boot/request-context";
 import { type BetterAuthOptions } from "better-auth";
 
 import { mockRlsContext } from "../../../test/mock-rls-context.js";
-import { UserApiKey } from "../../api-key/entities/user-api-key.entity.js";
-import { WorkspaceApiKey as BaseApiKey } from "../../api-key/entities/workspace-api-key.entity.js";
+import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
+import { WorkspaceApiKey as BaseApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { Invitation as BaseInvitation } from "../../workspace/entities/invitation.entity.js";
 import { Member as BaseMember } from "../../workspace/entities/member.entity.js";
 import { Workspace as BaseWorkspace } from "../../workspace/entities/workspace.entity.js";

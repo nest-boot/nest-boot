@@ -6,12 +6,13 @@ import { type Mock } from "vitest";
 
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { mockRlsContext } from "../../test/mock-rls-context.js";
-import { UserApiKey } from "../api-key/entities/user-api-key.entity.js";
+import { ApiKey as ApiKeyRecord } from "../api-key/entities/api-key.entity.js";
+import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
 import {
   WorkspaceApiKey as ApiKey,
   WorkspaceApiKey as BaseApiKey,
   WorkspaceApiKey,
-} from "../api-key/entities/workspace-api-key.entity.js";
+} from "../api-key/objects/workspace-api-key.object.js";
 import { ApiKeyAuthenticationService } from "../api-key/services/api-key-authentication.service.js";
 import { AuthAbility } from "../common/auth.ability.js";
 import {
@@ -230,7 +231,7 @@ describe("AuthMiddleware", () => {
     const { middleware, em } = await createMiddleware(vi.fn(), vi.fn());
     await middleware.revalidateCurrentSession();
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      const apiKey = new UserApiKey();
+      const apiKey = new UserApiKey(new ApiKeyRecord());
       RequestContext.set(API_KEY, apiKey);
       await middleware.revalidateCurrentSession();
       expect(RequestContext.get(API_KEY)).toBe(apiKey);
@@ -312,7 +313,7 @@ describe("AuthMiddleware", () => {
       RequestContext.set(SessionEntity, new TestSession());
       RequestContext.set(WorkspaceEntity, new TestWorkspace());
       RequestContext.set(MemberEntity, new TestMember());
-      RequestContext.set(API_KEY, new WorkspaceApiKey());
+      RequestContext.set(API_KEY, new WorkspaceApiKey(new ApiKeyRecord()));
       RequestContext.set(
         AuthAbility,
         new AuthAbility([
@@ -364,7 +365,7 @@ describe("AuthMiddleware", () => {
         roles: ["manager"],
         permissions: ["Workspace:update", "workspace:update"],
       });
-      const apiKey = Object.assign(new UserApiKey(), {
+      const apiKey = Object.assign(new UserApiKey(new ApiKeyRecord()), {
         user,
         workspace: null,
         permissions: ["user:read", "Workspace:UPDATE"],
@@ -434,7 +435,9 @@ describe("AuthMiddleware", () => {
         workspace,
       });
       const apiKey = Object.assign(
-        kind === "member-key" ? new WorkspaceApiKey() : new UserApiKey(),
+        kind === "member-key"
+          ? new WorkspaceApiKey(new ApiKeyRecord())
+          : new UserApiKey(new ApiKeyRecord()),
         {
           user: kind === "member-key" ? null : user,
           member: kind === "member-key" ? member : null,
@@ -505,7 +508,9 @@ describe("AuthMiddleware", () => {
       name: "New name",
       permissions: ["user:read", "user:delete"],
     });
-    const key = Object.assign(new UserApiKey(), { permissions: ["user:read"] });
+    const key = Object.assign(new UserApiKey(new ApiKeyRecord()), {
+      permissions: ["user:read"],
+    });
     const findOne = vi.fn().mockResolvedValue(user);
     const { middleware, em } = await createMiddleware(
       vi.fn(),
@@ -663,8 +668,8 @@ describe("AuthMiddleware", () => {
       const validate = vi.fn().mockResolvedValue({
         apiKey:
           kind === "member-key"
-            ? Object.assign(new WorkspaceApiKey(), { member })
-            : Object.assign(new UserApiKey(), { user }),
+            ? Object.assign(new WorkspaceApiKey(new ApiKeyRecord()), { member })
+            : Object.assign(new UserApiKey(new ApiKeyRecord()), { user }),
         ownerType: kind === "user-key" ? "user" : "member",
         user: kind === "member-key" ? null : user,
         member: kind === "member-key" ? member : null,
@@ -1029,7 +1034,7 @@ describe("optional workspace behavior", () => {
         validate: vi.fn().mockResolvedValue({
           ownerType: "user",
           user,
-          apiKey: new UserApiKey(),
+          apiKey: new UserApiKey(new ApiKeyRecord()),
         }),
       };
       const em = { findOne: vi.fn(), setSessionContext: vi.fn() };

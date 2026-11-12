@@ -6,7 +6,7 @@ import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { ApiKey } from "./api-key.entity.js";
 import { SystemAccount } from "./system-account.entity.js";
 
-describe("ApiKeyFields polymorphic owner accessors", () => {
+describe("ApiKey identity accessors", () => {
   it("exposes only the matching owner and its authorization identifiers", () => {
     const workspace = new Workspace();
     const member = Object.assign(new Member(), {

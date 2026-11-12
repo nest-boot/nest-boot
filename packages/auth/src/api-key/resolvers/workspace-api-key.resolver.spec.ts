@@ -1,7 +1,7 @@
 import type { Mocked } from "vitest";
 
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
 import { type WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
 import { WorkspaceApiKeyResolver } from "./workspace-api-key.resolver.js";
 

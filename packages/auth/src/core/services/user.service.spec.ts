@@ -18,7 +18,7 @@ import { mockAuthorization } from "../../../test/mock-authorization.js";
 import { mockRlsContext } from "../../../test/mock-rls-context.js";
 import { type CreateUserOptions } from "../../admin/interfaces/create-user-options.interface.js";
 import { ApiKey } from "../../api-key/entities/api-key.entity.js";
-import { UserApiKey } from "../../api-key/entities/user-api-key.entity.js";
+import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
 import { AuthAbility } from "../../common/auth.ability.js";
 import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import { Invitation } from "../../workspace/entities/invitation.entity.js";
@@ -52,7 +52,7 @@ describe("UserService", () => {
   it("records the final API-key use atomically before self-ban clears authentication", async () => {
     const { service, em } = createService();
     const user = Object.assign(new User(), { id: "self", banned: false });
-    const key = Object.assign(new UserApiKey(), {
+    const key = Object.assign(new UserApiKey(new ApiKey()), {
       id: "key",
       user: ref(User, user),
       lastUsedAt: null,

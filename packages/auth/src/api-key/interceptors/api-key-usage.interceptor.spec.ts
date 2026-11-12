@@ -5,7 +5,7 @@ import { defer, lastValueFrom, of, throwError } from "rxjs";
 import type { Mocked } from "vitest";
 
 import { API_KEY } from "../../core/constants/auth.constants.js";
-import { WorkspaceApiKey as BaseApiKey } from "../entities/workspace-api-key.entity.js";
+import { WorkspaceApiKey as BaseApiKey } from "../objects/workspace-api-key.object.js";
 import type { ApiKeyAuthenticationService } from "../services/api-key-authentication.service.js";
 import { ApiKeyUsageInterceptor } from "./api-key-usage.interceptor.js";
 

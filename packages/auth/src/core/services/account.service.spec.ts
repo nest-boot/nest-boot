@@ -5,7 +5,8 @@ import { ForbiddenException } from "@nestjs/common";
 import type { GraphQLResolveInfo } from "graphql";
 
 import { mockRlsContext } from "../../../test/mock-rls-context.js";
-import { WorkspaceApiKey } from "../../api-key/entities/workspace-api-key.entity.js";
+import { ApiKey } from "../../api-key/entities/api-key.entity.js";
+import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { AccountConnection } from "../connections/account.connection-definition.js";
 import { API_KEY } from "../constants/auth.constants.js";
 import { Account } from "../entities/account.entity.js";
@@ -91,7 +92,7 @@ describe("AccountService", () => {
               );
             }
             if (identity === "api-key") {
-              RequestContext.set(API_KEY, new WorkspaceApiKey());
+              RequestContext.set(API_KEY, new WorkspaceApiKey(new ApiKey()));
             }
             await check();
           },

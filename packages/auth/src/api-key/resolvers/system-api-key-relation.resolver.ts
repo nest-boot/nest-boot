@@ -2,7 +2,7 @@ import { Parent, ResolveField, Resolver } from "@nest-boot/graphql";
 
 import { SystemAccountService } from "../../admin/services/system-account.service.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
-import { SystemApiKey } from "../entities/system-api-key.entity.js";
+import { SystemApiKey } from "../objects/system-api-key.object.js";
 import { resolveApiKeyRelation } from "../utils/resolve-api-key-relation.util.js";
 
 /** Authorized systemAccount details for system credentials. */

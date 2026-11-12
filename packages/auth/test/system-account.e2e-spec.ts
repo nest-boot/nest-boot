@@ -10,7 +10,7 @@ import type { Request } from "express";
 import { SystemAccountService } from "../src/admin/services/system-account.service.js";
 import { ApiKey } from "../src/api-key/entities/api-key.entity.js";
 import { SystemAccount } from "../src/api-key/entities/system-account.entity.js";
-import { SystemApiKey } from "../src/api-key/entities/system-api-key.entity.js";
+import { SystemApiKey } from "../src/api-key/objects/system-api-key.object.js";
 import { ApiKeyAuthenticationService } from "../src/api-key/services/api-key-authentication.service.js";
 import { SystemApiKeyService } from "../src/api-key/services/system-api-key.service.js";
 import { hashApiKey } from "../src/api-key/utils/api-key-credential.util.js";
@@ -20,11 +20,11 @@ import { resolveRequestPermissions } from "../src/common/utils/resolve-request-p
 import { AuthMiddleware } from "../src/core/auth.middleware.js";
 import { Session } from "../src/core/entities/session.entity.js";
 import { User } from "../src/core/entities/user.entity.js";
-import { getAuthEntities } from "../src/core/get-auth-entities.js";
 import type { AuthModuleOptions } from "../src/core/interfaces/auth-module-options.interface.js";
 import { RequestIdentity } from "../src/core/request-identity.js";
 import type { SessionService } from "../src/core/services/session.service.js";
 import { UserService } from "../src/core/services/user.service.js";
+import { entities, workspaceEntities } from "../src/index.js";
 import { Member } from "../src/workspace/entities/member.entity.js";
 import { Workspace } from "../src/workspace/entities/workspace.entity.js";
 import { WorkspaceService } from "../src/workspace/services/workspace.service.js";
@@ -58,7 +58,7 @@ describe("independent system accounts with real persistence and authentication",
       dbName: "memory://",
       metadataProvider,
       metadataCache: { enabled: false },
-      entities: getAuthEntities(withAuthTestFeatures(options)),
+      entities: [...entities, ...workspaceEntities],
     });
     await orm.em.execute("create role authenticated nologin noinherit");
     await orm.em.execute("create role anonymous nologin noinherit");

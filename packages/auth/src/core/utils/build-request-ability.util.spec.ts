@@ -3,8 +3,9 @@ import { RequestContext } from "@nest-boot/request-context";
 import { assert } from "vitest";
 
 import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
-import { UserApiKey } from "../../api-key/entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../../api-key/entities/workspace-api-key.entity.js";
+import { ApiKey } from "../../api-key/entities/api-key.entity.js";
+import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
+import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import type { AbilityRules } from "../../common/interfaces/ability-rules.interface.js";
 import { serializeAbilityRules } from "../../common/utils/serialize-ability-rules.util.js";
 import { Member } from "../../workspace/entities/member.entity.js";
@@ -101,7 +102,7 @@ describe("framework-owned request abilities", () => {
       workspace: RequestContext.get(Workspace),
     });
     RequestIdentity.stage({
-      apiKey: Object.assign(new UserApiKey(), {
+      apiKey: Object.assign(new UserApiKey(new ApiKey()), {
         permissions: ["user:read", "workspace:update"],
       }),
     });
@@ -142,7 +143,7 @@ describe("framework-owned request abilities", () => {
         roles: ["member"],
         permissions: ["workspace:update"],
       });
-      const apiKey = Object.assign(new WorkspaceApiKey(), {
+      const apiKey = Object.assign(new WorkspaceApiKey(new ApiKey()), {
         member,
         permissions: ["workspace:read", "workspace:update", "workspace:delete"],
       });
@@ -197,7 +198,7 @@ describe("framework-owned request abilities", () => {
       ability.can("read", subject("Article", { authorId: "me", hidden: true })),
     ).toBe(false);
     RequestIdentity.stage({
-      apiKey: Object.assign(new UserApiKey(), { permissions: [] }),
+      apiKey: Object.assign(new UserApiKey(new ApiKey()), { permissions: [] }),
     });
     expect(
       buildRequestAbility(withAuthTestFeatures(options))?.can(

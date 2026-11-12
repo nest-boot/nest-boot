@@ -7,9 +7,9 @@ import {
 } from "@casl/ability";
 
 import { SystemAccount } from "../api-key/entities/system-account.entity.js";
-import { SystemApiKey } from "../api-key/entities/system-api-key.entity.js";
-import { UserApiKey } from "../api-key/entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../api-key/entities/workspace-api-key.entity.js";
+import { SystemApiKey } from "../api-key/objects/system-api-key.object.js";
+import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
+import { WorkspaceApiKey } from "../api-key/objects/workspace-api-key.object.js";
 import { AuthAbility } from "../common/auth.ability.js";
 import type { AbilityContext } from "../common/interfaces/ability-context.interface.js";
 import { extendAbility } from "../common/utils/extend-ability.util.js";

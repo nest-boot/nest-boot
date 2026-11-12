@@ -14,8 +14,9 @@ import { firstValueFrom, of } from "rxjs";
 import { assert, type Mock, type MockedFunction } from "vitest";
 
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
-import { UserApiKey } from "../api-key/entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../api-key/entities/workspace-api-key.entity.js";
+import { ApiKey } from "../api-key/entities/api-key.entity.js";
+import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
+import { WorkspaceApiKey } from "../api-key/objects/workspace-api-key.object.js";
 import { AuthAbility } from "../common/auth.ability.js";
 import {
   CAN_METADATA,
@@ -1486,7 +1487,7 @@ describe("permission checks", () => {
       await RequestContext.run(createAuthRequestContext("http"), async () => {
         RequestContext.set(
           API_KEY,
-          Object.assign(new UserApiKey(), {
+          Object.assign(new UserApiKey(new ApiKey()), {
             workspace: null,
             user: ref(UserOwner, new UserOwner()),
             permissions: ["user:read"],
@@ -1513,7 +1514,7 @@ describe("permission checks", () => {
         subjectCallback: () => User,
       });
       await RequestContext.run(createAuthRequestContext("http"), async () => {
-        const malformedKey = new UserApiKey();
+        const malformedKey = new UserApiKey(new ApiKey());
         malformedKey.user = ref(UserOwner, new UserOwner());
         // Simulate persisted data that violates the non-null permissions contract.
         Reflect.set(malformedKey, "permissions", null);
@@ -1526,7 +1527,7 @@ describe("permission checks", () => {
         );
         await expect(guard.canActivate(createContext())).resolves.toBe(false);
         RequestIdentity.stage({
-          apiKey: Object.assign(new UserApiKey(), {
+          apiKey: Object.assign(new UserApiKey(new ApiKey()), {
             workspace: null,
             user: ref(UserOwner, new UserOwner()),
             permissions: [],
@@ -1551,7 +1552,7 @@ describe("permission checks", () => {
         );
         RequestContext.set(
           API_KEY,
-          Object.assign(new WorkspaceApiKey(), {
+          Object.assign(new WorkspaceApiKey(new ApiKey()), {
             member: ref(BaseMember, requireMember()),
             permissions: ["workspace:update"],
           }),
@@ -1585,7 +1586,7 @@ describe("permission checks", () => {
         );
         RequestContext.set(
           API_KEY,
-          Object.assign(new WorkspaceApiKey(), {
+          Object.assign(new WorkspaceApiKey(new ApiKey()), {
             member: ref(BaseMember, requireMember()),
             permissions: ["post:read"],
           }),
@@ -1605,7 +1606,7 @@ describe("permission checks", () => {
         async () => {
           RequestContext.set(
             API_KEY,
-            Object.assign(new UserApiKey(), {
+            Object.assign(new UserApiKey(new ApiKey()), {
               workspace: null,
               user: ref(UserOwner, new UserOwner()),
               permissions: ["workspace:update"],
@@ -1624,7 +1625,7 @@ describe("permission checks", () => {
         );
         RequestContext.set(
           API_KEY,
-          Object.assign(new UserApiKey(), {
+          Object.assign(new UserApiKey(new ApiKey()), {
             workspace: null,
             user: ref(UserOwner, new UserOwner()),
             permissions: ["workspace:update"],
@@ -1642,7 +1643,7 @@ describe("permission checks", () => {
         );
         RequestContext.set(
           API_KEY,
-          Object.assign(new UserApiKey(), {
+          Object.assign(new UserApiKey(new ApiKey()), {
             workspace: null,
             user: ref(UserOwner, new UserOwner()),
             permissions: ["workspace:delete"],
@@ -1673,7 +1674,7 @@ describe("permission checks", () => {
       await RequestContext.run(createAuthRequestContext("http"), async () => {
         RequestContext.set(
           API_KEY,
-          Object.assign(new UserApiKey(), {
+          Object.assign(new UserApiKey(new ApiKey()), {
             workspace: null,
             user: ref(UserOwner, new UserOwner()),
             permissions: ["user:read"],
@@ -1688,7 +1689,7 @@ describe("permission checks", () => {
       await RequestContext.run(createAuthRequestContext("http"), async () => {
         RequestContext.set(
           API_KEY,
-          Object.assign(new UserApiKey(), {
+          Object.assign(new UserApiKey(new ApiKey()), {
             workspace: null,
             user: ref(UserOwner, new UserOwner()),
             permissions: ["user:read"],

@@ -21,7 +21,6 @@ import {
 import type { GraphQLResolveInfo } from "graphql";
 
 import { authorize } from "../../common/utils/authorize.util.js";
-import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import {
   assertApiKeyPermissionCeiling,
   assertCanGrantPermissions,
@@ -39,16 +38,17 @@ import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { ApiKeyLifecycle } from "../api-key-lifecycle.js";
 import { WorkspaceApiKeyConnection } from "../connections/workspace-api-key.connection-definition.js";
 import { ApiKey } from "../entities/api-key.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
 import type { CreateWorkspaceApiKeyOptions } from "../interfaces/create-workspace-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
+import { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
 import type { WorkspaceApiKeyPermissionOption } from "../objects/workspace-api-key-permission-option.object.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
 } from "../utils/api-key-permissions.util.js";
+import { toApiKeyView } from "../utils/api-key-view.util.js";
 import { assertApiKeyFeature } from "../utils/assert-api-key-feature.util.js";
 import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
@@ -111,7 +111,7 @@ export class WorkspaceApiKeyService {
     if (apiKey) {
       authorize("read", apiKey);
     }
-    return apiKey ? omitCredentials(apiKey, ["key"]) : null;
+    return apiKey ? toApiKeyView(apiKey) : null;
   }
 
   /**
@@ -124,7 +124,7 @@ export class WorkspaceApiKeyService {
    */
   async getWorkspaceApiKeyConnection(
     workspace: Workspace,
-    args: ConnectionArgsInterface<WorkspaceApiKey>,
+    args: ConnectionArgsInterface<ApiKey>,
     info?: GraphQLResolveInfo,
     member?: Member,
   ): Promise<ConnectionResult<ApiKeyMetadata<WorkspaceApiKey>>> {
@@ -155,10 +155,10 @@ export class WorkspaceApiKeyService {
     }
     return {
       ...connection,
-      edges: connection.edges.map((edge) => ({
-        ...edge,
-        node: omitCredentials(edge.node, ["key"]),
-      })),
+      edges: connection.edges.map((edge) => {
+        assertApiKeyOwner(edge.node, "member");
+        return { ...edge, node: toApiKeyView(edge.node) };
+      }),
     };
   }
 
@@ -221,7 +221,7 @@ export class WorkspaceApiKeyService {
         finalPermissions,
       );
     }
-    return omitCredentials(
+    return toApiKeyView(
       await ApiKeyLifecycle.update(
         this.em,
         this.authOptions,
@@ -229,7 +229,6 @@ export class WorkspaceApiKeyService {
         input,
         permissions,
       ),
-      ["key"],
     );
   }
 
@@ -245,9 +244,8 @@ export class WorkspaceApiKeyService {
     authorize("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
     authorize("write", apiKey);
-    return omitCredentials(
+    return toApiKeyView(
       await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey),
-      ["key"],
     );
   }
 
@@ -318,7 +316,7 @@ export class WorkspaceApiKeyService {
       ownerId: member.id,
       ownerType: "member",
     });
-    return { apiKey, entity };
+    return { apiKey, entity: toApiKeyView(entity) };
   }
 
   private async getVisibleApiKey(
@@ -372,9 +370,7 @@ export class WorkspaceApiKeyService {
     return apiKey;
   }
 
-  private getOwnedListFilter(
-    workspace: Workspace,
-  ): FilterObject<WorkspaceApiKey> {
+  private getOwnedListFilter(workspace: Workspace): FilterObject<ApiKey> {
     const ceiling = resolveRequestPermissions(this.authOptions).apiKey;
     return {
       ownerType: "member",

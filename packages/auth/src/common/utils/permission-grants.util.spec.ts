@@ -2,8 +2,9 @@ import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
 import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
-import { UserApiKey } from "../../api-key/entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../../api-key/entities/workspace-api-key.entity.js";
+import { ApiKey } from "../../api-key/entities/api-key.entity.js";
+import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
+import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { User } from "../../core/entities/user.entity.js";
 import { RequestIdentity } from "../../core/request-identity.js";
 import { Member } from "../../workspace/entities/member.entity.js";
@@ -73,7 +74,7 @@ describe("permission delegation", () => {
           ]);
         }).toThrow("permissions exceed issuer permissions");
         RequestIdentity.stage({
-          apiKey: Object.assign(new UserApiKey(), {
+          apiKey: Object.assign(new UserApiKey(new ApiKey()), {
             permissions: ["report:read", "report:delete"],
           }),
         });
@@ -113,7 +114,7 @@ describe("permission delegation", () => {
       RequestIdentity.stage({
         workspace,
         member,
-        apiKey: Object.assign(new WorkspaceApiKey(), {
+        apiKey: Object.assign(new WorkspaceApiKey(new ApiKey()), {
           member,
           permissions: ["report:read"],
         }),
@@ -143,7 +144,7 @@ describe("permission delegation", () => {
         ]);
       }).toThrow("authenticating API key permissions: report:write");
       RequestIdentity.stage({
-        apiKey: Object.assign(new WorkspaceApiKey(), {
+        apiKey: Object.assign(new WorkspaceApiKey(new ApiKey()), {
           member,
           permissions: [],
         }),

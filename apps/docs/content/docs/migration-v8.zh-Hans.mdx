@@ -199,28 +199,12 @@ Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 AuthModule 通过 DatabaseModule 注册已启用实体。应用使用 `nb database:*` 命令共享运行时配置，无需单独的 MikroORM 配置文件。
-直接使用 ORM 时，通过 `getAuthEntities` 传入相同的功能开关：
+AuthModule 自动选择已启用的原生 Schema；独立 ORM 可以注册完整模型：
 
 ```typescript
-import { getAuthEntities } from "@nest-boot/auth";
+import { entities, workspaceEntities } from "@nest-boot/auth";
 
-const authEntities = getAuthEntities({
-  admin: { enabled: true },
-  workspace: { enabled: true },
-  apiKey: {
-    enabled: true,
-    user: { enabled: true },
-    system: { enabled: true },
-    workspace: { enabled: true },
-  },
-});
-import { defineConfig } from "@mikro-orm/postgresql";
-
-export default defineConfig({
-  entities: [...authEntities, "dist/**/*.entity.js"],
-  entitiesTs: [...authEntities, "src/**/*.entity.ts"],
-  // Connection and migration options...
-});
+const authEntities = [...entities, ...workspaceEntities];
 ```
 
 自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，
@@ -252,7 +236,7 @@ GraphQL `signUp` 现在返回 `SignUpPayload { id, token }`，不再返回
 
 GraphQL 分别返回 `UserApiKey`、`WorkspaceApiKey`、`SystemApiKey`，各有独立的权限枚举。可空的具体关联字段分别为 `user`、`member`、`systemAccount`；汇总列表仍为 `workspaceApiKeys` 和 `systemApiKeys`。
 
-`UserApiKey`、`WorkspaceApiKey`、`SystemApiKey` 是各自的公共视图和 Service，统一持久化实体为 `ApiKey`。直接 ORM 查询使用 `ownerType` 和多态 `owner` 引用。独立 ORM 使用 `getAuthEntities(options)`；AuthModule 自动注册。系统账户的权限与管理员会话要求见 [API Key](/docs/tutorial/auth/api-keys)。
+`UserApiKey`、`WorkspaceApiKey`、`SystemApiKey` 是各自的公共视图和 Service，统一持久化实体为 `ApiKey`。直接 ORM 查询使用 `ownerType` 和多态 `owner` 引用。独立 ORM 显式选择实体类及原生 EntitySchema；AuthModule 自动注册。系统账户的权限与管理员会话要求见 [API Key](/docs/tutorial/auth/api-keys)。
 
 示例基线按当前实体为全新数据库重新生成，直接建立 ApiKey 共表、系统账户、哈希全局唯一约束，不生成 owner 检查或删除清理触发器。
 

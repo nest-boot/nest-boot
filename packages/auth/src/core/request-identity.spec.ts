@@ -6,8 +6,9 @@ import { ForbiddenException } from "@nestjs/common";
 import { assert } from "vitest";
 
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
-import { UserApiKey } from "../api-key/entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../api-key/entities/workspace-api-key.entity.js";
+import { ApiKey } from "../api-key/entities/api-key.entity.js";
+import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
+import { WorkspaceApiKey } from "../api-key/objects/workspace-api-key.object.js";
 import { AuthAbility } from "../common/auth.ability.js";
 import { can } from "../common/utils/can.util.js";
 import {
@@ -78,8 +79,11 @@ describe("RequestIdentity", () => {
           credential === "session"
             ? null
             : credential === "user-key"
-              ? Object.assign(new UserApiKey(), { user, permissions: [] })
-              : Object.assign(new WorkspaceApiKey(), {
+              ? Object.assign(new UserApiKey(new ApiKey()), {
+                  user,
+                  permissions: [],
+                })
+              : Object.assign(new WorkspaceApiKey(new ApiKey()), {
                   member,
                   permissions: [],
                 });
@@ -231,7 +235,7 @@ describe("RequestIdentity", () => {
       user,
       workspace,
     });
-    const apiKey = Object.assign(new UserApiKey(), {
+    const apiKey = Object.assign(new UserApiKey(new ApiKey()), {
       id: "key",
       enabled: true,
       permissions: ["user:read", "workspace:delete"],
@@ -324,7 +328,9 @@ describe("RequestIdentity", () => {
       const parent = resolveRequestPermissions(withAuthTestFeatures(options));
       await RequestContext.child(() => {
         RequestIdentity.stage({
-          apiKey: Object.assign(new UserApiKey(), { permissions: [] }),
+          apiKey: Object.assign(new UserApiKey(new ApiKey()), {
+            permissions: [],
+          }),
         });
         expect(
           resolveRequestPermissions(withAuthTestFeatures(options)).user,
@@ -528,7 +534,7 @@ describe("post-commit authorization", () => {
           });
           RequestContext.set(
             API_KEY,
-            Object.assign(new UserApiKey(), {
+            Object.assign(new UserApiKey(new ApiKey()), {
               permissions: ["user:read", "workspace:read"],
             }),
           );
@@ -660,7 +666,7 @@ describe("unified request abilities", () => {
         const current = identity();
         current.member.roles = [];
         current.member.permissions = ["member:read"];
-        const apiKey = Object.assign(new WorkspaceApiKey(), {
+        const apiKey = Object.assign(new WorkspaceApiKey(new ApiKey()), {
           member: ref(Member, current.member),
           permissions: ["member:read", "member:write"],
         });

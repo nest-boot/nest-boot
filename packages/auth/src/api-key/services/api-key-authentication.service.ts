@@ -1,7 +1,6 @@
 import { EntityManager, Reference } from "@mikro-orm/core";
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 
-import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
 import { resolveAuthFeatures } from "../../core/utils/resolve-auth-features.util.js";
@@ -11,6 +10,7 @@ import { SystemAccount } from "../entities/system-account.entity.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import type { ApiKeyValidation } from "../types/api-key-validation.type.js";
 import { hashApiKey } from "../utils/api-key-credential.util.js";
+import { toApiKeyView } from "../utils/api-key-view.util.js";
 import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
 
 /**
@@ -72,7 +72,7 @@ export class ApiKeyAuthenticationService {
       }
       assertApiKeyOwner(apiKey, "system_account");
       return {
-        apiKey: omitCredentials(apiKey, []),
+        apiKey: toApiKeyView(apiKey),
         ownerType: "system_account",
         systemAccount,
       };
@@ -89,7 +89,7 @@ export class ApiKeyAuthenticationService {
         throw new UnauthorizedException("Invalid API key");
       }
       assertApiKeyOwner(apiKey, "user");
-      return { apiKey: omitCredentials(apiKey, []), ownerType: "user", user };
+      return { apiKey: toApiKeyView(apiKey), ownerType: "user", user };
     }
     const member = await this.em.findOne(Member, ownerId, {
       refresh: true,
@@ -111,7 +111,7 @@ export class ApiKeyAuthenticationService {
     const workspace = Reference.unwrapReference(member.workspace);
     assertApiKeyOwner(apiKey, "member");
     return {
-      apiKey: omitCredentials(apiKey, []),
+      apiKey: toApiKeyView(apiKey),
       ownerType: "member",
       workspace,
       member,

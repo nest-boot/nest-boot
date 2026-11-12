@@ -13,9 +13,9 @@ import { ApiKeyAuthenticationService } from "../src/api-key/services/api-key-aut
 import { mikroOrmAdapter } from "../src/core/adapters/mikro-orm-adapter.js";
 import { AUTH_TOKEN } from "../src/core/constants/auth.constants.js";
 import { createContextualAuthService } from "../src/core/create-contextual-auth-service.js";
-import { getAuthEntities } from "../src/core/get-auth-entities.js";
 import { RequestIdentity } from "../src/core/request-identity.js";
 import { UserDeletionService } from "../src/core/services/user-deletion.service.js";
+import { entities, workspaceEntities } from "../src/index.js";
 import {
   Account,
   AuthMiddleware,
@@ -52,9 +52,7 @@ describe("Auth services and native RLS boundaries", () => {
       metadataProvider,
       metadataCache: { enabled: false },
       dbName: "memory://",
-      entities: getAuthEntities(
-        withAuthTestFeatures({ workspace: { enabled: true } }),
-      ),
+      entities: [...entities, ...workspaceEntities],
     });
     await orm.em.execute("create role anonymous nologin noinherit");
     await orm.em.execute("create role authenticated nologin noinherit");
@@ -945,8 +943,8 @@ describe("Auth services and native RLS boundaries", () => {
           validate: vi.fn().mockResolvedValue({
             apiKey:
               kind === "member-key"
-                ? Object.assign(new WorkspaceApiKey(), { member })
-                : Object.assign(new UserApiKey(), { user }),
+                ? Object.assign(new WorkspaceApiKey(new ApiKey()), { member })
+                : Object.assign(new UserApiKey(new ApiKey()), { user }),
             ownerType: kind === "user-key" ? "user" : "member",
             user: kind === "member-key" ? null : user,
             member: kind === "member-key" ? member : null,

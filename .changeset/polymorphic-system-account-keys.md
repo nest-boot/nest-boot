@@ -1,5 +1,6 @@
 ---
 "@nest-boot/auth": minor
+"@nest-boot/database": minor
 ---
 
 Organize Auth by feature (`common`, `core`, `workspace`, `admin`, `api-key`), retaining entities, services, resolvers, inputs and adjacent unit tests within each feature. Public imports remain available from `@nest-boot/auth`.
@@ -9,3 +10,5 @@ Store user, workspace-member and independent system-account API keys in one tabl
 Make administration and credentials opt-in. All flags default to false: `admin.enabled`, `apiKey.enabled`, `apiKey.user.enabled`, `apiKey.workspace.enabled` and `apiKey.system.enabled`. Workspace credentials additionally require `workspace.enabled`. System authentication is independent of administration, while management requires an administrator session. Use `apiKey.workspace.*` and `apiKey.system.*`, replacing `apiKey.member.*` and `apiKey.systemAccount.*`. Name scoped services `WorkspaceApiKeyService` and `SystemApiKeyService`.
 
 Include example administration pages under `/admin/api-keys` and `/admin/system-accounts`, explicit example feature configuration and a fresh-database migration baseline. Keep the release in the 8.x series.
+
+Define optional persistence through native EntitySchema constructors and return ordinary credential-free GraphQL DTOs. Remove global entity metadata rewriting and prototype mutation. Database exposes its existing configuration token so Auth can register schema-qualified policies before discovery.

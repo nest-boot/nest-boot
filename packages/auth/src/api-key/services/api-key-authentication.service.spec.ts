@@ -8,9 +8,9 @@ import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { MemberType } from "../../workspace/enums/member-type.enum.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
-import { SystemApiKey } from "../entities/system-api-key.entity.js";
-import { UserApiKey } from "../entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { SystemApiKey } from "../objects/system-api-key.object.js";
+import { UserApiKey } from "../objects/user-api-key.object.js";
+import { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
 import { hashApiKey } from "../utils/api-key-credential.util.js";
 import { ApiKeyAuthenticationService } from "./api-key-authentication.service.js";
 
@@ -21,16 +21,18 @@ import { ApiKeyAuthenticationService } from "./api-key-authentication.service.js
 function fixture() {
   const user = new User();
   const workspace = new Workspace();
-  const userKey = Object.assign(new UserApiKey(), { user: ref(User, user) });
+  const userKey = Object.assign(new UserApiKey(new ApiKey()), {
+    user: ref(User, user),
+  });
   const member: Member = Object.assign(new Member(), {
     user: ref(User, user),
     workspace: ref(Workspace, workspace),
   });
-  const memberKey = Object.assign(new WorkspaceApiKey(), {
+  const memberKey = Object.assign(new WorkspaceApiKey(new ApiKey()), {
     member: ref(Member, member),
   });
   const systemAccount = new SystemAccount();
-  const systemKey = Object.assign(new SystemApiKey(), {
+  const systemKey = Object.assign(new SystemApiKey(new ApiKey()), {
     owner: ref(SystemAccount, systemAccount),
   });
   const identities = {
@@ -245,7 +247,7 @@ describe("optional workspace behavior", () => {
 
   it("authenticates user keys without touching optional member tables", async () => {
     const user = new User();
-    const key = Object.assign(new UserApiKey(), { user });
+    const key = Object.assign(new UserApiKey(new ApiKey()), { user });
     const em = {
       findOne: vi.fn(
         (entity: object): Promise<User | UserApiKey | WorkspaceApiKey> =>
@@ -268,7 +270,7 @@ describe("optional workspace behavior", () => {
     });
     expect(em.findOne).toHaveBeenCalledWith(User, user.id, { refresh: true });
     expect(em.populate).not.toHaveBeenCalled();
-    em.findOne.mockResolvedValue(new WorkspaceApiKey());
+    em.findOne.mockResolvedValue(new WorkspaceApiKey(new ApiKey()));
     await expect(service.validate("member-key")).rejects.toThrow(
       "Invalid API key",
     );

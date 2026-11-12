@@ -1,23 +1,154 @@
-import { type Ref } from "@mikro-orm/core";
-import { Check, Entity, ManyToOne } from "@mikro-orm/decorators/legacy";
+import {
+  BaseEntity,
+  type Opt,
+  type Ref,
+  ref,
+  Reference,
+} from "@mikro-orm/core";
+import { Sonyflake } from "sonyflake-js";
 
 import { User } from "../../core/entities/user.entity.js";
 import { Member } from "../../workspace/entities/member.entity.js";
-import { apiKeyOwnerPolicy } from "../policies/api-key-owner.policy.js";
-import { ApiKeyFields } from "./api-key-fields.js";
 import { SystemAccount } from "./system-account.entity.js";
 
-/** Single persistent API-key entity with a polymorphic owner. */
-@Entity({ policies: [apiKeyOwnerPolicy(true)] })
-@Check({
-  name: "api_key_owner_type_check",
-  expression: `"owner_type" in ('user', 'member', 'system_account')`,
-})
-export class ApiKey extends ApiKeyFields {
-  /** Required polymorphic identity; feature registration filters optional targets per ORM. */
-  @ManyToOne(() => [User, Member, SystemAccount], {
-    ref: true,
-    discriminator: "owner",
-  })
-  declare owner: Ref<User | Member | SystemAccount>;
+/** Credential persistence model, mapped by the native ApiKeySchema. */
+
+export class ApiKey extends BaseEntity {
+  /**
+   * Polymorphic owner discriminator, maintained by the owner relation.
+   * @returns Concrete kind of the polymorphic credential owner.
+   */
+  get ownerType(): Opt<"user" | "member" | "system_account"> {
+    const owner = Reference.unwrapReference<User | Member | SystemAccount>(
+      this.owner,
+    );
+    return owner instanceof User
+      ? "user"
+      : owner instanceof Member
+        ? "member"
+        : "system_account";
+  }
+
+  /** User, workspace member or independent system account that owns the credential. */
+  owner!: Ref<User | Member | SystemAccount>;
+
+  /**
+   * Owning user exposed by the user-key management API.
+   * @returns Owning user reference, or undefined for other owner kinds.
+   */
+  get user(): Ref<User> | undefined {
+    return this.ownerType === "user" ? (this.owner as Ref<User>) : undefined;
+  }
+
+  set user(user: Ref<User> | User | undefined) {
+    if (user) {
+      this.owner = ref(User, user);
+    }
+  }
+
+  /**
+   * Owning member exposed by the member-key management API.
+   * @returns Owning member reference, or undefined for other owner kinds.
+   */
+  get member(): Ref<Member> | undefined {
+    return this.ownerType === "member"
+      ? (this.owner as Ref<Member>)
+      : undefined;
+  }
+
+  set member(member: Ref<Member> | Member | undefined) {
+    if (member) {
+      this.owner = ref(Member, member);
+    }
+  }
+
+  /**
+   * Owning system identity, absent for user and member keys.
+   * @returns Owning system-account reference, or undefined for other owner kinds.
+   */
+  get systemAccount(): Ref<SystemAccount> | undefined {
+    return this.ownerType === "system_account"
+      ? (this.owner as Ref<SystemAccount>)
+      : undefined;
+  }
+
+  /** Administrator or user recorded for audit, independent of credential ownership. */
+  createdBy?: Opt<Ref<User>> | null = null;
+
+  /**
+   * Identifier of the creator retained for audit until that user is deleted.
+   * @returns Creator identifier, or null when it is unavailable.
+   */
+  get createdById(): Opt<string> | null {
+    return this.createdBy?.id ?? null;
+  }
+
+  /**
+   * Identifier used internally by system-account key authorization.
+   * @returns Identifier of the system account owning the credential.
+   */
+  get systemAccountId(): Opt<string> {
+    const account = this.systemAccount;
+    if (!account) {
+      throw new Error("API key has no system-account owner");
+    }
+    return account.id;
+  }
+
+  /**
+   * Identifier used internally by member-key authorization.
+   * @returns Identifier of the member owning the credential.
+   */
+  get memberId(): Opt<string> {
+    const member = this.member;
+    if (!member) {
+      throw new Error("API key has no member owner");
+    }
+    return member.id;
+  }
+
+  /**
+   * Workspace identifier used by member-key authorization conditions.
+   * @returns Identifier of the owning member’s workspace.
+   */
+  get workspaceId(): Opt<string> {
+    const member = this.member;
+    if (!member) {
+      throw new Error("API key has no member owner");
+    }
+    return Reference.unwrapReference(member).workspace.id;
+  }
+
+  /** Primary key (Sonyflake ID, auto-generated). */
+  id: Opt<string> = Sonyflake.next().toString();
+
+  /** API-key display name. */
+  name!: string;
+
+  /** Starting characters retained for recognition in user interfaces. */
+  start?: Opt<string> | null = null;
+
+  /** Public prefix embedded in the plaintext key. */
+  prefix?: Opt<string> | null = null;
+
+  /** SHA-256 hash of the complete plaintext API key. */
+  key!: string;
+
+  /** Whether the key can authenticate requests. */
+  enabled: Opt<boolean> = true;
+
+  /** Operations that this API key may perform. */
+  permissions: Opt<string[]> = [];
+
+  /** Timestamp when the key was created. */
+  createdAt: Opt<Date> = new Date();
+
+  /** Timestamp of the last update. */
+  updatedAt: Opt<Date> = new Date();
+
+  /** Last successful usage timestamp. */
+  lastUsedAt?: Opt<Date> | null = null;
+
+  /** Expiration timestamp; `null` means the key does not expire. */
+  expiresAt?: Opt<Date> | null = null;
 }

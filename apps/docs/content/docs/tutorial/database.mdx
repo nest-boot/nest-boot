@@ -130,6 +130,8 @@ configuration services, not MikroORM or EntityManager.
 Auth and QueueApi automatically contribute their entities; applications need no manual
 registration of those packages' entity arrays.
 
+`DATABASE_MODULE_OPTIONS` exposes the options registered with DatabaseModule before ORM initialization and can be injected into `forFeatureAsync` factories. These are the registration options; omitted values may still be supplied by framework environment defaults.
+
 Commands use the existing `nb` lifecycle: initialize the application, execute, then close it.
 Other application initialization hooks still run, sharing configuration and infrastructure
 with the HTTP entry.

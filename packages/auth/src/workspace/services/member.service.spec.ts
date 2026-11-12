@@ -14,8 +14,9 @@ import {
   createTestWorkspace,
   createWorkspaceServices,
 } from "../../../test/workspace-service.fixture.js";
-import { UserApiKey } from "../../api-key/entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../../api-key/entities/workspace-api-key.entity.js";
+import { ApiKey } from "../../api-key/entities/api-key.entity.js";
+import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
+import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { AuthAbility } from "../../common/auth.ability.js";
 import { can } from "../../common/utils/can.util.js";
 import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
@@ -589,7 +590,7 @@ describe("MemberService", () => {
       );
       expect(authorization.assertCurrentWorkspace).not.toHaveBeenCalled();
       expect(authorization.authorize).not.toHaveBeenCalled();
-      RequestContext.set(API_KEY, new WorkspaceApiKey());
+      RequestContext.set(API_KEY, new WorkspaceApiKey(new ApiKey()));
       RequestContext.set(
         User,
         Object.assign(createTestUser(), { id: "other" }),
@@ -1412,7 +1413,9 @@ describe("permission management", () => {
             RequestContext.set(
               API_KEY,
               Object.assign(
-                key === "user" ? new UserApiKey() : new WorkspaceApiKey(),
+                key === "user"
+                  ? new UserApiKey(new ApiKey())
+                  : new WorkspaceApiKey(new ApiKey()),
                 {
                   user: key === "user" ? ref(User, user) : null,
                   permissions:
@@ -1572,8 +1575,8 @@ describe("permission management", () => {
                 API_KEY,
                 Object.assign(
                   scenario.key === "user"
-                    ? new UserApiKey()
-                    : new WorkspaceApiKey(),
+                    ? new UserApiKey(new ApiKey())
+                    : new WorkspaceApiKey(new ApiKey()),
                   {
                     user: scenario.key === "user" ? ref(User, user) : null,
                     member:

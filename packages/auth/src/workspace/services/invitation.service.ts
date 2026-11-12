@@ -178,11 +178,9 @@ export class InvitationService {
     const { created, inviterMember } = transactionResult;
 
     if (sendInvitationEmail && inviterMember) {
-      const callbackInviter = Object.assign(
-        Object.create(Object.getPrototypeOf(inviterMember)) as Member,
-        inviterMember,
-        { user: inviter },
-      );
+      const callbackInviter = Object.assign(new Member(), inviterMember, {
+        user: inviter,
+      });
 
       try {
         await sendInvitationEmail(

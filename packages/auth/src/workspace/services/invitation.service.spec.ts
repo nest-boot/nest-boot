@@ -18,7 +18,8 @@ import {
   createTestWorkspace,
   createWorkspaceServices,
 } from "../../../test/workspace-service.fixture.js";
-import { WorkspaceApiKey } from "../../api-key/entities/workspace-api-key.entity.js";
+import { ApiKey } from "../../api-key/entities/api-key.entity.js";
+import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { AuthAbility } from "../../common/auth.ability.js";
 import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import { API_KEY } from "../../core/constants/auth.constants.js";
@@ -1133,7 +1134,7 @@ describe("read authorization", () => {
           if (scenario.key) {
             RequestContext.set(
               API_KEY,
-              Object.assign(new WorkspaceApiKey(), {
+              Object.assign(new WorkspaceApiKey(new ApiKey()), {
                 user: null,
                 workspace: ref(Workspace, workspace),
               }),

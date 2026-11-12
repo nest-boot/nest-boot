@@ -1,9 +1,4 @@
-import type { ApiKey } from "../entities/api-key.entity.js";
+import type { ApiKeyObject } from "../objects/api-key.object.js";
 
-/**
- * API-key fields without the credential hash.
- * Management services return snapshots; use service methods to persist changes.
- */
-export type ApiKeyMetadata<Key extends ApiKey = ApiKey> = Key extends ApiKey
-  ? Omit<Key, "key">
-  : never;
+/** Credential-free, owner-specific GraphQL response metadata. */
+export type ApiKeyMetadata<Key extends ApiKeyObject = ApiKeyObject> = Key;

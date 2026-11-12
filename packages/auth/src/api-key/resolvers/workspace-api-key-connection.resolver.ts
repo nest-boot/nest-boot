@@ -16,7 +16,8 @@ import {
   WorkspaceApiKeyConnection,
   WorkspaceApiKeyConnectionArgs,
 } from "../connections/workspace-api-key.connection-definition.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { ApiKey } from "../entities/api-key.entity.js";
+import { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
 import { WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
 import { type ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 
@@ -54,7 +55,7 @@ export class WorkspaceApiKeyConnectionResolver {
   async workspaceApiKeys(
     @CurrentWorkspace() workspace: Workspace,
     @Args({ type: () => WorkspaceApiKeyConnectionArgs })
-    args: ConnectionArgsInterface<WorkspaceApiKey>,
+    args: ConnectionArgsInterface<ApiKey>,
     @Info() info?: GraphQLResolveInfo,
   ) {
     return await this.apiKeyService.getWorkspaceApiKeyConnection(

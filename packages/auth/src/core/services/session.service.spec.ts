@@ -9,7 +9,8 @@ import { type Mocked } from "vitest";
 import { withIdentity } from "../../../test/fixtures/conditional-authorization.fixture.js";
 import { mockAuthorization } from "../../../test/mock-authorization.js";
 import { mockRlsContext } from "../../../test/mock-rls-context.js";
-import { WorkspaceApiKey } from "../../api-key/entities/workspace-api-key.entity.js";
+import { ApiKey } from "../../api-key/entities/api-key.entity.js";
+import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import { Invitation } from "../../workspace/entities/invitation.entity.js";
 import { Member } from "../../workspace/entities/member.entity.js";
@@ -624,7 +625,7 @@ describe("session management", () => {
             ),
           ).resolves.toBeNull();
           expect(em.findOne).not.toHaveBeenCalled();
-          RequestContext.set(API_KEY, new WorkspaceApiKey());
+          RequestContext.set(API_KEY, new WorkspaceApiKey(new ApiKey()));
           authorization.authorize.mockImplementation(() => {
             throw new ForbiddenException();
           });
@@ -684,7 +685,7 @@ describe("session management", () => {
                 { first: 2 },
               ),
             ).rejects.toThrow(ForbiddenException);
-            RequestContext.set(API_KEY, new WorkspaceApiKey());
+            RequestContext.set(API_KEY, new WorkspaceApiKey(new ApiKey()));
             await expect(
               service.getSessionConnectionByUser(user, { first: 2 }),
             ).rejects.toThrow(ForbiddenException);

@@ -1,7 +1,7 @@
 import { toZodSchema, type ZodClass } from "@nest-boot/validator";
 
 import { CurrentApiKey } from "./api-key/decorators/current-api-key.decorator.js";
-import { WorkspaceApiKey } from "./api-key/entities/workspace-api-key.entity.js";
+import { WorkspaceApiKey } from "./api-key/objects/workspace-api-key.object.js";
 import { UserApiKeyService } from "./api-key/services/user-api-key.service.js";
 import { WorkspaceApiKeyService } from "./api-key/services/workspace-api-key.service.js";
 import { AuthAbility } from "./common/auth.ability.js";
@@ -209,9 +209,11 @@ describe("public API", () => {
       ...publicApi.workspaceEntities,
     ]).toHaveLength(names.length);
     for (const name of names) {
-      expect([...publicApi.entities, ...publicApi.workspaceEntities]).toContain(
-        publicApi[name],
-      );
+      expect(
+        [...publicApi.entities, ...publicApi.workspaceEntities].map((entity) =>
+          typeof entity === "function" ? entity : entity.class,
+        ),
+      ).toContain(publicApi[name]);
       if (name !== "Verification" && name !== "ApiKey") {
         expect(publicApi).toHaveProperty(`${name}Connection`);
       }

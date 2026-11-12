@@ -1,5 +1,10 @@
 import { MikroORM } from "@mikro-orm/core";
-import { DatabaseModule } from "@nest-boot/database";
+import {
+  DATABASE_MODULE_OPTIONS,
+  DatabaseModule,
+  type DatabaseModuleOptions,
+  getDatabaseConfig,
+} from "@nest-boot/database";
 import { HashService } from "@nest-boot/hash";
 import { Mailer } from "@nest-boot/mailer";
 import {
@@ -24,6 +29,8 @@ import { APP_INTERCEPTOR } from "@nestjs/core";
 import { adminProviders } from "../admin/admin.providers.js";
 import { SystemAccountService } from "../admin/services/system-account.service.js";
 import { apiKeyProviders } from "../api-key/api-key.providers.js";
+import { createApiKeySchema } from "../api-key/entities/api-key.entity-schema.js";
+import { SystemAccount } from "../api-key/entities/system-account.entity.js";
 import { ApiKeyUsageInterceptor } from "../api-key/interceptors/api-key-usage.interceptor.js";
 import { SystemApiKeyService } from "../api-key/services/system-api-key.service.js";
 import { UserApiKeyService } from "../api-key/services/user-api-key.service.js";
@@ -32,6 +39,9 @@ import {
   DEFAULT_WORKSPACE_PERMISSIONS,
   DEFAULT_WORKSPACE_ROLES,
 } from "../workspace/constants/workspace.constants.js";
+import { createInvitationSchema } from "../workspace/entities/invitation.entity-schema.js";
+import { Member } from "../workspace/entities/member.entity.js";
+import { Workspace } from "../workspace/entities/workspace.entity.js";
 import { InvitationService } from "../workspace/services/invitation.service.js";
 import { MemberService } from "../workspace/services/member.service.js";
 import { WorkspaceService } from "../workspace/services/workspace.service.js";
@@ -51,7 +61,10 @@ import {
   DEFAULT_USER_ROLES,
 } from "./constants/user.constants.js";
 import { createAuthInstance } from "./create-auth-instance.js";
-import { getAuthEntities } from "./get-auth-entities.js";
+import { Account } from "./entities/account.entity.js";
+import { Session } from "./entities/session.entity.js";
+import { User } from "./entities/user.entity.js";
+import { Verification } from "./entities/verification.entity.js";
 import { type AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
 import { AuthResolver } from "./resolvers/auth.resolver.js";
 import { SessionResolver } from "./resolvers/session.resolver.js";
@@ -61,6 +74,7 @@ import { AuthService } from "./services/auth.service.js";
 import { SessionService } from "./services/session.service.js";
 import { UserService } from "./services/user.service.js";
 import { UserDeletionService } from "./services/user-deletion.service.js";
+import { resolveAuthFeatures } from "./utils/resolve-auth-features.util.js";
 
 @Module({})
 class AuthOptionsHostModule {}
@@ -195,8 +209,46 @@ export class AuthModule extends ConfigurableModuleClass {
         optionsModule,
         DatabaseModule.forFeatureAsync({
           imports: [optionsModule],
-          inject: [MODULE_OPTIONS_TOKEN],
-          useFactory: (options: AuthModuleOptions) => getAuthEntities(options),
+          inject: [MODULE_OPTIONS_TOKEN, DATABASE_MODULE_OPTIONS],
+          useFactory: async (
+            options: AuthModuleOptions,
+            database: DatabaseModuleOptions,
+          ) => {
+            const features = resolveAuthFeatures(options);
+            // Match DatabaseModule's precedence: explicit connection targets ignore ambient DATABASE_URL.
+            const explicitTarget = [
+              database.dbName,
+              database.clientUrl,
+              database.host,
+              database.port,
+              database.user,
+              database.password,
+              database.replicas,
+            ].some((value) => value !== undefined);
+            const schema =
+              database.schema ??
+              (explicitTarget ? undefined : (await getDatabaseConfig()).schema);
+            return [
+              User,
+              Account,
+              Session,
+              Verification,
+              ...(features.apiKey
+                ? [
+                    createApiKeySchema({
+                      user: features.userApiKey,
+                      workspace: features.workspaceApiKey,
+                      system: features.systemApiKey,
+                      schema,
+                    }),
+                  ]
+                : []),
+              ...(features.systemAccount ? [SystemAccount] : []),
+              ...(features.workspace
+                ? [Workspace, Member, createInvitationSchema(schema)]
+                : []),
+            ];
+          },
         }),
       ],
       exports: [optionsModule],

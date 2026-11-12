@@ -2,7 +2,10 @@ import { createHash } from "node:crypto";
 
 import { MikroORM } from "@mikro-orm/core";
 import { type MikroORM as PgliteORM, PgliteDriver } from "@mikro-orm/pglite";
-import { DatabaseModule } from "@nest-boot/database";
+import {
+  DatabaseModule,
+  type DatabaseModuleOptions,
+} from "@nest-boot/database";
 import { HashService } from "@nest-boot/hash";
 import { Mailer } from "@nest-boot/mailer";
 import { ApolloDriver } from "@nestjs/apollo";
@@ -31,11 +34,13 @@ import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
  * @param workspace - Workspace feature settings under test.
  * @param asyncOptions - Whether options are resolved through injected async configuration.
  * @param schemaName - Database schema supplied to DatabaseModule.
+ * @param databaseOverrides - Optional connection overrides for precedence tests.
  */
 export async function verifyAuthBootstrap(
   workspace: AuthModuleOptions["workspace"],
   asyncOptions: boolean,
   schemaName = "public",
+  databaseOverrides: DatabaseModuleOptions = {},
 ) {
   const options: AuthModuleOptions = withAuthTestFeatures({
     secret: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_",
@@ -74,15 +79,23 @@ export async function verifyAuthBootstrap(
   const factory = vi.fn(
     async (value: AuthModuleOptions) => await Promise.resolve(value),
   );
+  const database: DatabaseModuleOptions = {
+    driver: PgliteDriver,
+    dbName: "memory://",
+    entities: [],
+    schema: schemaName,
+    ...databaseOverrides,
+  };
+  if (database.dbName === undefined) {
+    delete database.dbName;
+  }
+  if (database.schema === undefined) {
+    delete database.schema;
+  }
   const moduleRef = await Test.createTestingModule({
     imports: [
       InfrastructureModule,
-      DatabaseModule.forRoot({
-        driver: PgliteDriver,
-        dbName: "memory://",
-        entities: [],
-        schema: schemaName,
-      }),
+      DatabaseModule.forRoot(database),
       GraphQLModule.forRoot({
         driver: ApolloDriver,
         autoSchemaFile: true,
@@ -135,6 +148,13 @@ export async function verifyAuthBootstrap(
       [schemaName],
     );
     expect(tables.map((table) => table.tablename).sort()).toEqual(expected);
+    if (schemaName !== "public") {
+      expect(
+        await orm.em.execute(
+          "select tablename from pg_tables where schemaname = 'public'",
+        ),
+      ).toEqual([]);
+    }
     const auth = app.get<ReturnType<typeof betterAuth>>(AUTH_TOKEN);
     const signup = await auth.api.signUpEmail({
       body: {

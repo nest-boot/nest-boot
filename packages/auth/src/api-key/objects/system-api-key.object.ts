@@ -1,14 +1,21 @@
-/* eslint-disable @nest-boot/graphql-field-config-from-types -- Runtime permission catalogs require explicit enum metadata. */
-import { type Opt, type Ref } from "@mikro-orm/core";
+/* eslint-disable @nest-boot/graphql-field-config-from-types -- Permission enums are populated from runtime catalogs. */
+import { type Ref } from "@mikro-orm/core";
 import { Field, HideField, ObjectType } from "@nest-boot/graphql";
 
+import { SystemAccount } from "../entities/system-account.entity.js";
 import { SystemApiKeyPermission } from "../enums/system-api-key-permission.enum.js";
-import { ApiKeyFields } from "./api-key-fields.js";
-import { SystemAccount } from "./system-account.entity.js";
+import { ApiKeyObject } from "./api-key.object.js";
 
 /** authorization view of a key owned by an independent platform system account. */
 @ObjectType({ isAbstract: true })
-export class SystemApiKey extends ApiKeyFields {
+export class SystemApiKey extends ApiKeyObject {
+  /**
+   * Credential kind represented by this DTO.
+   * @returns Value for the credential identity or authorization condition.
+   */
+  override get ownerType(): "system_account" {
+    return "system_account";
+  }
   /** Concrete owning identity for this public credential view. */
   @HideField()
   declare owner: Ref<SystemAccount>;
@@ -23,13 +30,5 @@ export class SystemApiKey extends ApiKeyFields {
 
   /** Explicit grants; an empty list grants no operations. */
   @Field(() => [SystemApiKeyPermission])
-  declare permissions: Opt<string[]>;
-
-  /**
-   * Identifier of the credential's system identity for internal authorization.
-   * @returns Identifier of the system account owning the credential.
-   */
-  override get systemAccountId(): Opt<string> {
-    return super.systemAccountId;
-  }
+  declare permissions: string[];
 }

@@ -49,7 +49,11 @@ it.each([false, true])(
     try {
       const orm = app.get<PgliteORM>(MikroORM);
       for (const entity of [...entities, ...workspaceEntities]) {
-        expect(orm.getMetadata().has<object>(entity)).toBe(true);
+        expect(
+          orm
+            .getMetadata()
+            .has<object>(typeof entity === "function" ? entity : entity.class),
+        ).toBe(true);
       }
       expect(factory).toHaveBeenCalledTimes(asyncOptions ? 1 : 0);
       await orm.em.execute("create role authenticated nologin");

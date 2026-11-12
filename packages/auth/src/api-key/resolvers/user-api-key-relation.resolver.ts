@@ -2,7 +2,7 @@ import { Parent, ResolveField, Resolver } from "@nest-boot/graphql";
 
 import { User } from "../../core/entities/user.entity.js";
 import { UserService } from "../../core/services/user.service.js";
-import { UserApiKey } from "../entities/user-api-key.entity.js";
+import { UserApiKey } from "../objects/user-api-key.object.js";
 import { resolveApiKeyRelation } from "../utils/resolve-api-key-relation.util.js";
 
 /** Authorized user details for user credentials. */

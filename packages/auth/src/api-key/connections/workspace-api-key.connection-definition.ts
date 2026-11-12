@@ -1,6 +1,6 @@
 import { ArgsType, ObjectType } from "@nest-boot/graphql";
 
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
 import { createApiKeyConnection } from "./create-api-key-connection.js";
 
 const { Connection, ConnectionArgs } = createApiKeyConnection(WorkspaceApiKey);

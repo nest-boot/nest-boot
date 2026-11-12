@@ -1,9 +1,10 @@
 import { expectTypeOf } from "vitest";
 
 import type { ApiKey } from "../src/api-key/entities/api-key.entity.js";
-import type { SystemApiKey } from "../src/api-key/entities/system-api-key.entity.js";
-import type { UserApiKey } from "../src/api-key/entities/user-api-key.entity.js";
-import type { WorkspaceApiKey } from "../src/api-key/entities/workspace-api-key.entity.js";
+import type { ApiKeyObject } from "../src/api-key/objects/api-key.object.js";
+import type { SystemApiKey } from "../src/api-key/objects/system-api-key.object.js";
+import type { UserApiKey } from "../src/api-key/objects/user-api-key.object.js";
+import type { WorkspaceApiKey } from "../src/api-key/objects/workspace-api-key.object.js";
 import type { SystemApiKeyService } from "../src/api-key/services/system-api-key.service.js";
 import type { UserApiKeyService } from "../src/api-key/services/user-api-key.service.js";
 import type { WorkspaceApiKeyService } from "../src/api-key/services/workspace-api-key.service.js";
@@ -91,8 +92,9 @@ describe("Credential-free query result types", () => {
   });
 
   it("preserves scoped ownership variants and accepts full authenticated entities", () => {
-    expectTypeOf<ApiKeyMetadata>().toEqualTypeOf<Omit<ApiKey, "key">>();
+    expectTypeOf<ApiKeyMetadata>().toEqualTypeOf<ApiKeyObject>();
     expectTypeOf<ApiKey>().toExtend<ApiKeyMetadata>();
+    expectTypeOf<ApiKeyMetadata>().not.toHaveProperty("isInitialized");
     expectTypeOf<
       Awaited<ReturnType<UserApiKeyService["createUserApiKey"]>>["entity"]
     >().toEqualTypeOf<UserApiKey>();

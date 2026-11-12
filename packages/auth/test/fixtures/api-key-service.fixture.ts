@@ -2,7 +2,8 @@ import { EntityManager, ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { it as baseIt, type Mocked } from "vitest";
 
-import { WorkspaceApiKey } from "../../src/api-key/entities/workspace-api-key.entity.js";
+import { ApiKey } from "../../src/api-key/entities/api-key.entity.js";
+import { WorkspaceApiKey } from "../../src/api-key/objects/workspace-api-key.object.js";
 import { UserApiKeyService } from "../../src/api-key/services/user-api-key.service.js";
 import { WorkspaceApiKeyService } from "../../src/api-key/services/workspace-api-key.service.js";
 import * as abilityHelpers from "../../src/common/utils/authorize.util.js";
@@ -58,7 +59,7 @@ export function createTestMember(): Member {
  * @returns Api key fixture with deterministic identifiers.
  */
 export function createTestApiKey(): WorkspaceApiKey {
-  return Object.assign(new WorkspaceApiKey(), {
+  return Object.assign(new WorkspaceApiKey(new ApiKey()), {
     id: "api-key-1",
     name: "Deploy key",
     start: "sk012345",

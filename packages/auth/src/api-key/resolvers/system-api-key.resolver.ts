@@ -15,11 +15,12 @@ import {
   SystemApiKeyConnection,
   SystemApiKeyConnectionArgs,
 } from "../connections/system-api-key.connection-definition.js";
+import { ApiKey } from "../entities/api-key.entity.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
-import { SystemApiKey } from "../entities/system-api-key.entity.js";
 import { CreateSystemApiKeyInput } from "../inputs/create-system-api-key.input.js";
 import { UpdateSystemApiKeyInput } from "../inputs/update-system-api-key.input.js";
 import { CreateSystemApiKeyResult } from "../objects/create-system-api-key-result.object.js";
+import { SystemApiKey } from "../objects/system-api-key.object.js";
 import { SystemApiKeyPermissionOption } from "../objects/system-api-key-permission-option.object.js";
 import { SystemApiKeyService } from "../services/system-api-key.service.js";
 
@@ -70,7 +71,7 @@ export class SystemApiKeyResolver {
   @Query(() => SystemApiKeyConnection)
   systemApiKeys(
     @Args({ type: () => SystemApiKeyConnectionArgs })
-    args: ConnectionArgsInterface<SystemApiKey>,
+    args: ConnectionArgsInterface<ApiKey>,
     @Info() info?: GraphQLResolveInfo,
   ) {
     return this.keys.getSystemApiKeyConnection(undefined, args, info);
@@ -87,7 +88,7 @@ export class SystemApiKeyResolver {
   apiKeys(
     @Parent() account: SystemAccount,
     @Args({ type: () => SystemApiKeyConnectionArgs })
-    args: ConnectionArgsInterface<SystemApiKey>,
+    args: ConnectionArgsInterface<ApiKey>,
     @Info() info?: GraphQLResolveInfo,
   ) {
     return this.keys.getSystemApiKeyConnection(account.id, args, info);

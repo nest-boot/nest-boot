@@ -1,16 +1,16 @@
-import type { EntityClass } from "@mikro-orm/core";
-import { ObjectType } from "@nest-boot/graphql";
+import { Field, ObjectType } from "@nest-boot/graphql";
 import {
   type ConnectionFieldOptions,
   createConnection,
   createConnectionArgs,
-  createEdge,
   createFilter,
   createOrder,
+  type EdgeInterface,
 } from "@nest-boot/graphql-connection";
+import type { Type } from "@nestjs/common";
 
 import { ApiKey } from "../entities/api-key.entity.js";
-import type { ApiKeyFields } from "../entities/api-key-fields.js";
+import type { ApiKeyObject } from "../objects/api-key.object.js";
 
 /**
  * Keeps GraphQL node types separate while querying the shared persistence entity.
@@ -19,10 +19,10 @@ import type { ApiKeyFields } from "../entities/api-key-fields.js";
  * @returns Scoped connection and pagination arguments backed by the API-key table.
  * @internal
  */
-export function createApiKeyConnection<Key extends ApiKeyFields>(
-  view: EntityClass<Key>,
+export function createApiKeyConnection<Key extends ApiKeyObject>(
+  view: Type<Key>,
 ) {
-  const fields = new Map<string, ConnectionFieldOptions<Key>>([
+  const fields = new Map<string, ConnectionFieldOptions<ApiKey>>([
     [
       "name",
       { field: "name", type: "string", searchable: true, filterable: true },
@@ -50,8 +50,20 @@ export function createApiKeyConnection<Key extends ApiKeyFields>(
       },
     ],
   ]);
-  const Edge = createEdge(view, view.name);
-  ObjectType(`${view.name}Edge`, { isAbstract: true })(Edge);
+  @ObjectType(`${view.name}Edge`, { isAbstract: true })
+  class Edge implements EdgeInterface<ApiKey> {
+    // eslint-disable-next-line @nest-boot/graphql-field-config-from-types -- Services project persistence rows to this DTO before GraphQL serialization.
+    @Field(() => view, {
+      description: `The item at the end of ${view.name}Edge.`,
+    })
+    node!: ApiKey;
+
+    @Field(() => String, {
+      complexity: 0,
+      description: "A cursor for use in pagination.",
+    })
+    cursor!: string;
+  }
   const { Order } = createOrder(view.name, fields);
   const { Filter, filterQuerySchema } = createFilter(view.name, fields, {
     maxDepth: 5,
@@ -61,7 +73,7 @@ export function createApiKeyConnection<Key extends ApiKeyFields>(
   });
   // Only this boundary projects shared persistence to the service-checked public view.
   const Connection = createConnection(
-    ApiKey as unknown as EntityClass<Key>,
+    ApiKey,
     view.name,
     Edge,
     fields,

@@ -24,8 +24,8 @@ import { Member } from "../../workspace/entities/member.entity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
 import { ApiKey } from "../entities/api-key.entity.js";
-import { UserApiKey } from "../entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { UserApiKey } from "../objects/user-api-key.object.js";
+import { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
 /* eslint-disable @typescript-eslint/unbound-method */
 describe("API-key management", () => {
   describe("API-key management services", () => {
@@ -93,7 +93,9 @@ describe("API-key management", () => {
           RequestIdentity.stage({ user });
           RequestIdentity.prepare(withAuthTestFeatures(options));
           const key = Object.assign(
-            scope === "user" ? new UserApiKey() : new WorkspaceApiKey(),
+            scope === "user"
+              ? new UserApiKey(new ApiKey())
+              : new WorkspaceApiKey(new ApiKey()),
             {
               id: "conditional-key",
               key: "already-hydrated-key-hash",
@@ -135,7 +137,9 @@ describe("API-key management", () => {
           RequestIdentity.stage({ user });
           RequestIdentity.prepare(withAuthTestFeatures(options));
           const key = Object.assign(
-            scope === "user" ? new UserApiKey() : new WorkspaceApiKey(),
+            scope === "user"
+              ? new UserApiKey(new ApiKey())
+              : new WorkspaceApiKey(new ApiKey()),
             { enabled: true, member: ref(Member, createTestMember()) },
           );
           const result = {
@@ -208,7 +212,9 @@ describe("API-key management", () => {
               scope === "user" ? "user:read" : "workspace:delete",
             ];
             const key = Object.assign(
-              scope === "user" ? new UserApiKey() : new WorkspaceApiKey(),
+              scope === "user"
+                ? new UserApiKey(new ApiKey())
+                : new WorkspaceApiKey(new ApiKey()),
               {
                 id: "stale-key",
                 enabled: true,
@@ -248,7 +254,7 @@ describe("API-key management", () => {
           RequestContext.set(User, user);
           const key =
             scope === "user"
-              ? Object.assign(new UserApiKey(), {
+              ? Object.assign(new UserApiKey(new ApiKey()), {
                   id: "key",
                   user: ref(User, user),
                   name: "Original",
@@ -301,7 +307,9 @@ describe("API-key management", () => {
             const { service, em } = createService();
             const user = createTestUser();
             const key = Object.assign(
-              scope === "user" ? new UserApiKey() : new WorkspaceApiKey(),
+              scope === "user"
+                ? new UserApiKey(new ApiKey())
+                : new WorkspaceApiKey(new ApiKey()),
               {
                 id: "active-key",
                 enabled: true,
@@ -401,7 +409,9 @@ describe("API-key management", () => {
           async () => {
             const { service, em, authorization } = createService();
             const key = Object.assign(
-              scope === "user" ? new UserApiKey() : new WorkspaceApiKey(),
+              scope === "user"
+                ? new UserApiKey(new ApiKey())
+                : new WorkspaceApiKey(new ApiKey()),
               {
                 user: scope === "user" ? ref(User, createTestUser()) : null,
                 member:
@@ -541,13 +551,13 @@ describe("API-key management", () => {
       async () => {
         const { em, service } = createService();
         const user = Object.assign(createTestUser(), { roles: ["admin"] });
-        const targetKey = Object.assign(new UserApiKey(), {
+        const targetKey = Object.assign(new UserApiKey(new ApiKey()), {
           workspace: null,
           user: ref(User, user),
           permissions: ["user:read"],
         });
         em.findOne.mockResolvedValue(targetKey);
-        const authenticatingKey = Object.assign(new UserApiKey(), {
+        const authenticatingKey = Object.assign(new UserApiKey(new ApiKey()), {
           workspace: null,
           user: ref(User, user),
           permissions: ["user:read"],
@@ -594,7 +604,7 @@ describe("API-key management", () => {
     );
     apiKeyTest("does not let one user manage another user's key", async () => {
       const { em, service } = createService();
-      const apiKey = Object.assign(new UserApiKey(), {
+      const apiKey = Object.assign(new UserApiKey(new ApiKey()), {
         workspace: null,
         user: createTestUser(),
       });
@@ -611,7 +621,7 @@ describe("API-key management", () => {
         const user = createTestUser();
         RequestContext.set(
           API_KEY,
-          Object.assign(new UserApiKey(), {
+          Object.assign(new UserApiKey(new ApiKey()), {
             workspace: null,
             user: user,
             permissions: ["user:read"],
@@ -640,7 +650,7 @@ describe("API-key management", () => {
       async () => {
         const { em, service } = createService();
         const user = Object.assign(createTestUser(), { roles: ["admin"] });
-        const target = Object.assign(new UserApiKey(), {
+        const target = Object.assign(new UserApiKey(new ApiKey()), {
           workspace: null,
           user: user,
           permissions: ["user:delete"],
@@ -649,7 +659,7 @@ describe("API-key management", () => {
         await RequestContext.child(async () => {
           RequestContext.set(
             API_KEY,
-            Object.assign(new UserApiKey(), {
+            Object.assign(new UserApiKey(new ApiKey()), {
               workspace: null,
               user: user,
               permissions: ["user:read"],

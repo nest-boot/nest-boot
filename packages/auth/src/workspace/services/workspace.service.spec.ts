@@ -13,8 +13,9 @@ import {
   createTestWorkspace,
   createWorkspaceServices,
 } from "../../../test/workspace-service.fixture.js";
-import { UserApiKey } from "../../api-key/entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../../api-key/entities/workspace-api-key.entity.js";
+import { ApiKey } from "../../api-key/entities/api-key.entity.js";
+import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
+import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { AuthAbility } from "../../common/auth.ability.js";
 import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import { API_KEY } from "../../core/constants/auth.constants.js";
@@ -58,7 +59,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
           } else {
             RequestContext.set(
               API_KEY,
-              Object.assign(new WorkspaceApiKey(), {
+              Object.assign(new WorkspaceApiKey(new ApiKey()), {
                 permissions: ["workspace:update", "workspace:delete"],
               }),
             );
@@ -250,7 +251,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
       expect(() => workspaceService.getCurrentWorkspace()).toThrow(
         ForbiddenException,
       );
-      const apiKey = new WorkspaceApiKey();
+      const apiKey = new WorkspaceApiKey(new ApiKey());
       RequestContext.set(API_KEY, apiKey);
       expect(() => workspaceService.getCurrentWorkspace()).toThrow(
         "The API key owner is not a member of this workspace",
@@ -477,9 +478,9 @@ describe("WorkspaceService and cross-domain coordination", () => {
           const session = new Session();
           const key =
             kind === "member-key"
-              ? new WorkspaceApiKey()
+              ? new WorkspaceApiKey(new ApiKey())
               : kind === "user-key"
-                ? new UserApiKey()
+                ? new UserApiKey(new ApiKey())
                 : null;
           RequestContext.set(API_KEY, key);
           if (kind !== "member-key") {
@@ -540,7 +541,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
     const workspace = createTestWorkspace();
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(Workspace, workspace);
-      const key = new WorkspaceApiKey();
+      const key = new WorkspaceApiKey(new ApiKey());
       RequestContext.set(API_KEY, key);
       em.isInTransaction.mockReturnValueOnce(true);
       await expect(workspaceService.deleteWorkspace(workspace)).rejects.toThrow(

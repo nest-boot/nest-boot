@@ -15,7 +15,6 @@ import type { GraphQLResolveInfo } from "graphql";
 
 import { assertSystemAccountAdministrator } from "../../admin/utils/assert-system-account-administrator.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
-import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import {
   assertCanGrantPermissions,
   assertPermissionCeiling,
@@ -28,16 +27,17 @@ import { ApiKeyLifecycle } from "../api-key-lifecycle.js";
 import { SystemApiKeyConnection } from "../connections/system-api-key.connection-definition.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
-import { SystemApiKey } from "../entities/system-api-key.entity.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
+import { SystemApiKey } from "../objects/system-api-key.object.js";
 import type { SystemApiKeyPermissionOption } from "../objects/system-api-key-permission-option.object.js";
 import type { ApiKeyMetadata } from "../types/api-key-metadata.type.js";
 import {
   normalizeApiKeyPermissions,
   resolveApiKeyPermissionCatalog,
 } from "../utils/api-key-permissions.util.js";
+import { toApiKeyView } from "../utils/api-key-view.util.js";
 import { assertApiKeyFeature } from "../utils/assert-api-key-feature.util.js";
 import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
 
@@ -124,7 +124,7 @@ export class SystemApiKeyService {
       }
       assertApiKeyOwner(key, "system_account");
       authorize("read", key);
-      return omitCredentials(key, ["key"]);
+      return toApiKeyView(key);
     });
   }
 
@@ -137,7 +137,7 @@ export class SystemApiKeyService {
    */
   async getSystemApiKeyConnection(
     systemAccountId: string | undefined,
-    args: ConnectionArgsInterface<SystemApiKey>,
+    args: ConnectionArgsInterface<ApiKey>,
     info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<ApiKeyMetadata<SystemApiKey>>> {
     this.assertAccess("read");
@@ -161,10 +161,10 @@ export class SystemApiKeyService {
       }
       return {
         ...page,
-        edges: page.edges.map((edge) => ({
-          ...edge,
-          node: omitCredentials(edge.node, ["key"]),
-        })),
+        edges: page.edges.map((edge) => {
+          assertApiKeyOwner(edge.node, "system_account");
+          return { ...edge, node: toApiKeyView(edge.node) };
+        }),
       };
     });
   }
@@ -220,7 +220,7 @@ export class SystemApiKeyService {
             authorize("write", entity, field);
           }
           await tx.persist(entity).flush();
-          return { apiKey, entity };
+          return { apiKey, entity: toApiKeyView(entity) };
         },
         { clear: true },
       ),
@@ -292,18 +292,14 @@ export class SystemApiKeyService {
           }
           assertApiKeyOwner(key, "system_account");
           authorize("write", key);
-          const candidate = Object.assign(
-            Object.create(Object.getPrototypeOf(key)) as ApiKey,
-            key,
-            {
-              ...(input.name !== undefined && { name: input.name }),
-              ...(input.enabled !== undefined && { enabled: input.enabled }),
-              ...(input.expiresAt !== undefined && {
-                expiresAt: input.expiresAt,
-              }),
-              ...(permissions !== undefined && { permissions }),
-            },
-          );
+          const candidate = Object.assign(new ApiKey(), key, {
+            ...(input.name !== undefined && { name: input.name }),
+            ...(input.enabled !== undefined && { enabled: input.enabled }),
+            ...(input.expiresAt !== undefined && {
+              expiresAt: input.expiresAt,
+            }),
+            ...(permissions !== undefined && { permissions }),
+          });
           authorize("write", candidate);
           for (const [field, value] of Object.entries(input)) {
             if (value !== undefined) {
@@ -317,7 +313,7 @@ export class SystemApiKeyService {
             input,
             permissions,
           );
-          return omitCredentials(updated, ["key"]);
+          return toApiKeyView(updated);
         },
         { clear: true },
       ),
@@ -342,7 +338,7 @@ export class SystemApiKeyService {
       assertApiKeyOwner(key, "system_account");
       authorize("write", key);
       await ApiKeyLifecycle.delete(em, this.options, key);
-      return omitCredentials(key, ["key"]);
+      return toApiKeyView(key);
     });
   }
 

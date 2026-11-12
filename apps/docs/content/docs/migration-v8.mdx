@@ -238,28 +238,12 @@ metadata, relations, RLS policies, and connections. There are no public auth
 
 AuthModule registers enabled entities through DatabaseModule. Use the application’s
 `nb database:*` commands to share runtime options; no separate MikroORM config is required.
-Standalone ORM consumers pass matching feature options to `getAuthEntities`:
+AuthModule selects the enabled native schemas automatically. Standalone ORM consumers can register the complete model:
 
 ```typescript
-import { getAuthEntities } from "@nest-boot/auth";
+import { entities, workspaceEntities } from "@nest-boot/auth";
 
-const authEntities = getAuthEntities({
-  admin: { enabled: true },
-  workspace: { enabled: true },
-  apiKey: {
-    enabled: true,
-    user: { enabled: true },
-    system: { enabled: true },
-    workspace: { enabled: true },
-  },
-});
-import { defineConfig } from "@mikro-orm/postgresql";
-
-export default defineConfig({
-  entities: [...authEntities, "dist/**/*.entity.js"],
-  entitiesTs: [...authEntities, "src/**/*.entity.ts"],
-  // Connection and migration options...
-});
+const authEntities = [...entities, ...workspaceEntities];
 ```
 
 Use separate related business entities and additional field resolvers to extend
@@ -299,7 +283,7 @@ Administration and API keys are opt-in. Enable `admin.enabled` for management, a
 
 GraphQL returns distinct `UserApiKey`, `WorkspaceApiKey`, and `SystemApiKey` types with their own permission enums. Their nullable identity fields are `user`, `member`, and `systemAccount`; aggregate lists remain `workspaceApiKeys` and `systemApiKeys`.
 
-`UserApiKey`, `WorkspaceApiKey`, and `SystemApiKey` are owner-specific public views and services; their persistent entity is `ApiKey`. Direct ORM filters use `ownerType` and the polymorphic `owner` reference. Register `getAuthEntities(options)` for standalone ORM usage; AuthModule handles registration automatically. See [API keys](/docs/tutorial/auth/api-keys) for the system-account permission and administrator-session model.
+`UserApiKey`, `WorkspaceApiKey`, and `SystemApiKey` are owner-specific public views and services; their persistent entity is `ApiKey`. Direct ORM filters use `ownerType` and the polymorphic `owner` reference. Standalone ORM consumers register native EntitySchema definitions explicitly; AuthModule selects them automatically. See [API keys](/docs/tutorial/auth/api-keys) for the system-account permission and administrator-session model.
 
 The example schema is regenerated from the current entities for a fresh database. It creates the shared API-key table, system accounts and global hash uniqueness directly, without custom owner triggers.
 

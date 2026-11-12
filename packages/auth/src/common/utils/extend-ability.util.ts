@@ -6,9 +6,9 @@ import type {
 } from "@casl/ability";
 
 import { ApiKey } from "../../api-key/entities/api-key.entity.js";
-import { SystemApiKey } from "../../api-key/entities/system-api-key.entity.js";
-import { UserApiKey } from "../../api-key/entities/user-api-key.entity.js";
-import { WorkspaceApiKey } from "../../api-key/entities/workspace-api-key.entity.js";
+import { SystemApiKey } from "../../api-key/objects/system-api-key.object.js";
+import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
+import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { entities } from "../../core/auth-entities.js";
 import { workspaceEntities } from "../../core/auth-entities.js";
 import type { AbilityContext } from "../interfaces/ability-context.interface.js";
@@ -70,8 +70,12 @@ export function extendAbility(
               UserApiKey,
               WorkspaceApiKey,
               SystemApiKey,
-              ...entities,
-              ...workspaceEntities,
+              ...entities.map((entity) =>
+                typeof entity === "function" ? entity : entity.class,
+              ),
+              ...workspaceEntities.map((entity) =>
+                typeof entity === "function" ? entity : entity.class,
+              ),
             ].some((entity) =>
               typeof target === "string"
                 ? target === entity.name

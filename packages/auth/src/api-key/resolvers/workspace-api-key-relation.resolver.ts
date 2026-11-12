@@ -2,7 +2,7 @@ import { Parent, ResolveField, Resolver } from "@nest-boot/graphql";
 
 import { Member } from "../../workspace/entities/member.entity.js";
 import { MemberService } from "../../workspace/services/member.service.js";
-import { WorkspaceApiKey } from "../entities/workspace-api-key.entity.js";
+import { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
 import { resolveApiKeyRelation } from "../utils/resolve-api-key-relation.util.js";
 
 /** Authorized member details for workspace credentials. */

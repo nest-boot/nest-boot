@@ -17,10 +17,11 @@ import {
   UserApiKeyConnection,
   UserApiKeyConnectionArgs,
 } from "../connections/user-api-key.connection-definition.js";
-import { UserApiKey } from "../entities/user-api-key.entity.js";
+import { ApiKey } from "../entities/api-key.entity.js";
 import { CreateUserApiKeyInput } from "../inputs/create-user-api-key.input.js";
 import { UpdateUserApiKeyInput } from "../inputs/update-user-api-key.input.js";
 import { CreateUserApiKeyResult } from "../objects/create-user-api-key-result.object.js";
+import { UserApiKey } from "../objects/user-api-key.object.js";
 import { UserApiKeyPermissionOption } from "../objects/user-api-key-permission-option.object.js";
 import { UserApiKeyService } from "../services/user-api-key.service.js";
 import { type ApiKeyMetadata } from "../types/api-key-metadata.type.js";
@@ -114,7 +115,7 @@ export class UserApiKeyResolver {
   async apiKeys(
     @Parent() user: User,
     @Args({ type: () => UserApiKeyConnectionArgs })
-    args: ConnectionArgsInterface<UserApiKey>,
+    args: ConnectionArgsInterface<ApiKey>,
     @Info() info?: GraphQLResolveInfo,
   ) {
     return await this.apiKeyService.getUserApiKeyConnection(user, args, info);

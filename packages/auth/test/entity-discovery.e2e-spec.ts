@@ -1,26 +1,23 @@
 import { MikroORM } from "@mikro-orm/core";
 import { PgliteDriver } from "@mikro-orm/pglite";
 
+import { entities, workspaceEntities } from "../dist/index.js";
 import {
   Account,
   ApiKey,
-  getAuthEntities,
   Invitation,
   Member,
   Session,
   User,
   Workspace,
 } from "../dist/index.js";
-import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 
 describe("built-in auth entity discovery", () => {
   it("discovers concrete relations without AuthModule initialization or application entity declarations", async () => {
     const orm = new MikroORM({
       dbName: "auth_entity_relations",
       driver: PgliteDriver,
-      entities: getAuthEntities(
-        withAuthTestFeatures({ workspace: { enabled: true } }),
-      ),
+      entities: [...entities, ...workspaceEntities],
     });
     try {
       for (const [entity, property, target] of [
