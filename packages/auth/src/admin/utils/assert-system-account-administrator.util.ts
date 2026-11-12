@@ -5,7 +5,7 @@ import { DEFAULT_USER_ADMIN_ROLES } from "../../core/constants/user.constants.js
 import { Session } from "../../core/entities/session.entity.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
-import { RequestIdentity } from "../../core/request-identity.js";
+import { assertUserSession } from "../../core/utils/assert-current-identity.util.js";
 
 /**
  * Requires an administrator's human session for platform credential management.
@@ -26,7 +26,7 @@ export function assertSystemAccountAdministrator(
   ) {
     throw new ForbiddenException("A user administrator session is required");
   }
-  RequestIdentity.assertUserSession(user);
+  assertUserSession(user);
   const session = RequestContext.get(Session);
   if (session?.user.id !== user.id) {
     throw new ForbiddenException("A user administrator session is required");

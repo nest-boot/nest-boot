@@ -8,7 +8,7 @@ import type { User } from "../entities/user.entity.js";
  * Identity values staged together by the auth infrastructure.
  * @internal
  */
-export interface RequestIdentityPatch {
+export interface AuthContextPatch {
   user?: User | null;
   member?: WorkspaceMember | null;
   workspace?: Workspace | null;

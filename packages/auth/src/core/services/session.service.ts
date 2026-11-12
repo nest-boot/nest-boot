@@ -24,6 +24,8 @@ import type { GraphQLResolveInfo } from "graphql";
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
 import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
+import { runAuthQuery } from "../../common/utils/run-auth-query.js";
+import { AuthContext } from "../auth-context.js";
 import {
   adaptBetterAuth,
   type BetterAuthAdapter,
@@ -33,7 +35,6 @@ import { AUTH_TOKEN } from "../constants/auth.constants.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
-import { RequestIdentity } from "../request-identity.js";
 
 /** Application-facing session management operations. */
 @Injectable()
@@ -42,11 +43,13 @@ export class SessionService {
    * Creates a new SessionService instance.
    * @param auth - Internal Better Auth instance.
    * @param em - Entity manager used to resolve application entities.
+   * @param authContext - Current request authentication context.
    */
   constructor(
     @Inject(AUTH_TOKEN)
     auth: unknown,
     private readonly em: EntityManager,
+    private readonly authContext: AuthContext,
   ) {
     this.auth = adaptBetterAuth(auth);
   }
@@ -125,95 +128,96 @@ export class SessionService {
 
   /**
    * Revokes one session by ID when it belongs to the supplied user.
-   * @param user - The user whose account is being accessed.
+   * @param target - User entity or identifier to authorize.
    * @param id - Identifier of the record to access.
    * @returns Whether the selected session was revoked.
    */
-  async revokeSession(user: User | string, id: string): Promise<boolean> {
-    user = await this.resolveUserForRevocation(user);
-    authorize("revoke", Session);
-    const current = RequestContext.isActive()
-      ? RequestContext.get(Session)
-      : null;
-    const revokesCurrent = current?.id === id;
-    if (revokesCurrent) {
-      this.assertRevocationCanCommit();
-    }
-    const revoked = await this.em.transactional(
-      async (em) => {
-        const session = await em.findOne(
-          Session,
-          {
-            id,
-            user: String(user.id),
-          },
-          { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
-        );
-        if (!session) {
-          return false;
-        }
-        authorize("revoke", session);
-        await em.remove(session).flush();
-        return true;
-      },
-      { clear: true },
-    );
-    if (revoked && revokesCurrent) {
-      RequestIdentity.clear(this.em);
-    }
-    return revoked;
+  async revokeSession(target: User | string, id: string): Promise<boolean> {
+    return await runAuthQuery(this.em, async (em) => {
+      const user = await this.resolveUserForRevocation(em, target);
+      authorize("revoke", Session);
+      const current = RequestContext.isActive()
+        ? RequestContext.get(Session)
+        : null;
+      const revokesCurrent = current?.id === id;
+      const revoked = await em.transactional(
+        async (em) => {
+          const session = await em.findOne(
+            Session,
+            {
+              id,
+              user: String(user.id),
+            },
+            { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
+          );
+          if (!session) {
+            return false;
+          }
+          authorize("revoke", session);
+          await em.remove(session).flush();
+          return true;
+        },
+        { clear: true },
+      );
+      if (revoked && revokesCurrent) {
+        this.authContext.clear();
+      }
+      return revoked;
+    });
   }
 
   /**
    * Revokes the user's sessions, including impersonation sessions they started.
-   * @param user - The user whose account is being accessed.
+   * @param target - User entity or identifier to authorize.
    * @returns Number of sessions revoked.
    */
-  async revokeUserSessions(user: User | string): Promise<number> {
-    user = await this.resolveUserForRevocation(user);
-    authorize("revoke", Session);
-    const current = RequestContext.isActive()
-      ? RequestContext.get(Session)
-      : null;
-    const revokesCurrent =
-      current?.user.id === user.id || current?.impersonatedBy?.id === user.id;
-    if (revokesCurrent) {
-      this.assertRevocationCanCommit();
-    }
-    const count = await this.em.transactional(
-      async (em) => {
-        const sessions = await em.find(
-          Session,
-          {
-            $or: [{ user: String(user.id) }, { impersonatedBy: user }],
-          },
-          { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
-        );
-        for (const session of sessions) {
-          authorize("revoke", session);
-        }
-        if (sessions.length === 0) {
-          return 0;
-        }
-        // Delete only the locked, authorized snapshot; never include unchecked new sessions.
-        return await em.nativeDelete(Session, {
-          id: { $in: sessions.map(({ id }) => id) },
-        });
-      },
-      { clear: true },
-    );
-    if (revokesCurrent) {
-      RequestIdentity.clear(this.em);
-    }
-    return count;
+  async revokeUserSessions(target: User | string): Promise<number> {
+    return await runAuthQuery(this.em, async (em) => {
+      const user = await this.resolveUserForRevocation(em, target);
+      authorize("revoke", Session);
+      const current = RequestContext.isActive()
+        ? RequestContext.get(Session)
+        : null;
+      const revokesCurrent =
+        current?.user.id === user.id || current?.impersonatedBy?.id === user.id;
+      const count = await em.transactional(
+        async (em) => {
+          const sessions = await em.find(
+            Session,
+            {
+              $or: [{ user: String(user.id) }, { impersonatedBy: user }],
+            },
+            { filters: false, lockMode: LockMode.PESSIMISTIC_WRITE },
+          );
+          for (const session of sessions) {
+            authorize("revoke", session);
+          }
+          if (sessions.length === 0) {
+            return 0;
+          }
+          // Delete only the locked, authorized snapshot; never include unchecked new sessions.
+          return await em.nativeDelete(Session, {
+            id: { $in: sessions.map(({ id }) => id) },
+          });
+        },
+        { clear: true },
+      );
+      if (revokesCurrent) {
+        this.authContext.clear();
+      }
+      return count;
+    });
   }
 
-  private async resolveUserForRevocation(user: User | string): Promise<User> {
+  private async resolveUserForRevocation(
+    em: EntityManager,
+    user: User | string,
+  ): Promise<User> {
     if (typeof user !== "string") {
       return user;
     }
     authorize("revoke", Session);
-    const entity = await this.em.findOne(User, { id: user }, { refresh: true });
+    const entity = await em.findOne(User, { id: user }, { refresh: true });
     if (!entity) {
       throw new NotFoundException("User not found");
     }
@@ -225,25 +229,28 @@ export class SessionService {
    * @returns Application entities for a valid session, otherwise `null`.
    */
   async getCurrentAuthenticatedSession(): Promise<AuthenticatedSession | null> {
-    const requestHeaders = headers();
-    const candidates = [requestHeaders];
-    if (requestHeaders.has("cookie") && requestHeaders.has("authorization")) {
-      const cookieHeaders = new Headers(requestHeaders);
-      cookieHeaders.delete("authorization");
-      candidates.unshift(cookieHeaders);
-    }
-
-    for (const candidate of candidates) {
-      const session = await this.resolveSession(candidate);
-      if (session) {
-        return session;
+    return await runAuthQuery(this.em, async (em) => {
+      const requestHeaders = headers();
+      const candidates = [requestHeaders];
+      if (requestHeaders.has("cookie") && requestHeaders.has("authorization")) {
+        const cookieHeaders = new Headers(requestHeaders);
+        cookieHeaders.delete("authorization");
+        candidates.unshift(cookieHeaders);
       }
-    }
 
-    return null;
+      for (const candidate of candidates) {
+        const session = await this.resolveSession(em, candidate);
+        if (session) {
+          return session;
+        }
+      }
+
+      return null;
+    });
   }
 
   private async resolveSession(
+    em: EntityManager,
     requestHeaders: HeadersInit,
   ): Promise<AuthenticatedSession | null> {
     const data = await this.auth.api.getSession({ headers: requestHeaders });
@@ -252,8 +259,8 @@ export class SessionService {
     }
 
     const [user, session] = await Promise.all([
-      this.em.findOne(User, { id: data.user.id }),
-      this.em.findOne(Session, {
+      em.findOne(User, { id: data.user.id }),
+      em.findOne(Session, {
         token: data.session.token,
       }),
     ]);
@@ -279,23 +286,25 @@ export class SessionService {
    * @returns Active session entities in the order returned by the auth backend.
    */
   async listCurrentUserSessions(): Promise<Session[]> {
-    const data = await this.auth.api.listSessions({ headers: headers() });
-    if (data.length === 0) {
-      return [];
-    }
+    return await runAuthQuery(this.em, async (em) => {
+      const data = await this.auth.api.listSessions({ headers: headers() });
+      if (data.length === 0) {
+        return [];
+      }
 
-    // Better Auth already authorized this list; the credential-bearing entities
-    // are needed internally by revocation. GraphQL uses getSessionConnectionByUser without credential columns.
-    const sessions = await this.em.find(Session, {
-      token: { $in: data.map(({ token }) => token) },
-    });
-    const sessionsByToken = new Map(
-      sessions.map((session) => [session.token, session]),
-    );
+      // Better Auth already authorized this list; the credential-bearing entities
+      // are needed internally by revocation. GraphQL uses getSessionConnectionByUser without credential columns.
+      const sessions = await em.find(Session, {
+        token: { $in: data.map(({ token }) => token) },
+      });
+      const sessionsByToken = new Map(
+        sessions.map((session) => [session.token, session]),
+      );
 
-    return data.flatMap(({ token }) => {
-      const session = sessionsByToken.get(token);
-      return session ? [session] : [];
+      return data.flatMap(({ token }) => {
+        const session = sessionsByToken.get(token);
+        return session ? [session] : [];
+      });
     });
   }
 
@@ -305,6 +314,7 @@ export class SessionService {
    * @returns Whether the selected session was revoked successfully.
    */
   async revokeCurrentUserSession(id: string): Promise<boolean> {
+    this.assertBackendRevocationCanCommit();
     const session = (await this.listCurrentUserSessions()).find(
       (candidate) => String(candidate.id) === id,
     );
@@ -316,16 +326,13 @@ export class SessionService {
       ? RequestContext.get(Session)
       : null;
     const revokesCurrent = current?.id === session.id;
-    if (revokesCurrent) {
-      this.assertRevocationCanCommit();
-    }
 
     const result = await this.auth.api.revokeSession({
       body: { token: session.token },
       headers: headers(),
     });
     if (result.status && revokesCurrent) {
-      RequestIdentity.clear(this.em);
+      this.authContext.clear();
     }
     return result.status;
   }
@@ -335,6 +342,7 @@ export class SessionService {
    * @returns Whether the other sessions were revoked successfully.
    */
   async revokeCurrentUserOtherSessions(): Promise<boolean> {
+    this.assertBackendRevocationCanCommit();
     const result = await this.auth.api.revokeOtherSessions({
       headers: headers(),
     });
@@ -346,20 +354,12 @@ export class SessionService {
    * @returns Whether the user's sessions were revoked successfully.
    */
   async revokeCurrentUserSessions(): Promise<boolean> {
-    this.assertRevocationCanCommit();
+    this.assertBackendRevocationCanCommit();
     const result = await this.auth.api.revokeSessions({ headers: headers() });
     if (result.status) {
-      RequestIdentity.clear(this.em);
+      this.authContext.clear();
     }
     return result.status;
-  }
-
-  private assertRevocationCanCommit(): void {
-    if (this.em.isInTransaction()) {
-      throw new BadRequestException(
-        "Revoke the current session outside an active transaction",
-      );
-    }
   }
 
   /**
@@ -386,6 +386,13 @@ export class SessionService {
     );
     expireCookieAndChunks(cookieStore, authCookies.sessionData);
     expireCookieAndChunks(cookieStore, authCookies.accountData);
+  }
+  private assertBackendRevocationCanCommit(): void {
+    if (this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Revoke the current session outside an active transaction",
+      );
+    }
   }
 }
 

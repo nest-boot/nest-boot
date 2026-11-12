@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { EntityManager } from "@mikro-orm/core";
+import { HashService } from "@nest-boot/hash";
 import { RequestContext } from "@nest-boot/request-context";
-import type { FactoryProvider } from "@nestjs/common";
+import type { Type } from "@nestjs/common";
+import { Test } from "@nestjs/testing";
 
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { mockAuthorization } from "../../test/mock-authorization.js";
@@ -18,12 +20,16 @@ import { Workspace } from "../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
 import { WorkspaceService } from "../workspace/services/workspace.service.js";
 import { WorkspaceInvitationService } from "../workspace/services/workspace-invitation.service.js";
-import { WorkspaceMemberService } from "../workspace/services/workspace-member.service.js";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import { AuthContext } from "./auth-context.js";
 import { authServiceProviders } from "./auth-service.providers.js";
+import { AuthTransactionSubscriber } from "./auth-transaction.subscriber.js";
+import { AUTH_TOKEN } from "./constants/auth.constants.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
-import { SessionService } from "./services/session.service.js";
+import type { AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
 import { UserService } from "./services/user.service.js";
+import { UserDeletionService } from "./services/user-deletion.service.js";
 
 describe("auth service execution boundaries", () => {
   it("isolates credential lookup but records usage through the caller's scoped manager", async () => {
@@ -43,13 +49,9 @@ describe("auth service execution boundaries", () => {
       revokedAt: null,
     });
     isolated.findOne.mockResolvedValueOnce(apiKey).mockResolvedValueOnce(user);
-    const provider = authServiceProviders.find(
-      (candidate) =>
-        typeof candidate === "object" &&
-        "provide" in candidate &&
-        candidate.provide === ApiKeyAuthenticationService,
-    ) as FactoryProvider<ApiKeyAuthenticationService>;
-    const service = await provider.useFactory(
+    const type = ApiKeyAuthenticationService;
+    const service = await createProvider(
+      type,
       em,
       withAuthTestFeatures({
         workspace: { enabled: true },
@@ -107,13 +109,8 @@ describe("auth service execution boundaries", () => {
       if (state === "failure") {
         isolated.flush.mockRejectedValueOnce(new Error("Commit failed"));
       }
-      const provider = authServiceProviders.find(
-        (candidate) =>
-          typeof candidate === "object" &&
-          "provide" in candidate &&
-          candidate.provide === UserService,
-      ) as FactoryProvider<UserService>;
-      const service = await provider.useFactory(em, {}, {}, {});
+      const type = UserService;
+      const service = await createProvider(type, em, {});
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -180,13 +177,8 @@ describe("auth service execution boundaries", () => {
       if (failure) {
         em.transactional.mockRejectedValueOnce(new Error("Commit failed"));
       }
-      const provider = authServiceProviders.find(
-        (candidate) =>
-          typeof candidate === "object" &&
-          "provide" in candidate &&
-          candidate.provide === WorkspaceService,
-      ) as FactoryProvider<WorkspaceService>;
-      const service = await provider.useFactory(em, {
+      const type = WorkspaceService;
+      const service = await createProvider(type, em, {
         workspace: { enabled: true },
       });
       await RequestContext.run(
@@ -230,12 +222,7 @@ describe("auth service execution boundaries", () => {
   it.each([false, true])(
     "isolates the read-only invitation identity lookup inside an RLS transaction (failure=%s)",
     async (failure) => {
-      const provider = authServiceProviders.find(
-        (candidate) =>
-          typeof candidate === "object" &&
-          "provide" in candidate &&
-          candidate.provide === WorkspaceInvitationService,
-      ) as FactoryProvider<WorkspaceInvitationService>;
+      const type = WorkspaceInvitationService;
       const execute = vi.fn().mockResolvedValue([{ role: "authenticated" }]);
       const transaction = {};
       const reader = {
@@ -253,11 +240,12 @@ describe("auth service execution boundaries", () => {
       const current = {
         getContext: vi.fn().mockReturnThis(),
         isInTransaction: vi.fn(() => true),
+        getSessionContext: vi.fn(() => ({ role: "authenticated" })),
         fork: vi.fn(() => reader),
         clearSessionContext: vi.fn(),
       } as unknown as EntityManager;
       mockAuthorization();
-      const service = await provider.useFactory(current, {
+      const service = await createProvider(type, current, {
         workspace: { enabled: true },
       });
       await RequestContext.run(
@@ -304,101 +292,31 @@ describe("auth service execution boundaries", () => {
       );
     },
   );
-  it("keeps ordinary session reads outside the privileged method allowlist", () => {
-    const provider = authServiceProviders.find(
-      (candidate) =>
-        typeof candidate === "object" &&
-        "provide" in candidate &&
-        candidate.provide === SessionService,
-    ) as FactoryProvider<SessionService>;
-    mockAuthorization();
-    const service = provider.useFactory({}, { workspace: { enabled: true } });
-    for (const name of [
-      "getCurrentAuthenticatedSession",
-      "listCurrentUserSessions",
-      "revokeSession",
-      "revokeUserSessions",
-    ]) {
-      expect(Object.hasOwn(service, name)).toBe(true);
-    }
-    for (const name of [
-      "getSessionConnectionByUser",
-      "getSessionImpersonator",
-      "revokeCurrentUserSession",
-      "revokeCurrentUserSessions",
-      "revokeCurrentUserOtherSessions",
-    ]) {
-      expect(Object.hasOwn(service, name)).toBe(false);
-      expect(typeof Reflect.get(service, name)).toBe("function");
-    }
-    const userMethods = Object.getOwnPropertyNames(UserService.prototype);
-    expect(userMethods).not.toContain("revokeSession");
-    expect(userMethods).not.toContain("revokeUserSessions");
-  });
-  it.each([
-    {
-      type: WorkspaceService,
-      special: ["createWorkspace"],
-      ordinary: [
-        "findOne",
-        "getWorkspaceConnectionByUser",
-        "updateWorkspace",
-        "deleteWorkspace",
-      ],
-    },
-    {
-      type: WorkspaceMemberService,
-      special: ["getUserForWorkspaceMembership"],
-      ordinary: [
-        "getWorkspaceMemberConnectionByWorkspace",
-        "getWorkspaceMember",
-        "getWorkspaceMemberByUser",
-        "getWorkspaceMemberUser",
-        "addWorkspaceMember",
-        "addWorkspaceMemberByEmail",
-        "updateWorkspaceMember",
-        "setWorkspaceMemberRoles",
-        "setWorkspaceMemberPermissions",
-        "removeWorkspaceMember",
-        "leaveWorkspace",
-      ],
-    },
-    {
-      type: WorkspaceInvitationService,
-      special: [
-        "getUserIdForWorkspaceInvitation",
-        "acceptWorkspaceInvitation",
-        "rejectWorkspaceInvitation",
-      ],
-      ordinary: [
-        "getWorkspaceInvitation",
-        "getWorkspaceInvitationByUser",
-        "getWorkspaceInvitationByWorkspace",
-        "getWorkspaceInvitationInviter",
-        "getWorkspaceInvitationWorkspace",
-        "getWorkspaceInvitationConnectionByWorkspace",
-        "getWorkspaceInvitationConnectionByUser",
-        "createWorkspaceInvitation",
-        "cancelWorkspaceInvitation",
-      ],
-    },
-  ])(
-    "keeps $type.name execution boundaries scoped to explicit special operations",
-    ({ type, special, ordinary }) => {
-      const provider = authServiceProviders.find(
-        (candidate) =>
-          typeof candidate === "object" &&
-          "provide" in candidate &&
-          candidate.provide === type,
-      ) as FactoryProvider<object>;
-      const service = provider.useFactory({}, { workspace: { enabled: true } });
-      for (const name of special) {
-        expect(Object.hasOwn(service, name)).toBe(true);
-      }
-      for (const name of ordinary) {
-        expect(Object.hasOwn(service, name)).toBe(false);
-        expect(typeof Reflect.get(service, name)).toBe("function");
-      }
-    },
-  );
 });
+
+/**
+ *
+ * @param type - Nest provider token to resolve.
+ * @param em - Entity manager for this persistence boundary.
+ * @param options - Authentication module configuration.
+ * @returns Result of the requested operation.
+ */
+async function createProvider<T>(
+  type: Type<T>,
+  em: EntityManager,
+  options: AuthModuleOptions,
+): Promise<T> {
+  const module = await Test.createTestingModule({
+    providers: [
+      ...authServiceProviders,
+      AuthContext,
+      AuthTransactionSubscriber,
+      { provide: EntityManager, useValue: em },
+      { provide: MODULE_OPTIONS_TOKEN, useValue: options },
+      { provide: AUTH_TOKEN, useValue: {} },
+      { provide: HashService, useValue: {} },
+      { provide: UserDeletionService, useValue: {} },
+    ],
+  }).compile();
+  return await module.get(type);
+}

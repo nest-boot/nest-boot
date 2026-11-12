@@ -1,7 +1,7 @@
 import type { Subject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
 import type { CanActivate, ExecutionContext } from "@nestjs/common";
-import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ContextIdFactory, ModuleRef, Reflector } from "@nestjs/core";
 import type { Request } from "express";
 
@@ -17,11 +17,9 @@ import type { CanMetadata } from "../common/interfaces/can-metadata.interface.js
 import type { RouteArgumentMetadataValue } from "../common/interfaces/route-argument-metadata-value.interface.js";
 import { can } from "../common/utils/can.util.js";
 import { getAuthAbility } from "../common/utils/get-auth-ability.util.js";
-import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import { AuthContext } from "./auth-context.js";
 import { IS_PUBLIC_KEY } from "./constants/auth.constants.js";
 import { Session } from "./entities/session.entity.js";
-import type { AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
-import { RequestIdentity } from "./request-identity.js";
 import type { CanSubjectCallback } from "./types/can-subject-callback.type.js";
 import type { RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
 
@@ -31,14 +29,13 @@ export class AuthGuard implements CanActivate {
   /**
    * Creates the authentication and permission guard.
    * @param reflector - Nest metadata reflector.
-   * @param options - Auth module options.
    * @param moduleRef - Nest module reference used to resolve handler instances.
+   * @param authContext - Current request authentication context.
    */
   constructor(
     protected readonly reflector: Reflector,
-    @Inject(MODULE_OPTIONS_TOKEN)
-    private readonly options: AuthModuleOptions,
     private readonly moduleRef: ModuleRef,
+    private readonly authContext: AuthContext,
   ) {}
 
   /**
@@ -52,7 +49,7 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException("Authentication is required");
     }
 
-    RequestIdentity.prepare(this.options);
+    this.authContext.getAbility();
 
     const metadata = this.reflector.getAllAndMerge<CanMetadata[]>(
       CAN_METADATA,
@@ -77,7 +74,7 @@ export class AuthGuard implements CanActivate {
 
   /** Rebuilds the ability after an explicit sign-in changes the request identity. */
   refreshAbility(): void {
-    RequestIdentity.refresh(this.options);
+    this.authContext.refresh();
   }
 
   /**

@@ -32,10 +32,12 @@ import { resolveRequestPermissions } from "../../common/utils/resolve-request-pe
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
-import { RequestIdentity } from "../../core/request-identity.js";
+import {
+  assertCurrentWorkspace,
+  assertCurrentWorkspaceMember,
+} from "../../core/utils/assert-current-identity.util.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
-import { ApiKeyLifecycle } from "../api-key-lifecycle.js";
 import { WorkspaceApiKeyConnection } from "../connections/workspace-api-key.connection-definition.js";
 import { ApiKey, type OwnedApiKey } from "../entities/api-key.entity.js";
 import type { CreateWorkspaceApiKeyOptions } from "../interfaces/create-workspace-api-key-options.interface.js";
@@ -51,6 +53,7 @@ import { toApiKeyView } from "../utils/api-key-view.util.js";
 import { assertApiKeyFeature } from "../utils/assert-api-key-feature.util.js";
 import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
+import { ApiKeyService } from "./api-key.service.js";
 
 /** Manages member-owned, workspace-scoped API keys within the current request's authorization scope. */
 @Injectable()
@@ -61,12 +64,14 @@ export class WorkspaceApiKeyService {
    * Creates an API-key domain service.
    * @param em - Entity manager used for persistence.
    * @param authOptions - Authentication module configuration.
+   * @param apiKeys - Shared credential persistence service.
    */
   constructor(
     /** MikroORM entity manager used for API-key persistence. */
     protected readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly authOptions: AuthModuleOptions,
+    private readonly apiKeys: ApiKeyService,
   ) {}
 
   /**
@@ -78,7 +83,7 @@ export class WorkspaceApiKeyService {
     workspace: Workspace,
   ): WorkspaceApiKeyPermissionOption[] {
     assertApiKeyFeature(this.authOptions, "workspaceApiKey");
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     const { permissions, allowed, defaults } = resolveApiKeyPermissionCatalog(
       this.authOptions,
       "member",
@@ -224,15 +229,7 @@ export class WorkspaceApiKeyService {
         finalPermissions,
       );
     }
-    return toApiKeyView(
-      await ApiKeyLifecycle.update(
-        this.em,
-        this.authOptions,
-        apiKey,
-        input,
-        permissions,
-      ),
-    );
+    return toApiKeyView(await this.apiKeys.update(apiKey, input, permissions));
   }
 
   /**
@@ -245,9 +242,7 @@ export class WorkspaceApiKeyService {
     authorize("write", WorkspaceApiKey);
     const key = await this.findWritableApiKey(id);
     authorize("write", key);
-    return toApiKeyView(
-      await ApiKeyLifecycle.revoke(this.em, this.authOptions, key),
-    );
+    return toApiKeyView(await this.apiKeys.revoke(key));
   }
 
   /**
@@ -260,9 +255,7 @@ export class WorkspaceApiKeyService {
     authorize("write", WorkspaceApiKey);
     const apiKey = await this.findWritableApiKey(id);
     authorize("write", apiKey);
-    return toApiKeyView(
-      await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey),
-    );
+    return toApiKeyView(await this.apiKeys.delete(apiKey));
   }
 
   private async getCreationWorkspaceMember(
@@ -306,7 +299,7 @@ export class WorkspaceApiKeyService {
     options: CreateWorkspaceApiKeyOptions,
     permissions: string[],
   ): Promise<CreatedApiKey<WorkspaceApiKey>> {
-    const { apiKey, data } = ApiKeyLifecycle.prepareCreation(
+    const { apiKey, data } = this.apiKeys.prepareCreation(
       options,
       permissions,
       this.authOptions.apiKey?.workspace?.defaultPrefix ??
@@ -404,7 +397,7 @@ export class WorkspaceApiKeyService {
   }
 
   private assertWorkspacePrincipal(workspace: Workspace): void {
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     const apiKey = getCurrentApiKey();
     if (apiKey?.ownerType === "workspace_member") {
       this.assertWorkspace(apiKey, workspace);
@@ -413,7 +406,7 @@ export class WorkspaceApiKeyService {
     if (member?.status !== "ACTIVE") {
       throw new ForbiddenException("An active workspace member is required");
     }
-    RequestIdentity.assertCurrentWorkspaceMember(member);
+    assertCurrentWorkspaceMember(member);
     if (Reference.unwrapReference(member.workspace).id !== workspace.id) {
       throw new ForbiddenException(
         "Workspace member does not belong to this workspace",

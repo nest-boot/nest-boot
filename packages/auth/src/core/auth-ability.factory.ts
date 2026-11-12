@@ -29,175 +29,172 @@ import { isAuthPermissionEnabled } from "./utils/resolve-auth-features.util.js";
  * Owns built-in permission mappings and validates business extensions.
  * @internal
  */
-export class AuthAbilityFactory {
-  /**
-   * Builds auth rules and restricted extensions from already credential-limited permissions.
-   * @param context - Context used to resolve this operation.
-   * @param options - Authentication module configuration.
-   * @returns CASL ability built from the current identity and effective permissions.
-   */
-  static createAbility(
-    context: AbilityContext,
-    options: AuthModuleOptions = {},
-  ): AuthAbility {
-    const snapshot = Object.freeze({
-      ...context,
-      workspace: options.workspace?.enabled === true ? context.workspace : null,
-      member: options.workspace?.enabled === true ? context.member : null,
-      userPermissions: Object.freeze(
-        context.user || context.systemAccount
-          ? [
-              ...context.userPermissions.filter((permission) =>
-                isAuthPermissionEnabled(
-                  options,
-                  "user",
-                  permission,
-                  !!context.systemAccount,
-                ),
+
+/**
+ * Builds and normalizes authorization rules from an explicit identity snapshot.
+ * @param context - Identity and effective permission snapshot.
+ * @param options - Authentication module configuration.
+ * @returns Result of the requested operation.
+ */
+export function createAuthAbility(
+  context: AbilityContext,
+  options: AuthModuleOptions = {},
+): AuthAbility {
+  const snapshot = Object.freeze({
+    ...context,
+    workspace: options.workspace?.enabled === true ? context.workspace : null,
+    member: options.workspace?.enabled === true ? context.member : null,
+    userPermissions: Object.freeze(
+      context.user || context.systemAccount
+        ? [
+            ...context.userPermissions.filter((permission) =>
+              isAuthPermissionEnabled(
+                options,
+                "user",
+                permission,
+                !!context.systemAccount,
               ),
-            ]
-          : [],
-      ),
-      workspacePermissions: Object.freeze(
-        options.workspace?.enabled === true && context.workspace
-          ? [
-              ...context.workspacePermissions.filter((permission) =>
-                isAuthPermissionEnabled(options, "workspace", permission),
-              ),
-            ]
-          : [],
-      ),
-    });
-    const builder = new AbilityBuilder(AuthAbility);
-    // Self-service operations are authorized explicitly by their Services.
-    const subjects = {
-      user: User,
-      session: Session,
-      "user-api-key": UserApiKey,
-      workspace: Workspace,
-      "system-account": SystemAccount,
-      "system-account-api-key": SystemApiKey,
-    };
-    for (const permission of DEFAULT_USER_PERMISSIONS) {
-      if (
-        (permission.startsWith("workspace:") &&
-          options.workspace?.enabled !== true) ||
-        !snapshot.userPermissions.includes(permission)
-      ) {
-        continue;
-      }
-      const [resource, action] = permission.split(":");
-      builder.can(action, subjects[resource as keyof typeof subjects]);
+            ),
+          ]
+        : [],
+    ),
+    workspacePermissions: Object.freeze(
+      options.workspace?.enabled === true && context.workspace
+        ? [
+            ...context.workspacePermissions.filter((permission) =>
+              isAuthPermissionEnabled(options, "workspace", permission),
+            ),
+          ]
+        : [],
+    ),
+  });
+  const builder = new AbilityBuilder(AuthAbility);
+  // Self-service operations are authorized explicitly by their Services.
+  const subjects = {
+    user: User,
+    session: Session,
+    "user-api-key": UserApiKey,
+    workspace: Workspace,
+    "system-account": SystemAccount,
+    "system-account-api-key": SystemApiKey,
+  };
+  for (const permission of DEFAULT_USER_PERMISSIONS) {
+    if (
+      (permission.startsWith("workspace:") &&
+        options.workspace?.enabled !== true) ||
+      !snapshot.userPermissions.includes(permission)
+    ) {
+      continue;
     }
-    const workspaceSubjects = {
-      workspace: Workspace,
-      "workspace-member": WorkspaceMember,
-      "workspace-service-account": WorkspaceMember,
-      "workspace-api-key": WorkspaceApiKey,
-    };
-    for (const permission of DEFAULT_WORKSPACE_PERMISSIONS) {
-      if (
-        !snapshot.workspace ||
-        !snapshot.workspacePermissions.includes(permission)
-      ) {
-        continue;
-      }
-      // WorkspaceInvitation management is one member permission; keep entity checks for CASL conditions.
-      if (permission === "workspace-member:invite") {
-        builder.can(["read", "write"], WorkspaceInvitation, {
-          workspaceId: snapshot.workspace.id,
-        });
-        continue;
-      }
-      const [resource, action] = permission.split(":");
-      const conditions: MongoQuery =
-        resource === "workspace"
-          ? { id: snapshot.workspace.id }
-          : { workspaceId: snapshot.workspace.id };
-      if (resource === "workspace-member") {
-        conditions.type = WorkspaceMemberType.USER;
-        if (
-          ["set-roles", "set-permissions"].includes(action) &&
-          snapshot.workspacePermissions.includes(
-            "workspace-service-account:write",
-          )
-        ) {
-          builder.can(action, WorkspaceMember, {
-            workspaceId: snapshot.workspace.id,
-            type: WorkspaceMemberType.SERVICE_ACCOUNT,
-          });
-        }
-      } else if (resource === "workspace-service-account") {
-        conditions.type = WorkspaceMemberType.SERVICE_ACCOUNT;
-      }
-      builder.can(
-        action,
-        workspaceSubjects[
-          resource as keyof typeof workspaceSubjects
-        ] as SubjectType,
-        conditions,
-      );
+    const [resource, action] = permission.split(":");
+    builder.can(action, subjects[resource as keyof typeof subjects]);
+  }
+  const workspaceSubjects = {
+    workspace: Workspace,
+    "workspace-member": WorkspaceMember,
+    "workspace-service-account": WorkspaceMember,
+    "workspace-api-key": WorkspaceApiKey,
+  };
+  for (const permission of DEFAULT_WORKSPACE_PERMISSIONS) {
+    if (
+      !snapshot.workspace ||
+      !snapshot.workspacePermissions.includes(permission)
+    ) {
+      continue;
     }
-    const configure:
-      | ((
-          ...args: Parameters<NonNullable<typeof options.buildAbility>>
-        ) => unknown)
-      | undefined = options.buildAbility;
-    if (configure) {
-      extendAbility(
-        builder,
-        snapshot,
-        {
-          user: resolveAuthCatalog(options, "user").permissions,
-          workspace: resolveAuthCatalog(options, "workspace").permissions,
-        },
-        (rules) => configure(rules, snapshot),
-      );
-    }
-    // WorkspaceMembers may edit their profile but cannot change their own active state.
-    // Apply after extensions so the same invariant reaches every consumer.
-    if (snapshot.member && snapshot.workspace) {
-      builder.cannot("write", WorkspaceMember, ["status"], {
-        id: snapshot.member.id,
+    // WorkspaceInvitation management is one member permission; keep entity checks for CASL conditions.
+    if (permission === "workspace-member:invite") {
+      builder.can(["read", "write"], WorkspaceInvitation, {
         workspaceId: snapshot.workspace.id,
       });
+      continue;
     }
-    this.addSubjectAliases(builder.rules);
-    return builder.build();
+    const [resource, action] = permission.split(":");
+    const conditions: MongoQuery =
+      resource === "workspace"
+        ? { id: snapshot.workspace.id }
+        : { workspaceId: snapshot.workspace.id };
+    if (resource === "workspace-member") {
+      conditions.type = WorkspaceMemberType.USER;
+      if (
+        ["set-roles", "set-permissions"].includes(action) &&
+        snapshot.workspacePermissions.includes(
+          "workspace-service-account:write",
+        )
+      ) {
+        builder.can(action, WorkspaceMember, {
+          workspaceId: snapshot.workspace.id,
+          type: WorkspaceMemberType.SERVICE_ACCOUNT,
+        });
+      }
+    } else if (resource === "workspace-service-account") {
+      conditions.type = WorkspaceMemberType.SERVICE_ACCOUNT;
+    }
+    builder.can(
+      action,
+      workspaceSubjects[
+        resource as keyof typeof workspaceSubjects
+      ] as SubjectType,
+      conditions,
+    );
   }
+  const configure:
+    | ((
+        ...args: Parameters<NonNullable<typeof options.buildAbility>>
+      ) => unknown)
+    | undefined = options.buildAbility;
+  if (configure) {
+    extendAbility(
+      builder,
+      snapshot,
+      {
+        user: resolveAuthCatalog(options, "user").permissions,
+        workspace: resolveAuthCatalog(options, "workspace").permissions,
+      },
+      (rules) => configure(rules, snapshot),
+    );
+  }
+  // WorkspaceMembers may edit their profile but cannot change their own active state.
+  // Apply after extensions so the same invariant reaches every consumer.
+  if (snapshot.member && snapshot.workspace) {
+    builder.cannot("write", WorkspaceMember, ["status"], {
+      id: snapshot.member.id,
+      workspaceId: snapshot.workspace.id,
+    });
+  }
+  addSubjectAliases(builder.rules);
+  return builder.build();
+}
 
-  /**
-   * Keeps class checks, tagged objects, and serialized frontend names equivalent.
-   * @param rules - Authorization rules to apply.
-   */
-  private static addSubjectAliases(
-    rules: RawRuleFrom<AbilityTuple, MongoQuery>[],
-  ): void {
-    const classes = new Map<string, SubjectType>();
-    for (const rule of rules) {
-      for (const target of Array.isArray(rule.subject)
-        ? rule.subject
-        : [rule.subject]) {
-        if (typeof target === "function") {
-          classes.set(target.name, target);
-        }
+/**
+ * Builds and normalizes authorization rules from an explicit identity snapshot.
+ * @param rules - Authorization rules to normalize.
+ */
+function addSubjectAliases(
+  rules: RawRuleFrom<AbilityTuple, MongoQuery>[],
+): void {
+  const classes = new Map<string, SubjectType>();
+  for (const rule of rules) {
+    for (const target of Array.isArray(rule.subject)
+      ? rule.subject
+      : [rule.subject]) {
+      if (typeof target === "function") {
+        classes.set(target.name, target);
       }
     }
-    for (const rule of rules) {
-      const targets = Array.isArray(rule.subject)
-        ? rule.subject
-        : [rule.subject];
-      rule.subject = [
-        ...new Set(
-          targets.flatMap((target) => {
-            if (typeof target === "function") {
-              return [target, target.name];
-            }
-            const constructor = classes.get(target);
-            return constructor ? [constructor, target] : [target];
-          }),
-        ),
-      ];
-    }
+  }
+  for (const rule of rules) {
+    const targets = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
+    rule.subject = [
+      ...new Set(
+        targets.flatMap((target) => {
+          if (typeof target === "function") {
+            return [target, target.name];
+          }
+          const constructor = classes.get(target);
+          return constructor ? [constructor, target] : [target];
+        }),
+      ),
+    ];
   }
 }

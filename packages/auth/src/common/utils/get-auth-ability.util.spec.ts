@@ -1,10 +1,10 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
+import { stageIdentity } from "../../../test/fixtures/auth-context.fixture.js";
 import { ApiKey } from "../../api-key/entities/api-key.entity.js";
 import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { User } from "../../core/entities/user.entity.js";
-import { RequestIdentity } from "../../core/request-identity.js";
 import { AuthAbility } from "../auth.ability.js";
 import { getAuthAbility } from "./get-auth-ability.util.js";
 
@@ -27,7 +27,7 @@ describe("getAuthAbility().rules", () => {
     "reads the %s ability directly without a service",
     async (identity) => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
-        RequestIdentity.stage(
+        stageIdentity(
           identity === "user"
             ? { user: new User() }
             : { apiKey: new WorkspaceApiKey(new ApiKey()) },
@@ -35,7 +35,7 @@ describe("getAuthAbility().rules", () => {
         const ability = new AuthAbility();
         RequestContext.set(AuthAbility, ability);
         expect(getAuthAbility().rules).toBe(ability.rules);
-        RequestIdentity.stage({ user: null, apiKey: null });
+        stageIdentity({ user: null, apiKey: null });
         RequestContext.set(AuthAbility, ability);
         expect(() => getAuthAbility().rules).toThrow(ForbiddenException);
       });

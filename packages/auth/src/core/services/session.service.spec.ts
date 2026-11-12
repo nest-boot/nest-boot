@@ -6,6 +6,7 @@ import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { type Mocked } from "vitest";
 
+import { createTestAuthContext } from "../../../test/fixtures/auth-context.fixture.js";
 import { withIdentity } from "../../../test/fixtures/conditional-authorization.fixture.js";
 import { mockAuthorization } from "../../../test/mock-authorization.js";
 import { mockRlsContext } from "../../../test/mock-rls-context.js";
@@ -15,6 +16,7 @@ import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceInvitation } from "../../workspace/entities/workspace-invitation.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
+import { AuthContext } from "../auth-context.js";
 import { SessionConnection } from "../connections/session.connection-definition.js";
 import { API_KEY, AUTH_TOKEN } from "../constants/auth.constants.js";
 import { Session } from "../entities/session.entity.js";
@@ -92,6 +94,11 @@ async function createService(
   const moduleRef = await Test.createTestingModule({
     providers: [
       SessionService,
+      {
+        provide: AuthContext,
+        inject: [EntityManager],
+        useFactory: (manager: EntityManager) => createTestAuthContext(manager),
+      },
       {
         provide: AUTH_TOKEN,
         useValue: { $context: Promise.resolve(authContext), api },
@@ -345,7 +352,10 @@ describe("SessionService", () => {
       isInTransaction: vi.fn(() => false),
       fork: vi.fn(),
       find: vi.fn(() => {
-        expect(RequestContext.get(EntityManager)).toBe(em);
+        expect(RequestContext.get(EntityManager)).not.toBe(em);
+        expect(
+          RequestContext.get(EntityManager)?.getSessionContext(),
+        ).toBeUndefined();
         expect(em.getSessionContext()?.role).toBe("authenticated");
         return Promise.resolve([session]);
       }),
@@ -361,7 +371,7 @@ describe("SessionService", () => {
           session,
         ]);
         expect(em.getSessionContext()).toEqual(sessionContext);
-        expect(em.fork).not.toHaveBeenCalled();
+        expect(em.fork).toHaveBeenCalledOnce();
       },
     );
   });
@@ -510,9 +520,7 @@ describe("session management", () => {
             RequestContext.set(User, user);
             RequestContext.set(Session, session);
             em.isInTransaction.mockReturnValue(true);
-            await expect(revoke()).rejects.toThrow(
-              "outside an active transaction",
-            );
+            await expect(revoke()).rejects.toThrow("active RLS transaction");
             expect(em.remove).not.toHaveBeenCalled();
             expect(em.nativeDelete).not.toHaveBeenCalled();
             em.isInTransaction.mockReturnValue(false);
@@ -760,7 +768,7 @@ describe("session management", () => {
     return {
       em,
       authorization,
-      service: new SessionService({}, em),
+      service: new SessionService({}, em, createTestAuthContext(em, {})),
     };
   }
 });

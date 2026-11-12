@@ -2,6 +2,7 @@ import { createMongoAbility, subject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
 import { assert } from "vitest";
 
+import { stageIdentity } from "../../../test/fixtures/auth-context.fixture.js";
 import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
 import { ApiKey } from "../../api-key/entities/api-key.entity.js";
 import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
@@ -11,7 +12,6 @@ import { serializeAbilityRules } from "../../common/utils/serialize-ability-rule
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { User } from "../entities/user.entity.js";
-import { RequestIdentity } from "../request-identity.js";
 import { buildRequestAbility } from "./build-request-ability.util.js";
 
 describe("framework-owned request abilities", () => {
@@ -101,7 +101,7 @@ describe("framework-owned request abilities", () => {
       user: RequestContext.get(User),
       workspace: RequestContext.get(Workspace),
     });
-    RequestIdentity.stage({
+    stageIdentity({
       apiKey: Object.assign(new UserApiKey(new ApiKey()), {
         permissions: ["user:read", "workspace:update"],
       }),
@@ -147,7 +147,7 @@ describe("framework-owned request abilities", () => {
         member,
         permissions: ["workspace:read", "workspace:update", "workspace:delete"],
       });
-      RequestIdentity.stage({ user, member, workspace, apiKey });
+      stageIdentity({ user, member, workspace, apiKey });
       const ability = buildRequestAbility(
         withAuthTestFeatures({ workspace: { enabled: true } }),
       );
@@ -157,7 +157,7 @@ describe("framework-owned request abilities", () => {
       expect(ability?.can("read", WorkspaceMember)).toBe(false);
       expect(ability?.can("read", User)).toBe(false);
       member.permissions = [];
-      RequestIdentity.stage({ member });
+      stageIdentity({ member });
       expect(
         buildRequestAbility(
           withAuthTestFeatures({ workspace: { enabled: true } }),
@@ -197,7 +197,7 @@ describe("framework-owned request abilities", () => {
     expect(
       ability.can("read", subject("Article", { authorId: "me", hidden: true })),
     ).toBe(false);
-    RequestIdentity.stage({
+    stageIdentity({
       apiKey: Object.assign(new UserApiKey(new ApiKey()), { permissions: [] }),
     });
     expect(

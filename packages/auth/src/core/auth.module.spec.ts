@@ -11,6 +11,7 @@ import { MODULE_METADATA } from "@nestjs/common/constants";
 import { Args as NestArgs, Resolver as NestResolver } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
 
+import { createTestAuthContext } from "../../test/fixtures/auth-context.fixture.js";
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { UserApiKeyResolver } from "../api-key/resolvers/user-api-key.resolver.js";
 import { WorkspaceApiKeyResolver } from "../api-key/resolvers/workspace-api-key.resolver.js";
@@ -27,6 +28,7 @@ import { AuthGuard } from "./auth.guard.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { AuthModule } from "./auth.module.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import { AuthContext } from "./auth-context.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { AUTH_TOKEN } from "./constants/auth.constants.js";
 import {
@@ -275,9 +277,7 @@ describe("AuthModule", () => {
     ) as unknown[];
     expect(providers).toContain(AuthGuard);
     expect(providers).toContain(AuthHandlerMiddleware);
-    expect(providers).toContainEqual(
-      expect.objectContaining({ provide: UserService }),
-    );
+    expect(providers).toContainEqual(UserService);
     expect(providers).toContain(UserDeletionService);
     expect(providers).toContainEqual(
       expect.objectContaining({ provide: WorkspaceApiKeyService }),
@@ -286,9 +286,7 @@ describe("AuthModule", () => {
     expect(providers).not.toContainEqual(
       expect.objectContaining({ name: "AccessControlService" }),
     );
-    expect(providers).toContainEqual(
-      expect.objectContaining({ provide: SessionService }),
-    );
+    expect(providers).toContainEqual(SessionService);
     expect(providers).toContainEqual(
       expect.objectContaining({ provide: WorkspaceService }),
     );
@@ -317,7 +315,14 @@ describe("AuthModule", () => {
   it.each([undefined, {}, { enabled: false }])(
     "uses only base adapter models when workspace is %j",
     (workspace) => {
-      getAuthProvider().useFactory({ secret, workspace }, { em: {} });
+      getAuthProvider().useFactory(
+        { secret, workspace },
+        { em: {} },
+        undefined,
+        undefined,
+        undefined,
+        createTestAuthContext({ em: {} }?.em, { secret, workspace }),
+      );
       expect(mockMikroOrmAdapter).toHaveBeenCalledWith(
         expect.objectContaining({ entities: authEntityMap }),
       );
@@ -330,6 +335,13 @@ describe("AuthModule", () => {
       getAuthProvider().useFactory(
         { secret, apiKey: { enabled: true, member: { enabled: true } } },
         { em: {} },
+        undefined,
+        undefined,
+        undefined,
+        createTestAuthContext({ em: {} }?.em, {
+          secret,
+          apiKey: { enabled: true, member: { enabled: true } },
+        }),
       ),
     ).toThrow("apiKey.member has been removed; use apiKey.workspace");
   });
@@ -338,6 +350,13 @@ describe("AuthModule", () => {
       getAuthProvider().useFactory(
         { secret, apiKey: { enabled: true, workspace: { enabled: true } } },
         { em: {} },
+        undefined,
+        undefined,
+        undefined,
+        createTestAuthContext({ em: {} }?.em, {
+          secret,
+          apiKey: { enabled: true, workspace: { enabled: true } },
+        }),
       ),
     ).toThrow("apiKey.workspace requires workspace.enabled: true");
     expect(mockBetterAuth).not.toHaveBeenCalled();
@@ -348,6 +367,13 @@ describe("AuthModule", () => {
       getAuthProvider().useFactory(
         { secret, apiKey: { systemAccount: { enabled: true } } },
         { em: {} },
+        undefined,
+        undefined,
+        undefined,
+        createTestAuthContext({ em: {} }?.em, {
+          secret,
+          apiKey: { systemAccount: { enabled: true } },
+        }),
       ),
     ).toThrow("apiKey.systemAccount has been removed; use apiKey.system");
     expect(mockBetterAuth).not.toHaveBeenCalled();
@@ -357,6 +383,13 @@ describe("AuthModule", () => {
     getAuthProvider().useFactory(
       { secret, apiKey: { enabled: true, system: { enabled: true } } },
       { em: {} },
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext({ em: {} }?.em, {
+        secret,
+        apiKey: { enabled: true, system: { enabled: true } },
+      }),
     );
     expect(mockBetterAuth).toHaveBeenCalledOnce();
   });
@@ -431,6 +464,13 @@ describe("AuthModule", () => {
       { workspace: { enabled: true }, entities, secret },
       orm,
       mailer,
+      undefined,
+      undefined,
+      createTestAuthContext(orm?.em, {
+        workspace: { enabled: true },
+        entities,
+        secret,
+      }),
     );
     expect(auth).toEqual({
       api: {},
@@ -463,6 +503,7 @@ describe("AuthModule", () => {
       Mailer,
       HashService,
       UserDeletionService,
+      AuthContext,
     ]);
   });
   it("preserves explicit upstream options ahead of environment defaults", () => {
@@ -477,7 +518,14 @@ describe("AuthModule", () => {
       session: { expiresIn: 3600, updateAge: 0 },
       trustedOrigins: ["https://client.example.com"],
     };
-    getAuthProvider().useFactory(options, { em: {} });
+    getAuthProvider().useFactory(
+      options,
+      { em: {} },
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext({ em: {} }?.em, options),
+    );
     const upstreamOptions = { ...options };
     Reflect.deleteProperty(upstreamOptions, "workspace");
     expect(mockBetterAuth).toHaveBeenCalledWith(
@@ -501,6 +549,18 @@ describe("AuthModule", () => {
         },
       },
       { em: {} },
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext({ em: {} }?.em, {
+        workspace: { enabled: true },
+        secret,
+        user: {
+          roles: { "super-admin": ["user:read"] },
+          defaultRole: "super-admin",
+          adminRoles: ["super-admin"],
+        },
+      }),
     );
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -557,6 +617,23 @@ describe("AuthModule", () => {
             apiKey,
           },
           { em: {} },
+          undefined,
+          undefined,
+          undefined,
+          createTestAuthContext({ em: {} }?.em, {
+            entities,
+            secret,
+            user: {
+              permissions: ["user:read", "report:export"],
+              roles: { user: [], admin: ["user:read"] },
+            },
+            workspace: {
+              enabled: true,
+              permissions: ["workspace:update"],
+              roles: { owner: ["workspace:update"], member: [] },
+            },
+            apiKey,
+          }),
         ),
       ).not.toThrow();
       expect(mockBetterAuth).toHaveBeenCalledOnce();
@@ -599,6 +676,20 @@ describe("AuthModule", () => {
           {
             em: {},
           },
+          undefined,
+          undefined,
+          undefined,
+          createTestAuthContext(
+            {
+              em: {},
+            }?.em,
+            withAuthTestFeatures({
+              workspace: { enabled: true },
+              entities,
+              secret,
+              ...config,
+            }),
+          ),
         ),
       ).toThrow(error);
       expect(mockBetterAuth).not.toHaveBeenCalled();
@@ -664,6 +755,20 @@ describe("AuthModule", () => {
         {
           em: {},
         },
+        undefined,
+        undefined,
+        undefined,
+        createTestAuthContext(
+          {
+            em: {},
+          }?.em,
+          withAuthTestFeatures({
+            workspace: { enabled: true },
+            entities,
+            secret,
+            ...config,
+          }),
+        ),
       ),
     ).toThrow(error);
     expect(mockBetterAuth).not.toHaveBeenCalled();
@@ -728,6 +833,20 @@ describe("AuthModule", () => {
         {
           em: {},
         },
+        undefined,
+        undefined,
+        undefined,
+        createTestAuthContext(
+          {
+            em: {},
+          }?.em,
+          withAuthTestFeatures({
+            workspace: { enabled: true },
+            entities,
+            secret,
+            ...config,
+          }),
+        ),
       ),
     ).toThrow(error);
     expect(mockBetterAuth).not.toHaveBeenCalled();
@@ -749,6 +868,25 @@ describe("AuthModule", () => {
           getSessionContext: vi.fn(),
         },
       },
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(
+        {
+          em: {
+            getContext: vi.fn().mockReturnThis(),
+            getSessionContext: vi.fn(),
+          },
+        }?.em,
+        {
+          workspace: { enabled: true },
+          account: {
+            updateAccountOnSignIn: false,
+          },
+          entities,
+          secret,
+        },
+      ),
     );
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -775,6 +913,25 @@ describe("AuthModule", () => {
           getSessionContext: vi.fn(),
         },
       },
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(
+        {
+          em: {
+            getContext: vi.fn().mockReturnThis(),
+            getSessionContext: vi.fn(),
+          },
+        }?.em,
+        {
+          workspace: { enabled: true },
+          account: {
+            skipStateCookieCheck: true,
+          },
+          entities,
+          secret,
+        },
+      ),
     );
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -808,6 +965,22 @@ describe("AuthModule", () => {
       {},
       {},
       { deleteUser },
+      createTestAuthContext(
+        {
+          em: {
+            getContext: vi.fn().mockReturnThis(),
+            getSessionContext: vi.fn(),
+          },
+        }?.em,
+        {
+          workspace: { enabled: true },
+          entities,
+          secret,
+          user: {
+            deleteUser: { beforeDelete, enabled: true },
+          },
+        },
+      ),
     );
     await mockBetterAuth.mock.calls[0]?.[0].user.deleteUser.beforeDelete(
       user,
@@ -842,6 +1015,20 @@ describe("AuthModule", () => {
         {},
         {},
         { deleteUser },
+        createTestAuthContext(
+          {
+            em: {
+              getContext: vi.fn().mockReturnThis(),
+              getSessionContext: vi.fn(),
+            },
+          }?.em,
+          {
+            workspace: { enabled: true },
+            entities,
+            secret,
+            user: { deleteUser: { enabled: true } },
+          },
+        ),
       );
       const hook =
         mockBetterAuth.mock.calls[0]?.[0].user.deleteUser.beforeDelete;
@@ -885,6 +1072,20 @@ describe("AuthModule", () => {
       {},
       {},
       { deleteUser },
+      createTestAuthContext(
+        {
+          em: {
+            getContext: vi.fn().mockReturnThis(),
+            getSessionContext: vi.fn(),
+          },
+        }?.em,
+        {
+          workspace: { enabled: true },
+          entities,
+          secret,
+          user: { deleteUser: { enabled: true } },
+        },
+      ),
     );
     await expect(
       mockBetterAuth.mock.calls[0]?.[0].user.deleteUser.beforeDelete(
@@ -905,6 +1106,17 @@ describe("AuthModule", () => {
         },
       },
       { sendMail },
+      undefined,
+      undefined,
+      createTestAuthContext(
+        {
+          em: {
+            getContext: vi.fn().mockReturnThis(),
+            getSessionContext: vi.fn(),
+          },
+        }?.em,
+        { workspace: { enabled: true }, entities, secret },
+      ),
     );
     await mockBetterAuth.mock.calls[0]?.[0].emailVerification.sendVerificationEmail(
       {
@@ -951,6 +1163,37 @@ describe("AuthModule", () => {
           getSessionContext: vi.fn(),
         },
       },
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(
+        {
+          em: {
+            getContext: vi.fn().mockReturnThis(),
+            getSessionContext: vi.fn(),
+          },
+        }?.em,
+        {
+          buildAbility: vi.fn(),
+          apiKey: {
+            user: {
+              allowedPermissions: ["user:read"],
+              defaultPermissions: [],
+            },
+            workspace: {
+              allowedPermissions: [],
+              defaultPermissions: [],
+            },
+          },
+          entities,
+          middleware: { register: false },
+          secondaryStorage: { get: vi.fn() },
+          secret,
+          unexpectedOption: "must-not-pass-through",
+          user: {},
+          workspace: { enabled: true, sendWorkspaceInvitationEmail: vi.fn() },
+        },
+      ),
     );
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("user");
     expect(mockBetterAuth.mock.calls[0]?.[0]).not.toHaveProperty("entities");
@@ -972,6 +1215,14 @@ describe("AuthModule", () => {
     authProvider.useFactory(
       { workspace: { enabled: true }, entities, secret },
       orm,
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(orm?.em, {
+        workspace: { enabled: true },
+        entities,
+        secret,
+      }),
     );
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1000,6 +1251,14 @@ describe("AuthModule", () => {
     authProvider.useFactory(
       { workspace: { enabled: true }, entities, secret },
       orm,
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(orm?.em, {
+        workspace: { enabled: true },
+        entities,
+        secret,
+      }),
     );
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1035,6 +1294,14 @@ describe("AuthModule", () => {
     authProvider.useFactory(
       { workspace: { enabled: true }, entities, secret },
       orm,
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(orm?.em, {
+        workspace: { enabled: true },
+        entities,
+        secret,
+      }),
     );
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1068,6 +1335,14 @@ describe("AuthModule", () => {
     authProvider.useFactory(
       { workspace: { enabled: true }, entities, secret },
       orm,
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(orm?.em, {
+        workspace: { enabled: true },
+        entities,
+        secret,
+      }),
     );
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1091,6 +1366,14 @@ describe("AuthModule", () => {
     authProvider.useFactory(
       { workspace: { enabled: true }, entities, secret },
       orm,
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(orm?.em, {
+        workspace: { enabled: true },
+        entities,
+        secret,
+      }),
     );
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1123,6 +1406,22 @@ describe("AuthModule", () => {
         ],
       },
       orm,
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(orm?.em, {
+        workspace: { enabled: true },
+        entities,
+        secret,
+        providers: [
+          {
+            id: "github",
+            clientId: "github-client-id",
+            clientSecret: "github-client-secret",
+            enabled: true,
+          },
+        ],
+      }),
     );
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1154,6 +1453,14 @@ describe("AuthModule", () => {
         authProvider.useFactory(
           { workspace: { enabled: true }, entities, secret },
           orm,
+          undefined,
+          undefined,
+          undefined,
+          createTestAuthContext(orm?.em, {
+            workspace: { enabled: true },
+            entities,
+            secret,
+          }),
         ),
       ).toThrow(envName);
     },
@@ -1168,6 +1475,14 @@ describe("AuthModule", () => {
     authProvider.useFactory(
       { workspace: { enabled: true }, entities, secret },
       orm,
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(orm?.em, {
+        workspace: { enabled: true },
+        entities,
+        secret,
+      }),
     );
     expect(mockGenericOAuth).toHaveBeenCalledWith({
       config: [
@@ -1200,6 +1515,15 @@ describe("AuthModule", () => {
         secret,
       },
       orm,
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(orm?.em, {
+        workspace: { enabled: true },
+        entities,
+        providers: [companyProvider],
+        secret,
+      }),
     );
     expect(mockGenericOAuth).toHaveBeenCalledWith({
       config: [
@@ -1237,6 +1561,24 @@ describe("AuthModule", () => {
         secret,
       },
       orm,
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(orm?.em, {
+        workspace: { enabled: true },
+        entities,
+        providers: [
+          {
+            id: "company",
+            clientId: "company-client-id",
+            clientSecret: "company-client-secret",
+            authorizationUrl: "https://accounts.example.com/authorize",
+            tokenUrl: "https://accounts.example.com/token",
+            userInfoUrl: "https://accounts.example.com/userinfo",
+          },
+        ],
+        secret,
+      }),
     );
     expect(mockGenericOAuth).toHaveBeenCalledWith({
       config: [
@@ -1270,6 +1612,23 @@ describe("AuthModule", () => {
           secret,
         },
         orm,
+        undefined,
+        undefined,
+        undefined,
+        createTestAuthContext(orm?.em, {
+          workspace: { enabled: true },
+          entities,
+          providers: [
+            {
+              id: "oidc",
+              clientId: "duplicate-client-id",
+              clientSecret: "duplicate-client-secret",
+              discoveryUrl:
+                "https://duplicate.example.com/.well-known/openid-configuration",
+            },
+          ],
+          secret,
+        }),
       ),
     ).toThrow('Generic OAuth provider ID "oidc" is configured more than once.');
   });
@@ -1281,6 +1640,14 @@ describe("AuthModule", () => {
     authProvider.useFactory(
       { workspace: { enabled: true }, entities, secret },
       orm,
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(orm?.em, {
+        workspace: { enabled: true },
+        entities,
+        secret,
+      }),
     );
     expect(mockGenericOAuth).not.toHaveBeenCalled();
   });
@@ -1296,6 +1663,14 @@ describe("AuthModule", () => {
     authProvider.useFactory(
       { workspace: { enabled: true }, entities, secret },
       orm,
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(orm?.em, {
+        workspace: { enabled: true },
+        entities,
+        secret,
+      }),
     );
     expect(mockGenericOAuth).not.toHaveBeenCalled();
   });
@@ -1306,7 +1681,17 @@ describe("AuthModule", () => {
     const orm = { em: {} } as unknown as MikroORM;
 
     expect(() =>
-      authProvider.useFactory({ workspace: { enabled: true }, secret }, orm),
+      authProvider.useFactory(
+        { workspace: { enabled: true }, secret },
+        orm,
+        undefined,
+        undefined,
+        undefined,
+        createTestAuthContext(orm?.em, {
+          workspace: { enabled: true },
+          secret,
+        }),
+      ),
     ).toThrow("AUTH_OIDC_CLIENT_ID");
     expect(mockBetterAuth).not.toHaveBeenCalled();
   });
@@ -1327,6 +1712,18 @@ describe("AuthModule", () => {
         secret,
       },
       orm,
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(orm?.em, {
+        workspace: { enabled: true },
+        emailAndPassword: {
+          enabled: true,
+          maxPasswordLength: 128,
+        },
+        entities,
+        secret,
+      }),
     );
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1370,6 +1767,27 @@ describe("AuthModule", () => {
         ],
       },
       orm,
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext(orm?.em, {
+        workspace: { enabled: true },
+        entities,
+        secret,
+        providers: [
+          {
+            id: "apple",
+            clientId: "apple-client-id",
+            clientSecret: "apple-client-secret",
+          },
+          {
+            id: "google",
+            clientId: "google-client-id",
+            clientSecret: "google-client-secret",
+            scope: ["email"],
+          },
+        ],
+      }),
     );
     expect(mockBetterAuth).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1396,6 +1814,13 @@ describe("AuthModule", () => {
       authProvider.useFactory(
         { workspace: { enabled: true }, secret: "short" },
         orm,
+        undefined,
+        undefined,
+        undefined,
+        createTestAuthContext(orm?.em, {
+          workspace: { enabled: true },
+          secret: "short",
+        }),
       ),
     ).toThrow("Auth secret must be at least 32 characters long");
     expect(mockBetterAuth).not.toHaveBeenCalled();

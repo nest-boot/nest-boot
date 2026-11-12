@@ -12,6 +12,7 @@ import { UserApiKeyRelationResolver } from "./resolvers/user-api-key-relation.re
 import { WorkspaceApiKeyResolver } from "./resolvers/workspace-api-key.resolver.js";
 import { WorkspaceApiKeyConnectionResolver } from "./resolvers/workspace-api-key-connection.resolver.js";
 import { WorkspaceApiKeyRelationResolver } from "./resolvers/workspace-api-key-relation.resolver.js";
+import { ApiKeyService } from "./services/api-key.service.js";
 import { SystemApiKeyService } from "./services/system-api-key.service.js";
 import { UserApiKeyService } from "./services/user-api-key.service.js";
 import { WorkspaceApiKeyService } from "./services/workspace-api-key.service.js";
@@ -21,20 +22,23 @@ export const apiKeyProviders: Provider[] = [
   featureProvider(
     UserApiKeyService,
     "userApiKey",
-    [EntityManager],
-    (options, em: EntityManager) => new UserApiKeyService(em, options),
+    [EntityManager, ApiKeyService],
+    (options, em: EntityManager, apiKeys: ApiKeyService) =>
+      new UserApiKeyService(em, options, apiKeys),
   ),
   featureProvider(
     WorkspaceApiKeyService,
     "workspaceApiKey",
-    [EntityManager],
-    (options, em: EntityManager) => new WorkspaceApiKeyService(em, options),
+    [EntityManager, ApiKeyService],
+    (options, em: EntityManager, apiKeys: ApiKeyService) =>
+      new WorkspaceApiKeyService(em, options, apiKeys),
   ),
   featureProvider(
     SystemApiKeyService,
     "systemApiKeyManagement",
-    [EntityManager],
-    (options, em: EntityManager) => new SystemApiKeyService(em, options),
+    [EntityManager, ApiKeyService],
+    (options, em: EntityManager, apiKeys: ApiKeyService) =>
+      new SystemApiKeyService(em, options, apiKeys),
   ),
   featureProvider(
     UserApiKeyResolver,

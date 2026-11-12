@@ -1,9 +1,10 @@
 import type { EntityManager } from '@mikro-orm/core';
 import {
   API_KEY,
-  AuthGuard,
+  AuthContext,
   AuthResolver,
   type AuthService,
+  AuthTransactionSubscriber,
   User,
   UserApiKey,
   Workspace,
@@ -12,7 +13,6 @@ import {
 } from '@nest-boot/auth';
 import { RequestContext } from '@nest-boot/request-context';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { type ModuleRef, Reflector } from '@nestjs/core';
 
 import { Report } from '../src/app/auth/examples/report.js';
 import { ReportService } from '../src/app/auth/examples/report.service.js';
@@ -72,12 +72,13 @@ describe('business authorization recipe', () => {
               Object.assign(new UserApiKey(), { user, permissions: key }),
             );
           }
-          // Production requests are prepared by AuthGuard; manually prepare only this isolated test.
-          new AuthGuard(
-            new Reflector(),
+          // Production requests initialize AuthContext through the middleware.
+          const em = {} as EntityManager;
+          new AuthContext(
+            em,
             reportAuthOptions,
-            {} as ModuleRef,
-          ).refreshAbility();
+            new AuthTransactionSubscriber(em),
+          ).refresh();
           const report = new Report('report-1', workspace.id);
           const repository = {
             findOne: vi.fn(async (id: string) =>
@@ -162,6 +163,7 @@ describe('business authorization recipe', () => {
           const catalog = new WorkspaceApiKeyService(
             {} as EntityManager,
             reportAuthOptions,
+            {} as ConstructorParameters<typeof WorkspaceApiKeyService>[2],
           ).getWorkspaceApiKeyPermissions(workspace);
           const read = catalog.find(
             (option) => option.permission === 'report:read',

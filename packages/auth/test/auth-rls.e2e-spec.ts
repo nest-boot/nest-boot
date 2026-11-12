@@ -12,8 +12,6 @@ import { ApiKey } from "../src/api-key/entities/api-key.entity.js";
 import { ApiKeyAuthenticationService } from "../src/api-key/services/api-key-authentication.service.js";
 import { mikroOrmAdapter } from "../src/core/adapters/mikro-orm-adapter.js";
 import { AUTH_TOKEN } from "../src/core/constants/auth.constants.js";
-import { createContextualAuthService } from "../src/core/create-contextual-auth-service.js";
-import { RequestIdentity } from "../src/core/request-identity.js";
 import { UserDeletionService } from "../src/core/services/user-deletion.service.js";
 import { entities, workspaceEntities } from "../src/index.js";
 import {
@@ -42,6 +40,9 @@ import {
   WorkspaceMemberType,
   WorkspaceService,
 } from "../src/index.js";
+import { createTestApiKeyService } from "./fixtures/auth-context.fixture.js";
+import { stageIdentity } from "./fixtures/auth-context.fixture.js";
+import { createTestAuthContext } from "./fixtures/auth-context.fixture.js";
 import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 
 describe("Auth services and native RLS boundaries", () => {
@@ -142,6 +143,7 @@ describe("Auth services and native RLS boundaries", () => {
         { sendMail: vi.fn() },
         {},
         new UserDeletionService(admin),
+        createTestAuthContext(orm?.em, options),
       ) as ResetBackend;
       const email = `${randomUUID()}@example.test`;
       const signedUp = await backend.api.signUpEmail({
@@ -160,12 +162,17 @@ describe("Auth services and native RLS boundaries", () => {
             variables: { "app.user.id": user.id },
           },
         });
-        const sessions = new SessionService(backend, em);
+        const sessions = new SessionService(
+          backend,
+          em,
+          createTestAuthContext(em, {}),
+        );
         const middleware = new AuthMiddleware(
           withAuthTestFeatures(options),
           sessions,
           {} as never,
           em,
+          createTestAuthContext(em, withAuthTestFeatures(options)),
         );
         const service = new AuthService(
           backend,
@@ -176,8 +183,11 @@ describe("Auth services and native RLS boundaries", () => {
         await RequestContext.run(
           new RequestContext({ type: "test" }),
           async () => {
-            RequestIdentity.stage({ user, session });
-            RequestIdentity.prepare(withAuthTestFeatures(options));
+            stageIdentity({ user, session });
+            createTestAuthContext(
+              undefined,
+              withAuthTestFeatures(options),
+            ).getAbility();
             await expect(
               service.resetPassword({
                 token: resetToken,
@@ -199,7 +209,11 @@ describe("Auth services and native RLS boundaries", () => {
             );
             if (revoke) {
               await expect(
-                new WorkspaceService(em, options).createWorkspace(user, {
+                new WorkspaceService(
+                  em,
+                  options,
+                  createTestAuthContext(em, options),
+                ).createWorkspace(user, {
                   name: "Denied after reset",
                 }),
               ).rejects.toThrow("another user");
@@ -250,6 +264,7 @@ describe("Auth services and native RLS boundaries", () => {
         { sendMail: vi.fn() },
         {},
         new UserDeletionService(admin),
+        createTestAuthContext({ em }?.em, options),
       ) as {
         api: {
           signUpEmail(input: {
@@ -292,12 +307,17 @@ describe("Auth services and native RLS boundaries", () => {
           role: "authenticated",
           variables: { "app.user.id": user.id },
         });
-        const sessions = new SessionService(backend, em);
+        const sessions = new SessionService(
+          backend,
+          em,
+          createTestAuthContext(em, {}),
+        );
         const middleware = new AuthMiddleware(
           withAuthTestFeatures(options),
           sessions,
           {} as never,
           em,
+          createTestAuthContext(em, withAuthTestFeatures(options)),
         );
         const service = new AuthService(
           backend,
@@ -309,8 +329,11 @@ describe("Auth services and native RLS boundaries", () => {
           new RequestContext({ type: "http" }),
           async () => {
             RequestContext.set(REQUEST, { headers: { cookie } });
-            RequestIdentity.stage({ user, session });
-            RequestIdentity.prepare(withAuthTestFeatures(options));
+            stageIdentity({ user, session });
+            createTestAuthContext(
+              undefined,
+              withAuthTestFeatures(options),
+            ).getAbility();
             await expect(
               service.deleteCurrentUser({ password: "old-password" }),
             ).rejects.toThrow(hookError.message);
@@ -333,7 +356,11 @@ describe("Auth services and native RLS boundaries", () => {
             );
             if (deleted) {
               await expect(
-                new WorkspaceService(em, options).createWorkspace(user, {
+                new WorkspaceService(
+                  em,
+                  options,
+                  createTestAuthContext(em, options),
+                ).createWorkspace(user, {
                   name: "Denied after deletion",
                 }),
               ).rejects.toThrow("another user");
@@ -362,6 +389,7 @@ describe("Auth services and native RLS boundaries", () => {
           {} as never,
           {} as never,
           em,
+          createTestAuthContext(em, withAuthTestFeatures({})),
         );
         const service = new AuthService(
           {},
@@ -777,6 +805,7 @@ describe("Auth services and native RLS boundaries", () => {
         } as unknown as SessionService,
         { validate: vi.fn() } as unknown as ApiKeyAuthenticationService,
         em,
+        createTestAuthContext(em, withAuthTestFeatures(options)),
       );
       const request = {
         headers: { "x-workspace-id": workspace.id },
@@ -952,6 +981,7 @@ describe("Auth services and native RLS boundaries", () => {
           }),
         } as unknown as ApiKeyAuthenticationService,
         em,
+        createTestAuthContext(em, withAuthTestFeatures(options)),
       );
       const request = {
         headers: {
@@ -1037,17 +1067,24 @@ describe("Auth services and native RLS boundaries", () => {
           },
         },
       });
-      const service = new WorkspaceMemberService(em, {
-        workspace: { enabled: true },
-      });
+      const service = new WorkspaceMemberService(
+        em,
+        {
+          workspace: { enabled: true },
+        },
+        createTestAuthContext(em, {
+          workspace: { enabled: true },
+        }),
+      );
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
           RequestContext.set(EntityManager, em);
-          RequestIdentity.stage({ user, workspace, member: actor });
-          RequestIdentity.prepare(
+          stageIdentity({ user, workspace, member: actor });
+          createTestAuthContext(
+            undefined,
             withAuthTestFeatures({ workspace: { enabled: true } }),
-          );
+          ).getAbility();
           const page = await service.getWorkspaceMemberConnectionByWorkspace(
             workspace,
             {
@@ -1123,9 +1160,16 @@ describe("Auth services and native RLS boundaries", () => {
         new RequestContext({ type: "test" }),
         async () => {
           RequestContext.set(EntityManager, em);
-          RequestIdentity.stage({ user, workspace, member: actor });
-          RequestIdentity.prepare(withAuthTestFeatures(options));
-          const members = new WorkspaceMemberService(em, options);
+          stageIdentity({ user, workspace, member: actor });
+          createTestAuthContext(
+            undefined,
+            withAuthTestFeatures(options),
+          ).getAbility();
+          const members = new WorkspaceMemberService(
+            em,
+            options,
+            createTestAuthContext(em, options),
+          );
           const serviceAccount = await members.addWorkspaceServiceAccount(
             workspace,
             "Deploy",
@@ -1137,6 +1181,7 @@ describe("Auth services and native RLS boundaries", () => {
           const service = new WorkspaceApiKeyService(
             em,
             withAuthTestFeatures(options),
+            createTestApiKeyService(em, withAuthTestFeatures(options)),
           );
           const created = await service.createWorkspaceApiKey(workspace, {
             name: "Deploy",
@@ -1155,22 +1200,28 @@ describe("Auth services and native RLS boundaries", () => {
           expect(
             (await admin.findOneOrFail(ApiKey, created.entity.id)).permissions,
           ).toEqual(permissions);
-          RequestIdentity.stage({
+          stageIdentity({
             user: null,
             member: owner,
             workspace,
             apiKey: created.entity,
           });
-          RequestIdentity.prepare(withAuthTestFeatures(options));
+          createTestAuthContext(
+            undefined,
+            withAuthTestFeatures(options),
+          ).getAbility();
           expect(can("read", Workspace)).toBe(permissions.length === 0);
           expect(can("update", Workspace)).toBe(permissions.length > 0);
-          RequestIdentity.stage({
+          stageIdentity({
             user,
             member: actor,
             workspace,
             apiKey: null,
           });
-          RequestIdentity.prepare(withAuthTestFeatures(options));
+          createTestAuthContext(
+            undefined,
+            withAuthTestFeatures(options),
+          ).getAbility();
           const retainedAccount = await members.addWorkspaceServiceAccount(
             workspace,
             "Retained account",
@@ -1187,13 +1238,16 @@ describe("Auth services and native RLS boundaries", () => {
                 throw new Error("Commit failure");
               }, transactionOptions),
           );
-          RequestIdentity.stage({
+          stageIdentity({
             user,
             member: actor,
             workspace,
             apiKey: null,
           });
-          RequestIdentity.prepare(withAuthTestFeatures(options));
+          createTestAuthContext(
+            undefined,
+            withAuthTestFeatures(options),
+          ).getAbility();
           await expect(
             service.createWorkspaceApiKey(workspace, {
               name: "Rolled back",
@@ -1264,20 +1318,27 @@ describe("Auth services and native RLS boundaries", () => {
     });
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(EntityManager, em);
-      RequestIdentity.stage({
+      stageIdentity({
         user,
         member: actor,
         workspace,
         apiKey: limited,
       });
-      RequestIdentity.prepare(
+      createTestAuthContext(
+        undefined,
         withAuthTestFeatures({ workspace: { enabled: true } }),
-      );
+      ).getAbility();
       const service = new WorkspaceApiKeyService(
         em,
         withAuthTestFeatures({
           workspace: { enabled: true },
         }),
+        createTestApiKeyService(
+          em,
+          withAuthTestFeatures({
+            workspace: { enabled: true },
+          }),
+        ),
       );
       const page = await service.getWorkspaceApiKeyConnection(workspace, {
         first: 10,
@@ -1295,10 +1356,11 @@ describe("Auth services and native RLS boundaries", () => {
       await expect(service.deleteWorkspaceApiKey(inherited.id)).rejects.toThrow(
         "Unrestricted API keys",
       );
-      RequestIdentity.stage({ apiKey: inherited });
-      RequestIdentity.prepare(
+      stageIdentity({ apiKey: inherited });
+      createTestAuthContext(
+        undefined,
         withAuthTestFeatures({ workspace: { enabled: true } }),
-      );
+      ).getAbility();
       const fullPage = await service.getWorkspaceApiKeyConnection(workspace, {
         first: 10,
       });
@@ -1328,9 +1390,15 @@ describe("Auth services and native RLS boundaries", () => {
       variables: { "app.workspace.id": workspace.id, "app.user.id": "" },
     };
     const scoped = orm.em.fork({ session });
-    const service = new WorkspaceMemberService(scoped, {
-      workspace: { enabled: true },
-    });
+    const service = new WorkspaceMemberService(
+      scoped,
+      {
+        workspace: { enabled: true },
+      },
+      createTestAuthContext(scoped, {
+        workspace: { enabled: true },
+      }),
+    );
     const context = new RequestContext({ type: "test" });
     context.set(EntityManager, scoped);
     context.set(BaseWorkspace, workspace);
@@ -1345,9 +1413,10 @@ describe("Auth services and native RLS boundaries", () => {
     );
 
     await RequestContext.run(context, async () => {
-      RequestIdentity.prepare(
+      createTestAuthContext(
+        undefined,
         withAuthTestFeatures({ workspace: { enabled: true } }),
-      );
+      ).getAbility();
       const pendingWorkspace = await scoped.findOneOrFail(
         Workspace,
         workspace.id,
@@ -1656,22 +1725,9 @@ describe("Auth services and native RLS boundaries", () => {
       });
     const options = { workspace: { enabled: true } };
     const workspaceServiceFor = (em: EntityManager) =>
-      createContextualAuthService(
-        em,
-        (manager) => new WorkspaceService(manager, options),
-        {
-          createWorkspace: "authentication",
-        },
-      );
+      new WorkspaceService(em, options, createTestAuthContext(em, options));
     const invitationServiceFor = (em: EntityManager) =>
-      createContextualAuthService(
-        em,
-        (manager) => new WorkspaceInvitationService(manager, options),
-        {
-          acceptWorkspaceInvitation: "authentication",
-          rejectWorkspaceInvitation: "authentication",
-        },
-      );
+      new WorkspaceInvitationService(em, options);
 
     beforeAll(async () => {
       const admin = orm.em.fork();
@@ -1825,7 +1881,7 @@ describe("Auth services and native RLS boundaries", () => {
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
-          RequestIdentity.stage({ user });
+          stageIdentity({ user });
           const service = invitationServiceFor(em);
           expect(
             (
@@ -1871,8 +1927,11 @@ describe("Auth services and native RLS boundaries", () => {
       const context = new RequestContext({ type: "test" });
       context.set(EntityManager, em);
       const workspace = await RequestContext.run(context, async () => {
-        RequestIdentity.stage({ user: pendingUser });
-        RequestIdentity.prepare(withAuthTestFeatures(options));
+        stageIdentity({ user: pendingUser });
+        createTestAuthContext(
+          undefined,
+          withAuthTestFeatures(options),
+        ).getAbility();
         const result = await workspaceServiceFor(em).createWorkspace(
           pendingUser,
           {
@@ -1906,8 +1965,11 @@ describe("Auth services and native RLS boundaries", () => {
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
-          RequestIdentity.stage({ user: missingUser });
-          RequestIdentity.prepare(withAuthTestFeatures(options));
+          stageIdentity({ user: missingUser });
+          createTestAuthContext(
+            undefined,
+            withAuthTestFeatures(options),
+          ).getAbility();
           await expect(
             workspaceServiceFor(em).createWorkspace(missingUser, { name }),
           ).rejects.toThrow(/foreign key/i);
@@ -2078,6 +2140,7 @@ describe("Auth services and native RLS boundaries", () => {
         } as unknown as SessionService,
         { validate: vi.fn() } as unknown as ApiKeyAuthenticationService,
         em,
+        createTestAuthContext(em, withAuthTestFeatures({})),
       );
       const request = {
         headers: { "x-workspace-id": workspace.id },
@@ -2088,7 +2151,7 @@ describe("Auth services and native RLS boundaries", () => {
         const next = vi.fn();
         await middleware.use(request, {} as never, next);
         expect(next).toHaveBeenCalledExactlyOnceWith();
-        expect(RequestContext.get(Workspace)).toBeUndefined();
+        expect(RequestContext.get(Workspace)).toBeNull();
         expect(em.getSessionContext()?.variables?.["app.workspace.id"]).toBe(
           "",
         );
@@ -2121,8 +2184,11 @@ describe("Auth services and native RLS boundaries", () => {
       const result = await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
-          RequestIdentity.stage({ user, workspace, member: owner });
-          RequestIdentity.prepare(withAuthTestFeatures(options));
+          stageIdentity({ user, workspace, member: owner });
+          createTestAuthContext(
+            undefined,
+            withAuthTestFeatures(options),
+          ).getAbility();
           return await workspaceServiceFor(em).deleteWorkspace(workspace);
         },
       );
@@ -2221,12 +2287,13 @@ describe("Auth services and native RLS boundaries", () => {
       withAuthTestFeatures(options),
       {} as never,
       {} as never,
+      createTestAuthContext(scoped(viewer.id), withAuthTestFeatures(options)),
     );
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       viewer.roles = ["user"];
       viewer.permissions = ["account-admin:view", "user:read"];
       RequestContext.set(User, viewer);
-      RequestIdentity.refresh(withAuthTestFeatures(options));
+      createTestAuthContext(undefined, withAuthTestFeatures(options)).refresh();
       expect(await service.getUser(target.id)).toMatchObject({
         email: target.email,
       });
@@ -2247,7 +2314,7 @@ describe("Auth services and native RLS boundaries", () => {
         "not allowed",
       );
       viewer.permissions = [];
-      RequestIdentity.refresh(withAuthTestFeatures(options));
+      createTestAuthContext(undefined, withAuthTestFeatures(options)).refresh();
       await expect(service.getUser(target.id)).rejects.toThrow("not allowed");
       await expect(service.getUserConnection({ first: 10 })).rejects.toThrow(
         "not allowed",
@@ -2293,15 +2360,19 @@ describe("Auth services and native RLS boundaries", () => {
       withAuthTestFeatures(options),
       {} as never,
       new UserDeletionService(em),
+      createTestAuthContext(em, withAuthTestFeatures(options)),
     );
-    const sessions = new SessionService({}, em);
+    const sessions = new SessionService({}, em, createTestAuthContext(em, {}));
     try {
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
           RequestContext.set(User, actor);
           const authorize = () => {
-            RequestIdentity.refresh(withAuthTestFeatures(options));
+            createTestAuthContext(
+              undefined,
+              withAuthTestFeatures(options),
+            ).refresh();
           };
           actor.permissions = ["account-admin:manage"];
           authorize();

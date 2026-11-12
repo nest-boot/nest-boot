@@ -7,6 +7,7 @@ import { Args, ID, Query, Resolver } from "@nest-boot/graphql";
 import { HashService } from "@nest-boot/hash";
 import { Mailer } from "@nest-boot/mailer";
 import { ApolloDriver } from "@nestjs/apollo";
+import { Injectable } from "@nestjs/common";
 import { Global, Module } from "@nestjs/common";
 import { GraphQLModule, GraphQLSchemaHost } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
@@ -29,6 +30,12 @@ import { User } from "../../src/core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-options.interface.js";
 import { UserService } from "../../src/core/services/user.service.js";
 import { WorkspaceMember } from "../../src/workspace/entities/workspace-member.entity.js";
+
+/** Application-owned subclasses retain ordinary Nest constructor injection. */
+@Injectable()
+class ApplicationAuthGuard extends AuthGuard {}
+@Injectable()
+class ApplicationUserApiKeyService extends UserApiKeyService {}
 
 /** An application-owned endpoint whose authorization does not require the admin GraphQL API. */
 @Resolver()
@@ -77,7 +84,11 @@ export async function verifyAuthFeatures(
   },
 ): Promise<void> {
   const module = await Test.createTestingModule({
-    providers: [FeatureUserResolver],
+    providers: [
+      FeatureUserResolver,
+      ApplicationAuthGuard,
+      ApplicationUserApiKeyService,
+    ],
     imports: [
       Infrastructure,
       DatabaseModule.forRoot({
@@ -102,6 +113,10 @@ export async function verifyAuthFeatures(
       }),
     ],
   }).compile();
+  expect(module.get(ApplicationAuthGuard)).toBeInstanceOf(AuthGuard);
+  expect(module.get(ApplicationUserApiKeyService)).toBeInstanceOf(
+    UserApiKeyService,
+  );
   const app = module.createNestApplication();
   app.useGlobalGuards(app.get(AuthGuard));
   try {

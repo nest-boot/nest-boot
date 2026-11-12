@@ -8,10 +8,9 @@ import { MikroORM } from "@mikro-orm/pglite";
 import { RequestContext } from "@nest-boot/request-context";
 
 import { runAuthQuery } from "../src/common/utils/run-auth-query.js";
-import { createContextualAuthService } from "../src/core/create-contextual-auth-service.js";
 import { Session } from "../src/core/entities/session.entity.js";
 import { User } from "../src/core/entities/user.entity.js";
-import { RequestIdentity } from "../src/core/request-identity.js";
+import { createTestAuthContext } from "./fixtures/auth-context.fixture.js";
 
 @Entity({
   policies: [
@@ -130,7 +129,7 @@ describe("runAuthQuery with native RLS", () => {
         RequestContext.set(Session, currentSession);
         const operation = runAuthQuery(em, async (authEm) => {
           await authEm.getConnection().execute("select 1");
-          RequestIdentity.clear(authEm);
+          createTestAuthContext(authEm, {}).clear();
           if (failure) {
             throw new Error("Persistence failed");
           }
@@ -155,37 +154,25 @@ describe("runAuthQuery with native RLS", () => {
     },
   );
 
-  it("supplies isolated managers only to explicitly listed service operations", async () => {
+  it("keeps explicitly isolated persistence separate from scoped service reads", async () => {
     class DomainService {
       constructor(private readonly em: CoreEntityManager) {}
       async read() {
         return await this.em.count(AuthRecord);
       }
       async bootstrap() {
-        return await this.em.count(AuthRecord);
+        return await runAuthQuery(this.em, (em) => em.count(AuthRecord));
       }
     }
     await inRequest(async (em) => {
-      const service = createContextualAuthService(
-        em,
-        (manager) => new DomainService(manager),
-        {
-          bootstrap: "authentication",
-        },
-      );
+      const service = new DomainService(em);
       expect(await service.read()).toBe(1);
       expect(await service.bootstrap()).toBe(2);
       expect(await service.read()).toBe(1);
       expect(RequestContext.get(CoreEntityManager)).toBe(em);
       expect(em.getSessionContext()).toEqual(session);
       await em.transactional(async (tx) => {
-        const transactional = createContextualAuthService(
-          tx,
-          (manager) => new DomainService(manager),
-          {
-            bootstrap: "authentication",
-          },
-        );
+        const transactional = new DomainService(tx);
         await expect(transactional.bootstrap()).rejects.toThrow(
           "active RLS transaction",
         );

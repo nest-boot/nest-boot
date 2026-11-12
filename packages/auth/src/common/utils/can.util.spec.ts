@@ -1,8 +1,8 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
+import { stageIdentity } from "../../../test/fixtures/auth-context.fixture.js";
 import { User } from "../../core/entities/user.entity.js";
-import { RequestIdentity } from "../../core/request-identity.js";
 import { AuthAbility } from "../auth.ability.js";
 import { authorize } from "./authorize.util.js";
 import { can } from "./can.util.js";
@@ -120,7 +120,7 @@ describe("request authorization helpers", () => {
           authorize("write", TestSubject);
         }).not.toThrow();
         expect(getAuthAbility().rules).toBe(replacement.rules);
-        RequestIdentity.stage({ user: null, apiKey: null });
+        stageIdentity({ user: null, apiKey: null });
         // A stale ability alone must not grant access after sign-out.
         RequestContext.set(AuthAbility, replacement);
         expect(() => can("write", TestSubject)).toThrow(ForbiddenException);

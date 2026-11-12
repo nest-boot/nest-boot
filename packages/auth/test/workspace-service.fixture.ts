@@ -9,6 +9,7 @@ import { WorkspaceMember } from "../src/workspace/entities/workspace-member.enti
 import { WorkspaceService } from "../src/workspace/services/workspace.service.js";
 import { WorkspaceInvitationService } from "../src/workspace/services/workspace-invitation.service.js";
 import { WorkspaceMemberService } from "../src/workspace/services/workspace-member.service.js";
+import { createTestAuthContext } from "./fixtures/auth-context.fixture.js";
 import { mockAuthorization } from "./mock-authorization.js";
 /**
  * Returns workspace fixture with deterministic identifiers.
@@ -96,8 +97,16 @@ export function createWorkspaceServices(
   return {
     authorization,
     em,
-    workspaceService: new WorkspaceService(em, options),
-    workspaceMemberService: new WorkspaceMemberService(em, options),
+    workspaceService: new WorkspaceService(
+      em,
+      options,
+      createTestAuthContext(em, options),
+    ),
+    workspaceMemberService: new WorkspaceMemberService(
+      em,
+      options,
+      createTestAuthContext(em, options),
+    ),
     workspaceInvitationService: new WorkspaceInvitationService(em, options),
   };
 }

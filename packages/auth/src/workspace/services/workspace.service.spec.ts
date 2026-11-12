@@ -85,20 +85,6 @@ describe("WorkspaceService and cross-domain coordination", () => {
       );
     },
   );
-  it("rejects current workspace profile updates inside an outer transaction", async () => {
-    const { workspaceService, em } = createWorkspaceServices();
-    const workspace = createTestWorkspace();
-    em.isInTransaction.mockReturnValue(true);
-    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(Workspace, workspace);
-      await expect(
-        workspaceService.updateWorkspace(workspace, { name: "Locked" }),
-      ).rejects.toThrow("outside an active transaction");
-      expect(workspace.name).toBe("Acme");
-      expect(em.assign).not.toHaveBeenCalled();
-      expect(em.flush).not.toHaveBeenCalled();
-    });
-  });
   it("updates by ID using write authorization without requiring read permission", async () => {
     const { workspaceService, em, authorization } = createWorkspaceServices();
     const workspace = createTestWorkspace();
@@ -566,11 +552,6 @@ describe("WorkspaceService and cross-domain coordination", () => {
       RequestContext.set(Workspace, workspace);
       const key = new WorkspaceApiKey(new ApiKey());
       RequestContext.set(API_KEY, key);
-      em.isInTransaction.mockReturnValueOnce(true);
-      await expect(workspaceService.deleteWorkspace(workspace)).rejects.toThrow(
-        "outside an active transaction",
-      );
-      expect(em.transactional).not.toHaveBeenCalled();
       em.transactional.mockImplementationOnce(async (callback) => {
         await callback(em);
         throw new Error("Commit failed");
@@ -704,6 +685,21 @@ describe("WorkspaceService and cross-domain coordination", () => {
     await expect(
       workspaceMemberService.removeWorkspaceMember(member),
     ).rejects.toThrow("Workspace member not found");
+  });
+
+  it("rejects current workspace profile updates inside an outer transaction", async () => {
+    const { workspaceService, em } = createWorkspaceServices();
+    const workspace = createTestWorkspace();
+    em.isInTransaction.mockReturnValue(true);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(Workspace, workspace);
+      await expect(
+        workspaceService.updateWorkspace(workspace, { name: "Locked" }),
+      ).rejects.toThrow("outside an active transaction");
+      expect(workspace.name).toBe("Acme");
+      expect(em.assign).not.toHaveBeenCalled();
+      expect(em.flush).not.toHaveBeenCalled();
+    });
   });
 });
 

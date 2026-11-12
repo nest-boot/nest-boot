@@ -1,12 +1,12 @@
 import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 
+import { stageIdentity } from "../../../test/fixtures/auth-context.fixture.js";
 import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
 import { ApiKey } from "../../api-key/entities/api-key.entity.js";
 import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
 import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { User } from "../../core/entities/user.entity.js";
-import { RequestIdentity } from "../../core/request-identity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import {
@@ -50,7 +50,7 @@ describe("permission delegation", () => {
           roles: ["reader"],
           permissions: ["report:write"],
         });
-        RequestIdentity.stage({ user, member, workspace });
+        stageIdentity({ user, member, workspace });
         expect(
           canGrantPermissions(withAuthTestFeatures(options), scope, [
             "report:read",
@@ -73,7 +73,7 @@ describe("permission delegation", () => {
             "report:delete",
           ]);
         }).toThrow("permissions exceed issuer permissions");
-        RequestIdentity.stage({
+        stageIdentity({
           apiKey: Object.assign(new UserApiKey(new ApiKey()), {
             permissions: ["report:read", "report:delete"],
           }),
@@ -111,7 +111,7 @@ describe("permission delegation", () => {
         roles: [],
         permissions: ["report:read"],
       });
-      RequestIdentity.stage({
+      stageIdentity({
         workspace,
         member,
         apiKey: Object.assign(new WorkspaceApiKey(new ApiKey()), {
@@ -143,7 +143,7 @@ describe("permission delegation", () => {
           "report:write",
         ]);
       }).toThrow("authenticating API key permissions: report:write");
-      RequestIdentity.stage({
+      stageIdentity({
         apiKey: Object.assign(new WorkspaceApiKey(new ApiKey()), {
           member,
           permissions: [],

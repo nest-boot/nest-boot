@@ -36,7 +36,9 @@ import {
   resolveRolePermissions,
   resolveUserPermissions,
 } from "../../common/utils/resolve-effective-permissions.util.js";
+import { runAuthQuery } from "../../common/utils/run-auth-query.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
+import { AuthContext } from "../auth-context.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
 import {
   DEFAULT_USER_ADMIN_ROLES,
@@ -49,9 +51,12 @@ import type { AuthModuleOptions } from "../interfaces/auth-module-options.interf
 import type { AuthenticatedSession } from "../interfaces/authenticated-session.interface.js";
 import type { UserHasPermissionsOptions } from "../interfaces/user-has-permissions-options.interface.js";
 import type { PasswordPolicy } from "../objects/password-policy.object.js";
-import { RequestIdentity } from "../request-identity.js";
 import { RevokedAuthenticationException } from "../revoked-authentication.exception.js";
 import type { AuthModuleRoles } from "../types/auth-module-roles.type.js";
+import {
+  assertCurrentSession,
+  assertCurrentUser,
+} from "../utils/assert-current-identity.util.js";
 import {
   listAuthPermissions,
   normalizeAuthPermissions,
@@ -77,6 +82,7 @@ export class UserService {
    * @param hashService - Service for hashing and verifying passwords.
    * @param userDeletionService - Service that deletes users and their related records.
    * @param userDeletionService.deleteUser - Callback that deletes the user and related records.
+   * @param authContext - Current request authentication context.
    */
   constructor(
     /** MikroORM entity manager used for authentication persistence. */
@@ -91,6 +97,7 @@ export class UserService {
         beforeDelete?: () => Promise<void>,
       ): Promise<User | null>;
     },
+    private readonly authContext: AuthContext,
   ) {}
 
   /**
@@ -110,57 +117,59 @@ export class UserService {
    * @returns Persisted user.
    */
   async createUser(input: CreateUserOptions): Promise<User> {
-    authorize("create", User);
-    if (input.roles !== undefined) {
-      authorize("set-roles", User);
-    }
-    if (input.permissions !== undefined) {
-      authorize("set-permissions", User);
-    }
-    this.assertPasswordLength(input.password);
-    const permissions = this.normalizePermissions(input.permissions ?? []);
-    const roles = this.normalizeRoles(input.roles ?? [this.defaultRole]);
-    assertCanGrantPermissions(this.options, "user", [
-      ...resolveRolePermissions(this.options, "user", roles),
-      ...permissions,
-    ]);
-    const email = input.email.trim().toLowerCase();
+    return await runAuthQuery(this.em, async (em) => {
+      authorize("create", User);
+      if (input.roles !== undefined) {
+        authorize("set-roles", User);
+      }
+      if (input.permissions !== undefined) {
+        authorize("set-permissions", User);
+      }
+      this.assertPasswordLength(input.password);
+      const permissions = this.normalizePermissions(input.permissions ?? []);
+      const roles = this.normalizeRoles(input.roles ?? [this.defaultRole]);
+      assertCanGrantPermissions(this.options, "user", [
+        ...resolveRolePermissions(this.options, "user", roles),
+        ...permissions,
+      ]);
+      const email = input.email.trim().toLowerCase();
 
-    const password = await this.hashPassword(input.password);
+      const password = await this.hashPassword(input.password);
 
-    return await this.em.transactional(
-      async (em) => {
-        const user = em.create(User, {
-          email,
-          emailVerified: false,
-          name: input.name,
-          permissions,
-          roles,
-        });
-        authorize("create", user);
-        if (input.roles !== undefined) {
-          authorize("set-roles", user);
-        }
-        if (input.permissions !== undefined) {
-          authorize("set-permissions", user);
-        }
-        em.persist(user);
-        await em.flush();
+      return await em.transactional(
+        async (em) => {
+          const user = em.create(User, {
+            email,
+            emailVerified: false,
+            name: input.name,
+            permissions,
+            roles,
+          });
+          authorize("create", user);
+          if (input.roles !== undefined) {
+            authorize("set-roles", user);
+          }
+          if (input.permissions !== undefined) {
+            authorize("set-permissions", user);
+          }
+          em.persist(user);
+          await em.flush();
 
-        const userId = String(user.id);
-        const account = em.create(Account, {
-          accountId: userId,
-          issuer: CREDENTIAL_ISSUER,
-          password,
-          providerId: CREDENTIAL_PROVIDER_ID,
-          user,
-        });
-        em.persist(account);
-        await em.flush();
-        return user;
-      },
-      { clear: true },
-    );
+          const userId = String(user.id);
+          const account = em.create(Account, {
+            accountId: userId,
+            issuer: CREDENTIAL_ISSUER,
+            password,
+            providerId: CREDENTIAL_PROVIDER_ID,
+            user,
+          });
+          em.persist(account);
+          await em.flush();
+          return user;
+        },
+        { clear: true },
+      );
+    });
   }
 
   /**
@@ -225,7 +234,7 @@ export class UserService {
       Object.assign(user, previous);
       throw error;
     }
-    RequestIdentity.updateUser(this.em, this.options, user);
+    this.syncCurrentUser(user);
     return user;
   }
 
@@ -252,7 +261,7 @@ export class UserService {
       user.permissions = previous;
       throw error;
     }
-    RequestIdentity.updateUser(this.em, this.options, user);
+    this.syncCurrentUser(user);
     return user;
   }
 
@@ -283,7 +292,7 @@ export class UserService {
       user.roles = previous;
       throw error;
     }
-    RequestIdentity.updateUser(this.em, this.options, user);
+    this.syncCurrentUser(user);
     return user;
   }
 
@@ -299,31 +308,16 @@ export class UserService {
     return this.isCurrentUser(user) || session?.impersonatedBy?.id === user.id;
   }
 
-  private assertIdentityRevocationCanCommit(user: User): void {
-    if (this.affectsCurrentAuthentication(user) && this.em.isInTransaction()) {
-      throw new BadRequestException(
-        "Revoke your own identity outside an active transaction",
-      );
-    }
-  }
-
-  private assertAuthorizationCanCommit(user: User): void {
-    if (this.isCurrentUser(user) && this.em.isInTransaction()) {
-      throw new BadRequestException(
-        "Change your own authorization outside an active transaction",
-      );
-    }
-  }
-
   private async resolveUserForAction(
     user: User | string,
     action: string,
+    em: EntityManager = this.em,
   ): Promise<User> {
     if (typeof user !== "string") {
       return user;
     }
     authorize(action, User);
-    const entity = await this.em.findOne(User, { id: user }, { refresh: true });
+    const entity = await em.findOne(User, { id: user }, { refresh: true });
     if (!entity) {
       throw new NotFoundException("User not found");
     }
@@ -390,71 +384,73 @@ export class UserService {
 
   /**
    * Bans a user and immediately revokes all of their sessions.
-   * @param user - The user whose account is being accessed.
+   * @param target - User entity or identifier to authorize.
    * @param input - Requested field values for the operation.
    * @returns Banned user.
    */
   async banUser(
-    user: User | string,
+    target: User | string,
     input: BanUserOptions = {},
   ): Promise<User> {
-    user = await this.resolveUserForAction(user, "ban");
-    authorize("ban", user);
-    this.assertIdentityRevocationCanCommit(user);
-    const banExpiresAt =
-      input.banExpiresIn === undefined
-        ? null
-        : new Date(Date.now() + input.banExpiresIn * 1000);
-    if (
-      input.banExpiresIn !== undefined &&
-      (!Number.isSafeInteger(input.banExpiresIn) ||
-        input.banExpiresIn <= 0 ||
-        Number.isNaN(banExpiresAt?.getTime()))
-    ) {
-      throw new BadRequestException(
-        "Ban duration must be a positive integer number of seconds",
-      );
-    }
-    const previous = {
-      banned: user.banned,
-      banReason: user.banReason,
-      banExpiresAt: user.banExpiresAt,
-    };
-    user.banned = true;
-    user.banReason = input.banReason ?? null;
-    user.banExpiresAt = banExpiresAt;
-    const apiKey = getCurrentApiKey();
+    return await runAuthQuery(this.em, async (em) => {
+      const user = await this.resolveUserForAction(target, "ban", em);
+      authorize("ban", user);
+      this.assertIdentityRevocationCanCommit(user);
+      const banExpiresAt =
+        input.banExpiresIn === undefined
+          ? null
+          : new Date(Date.now() + input.banExpiresIn * 1000);
+      if (
+        input.banExpiresIn !== undefined &&
+        (!Number.isSafeInteger(input.banExpiresIn) ||
+          input.banExpiresIn <= 0 ||
+          Number.isNaN(banExpiresAt?.getTime()))
+      ) {
+        throw new BadRequestException(
+          "Ban duration must be a positive integer number of seconds",
+        );
+      }
+      const previous = {
+        banned: user.banned,
+        banReason: user.banReason,
+        banExpiresAt: user.banExpiresAt,
+      };
+      user.banned = true;
+      user.banReason = input.banReason ?? null;
+      user.banExpiresAt = banExpiresAt;
+      const apiKey = getCurrentApiKey();
 
-    try {
-      await this.em.transactional(
-        async (em) => {
-          // Persist the final use in the same transaction before revoking identity.
-          if (apiKey?.ownerType === "user" && apiKey.user?.id === user.id) {
-            const now = new Date();
-            await em.nativeUpdate(
-              ApiKey,
-              { id: apiKey.id },
-              {
-                lastUsedAt: now,
-                updatedAt: now,
-              },
-            );
-          }
-          await em.nativeDelete(Session, {
-            $or: [{ user: String(user.id) }, { impersonatedBy: user }],
-          });
-          await em.persist(user).flush();
-        },
-        { clear: true },
-      );
-    } catch (error) {
-      Object.assign(user, previous);
-      throw error;
-    }
-    if (this.affectsCurrentAuthentication(user)) {
-      RequestIdentity.clear(this.em);
-    }
-    return user;
+      try {
+        await em.transactional(
+          async (em) => {
+            // Persist the final use in the same transaction before revoking identity.
+            if (apiKey?.ownerType === "user" && apiKey.user?.id === user.id) {
+              const now = new Date();
+              await em.nativeUpdate(
+                ApiKey,
+                { id: apiKey.id },
+                {
+                  lastUsedAt: now,
+                  updatedAt: now,
+                },
+              );
+            }
+            await em.nativeDelete(Session, {
+              $or: [{ user: String(user.id) }, { impersonatedBy: user }],
+            });
+            await em.persist(user).flush();
+          },
+          { clear: true },
+        );
+      } catch (error) {
+        Object.assign(user, previous);
+        throw error;
+      }
+      if (this.affectsCurrentAuthentication(user)) {
+        this.authContext.clear();
+      }
+      return user;
+    });
   }
 
   /**
@@ -480,43 +476,45 @@ export class UserService {
       Object.assign(user, previous);
       throw error;
     }
-    RequestIdentity.updateUser(this.em, this.options, user);
+    this.syncCurrentUser(user);
     return user;
   }
 
   /**
    * Creates a session that impersonates another user.
    * @param administrator - Administrator starting the impersonation session.
-   * @param user - The user whose account is being accessed.
+   * @param target - User entity or identifier to authorize.
    * @param input - Requested field values for the operation.
    * @returns Impersonation session and the user it represents.
    */
   async impersonateUser(
     administrator: User,
-    user: User | string,
+    target: User | string,
     input: ImpersonationOptions = {},
   ): Promise<AuthenticatedSession> {
-    RequestIdentity.assertCurrentUser(administrator);
-    user = await this.resolveUserForAction(user, "impersonate");
-    authorize("impersonate", user);
-    if (this.isAdmin(user)) {
-      authorize("impersonate-admin", user);
-    }
-    if (this.isActivelyBanned(user)) {
-      throw new ForbiddenException("Banned users cannot be impersonated");
-    }
-    const session = await this.em.transactional(
-      async (em) => {
-        const session = this.createSession(em, user, {
-          ...input,
-          impersonatedBy: administrator,
-        });
-        await em.persist(session).flush();
-        return session;
-      },
-      { clear: true },
-    );
-    return { session, user };
+    return await runAuthQuery(this.em, async (em) => {
+      assertCurrentUser(administrator);
+      const user = await this.resolveUserForAction(target, "impersonate", em);
+      authorize("impersonate", user);
+      if (this.isAdmin(user)) {
+        authorize("impersonate-admin", user);
+      }
+      if (this.isActivelyBanned(user)) {
+        throw new ForbiddenException("Banned users cannot be impersonated");
+      }
+      const session = await em.transactional(
+        async (em) => {
+          const session = this.createSession(em, user, {
+            ...input,
+            impersonatedBy: administrator,
+          });
+          await em.persist(session).flush();
+          return session;
+        },
+        { clear: true },
+      );
+      return { session, user };
+    });
   }
 
   /**
@@ -529,52 +527,54 @@ export class UserService {
     currentSession: Session,
     input: ImpersonationOptions = {},
   ): Promise<AuthenticatedSession | null> {
-    RequestIdentity.assertCurrentSession(currentSession);
-    const impersonatedByReference = currentSession.impersonatedBy;
-    if (!impersonatedByReference) {
-      return null;
-    }
-    this.assertIdentityRevocationCanCommit(
-      Reference.unwrapReference(impersonatedByReference),
-    );
+    return await runAuthQuery(this.em, async (em) => {
+      assertCurrentSession(currentSession);
+      const impersonatedByReference = currentSession.impersonatedBy;
+      if (!impersonatedByReference) {
+        return null;
+      }
 
-    const result = await this.em.transactional(
-      async (em) => {
-        const impersonatedBy = Reference.unwrapReference<User>(
-          impersonatedByReference,
-        );
-        const administrator = await em.findOne(
-          User,
-          { id: String(impersonatedBy.id) },
-          { filters: false },
-        );
-        if (!administrator) {
-          return null;
-        }
-        if (this.isActivelyBanned(administrator)) {
-          await em.remove(currentSession).flush();
-          return "banned-administrator" as const;
-        }
-
-        const session = this.createSession(em, administrator, input);
-        em.remove(currentSession).persist(session);
-        await em.flush();
-        return { session, user: administrator };
-      },
-      { clear: true },
-    );
-    // A missing administrator has already cascaded deletion to this session.
-    if (result === null) {
-      RequestIdentity.clear(this.em);
-    }
-    // Publish the committed revocation even when restoration returns an error.
-    if (result === "banned-administrator") {
-      RequestIdentity.clear(this.em);
-      throw new RevokedAuthenticationException(
-        "Banned administrators cannot restore their session",
+      this.assertIdentityRevocationCanCommit(
+        Reference.unwrapReference(impersonatedByReference),
       );
-    }
-    return result;
+      const result = await em.transactional(
+        async (em) => {
+          const impersonatedBy = Reference.unwrapReference<User>(
+            impersonatedByReference,
+          );
+          const administrator = await em.findOne(
+            User,
+            { id: String(impersonatedBy.id) },
+            { filters: false },
+          );
+          if (!administrator) {
+            return null;
+          }
+          if (this.isActivelyBanned(administrator)) {
+            await em.remove(currentSession).flush();
+            return "banned-administrator" as const;
+          }
+
+          const session = this.createSession(em, administrator, input);
+          em.remove(currentSession).persist(session);
+          await em.flush();
+          return { session, user: administrator };
+        },
+        { clear: true },
+      );
+      // A missing administrator has already cascaded deletion to this session.
+      if (result === null) {
+        this.authContext.clear();
+      }
+      // Publish the committed revocation even when restoration returns an error.
+      if (result === "banned-administrator") {
+        this.authContext.clear();
+        throw new RevokedAuthenticationException(
+          "Banned administrators cannot restore their session",
+        );
+      }
+      return result;
+    });
   }
 
   /**
@@ -591,54 +591,56 @@ export class UserService {
       throw new NotFoundException("User not found");
     }
     if (this.affectsCurrentAuthentication(user)) {
-      RequestIdentity.clear(this.em);
+      this.authContext.clear();
     }
     return user;
   }
 
   /**
    * Sets or replaces a user's credential password.
-   * @param user - The user whose account is being accessed.
+   * @param target - User entity or identifier to authorize.
    * @param newPassword - New plaintext password to validate and store.
    */
   async setUserPassword(
-    user: User | string,
+    target: User | string,
     newPassword: string,
   ): Promise<void> {
-    user = await this.resolveUserForAction(user, "set-password");
-    authorize("set-password", user);
-    this.assertPasswordLength(newPassword);
-    const password = await this.hashPassword(newPassword);
-    await this.em.transactional(
-      async (em) => {
-        const account = await em.findOne(
-          Account,
-          {
-            issuer: CREDENTIAL_ISSUER,
-            accountId: String(user.id),
-            providerId: CREDENTIAL_PROVIDER_ID,
-            user: String(user.id),
-          },
-          { filters: false },
-        );
-
-        if (account) {
-          account.password = password;
-        } else {
-          em.persist(
-            em.create(Account, {
-              accountId: String(user.id),
+    await runAuthQuery(this.em, async (em) => {
+      const user = await this.resolveUserForAction(target, "set-password", em);
+      authorize("set-password", user);
+      this.assertPasswordLength(newPassword);
+      const password = await this.hashPassword(newPassword);
+      await em.transactional(
+        async (em) => {
+          const account = await em.findOne(
+            Account,
+            {
               issuer: CREDENTIAL_ISSUER,
-              password,
+              accountId: String(user.id),
               providerId: CREDENTIAL_PROVIDER_ID,
-              user,
-            }),
+              user: String(user.id),
+            },
+            { filters: false },
           );
-        }
-        await em.flush();
-      },
-      { clear: true },
-    );
+
+          if (account) {
+            account.password = password;
+          } else {
+            em.persist(
+              em.create(Account, {
+                accountId: String(user.id),
+                issuer: CREDENTIAL_ISSUER,
+                password,
+                providerId: CREDENTIAL_PROVIDER_ID,
+                user,
+              }),
+            );
+          }
+          await em.flush();
+        },
+        { clear: true },
+      );
+    });
   }
 
   /**
@@ -753,5 +755,28 @@ export class UserService {
       user.banned &&
       (!user.banExpiresAt || user.banExpiresAt.getTime() > Date.now())
     );
+  }
+
+  private syncCurrentUser(user: User): void {
+    if (this.authContext.user?.id !== user.id) {
+      return;
+    }
+    this.authContext.set({ user });
+  }
+
+  private assertAuthorizationCanCommit(user: User): void {
+    if (this.isCurrentUser(user) && this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Change your own authorization outside an active transaction",
+      );
+    }
+  }
+
+  private assertIdentityRevocationCanCommit(user: User): void {
+    if (this.affectsCurrentAuthentication(user) && this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Revoke your own identity outside an active transaction",
+      );
+    }
   }
 }

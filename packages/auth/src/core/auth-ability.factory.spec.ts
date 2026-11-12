@@ -14,7 +14,7 @@ import {
 import { Workspace } from "../workspace/entities/workspace.entity.js";
 import { WorkspaceInvitation } from "../workspace/entities/workspace-invitation.entity.js";
 import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
-import { AuthAbilityFactory } from "./auth-ability.factory.js";
+import { createAuthAbility } from "./auth-ability.factory.js";
 import {
   DEFAULT_USER_PERMISSIONS,
   DEFAULT_USER_ROLES,
@@ -23,7 +23,7 @@ import { User } from "./entities/user.entity.js";
 import { type AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
 
 const buildUserPermissionAbility = (permissions: readonly string[]) =>
-  AuthAbilityFactory.createAbility(
+  createAuthAbility(
     {
       workspace: null,
       member: null,
@@ -35,7 +35,7 @@ const buildUserPermissionAbility = (permissions: readonly string[]) =>
   );
 
 const buildWorkspacePermissionAbility = (permissions: readonly string[]) =>
-  AuthAbilityFactory.createAbility(
+  createAuthAbility(
     {
       user: null,
       member: null,
@@ -57,27 +57,27 @@ describe("permission ability builders", () => {
       userPermissions: ["user:read", "workspace:read-any", "user:set-roles"],
       workspacePermissions: [],
     };
-    const machine = AuthAbilityFactory.createAbility(context, options);
+    const machine = createAuthAbility(context, options);
     expect(machine.can("read", User)).toBe(true);
     expect(machine.can("read-any", Workspace)).toBe(false);
-    const workspaceMachine = AuthAbilityFactory.createAbility(context, {
+    const workspaceMachine = createAuthAbility(context, {
       ...options,
       workspace: { enabled: true },
     });
     expect(workspaceMachine.can("read-any", Workspace)).toBe(true);
     expect(machine.can("set-roles", User)).toBe(false);
-    const human = AuthAbilityFactory.createAbility(
+    const human = createAuthAbility(
       { ...context, user: new User(), systemAccount: null },
       options,
     );
     expect(human.can("read", User)).toBe(false);
-    const disabled = AuthAbilityFactory.createAbility(context, {
+    const disabled = createAuthAbility(context, {
       apiKey: { enabled: false, system: { enabled: true } },
     });
     expect(disabled.can("read", User)).toBe(false);
   });
   it("suppresses disabled framework grants while preserving configured business grants", () => {
-    const ability = AuthAbilityFactory.createAbility(
+    const ability = createAuthAbility(
       {
         user: new User(),
         member: null,
@@ -103,7 +103,7 @@ describe("permission ability builders", () => {
       id: "member-1",
       workspace,
     });
-    const ability = AuthAbilityFactory.createAbility(
+    const ability = createAuthAbility(
       {
         user: new User(),
         workspace,
@@ -162,7 +162,7 @@ describe("permission ability builders", () => {
         type: "SERVICE_ACCOUNT",
       });
       const build = (permissions: string[]) =>
-        AuthAbilityFactory.createAbility(
+        createAuthAbility(
           {
             user: null,
             member: null,
@@ -221,7 +221,7 @@ describe("permission ability builders", () => {
         ["workspace-service-account:write"],
         [`workspace-member:${action}`, "workspace-service-account:write"],
       ]) {
-        const ability = AuthAbilityFactory.createAbility(
+        const ability = createAuthAbility(
           {
             user: null,
             member: null,
@@ -358,7 +358,7 @@ describe("explicit permission catalog", () => {
 
     it("does not add baseline abilities to empty credentials", () => {
       const abilities = [
-        AuthAbilityFactory.createAbility(
+        createAuthAbility(
           {
             workspace: null,
             member: null,
@@ -368,7 +368,7 @@ describe("explicit permission catalog", () => {
           },
           withAuthTestFeatures({ workspace: { enabled: true } }),
         ),
-        AuthAbilityFactory.createAbility(
+        createAuthAbility(
           {
             user: null,
             member: null,
@@ -409,7 +409,7 @@ describe("explicit permission catalog", () => {
     ] as const)(
       "keeps %s write independent from read and sensitive grants",
       (resource, subject) => {
-        const ability = AuthAbilityFactory.createAbility(
+        const ability = createAuthAbility(
           {
             user: null,
             member: null,
@@ -427,7 +427,7 @@ describe("explicit permission catalog", () => {
     );
 
     it("uses workspace-member:invite for invitation management without granting member writes", () => {
-      const ability = AuthAbilityFactory.createAbility(
+      const ability = createAuthAbility(
         {
           user: null,
           member: null,
@@ -442,7 +442,7 @@ describe("explicit permission catalog", () => {
       expect(ability.can("write", WorkspaceMember)).toBe(false);
       expect(ability.can("set-roles", WorkspaceMember)).toBe(false);
       expect(ability.can("set-permissions", WorkspaceMember)).toBe(false);
-      const memberWriter = AuthAbilityFactory.createAbility(
+      const memberWriter = createAuthAbility(
         {
           user: null,
           member: null,
@@ -457,7 +457,7 @@ describe("explicit permission catalog", () => {
     });
 
     it("keeps personal and workspace key permissions separate", () => {
-      const userAbility = AuthAbilityFactory.createAbility(
+      const userAbility = createAuthAbility(
         {
           workspace: null,
           member: null,
@@ -467,7 +467,7 @@ describe("explicit permission catalog", () => {
         },
         withAuthTestFeatures({ workspace: { enabled: true } }),
       );
-      const workspaceAbility = AuthAbilityFactory.createAbility(
+      const workspaceAbility = createAuthAbility(
         {
           user: null,
           member: null,
@@ -488,7 +488,7 @@ describe("explicit permission catalog", () => {
 
     it("retains object restrictions for invitation management", () => {
       const workspace = new Workspace();
-      const ability = AuthAbilityFactory.createAbility(
+      const ability = createAuthAbility(
         {
           user: null,
           member: null,
@@ -534,7 +534,7 @@ describe("explicit permission catalog", () => {
     });
 
     it("grants workspace creation explicitly through the user catalog", () => {
-      const ability = AuthAbilityFactory.createAbility(
+      const ability = createAuthAbility(
         {
           workspace: null,
           member: null,
@@ -581,7 +581,7 @@ describe("optional workspace behavior", () => {
       expect(
         resolveApiKeyPermissionCatalog(options, "user").permissions,
       ).not.toContain("workspace:update");
-      const ability = AuthAbilityFactory.createAbility(
+      const ability = createAuthAbility(
         {
           user: new User(),
           workspace: new Workspace(),

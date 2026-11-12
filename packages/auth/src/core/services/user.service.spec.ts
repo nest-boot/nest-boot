@@ -5,13 +5,13 @@ import { HashService } from "@nest-boot/hash";
 import { RequestContext } from "@nest-boot/request-context";
 import {
   BadRequestException,
-  type FactoryProvider,
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
 import { type GraphQLResolveInfo } from "graphql";
 import { expectTypeOf, type Mocked } from "vitest";
 
+import { createTestAuthContext } from "../../../test/fixtures/auth-context.fixture.js";
 import { withIdentity } from "../../../test/fixtures/conditional-authorization.fixture.js";
 import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
 import { mockAuthorization } from "../../../test/mock-authorization.js";
@@ -24,7 +24,6 @@ import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceInvitation } from "../../workspace/entities/workspace-invitation.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
-import { authServiceProviders } from "../auth-service.providers.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
 import { API_KEY } from "../constants/auth.constants.js";
 import { DEFAULT_USER_PERMISSIONS } from "../constants/user.constants.js";
@@ -130,11 +129,6 @@ describe("UserService", () => {
         async () => {
           RequestContext.set(User, current);
           RequestContext.set(Session, session);
-          em.isInTransaction.mockReturnValue(true);
-          await expect(service.banUser(user)).rejects.toThrow(
-            "outside an active transaction",
-          );
-          expect(em.transactional).not.toHaveBeenCalled();
           em.isInTransaction.mockReturnValue(false);
           em.flush.mockRejectedValueOnce(new Error("Commit failed"));
           await expect(service.banUser(user)).rejects.toThrow("Commit failed");
@@ -198,40 +192,6 @@ describe("UserService", () => {
             false,
           );
           expect(em.setSessionContext).not.toHaveBeenCalled();
-        },
-      );
-    },
-  );
-  it.each(["roles", "permissions", "profile", "ban"] as const)(
-    "rejects own %s changes inside an outer transaction before modifying the identity",
-    async (field) => {
-      const { service, em } = createService();
-      const user = Object.assign(new User(), {
-        id: "self",
-        roles: ["admin"],
-        permissions: ["user:delete"],
-        emailVerified: true,
-        banned: true,
-      });
-      em.isInTransaction.mockReturnValue(true);
-      await RequestContext.run(
-        new RequestContext({ type: "test" }),
-        async () => {
-          RequestContext.set(User, user);
-          const result =
-            field === "roles"
-              ? service.setUserRoles(user, ["user"])
-              : field === "permissions"
-                ? service.setUserPermissions(user, [])
-                : field === "profile"
-                  ? service.updateUser(user, { emailVerified: false })
-                  : service.unbanUser(user);
-          await expect(result).rejects.toThrow("outside an active transaction");
-          expect(user.roles).toEqual(["admin"]);
-          expect(user.permissions).toEqual(["user:delete"]);
-          expect(user.emailVerified).toBe(true);
-          expect(user.banned).toBe(true);
-          expect(em.flush).not.toHaveBeenCalled();
         },
       );
     },
@@ -328,17 +288,12 @@ describe("UserService", () => {
         }
       },
     });
-    const provider = authServiceProviders.find(
-      (candidate) =>
-        typeof candidate === "object" &&
-        "provide" in candidate &&
-        candidate.provide === UserService,
-    ) as FactoryProvider<UserService>;
-    const service = await provider.useFactory(
+    const service = new UserService(
       em,
       options,
-      {},
+      {} as HashService,
       userDeletionService,
+      createTestAuthContext(em, options),
     );
     const session = mockRlsContext(em);
     const previous = {
@@ -1071,6 +1026,41 @@ describe("UserService", () => {
       }),
     ).toBe(false);
   });
+
+  it.each(["roles", "permissions", "profile", "ban"] as const)(
+    "rejects own %s changes inside an outer transaction before modifying the identity",
+    async (field) => {
+      const { service, em } = createService();
+      const user = Object.assign(new User(), {
+        id: "self",
+        roles: ["admin"],
+        permissions: ["user:delete"],
+        emailVerified: true,
+        banned: true,
+      });
+      em.isInTransaction.mockReturnValue(true);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(User, user);
+          const result =
+            field === "roles"
+              ? service.setUserRoles(user, ["user"])
+              : field === "permissions"
+                ? service.setUserPermissions(user, [])
+                : field === "profile"
+                  ? service.updateUser(user, { emailVerified: false })
+                  : service.unbanUser(user);
+          await expect(result).rejects.toThrow("outside an active transaction");
+          expect(user.roles).toEqual(["admin"]);
+          expect(user.permissions).toEqual(["user:delete"]);
+          expect(user.emailVerified).toBe(true);
+          expect(user.banned).toBe(true);
+          expect(em.flush).not.toHaveBeenCalled();
+        },
+      );
+    },
+  );
 });
 
 /**
@@ -1141,6 +1131,7 @@ function createService(
       withAuthTestFeatures(options),
       hashService,
       userDeletionService,
+      createTestAuthContext(em, withAuthTestFeatures(options)),
     ),
   };
 }

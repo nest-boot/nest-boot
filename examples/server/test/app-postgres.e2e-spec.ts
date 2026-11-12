@@ -17,7 +17,6 @@ import {
 import { Queue as BullmqQueue } from 'bullmq';
 import request from 'supertest';
 
-import { createContextualAuthService } from '../../../packages/auth/dist/core/create-contextual-auth-service.js';
 import { ReportQueue } from '../src/app/reports/report.queue.js';
 
 interface DbProbe {
@@ -2101,85 +2100,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       );
     expect(sessions).toEqual([]);
   });
-
-  it.each([false, true])(
-    'restores the caller role after a single-connection invitation lookup (failure=%s)',
-    async (failure) => {
-      const user = await createAuthenticatedUser('Identity lookup target');
-      expect(
-        await migrationOrm.em.execute(
-          'select id from account where user_id = ?',
-          [user.user.id],
-        ),
-      ).toHaveLength(1);
-      const orm = await MikroORM.init({
-        clientUrl: databaseUrl,
-        driver: PostgreSqlDriver,
-        entities: [DbProbeSchema],
-        pool: { min: 0, max: 1 },
-        driverOptions: { connectionTimeoutMillis: 1000 },
-      });
-      try {
-        const em = orm.em.fork({
-          session: {
-            role: 'authenticated',
-            variables: { 'app.user.id': '' },
-          },
-        });
-        await em.transactional(async (transaction) => {
-          const [before] = await transaction.execute(
-            'select current_user as role, pg_backend_pid() as pid',
-          );
-          expect(before.role).toBe('authenticated');
-          expect(
-            await transaction.execute(
-              'select id from account where user_id = ?',
-              [user.user.id],
-            ),
-          ).toEqual([]);
-          const service = createContextualAuthService(
-            transaction,
-            (manager) => ({
-              async lookup() {
-                const connection = manager.getConnection();
-                const ctx = manager.getTransactionContext();
-                if (failure) {
-                  await connection.execute('select 1 / 0', [], 'all', ctx);
-                }
-                return await connection.execute(
-                  'select id, pg_backend_pid() as pid from "user" where id = ?',
-                  [user.user.id],
-                  'all',
-                  ctx,
-                );
-              },
-            }),
-            { lookup: 'invitation-identity' },
-          );
-          if (failure) {
-            await expect(service.lookup()).rejects.toThrow();
-          } else {
-            expect(await service.lookup()).toEqual([
-              { id: user.user.id, pid: before.pid },
-            ]);
-          }
-          expect(
-            await transaction.execute(
-              'select current_user as role, pg_backend_pid() as pid',
-            ),
-          ).toEqual([before]);
-          expect(
-            await transaction.execute(
-              'select id from account where user_id = ?',
-              [user.user.id],
-            ),
-          ).toEqual([]);
-        });
-      } finally {
-        await orm.close();
-      }
-    },
-  );
 
   it('uses the replacement password-change session in subsequent mutation fields', async () => {
     const administrator = await createAuthenticatedUser(

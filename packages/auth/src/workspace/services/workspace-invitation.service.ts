@@ -27,11 +27,16 @@ import { can } from "../../common/utils/can.util.js";
 import { assertCanGrantPermissions } from "../../common/utils/permission-grants.util.js";
 import { resolveAuthCatalog } from "../../common/utils/resolve-auth-catalog.util.js";
 import { resolveRolePermissions } from "../../common/utils/resolve-effective-permissions.util.js";
+import { runAuthQuery } from "../../common/utils/run-auth-query.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
-import { RequestIdentity } from "../../core/request-identity.js";
 import type { AuthModuleRoles } from "../../core/types/auth-module-roles.type.js";
+import {
+  assertCurrentUser,
+  assertCurrentWorkspace,
+  assertUserSession,
+} from "../../core/utils/assert-current-identity.util.js";
 import { normalizeAuthRoles } from "../../core/utils/auth-role.util.js";
 import { WorkspaceInvitationConnection } from "../connections/workspace-invitation.connection-definition.js";
 import { DEFAULT_WORKSPACE_ROLE } from "../constants/workspace.constants.js";
@@ -40,6 +45,7 @@ import { WorkspaceInvitation } from "../entities/workspace-invitation.entity.js"
 import { WorkspaceMember } from "../entities/workspace-member.entity.js";
 import type { AcceptWorkspaceInvitationResult } from "../interfaces/accept-workspace-invitation-result.interface.js";
 import type { CreateWorkspaceInvitationOptions } from "../interfaces/create-workspace-invitation-options.interface.js";
+import { readInvitationIdentity } from "../utils/read-invitation-identity.util.js";
 
 /** Workspace invitation queries and lifecycle operations. */
 @Injectable()
@@ -70,8 +76,8 @@ export class WorkspaceInvitationService {
     input: CreateWorkspaceInvitationOptions,
     request?: Request,
   ): Promise<WorkspaceInvitation> {
-    RequestIdentity.assertCurrentWorkspace(workspace);
-    RequestIdentity.assertCurrentUser(inviter);
+    assertCurrentWorkspace(workspace);
+    assertCurrentUser(inviter);
     authorize("write", WorkspaceInvitation);
     const email = input.email.trim().toLowerCase();
     const roles = this.normalizeGrantedRoles(input.roles ?? [this.defaultRole]);
@@ -229,15 +235,17 @@ export class WorkspaceInvitationService {
     inviter: User,
     email: string,
   ): Promise<string | null> {
-    RequestIdentity.assertCurrentWorkspace(workspace);
-    RequestIdentity.assertCurrentUser(inviter);
-    authorize("write", WorkspaceInvitation);
-    const user = await this.em.findOne(
-      User,
-      { email: email.trim().toLowerCase() },
-      { fields: ["id"], filters: false },
-    );
-    return user ? String(user.id) : null;
+    return await readInvitationIdentity(this.em, async (em) => {
+      assertCurrentWorkspace(workspace);
+      assertCurrentUser(inviter);
+      authorize("write", WorkspaceInvitation);
+      const user = await em.findOne(
+        User,
+        { email: email.trim().toLowerCase() },
+        { fields: ["id"], filters: false },
+      );
+      return user ? String(user.id) : null;
+    });
   }
 
   /**
@@ -342,9 +350,7 @@ export class WorkspaceInvitationService {
     ) {
       return;
     }
-    RequestIdentity.assertCurrentWorkspace(
-      this.unwrapWorkspaceInvitationWorkspace(invitation),
-    );
+    assertCurrentWorkspace(this.unwrapWorkspaceInvitationWorkspace(invitation));
     authorize("read", invitation);
   }
 
@@ -358,7 +364,7 @@ export class WorkspaceInvitationService {
     id: string,
     user: User,
   ): Promise<WorkspaceInvitation | null> {
-    RequestIdentity.assertUserSession(user);
+    assertUserSession(user);
     const invitation = await this.em.findOne(WorkspaceInvitation, {
       id,
       email: user.email.toLowerCase(),
@@ -376,7 +382,7 @@ export class WorkspaceInvitationService {
     id: string,
     workspace: Workspace,
   ): Promise<WorkspaceInvitation | null> {
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     authorize("read", WorkspaceInvitation);
     const invitation = await this.em.findOne(WorkspaceInvitation, {
       id,
@@ -400,7 +406,7 @@ export class WorkspaceInvitationService {
     args: ConnectionArgsInterface<WorkspaceInvitation>,
     info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<WorkspaceInvitation>> {
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     authorize("read", WorkspaceInvitation);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
@@ -426,7 +432,7 @@ export class WorkspaceInvitationService {
     args: ConnectionArgsInterface<WorkspaceInvitation>,
     info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<WorkspaceInvitation>> {
-    RequestIdentity.assertUserSession(user);
+    assertUserSession(user);
     const now = new Date();
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
@@ -451,71 +457,75 @@ export class WorkspaceInvitationService {
     user: User,
     invitationId: string,
   ): Promise<AcceptWorkspaceInvitationResult | null> {
-    RequestIdentity.assertUserSession(user);
-    return await this.em.transactional(
-      async (em) => {
-        const invitation = await em.findOne(
-          WorkspaceInvitation,
-          { id: invitationId },
-          {
+    return await runAuthQuery(this.em, async (em) => {
+      assertUserSession(user);
+      return await em.transactional(
+        async (em) => {
+          const invitation = await em.findOne(
+            WorkspaceInvitation,
+            { id: invitationId },
+            {
+              filters: false,
+              populate: ["workspace"],
+            },
+          );
+          if (!invitation) {
+            return null;
+          }
+          if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
+            throw new ForbiddenException(
+              "Workspace invitation belongs to another email address",
+            );
+          }
+          // All membership/invitation creation takes the workspace lock first.
+          // Refresh the invitation only afterwards so direct addition and deletion
+          // cannot race acceptance or acquire these locks in the opposite order.
+          const workspace = this.unwrapWorkspaceInvitationWorkspace(invitation);
+          await this.lockWorkspace(em, workspace);
+          await em.refreshOrFail(invitation, {
             filters: false,
-            populate: ["workspace"],
-          },
-        );
-        if (!invitation) {
-          return null;
-        }
-        if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
-          throw new ForbiddenException(
-            "Workspace invitation belongs to another email address",
-          );
-        }
-        // All membership/invitation creation takes the workspace lock first.
-        // Refresh the invitation only afterwards so direct addition and deletion
-        // cannot race acceptance or acquire these locks in the opposite order.
-        const workspace = this.unwrapWorkspaceInvitationWorkspace(invitation);
-        await this.lockWorkspace(em, workspace);
-        await em.refreshOrFail(invitation, {
-          filters: false,
-          lockMode: LockMode.PESSIMISTIC_WRITE,
-          populate: [],
-        });
-        if (invitation.status !== "pending") {
-          throw new BadRequestException("Workspace invitation is not pending");
-        }
-        if (invitation.expiresAt.getTime() <= Date.now()) {
-          throw new BadRequestException("Workspace invitation has expired");
-        }
-        if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
-          throw new ForbiddenException(
-            "Workspace invitation belongs to another email address",
-          );
-        }
+            lockMode: LockMode.PESSIMISTIC_WRITE,
+            populate: [],
+          });
+          if (invitation.status !== "pending") {
+            throw new BadRequestException(
+              "Workspace invitation is not pending",
+            );
+          }
+          if (invitation.expiresAt.getTime() <= Date.now()) {
+            throw new BadRequestException("Workspace invitation has expired");
+          }
+          if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
+            throw new ForbiddenException(
+              "Workspace invitation belongs to another email address",
+            );
+          }
 
-        const existing = await em.findOne(
-          WorkspaceMember,
-          { user, workspace },
-          { filters: false },
-        );
-        if (existing) {
-          throw new ConflictException("User is already a member");
-        }
+          const existing = await em.findOne(
+            WorkspaceMember,
+            { user, workspace },
+            { filters: false },
+          );
+          if (existing) {
+            throw new ConflictException("User is already a member");
+          }
 
-        const member = em.create(WorkspaceMember, {
-          name: user.name,
-          email: user.email.trim().toLowerCase(),
-          permissions: [],
-          roles: this.normalizeRoles(invitation.roles),
-          status: "ACTIVE",
-          user,
-          workspace,
-        });
-        invitation.status = "accepted";
-        await em.persist(member).flush();
-        return { invitation, member };
-      },
-      { clear: true },
-    );
+          const member = em.create(WorkspaceMember, {
+            name: user.name,
+            email: user.email.trim().toLowerCase(),
+            permissions: [],
+            roles: this.normalizeRoles(invitation.roles),
+            status: "ACTIVE",
+            user,
+            workspace,
+          });
+          invitation.status = "accepted";
+          await em.persist(member).flush();
+          return { invitation, member };
+        },
+        { clear: true },
+      );
+    });
   }
 
   /**
@@ -529,7 +539,7 @@ export class WorkspaceInvitationService {
     authorize("write", WorkspaceInvitation);
     invitation = await this.resolveWorkspaceInvitationForAction(invitation);
     const workspace = this.unwrapWorkspaceInvitationWorkspace(invitation);
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     authorize("write", invitation);
     if (invitation.status !== "pending") {
       throw new BadRequestException("Workspace invitation is not pending");
@@ -560,39 +570,45 @@ export class WorkspaceInvitationService {
     user: User,
     invitation: WorkspaceInvitation | string,
   ): Promise<WorkspaceInvitation> {
-    RequestIdentity.assertUserSession(user);
-    invitation = await this.resolveWorkspaceInvitationForAction(invitation);
-    if (invitation.status !== "pending") {
-      throw new BadRequestException("Workspace invitation is not pending");
-    }
-    if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
-      throw new ForbiddenException(
-        "Workspace invitation belongs to another email address",
+    return await runAuthQuery(this.em, async (em) => {
+      assertUserSession(user);
+      invitation = await this.resolveWorkspaceInvitationForAction(
+        invitation,
+        em,
       );
-    }
-    const updated = await this.em.nativeUpdate(
-      WorkspaceInvitation,
-      {
-        email: user.email.trim().toLowerCase(),
-        id: invitation.id,
-        status: "pending",
-      },
-      { status: "rejected" },
-    );
-    if (updated !== 1) {
-      throw new BadRequestException("Workspace invitation is not pending");
-    }
-    invitation.status = "rejected";
-    return invitation;
+      if (invitation.status !== "pending") {
+        throw new BadRequestException("Workspace invitation is not pending");
+      }
+      if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
+        throw new ForbiddenException(
+          "Workspace invitation belongs to another email address",
+        );
+      }
+      const updated = await em.nativeUpdate(
+        WorkspaceInvitation,
+        {
+          email: user.email.trim().toLowerCase(),
+          id: invitation.id,
+          status: "pending",
+        },
+        { status: "rejected" },
+      );
+      if (updated !== 1) {
+        throw new BadRequestException("Workspace invitation is not pending");
+      }
+      invitation.status = "rejected";
+      return invitation;
+    });
   }
 
   private async resolveWorkspaceInvitationForAction(
     invitation: WorkspaceInvitation | string,
+    em: EntityManager = this.em,
   ): Promise<WorkspaceInvitation> {
     if (typeof invitation !== "string") {
       return invitation;
     }
-    const entity = await this.em.findOne(
+    const entity = await em.findOne(
       WorkspaceInvitation,
       { id: invitation },
       { populate: ["workspace"], refresh: true },

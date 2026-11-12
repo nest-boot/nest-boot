@@ -34,11 +34,17 @@ import {
   resolveRolePermissions,
   resolveWorkspaceMemberPermissions,
 } from "../../common/utils/resolve-effective-permissions.util.js";
+import { runAuthQuery } from "../../common/utils/run-auth-query.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
+import { AuthContext } from "../../core/auth-context.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
-import { RequestIdentity } from "../../core/request-identity.js";
 import type { AuthModuleRoles } from "../../core/types/auth-module-roles.type.js";
+import {
+  assertCurrentWorkspace,
+  assertCurrentWorkspaceMember,
+  assertUserSession,
+} from "../../core/utils/assert-current-identity.util.js";
 import {
   listAuthPermissions,
   normalizeAuthPermissions,
@@ -55,6 +61,7 @@ import type { UpdateWorkspaceMemberOptions } from "../interfaces/update-workspac
 import type { WorkspaceHasPermissionsOptions } from "../interfaces/workspace-has-permissions-options.interface.js";
 import type { WorkspacePermissionOption } from "../objects/workspace-permission-option.object.js";
 import type { WorkspaceRoleOption } from "../objects/workspace-role-option.object.js";
+import { getCurrentWorkspaceMember } from "../utils/get-current-workspace-member.util.js";
 
 /** Workspace membership queries, profile management, and authorization. */
 @Injectable()
@@ -63,12 +70,14 @@ export class WorkspaceMemberService {
    * Creates a workspace member domain service.
    * @param em - Entity manager used for persistence.
    * @param authOptions - Authentication module configuration.
+   * @param authContext - Current request authentication context.
    */
   constructor(
     /** MikroORM entity manager used for workspace persistence. */
     protected readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly authOptions: AuthModuleOptions,
+    private readonly authContext: AuthContext,
   ) {}
 
   /**
@@ -76,7 +85,7 @@ export class WorkspaceMemberService {
    * @returns Active member in the selected workspace, or null if unavailable.
    */
   getCurrentWorkspaceMember(): WorkspaceMember | null {
-    const member = RequestIdentity.getCurrentWorkspaceMember();
+    const member = getCurrentWorkspaceMember();
     if (member) {
       authorize("read", member);
     }
@@ -91,7 +100,7 @@ export class WorkspaceMemberService {
   getWorkspaceMemberListFilter(
     workspace: Workspace,
   ): FilterObject<WorkspaceMember> {
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     authorize("read", WorkspaceMember);
     const types = Object.values(WorkspaceMemberType).filter((type) =>
       can(
@@ -139,7 +148,7 @@ export class WorkspaceMemberService {
     workspace: Workspace,
     user: User,
   ): Promise<WorkspaceMember | null> {
-    RequestIdentity.assertUserSession(user);
+    assertUserSession(user);
     const member = await this.em.findOne(WorkspaceMember, {
       status: "ACTIVE",
       user,
@@ -185,7 +194,7 @@ export class WorkspaceMemberService {
       actorId !== undefined &&
       member.user?.id === actorId;
     if (!ownWorkspaceMember) {
-      RequestIdentity.assertCurrentWorkspace(workspace);
+      assertCurrentWorkspace(workspace);
       authorize("read", User);
     }
     const current = await this.em.findOne(
@@ -223,7 +232,7 @@ export class WorkspaceMemberService {
     user: User,
     input: AddWorkspaceMemberOptions = {},
   ): Promise<WorkspaceMember> {
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     authorize(
       "write",
       subject("WorkspaceMember", {
@@ -283,7 +292,7 @@ export class WorkspaceMemberService {
     name: string,
     input: AddWorkspaceMemberOptions = {},
   ): Promise<WorkspaceMember> {
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     authorize(
       "write",
       subject("WorkspaceMember", {
@@ -335,7 +344,7 @@ export class WorkspaceMemberService {
     email: string,
     input: AddWorkspaceMemberOptions = {},
   ): Promise<WorkspaceMember> {
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     authorize(
       "write",
       subject("WorkspaceMember", {
@@ -360,23 +369,25 @@ export class WorkspaceMemberService {
     workspace: Workspace,
     email: string,
   ): Promise<User> {
-    RequestIdentity.assertCurrentWorkspace(workspace);
-    authorize(
-      "write",
-      subject("WorkspaceMember", {
-        workspaceId: workspace.id,
-        type: WorkspaceMemberType.USER,
-      }),
-    );
-    const user = await this.em.findOne(
-      User,
-      { email: email.trim().toLowerCase() },
-      { filters: false },
-    );
-    if (!user) {
-      throw new NotFoundException("User not found");
-    }
-    return user;
+    return await runAuthQuery(this.em, async (em) => {
+      assertCurrentWorkspace(workspace);
+      authorize(
+        "write",
+        subject("WorkspaceMember", {
+          workspaceId: workspace.id,
+          type: WorkspaceMemberType.USER,
+        }),
+      );
+      const user = await em.findOne(
+        User,
+        { email: email.trim().toLowerCase() },
+        { filters: false },
+      );
+      if (!user) {
+        throw new NotFoundException("User not found");
+      }
+      return user;
+    });
   }
 
   private async resolveWorkspaceMemberForAction(
@@ -410,7 +421,7 @@ export class WorkspaceMemberService {
   ): Promise<WorkspaceMember> {
     member = await this.resolveWorkspaceMemberForAction(member, "write");
     const workspace = this.unwrapWorkspace(member);
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     authorize("write", member);
     if ("roles" in input || "permissions" in input) {
       throw new BadRequestException(
@@ -463,7 +474,7 @@ export class WorkspaceMemberService {
       },
       { clear: true },
     );
-    RequestIdentity.updateWorkspaceMember(this.em, this.authOptions, updated);
+    this.syncCurrentMember(updated);
     return updated;
   }
 
@@ -479,11 +490,11 @@ export class WorkspaceMemberService {
   ): Promise<WorkspaceMember> {
     member = await this.resolveWorkspaceMemberForAction(member, "set-roles");
     const workspace = this.unwrapWorkspace(member);
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     authorize("set-roles", member);
     const roles = this.normalizeGrantedRoles(roleNames);
-    this.assertAuthorizationCanCommit(member);
 
+    this.assertAuthorizationCanCommit(member);
     const updated = await this.em.transactional(
       async (em) => {
         const lockedWorkspaceMember = await em.findOne(
@@ -502,7 +513,7 @@ export class WorkspaceMemberService {
       },
       { clear: true },
     );
-    RequestIdentity.updateWorkspaceMember(this.em, this.authOptions, updated);
+    this.syncCurrentMember(updated);
     return updated;
   }
 
@@ -521,7 +532,7 @@ export class WorkspaceMemberService {
       "set-permissions",
     );
     const workspace = this.unwrapWorkspace(member);
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     authorize("set-permissions", member);
     const normalizedPermissions = this.normalizePermissions(permissions);
     assertCanGrantPermissions(
@@ -550,16 +561,8 @@ export class WorkspaceMemberService {
       },
       { clear: true },
     );
-    RequestIdentity.updateWorkspaceMember(this.em, this.authOptions, updated);
+    this.syncCurrentMember(updated);
     return updated;
-  }
-
-  private assertAuthorizationCanCommit(member: WorkspaceMember): void {
-    if (this.isCurrentWorkspaceMember(member) && this.em.isInTransaction()) {
-      throw new BadRequestException(
-        "Change your own membership outside an active transaction",
-      );
-    }
   }
 
   private isCurrentWorkspaceMember(member: WorkspaceMember): boolean {
@@ -579,7 +582,7 @@ export class WorkspaceMemberService {
   ): Promise<WorkspaceMember> {
     member = await this.resolveWorkspaceMemberForAction(member, "write");
     const workspace = this.unwrapWorkspace(member);
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     authorize("write", member);
     if (this.isCurrentWorkspaceMember(member)) {
       throw new ForbiddenException("You are not allowed to remove yourself");
@@ -599,17 +602,17 @@ export class WorkspaceMemberService {
    * @returns WorkspaceMembership removed from the current user's workspace.
    */
   async leaveWorkspace(member: WorkspaceMember): Promise<WorkspaceMember> {
-    RequestIdentity.assertCurrentWorkspaceMember(member);
+    assertCurrentWorkspaceMember(member);
     const user = RequestContext.get(User);
     if (!user) {
       throw new ForbiddenException("A user identity is required");
     }
-    RequestIdentity.assertUserSession(user);
+    assertUserSession(user);
     if (member.user?.id !== user.id) {
       throw new ForbiddenException("The membership belongs to another user");
     }
     const workspace = this.unwrapWorkspace(member);
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     // Session context can only be restaged after the removal's top-level commit.
     if (this.em.isInTransaction()) {
       throw new BadRequestException(
@@ -620,10 +623,10 @@ export class WorkspaceMemberService {
       workspace,
       member,
       (lockedWorkspaceMember) => {
-        RequestIdentity.assertCurrentWorkspaceMember(lockedWorkspaceMember);
+        assertCurrentWorkspaceMember(lockedWorkspaceMember);
       },
     );
-    RequestIdentity.clearWorkspace(this.em, this.authOptions);
+    this.authContext.clearWorkspace();
     return removed;
   }
 
@@ -765,5 +768,24 @@ export class WorkspaceMemberService {
 
   private unwrapWorkspace(member: WorkspaceMember): Workspace {
     return Reference.unwrapReference(member.workspace);
+  }
+
+  private syncCurrentMember(member: WorkspaceMember): void {
+    if (this.authContext.member?.id !== member.id) {
+      return;
+    }
+    if (member.status !== "ACTIVE") {
+      this.authContext.clearWorkspace();
+    } else {
+      this.authContext.set({ member });
+    }
+  }
+
+  private assertAuthorizationCanCommit(member: WorkspaceMember): void {
+    if (this.isCurrentWorkspaceMember(member) && this.em.isInTransaction()) {
+      throw new BadRequestException(
+        "Change your own membership outside an active transaction",
+      );
+    }
   }
 }

@@ -9,6 +9,8 @@ import { UserService } from "../../src/core/services/user.service.js";
 import { Workspace } from "../../src/workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../src/workspace/entities/workspace-member.entity.js";
 import { createWorkspaceServices } from "../workspace-service.fixture.js";
+import { createTestApiKeyService } from "./auth-context.fixture.js";
+import { createTestAuthContext } from "./auth-context.fixture.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 /**
  * Runs a test with the fixture's user and workspace identity.
@@ -99,19 +101,39 @@ function fixture() {
       withAuthTestFeatures({ workspace: { enabled: true } }),
       { hash: vi.fn().mockResolvedValue("hash") } as never,
       {} as never,
+      createTestAuthContext(
+        result.em,
+        withAuthTestFeatures({ workspace: { enabled: true } }),
+      ),
     ),
-    sessionService: new SessionService({}, result.em),
+    sessionService: new SessionService(
+      {},
+      result.em,
+      createTestAuthContext(result.em, {}),
+    ),
     userApiKeyService: new UserApiKeyService(
       result.em,
       withAuthTestFeatures({
         workspace: { enabled: true },
       }),
+      createTestApiKeyService(
+        result.em,
+        withAuthTestFeatures({
+          workspace: { enabled: true },
+        }),
+      ),
     ),
     workspaceApiKeyService: new WorkspaceApiKeyService(
       result.em,
       withAuthTestFeatures({
         workspace: { enabled: true },
       }),
+      createTestApiKeyService(
+        result.em,
+        withAuthTestFeatures({
+          workspace: { enabled: true },
+        }),
+      ),
     ),
   };
 }

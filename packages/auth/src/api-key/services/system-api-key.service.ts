@@ -23,7 +23,6 @@ import {
 import { runAuthQuery } from "../../common/utils/run-auth-query.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
-import { ApiKeyLifecycle } from "../api-key-lifecycle.js";
 import { SystemApiKeyConnection } from "../connections/system-api-key.connection-definition.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
@@ -39,6 +38,7 @@ import {
 import { toApiKeyView } from "../utils/api-key-view.util.js";
 import { assertApiKeyFeature } from "../utils/assert-api-key-feature.util.js";
 import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
+import { ApiKeyService } from "./api-key.service.js";
 
 /** Human-administrator management of credentials owned by independent system accounts. */
 @Injectable()
@@ -46,6 +46,7 @@ export class SystemApiKeyService {
   constructor(
     private readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN) private readonly options: AuthModuleOptions,
+    private readonly apiKeys: ApiKeyService,
   ) {}
 
   /**
@@ -183,7 +184,7 @@ export class SystemApiKeyService {
       input.permissions,
     );
     assertCanGrantPermissions(this.options, "user", permissions);
-    const { apiKey, data } = ApiKeyLifecycle.prepareCreation(
+    const { apiKey, data } = this.apiKeys.prepareCreation(
       input,
       permissions,
       this.options.apiKey?.system?.defaultPrefix ??
@@ -296,26 +297,7 @@ export class SystemApiKeyService {
           }
           assertApiKeyOwner(key, "system_account");
           authorize("write", key);
-          const candidate = Object.assign(new ApiKey(), key, {
-            ...(input.name !== undefined && { name: input.name }),
-            ...(input.expiresAt !== undefined && {
-              expiresAt: input.expiresAt,
-            }),
-            ...(permissions !== undefined && { permissions }),
-          });
-          authorize("write", candidate);
-          for (const [field, value] of Object.entries(input)) {
-            if (value !== undefined) {
-              authorize("write", candidate, field);
-            }
-          }
-          const updated = await ApiKeyLifecycle.update(
-            tx,
-            this.options,
-            key,
-            input,
-            permissions,
-          );
+          const updated = await this.apiKeys.update(key, input, permissions);
           return toApiKeyView(updated);
         },
         { clear: true },
@@ -341,7 +323,7 @@ export class SystemApiKeyService {
       }
       assertApiKeyOwner(key, "system_account");
       authorize("write", key);
-      return toApiKeyView(await ApiKeyLifecycle.revoke(em, this.options, key));
+      return toApiKeyView(await this.apiKeys.revoke(key));
     });
   }
 
@@ -362,7 +344,7 @@ export class SystemApiKeyService {
       }
       assertApiKeyOwner(key, "system_account");
       authorize("write", key);
-      await ApiKeyLifecycle.delete(em, this.options, key);
+      await this.apiKeys.delete(key);
       return toApiKeyView(key);
     });
   }

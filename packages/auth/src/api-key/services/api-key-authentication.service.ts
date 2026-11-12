@@ -1,6 +1,7 @@
 import { EntityManager, Reference } from "@mikro-orm/core";
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 
+import { runAuthQuery } from "../../common/utils/run-auth-query.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
 import { resolveAuthFeatures } from "../../core/utils/resolve-auth-features.util.js";
@@ -38,89 +39,91 @@ export class ApiKeyAuthenticationService {
     if (!features.apiKey) {
       throw new UnauthorizedException("API keys are disabled");
     }
-    const owners: ("user" | "workspace_member" | "system_account")[] = [
-      ...(features.userApiKey ? ["user" as const] : []),
-      ...(features.workspaceApiKey ? ["workspace_member" as const] : []),
-      ...(features.systemApiKey ? ["system_account" as const] : []),
-    ];
-    const key = hashApiKey(plaintext);
-    const apiKey = await this.em.findOne(
-      ApiKey,
-      {
-        key,
-        ownerType: { $in: owners },
-      },
-      { refresh: true },
-    );
-    if (!apiKey || !owners.includes(apiKey.ownerType)) {
-      throw new UnauthorizedException("Invalid API key");
-    }
-    if (apiKey.revokedAt) {
-      throw new UnauthorizedException("API key is revoked");
-    }
-    if (apiKey.expiresAt && apiKey.expiresAt <= new Date()) {
-      throw new UnauthorizedException("API key has expired");
-    }
-    // Owner rows may have been deleted. Re-read them rather than trusting an
-    // uninitialized reference or an identity-map entry retained by this manager.
-    const ownerId = apiKey.owner?.id;
-    if (!ownerId) {
-      throw new UnauthorizedException("Invalid API key");
-    }
-    if (apiKey.ownerType === "system_account") {
-      const systemAccount = await this.em.findOne(SystemAccount, ownerId, {
+    return await runAuthQuery(this.em, async (em) => {
+      const owners: ("user" | "workspace_member" | "system_account")[] = [
+        ...(features.userApiKey ? ["user" as const] : []),
+        ...(features.workspaceApiKey ? ["workspace_member" as const] : []),
+        ...(features.systemApiKey ? ["system_account" as const] : []),
+      ];
+      const key = hashApiKey(plaintext);
+      const apiKey = await em.findOne(
+        ApiKey,
+        {
+          key,
+          ownerType: { $in: owners },
+        },
+        { refresh: true },
+      );
+      if (!apiKey || !owners.includes(apiKey.ownerType)) {
+        throw new UnauthorizedException("Invalid API key");
+      }
+      if (apiKey.revokedAt) {
+        throw new UnauthorizedException("API key is revoked");
+      }
+      if (apiKey.expiresAt && apiKey.expiresAt <= new Date()) {
+        throw new UnauthorizedException("API key has expired");
+      }
+      // Owner rows may have been deleted. Re-read them rather than trusting an
+      // uninitialized reference or an identity-map entry retained by this manager.
+      const ownerId = apiKey.owner?.id;
+      if (!ownerId) {
+        throw new UnauthorizedException("Invalid API key");
+      }
+      if (apiKey.ownerType === "system_account") {
+        const systemAccount = await em.findOne(SystemAccount, ownerId, {
+          refresh: true,
+        });
+        if (!systemAccount?.enabled) {
+          throw new UnauthorizedException("Invalid API key");
+        }
+        assertApiKeyOwner(apiKey, "system_account");
+        return {
+          apiKey: toApiKeyView(apiKey),
+          ownerType: "system_account",
+          systemAccount,
+        };
+      }
+      if (apiKey.ownerType === "user") {
+        const user = await em.findOne(User, ownerId, { refresh: true });
+        if (!user) {
+          throw new UnauthorizedException("Invalid API key");
+        }
+        if (
+          user.banned &&
+          (!user.banExpiresAt || user.banExpiresAt > new Date())
+        ) {
+          throw new UnauthorizedException("Invalid API key");
+        }
+        assertApiKeyOwner(apiKey, "user");
+        return { apiKey: toApiKeyView(apiKey), ownerType: "user", user };
+      }
+      const member = await em.findOne(WorkspaceMember, ownerId, {
         refresh: true,
+        populate: ["workspace", "user"],
       });
-      if (!systemAccount?.enabled) {
+      if (!member) {
         throw new UnauthorizedException("Invalid API key");
       }
-      assertApiKeyOwner(apiKey, "system_account");
-      return {
-        apiKey: toApiKeyView(apiKey),
-        ownerType: "system_account",
-        systemAccount,
-      };
-    }
-    if (apiKey.ownerType === "user") {
-      const user = await this.em.findOne(User, ownerId, { refresh: true });
-      if (!user) {
-        throw new UnauthorizedException("Invalid API key");
-      }
+      const user = member.user ? Reference.unwrapReference(member.user) : null;
       if (
-        user.banned &&
-        (!user.banExpiresAt || user.banExpiresAt > new Date())
+        member.status !== "ACTIVE" ||
+        !member.workspace ||
+        (member.type === "USER" && !user) ||
+        (member.type === "SERVICE_ACCOUNT" && user) ||
+        (user?.banned && (!user.banExpiresAt || user.banExpiresAt > new Date()))
       ) {
         throw new UnauthorizedException("Invalid API key");
       }
-      assertApiKeyOwner(apiKey, "user");
-      return { apiKey: toApiKeyView(apiKey), ownerType: "user", user };
-    }
-    const member = await this.em.findOne(WorkspaceMember, ownerId, {
-      refresh: true,
-      populate: ["workspace", "user"],
+      const workspace = Reference.unwrapReference(member.workspace);
+      assertApiKeyOwner(apiKey, "workspace_member");
+      return {
+        apiKey: toApiKeyView(apiKey),
+        ownerType: "workspace_member",
+        workspace,
+        member,
+        user,
+      };
     });
-    if (!member) {
-      throw new UnauthorizedException("Invalid API key");
-    }
-    const user = member.user ? Reference.unwrapReference(member.user) : null;
-    if (
-      member.status !== "ACTIVE" ||
-      !member.workspace ||
-      (member.type === "USER" && !user) ||
-      (member.type === "SERVICE_ACCOUNT" && user) ||
-      (user?.banned && (!user.banExpiresAt || user.banExpiresAt > new Date()))
-    ) {
-      throw new UnauthorizedException("Invalid API key");
-    }
-    const workspace = Reference.unwrapReference(member.workspace);
-    assertApiKeyOwner(apiKey, "workspace_member");
-    return {
-      apiKey: toApiKeyView(apiKey),
-      ownerType: "workspace_member",
-      workspace,
-      member,
-      user,
-    };
   }
 
   /**
@@ -140,8 +143,7 @@ export class ApiKeyAuthenticationService {
     if (system) {
       manager.clearSessionContext();
     }
-    const recorder = new ApiKeyAuthenticationService(manager, this.options);
-    return () => recorder.recordUsage(apiKey);
+    return () => this.writeUsage(manager, apiKey);
   }
 
   /**
@@ -150,14 +152,21 @@ export class ApiKeyAuthenticationService {
    * @returns Key metadata after recording its last-used timestamp.
    */
   async recordUsage(apiKey: ApiKeyObject): Promise<ApiKeyObject> {
+    return await this.writeUsage(this.em, apiKey);
+  }
+
+  private async writeUsage(
+    manager: EntityManager,
+    apiKey: ApiKeyObject,
+  ): Promise<ApiKeyObject> {
     const now = new Date();
-    apiKey.lastUsedAt = now;
-    apiKey.updatedAt = now;
-    await this.em.nativeUpdate(
+    await manager.nativeUpdate(
       ApiKey,
       { id: apiKey.id, ownerType: apiKey.ownerType },
       { lastUsedAt: now, updatedAt: now },
     );
+    apiKey.lastUsedAt = now;
+    apiKey.updatedAt = now;
     return apiKey;
   }
 }

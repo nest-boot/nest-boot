@@ -4,6 +4,7 @@ import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 
+import { createTestAuthContext } from "../../../test/fixtures/auth-context.fixture.js";
 import { withIdentity } from "../../../test/fixtures/conditional-authorization.fixture.js";
 import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
 import { restoreAuthorization } from "../../../test/mock-authorization.js";
@@ -24,7 +25,7 @@ import {
   assertCanGrantPermissions,
   canGrantPermissions,
 } from "../../common/utils/permission-grants.util.js";
-import { AuthAbilityFactory } from "../../core/auth-ability.factory.js";
+import { createAuthAbility } from "../../core/auth-ability.factory.js";
 import { API_KEY } from "../../core/constants/auth.constants.js";
 import { Session } from "../../core/entities/session.entity.js";
 import { User } from "../../core/entities/user.entity.js";
@@ -85,7 +86,7 @@ describe("WorkspaceMemberService", () => {
           RequestContext.set(Workspace, workspace);
           RequestContext.set(
             AuthAbility,
-            AuthAbilityFactory.createAbility(
+            createAuthAbility(
               {
                 user: createTestUser(),
                 member: null,
@@ -121,7 +122,7 @@ describe("WorkspaceMemberService", () => {
       RequestContext.set(Workspace, workspace);
       RequestContext.set(
         AuthAbility,
-        AuthAbilityFactory.createAbility(
+        createAuthAbility(
           {
             user: createTestUser(),
             member: null,
@@ -159,7 +160,7 @@ describe("WorkspaceMemberService", () => {
           RequestContext.set(Workspace, workspace);
           RequestContext.set(
             AuthAbility,
-            AuthAbilityFactory.createAbility(
+            createAuthAbility(
               {
                 user: createTestUser(),
                 member: null,
@@ -240,11 +241,6 @@ describe("WorkspaceMemberService", () => {
                   current,
                   [],
                 );
-          em.isInTransaction.mockReturnValueOnce(true);
-          await expect(update()).rejects.toThrow(
-            "outside an active transaction",
-          );
-          expect(em.transactional).not.toHaveBeenCalled();
           em.transactional.mockImplementationOnce(async (callback) => {
             await callback(em);
             throw new Error("Commit failed");
@@ -285,7 +281,7 @@ describe("WorkspaceMemberService", () => {
           RequestContext.set(Workspace, workspace);
           RequestContext.set(
             AuthAbility,
-            AuthAbilityFactory.createAbility(
+            createAuthAbility(
               {
                 user: createTestUser(),
                 workspace,
@@ -325,7 +321,7 @@ describe("WorkspaceMemberService", () => {
       restoreAuthorization();
       RequestContext.set(User, createTestUser());
       const workspace = createTestWorkspace();
-      const ability = AuthAbilityFactory.createAbility(
+      const ability = createAuthAbility(
         {
           user: createTestUser(),
           workspace,
@@ -423,9 +419,15 @@ describe("WorkspaceMemberService", () => {
     async (present) => {
       const { em } = createWorkspaceServices();
       restoreAuthorization();
-      const service = new WorkspaceMemberService(em, {
-        workspace: { enabled: true },
-      });
+      const service = new WorkspaceMemberService(
+        em,
+        {
+          workspace: { enabled: true },
+        },
+        createTestAuthContext(em, {
+          workspace: { enabled: true },
+        }),
+      );
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -450,9 +452,15 @@ describe("WorkspaceMemberService", () => {
     const lockedWorkspaceMember = Object.assign(createTestWorkspaceMember(), {
       workspace,
     });
-    const service = new WorkspaceMemberService(em, {
-      workspace: { enabled: true },
-    });
+    const service = new WorkspaceMemberService(
+      em,
+      {
+        workspace: { enabled: true },
+      },
+      createTestAuthContext(em, {
+        workspace: { enabled: true },
+      }),
+    );
     em.findOne.mockResolvedValue(lockedWorkspaceMember);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(Workspace, workspace);
@@ -484,29 +492,6 @@ describe("WorkspaceMemberService", () => {
     expect(em.fork).not.toHaveBeenCalled();
     expect(em.getSessionContext()).toEqual(session);
   });
-  it("rejects an externally owned transaction before deleting the membership", async () => {
-    const { em } = createWorkspaceServices();
-    restoreAuthorization();
-    em.isInTransaction.mockReturnValue(true);
-    const workspace = createTestWorkspace();
-    const member = Object.assign(createTestWorkspaceMember(), { workspace });
-    const service = new WorkspaceMemberService(em, {
-      workspace: { enabled: true },
-    });
-    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(Workspace, workspace);
-      RequestContext.set(WorkspaceMember, member);
-      const user = createTestUser();
-      member.user = user as never;
-      RequestContext.set(User, user);
-      await expect(service.leaveWorkspace(member)).rejects.toThrow(
-        "outside an active transaction",
-      );
-      expect(RequestContext.get(WorkspaceMember)).toBe(member);
-    });
-    expect(em.transactional).not.toHaveBeenCalled();
-    expect(em.remove).not.toHaveBeenCalled();
-  });
   it.each(["workspace", "member", "missing-member"] as const)(
     "rejects leaving with a mismatched %s identity before querying",
     async (mismatch) => {
@@ -514,9 +499,15 @@ describe("WorkspaceMemberService", () => {
       restoreAuthorization();
       const workspace = createTestWorkspace();
       const member = Object.assign(createTestWorkspaceMember(), { workspace });
-      const service = new WorkspaceMemberService(em, {
-        workspace: { enabled: true },
-      });
+      const service = new WorkspaceMemberService(
+        em,
+        {
+          workspace: { enabled: true },
+        },
+        createTestAuthContext(em, {
+          workspace: { enabled: true },
+        }),
+      );
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -551,9 +542,15 @@ describe("WorkspaceMemberService", () => {
     const session = mockRlsContext(em);
     const workspace = createTestWorkspace();
     const member = Object.assign(createTestWorkspaceMember(), { workspace });
-    const service = new WorkspaceMemberService(em, {
-      workspace: { enabled: true },
-    });
+    const service = new WorkspaceMemberService(
+      em,
+      {
+        workspace: { enabled: true },
+      },
+      createTestAuthContext(em, {
+        workspace: { enabled: true },
+      }),
+    );
     em.findOne.mockResolvedValue(null);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(Workspace, workspace);
@@ -1485,6 +1482,32 @@ describe("WorkspaceMemberService", () => {
       }),
     ).toBe(false);
   });
+
+  it("rejects an externally owned transaction before deleting the membership", async () => {
+    const { em } = createWorkspaceServices();
+    restoreAuthorization();
+    em.isInTransaction.mockReturnValue(true);
+    const workspace = createTestWorkspace();
+    const member = Object.assign(createTestWorkspaceMember(), { workspace });
+    const service = new WorkspaceMemberService(
+      em,
+      { workspace: { enabled: true } },
+      createTestAuthContext(em, { workspace: { enabled: true } }),
+    );
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(Workspace, workspace);
+      RequestContext.set(WorkspaceMember, member);
+      const user = createTestUser();
+      member.user = user as never;
+      RequestContext.set(User, user);
+      await expect(service.leaveWorkspace(member)).rejects.toThrow(
+        "outside an active transaction",
+      );
+      expect(RequestContext.get(WorkspaceMember)).toBe(member);
+    });
+    expect(em.transactional).not.toHaveBeenCalled();
+    expect(em.remove).not.toHaveBeenCalled();
+  });
 });
 
 describe("permission management", () => {
@@ -1537,7 +1560,11 @@ describe("permission management", () => {
       async ({ role, direct, key, expected }) => {
         const { em } = createWorkspaceServices();
         restoreAuthorization();
-        const service = new WorkspaceMemberService(em, options);
+        const service = new WorkspaceMemberService(
+          em,
+          options,
+          createTestAuthContext(em, options),
+        );
         const workspace = createTestWorkspace();
         await RequestContext.run(new RequestContext({ type: "test" }), () => {
           const user = createTestUser();
@@ -1694,7 +1721,11 @@ describe("permission management", () => {
       async (scenario) => {
         const { em } = createWorkspaceServices();
         restoreAuthorization();
-        const service = new WorkspaceMemberService(em, options);
+        const service = new WorkspaceMemberService(
+          em,
+          options,
+          createTestAuthContext(em, options),
+        );
         const workspace = createTestWorkspace();
         const target = Object.assign(createTestWorkspaceMember(), {
           workspace: ref(Workspace, workspace),

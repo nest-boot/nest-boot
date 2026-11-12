@@ -13,7 +13,7 @@ import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import { AccountConnection } from "../connections/account.connection-definition.js";
 import { type Account } from "../entities/account.entity.js";
 import { type User } from "../entities/user.entity.js";
-import { RequestIdentity } from "../request-identity.js";
+import { assertCurrentUser } from "../utils/assert-current-identity.util.js";
 
 /** Safe account queries scoped to the current user session and application RLS. */
 @Injectable()
@@ -40,7 +40,7 @@ export class AccountService {
       Omit<Account, "password" | "accessToken" | "refreshToken" | "idToken">
     >
   > {
-    RequestIdentity.assertCurrentUser(user);
+    assertCurrentUser(user);
     if (getCurrentApiKey()) {
       throw new ForbiddenException(
         "Account inspection requires a user session",

@@ -15,10 +15,11 @@ import { runAuthQuery } from "../common/utils/run-auth-query.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import { AuthContext } from "./auth-context.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
+import type { AuthContextPatch } from "./interfaces/auth-context-patch.interface.js";
 import type { AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
-import { RequestIdentity } from "./request-identity.js";
 import { SessionService } from "./services/session.service.js";
 
 /** Builds the complete authentication context for an incoming request. */
@@ -35,7 +36,7 @@ export class AuthMiddleware implements NestMiddleware {
 
   /** Clears the current credential after a successful sign-out. */
   clearAuthentication(): void {
-    RequestIdentity.clear(this.em);
+    this.authContext.clear();
   }
 
   /**
@@ -60,10 +61,10 @@ export class AuthMiddleware implements NestMiddleware {
         { refresh: true },
       );
       if (!session) {
-        RequestIdentity.clear(this.em);
+        this.authContext.clear();
       }
     } catch (error) {
-      RequestIdentity.clear(this.em);
+      this.authContext.clear();
       throw error;
     }
   }
@@ -88,9 +89,9 @@ export class AuthMiddleware implements NestMiddleware {
           "The current user is no longer available",
         );
       }
-      RequestIdentity.update(this.em, this.options, { user });
+      this.authContext.set({ user });
     } catch (error) {
-      RequestIdentity.clear(this.em);
+      this.authContext.clear();
       throw error;
     }
   }
@@ -120,17 +121,17 @@ export class AuthMiddleware implements NestMiddleware {
       throw new UnauthorizedException("The new session is not valid");
     }
     try {
-      RequestIdentity.stage({
+      const workspace = this.authContext.workspace;
+      const member = await this.findWorkspaceMember(data.user, workspace);
+      this.authContext.initialize({
         apiKey: null,
-        member: null,
         user: data.user,
         session: data.session,
+        workspace,
+        member,
       });
-      await this.resolveWorkspaceMember();
-      RequestIdentity.syncDatabase(this.em);
-      RequestIdentity.refresh(this.options);
     } catch (error) {
-      RequestIdentity.clear(this.em);
+      this.authContext.clear();
       throw error;
     }
     return data.user;
@@ -151,6 +152,7 @@ export class AuthMiddleware implements NestMiddleware {
    * @param sessionService - Service for session queries and revocation.
    * @param apiKeyService - Service for validating or managing API keys.
    * @param em - Entity manager used for persistence.
+   * @param authContext - Current request authentication context.
    */
   constructor(
     @Inject(MODULE_OPTIONS_TOKEN)
@@ -158,6 +160,7 @@ export class AuthMiddleware implements NestMiddleware {
     private readonly sessionService: SessionService,
     private readonly apiKeyService: ApiKeyAuthenticationService,
     private readonly em: EntityManager,
+    private readonly authContext: AuthContext,
   ) {}
 
   /**
@@ -168,125 +171,97 @@ export class AuthMiddleware implements NestMiddleware {
    */
   async use(req: Request, _res: Response, next: NextFunction) {
     try {
-      await this.resolveSelectedWorkspace(req);
-      const hasSession = await this.resolveSession();
-      if (!hasSession) {
-        await this.resolveApiKey(req);
-      }
-      await this.resolveWorkspaceMember();
-      RequestIdentity.syncDatabase(this.em);
+      this.authContext.initialize(await this.resolveIdentity(req));
       next();
     } catch (error) {
       try {
-        RequestIdentity.clear(this.em);
+        this.authContext.clear();
       } catch {
-        // Identity is already cleared; report the original staging failure.
+        /* Preserve the original authentication failure. */
       }
       next(error);
     }
   }
 
-  private async resolveSelectedWorkspace(req: Request): Promise<void> {
-    if (this.options.workspace?.enabled !== true) {
-      return;
+  private async resolveIdentity(req: Request): Promise<AuthContextPatch> {
+    const workspace = await this.findSelectedWorkspace(req);
+    const session = await this.sessionService.getCurrentAuthenticatedSession();
+    if (session) {
+      return {
+        apiKey: null,
+        user: session.user,
+        session: session.session,
+        workspace,
+        member: await this.findWorkspaceMember(session.user, workspace),
+      };
     }
-    const headerWorkspaceId = req.headers["x-workspace-id"];
-    const cookieWorkspaceId = cookies().get("workspace_id")?.value;
-    const workspaceId = (
-      (Array.isArray(headerWorkspaceId)
-        ? headerWorkspaceId[0]
-        : headerWorkspaceId) ?? cookieWorkspaceId
-    )?.trim();
-    if (!workspaceId) {
-      return;
+    const plaintext = extractApiKey(req);
+    if (!plaintext) {
+      return {
+        apiKey: null,
+        user: null,
+        session: null,
+        member: null,
+        workspace,
+      };
     }
-
-    const workspace = await this.em.findOne(Workspace, {
-      id: workspaceId,
-    });
-    if (workspace) {
-      RequestIdentity.stage({ workspace });
-    }
-  }
-
-  private async resolveSession(): Promise<boolean> {
-    const data = await this.sessionService.getCurrentAuthenticatedSession();
-    if (!data) {
-      return false;
-    }
-
-    RequestIdentity.stage({ user: data.user, session: data.session });
-    return true;
-  }
-
-  private async resolveApiKey(req: Request): Promise<void> {
-    const plaintextApiKey = extractApiKey(req);
-    if (!plaintextApiKey) {
-      return;
-    }
-
     if (!this.apiKeyService) {
       throw new UnauthorizedException("API keys are disabled");
     }
-    const validation = await this.apiKeyService.validate(plaintextApiKey);
+    const validation = await this.apiKeyService.validate(plaintext);
     if (validation.ownerType === "system_account") {
-      RequestIdentity.stage({
+      return {
         apiKey: validation.apiKey,
         user: null,
         session: null,
         member: null,
         workspace: null,
-      });
-      return;
+      };
     }
     if (validation.ownerType === "user") {
-      RequestIdentity.stage({
+      return {
         apiKey: validation.apiKey,
         user: validation.user,
-      });
-      return;
+        session: null,
+        workspace,
+        member: await this.findWorkspaceMember(validation.user, workspace),
+      };
     }
-
-    const selectedWorkspace = RequestContext.get(Workspace);
-    if (selectedWorkspace && selectedWorkspace.id !== validation.workspace.id) {
+    if (workspace && workspace.id !== validation.workspace.id) {
       throw new UnauthorizedException(
         "WorkspaceMember API key does not belong to the selected workspace",
       );
     }
-    RequestIdentity.stage({
+    return {
       apiKey: validation.apiKey,
       user: validation.user,
+      session: null,
       member: validation.member,
       workspace: validation.workspace,
-    });
+    };
   }
 
-  private async resolveWorkspaceMember(): Promise<void> {
-    if (
-      this.options.workspace?.enabled !== true ||
-      RequestContext.get(WorkspaceMember)
-    ) {
-      return;
+  private async findSelectedWorkspace(req: Request): Promise<Workspace | null> {
+    if (this.options.workspace?.enabled !== true) {
+      return null;
     }
-    const user = RequestContext.get(User);
-    const workspace = RequestContext.get(Workspace);
-    if (!user || !workspace) {
-      return;
-    }
+    const header = req.headers["x-workspace-id"];
+    const id = (
+      (Array.isArray(header) ? header[0] : header) ??
+      cookies().get("workspace_id")?.value
+    )?.trim();
+    return id ? await this.em.findOne(Workspace, { id }) : null;
+  }
 
-    const member = await runAuthQuery(
-      this.em,
-      async (em) =>
-        await em.findOne(WorkspaceMember, {
-          status: "ACTIVE",
-          user,
-          workspace,
-        }),
+  private async findWorkspaceMember(
+    user: User,
+    workspace: Workspace | null,
+  ): Promise<WorkspaceMember | null> {
+    if (this.options.workspace?.enabled !== true || !workspace) {
+      return null;
+    }
+    return await runAuthQuery(this.em, (em) =>
+      em.findOne(WorkspaceMember, { status: "ACTIVE", user, workspace }),
     );
-    if (!member) {
-      return;
-    }
-
-    RequestIdentity.stage({ member });
   }
 }

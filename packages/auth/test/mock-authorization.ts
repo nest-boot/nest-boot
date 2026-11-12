@@ -3,7 +3,7 @@ import { afterEach, vi } from "vitest";
 import * as authorizeUtil from "../src/common/utils/authorize.util.js";
 import * as canUtil from "../src/common/utils/can.util.js";
 import * as grants from "../src/common/utils/permission-grants.util.js";
-import { RequestIdentity } from "../src/core/request-identity.js";
+import * as identityAccess from "../src/core/utils/assert-current-identity.util.js";
 
 /**
  * Isolates persistence tests from authorization; boundary tests restore the relevant check.
@@ -17,23 +17,23 @@ export function mockAuthorization() {
       .mockClear()
       .mockImplementation(() => undefined),
     assertCurrentUser: vi
-      .spyOn(RequestIdentity, "assertCurrentUser")
+      .spyOn(identityAccess, "assertCurrentUser")
       .mockClear()
       .mockImplementation(() => undefined),
     assertCurrentSession: vi
-      .spyOn(RequestIdentity, "assertCurrentSession")
+      .spyOn(identityAccess, "assertCurrentSession")
       .mockClear()
       .mockImplementation(() => undefined),
     assertUserSession: vi
-      .spyOn(RequestIdentity, "assertUserSession")
+      .spyOn(identityAccess, "assertUserSession")
       .mockClear()
       .mockImplementation(() => undefined),
     assertCurrentWorkspace: vi
-      .spyOn(RequestIdentity, "assertCurrentWorkspace")
+      .spyOn(identityAccess, "assertCurrentWorkspace")
       .mockClear()
       .mockImplementation(() => undefined),
     assertCurrentWorkspaceMember: vi
-      .spyOn(RequestIdentity, "assertCurrentWorkspaceMember")
+      .spyOn(identityAccess, "assertCurrentWorkspaceMember")
       .mockClear()
       .mockImplementation(() => undefined),
     canGrantPermissions: vi
@@ -52,7 +52,7 @@ export function restoreAuthorization(): void {
     [canUtil, ["can"]],
     [authorizeUtil, ["authorize"]],
     [
-      RequestIdentity,
+      identityAccess,
       [
         "assertCurrentUser",
         "assertCurrentSession",

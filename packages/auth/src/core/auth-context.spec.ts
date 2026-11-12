@@ -5,10 +5,13 @@ import { RequestContext } from "@nest-boot/request-context";
 import { ForbiddenException } from "@nestjs/common";
 import { assert } from "vitest";
 
+import { createTestAuthContext } from "../../test/fixtures/auth-context.fixture.js";
+import { stageIdentity } from "../../test/fixtures/auth-context.fixture.js";
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { ApiKey } from "../api-key/entities/api-key.entity.js";
 import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
 import { WorkspaceApiKey } from "../api-key/objects/workspace-api-key.object.js";
+import { toApiKeyView } from "../api-key/utils/api-key-view.util.js";
 import { AuthAbility } from "../common/auth.ability.js";
 import { can } from "../common/utils/can.util.js";
 import {
@@ -24,7 +27,6 @@ import { API_KEY } from "./constants/auth.constants.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
 import { type AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
-import { RequestIdentity } from "./request-identity.js";
 import { buildRequestAbility } from "./utils/build-request-ability.util.js";
 
 /**
@@ -44,7 +46,7 @@ function manager() {
   } as unknown as EntityManager;
 }
 
-describe("RequestIdentity", () => {
+describe("AuthContext", () => {
   describe.each([
     "session",
     "user-key",
@@ -99,14 +101,17 @@ describe("RequestIdentity", () => {
         }
         const valid = state === "active";
         await RequestContext.run(new RequestContext({ type: "test" }), () => {
-          RequestIdentity.stage({
+          stageIdentity({
             user,
             apiKey,
             session: credential === "session" ? new Session() : null,
             member: state === "no-member" ? null : member,
             workspace: state === "no-workspace" ? null : workspace,
           });
-          RequestIdentity.prepare(withAuthTestFeatures(options));
+          createTestAuthContext(
+            undefined,
+            withAuthTestFeatures(options),
+          ).getAbility();
           expect(can("delete", Workspace)).toBe(valid);
           expect(
             canGrantPermissions(withAuthTestFeatures(options), "workspace", [
@@ -116,7 +121,7 @@ describe("RequestIdentity", () => {
           expect(can("read", User)).toBe(
             credential === "session" || credential === "user-key",
           );
-          RequestIdentity.syncDatabase(em);
+          createTestAuthContext(em, {}).initialize({});
           expect(em.setSessionContext).toHaveBeenLastCalledWith({
             role: "authenticated",
             variables: {
@@ -140,8 +145,11 @@ describe("RequestIdentity", () => {
     });
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       const options = { workspace: { enabled: true } };
-      RequestIdentity.stage({ workspace, member });
-      RequestIdentity.prepare(withAuthTestFeatures(options));
+      stageIdentity({ workspace, member });
+      createTestAuthContext(
+        undefined,
+        withAuthTestFeatures(options),
+      ).getAbility();
       expect(RequestContext.get(AuthAbility)?.can("read", Workspace)).toBe(
         false,
       );
@@ -150,7 +158,7 @@ describe("RequestIdentity", () => {
           "workspace:read",
         ]),
       ).toBe(false);
-      RequestIdentity.syncDatabase(em);
+      createTestAuthContext(em, {}).initialize({});
       expect(em.setSessionContext).toHaveBeenCalledWith({
         role: "anonymous",
         variables: {
@@ -169,8 +177,8 @@ describe("RequestIdentity", () => {
     const first = Object.assign(new WorkspaceMember(), { user, workspace });
     const second = Object.assign(new WorkspaceMember(), { user, workspace });
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestIdentity.stage({ user, workspace, member: first });
-      RequestIdentity.syncDatabase(em);
+      stageIdentity({ user, workspace, member: first });
+      createTestAuthContext(em, {}).initialize({});
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "authenticated",
         variables: {
@@ -180,11 +188,10 @@ describe("RequestIdentity", () => {
           "app.member.id": first.id,
         },
       });
-      RequestIdentity.update(
+      createTestAuthContext(
         em,
         withAuthTestFeatures({ workspace: { enabled: true } }),
-        { member: second },
-      );
+      ).set({ member: second });
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "authenticated",
         variables: {
@@ -195,11 +202,10 @@ describe("RequestIdentity", () => {
         },
       });
       second.status = "DISABLED";
-      RequestIdentity.updateWorkspaceMember(
+      createTestAuthContext(
         em,
         withAuthTestFeatures({ workspace: { enabled: true } }),
-        second,
-      );
+      ).clearWorkspace();
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "authenticated",
         variables: {
@@ -209,7 +215,7 @@ describe("RequestIdentity", () => {
           "app.member.id": "",
         },
       });
-      RequestIdentity.clear(em);
+      createTestAuthContext(em, {}).clear();
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "anonymous",
         variables: {
@@ -242,13 +248,16 @@ describe("RequestIdentity", () => {
       permissions: ["user:read", "workspace:delete"],
     });
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestIdentity.stage({
+      stageIdentity({
         user,
         member,
         workspace,
         apiKey: new UserApiKey(apiKey),
       });
-      RequestIdentity.prepare(withAuthTestFeatures(options));
+      createTestAuthContext(
+        undefined,
+        withAuthTestFeatures(options),
+      ).getAbility();
       const first = resolveRequestPermissions(withAuthTestFeatures(options));
       expect(
         resolveRequestPermissions(withAuthTestFeatures(options)).apiKey,
@@ -272,7 +281,10 @@ describe("RequestIdentity", () => {
           "workspace:delete",
         ]),
       ).toBe(true);
-      RequestIdentity.prepare(withAuthTestFeatures(options));
+      createTestAuthContext(
+        undefined,
+        withAuthTestFeatures(options),
+      ).getAbility();
       expect(resolveRequestPermissions(withAuthTestFeatures(options))).toBe(
         first,
       );
@@ -284,11 +296,9 @@ describe("RequestIdentity", () => {
           "user:read",
         ]),
       ).toBe(true);
-      RequestIdentity.updateUser(
-        manager(),
-        withAuthTestFeatures(options),
-        user,
-      );
+      createTestAuthContext(manager(), withAuthTestFeatures(options)).set({
+        user: user,
+      });
       expect(roles).toHaveBeenCalledTimes(2);
       expect(resolveRequestPermissions(withAuthTestFeatures(options))).not.toBe(
         first,
@@ -303,11 +313,9 @@ describe("RequestIdentity", () => {
       expect(
         resolveRequestPermissions(withAuthTestFeatures(options)).apiKey,
       ).toEqual(["user:read", "workspace:delete"]);
-      RequestIdentity.updateApiKey(
-        manager(),
-        withAuthTestFeatures(options),
-        apiKey,
-      );
+      createTestAuthContext(manager(), withAuthTestFeatures(options)).set({
+        apiKey: toApiKeyView(apiKey),
+      });
       expect(
         resolveRequestPermissions(withAuthTestFeatures(options)).apiKey,
       ).toBeNull();
@@ -325,10 +333,10 @@ describe("RequestIdentity", () => {
     const options = { workspace: { enabled: true } };
     const user = Object.assign(new User(), { roles: ["admin"] });
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestIdentity.stage({ user });
+      stageIdentity({ user });
       const parent = resolveRequestPermissions(withAuthTestFeatures(options));
       await RequestContext.child(() => {
-        RequestIdentity.stage({
+        stageIdentity({
           apiKey: Object.assign(new UserApiKey(new ApiKey()), {
             permissions: [],
           }),
@@ -362,14 +370,14 @@ describe("RequestIdentity", () => {
         });
       }
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
-        RequestIdentity.stage({
+        stageIdentity({
           user: Object.assign(new User(), { id: "old" }),
           member: new WorkspaceMember(),
           workspace: new Workspace(),
           session: new Session(),
         });
         expect(() => {
-          RequestIdentity.update(em, withAuthTestFeatures(options), {
+          createTestAuthContext(em, withAuthTestFeatures(options)).set({
             user: Object.assign(new User(), { id: "new" }),
           });
         }).toThrow();
@@ -407,13 +415,16 @@ describe("RequestIdentity", () => {
       workspace: { enabled: true },
     };
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
-      RequestIdentity.stage({
+      stageIdentity({
         user: Object.assign(new User(), { roles: ["admin"] }),
         workspace: new Workspace(),
         member: new WorkspaceMember(),
       });
       expect(() => {
-        RequestIdentity.prepare(withAuthTestFeatures(options));
+        createTestAuthContext(
+          undefined,
+          withAuthTestFeatures(options),
+        ).getAbility();
       }).toThrow("Failed");
       expect(can("delete", User)).toBe(false);
       expect(can("read", Workspace)).toBe(false);
@@ -428,7 +439,7 @@ describe("RequestIdentity", () => {
         const key = Object.assign(new Key(), {
           permissions: ["user:read", "workspace:delete"],
         });
-        RequestIdentity.stage({
+        stageIdentity({
           apiKey: key,
           user:
             Key === UserApiKey
@@ -440,11 +451,14 @@ describe("RequestIdentity", () => {
               : null,
           workspace: new Workspace(),
         });
-        RequestIdentity.prepare(withAuthTestFeatures(options));
-        RequestIdentity.clearWorkspace(
+        createTestAuthContext(
+          undefined,
+          withAuthTestFeatures(options),
+        ).getAbility();
+        createTestAuthContext(
           em,
           withAuthTestFeatures({ workspace: { enabled: true } }),
-        );
+        ).clearWorkspace();
         expect(
           resolveRequestPermissions(withAuthTestFeatures(options)).workspace,
         ).toEqual([]);
@@ -464,28 +478,27 @@ describe("RequestIdentity", () => {
   );
   it("does not stage authorization outside an active request", () => {
     const em = manager();
-    RequestIdentity.stage({ user: new User() });
-    RequestIdentity.prepare(
+    stageIdentity({ user: new User() });
+    createTestAuthContext(
+      undefined,
       withAuthTestFeatures({ workspace: { enabled: true } }),
-    );
-    RequestIdentity.refresh(
+    ).getAbility();
+    createTestAuthContext(
+      undefined,
       withAuthTestFeatures({ workspace: { enabled: true } }),
-    );
-    RequestIdentity.update(
+    ).refresh();
+    createTestAuthContext(
       em,
       withAuthTestFeatures({ workspace: { enabled: true } }),
-      { user: new User() },
-    );
-    RequestIdentity.updateUser(
+    ).set({ user: new User() });
+    createTestAuthContext(
       em,
       withAuthTestFeatures({ workspace: { enabled: true } }),
-      new User(),
-    );
-    RequestIdentity.updateWorkspaceMember(
+    ).set({ user: new User() });
+    createTestAuthContext(
       em,
       withAuthTestFeatures({ workspace: { enabled: true } }),
-      new WorkspaceMember(),
-    );
+    ).clearWorkspace();
     expect(em.setSessionContext).not.toHaveBeenCalled();
     expect(
       resolveRequestPermissions(
@@ -550,7 +563,10 @@ describe("post-commit authorization", () => {
             ]),
           );
           const refresh = () => {
-            RequestIdentity.refresh(withAuthTestFeatures(options));
+            createTestAuthContext(
+              undefined,
+              withAuthTestFeatures(options),
+            ).refresh();
           };
           if (failure) {
             expect(refresh).toThrow("Invalid ability configuration");
@@ -584,73 +600,6 @@ describe("post-commit authorization", () => {
   }
 });
 
-describe("identity assertions", () => {
-  describe("request identity checks", () => {
-    it.each([
-      [User, RequestIdentity.assertCurrentUser.bind(RequestIdentity)],
-      [Session, RequestIdentity.assertCurrentSession.bind(RequestIdentity)],
-      [Workspace, RequestIdentity.assertCurrentWorkspace.bind(RequestIdentity)],
-      [
-        WorkspaceMember,
-        RequestIdentity.assertCurrentWorkspaceMember.bind(RequestIdentity),
-      ],
-    ] as const)(
-      "checks current %s identity inside and outside a request",
-      async (Entity, check) => {
-        const target = Object.assign(new Entity(), { id: "one", token: "one" });
-        const invoke = (entity: unknown) => {
-          check(entity as never);
-        };
-        expect(() => {
-          invoke(target);
-        }).toThrow(ForbiddenException);
-        await RequestContext.run(
-          new RequestContext({ type: "test" }),
-          (context) => {
-            expect(() => {
-              invoke(target);
-            }).toThrow(ForbiddenException);
-            context.set<InstanceType<typeof Entity>>(Entity, target);
-            expect(() => {
-              invoke(target);
-            }).not.toThrow();
-            expect(() => {
-              invoke(Object.assign(new Entity(), { id: "two", token: "two" }));
-            }).toThrow(ForbiddenException);
-          },
-        );
-      },
-    );
-    it("rejects a missing member before touching its identity", () => {
-      expect(() => {
-        RequestIdentity.assertCurrentWorkspaceMember(null);
-      }).toThrow(ForbiddenException);
-      expect(() => {
-        RequestIdentity.assertCurrentWorkspaceMember(undefined);
-      }).toThrow(ForbiddenException);
-    });
-    it.each([UserApiKey, WorkspaceApiKey])(
-      "keeps self-service unavailable to %s",
-      async (Key) => {
-        await RequestContext.run(new RequestContext({ type: "test" }), () => {
-          const user = new User();
-          RequestIdentity.stage({ user });
-          expect(() => {
-            RequestIdentity.assertUserSession(user);
-          }).not.toThrow();
-          expect(() => {
-            RequestIdentity.assertUserSession(new User());
-          }).toThrow(ForbiddenException);
-          RequestIdentity.stage({ apiKey: new Key() });
-          expect(() => {
-            RequestIdentity.assertUserSession(user);
-          }).toThrow("requires a user session");
-        });
-      },
-    );
-  });
-});
-
 describe("unified request abilities", () => {
   /**
    * Returns user, workspace, and member used by the authorization fixture.
@@ -677,7 +626,7 @@ describe("unified request abilities", () => {
           member: ref(WorkspaceMember, current.member),
           permissions: ["workspace-member:read", "workspace-member:write"],
         });
-        RequestIdentity.stage({ ...current, apiKey });
+        stageIdentity({ ...current, apiKey });
         expect(
           buildRequestAbility(
             withAuthTestFeatures({ workspace: { enabled: true } }),
@@ -689,14 +638,14 @@ describe("unified request abilities", () => {
           ).can("write", current.member),
         ).toBe(false);
         current.member.permissions = [];
-        RequestIdentity.stage({ member: current.member });
+        stageIdentity({ member: current.member });
         expect(
           buildRequestAbility(
             withAuthTestFeatures({ workspace: { enabled: true } }),
           ).can("read", current.member),
         ).toBe(false);
         current.member.status = "DISABLED";
-        RequestIdentity.stage({ member: current.member });
+        stageIdentity({ member: current.member });
         expect(
           buildRequestAbility(
             withAuthTestFeatures({ workspace: { enabled: true } }),
@@ -710,7 +659,7 @@ describe("unified request abilities", () => {
         const current = identity();
         current.user.permissions = ["report:read"];
         current.member.permissions = ["report:read"];
-        RequestIdentity.stage(current);
+        stageIdentity(current);
         const ability = buildRequestAbility(
           withAuthTestFeatures({
             user: { permissions: ["report:read"] },
@@ -736,21 +685,21 @@ describe("unified request abilities", () => {
     it("replaces workspace conditions instead of accumulating grants on a switch", async () => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         const first = identity();
-        RequestIdentity.stage(first);
-        RequestIdentity.prepare(
+        stageIdentity(first);
+        createTestAuthContext(
+          undefined,
           withAuthTestFeatures({ workspace: { enabled: true } }),
-        );
+        ).getAbility();
         const second = identity();
         second.member.user = ref(User, first.user);
         const em = {
           getSessionContext: vi.fn(() => ({})),
           setSessionContext: vi.fn(),
         };
-        RequestIdentity.update(
-          em as never,
+        createTestAuthContext(
+          em,
           withAuthTestFeatures({ workspace: { enabled: true } }),
-          { workspace: second.workspace, member: second.member },
-        );
+        ).set({ workspace: second.workspace, member: second.member });
         const ability = RequestContext.get(AuthAbility);
         assert(ability);
         expect(ability.can("write", first.member)).toBe(false);
@@ -772,19 +721,21 @@ describe("unified request abilities", () => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         const current = identity();
         const configure = vi.fn();
-        RequestIdentity.stage(current);
-        RequestIdentity.prepare(
+        stageIdentity(current);
+        createTestAuthContext(
+          undefined,
           withAuthTestFeatures({
             workspace: { enabled: true },
             buildAbility: configure,
           }),
-        );
-        RequestIdentity.prepare(
+        ).getAbility();
+        createTestAuthContext(
+          undefined,
           withAuthTestFeatures({
             workspace: { enabled: true },
             buildAbility: configure,
           }),
-        );
+        ).getAbility();
         const ability = RequestContext.get(AuthAbility);
         assert(ability);
         expect(configure).toHaveBeenCalledOnce();
@@ -804,7 +755,7 @@ describe("unified request abilities", () => {
     it("keeps workspace conditions on entities and serialized client subjects", async () => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         const current = identity();
-        RequestIdentity.stage(current);
+        stageIdentity(current);
         const ability = buildRequestAbility(
           withAuthTestFeatures({ workspace: { enabled: true } }),
         );
@@ -865,7 +816,7 @@ describe("unified request abilities", () => {
           if (state === "other-user") {
             current.member.user = ref(User, new User());
           }
-          RequestIdentity.stage({
+          stageIdentity({
             ...current,
             member: state === "missing" ? null : current.member,
           });
@@ -897,7 +848,7 @@ describe("unified request abilities", () => {
           current[scope === "user" ? "user" : "member"].permissions = [
             "report:read",
           ];
-          RequestIdentity.stage(current);
+          stageIdentity(current);
           const ability = buildRequestAbility(
             withAuthTestFeatures({
               user: { permissions: ["report:read"] },
@@ -927,7 +878,7 @@ describe("unified request abilities", () => {
             workspace: ref(Workspace, current.workspace),
             member: ref(WorkspaceMember, current.member),
           });
-          RequestIdentity.stage({ ...current, apiKey });
+          stageIdentity({ ...current, apiKey });
           const configure = vi.fn();
           const ability = buildRequestAbility(
             withAuthTestFeatures({
@@ -963,16 +914,19 @@ describe("unified request abilities", () => {
             }
           },
         };
-        RequestIdentity.stage(current);
-        RequestIdentity.prepare(withAuthTestFeatures(options));
+        stageIdentity(current);
+        createTestAuthContext(
+          undefined,
+          withAuthTestFeatures(options),
+        ).getAbility();
         expect(RequestContext.get(AuthAbility)?.can("read", "Report")).toBe(
           true,
         );
         const em = { getSessionContext: vi.fn(), setSessionContext: vi.fn() };
-        RequestIdentity.clearWorkspace(
-          em as never,
+        createTestAuthContext(
+          em,
           withAuthTestFeatures(options),
-        );
+        ).clearWorkspace();
         const ability = RequestContext.get(AuthAbility);
         assert(ability);
         expect(ability.can("read", User)).toBe(true);

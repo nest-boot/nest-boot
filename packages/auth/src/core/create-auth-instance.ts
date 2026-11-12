@@ -13,6 +13,7 @@ import {
   DEFAULT_WORKSPACE_ROLE,
 } from "../workspace/constants/workspace.constants.js";
 import { mikroOrmAdapter } from "./adapters/mikro-orm-adapter.js";
+import { AuthContext } from "./auth-context.js";
 import {
   DEFAULT_USER_ADMIN_ROLES,
   DEFAULT_USER_ROLE,
@@ -23,7 +24,6 @@ import {
 } from "./entities/auth-entity-map.js";
 import { User } from "./entities/user.entity.js";
 import { type AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
-import { RequestIdentity } from "./request-identity.js";
 import type { UserDeletionService } from "./services/user-deletion.service.js";
 import {
   assertAuthPermissionList,
@@ -49,6 +49,7 @@ import { splitAuthProviders } from "./utils/split-auth-providers.js";
  * @param mailer - Mailer used to deliver authentication emails.
  * @param hashService - Service for hashing and verifying passwords.
  * @param userDeletionService - Service that deletes users and their related records.
+ * @param authContext - Current request authentication context.
  * @returns Better Auth options assembled from the module configuration.
  * @internal
  */
@@ -58,6 +59,7 @@ export function resolveBetterAuthOptions(
   mailer: Mailer,
   hashService: HashService,
   userDeletionService: UserDeletionService,
+  authContext: AuthContext,
 ): BetterAuthOptions {
   validateAuthOptions(options);
   const secret = resolveSecret(options);
@@ -95,7 +97,7 @@ export function resolveBetterAuthOptions(
         RequestContext.isActive() &&
         RequestContext.get(User)?.id === userId
       ) {
-        RequestIdentity.clear(orm.em);
+        authContext.clear();
       }
     },
   );
@@ -141,6 +143,7 @@ export function resolveBetterAuthOptions(
  * @param mailer - Mailer used to deliver authentication emails.
  * @param hashService - Service for hashing and verifying passwords.
  * @param userDeletionService - Service that deletes users and their related records.
+ * @param authContext - Current request authentication context.
  * @returns Configured Better Auth instance.
  * @internal
  */
@@ -150,6 +153,7 @@ export function createAuthInstance(
   mailer: Mailer,
   hashService: HashService,
   userDeletionService: UserDeletionService,
+  authContext: AuthContext,
 ): ReturnType<typeof betterAuth> {
   return betterAuth(
     resolveBetterAuthOptions(
@@ -158,6 +162,7 @@ export function createAuthInstance(
       mailer,
       hashService,
       userDeletionService,
+      authContext,
     ),
   );
 }

@@ -2,8 +2,10 @@ import { EntityManager } from "@mikro-orm/core";
 import { MikroORM } from "@mikro-orm/postgresql";
 import {
   API_KEY,
+  AuthContext,
   AuthGuard,
   type AuthModuleOptions,
+  AuthTransactionSubscriber,
   Session,
   User,
   UserApiKey,
@@ -133,13 +135,19 @@ describe("scoped Job GraphQL API", () => {
         ],
       );
     }
+    const context = new AuthContext(
+      orm.em,
+      authOptions,
+      new AuthTransactionSubscriber(orm.em),
+    );
     const users = new UserService(
       orm.em,
       authOptions,
       {} as ConstructorParameters<typeof UserService>[2],
       { deleteUser: () => Promise.resolve(null) },
+      context,
     );
-    const workspaces = new WorkspaceService(orm.em, authOptions);
+    const workspaces = new WorkspaceService(orm.em, authOptions, context);
     manager.getQueues.mockReturnValue(
       registeredQueues.map(([target, name]) =>
         Object.assign(Object.create(target.prototype) as BaseQueue, { name }),
@@ -163,7 +171,7 @@ describe("scoped Job GraphQL API", () => {
       .overrideGuard(AuthGuard)
       .useFactory({
         factory: (reflector: Reflector, moduleRef: ModuleRef) =>
-          new AuthGuard(reflector, authOptions, moduleRef),
+          new AuthGuard(reflector, moduleRef, context),
         inject: [Reflector, ModuleRef],
       })
       .compile();

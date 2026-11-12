@@ -46,6 +46,8 @@ function fixture() {
     system: null as SystemApiKey | null,
   };
   const em = {
+    getContext: vi.fn().mockReturnThis(),
+    getSessionContext: vi.fn(),
     findOne: vi.fn((entity: object) =>
       Promise.resolve(
         entity === ApiKey
@@ -210,6 +212,18 @@ describe("API-key authentication", () => {
     user.banExpiresAt = new Date(0);
     await expect(service.validate("user")).resolves.toMatchObject({ user });
   });
+  it("retains usage metadata when persistence fails", async () => {
+    const { service, em, userKey } = fixture();
+    const before = {
+      lastUsedAt: userKey.lastUsedAt,
+      updatedAt: userKey.updatedAt,
+    };
+    em.nativeUpdate.mockRejectedValueOnce(new Error("Usage write failed"));
+    await expect(service.recordUsage(userKey)).rejects.toThrow(
+      "Usage write failed",
+    );
+    expect(userKey).toMatchObject(before);
+  });
   it("captures a scoped recorder without updating or flushing the caller's manager", async () => {
     const { service, em, userKey } = fixture();
     const scoped = { nativeUpdate: vi.fn().mockResolvedValue(1) };
@@ -256,6 +270,8 @@ describe("optional workspace behavior", () => {
     const user = new User();
     const key = Object.assign(new UserApiKey(new ApiKey()), { user });
     const em = {
+      getContext: vi.fn().mockReturnThis(),
+      getSessionContext: vi.fn(),
       findOne: vi.fn(
         (entity: object): Promise<User | UserApiKey | WorkspaceApiKey> =>
           Promise.resolve(entity === ApiKey ? key : user),

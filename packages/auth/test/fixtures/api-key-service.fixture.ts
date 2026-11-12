@@ -8,9 +8,10 @@ import { WorkspaceApiKeyService } from "../../src/api-key/services/workspace-api
 import * as abilityHelpers from "../../src/common/utils/authorize.util.js";
 import { User } from "../../src/core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-options.interface.js";
-import { RequestIdentity } from "../../src/core/request-identity.js";
+import * as identityAccess from "../../src/core/utils/assert-current-identity.util.js";
 import { Workspace } from "../../src/workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../src/workspace/entities/workspace-member.entity.js";
+import { createTestApiKeyService } from "./auth-context.fixture.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 /**
  * Returns workspace fixture with deterministic identifiers.
@@ -132,21 +133,26 @@ export function createService(
   } as unknown as AuthModuleOptions;
   const authorization = {
     assertCurrentUser: vi
-      .spyOn(RequestIdentity, "assertCurrentUser")
+      .spyOn(identityAccess, "assertCurrentUser")
       .mockImplementation(vi.fn()),
     assertCurrentWorkspaceMember: vi.spyOn(
-      RequestIdentity,
+      identityAccess,
       "assertCurrentWorkspaceMember",
     ),
-    assertCurrentWorkspace: vi.spyOn(RequestIdentity, "assertCurrentWorkspace"),
+    assertCurrentWorkspace: vi.spyOn(identityAccess, "assertCurrentWorkspace"),
     authorize: vi
       .spyOn(abilityHelpers, "authorize")
       .mockImplementation(vi.fn()),
   };
-  const userService = new UserApiKeyService(em, withAuthTestFeatures(options));
+  const userService = new UserApiKeyService(
+    em,
+    withAuthTestFeatures(options),
+    createTestApiKeyService(em, withAuthTestFeatures(options)),
+  );
   const workspaceService = new WorkspaceApiKeyService(
     em,
     withAuthTestFeatures(options),
+    createTestApiKeyService(em, withAuthTestFeatures(options)),
   );
   return {
     authorization,

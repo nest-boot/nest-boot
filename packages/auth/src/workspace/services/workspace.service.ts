@@ -19,15 +19,21 @@ import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.j
 import { authorize } from "../../common/utils/authorize.util.js";
 import { runAuthQuery } from "../../common/utils/run-auth-query.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
+import { AuthContext } from "../../core/auth-context.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
-import { RequestIdentity } from "../../core/request-identity.js";
+import {
+  assertCurrentUser,
+  assertCurrentWorkspace,
+  assertUserSession,
+} from "../../core/utils/assert-current-identity.util.js";
 import { WorkspaceConnection } from "../connections/workspace.connection-definition.js";
 import { DEFAULT_WORKSPACE_CREATOR_ROLE } from "../constants/workspace.constants.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceMember } from "../entities/workspace-member.entity.js";
 import type { CreateWorkspaceOptions } from "../interfaces/create-workspace-options.interface.js";
 import type { UpdateWorkspaceOptions } from "../interfaces/update-workspace-options.interface.js";
+import { getCurrentWorkspaceMember } from "../utils/get-current-workspace-member.util.js";
 
 /** Workspace queries and lifecycle operations. */
 @Injectable()
@@ -36,12 +42,14 @@ export class WorkspaceService {
    * Creates a workspace domain service.
    * @param em - Entity manager used for persistence.
    * @param authOptions - Authentication module configuration.
+   * @param authContext - Current request authentication context.
    */
   constructor(
     /** MikroORM entity manager used for workspace persistence. */
     protected readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly authOptions: AuthModuleOptions,
+    private readonly authContext: AuthContext,
   ) {}
 
   /**
@@ -121,7 +129,7 @@ export class WorkspaceService {
       ),
     );
     if (RequestContext.isActive() && RequestContext.get(Workspace)?.id === id) {
-      RequestIdentity.update(this.em, this.authOptions, { workspace });
+      this.authContext.set({ workspace });
     }
     return workspace;
   }
@@ -152,7 +160,7 @@ export class WorkspaceService {
       ),
     );
     if (RequestContext.isActive() && RequestContext.get(Workspace)?.id === id) {
-      RequestIdentity.clearWorkspace(this.em, this.authOptions);
+      this.authContext.clearWorkspace();
     }
     return workspace;
   }
@@ -167,7 +175,7 @@ export class WorkspaceService {
     }
     const workspace = RequestContext.get(Workspace);
     const user = RequestContext.get(User);
-    const member = RequestIdentity.getCurrentWorkspaceMember();
+    const member = getCurrentWorkspaceMember();
     if (user && workspace && !member) {
       throw new ForbiddenException(
         "The authenticated user is not a member of this workspace",
@@ -186,11 +194,11 @@ export class WorkspaceService {
    * @returns Workspace when the user has an active membership, otherwise null.
    */
   async getUserWorkspace(id: string, user: User): Promise<Workspace | null> {
-    RequestIdentity.assertCurrentUser(user);
+    assertCurrentUser(user);
     if (getCurrentApiKey()) {
       return await this.findOne({ id });
     }
-    RequestIdentity.assertUserSession(user);
+    assertUserSession(user);
     const workspace = await this.em.findOne(Workspace, {
       id,
     });
@@ -214,7 +222,7 @@ export class WorkspaceService {
     args: ConnectionArgsInterface<Workspace>,
     info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<Workspace>> {
-    RequestIdentity.assertUserSession(user);
+    assertUserSession(user);
     const memberships = (this.em as SqlEntityManager)
       .createQueryBuilder<WorkspaceMember>(WorkspaceMember)
       .select("workspace")
@@ -242,7 +250,7 @@ export class WorkspaceService {
     if (!current) {
       throw new ForbiddenException("A workspace must be selected");
     }
-    RequestIdentity.assertCurrentWorkspace(current);
+    assertCurrentWorkspace(current);
     authorize("read", current);
     const workspace = await this.em.findOne(Workspace, {
       $and: [where, { id: current.id }],
@@ -263,31 +271,33 @@ export class WorkspaceService {
     user: User,
     input: CreateWorkspaceOptions,
   ): Promise<Workspace> {
-    RequestIdentity.assertCurrentUser(user);
-    authorize("create", Workspace);
-    // The new workspace has no request session yet. Only this authorized
-    // operation may bootstrap its owner outside the application's RLS scope.
-    return await this.em.transactional(
-      async (em) => {
-        const workspace = em.create(Workspace, {
-          name: input.name,
-        });
-        authorize("create", workspace);
-        const member = em.create(WorkspaceMember, {
-          name: user.name,
-          email: user.email.trim().toLowerCase(),
-          roles: [this.creatorRole],
-          status: "ACTIVE",
-          // Do not attach the caller's potentially dirty user to this fork.
-          user: user.id,
-          workspace,
-        });
+    return await runAuthQuery(this.em, async (em) => {
+      assertCurrentUser(user);
+      authorize("create", Workspace);
+      // The new workspace has no request session yet. Only this authorized
+      // operation may bootstrap its owner outside the application's RLS scope.
+      return await em.transactional(
+        async (em) => {
+          const workspace = em.create(Workspace, {
+            name: input.name,
+          });
+          authorize("create", workspace);
+          const member = em.create(WorkspaceMember, {
+            name: user.name,
+            email: user.email.trim().toLowerCase(),
+            roles: [this.creatorRole],
+            status: "ACTIVE",
+            // Do not attach the caller's potentially dirty user to this fork.
+            user: user.id,
+            workspace,
+          });
 
-        await em.persist(workspace).persist(member).flush();
-        return workspace;
-      },
-      { clear: true },
-    );
+          await em.persist(workspace).persist(member).flush();
+          return workspace;
+        },
+        { clear: true },
+      );
+    });
   }
 
   private async resolveWorkspaceForAction(
@@ -320,7 +330,7 @@ export class WorkspaceService {
     input: UpdateWorkspaceOptions,
   ): Promise<Workspace> {
     workspace = await this.resolveWorkspaceForAction(workspace, "update");
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     authorize("update", workspace);
     if (this.em.isInTransaction()) {
       throw new BadRequestException(
@@ -336,7 +346,7 @@ export class WorkspaceService {
       throw error;
     }
     if (RequestContext.isActive()) {
-      RequestIdentity.update(this.em, this.authOptions, { workspace });
+      this.authContext.set({ workspace });
     }
     return workspace;
   }
@@ -348,14 +358,14 @@ export class WorkspaceService {
    */
   async deleteWorkspace(workspace: Workspace | string): Promise<Workspace> {
     workspace = await this.resolveWorkspaceForAction(workspace, "delete");
-    RequestIdentity.assertCurrentWorkspace(workspace);
+    assertCurrentWorkspace(workspace);
     authorize("delete", workspace);
+
     if (this.em.isInTransaction()) {
       throw new BadRequestException(
         "Delete the workspace outside an active transaction",
       );
     }
-
     await this.em.transactional(
       async (em) => {
         await this.lockWorkspace(em, workspace);
@@ -369,7 +379,7 @@ export class WorkspaceService {
       },
       { clear: true },
     );
-    RequestIdentity.clearWorkspace(this.em, this.authOptions);
+    this.authContext.clearWorkspace();
     return workspace;
   }
 
@@ -383,7 +393,7 @@ export class WorkspaceService {
     workspace: Workspace,
     user: User,
   ): Promise<WorkspaceMember | null> {
-    RequestIdentity.assertUserSession(user);
+    assertUserSession(user);
     return await this.em.findOne(WorkspaceMember, {
       status: "ACTIVE",
       user,

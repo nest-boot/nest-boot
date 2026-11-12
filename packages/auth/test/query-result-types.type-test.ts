@@ -1,6 +1,5 @@
 import { expectTypeOf } from "vitest";
 
-import type { ApiKeyLifecycle } from "../src/api-key/api-key-lifecycle.js";
 import type {
   ApiKey,
   ApiKeyRecord,
@@ -9,6 +8,7 @@ import type { ApiKeyObject } from "../src/api-key/objects/api-key.object.js";
 import type { SystemApiKey } from "../src/api-key/objects/system-api-key.object.js";
 import type { UserApiKey } from "../src/api-key/objects/user-api-key.object.js";
 import type { WorkspaceApiKey } from "../src/api-key/objects/workspace-api-key.object.js";
+import type { ApiKeyService } from "../src/api-key/services/api-key.service.js";
 import type { SystemApiKeyService } from "../src/api-key/services/system-api-key.service.js";
 import type { UserApiKeyService } from "../src/api-key/services/user-api-key.service.js";
 import type { WorkspaceApiKeyService } from "../src/api-key/services/workspace-api-key.service.js";
@@ -105,7 +105,7 @@ describe("Credential-free query result types", () => {
 
   it("separates native persistence records from public credential views", () => {
     expectTypeOf<
-      Parameters<typeof ApiKeyLifecycle.update>[2]
+      Parameters<ApiKeyService["update"]>[0]
     >().toEqualTypeOf<ApiKeyRecord>();
     expectTypeOf<UserApiKey>().not.toExtend<ApiKeyRecord>();
     expectTypeOf<ApiKeyRecord>().toHaveProperty("isInitialized");

@@ -293,7 +293,7 @@ acceptance/rejection contexts move to `WorkspaceInvitationService`. Ordinary
 member/invitation reads and writes keep request RLS.
 `can()` and `authorize()` evaluate the request-scoped
 `AuthAbility` directly.
-The internal `RequestIdentity` owns identity checks and publication, while
+The injected `AuthContext` owns current-request identity and authorization/RLS synchronization, while
 `UserDeletionService` coordinates atomic deletion across auth-owned entities.
 The impersonator relation checks User profile authorization in SessionService;
 permission to read a session alone does not reveal its impersonator's profile.
@@ -406,15 +406,9 @@ retain their separate authorized privileged flows.
 
 ## Infrastructure-owned execution contexts
 
-Every domain Service uses its injected `this.em`. Services do not fork managers,
-clear RLS sessions, or call privileged execution helpers themselves. `AuthModule`
-providers establish isolated contexts for an explicit allowlist: authentication
-credential lookup, user/workspace creation, invitation acceptance/rejection,
-impersonation, and credential/session administration. Service authorization and
-lifecycle checks still run inside those contexts. Ordinary queries and management
-writes retain request RLS; workspace deletion only adds its operation tag while
-preserving the actor and workspace. Contexts cannot detach an active scoped
-transaction, and never mutate the caller's manager.
+Services use Nest constructor injection. Shared `ApiKeyService` owns native credential persistence; the scoped key services retain ownership and permission checks. `AuthContext` owns the current request identity and its ability/RLS projections. Identity checks are ordinary utilities called by the relevant services.
+
+Credential lookup, user/workspace creation, invitation acceptance/rejection, impersonation and session administration explicitly call `runAuthQuery` where an isolated database role is required. Ordinary queries and management writes retain request RLS. No service methods are replaced at runtime, and providers do not construct a new service for each call. Factories remain only for optional feature registration and the Better Auth integration. An active scoped transaction cannot be detached or silently bypassed.
 
 The ID-only invitation identity lookup runs after acquiring the workspace lock,
 using a fresh identity map and a savepoint on the same connection. It temporarily
@@ -426,8 +420,7 @@ Leaving a workspace clears the request's member, workspace, ability and workspac
 RLS variables after removal commits. Call it outside externally owned transactions
 so later operations cannot reuse the departed membership.
 
-Inject Services through `AuthModule` for these special flows. Directly constructing
-a Service uses exactly the supplied manager; it does not install those boundaries.
+Inject services through `AuthModule` so Nest provides the configured dependencies. Explicit persistence boundaries remain part of the service implementation.
 
 `AuthService.impersonateUser(id)` and `stopImpersonating()` coordinate session
 creation/restoration, authenticate the resulting session, refresh request user,
@@ -501,7 +494,7 @@ The example migration sequence `Initial → generated schema migrations` enables
 
 ### Management mutations
 
-Auth builds its own permission-to-ability mappings in `AuthAbilityFactory`;
+Auth builds its own permission-to-ability mappings in the pure `createAuthAbility` builder;
 one `AuthAbility` contains the rules for the current user and optional workspace.
 The top-level `buildAbility(rules, context)` receives
 `{ user, workspace, member, userPermissions, workspacePermissions }`; identity
@@ -734,8 +727,15 @@ when changing the BetterAuth integration instead of adding service-local API dec
 
 Application services retain their public options/results, identity and transaction rules.
 They normalize upstream results and use `applyAuthResponseCookies` to forward response
-cookies; session cookie creation remains in `SessionService`. Contextual service providers
-continue to own request execution and transaction boundaries.
+cookies; session cookie creation remains in `SessionService`. Services explicitly call
+`runAuthQuery` where authentication persistence needs an isolated database scope.
+Nest providers no longer replace service methods or reconstruct services per call.
+
+`AuthContext` is an injected provider for request identity, Ability and database-scope
+updates. It reads request state from `RequestContext`, so the singleton holds no
+user-specific state. Domain services validate ownership and persist changes before
+publishing their identity effects; shared credential writes live in the injected
+`ApiKeyService`. Pure permission builders and identity assertions remain functions.
 
 ## Independent system accounts and shared credential storage
 
@@ -787,4 +787,8 @@ API-key editors submit only changed permission fields. Metadata-only user/worksp
 
 API keys use `revokedAt: Date | null` instead of an `enabled` column or field. `revokeUserApiKey`, `revokeWorkspaceApiKey` and `revokeSystemApiKey` record the first server-generated revocation timestamp and retain the row for audit. Revocation is permanent and idempotent, including under concurrent calls; update inputs expose neither `enabled` nor `revokedAt`, so clients cannot clear the timestamp to restore a key. Revoking the authenticating credential clears request authorization only after the database write succeeds. Authentication refreshes stored key state before accepting it. The client shows Revoked and offers no enable/disable toggle. Explicit deletion remains a separate operation.
 
-Persistence services and `ApiKeyLifecycle` work with native `ApiKey` records, including native records queried without their hash. Owner validation narrows only the polymorphic relation. Public service results and committed request identities are projected into `UserApiKey`, `WorkspaceApiKey` or `SystemApiKey` DTOs; updates never publish an ORM-managed entity as the request credential. Use these concrete DTO types directly instead of the removed identity alias `ApiKeyMetadata<T>`.
+Persistence services and the injected `ApiKeyService` work with native `ApiKey` records, including native records queried without their hash. Owner validation narrows only the polymorphic relation. Public service results and committed request identities are projected into `UserApiKey`, `WorkspaceApiKey` or `SystemApiKey` DTOs; updates never publish an ORM-managed entity as the request credential. Use these concrete DTO types directly instead of the removed identity alias `ApiKeyMetadata<T>`.
+
+`AuthTransactionSubscriber` uses native MikroORM transaction callbacks to publish API-key identity changes after the outer commit. Nested savepoints merge their pending changes into the parent; rollback discards them. This permits changing or revoking the authenticating key inside a transaction without publishing uncommitted permissions or clearing RLS too early. Live User/WorkspaceMember entity changes and workspace exit retain their existing transaction restrictions; they are separate from the detached API-key DTO path. No Nest event bus is introduced.
+
+Shared key updates and revocations use atomic SQL writes and detached result records. They do not dirty the caller's managed entities, preventing an outer flush from replaying changes rolled back to a savepoint. All three key scopes enforce instance and requested-field authorization before the write. Usage recording captures its manager in a callback rather than constructing another service, and publishes timestamps only after persistence succeeds.

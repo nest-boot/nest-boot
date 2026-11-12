@@ -27,6 +27,7 @@ import { apiKeyProviders } from "../api-key/api-key.providers.js";
 import { createApiKeySchema } from "../api-key/entities/api-key.entity-schema.js";
 import { SystemAccount } from "../api-key/entities/system-account.entity.js";
 import { ApiKeyUsageInterceptor } from "../api-key/interceptors/api-key-usage.interceptor.js";
+import { ApiKeyService } from "../api-key/services/api-key.service.js";
 import { SystemApiKeyService } from "../api-key/services/system-api-key.service.js";
 import { UserApiKeyService } from "../api-key/services/user-api-key.service.js";
 import { WorkspaceApiKeyService } from "../api-key/services/workspace-api-key.service.js";
@@ -47,9 +48,11 @@ import {
   ConfigurableModuleClass,
   MODULE_OPTIONS_TOKEN,
 } from "./auth.module-definition.js";
+import { AuthContext } from "./auth-context.js";
 import { AuthEnumRegistry } from "./auth-enum-registry.js";
 import { AuthHandlerMiddleware } from "./auth-handler.middleware.js";
 import { authServiceProviders } from "./auth-service.providers.js";
+import { AuthTransactionSubscriber } from "./auth-transaction.subscriber.js";
 import { AUTH_TOKEN } from "./constants/auth.constants.js";
 import {
   DEFAULT_USER_PERMISSIONS,
@@ -96,6 +99,9 @@ class AuthOptionsHostModule {}
     ...adminProviders,
     ...apiKeyProviders,
     ...workspaceProviders,
+    AuthContext,
+    AuthTransactionSubscriber,
+    ApiKeyService,
     AccountService,
     ApiKeyUsageInterceptor,
     AuthService,
@@ -115,11 +121,15 @@ class AuthOptionsHostModule {}
         Mailer,
         HashService,
         UserDeletionService,
+        AuthContext,
       ],
       useFactory: createAuthInstance,
     },
   ],
   exports: [
+    AuthContext,
+    AuthTransactionSubscriber,
+    ApiKeyService,
     AccountService,
     SystemAccountService,
     SystemApiKeyService,

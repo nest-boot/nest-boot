@@ -26,8 +26,7 @@ import { resolveRequestPermissions } from "../../common/utils/resolve-request-pe
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
-import { RequestIdentity } from "../../core/request-identity.js";
-import { ApiKeyLifecycle } from "../api-key-lifecycle.js";
+import { assertCurrentUser } from "../../core/utils/assert-current-identity.util.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
 import { ApiKey, type OwnedApiKey } from "../entities/api-key.entity.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
@@ -42,6 +41,7 @@ import {
 import { toApiKeyView } from "../utils/api-key-view.util.js";
 import { assertApiKeyFeature } from "../utils/assert-api-key-feature.util.js";
 import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
+import { ApiKeyService } from "./api-key.service.js";
 
 /** Manages user-owned API keys within the current request's authorization scope. */
 @Injectable()
@@ -52,12 +52,14 @@ export class UserApiKeyService {
    * Creates an API-key domain service.
    * @param em - Entity manager used for persistence.
    * @param authOptions - Authentication module configuration.
+   * @param apiKeys - Shared credential persistence service.
    */
   constructor(
     /** MikroORM entity manager used for API-key persistence. */
     protected readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly authOptions: AuthModuleOptions,
+    private readonly apiKeys: ApiKeyService,
   ) {}
 
   /**
@@ -67,7 +69,7 @@ export class UserApiKeyService {
    */
   getUserApiKeyPermissions(user: User): UserApiKeyPermissionOption[] {
     assertApiKeyFeature(this.authOptions, "userApiKey");
-    RequestIdentity.assertCurrentUser(user);
+    assertCurrentUser(user);
     const { permissions, allowed, defaults } = resolveApiKeyPermissionCatalog(
       this.authOptions,
       "user",
@@ -96,7 +98,7 @@ export class UserApiKeyService {
    */
   async getUserApiKey(id: string, user: User): Promise<UserApiKey | null> {
     assertApiKeyFeature(this.authOptions, "userApiKey");
-    RequestIdentity.assertCurrentUser(user);
+    assertCurrentUser(user);
     authorize("read", UserApiKey);
     const apiKey = await this.getVisibleApiKey(id, user);
     if (apiKey) {
@@ -118,7 +120,7 @@ export class UserApiKeyService {
     info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<UserApiKey>> {
     assertApiKeyFeature(this.authOptions, "userApiKey");
-    RequestIdentity.assertCurrentUser(user);
+    assertCurrentUser(user);
     authorize("read", UserApiKey);
     const where = this.getOwnedListFilter(user);
     const connection = await new ConnectionManager(
@@ -152,7 +154,7 @@ export class UserApiKeyService {
     options: CreateApiKeyOptions,
   ): Promise<CreatedApiKey<UserApiKey>> {
     assertApiKeyFeature(this.authOptions, "userApiKey");
-    RequestIdentity.assertCurrentUser(user);
+    assertCurrentUser(user);
     authorize("write", UserApiKey);
     const permissions = normalizeApiKeyPermissions(
       this.authOptions,
@@ -198,15 +200,7 @@ export class UserApiKeyService {
         );
       this.assertUserPermissionCeiling(user, finalPermissions);
     }
-    return toApiKeyView(
-      await ApiKeyLifecycle.update(
-        this.em,
-        this.authOptions,
-        apiKey,
-        input,
-        permissions,
-      ),
-    );
+    return toApiKeyView(await this.apiKeys.update(apiKey, input, permissions));
   }
 
   /**
@@ -219,9 +213,7 @@ export class UserApiKeyService {
     authorize("write", UserApiKey);
     const key = await this.findWritableApiKey(id);
     authorize("write", key);
-    return toApiKeyView(
-      await ApiKeyLifecycle.revoke(this.em, this.authOptions, key),
-    );
+    return toApiKeyView(await this.apiKeys.revoke(key));
   }
 
   /**
@@ -234,9 +226,7 @@ export class UserApiKeyService {
     authorize("write", UserApiKey);
     const apiKey = await this.findWritableApiKey(id);
     authorize("write", apiKey);
-    return toApiKeyView(
-      await ApiKeyLifecycle.delete(this.em, this.authOptions, apiKey),
-    );
+    return toApiKeyView(await this.apiKeys.delete(apiKey));
   }
 
   private async createKey(
@@ -244,7 +234,7 @@ export class UserApiKeyService {
     options: CreateApiKeyOptions,
     permissions: string[],
   ): Promise<CreatedApiKey<UserApiKey>> {
-    const { apiKey, data } = ApiKeyLifecycle.prepareCreation(
+    const { apiKey, data } = this.apiKeys.prepareCreation(
       options,
       permissions,
       this.authOptions.apiKey?.user?.defaultPrefix ??
@@ -307,7 +297,7 @@ export class UserApiKeyService {
       throw new NotFoundException("API key not found");
     }
     assertApiKeyOwner(apiKey, "user");
-    RequestIdentity.assertCurrentUser(this.unwrapUser(apiKey));
+    assertCurrentUser(this.unwrapUser(apiKey));
     assertApiKeyPermissionCeiling(this.authOptions, apiKey.permissions ?? []);
     return apiKey;
   }

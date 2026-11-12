@@ -1,4 +1,5 @@
 import { subject as caslSubject } from "@casl/ability";
+import { EntityManager } from "@mikro-orm/core";
 import { ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import {
@@ -13,6 +14,7 @@ import { type Request, type Response } from "express";
 import { firstValueFrom, of } from "rxjs";
 import { assert, type Mock, type MockedFunction } from "vitest";
 
+import { stageIdentity } from "../../test/fixtures/auth-context.fixture.js";
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { ApiKey } from "../api-key/entities/api-key.entity.js";
 import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
@@ -36,12 +38,13 @@ import {
 } from "../workspace/entities/workspace-member.entity.js";
 import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
-import { AuthAbilityFactory } from "./auth-ability.factory.js";
+import * as abilityFactory from "./auth-ability.factory.js";
+import { AuthContext } from "./auth-context.js";
+import { AuthTransactionSubscriber } from "./auth-transaction.subscriber.js";
 import { API_KEY, IS_PUBLIC_KEY } from "./constants/auth.constants.js";
 import { Session as BaseSession } from "./entities/session.entity.js";
 import { User as BaseUser } from "./entities/user.entity.js";
 import { type AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
-import { RequestIdentity } from "./request-identity.js";
 import { type AuthModuleRoles } from "./types/auth-module-roles.type.js";
 import { type RouteArgumentMetadata } from "./types/route-argument-metadata.type.js";
 
@@ -391,6 +394,9 @@ async function createGuard<T extends AuthGuard>(
   const moduleRef = await Test.createTestingModule({
     providers: [
       guardType,
+      AuthContext,
+      AuthTransactionSubscriber,
+      { provide: EntityManager, useValue: {} },
       TestController,
       {
         provide: Reflector,
@@ -1528,7 +1534,7 @@ describe("permission checks", () => {
           }),
         );
         await expect(guard.canActivate(createContext())).resolves.toBe(false);
-        RequestIdentity.stage({
+        stageIdentity({
           apiKey: Object.assign(new UserApiKey(new ApiKey()), {
             workspace: null,
             user: ref(UserOwner, new UserOwner()),
@@ -1804,7 +1810,7 @@ describe("permission checks", () => {
       }
     };
     if (ability) {
-      vi.spyOn(AuthAbilityFactory, "createAbility").mockImplementation(
+      vi.spyOn(abilityFactory, "createAuthAbility").mockImplementation(
         (context) => {
           configure({ can: vi.fn(), cannot: vi.fn() }, context);
           return ability;
@@ -1831,6 +1837,9 @@ describe("permission checks", () => {
     const testingModule = await Test.createTestingModule({
       providers: [
         PermissionAuthGuard,
+        AuthContext,
+        AuthTransactionSubscriber,
+        { provide: EntityManager, useValue: {} },
         {
           provide: Reflector,
           useValue: reflector,

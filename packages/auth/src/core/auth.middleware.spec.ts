@@ -4,6 +4,7 @@ import { Test } from "@nestjs/testing";
 import { NextFunction, Request } from "express";
 import { type Mock } from "vitest";
 
+import { createTestAuthContext } from "../../test/fixtures/auth-context.fixture.js";
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { ApiKey as ApiKeyRecord } from "../api-key/entities/api-key.entity.js";
@@ -31,6 +32,8 @@ import {
 } from "../workspace/entities/workspace-member.entity.js";
 import { AuthMiddleware } from "./auth.middleware.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import { AuthContext } from "./auth-context.js";
+import { AuthTransactionSubscriber } from "./auth-transaction.subscriber.js";
 import { API_KEY } from "./constants/auth.constants.js";
 import {
   Account as AccountEntity,
@@ -106,6 +109,7 @@ async function createMiddleware(
   const em = {
     getContext: vi.fn().mockReturnThis(),
     getSessionContext: vi.fn(),
+    getTransactionContext: vi.fn(),
     setSessionContext: vi.fn(),
     isInTransaction: vi.fn(),
     fork: vi.fn(),
@@ -114,6 +118,8 @@ async function createMiddleware(
   const moduleRef = await Test.createTestingModule({
     providers: [
       AuthMiddleware,
+      AuthContext,
+      AuthTransactionSubscriber,
       {
         provide: MODULE_OPTIONS_TOKEN,
         useValue: withAuthTestFeatures({
@@ -1047,6 +1053,7 @@ describe("optional workspace behavior", () => {
         sessionService as unknown as SessionService,
         apiKeys as unknown as ApiKeyAuthenticationService,
         em as unknown as EntityManager,
+        createTestAuthContext(em, withAuthTestFeatures({})),
       );
       const request = {
         headers: {
@@ -1067,7 +1074,7 @@ describe("optional workspace behavior", () => {
           expect(RequestContext.get(Workspace)).toBeFalsy();
           expect(RequestContext.get(WorkspaceMember)).toBeFalsy();
           expect(RequestContext.get(User)).toBe(
-            kind === "anonymous" ? undefined : user,
+            kind === "anonymous" ? null : user,
           );
           expect(em.findOne).not.toHaveBeenCalled();
           expect(em.setSessionContext).toHaveBeenCalledWith(

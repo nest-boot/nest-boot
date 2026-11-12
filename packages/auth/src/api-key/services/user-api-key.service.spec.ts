@@ -11,6 +11,8 @@ import {
   createTestWorkspace,
   createTestWorkspaceMember,
 } from "../../../test/fixtures/api-key-service.fixture.js";
+import { createTestAuthContext } from "../../../test/fixtures/auth-context.fixture.js";
+import { stageIdentity } from "../../../test/fixtures/auth-context.fixture.js";
 import { withIdentity } from "../../../test/fixtures/conditional-authorization.fixture.js";
 import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
 import { mockRlsContext } from "../../../test/mock-rls-context.js";
@@ -19,7 +21,6 @@ import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import { API_KEY } from "../../core/constants/auth.constants.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
-import { RequestIdentity } from "../../core/request-identity.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
@@ -46,7 +47,7 @@ describe("API-key management", () => {
             permissions: [],
           });
           em.findOne.mockResolvedValue(target);
-          RequestIdentity.stage({
+          stageIdentity({
             apiKey: Object.assign(new Key(), {
               member,
               user,
@@ -91,8 +92,11 @@ describe("API-key management", () => {
           const { service, em, authorization } = createService(options);
           vi.mocked(authorization.authorize).mockRestore();
           const user = Object.assign(createTestUser(), { roles: ["admin"] });
-          RequestIdentity.stage({ user });
-          RequestIdentity.prepare(withAuthTestFeatures(options));
+          stageIdentity({ user });
+          createTestAuthContext(
+            undefined,
+            withAuthTestFeatures(options),
+          ).getAbility();
           const key = Object.assign(new ApiKey(), {
             id: "conditional-key",
             key: "already-hydrated-key-hash",
@@ -129,8 +133,11 @@ describe("API-key management", () => {
           const { service, authorization } = createService(options);
           vi.mocked(authorization.authorize).mockRestore();
           const user = Object.assign(createTestUser(), { roles: ["admin"] });
-          RequestIdentity.stage({ user });
-          RequestIdentity.prepare(withAuthTestFeatures(options));
+          stageIdentity({ user });
+          createTestAuthContext(
+            undefined,
+            withAuthTestFeatures(options),
+          ).getAbility();
           const key = Object.assign(new ApiKey(), {
             owner:
               scope === "user"
@@ -194,8 +201,11 @@ describe("API-key management", () => {
               roles: [reason === "owner" ? "member" : "owner"],
               permissions: ["workspace-api-key:write"],
             });
-            RequestIdentity.stage({ user, member });
-            RequestIdentity.prepare(withAuthTestFeatures(options));
+            stageIdentity({ user, member });
+            createTestAuthContext(
+              undefined,
+              withAuthTestFeatures(options),
+            ).getAbility();
             const permissions = [
               scope === "user" ? "user:read" : "workspace:delete",
             ];
@@ -216,8 +226,19 @@ describe("API-key management", () => {
               scope === "user"
                 ? service.revokeUserApiKey
                 : service.revokeWorkspaceApiKey;
-            expect(await revoke(key.id)).toEqual(toApiKeyView(key));
-            expect(key.revokedAt).toBeInstanceOf(Date);
+            const revoked = await revoke(key.id);
+            expect(revoked).toMatchObject({
+              id: key.id,
+              permissions,
+              revokedAt: expect.any(Date),
+            });
+            expect(key.revokedAt).toBeNull();
+            em.findOne.mockResolvedValue(
+              Object.assign(new ApiKey(), key, {
+                revokedAt: revoked.revokedAt,
+                updatedAt: revoked.updatedAt,
+              }),
+            );
             expect(key.permissions).toEqual(permissions);
             expect(em.nativeUpdate).toHaveBeenCalledOnce();
             expect(em.flush).not.toHaveBeenCalled();
@@ -228,8 +249,9 @@ describe("API-key management", () => {
               update(key.id, { expiresAt: new Date(Date.now() + 60000) }),
             ).rejects.toThrow();
             await expect(update(key.id, { permissions })).rejects.toThrow();
-            expect(key.revokedAt).toBeInstanceOf(Date);
-            expect(em.flush).toHaveBeenCalledOnce();
+            expect(revoked.revokedAt).toBeInstanceOf(Date);
+            expect(em.nativeUpdate).toHaveBeenCalledTimes(2);
+            expect(em.flush).not.toHaveBeenCalled();
           },
         );
       }
@@ -282,9 +304,12 @@ describe("API-key management", () => {
           expect(key).toMatchObject(original);
           expect(em.flush).not.toHaveBeenCalled();
           expect(em.create).not.toHaveBeenCalled();
-          await update({ expiresAt: null });
-          expect(key.expiresAt).toBeNull();
-          expect(em.flush).toHaveBeenCalledOnce();
+          expect(await update({ expiresAt: null })).toMatchObject({
+            expiresAt: null,
+          });
+          expect(key).toMatchObject(original);
+          expect(em.nativeUpdate).toHaveBeenCalledOnce();
+          expect(em.flush).not.toHaveBeenCalled();
         },
       );
       for (const operation of ["permissions", "revoke", "delete"] as const) {
@@ -333,16 +358,9 @@ describe("API-key management", () => {
                       ? service.revokeUserApiKey
                       : service.revokeWorkspaceApiKey)(key.id)
                   : update(key.id, { permissions: ["workspace:read"] });
-            em.isInTransaction.mockReturnValueOnce(true);
-            await expect(invoke()).rejects.toThrow(
-              "outside an active transaction",
-            );
-            expect(em.flush).not.toHaveBeenCalled();
-            if (operation === "revoke") {
-              em.nativeUpdate.mockRejectedValueOnce(new Error("Commit failed"));
-            } else {
-              em.flush.mockRejectedValueOnce(new Error("Commit failed"));
-            }
+            const persistence =
+              operation === "delete" ? em.flush : em.nativeUpdate;
+            persistence.mockRejectedValueOnce(new Error("Commit failed"));
             await expect(invoke()).rejects.toThrow("Commit failed");
             expect(RequestContext.get(API_KEY)).toMatchObject(
               toApiKeyView(key),
@@ -355,24 +373,33 @@ describe("API-key management", () => {
             ]);
             expect(RequestContext.get(AuthAbility)).toBe(ability);
             expect(em.setSessionContext).not.toHaveBeenCalled();
-            em.flush.mockImplementationOnce(() => {
+            const beforeCommit = () => {
               expect(RequestContext.get(API_KEY)).toMatchObject(
                 toApiKeyView(key),
               );
               expect(em.setSessionContext).not.toHaveBeenCalled();
-              return Promise.resolve();
-            });
-            await invoke();
+            };
+            if (operation === "delete") {
+              em.flush.mockImplementationOnce(() => {
+                beforeCommit();
+                return Promise.resolve();
+              });
+            } else {
+              em.nativeUpdate.mockImplementationOnce(() => {
+                beforeCommit();
+                return Promise.resolve(1);
+              });
+            }
+            const changed = await invoke();
             if (operation === "revoke") {
-              expect(key.lastUsedAt?.getTime()).toBeGreaterThan(0);
+              expect(changed.lastUsedAt).toBeInstanceOf(Date);
+              expect(key.lastUsedAt).toEqual(new Date(0));
             }
             expect(
               RequestContext.get(AuthAbility)?.can("update", Workspace),
             ).toBe(false);
             if (operation === "permissions") {
-              expect(RequestContext.get(API_KEY)).toMatchObject(
-                toApiKeyView(key),
-              );
+              expect(RequestContext.get(API_KEY)).toMatchObject(changed);
               expect(em.setSessionContext).not.toHaveBeenCalled();
             } else {
               expect(RequestContext.get(API_KEY)).toBeNull();
@@ -470,17 +497,33 @@ describe("API-key management", () => {
           ApiKey,
           expect.objectContaining({ owner: user }),
         );
-        em.findOne.mockResolvedValue(created.entity);
+        em.findOne.mockResolvedValue(
+          em.create.mock.results.find(
+            (result) => result.value.id === created.entity.id,
+          )?.value,
+        );
         expect(await service.getUserApiKey(created.entity.id, user)).toEqual(
           omitCredentials(created.entity, ["key"]),
         );
-        expect(
-          await service.updateUserApiKey(created.entity.id, {
-            name: "Renamed",
+        const updated = await service.updateUserApiKey(created.entity.id, {
+          name: "Renamed",
+        });
+        expect(updated).toMatchObject({
+          id: created.entity.id,
+          name: "Renamed",
+          permissions: created.entity.permissions,
+        });
+        const native = em.create.mock.results.find(
+          (result) => result.value.id === created.entity.id,
+        )?.value;
+        em.findOne.mockResolvedValue(
+          Object.assign(new ApiKey(), native, {
+            name: updated.name,
+            updatedAt: updated.updatedAt,
           }),
-        ).toEqual(omitCredentials(created.entity, ["key"]));
+        );
         expect(await service.deleteUserApiKey(created.entity.id)).toEqual(
-          omitCredentials(created.entity, ["key"]),
+          updated,
         );
       },
     );
