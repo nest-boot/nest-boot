@@ -26,15 +26,13 @@ import { authorize } from "../../common/utils/authorize.util.js";
 import { can } from "../../common/utils/can.util.js";
 import { assertCanGrantPermissions } from "../../common/utils/permission-grants.util.js";
 import { resolveAuthCatalog } from "../../common/utils/resolve-auth-catalog.util.js";
+import { resolveRolePermissions } from "../../common/utils/resolve-effective-permissions.util.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
 import { RequestIdentity } from "../../core/request-identity.js";
 import type { AuthModuleRoles } from "../../core/types/auth-module-roles.type.js";
-import {
-  normalizeAuthRoles,
-  resolveAuthPermissions,
-} from "../../core/utils/auth-role.util.js";
+import { normalizeAuthRoles } from "../../core/utils/auth-role.util.js";
 import { WorkspaceInvitationConnection } from "../connections/workspace-invitation.connection-definition.js";
 import { DEFAULT_WORKSPACE_ROLE } from "../constants/workspace.constants.js";
 import { Workspace } from "../entities/workspace.entity.js";
@@ -626,7 +624,7 @@ export class WorkspaceInvitationService {
     assertCanGrantPermissions(
       this.authOptions,
       "workspace",
-      resolveAuthPermissions(roles, [], this.roles),
+      resolveRolePermissions(this.authOptions, "workspace", roles),
     );
     return roles;
   }

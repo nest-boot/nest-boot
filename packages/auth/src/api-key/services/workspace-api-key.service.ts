@@ -210,8 +210,13 @@ export class WorkspaceApiKeyService {
             "member",
             input.permissions ?? [],
           );
-    // Allow disabling stale grants without replacing them.
-    if (input.enabled !== false || permissions !== undefined) {
+    // Naming or disabling a key must not rewrite or expand retired grants.
+    // Re-enablement and expiration changes can restore access, so validate them.
+    if (
+      permissions !== undefined ||
+      input.enabled === true ||
+      (input.expiresAt !== undefined && input.enabled !== false)
+    ) {
       const finalPermissions =
         permissions ??
         normalizeApiKeyPermissions(

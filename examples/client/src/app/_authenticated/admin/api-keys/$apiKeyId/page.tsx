@@ -1,6 +1,7 @@
 import { useMutation } from "@apollo/client/react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { t } from "i18next";
+import { getApiKeyUpdateInput } from "@/lib/api-key-update";
 import { adminApiKeysResourceKey } from "@/lib/resource-keys";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { SystemApiKeyPermission } from "@/gql/graphql";
@@ -98,13 +99,7 @@ function Details() {
         await update({
           variables: {
             id: apiKey.id,
-            input: {
-              ...(input.name !== apiKey.name ? { name: input.name } : {}),
-              ...([...input.permissions].sort().join() !==
-              [...apiKey.permissions].sort().join()
-                ? { permissions: input.permissions }
-                : {}),
-            },
+            input: getApiKeyUpdateInput(apiKey, input),
           },
         });
         await refreshAfterMutation(() => router.invalidate());

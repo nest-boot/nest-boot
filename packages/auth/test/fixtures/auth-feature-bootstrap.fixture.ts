@@ -247,6 +247,29 @@ export async function verifyAuthFeatures(
       expect(workspace.errors).toBeUndefined();
       const workspaceId = workspace.data?.createWorkspace.id;
       assert(workspaceId);
+      const workspaceHeaders = { "x-workspace-id": workspaceId };
+      const workspaceRoles = await graphql(
+        "{ workspaceRoles { role grantable } currentWorkspaceMember { id } }",
+        {},
+        workspaceHeaders,
+      );
+      expect(workspaceRoles.errors).toBeUndefined();
+      expect(workspaceRoles.data?.workspaceRoles).toContainEqual({
+        role: "OWNER",
+        grantable: true,
+      });
+      const reassigned = await graphql(
+        "mutation($id: ID!) { setWorkspaceMemberRoles(id: $id, input: {roles: [OWNER]}) { id } }",
+        { id: workspaceRoles.data?.currentWorkspaceMember.id },
+        workspaceHeaders,
+      );
+      expect(reassigned.errors).toBeUndefined();
+      const invited = await graphql(
+        'mutation { createWorkspaceInvitation(input: {email: "invited-owner@example.test", roles: [OWNER]}) { id } }',
+        {},
+        workspaceHeaders,
+      );
+      expect(invited.errors).toBeUndefined();
       if (expected.owners.includes("WorkspaceMember")) {
         const key = await graphql(
           'mutation { createWorkspaceApiKey(input: {name: "Workspace key"}) { apiKey entity { id member { __typename  id workspaceId  } } } }',
@@ -276,6 +299,21 @@ export async function verifyAuthFeatures(
       await orm.em
         .fork()
         .nativeUpdate(User, body.user.id, { roles: ["admin"] });
+      const roles = await graphql("{ userRoles { role grantable } }");
+      expect(roles.errors).toBeUndefined();
+      expect(roles.data?.userRoles).toContainEqual({
+        role: "ADMIN",
+        grantable: true,
+      });
+      const delegated = await graphql(
+        'mutation { createUser(input: {email: "delegated-admin@example.test", name: "Delegated", password: "valid-password", roles: [ADMIN]}) { id } }',
+      );
+      expect(delegated.errors).toBeUndefined();
+      const assigned = await graphql(
+        "mutation($id: ID!) { setUserRoles(id: $id, input: {roles: [ADMIN]}) { id } }",
+        { id: delegated.data?.createUser.id },
+      );
+      expect(assigned.errors).toBeUndefined();
       const account = await graphql(
         'mutation { createSystemAccount(input: {name: "System", permissions: [USER__READ]}) {id} }',
       );

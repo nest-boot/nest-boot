@@ -239,13 +239,16 @@ describe("API-key management", () => {
             expect(em.flush).toHaveBeenCalledOnce();
             await expect(update(key.id, { enabled: true })).rejects.toThrow();
             await expect(
-              update(key.id, { name: "Still invalid" }),
+              update(key.id, { name: "Audit rename" }),
+            ).resolves.toMatchObject({ name: "Audit rename" });
+            await expect(
+              update(key.id, { expiresAt: new Date(Date.now() + 60000) }),
             ).rejects.toThrow();
             await expect(
               update(key.id, { enabled: false, permissions }),
             ).rejects.toThrow();
             expect(key.enabled).toBe(false);
-            expect(em.flush).toHaveBeenCalledOnce();
+            expect(em.flush).toHaveBeenCalledTimes(2);
           },
         );
       }

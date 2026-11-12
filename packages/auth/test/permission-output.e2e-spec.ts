@@ -35,6 +35,12 @@ class PermissionProbeResolver {
     return key;
   }
 
+  @Can("read", () => "Task")
+  @Query(() => Boolean)
+  permissionProbeTask(): boolean {
+    return true;
+  }
+
   @Can("read", () => "Project")
   @Query(() => Boolean)
   permissionProbeProject(): boolean {
@@ -115,6 +121,7 @@ describe("permission output after catalog removal", () => {
           emailAndPassword: { requireEmailVerification: false },
           buildAbility: (rules) => {
             rules.can({ user: "project:read" }, "read", "Project");
+            rules.can({ workspace: "task:read" }, "read", "Task");
           },
         }),
       ],
@@ -277,6 +284,13 @@ describe("permission output after catalog removal", () => {
       permissionProbeKey: { id: key.id, permissions: [] },
     });
     expect(observedCredential?.permissions).toEqual(["retired:key"]);
+    const renamed = await query(
+      `mutation { updateUserApiKey(id: "${key.id}", input: {name: "Renamed retired key"}) {name permissions} }`,
+    );
+    expect(renamed.errors).toBeUndefined();
+    expect(renamed.data).toEqual({
+      updateUserApiKey: { name: "Renamed retired key", permissions: [] },
+    });
     const forbidden = await query("{ permissionProbeProject }", headers);
     expect(forbidden.errors).toEqual([
       expect.objectContaining({
@@ -289,5 +303,43 @@ describe("permission output after catalog removal", () => {
     expect((await query("{ permissionProbeProject }")).data).toEqual({
       permissionProbeProject: true,
     });
+  });
+  it("renames a retired-only workspace credential without replacing its restriction", async () => {
+    const em = orm.em.fork();
+    const key = em.create(ApiKey, {
+      name: "Retired workspace grants",
+      key: hashApiKey("workspace-retired-output"),
+      owner: member,
+      permissions: ["retired:key"],
+    });
+    await em.persist(key).flush();
+    const renamed = await query(
+      `mutation { updateWorkspaceApiKey(id: "${key.id}", input: {name: "Renamed workspace key"}) {name permissions} }`,
+      { "x-workspace-id": workspace.id },
+    );
+    expect(renamed.errors).toBeUndefined();
+    expect(renamed.data).toEqual({
+      updateWorkspaceApiKey: { name: "Renamed workspace key", permissions: [] },
+    });
+    expect((await em.fork().findOneOrFail(ApiKey, key.id)).permissions).toEqual(
+      ["retired:key"],
+    );
+    const forbidden = await query("{ permissionProbeTask }", {
+      cookie: "",
+      authorization: "Bearer workspace-retired-output",
+      "x-workspace-id": workspace.id,
+    });
+    expect(forbidden.errors).toEqual([
+      expect.objectContaining({
+        message: expect.stringMatching(/forbidden|not allowed/i),
+      }),
+    ]);
+    expect(
+      (
+        await query("{ permissionProbeTask }", {
+          "x-workspace-id": workspace.id,
+        })
+      ).data,
+    ).toEqual({ permissionProbeTask: true });
   });
 });

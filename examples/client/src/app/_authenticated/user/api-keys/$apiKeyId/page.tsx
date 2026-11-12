@@ -4,6 +4,7 @@ import { t } from "i18next";
 import { useCallback } from "react";
 
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
+import { getApiKeyUpdateInput } from "@/lib/api-key-update";
 import { graphql } from "@/gql";
 import { UPDATE_USER_API_KEY } from "@/graphql/mutations/update-user-api-key";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
@@ -209,7 +210,12 @@ function ApiKeyDetailsPage() {
         await navigate({ to: "/user/api-keys", search: backSearch });
       }}
       onSave={async (input) => {
-        await updateApiKey({ variables: { id: apiKey.id, input } });
+        await updateApiKey({
+          variables: {
+            id: apiKey.id,
+            input: getApiKeyUpdateInput(apiKey, input),
+          },
+        });
         await router.invalidate();
         return undefined;
       }}

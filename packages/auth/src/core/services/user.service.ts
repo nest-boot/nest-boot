@@ -32,7 +32,10 @@ import {
   canGrantPermissions,
 } from "../../common/utils/permission-grants.util.js";
 import { resolveAuthCatalog } from "../../common/utils/resolve-auth-catalog.util.js";
-import { resolveUserPermissions } from "../../common/utils/resolve-effective-permissions.util.js";
+import {
+  resolveRolePermissions,
+  resolveUserPermissions,
+} from "../../common/utils/resolve-effective-permissions.util.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
 import {
@@ -53,7 +56,6 @@ import {
   listAuthPermissions,
   normalizeAuthPermissions,
   normalizeAuthRoles,
-  resolveAuthPermissions,
 } from "../utils/auth-role.util.js";
 import { UserDeletionService } from "./user-deletion.service.js";
 const CREDENTIAL_ISSUER = "local:credential";
@@ -118,11 +120,10 @@ export class UserService {
     this.assertPasswordLength(input.password);
     const permissions = this.normalizePermissions(input.permissions ?? []);
     const roles = this.normalizeRoles(input.roles ?? [this.defaultRole]);
-    assertCanGrantPermissions(
-      this.options,
-      "user",
-      resolveAuthPermissions(roles, permissions, this.roles),
-    );
+    assertCanGrantPermissions(this.options, "user", [
+      ...resolveRolePermissions(this.options, "user", roles),
+      ...permissions,
+    ]);
     const email = input.email.trim().toLowerCase();
 
     const password = await this.hashPassword(input.password);
@@ -271,7 +272,7 @@ export class UserService {
     assertCanGrantPermissions(
       this.options,
       "user",
-      resolveAuthPermissions(roles, [], this.roles),
+      resolveRolePermissions(this.options, "user", roles),
     );
     this.assertAuthorizationCanCommit(user);
     const previous = user.roles;
@@ -335,9 +336,13 @@ export class UserService {
    */
   listRoles(): UserRoleOption[] {
     authorize("set-roles", User);
-    return Object.entries(this.roles).map(([role, permissions]) => ({
+    return Object.keys(this.roles).map((role) => ({
       role,
-      grantable: canGrantPermissions(this.options, "user", permissions),
+      grantable: canGrantPermissions(
+        this.options,
+        "user",
+        resolveRolePermissions(this.options, "user", [role]),
+      ),
     }));
   }
 

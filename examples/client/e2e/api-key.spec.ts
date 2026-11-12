@@ -627,6 +627,23 @@ async function exerciseApiKeyLifecycle(
     ).toBeChecked();
   }
   await page.getByLabel("Name", { exact: true }).fill(names.renamedName);
+  const metadataUpdate = page.waitForRequest((request) => {
+    if (request.method() !== "POST" || !request.url().endsWith("/api/graphql"))
+      return false;
+    const payload = request.postDataJSON() as { operationName?: string };
+    return (
+      payload.operationName?.startsWith("update") === true &&
+      payload.operationName.includes("ApiKey")
+    );
+  });
+  await page.getByLabel("Name", { exact: true }).press("Enter");
+  const payload = (await metadataUpdate).postDataJSON() as {
+    variables: { input: unknown };
+  };
+  expect(payload.variables.input).toEqual({ name: names.renamedName });
+  await expect(
+    page.getByText("API key updated", { exact: true }),
+  ).toBeVisible();
   await getPermissionCheckbox(page, `${scope}_API_KEY__WRITE`).click();
   await page.getByLabel("Name", { exact: true }).press("Enter");
   await expect(

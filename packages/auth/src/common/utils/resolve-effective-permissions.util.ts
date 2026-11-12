@@ -61,3 +61,23 @@ export function intersectPermissions(
   const allowed = new Set(ceiling);
   return permissions.filter((permission) => allowed.has(permission));
 }
+
+/**
+ * Resolves role grants using the same feature switches as the issuer ceiling.
+ * @param options - Authentication feature configuration.
+ * @param scope - Identity scope being delegated.
+ * @param roles - Roles proposed for the receiving identity.
+ * @returns Grants that these roles confer with the current features enabled.
+ * @internal
+ */
+export function resolveRolePermissions(
+  options: AuthModuleOptions,
+  scope: "user" | "workspace",
+  roles: readonly string[],
+): string[] {
+  return resolveAuthPermissions(
+    roles,
+    [],
+    resolveAuthCatalog(options, scope).roles,
+  ).filter((permission) => isAuthPermissionEnabled(options, scope, permission));
+}

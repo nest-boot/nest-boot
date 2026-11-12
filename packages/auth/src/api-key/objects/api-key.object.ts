@@ -103,16 +103,7 @@ export abstract class ApiKeyObject {
    * @returns Value for the credential identity or authorization condition.
    */
   @HideField()
-  get ownerType(): "user" | "workspace_member" | "system_account" {
-    const owner = Reference.unwrapReference<
-      User | WorkspaceMember | SystemAccount
-    >(this.owner);
-    return owner instanceof User
-      ? "user"
-      : owner instanceof WorkspaceMember
-        ? "workspace_member"
-        : "system_account";
-  }
+  abstract readonly ownerType: "user" | "workspace_member" | "system_account";
   /**
    * User identity available to internal authorization.
    * @returns Value for the credential identity or authorization condition.

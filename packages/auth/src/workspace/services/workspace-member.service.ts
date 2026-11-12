@@ -30,7 +30,10 @@ import {
   canGrantPermissions,
 } from "../../common/utils/permission-grants.util.js";
 import { resolveAuthCatalog } from "../../common/utils/resolve-auth-catalog.util.js";
-import { resolveWorkspaceMemberPermissions } from "../../common/utils/resolve-effective-permissions.util.js";
+import {
+  resolveRolePermissions,
+  resolveWorkspaceMemberPermissions,
+} from "../../common/utils/resolve-effective-permissions.util.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
@@ -40,7 +43,6 @@ import {
   listAuthPermissions,
   normalizeAuthPermissions,
   normalizeAuthRoles,
-  resolveAuthPermissions,
 } from "../../core/utils/auth-role.util.js";
 import { WorkspaceMemberConnection } from "../connections/workspace-member.connection-definition.js";
 import { DEFAULT_WORKSPACE_ROLE } from "../constants/workspace.constants.js";
@@ -653,11 +655,15 @@ export class WorkspaceMemberService {
     if (!canAssign) {
       authorize("read", WorkspaceMember);
     }
-    return Object.entries(this.roles).map(([role, permissions]) => ({
+    return Object.keys(this.roles).map((role) => ({
       role,
       grantable:
         canAssign &&
-        canGrantPermissions(this.authOptions, "workspace", permissions),
+        canGrantPermissions(
+          this.authOptions,
+          "workspace",
+          resolveRolePermissions(this.authOptions, "workspace", [role]),
+        ),
     }));
   }
 
@@ -708,7 +714,7 @@ export class WorkspaceMemberService {
     assertCanGrantPermissions(
       this.authOptions,
       "workspace",
-      resolveAuthPermissions(roles, [], this.roles),
+      resolveRolePermissions(this.authOptions, "workspace", roles),
     );
     return roles;
   }
