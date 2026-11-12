@@ -329,7 +329,6 @@ describe("exported input contracts", () => {
       name: "UpdateSystemApiKeyInput",
       values: {
         name: "Key",
-        enabled: false,
         permissions: ["user:read"],
         expiresAt: new Date("2030-01-01T00:00:00Z"),
       },
@@ -512,7 +511,6 @@ describe("exported input contracts", () => {
       name: "UpdateUserApiKeyInput",
       values: {
         name: "Key",
-        enabled: false,
         expiresAt: new Date("2030-01-01T00:00:00Z"),
         permissions: [],
       },
@@ -523,7 +521,6 @@ describe("exported input contracts", () => {
       name: "UpdateWorkspaceApiKeyInput",
       values: {
         name: "Key",
-        enabled: false,
         expiresAt: new Date("2030-01-01T00:00:00Z"),
         permissions: [],
       },

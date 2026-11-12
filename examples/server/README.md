@@ -95,7 +95,7 @@ Service authorization. User, member and system-account API keys share `api_key`,
 with polymorphic `owner_type` and `owner_id` columns and no custom owner triggers.
 Deleting a user cascades to accounts, sessions (also sessions they impersonated),
 members and sent invitations, while workspaces and independent service accounts survive.
-All API-key records and their stored owner identifiers remain for audit. Deleting a system account through its service also disables its keys in the same transaction.
+All API-key records and their stored owner identifiers remain for audit. Deleting a system account through its service also revokes its keys in the same transaction.
 Authentication reloads the concrete owner and rejects credentials whose owner no
 longer exists, without deleting the record or updating its usage timestamps.
 
@@ -153,4 +153,4 @@ The example client manages system keys under `/admin/api-keys` and accounts unde
 
 GraphQL key queries and lifecycle mutations share `ApiKey`, `ApiKeyConnection`, and `CreateApiKeyResult`. Credential lists are available from User, WorkspaceMember and SystemAccount, with Workspace providing an aggregate. The key object contains common metadata only; owner relations and owner-specific identifiers stay in persistence and authorization.
 
-The example explicitly enables `admin`, `workspace`, the API-key master switch, and the `apiKey.user` / `apiKey.workspace` / `apiKey.system` scopes. These features are opt-in in AuthModule. System authentication requires the master switch and explicit `apiKey.system.enabled: true`; only management APIs additionally require administration. `ApiKey.owner` is a nullable, feature-aware union; the example lists owner names directly without separate ownership IDs.
+The example explicitly enables `admin`, `workspace`, the API-key master switch, and the `apiKey.user` / `apiKey.workspace` / `apiKey.system` scopes. These features are opt-in in AuthModule. System authentication requires the master switch and explicit `apiKey.system.enabled: true`; only management APIs additionally require administration. GraphQL exposes separate `UserApiKey.user`, `WorkspaceApiKey.member` and `SystemApiKey.systemAccount` relations, without a generic owner union or separate ownership IDs. API keys use a permanent `revokedAt` timestamp, with server-controlled revoke mutations and a Revoked status in the client; update inputs cannot restore a revoked key.

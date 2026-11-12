@@ -405,7 +405,10 @@ type Mutation {
   revokeCurrentUserSession(id: ID!): Boolean!
   revokeCurrentUserSessions: Boolean!
   revokeSession(id: ID!, userId: ID!): Boolean!
+  revokeSystemApiKey(id: ID!): SystemApiKey!
+  revokeUserApiKey(id: ID!): UserApiKey!
   revokeUserSessions(userId: ID!): Boolean!
+  revokeWorkspaceApiKey(id: ID!): WorkspaceApiKey!
   sendVerificationEmail(input: AuthSendVerificationEmailInput!): Boolean!
   setCurrentUserPassword(newPassword: String!): Boolean!
   setUserPassword(id: ID!, input: SetUserPasswordInput!): Boolean!
@@ -516,7 +519,7 @@ type Query {
     """
     Apply one or multiple filters to the query.
     Supported filter parameters:
-    `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
+    `name`, `prefix`, `revoked_at`, `last_used_at`, `created_at`
     """
     query: String
   ): SystemApiKeyConnection!
@@ -628,7 +631,7 @@ type Query {
     """
     Apply one or multiple filters to the query.
     Supported filter parameters:
-    `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
+    `name`, `prefix`, `revoked_at`, `last_used_at`, `created_at`
     """
     query: String
   ): WorkspaceApiKeyConnection!
@@ -824,7 +827,7 @@ type SystemAccount {
     """
     Apply one or multiple filters to the query.
     Supported filter parameters:
-    `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
+    `name`, `prefix`, `revoked_at`, `last_used_at`, `created_at`
     """
     query: String
   ): SystemApiKeyConnection!
@@ -900,13 +903,13 @@ type SystemAccountPermissionOption {
 type SystemApiKey {
   createdAt: DateTime!
   createdById: ID
-  enabled: Boolean!
   expiresAt: DateTime
   id: ID!
   lastUsedAt: DateTime
   name: String!
   permissions: [SystemApiKeyPermission!]!
   prefix: String
+  revokedAt: DateTime
   start: String
   systemAccount: SystemAccount
   updatedAt: DateTime!
@@ -938,7 +941,7 @@ type SystemApiKeyEdge {
 
 """
 A filter for SystemApiKey that accepts MongoDB query syntax.
-Supported fields: name, prefix, enabled, last_used_at, created_at
+Supported fields: name, prefix, revoked_at, last_used_at, created_at
 """
 scalar SystemApiKeyFilter
 
@@ -956,6 +959,7 @@ enum SystemApiKeyOrderField {
   CREATED_AT
   ID
   LAST_USED_AT
+  REVOKED_AT
 }
 
 enum SystemApiKeyPermission {
@@ -989,14 +993,12 @@ input UpdateSystemAccountInput {
 }
 
 input UpdateSystemApiKeyInput {
-  enabled: Boolean
   expiresAt: DateTime
   name: String
   permissions: [SystemApiKeyPermission!]
 }
 
 input UpdateUserApiKeyInput {
-  enabled: Boolean
   expiresAt: DateTime
   name: String
   permissions: [UserApiKeyPermission!]
@@ -1014,7 +1016,6 @@ type UpdateUserPayload {
 }
 
 input UpdateWorkspaceApiKeyInput {
-  enabled: Boolean
   expiresAt: DateTime
   name: String
   permissions: [WorkspaceApiKeyPermission!]
@@ -1088,7 +1089,7 @@ type User {
     """
     Apply one or multiple filters to the query.
     Supported filter parameters:
-    `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
+    `name`, `prefix`, `revoked_at`, `last_used_at`, `created_at`
     """
     query: String
   ): UserApiKeyConnection!
@@ -1181,13 +1182,13 @@ type User {
 type UserApiKey {
   createdAt: DateTime!
   createdById: ID
-  enabled: Boolean!
   expiresAt: DateTime
   id: ID!
   lastUsedAt: DateTime
   name: String!
   permissions: [UserApiKeyPermission!]!
   prefix: String
+  revokedAt: DateTime
   start: String
   updatedAt: DateTime!
   user: User
@@ -1219,7 +1220,7 @@ type UserApiKeyEdge {
 
 """
 A filter for UserApiKey that accepts MongoDB query syntax.
-Supported fields: name, prefix, enabled, last_used_at, created_at
+Supported fields: name, prefix, revoked_at, last_used_at, created_at
 """
 scalar UserApiKeyFilter
 
@@ -1237,6 +1238,7 @@ enum UserApiKeyOrderField {
   CREATED_AT
   ID
   LAST_USED_AT
+  REVOKED_AT
 }
 
 enum UserApiKeyPermission {
@@ -1435,7 +1437,6 @@ type Workspace {
 type WorkspaceApiKey {
   createdAt: DateTime!
   createdById: ID
-  enabled: Boolean!
   expiresAt: DateTime
   id: ID!
   lastUsedAt: DateTime
@@ -1443,6 +1444,7 @@ type WorkspaceApiKey {
   name: String!
   permissions: [WorkspaceApiKeyPermission!]!
   prefix: String
+  revokedAt: DateTime
   start: String
   updatedAt: DateTime!
 }
@@ -1473,7 +1475,7 @@ type WorkspaceApiKeyEdge {
 
 """
 A filter for WorkspaceApiKey that accepts MongoDB query syntax.
-Supported fields: name, prefix, enabled, last_used_at, created_at
+Supported fields: name, prefix, revoked_at, last_used_at, created_at
 """
 scalar WorkspaceApiKeyFilter
 
@@ -1491,6 +1493,7 @@ enum WorkspaceApiKeyOrderField {
   CREATED_AT
   ID
   LAST_USED_AT
+  REVOKED_AT
 }
 
 enum WorkspaceApiKeyPermission {
@@ -1637,7 +1640,7 @@ type WorkspaceMember {
     """
     Apply one or multiple filters to the query.
     Supported filter parameters:
-    `name`, `prefix`, `enabled`, `last_used_at`, `created_at`
+    `name`, `prefix`, `revoked_at`, `last_used_at`, `created_at`
     """
     query: String
   ): WorkspaceApiKeyConnection!

@@ -85,6 +85,16 @@ export class WorkspaceApiKeyResolver {
   }
 
   /**
+   * Permanently revokes a key while retaining its audit record.
+   * @param id - Identifier of the credential.
+   * @returns Retained credential metadata.
+   */
+  @Mutation(() => WorkspaceApiKey)
+  revokeWorkspaceApiKey(@Args("id", { type: () => ID }) id: string) {
+    return this.apiKeyService.revokeWorkspaceApiKey(id);
+  }
+
+  /**
    * Deletes a credential owned by the current workspace.
    * @param id - Identifier of the record to access.
    * @returns Deleted API key metadata without the stored credential hash.

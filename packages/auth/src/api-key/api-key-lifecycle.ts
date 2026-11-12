@@ -1,8 +1,10 @@
 import type { EntityManager } from "@mikro-orm/core";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, NotFoundException } from "@nestjs/common";
 
+import { authorize } from "../common/utils/authorize.util.js";
 import type { AuthModuleOptions } from "../core/interfaces/auth-module-options.interface.js";
 import { RequestIdentity } from "../core/request-identity.js";
+import { ApiKey } from "./entities/api-key.entity.js";
 import type { CreateApiKeyOptions } from "./interfaces/create-api-key-options.interface.js";
 import type { UpdateApiKeyOptions } from "./interfaces/update-api-key-options.interface.js";
 import type { ApiKeyMetadata } from "./types/api-key-metadata.type.js";
@@ -31,7 +33,7 @@ export class ApiKeyLifecycle {
     return {
       apiKey,
       data: {
-        enabled: true,
+        revokedAt: null,
         expiresAt: options.expiresAt ?? null,
         key: hashApiKey(apiKey),
         name: options.name,
@@ -72,7 +74,6 @@ export class ApiKeyLifecycle {
     RequestIdentity.assertApiKeyCanCommit(em, apiKey);
     const previous = {
       name: apiKey.name,
-      enabled: apiKey.enabled,
       expiresAt: apiKey.expiresAt,
       permissions: apiKey.permissions,
       lastUsedAt: apiKey.lastUsedAt,
@@ -80,24 +81,76 @@ export class ApiKeyLifecycle {
     if (input.name !== undefined) {
       apiKey.name = input.name;
     }
-    if (input.enabled !== undefined) {
-      apiKey.enabled = input.enabled;
-    }
     if (input.expiresAt !== undefined) {
       apiKey.expiresAt = input.expiresAt;
     }
     if (permissions !== undefined) {
       apiKey.permissions = permissions;
     }
-    // Commit the final use before revocation removes the interceptor's identity.
-    if (input.enabled === false && RequestIdentity.isCurrentApiKey(apiKey)) {
-      apiKey.lastUsedAt = new Date();
-    }
     try {
       await em.persist(apiKey).flush();
     } catch (error) {
       Object.assign(apiKey, previous);
       throw error;
+    }
+    RequestIdentity.updateApiKey(em, options, apiKey);
+    return apiKey;
+  }
+
+  /**
+   * Permanently revokes a key, publishing self-revocation only after persistence succeeds.
+   * @param em - Entity manager used for persistence.
+   * @param options - Authentication feature configuration.
+   * @param apiKey - Authorized credential to revoke.
+   * @returns Retained credential metadata with its original revocation time.
+   */
+  static async revoke<Key extends ApiKeyMetadata>(
+    em: EntityManager,
+    options: AuthModuleOptions,
+    apiKey: Key,
+  ): Promise<Key> {
+    RequestIdentity.assertApiKeyCanCommit(em, apiKey);
+    authorize("write", apiKey, "revokedAt");
+    if (apiKey.revokedAt) {
+      return apiKey;
+    }
+    const revokedAt = new Date();
+    const candidate = Object.assign(
+      new (apiKey.constructor as new () => Key)(),
+      apiKey,
+      { revokedAt },
+    );
+    authorize("write", candidate);
+    authorize("write", candidate, "revokedAt");
+    // A conditional write preserves the first timestamp under concurrent revocation.
+    const current = RequestIdentity.isCurrentApiKey(apiKey);
+    const affected = await em.nativeUpdate(
+      ApiKey,
+      { id: apiKey.id, ownerType: apiKey.ownerType, revokedAt: null },
+      {
+        revokedAt,
+        updatedAt: revokedAt,
+        ...(current && { lastUsedAt: revokedAt }),
+      },
+    );
+    if (affected) {
+      apiKey.revokedAt = revokedAt;
+      apiKey.updatedAt = revokedAt;
+      if (current) {
+        apiKey.lastUsedAt = revokedAt;
+      }
+    } else {
+      const persisted = await em.findOne(
+        ApiKey,
+        { id: apiKey.id, ownerType: apiKey.ownerType },
+        { refresh: true },
+      );
+      if (!persisted?.revokedAt) {
+        throw new NotFoundException("API key not found");
+      }
+      apiKey.revokedAt = persisted.revokedAt;
+      apiKey.updatedAt = persisted.updatedAt;
+      apiKey.lastUsedAt = persisted.lastUsedAt;
     }
     RequestIdentity.updateApiKey(em, options, apiKey);
     return apiKey;

@@ -210,13 +210,9 @@ export class WorkspaceApiKeyService {
             "member",
             input.permissions ?? [],
           );
-    // Naming or disabling a key must not rewrite or expand retired grants.
-    // Re-enablement and expiration changes can restore access, so validate them.
-    if (
-      permissions !== undefined ||
-      input.enabled === true ||
-      (input.expiresAt !== undefined && input.enabled !== false)
-    ) {
+    // Naming a key must not rewrite or expand retired grants.
+    // Expiration changes can restore access to an expired key, so validate them.
+    if (permissions !== undefined || input.expiresAt !== undefined) {
       const finalPermissions =
         permissions ??
         normalizeApiKeyPermissions(
@@ -237,6 +233,23 @@ export class WorkspaceApiKeyService {
         input,
         permissions,
       ),
+    );
+  }
+
+  /**
+   * Permanently revokes a credential while retaining its audit metadata.
+   * @param id - Identifier of the credential.
+   * @returns Retained metadata with its revocation timestamp.
+   */
+  async revokeWorkspaceApiKey(
+    id: string,
+  ): Promise<ApiKeyMetadata<WorkspaceApiKey>> {
+    assertApiKeyFeature(this.authOptions, "workspaceApiKey");
+    authorize("write", WorkspaceApiKey);
+    const key = await this.findWritableApiKey(id);
+    authorize("write", key);
+    return toApiKeyView(
+      await ApiKeyLifecycle.revoke(this.em, this.authOptions, key),
     );
   }
 

@@ -44,15 +44,19 @@ export class ApiKeyAuthenticationService {
       ...(features.systemApiKey ? ["system_account" as const] : []),
     ];
     const key = hashApiKey(plaintext);
-    const apiKey = await this.em.findOne(ApiKey, {
-      key,
-      ownerType: { $in: owners },
-    });
+    const apiKey = await this.em.findOne(
+      ApiKey,
+      {
+        key,
+        ownerType: { $in: owners },
+      },
+      { refresh: true },
+    );
     if (!apiKey || !owners.includes(apiKey.ownerType)) {
       throw new UnauthorizedException("Invalid API key");
     }
-    if (!apiKey.enabled) {
-      throw new UnauthorizedException("API key is disabled");
+    if (apiKey.revokedAt) {
+      throw new UnauthorizedException("API key is revoked");
     }
     if (apiKey.expiresAt && apiKey.expiresAt <= new Date()) {
       throw new UnauthorizedException("API key has expired");

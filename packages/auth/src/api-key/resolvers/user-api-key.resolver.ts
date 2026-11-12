@@ -79,6 +79,16 @@ export class UserApiKeyResolver {
   }
 
   /**
+   * Permanently revokes a key while retaining its audit record.
+   * @param id - Identifier of the credential.
+   * @returns Retained credential metadata.
+   */
+  @Mutation(() => UserApiKey)
+  revokeUserApiKey(@Args("id", { type: () => ID }) id: string) {
+    return this.apiKeyService.revokeUserApiKey(id);
+  }
+
+  /**
    * Deletes a credential owned by the current user.
    * @param id - Identifier of the record to access.
    * @returns Deleted API key metadata without the stored credential hash.

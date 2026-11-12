@@ -333,23 +333,6 @@
           "enumItems": [],
           "mappedType": "bigint"
         },
-        "enabled": {
-          "name": "enabled",
-          "type": "boolean",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": "true",
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "boolean"
-        },
         "expires_at": {
           "name": "expires_at",
           "type": "timestamptz(6)",
@@ -502,6 +485,23 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "string"
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
         },
         "start": {
           "name": "start",

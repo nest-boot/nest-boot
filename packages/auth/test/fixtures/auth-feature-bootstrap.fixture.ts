@@ -10,7 +10,7 @@ import { ApolloDriver } from "@nestjs/apollo";
 import { Global, Module } from "@nestjs/common";
 import { GraphQLModule, GraphQLSchemaHost } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
-import type { GraphQLObjectType } from "graphql";
+import type { GraphQLInputObjectType, GraphQLObjectType } from "graphql";
 
 import { SystemAccountService } from "../../src/admin/services/system-account.service.js";
 import { ApiKey } from "../../src/api-key/entities/api-key.entity.js";
@@ -144,6 +144,11 @@ export async function verifyAuthFeatures(
       expected.owners.includes("WorkspaceMember"),
     );
     expect(!!mutations.createSystemApiKey).toBe(systemManagement);
+    expect(!!mutations.revokeUserApiKey).toBe(expected.owners.includes("User"));
+    expect(!!mutations.revokeWorkspaceApiKey).toBe(
+      expected.owners.includes("WorkspaceMember"),
+    );
+    expect(!!mutations.revokeSystemApiKey).toBe(systemManagement);
     expect(
       !!(schema.getType("User") as GraphQLObjectType).getFields().apiKeys,
     ).toBe(expected.owners.includes("User"));
@@ -171,6 +176,18 @@ export async function verifyAuthFeatures(
       [SystemApiKeyService, systemManagement],
     ] as const) {
       expect(!!app.get(token)).toBe(enabled);
+    }
+    for (const scope of ["User", "Workspace", "System"]) {
+      const input = schema.getType(`Update${scope}ApiKeyInput`) as
+        | GraphQLInputObjectType
+        | undefined;
+      if (input) {
+        expect(input.getFields()).not.toHaveProperty("enabled");
+        expect(input.getFields()).not.toHaveProperty("revokedAt");
+        const output = schema.getType(`${scope}ApiKey`) as GraphQLObjectType;
+        expect(output.getFields()).not.toHaveProperty("enabled");
+        expect(output.getFields()).toHaveProperty("revokedAt");
+      }
     }
     expect(schema.getType("ApiKeyOwner")).toBeUndefined();
 
@@ -213,6 +230,52 @@ export async function verifyAuthFeatures(
         errors?: { message: string; extensions?: { code?: string } }[];
       };
     };
+    const verifyRevocation = async (
+      scope: "User" | "Workspace" | "System",
+      created: { apiKey: string; entity: { id: string } },
+      headers: Record<string, string> = {},
+    ) => {
+      const record = await orm.em
+        .fork()
+        .findOneOrFail(ApiKey, created.entity.id);
+      expect(record.revokedAt).toBeNull();
+      const operation = `revoke${scope}ApiKey`;
+      const source = `mutation($id: ID!) { ${operation}(id: $id) {id revokedAt} }`;
+      const revoked = await graphql(
+        source,
+        { id: record.id },
+        scope === "System"
+          ? headers
+          : {
+              ...headers,
+              cookie: "",
+              authorization: `Bearer ${created.apiKey}`,
+            },
+      );
+      expect(revoked.errors).toBeUndefined();
+      const timestamp = revoked.data?.[operation].revokedAt;
+      expect(timestamp).toEqual(expect.any(String));
+      const repeated = await graphql(source, { id: record.id }, headers);
+      expect(repeated.errors).toBeUndefined();
+      expect(repeated.data?.[operation].revokedAt).toBe(timestamp);
+      const stored = await orm.em.fork().findOneOrFail(ApiKey, record.id);
+      expect(stored.revokedAt?.toISOString()).toBe(timestamp);
+      expect(stored.permissions).toEqual(record.permissions);
+      expect(stored.key).toBe(record.key);
+      const rejected = await fetch(url + "/graphql", {
+        method: "POST",
+        headers: {
+          ...headers,
+          "content-type": "application/json",
+          authorization: `Bearer ${created.apiKey}`,
+        },
+        body: JSON.stringify({ query: "{ currentUser { id } }" }),
+      });
+      expect(rejected.status).toBe(401);
+      expect(await rejected.json()).toMatchObject({
+        message: "API key is revoked",
+      });
+    };
     expect((await graphql("{ currentUser { id } }")).data?.currentUser.id).toBe(
       body.user.id,
     );
@@ -239,6 +302,7 @@ export async function verifyAuthFeatures(
         __typename: "User",
         id: body.user.id,
       });
+      await verifyRevocation("User", key.data?.createUserApiKey);
     }
     if (expected.workspace) {
       const workspace = await graphql(
@@ -293,6 +357,9 @@ export async function verifyAuthFeatures(
           expectedKeys,
         );
         expect(lists.data?.workspaceApiKeys.edges).toEqual(expectedKeys);
+        await verifyRevocation("Workspace", key.data?.createWorkspaceApiKey, {
+          "x-workspace-id": workspaceId,
+        });
       }
     }
     if (expected.admin) {
@@ -328,6 +395,7 @@ export async function verifyAuthFeatures(
           __typename: "SystemAccount",
           id: account.data?.createSystemAccount.id,
         });
+        await verifyRevocation("System", key.data?.createSystemApiKey);
       }
       const deleted = await graphql(
         "mutation($id: ID!) { deleteSystemAccount(id: $id) {id} }",

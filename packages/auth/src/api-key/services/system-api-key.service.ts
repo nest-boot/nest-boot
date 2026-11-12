@@ -274,15 +274,15 @@ export class SystemApiKeyService {
           if (!key) {
             throw new NotFoundException("System account API key not found");
           }
-          // Retained audit keys can be renamed or disabled after account deletion.
-          // Activating a key or changing its grants still requires a live owner.
-          if (
-            !account &&
-            (permissions !== undefined || input.enabled === true)
-          ) {
+          // Retained audit keys can be renamed after account deletion.
+          // Changing their grants still requires a live owner.
+          if (!account && permissions !== undefined) {
             throw new NotFoundException("System account not found");
           }
-          if (account && input.enabled !== false) {
+          if (
+            account &&
+            (permissions !== undefined || input.expiresAt !== undefined)
+          ) {
             const grants =
               permissions ??
               normalizeApiKeyPermissions(
@@ -301,7 +301,6 @@ export class SystemApiKeyService {
           authorize("write", key);
           const candidate = Object.assign(new ApiKey(), key, {
             ...(input.name !== undefined && { name: input.name }),
-            ...(input.enabled !== undefined && { enabled: input.enabled }),
             ...(input.expiresAt !== undefined && {
               expiresAt: input.expiresAt,
             }),
@@ -328,9 +327,31 @@ export class SystemApiKeyService {
   }
 
   /**
-   * Revokes one system key without affecting user or member credentials.
+   * Permanently revokes a system key, including one whose owner no longer exists.
+   * @param id - Identifier of the credential.
+   * @returns Retained audit metadata with its revocation timestamp.
+   */
+  async revokeSystemApiKey(id: string): Promise<ApiKeyMetadata<SystemApiKey>> {
+    this.assertAccess("write");
+    return await runAuthQuery(this.em, async (em) => {
+      const key = await em.findOne(
+        ApiKey,
+        { id, ownerType: "system_account" },
+        { refresh: true },
+      );
+      if (!key) {
+        throw new NotFoundException("System account API key not found");
+      }
+      assertApiKeyOwner(key, "system_account");
+      authorize("write", key);
+      return toApiKeyView(await ApiKeyLifecycle.revoke(em, this.options, key));
+    });
+  }
+
+  /**
+   * Deletes one system key without affecting user or member credentials.
    * @param id - Identifier of the target record.
-   * @returns Metadata of the revoked credential.
+   * @returns Metadata of the deleted credential.
    */
   async deleteSystemApiKey(id: string): Promise<ApiKeyMetadata<SystemApiKey>> {
     this.assertAccess("write");

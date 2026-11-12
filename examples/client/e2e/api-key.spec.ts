@@ -609,10 +609,18 @@ async function exerciseApiKeyLifecycle(
   // A non-link cell opens the same detail route as the name link.
   await row.getByRole("cell").nth(2).click();
   await expect(page).toHaveURL(new URL(detailPath!, listUrl).href);
-  await clickPageAction(page, "Disable");
-  await expect(page.getByText("Disabled", { exact: true })).toBeVisible();
-  await clickPageAction(page, "Enable");
-  await expect(page.getByText("Active", { exact: true })).toBeVisible();
+  await clickPageAction(page, "Revoke");
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Revoke", exact: true })
+    .click();
+  await expect(page.getByText("Revoked", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Enable", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Revoke", exact: true }),
+  ).toHaveCount(0);
 
   await page.reload();
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue(

@@ -126,10 +126,14 @@ describe("API-key authentication", () => {
         apiKey: key,
         ownerType: scope === "member" ? "workspace_member" : scope,
       });
-      expect(em.findOne).toHaveBeenCalledWith(ApiKey, {
-        key: hashApiKey("plaintext"),
-        ownerType: { $in: ["user", "workspace_member", "system_account"] },
-      });
+      expect(em.findOne).toHaveBeenCalledWith(
+        ApiKey,
+        {
+          key: hashApiKey("plaintext"),
+          ownerType: { $in: ["user", "workspace_member", "system_account"] },
+        },
+        { refresh: true },
+      );
       expect(em.findOne).toHaveBeenCalledWith(
         scope === "user" ? User : WorkspaceMember,
         key?.owner.id,
@@ -140,14 +144,14 @@ describe("API-key authentication", () => {
       );
       expect(em.findOne).toHaveBeenCalledTimes(2);
     });
-    it.each(["disabled", "expired"])(
+    it.each(["revoked", "expired"])(
       `rejects %s ${scope} keys`,
       async (state) => {
         const { service, rows, userKey, memberKey } = fixture();
         rows[scope === "user" ? "member" : "user"] = null;
         const key = scope === "user" ? userKey : memberKey;
-        if (state === "disabled") {
-          key.enabled = false;
+        if (state === "revoked") {
+          key.revokedAt = new Date();
         } else {
           key.expiresAt = new Date(0);
         }
@@ -267,10 +271,14 @@ describe("optional workspace behavior", () => {
       user,
       apiKey: key,
     });
-    expect(em.findOne).toHaveBeenCalledWith(ApiKey, {
-      key: hashApiKey("personal-key"),
-      ownerType: { $in: ["user"] },
-    });
+    expect(em.findOne).toHaveBeenCalledWith(
+      ApiKey,
+      {
+        key: hashApiKey("personal-key"),
+        ownerType: { $in: ["user"] },
+      },
+      { refresh: true },
+    );
     expect(em.findOne).toHaveBeenCalledWith(User, user.id, { refresh: true });
     expect(em.populate).not.toHaveBeenCalled();
     em.findOne.mockResolvedValue(new WorkspaceApiKey(new ApiKey()));

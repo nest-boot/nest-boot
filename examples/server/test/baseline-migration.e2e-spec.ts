@@ -26,6 +26,16 @@ it('builds the current example schema from ordered migrations and can roll back 
     const migrated = await orm.migrator.up();
     expect(migrated).toHaveLength(2);
     expect(migrated[0].name).toBe(Migration00000000000000_Initial.name);
+    const columns = await fixture.pool.query(
+      "select column_name, data_type, is_nullable from information_schema.columns where table_schema = 'public' and table_name = 'api_key' and column_name in ('enabled', 'revoked_at') order by column_name",
+    );
+    expect(columns.rows).toEqual([
+      {
+        column_name: 'revoked_at',
+        data_type: 'timestamp with time zone',
+        is_nullable: 'YES',
+      },
+    ]);
     expect(await orm.migrator.getPending()).toEqual([]);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
     expect(await orm.migrator.checkSchema()).toBe(false);

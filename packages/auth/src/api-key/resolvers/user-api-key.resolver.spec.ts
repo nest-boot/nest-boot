@@ -85,14 +85,12 @@ describe("UserApiKeyResolver", () => {
 
     await expect(
       resolver.updateUserApiKey("api_key_1", {
-        enabled: false,
         name: "New",
         permissions: ["user:update"],
       }),
     ).resolves.toBe(apiKey);
     await expect(resolver.deleteUserApiKey("api_key_1")).resolves.toBe(apiKey);
     expect(apiKeyService.updateUserApiKey).toHaveBeenCalledWith("api_key_1", {
-      enabled: false,
       name: "New",
       permissions: ["user:update"],
     });

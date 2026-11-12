@@ -40,7 +40,7 @@ describe("auth service execution boundaries", () => {
     const apiKey = Object.assign(new UserApiKey(new ApiKey()), {
       id: "key-1",
       user,
-      enabled: true,
+      revokedAt: null,
     });
     isolated.findOne.mockResolvedValueOnce(apiKey).mockResolvedValueOnce(user);
     const provider = authServiceProviders.find(

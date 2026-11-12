@@ -40,7 +40,7 @@ const LIST = graphql(`
             id
             name
           }
-          enabled
+          revokedAt
           permissions
           prefix
           start

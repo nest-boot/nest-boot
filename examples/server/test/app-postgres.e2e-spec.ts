@@ -2316,7 +2316,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
   it.each(['user', 'workspace'] as const)(
     'revokes stale authorization after changing the authenticating %s key',
     async (scope) => {
-      for (const action of ['permissions', 'disable', 'delete'] as const) {
+      for (const action of ['permissions', 'revoke', 'delete'] as const) {
         const owner = await createAuthenticatedUser('Key authorization owner');
         const workspace = await createWorkspace(
           owner,
@@ -2339,7 +2339,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         const first =
           action === 'delete'
             ? `delete${suffix}(id: $keyId)`
-            : `update${suffix}(id: $keyId, input: ${action === 'disable' ? '{ enabled: false }' : `{ permissions: [${input.permissions[0]}] }`})`;
+            : action === 'revoke'
+              ? `revoke${suffix}(id: $keyId)`
+              : `update${suffix}(id: $keyId, input: { permissions: [${input.permissions[0]}] })`;
         const response = await gql(
           `mutation ($keyId: ID!, $id: ID!) { first: ${first} { id } deleteWorkspace(id: $id) { id } }`,
           {
@@ -2361,13 +2363,13 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         ).toEqual([{ id: workspace.id }]);
         const table = 'api_key';
         const rows = await migrationOrm.em.execute(
-          `select enabled, permissions, last_used_at from ${table} where id = ?`,
+          `select revoked_at, permissions, last_used_at from ${table} where id = ?`,
           [key.entity.id],
         );
         if (action === 'delete') {
           expect(rows).toEqual([]);
-        } else if (action === 'disable') {
-          expect(rows[0].enabled).toBe(false);
+        } else if (action === 'revoke') {
+          expect(rows[0].revoked_at).not.toBeNull();
           expect(rows[0].last_used_at).not.toBeNull();
         } else {
           expect(rows[0].permissions).toEqual([
@@ -4642,7 +4644,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     },
   );
 
-  it('enforces workspace API-key permissions and enabled state', async () => {
+  it('enforces workspace API-key permissions and permanent revocation', async () => {
     const owner = await createAuthenticatedUser('Restricted Key Owner');
     const workspace = await createWorkspace(owner, 'Restricted API Workspace');
     const restrictedKey = await createWorkspaceApiKey(owner, workspace.id, {
@@ -4714,10 +4716,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     const disabled = await gql(
       /* GraphQL */ `
-        mutation UpdateApiKey($id: ID!, $input: UpdateWorkspaceApiKeyInput!) {
-          updateWorkspaceApiKey(id: $id, input: $input) {
+        mutation RevokeApiKey($id: ID!) {
+          revokeWorkspaceApiKey(id: $id) {
             id
-            enabled
+            revokedAt
           }
         }
       `,
@@ -4726,13 +4728,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         workspaceId: workspace.id,
         variables: {
           id: restrictedKey.entity.id,
-          input: { enabled: false },
         },
       },
     );
 
     expectNoGraphQLErrors(disabled);
-    expect(disabled.body.data.updateWorkspaceApiKey.enabled).toBe(false);
+    expect(disabled.body.data.revokeWorkspaceApiKey.revokedAt).toEqual(
+      expect.any(String),
+    );
 
     const rejectedDisabledKey = await gql(
       /* GraphQL */ `
@@ -4747,7 +4750,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expect(rejectedDisabledKey.status).toBe(401);
     expect(rejectedDisabledKey.body).toMatchObject({
-      message: 'API key is disabled',
+      message: 'API key is revoked',
       statusCode: 401,
     });
   });
@@ -5909,7 +5912,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             entity {
               id
               name
-              enabled
+              revokedAt
               permissions
               prefix
               start
@@ -5934,7 +5937,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       new RegExp(`^${input.prefix ?? 'ws_'}[A-Za-z0-9_-]{64}$`),
     );
     expect(response.body.data.createWorkspaceApiKey.entity).toMatchObject({
-      enabled: true,
+      revokedAt: null,
       permissions: input.permissions ?? [],
       prefix: input.prefix ?? 'ws_',
       start: response.body.data.createWorkspaceApiKey.apiKey.slice(0, 8),
@@ -5949,7 +5952,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       entity: {
         id: string;
         name: string;
-        enabled: boolean;
+        revokedAt: string | null;
         permissions: string[];
         prefix: string;
         start: string;
@@ -5984,7 +5987,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
             entity {
               id
               name
-              enabled
+              revokedAt
               permissions
               prefix
               start

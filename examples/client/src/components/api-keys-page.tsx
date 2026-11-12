@@ -46,7 +46,7 @@ export type ApiKeyRow<
     | "name"
     | "start"
     | "prefix"
-    | "enabled"
+    | "revokedAt"
     | "permissions"
     | "createdAt"
     | "lastUsedAt"

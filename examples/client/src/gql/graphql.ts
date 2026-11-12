@@ -56,12 +56,12 @@ export type Scalars = {
   SystemAccountFilter: { input: any; output: any };
   /**
    * A filter for SystemApiKey that accepts MongoDB query syntax.
-   * Supported fields: name, prefix, enabled, last_used_at, created_at
+   * Supported fields: name, prefix, revoked_at, last_used_at, created_at
    */
   SystemApiKeyFilter: { input: any; output: any };
   /**
    * A filter for UserApiKey that accepts MongoDB query syntax.
-   * Supported fields: name, prefix, enabled, last_used_at, created_at
+   * Supported fields: name, prefix, revoked_at, last_used_at, created_at
    */
   UserApiKeyFilter: { input: any; output: any };
   /**
@@ -71,7 +71,7 @@ export type Scalars = {
   UserFilter: { input: any; output: any };
   /**
    * A filter for WorkspaceApiKey that accepts MongoDB query syntax.
-   * Supported fields: name, prefix, enabled, last_used_at, created_at
+   * Supported fields: name, prefix, revoked_at, last_used_at, created_at
    */
   WorkspaceApiKeyFilter: { input: any; output: any };
   /**
@@ -486,7 +486,10 @@ export type Mutation = {
   revokeCurrentUserSession: Scalars["Boolean"]["output"];
   revokeCurrentUserSessions: Scalars["Boolean"]["output"];
   revokeSession: Scalars["Boolean"]["output"];
+  revokeSystemApiKey: SystemApiKey;
+  revokeUserApiKey: UserApiKey;
   revokeUserSessions: Scalars["Boolean"]["output"];
+  revokeWorkspaceApiKey: WorkspaceApiKey;
   sendVerificationEmail: Scalars["Boolean"]["output"];
   setCurrentUserPassword: Scalars["Boolean"]["output"];
   setUserPassword: Scalars["Boolean"]["output"];
@@ -631,8 +634,20 @@ export type MutationRevokeSessionArgs = {
   userId: Scalars["ID"]["input"];
 };
 
+export type MutationRevokeSystemApiKeyArgs = {
+  id: Scalars["ID"]["input"];
+};
+
+export type MutationRevokeUserApiKeyArgs = {
+  id: Scalars["ID"]["input"];
+};
+
 export type MutationRevokeUserSessionsArgs = {
   userId: Scalars["ID"]["input"];
+};
+
+export type MutationRevokeWorkspaceApiKeyArgs = {
+  id: Scalars["ID"]["input"];
 };
 
 export type MutationSendVerificationEmailArgs = {
@@ -1105,13 +1120,13 @@ export type SystemApiKey = {
   __typename?: "SystemApiKey";
   createdAt: Scalars["DateTime"]["output"];
   createdById?: Maybe<Scalars["ID"]["output"]>;
-  enabled: Scalars["Boolean"]["output"];
   expiresAt?: Maybe<Scalars["DateTime"]["output"]>;
   id: Scalars["ID"]["output"];
   lastUsedAt?: Maybe<Scalars["DateTime"]["output"]>;
   name: Scalars["String"]["output"];
   permissions: Array<SystemApiKeyPermission>;
   prefix?: Maybe<Scalars["String"]["output"]>;
+  revokedAt?: Maybe<Scalars["DateTime"]["output"]>;
   start?: Maybe<Scalars["String"]["output"]>;
   systemAccount?: Maybe<SystemAccount>;
   updatedAt: Scalars["DateTime"]["output"];
@@ -1150,6 +1165,7 @@ export const SystemApiKeyOrderField = {
   CREATED_AT: "CREATED_AT",
   ID: "ID",
   LAST_USED_AT: "LAST_USED_AT",
+  REVOKED_AT: "REVOKED_AT",
 } as const;
 
 export type SystemApiKeyOrderField =
@@ -1191,14 +1207,12 @@ export type UpdateSystemAccountInput = {
 };
 
 export type UpdateSystemApiKeyInput = {
-  enabled?: InputMaybe<Scalars["Boolean"]["input"]>;
   expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
   name?: InputMaybe<Scalars["String"]["input"]>;
   permissions?: InputMaybe<Array<SystemApiKeyPermission>>;
 };
 
 export type UpdateUserApiKeyInput = {
-  enabled?: InputMaybe<Scalars["Boolean"]["input"]>;
   expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
   name?: InputMaybe<Scalars["String"]["input"]>;
   permissions?: InputMaybe<Array<UserApiKeyPermission>>;
@@ -1217,7 +1231,6 @@ export type UpdateUserPayload = {
 };
 
 export type UpdateWorkspaceApiKeyInput = {
-  enabled?: InputMaybe<Scalars["Boolean"]["input"]>;
   expiresAt?: InputMaybe<Scalars["DateTime"]["input"]>;
   name?: InputMaybe<Scalars["String"]["input"]>;
   permissions?: InputMaybe<Array<WorkspaceApiKeyPermission>>;
@@ -1323,13 +1336,13 @@ export type UserApiKey = {
   __typename?: "UserApiKey";
   createdAt: Scalars["DateTime"]["output"];
   createdById?: Maybe<Scalars["ID"]["output"]>;
-  enabled: Scalars["Boolean"]["output"];
   expiresAt?: Maybe<Scalars["DateTime"]["output"]>;
   id: Scalars["ID"]["output"];
   lastUsedAt?: Maybe<Scalars["DateTime"]["output"]>;
   name: Scalars["String"]["output"];
   permissions: Array<UserApiKeyPermission>;
   prefix?: Maybe<Scalars["String"]["output"]>;
+  revokedAt?: Maybe<Scalars["DateTime"]["output"]>;
   start?: Maybe<Scalars["String"]["output"]>;
   updatedAt: Scalars["DateTime"]["output"];
   user?: Maybe<User>;
@@ -1368,6 +1381,7 @@ export const UserApiKeyOrderField = {
   CREATED_AT: "CREATED_AT",
   ID: "ID",
   LAST_USED_AT: "LAST_USED_AT",
+  REVOKED_AT: "REVOKED_AT",
 } as const;
 
 export type UserApiKeyOrderField =
@@ -1541,7 +1555,6 @@ export type WorkspaceApiKey = {
   __typename?: "WorkspaceApiKey";
   createdAt: Scalars["DateTime"]["output"];
   createdById?: Maybe<Scalars["ID"]["output"]>;
-  enabled: Scalars["Boolean"]["output"];
   expiresAt?: Maybe<Scalars["DateTime"]["output"]>;
   id: Scalars["ID"]["output"];
   lastUsedAt?: Maybe<Scalars["DateTime"]["output"]>;
@@ -1549,6 +1562,7 @@ export type WorkspaceApiKey = {
   name: Scalars["String"]["output"];
   permissions: Array<WorkspaceApiKeyPermission>;
   prefix?: Maybe<Scalars["String"]["output"]>;
+  revokedAt?: Maybe<Scalars["DateTime"]["output"]>;
   start?: Maybe<Scalars["String"]["output"]>;
   updatedAt: Scalars["DateTime"]["output"];
 };
@@ -1586,6 +1600,7 @@ export const WorkspaceApiKeyOrderField = {
   CREATED_AT: "CREATED_AT",
   ID: "ID",
   LAST_USED_AT: "LAST_USED_AT",
+  REVOKED_AT: "REVOKED_AT",
 } as const;
 
 export type WorkspaceApiKeyOrderField =
@@ -1843,7 +1858,7 @@ export type ManagedSystemAccountKeysQuery = {
         __typename?: "SystemApiKey";
         id: string;
         name: string;
-        enabled: boolean;
+        revokedAt?: any | null;
         permissions: Array<SystemApiKeyPermission>;
         prefix?: string | null;
         start?: string | null;
@@ -2255,7 +2270,7 @@ export type DeleteUserApiKeyFromUserApiKeysRouteMutation = {
     name: string;
     start?: string | null;
     prefix?: string | null;
-    enabled: boolean;
+    revokedAt?: any | null;
     permissions: Array<UserApiKeyPermission>;
     createdAt: any;
     lastUsedAt?: any | null;
@@ -2283,7 +2298,7 @@ export type GetUserApiKeyDetailsQuery = {
       name: string;
       start?: string | null;
       prefix?: string | null;
-      enabled: boolean;
+      revokedAt?: any | null;
       permissions: Array<UserApiKeyPermission>;
       createdAt: any;
       lastUsedAt?: any | null;
@@ -2338,7 +2353,7 @@ export type CreateUserApiKeyFromUserApiKeysRouteMutation = {
       name: string;
       start?: string | null;
       prefix?: string | null;
-      enabled: boolean;
+      revokedAt?: any | null;
       permissions: Array<UserApiKeyPermission>;
       createdAt: any;
       lastUsedAt?: any | null;
@@ -2385,7 +2400,7 @@ export type GetUserApiKeysFromUserApiKeysRouteQuery = {
           name: string;
           start?: string | null;
           prefix?: string | null;
-          enabled: boolean;
+          revokedAt?: any | null;
           permissions: Array<UserApiKeyPermission>;
           createdAt: any;
           lastUsedAt?: any | null;
@@ -2700,7 +2715,7 @@ export type DeleteWorkspaceApiKeyFromApiKeysRouteMutation = {
     name: string;
     start?: string | null;
     prefix?: string | null;
-    enabled: boolean;
+    revokedAt?: any | null;
     permissions: Array<WorkspaceApiKeyPermission>;
     createdAt: any;
     lastUsedAt?: any | null;
@@ -2728,7 +2743,7 @@ export type GetWorkspaceApiKeyDetailsQuery = {
       name: string;
       start?: string | null;
       prefix?: string | null;
-      enabled: boolean;
+      revokedAt?: any | null;
       permissions: Array<WorkspaceApiKeyPermission>;
       createdAt: any;
       lastUsedAt?: any | null;
@@ -2785,7 +2800,7 @@ export type CreateWorkspaceApiKeyFromApiKeysRouteMutation = {
       name: string;
       start?: string | null;
       prefix?: string | null;
-      enabled: boolean;
+      revokedAt?: any | null;
       permissions: Array<WorkspaceApiKeyPermission>;
       createdAt: any;
       lastUsedAt?: any | null;
@@ -2856,7 +2871,7 @@ export type GetApiKeysFromApiKeysRouteQuery = {
         name: string;
         start?: string | null;
         prefix?: string | null;
-        enabled: boolean;
+        revokedAt?: any | null;
         permissions: Array<WorkspaceApiKeyPermission>;
         createdAt: any;
         lastUsedAt?: any | null;
@@ -3378,6 +3393,32 @@ export type AddWorkspaceServiceAccountFromWorkspaceMembersRouteMutation = {
   addWorkspaceMember: { __typename?: "AddWorkspaceMemberPayload"; id: string };
 };
 
+export type RevokeUserApiKeyFromApiKeysRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
+
+export type RevokeUserApiKeyFromApiKeysRouteMutation = {
+  __typename?: "Mutation";
+  revokeUserApiKey: {
+    __typename?: "UserApiKey";
+    id: string;
+    revokedAt?: any | null;
+  };
+};
+
+export type RevokeWorkspaceApiKeyFromApiKeysRouteMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
+
+export type RevokeWorkspaceApiKeyFromApiKeysRouteMutation = {
+  __typename?: "Mutation";
+  revokeWorkspaceApiKey: {
+    __typename?: "WorkspaceApiKey";
+    id: string;
+    revokedAt?: any | null;
+  };
+};
+
 export type UpdateUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
   input: UpdateUserApiKeyInput;
@@ -3391,7 +3432,7 @@ export type UpdateUserApiKeyFromUserApiKeysRouteMutation = {
     name: string;
     start?: string | null;
     prefix?: string | null;
-    enabled: boolean;
+    revokedAt?: any | null;
     permissions: Array<UserApiKeyPermission>;
     createdAt: any;
     lastUsedAt?: any | null;
@@ -3412,7 +3453,7 @@ export type UpdateWorkspaceApiKeyFromApiKeysRouteMutation = {
     name: string;
     start?: string | null;
     prefix?: string | null;
-    enabled: boolean;
+    revokedAt?: any | null;
     permissions: Array<WorkspaceApiKeyPermission>;
     createdAt: any;
     lastUsedAt?: any | null;
@@ -3503,7 +3544,7 @@ export type ManagedSystemAccountKeyQuery = {
     __typename?: "SystemApiKey";
     id: string;
     name: string;
-    enabled: boolean;
+    revokedAt?: any | null;
     permissions: Array<SystemApiKeyPermission>;
     prefix?: string | null;
     start?: string | null;
@@ -3579,6 +3620,19 @@ export type SystemKeyAccountChoicesQuery = {
       hasNextPage: boolean;
       endCursor?: string | null;
     };
+  };
+};
+
+export type RevokeManagedSystemAccountKeyMutationVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
+
+export type RevokeManagedSystemAccountKeyMutation = {
+  __typename?: "Mutation";
+  revokeSystemApiKey: {
+    __typename?: "SystemApiKey";
+    id: string;
+    revokedAt?: any | null;
   };
 };
 
@@ -3771,7 +3825,7 @@ export const ManagedSystemAccountKeysDocument = {
                             },
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "enabled" },
+                              name: { kind: "Name", value: "revokedAt" },
                             },
                             {
                               kind: "Field",
@@ -5882,7 +5936,7 @@ export const DeleteUserApiKeyFromUserApiKeysRouteDocument = {
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "start" } },
                 { kind: "Field", name: { kind: "Name", value: "prefix" } },
-                { kind: "Field", name: { kind: "Name", value: "enabled" } },
+                { kind: "Field", name: { kind: "Name", value: "revokedAt" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                 { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
@@ -5961,7 +6015,7 @@ export const GetUserApiKeyDetailsDocument = {
                       },
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "enabled" },
+                        name: { kind: "Name", value: "revokedAt" },
                       },
                       {
                         kind: "Field",
@@ -6275,7 +6329,7 @@ export const CreateUserApiKeyFromUserApiKeysRouteDocument = {
                       },
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "enabled" },
+                        name: { kind: "Name", value: "revokedAt" },
                       },
                       {
                         kind: "Field",
@@ -6508,7 +6562,7 @@ export const GetUserApiKeysFromUserApiKeysRouteDocument = {
                                   },
                                   {
                                     kind: "Field",
-                                    name: { kind: "Name", value: "enabled" },
+                                    name: { kind: "Name", value: "revokedAt" },
                                   },
                                   {
                                     kind: "Field",
@@ -7974,7 +8028,7 @@ export const DeleteWorkspaceApiKeyFromApiKeysRouteDocument = {
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "start" } },
                 { kind: "Field", name: { kind: "Name", value: "prefix" } },
-                { kind: "Field", name: { kind: "Name", value: "enabled" } },
+                { kind: "Field", name: { kind: "Name", value: "revokedAt" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                 { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
@@ -8074,7 +8128,7 @@ export const GetWorkspaceApiKeyDetailsDocument = {
                       },
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "enabled" },
+                        name: { kind: "Name", value: "revokedAt" },
                       },
                       {
                         kind: "Field",
@@ -8388,7 +8442,7 @@ export const CreateWorkspaceApiKeyFromApiKeysRouteDocument = {
                       },
                       {
                         kind: "Field",
-                        name: { kind: "Name", value: "enabled" },
+                        name: { kind: "Name", value: "revokedAt" },
                       },
                       {
                         kind: "Field",
@@ -8837,7 +8891,7 @@ export const GetApiKeysFromApiKeysRouteDocument = {
                             },
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "enabled" },
+                              name: { kind: "Name", value: "revokedAt" },
                             },
                             {
                               kind: "Field",
@@ -11231,6 +11285,104 @@ export const AddWorkspaceServiceAccountFromWorkspaceMembersRouteDocument = {
   AddWorkspaceServiceAccountFromWorkspaceMembersRouteMutation,
   AddWorkspaceServiceAccountFromWorkspaceMembersRouteMutationVariables
 >;
+export const RevokeUserApiKeyFromApiKeysRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "revokeUserApiKeyFromApiKeysRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "revokeUserApiKey" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "revokedAt" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  RevokeUserApiKeyFromApiKeysRouteMutation,
+  RevokeUserApiKeyFromApiKeysRouteMutationVariables
+>;
+export const RevokeWorkspaceApiKeyFromApiKeysRouteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "revokeWorkspaceApiKeyFromApiKeysRoute" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "revokeWorkspaceApiKey" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "revokedAt" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  RevokeWorkspaceApiKeyFromApiKeysRouteMutation,
+  RevokeWorkspaceApiKeyFromApiKeysRouteMutationVariables
+>;
 export const UpdateUserApiKeyFromUserApiKeysRouteDocument = {
   kind: "Document",
   definitions: [
@@ -11293,7 +11445,7 @@ export const UpdateUserApiKeyFromUserApiKeysRouteDocument = {
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "start" } },
                 { kind: "Field", name: { kind: "Name", value: "prefix" } },
-                { kind: "Field", name: { kind: "Name", value: "enabled" } },
+                { kind: "Field", name: { kind: "Name", value: "revokedAt" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                 { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
@@ -11371,7 +11523,7 @@ export const UpdateWorkspaceApiKeyFromApiKeysRouteDocument = {
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "start" } },
                 { kind: "Field", name: { kind: "Name", value: "prefix" } },
-                { kind: "Field", name: { kind: "Name", value: "enabled" } },
+                { kind: "Field", name: { kind: "Name", value: "revokedAt" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                 { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
@@ -11778,7 +11930,7 @@ export const ManagedSystemAccountKeyDocument = {
                     ],
                   },
                 },
-                { kind: "Field", name: { kind: "Name", value: "enabled" } },
+                { kind: "Field", name: { kind: "Name", value: "revokedAt" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
                 { kind: "Field", name: { kind: "Name", value: "prefix" } },
                 { kind: "Field", name: { kind: "Name", value: "start" } },
@@ -12112,6 +12264,55 @@ export const SystemKeyAccountChoicesDocument = {
 } as unknown as DocumentNode<
   SystemKeyAccountChoicesQuery,
   SystemKeyAccountChoicesQueryVariables
+>;
+export const RevokeManagedSystemAccountKeyDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "revokeManagedSystemAccountKey" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "revokeSystemApiKey" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "revokedAt" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  RevokeManagedSystemAccountKeyMutation,
+  RevokeManagedSystemAccountKeyMutationVariables
 >;
 export const GetPasswordPolicyDocument = {
   kind: "Document",

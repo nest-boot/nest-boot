@@ -28,7 +28,16 @@ export function createApiKeyConnection<Key extends ApiKeyObject>(
       { field: "name", type: "string", searchable: true, filterable: true },
     ],
     ["prefix", { field: "prefix", type: "string", filterable: true }],
-    ["enabled", { field: "enabled", type: "boolean", filterable: true }],
+    [
+      "revoked_at",
+      {
+        field: "revoked_at",
+        replacement: "revokedAt",
+        type: "date",
+        filterable: true,
+        sortable: true,
+      },
+    ],
     [
       "last_used_at",
       {

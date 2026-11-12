@@ -112,10 +112,6 @@ test("manages system identities and credentials under admin, with one-time secre
     await expect
       .poll(async () => (await (await read()).json()).errors)
       .toBeUndefined();
-    await clickPageAction(page, "Disable");
-    await expect.poll(async () => (await read()).status()).toBe(401);
-    await clickPageAction(page, "Enable");
-    await expect.poll(async () => (await read()).status()).toBe(200);
     await page.goto(`/admin/system-accounts/${accountId}`);
     await clickPageAction(page, "Disable");
     await expect(page.getByText("Disabled", { exact: true })).toBeVisible();
@@ -129,6 +125,17 @@ test("manages system identities and credentials under admin, with one-time secre
       page.getByRole("heading", { name: `${name} renamed`, exact: true }),
     ).toBeVisible();
     await page.goto(keyPath);
+    await clickPageAction(page, "Revoke");
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Revoke", exact: true })
+      .click();
+    await expect(page.getByText("Revoked", { exact: true })).toBeVisible();
+    await expect.poll(async () => (await read()).status()).toBe(401);
+    await page.reload();
+    await expect(
+      page.getByRole("button", { name: "Enable", exact: true }),
+    ).toHaveCount(0);
     await clickPageAction(page, "Delete");
     await page
       .getByRole("alertdialog")
@@ -154,14 +161,16 @@ test("manages system identities and credentials under admin, with one-time secre
       .click();
     await expect(page).toHaveURL(/\/admin\/system-accounts\/?(?:\?.*)?$/);
     expect((await read(dependent.apiKey)).status()).toBe(401);
-    const remaining = await graphqlRequest<{ systemApiKey: unknown }>(
+    const remaining = await graphqlRequest<{
+      systemApiKey: { id: string; revokedAt: string; systemAccount: null };
+    }>(
       page.request,
-      "query($id: ID!) { systemApiKey(id: $id) { id enabled systemAccount { id } } }",
+      "query($id: ID!) { systemApiKey(id: $id) { id revokedAt systemAccount { id } } }",
       { id: dependent.entity.id },
     );
     expect(remaining.systemApiKey).toEqual({
       id: dependent.entity.id,
-      enabled: false,
+      revokedAt: expect.any(String),
       systemAccount: null,
     });
     await page.goto(`/admin/api-keys/${dependent.entity.id}`);
@@ -178,21 +187,21 @@ test("manages system identities and credentials under admin, with one-time secre
     await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
       "Archived audit credential",
     );
-    await clickPageAction(page, "Enable");
+    await expect(page.getByText("Revoked", { exact: true })).toBeVisible();
     await expect(
-      page.getByText("System account not found", { exact: true }),
-    ).toBeVisible();
+      page.getByRole("button", { name: "Enable", exact: true }),
+    ).toHaveCount(0);
     await page.reload();
     const retained = await graphqlRequest<{
-      systemApiKey: { name: string; enabled: boolean; systemAccount: null };
+      systemApiKey: { name: string; revokedAt: string; systemAccount: null };
     }>(
       page.request,
-      "query($id: ID!) { systemApiKey(id: $id) { name enabled systemAccount { id } } }",
+      "query($id: ID!) { systemApiKey(id: $id) { name revokedAt systemAccount { id } } }",
       { id: dependent.entity.id },
     );
     expect(retained.systemApiKey).toEqual({
       name: "Archived audit credential",
-      enabled: false,
+      revokedAt: remaining.systemApiKey.revokedAt,
       systemAccount: null,
     });
     expect((await read(dependent.apiKey)).status()).toBe(401);

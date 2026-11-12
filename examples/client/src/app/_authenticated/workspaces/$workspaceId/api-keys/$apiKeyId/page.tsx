@@ -4,6 +4,7 @@ import { t } from "i18next";
 import { useCallback } from "react";
 
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
+import { REVOKE_WORKSPACE_API_KEY } from "@/graphql/mutations/revoke-workspace-api-key";
 import { getApiKeyUpdateInput } from "@/lib/api-key-update";
 import { graphql } from "@/gql";
 import { UPDATE_WORKSPACE_API_KEY } from "@/graphql/mutations/update-workspace-api-key";
@@ -30,7 +31,7 @@ const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
       name
       start
       prefix
-      enabled
+      revokedAt
       permissions
       createdAt
       lastUsedAt
@@ -58,7 +59,7 @@ const GET_WORKSPACE_API_KEY = graphql(`
         name
         start
         prefix
-        enabled
+        revokedAt
         permissions
         createdAt
         lastUsedAt
@@ -159,6 +160,7 @@ function ApiKeyDetailsPage() {
   const router = useRouter();
   const navigate = Route.useNavigate();
   const [deleteApiKey] = useMutation(DELETE_API_KEY_FROM_API_KEYS_ROUTE);
+  const [revoke] = useMutation(REVOKE_WORKSPACE_API_KEY);
   const [updateApiKey] = useMutation(UPDATE_WORKSPACE_API_KEY);
   const [loadNeighbors] = useLazyQuery(GET_WORKSPACE_API_KEY_NEIGHBORS, {
     fetchPolicy: "no-cache",
@@ -229,10 +231,13 @@ function ApiKeyDetailsPage() {
       }}
       permissionValues={workspaceApiKeyPermissionValues}
       permissionOptions={getPermissionOptions(permissionOptions)}
-      onToggle={async () => {
-        await updateApiKey({
-          variables: { id: apiKey.id, input: { enabled: !apiKey.enabled } },
-        });
+      canRevoke={ability.can(
+        "write",
+        createAbilitySubject("WorkspaceApiKey", apiKey),
+        "revokedAt",
+      )}
+      onRevoke={async () => {
+        await revoke({ variables: { id: apiKey.id } });
         await router.invalidate();
       }}
       onDelete={async () => {

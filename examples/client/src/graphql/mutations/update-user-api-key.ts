@@ -10,7 +10,7 @@ export const UPDATE_USER_API_KEY = graphql(`
       name
       start
       prefix
-      enabled
+      revokedAt
       permissions
       createdAt
       lastUsedAt

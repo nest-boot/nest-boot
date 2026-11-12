@@ -134,8 +134,8 @@ export class ApiKey extends BaseEntity {
   /** SHA-256 hash of the complete plaintext API key. */
   key!: string;
 
-  /** Whether the key can authenticate requests. */
-  enabled: Opt<boolean> = true;
+  /** Permanent revocation timestamp; null means the key has not been revoked. */
+  revokedAt: Opt<Date> | null = null;
 
   /** Operations that this API key may perform. */
   permissions: Opt<string[]> = [];

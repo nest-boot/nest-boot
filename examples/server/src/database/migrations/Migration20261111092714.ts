@@ -1,7 +1,7 @@
 import { Migration } from '@mikro-orm/migrations';
 
 export class Migration20261111092714 extends Migration {
-  override name = 'Migration20261112040344';
+  override name = 'Migration20261112072435';
 
   override up(): void | Promise<void> {
     this.addSql(
@@ -48,7 +48,7 @@ export class Migration20261111092714 extends Migration {
     );
 
     this.addSql(
-      `create table "api_key" ("id" bigserial primary key, "name" varchar(255) not null, "start" varchar(255) null, "prefix" varchar(255) null, "key" text not null, "enabled" boolean not null default true, "permissions" text[] not null default '{}', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "last_used_at" timestamptz null, "expires_at" timestamptz null, "created_by_id" bigint null, "owner_type" varchar(255) not null, "owner_id" bigint not null);`,
+      `create table "api_key" ("id" bigserial primary key, "name" varchar(255) not null, "start" varchar(255) null, "prefix" varchar(255) null, "key" text not null, "revoked_at" timestamptz null, "permissions" text[] not null default '{}', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "last_used_at" timestamptz null, "expires_at" timestamptz null, "created_by_id" bigint null, "owner_type" varchar(255) not null, "owner_id" bigint not null);`,
     );
     this.addSql(
       `alter table "api_key" add constraint "api_key_key_unique" unique ("key");`,

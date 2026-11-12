@@ -209,7 +209,7 @@ export class RequestIdentity {
     }
     if (
       deleted ||
-      !apiKey.enabled ||
+      apiKey.revokedAt ||
       (apiKey.expiresAt && apiKey.expiresAt <= new Date())
     ) {
       this.clear(em);

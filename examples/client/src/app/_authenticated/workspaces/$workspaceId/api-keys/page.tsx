@@ -45,7 +45,7 @@ const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
           name
           start
           prefix
-          enabled
+          revokedAt
           permissions
           createdAt
           lastUsedAt

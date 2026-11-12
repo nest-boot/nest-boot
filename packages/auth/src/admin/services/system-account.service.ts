@@ -163,7 +163,7 @@ export class SystemAccountService {
           }
           authorize("write", account);
           if (input.enabled === true && !account.enabled) {
-            // Re-enabling restores every enabled key, so it is a delegation operation.
+            // Re-enabling restores every unrevoked key, so it is a delegation operation.
             assertCanGrantPermissions(
               this.options,
               "user",
@@ -190,7 +190,7 @@ export class SystemAccountService {
   }
 
   /**
-   * Deletes an account and disables its retained audit keys atomically.
+   * Deletes an account and revokes its retained audit keys atomically.
    * @param id - Identifier of the target record.
    * @returns Metadata of the deleted system identity.
    */
@@ -212,8 +212,8 @@ export class SystemAccountService {
           if (resolveAuthFeatures(this.options).systemApiKey) {
             await tx.nativeUpdate(
               ApiKey,
-              { ownerType: "system_account", owner: account },
-              { enabled: false },
+              { ownerType: "system_account", owner: account, revokedAt: null },
+              { revokedAt: new Date() },
             );
           }
           await tx.nativeDelete(SystemAccount, { id });

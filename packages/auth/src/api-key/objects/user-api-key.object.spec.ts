@@ -13,7 +13,7 @@ describe("UserApiKey", () => {
     expect(key.ownerType).toBe("user");
     expect(key.user?.id).toBe(owner.id);
     expect(key.id).toEqual(expect.any(String));
-    expect(key.enabled).toBe(true);
+    expect(key.revokedAt).toBeNull();
     expect(key.permissions).toEqual([]);
     expect(key.updatedAt).toBeInstanceOf(Date);
   });

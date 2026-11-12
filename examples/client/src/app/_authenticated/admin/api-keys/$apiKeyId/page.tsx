@@ -8,6 +8,7 @@ import { SystemApiKeyPermission } from "@/gql/graphql";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import {
   DELETE_SYSTEM_KEY,
+  REVOKE_SYSTEM_KEY,
   SYSTEM_KEY_DETAILS,
   SYSTEM_KEY_PERMISSIONS,
   UPDATE_SYSTEM_KEY,
@@ -66,6 +67,7 @@ function Details() {
     searchSchema: apiKeySearchSchema,
   });
   const [update] = useMutation(UPDATE_SYSTEM_KEY);
+  const [revoke] = useMutation(REVOKE_SYSTEM_KEY);
   const [remove] = useMutation(DELETE_SYSTEM_KEY);
   return (
     <ApiKeyFormPage
@@ -74,7 +76,7 @@ function Details() {
           ? apiKey.systemAccount.name
           : undefined
       }
-      key={apiKey.id + apiKey.enabled + apiKey.permissions.join()}
+      key={apiKey.id + apiKey.revokedAt + apiKey.permissions.join()}
       apiKey={apiKey}
       canWrite={ability.can(
         "write",
@@ -104,10 +106,13 @@ function Details() {
         });
         await refreshAfterMutation(() => router.invalidate());
       }}
-      onToggle={async () => {
-        await update({
-          variables: { id: apiKey.id, input: { enabled: !apiKey.enabled } },
-        });
+      canRevoke={ability.can(
+        "write",
+        createAbilitySubject("SystemApiKey", apiKey),
+        "revokedAt",
+      )}
+      onRevoke={async () => {
+        await revoke({ variables: { id: apiKey.id } });
         await refreshAfterMutation(() => router.invalidate());
       }}
       onDelete={async () => {

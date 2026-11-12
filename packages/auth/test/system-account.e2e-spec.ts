@@ -8,6 +8,7 @@ import { REQUEST, RequestContext } from "@nest-boot/request-context";
 import type { Request } from "express";
 
 import { SystemAccountService } from "../src/admin/services/system-account.service.js";
+import { ApiKeyLifecycle } from "../src/api-key/api-key-lifecycle.js";
 import { ApiKey } from "../src/api-key/entities/api-key.entity.js";
 import { SystemAccount } from "../src/api-key/entities/system-account.entity.js";
 import { SystemApiKey } from "../src/api-key/objects/system-api-key.object.js";
@@ -372,16 +373,18 @@ describe("independent system accounts with real persistence and authentication",
       accounts.updateSystemAccount(issued.account.id, { enabled: true }),
     );
     await asAdministrator((_accounts, keys) =>
-      keys.updateSystemApiKey(issued.entity.id, { enabled: false }),
+      keys.revokeSystemApiKey(issued.entity.id),
     );
-    await expect(withKey(issued.apiKey, () => null)).rejects.toThrow(
-      /disabled/,
+    await expect(withKey(issued.apiKey, () => null)).rejects.toThrow(/revoked/);
+    const firstRevocation = (
+      await orm.em.fork().findOneOrFail(ApiKey, issued.entity.id)
+    ).revokedAt;
+    await asAdministrator((_accounts, keys) =>
+      keys.revokeSystemApiKey(issued.entity.id),
     );
-    await expect(
-      asAdministrator((_accounts, keys) =>
-        keys.updateSystemApiKey(issued.entity.id, { enabled: true }),
-      ),
-    ).rejects.toThrow(/exceed system account/);
+    expect(
+      (await orm.em.fork().findOneOrFail(ApiKey, issued.entity.id)).revokedAt,
+    ).toEqual(firstRevocation);
   });
 
   it("retains system keys for audit after the creator and system account are deleted", async () => {
@@ -420,10 +423,10 @@ describe("independent system accounts with real persistence and authentication",
     expect(await em.count(ApiKey, issued.entity.id)).toBe(1);
     expect(
       (await em.findOneOrFail(ApiKey, issued.entity.id, { refresh: true }))
-        .enabled,
-    ).toBe(false);
+        .revokedAt,
+    ).toBeInstanceOf(Date);
     await expect(withKey(issued.apiKey, () => null)).rejects.toThrow(
-      /API key is disabled/,
+      /API key is revoked/,
     );
   });
 
@@ -601,11 +604,10 @@ describe("independent system accounts with real persistence and authentication",
     );
   });
 
-  it("reloads key grants after locking the account before re-enabling a credential", async () => {
+  it("reloads key grants after locking the account before extending expiration", async () => {
     const issued = await issue();
     await asAdministrator((_accounts, keys) =>
       keys.updateSystemApiKey(issued.entity.id, {
-        enabled: false,
         permissions: ["user:read"],
       }),
     );
@@ -640,13 +642,15 @@ describe("independent system accounts with real persistence and authentication",
         withAuthTestFeatures(configuration),
       );
       await expect(
-        keys.updateSystemApiKey(issued.entity.id, { enabled: true }),
+        keys.updateSystemApiKey(issued.entity.id, {
+          expiresAt: new Date(Date.now() + 60000),
+        }),
       ).rejects.toThrow(/exceed issuer permissions/i);
     }, operator);
     expect(changed).toBe(true);
     expect(
-      (await orm.em.fork().findOneOrFail(ApiKey, issued.entity.id)).enabled,
-    ).toBe(false);
+      (await orm.em.fork().findOneOrFail(ApiKey, issued.entity.id)).revokedAt,
+    ).toBeNull();
   });
 
   it("honors conditional account and proposed-key restrictions before persisting changes", async () => {
@@ -889,7 +893,7 @@ describe("independent system accounts with real persistence and authentication",
       }
       await expect(auth.validate(plaintext)).rejects.toThrow("Invalid API key");
       const [audit] = await em.execute(
-        "select name, owner_type, owner_id::text, enabled, last_used_at from api_key where id = ?",
+        "select name, owner_type, owner_id::text, revoked_at, last_used_at from api_key where id = ?",
         [credential.id],
       );
       expect(audit).toEqual({
@@ -898,12 +902,127 @@ describe("independent system accounts with real persistence and authentication",
           ? "workspace_member"
           : kind,
         owner_id: owner.id,
-        enabled: true,
+        revoked_at: null,
         last_used_at: null,
       });
     },
   );
-  it("rolls back account deletion and key disabling together with the surrounding transaction", async () => {
+  it("preserves the first revocation during concurrent requests and refreshes warmed authentication state", async () => {
+    const issued = await issue(["user:read"]);
+    const auth = new ApiKeyAuthenticationService(
+      orm.em.fork(),
+      withAuthTestFeatures(options),
+    );
+    await expect(auth.validate(issued.apiKey)).resolves.toMatchObject({
+      apiKey: { id: issued.entity.id },
+    });
+    const original = await orm.em
+      .fork()
+      .findOneOrFail(ApiKey, issued.entity.id);
+    const first = orm.em.fork();
+    const second = orm.em.fork();
+    const snapshots = await Promise.all([
+      first.findOneOrFail(ApiKey, issued.entity.id),
+      second.findOneOrFail(ApiKey, issued.entity.id),
+    ]);
+    const results = await asAdministrator(
+      async () =>
+        await Promise.all([
+          ApiKeyLifecycle.revoke(
+            first,
+            withAuthTestFeatures(options),
+            snapshots[0],
+          ),
+          ApiKeyLifecycle.revoke(
+            second,
+            withAuthTestFeatures(options),
+            snapshots[1],
+          ),
+        ]),
+    );
+    expect(results[0].revokedAt).toBeInstanceOf(Date);
+    expect(results[1].revokedAt).toEqual(results[0].revokedAt);
+    await expect(auth.validate(issued.apiKey)).rejects.toThrow(
+      "API key is revoked",
+    );
+    await asAdministrator(async (accounts, keys) => {
+      await keys.updateSystemApiKey(issued.entity.id, {
+        name: "Revoked audit key",
+        expiresAt: null,
+      });
+      await accounts.deleteSystemAccount(issued.account.id);
+    });
+    const retained = await orm.em
+      .fork()
+      .findOneOrFail(ApiKey, issued.entity.id);
+    expect(retained).toMatchObject({
+      name: "Revoked audit key",
+      key: original.key,
+      permissions: original.permissions,
+      lastUsedAt: original.lastUsedAt,
+      revokedAt: results[0].revokedAt,
+    });
+    expect(retained.owner.id).toBe(issued.account.id);
+    expect(await orm.em.fork().count(ApiKey, issued.entity.id)).toBe(1);
+  });
+
+  it("can revoke an unrevoked audit key even after direct deletion of its system account", async () => {
+    const issued = await issue(["user:read"]);
+    await orm.em.fork().nativeDelete(SystemAccount, issued.account.id);
+    await asAdministrator(async (_accounts, keys) => {
+      expect(
+        (await keys.revokeSystemApiKey(issued.entity.id)).revokedAt,
+      ).toBeInstanceOf(Date);
+    });
+    await expect(withKey(issued.apiKey, () => null)).rejects.toThrow(
+      "API key is revoked",
+    );
+  });
+
+  it("rejects revocation when the record was deleted after it was read", async () => {
+    const issued = await issue(["user:read"]);
+    const em = orm.em.fork();
+    const snapshot = await em.findOneOrFail(ApiKey, issued.entity.id);
+    await orm.em.fork().nativeDelete(ApiKey, issued.entity.id);
+    await asAdministrator(async () => {
+      await expect(
+        ApiKeyLifecycle.revoke(em, withAuthTestFeatures(options), snapshot),
+      ).rejects.toThrow("API key not found");
+    });
+    expect(snapshot.revokedAt).toBeNull();
+    expect(await orm.em.fork().count(ApiKey, issued.entity.id)).toBe(0);
+  });
+
+  it("enforces revocation field restrictions before writing an audit timestamp", async () => {
+    const issued = await issue(["user:read"]);
+    const configuration: AuthModuleOptions = {
+      ...options,
+      buildAbility: ({ cannot }) => {
+        cannot("write", SystemApiKey, ["revokedAt"]);
+      },
+    };
+    await asAdministrator(async (_accounts, _keys, em) => {
+      RequestIdentity.refresh(withAuthTestFeatures(configuration));
+      const keys = new SystemApiKeyService(
+        em,
+        withAuthTestFeatures(configuration),
+      );
+      await expect(keys.revokeSystemApiKey(issued.entity.id)).rejects.toThrow(
+        /not allowed/i,
+      );
+      await expect(
+        keys.updateSystemApiKey(issued.entity.id, {
+          name: "Allowed audit edit",
+        }),
+      ).resolves.toMatchObject({ name: "Allowed audit edit" });
+    });
+    expect(
+      (await orm.em.fork().findOneOrFail(ApiKey, issued.entity.id)).revokedAt,
+    ).toBeNull();
+    await expect(withKey(issued.apiKey, () => null)).resolves.toBeNull();
+  });
+
+  it("rolls back account deletion and key revocation together with the surrounding transaction", async () => {
     const issued = await issue(["user:read"]);
     await asAdministrator(async () => {
       const em = orm.em.fork({ useContext: false });
@@ -919,21 +1038,21 @@ describe("independent system accounts with real persistence and authentication",
               await tx.findOneOrFail(ApiKey, issued.entity.id, {
                 refresh: true,
               })
-            ).enabled,
-          ).toBe(false);
+            ).revokedAt,
+          ).toBeInstanceOf(Date);
           throw new Error("Abort surrounding operation");
         }),
       ).rejects.toThrow("Abort surrounding operation");
     });
     const em = orm.em.fork();
     expect(await em.findOne(SystemAccount, issued.account.id)).not.toBeNull();
-    expect((await em.findOneOrFail(ApiKey, issued.entity.id)).enabled).toBe(
-      true,
-    );
+    expect(
+      (await em.findOneOrFail(ApiKey, issued.entity.id)).revokedAt,
+    ).toBeNull();
     await expect(withKey(issued.apiKey, () => null)).resolves.toBeNull();
   });
 
-  it("allows audit metadata changes and disabling an orphan, but rejects activation and grant changes", async () => {
+  it("allows audit metadata changes and revoking an orphan, but rejects grant changes", async () => {
     const issued = await issue(["user:read"]);
     const original = await orm.em
       .fork()
@@ -963,12 +1082,14 @@ describe("independent system accounts with real persistence and authentication",
     );
     const read = orm.em.fork();
     expect(await read.findOne(SystemAccount, issued.account.id)).toBeNull();
-    expect((await read.findOneOrFail(ApiKey, sibling.id)).enabled).toBe(false);
+    expect(
+      (await read.findOneOrFail(ApiKey, sibling.id)).revokedAt,
+    ).toBeInstanceOf(Date);
     for (const id of [unrelated.entity.id, otherScope.id]) {
-      expect((await read.findOneOrFail(ApiKey, id)).enabled).toBe(true);
+      expect((await read.findOneOrFail(ApiKey, id)).revokedAt).toBeNull();
     }
     await expect(withKey(issued.apiKey, () => null)).rejects.toThrow(
-      "API key is disabled",
+      "API key is revoked",
     );
     await asAdministrator(async (_accounts, keys) => {
       await expect(
@@ -977,13 +1098,12 @@ describe("independent system accounts with real persistence and authentication",
         }),
       ).resolves.toMatchObject({ name: "Retained deployment" });
       await expect(
-        keys.updateSystemApiKey(issued.entity.id, { enabled: false }),
-      ).resolves.toMatchObject({ enabled: false });
+        keys.revokeSystemApiKey(issued.entity.id),
+      ).resolves.toMatchObject({ revokedAt: expect.any(Date) });
       for (const input of [
-        { enabled: true },
         { permissions: [] },
         { permissions: null },
-        { permissions: ["user:read"], enabled: false },
+        { permissions: ["user:read"] },
       ]) {
         await expect(
           keys.updateSystemApiKey(issued.entity.id, input),
@@ -995,13 +1115,13 @@ describe("independent system accounts with real persistence and authentication",
       .findOneOrFail(ApiKey, issued.entity.id);
     expect(retained).toMatchObject({
       name: "Retained deployment",
-      enabled: false,
+      revokedAt: expect.any(Date),
       key: original.key,
       permissions: original.permissions,
     });
     expect(retained.owner.id).toBe(issued.account.id);
     await expect(withKey(issued.apiKey, () => null)).rejects.toThrow(
-      "API key is disabled",
+      "API key is revoked",
     );
   });
 
@@ -1026,8 +1146,8 @@ describe("independent system accounts with real persistence and authentication",
         keys.updateSystemApiKey(issued.entity.id, { name: "Forbidden rename" }),
       ).rejects.toThrow(/not allowed/i);
       await expect(
-        keys.updateSystemApiKey(issued.entity.id, { enabled: false }),
-      ).resolves.toMatchObject({ enabled: false });
+        keys.revokeSystemApiKey(issued.entity.id),
+      ).resolves.toMatchObject({ revokedAt: expect.any(Date) });
     });
     expect(
       (await orm.em.fork().findOneOrFail(ApiKey, issued.entity.id)).name,
@@ -1047,14 +1167,14 @@ describe("independent system accounts with real persistence and authentication",
         "Invalid API key",
       );
       const [audit] = await em.execute(
-        "select name, owner_type, owner_id::text, enabled, last_used_at from api_key where id = ?",
+        "select name, owner_type, owner_id::text, revoked_at, last_used_at from api_key where id = ?",
         [id],
       );
       expect(audit).toEqual({
         name: "Retained audit key",
         owner_type: type,
         owner_id: "99999999999999",
-        enabled: true,
+        revoked_at: null,
         last_used_at: null,
       });
     },

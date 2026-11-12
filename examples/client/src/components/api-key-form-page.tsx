@@ -72,7 +72,8 @@ interface ApiKeyFormPageProps<Permission extends CredentialPermission> {
   canCreateWorkspaceServiceAccount?: boolean;
   currentWorkspaceMemberId?: string;
   defaultPermissions?: ReadonlyArray<Permission>;
-  onToggle?: () => Promise<void>;
+  canRevoke?: boolean;
+  onRevoke?: () => Promise<void>;
   onDelete?: () => Promise<void>;
   onSave: (input: {
     name: string;
@@ -103,14 +104,15 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
   canCreateWorkspaceServiceAccount = true,
   currentWorkspaceMemberId,
   onSave,
-  onToggle,
+  canRevoke = canWrite,
+  onRevoke,
   onDelete,
 }: ApiKeyFormPageProps<Permission>) {
   const { t } = useTranslation();
   const formId = useId();
   const { secret } = useCreatedApiKey();
   const createdKey = apiKey ? secret : undefined;
-  const [pendingAction, setPendingAction] = useState<"toggle" | "delete">();
+  const [pendingAction, setPendingAction] = useState<"revoke" | "delete">();
   const [copied, setCopied] = useState(false);
   const [ownerType, setOwnerType] = useState<"you" | "serviceAccount">("you");
   const systemOwner = systemAccountOptions !== undefined;
@@ -216,19 +218,23 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
     getFormErrorMessage(state.errors),
   );
 
-  const handleAction = async (action: "toggle" | "delete") => {
+  const handleAction = async (action: "revoke" | "delete") => {
     if (!apiKey || !canWrite || submitting || pendingAction) return;
-    const operation = action === "delete" ? onDelete : onToggle;
+    const operation = action === "delete" ? onDelete : onRevoke;
     if (!operation) return;
     setPendingAction(action);
     try {
       if (
-        action === "delete" &&
         !(await alertDialog({
-          title: t("api-key:delete.title"),
-          description: t("api-key:delete.description", { name: apiKey.name }),
+          title: t(`api-key:${action}.title`),
+          description: t(`api-key:${action}.description`, {
+            name: apiKey.name,
+          }),
           cancelText: t("action.cancel"),
-          confirmText: t("action.delete"),
+          confirmText:
+            action === "delete"
+              ? t("action.delete")
+              : t("api-key:revoke.action"),
           variant: "destructive",
         }))
       )
@@ -239,9 +245,7 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
         title: t(
           action === "delete"
             ? "api-key:toast.deleted_success"
-            : apiKey.enabled
-              ? "api-key:toast.disabled_success"
-              : "api-key:toast.enabled_success",
+            : "api-key:toast.revoked_success",
         ),
       });
     } catch (error) {
@@ -274,15 +278,14 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
       secondaryActions={
         apiKey && canWrite
           ? [
-              ...(onToggle
+              ...(onRevoke && canRevoke && !apiKey.revokedAt
                 ? [
                     {
-                      label: t(
-                        apiKey.enabled ? "action.disable" : "action.enable",
-                      ),
+                      label: t("api-key:revoke.action"),
+                      destructive: true,
                       disabled: submitting || !!pendingAction,
-                      loading: pendingAction === "toggle",
-                      onAction: () => handleAction("toggle"),
+                      loading: pendingAction === "revoke",
+                      onAction: () => handleAction("revoke"),
                     },
                   ]
                 : []),

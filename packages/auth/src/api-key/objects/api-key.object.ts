@@ -12,7 +12,7 @@ type ApiKeyData = Pick<
   | "name"
   | "start"
   | "prefix"
-  | "enabled"
+  | "revokedAt"
   | "permissions"
   | "createdAt"
   | "updatedAt"
@@ -37,9 +37,9 @@ export abstract class ApiKeyObject {
   /** Public credential prefix. */
   @Field(() => String, { nullable: true })
   declare prefix?: string | null;
-  /** Whether the credential is enabled. */
-  @Field(() => Boolean)
-  declare enabled: boolean;
+  /** Permanent revocation timestamp. */
+  @Field(() => Date, { nullable: true })
+  declare revokedAt: Date | null;
   /** Owner-specific grants, exposed with the concrete DTO's enum. */
   @HideField()
   declare permissions: string[];
@@ -73,7 +73,7 @@ export abstract class ApiKeyObject {
         name,
         start,
         prefix,
-        enabled,
+        revokedAt,
         createdAt,
         updatedAt,
         lastUsedAt,
@@ -86,7 +86,7 @@ export abstract class ApiKeyObject {
         name,
         start,
         prefix,
-        enabled,
+        revokedAt,
         createdAt,
         updatedAt,
         lastUsedAt,

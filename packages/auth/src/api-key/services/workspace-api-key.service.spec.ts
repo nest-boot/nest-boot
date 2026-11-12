@@ -229,13 +229,15 @@ describe("API-key management", () => {
         expect(em.flush).not.toHaveBeenCalled();
         target.permissions = [];
         await expect(
-          service.updateWorkspaceApiKey(entity.id, { enabled: true }),
+          service.updateWorkspaceApiKey(entity.id, {
+            expiresAt: new Date(Date.now() + 60000),
+          }),
         ).rejects.toThrow(
           "WorkspaceMember API key permissions exceed owner permissions",
         );
         await expect(
-          service.updateWorkspaceApiKey(entity.id, { enabled: false }),
-        ).resolves.toMatchObject({ enabled: false });
+          service.revokeWorkspaceApiKey(entity.id),
+        ).resolves.toMatchObject({ revokedAt: expect.any(Date) });
       },
     );
     for (const kind of [
@@ -517,7 +519,7 @@ describe("API-key management", () => {
         em.findOne.mockResolvedValue(target);
         em.isInTransaction.mockReturnValue(true);
         mockRlsContext(em);
-        await service.updateWorkspaceApiKey(target.id, { enabled: false });
+        await service.revokeWorkspaceApiKey(target.id);
         expect(target.lastUsedAt).toBeNull();
         expect(RequestContext.get(API_KEY)).toBe(active);
         expect(RequestContext.get(User)).toBe(user);
@@ -534,8 +536,8 @@ describe("API-key management", () => {
           const options: AuthModuleOptions = {
             workspace: { enabled: true },
             buildAbility: ({ cannot }) => {
-              cannot("read", UserApiKey, { enabled: false });
-              cannot("read", WorkspaceApiKey, { enabled: false });
+              cannot("read", UserApiKey, { revokedAt: { $ne: null } });
+              cannot("read", WorkspaceApiKey, { revokedAt: { $ne: null } });
             },
           };
           const { service, em, authorization } = createService(options);
@@ -550,7 +552,6 @@ describe("API-key management", () => {
             {
               id: "conditional-key",
               key: "already-hydrated-key-hash",
-              enabled: true,
               permissions: [],
               owner:
                 scope === "user"
@@ -566,7 +567,7 @@ describe("API-key management", () => {
           expect(await read()).toEqual(omitCredentials(key, ["key"]));
           expect(await read()).not.toHaveProperty("key");
           expect(key.key).toBe("already-hydrated-key-hash");
-          key.enabled = false;
+          key.revokedAt = new Date();
           await expect(read()).rejects.toThrow(ForbiddenException);
           em.findOne.mockResolvedValue(null);
           await expect(read()).resolves.toBeNull();
@@ -578,8 +579,8 @@ describe("API-key management", () => {
           const options: AuthModuleOptions = {
             workspace: { enabled: true },
             buildAbility: ({ cannot }) => {
-              cannot("read", UserApiKey, { enabled: false });
-              cannot("read", WorkspaceApiKey, { enabled: false });
+              cannot("read", UserApiKey, { revokedAt: { $ne: null } });
+              cannot("read", WorkspaceApiKey, { revokedAt: { $ne: null } });
             },
           };
           const { service, authorization } = createService(options);
@@ -592,7 +593,6 @@ describe("API-key management", () => {
               ? new UserApiKey(new ApiKey())
               : new WorkspaceApiKey(new ApiKey()),
             {
-              enabled: true,
               member: ref(WorkspaceMember, createTestWorkspaceMember()),
             },
           );
@@ -624,7 +624,7 @@ describe("API-key management", () => {
               ]),
             })),
           });
-          key.enabled = false;
+          key.revokedAt = new Date();
           await expect(read()).rejects.toThrow(ForbiddenException);
           expect(result.edges).toHaveLength(1);
           expect(result.totalCount).toBe(2);
@@ -636,7 +636,7 @@ describe("API-key management", () => {
       );
       for (const reason of ["catalog", "owner"] as const) {
         apiKeyTest(
-          `allows disabling a ${scope} key with stale ${reason} grants but still rejects re-enabling it`,
+          `allows revoking a ${scope} key with stale ${reason} grants without weakening its grants`,
           async () => {
             const options: AuthModuleOptions =
               reason === "catalog"
@@ -671,7 +671,6 @@ describe("API-key management", () => {
                 : new WorkspaceApiKey(new ApiKey()),
               {
                 id: "stale-key",
-                enabled: true,
                 permissions,
                 user: ref(User, user),
                 member: ref(WorkspaceMember, createTestWorkspaceMember()),
@@ -682,24 +681,24 @@ describe("API-key management", () => {
               scope === "user"
                 ? service.updateUserApiKey
                 : service.updateWorkspaceApiKey;
-            expect(await update(key.id, { enabled: false })).toEqual(
-              omitCredentials(key, ["key"]),
-            );
-            expect(key.enabled).toBe(false);
+            const revoke =
+              scope === "user"
+                ? service.revokeUserApiKey
+                : service.revokeWorkspaceApiKey;
+            expect(await revoke(key.id)).toEqual(omitCredentials(key, ["key"]));
+            expect(key.revokedAt).toBeInstanceOf(Date);
             expect(key.permissions).toEqual(permissions);
-            expect(em.flush).toHaveBeenCalledOnce();
-            await expect(update(key.id, { enabled: true })).rejects.toThrow();
+            expect(em.nativeUpdate).toHaveBeenCalledOnce();
+            expect(em.flush).not.toHaveBeenCalled();
             await expect(
               update(key.id, { name: "Audit rename" }),
             ).resolves.toMatchObject({ name: "Audit rename" });
             await expect(
               update(key.id, { expiresAt: new Date(Date.now() + 60000) }),
             ).rejects.toThrow();
-            await expect(
-              update(key.id, { enabled: false, permissions }),
-            ).rejects.toThrow();
-            expect(key.enabled).toBe(false);
-            expect(em.flush).toHaveBeenCalledTimes(2);
+            await expect(update(key.id, { permissions })).rejects.toThrow();
+            expect(key.revokedAt).toBeInstanceOf(Date);
+            expect(em.flush).toHaveBeenCalledOnce();
           },
         );
       }
@@ -757,7 +756,7 @@ describe("API-key management", () => {
           expect(em.flush).toHaveBeenCalledOnce();
         },
       );
-      for (const operation of ["permissions", "disable", "delete"] as const) {
+      for (const operation of ["permissions", "revoke", "delete"] as const) {
         apiKeyTest(
           `publishes ${scope} credential ${operation} changes only after commit`,
           async () => {
@@ -769,7 +768,6 @@ describe("API-key management", () => {
                 : new WorkspaceApiKey(new ApiKey()),
               {
                 id: "active-key",
-                enabled: true,
                 permissions: ["workspace:update", "workspace:read"],
                 lastUsedAt: new Date(0),
                 user: ref(User, user),
@@ -802,21 +800,24 @@ describe("API-key management", () => {
             const invoke = () =>
               operation === "delete"
                 ? remove(key.id)
-                : update(
-                    key.id,
-                    operation === "disable"
-                      ? { enabled: false }
-                      : { permissions: ["workspace:read"] },
-                  );
+                : operation === "revoke"
+                  ? (scope === "user"
+                      ? service.revokeUserApiKey
+                      : service.revokeWorkspaceApiKey)(key.id)
+                  : update(key.id, { permissions: ["workspace:read"] });
             em.isInTransaction.mockReturnValueOnce(true);
             await expect(invoke()).rejects.toThrow(
               "outside an active transaction",
             );
             expect(em.flush).not.toHaveBeenCalled();
-            em.flush.mockRejectedValueOnce(new Error("Commit failed"));
+            if (operation === "revoke") {
+              em.nativeUpdate.mockRejectedValueOnce(new Error("Commit failed"));
+            } else {
+              em.flush.mockRejectedValueOnce(new Error("Commit failed"));
+            }
             await expect(invoke()).rejects.toThrow("Commit failed");
             expect(RequestContext.get(API_KEY)).toBe(key);
-            expect(key.enabled).toBe(true);
+            expect(key.revokedAt).toBeNull();
             expect(key.lastUsedAt).toEqual(new Date(0));
             expect(key.permissions).toEqual([
               "workspace:update",
@@ -827,13 +828,10 @@ describe("API-key management", () => {
             em.flush.mockImplementationOnce(() => {
               expect(RequestContext.get(API_KEY)).toBe(key);
               expect(em.setSessionContext).not.toHaveBeenCalled();
-              if (operation === "disable") {
-                expect(key.lastUsedAt?.getTime()).toBeGreaterThan(0);
-              }
               return Promise.resolve();
             });
             await invoke();
-            if (operation === "disable") {
+            if (operation === "revoke") {
               expect(key.lastUsedAt?.getTime()).toBeGreaterThan(0);
             }
             expect(
@@ -1101,7 +1099,7 @@ describe("API-key management", () => {
         expect(em.create).toHaveBeenCalledWith(
           ApiKey,
           expect.objectContaining({
-            enabled: true,
+            revokedAt: null,
             key: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
             name: "Deploy key",
             permissions: [],
@@ -1522,13 +1520,13 @@ describe("API-key management", () => {
           );
           targetKey.permissions = ["workspace:delete"];
           await expect(
-            service.updateWorkspaceApiKey(targetKey.id, { enabled: false }),
+            service.revokeWorkspaceApiKey(targetKey.id),
           ).rejects.toThrow(
             "API key permissions exceed authenticating API key permissions: workspace:delete",
           );
           await expect(
             service.updateWorkspaceApiKey(targetKey.id, {
-              enabled: true,
+              expiresAt: new Date(Date.now() + 60000),
             }),
           ).rejects.toThrow(
             "API key permissions exceed authenticating API key permissions: workspace:delete",
@@ -1998,7 +1996,6 @@ describe("API-key management", () => {
       const permissions = ["workspace:update"];
       expect(
         await service.updateWorkspaceApiKey(apiKey.id, {
-          enabled: false,
           expiresAt,
           name: "Renamed",
           permissions,
@@ -2008,7 +2005,7 @@ describe("API-key management", () => {
         omitCredentials(apiKey, ["key"]),
       );
       expect(apiKey.name).toBe("Renamed");
-      expect(apiKey.enabled).toBe(false);
+      expect(apiKey.revokedAt).toBeNull();
       expect(apiKey.expiresAt).toBe(expiresAt);
       expect(apiKey.permissions).toEqual(permissions);
       expect(em.remove).toHaveBeenCalledWith(apiKey);

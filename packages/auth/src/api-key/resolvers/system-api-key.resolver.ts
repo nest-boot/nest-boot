@@ -133,6 +133,16 @@ export class SystemApiKeyResolver {
   }
 
   /**
+   * Permanently revokes a key while retaining its audit record.
+   * @param id - Identifier of the credential.
+   * @returns Retained credential metadata.
+   */
+  @Mutation(() => SystemApiKey)
+  revokeSystemApiKey(@Args("id", { type: () => ID }) id: string) {
+    return this.keys.revokeSystemApiKey(id);
+  }
+
+  /**
    * Deletes one system credential.
    * @param id - Identifier of the target record.
    * @returns Metadata of the revoked credential.

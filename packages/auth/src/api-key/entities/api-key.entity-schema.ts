@@ -32,7 +32,7 @@ export function createApiKeySchema({
     start: { type: t.string, nullable: true },
     prefix: { type: t.string, nullable: true },
     key: { type: t.text, unique: true },
-    enabled: { type: t.boolean, default: true },
+    revokedAt: { type: t.datetime, nullable: true },
     permissions: { type: t.array, defaultRaw: "'{}'" },
     createdAt: { type: t.datetime, defaultRaw: "now()" },
     updatedAt: {

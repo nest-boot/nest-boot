@@ -65,7 +65,7 @@ export function createTestApiKey(): WorkspaceApiKey {
     start: "sk012345",
     prefix: "sk",
     key: "hashed-key",
-    enabled: true,
+    revokedAt: null,
     permissions: [],
     updatedAt: new Date(),
     lastUsedAt: null,
@@ -170,6 +170,9 @@ export function createService(
       updateUserApiKey: userService.updateUserApiKey.bind(userService),
       updateWorkspaceApiKey:
         workspaceService.updateWorkspaceApiKey.bind(workspaceService),
+      revokeUserApiKey: userService.revokeUserApiKey.bind(userService),
+      revokeWorkspaceApiKey:
+        workspaceService.revokeWorkspaceApiKey.bind(workspaceService),
       deleteUserApiKey: userService.deleteUserApiKey.bind(userService),
       deleteWorkspaceApiKey:
         workspaceService.deleteWorkspaceApiKey.bind(workspaceService),

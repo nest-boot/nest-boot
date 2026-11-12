@@ -69,7 +69,7 @@ export const SYSTEM_KEY_DETAILS = graphql(`
         id
         name
       }
-      enabled
+      revokedAt
       permissions
       prefix
       start
@@ -127,6 +127,15 @@ export const SYSTEM_KEY_ACCOUNTS = graphql(`
         hasNextPage
         endCursor
       }
+    }
+  }
+`);
+
+export const REVOKE_SYSTEM_KEY = graphql(`
+  mutation revokeManagedSystemAccountKey($id: ID!) {
+    revokeSystemApiKey(id: $id) {
+      id
+      revokedAt
     }
   }
 `);

@@ -237,7 +237,7 @@ describe("RequestIdentity", () => {
     });
     const apiKey = Object.assign(new UserApiKey(new ApiKey()), {
       id: "key",
-      enabled: true,
+      revokedAt: null,
       permissions: ["user:read", "workspace:delete"],
     });
     await RequestContext.run(new RequestContext({ type: "test" }), () => {

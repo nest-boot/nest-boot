@@ -67,8 +67,8 @@
   },
   "status": {
     "active": "Active",
-    "disabled": "Disabled",
-    "expired": "Expired"
+    "expired": "Expired",
+    "revoked": "Revoked"
   },
   "table": {
     "created_at": "Created",
@@ -85,11 +85,15 @@
   },
   "toast": {
     "created_success": "API key created",
-    "disabled_success": "API key disabled",
-    "enabled_success": "API key enabled",
     "updated_success": "API key updated",
-    "deleted_success": "API key deleted"
+    "deleted_success": "API key deleted",
+    "revoked_success": "API key revoked"
   },
   "details": "API Key",
-  "usage": "Usage"
+  "usage": "Usage",
+  "revoke": {
+    "action": "Revoke",
+    "title": "Revoke API Key",
+    "description": "Permanently revoke {{name}}? This action cannot be undone."
+  }
 }

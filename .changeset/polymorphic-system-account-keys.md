@@ -14,6 +14,8 @@ Define optional API-key owner mappings through native EntitySchema and return or
 
 Use the Workspace prefix consistently for WorkspaceMember and WorkspaceInvitation entities, services, GraphQL types and root operations, inputs, payloads, enums, decorators and filenames. Use the workspace-member, workspace-service-account and workspace-api-key permission resources. Regenerate example migrations for the automatically named workspace_member and workspace_invitation tables and update the client documents, generated types, permission labels and browser flows.
 
-Filter retired permissions in GraphQL field resolvers without changing stored or effective grants. System-account deletion atomically disables its retained keys; audit metadata can still be renamed, while re-enablement and grant changes require a live account.
+Filter retired permissions in GraphQL field resolvers without changing stored or effective grants. System-account deletion atomically revokes its retained keys; audit metadata can still be renamed, while grant changes require a live account.
 
 Preserve restricted grants on metadata-only key edits and filter disabled-feature role grants consistently during delegation. Verify concrete DTO authorization conditions without a redundant base discriminator implementation.
+
+Replace API-key `enabled` with a nullable `revokedAt` column and permanent, idempotent revoke operations for all three scopes. Server-generated timestamps cannot be cleared through update inputs. Preserve timestamps under concurrent revocation, refresh authentication state, and synchronize the client, GraphQL schema/types, example migration baseline and snapshot. Keep system-account status and feature activation switches separate.

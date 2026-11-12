@@ -62,7 +62,6 @@ describe("WorkspaceApiKeyResolver", () => {
 
     await expect(
       resolver.updateWorkspaceApiKey("api_key_1", {
-        enabled: false,
         name: "New",
         permissions: ["workspace:update"],
       }),
@@ -73,7 +72,6 @@ describe("WorkspaceApiKeyResolver", () => {
     expect(apiKeyService.updateWorkspaceApiKey).toHaveBeenCalledWith(
       "api_key_1",
       {
-        enabled: false,
         name: "New",
         permissions: ["workspace:update"],
       },
