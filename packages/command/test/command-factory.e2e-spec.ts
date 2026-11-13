@@ -131,19 +131,79 @@ it("reads arguments from process.argv when bootstrap options omit them", async (
   }
 });
 
-it.each([[], ["--help"], ["greet", "--help"]].map((args) => [args]))(
-  "shows help and closes the context for %j",
-  async (args) => {
-    const output = capture();
-    expect(await CommandFactory.run(CliModule, { args, context: output })).toBe(
-      0,
-    );
-    expect(process.exitCode).toBe(0);
-    expect(output.output()).toContain("Greet a user");
-    expect(calls).toEqual([]);
-    expect(events).toEqual(["closed"]);
-  },
-);
+it.each(
+  [[], ["--help"], ["greet", "--help"], ["hello"], ["hello", "--help"]].map(
+    (args) => [args],
+  ),
+)("shows help and closes the context for %j", async (args) => {
+  const output = capture();
+  expect(await CommandFactory.run(CliModule, { args, context: output })).toBe(
+    0,
+  );
+  expect(process.exitCode).toBe(0);
+  expect(output.output()).toContain("Greet a user");
+  expect(calls).toEqual([]);
+  expect(events).toEqual(["closed"]);
+});
+
+it.each(
+  [["project"], ["project", "task"], ["project", "task", "--help"]].map(
+    (args) => [args],
+  ),
+)("lists only matching subcommands for the prefix %j", async (args) => {
+  const execute = vi.fn(() => Promise.resolve());
+  @Command({
+    paths: [
+      ["project", "task", "create"],
+      ["task", "create"],
+    ],
+    usage: { description: "Create a task." },
+  })
+  class CreateCommand extends BaseCommand {
+    async execute() {
+      await execute();
+    }
+  }
+  @Command({
+    paths: [["project", "task", "list"]],
+    usage: { description: "List tasks." },
+  })
+  class ListCommand extends BaseCommand {
+    async execute() {
+      await execute();
+    }
+  }
+  @Command({
+    paths: [["project", "show"]],
+    usage: { description: "Show the project." },
+  })
+  class ShowCommand extends BaseCommand {
+    async execute() {
+      await execute();
+    }
+  }
+  @Module({
+    imports: [CommandModule, FeatureModule],
+    providers: [CreateCommand, ListCommand, ShowCommand],
+  })
+  class ProjectModule {}
+  const output = capture();
+  expect(
+    await CommandFactory.run(ProjectModule, { args, context: output }),
+  ).toBe(0);
+  expect(process.exitCode).toBe(0);
+  expect(output.output()).toContain("nb project task create");
+  expect(output.output()).toContain("nb project task list");
+  if (args.length === 1) {
+    expect(output.output()).toContain("nb project show");
+  } else {
+    expect(output.output()).not.toContain("nb project show");
+  }
+  expect(output.output()).not.toContain("nb greet");
+  expect(execute).not.toHaveBeenCalled();
+  expect(calls).toEqual([]);
+  expect(events).toEqual(["closed"]);
+});
 
 it.each(
   [["unknown"], ["greet"], ["greet", "Alice", "--missing"]].map((args) => [
@@ -158,6 +218,26 @@ it.each(
   expect(output.output()).toBeTruthy();
   expect(calls).toEqual([]);
   expect(events).toEqual(["closed"]);
+});
+
+it("executes a complete command even when it is also a prefix of another path", async () => {
+  @Command({ paths: [["project"], ["project", "show"]] })
+  class ProjectCommand extends BaseCommand {
+    execute() {
+      this.context.stdout.write(this.path.join(" "));
+      return Promise.resolve();
+    }
+  }
+  @Module({ imports: [CommandModule], providers: [ProjectCommand] })
+  class ProjectModule {}
+  const output = capture();
+  expect(
+    await CommandFactory.run(ProjectModule, {
+      args: ["project"],
+      context: output,
+    }),
+  ).toBe(0);
+  expect(output.output()).toBe("project");
 });
 
 it("supports a version without running a command", async () => {

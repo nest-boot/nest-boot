@@ -5,7 +5,7 @@ import { QueueManager } from "../queue.manager.js";
 
 /** Runs selected queue consumers in the foreground until interrupted. */
 @Command({
-  paths: [["queue:start"]],
+  paths: [["queue", "start"]],
   usage: { description: "Run queue workers until SIGINT or SIGTERM." },
 })
 export class QueueStartCommand extends BaseCommand {

@@ -225,8 +225,8 @@ export class AppModule {}
 CLI 入口通过 `CommandFactory.run(AppModule)` 加载相同模块，然后执行：
 
 ```bash
-pnpm exec nb database:migration:create --name add-auth
-pnpm exec nb database:migration:up
+pnpm exec nb database migration create --name add-auth
+pnpm exec nb database migration up
 ```
 
 AuthModule 按功能开关注册实体类和原生 ApiKey EntitySchema。直接使用 MikroORM 时，显式选择实体类及 `createApiKeySchema({ user, workspace, system })`。所有 Auth 实体共用应用的数据库 schema，无需单独配置 Auth schema。

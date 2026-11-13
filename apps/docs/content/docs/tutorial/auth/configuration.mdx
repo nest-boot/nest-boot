@@ -252,8 +252,8 @@ export class AppModule {}
 The CLI entry calls `CommandFactory.run(AppModule)` to load the same modules:
 
 ```bash
-pnpm exec nb database:migration:create --name add-auth
-pnpm exec nb database:migration:up
+pnpm exec nb database migration create --name add-auth
+pnpm exec nb database migration up
 ```
 
 Direct MikroORM consumers explicitly register the required entity classes and native `createApiKeySchema({ user, workspace, system })` definition. AuthModule performs feature-specific registration automatically.

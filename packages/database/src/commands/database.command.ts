@@ -11,7 +11,7 @@ export abstract class DatabaseCommand extends BaseCommand {
 
 /** Creates the configured database if it does not exist. */
 @Command({
-  paths: [["database:create"]],
+  paths: [["database", "create"]],
   usage: { description: "Create the configured database if needed." },
 })
 export class DatabaseCreateCommand extends DatabaseCommand {

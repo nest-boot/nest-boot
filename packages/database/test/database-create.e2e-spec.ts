@@ -17,7 +17,7 @@ const record = new EntitySchema({
   properties: { id: { type: "integer", primary: true } },
 });
 
-describe.skipIf(!databaseUrl)("database:create with health checks", () => {
+describe.skipIf(!databaseUrl)("database create with health checks", () => {
   afterEach(() => {
     process.exitCode = undefined;
   });
@@ -94,7 +94,7 @@ describe.skipIf(!databaseUrl)("database:create with health checks", () => {
             ],
           },
           {
-            args: ["database:create"],
+            args: ["database", "create"],
             context: { stdout: stream, stderr: stream },
           },
         );

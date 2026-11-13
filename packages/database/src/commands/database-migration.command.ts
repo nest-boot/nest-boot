@@ -5,7 +5,7 @@ import { DatabaseCommand } from "./database.command.js";
 
 /** Creates a migration using the same entity metadata as the application. */
 @Command({
-  paths: [["database:migration:create"]],
+  paths: [["database", "migration", "create"]],
   usage: {
     description: "Generate a migration from the application's entity metadata.",
   },
@@ -59,7 +59,7 @@ abstract class DatabaseMigrationRangeCommand extends DatabaseCommand {
 
 /** Applies pending migrations. */
 @Command({
-  paths: [["database:migration:up"]],
+  paths: [["database", "migration", "up"]],
   usage: { description: "Apply pending migrations." },
 })
 export class DatabaseMigrationUpCommand extends DatabaseMigrationRangeCommand {
@@ -73,7 +73,7 @@ export class DatabaseMigrationUpCommand extends DatabaseMigrationRangeCommand {
 
 /** Reverts one migration unless an explicit target is provided. */
 @Command({
-  paths: [["database:migration:down"]],
+  paths: [["database", "migration", "down"]],
   usage: { description: "Revert a migration or migrate down to a target." },
 })
 export class DatabaseMigrationDownCommand extends DatabaseMigrationRangeCommand {
@@ -87,7 +87,7 @@ export class DatabaseMigrationDownCommand extends DatabaseMigrationRangeCommand 
 
 /** Lists executed migration names and timestamps. */
 @Command({
-  paths: [["database:migration:list"]],
+  paths: [["database", "migration", "list"]],
   usage: { description: "List executed migrations." },
 })
 export class DatabaseMigrationListCommand extends DatabaseCommand {
@@ -106,7 +106,7 @@ export class DatabaseMigrationListCommand extends DatabaseCommand {
 
 /** Lists migrations not yet applied. */
 @Command({
-  paths: [["database:migration:pending"]],
+  paths: [["database", "migration", "pending"]],
   usage: { description: "List pending migrations." },
 })
 export class DatabaseMigrationPendingCommand extends DatabaseCommand {
@@ -123,7 +123,7 @@ export class DatabaseMigrationPendingCommand extends DatabaseCommand {
 
 /** Returns a failing exit code when entity changes need another migration. */
 @Command({
-  paths: [["database:migration:check"]],
+  paths: [["database", "migration", "check"]],
   usage: { description: "Exit with status 1 if a new migration is needed." },
 })
 export class DatabaseMigrationCheckCommand extends DatabaseCommand {
@@ -140,7 +140,7 @@ export class DatabaseMigrationCheckCommand extends DatabaseCommand {
 
 /** Drops the schema and reruns all migrations. */
 @Command({
-  paths: [["database:migration:fresh"]],
+  paths: [["database", "migration", "fresh"]],
   usage: { description: "Drop the schema and rerun all migrations." },
 })
 export class DatabaseMigrationFreshCommand extends DatabaseCommand {

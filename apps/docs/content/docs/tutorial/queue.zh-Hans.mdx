@@ -127,12 +127,12 @@ Processor 必须为单例。request、transient 或被 request 依赖传播作�
 自动历史事件读取器在所有应用入口运行。业务 Worker 通过 QueueManager 启动。按照[命令教程](/docs/tutorial/command) 配置 `CommandModule` 和 CLI 入口后运行：
 
 ```bash
-pnpm exec nb queue:start
-pnpm exec nb queue:start --queue email --queue report-queue
-pnpm exec nb queue:start --queue job
+pnpm exec nb queue start
+pnpm exec nb queue start --queue email --queue report-queue
+pnpm exec nb queue start --queue job
 ```
 
-`queue:start` 是唯一的 `queue:*` 命令。不指定 `--queue` 时启动所有消费者；指定时仅运行匹配的 Processor，`job` 也遵循同一个过滤规则。需要同时处理业务任务和同步历史时，显式选择两者，例如 `--queue email --queue job`。已注册但没有 Processor 的队列不会匹配；过滤后没有消费者时，命令报错且不创建 Worker。未知名称在创建消费者前报错。HTTP、REPL 和普通命令仍然可以注入队列提交任务。定时任务在应用启动时注册，选中 schedule 后才启动其 Worker。SIGINT、SIGTERM 会先等待正在执行的任务完成再关闭依赖。
+`queue start` 是 `queue` 命令组中唯一的子命令。不指定 `--queue` 时启动所有消费者；指定时仅运行匹配的 Processor，`job` 也遵循同一个过滤规则。需要同时处理业务任务和同步历史时，显式选择两者，例如 `--queue email --queue job`。已注册但没有 Processor 的队列不会匹配；过滤后没有消费者时，命令报错且不创建 Worker。未知名称在创建消费者前报错。HTTP、REPL 和普通命令仍然可以注入队列提交任务。定时任务在应用启动时注册，选中 schedule 后才启动其 Worker。SIGINT、SIGTERM 会先等待正在执行的任务完成再关闭依赖。
 
 程序内可在应用初始化后调用 `await manager.start(["email"])`；所有选中的连接就绪后才开始消费。`worker` getter 此后可用；`manager.waitForStop()` 在消费者循环致命错误时拒绝。
 

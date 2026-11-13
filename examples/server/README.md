@@ -13,7 +13,7 @@ and run the server:
 ```bash
 docker compose up -d
 cp examples/server/.env.example examples/server/.env
-pnpm --filter @nest-boot/example-server migration:up
+pnpm --filter @nest-boot/example-server command database migration up
 pnpm --filter @nest-boot/example-server dev
 ```
 
@@ -72,9 +72,9 @@ does not require a login.
 
 ## Jobs
 
-`CommonModule` configures the global DatabaseModule and Redis-backed QueueModule through REDIS_URL, and imports QueueApiModule for authenticated Job queries and persistence. QueueModule itself requires no database, GraphQL or auth modules; queue-api reuses the application’s configured global modules. `ScheduleModule` uses the same Redis connection. Queue storage and processing require no database migrations. Automatic QueueEvents readers run in every application entry; business workers are started with `queue:start`.
+`CommonModule` configures the global DatabaseModule and Redis-backed QueueModule through REDIS_URL, and imports QueueApiModule for authenticated Job queries and persistence. QueueModule itself requires no database, GraphQL or auth modules; queue-api reuses the application’s configured global modules. `ScheduleModule` uses the same Redis connection. Queue storage and processing require no database migrations. Automatic QueueEvents readers run in every application entry; business workers are started with `queue start`.
 
-The Job history table is managed by the application's ordinary database migrations. A database-generated UUID identifies history records; the original BullMQ ID is stored as `jobId`. The built-in `job` worker consumes deduplicated snapshots and cleanup tasks and runs with `queue:start` when no queue filter is provided. Run it alone with `nb queue:start --queue job`. Reads are asynchronous; removing a Redis job leaves its history intact. A daily scheduler at 00:00 UTC removes records whose last event is more than 30 days old in batches of 1000, regardless of status. Records with `lastEventMs = 0` use `createdAt` instead. Redis jobs remain intact; a later event recreates a deleted record with a new UUID.
+The Job history table is managed by the application's ordinary database migrations. A database-generated UUID identifies history records; the original BullMQ ID is stored as `jobId`. The built-in `job` worker consumes deduplicated snapshots and cleanup tasks and runs with `queue start` when no queue filter is provided. Run it alone with `nb queue start --queue job`. Reads are asynchronous; removing a Redis job leaves its history intact. A daily scheduler at 00:00 UTC removes records whose last event is more than 30 days old in batches of 1000, regardless of status. Records with `lastEventMs = 0` use `createdAt` instead. Redis jobs remain intact; a later event recreates a deleted record with a new UUID.
 
 ## WorkspaceMember profiles and User privacy
 
@@ -113,7 +113,7 @@ The example has two migrations:
 
 Job history has database-generated UUIDs, bigint event versions and scoped cursor indexes. Its table has no RLS; JobService enforces ownership and administrator access. ReportQueue uses `@QueueVisible()` to enable API reads. Unmarked queues still persist but remain hidden. Queue-api owns the focused query and authorization tests; the example integration suite verifies the configured application with real sessions and member API keys.
 
-`migration:create` generates subsequent schema changes from metadata and the
+`database migration create` generates subsequent schema changes from metadata and the
 committed snapshot. Handwritten SQL should remain in dedicated migrations.
 Do not edit the generated schema migration to change roles, functions, or grants.
 Default privileges apply only to future objects created by the same migration role
@@ -136,8 +136,8 @@ are preserved. If the application connects as a different role from the migratio
 role, grant it membership in `anonymous` and `authenticated` separately.
 
 ```bash
-pnpm --filter @nest-boot/example-server migration:up
-pnpm --filter @nest-boot/example-server migration:create
+pnpm --filter @nest-boot/example-server command database migration up
+pnpm --filter @nest-boot/example-server command database migration create
 ```
 
 ## Verification

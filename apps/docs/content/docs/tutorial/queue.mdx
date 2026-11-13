@@ -125,11 +125,11 @@ The shared ESLint config enables `@nest-boot/queue/processor-name`: the processo
 Queue event readers start in every application. Business Workers start through `QueueManager`. For a separate foreground process, configure `src/cli.ts` with `CommandFactory.run(AppModule)` and import `CommandModule` as described in [Command](/docs/tutorial/command):
 
 ```bash
-pnpm exec nb queue:start
-pnpm exec nb queue:start --queue email --queue report-queue
+pnpm exec nb queue start
+pnpm exec nb queue start --queue email --queue report-queue
 ```
 
-Omit `--queue` to start all consumers. With `--queue`, only matching Processors run; the same filter applies to `job`. To run business processing and history synchronization together, select both names, for example `--queue email --queue job`. Registered queues without a Processor do not match; if the filter matches no consumers, the command reports an error without creating Workers. Unknown names fail before transports are created. Queue providers remain injectable in HTTP, REPL and ordinary commands. Scheduled handlers register during application startup; the schedule Worker starts when selected. SIGINT and SIGTERM drain active work before closing dependencies. `queue:start` is the only `queue:*` command.
+Omit `--queue` to start all consumers. With `--queue`, only matching Processors run; the same filter applies to `job`. To run business processing and history synchronization together, select both names, for example `--queue email --queue job`. Registered queues without a Processor do not match; if the filter matches no consumers, the command reports an error without creating Workers. Unknown names fail before transports are created. Queue providers remain injectable in HTTP, REPL and ordinary commands. Scheduled handlers register during application startup; the schedule Worker starts when selected. SIGINT and SIGTERM drain active work before closing dependencies. `queue start` is the only command in the `queue` group.
 
 Programmatic applications inject `QueueManager` and call `await manager.start(["email"])` after initialization. Every selected transport becomes ready before consumers run. `manager.waitForStop()` rejects on fatal consumer loop failures.
 
@@ -207,7 +207,7 @@ const jobApi = QueueApiModule;
 
 `JobQueue` and `JobProcessor` belong to queue-api and use the standard `@Queue()` / `@Processor(JobQueue)` lifecycle. QueueManager discovers queues once and creates their native event readers. JobService subscribes before readers start and provides history queries and event forwarding. On shutdown, it drains source Workers, closes source readers and flushes pending snapshots, then drains the Job Worker. The sync schema rejects invalid states, timestamps and metadata before enqueueing. The `job` queue participates in normal queue filters and health checks. Without QueueApiModule, no `job` queue is registered and no database snapshots are submitted.
 
-The Job worker starts with `nb queue:start`. Like every other Processor, it runs when no queue filter is provided or its name is selected. `nb queue:start --queue job` starts Job synchronization and cleanup alone. Failed database writes use exponential backoff with up to 20 attempts. Producers continue to enqueue Redis jobs while database history is unavailable.
+The Job worker starts with `nb queue start`. Like every other Processor, it runs when no queue filter is provided or its name is selected. `nb queue start --queue job` starts Job synchronization and cleanup alone. Failed database writes use exponential backoff with up to 20 attempts. Producers continue to enqueue Redis jobs while database history is unavailable.
 
 The built-in `job` queue has `sync` and `cleanup` jobs. JobService registers a single BullMQ Job Scheduler for cleanup at 00:00 UTC every day, shared by application replicas. JobProcessor deletes records whose last event is more than 30 days old in batches of up to 1000, regardless of status. Records with `lastEventMs = 0` use `createdAt` instead. Cleanup only removes database history and leaves Redis jobs intact, including long-running or delayed jobs. A later event recreates a deleted record with a new UUID. Cleanup runs when the `job` Worker is running and requires no dependency on `@nest-boot/schedule`.
 

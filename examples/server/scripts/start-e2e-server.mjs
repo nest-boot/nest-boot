@@ -51,7 +51,7 @@ try {
     }
   });
 
-  workerProcess = spawn(process.execPath, ['dist/cli.js', 'queue:start'], {
+  workerProcess = spawn(process.execPath, ['dist/cli.js', 'queue', 'start'], {
     cwd: serverRoot,
     env: createServerEnv(),
     stdio: ['ignore', 'inherit', 'inherit'],

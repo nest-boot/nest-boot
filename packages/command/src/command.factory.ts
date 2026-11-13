@@ -45,8 +45,17 @@ export class CommandFactory {
         if (options.binaryVersion) {
           cli.register(Builtins.VersionCommand);
         }
-        app.get(CommandRegistry, { strict: false }).register(cli);
+        const paths = app.get(CommandRegistry, { strict: false }).register(cli);
         const args = options.args ?? process.argv.slice(2);
+        const matches = paths.filter((path) =>
+          args.every((arg, index) => path[index] === arg),
+        );
+        const commandArgs =
+          !args.length ||
+          (matches.length > 0 &&
+            matches.every((path) => path.length > args.length))
+            ? [...args, "--help"]
+            : args;
         exitCode = await RequestContext.run(
           new RequestContext({
             type: "command",
@@ -65,7 +74,7 @@ export class CommandFactory {
               }
             },
           }),
-          () => cli.run(args.length ? args : ["--help"], options.context ?? {}),
+          () => cli.run(commandArgs, options.context ?? {}),
         );
       } finally {
         await app.close();
