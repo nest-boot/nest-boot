@@ -137,7 +137,9 @@ export const { Connection: BookConnection } = new ConnectionBuilder(Book)
   .build();
 ```
 
-With that configuration, `filter: { title: { $fulltext: "你好世界" } }` and `query: "title:你好世界"` both search `searchableTitle`. The shared filter schema automatically applies `@nest-boot/database`'s `tokenizer` to `$fulltext` strings after validation and field mapping, using the same word boundaries as `SearchableProperty`. Query strings and GraphQL filter inputs, including logical groups, pass through this schema; callers can supply the original text. Ordinary comparisons such as `$eq` keep their original text. Programmatic `args.filter` and `options.where` are native MikroORM conditions; use `filterQuerySchema.parse(...)` for schema-validated and tokenized input.
+With that configuration, `filter: { title: { $fulltext: "你好世界" } }` and `query: "title:你好世界"` both search `searchableTitle`. The shared filter schema uses `operatorTransforms.$fulltext` to automatically apply `@nest-boot/database`'s `tokenizer` after operand validation and before field mapping or replacement callbacks, using the same word boundaries as `SearchableProperty`. Query strings and GraphQL filter inputs, including logical groups, pass through this schema; callers can supply the original text. Ordinary comparisons such as `$eq` keep their original text. Programmatic `args.filter` and `options.where` are native MikroORM conditions; use `filterQuerySchema.parse(...)` for schema-validated and tokenized input.
+
+Custom operator transforms configured through `ConnectionBuilder`'s `filter.operatorTransforms` are preserved. An explicit `$fulltext` transform overrides the default tokenizer; use the same tokenization as the indexed column. Full-text conditions introduced by replacement callbacks retain the text supplied by the callback.
 
 A full-text value containing only whitespace or punctuation remains an empty `$fulltext` condition and matches no records. Regenerate existing search-column values with the same tokenizer when adopting multilingual full-text queries.
 

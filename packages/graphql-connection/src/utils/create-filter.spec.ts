@@ -121,7 +121,7 @@ describe("createFilter", () => {
     });
   });
 
-  it("tokenizes full-text operands produced by replacement callbacks", () => {
+  it("passes tokenized full-text input to replacement callbacks", () => {
     const fields = new Map<string, ConnectionFieldOptions<Book>>([
       [
         "title",
@@ -140,6 +140,76 @@ describe("createFilter", () => {
       filterQuerySchema.parse({ title: { $fulltext: "你好世界 HELLO!" } }),
     ).toEqual({
       searchableTitle: { $fulltext: "你好 世界 hello" },
+    });
+  });
+
+  it("preserves configured operator transforms alongside default full-text tokenization", () => {
+    const fields = new Map<string, ConnectionFieldOptions<Book>>([
+      [
+        "title",
+        { field: "title", type: "string", fulltext: "searchableTitle" },
+      ],
+    ]);
+    const { filterQuerySchema } = createFilter(
+      "BookOperatorTransforms",
+      fields,
+      {
+        maxDepth: 5,
+        maxConditions: 20,
+        maxOrBranches: 5,
+        maxArrayLength: 100,
+        operatorTransforms: {
+          $eq: (value) => (typeof value === "string" ? value.trim() : value),
+        },
+      },
+    );
+    expect(
+      filterQuerySchema.parse({
+        title: { $eq: "  Exact Title!  ", $fulltext: "你好世界 HELLO!" },
+      }),
+    ).toEqual({
+      title: { $eq: "Exact Title!" },
+      searchableTitle: { $fulltext: "你好 世界 hello" },
+    });
+  });
+
+  it("allows explicitly configured full-text transforms to override the default", () => {
+    const fields = new Map<string, ConnectionFieldOptions<Book>>([
+      [
+        "title",
+        { field: "title", type: "string", fulltext: "searchableTitle" },
+      ],
+    ]);
+    const { filterQuerySchema } = createFilter("BookCustomFullText", fields, {
+      maxDepth: 5,
+      maxConditions: 20,
+      maxOrBranches: 5,
+      maxArrayLength: 100,
+      operatorTransforms: { $fulltext: (value) => value.trim() },
+    });
+    expect(
+      filterQuerySchema.parse({ title: { $fulltext: "  Custom TERMS!  " } }),
+    ).toEqual({
+      searchableTitle: { $fulltext: "Custom TERMS!" },
+    });
+  });
+
+  it("leaves query fragments produced by replacement callbacks unchanged", () => {
+    const fields = new Map<string, ConnectionFieldOptions<Book>>([
+      [
+        "title",
+        {
+          field: "title",
+          type: "string",
+          replacement: () => ({
+            searchableTitle: { $fulltext: "KEEP Original!" },
+          }),
+        },
+      ],
+    ]);
+    const { filterQuerySchema } = createFilter("BookCallbackFragment", fields);
+    expect(filterQuerySchema.parse({ title: "input" })).toEqual({
+      searchableTitle: { $fulltext: "KEEP Original!" },
     });
   });
 
