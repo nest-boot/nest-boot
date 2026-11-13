@@ -1,6 +1,6 @@
 ---
 "@nest-boot/database": minor
-"@nest-boot/eslint-plugin": major
+"@nest-boot/eslint-plugin": minor
 "@nest-boot/eslint-config": patch
 ---
 
