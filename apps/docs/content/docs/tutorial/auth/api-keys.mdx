@@ -275,9 +275,9 @@ Use `@AuthApiKey()` when a handler needs the credential that authenticated
 the request:
 
 ```typescript
-import { AuthApiKey, type UserApiKey, type WorkspaceApiKey, type SystemApiKey } from "@nest-boot/auth";
+import { AuthApiKey, type ApiKeyRecord } from "@nest-boot/auth";
 
-audit(@AuthApiKey() apiKey: UserApiKey | WorkspaceApiKey | SystemApiKey | null) {
+audit(@AuthApiKey() apiKey: ApiKeyRecord | null) {
   return apiKey;
 }
 ```

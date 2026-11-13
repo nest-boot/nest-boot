@@ -51,14 +51,16 @@ export async function runAuthQuery<T>(
     })).catch((error: unknown) => {
       // Only an explicit post-commit rejection can revoke identity on failure.
       if (error instanceof RevokedAuthenticationException) {
-        clearAuthenticationContext(current);
+        RequestContext.set(EntityManager, current);
+        clearAuthenticationContext();
       }
       throw error;
     });
     // Publish an explicit, successful credential revocation back to the caller.
     // Other failed operations leave its identity and scoped manager unchanged.
     if (revoked) {
-      clearAuthenticationContext(current);
+      RequestContext.set(EntityManager, current);
+      clearAuthenticationContext();
     }
     return result;
   }

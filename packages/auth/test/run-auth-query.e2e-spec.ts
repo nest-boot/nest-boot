@@ -8,8 +8,10 @@ import { MikroORM } from "@mikro-orm/pglite";
 import { RequestContext } from "@nest-boot/request-context";
 
 import { runAuthQuery } from "../src/common/utils/run-auth-query.js";
+import { SELECTED_WORKSPACE } from "../src/core/constants/auth.constants.js";
 import { Session } from "../src/core/entities/session.entity.js";
 import { User } from "../src/core/entities/user.entity.js";
+import { Workspace } from "../src/workspace/entities/workspace.entity.js";
 import { createTestAuthContext } from "./fixtures/auth-context.fixture.js";
 
 @Entity({
@@ -127,6 +129,10 @@ describe("runAuthQuery with native RLS", () => {
         const currentSession = new Session();
         RequestContext.set(User, user);
         RequestContext.set(Session, currentSession);
+        const workspace = Object.assign(new Workspace(), {
+          id: "selected-workspace",
+        });
+        RequestContext.set(SELECTED_WORKSPACE, workspace);
         const operation = runAuthQuery(em, async (authEm) => {
           await authEm.getConnection().execute("select 1");
           createTestAuthContext(authEm, {}).clear();
@@ -146,10 +152,18 @@ describe("runAuthQuery with native RLS", () => {
           expect(RequestContext.get(Session)).toBeNull();
           expect(em.getSessionContext()).toMatchObject({
             role: "anonymous",
-            variables: { "app.auth.user.id": "" },
+            variables: {
+              "app.auth.user.id": "",
+              "app.auth.workspace.id": "",
+              "app.auth.workspace_member.id": "",
+              "app.selected.workspace.id": workspace.id,
+            },
           });
         }
         expect(RequestContext.get(CoreEntityManager)).toBe(em);
+        expect(RequestContext.get<Workspace>(SELECTED_WORKSPACE)).toBe(
+          workspace,
+        );
       });
     },
   );

@@ -6,6 +6,7 @@ import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
 import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
+import { SELECTED_WORKSPACE } from "../constants/auth.constants.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import {
@@ -38,7 +39,10 @@ describe("identity assertions", () => {
             expect(() => {
               invoke(target);
             }).toThrow(ForbiddenException);
-            context.set<InstanceType<typeof Entity>>(Entity, target);
+            context.set<InstanceType<typeof Entity>>(
+              Entity === Workspace ? SELECTED_WORKSPACE : Entity,
+              target,
+            );
             expect(() => {
               invoke(target);
             }).not.toThrow();

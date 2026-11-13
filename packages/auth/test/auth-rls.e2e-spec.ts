@@ -11,7 +11,10 @@ import type { Request } from "express";
 import { ApiKey } from "../src/api-key/entities/api-key.entity.js";
 import { ApiKeyAuthenticationService } from "../src/api-key/services/api-key-authentication.service.js";
 import { mikroOrmAdapter } from "../src/core/adapters/mikro-orm-adapter.js";
-import { AUTH_TOKEN } from "../src/core/constants/auth.constants.js";
+import {
+  AUTH_TOKEN,
+  SELECTED_WORKSPACE,
+} from "../src/core/constants/auth.constants.js";
 import { createAuthInstance } from "../src/core/create-auth-instance.js";
 import { UserDeletionService } from "../src/core/services/user-deletion.service.js";
 import { entities, workspaceEntities } from "../src/index.js";
@@ -28,7 +31,6 @@ import {
   UserApiKey,
   UserService,
   Verification,
-  Workspace as BaseWorkspace,
   Workspace,
   WorkspaceApiKey,
   WorkspaceApiKeyService,
@@ -1585,7 +1587,7 @@ describe("Auth services and native RLS boundaries", () => {
     );
     const context = new RequestContext({ type: "test" });
     context.set(EntityManager, scoped);
-    context.set(BaseWorkspace, workspace);
+    context.set(SELECTED_WORKSPACE, workspace);
     context.set(User, user);
     context.set(
       BaseWorkspaceMember,

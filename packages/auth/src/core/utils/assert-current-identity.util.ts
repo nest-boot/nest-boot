@@ -4,6 +4,7 @@ import { ForbiddenException } from "@nestjs/common";
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
+import { SELECTED_WORKSPACE } from "../constants/auth.constants.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 
@@ -54,7 +55,7 @@ export function assertCurrentSession(session: Session): void {
  */
 export function assertCurrentWorkspace(workspace: Workspace): void {
   const selectedWorkspace = RequestContext.isActive()
-    ? RequestContext.get(Workspace)
+    ? RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)
     : undefined;
 
   if (

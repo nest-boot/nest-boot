@@ -6,6 +6,7 @@ import { ApiKey } from "../../src/api-key/entities/api-key.entity.js";
 import { UserApiKeyService } from "../../src/api-key/services/user-api-key.service.js";
 import { WorkspaceApiKeyService } from "../../src/api-key/services/workspace-api-key.service.js";
 import * as abilityHelpers from "../../src/common/utils/authorize.util.js";
+import { SELECTED_WORKSPACE } from "../../src/core/constants/auth.constants.js";
 import { User } from "../../src/core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-options.interface.js";
 import * as identityAccess from "../../src/core/utils/assert-current-identity.util.js";
@@ -15,6 +16,7 @@ import { WorkspaceMemberService } from "../../src/workspace/services/workspace-m
 import { createTestAuthContext } from "./auth-context.fixture.js";
 import { createTestApiKeyService } from "./auth-context.fixture.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
+
 /**
  * Returns workspace fixture with deterministic identifiers.
  * @returns Workspace fixture with deterministic identifiers.
@@ -88,7 +90,7 @@ export function apiKeyTest(
   baseIt(name, async () => {
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(User, createTestUser());
-      RequestContext.set(Workspace, createTestWorkspace());
+      RequestContext.set(SELECTED_WORKSPACE, createTestWorkspace());
       RequestContext.set(WorkspaceMember, createTestWorkspaceMember());
       await callback();
     });

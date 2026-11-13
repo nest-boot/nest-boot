@@ -388,6 +388,10 @@ RLS-scoped manager. Foreign keys cascade to members and invitations. Users and A
 context or restore operation. Successful deletion clears the request's workspace
 identity and ability. Keys whose member was deleted retain their metadata and usage timestamps for audit, but cannot authenticate.
 
+Request identity tokens use the entity classes `User`, `Session`, `ApiKey`,
+`Workspace` and `WorkspaceMember`. The independent target uses the
+`SELECTED_WORKSPACE` Symbol; authentication decorators resolve the class tokens.
+
 Request decorators distinguish `@AuthUser()`, `@AuthSession()`, `@AuthApiKey()`, `@AuthWorkspaceMember()`,
 `@AuthWorkspace()` and `@SelectedWorkspace()`. GraphQL retains `currentUser`, `currentSession` and `currentWorkspaceMember`,
 with `selectedWorkspace` for selection and `currentWorkspace` for authenticated workspace scope.

@@ -21,9 +21,11 @@ import { GraphQLModule } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
 
 import { AuthApiKey } from "../src/api-key/decorators/auth-api-key.decorator.js";
-import { ApiKey } from "../src/api-key/entities/api-key.entity.js";
+import {
+  ApiKey,
+  type ApiKeyRecord,
+} from "../src/api-key/entities/api-key.entity.js";
 import { SystemAccount } from "../src/api-key/entities/system-account.entity.js";
-import type { ApiKeyObject } from "../src/api-key/objects/api-key.object.js";
 import { hashApiKey } from "../src/api-key/utils/api-key-credential.util.js";
 import { Public } from "../src/common/decorators/public.decorator.js";
 import { workspaceScopePolicy } from "../src/common/policies/workspace-scope.policy.js";
@@ -84,11 +86,15 @@ class WorkspaceResourceController {
   @Get("credential")
   @Public()
   credential(
-    @AuthApiKey() apiKey: ApiKeyObject | null,
+    @AuthApiKey() apiKey: ApiKeyRecord | null,
     @AuthSession() session: Session | null,
   ) {
     return {
       keyId: apiKey?.id ?? null,
+      entity: apiKey ? apiKey instanceof ApiKey : null,
+      hashLoaded: apiKey
+        ? typeof Reflect.get(apiKey, "key") === "string"
+        : null,
       ownerType: apiKey?.ownerType ?? null,
       sessionId: session?.id ?? null,
     };
@@ -411,6 +417,12 @@ describe("workspace selection independently of authentication", () => {
       expect(response.status).toBe(200);
       const body = await response.json();
       const session = identity === "session" || identity === "session-over-key";
+      expect(body.entity).toBe(
+        identity === "anonymous" || session ? null : true,
+      );
+      expect(body.hashLoaded).toBe(
+        identity === "anonymous" || session ? null : false,
+      );
       expect(body.sessionId).toEqual(session ? expect.any(String) : null);
       expect(body.keyId).toEqual(
         identity === "anonymous" || session ? null : expect.any(String),

@@ -9,10 +9,15 @@ import { Global, type INestApplication, Module } from "@nestjs/common";
 import { GraphQLModule } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
 
-import { ApiKey } from "../src/api-key/entities/api-key.entity.js";
+import {
+  ApiKey,
+  type ApiKeyRecord,
+} from "../src/api-key/entities/api-key.entity.js";
 import { SystemAccount } from "../src/api-key/entities/system-account.entity.js";
 import { UserApiKey } from "../src/api-key/objects/user-api-key.object.js";
 import { hashApiKey } from "../src/api-key/utils/api-key-credential.util.js";
+import { toApiKeyView } from "../src/api-key/utils/api-key-view.util.js";
+import { assertApiKeyOwner } from "../src/api-key/utils/assert-api-key-owner.util.js";
 import { getCurrentApiKey } from "../src/api-key/utils/get-current-api-key.util.js";
 import { Can } from "../src/common/decorators/can.decorator.js";
 import { AuthGuard } from "../src/core/auth.guard.js";
@@ -21,18 +26,19 @@ import { User } from "../src/core/entities/user.entity.js";
 import { Workspace } from "../src/workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../src/workspace/entities/workspace-member.entity.js";
 
-let observedCredential: UserApiKey | undefined;
+let observedCredential: ApiKeyRecord | undefined;
 
 @Resolver()
 class PermissionProbeResolver {
   @Query(() => UserApiKey)
   permissionProbeKey(): UserApiKey {
     const key = getCurrentApiKey();
-    if (!(key instanceof UserApiKey)) {
+    if (key?.ownerType !== "user") {
       throw new Error("Expected user key");
     }
     observedCredential = key;
-    return key;
+    assertApiKeyOwner(key, "user");
+    return toApiKeyView(key);
   }
 
   @Can("read", () => "Task")

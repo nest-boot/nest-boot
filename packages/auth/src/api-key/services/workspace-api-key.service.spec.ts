@@ -23,7 +23,7 @@ import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-featur
 import { mockRlsContext } from "../../../test/mock-rls-context.js";
 import { AuthAbility } from "../../common/auth.ability.js";
 import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
-import { API_KEY } from "../../core/constants/auth.constants.js";
+import { SELECTED_WORKSPACE } from "../../core/constants/auth.constants.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
 import * as identityAccess from "../../core/utils/assert-current-identity.util.js";
@@ -33,9 +33,11 @@ import { WorkspaceMemberType } from "../../workspace/enums/workspace-member-type
 import { UserApiKeyConnection } from "../connections/user-api-key.connection-definition.js";
 import { WorkspaceApiKeyConnection } from "../connections/workspace-api-key.connection-definition.js";
 import { ApiKey } from "../entities/api-key.entity.js";
+import type { ApiKeyObject } from "../objects/api-key.object.js";
 import { UserApiKey } from "../objects/user-api-key.object.js";
 import { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
 import { toApiKeyView } from "../utils/api-key-view.util.js";
+
 /* eslint-disable @typescript-eslint/unbound-method */
 describe("API-key management", () => {
   describe("API-key management services", () => {
@@ -388,8 +390,8 @@ describe("API-key management", () => {
             permissions: ["workspace:update"],
           }),
         );
-        RequestContext.set(
-          API_KEY,
+        RequestContext.set<ApiKeyObject | null>(
+          ApiKey,
           Object.assign(new ApiKey(), {
             user: ref(User, createTestUser()),
             permissions: ["workspace:update"],
@@ -528,14 +530,14 @@ describe("API-key management", () => {
         });
         const ability = new AuthAbility();
         RequestContext.set(User, user);
-        RequestContext.set(API_KEY, active);
+        RequestContext.set<ApiKeyObject | null>(ApiKey, active);
         RequestContext.set(AuthAbility, ability);
         em.findOne.mockResolvedValue(target);
         em.isInTransaction.mockReturnValue(true);
         mockRlsContext(em);
         await service.revokeWorkspaceApiKey(target.id);
         expect(target.lastUsedAt).toBeNull();
-        expect(RequestContext.get(API_KEY)).toBe(active);
+        expect(RequestContext.get(ApiKey)).toBe(active);
         expect(RequestContext.get(User)).toBe(user);
         expect(RequestContext.get(AuthAbility)).toBe(ability);
         expect(em.setSessionContext).not.toHaveBeenCalled();
@@ -795,7 +797,7 @@ describe("API-key management", () => {
             if (scope === "user") {
               RequestContext.set(User, user);
             }
-            RequestContext.set(API_KEY, key);
+            RequestContext.set<ApiKeyObject | null>(ApiKey, key);
             const ability = new AuthAbility([
               { action: "update", subject: Workspace },
             ]);
@@ -827,9 +829,7 @@ describe("API-key management", () => {
               operation === "delete" ? em.flush : em.nativeUpdate;
             persistence.mockRejectedValueOnce(new Error("Commit failed"));
             await expect(invoke()).rejects.toThrow("Commit failed");
-            expect(RequestContext.get(API_KEY)).toMatchObject(
-              toApiKeyView(key),
-            );
+            expect(RequestContext.get(ApiKey)).toMatchObject(toApiKeyView(key));
             expect(key.revokedAt).toBeNull();
             expect(key.lastUsedAt).toEqual(new Date(0));
             expect(key.permissions).toEqual([
@@ -839,7 +839,7 @@ describe("API-key management", () => {
             expect(RequestContext.get(AuthAbility)).toBe(ability);
             expect(em.setSessionContext).not.toHaveBeenCalled();
             const beforeCommit = () => {
-              expect(RequestContext.get(API_KEY)).toMatchObject(
+              expect(RequestContext.get(ApiKey)).toMatchObject(
                 toApiKeyView(key),
               );
               expect(em.setSessionContext).not.toHaveBeenCalled();
@@ -864,20 +864,23 @@ describe("API-key management", () => {
               RequestContext.get(AuthAbility)?.can("update", Workspace),
             ).toBe(false);
             if (operation === "permissions") {
-              expect(RequestContext.get(API_KEY)).toMatchObject(changed);
+              expect(RequestContext.get(ApiKey)).toMatchObject(changed);
               expect(em.setSessionContext).not.toHaveBeenCalled();
             } else {
-              expect(RequestContext.get(API_KEY)).toBeNull();
+              expect(RequestContext.get(ApiKey)).toBeNull();
               expect(RequestContext.get(User)).toBeNull();
               expect(RequestContext.get(WorkspaceMember)).toBeNull();
-              expect(RequestContext.get(Workspace)).toBeInstanceOf(Workspace);
+              expect(
+                RequestContext.get<Workspace | null>(SELECTED_WORKSPACE),
+              ).toBeInstanceOf(Workspace);
               expect(em.setSessionContext).toHaveBeenCalledWith({
                 role: "anonymous",
                 variables: {
                   "app.auth.user.id": "",
                   "app.auth.workspace.id": "",
                   "app.selected.workspace.id":
-                    RequestContext.get(Workspace)?.id,
+                    RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)
+                      ?.id,
                   "app.auth.workspace_member.id": "",
                 },
               });
@@ -1533,7 +1536,7 @@ describe("API-key management", () => {
           permissions: ["workspace:update"],
         });
         await RequestContext.child(async () => {
-          RequestContext.set(API_KEY, authenticatingKey);
+          RequestContext.set<ApiKeyObject | null>(ApiKey, authenticatingKey);
           await expect(
             service.createWorkspaceApiKey(workspace, {
               member: RequestContext.get(WorkspaceMember),
@@ -1589,8 +1592,8 @@ describe("API-key management", () => {
         });
         RequestContext.set(User, null);
         RequestContext.set(WorkspaceMember, account);
-        RequestContext.set(
-          API_KEY,
+        RequestContext.set<ApiKeyObject | null>(
+          ApiKey,
           Object.assign(createTestApiKey(), {
             member: ref(WorkspaceMember, account),
             permissions: ["workspace:update"],
@@ -1654,7 +1657,7 @@ describe("API-key management", () => {
         const currentKey = Object.assign(createTestApiKey(), {
           permissions: ["workspace:read"],
         });
-        RequestContext.set(API_KEY, currentKey);
+        RequestContext.set<ApiKeyObject | null>(ApiKey, currentKey);
         const target = Object.assign(createTestApiKey(), {
           permissions: ["workspace:delete"],
         });
@@ -1692,7 +1695,7 @@ describe("API-key management", () => {
           service.getWorkspaceApiKeyConnection(otherWorkspace, { first: 10 }),
         ).rejects.toThrow(ForbiddenException);
         expect(find).not.toHaveBeenCalled();
-        RequestContext.set(Workspace, otherWorkspace);
+        RequestContext.set(SELECTED_WORKSPACE, otherWorkspace);
         await expect(
           service.createWorkspaceApiKey(otherWorkspace, {
             member: RequestContext.get(WorkspaceMember),

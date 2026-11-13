@@ -13,6 +13,7 @@ import type { AbilityRules } from "../../common/interfaces/ability-rules.interfa
 import { serializeAbilityRules } from "../../common/utils/serialize-ability-rules.util.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
+import { SELECTED_WORKSPACE } from "../constants/auth.constants.js";
 import { User } from "../entities/user.entity.js";
 import { buildRequestAbility } from "./build-request-ability.util.js";
 
@@ -137,10 +138,10 @@ describe("framework-owned request abilities", () => {
       WorkspaceMember,
       Object.assign(new WorkspaceMember(), { roles: ["owner"] }),
     );
-    RequestContext.set(Workspace, new Workspace());
+    RequestContext.set(SELECTED_WORKSPACE, new Workspace());
     Object.assign(requireWorkspaceMember(), {
       user: RequestContext.get(User),
-      workspace: RequestContext.get(Workspace),
+      workspace: RequestContext.get<Workspace | null>(SELECTED_WORKSPACE),
     });
     stageIdentity({
       apiKey: Object.assign(new UserApiKey(new ApiKey()), {

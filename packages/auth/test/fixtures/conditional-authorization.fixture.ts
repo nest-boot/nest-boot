@@ -3,6 +3,7 @@ import { RequestContext } from "@nest-boot/request-context";
 import { UserApiKeyService } from "../../src/api-key/services/user-api-key.service.js";
 import { WorkspaceApiKeyService } from "../../src/api-key/services/workspace-api-key.service.js";
 import { AuthAbility } from "../../src/common/auth.ability.js";
+import { SELECTED_WORKSPACE } from "../../src/core/constants/auth.constants.js";
 import { User } from "../../src/core/entities/user.entity.js";
 import { SessionService } from "../../src/core/services/session.service.js";
 import { UserService } from "../../src/core/services/user.service.js";
@@ -13,6 +14,7 @@ import { createWorkspaceServices } from "../workspace-service.fixture.js";
 import { createTestApiKeyService } from "./auth-context.fixture.js";
 import { createTestAuthContext } from "./auth-context.fixture.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
+
 /**
  * Runs a test with the fixture's user and workspace identity.
  * @param callback - Work to execute in the supplied context.
@@ -23,7 +25,7 @@ export async function withIdentity(
   const data = fixture();
   await RequestContext.run(new RequestContext({ type: "test" }), async () => {
     RequestContext.set(User, data.user);
-    RequestContext.set(Workspace, data.workspace);
+    RequestContext.set(SELECTED_WORKSPACE, data.workspace);
     RequestContext.set(
       WorkspaceMember,
       Object.assign(new WorkspaceMember(), {

@@ -4,7 +4,9 @@ it("resolves WorkspaceMember from the current request", async () => {
   const expected = { id: "current", status: "ACTIVE", workspace, user };
   const get = vi.fn<(token: symbol | { name?: string }) => unknown>((token) =>
     typeof token === "symbol"
-      ? null
+      ? token.description === "SELECTED_WORKSPACE"
+        ? workspace
+        : null
       : token.name === "WorkspaceMember"
         ? expected
         : token.name === "Workspace"

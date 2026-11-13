@@ -1,10 +1,10 @@
 import type { User } from "../../core/entities/user.entity.js";
-import type { UserApiKey } from "../objects/user-api-key.object.js";
+import type { OwnedApiKey } from "../entities/api-key.entity.js";
 
 /** Successful authentication for a user-owned API key. */
 export interface UserApiKeyValidation {
   /** Validated API-key entity. */
-  apiKey: UserApiKey;
+  apiKey: OwnedApiKey<"user">;
   /** Identifies the owner branch. */
   ownerType: "user";
   /** User represented by the key. */

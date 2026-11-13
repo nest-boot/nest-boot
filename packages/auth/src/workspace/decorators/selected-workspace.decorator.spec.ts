@@ -20,7 +20,7 @@ it("resolves Workspace from the current request", async () => {
     expect(get).toHaveBeenCalledTimes(1);
     const token = get.mock.calls[0][0];
     expect(typeof token === "symbol" ? token.description : token.name).toBe(
-      "Workspace",
+      "SELECTED_WORKSPACE",
     );
   } finally {
     vi.doUnmock("@nest-boot/request-context");

@@ -1,4 +1,4 @@
-it("resolves API_KEY from the current request", async () => {
+it("resolves ApiKey from the current request", async () => {
   const expected = { id: "current" };
   const get = vi.fn<(token: symbol | { name?: string }) => unknown>(
     () => expected,
@@ -19,7 +19,7 @@ it("resolves API_KEY from the current request", async () => {
     expect(get).toHaveBeenCalledTimes(1);
     const token = get.mock.calls[0][0];
     expect(typeof token === "symbol" ? token.description : token.name).toBe(
-      "API_KEY",
+      "ApiKey",
     );
   } finally {
     vi.doUnmock("@nest-boot/request-context");

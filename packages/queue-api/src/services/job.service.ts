@@ -1,6 +1,7 @@
 import { EntityManager, type FilterQuery, raw } from "@mikro-orm/core";
 import type { SqlEntityManager } from "@mikro-orm/sql";
-import { API_KEY, User, UserService, WorkspaceService } from "@nest-boot/auth";
+import { User, UserService, WorkspaceService } from "@nest-boot/auth";
+import { ApiKey } from "@nest-boot/auth";
 import {
   type ConnectionArgsInterface,
   ConnectionManager,
@@ -153,7 +154,7 @@ export class JobService implements OnModuleInit, OnModuleDestroy {
   private systemFilter(): FilterQuery<JobEntity> {
     const user = this.currentUser();
     // API credentials must not inherit their owner's administrator role.
-    if (RequestContext.get(API_KEY) || !this.users.isAdmin(user)) {
+    if (RequestContext.get(ApiKey) || !this.users.isAdmin(user)) {
       throw new ForbiddenException("An administrator session is required.");
     }
     return {

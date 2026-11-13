@@ -1,6 +1,5 @@
 import type { EntityManager } from '@mikro-orm/core';
 import {
-  API_KEY,
   AuthContext,
   AuthResolver,
   type AuthService,
@@ -10,6 +9,8 @@ import {
   WorkspaceApiKeyService,
   WorkspaceMember,
 } from '@nest-boot/auth';
+import { SELECTED_WORKSPACE } from '@nest-boot/auth';
+import { ApiKey } from '@nest-boot/auth';
 import { RequestContext } from '@nest-boot/request-context';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
@@ -54,7 +55,7 @@ describe('business authorization recipe', () => {
             permissions: [],
           });
           RequestContext.set(User, user);
-          RequestContext.set(Workspace, workspace);
+          RequestContext.set(SELECTED_WORKSPACE, workspace);
           RequestContext.set(
             WorkspaceMember,
             Object.assign(new WorkspaceMember(), {
@@ -67,7 +68,7 @@ describe('business authorization recipe', () => {
           );
           if (key !== undefined) {
             RequestContext.set(
-              API_KEY,
+              ApiKey,
               Object.assign(new UserApiKey(), { user, permissions: key }),
             );
           }

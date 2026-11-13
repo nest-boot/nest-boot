@@ -222,9 +222,9 @@ Bearer 凭据才会作为 API Key 校验。
 处理器需要读取本次请求使用的 Key 时，可以使用 `@AuthApiKey()`：
 
 ```typescript
-import { AuthApiKey, type UserApiKey, type WorkspaceApiKey, type SystemApiKey } from "@nest-boot/auth";
+import { AuthApiKey, type ApiKeyRecord } from "@nest-boot/auth";
 
-audit(@AuthApiKey() apiKey: UserApiKey | WorkspaceApiKey | SystemApiKey | null) {
+audit(@AuthApiKey() apiKey: ApiKeyRecord | null) {
   return apiKey;
 }
 ```

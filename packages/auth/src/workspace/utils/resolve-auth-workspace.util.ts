@@ -2,6 +2,7 @@ import { RequestContext } from "@nest-boot/request-context";
 
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { resolveRequestPermissions } from "../../common/utils/resolve-request-permissions.util.js";
+import { SELECTED_WORKSPACE } from "../../core/constants/auth.constants.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { resolveRequestWorkspaceMember } from "./resolve-request-workspace-member.util.js";
@@ -17,7 +18,7 @@ export function resolveAuthWorkspace(
   if (!RequestContext.isActive() || options.workspace?.enabled !== true) {
     return null;
   }
-  const workspace = RequestContext.get(Workspace);
+  const workspace = RequestContext.get<Workspace | null>(SELECTED_WORKSPACE);
   if (!workspace) {
     return null;
   }

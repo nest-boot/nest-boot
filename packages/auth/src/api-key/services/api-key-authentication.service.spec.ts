@@ -165,7 +165,7 @@ describe("API-key authentication", () => {
           key: hashApiKey("plaintext"),
           ownerType: { $in: ["user", "workspace_member", "system_account"] },
         },
-        { refresh: true },
+        { refresh: true, exclude: ["key"] },
       );
       expect(em.findOne).toHaveBeenCalledWith(
         scope === "user" ? User : WorkspaceMember,
@@ -324,7 +324,7 @@ describe("optional workspace behavior", () => {
         key: hashApiKey("personal-key"),
         ownerType: { $in: ["user"] },
       },
-      { refresh: true },
+      { refresh: true, exclude: ["key"] },
     );
     expect(em.findOne).toHaveBeenCalledWith(User, user.id, { refresh: true });
     expect(em.populate).not.toHaveBeenCalled();

@@ -99,7 +99,10 @@ export { entities, workspaceEntities } from "./core/auth-entities.js";
 export * from "./core/connections/account.connection-definition.js";
 export * from "./core/connections/session.connection-definition.js";
 export * from "./core/connections/user.connection-definition.js";
-export { API_KEY, IS_PUBLIC_KEY } from "./core/constants/auth.constants.js";
+export {
+  IS_PUBLIC_KEY,
+  SELECTED_WORKSPACE,
+} from "./core/constants/auth.constants.js";
 export * from "./core/constants/user.constants.js";
 export * from "./core/decorators/auth-session.decorator.js";
 export * from "./core/decorators/auth-user.decorator.js";

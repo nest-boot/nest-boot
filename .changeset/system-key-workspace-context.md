@@ -1,5 +1,6 @@
 ---
 "@nest-boot/auth": minor
+"@nest-boot/queue-api": patch
 ---
 
 Separate workspace selection from authentication. Rename the request decorators to AuthUser, AuthSession, AuthApiKey, AuthWorkspaceMember, AuthWorkspace and SelectedWorkspace, while preserving currentUser, currentSession and currentWorkspaceMember GraphQL names. Expose selection through selectedWorkspace and authenticated workspace scope through currentWorkspace. Rename authentication response user data to AuthUserData. Update example clients and preserve the 8.x release series.
@@ -9,3 +10,5 @@ Header selection takes precedence over the workspace Cookie for all credential t
 Project authenticated user, active workspace member, authenticated workspace and selected target into app.auth.user.id, app.auth.workspace_member.id, app.auth.workspace.id and app.selected.workspace.id. System credentials use the existing authenticated role and derive workspace scope from effective account/key/configuration grants without a database system-account identifier. Keep request context preparation outside business transactions. Generate example policy migrations from the native ORM metadata.
 
 Retain captured API-key usage auditing when member credentials access public resources outside their owning workspace, without changing the business request's scope.
+
+Use entity classes as authenticated identity tokens and SELECTED_WORKSPACE for independent selection. Resolve cleanup managers from RequestContext while keeping explicit persistence entry-point managers and standard Nest service injection. Update queue-api token consumption.

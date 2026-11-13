@@ -13,6 +13,7 @@ import { withIdentity } from "../../../test/fixtures/conditional-authorization.f
 import { mockAuthorization } from "../../../test/mock-authorization.js";
 import { mockRlsContext } from "../../../test/mock-rls-context.js";
 import { ApiKey } from "../../api-key/entities/api-key.entity.js";
+import type { ApiKeyObject } from "../../api-key/objects/api-key.object.js";
 import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
@@ -20,7 +21,7 @@ import { WorkspaceInvitation } from "../../workspace/entities/workspace-invitati
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { AuthContext } from "../auth-context.js";
 import { SessionConnection } from "../connections/session.connection-definition.js";
-import { API_KEY, AUTH_TOKEN } from "../constants/auth.constants.js";
+import { AUTH_TOKEN } from "../constants/auth.constants.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { SessionService } from "./session.service.js";
@@ -203,7 +204,7 @@ describe("SessionService", () => {
               Session,
               Object.assign(new Session(), { token: "session-token" }),
             );
-            RequestContext.set(API_KEY, key);
+            RequestContext.set<ApiKeyObject | null>(ApiKey, key);
           }
           for (const invoke of [
             () => service.getCurrentSessionHeaders(),
@@ -215,7 +216,7 @@ describe("SessionService", () => {
             await expect(invoke()).rejects.toThrow(ForbiddenException);
           }
           if (principal === "api-key") {
-            expect(RequestContext.get(API_KEY)).toBe(key);
+            expect(RequestContext.get(ApiKey)).toBe(key);
           }
         },
       );
@@ -781,7 +782,10 @@ describe("session management", () => {
             ),
           ).resolves.toBeNull();
           expect(em.findOne).not.toHaveBeenCalled();
-          RequestContext.set(API_KEY, new WorkspaceApiKey(new ApiKey()));
+          RequestContext.set<ApiKeyObject | null>(
+            ApiKey,
+            new WorkspaceApiKey(new ApiKey()),
+          );
           authorization.authorize.mockImplementation(() => {
             throw new ForbiddenException();
           });
@@ -841,7 +845,10 @@ describe("session management", () => {
                 { first: 2 },
               ),
             ).rejects.toThrow(ForbiddenException);
-            RequestContext.set(API_KEY, new WorkspaceApiKey(new ApiKey()));
+            RequestContext.set<ApiKeyObject | null>(
+              ApiKey,
+              new WorkspaceApiKey(new ApiKey()),
+            );
             await expect(
               service.getSessionConnectionByUser(user, { first: 2 }),
             ).rejects.toThrow(ForbiddenException);

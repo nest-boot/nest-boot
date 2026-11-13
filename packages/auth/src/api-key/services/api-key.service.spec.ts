@@ -15,12 +15,11 @@ import { User } from "../../core/entities/user.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
-import { UserApiKey } from "../objects/user-api-key.object.js";
 import { toApiKeyView } from "../utils/api-key-view.util.js";
 import { getCurrentApiKey } from "../utils/get-current-api-key.util.js";
 
 apiKeyTest(
-  "writes native credential fields and publishes a detached, credential-free identity",
+  "writes native credential fields and publishes a detached ORM identity without its hash",
   async () => {
     const { em } = createService();
     const options = withAuthTestFeatures({});
@@ -52,11 +51,11 @@ apiKeyTest(
     ]);
     expect(updated).toBeInstanceOf(ApiKey);
     const identity = getCurrentApiKey();
-    expect(identity).toBeInstanceOf(UserApiKey);
+    expect(identity).toBeInstanceOf(ApiKey);
     expect(identity).not.toBe(record);
     expect(identity).toMatchObject({ id: record.id, name: "Renamed" });
     expect(identity).not.toHaveProperty("key");
-    expect(identity).not.toHaveProperty("isInitialized");
+    expect(identity).toHaveProperty("isInitialized");
     record.permissions.push("later:grant");
     expect(identity?.permissions).toEqual(["user-api-key:read"]);
   },

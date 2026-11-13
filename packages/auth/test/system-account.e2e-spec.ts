@@ -18,6 +18,7 @@ import { getCurrentApiKey } from "../src/api-key/utils/get-current-api-key.util.
 import { getAuthAbility } from "../src/common/utils/get-auth-ability.util.js";
 import { resolveRequestPermissions } from "../src/common/utils/resolve-request-permissions.util.js";
 import { AuthMiddleware } from "../src/core/auth.middleware.js";
+import { SELECTED_WORKSPACE } from "../src/core/constants/auth.constants.js";
 import { Session } from "../src/core/entities/session.entity.js";
 import { User } from "../src/core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../src/core/interfaces/auth-module-options.interface.js";
@@ -235,7 +236,9 @@ describe("independent system accounts with real persistence and authentication",
     await withKey(issued.apiKey, async (em) => {
       expect(RequestContext.get(User)).toBeNull();
       expect(RequestContext.get(WorkspaceMember)).toBeNull();
-      expect(RequestContext.get(Workspace)?.id).toBe(otherWorkspace.id);
+      expect(RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)?.id).toBe(
+        otherWorkspace.id,
+      );
       expect(em.getSessionContext()?.variables).toMatchObject({
         "app.auth.user.id": "",
         "app.auth.workspace_member.id": "",

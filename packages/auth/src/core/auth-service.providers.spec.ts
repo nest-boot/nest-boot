@@ -23,7 +23,7 @@ import { WorkspaceInvitationService } from "../workspace/services/workspace-invi
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { AuthContext } from "./auth-context.js";
 import { authServiceProviders } from "./auth-service.providers.js";
-import { AUTH_TOKEN } from "./constants/auth.constants.js";
+import { AUTH_TOKEN, SELECTED_WORKSPACE } from "./constants/auth.constants.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
 import type { AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
@@ -117,7 +117,7 @@ describe("auth service execution boundaries", () => {
           RequestContext.set(EntityManager, em);
           RequestContext.set(User, user);
           RequestContext.set(Session, session);
-          RequestContext.set(Workspace, createTestWorkspace());
+          RequestContext.set(SELECTED_WORKSPACE, createTestWorkspace());
           RequestContext.set(WorkspaceMember, createTestWorkspaceMember());
           const ability = new AuthAbility([
             { action: "update", subject: User },
@@ -151,7 +151,8 @@ describe("auth service execution boundaries", () => {
               variables: {
                 "app.auth.user.id": "",
                 "app.auth.workspace.id": "",
-                "app.selected.workspace.id": RequestContext.get(Workspace)?.id,
+                "app.selected.workspace.id":
+                  RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)?.id,
                 "app.auth.workspace_member.id": "",
               },
             });
@@ -186,7 +187,7 @@ describe("auth service execution boundaries", () => {
         async () => {
           RequestContext.set(EntityManager, em);
           RequestContext.set(WorkspaceMember, member);
-          RequestContext.set(Workspace, workspace);
+          RequestContext.set(SELECTED_WORKSPACE, workspace);
           RequestContext.set(AuthAbility, ability);
           const result = service.deleteWorkspace(workspace);
           if (failure) {
@@ -199,7 +200,7 @@ describe("auth service execution boundaries", () => {
           expect(RequestContext.get(WorkspaceMember)).toBe(
             failure ? member : null,
           );
-          expect(RequestContext.get(Workspace)).toBe(
+          expect(RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)).toBe(
             failure ? workspace : null,
           );
           expect(
