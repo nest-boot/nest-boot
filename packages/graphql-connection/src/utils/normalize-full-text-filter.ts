@@ -29,14 +29,20 @@ export function normalizeFullTextFilter(value: unknown): unknown {
     return value;
   }
 
+  // MikroORM raw SQL conditions use symbol keys.
   return Object.fromEntries(
-    Object.entries(value).map(([key, operand]) => [
-      key,
-      key === "$fulltext" && typeof operand === "string"
-        ? tokenizer(operand).join(" ")
-        : key.startsWith("$") && !filterOperators.has(key)
-          ? operand
-          : normalizeFullTextFilter(operand),
-    ]),
+    Reflect.ownKeys(value).map((key) => {
+      const operand = (value as Record<PropertyKey, unknown>)[key];
+      return [
+        key,
+        key === "$fulltext" && typeof operand === "string"
+          ? tokenizer(operand).join(" ")
+          : typeof key === "string" &&
+              key.startsWith("$") &&
+              !filterOperators.has(key)
+            ? operand
+            : normalizeFullTextFilter(operand),
+      ];
+    }),
   );
 }

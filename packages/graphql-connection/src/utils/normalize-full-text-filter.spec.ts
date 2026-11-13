@@ -1,3 +1,5 @@
+import { raw } from "@mikro-orm/core";
+
 import { normalizeFullTextFilter } from "./normalize-full-text-filter.js";
 
 describe("normalizeFullTextFilter", () => {
@@ -54,6 +56,25 @@ describe("normalizeFullTextFilter", () => {
     expect(normalizeFullTextFilter(pattern)).toBe(pattern);
     expect(normalizeFullTextFilter(null)).toBeNull();
     expect(normalizeFullTextFilter("Original!")).toBe("Original!");
+  });
+
+  it("preserves symbol-keyed raw SQL scope conditions alongside full-text operands", () => {
+    const scope = raw((alias) => `${alias}."data"->>'userId'`);
+    const filter = {
+      $and: [
+        { [scope]: "user-1" },
+        { search: { $fulltext: "你好世界 HELLO!" } },
+      ],
+    };
+    expect(normalizeFullTextFilter(filter)).toEqual({
+      $and: [
+        { [scope]: "user-1" },
+        { search: { $fulltext: "你好 世界 hello" } },
+      ],
+    });
+    expect(filter.$and[1]).toEqual({
+      search: { $fulltext: "你好世界 HELLO!" },
+    });
   });
 
   it("preserves absent operands and retains tokenless searches as empty full-text queries", () => {

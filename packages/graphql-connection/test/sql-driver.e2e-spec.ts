@@ -1,4 +1,4 @@
-import { EntityManager, EntitySchema, MikroORM } from "@mikro-orm/core";
+import { EntityManager, EntitySchema, MikroORM, raw } from "@mikro-orm/core";
 import { PgliteDriver } from "@mikro-orm/pglite";
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { FullTextType, SqlEntityManager } from "@mikro-orm/sql";
@@ -117,6 +117,23 @@ describe("GraphQL connection and official SQL driver integration", () => {
       );
       expect(combined.edges.map(({ node }) => node.id)).toEqual([1]);
       expect(combined.totalCount).toBe(1);
+
+      for (const query of [undefined, "HELLO!"]) {
+        const scoped = await manager.find(
+          Connection,
+          { first: 10, query },
+          {
+            where: {
+              $and: [
+                { [raw((alias) => `${alias}."id"`)]: { $lte: 1 } },
+                { title: { $ne: "Unpublished" } },
+              ],
+            },
+          },
+        );
+        expect(scoped.edges.map(({ node }) => node.id)).toEqual([1]);
+        expect(scoped.totalCount).toBe(1);
+      }
 
       const empty = await manager.find(Connection, {
         first: 10,
