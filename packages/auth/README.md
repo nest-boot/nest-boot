@@ -133,9 +133,9 @@ Service methods use explicit domain names without deprecated aliases:
   `UserService.updateUser` and `deleteUser` still target a specified user.
   `AuthService.getAccountInfo` reads provider account information server-side.
 - Session-bound Auth and Session service operations require the verified request
-  session and reject API keys. Upstream calls use its signed cookie, rather than stale
-  incoming authentication headers or session caches; an explicit `useAccountCookie`
-  selector retains OAuth account data for upstream owner validation.
+  session and reject API keys. Upstream calls use its signed session cookie;
+  Better Auth validates native cache ownership and expires outdated cookie chunks.
+  Explicit OAuth account-cookie selection retains upstream owner validation.
 - Registration and sign-in validate and adopt an issued session before publishing
   cookies. GraphQL payload/entity methods reuse that identity; tokenless registration
   and OAuth redirects do not authenticate the request.

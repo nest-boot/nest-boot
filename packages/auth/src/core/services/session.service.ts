@@ -60,11 +60,10 @@ export class SessionService {
 
   /**
    * Binds a Better Auth operation to the session already verified for this request.
-   * @param keepAccountCookie - Preserve explicitly selected OAuth account data for upstream owner validation.
-   * @returns Request headers with only the current session's authentication cookies.
+   * @returns Request headers authenticated by the verified session.
    * @internal
    */
-  async getCurrentSessionHeaders(keepAccountCookie = false): Promise<Headers> {
+  async getCurrentSessionHeaders(): Promise<Headers> {
     const session = RequestContext.isActive()
       ? RequestContext.get(Session)
       : null;
@@ -74,20 +73,8 @@ export class SessionService {
     const { authCookies, secret } = await this.auth.$context;
     const requestHeaders = new Headers(headers());
     requestHeaders.delete("authorization");
-    const identityCookies = [
-      authCookies.sessionToken,
-      authCookies.sessionData,
-      ...(!keepAccountCookie ? [authCookies.accountData] : []),
-    ];
-    const requestCookies = Object.fromEntries(
-      Object.entries(parseCookie(requestHeaders.get("cookie") ?? "")).filter(
-        ([name]) =>
-          !identityCookies.some(
-            (cookie) =>
-              name === cookie.name || name.startsWith(cookie.name + "."),
-          ),
-      ),
-    );
+    // Native caches are bound to this signed token; retain their names for chunk cleanup.
+    const requestCookies = parseCookie(requestHeaders.get("cookie") ?? "");
     requestCookies[authCookies.sessionToken.name] =
       await createSignedCookieValue(session.token, secret);
     requestHeaders.set("cookie", stringifyCookie(requestCookies));

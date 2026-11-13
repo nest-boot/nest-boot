@@ -146,7 +146,7 @@ describe("SessionService", () => {
     requestHeaders.delete("authorization");
     requestHeaders.set("cookie", "session=value");
   });
-  it("binds upstream calls to the current session and removes stale authentication and caches", async () => {
+  it("binds upstream calls to the current session without bypassing native cache handling", async () => {
     const { service } = await createService();
     requestHeaders.set("authorization", "Bearer another-credential");
     const originalCookie = [
@@ -165,6 +165,11 @@ describe("SessionService", () => {
       expect(parseCookie(result.get("cookie") ?? "")).toEqual({
         application: "value",
         "better-auth.session_token": `current-token.${await makeSignature("current-token", authContext.secret)}`,
+        "better-auth.session_data": "old-cache",
+        "better-auth.session_data.0": "chunk",
+        "better-auth.session_data.01": "another-chunk",
+        "better-auth.account_data": "old-account",
+        "better-auth.account_data.0": "account-chunk",
       });
       RequestContext.set(
         Session,
@@ -176,14 +181,6 @@ describe("SessionService", () => {
       ).toBe(
         `rotated-token.${await makeSignature("rotated-token", authContext.secret)}`,
       );
-      const selected = await service.getCurrentSessionHeaders(true);
-      expect(parseCookie(selected.get("cookie") ?? "")).toMatchObject({
-        "better-auth.account_data": "old-account",
-        "better-auth.account_data.0": "account-chunk",
-      });
-      expect(
-        parseCookie(selected.get("cookie") ?? "")["better-auth.session_data"],
-      ).toBeUndefined();
     });
     expect(requestHeaders.get("cookie")).toBe(originalCookie);
     expect(requestHeaders.get("authorization")).toBe(

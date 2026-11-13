@@ -481,9 +481,7 @@ export class AuthService {
   ): Promise<AuthAccessToken> {
     const result = await this.auth.api.getAccessToken({
       body: selector,
-      headers: await this.sessionService.getCurrentSessionHeaders(
-        "useAccountCookie" in selector,
-      ),
+      headers: await this.sessionService.getCurrentSessionHeaders(),
     });
 
     return {
@@ -504,9 +502,7 @@ export class AuthService {
   ): Promise<AuthRefreshedToken> {
     const result = await this.auth.api.refreshToken({
       body: selector,
-      headers: await this.sessionService.getCurrentSessionHeaders(
-        "useAccountCookie" in selector,
-      ),
+      headers: await this.sessionService.getCurrentSessionHeaders(),
     });
 
     return {
@@ -532,9 +528,7 @@ export class AuthService {
   >(selector: AuthAccountSelector): Promise<AuthAccountInfo<UserInfo, Data>> {
     return (await this.auth.api.accountInfo({
       query: selector,
-      headers: await this.sessionService.getCurrentSessionHeaders(
-        "useAccountCookie" in selector,
-      ),
+      headers: await this.sessionService.getCurrentSessionHeaders(),
     })) as AuthAccountInfo<UserInfo, Data>;
   }
 

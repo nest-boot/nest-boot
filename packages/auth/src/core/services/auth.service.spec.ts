@@ -140,30 +140,6 @@ describe("password policy", () => {
 });
 
 describe("current user identity", () => {
-  it.each(["getAccessToken", "refreshToken", "getAccountInfo"] as const)(
-    "preserves an account cookie only for an explicit selector in %s",
-    async (operation) => {
-      const { service, api, sessionService } = await createService();
-      api.getAccessToken.mockResolvedValue({
-        accessToken: "access",
-        scopes: [],
-      });
-      api.refreshToken.mockResolvedValue({
-        accountId: "account",
-        providerId: "provider",
-      });
-      api.accountInfo.mockResolvedValue({});
-      for (const selector of [
-        { accountId: "account" },
-        { useAccountCookie: true },
-      ] as const) {
-        await service[operation](selector);
-        expect(
-          sessionService.getCurrentSessionHeaders,
-        ).toHaveBeenLastCalledWith("useAccountCookie" in selector);
-      }
-    },
-  );
   it.each([
     { name: "signOut", invoke: (service: AuthService) => service.signOut() },
     {

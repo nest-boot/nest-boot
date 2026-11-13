@@ -122,6 +122,10 @@ describe("Auth services and native RLS boundaries", () => {
     const cookie = first.headers
       .getSetCookie()
       .map((value) => value.split(";")[0])
+      .concat([
+        "better-auth.session_data.0=stale",
+        "better-auth.session_data.1=stale",
+      ])
       .join("; ");
     const firstUser = await admin.findOneOrFail(User, first.response.user.id);
     const firstSession = await admin.findOneOrFail(Session, {
@@ -146,11 +150,14 @@ describe("Auth services and native RLS boundaries", () => {
       },
     };
     const publishedIdentities: (string | null)[] = [];
+    const publishedCookies: string[] = [];
     const context = new RequestContext({ type: "http" });
     context.set(REQUEST, request);
     context.set(RESPONSE, {
-      appendHeader: () =>
-        publishedIdentities.push(RequestContext.get(User)?.id ?? null),
+      appendHeader: (_name: string, value: string) => {
+        publishedIdentities.push(RequestContext.get(User)?.id ?? null);
+        publishedCookies.push(value);
+      },
     });
     try {
       await RequestContext.run(context, async () => {
@@ -170,12 +177,24 @@ describe("Auth services and native RLS boundaries", () => {
         expect(publishedIdentities.every((id) => id === second.user.id)).toBe(
           true,
         );
+        const projected = await backend.api.getSession({
+          headers: await sessions.getCurrentSessionHeaders(),
+          returnHeaders: true,
+        });
+        expect(projected.response?.user.id).toBe(second.user.id);
         await expect(
           service.verifyCurrentUserPassword("second-password"),
         ).resolves.toBe(true);
+        publishedCookies.length = 0;
         await expect(
           service.updateCurrentUser({ name: "Updated second user" }),
         ).resolves.toBe(true);
+        expect(publishedCookies).toEqual(
+          expect.arrayContaining([
+            expect.stringMatching(/^better-auth\.session_data\.0=;.*Max-Age=0/),
+            expect.stringMatching(/^better-auth\.session_data\.1=;.*Max-Age=0/),
+          ]),
+        );
         expect(
           (await admin.findOneOrFail(User, second.user.id, { refresh: true }))
             .name,
