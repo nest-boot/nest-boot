@@ -1,7 +1,7 @@
 import type { Options } from "@mikro-orm/core";
 import { type DynamicModule, Inject, Module, Optional } from "@nestjs/common";
 
-import type { DatabaseFeatureOptions } from "../interfaces/database-feature-options.interface.js";
+import type { DatabaseFeatureOptions } from "./interfaces/database-feature-options.interface.js";
 
 /** Internal descriptor token; each feature module owns its own registration. */
 export const DATABASE_FEATURE_ENTITIES = Symbol("DatabaseFeatureEntities");

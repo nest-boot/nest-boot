@@ -1,8 +1,22 @@
 import { tester } from "../../utils/tester.js";
-import rule from "./entity-field-definite-assignment.js";
+import rule from "./entity-property-definite-assignment.js";
 
-tester.run("entity-field-definite-assignment", rule, {
+tester.run("entity-property-definite-assignment", rule, {
   valid: [
+    `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Audit
+@Entity()
+class Book {
+  @Validate
+  @Property()
+  title!: string;
+}`,
+    `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "other-decorators";
+@Entity() class Book { @SearchableProperty() search: string; }`,
+    `import { Entity as Model } from "other-decorators";
+import { SearchableProperty } from "@nest-boot/database";
+@Model() class Book { @SearchableProperty({ properties: "search" }) search: string; }`,
     // Property with initializer, no ! needed
     /* typescript */ `
       @Entity()
@@ -116,6 +130,37 @@ tester.run("entity-field-definite-assignment", rule, {
     `,
   ],
   invalid: [
+    {
+      code: `import { Entity as Model } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty as Search } from "@nest-boot/database";
+@Model() class Book { @Search({ properties: "search" }) search: string; }`,
+      output: `import { Entity as Model } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty as Search } from "@nest-boot/database";
+@Model() class Book { @Search({ properties: "search" }) search!: string; }`,
+      errors: [{ messageId: "addDefiniteAssignment" }],
+    },
+    {
+      code: `import * as entities from "@mikro-orm/decorators/legacy";
+import * as database from "@nest-boot/database";
+@entities.Entity() class Book { @database.SearchableProperty({ properties: "search" }) search: string | null; }`,
+      output: `import * as entities from "@mikro-orm/decorators/legacy";
+import * as database from "@nest-boot/database";
+@entities.Entity() class Book { @database.SearchableProperty({ properties: "search" }) search!: string | null; }`,
+      errors: [{ messageId: "addDefiniteAssignment" }],
+    },
+    {
+      code: `@Entity()
+class Book {
+  @SearchableProperty({ properties: ["title"] })
+  search: string;
+}`,
+      output: `@Entity()
+class Book {
+  @SearchableProperty({ properties: ["title"] })
+  search!: string;
+}`,
+      errors: [{ messageId: "addDefiniteAssignment" }],
+    },
     // No initializer and no !
     {
       code: /* typescript */ `
