@@ -290,7 +290,7 @@ describe("ConnectionQueryBuilder", () => {
     },
   );
 
-  it("normalizes programmatic filters and option constraints for both records and counts", async () => {
+  it("passes programmatic filters and option constraints unchanged to records and counts", async () => {
     const { entityManager, find, limitedCountQueryBuilder } =
       createEntityManager();
     const filter = { searchableTitle: { $fulltext: "你好世界" } };
@@ -302,15 +302,14 @@ describe("ConnectionQueryBuilder", () => {
       { where },
     ).query();
     const expected = {
-      $and: [
-        { $or: [{ searchableTitle: { $fulltext: "hello" } }] },
-        { searchableTitle: { $fulltext: "你好 世界" } },
-      ],
+      $and: [where, filter],
     };
     expect(find).toHaveBeenCalledWith(BookEntity, expected, expect.any(Object));
     expect(limitedCountQueryBuilder.where).toHaveBeenCalledWith(expected);
     expect(filter.searchableTitle.$fulltext).toBe("你好世界");
     expect(where.$or[0].searchableTitle.$fulltext).toBe("HELLO!");
+    expect(find.mock.calls[0]?.[1].$and[0]).toBe(where);
+    expect(find.mock.calls[0]?.[1].$and[1]).toBe(filter);
   });
 
   it("keeps query string searches on fields without fulltext enabled", async () => {

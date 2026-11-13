@@ -10,6 +10,7 @@ import {
 
 import { ConnectionFieldOptions } from "../interfaces/index.js";
 import { normalizeDateFilter } from "./normalize-date-filter.js";
+import { normalizeFullTextFilter } from "./normalize-full-text-filter.js";
 
 /**
  * The Zod schema type returned by FilterQuerySchemaBuilder.
@@ -170,6 +171,9 @@ export function createFilter<Entity extends object>(
           dateFields,
           getTimezoneOffset(),
         ) as FilterQuery<Entity>,
+    )
+    .transform(
+      (filter) => normalizeFullTextFilter(filter) as FilterQuery<Entity>,
     );
 
   const Filter = new GraphQLScalarType<FilterQuery<Entity>>({

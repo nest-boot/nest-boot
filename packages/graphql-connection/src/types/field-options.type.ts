@@ -23,7 +23,7 @@ export interface BaseFieldOptions {
    *
    * When combined with `fulltext: "fieldPath"`, search queries use
    * `$fulltext` on the configured full-text field path. Full-text operands
-   * are automatically segmented with the database tokenizer before execution.
+   * are automatically segmented with the database tokenizer in the filter schema.
    */
   searchable?: boolean;
 }

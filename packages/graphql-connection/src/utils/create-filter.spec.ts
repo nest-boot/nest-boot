@@ -55,6 +55,94 @@ describe("createFilter", () => {
     });
   });
 
+  it("tokenizes full-text input through the shared schema and both scalar parsers", () => {
+    const fields = new Map<string, ConnectionFieldOptions<Book>>([
+      [
+        "title",
+        { field: "title", type: "string", fulltext: "searchableTitle" },
+      ],
+    ]);
+    const { Filter, filterQuerySchema } = createFilter("BookTokenized", fields);
+    const input = {
+      title: { $eq: "Original TITLE!", $fulltext: "你好世界 HELLO!" },
+    };
+    const expected = {
+      title: { $eq: "Original TITLE!" },
+      searchableTitle: { $fulltext: "你好 世界 hello" },
+    };
+
+    expect(filterQuerySchema.parse(input)).toEqual(expected);
+    expect(Filter.parseValue(input)).toEqual(expected);
+    expect(Filter.parseValue(JSON.stringify(input))).toEqual(expected);
+    expect(
+      Filter.parseLiteral({
+        kind: Kind.OBJECT,
+        fields: [
+          {
+            kind: Kind.OBJECT_FIELD,
+            name: { kind: Kind.NAME, value: "title" },
+            value: {
+              kind: Kind.OBJECT,
+              fields: [
+                {
+                  kind: Kind.OBJECT_FIELD,
+                  name: { kind: Kind.NAME, value: "$fulltext" },
+                  value: { kind: Kind.STRING, value: "你好世界 HELLO!" },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    ).toEqual({ searchableTitle: { $fulltext: "你好 世界 hello" } });
+    expect(input.title.$fulltext).toBe("你好世界 HELLO!");
+  });
+
+  it("tokenizes direct full-text fields within logical groups and preserves tokenless conditions", () => {
+    const fields = new Map<string, ConnectionFieldOptions<Book>>([
+      ["title", { field: "title", type: "string", fulltext: true }],
+    ]);
+    const { filterQuerySchema } = createFilter("BookFullTextGroups", fields);
+    expect(
+      filterQuerySchema.parse({
+        $or: [
+          { title: { $fulltext: "你好世界" } },
+          { $not: { title: { $fulltext: "GOODBYE!" } } },
+        ],
+      }),
+    ).toEqual({
+      $or: [
+        { title: { $fulltext: "你好 世界" } },
+        { $not: { title: { $fulltext: "goodbye" } } },
+      ],
+    });
+    expect(filterQuerySchema.parse({ title: { $fulltext: "!!!  " } })).toEqual({
+      title: { $fulltext: "" },
+    });
+  });
+
+  it("tokenizes full-text operands produced by replacement callbacks", () => {
+    const fields = new Map<string, ConnectionFieldOptions<Book>>([
+      [
+        "title",
+        {
+          field: "title",
+          type: "string",
+          fulltext: true,
+          replacement: ({ operator, value }) => ({
+            searchableTitle: { [operator]: value },
+          }),
+        },
+      ],
+    ]);
+    const { filterQuerySchema } = createFilter("BookFullTextCallback", fields);
+    expect(
+      filterQuerySchema.parse({ title: { $fulltext: "你好世界 HELLO!" } }),
+    ).toEqual({
+      searchableTitle: { $fulltext: "你好 世界 hello" },
+    });
+  });
+
   it("transforms $between filters through the filter query schema", () => {
     const fieldOptionsMap = new Map<string, ConnectionFieldOptions<Book>>([
       ["rating", { field: "rating", type: "number" }],

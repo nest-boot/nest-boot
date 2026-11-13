@@ -52,7 +52,7 @@ const SearchableBookSchema = new EntitySchema({
 });
 
 describe("GraphQL connection and official SQL driver integration", () => {
-  it("uses matching full-text boundaries for query syntax, GraphQL filters and programmatic conditions", async () => {
+  it("uses matching full-text boundaries for query syntax and schema filters while preserving native conditions", async () => {
     const orm = await MikroORM.init({
       driver: PgliteDriver,
       entities: [SearchableBookSchema],
@@ -91,20 +91,32 @@ describe("GraphQL connection and official SQL driver integration", () => {
       expect(filtered.edges.map(({ node }) => node.id)).toEqual([1]);
       expect(filtered.totalCount).toBe(1);
 
-      const constrained = await manager.find(
-        Connection,
-        { first: 10 },
-        {
-          where: {
-            $or: [
-              { searchableTitle: { $fulltext: "你好上海" } },
-              { searchableTitle: { $fulltext: "GOODBYE" } },
-            ],
-          },
-        },
-      );
+      const constrained = await manager.find(Connection, {
+        first: 10,
+        filter: Filter.parseValue({
+          $or: [
+            { title: { $fulltext: "你好上海" } },
+            { title: { $fulltext: "GOODBYE" } },
+          ],
+        }),
+      });
       expect(constrained.edges.map(({ node }) => node.id)).toEqual([2, 3]);
       expect(constrained.totalCount).toBe(2);
+
+      for (const [text, expectedIds] of [
+        ["你好世界", []],
+        ["你好 世界", [1]],
+      ] as const) {
+        const native = await manager.find(
+          Connection,
+          { first: 10 },
+          {
+            where: { searchableTitle: { $fulltext: text } },
+          },
+        );
+        expect(native.edges.map(({ node }) => node.id)).toEqual(expectedIds);
+        expect(native.totalCount).toBe(expectedIds.length);
+      }
 
       const combined = await manager.find(
         Connection,

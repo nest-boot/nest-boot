@@ -134,7 +134,7 @@ export const { Connection: BookConnection } = new ConnectionBuilder(Book)
   .build();
 ```
 
-这样配置后，`filter: { title: { $fulltext: "你好世界" } }` 和 `query: "title:你好世界"` 都会查询 `searchableTitle`。连接模块会在执行记录查询和计数前，自动调用 `@nest-boot/database` 的 `tokenizer` 处理 `$fulltext` 的文本值，与 `SearchableProperty` 入库分词保持一致，无需调用方手动分词。逻辑组合、关联条件和程序调用中的 `options.where` 也遵循相同规则；`$eq` 等普通比较的文本保持原样。
+这样配置后，`filter: { title: { $fulltext: "你好世界" } }` 和 `query: "title:你好世界"` 都会查询 `searchableTitle`。共享的过滤 schema 会在校验和字段映射后，自动调用 `@nest-boot/database` 的 `tokenizer` 处理 `$fulltext` 的文本值，与 `SearchableProperty` 入库分词保持一致。查询字符串和 GraphQL filter 输入（包括逻辑组合）都经过这条 schema，调用方直接传入原文即可；`$eq` 等普通比较的文本保持原样。程序调用中的 `args.filter` 和 `options.where` 保留原生 MikroORM 条件语义；需要校验、映射和分词时，可使用 `filterQuerySchema.parse(...)`。
 
 仅含标点或空白的全文检索值会保留为空的 `$fulltext` 条件，匹配零条记录。采用多语言分词时，已有索引字段的数据也应使用相同的分词器重新生成。
 
