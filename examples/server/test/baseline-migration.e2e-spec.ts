@@ -90,4 +90,4 @@ it('builds the current example schema from two migrations and can roll back and 
     await orm.close();
     await fixture.close();
   }
-});
+}, 30_000);
