@@ -1,5 +1,9 @@
 export { DatabaseHealthIndicator } from "./database.health-indicator.js";
 export { DatabaseModule } from "./database.module.js";
+export {
+  SearchableProperty,
+  type SearchablePropertyOptions,
+} from "./decorators/searchable-property.decorator.js";
 export type { DatabaseFeatureOptions } from "./interfaces/database-feature-options.interface.js";
 export type { DatabaseModuleOptions } from "./interfaces/index.js";
 export * from "./interfaces/index.js";
@@ -8,6 +12,10 @@ export * from "./property-types/index.js";
 export * from "./services/entity.service.js";
 export * from "./types/index.js";
 export * from "./utils/get-database-config.util.js";
+export { onFullTextCreate } from "./utils/on-full-text-create.util.js";
+export { onFullTextUpdate } from "./utils/on-full-text-update.util.js";
+export { tokenizer } from "./utils/tokenizer.util.js";
+export { whenChanged } from "./utils/when-changed.util.js";
 export type {
   EntityName,
   MaybePromise,

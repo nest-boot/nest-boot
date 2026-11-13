@@ -69,7 +69,8 @@ const config = [
       "@typescript-eslint/return-await": ["error", "always"],
 
       // NestBoot 自定义规则
-      "@nest-boot/entity-field-definite-assignment": "error",
+      "@nest-boot/entity-property-definite-assignment": "error",
+      "@nest-boot/entity-property-no-spread": "error",
       "@nest-boot/entity-property-config-from-types": "error",
       "@nest-boot/graphql-field-definite-assignment": "error",
       "@nest-boot/graphql-field-config-from-types": "error",

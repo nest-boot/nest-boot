@@ -3,6 +3,52 @@ import rule from "./entity-property-config-from-types.js";
 
 tester.run("entity-property-config-from-types", rule, {
   valid: [
+    `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { FullTextType } from "@mikro-orm/postgresql";
+import { onFullTextCreate, onFullTextUpdate } from "@nest-boot/database";
+@Entity()
+class Book {
+  @Property({ type: FullTextType, onCreate: onFullTextCreate("search"), onUpdate: onFullTextUpdate("search"), nullable: true })
+  search!: string | null;
+}`,
+    `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
+const options = { properties: "search" as const, nullable: true };
+@Entity() class Book { @SearchableProperty(options) search!: string | null; }`,
+    `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { FullTextType } from "@mikro-orm/postgresql";
+@Entity()
+class Book {
+  @Property({ type: FullTextType, nullable: true })
+  search!: string | null;
+}`,
+    `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { FullTextType as SearchType } from "@mikro-orm/pglite";
+@Entity()
+class Book {
+  @Property({ type: new SearchType("simple") })
+  search!: string;
+}`,
+    /* typescript */ `
+      import { Entity } from "@mikro-orm/decorators/legacy";
+      import { SearchableProperty as Search } from "@nest-boot/database";
+
+      @Entity()
+      class Book {
+        @Search({ properties: ["title"], nullable: true })
+        title!: string | null;
+      }
+    `,
+    /* typescript */ `
+      import { Entity } from "@mikro-orm/decorators/legacy";
+      import * as database from "@nest-boot/database";
+
+      @Entity()
+      class Book {
+        @database.SearchableProperty({ properties: "title" })
+        title!: string;
+      }
+    `,
     // Import migration is outside the field configuration rule's scope.
     'import { Entity, Property } from "@mikro-orm/core";',
     'import * as orm from "@mikro-orm/postgresql"; @orm.Entity() class Thing {}',
@@ -265,6 +311,174 @@ tester.run("entity-property-config-from-types", rule, {
     `,
   ],
   invalid: [
+    {
+      code: `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { t } from "@mikro-orm/core";
+@Entity() class Book { @Property<Book>({ type: t.string, /* preserve privacy */ "hidden": true, "onUpdate": book => book.title }) title!: string; }`,
+      output: `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { t } from "@mikro-orm/core";
+@Entity() class Book { @Property({ type: t.string, /* preserve privacy */ "hidden": true, "onUpdate": book => book.title }) title!: string; }`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    {
+      code: `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { t } from "@mikro-orm/core";
+const shared = { hidden: true, onUpdate: (book: Book) => book.title };
+@Entity() class Book { @Property<Book>({ ...shared, type: t.string }) title!: string; }`,
+      output: `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { t } from "@mikro-orm/core";
+const shared = { hidden: true, onUpdate: (book: Book) => book.title };
+@Entity() class Book { @Property({ ...shared, type: t.string }) title!: string; }`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    {
+      code: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
+const options = { properties: "search" as const, nullable: true };
+@Entity() class Book { @SearchableProperty<Book>(options) search!: string | null; }`,
+      output: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
+const options = { properties: "search" as const, nullable: true };
+@Entity() class Book { @SearchableProperty(options) search!: string | null; }`,
+      errors: [{ messageId: "alignSearchablePropertyOptions" }],
+    },
+    {
+      code: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty as Search } from "@nest-boot/database";
+@Entity() class Book { @Search<Book>({ /* source */ properties: "search", nullable: true }) search!: string | null; }`,
+      output: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty as Search } from "@nest-boot/database";
+@Entity() class Book { @Search({ /* source */ properties: "search", nullable: true }) search!: string | null; }`,
+      errors: [{ messageId: "alignSearchablePropertyOptions" }],
+    },
+    {
+      code: `import { Entity, Property as Column } from "@mikro-orm/decorators/legacy";
+import { FullTextType } from "@mikro-orm/postgresql";
+@Entity() class Book {
+  @Column<Book>({ type: FullTextType, nullable: true })
+  search!: string | null;
+}`,
+      output: `import { Entity, Property as Column } from "@mikro-orm/decorators/legacy";
+import { FullTextType } from "@mikro-orm/postgresql";
+@Entity() class Book {
+  @Column({ type: FullTextType, nullable: true })
+  search!: string | null;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    {
+      code: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty as Search } from "@nest-boot/database";
+@Entity() class Book {
+  @Search<Book>({ properties: "search", hidden: false })
+  search!: string | null;
+}`,
+      output: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty as Search } from "@nest-boot/database";
+@Entity() class Book {
+  @Search({ properties: "search", hidden: false, nullable: true })
+  search!: string | null;
+}`,
+      errors: [{ messageId: "alignSearchablePropertyOptions" }],
+    },
+    {
+      code: `import * as entities from "@mikro-orm/decorators/legacy";
+import * as database from "@nest-boot/database";
+@entities.Entity() class Book {
+  @database.SearchableProperty<Book>({ properties: ["search"], nullable: true, hidden: false })
+  search!: string;
+}`,
+      output: `import * as entities from "@mikro-orm/decorators/legacy";
+import * as database from "@nest-boot/database";
+@entities.Entity() class Book {
+  @database.SearchableProperty({ properties: ["search"], hidden: false })
+  search!: string;
+}`,
+      errors: [{ messageId: "alignSearchablePropertyOptions" }],
+    },
+    {
+      code: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
+@Entity() class Book {
+  @SearchableProperty<Book>({ properties: "search", type: FullTextType, index: true, onCreate: () => "custom", onUpdate: () => "custom", hidden: false })
+  search!: string | null;
+}`,
+      output: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
+@Entity() class Book {
+  @SearchableProperty({ properties: "search", hidden: false, nullable: true })
+  search!: string | null;
+}`,
+      errors: [{ messageId: "alignSearchablePropertyOptions" }],
+    },
+    {
+      code: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
+const extras = { hidden: false };
+@Entity() class Book {
+  @SearchableProperty<Book>({ properties: "search", ...extras })
+  search?: string;
+}`,
+      output: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
+const extras = { hidden: false };
+@Entity() class Book {
+  @SearchableProperty({ properties: "search", ...extras, nullable: true })
+  search?: string;
+}`,
+      errors: [{ messageId: "alignSearchablePropertyOptions" }],
+    },
+    {
+      code: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
+import type { Opt } from "@mikro-orm/core";
+@Entity() class Book {
+  @SearchableProperty({ properties: "search" })
+  search: string = "initial";
+}`,
+      output: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
+import type { Opt } from "@mikro-orm/core";
+@Entity() class Book {
+  @SearchableProperty({ properties: "search" })
+  search: Opt<string> = "initial";
+}`,
+      errors: [{ messageId: "useOptTypeForInitializedProperty" }],
+    },
+    {
+      code: `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { FullTextType } from "@mikro-orm/postgresql";
+import { onFullTextCreate, onFullTextUpdate } from "@nest-boot/database";
+@Entity() class Book {
+  @Property<Book>({ type: FullTextType, onCreate: onFullTextCreate("search"), onUpdate: onFullTextUpdate("search") })
+  search!: string | null;
+}`,
+      output: `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { FullTextType } from "@mikro-orm/postgresql";
+import { onFullTextCreate, onFullTextUpdate } from "@nest-boot/database";
+@Entity() class Book {
+  @Property({ type: FullTextType, onCreate: onFullTextCreate("search"), onUpdate: onFullTextUpdate("search"), nullable: true })
+  search!: string | null;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    {
+      code: `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { FullTextType } from "@mikro-orm/postgresql";
+@Entity()
+class Book {
+  @Property({ type: FullTextType })
+  search!: string | null;
+}`,
+      output: `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { FullTextType } from "@mikro-orm/postgresql";
+@Entity()
+class Book {
+  @Property({ type: FullTextType, nullable: true })
+  search!: string | null;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
     // type configuration mismatch
     {
       code: /* typescript */ `

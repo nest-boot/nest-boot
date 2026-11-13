@@ -22,9 +22,9 @@ import {
   MODULE_OPTIONS_TOKEN,
   OPTIONS_TYPE,
 } from "./database.module-definition.js";
-import { DatabaseEntitiesModule } from "./infrastructure/database-entities.module.js";
-import { DatabaseEntityRegistry } from "./infrastructure/database-entity-registry.js";
-import { DatabaseEntityRegistryModule } from "./infrastructure/database-entity-registry.module.js";
+import { DatabaseEntitiesModule } from "./database-entities.module.js";
+import { DatabaseEntityRegistry } from "./database-entity-registry.js";
+import { DatabaseEntityRegistryModule } from "./database-entity-registry.module.js";
 import type { DatabaseFeatureOptions } from "./interfaces/database-feature-options.interface.js";
 import type { DatabaseModuleOptions } from "./interfaces/database-module-options.interface.js";
 import { getDatabaseConfig } from "./utils/get-database-config.util.js";

@@ -299,6 +299,81 @@ await this.userService.chunkById(
 );
 ```
 
+## 可搜索属性
+
+可以将 `onFullTextCreate()` 和 `onFullTextUpdate()` 直接用于原生 MikroORM 属性：
+
+```typescript
+import { t } from "@mikro-orm/core";
+import { Entity, Index, Property } from "@mikro-orm/decorators/legacy";
+import { FullTextType } from "@mikro-orm/postgresql";
+import { onFullTextCreate, onFullTextUpdate } from "@nest-boot/database";
+
+@Entity()
+class Book {
+  @Property({ type: t.text })
+  title!: string;
+
+  @Property({ type: t.text })
+  description!: string;
+
+  @Index({ type: "fulltext" })
+  @Property({
+    type: FullTextType,
+    hidden: true,
+    nullable: true,
+    onCreate: onFullTextCreate(["title", "description"]),
+    onUpdate: onFullTextUpdate(["title", "description"]),
+  })
+  searchableText!: string | null;
+}
+```
+
+两个工具都接受单字段名（`"title"`）、单元素数组（`["title"]`）或多个字段名（`["title", "description"]`），将源属性分别分词、转为小写后合并为一个字符串。空文本、仅含标点的文本及非字符串源值会被跳过；没有任何词项时返回 `null`，因此请将目标字段配置为可空。更新工具依据 MikroORM 快照比较结果，仅在源属性变化时重新计算；无关字段更新时保留目标属性的当前值。创建和更新需要分别配置。
+
+`@SearchableProperty()` 是上述原生配置的语法糖，内置 `FullTextType`、全文索引及两个回调，默认设置 `hidden: true`：
+
+```typescript
+import { SearchableProperty } from "@nest-boot/database";
+
+// 放在 Book 实体内：
+@SearchableProperty({
+  properties: ["title", "description"],
+  nullable: true,
+})
+searchableText!: string | null;
+```
+
+装饰器接受相同的三种源属性形式，其选项排除内部管理的 `type`、`index`、`onCreate` 和 `onUpdate`，仍可配置 `hidden` 等其他属性选项。
+
+实体 ESLint 规则会根据字段类型推断 `nullable`，移除 `SearchableProperty` 中的受管选项，并识别装饰器别名和命名空间导入。原生 `@Property` 和 `@SearchableProperty` 均可从所在 class 推断实体类型，自动修复会去掉冗余的显式泛型，源字段名仍会根据 class 检查，同时保留原生 `FullTextType` 和生命周期回调。`entity-property-no-spread` 规则要求在实体字段装饰器中显式列出选项，不允许 `...shared` 这样的配置展开；需要手动改写为具体选项。
+
+分词使用原生 `Intl.Segmenter`，采用运行时默认 locale 和词级粒度，保留词语和数字。分词器会懒初始化并复用；不支持 `Intl.Segmenter` 的运行时会回退到匹配 Unicode 字母、组合标记和数字的正则表达式，无需配置语言或安装额外的分词依赖。
+
+`tokenizer()` 也从模块导出，供查询输入使用，使入库和查询采用相同的词项边界，包括没有空格的中文输入：
+
+```typescript
+import { tokenizer } from "@nest-boot/database";
+
+const term = tokenizer(input).join(" ");
+const books = term
+  ? await em.find(Book, { searchableText: { $fulltext: term } })
+  : [];
+```
+
+`FullTextType` 将入库文本转换为 PostgreSQL `tsvector`，`$fulltext` 使用默认的 `simple` 配置进行匹配。分词过程不额外进行词干提取、停用词过滤或变音符号归一化，详见 [MikroORM 全文检索文档](https://mikro-orm.io/docs/query-conditions#full-text-searching)。
+
+对于其他派生属性，模块也导出通用保护器 `whenChanged(回调, 依赖属性)`：
+
+```typescript
+import { whenChanged } from "@nest-boot/database";
+
+// 原生 Property 的选项：
+onUpdate: whenChanged((book: Book) => book.title, ["title"]);
+```
+
+任一依赖属性变化时才执行回调，否则保留目标属性的当前值。应将返回的函数直接作为 `onUpdate`，保护器会从 MikroORM 属性回调上下文中取得目标字段名。它不能替代 `onCreate`。当依赖属性发生变化时，所有源属性都必须已加载或被显式赋值，否则保护器会在写入更新前抛错，避免局部实体缺失的文本覆盖合并索引。请先加载其余源属性再重试；局部加载后的无关字段更新仍会保留已有索引。
+
 ## 加密属性
 
 `@nest-boot/database-crypt` 模块提供 `@EncryptedProperty()` 装饰器，使用 `@nest-boot/crypt` 实现透明字段加密：

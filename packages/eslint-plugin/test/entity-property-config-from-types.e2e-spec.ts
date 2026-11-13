@@ -7,6 +7,7 @@ import { Linter, type Rule } from "eslint";
 import * as ts from "typescript";
 
 import rule from "../src/rules/mikro-orm/entity-property-config-from-types.js";
+import noSpread from "../src/rules/mikro-orm/entity-property-no-spread.js";
 
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 // Keep executable compiler fixtures isolated from the workspace packages.
@@ -79,6 +80,40 @@ const config: Linter.Config[] = [
 ];
 
 const cases = [
+  {
+    name: "generic-only removal preserving quoted options and callbacks",
+    imports:
+      'import { Entity, Property } from "@mikro-orm/decorators/legacy"; import { t } from "@mikro-orm/core";',
+    property:
+      '@Property<Thing>({ type: t.string, /* preserve privacy */ "hidden": true, "onUpdate": book => book.name }) name!: string;',
+  },
+  {
+    name: "searchable property with external options and class-inferred source names",
+    imports:
+      'import { Entity } from "@mikro-orm/decorators/legacy"; import { SearchableProperty as Search } from "../database/dist/index.js"; const options = { properties: "name" as const, nullable: true };',
+    property: "@Search<Thing>(options) name!: string | null;",
+  },
+  {
+    name: "native full-text callbacks with class-inferred entity types",
+    imports:
+      'import { Entity, Property } from "@mikro-orm/decorators/legacy"; import { FullTextType } from "@mikro-orm/postgresql"; import { onFullTextCreate, onFullTextUpdate } from "../database/dist/index.js";',
+    property:
+      '@Property<Thing>({ type: FullTextType, onCreate: onFullTextCreate("name"), onUpdate: onFullTextUpdate("name") }) name!: string | null;',
+  },
+  {
+    name: "searchable property options and source mapping",
+    imports:
+      'import { Entity } from "@mikro-orm/decorators/legacy"; import { SearchableProperty as Search } from "../database/dist/index.js";',
+    property:
+      '@Search<Thing>({ properties: "name", type: "text", index: true, onCreate: () => "custom", onUpdate: () => "custom", hidden: false }) name!: string | null;',
+  },
+  {
+    name: "namespace searchable property with nullable inference",
+    imports:
+      'import { Entity } from "@mikro-orm/decorators/legacy"; import * as database from "../database/dist/index.js";',
+    property:
+      '@database.SearchableProperty<Thing>({ properties: ["name"] }) name!: string | null;',
+  },
   {
     name: "type-only property reference with a runtime alias available",
     imports:
@@ -266,6 +301,21 @@ class Thing { ${property} }`;
   if (imports.includes("SecureColumn")) {
     expect(result.output).toContain("@SecureColumn({ type: t.string })");
     expect(result.output).not.toContain("@Property(");
+  }
+  if (imports.includes("onFullTextCreate")) {
+    expect(result.output).not.toContain("@Property<");
+    expect(result.output).toContain('onCreate: onFullTextCreate("name")');
+    expect(result.output).toContain('onUpdate: onFullTextUpdate("name")');
+    expect(result.output).toContain("type: FullTextType");
+  }
+  if (imports.includes("SearchableProperty")) {
+    expect(result.output).not.toMatch(
+      /@(Search|database\.SearchableProperty)</,
+    );
+    expect(result.output).not.toContain("@Property(");
+    expect(result.output).toContain("nullable: true");
+    expect(result.output).not.toContain("onCreate:");
+    expect(result.output).not.toContain("onUpdate:");
   }
   if (imports.includes('"@mikro-orm/postgresql"')) {
     expect(result.output).toContain('from "@mikro-orm/postgresql"');
@@ -543,4 +593,32 @@ it.each([
   expect(result.messages).toEqual([]);
   expect(result.output).toBe(code);
   expect(compileDiagnostics(result.output)).toEqual([]);
+});
+
+it("preserves shared options while reporting spreads alongside generic removal", () => {
+  const code = `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { t } from "@mikro-orm/core";
+const shared = { hidden: true, onUpdate: (book: Thing) => book.name };
+@Entity() class Thing { @Property<Thing>({ ...shared, type: t.string }) name!: string; }`;
+  const combined = config.map((entry) => ({
+    ...entry,
+    plugins: {
+      test: {
+        rules: {
+          entity: rule as unknown as Rule.RuleModule,
+          "no-spread": noSpread as unknown as Rule.RuleModule,
+        },
+      },
+    },
+    rules: { ...entry.rules, "test/no-spread": "error" as const },
+  }));
+  const result = linter.verifyAndFix(code, combined, { filename });
+  expect(result.output).toBe(code.replace("@Property<Thing>", "@Property"));
+  expect(result.messages).toMatchObject([
+    { ruleId: "test/no-spread", messageId: "noSpread" },
+  ]);
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, combined, { filename }).fixed).toBe(
+    false,
+  );
 });
