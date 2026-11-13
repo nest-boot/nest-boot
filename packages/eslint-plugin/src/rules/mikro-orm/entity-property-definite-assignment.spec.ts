@@ -3,6 +3,14 @@ import rule from "./entity-property-definite-assignment.js";
 
 tester.run("entity-property-definite-assignment", rule, {
   valid: [
+    `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Audit
+@Entity()
+class Book {
+  @Validate
+  @Property()
+  title!: string;
+}`,
     `import { Entity } from "@mikro-orm/decorators/legacy";
 import { SearchableProperty } from "other-decorators";
 @Entity() class Book { @SearchableProperty() search: string; }`,

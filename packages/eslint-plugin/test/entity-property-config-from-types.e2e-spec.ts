@@ -81,6 +81,13 @@ const config: Linter.Config[] = [
 
 const cases = [
   {
+    name: "quoted searchable options and computed option keys",
+    imports:
+      'import { Entity } from "@mikro-orm/decorators/legacy"; import { SearchableProperty } from "../database/dist/index.js"; const option = "hidden";',
+    property:
+      '@SearchableProperty<Thing>({ "properties": "name", "nullable": true, [option]: false }) name!: string | null;',
+  },
+  {
     name: "generic-only removal preserving quoted options and callbacks",
     imports:
       'import { Entity, Property } from "@mikro-orm/decorators/legacy"; import { t } from "@mikro-orm/core";',
@@ -313,7 +320,7 @@ class Thing { ${property} }`;
       /@(Search|database\.SearchableProperty)</,
     );
     expect(result.output).not.toContain("@Property(");
-    expect(result.output).toContain("nullable: true");
+    expect(result.output).toMatch(/(?:nullable|["']nullable["']):\s*true/);
     expect(result.output).not.toContain("onCreate:");
     expect(result.output).not.toContain("onUpdate:");
   }

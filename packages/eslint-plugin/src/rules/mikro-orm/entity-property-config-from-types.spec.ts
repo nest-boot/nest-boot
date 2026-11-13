@@ -312,6 +312,26 @@ class Book {
   ],
   invalid: [
     {
+      code: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
+@Entity() class Book { @SearchableProperty<Book>({ "properties": "title", "nullable": true, "hidden": false }) title!: string | null; }`,
+      output: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
+@Entity() class Book { @SearchableProperty({ "properties": "title", "nullable": true, "hidden": false }) title!: string | null; }`,
+      errors: [{ messageId: "alignSearchablePropertyOptions" }],
+    },
+    {
+      code: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
+const option = "hidden";
+@Entity() class Book { @SearchableProperty({ properties: "title", [option]: false }) title!: string | null; }`,
+      output: `import { Entity } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
+const option = "hidden";
+@Entity() class Book { @SearchableProperty({ properties: "title", [option]: false, nullable: true }) title!: string | null; }`,
+      errors: [{ messageId: "alignSearchablePropertyOptions" }],
+    },
+    {
       code: `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 import { t } from "@mikro-orm/core";
 @Entity() class Book { @Property<Book>({ type: t.string, /* preserve privacy */ "hidden": true, "onUpdate": book => book.title }) title!: string; }`,

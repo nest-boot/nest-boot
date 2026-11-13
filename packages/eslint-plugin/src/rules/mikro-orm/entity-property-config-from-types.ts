@@ -917,7 +917,11 @@ export default createRule<
           }
 
           const searchableDecorator = member.decorators.find(
-            (decorator) =>
+            (
+              decorator,
+            ): decorator is TSESTree.Decorator & {
+              expression: TSESTree.CallExpression;
+            } =>
               decorator.expression.type === AST_NODE_TYPES.CallExpression &&
               decoratorName(decorator.expression.callee) ===
                 "SearchableProperty",
@@ -1093,9 +1097,6 @@ export default createRule<
 
           if (searchableDecorator) {
             const call = searchableDecorator.expression;
-            if (call.type !== AST_NODE_TYPES.CallExpression) {
-              return;
-            }
             const typeArguments = call.typeArguments;
             const argument = call.arguments.at(0);
             if (argument?.type !== AST_NODE_TYPES.ObjectExpression) {
