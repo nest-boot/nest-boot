@@ -113,17 +113,17 @@ const GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE = graphql(`
   }
 `);
 
-const ACCEPT_INVITATION_FROM_USER_WORKSPACES_ROUTE = graphql(`
-  mutation acceptInvitationFromUserWorkspacesRoute($id: ID!) {
-    acceptInvitation(id: $id) {
+const ACCEPT_WORKSPACE_INVITATION_FROM_USER_WORKSPACES_ROUTE = graphql(`
+  mutation acceptWorkspaceInvitationFromUserWorkspacesRoute($id: ID!) {
+    acceptWorkspaceInvitation(id: $id) {
       id
     }
   }
 `);
 
-const REJECT_INVITATION_FROM_USER_WORKSPACES_ROUTE = graphql(`
-  mutation rejectInvitationFromUserWorkspacesRoute($id: ID!) {
-    rejectInvitation(id: $id) {
+const REJECT_WORKSPACE_INVITATION_FROM_USER_WORKSPACES_ROUTE = graphql(`
+  mutation rejectWorkspaceInvitationFromUserWorkspacesRoute($id: ID!) {
+    rejectWorkspaceInvitation(id: $id) {
       id
     }
   }
@@ -148,18 +148,16 @@ function UserWorkspacesComponent() {
   const location = useLocation();
   const query = search.query ?? "";
   const filterValues = (search.filter ?? {}) as Record<string, unknown>;
-  const [invitationPage, setInvitationPage] = useState<{
+  const [invitationPage, setWorkspaceInvitationPage] = useState<{
     first?: number;
     last?: number;
     after?: string;
     before?: string;
   }>({ first: 20 });
-  const [acceptingInvitationId, setAcceptingInvitationId] = useState<
-    string | null
-  >(null);
-  const [rejectingInvitationId, setRejectingInvitationId] = useState<
-    string | null
-  >(null);
+  const [acceptingWorkspaceInvitationId, setAcceptingWorkspaceInvitationId] =
+    useState<string | null>(null);
+  const [rejectingWorkspaceInvitationId, setRejectingWorkspaceInvitationId] =
+    useState<string | null>(null);
 
   const { data, loading, refetch } = useQuery(
     GET_WORKSPACES_FROM_USER_WORKSPACES_ROUTE,
@@ -175,18 +173,18 @@ function UserWorkspacesComponent() {
     },
   );
 
-  const [acceptInvitation] = useMutation(
-    ACCEPT_INVITATION_FROM_USER_WORKSPACES_ROUTE,
+  const [acceptWorkspaceInvitation] = useMutation(
+    ACCEPT_WORKSPACE_INVITATION_FROM_USER_WORKSPACES_ROUTE,
   );
-  const [rejectInvitation] = useMutation(
-    REJECT_INVITATION_FROM_USER_WORKSPACES_ROUTE,
+  const [rejectWorkspaceInvitation] = useMutation(
+    REJECT_WORKSPACE_INVITATION_FROM_USER_WORKSPACES_ROUTE,
   );
 
-  const handleAcceptInvitation = async (invitationId: string) => {
-    setAcceptingInvitationId(invitationId);
+  const handleAcceptWorkspaceInvitation = async (invitationId: string) => {
+    setAcceptingWorkspaceInvitationId(invitationId);
 
     try {
-      await acceptInvitation({ variables: { id: invitationId } });
+      await acceptWorkspaceInvitation({ variables: { id: invitationId } });
       await refreshAfterMutation(() => refetch());
       toast.add({
         type: "success",
@@ -201,15 +199,15 @@ function UserWorkspacesComponent() {
             : t("user:workspaces.invitations.toast.accept_failed"),
       });
     } finally {
-      setAcceptingInvitationId(null);
+      setAcceptingWorkspaceInvitationId(null);
     }
   };
 
-  const handleRejectInvitation = async (invitationId: string) => {
-    setRejectingInvitationId(invitationId);
+  const handleRejectWorkspaceInvitation = async (invitationId: string) => {
+    setRejectingWorkspaceInvitationId(invitationId);
 
     try {
-      await rejectInvitation({ variables: { id: invitationId } });
+      await rejectWorkspaceInvitation({ variables: { id: invitationId } });
       await refreshAfterMutation(() => refetch());
       toast.add({
         type: "success",
@@ -224,7 +222,7 @@ function UserWorkspacesComponent() {
             : t("user:workspaces.invitations.toast.reject_failed"),
       });
     } finally {
-      setRejectingInvitationId(null);
+      setRejectingWorkspaceInvitationId(null);
     }
   };
 
@@ -235,7 +233,8 @@ function UserWorkspacesComponent() {
   const invitationPageInfo = data?.currentUser.invitations.pageInfo;
   const pageInfo = data?.currentUser.workspaces.pageInfo;
   const invitationActionPending =
-    acceptingInvitationId !== null || rejectingInvitationId !== null;
+    acceptingWorkspaceInvitationId !== null ||
+    rejectingWorkspaceInvitationId !== null;
   const invitationsColumnHelper =
     createDataTableColumnHelper<(typeof invitations)[number]>();
   const workspacesColumnHelper =
@@ -322,9 +321,11 @@ function UserWorkspacesComponent() {
                             variant="outline"
                             size="sm"
                             disabled={invitationActionPending}
-                            loading={rejectingInvitationId === row.original.id}
+                            loading={
+                              rejectingWorkspaceInvitationId === row.original.id
+                            }
                             onClick={() =>
-                              handleRejectInvitation(row.original.id)
+                              handleRejectWorkspaceInvitation(row.original.id)
                             }
                           >
                             <X />
@@ -334,9 +335,11 @@ function UserWorkspacesComponent() {
                             type="button"
                             size="sm"
                             disabled={invitationActionPending}
-                            loading={acceptingInvitationId === row.original.id}
+                            loading={
+                              acceptingWorkspaceInvitationId === row.original.id
+                            }
                             onClick={() =>
-                              handleAcceptInvitation(row.original.id)
+                              handleAcceptWorkspaceInvitation(row.original.id)
                             }
                           >
                             <Check />
@@ -351,12 +354,12 @@ function UserWorkspacesComponent() {
                     hasPreviousPage: invitationPageInfo?.hasPreviousPage,
                     hasNextPage: invitationPageInfo?.hasNextPage,
                     onPreviousPage: () =>
-                      setInvitationPage({
+                      setWorkspaceInvitationPage({
                         last: 20,
                         before: invitationPageInfo?.startCursor ?? undefined,
                       }),
                     onNextPage: () =>
-                      setInvitationPage({
+                      setWorkspaceInvitationPage({
                         first: 20,
                         after: invitationPageInfo?.endCursor ?? undefined,
                       }),

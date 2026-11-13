@@ -1,0 +1,32 @@
+import { Parent, ResolveField, Resolver } from "@nest-boot/graphql";
+
+import { filterPermissionValues } from "../../common/utils/filter-permission-values.util.js";
+import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
+import { WorkspaceMemberService } from "../../workspace/services/workspace-member.service.js";
+import { WorkspaceApiKeyPermission } from "../enums/workspace-api-key-permission.enum.js";
+import { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
+import { resolveApiKeyRelation } from "../utils/resolve-api-key-relation.util.js";
+
+/** Authorized member details for workspace credentials. */
+@Resolver(() => WorkspaceApiKey)
+export class WorkspaceApiKeyRelationResolver {
+  /**
+   * Resolves grants supported by the current GraphQL permission catalog.
+   * @param key - Identity or credential whose stored grants are being presented.
+   * @returns Serializable permission values without mutating effective grants.
+   */
+  @ResolveField(() => [WorkspaceApiKeyPermission])
+  permissions(@Parent() key: WorkspaceApiKey): WorkspaceApiKeyPermission[] {
+    return filterPermissionValues(key.permissions, WorkspaceApiKeyPermission);
+  }
+
+  constructor(private readonly identities: WorkspaceMemberService) {}
+  @ResolveField(() => WorkspaceMember, { nullable: true })
+  async member(
+    @Parent() key: WorkspaceApiKey,
+  ): Promise<WorkspaceMember | null> {
+    return await resolveApiKeyRelation(key, key.member, WorkspaceMember, (id) =>
+      this.identities.getWorkspaceMember(id),
+    );
+  }
+}

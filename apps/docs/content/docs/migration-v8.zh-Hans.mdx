@@ -18,7 +18,7 @@ CLI 入口通过 `CommandFactory.run(AppModule)` 使用运行时模块配置。�
 然后删除独立配置文件及 package.json 中的 `mikro-orm` 配置。
 Auth 与 QueueApi 自动注册实体，普通业务模块使用 `DatabaseModule.forFeature()`。
 直接使用 MikroORM 时仍可显式注册导出的 `entities` 和 `workspaceEntities`。
-为避免自动发现可选实体，已移除 `User.members`，请通过 `MemberService` 查询成员关系。
+为避免自动发现可选实体，已移除 `User.members`，请通过 `WorkspaceMemberService` 查询成员关系。
 
 ## 升级依赖
 
@@ -113,7 +113,7 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   初始化请求 session，并在业务事务开始前更新。详见 [MikroORM RLS 文档](https://mikro-orm.io/docs/row-level-security)。
 - 认证权限标识由应用定义，是区分大小写的字符串，与 CASL subject type 分离。
   权限目录、授权上限和 API Key 权限交集只做精确字符串匹配，不转换大小写。
-  内置目录使用 `user:*`、`session:*`、`workspace:*`、`member:*` 与
+  内置目录使用 `user:*`、`session:*`、`workspace:*`、`workspace-member:*` 与
   `invitation:*` 与 `api-key:*`。自定义角色和权限遵循小写命名约束，无效名称会被
   拒绝而非自动转换。角色授权、直接权限、API Key 权限与业务规则的拼写必须一致。
 - Auth 统一维护内置能力映射，请移除应用中重复构建 auth 规则的回调。
@@ -128,17 +128,20 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   工作区隔离，不再检查应用权限名。
 - 认证 Session 现在只使用主数据库；请移除 `AuthModuleOptions.secondaryStorage` 配置。
 - 将 API Key 的 `defaultPermissions` 与 `allowedPermissions` 移到 `apiKey.user`
-  和 `apiKey.member` 下。旧的扁平配置会在启动时报错，两个作用域互不继承。
+  和 `apiKey.workspace` 下。旧的扁平配置会在启动时报错，两个作用域互不继承。
   用户 Key 可使用用户和工作区权限；成员 Key 仅接受工作区权限，通过
-  `member:invite` 管理邀请。授予权限同时受目标成员和签发者限制，运行时再与成员权限取交集。例如：
+  `workspace-member:invite` 管理邀请。授予权限同时受目标成员和签发者限制，运行时再与成员权限取交集。例如：
 
   ```ts
   apiKey: {
+    enabled: true,
     user: {
+      enabled: true,
       defaultPermissions: ["user:read"],
       allowedPermissions: ["user:read", "workspace:update"],
     },
-    member: {
+    workspace: {
+      enabled: true,
       defaultPermissions: ["workspace:update"],
       allowedPermissions: ["workspace:update", "workspace:delete"],
     },
@@ -151,7 +154,7 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 - 切换 TypeScript 模块解析后，重新生成文件和迁移，确保生成的导入带有有效的
   ESM 扩展名。
 
-服务端示例的历史迁移已替换为两步基线：手写基础设施初始化，再执行按当前实体生成的结构迁移。示例应使用全新数据库；
+服务端示例重新生成两步基线：手写基础设施初始化，再执行按当前实体生成的结构迁移，直接建立 ApiKey 共表和系统账户。示例应使用全新数据库；
 这份基线不用于升级执行过旧迁移的数据库。重建已有开发数据库前，请先备份需要保留的数据。
 
 ## 仓库测试
@@ -162,7 +165,7 @@ Nest Boot 版本 8 使用基于 SWC 的 Vitest 替代 Jest。贡献者可以通�
 ### API Key 归属与数据库级联
 
 先执行 `Migration00000000000000_Initial`，再执行 MikroORM 生成的
-`Migration20261024072513`。初始化迁移向 `anonymous` 和 `authenticated`
+`Migration20261111092714`。初始化迁移向 `anonymous` 和 `authenticated`
 授予 schema `USAGE`，并为 `public` 中的表、函数和序列统一配置默认 `ALL` 权限。
 这些默认权限只适用于同一迁移角色以后创建的对象，不会修改现有对象或其他角色创建的对象的权限。
 
@@ -176,18 +179,13 @@ RLS 不保护 `TRUNCATE` 或 `REFERENCES`，表策略也不限制序列操作。
 业务表声明 RLS 策略；Job 记录是明确例外，使用服务层限定范围的查询。`Verification` 明确拒绝普通请求访问。
 凭证字段与可更新属性由 Service 和 GraphQL 控制，数据库不再提供列级保护。
 
-`BaseApiKey.owner` 已移除。`UserApiKey` 与 `MemberApiKey` 使用独立的表，
-各自只有一个必填归属外键（`user` 或 `member`），无需二选一 CHECK 约束。
-实体导入、查询过滤器和测试需同步适配两类密钥。beta 示例保留 init，并按最终模型
-重新生成其余迁移，直接创建 `member_api_key` 与服务账号约束，不再保留旧表转换迁移。
-用户删除由外键级联清理关联记录，不再使用自定义删除函数或触发器；删除的成员所属 Key 也会级联删除；工作区和其他成员的 Key 保留。
+ApiKey 通过 `ApiKey.owner` 多态关联到 User、WorkspaceMember 或 SystemAccount。账户、会话、成员和邀请使用普通外键级联；所有 ApiKey 记录保留用于审计，认证时重新查询 owner，不存在则拒绝使用。工作区与独立系统账户保留。
 User SELECT 允许 authenticated 角色读取，个人资料访问由 Service 的 Ability 检查限制，支持自定义读取权限名。
 User 写入及 Session 读取同样由 Service 授权；数据库请求上下文不再传递应用权限。
 不要绕过 Service 授权暴露直接 User 查询。
-示例基线仅适用于空库；已有数据库需单独编写数据保留迁移，按归属类型拆分旧密钥并填充必填外键。
+示例基线仅适用于全新数据库，直接创建共享 ApiKey 表和系统账户。
 
-工作区改为永久删除。移除 `Workspace.deletedAt` 的字段选择、过滤条件和索引；成员、邀请和
-工作区密钥由外键级联删除。DELETE 策略继续限制工作区范围，旧软删除策略和 `app.operation`
+工作区改为永久删除。移除 `Workspace.deletedAt` 的字段选择、过滤条件和索引；成员和邀请由外键级联删除；API Key 记录保留用于审计，所属成员不存在时无法认证。DELETE 策略继续限制工作区范围，旧软删除策略和 `app.operation`
 删除上下文已移除。已有数据库迁移前应备份数据，并明确历史软删除工作区的处理方式；
 示例基线只适用于空库，不会转换已有数据。
 
@@ -197,20 +195,16 @@ User 写入及 Session 读取同样由 Service 授权；数据库请求上下文
 输入、Payload、Resolver 和连接全部改从 `@nest-boot/auth` 导入。
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation`、`UserApiKey` 和 `MemberApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`WorkspaceMember`、`WorkspaceInvitation`、`SystemAccount` 和 `ApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
-在运行时和迁移 CLI 的 MikroORM 配置中注册导出的 `entities` 数组；CLI 不会启动 Nest 模块：
+AuthModule 通过 DatabaseModule 注册已启用实体。应用使用 `nb database:*` 命令共享运行时配置，无需单独的 MikroORM 配置文件。
+AuthModule 自动选择已启用的原生 Schema；独立 ORM 可以注册完整模型：
 
 ```typescript
-import { entities as authEntities } from "@nest-boot/auth";
-import { defineConfig } from "@mikro-orm/postgresql";
+import { entities, workspaceEntities } from "@nest-boot/auth";
 
-export default defineConfig({
-  entities: [...authEntities, "dist/**/*.entity.js"],
-  entitiesTs: [...authEntities, "src/**/*.entity.ts"],
-  // Connection and migration options...
-});
+const authEntities = [...entities, ...workspaceEntities];
 ```
 
 自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，
@@ -228,10 +222,22 @@ GraphQL `signUp` 现在返回 `SignUpPayload { id, token }`，不再返回
 管理接口 `createUser`、`updateUser`、`setUserRoles`、`setUserPermissions`、
 `banUser`、`unbanUser` 现在返回各自的 Payload，仅包含 `id`。请移除这些操作的
 资料及关联字段选择，并在写入成功后单独查询用户。
-`acceptInvitation` 返回 `AcceptInvitationPayload { id, memberId, workspaceId }`；
+`acceptWorkspaceInvitation` 返回 `AcceptWorkspaceInvitationPayload { id, memberId, workspaceId }`；
 后续请求选择返回的工作区后再查询成员信息。领域 Service 的返回值与授权检查不变。
 
 生成的基线已允许成员共用联系邮箱，成员关系仍按 `(user, workspace)` 唯一；
 不存在单独移除邮箱唯一约束的迁移。回滚结构基线会删除其中的表和数据，
 基础设施初始化迁移的 `down()` 为空。已有数据库若要恢复联系邮箱唯一约束，
 需要单独迁移及明确的数据保留方案。
+
+## 8.x 中的 ApiKey 合表迁移
+
+管理功能和密钥功能均需显式启用：分别配置 `admin.enabled`、`apiKey.enabled`。个人和工作区密钥还需开启 `apiKey.user.enabled`、`apiKey.workspace.enabled`，后者另需 `workspace.enabled`；这些开关均默认关闭。系统凭证认证要求密钥总开关和显式设置 `apiKey.system.enabled: true`，默认关闭且不依赖 `admin.enabled`；管理 API 另需开启 admin。
+
+GraphQL 分别返回 `UserApiKey`、`WorkspaceApiKey`、`SystemApiKey`，各有独立的权限枚举。可空的具体关联字段分别为 `user`、`member`、`systemAccount`；汇总列表仍为 `workspaceApiKeys` 和 `systemApiKeys`。
+
+`UserApiKey`、`WorkspaceApiKey`、`SystemApiKey` 是各自的公共视图和 Service，统一持久化实体为 `ApiKey`。直接 ORM 查询使用 `ownerType` 和多态 `owner` 引用。独立 ORM 显式选择实体类和原生 ApiKey EntitySchema；AuthModule 自动注册。系统账户的权限与管理员会话要求见 [API Key](/docs/tutorial/auth/api-keys)。
+
+示例基线按当前实体为全新数据库重新生成，直接建立 ApiKey 共表、系统账户、哈希全局唯一约束，不生成 owner 检查或删除清理触发器。
+
+回滚生成的结构迁移会移除其表和数据。版本继续保持 8.x。

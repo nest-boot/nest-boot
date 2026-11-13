@@ -5,18 +5,18 @@ description: "将 Auth 服务接入传输适配器与 RequestContext。"
 
 底层 Better Auth 实例及其注入 token 属于内部实现。应用应注入负责对应领域的服务：
 
-| 服务                                         | 职责                                                   |
-| -------------------------------------------- | ------------------------------------------------------ |
-| `AuthService`                                | 身份认证、邮箱验证、密码找回、用户资料与 provider 账号 |
-| `SessionService`                             | 会话解析、按用户分页、模拟登录者关联、自助与管理员撤销 |
-| `UserService`                                | 用户管理、权限、封禁、模拟登录和密码                   |
-| `AccountService`                             | 当前用户会话的安全账号连接查询                         |
-| `WorkspaceService`                           | 工作区查询与生命周期管理                               |
-| `MemberService`                              | 成员查询、分页、资料、角色、权限及加入/退出            |
-| `InvitationService`                          | 邀请查询、分页、创建、接受、拒绝及取消                 |
-| `UserApiKeyService` 和 `MemberApiKeyService` | 各自作用域的 API Key 生命周期和连接查询                |
+| 服务                                            | 职责                                                   |
+| ----------------------------------------------- | ------------------------------------------------------ |
+| `AuthService`                                   | 身份认证、邮箱验证、密码找回、用户资料与 provider 账号 |
+| `SessionService`                                | 会话解析、按用户分页、模拟登录者关联、自助与管理员撤销 |
+| `UserService`                                   | 用户管理、权限、封禁、模拟登录和密码                   |
+| `AccountService`                                | 当前用户会话的安全账号连接查询                         |
+| `WorkspaceService`                              | 工作区查询与生命周期管理                               |
+| `WorkspaceMemberService`                        | 成员查询、分页、资料、角色、权限及加入/退出            |
+| `WorkspaceInvitationService`                    | 邀请查询、分页、创建、接受、拒绝及取消                 |
+| `UserApiKeyService` 和 `WorkspaceApiKeyService` | 各自作用域的 API Key 生命周期和连接查询                |
 
-`UserService`、`AccountService`、`WorkspaceService`、`MemberService` 和 `InvitationService` 直接操作 `AuthModule` 内置的 MikroORM 实体，
+`UserService`、`AccountService`、`WorkspaceService`、`WorkspaceMemberService` 和 `WorkspaceInvitationService` 直接操作 `AuthModule` 内置的 MikroORM 实体，
 不依赖 Better Auth 的 admin 或 organization 插件。
 
 ```typescript
@@ -28,10 +28,10 @@ export class AccountApplicationService {
     private readonly userService: UserService,
     private readonly accountService: AccountService,
     private readonly workspaceService: WorkspaceService,
-    private readonly memberService: MemberService,
-    private readonly invitationService: InvitationService,
+    private readonly workspaceMemberService: WorkspaceMemberService,
+    private readonly workspaceInvitationService: WorkspaceInvitationService,
     private readonly userApiKeyService: UserApiKeyService,
-    private readonly memberApiKeyService: MemberApiKeyService,
+    private readonly workspaceApiKeyService: WorkspaceApiKeyService,
   ) {}
 }
 ```
@@ -43,7 +43,7 @@ export class AccountApplicationService {
 应用只需配置 GraphQL 模块和 `AuthModule.forRoot()`，无需重新定义认证实体或注册命名连接。
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation`、`UserApiKey` 和 `MemberApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`WorkspaceMember`、`WorkspaceInvitation`、`SystemAccount` 和 `ApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 `AuthModule` 使用 `DatabaseModule.forFeatureAsync()` 自动注册启用的实体，
@@ -53,7 +53,7 @@ Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
 应用的 HTTP、REPL 和 CLI 入口导入相同模块，通过 `nb database:*` 执行数据库命令，
 不再需要独立的 MikroORM 配置文件。自定义字段请使用独立业务关联实体与额外字段 Resolver。
 关联目标直接导入内置实体，不要重新声明或注册同名实体。`User.members` 已移除，
-请通过 `MemberService` 查询成员关系。工作区服务与 resolver 仅在功能开启后可用。
+请通过 `WorkspaceMemberService` 查询成员关系。工作区服务与 resolver 仅在功能开启后可用。
 
 ## 传输适配器
 
@@ -62,8 +62,8 @@ Resolver 与 Controller 将参数交给领域 Service，授权、作用域和 RL
 `AuthMiddleware` 在 `RequestContextMiddleware` 之后执行，使用内置实体类保存身份，
 例如 `RequestContext.get(User)`。不再注册认证 Base 类别名；传输层优先使用当前身份装饰器。
 
-`Member` / `Invitation` 对应的 Service 是 `MemberService` / `InvitationService`，
-权限主体为 `member:*`，其中 `member:invite` 管理邀请。实体合并不改变已有字段和参数。
+`WorkspaceMember` / `WorkspaceInvitation` 对应的 Service 是 `WorkspaceMemberService` / `WorkspaceInvitationService`，
+权限主体为 `workspace-member:*`，其中 `workspace-member:invite` 管理邀请。实体合并不改变已有字段和参数。
 
 ## PostgreSQL RLS
 
@@ -129,7 +129,7 @@ GraphQL 验证错误使用 `BAD_USER_INPUT`，字段详情位于
 ### 操作命名调整
 
 使用 `currentSession`、
-`createMemberApiKey`、`updateMemberApiKey`、`deleteMemberApiKey`。
+`createWorkspaceApiKey`、`updateWorkspaceApiKey`、`deleteWorkspaceApiKey`。
 旧名称不保留别名；删除工作区只使用 `deleteWorkspace`，`removeWorkspace` 已移除。
 客户端需同步更新 GraphQL 文档、返回字段访问与生成类型。
 
@@ -137,3 +137,5 @@ GraphQL 验证错误使用 `BAD_USER_INPUT`，字段详情位于
 `authRefreshToken` 及其专用输入、返回类型，不保留别名。账号绑定信息通过
 `currentUser { accounts(first: 20) { edges { node { id providerId scopes } } } }` 查询；服务端第三方集成仍可使用
 `AuthService.getAccessToken()`、`refreshToken()` 和 `getAccountInfo()`。
+
+AuthModule 按功能开关选择实体类和原生 ApiKey EntitySchema；独立 ORM 显式选择需要的模型。三种 ApiKey 的公共视图和 Service 对应同一个持久化实体 `ApiKey`，系统账户管理见 [API Key](/docs/tutorial/auth/api-keys)。

@@ -1,7 +1,7 @@
 import { EntitySchema, MikroORM } from "@mikro-orm/pglite";
 
-import { userScopePolicy } from "../src/policies/user-scope.policy.js";
-import { workspaceScopePolicy } from "../src/policies/workspace-scope.policy.js";
+import { userScopePolicy } from "../src/common/policies/user-scope.policy.js";
+import { workspaceScopePolicy } from "../src/common/policies/workspace-scope.policy.js";
 
 const types = [
   { type: "bigint", own: "11", other: "12" },
@@ -56,7 +56,7 @@ const fixtures = scopes.flatMap(({ scope, create }) =>
 describe("scope policy factories with native PGlite RLS", () => {
   let orm: MikroORM;
   const readonlyEntity = new EntitySchema<{ id: number; user: string }>({
-    name: "ReadonlyMembership",
+    name: "ReadonlyWorkspaceMembership",
     tableName: "readonly_membership",
     properties: {
       id: { type: "integer", primary: true },

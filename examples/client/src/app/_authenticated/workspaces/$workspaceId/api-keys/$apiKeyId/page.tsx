@@ -4,8 +4,10 @@ import { t } from "i18next";
 import { useCallback } from "react";
 
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
+import { REVOKE_WORKSPACE_API_KEY } from "@/graphql/mutations/revoke-workspace-api-key";
+import { getApiKeyUpdateInput } from "@/lib/api-key-update";
 import { graphql } from "@/gql";
-import { UPDATE_MEMBER_API_KEY } from "@/graphql/mutations/update-member-api-key";
+import { UPDATE_WORKSPACE_API_KEY } from "@/graphql/mutations/update-workspace-api-key";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-context";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
@@ -15,22 +17,21 @@ import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { createAbilitySubject } from "@/lib/ability";
 import { createConnectionCursor } from "@/lib/graphql-connection";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
-import { getMemberApiKeysResourceKey } from "@/lib/resource-keys";
+import { getWorkspaceApiKeysResourceKey } from "@/lib/resource-keys";
 import {
   getPermissionOptions,
-  memberApiKeyPermissionValues,
+  workspaceApiKeyPermissionValues,
 } from "@/lib/permissions";
 import { isAccessDenied } from "@/lib/auth-errors";
 
-const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
-  mutation deleteMemberApiKeyFromApiKeysRoute($id: ID!) {
-    deleteMemberApiKey(id: $id) {
-      workspaceId
+const DELETE_WORKSPACE_API_KEY = graphql(`
+  mutation deleteWorkspaceApiKey($id: ID!) {
+    deleteWorkspaceApiKey(id: $id) {
       id
       name
       start
       prefix
-      enabled
+      revokedAt
       permissions
       createdAt
       lastUsedAt
@@ -39,21 +40,26 @@ const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
   }
 `);
 
-const GET_MEMBER_API_KEY = graphql(`
-  query getMemberApiKeyDetails($id: ID!) {
-    memberApiKeyPermissions {
+const GET_WORKSPACE_API_KEY = graphql(`
+  query getWorkspaceApiKeyDetails($id: ID!) {
+    workspaceApiKeyPermissions {
       permission
       grantable
       default
     }
     currentWorkspace {
       apiKey(id: $id) {
-        workspaceId
+        member {
+          __typename
+
+          id
+          name
+        }
         id
         name
         start
         prefix
-        enabled
+        revokedAt
         permissions
         createdAt
         lastUsedAt
@@ -63,41 +69,41 @@ const GET_MEMBER_API_KEY = graphql(`
   }
 `);
 
-const GET_MEMBER_API_KEY_NEIGHBORS = graphql(`
-  query getMemberApiKeyNeighbors(
+const GET_WORKSPACE_API_KEY_NEIGHBORS = graphql(`
+  query getWorkspaceApiKeyNeighbors(
     $cursor: String!
-    $filter: MemberApiKeyFilter
-    $orderBy: MemberApiKeyOrder
+    $filter: WorkspaceApiKeyFilter
+    $orderBy: WorkspaceApiKeyOrder
     $query: String
   ) {
     currentWorkspace {
       id
-      previous: apiKeys(
-        last: 1
-        before: $cursor
-        filter: $filter
-        orderBy: $orderBy
-        query: $query
-      ) {
-        edges {
-          cursor
-          node {
-            id
-          }
+    }
+    previous: workspaceApiKeys(
+      last: 1
+      before: $cursor
+      filter: $filter
+      orderBy: $orderBy
+      query: $query
+    ) {
+      edges {
+        cursor
+        node {
+          id
         }
       }
-      next: apiKeys(
-        first: 1
-        after: $cursor
-        filter: $filter
-        orderBy: $orderBy
-        query: $query
-      ) {
-        edges {
-          cursor
-          node {
-            id
-          }
+    }
+    next: workspaceApiKeys(
+      first: 1
+      after: $cursor
+      filter: $filter
+      orderBy: $orderBy
+      query: $query
+    ) {
+      edges {
+        cursor
+        node {
+          id
         }
       }
     }
@@ -116,7 +122,7 @@ export const Route = createFileRoute(
       });
     const { data } = await context.apolloClient
       .query({
-        query: GET_MEMBER_API_KEY,
+        query: GET_WORKSPACE_API_KEY,
         variables: { id: params.apiKeyId },
         fetchPolicy: "network-only",
         context: { headers: { "x-workspace-id": params.workspaceId } },
@@ -125,15 +131,22 @@ export const Route = createFileRoute(
         if (isAccessDenied(error)) throw denied();
         throw error;
       });
-    const apiKey = data?.currentWorkspace?.apiKey;
+    const metadata = data?.currentWorkspace?.apiKey;
+    const apiKey = metadata
+      ? { ...metadata, workspaceId: params.workspaceId }
+      : undefined;
     if (
       !apiKey ||
-      !context.ability.can("read", createAbilitySubject("MemberApiKey", apiKey))
+      !data ||
+      !context.ability.can(
+        "read",
+        createAbilitySubject("WorkspaceApiKey", apiKey),
+      )
     )
       throw denied();
     return {
       apiKey,
-      permissionOptions: data.memberApiKeyPermissions,
+      permissionOptions: data.workspaceApiKeyPermissions,
       title: t("api-key:edit.title"),
     };
   },
@@ -146,10 +159,11 @@ function ApiKeyDetailsPage() {
   const ability = useAbility();
   const router = useRouter();
   const navigate = Route.useNavigate();
-  const [deleteApiKey] = useMutation(DELETE_API_KEY_FROM_API_KEYS_ROUTE);
-  const [updateApiKey] = useMutation(UPDATE_MEMBER_API_KEY);
-  const [loadNeighbors] = useLazyQuery(GET_MEMBER_API_KEY_NEIGHBORS, {
-    fetchPolicy: "network-only",
+  const [deleteApiKey] = useMutation(DELETE_WORKSPACE_API_KEY);
+  const [revoke] = useMutation(REVOKE_WORKSPACE_API_KEY);
+  const [updateApiKey] = useMutation(UPDATE_WORKSPACE_API_KEY);
+  const [loadNeighbors] = useLazyQuery(GET_WORKSPACE_API_KEY_NEIGHBORS, {
+    fetchPolicy: "no-cache",
   });
   const currentUser = useCurrentUserContext();
   const query = useCallback(
@@ -165,18 +179,21 @@ function ApiKeyDetailsPage() {
           orderBy,
           cursor,
         },
-        context: { headers: { "x-workspace-id": workspaceId } },
+        context: {
+          headers: { "x-workspace-id": workspaceId },
+          queryDeduplication: false,
+        },
       });
       if (data?.currentWorkspace?.id !== workspaceId) return undefined;
       return {
-        previousEdge: data.currentWorkspace.previous.edges[0],
-        nextEdge: data.currentWorkspace.next.edges[0],
+        previousEdge: data.previous.edges[0],
+        nextEdge: data.next.edges[0],
       };
     },
     [apiKey, loadNeighbors, workspaceId],
   );
   const navigation = useResourceNavigation({
-    key: [currentUser.id, ...getMemberApiKeysResourceKey(workspaceId)],
+    key: [currentUser.id, ...getWorkspaceApiKeysResourceKey(workspaceId)],
     searchSchema: apiKeySearchSchema,
     // Keep the saved return position while revealing a newly created key.
     query: secret ? undefined : query,
@@ -187,9 +204,24 @@ function ApiKeyDetailsPage() {
     <ApiKeyFormPage
       key={`Workspace-${workspaceId}-${apiKey.id}`}
       apiKey={apiKey}
+      ownerName={
+        apiKey.member?.__typename === "WorkspaceMember"
+          ? apiKey.member.name
+          : undefined
+      }
       canWrite={ability.can(
         "write",
-        createAbilitySubject("MemberApiKey", apiKey),
+        createAbilitySubject("WorkspaceApiKey", apiKey),
+      )}
+      canEditName={ability.can(
+        "write",
+        createAbilitySubject("WorkspaceApiKey", apiKey),
+        "name",
+      )}
+      canEditPermissions={ability.can(
+        "write",
+        createAbilitySubject("WorkspaceApiKey", apiKey),
+        "permissions",
       )}
       listPath={listPath}
       listSearch={backSearch}
@@ -207,12 +239,15 @@ function ApiKeyDetailsPage() {
           ) : undefined,
         },
       }}
-      permissionValues={memberApiKeyPermissionValues}
+      permissionValues={workspaceApiKeyPermissionValues}
       permissionOptions={getPermissionOptions(permissionOptions)}
-      onToggle={async () => {
-        await updateApiKey({
-          variables: { id: apiKey.id, input: { enabled: !apiKey.enabled } },
-        });
+      canRevoke={ability.can(
+        "write",
+        createAbilitySubject("WorkspaceApiKey", apiKey),
+        "revokedAt",
+      )}
+      onRevoke={async () => {
+        await revoke({ variables: { id: apiKey.id } });
         await router.invalidate();
       }}
       onDelete={async () => {
@@ -224,7 +259,12 @@ function ApiKeyDetailsPage() {
         });
       }}
       onSave={async (input) => {
-        await updateApiKey({ variables: { id: apiKey.id, input } });
+        await updateApiKey({
+          variables: {
+            id: apiKey.id,
+            input: getApiKeyUpdateInput(apiKey, input),
+          },
+        });
         await router.invalidate();
         return undefined;
       }}

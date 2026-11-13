@@ -6,8 +6,11 @@ import { Mailer } from "@nest-boot/mailer";
 import { Global, Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { AuthModule } from "../src/auth.module.js";
-import { entities, User, workspaceEntities } from "../src/entities/index.js";
+import { AuthModule } from "../src/core/auth.module.js";
+import { entities } from "../src/core/auth-entities.js";
+import { workspaceEntities } from "../src/core/auth-entities.js";
+import { User } from "../src/core/entities/user.entity.js";
+import { withAuthTestFeatures } from "./fixtures/enabled-auth-features.fixture.js";
 
 @Global()
 @Module({
@@ -29,7 +32,7 @@ it.each([false, true])(
       baseURL: "http://localhost:3000",
       middleware: { register: false },
     };
-    const factory = vi.fn(() => Promise.resolve(options));
+    const factory = vi.fn(() => Promise.resolve(withAuthTestFeatures(options)));
     const app = await Test.createTestingModule({
       imports: [
         AuthInfrastructureModule,
@@ -40,13 +43,17 @@ it.each([false, true])(
         }),
         asyncOptions
           ? AuthModule.forRootAsync({ useFactory: factory })
-          : AuthModule.forRoot(options),
+          : AuthModule.forRoot(withAuthTestFeatures(options)),
       ],
     }).compile();
     try {
       const orm = app.get<PgliteORM>(MikroORM);
       for (const entity of [...entities, ...workspaceEntities]) {
-        expect(orm.getMetadata().has<object>(entity)).toBe(true);
+        expect(
+          orm
+            .getMetadata()
+            .has<object>(typeof entity === "function" ? entity : entity.class),
+        ).toBe(true);
       }
       expect(factory).toHaveBeenCalledTimes(asyncOptions ? 1 : 0);
       await orm.em.execute("create role authenticated nologin");

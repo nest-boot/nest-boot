@@ -9,6 +9,13 @@ import { Module } from '@nestjs/common';
 @Module({
   imports: [
     BaseAuthModule.forRoot({
+      admin: { enabled: true },
+      apiKey: {
+        enabled: true,
+        system: { enabled: true },
+        user: { enabled: true },
+        workspace: { enabled: true },
+      },
       trustedOrigins: [process.env.APP_URL ?? 'http://localhost:3000'],
       emailAndPassword: {
         enabled: true,
@@ -27,7 +34,12 @@ import { Module } from '@nestjs/common';
       },
       workspace: {
         enabled: true,
-        sendInvitationEmail: async ({ email, id, inviter, workspace }) => {
+        sendWorkspaceInvitationEmail: async ({
+          email,
+          id,
+          inviter,
+          workspace,
+        }) => {
           const url = new URL(
             '/invite',
             process.env.APP_URL ?? 'http://localhost:3000',

@@ -2,7 +2,8 @@ import { useQuery } from "@apollo/client/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
-import { UsersRound } from "lucide-react";
+import { Bot, KeyRound, UsersRound } from "lucide-react";
+import { useAbility } from "@/contexts/ability-context";
 import { Link } from "@/components/link";
 import {
   OverviewCard,
@@ -18,8 +19,24 @@ import {
 import { graphql } from "@/gql";
 
 const GET_OVERVIEW = graphql(`
-  query getAdminOverview {
-    users(first: 1) {
+  query getAdminOverview($includeUsers: Boolean! = true) {
+    users(first: 1) @include(if: $includeUsers) {
+      totalCount
+      totalCountRelation
+    }
+  }
+`);
+const SYSTEM_OVERVIEW = graphql(`
+  query getAdminSystemAccountOverview {
+    systemAccounts(first: 1) {
+      totalCount
+      totalCountRelation
+    }
+  }
+`);
+const KEY_OVERVIEW = graphql(`
+  query getAdminSystemKeyOverview {
+    systemApiKeys(first: 1) {
       totalCount
       totalCountRelation
     }
@@ -31,8 +48,20 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 });
 function Overview() {
   const { t } = useTranslation();
+  const ability = useAbility();
+  const canReadUsers = ability.can("read", "User");
   const { data, loading, error, refetch } = useQuery(GET_OVERVIEW, {
     fetchPolicy: "network-only",
+    variables: { includeUsers: canReadUsers },
+    skip: !canReadUsers,
+  });
+  const systemOverview = useQuery(SYSTEM_OVERVIEW, {
+    fetchPolicy: "network-only",
+    skip: !ability.can("read", "SystemAccount"),
+  });
+  const keyOverview = useQuery(KEY_OVERVIEW, {
+    fetchPolicy: "network-only",
+    skip: !ability.can("read", "SystemApiKey"),
   });
   const summary = error ? undefined : data;
   return (
@@ -50,20 +79,81 @@ function Overview() {
             />
           </PageLayoutSection>
         )}
-        <PageLayoutSection>
-          <OverviewCard
-            title={t("sidebar:admin.users")}
-            description={t("admin:overview.users")}
-            icon={<UsersRound />}
-            action={
-              <Button variant="outline" render={<Link to="/admin/users" />}>
-                {t("admin:overview.manage_users")}
-              </Button>
-            }
-          >
-            <OverviewCount connection={summary?.users} loading={loading} />
-          </OverviewCard>
-        </PageLayoutSection>
+        {canReadUsers && (
+          <PageLayoutSection>
+            <OverviewCard
+              title={t("sidebar:admin.users")}
+              description={t("admin:overview.users")}
+              icon={<UsersRound />}
+              action={
+                <Button variant="outline" render={<Link to="/admin/users" />}>
+                  {t("admin:overview.manage_users")}
+                </Button>
+              }
+            >
+              <OverviewCount connection={summary?.users} loading={loading} />
+            </OverviewCard>
+          </PageLayoutSection>
+        )}
+        {ability.can("read", "SystemApiKey") && (
+          <PageLayoutSection>
+            <OverviewCard
+              title={t("api-key:title")}
+              description={t("admin:system_accounts.keys_description")}
+              icon={<KeyRound />}
+              action={
+                <Button
+                  variant="outline"
+                  render={<Link to="/admin/api-keys" />}
+                >
+                  {t("admin:system_accounts.manage_keys")}
+                </Button>
+              }
+            >
+              <OverviewCount
+                connection={keyOverview.data?.systemApiKeys}
+                loading={keyOverview.loading}
+              />
+              {keyOverview.error && (
+                <OverviewError
+                  onRetry={() => {
+                    void keyOverview.refetch().catch(() => undefined);
+                  }}
+                />
+              )}
+            </OverviewCard>
+          </PageLayoutSection>
+        )}
+        {ability.can("read", "SystemAccount") && (
+          <PageLayoutSection>
+            <OverviewCard
+              title={t("admin:system_accounts.title")}
+              description={t("admin:system_accounts.overview")}
+              icon={<Bot />}
+              action={
+                <Button
+                  variant="outline"
+                  render={<Link to="/admin/system-accounts" />}
+                >
+                  {t("admin:system_accounts.manage")}
+                </Button>
+              }
+            >
+              {systemOverview.error ? (
+                <OverviewError
+                  onRetry={() => {
+                    void systemOverview.refetch().catch(() => undefined);
+                  }}
+                />
+              ) : (
+                <OverviewCount
+                  connection={systemOverview.data?.systemAccounts}
+                  loading={systemOverview.loading}
+                />
+              )}
+            </OverviewCard>
+          </PageLayoutSection>
+        )}
       </PageLayout>
     </Page>
   );

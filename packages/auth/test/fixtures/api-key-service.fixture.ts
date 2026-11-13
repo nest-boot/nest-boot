@@ -2,15 +2,19 @@ import { EntityManager, ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { it as baseIt, type Mocked } from "vitest";
 
-import type { AuthModuleOptions } from "../../src/auth-module-options.interface.js";
-import { Member } from "../../src/entities/member.entity.js";
-import { MemberApiKey } from "../../src/entities/member-api-key.entity.js";
-import { User } from "../../src/entities/user.entity.js";
-import { Workspace } from "../../src/entities/workspace.entity.js";
-import { RequestIdentity } from "../../src/infrastructure/request-identity.js";
-import { MemberApiKeyService } from "../../src/services/member-api-key.service.js";
-import { UserApiKeyService } from "../../src/services/user-api-key.service.js";
-import * as abilityHelpers from "../../src/utils/authorize.util.js";
+import { ApiKey } from "../../src/api-key/entities/api-key.entity.js";
+import { UserApiKeyService } from "../../src/api-key/services/user-api-key.service.js";
+import { WorkspaceApiKeyService } from "../../src/api-key/services/workspace-api-key.service.js";
+import * as abilityHelpers from "../../src/common/utils/authorize.util.js";
+import { User } from "../../src/core/entities/user.entity.js";
+import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-options.interface.js";
+import * as identityAccess from "../../src/core/utils/assert-current-identity.util.js";
+import { Workspace } from "../../src/workspace/entities/workspace.entity.js";
+import { WorkspaceMember } from "../../src/workspace/entities/workspace-member.entity.js";
+import { WorkspaceMemberService } from "../../src/workspace/services/workspace-member.service.js";
+import { createTestAuthContext } from "./auth-context.fixture.js";
+import { createTestApiKeyService } from "./auth-context.fixture.js";
+import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 /**
  * Returns workspace fixture with deterministic identifiers.
  * @returns Workspace fixture with deterministic identifiers.
@@ -37,10 +41,10 @@ export function createTestUser(): User {
 
 /**
  * Returns member fixture with deterministic identifiers.
- * @returns Member fixture with deterministic identifiers.
+ * @returns WorkspaceMember fixture with deterministic identifiers.
  */
-export function createTestMember(): Member {
-  return Object.assign(new Member(), {
+export function createTestWorkspaceMember(): WorkspaceMember {
+  return Object.assign(new WorkspaceMember(), {
     id: "member-1",
     roles: ["owner"],
     status: "ACTIVE",
@@ -48,7 +52,7 @@ export function createTestMember(): Member {
     permissions: [],
     workspace: {
       id: "workspace-1",
-    } as Member["workspace"],
+    } as WorkspaceMember["workspace"],
   });
 }
 
@@ -56,19 +60,19 @@ export function createTestMember(): Member {
  * Returns api key fixture with deterministic identifiers.
  * @returns Api key fixture with deterministic identifiers.
  */
-export function createTestApiKey(): MemberApiKey {
-  return Object.assign(new MemberApiKey(), {
+export function createTestApiKey(): ApiKey {
+  return Object.assign(new ApiKey(), {
     id: "api-key-1",
     name: "Deploy key",
     start: "sk012345",
     prefix: "sk",
     key: "hashed-key",
-    enabled: true,
+    revokedAt: null,
     permissions: [],
     updatedAt: new Date(),
     lastUsedAt: null,
     expiresAt: null,
-    member: ref(Member, createTestMember()),
+    member: ref(WorkspaceMember, createTestWorkspaceMember()),
   });
 }
 
@@ -85,7 +89,7 @@ export function apiKeyTest(
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(User, createTestUser());
       RequestContext.set(Workspace, createTestWorkspace());
-      RequestContext.set(Member, createTestMember());
+      RequestContext.set(WorkspaceMember, createTestWorkspaceMember());
       await callback();
     });
   });
@@ -111,6 +115,13 @@ export function createService(
     fork: vi.fn(),
     create: vi.fn((_entity, data) => Object.assign(new _entity(), data)),
     findOne: vi.fn(),
+    populate: vi.fn().mockImplementation((entity) => Promise.resolve(entity)),
+    refreshOrFail: vi.fn((entity) => Promise.resolve(entity)),
+    createQueryBuilder: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      toRaw: vi.fn().mockReturnValue("member-query"),
+    })),
     nativeUpdate: vi.fn().mockResolvedValue(1),
     transactional: vi.fn(),
     flush: vi.fn(),
@@ -125,39 +136,59 @@ export function createService(
   } as unknown as AuthModuleOptions;
   const authorization = {
     assertCurrentUser: vi
-      .spyOn(RequestIdentity, "assertCurrentUser")
+      .spyOn(identityAccess, "assertCurrentUser")
       .mockImplementation(vi.fn()),
-    assertCurrentMember: vi.spyOn(RequestIdentity, "assertCurrentMember"),
-    assertCurrentWorkspace: vi.spyOn(RequestIdentity, "assertCurrentWorkspace"),
+    assertCurrentWorkspaceMember: vi.spyOn(
+      identityAccess,
+      "assertCurrentWorkspaceMember",
+    ),
+    assertCurrentWorkspace: vi.spyOn(identityAccess, "assertCurrentWorkspace"),
     authorize: vi
       .spyOn(abilityHelpers, "authorize")
       .mockImplementation(vi.fn()),
   };
-  const userService = new UserApiKeyService(em, options);
-  const workspaceService = new MemberApiKeyService(em, options);
+  const userService = new UserApiKeyService(
+    em,
+    withAuthTestFeatures(options),
+    createTestApiKeyService(em, withAuthTestFeatures(options)),
+  );
+  const workspaceService = new WorkspaceApiKeyService(
+    em,
+    withAuthTestFeatures(options),
+    createTestApiKeyService(em, withAuthTestFeatures(options)),
+    new WorkspaceMemberService(
+      em,
+      withAuthTestFeatures(options),
+      createTestAuthContext(em, withAuthTestFeatures(options)),
+    ),
+  );
   return {
     authorization,
     em,
     service: {
       getUserApiKeyPermissions:
         userService.getUserApiKeyPermissions.bind(userService),
-      getMemberApiKeyPermissions:
-        workspaceService.getMemberApiKeyPermissions.bind(workspaceService),
+      getWorkspaceApiKeyPermissions:
+        workspaceService.getWorkspaceApiKeyPermissions.bind(workspaceService),
       getUserApiKey: userService.getUserApiKey.bind(userService),
-      getMemberApiKey: workspaceService.getMemberApiKey.bind(workspaceService),
+      getWorkspaceApiKey:
+        workspaceService.getWorkspaceApiKey.bind(workspaceService),
       getUserApiKeyConnection:
         userService.getUserApiKeyConnection.bind(userService),
-      getMemberApiKeyConnection:
-        workspaceService.getMemberApiKeyConnection.bind(workspaceService),
+      getWorkspaceApiKeyConnection:
+        workspaceService.getWorkspaceApiKeyConnection.bind(workspaceService),
       createUserApiKey: userService.createUserApiKey.bind(userService),
-      createMemberApiKey:
-        workspaceService.createMemberApiKey.bind(workspaceService),
+      createWorkspaceApiKey:
+        workspaceService.createWorkspaceApiKey.bind(workspaceService),
       updateUserApiKey: userService.updateUserApiKey.bind(userService),
-      updateMemberApiKey:
-        workspaceService.updateMemberApiKey.bind(workspaceService),
+      updateWorkspaceApiKey:
+        workspaceService.updateWorkspaceApiKey.bind(workspaceService),
+      revokeUserApiKey: userService.revokeUserApiKey.bind(userService),
+      revokeWorkspaceApiKey:
+        workspaceService.revokeWorkspaceApiKey.bind(workspaceService),
       deleteUserApiKey: userService.deleteUserApiKey.bind(userService),
-      deleteMemberApiKey:
-        workspaceService.deleteMemberApiKey.bind(workspaceService),
+      deleteWorkspaceApiKey:
+        workspaceService.deleteWorkspaceApiKey.bind(workspaceService),
     },
   };
 }

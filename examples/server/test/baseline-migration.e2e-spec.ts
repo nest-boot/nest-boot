@@ -5,11 +5,12 @@ import { entities as authEntities, workspaceEntities } from '@nest-boot/auth';
 import { JobEntity } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
+import { Migration20261111092714 } from '../src/database/migrations/Migration20261111092714.js';
 import { createDatabaseFixture } from './postgres.fixture.js';
 
-it('builds the current example schema from two migrations and can roll back and rebuild it', async () => {
+it('builds the current example schema from ordered migrations and can roll back and rebuild it', async () => {
   const fixture = await createDatabaseFixture();
-  const orm = await MikroORM.init({
+  const options = {
     clientUrl: fixture.connectionString,
     entities: [...authEntities, ...workspaceEntities, JobEntity],
     metadataProvider: TsMorphMetadataProvider,
@@ -21,11 +22,38 @@ it('builds the current example schema from two migrations and can roll back and 
       snapshotName: '.snapshot-postgres',
       snapshotOnMigrate: false,
     },
-  });
+  };
+  const orm = await MikroORM.init(options);
   try {
     const migrated = await orm.migrator.up();
     expect(migrated).toHaveLength(2);
     expect(migrated[0].name).toBe(Migration00000000000000_Initial.name);
+    const listed = await MikroORM.init({
+      ...options,
+      migrations: {
+        ...options.migrations,
+        migrationsList: [
+          Migration00000000000000_Initial,
+          Migration20261111092714,
+        ],
+      },
+    });
+    try {
+      expect(await listed.migrator.getPending()).toEqual([]);
+      expect(await listed.migrator.up()).toEqual([]);
+    } finally {
+      await listed.close();
+    }
+    const columns = await fixture.pool.query(
+      "select column_name, data_type, is_nullable from information_schema.columns where table_schema = 'public' and table_name = 'api_key' and column_name in ('enabled', 'revoked_at') order by column_name",
+    );
+    expect(columns.rows).toEqual([
+      {
+        column_name: 'revoked_at',
+        data_type: 'timestamp with time zone',
+        is_nullable: 'YES',
+      },
+    ]);
     expect(await orm.migrator.getPending()).toEqual([]);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
     expect(await orm.migrator.checkSchema()).toBe(false);
@@ -35,16 +63,16 @@ it('builds the current example schema from two migrations and can roll back and 
     );
     expect(rows.map(({ tablename }) => tablename)).toEqual([
       'account',
-      'invitation',
+      'api_key',
       'job',
-      'member',
-      'member_api_key',
       'mikro_orm_migrations',
       'session',
+      'system_account',
       'user',
-      'user_api_key',
       'verification',
       'workspace',
+      'workspace_invitation',
+      'workspace_member',
     ]);
     expect(
       (

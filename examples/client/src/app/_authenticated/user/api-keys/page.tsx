@@ -11,8 +11,8 @@ import { ApiKeysPage } from "@/components/api-keys-page";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
 import { userApiKeysResourceKey } from "@/lib/resource-keys";
 
-const GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE = graphql(`
-  query getUserApiKeysFromUserApiKeysRoute(
+const GET_USER_API_KEYS = graphql(`
+  query getUserApiKeys(
     $after: String
     $before: String
     $first: Int
@@ -37,7 +37,7 @@ const GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE = graphql(`
             name
             start
             prefix
-            enabled
+            revokedAt
             permissions
             createdAt
             lastUsedAt
@@ -70,7 +70,7 @@ function ApiKeysComponent() {
     searchSchema: apiKeySearchSchema,
     search,
   });
-  const { data } = useQuery(GET_USER_API_KEYS_FROM_USER_API_KEYS_ROUTE, {
+  const { data } = useQuery(GET_USER_API_KEYS, {
     fetchPolicy: "network-only",
     variables: search,
   });

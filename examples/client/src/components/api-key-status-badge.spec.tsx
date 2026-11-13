@@ -21,41 +21,44 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 describe("ApiKeyStatusBadge", () => {
-  it("shows Disabled even when the key has also expired", () => {
+  it("shows Revoked even when the key has also expired", () => {
     render(
       <ApiKeyStatusBadge
-        apiKey={{ enabled: false, expiresAt: "2000-01-01T00:00:00.000Z" }}
+        apiKey={{
+          revokedAt: "2026-01-01T00:00:00.000Z",
+          expiresAt: "2000-01-01T00:00:00.000Z",
+        }}
       />,
       { wrapper },
     );
-    expect(screen.getByText("Disabled").getAttribute("data-slot")).toBe(
-      "badge",
-    );
+    expect(screen.getByText("Revoked").getAttribute("data-slot")).toBe("badge");
     expect(screen.queryByText("Expired")).toBeNull();
   });
 
-  it("shows Expired for an enabled key past its expiration", () => {
+  it("shows Expired for an unrevoked key past its expiration", () => {
     render(
       <ApiKeyStatusBadge
-        apiKey={{ enabled: true, expiresAt: "2000-01-01T00:00:00.000Z" }}
+        apiKey={{ revokedAt: null, expiresAt: "2000-01-01T00:00:00.000Z" }}
       />,
       { wrapper },
     );
     expect(screen.getByText("Expired").getAttribute("data-slot")).toBe("badge");
   });
 
-  it("shows Active without a past expiration and updates when disabled", () => {
+  it("shows Active without a past expiration and updates when revoked", () => {
     const { rerender } = render(
-      <ApiKeyStatusBadge apiKey={{ enabled: true }} />,
+      <ApiKeyStatusBadge apiKey={{ revokedAt: null }} />,
       { wrapper },
     );
     expect(screen.getByText("Active").getAttribute("data-slot")).toBe("badge");
     for (const expiresAt of [null, "2999-01-01T00:00:00.000Z"]) {
-      rerender(<ApiKeyStatusBadge apiKey={{ enabled: true, expiresAt }} />);
+      rerender(<ApiKeyStatusBadge apiKey={{ revokedAt: null, expiresAt }} />);
       expect(screen.getByText("Active")).toBeTruthy();
     }
-    rerender(<ApiKeyStatusBadge apiKey={{ enabled: false }} />);
-    expect(screen.getByText("Disabled")).toBeTruthy();
+    rerender(
+      <ApiKeyStatusBadge apiKey={{ revokedAt: "2026-01-01T00:00:00.000Z" }} />,
+    );
+    expect(screen.getByText("Revoked")).toBeTruthy();
     expect(screen.queryByText("Active")).toBeNull();
   });
 });

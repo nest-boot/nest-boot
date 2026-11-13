@@ -14,23 +14,26 @@ import {
   parse,
 } from "graphql";
 
-import type { AuthModuleOptions } from "../src/auth-module-options.interface.js";
-import {
-  MemberApiKeyPermission,
-  UserApiKeyPermission,
-  UserPermission,
-  UserRole,
-  WorkspacePermission,
-  WorkspaceRole,
-} from "../src/enums/index.js";
-import { AuthEnumRegistry } from "../src/infrastructure/auth-enum-registry.js";
-import { DEFAULT_USER_PERMISSIONS } from "../src/user.constants.js";
-import { DEFAULT_WORKSPACE_PERMISSIONS } from "../src/workspace.constants.js";
+import { SystemApiKeyPermission } from "../src/api-key/enums/system-api-key-permission.enum.js";
+import { UserApiKeyPermission } from "../src/api-key/enums/user-api-key-permission.enum.js";
+import { WorkspaceApiKeyPermission } from "../src/api-key/enums/workspace-api-key-permission.enum.js";
+import { AuthEnumRegistry } from "../src/core/auth-enum-registry.js";
+import { DEFAULT_USER_PERMISSIONS } from "../src/core/constants/user.constants.js";
+import { UserPermission } from "../src/core/enums/user-permission.enum.js";
+import { UserRole } from "../src/core/enums/user-role.enum.js";
+import type { AuthModuleOptions } from "../src/core/interfaces/auth-module-options.interface.js";
+import { DEFAULT_WORKSPACE_PERMISSIONS } from "../src/workspace/constants/workspace.constants.js";
+import { WorkspacePermission } from "../src/workspace/enums/workspace-permission.enum.js";
+import { WorkspaceRole } from "../src/workspace/enums/workspace-role.enum.js";
 
 @Resolver()
 class EnumTestResolver {
-  @Query(() => [MemberApiKeyPermission])
-  memberApiKeyPermissions(): string[] {
+  @Query(() => [SystemApiKeyPermission])
+  storedApiKeyPermissions(): string[] {
+    return [];
+  }
+  @Query(() => [WorkspaceApiKeyPermission])
+  workspaceApiKeyPermissions(): string[] {
     return [];
   }
   @Query(() => UserRole)
@@ -96,11 +99,15 @@ describe("auth enum registration", () => {
     for (const name of [
       "WorkspacePermission",
       "UserApiKeyPermission",
-      "MemberApiKeyPermission",
+      "WorkspaceApiKeyPermission",
     ]) {
       const permission = enumType(schema, name);
-      expect(permission.parseValue("MEMBER__INVITE")).toBe("member:invite");
-      expect(permission.serialize("member:invite")).toBe("MEMBER__INVITE");
+      expect(permission.parseValue("WORKSPACE_MEMBER__INVITE")).toBe(
+        "workspace-member:invite",
+      );
+      expect(permission.serialize("workspace-member:invite")).toBe(
+        "WORKSPACE_MEMBER__INVITE",
+      );
     }
   });
   it("keeps stored API-key grants serializable after tightening the allowlist", async () => {
@@ -112,7 +119,7 @@ describe("auth enum registration", () => {
       },
       apiKey: {
         user: { allowedPermissions: ["user:read", "project:read"] },
-        member: { allowedPermissions: ["user:read", "project:read"] },
+        workspace: { allowedPermissions: ["user:read", "project:read"] },
       },
     });
     const schema = await buildSchema();
@@ -126,7 +133,7 @@ describe("auth enum registration", () => {
       "project:read",
       "project:write",
     ]);
-    const workspace = enumType(schema, "MemberApiKeyPermission");
+    const workspace = enumType(schema, "WorkspaceApiKeyPermission");
     expect(workspace.getValues().map(({ value }) => value)).toEqual([
       ...DEFAULT_WORKSPACE_PERMISSIONS,
       "project:read",
@@ -137,6 +144,10 @@ describe("auth enum registration", () => {
     expect(
       enumType(schema, "UserApiKeyPermission").serialize("project:write"),
     ).toBe("PROJECT__WRITE");
+    const output = enumType(schema, "SystemApiKeyPermission");
+    expect(() => output.serialize("project:write")).toThrow();
+    expect(output.serialize("user:read")).toBe("USER__READ");
+    expect(output.serialize("workspace:read-any")).toBe("WORKSPACE__READ_ANY");
   });
   it("uses the full scope catalog for empty API-key enum configuration", async () => {
     register({
@@ -144,7 +155,7 @@ describe("auth enum registration", () => {
       workspace: { enabled: true, permissions: ["project:read"] },
       apiKey: {
         user: { allowedPermissions: [] },
-        member: { allowedPermissions: [] },
+        workspace: { allowedPermissions: [] },
       },
     });
     const schema = await buildSchema();
@@ -158,7 +169,7 @@ describe("auth enum registration", () => {
       "project:read",
     ]);
     expect(
-      enumType(schema, "MemberApiKeyPermission")
+      enumType(schema, "WorkspaceApiKeyPermission")
         .getValues()
         .map(({ value }) => value),
     ).toEqual([...DEFAULT_WORKSPACE_PERMISSIONS, "project:read"]);
@@ -176,7 +187,7 @@ describe("auth enum registration", () => {
       },
       apiKey: {
         user: { allowedPermissions: ["user-api-key:read"] },
-        member: { allowedPermissions: ["member-api-key:read"] },
+        workspace: { allowedPermissions: ["workspace-api-key:read"] },
       },
     });
     const schema = await buildSchema();

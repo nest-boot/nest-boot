@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { registerUser } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import {
-  addMemberByApi,
+  addWorkspaceMemberByApi,
   createFirstWorkspace,
   createWorkspaceByApi,
 } from "./utils/workspace";
@@ -21,10 +21,12 @@ test.describe("workspace management", () => {
     });
     const workspace = await createWorkspaceByApi(page, seed);
     const headers = { "x-workspace-id": workspace.id };
-    const { currentMember } = await graphqlRequest<{
-      currentMember: { id: string };
-    }>(page.request, "query { currentMember { id } }", {}, headers);
-    await page.goto(`/workspaces/${workspace.id}/members/${currentMember.id}`);
+    const { currentWorkspaceMember } = await graphqlRequest<{
+      currentWorkspaceMember: { id: string };
+    }>(page.request, "query { currentWorkspaceMember { id } }", {}, headers);
+    await page.goto(
+      `/workspaces/${workspace.id}/members/${currentWorkspaceMember.id}`,
+    );
     await expect(
       page.getByRole("heading", { name: "Workspace owner", exact: true }),
     ).toBeVisible();
@@ -38,9 +40,9 @@ test.describe("workspace management", () => {
       headers,
       data: {
         query:
-          "mutation($id: ID!, $input: UpdateMemberInput!) { updateMember(id: $id, input: $input) { id } }",
+          "mutation($id: ID!, $input: UpdateWorkspaceMemberInput!) { updateWorkspaceMember(id: $id, input: $input) { id } }",
         variables: {
-          id: currentMember.id,
+          id: currentWorkspaceMember.id,
           input: { status: "DISABLED", name: "Should not be saved" },
         },
       },
@@ -54,9 +56,14 @@ test.describe("workspace management", () => {
       ]),
     );
     const result = await graphqlRequest<{
-      currentMember: { name: string; status: string };
-    }>(page.request, "query { currentMember { name status } }", {}, headers);
-    expect(result.currentMember).toMatchObject({
+      currentWorkspaceMember: { name: string; status: string };
+    }>(
+      page.request,
+      "query { currentWorkspaceMember { name status } }",
+      {},
+      headers,
+    );
+    expect(result.currentWorkspaceMember).toMatchObject({
       name: "Workspace owner",
       status: "ACTIVE",
     });
@@ -91,7 +98,11 @@ test.describe("workspace management", () => {
         name: `Previous Owner ${seed}`,
       });
       const workspaceId = await createFirstWorkspace(page, workspaceName);
-      const memberId = await addMemberByApi(page, workspaceId, memberEmail);
+      const memberId = await addWorkspaceMemberByApi(
+        page,
+        workspaceId,
+        memberEmail,
+      );
       await page.goto(`/workspaces/${workspaceId}/members/${memberId}`);
       await page.getByRole("checkbox", { name: "Owner", exact: true }).click();
       await page.getByRole("checkbox", { name: "Member", exact: true }).click();

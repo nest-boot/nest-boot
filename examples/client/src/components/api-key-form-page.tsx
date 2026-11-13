@@ -1,28 +1,28 @@
 import { useId, useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Check, Copy } from "lucide-react";
-import dayjs from "dayjs";
+import { AlertTriangle } from "lucide-react";
 import z from "zod";
+import {
+  ApiKeyAccountField,
+  ApiKeyOwnerTypeField,
+} from "./api-key-owner-fields";
+import { ApiKeySecretField } from "./api-key-secret-field";
+import { ApiKeyMetadata } from "./api-key-metadata";
+import type { ApiKeyAccountOption } from "./api-key-owner-fields";
+import type {
+  SystemApiKeyPermission,
+  UserApiKeyPermission,
+  WorkspaceApiKeyPermission,
+} from "@/gql/graphql";
 
 import type { PagePaginationActionsConfig } from "@/components/thread-ui/page";
 import type { ApiKeyRow } from "@/components/api-keys-page";
 import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
-import type { UserApiKeyPermission } from "@/gql/graphql";
 import type { PermissionOption } from "@/lib/permissions";
 import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-context";
 import { Link } from "@/components/link";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
-import { ApiKeyStatusBadge } from "@/components/api-key-status-badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "@/components/ui/combobox";
 import { Button } from "@/components/thread-ui/button";
 import { Input } from "@/components/thread-ui/input";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
@@ -35,74 +35,95 @@ import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { toast } from "@/components/thread-ui/toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Field, FieldLabel } from "@/components/ui/field";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@/components/ui/input-group";
 import { getFormErrorMessage } from "@/lib/form-errors";
 
-interface ApiKeyFormPageProps<Permission extends UserApiKeyPermission> {
-  apiKey?: ApiKeyRow<Permission>;
+type CredentialPermission =
+  | UserApiKeyPermission
+  | WorkspaceApiKeyPermission
+  | SystemApiKeyPermission;
+
+interface ApiKeyFormPageProps<Permission extends CredentialPermission> {
+  apiKey?: Omit<ApiKeyRow<Permission>, "owner">;
+  ownerName?: string;
   canWrite: boolean;
+  canEditName?: boolean;
+  canEditPermissions?: boolean;
   listPath: string;
   listSearch?: ApiKeySearch;
   paginationActions?: PagePaginationActionsConfig;
+  permissionsHint?: string;
   permissionValues: ReadonlyArray<Permission>;
   permissionOptions: ReadonlyArray<PermissionOption<Permission>>;
-  memberOptions?: Array<{ value: string; label: string }>;
-  canCreateServiceAccount?: boolean;
-  currentMemberId?: string;
+  memberOptions?: Array<ApiKeyAccountOption>;
+  systemAccountOptions?: Array<ApiKeyAccountOption>;
+  canCreateSystemAccount?: boolean;
+  onSystemAccountChange?: (id: string) => ReadonlyArray<Permission>;
+  canCreateWorkspaceServiceAccount?: boolean;
+  currentWorkspaceMemberId?: string;
   defaultPermissions?: ReadonlyArray<Permission>;
-  onToggle?: () => Promise<void>;
+  canRevoke?: boolean;
+  onRevoke?: () => Promise<void>;
   onDelete?: () => Promise<void>;
   onSave: (input: {
     name: string;
     memberId?: string;
+    systemAccountId?: string;
     permissions: Array<Permission>;
   }) => Promise<void>;
 }
 
-/** Both scopes use the same editor; only creation can reveal the full secret. */
-export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
+/** All owner scopes use the same editor; only creation can reveal the full secret. */
+export function ApiKeyFormPage<Permission extends CredentialPermission>({
   apiKey,
+  ownerName,
   canWrite,
+  canEditName = canWrite,
+  canEditPermissions = canWrite,
   listPath,
   listSearch,
   paginationActions,
   permissionValues,
+  permissionsHint,
   permissionOptions,
   defaultPermissions = [],
   memberOptions,
-  canCreateServiceAccount = true,
-  currentMemberId,
+  systemAccountOptions,
+  canCreateSystemAccount = true,
+  onSystemAccountChange,
+  canCreateWorkspaceServiceAccount = true,
+  currentWorkspaceMemberId,
   onSave,
-  onToggle,
+  canRevoke = canWrite,
+  onRevoke,
   onDelete,
 }: ApiKeyFormPageProps<Permission>) {
   const { t } = useTranslation();
+  const canSave = canWrite && (!apiKey || canEditName || canEditPermissions);
   const formId = useId();
   const { secret } = useCreatedApiKey();
   const createdKey = apiKey ? secret : undefined;
-  const [pendingAction, setPendingAction] = useState<"toggle" | "delete">();
-  const [copied, setCopied] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"revoke" | "delete">();
   const [ownerType, setOwnerType] = useState<"you" | "serviceAccount">("you");
-  const keyStart = apiKey?.start || apiKey?.prefix;
-  const isPermission = (value: UserApiKeyPermission): value is Permission =>
+  const systemOwner = systemAccountOptions !== undefined;
+  const accountOptions = systemAccountOptions ?? memberOptions;
+  const canCreateAccount = systemOwner
+    ? canCreateSystemAccount
+    : canCreateWorkspaceServiceAccount;
+  const isPermission = (value: string): value is Permission =>
     permissionValues.some((permission) => permission === value);
+  const initialPermissions: Array<CredentialPermission> =
+    apiKey?.permissions ??
+    defaultPermissions.filter((permission) =>
+      permissionOptions.some(
+        (option) => option.value === permission && option.grantable !== false,
+      ),
+    );
   const form = useForm({
     defaultValues: {
       name: apiKey?.name ?? "",
       memberId: "",
-      permissions: (apiKey?.permissions ??
-        defaultPermissions.filter((permission) =>
-          permissionOptions.some(
-            (option) =>
-              option.value === permission && option.grantable !== false,
-          ),
-        )) as Array<UserApiKeyPermission>,
+      systemAccountId: "",
+      permissions: initialPermissions,
     },
     validators: {
       onSubmit: z.object({
@@ -112,6 +133,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
           .min(1, t("api-key:form.name.required"))
           .max(255, t("api-key:form.name.too_long")),
         memberId: z.string(),
+        systemAccountId: z.string(),
         permissions: z.array(z.enum(permissionValues)),
       }),
     },
@@ -119,27 +141,45 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
       onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
     },
     onSubmit: async ({ value, formApi }) => {
-      if (!canWrite || pendingAction) return;
+      if (!canSave || pendingAction) return;
       if (
         memberOptions &&
         ownerType === "serviceAccount" &&
         !value.memberId &&
-        !canCreateServiceAccount
+        !canCreateWorkspaceServiceAccount
       ) {
         formApi.setErrorMap({
           onSubmit: { form: t("api-key:form.member.required"), fields: {} },
         });
         return;
       }
-      const memberId = ownerType === "you" ? currentMemberId : value.memberId;
+      if (systemOwner && !value.systemAccountId && !canCreateSystemAccount) {
+        formApi.setErrorMap({
+          onSubmit: {
+            form: t("admin:system_accounts.select_required"),
+            fields: {},
+          },
+        });
+        return;
+      }
+      const memberId =
+        ownerType === "you" ? currentWorkspaceMemberId : value.memberId;
       const input = {
         name: value.name.trim(),
         ...(memberOptions && memberId ? { memberId } : {}),
+        ...(systemOwner && value.systemAccountId
+          ? { systemAccountId: value.systemAccountId }
+          : {}),
         permissions: value.permissions.filter(isPermission),
       };
       try {
         await onSave(input);
-        if (apiKey) formApi.reset({ ...input, memberId: value.memberId });
+        if (apiKey)
+          formApi.reset({
+            ...input,
+            memberId: value.memberId,
+            systemAccountId: value.systemAccountId,
+          });
         toast.add({
           type: "success",
           title: t(
@@ -166,19 +206,23 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
     getFormErrorMessage(state.errors),
   );
 
-  const handleAction = async (action: "toggle" | "delete") => {
+  const handleAction = async (action: "revoke" | "delete") => {
     if (!apiKey || !canWrite || submitting || pendingAction) return;
-    const operation = action === "delete" ? onDelete : onToggle;
+    const operation = action === "delete" ? onDelete : onRevoke;
     if (!operation) return;
     setPendingAction(action);
     try {
       if (
-        action === "delete" &&
         !(await alertDialog({
-          title: t("api-key:delete.title"),
-          description: t("api-key:delete.description", { name: apiKey.name }),
+          title: t(`api-key:${action}.title`),
+          description: t(`api-key:${action}.description`, {
+            name: apiKey.name,
+          }),
           cancelText: t("action.cancel"),
-          confirmText: t("action.delete"),
+          confirmText:
+            action === "delete"
+              ? t("action.delete")
+              : t("api-key:revoke.action"),
           variant: "destructive",
         }))
       )
@@ -189,9 +233,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
         title: t(
           action === "delete"
             ? "api-key:toast.deleted_success"
-            : apiKey.enabled
-              ? "api-key:toast.disabled_success"
-              : "api-key:toast.enabled_success",
+            : "api-key:toast.revoked_success",
         ),
       });
     } catch (error) {
@@ -224,15 +266,14 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
       secondaryActions={
         apiKey && canWrite
           ? [
-              ...(onToggle
+              ...(onRevoke && canRevoke && !apiKey.revokedAt
                 ? [
                     {
-                      label: t(
-                        apiKey.enabled ? "action.disable" : "action.enable",
-                      ),
+                      label: t("api-key:revoke.action"),
+                      destructive: true,
                       disabled: submitting || !!pendingAction,
-                      loading: pendingAction === "toggle",
-                      onAction: () => handleAction("toggle"),
+                      loading: pendingAction === "revoke",
+                      onAction: () => handleAction("revoke"),
                     },
                   ]
                 : []),
@@ -257,7 +298,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
         onSubmit={(event) => {
           event.preventDefault();
           event.stopPropagation();
-          if (form.state.isSubmitting || pendingAction || !canWrite) return;
+          if (form.state.isSubmitting || pendingAction || !canSave) return;
           form.setErrorMap({ onSubmit: undefined });
           form.handleSubmit();
         }}
@@ -280,55 +321,19 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                   )}
                   {memberOptions && !apiKey && (
                     <FormLayoutItem>
-                      <Field>
-                        <FieldLabel id={`${formId}-owner-label`}>
-                          {t("api-key:form.owner.label")}
-                        </FieldLabel>
-                        <Tabs
-                          value={ownerType}
-                          onValueChange={(value) => {
-                            if (value === "you" || value === "serviceAccount") {
-                              setOwnerType(value);
-                              form.setErrorMap({ onSubmit: undefined });
-                            }
-                          }}
-                        >
-                          <TabsList aria-labelledby={`${formId}-owner-label`}>
-                            <TabsTrigger
-                              value="you"
-                              disabled={
-                                !canWrite || submitting || !!pendingAction
-                              }
-                            >
-                              {t("api-key:form.owner.you")}
-                            </TabsTrigger>
-                            <TabsTrigger
-                              value="serviceAccount"
-                              disabled={
-                                !canWrite ||
-                                submitting ||
-                                !!pendingAction ||
-                                (!canCreateServiceAccount &&
-                                  !memberOptions.length)
-                              }
-                            >
-                              {t("api-key:form.owner.service_account")}
-                            </TabsTrigger>
-                          </TabsList>
-                          <TabsContent value="you">
-                            <p className="text-muted-foreground">
-                              {t("api-key:form.owner.you_description")}
-                            </p>
-                          </TabsContent>
-                          <TabsContent value="serviceAccount">
-                            <p className="text-muted-foreground">
-                              {t(
-                                "api-key:form.owner.service_account_description",
-                              )}
-                            </p>
-                          </TabsContent>
-                        </Tabs>
-                      </Field>
+                      <ApiKeyOwnerTypeField
+                        id={`${formId}-owner-label`}
+                        value={ownerType}
+                        onChange={(value) => {
+                          setOwnerType(value);
+                          form.setErrorMap({ onSubmit: undefined });
+                        }}
+                        disabled={!canWrite || submitting || !!pendingAction}
+                        canSelectServiceAccount={
+                          canCreateWorkspaceServiceAccount ||
+                          memberOptions.length > 0
+                        }
+                      />
                     </FormLayoutItem>
                   )}
                   <FormLayoutItem>
@@ -342,164 +347,74 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
-                          disabled={!canWrite || submitting || !!pendingAction}
+                          disabled={
+                            !canEditName || submitting || !!pendingAction
+                          }
                           error={getFormErrorMessage(field.state.meta.errors)}
                         />
                       )}
                     </form.Field>
                   </FormLayoutItem>
-                  {memberOptions &&
+                  {accountOptions &&
                     !apiKey &&
-                    ownerType === "serviceAccount" && (
+                    (systemOwner || ownerType === "serviceAccount") && (
                       <FormLayoutItem>
-                        <form.Field name="memberId">
+                        <form.Field
+                          name={systemOwner ? "systemAccountId" : "memberId"}
+                        >
                           {(field) => (
-                            <Field>
-                              <FieldLabel htmlFor={`${formId}-member`}>
-                                {t("api-key:form.member.label")}
-                              </FieldLabel>
-                              <Combobox
-                                items={memberOptions}
-                                value={
-                                  memberOptions.find(
-                                    (option) =>
-                                      option.value === field.state.value,
-                                  ) ?? null
-                                }
-                                onValueChange={(option) =>
-                                  field.handleChange(option?.value ?? "")
-                                }
-                                disabled={
-                                  !canWrite || submitting || !!pendingAction
-                                }
-                              >
-                                <ComboboxInput
-                                  disabled={
-                                    !canWrite || submitting || !!pendingAction
-                                  }
-                                  id={`${formId}-member`}
-                                  placeholder={t("api-key:form.member.search")}
-                                  showClear
-                                />
-                                <ComboboxContent>
-                                  <ComboboxEmpty>
-                                    {t("api-key:form.member.empty")}
-                                  </ComboboxEmpty>
-                                  <ComboboxList>
-                                    {(option: {
-                                      value: string;
-                                      label: string;
-                                    }) => (
-                                      <ComboboxItem
-                                        key={option.value}
-                                        value={option}
-                                      >
-                                        {option.label}
-                                      </ComboboxItem>
-                                    )}
-                                  </ComboboxList>
-                                </ComboboxContent>
-                              </Combobox>
-                              <p className="text-muted-foreground text-sm">
-                                {t(
-                                  canCreateServiceAccount
-                                    ? "api-key:form.member.auto_create"
-                                    : "api-key:form.member.required",
-                                )}
-                              </p>
-                            </Field>
+                            <ApiKeyAccountField
+                              id={`${formId}-member`}
+                              scope={systemOwner ? "system" : "workspace"}
+                              options={accountOptions}
+                              value={field.state.value}
+                              onChange={(id) => {
+                                field.handleChange(id);
+                                const allowed = systemOwner
+                                  ? onSystemAccountChange?.(id)
+                                  : undefined;
+                                if (allowed)
+                                  form.setFieldValue(
+                                    "permissions",
+                                    (permissions) =>
+                                      permissions.filter((permission) =>
+                                        allowed.some(
+                                          (item) => item === permission,
+                                        ),
+                                      ),
+                                  );
+                              }}
+                              disabled={
+                                !canWrite || submitting || !!pendingAction
+                              }
+                              canCreate={canCreateAccount}
+                            />
                           )}
                         </form.Field>
                       </FormLayoutItem>
                     )}
-                  {apiKey && (
+                  {apiKey && ownerName && (
                     <FormLayoutItem>
-                      <Field data-disabled={!createdKey}>
-                        <FieldLabel htmlFor={`${formId}-key`}>
-                          {t("api-key:table.key_start")}
-                        </FieldLabel>
-                        <InputGroup>
-                          <InputGroupInput
-                            id={`${formId}-key`}
-                            value={
-                              createdKey ?? (keyStart ? `${keyStart}...` : "—")
-                            }
-                            disabled={!createdKey}
-                            readOnly
-                          />
-                          {createdKey && (
-                            <InputGroupAddon align="inline-end">
-                              <InputGroupButton
-                                size="icon-xs"
-                                aria-label={t(
-                                  copied
-                                    ? "api-key:created.copied"
-                                    : "api-key:created.copy",
-                                )}
-                                onClick={async () => {
-                                  try {
-                                    await navigator.clipboard.writeText(
-                                      createdKey,
-                                    );
-                                    setCopied(true);
-                                  } catch {
-                                    toast.add({
-                                      type: "error",
-                                      title: t("api-key:created.copy_failed"),
-                                    });
-                                  }
-                                }}
-                              >
-                                {copied ? <Check /> : <Copy />}
-                              </InputGroupButton>
-                            </InputGroupAddon>
-                          )}
-                        </InputGroup>
-                      </Field>
+                      <Input
+                        label={t("api-key:form.owner.label")}
+                        value={ownerName}
+                        disabled
+                      />
                     </FormLayoutItem>
                   )}
                   {apiKey && (
                     <FormLayoutItem>
-                      <dl className="grid gap-4 sm:grid-cols-2">
-                        <div>
-                          <dt className="text-muted-foreground text-sm">
-                            {t("api-key:table.status")}
-                          </dt>
-                          <dd>
-                            <ApiKeyStatusBadge apiKey={apiKey} />
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted-foreground text-sm">
-                            {t("api-key:table.created_at")}
-                          </dt>
-                          <dd>
-                            {dayjs(apiKey.createdAt).format("YYYY-MM-DD HH:mm")}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted-foreground text-sm">
-                            {t("api-key:table.last_used")}
-                          </dt>
-                          <dd>
-                            {apiKey.lastUsedAt
-                              ? dayjs(apiKey.lastUsedAt).format(
-                                  "YYYY-MM-DD HH:mm",
-                                )
-                              : t("api-key:never_used")}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted-foreground text-sm">
-                            {t("api-key:table.expires_at")}
-                          </dt>
-                          <dd>
-                            {apiKey.expiresAt
-                              ? dayjs(apiKey.expiresAt).format("YYYY-MM-DD")
-                              : t("api-key:never_expires")}
-                          </dd>
-                        </div>
-                      </dl>
+                      <ApiKeySecretField
+                        id={`${formId}-key`}
+                        secret={createdKey}
+                        start={apiKey.start}
+                        prefix={apiKey.prefix}
+                      />
+                    </FormLayoutItem>
+                  )}
+                  {apiKey && (
+                    <FormLayoutItem>
+                      <ApiKeyMetadata apiKey={apiKey} />
                     </FormLayoutItem>
                   )}
                 </FormLayout>
@@ -517,12 +432,14 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                           options={permissionOptions}
                           value={field.state.value}
                           onChange={field.handleChange}
-                          disabled={!canWrite || submitting || !!pendingAction}
+                          disabled={
+                            !canEditPermissions || submitting || !!pendingAction
+                          }
                         />
                       )}
                     </form.Field>
                     <p className="text-muted-foreground text-sm">
-                      {t("api-key:form.permissions_hint")}
+                      {permissionsHint ?? t("api-key:form.permissions_hint")}
                     </p>
                   </FormLayoutItem>
                   {error && (
@@ -534,7 +451,7 @@ export function ApiKeyFormPage<Permission extends UserApiKeyPermission>({
                   )}
                 </FormLayout>
               </CardContent>
-              {canWrite && (
+              {canSave && (
                 <CardFooter>
                   <Button
                     type="submit"

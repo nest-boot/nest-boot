@@ -92,5 +92,28 @@
     "description": "Manage users and their access to this application.",
     "users": "User accounts within your authorized scope.",
     "manage_users": "Manage users"
+  },
+  "system_accounts": {
+    "title": "System Accounts",
+    "description": "Independent identities for integrations and platform automation.",
+    "search": "Search system accounts",
+    "create": "Create System Account",
+    "saved": "System account saved",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "creator": "Created by",
+    "delete_title": "Delete system account?",
+    "delete_description": "This permanently deletes the account and all of its API keys.",
+    "permissions_hint": "This is the maximum access for all keys owned by this account. Empty permissions grant no access.",
+    "key_permissions_hint": "Key permissions are limited by this account and your grants. An empty selection grants no access.",
+    "keys_description": "Manage API keys for independent system accounts.",
+    "overview": "Manage independent system identities and their credentials.",
+    "manage": "Manage system accounts",
+    "manage_keys": "Manage API keys",
+    "select_label": "System account",
+    "select_search": "Search system accounts",
+    "select_empty": "No matching system accounts",
+    "select_required": "Select an existing system account.",
+    "auto_create": "Leave empty to create a system account with this key’s name and selected permissions."
   }
 }

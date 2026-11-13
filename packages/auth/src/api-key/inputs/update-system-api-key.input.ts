@@ -1,0 +1,25 @@
+import { Field, InputType } from "@nest-boot/graphql";
+import { ZodField } from "@nest-boot/validator";
+
+import { SystemApiKeyPermission } from "../enums/system-api-key-permission.enum.js";
+
+/**
+ * Input for updating an API key.
+ */
+@InputType()
+export class UpdateSystemApiKeyInput {
+  /** New API key display name. */
+  @ZodField((z) => z.string().trim().min(1).max(255).optional())
+  @Field(() => String, { nullable: true })
+  name?: string;
+
+  /** API key expiration time; null removes the expiration. */
+  @ZodField((z) => z.date().nullish())
+  @Field(() => Date, { nullable: true })
+  expiresAt?: Date | null;
+
+  /** API key permissions. */
+  @ZodField((z) => z.array(z.string()).nullish())
+  @Field(() => [SystemApiKeyPermission], { nullable: true })
+  permissions?: SystemApiKeyPermission[] | null;
+}

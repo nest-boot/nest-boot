@@ -93,7 +93,9 @@ export function UserMenu() {
           </SidebarAccountMenuRadioGroup>
         </SidebarAccountMenuSubContent>
       </SidebarAccountMenuSub>
-      {ability.can("read", "User") ? (
+      {ability.can("read", "User") ||
+      ability.can("read", "SystemAccount") ||
+      ability.can("read", "SystemApiKey") ? (
         <>
           <SidebarAccountMenuSeparator />
           <SidebarAccountMenuItem

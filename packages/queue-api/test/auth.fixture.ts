@@ -1,5 +1,5 @@
 import type { EntityManager } from "@mikro-orm/core";
-import { UserService, WorkspaceService } from "@nest-boot/auth";
+import { AuthContext, UserService, WorkspaceService } from "@nest-boot/auth";
 
 /**
  * Creates real authorization helpers without starting authentication persistence.
@@ -7,14 +7,17 @@ import { UserService, WorkspaceService } from "@nest-boot/auth";
  * @returns Auth services using the default role and permission catalog.
  */
 export function createAuthServices(em: EntityManager = {} as EntityManager) {
+  const options = { workspace: { enabled: true } };
+  const context = new AuthContext(em, options);
   return {
     users: new UserService(
       em,
       { workspace: { enabled: true } },
       {} as ConstructorParameters<typeof UserService>[2],
       { deleteUser: () => Promise.resolve(null) },
+      context,
     ),
-    workspaces: new WorkspaceService(em, { workspace: { enabled: true } }),
+    workspaces: new WorkspaceService(em, options, context),
   };
 }
 

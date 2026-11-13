@@ -1,18 +1,17 @@
 import type { EntityManager } from '@mikro-orm/core';
 import {
   API_KEY,
-  AuthGuard,
+  AuthContext,
   AuthResolver,
   type AuthService,
-  Member,
-  MemberApiKeyService,
   User,
   UserApiKey,
   Workspace,
+  WorkspaceApiKeyService,
+  WorkspaceMember,
 } from '@nest-boot/auth';
 import { RequestContext } from '@nest-boot/request-context';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { type ModuleRef, Reflector } from '@nestjs/core';
 
 import { Report } from '../src/app/auth/examples/report.js';
 import { ReportService } from '../src/app/auth/examples/report.service.js';
@@ -57,8 +56,8 @@ describe('business authorization recipe', () => {
           RequestContext.set(User, user);
           RequestContext.set(Workspace, workspace);
           RequestContext.set(
-            Member,
-            Object.assign(new Member(), {
+            WorkspaceMember,
+            Object.assign(new WorkspaceMember(), {
               workspace,
               user,
               roles: [role],
@@ -72,12 +71,9 @@ describe('business authorization recipe', () => {
               Object.assign(new UserApiKey(), { user, permissions: key }),
             );
           }
-          // Production requests are prepared by AuthGuard; manually prepare only this isolated test.
-          new AuthGuard(
-            new Reflector(),
-            reportAuthOptions,
-            {} as ModuleRef,
-          ).refreshAbility();
+          // Production requests initialize AuthContext through the middleware.
+          const em = {} as EntityManager;
+          new AuthContext(em, reportAuthOptions).refresh();
           const report = new Report('report-1', workspace.id);
           const repository = {
             findOne: vi.fn(async (id: string) =>
@@ -159,10 +155,12 @@ describe('business authorization recipe', () => {
             NotFoundException,
           );
 
-          const catalog = new MemberApiKeyService(
+          const catalog = new WorkspaceApiKeyService(
             {} as EntityManager,
             reportAuthOptions,
-          ).getMemberApiKeyPermissions(workspace);
+            {} as ConstructorParameters<typeof WorkspaceApiKeyService>[2],
+            {} as ConstructorParameters<typeof WorkspaceApiKeyService>[3],
+          ).getWorkspaceApiKeyPermissions(workspace);
           const read = catalog.find(
             (option) => option.permission === 'report:read',
           );

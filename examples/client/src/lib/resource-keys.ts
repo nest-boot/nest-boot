@@ -1,11 +1,13 @@
 export const userApiKeysResourceKey = ["user", "api-keys"] as const;
 
-export const getMemberApiKeysResourceKey = (workspaceId: string) =>
+export const getWorkspaceApiKeysResourceKey = (workspaceId: string) =>
   ["workspaces", workspaceId, "api-keys"] as const;
 
 export const adminUsersResourceKey = ["admin", "users"] as const;
 
-export const getMembersResourceKey = (workspaceId: string) =>
+export const getWorkspaceMembersResourceKey = (workspaceId: string) =>
   ["workspaces", workspaceId, "members"] as const;
 
 export const workspacesResourceKey = ["user", "workspaces"] as const;
+
+export const adminApiKeysResourceKey = ["admin", "api-keys"] as const;

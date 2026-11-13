@@ -2,15 +2,16 @@ import { EntityManager } from "@mikro-orm/core";
 import { MikroORM } from "@mikro-orm/postgresql";
 import {
   API_KEY,
+  AuthContext,
   AuthGuard,
   type AuthModuleOptions,
-  Member,
-  MemberStatus,
   Session,
   User,
   UserApiKey,
   UserService,
   Workspace,
+  WorkspaceMember,
+  WorkspaceMemberStatus,
   WorkspaceService,
 } from "@nest-boot/auth";
 import { GraphQLModule } from "@nest-boot/graphql";
@@ -133,13 +134,15 @@ describe("scoped Job GraphQL API", () => {
         ],
       );
     }
+    const context = new AuthContext(orm.em, authOptions);
     const users = new UserService(
       orm.em,
       authOptions,
       {} as ConstructorParameters<typeof UserService>[2],
       { deleteUser: () => Promise.resolve(null) },
+      context,
     );
-    const workspaces = new WorkspaceService(orm.em, authOptions);
+    const workspaces = new WorkspaceService(orm.em, authOptions, context);
     manager.getQueues.mockReturnValue(
       registeredQueues.map(([target, name]) =>
         Object.assign(Object.create(target.prototype) as BaseQueue, { name }),
@@ -163,7 +166,7 @@ describe("scoped Job GraphQL API", () => {
       .overrideGuard(AuthGuard)
       .useFactory({
         factory: (reflector: Reflector, moduleRef: ModuleRef) =>
-          new AuthGuard(reflector, authOptions, moduleRef),
+          new AuthGuard(reflector, moduleRef, context),
         inject: [Reflector, ModuleRef],
       })
       .compile();
@@ -188,13 +191,14 @@ describe("scoped Job GraphQL API", () => {
           context.set(Workspace, workspace);
           if (req.header("x-test-member") !== "false") {
             context.set(
-              Member,
-              Object.assign(new Member(), {
+              WorkspaceMember,
+              Object.assign(new WorkspaceMember(), {
                 id: "301",
                 user,
                 workspace,
                 status:
-                  req.header("x-test-member-status") ?? MemberStatus.ACTIVE,
+                  req.header("x-test-member-status") ??
+                  WorkspaceMemberStatus.ACTIVE,
               }),
             );
           }
@@ -408,7 +412,7 @@ describe("scoped Job GraphQL API", () => {
   it.each([
     { header: "x-test-workspace", value: "" },
     { header: "x-test-member", value: "false" },
-    { header: "x-test-member-status", value: MemberStatus.DISABLED },
+    { header: "x-test-member-status", value: WorkspaceMemberStatus.DISABLED },
   ])(
     "denies workspace reads for invalid membership: $header=$value",
     async ({ header, value }) => {

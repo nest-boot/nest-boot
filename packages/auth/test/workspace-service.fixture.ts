@@ -1,11 +1,15 @@
 import { EntityManager } from "@mikro-orm/core";
 import type { Mocked } from "vitest";
 
-import type { AuthModuleOptions } from "../src/auth-module-options.interface.js";
-import { Invitation, Member, User, Workspace } from "../src/entities/index.js";
-import { InvitationService } from "../src/features/invitations/invitation.service.js";
-import { MemberService } from "../src/services/member.service.js";
-import { WorkspaceService } from "../src/services/workspace.service.js";
+import { User } from "../src/core/entities/user.entity.js";
+import type { AuthModuleOptions } from "../src/core/interfaces/auth-module-options.interface.js";
+import { Workspace } from "../src/workspace/entities/workspace.entity.js";
+import { WorkspaceInvitation } from "../src/workspace/entities/workspace-invitation.entity.js";
+import { WorkspaceMember } from "../src/workspace/entities/workspace-member.entity.js";
+import { WorkspaceService } from "../src/workspace/services/workspace.service.js";
+import { WorkspaceInvitationService } from "../src/workspace/services/workspace-invitation.service.js";
+import { WorkspaceMemberService } from "../src/workspace/services/workspace-member.service.js";
+import { createTestAuthContext } from "./fixtures/auth-context.fixture.js";
 import { mockAuthorization } from "./mock-authorization.js";
 /**
  * Returns workspace fixture with deterministic identifiers.
@@ -19,16 +23,16 @@ export function createTestWorkspace(): Workspace {
 }
 /**
  * Returns member fixture with deterministic identifiers.
- * @returns Member fixture with deterministic identifiers.
+ * @returns WorkspaceMember fixture with deterministic identifiers.
  */
-export function createTestMember(): Member {
-  return Object.assign(new Member(), {
+export function createTestWorkspaceMember(): WorkspaceMember {
+  return Object.assign(new WorkspaceMember(), {
     id: "member-1",
     roles: ["member"],
     status: "ACTIVE" as const,
     workspace: {
       id: "workspace-1",
-    } as Member["workspace"],
+    } as WorkspaceMember["workspace"],
   });
 }
 /**
@@ -40,14 +44,14 @@ export function createTestUser(): User {
 }
 /**
  * Returns invitation fixture with deterministic identifiers.
- * @returns Invitation fixture with deterministic identifiers.
+ * @returns WorkspaceInvitation fixture with deterministic identifiers.
  */
-export function createTestInvitation(): Invitation {
-  return Object.assign(new Invitation(), {
+export function createTestWorkspaceInvitation(): WorkspaceInvitation {
+  return Object.assign(new WorkspaceInvitation(), {
     id: "invitation-1",
     workspace: {
       id: "workspace-1",
-    } as Invitation["workspace"],
+    } as WorkspaceInvitation["workspace"],
   });
 }
 /**
@@ -70,6 +74,7 @@ export function createWorkspaceServices(
     create: vi.fn((Entity, data) => Object.assign(new Entity(), data)),
     find: vi.fn(),
     findOne: vi.fn(),
+    populate: vi.fn().mockImplementation((entity) => Promise.resolve(entity)),
     flush: vi.fn(),
     lock: vi.fn(),
     nativeUpdate: vi.fn(),
@@ -92,8 +97,16 @@ export function createWorkspaceServices(
   return {
     authorization,
     em,
-    workspaceService: new WorkspaceService(em, options),
-    memberService: new MemberService(em, options),
-    invitationService: new InvitationService(em, options),
+    workspaceService: new WorkspaceService(
+      em,
+      options,
+      createTestAuthContext(em, options),
+    ),
+    workspaceMemberService: new WorkspaceMemberService(
+      em,
+      options,
+      createTestAuthContext(em, options),
+    ),
+    workspaceInvitationService: new WorkspaceInvitationService(em, options),
   };
 }

@@ -3,7 +3,10 @@ import { expect, test } from "@playwright/test";
 import { registerUser, signInAsE2eAdministrator } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
-import { addMemberByApi, createWorkspaceByApi } from "./utils/workspace";
+import {
+  addWorkspaceMemberByApi,
+  createWorkspaceByApi,
+} from "./utils/workspace";
 
 test("limits user detail queries and actions to the administrator's abilities", async ({
   browser,
@@ -195,11 +198,15 @@ test("authorizes workspace API-key controls and deletion without an owner role",
       name: "Workspace owner",
     });
     const workspace = await createWorkspaceByApi(ownerPage, seed);
-    const memberId = await addMemberByApi(ownerPage, workspace.id, memberEmail);
+    const memberId = await addWorkspaceMemberByApi(
+      ownerPage,
+      workspace.id,
+      memberEmail,
+    );
     const headers = { "x-workspace-id": workspace.id };
     await graphqlRequest(
       ownerPage.request,
-      "mutation ($input: CreateMemberApiKeyInput!) { createMemberApiKey(input: $input) { entity { id } } }",
+      "mutation ($input: CreateWorkspaceApiKeyInput!) { createWorkspaceApiKey(input: $input) { entity { id } } }",
       { input: { name: "Read-only workspace key", permissions: [] } },
       headers,
     );
@@ -225,11 +232,11 @@ test("authorizes workspace API-key controls and deletion without an owner role",
 
     await graphqlRequest(
       ownerPage.request,
-      "mutation ($id: ID!, $input: SetMemberPermissionsInput!) { setMemberPermissions(id: $id, input: $input) { id } }",
+      "mutation ($id: ID!, $input: SetWorkspaceMemberPermissionsInput!) { setWorkspaceMemberPermissions(id: $id, input: $input) { id } }",
       {
         id: memberId,
         input: {
-          permissions: ["MEMBER_API_KEY__READ", "WORKSPACE__DELETE"],
+          permissions: ["WORKSPACE_API_KEY__READ", "WORKSPACE__DELETE"],
         },
       },
       headers,

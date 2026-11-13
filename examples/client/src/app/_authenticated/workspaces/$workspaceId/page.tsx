@@ -22,19 +22,19 @@ import { graphql } from "@/gql";
 const GET_OVERVIEW = graphql(`
   query getWorkspaceOverview(
     $workspaceId: ID!
-    $includeMembers: Boolean!
+    $includeWorkspaceMembers: Boolean!
     $includeApiKeys: Boolean!
   ) {
     workspace(id: $workspaceId) {
       id
-      members(first: 1) @include(if: $includeMembers) {
+      members(first: 1) @include(if: $includeWorkspaceMembers) {
         totalCount
         totalCountRelation
       }
-      apiKeys(first: 1) @include(if: $includeApiKeys) {
-        totalCount
-        totalCountRelation
-      }
+    }
+    workspaceApiKeys(first: 1) @include(if: $includeApiKeys) {
+      totalCount
+      totalCountRelation
     }
   }
 `);
@@ -48,16 +48,16 @@ function Overview() {
   const { t } = useTranslation();
   const ability = useAbility();
   const workspace = useCurrentWorkspaceContext();
-  const canReadMembers = ability.can("read", "Member");
-  const canReadApiKeys = ability.can("read", "MemberApiKey");
+  const canReadWorkspaceMembers = ability.can("read", "WorkspaceMember");
+  const canReadApiKeys = ability.can("read", "WorkspaceApiKey");
   const { data, loading, error, refetch } = useQuery(GET_OVERVIEW, {
     variables: {
       workspaceId: workspace.id,
-      includeMembers: canReadMembers,
+      includeWorkspaceMembers: canReadWorkspaceMembers,
       includeApiKeys: canReadApiKeys,
     },
     context: { headers: { "x-workspace-id": workspace.id } },
-    fetchPolicy: "network-only",
+    fetchPolicy: "no-cache",
   });
   const summary =
     !error && data?.workspace?.id === workspace.id ? data.workspace : undefined;
@@ -80,7 +80,7 @@ function Overview() {
         )}
         <PageLayoutSection>
           <div className="grid gap-4 @3xl/page-layout:grid-cols-2">
-            {canReadMembers && (
+            {canReadWorkspaceMembers && (
               <OverviewCard
                 title={t("sidebar:navigation.members")}
                 description={t("workspace:overview.members")}
@@ -125,7 +125,7 @@ function Overview() {
                 }
               >
                 <OverviewCount
-                  connection={summary?.apiKeys}
+                  connection={summary ? data?.workspaceApiKeys : undefined}
                   loading={loading}
                 />
               </OverviewCard>

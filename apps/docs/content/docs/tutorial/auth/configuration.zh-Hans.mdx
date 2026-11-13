@@ -6,7 +6,7 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 ## 可选工作区
 
 工作区功能**默认关闭**。在 `forRoot()` 或 `forRootAsync()` 返回的配置中设置
-`workspace: { enabled: true }`，开启工作区、成员、邀请、服务账号和成员 API Key。
+`workspace: { enabled: true }`，开启工作区、成员、邀请和服务账号。工作空间密钥另需显式开启密钥开关。
 省略 `workspace`、传 `{}` 或设置 `enabled: false` 均保持关闭。
 
 此配置在应用启动时生效，修改后请重启进程。
@@ -15,10 +15,31 @@ description: "配置 AuthModule、环境变量与 MikroORM 实体。"
 AuthModule.forRoot({ workspace: { enabled: true } });
 ```
 
-关闭时保留用户、会话、个人 API Key 和用户授权；不暴露工作区 API 或
+关闭时保留基础用户和会话功能，独立启用的个人与系统密钥仍可使用；不暴露工作区 API 或
 `User.workspaces` / `User.invitations` 字段，不解析工作区请求头和 Cookie，也不授予
-`workspace:create`。配置 `apiKey.member` 必须先开启工作区。仅在开启功能的应用中注入
+`workspace:create`。配置 `apiKey.workspace` 必须先开启工作区。仅在开启功能的应用中注入
 工作区相关服务。实体会按此开关自动注册，见下文。
+
+## 可选管理和密钥功能
+
+`admin.enabled` 默认关闭；开启后提供用户管理、会话管理和模拟登录，以及独立系统账户。`apiKey.enabled` 是默认关闭的密钥总开关。`apiKey.user.enabled` 与 `apiKey.workspace.enabled` 也默认关闭；后者另需开启工作区。系统凭证认证只要求密钥总开关和 `apiKey.system.enabled: true`，不依赖 `admin.enabled`，且默认关闭；系统账户及密钥管理 API 另需开启 admin。`apiKey.member.*` 改为 `apiKey.workspace.*`。系统密钥配置统一使用 `apiKey.system.*`，替代 `apiKey.systemAccount.*`。
+
+```typescript
+AuthModule.forRoot({
+  admin: { enabled: true },
+  workspace: { enabled: true },
+  apiKey: {
+    enabled: true,
+    user: { enabled: true },
+    system: { enabled: true },
+    workspace: { enabled: true },
+  },
+});
+```
+
+只开启 system 时，会注册用于认证的 SystemAccount 和 ApiKey，但不引入管理员 GraphQL 类型或管理接口。通过可信 seeder 或内部 ORM 代码预置凭证，供应用自己的 API 使用；内置用户、系统账户及密钥管理接口仍由 admin 控制。
+
+关闭的功能不会注册对应服务、GraphQL API 或实体表。MikroORM 内部的 `ApiKey.owner` 多态关联只指向已启用的归属类型。GraphQL 分别暴露可空的 `UserApiKey.user`、`WorkspaceApiKey.member` 和 `SystemApiKey.systemAccount`；没有访问关联身份的权限时返回 null。GraphQL 不提供 `ApiKey` 类型或 `owner` 联合字段，也不会额外引入关闭的功能。
 
 ## 模块选项
 
@@ -37,9 +58,10 @@ AuthModule.forRoot({ workspace: { enabled: true } });
 - **`user.defaultRole`**、**`user.adminRoles`**、**`user.permissions`**、**`user.roles`** — 定义用户角色生命周期与授权；
 - **`workspace.defaultRole`**、**`workspace.creatorRole`**、**`workspace.permissions`**、**`workspace.roles`** — 定义工作区角色生命周期与授权；
 - **`buildAbility`** — 统一构建当前请求的 Ability；上下文包含 user、workspace、member 和两个来源的有效权限数组。
-- **`workspace.sendInvitationEmail`** — 发送已持久化的工作区邀请；
+- **`workspace.sendWorkspaceInvitationEmail`** — 发送已持久化的工作区邀请；
 - **`apiKey.user`** — 用户 Key 的默认权限与授予上限；
-- **`apiKey.member`** — 成员 Key 的默认权限与授予上限；
+- **`apiKey.workspace`** — 成员 Key 的默认权限与授予上限；
+- **`apiKey.system`** — 系统账户 Key 的独立开关、默认权限与授予上限；
 - **`middleware`** — 控制认证中间件的注册和路由范围；
 - **`basePath`** — 修改默认的 `/api/auth/` 认证端点路径；
 - **`trustedOrigins`** — 配置允许的浏览器来源；
@@ -55,14 +77,14 @@ AuthModule.forRoot({ workspace: { enabled: true } });
 `workspace.permissions` 默认为标准工作区权限目录。`workspace.roles` 默认包含
 `owner`、`admin` 与 `member`。`owner` 拥有完整默认权限目录，包括成员 API Key 管理；
 `admin` 拥有除 `workspace:delete` 外的工作区、成员、服务账号和邀请管理权限，默认不授予 API Key 管理；
-`member` 授予 `workspace:read` 与 `member:read`，不拥有写入或邀请管理权限。显式配置权限数组
+`member` 授予 `workspace:read` 与 `workspace-member:read`，不拥有写入或邀请管理权限。显式配置权限数组
 或角色映射时，同样追加到内置配置。`workspace.defaultRole` 默认为 `member`，用于
 新增成员和邀请；`workspace.creatorRole` 默认为 `owner`，指定工作区创建者的初始角色。
 
 空权限数组或空角色映射表示不追加内容，内置权限目录和角色授权仍然保留。同名角色的
 授权合并去重。自定义权限不会自动授予内置管理员或所有者，需要显式追加到对应角色。
 若需要受限权限集合，应定义新角色；设置 `admin: []` 不会清除内置授权。
-`setUserRoles`、`setMemberPermissions` 等实体修改方法仍然替换存储值。
+`setUserRoles`、`setWorkspaceMemberPermissions` 等实体修改方法仍然替换存储值。
 API Key 的 `allowedPermissions` 仍是上限而非追加目录；`allowedPermissions: []` 不允许显式选择权限，
 但输出枚举仍保留完整目录。
 
@@ -92,16 +114,16 @@ Key 的 `permissions: []` 继承 owner 完整权限，不受该白名单限制�
 
 ### 通用
 
-| 变量                   | 用途                                                                                                                                         | 默认值                                           |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `AUTH_SECRET`          | 用于签名和加密认证数据的密钥。未设置时回退到 `APP_SECRET`；应至少包含 32 个高熵字符。                                                        | 必填                                             |
-| `HASH_SECRET`          | `HashModule` 使用的 pepper。未设置时回退到 `APP_SECRET`；应至少包含 32 个高熵字符。                                                          | `APP_SECRET` 未设置时必填                        |
-| `APP_SECRET`           | auth 或 hash 专用密钥缺失时使用的共享备用密钥。                                                                                              | `AUTH_SECRET` 未设置时必填                       |
-| `APP_NAME`             | 传给 Better Auth 的应用名称。                                                                                                                | 未设置                                           |
-| `AUTH_URL`             | 公开的认证基础 URL，未设置时回退到 `APP_URL`。                                                                                               | 未设置                                           |
-| `APP_URL`              | 应用公开 URL，同时作为 `AUTH_URL` 的备用值。                                                                                                 | 未设置                                           |
-| `AUTH_DISABLE_SIGN_UP` | 禁止所有已配置认证方式的新用户注册，但不影响已有用户登录。                                                                                   | 允许注册                                         |
-| `API_KEY_PREFIX`       | 未设置对应 `apiKey.user.defaultPrefix` / `apiKey.member.defaultPrefix` 时使用的公共前缀；1–32 位小写字母、数字、下划线或连字符，首位为字母。 | 未设置；用户密钥用 `user_`，工作空间密钥用 `ws_` |
+| 变量                   | 用途                                                                                                                                            | 默认值                                           |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `AUTH_SECRET`          | 用于签名和加密认证数据的密钥。未设置时回退到 `APP_SECRET`；应至少包含 32 个高熵字符。                                                           | 必填                                             |
+| `HASH_SECRET`          | `HashModule` 使用的 pepper。未设置时回退到 `APP_SECRET`；应至少包含 32 个高熵字符。                                                             | `APP_SECRET` 未设置时必填                        |
+| `APP_SECRET`           | auth 或 hash 专用密钥缺失时使用的共享备用密钥。                                                                                                 | `AUTH_SECRET` 未设置时必填                       |
+| `APP_NAME`             | 传给 Better Auth 的应用名称。                                                                                                                   | 未设置                                           |
+| `AUTH_URL`             | 公开的认证基础 URL，未设置时回退到 `APP_URL`。                                                                                                  | 未设置                                           |
+| `APP_URL`              | 应用公开 URL，同时作为 `AUTH_URL` 的备用值。                                                                                                    | 未设置                                           |
+| `AUTH_DISABLE_SIGN_UP` | 禁止所有已配置认证方式的新用户注册，但不影响已有用户登录。                                                                                      | 允许注册                                         |
+| `API_KEY_PREFIX`       | 未设置对应 `apiKey.user.defaultPrefix` / `apiKey.workspace.defaultPrefix` 时使用的公共前缀；1–32 位小写字母、数字、下划线或连字符，首位为字母。 | 未设置；用户密钥用 `user_`，工作空间密钥用 `ws_` |
 
 ### Email
 
@@ -183,7 +205,7 @@ AuthModule.forRoot({
 ## 实体设置
 
 Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
-`Member`、`Invitation`、`UserApiKey` 和 `MemberApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
+`WorkspaceMember`、`WorkspaceInvitation`、`SystemAccount` 和 `ApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
 `AuthModule` 会按配置向 `DatabaseModule` 自动注册实体。无需重复传入工作区开关，
@@ -207,7 +229,9 @@ pnpm exec nb database:migration:create --name add-auth
 pnpm exec nb database:migration:up
 ```
 
-直接使用 MikroORM 时，导出的 `entities` 包含基础实体，`workspaceEntities` 包含可选工作区实体。
+AuthModule 按功能开关注册实体类和原生 ApiKey EntitySchema。直接使用 MikroORM 时，显式选择实体类及 `createApiKeySchema({ user, workspace, system })`。所有 Auth 实体共用应用的数据库 schema，无需单独配置 Auth schema。
 
 自定义字段请使用独立的业务关联实体和额外的字段 Resolver。关联目标直接导入内置实体类，
 不要重新声明或注册同名认证实体。角色、权限目录、Ability 构造器、邮件回调和 Provider 配置仍可自定义。
+
+AuthModule 按功能开关选择实体类和原生 ApiKey EntitySchema；独立 ORM 显式选择需要的模型。三种 ApiKey 的公共视图和 Service 对应同一个持久化实体 `ApiKey`，系统账户管理见 [API Key](/docs/tutorial/auth/api-keys)。

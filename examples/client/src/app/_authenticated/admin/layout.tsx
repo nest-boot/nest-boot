@@ -6,7 +6,11 @@ import { Layout, LayoutContent } from "@/components/thread-ui/layout";
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminLayout,
   beforeLoad: ({ context: { ability } }) => {
-    if (!ability.can("read", "User")) {
+    if (
+      !ability.can("read", "User") &&
+      !ability.can("read", "SystemAccount") &&
+      !ability.can("read", "SystemApiKey")
+    ) {
       throw redirect({ to: "/user" });
     }
   },

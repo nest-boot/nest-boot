@@ -16,10 +16,8 @@ import {
 } from "@/lib/permissions";
 import { isAccessDenied } from "@/lib/auth-errors";
 
-const CREATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
-  mutation createUserApiKeyFromUserApiKeysRoute(
-    $input: CreateUserApiKeyInput!
-  ) {
+const CREATE_USER_API_KEY = graphql(`
+  mutation createUserApiKey($input: CreateUserApiKeyInput!) {
     createUserApiKey(input: $input) {
       apiKey
       entity {
@@ -27,7 +25,7 @@ const CREATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
         name
         start
         prefix
-        enabled
+        revokedAt
         permissions
         createdAt
         lastUsedAt
@@ -77,10 +75,9 @@ function CreateApiKeyPage() {
     searchSchema: apiKeySearchSchema,
   });
   const { permissionOptions } = Route.useRouteContext();
-  const [createApiKey] = useMutation(
-    CREATE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
-    { fetchPolicy: "no-cache" },
-  );
+  const [createApiKey] = useMutation(CREATE_USER_API_KEY, {
+    fetchPolicy: "no-cache",
+  });
   return (
     <ApiKeyFormPage
       canWrite

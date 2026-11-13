@@ -14,7 +14,7 @@ function workspaceRules(id: string): Array<SerializedAbilityRule> {
     ...userRules,
     {
       actions: ["write"],
-      subjects: ["Member"],
+      subjects: ["WorkspaceMember"],
       conditions: { workspaceId: id },
       inverted: false,
     },
@@ -28,11 +28,11 @@ function Probe() {
         ability.can("read", "User"),
         ability.can(
           "write",
-          createAbilitySubject("Member", { workspaceId: "one" }),
+          createAbilitySubject("WorkspaceMember", { workspaceId: "one" }),
         ),
         ability.can(
           "write",
-          createAbilitySubject("Member", { workspaceId: "two" }),
+          createAbilitySubject("WorkspaceMember", { workspaceId: "two" }),
         ),
       ])}
     </output>

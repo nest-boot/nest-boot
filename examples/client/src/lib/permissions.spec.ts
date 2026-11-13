@@ -8,8 +8,8 @@ import {
   getDefaultApiKeyPermissions,
   getPermissionOptions,
   isAuthPermission,
-  memberApiKeyPermissionValues,
   userPermissionValues,
+  workspaceApiKeyPermissionValues,
   workspacePermissionValues,
 } from "./permissions";
 
@@ -46,23 +46,25 @@ describe("permission options", () => {
         "WORKSPACE__READ",
         "WORKSPACE__UPDATE",
         "WORKSPACE__DELETE",
-        "MEMBER__READ",
-        "MEMBER__WRITE",
-        "MEMBER__SET_ROLES",
-        "MEMBER__SET_PERMISSIONS",
-        "MEMBER__INVITE",
-        "SERVICE_ACCOUNT__READ",
-        "SERVICE_ACCOUNT__WRITE",
-        "MEMBER_API_KEY__READ",
-        "MEMBER_API_KEY__WRITE",
+        "WORKSPACE_MEMBER__READ",
+        "WORKSPACE_MEMBER__WRITE",
+        "WORKSPACE_MEMBER__SET_ROLES",
+        "WORKSPACE_MEMBER__SET_PERMISSIONS",
+        "WORKSPACE_MEMBER__INVITE",
+        "WORKSPACE_SERVICE_ACCOUNT__READ",
+        "WORKSPACE_SERVICE_ACCOUNT__WRITE",
+        "WORKSPACE_API_KEY__READ",
+        "WORKSPACE_API_KEY__WRITE",
       ].sort(),
     );
   });
 
   it("keeps workspace API-key permissions inside the mixed catalog", () => {
-    expect(memberApiKeyPermissionValues).toContain("WORKSPACE__UPDATE");
-    expect(memberApiKeyPermissionValues).toContain("MEMBER__INVITE");
-    expect(memberApiKeyPermissionValues).not.toContain("USER__DELETE");
+    expect(workspaceApiKeyPermissionValues).toContain("WORKSPACE__UPDATE");
+    expect(workspaceApiKeyPermissionValues).toContain(
+      "WORKSPACE_MEMBER__INVITE",
+    );
+    expect(workspaceApiKeyPermissionValues).not.toContain("USER__DELETE");
   });
 
   it("exposes user and workspace permissions for personal API keys", () => {
@@ -73,11 +75,11 @@ describe("permission options", () => {
     );
     for (const action of ["READ", "WRITE"]) {
       const userPermission = `USER_API_KEY__${action}`;
-      const workspacePermission = `MEMBER_API_KEY__${action}`;
+      const workspacePermission = `WORKSPACE_API_KEY__${action}`;
       expect(userPermissionValues).toContain(userPermission);
       expect(userPermissionValues).not.toContain(workspacePermission);
-      expect(memberApiKeyPermissionValues).toContain(workspacePermission);
-      expect(memberApiKeyPermissionValues).not.toContain(userPermission);
+      expect(workspaceApiKeyPermissionValues).toContain(workspacePermission);
+      expect(workspaceApiKeyPermissionValues).not.toContain(userPermission);
       expect(authPermissionValues).toContain(userPermission);
       expect(authPermissionValues).toContain(workspacePermission);
     }

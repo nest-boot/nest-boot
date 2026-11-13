@@ -6,21 +6,20 @@ import { Migrator } from '@mikro-orm/migrations';
 import { MikroORM } from '@mikro-orm/pglite';
 import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
 import {
-  Account,
-  Invitation,
-  Member,
-  MemberApiKey,
-  Session,
+  ApiKey,
+  entities as authEntities,
+  SystemAccount,
   User,
-  UserApiKey,
-  Verification,
   Workspace,
+  workspaceEntities,
+  WorkspaceInvitation,
+  WorkspaceMember,
 } from '@nest-boot/auth';
 import { getDatabaseConfig } from '@nest-boot/database';
 import { entities as queueEntities } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20261024072513 } from '../src/database/migrations/Migration20261024072513.js';
+import { Migration20261111092714 } from '../src/database/migrations/Migration20261111092714.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
@@ -28,11 +27,11 @@ describe('example native RLS migrations with PGlite', () => {
   const readPolicies = (instance: MikroORM) =>
     [
       instance.getMetadata(User),
-      instance.getMetadata(UserApiKey),
-      instance.getMetadata(MemberApiKey),
+      instance.getMetadata(ApiKey),
+      instance.getMetadata(SystemAccount),
       instance.getMetadata(Workspace),
-      instance.getMetadata(Member),
-      instance.getMetadata(Invitation),
+      instance.getMetadata(WorkspaceMember),
+      instance.getMetadata(WorkspaceInvitation),
     ].map((metadata) => metadata.policies);
 
   let originalPolicies: ReturnType<typeof readPolicies>;
@@ -46,23 +45,12 @@ describe('example native RLS migrations with PGlite', () => {
         driverOptions: { extensions: { pgcrypto, uuid_ossp } },
         metadataProvider: TsMorphMetadataProvider,
         metadataCache,
-        entities: [
-          User,
-          Account,
-          Session,
-          Verification,
-          Workspace,
-          Member,
-          Invitation,
-          UserApiKey,
-          MemberApiKey,
-          ...queueEntities,
-        ],
+        entities: [...authEntities, ...workspaceEntities, ...queueEntities],
         extensions: [Migrator],
         migrations: {
           migrationsList: [
             Migration00000000000000_Initial,
-            Migration20261024072513,
+            Migration20261111092714,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',
@@ -231,10 +219,10 @@ describe('example native RLS migrations with PGlite', () => {
       "select policyname, qual, with_check from pg_policies where qual like '%app.workspace.id%'",
     );
     expect(policies.map(({ policyname }) => policyname).sort()).toEqual([
-      'invitation_all_policy',
-      'member_all_policy',
-      'member_api_key_all_policy',
+      'api_key_all_policy',
       'workspace_delete_policy',
+      'workspace_invitation_all_policy',
+      'workspace_member_all_policy',
       'workspace_update_policy',
     ]);
     for (const policy of policies) {
@@ -288,9 +276,9 @@ describe('example native RLS migrations with PGlite', () => {
     expect(await orm.migrator.getExecuted()).toEqual([]);
     expect(
       await orm.em.execute(
-        "select to_regclass('public.user_api_key') as user_key, to_regclass('public.member_api_key') as workspace_key",
+        "select to_regclass('public.api_key') as api_key, to_regclass('public.system_account') as system_account",
       ),
-    ).toEqual([{ user_key: null, workspace_key: null }]);
+    ).toEqual([{ api_key: null, system_account: null }]);
     expect(await readDefaultPrivileges()).toEqual(defaults);
     expect(
       await orm.em.execute(

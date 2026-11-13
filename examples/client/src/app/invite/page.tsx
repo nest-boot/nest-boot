@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "@/components/thread-ui/toast";
 
 import { graphql } from "@/gql";
-import { InvitationStatus } from "@/gql/graphql";
+import { WorkspaceInvitationStatus } from "@/gql/graphql";
 import { Button } from "@/components/thread-ui/button";
 import {
   Card,
@@ -19,7 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const INVITATION_ID_KEY = "invitation_id";
+const WORKSPACE_INVITATION_ID_KEY = "invitation_id";
 
 const GET_CURRENT_USER_FROM_INVITE_ROUTE = graphql(`
   query getCurrentUserFromInviteRoute {
@@ -31,9 +31,9 @@ const GET_CURRENT_USER_FROM_INVITE_ROUTE = graphql(`
   }
 `);
 
-const GET_INVITATION_FROM_INVITE_ROUTE = graphql(`
-  query getInvitationFromInviteRoute($id: ID!) {
-    invitation(id: $id) {
+const GET_WORKSPACE_INVITATION_FROM_INVITE_ROUTE = graphql(`
+  query getWorkspaceInvitationFromInviteRoute($id: ID!) {
+    workspaceInvitation(id: $id) {
       workspaceId
       id
       email
@@ -48,9 +48,9 @@ const GET_INVITATION_FROM_INVITE_ROUTE = graphql(`
   }
 `);
 
-const ACCEPT_INVITATION_FROM_INVITE_ROUTE = graphql(`
-  mutation acceptInvitationFromInviteRoute($id: ID!) {
-    acceptInvitation(id: $id) {
+const ACCEPT_WORKSPACE_INVITATION_FROM_INVITE_ROUTE = graphql(`
+  mutation acceptWorkspaceInvitationFromInviteRoute($id: ID!) {
+    acceptWorkspaceInvitation(id: $id) {
       id
       memberId
       workspaceId
@@ -88,21 +88,21 @@ function InviteComponent() {
     data: inviteData,
     loading: inviteLoading,
     error: inviteError,
-  } = useQuery(GET_INVITATION_FROM_INVITE_ROUTE, {
+  } = useQuery(GET_WORKSPACE_INVITATION_FROM_INVITE_ROUTE, {
     variables: { id: invitationId! },
     skip: !invitationId,
     errorPolicy: "all",
   });
 
-  const [acceptInvitation, { loading: acceptLoading }] = useMutation(
-    ACCEPT_INVITATION_FROM_INVITE_ROUTE,
+  const [acceptWorkspaceInvitation, { loading: acceptLoading }] = useMutation(
+    ACCEPT_WORKSPACE_INVITATION_FROM_INVITE_ROUTE,
   );
-  const invitation = inviteData?.invitation;
+  const invitation = inviteData?.workspaceInvitation;
   const invitationUnavailableMessage = useMemo(() => {
     if (!invitationId) return t("workspace:invite.error.invalid_token");
     if (inviteError) return inviteError.message;
     if (!invitation) return t("workspace:invite.error.invalid_token");
-    if (invitation.status !== InvitationStatus.PENDING) {
+    if (invitation.status !== WorkspaceInvitationStatus.PENDING) {
       return t(`workspace:invite.error.status.${invitation.status}`);
     }
     if (new Date(invitation.expiresAt).getTime() <= Date.now()) {
@@ -117,7 +117,7 @@ function InviteComponent() {
     // 如果查询还在进行中，或者有错误但可能是网络问题，不跳转
     if (!meLoading && meData !== undefined && !meData?.currentUser) {
       if (invitationId && typeof window !== "undefined") {
-        localStorage.setItem(INVITATION_ID_KEY, invitationId);
+        localStorage.setItem(WORKSPACE_INVITATION_ID_KEY, invitationId);
       }
       if (typeof window !== "undefined") {
         window.location.href = `${window.location.origin}/auth/login`;
@@ -132,14 +132,14 @@ function InviteComponent() {
       !inviteLoading &&
       invitationUnavailableMessage
     ) {
-      localStorage.removeItem(INVITATION_ID_KEY);
+      localStorage.removeItem(WORKSPACE_INVITATION_ID_KEY);
     }
   }, [invitationUnavailableMessage, inviteLoading, meData, meLoading]);
 
   // 检查邮箱是否匹配
   const emailMismatch = useMemo(() => {
     const userEmail = meData?.currentUser?.email || "";
-    const inviteEmail = inviteData?.invitation?.email || null;
+    const inviteEmail = inviteData?.workspaceInvitation?.email || null;
     return inviteEmail && inviteEmail.toLowerCase() !== userEmail.toLowerCase();
   }, [meData, inviteData]);
 
@@ -153,12 +153,12 @@ function InviteComponent() {
     }
 
     try {
-      const result = await acceptInvitation({
+      const result = await acceptWorkspaceInvitation({
         variables: { id: invitationId },
       });
-      const workspaceId = result.data?.acceptInvitation?.workspaceId;
+      const workspaceId = result.data?.acceptWorkspaceInvitation?.workspaceId;
       if (workspaceId) {
-        localStorage.removeItem(INVITATION_ID_KEY);
+        localStorage.removeItem(WORKSPACE_INVITATION_ID_KEY);
         toast.add({ type: "success", title: t("workspace:invite.success") });
         navigate({
           to: "/workspaces/$workspaceId",
@@ -180,7 +180,7 @@ function InviteComponent() {
   };
 
   const handleExit = () => {
-    localStorage.removeItem(INVITATION_ID_KEY);
+    localStorage.removeItem(WORKSPACE_INVITATION_ID_KEY);
     navigate({ to: "/workspaces" });
   };
 
@@ -223,7 +223,7 @@ function InviteComponent() {
     meLoading ||
     inviteLoading ||
     !meData?.currentUser ||
-    !inviteData?.invitation
+    !inviteData?.workspaceInvitation
   ) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -247,8 +247,8 @@ function InviteComponent() {
         <CardContent>
           <div className="space-y-4">
             <p className="text-muted-foreground text-sm">
-              {inviteData.invitation.workspace.name} ·{" "}
-              {inviteData.invitation.email}
+              {inviteData.workspaceInvitation.workspace.name} ·{" "}
+              {inviteData.workspaceInvitation.email}
             </p>
             {emailMismatch ? (
               <p className="text-destructive text-sm">

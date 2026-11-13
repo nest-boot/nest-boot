@@ -15,20 +15,20 @@ export async function createFirstWorkspace(page: Page, name: string) {
   return currentWorkspaceId(page);
 }
 
-export async function addMemberByApi(
+export async function addWorkspaceMemberByApi(
   page: Page,
   workspaceId: string,
   email: string,
 ) {
   const data = await graphqlRequest<{
-    addMember: {
+    addWorkspaceMember: {
       id: string;
     };
   }>(
     page.request,
     /* GraphQL */ `
-      mutation AddMember($input: AddMemberInput!) {
-        addMember(input: $input) {
+      mutation AddWorkspaceMember($input: AddWorkspaceMemberInput!) {
+        addWorkspaceMember(input: $input) {
           id
         }
       }
@@ -43,7 +43,7 @@ export async function addMemberByApi(
     },
   );
 
-  return data.addMember.id;
+  return data.addWorkspaceMember.id;
 }
 
 export async function createWorkspaceByApi(page: Page, name: string) {

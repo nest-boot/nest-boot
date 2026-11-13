@@ -4,6 +4,8 @@ import { t } from "i18next";
 import { useCallback } from "react";
 
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
+import { REVOKE_USER_API_KEY } from "@/graphql/mutations/revoke-user-api-key";
+import { getApiKeyUpdateInput } from "@/lib/api-key-update";
 import { graphql } from "@/gql";
 import { UPDATE_USER_API_KEY } from "@/graphql/mutations/update-user-api-key";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
@@ -19,14 +21,14 @@ import { userApiKeysResourceKey } from "@/lib/resource-keys";
 import { authPermissionValues, getPermissionOptions } from "@/lib/permissions";
 import { isAccessDenied } from "@/lib/auth-errors";
 
-const DELETE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE = graphql(`
-  mutation deleteUserApiKeyFromUserApiKeysRoute($id: ID!) {
+const DELETE_USER_API_KEY = graphql(`
+  mutation deleteUserApiKey($id: ID!) {
     deleteUserApiKey(id: $id) {
       id
       name
       start
       prefix
-      enabled
+      revokedAt
       permissions
       createdAt
       lastUsedAt
@@ -48,7 +50,7 @@ const GET_USER_API_KEY = graphql(`
         name
         start
         prefix
-        enabled
+        revokedAt
         permissions
         createdAt
         lastUsedAt
@@ -135,9 +137,8 @@ function ApiKeyDetailsPage() {
   const ability = useAbility();
   const router = useRouter();
   const navigate = Route.useNavigate();
-  const [deleteApiKey] = useMutation(
-    DELETE_USER_API_KEY_FROM_USER_API_KEYS_ROUTE,
-  );
+  const [deleteApiKey] = useMutation(DELETE_USER_API_KEY);
+  const [revoke] = useMutation(REVOKE_USER_API_KEY);
   const [updateApiKey] = useMutation(UPDATE_USER_API_KEY);
   const [loadNeighbors] = useLazyQuery(GET_USER_API_KEY_NEIGHBORS, {
     fetchPolicy: "network-only",
@@ -180,6 +181,16 @@ function ApiKeyDetailsPage() {
         "write",
         createAbilitySubject("UserApiKey", apiKey),
       )}
+      canEditName={ability.can(
+        "write",
+        createAbilitySubject("UserApiKey", apiKey),
+        "name",
+      )}
+      canEditPermissions={ability.can(
+        "write",
+        createAbilitySubject("UserApiKey", apiKey),
+        "permissions",
+      )}
       listPath={"/user/api-keys"}
       listSearch={backSearch}
       paginationActions={{
@@ -198,10 +209,13 @@ function ApiKeyDetailsPage() {
       }}
       permissionValues={authPermissionValues}
       permissionOptions={getPermissionOptions(permissionOptions)}
-      onToggle={async () => {
-        await updateApiKey({
-          variables: { id: apiKey.id, input: { enabled: !apiKey.enabled } },
-        });
+      canRevoke={ability.can(
+        "write",
+        createAbilitySubject("UserApiKey", apiKey),
+        "revokedAt",
+      )}
+      onRevoke={async () => {
+        await revoke({ variables: { id: apiKey.id } });
         await router.invalidate();
       }}
       onDelete={async () => {
@@ -209,7 +223,12 @@ function ApiKeyDetailsPage() {
         await navigate({ to: "/user/api-keys", search: backSearch });
       }}
       onSave={async (input) => {
-        await updateApiKey({ variables: { id: apiKey.id, input } });
+        await updateApiKey({
+          variables: {
+            id: apiKey.id,
+            input: getApiKeyUpdateInput(apiKey, input),
+          },
+        });
         await router.invalidate();
         return undefined;
       }}

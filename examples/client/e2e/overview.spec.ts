@@ -2,7 +2,10 @@ import { expect, test } from "@playwright/test";
 import { registerUser, signInAsE2eAdministrator } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
-import { addMemberByApi, createWorkspaceByApi } from "./utils/workspace";
+import {
+  addWorkspaceMemberByApi,
+  createWorkspaceByApi,
+} from "./utils/workspace";
 import type { Page } from "@playwright/test";
 
 function sidebarOverview(page: Page) {
@@ -126,11 +129,11 @@ test("workspace overviews isolate counts when switching and respect read permiss
   try {
     const email = `${seed}-member@example.com`;
     await registerUser(memberPage, { email, name: "Overview member" });
-    const memberId = await addMemberByApi(page, first.id, email);
+    const memberId = await addWorkspaceMemberByApi(page, first.id, email);
     await graphqlRequest(
       page.request,
-      `mutation ($id: ID!, $input: SetMemberPermissionsInput!) {
-      setMemberPermissions(id: $id, input: $input) { id }
+      `mutation ($id: ID!, $input: SetWorkspaceMemberPermissionsInput!) {
+      setWorkspaceMemberPermissions(id: $id, input: $input) { id }
     }`,
       { id: memberId, input: { permissions: [] } },
       { "x-workspace-id": first.id },
@@ -182,7 +185,7 @@ test("workspace overviews isolate counts when switching and respect read permiss
     await memberPage.goto(`/workspaces/${first.id}`);
     const response = await memberSummary;
     expect(response.request().postDataJSON().variables).toMatchObject({
-      includeMembers: true,
+      includeWorkspaceMembers: true,
       includeApiKeys: false,
     });
     expect((await response.json()).errors).toBeUndefined();

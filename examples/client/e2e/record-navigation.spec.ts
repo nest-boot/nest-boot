@@ -6,7 +6,10 @@ import {
 } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { uniqueSeed } from "./utils/unique";
-import { addMemberByApi, createWorkspaceByApi } from "./utils/workspace";
+import {
+  addWorkspaceMemberByApi,
+  createWorkspaceByApi,
+} from "./utils/workspace";
 import type { Page } from "@playwright/test";
 
 const dateFilter = { created_at: { $gte: "2000-01-01T00:00:00.000Z" } };
@@ -133,8 +136,10 @@ test("member navigation and invitation return searches stay isolated by workspac
   const secondWorkspace = await createWorkspaceByApi(page, `${seed}-second`);
   const members: Array<string> = [];
   for (const user of users)
-    members.push(await addMemberByApi(page, firstWorkspace.id, user.email));
-  await addMemberByApi(page, secondWorkspace.id, users[0].email);
+    members.push(
+      await addWorkspaceMemberByApi(page, firstWorkspace.id, user.email),
+    );
+  await addWorkspaceMemberByApi(page, secondWorkspace.id, users[0].email);
   const firstList = `/workspaces/${firstWorkspace.id}/members`;
   const secondList = `/workspaces/${secondWorkspace.id}/members`;
   await page.goto(filteredPath(firstList, `${seed}*`, "CREATED_AT", "DESC"));

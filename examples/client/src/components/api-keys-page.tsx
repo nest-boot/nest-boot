@@ -3,9 +3,15 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
+import type {
+  SystemApiKeyPermission,
+  UserApiKey,
+  UserApiKeyPermission,
+  WorkspaceApiKeyPermission,
+} from "@/gql/graphql";
+import type { ComponentProps } from "react";
 
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
-import type { UserApiKey, UserApiKeyPermission } from "@/gql/graphql";
 import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
 import type { PageInfo } from "@/lib/graphql-connection";
 import type { createAbility } from "@/lib/ability";
@@ -20,24 +26,45 @@ import { Page } from "@/components/thread-ui/page";
 import { Card, CardContent } from "@/components/ui/card";
 import { getNextSearch, getPreviousSearch } from "@/lib/graphql-connection";
 
-export type ApiKeyRow<Permission extends UserApiKeyPermission> = Omit<
+export type ApiKeyOwnerRow = {
+  __typename?: string;
+  id: string;
+  name: string;
+  type?: string;
+  workspaceId?: string;
+};
+
+export type ApiKeyRow<
+  Permission extends
+    | UserApiKeyPermission
+    | WorkspaceApiKeyPermission
+    | SystemApiKeyPermission,
+> = Omit<
   Pick<
     UserApiKey,
     | "id"
     | "name"
     | "start"
     | "prefix"
-    | "enabled"
+    | "revokedAt"
     | "permissions"
     | "createdAt"
     | "lastUsedAt"
     | "expiresAt"
   >,
   "permissions"
-> & { permissions: Array<Permission> };
+> & {
+  permissions: Array<Permission>;
+  owner?: ApiKeyOwnerRow | null;
+};
 
-interface ApiKeysPageProps<Permission extends UserApiKeyPermission> {
-  subject: "UserApiKey" | "MemberApiKey";
+interface ApiKeysPageProps<
+  Permission extends
+    | UserApiKeyPermission
+    | WorkspaceApiKeyPermission
+    | SystemApiKeyPermission,
+> {
+  subject: "UserApiKey" | "WorkspaceApiKey" | "SystemApiKey";
   ability: ReturnType<typeof createAbility>;
   title: string;
   description: string;
@@ -45,11 +72,20 @@ interface ApiKeysPageProps<Permission extends UserApiKeyPermission> {
   apiKeys: Array<ApiKeyRow<Permission>>;
   pageInfo?: PageInfo;
   createPath: string;
+  breadcrumbActions?: ComponentProps<typeof Page>["breadcrumbActions"];
+  canCreate?: boolean;
+  showOwner?: boolean;
+  ownerPath?: (owner: ApiKeyOwnerRow) => string | undefined;
   detailPath: (id: string) => string;
 }
 
 /** Shared API-key management UI; routes supply authorization and data. */
-export function ApiKeysPage<Permission extends UserApiKeyPermission>({
+export function ApiKeysPage<
+  Permission extends
+    | UserApiKeyPermission
+    | WorkspaceApiKeyPermission
+    | SystemApiKeyPermission,
+>({
   subject,
   ability,
   title,
@@ -58,12 +94,16 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
   apiKeys,
   pageInfo,
   createPath,
+  breadcrumbActions,
+  canCreate: allowCreate,
+  showOwner = false,
+  ownerPath,
   detailPath,
 }: ApiKeysPageProps<Permission>) {
   const { t, i18n } = useTranslation();
   const apiKeysColumnHelper =
     createDataTableColumnHelper<(typeof apiKeys)[number]>();
-  const canCreate = ability.can("write", subject);
+  const canCreate = allowCreate ?? ability.can("write", subject);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -101,6 +141,7 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
 
   return (
     <Page
+      breadcrumbActions={breadcrumbActions}
       title={title}
       description={description}
       primaryAction={{
@@ -149,6 +190,28 @@ export function ApiKeysPage<Permission extends UserApiKeyPermission>({
                     );
                   },
                 }),
+                ...(showOwner
+                  ? [
+                      apiKeysColumnHelper.column("owner", {
+                        header: t("api-key:form.owner.label"),
+                        render: (props, { row }) => {
+                          const owner = row.original.owner;
+                          const path = owner ? ownerPath?.(owner) : undefined;
+                          return owner && path ? (
+                            <Link
+                              {...props}
+                              to={path}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              {owner.name}
+                            </Link>
+                          ) : (
+                            <span {...props}>{owner?.name ?? "—"}</span>
+                          );
+                        },
+                      }),
+                    ]
+                  : []),
                 apiKeysColumnHelper.column("status", {
                   field: null,
                   header: t("api-key:table.status"),

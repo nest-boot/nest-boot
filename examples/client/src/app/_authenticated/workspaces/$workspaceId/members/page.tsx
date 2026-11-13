@@ -14,8 +14,8 @@ import { isEmpty } from "lodash";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
-import { getMembersResourceKey } from "@/lib/resource-keys";
-import { memberSearchSchema } from "@/schemas/member-search-schema";
+import { getWorkspaceMembersResourceKey } from "@/lib/resource-keys";
+import { workspaceMemberSearchSchema } from "@/schemas/workspace-member-search-schema";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { Link } from "@/components/link";
 import { toast } from "@/components/thread-ui/toast";
@@ -34,7 +34,7 @@ import {
 } from "@/components/thread-ui/page-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { graphql } from "@/gql";
-import { MemberStatus, MemberType } from "@/gql/graphql";
+import { WorkspaceMemberStatus, WorkspaceMemberType } from "@/gql/graphql";
 import { getNextSearch, getPreviousSearch } from "@/lib/graphql-connection";
 import { truncateEmail } from "@/utils/truncate-email";
 import { cn } from "@/lib/utils";
@@ -42,21 +42,21 @@ import { Badge } from "@/components/thread-ui/badge";
 import { getRolesLabel } from "@/utils/get-role-label";
 import { createAbilitySubject } from "@/lib/ability";
 
-const GET_MEMBERS_FROM_MEMBERS_ROUTE = graphql(`
-  query getMembersFromMembersRoute(
+const GET_WORKSPACE_MEMBERS_FROM_WORKSPACE_MEMBERS_ROUTE = graphql(`
+  query getWorkspaceMembersFromWorkspaceMembersRoute(
     $after: String
     $before: String
     $first: Int
     $last: Int
-    $filter: MemberFilter
-    $orderBy: MemberOrder
+    $filter: WorkspaceMemberFilter
+    $orderBy: WorkspaceMemberOrder
     $query: String
     $invitationFirst: Int
     $invitationLast: Int
     $invitationAfter: String
     $invitationBefore: String
-    $invitationFilter: InvitationFilter
-    $includeInvitations: Boolean! = false
+    $invitationFilter: WorkspaceInvitationFilter
+    $includeWorkspaceInvitations: Boolean! = false
   ) {
     currentWorkspace {
       members(
@@ -96,7 +96,7 @@ const GET_MEMBERS_FROM_MEMBERS_ROUTE = graphql(`
         before: $invitationBefore
         filter: $invitationFilter
         orderBy: { field: CREATED_AT, direction: DESC }
-      ) @include(if: $includeInvitations) {
+      ) @include(if: $includeWorkspaceInvitations) {
         edges {
           node {
             workspaceId
@@ -118,22 +118,22 @@ const GET_MEMBERS_FROM_MEMBERS_ROUTE = graphql(`
   }
 `);
 
-const CANCEL_INVITATION_FROM_MEMBERS_ROUTE = graphql(`
-  mutation cancelInvitationFromMembersRoute($id: ID!) {
-    cancelInvitation(id: $id) {
+const CANCEL_WORKSPACE_INVITATION_FROM_WORKSPACE_MEMBERS_ROUTE = graphql(`
+  mutation cancelWorkspaceInvitationFromWorkspaceMembersRoute($id: ID!) {
+    cancelWorkspaceInvitation(id: $id) {
       id
     }
   }
 `);
 
-const getStatusLabel = (status: MemberStatus | null | undefined) => {
+const getStatusLabel = (status: WorkspaceMemberStatus | null | undefined) => {
   if (!status) return null;
 
   switch (status) {
-    case MemberStatus.ACTIVE:
-      return t("member:status.active");
-    case MemberStatus.DISABLED:
-      return t("member:status.disabled");
+    case WorkspaceMemberStatus.ACTIVE:
+      return t("workspace-member:status.active");
+    case WorkspaceMemberStatus.DISABLED:
+      return t("workspace-member:status.disabled");
     default:
       return status;
   }
@@ -142,76 +142,88 @@ const getStatusLabel = (status: MemberStatus | null | undefined) => {
 export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/members/",
 )({
-  component: ScopedMembersComponent,
+  component: ScopedWorkspaceMembersComponent,
   beforeLoad: ({ context, params }) => {
-    if (!context.ability.can("read", "Member")) {
+    if (!context.ability.can("read", "WorkspaceMember")) {
       throw redirect({ to: "/workspaces/$workspaceId", params });
     }
   },
-  validateSearch: zodValidator(memberSearchSchema),
+  validateSearch: zodValidator(workspaceMemberSearchSchema),
 });
 
-function ScopedMembersComponent() {
+function ScopedWorkspaceMembersComponent() {
   const { workspaceId } = Route.useParams();
-  return <MembersComponent key={workspaceId} />;
+  return <WorkspaceMembersComponent key={workspaceId} />;
 }
 
-function MembersComponent() {
+function WorkspaceMembersComponent() {
   const { t, i18n } = useTranslation();
   const search = Route.useSearch();
   const { workspaceId } = Route.useParams();
   const currentUser = useCurrentUserContext();
   useResourceNavigation({
-    key: [currentUser.id, ...getMembersResourceKey(workspaceId)],
-    searchSchema: memberSearchSchema,
+    key: [currentUser.id, ...getWorkspaceMembersResourceKey(workspaceId)],
+    searchSchema: workspaceMemberSearchSchema,
     search,
   });
   const navigate = useNavigate();
   const location = useLocation();
 
   const ability = useAbility();
-  const canReadInvitations = ability.can("read", "Invitation");
-  const canCreateInvitation = ability.can("write", "Invitation");
-  const canCreateServiceAccount = ability.can(
+  const canReadWorkspaceInvitations = ability.can(
+    "read",
+    "WorkspaceInvitation",
+  );
+  const canCreateWorkspaceInvitation = ability.can(
     "write",
-    createAbilitySubject("Member", {
+    "WorkspaceInvitation",
+  );
+  const canCreateWorkspaceServiceAccount = ability.can(
+    "write",
+    createAbilitySubject("WorkspaceMember", {
       workspaceId,
-      type: MemberType.SERVICE_ACCOUNT,
+      type: WorkspaceMemberType.SERVICE_ACCOUNT,
     }),
   );
-  const canCancelInvitation = ability.can("write", "Invitation");
-  const canEditMember = (member: object) =>
+  const canCancelWorkspaceInvitation = ability.can(
+    "write",
+    "WorkspaceInvitation",
+  );
+  const canEditWorkspaceMember = (member: object) =>
     ["write", "set-roles", "set-permissions"].some((action) =>
-      ability.can(action, createAbilitySubject("Member", member)),
+      ability.can(action, createAbilitySubject("WorkspaceMember", member)),
     );
 
   const query = search?.query ?? "";
   const filterValues = (search?.filter ?? {}) as Record<string, unknown>;
 
-  const [invitationPage, setInvitationPage] = useState<{
+  const [invitationPage, setWorkspaceInvitationPage] = useState<{
     first?: number;
     last?: number;
     after?: string;
     before?: string;
   }>({ first: 20 });
 
-  const { data, refetch } = useQuery(GET_MEMBERS_FROM_MEMBERS_ROUTE, {
-    fetchPolicy: "network-only",
-    skip: !ability.can("read", "Member"),
-    variables: {
-      includeInvitations: canReadInvitations,
-      invitationFirst: invitationPage.first,
-      invitationLast: invitationPage.last,
-      invitationAfter: invitationPage.after,
-      invitationBefore: invitationPage.before,
-      invitationFilter: { status: { $eq: "pending" } },
-      ...search,
+  const { data, refetch } = useQuery(
+    GET_WORKSPACE_MEMBERS_FROM_WORKSPACE_MEMBERS_ROUTE,
+    {
+      fetchPolicy: "network-only",
+      skip: !ability.can("read", "WorkspaceMember"),
+      variables: {
+        includeWorkspaceInvitations: canReadWorkspaceInvitations,
+        invitationFirst: invitationPage.first,
+        invitationLast: invitationPage.last,
+        invitationAfter: invitationPage.after,
+        invitationBefore: invitationPage.before,
+        invitationFilter: { status: { $eq: "pending" } },
+        ...search,
+      },
     },
-  });
+  );
 
   const members =
     data?.currentWorkspace?.members.edges.map((edge) => edge.node) ?? [];
-  const pendingInvitations =
+  const pendingWorkspaceInvitations =
     data?.currentWorkspace?.invitations?.edges.map(({ node }) => node) ?? [];
   const invitationPageInfo = data?.currentWorkspace?.invitations?.pageInfo;
   const pageInfo = data?.currentWorkspace?.members.pageInfo;
@@ -221,40 +233,40 @@ function MembersComponent() {
   const filters: Array<DataFilterField> = useMemo(() => {
     return [
       {
-        label: t("member:filter.items.name.label"),
+        label: t("workspace-member:filter.items.name.label"),
         field: "name",
         type: "input",
-        placeholder: t("member:filter.items.name.placeholder"),
+        placeholder: t("workspace-member:filter.items.name.placeholder"),
         operators: ["$eq"],
         defaultOperator: "$eq",
       },
       {
-        label: t("member:filter.items.email.label"),
+        label: t("workspace-member:filter.items.email.label"),
         field: "email",
         type: "input",
-        placeholder: t("member:filter.items.email.placeholder"),
+        placeholder: t("workspace-member:filter.items.email.placeholder"),
         operators: ["$eq"],
         defaultOperator: "$eq",
       },
       {
-        label: t("member:table.type"),
+        label: t("workspace-member:table.type"),
         field: "type",
         type: "select",
-        options: Object.values(MemberType).map((type) => ({
+        options: Object.values(WorkspaceMemberType).map((type) => ({
           value: type,
           label:
-            type === MemberType.SERVICE_ACCOUNT
-              ? t("member:type.service_account")
-              : t("member:type.user"),
+            type === WorkspaceMemberType.SERVICE_ACCOUNT
+              ? t("workspace-member:type.service_account")
+              : t("workspace-member:type.user"),
         })),
         operators: ["$in"],
         defaultOperator: "$in",
       },
       {
-        label: t("member:filter.items.status.label"),
+        label: t("workspace-member:filter.items.status.label"),
         field: "status",
         type: "select",
-        options: Object.values(MemberStatus).map((status) => ({
+        options: Object.values(WorkspaceMemberStatus).map((status) => ({
           label: getStatusLabel(status) ?? status,
           value: status,
         })),
@@ -262,7 +274,7 @@ function MembersComponent() {
         defaultOperator: "$in",
       },
       {
-        label: t("member:filter.items.created_at.label"),
+        label: t("workspace-member:filter.items.created_at.label"),
         field: "created_at",
         type: "date-picker",
         max: dayjs().toISOString(),
@@ -272,35 +284,39 @@ function MembersComponent() {
     ];
   }, [t]);
 
-  const [cancelInvitation, { loading: cancelInvitationLoading }] = useMutation(
-    CANCEL_INVITATION_FROM_MEMBERS_ROUTE,
-  );
+  const [
+    cancelWorkspaceInvitation,
+    { loading: cancelWorkspaceInvitationLoading },
+  ] = useMutation(CANCEL_WORKSPACE_INVITATION_FROM_WORKSPACE_MEMBERS_ROUTE);
 
-  const handleCopyInvitation = async (invitationId: string) => {
+  const handleCopyWorkspaceInvitation = async (invitationId: string) => {
     const link = `${window.location.origin}/invite?invitationId=${invitationId}`;
     await navigator.clipboard.writeText(link);
-    toast.add({ type: "success", title: t("member:invite.link_copied") });
+    toast.add({
+      type: "success",
+      title: t("workspace-member:invite.link_copied"),
+    });
   };
 
-  const handleCancelInvitation = async (invitationId: string) => {
+  const handleCancelWorkspaceInvitation = async (invitationId: string) => {
     const confirmed = await alertDialog({
-      title: t("member:invite.title"),
-      description: t("member:delete.description"),
+      title: t("workspace-member:invite.title"),
+      description: t("workspace-member:delete.description"),
       cancelText: t("action.cancel"),
       confirmText: t("action.confirm"),
     });
     if (!confirmed) return;
 
-    await cancelInvitation({ variables: { id: invitationId } });
+    await cancelWorkspaceInvitation({ variables: { id: invitationId } });
     await refreshAfterMutation(() => refetch());
   };
 
   return (
     <Page
-      title={t("member:title")}
-      description={t("member:description")}
+      title={t("workspace-member:title")}
+      description={t("workspace-member:description")}
       primaryAction={
-        canCreateInvitation
+        canCreateWorkspaceInvitation
           ? {
               render: (
                 <Link
@@ -308,12 +324,12 @@ function MembersComponent() {
                   params={{ workspaceId }}
                 />
               ),
-              label: t("member:invite.button"),
+              label: t("workspace-member:invite.button"),
             }
           : undefined
       }
       secondaryActions={
-        canCreateServiceAccount
+        canCreateWorkspaceServiceAccount
           ? [
               {
                 label: t("action.create"),
@@ -348,7 +364,9 @@ function MembersComponent() {
                     });
                   }}
                   search={{
-                    placeholder: t("member:filter.search.placeholder"),
+                    placeholder: t(
+                      "workspace-member:filter.search.placeholder",
+                    ),
                   }}
                 />
 
@@ -356,7 +374,7 @@ function MembersComponent() {
                   locale={i18n.resolvedLanguage}
                   columns={membersColumnHelper.columns([
                     membersColumnHelper.column("name", {
-                      header: t("member:table.name"),
+                      header: t("workspace-member:table.name"),
                       render: (props, { row }) => {
                         const member = row.original;
                         return (
@@ -364,14 +382,14 @@ function MembersComponent() {
                             {...props}
                             className={cn(
                               "flex flex-col",
-                              !canEditMember(member) &&
+                              !canEditWorkspaceMember(member) &&
                                 "pointer-events-none opacity-50",
                             )}
                           >
                             <span className="font-medium">
                               {member.name ?? member.id}
                             </span>
-                            {member.type === MemberType.USER && (
+                            {member.type === WorkspaceMemberType.USER && (
                               <span className="text-muted-foreground text-xs">
                                 {truncateEmail(member.email ?? "") ?? "-"}
                               </span>
@@ -381,17 +399,18 @@ function MembersComponent() {
                       },
                     }),
                     membersColumnHelper.column("type", {
-                      header: t("member:table.type"),
+                      header: t("workspace-member:table.type"),
                       render: (props, { row }) => (
                         <Badge {...props} color={undefined} variant="outline">
-                          {row.original.type === MemberType.SERVICE_ACCOUNT
-                            ? t("member:type.service_account")
-                            : t("member:type.user")}
+                          {row.original.type ===
+                          WorkspaceMemberType.SERVICE_ACCOUNT
+                            ? t("workspace-member:type.service_account")
+                            : t("workspace-member:type.user")}
                         </Badge>
                       ),
                     }),
                     membersColumnHelper.column("roles", {
-                      header: t("member:table.role"),
+                      header: t("workspace-member:table.role"),
                       render: (props, { row }) => {
                         if (!row.original.roles.length)
                           return <span {...props}>-</span>;
@@ -403,16 +422,16 @@ function MembersComponent() {
                       },
                     }),
                     membersColumnHelper.column("status", {
-                      header: t("member:table.status"),
+                      header: t("workspace-member:table.status"),
                       render: (props, { row }) => {
                         const status = row.original.status;
 
                         const statusColorMap: Record<
-                          MemberStatus,
+                          WorkspaceMemberStatus,
                           "green" | "yellow" | "red" | "gray"
                         > = {
-                          [MemberStatus.ACTIVE]: "green",
-                          [MemberStatus.DISABLED]: "gray",
+                          [WorkspaceMemberStatus.ACTIVE]: "green",
+                          [WorkspaceMemberStatus.DISABLED]: "gray",
                         };
 
                         const color = status ? statusColorMap[status] : "green";
@@ -425,12 +444,12 @@ function MembersComponent() {
                       },
                     }),
                     membersColumnHelper.column("createdAt", {
-                      header: t("member:table.joined"),
+                      header: t("workspace-member:table.joined"),
                       type: "date",
                     }),
                   ])}
                   onRowClick={(row) => {
-                    if (!canEditMember(row.original)) return;
+                    if (!canEditWorkspaceMember(row.original)) return;
                     navigate({
                       to: "/workspaces/$workspaceId/members/$memberId",
                       params: {
@@ -462,17 +481,17 @@ function MembersComponent() {
           </Card>
         </PageLayoutSection>
 
-        {pendingInvitations.length > 0 ||
+        {pendingWorkspaceInvitations.length > 0 ||
         invitationPage.after ||
         invitationPage.before ? (
           <PageLayoutSection>
             <Card>
               <CardHeader>
-                <CardTitle>{t("member:invite.title")}</CardTitle>
+                <CardTitle>{t("workspace-member:invite.title")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3">
-                  {pendingInvitations.map((invitation) => (
+                  {pendingWorkspaceInvitations.map((invitation) => (
                     <li
                       className="flex flex-col gap-4 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
                       key={invitation.id}
@@ -492,17 +511,21 @@ function MembersComponent() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleCopyInvitation(invitation.id)}
+                          onClick={() =>
+                            handleCopyWorkspaceInvitation(invitation.id)
+                          }
                         >
-                          {t("member:details.actions.copy_invite_link")}
+                          {t(
+                            "workspace-member:details.actions.copy_invite_link",
+                          )}
                         </Button>
-                        {canCancelInvitation ? (
+                        {canCancelWorkspaceInvitation ? (
                           <Button
                             size="sm"
                             variant="destructive"
-                            disabled={cancelInvitationLoading}
+                            disabled={cancelWorkspaceInvitationLoading}
                             onClick={() =>
-                              handleCancelInvitation(invitation.id)
+                              handleCancelWorkspaceInvitation(invitation.id)
                             }
                           >
                             {t("action.cancel")}
@@ -517,7 +540,7 @@ function MembersComponent() {
                     variant="outline"
                     disabled={!invitationPageInfo?.hasPreviousPage}
                     onClick={() =>
-                      setInvitationPage({
+                      setWorkspaceInvitationPage({
                         last: 20,
                         before: invitationPageInfo?.startCursor ?? undefined,
                       })
@@ -529,7 +552,7 @@ function MembersComponent() {
                     variant="outline"
                     disabled={!invitationPageInfo?.hasNextPage}
                     onClick={() =>
-                      setInvitationPage({
+                      setWorkspaceInvitationPage({
                         first: 20,
                         after: invitationPageInfo?.endCursor ?? undefined,
                       })

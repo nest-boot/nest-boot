@@ -80,40 +80,68 @@
     "name": "Delete Workspace",
     "description": "Permanently delete the workspace"
   },
-  "member_read": {
+  "workspace_member_read": {
     "name": "Read Members",
     "description": "View workspace user member profiles"
   },
-  "member_write": {
+  "workspace_member_write": {
     "name": "Manage Members",
     "description": "Add, update, disable, and remove user members; excludes changing roles and permissions"
   },
-  "member_set_roles": {
+  "workspace_member_set_roles": {
     "name": "Set Member Roles",
     "description": "Replace member roles within the grant ceiling"
   },
-  "member_set_permissions": {
+  "workspace_member_set_permissions": {
     "name": "Set Member Permissions",
     "description": "Replace direct member permissions within the grant ceiling"
   },
-  "member_invite": {
+  "workspace_member_invite": {
     "name": "Manage Member Invitations",
     "description": "View, create, and cancel workspace invitations"
   },
-  "member_api_key_read": {
+  "workspace_api_key_read": {
     "name": "Read Member API Keys",
     "description": "View API keys in the selected workspace"
   },
-  "member_api_key_write": {
+  "workspace_api_key_write": {
     "name": "Manage Member API Keys",
     "description": "Create, update, enable, disable, and delete member API keys"
   },
-  "service_account_read": {
+  "workspace_service_account_read": {
     "name": "Read Service Accounts",
     "description": "View service account profiles in the selected workspace"
   },
-  "service_account_write": {
+  "workspace_service_account_write": {
     "name": "Manage Service Accounts",
     "description": "Create, update, disable, and remove service accounts; changing roles or permissions also requires the corresponding member permission"
+  },
+  "system_account_read": {
+    "name": "Read System Accounts",
+    "description": "View independent platform system accounts"
+  },
+  "system_account_write": {
+    "name": "Manage System Accounts",
+    "description": "Create, update, enable, disable, and delete system accounts through an administrator session"
+  },
+  "system_account_api_key_read": {
+    "name": "Read System Account API Keys",
+    "description": "View system account API key metadata through an administrator session"
+  },
+  "system_account_api_key_write": {
+    "name": "Manage System Account API Keys",
+    "description": "Create, update, enable, disable, and delete system account API keys through an administrator session"
+  },
+  "workspace_read_any": {
+    "name": "Read All Workspaces",
+    "description": "View workspaces without requiring membership"
+  },
+  "workspace_update_any": {
+    "name": "Update Any Workspace",
+    "description": "Change any workspace through platform administration"
+  },
+  "workspace_delete_any": {
+    "name": "Delete Any Workspace",
+    "description": "Permanently delete any workspace through platform administration"
   }
 }

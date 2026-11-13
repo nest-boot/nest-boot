@@ -1,6 +1,6 @@
 import { expectTypeOf } from "vitest";
 
-import { AuthModule } from "../src/auth.module.js";
+import { AuthModule } from "../src/core/auth.module.js";
 import type { PermissionName, RoleName } from "../src/index.js";
 
 // Checked by the auth typecheck task, not by the runtime test runner.
@@ -37,8 +37,8 @@ type ValidPermissions =
   | "user:read"
   | "user-api-key:read"
   | "user:set-roles"
-  | "member-api-key:write"
-  | "member:set-roles"
+  | "workspace-api-key:write"
+  | "workspace-member:set-roles"
   | "resource2:action3"
   | "true:false"
   | "null:read";
@@ -110,14 +110,18 @@ AuthModule.forRoot({
   },
   workspace: {
     enabled: true,
-    permissions: ["member-api-key:write"],
-    roles: { "team-owner": ["member-api-key:write", "workspace:update"] },
+    permissions: ["workspace-api-key:write"],
+    roles: { "team-owner": ["workspace-api-key:write", "workspace:update"] },
     creatorRole: "team-owner",
     defaultRole: "team-owner",
   },
   apiKey: {
     user: {
-      allowedPermissions: ["report:read", "member-api-key:write", "user:read"],
+      allowedPermissions: [
+        "report:read",
+        "workspace-api-key:write",
+        "user:read",
+      ],
     },
   },
 });
@@ -196,14 +200,14 @@ AuthModule.forRoot({
   workspace: { enabled: true, permissions: ["project:read"] },
   apiKey: {
     user: { defaultPermissions: ["user:read", "report:read", "project:read"] },
-    member: { defaultPermissions: ["project:read"] },
+    workspace: { defaultPermissions: ["project:read"] },
   },
 });
 AuthModule.forRoot({
   user: { permissions: ["report:read"] },
   apiKey: {
-    member: {
-      // @ts-expect-error Member keys cannot carry user-only permissions.
+    workspace: {
+      // @ts-expect-error WorkspaceMember keys cannot carry user-only permissions.
       defaultPermissions: ["report:read"],
     },
   },
@@ -245,5 +249,37 @@ AuthModule.forRoot({
     userPermissions.push("report:read");
     // @ts-expect-error The workspace array does not contain user-only permissions.
     workspacePermissions.includes("report:read");
+  },
+});
+
+/** Checks legacy-option rejection without executing the invalid module configuration. */
+function removedApiKeyConfiguration() {
+  AuthModule.forRoot({
+    apiKey: {
+      enabled: true,
+      // @ts-expect-error use apiKey.workspace instead of the removed member configuration
+      member: { enabled: true },
+    },
+  });
+  AuthModule.forRoot({
+    apiKey: {
+      // @ts-expect-error use apiKey.system instead of the removed systemAccount configuration
+      systemAccount: { enabled: true },
+    },
+  });
+}
+removedApiKeyConfiguration;
+
+AuthModule.forRoot({
+  admin: { enabled: true },
+  apiKey: {
+    enabled: true,
+    system: {
+      enabled: true,
+      defaultPrefix: "machine_",
+      defaultPermissions: ["user:read"],
+      // @ts-expect-error system keys accept only the platform permission catalog
+      allowedPermissions: ["report:read"],
+    },
   },
 });

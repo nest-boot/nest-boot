@@ -1,17 +1,15 @@
 import { MikroORM } from "@mikro-orm/core";
 import { PgliteDriver } from "@mikro-orm/pglite";
 
+import { entities, workspaceEntities } from "../dist/index.js";
 import {
   Account,
-  entities,
-  Invitation,
-  Member,
-  MemberApiKey,
+  ApiKey,
   Session,
   User,
-  UserApiKey,
   Workspace,
-  workspaceEntities,
+  WorkspaceInvitation,
+  WorkspaceMember,
 } from "../dist/index.js";
 
 describe("built-in auth entity discovery", () => {
@@ -23,16 +21,14 @@ describe("built-in auth entity discovery", () => {
     });
     try {
       for (const [entity, property, target] of [
-        [Workspace, "members", Member],
-        [Member, "user", User],
-        [Member, "workspace", Workspace],
-        [Invitation, "inviter", User],
-        [Invitation, "workspace", Workspace],
+        [Workspace, "members", WorkspaceMember],
+        [WorkspaceMember, "user", User],
+        [WorkspaceMember, "workspace", Workspace],
+        [WorkspaceInvitation, "inviter", User],
+        [WorkspaceInvitation, "workspace", Workspace],
         [Account, "user", User],
         [Session, "user", User],
         [Session, "impersonatedBy", User],
-        [UserApiKey, "user", User],
-        [MemberApiKey, "member", Member],
       ] as const) {
         expect(
           orm
@@ -40,6 +36,12 @@ describe("built-in auth entity discovery", () => {
             .props.find((entry) => entry.name === property)?.targetMeta?.class,
         ).toBe(target);
       }
+      const owner = orm.getMetadata(ApiKey).properties.owner;
+      expect(owner.polymorphic).toBe(true);
+      expect(owner.polymorphTargets?.map((meta) => meta.class)).toEqual(
+        expect.arrayContaining([User, WorkspaceMember]),
+      );
+      expect(owner.createForeignKeyConstraint).toBe(false);
     } finally {
       await orm.close();
     }

@@ -9,7 +9,7 @@ interface ApiKeyStatusBadgeProps extends Omit<
   "children" | "color"
 > {
   apiKey: {
-    enabled: boolean;
+    revokedAt?: string | null;
     expiresAt?: string | null;
   };
 }
@@ -20,10 +20,10 @@ export function ApiKeyStatusBadge({
 }: ApiKeyStatusBadgeProps) {
   const { t } = useTranslation("api-key");
 
-  if (!apiKey.enabled) {
+  if (apiKey.revokedAt) {
     return (
       <Badge {...props} color="gray">
-        {t("status.disabled")}
+        {t("status.revoked")}
       </Badge>
     );
   }

@@ -1,15 +1,15 @@
 import { expectTypeOf } from "vitest";
 
-import type { AuthModuleOptions } from "../src/auth-module-options.interface.js";
-import type { AuthModuleAccountOptions } from "../src/interfaces/auth-module-account-options.interface.js";
-import type { AuthModuleApiKeyOptions } from "../src/interfaces/auth-module-api-key-options.interface.js";
-import type { AuthModuleEmailAndPasswordOptions } from "../src/interfaces/auth-module-email-and-password-options.interface.js";
-import type { AuthModuleEmailVerificationOptions } from "../src/interfaces/auth-module-email-verification-options.interface.js";
-import type { AuthModuleOAuthProvider } from "../src/interfaces/auth-module-oauth-provider.interface.js";
-import type { AuthModuleSessionOptions } from "../src/interfaces/auth-module-session-options.interface.js";
-import type { AuthModuleSocialProvider } from "../src/interfaces/auth-module-social-provider.interface.js";
-import type { AuthModuleUserOptions } from "../src/interfaces/auth-module-user-options.interface.js";
-import type { AuthModuleWorkspaceOptions } from "../src/interfaces/auth-module-workspace-options.interface.js";
+import type { AuthModuleApiKeyOptions } from "../src/api-key/interfaces/auth-module-api-key-options.interface.js";
+import type { AuthModuleAccountOptions } from "../src/core/interfaces/auth-module-account-options.interface.js";
+import type { AuthModuleEmailAndPasswordOptions } from "../src/core/interfaces/auth-module-email-and-password-options.interface.js";
+import type { AuthModuleEmailVerificationOptions } from "../src/core/interfaces/auth-module-email-verification-options.interface.js";
+import type { AuthModuleOAuthProvider } from "../src/core/interfaces/auth-module-oauth-provider.interface.js";
+import type { AuthModuleOptions } from "../src/core/interfaces/auth-module-options.interface.js";
+import type { AuthModuleSessionOptions } from "../src/core/interfaces/auth-module-session-options.interface.js";
+import type { AuthModuleSocialProvider } from "../src/core/interfaces/auth-module-social-provider.interface.js";
+import type { AuthModuleUserOptions } from "../src/core/interfaces/auth-module-user-options.interface.js";
+import type { AuthModuleWorkspaceOptions } from "../src/workspace/interfaces/auth-module-workspace-options.interface.js";
 
 type HasOption<
   Options,

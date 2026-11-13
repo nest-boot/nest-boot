@@ -7,8 +7,8 @@ import { useTranslation } from "react-i18next";
 import { Check, Copy } from "lucide-react";
 import z from "zod";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
-import { getMembersResourceKey } from "@/lib/resource-keys";
-import { memberSearchSchema } from "@/schemas/member-search-schema";
+import { getWorkspaceMembersResourceKey } from "@/lib/resource-keys";
+import { workspaceMemberSearchSchema } from "@/schemas/workspace-member-search-schema";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
 import { Link } from "@/components/link";
@@ -37,8 +37,8 @@ import { WorkspaceRole } from "@/gql/graphql";
 import { isAccessDenied } from "@/lib/auth-errors";
 import { getFormErrorMessage } from "@/lib/form-errors";
 
-const GET_ROLES_FROM_INVITE_MEMBER_ROUTE = graphql(`
-  query getRolesFromInviteMemberRoute {
+const GET_ROLES_FROM_INVITE_WORKSPACE_MEMBER_ROUTE = graphql(`
+  query getRolesFromInviteWorkspaceMemberRoute {
     workspaceRoles {
       role
       grantable
@@ -46,11 +46,11 @@ const GET_ROLES_FROM_INVITE_MEMBER_ROUTE = graphql(`
   }
 `);
 
-const CREATE_INVITATION_FROM_INVITE_MEMBER_ROUTE = graphql(`
-  mutation createInvitationFromInviteMemberRoute(
-    $input: CreateInvitationInput!
+const CREATE_WORKSPACE_INVITATION_FROM_INVITE_WORKSPACE_MEMBER_ROUTE = graphql(`
+  mutation createWorkspaceInvitationFromInviteWorkspaceMemberRoute(
+    $input: CreateWorkspaceInvitationInput!
   ) {
-    createInvitation(input: $input) {
+    createWorkspaceInvitation(input: $input) {
       id
     }
   }
@@ -59,17 +59,17 @@ const CREATE_INVITATION_FROM_INVITE_MEMBER_ROUTE = graphql(`
 export const Route = createFileRoute(
   "/_authenticated/workspaces/$workspaceId/members/invite/",
 )({
-  component: InviteMemberPage,
+  component: InviteWorkspaceMemberPage,
   beforeLoad: async ({ context, params }) => {
-    if (!context.ability.can("read", "Member")) {
+    if (!context.ability.can("read", "WorkspaceMember")) {
       throw redirect({ to: "/workspaces/$workspaceId", params });
     }
     const denied = () =>
       redirect({ to: "/workspaces/$workspaceId/members", params });
-    if (!context.ability.can("write", "Invitation")) throw denied();
+    if (!context.ability.can("write", "WorkspaceInvitation")) throw denied();
     const { data } = await context.apolloClient
       .query({
-        query: GET_ROLES_FROM_INVITE_MEMBER_ROUTE,
+        query: GET_ROLES_FROM_INVITE_WORKSPACE_MEMBER_ROUTE,
         context: { headers: { "x-workspace-id": params.workspaceId } },
         fetchPolicy: "network-only",
       })
@@ -79,33 +79,33 @@ export const Route = createFileRoute(
       });
     return {
       roleOptions: data?.workspaceRoles ?? [],
-      title: t("member:invite.title"),
+      title: t("workspace-member:invite.title"),
     };
   },
 });
 
-function InviteMemberPage() {
+function InviteWorkspaceMemberPage() {
   const { workspaceId } = Route.useParams();
-  return <InviteMemberForm key={workspaceId} />;
+  return <InviteWorkspaceMemberForm key={workspaceId} />;
 }
 
-function InviteMemberForm() {
+function InviteWorkspaceMemberForm() {
   const { t } = useTranslation();
   const { workspaceId } = Route.useParams();
   const { roleOptions } = Route.useRouteContext();
   const currentUser = useCurrentUserContext();
   const { backSearch } = useResourceNavigation({
-    key: [currentUser.id, ...getMembersResourceKey(workspaceId)],
-    searchSchema: memberSearchSchema,
+    key: [currentUser.id, ...getWorkspaceMembersResourceKey(workspaceId)],
+    searchSchema: workspaceMemberSearchSchema,
   });
   const ability = useAbility();
-  const canInvite = ability.can("write", "Invitation");
+  const canInvite = ability.can("write", "WorkspaceInvitation");
   const formId = useId();
   const [inviteLink, setInviteLink] = useState<string>();
   const [copied, setCopied] = useState(false);
   const grantableOptions = roleOptions.filter(({ grantable }) => grantable);
-  const [createInvitation] = useMutation(
-    CREATE_INVITATION_FROM_INVITE_MEMBER_ROUTE,
+  const [createWorkspaceInvitation] = useMutation(
+    CREATE_WORKSPACE_INVITATION_FROM_INVITE_WORKSPACE_MEMBER_ROUTE,
   );
 
   const copyInviteLink = async (link: string) => {
@@ -114,10 +114,13 @@ function InviteMemberForm() {
       setCopied(true);
       toast.add({
         type: "success",
-        title: t("member:details.toast.link_copied"),
+        title: t("workspace-member:details.toast.link_copied"),
       });
     } catch {
-      toast.add({ type: "error", title: t("member:invite.copy_failed") });
+      toast.add({
+        type: "error",
+        title: t("workspace-member:invite.copy_failed"),
+      });
     }
   };
 
@@ -128,17 +131,17 @@ function InviteMemberForm() {
         email: z
           .string()
           .trim()
-          .min(1, t("member:invite.email_required"))
+          .min(1, t("workspace-member:invite.email_required"))
           .email(t("auth:form.email.invalid")),
         roles: z
           .array(z.enum(WorkspaceRole))
-          .min(1, t("member:invite.role_required"))
+          .min(1, t("workspace-member:invite.role_required"))
           .refine(
             (roles) =>
               roles.every((role) =>
                 grantableOptions.some((option) => option.role === role),
               ),
-            t("member:invite.role_invalid"),
+            t("workspace-member:invite.role_invalid"),
           ),
       }),
     },
@@ -148,14 +151,14 @@ function InviteMemberForm() {
     onSubmit: async ({ value, formApi }) => {
       if (!canInvite || inviteLink) return;
       try {
-        const result = await createInvitation({
+        const result = await createWorkspaceInvitation({
           variables: {
             input: { email: value.email.trim(), roles: value.roles },
           },
         });
-        if (!result.data?.createInvitation.id)
-          throw new Error(t("member:invite.failed"));
-        const link = `${window.location.origin}/invite?invitationId=${result.data.createInvitation.id}`;
+        if (!result.data?.createWorkspaceInvitation.id)
+          throw new Error(t("workspace-member:invite.failed"));
+        const link = `${window.location.origin}/invite?invitationId=${result.data.createWorkspaceInvitation.id}`;
         setInviteLink(link);
         await copyInviteLink(link);
       } catch (error) {
@@ -164,7 +167,7 @@ function InviteMemberForm() {
             form:
               error instanceof Error
                 ? error.message
-                : t("member:invite.failed"),
+                : t("workspace-member:invite.failed"),
             fields: {},
           },
         });
@@ -179,11 +182,11 @@ function InviteMemberForm() {
   return (
     <Page
       variant="compact"
-      title={t("member:invite.title")}
-      description={t("member:invite.description")}
+      title={t("workspace-member:invite.title")}
+      description={t("workspace-member:invite.description")}
       breadcrumbActions={[
         {
-          label: t("member:title"),
+          label: t("workspace-member:title"),
           render: (
             <Link
               to="/workspaces/$workspaceId/members"
@@ -199,9 +202,11 @@ function InviteMemberForm() {
           {inviteLink ? (
             <Card>
               <CardHeader>
-                <CardTitle>{t("member:invite.link_generated")}</CardTitle>
+                <CardTitle>
+                  {t("workspace-member:invite.link_generated")}
+                </CardTitle>
                 <CardDescription>
-                  {t("member:invite.link_generated_description")}
+                  {t("workspace-member:invite.link_generated_description")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -219,16 +224,16 @@ function InviteMemberForm() {
                   ) : (
                     <Copy data-icon="inline-start" />
                   )}
-                  {t("member:invite.copy_link")}
+                  {t("workspace-member:invite.copy_link")}
                 </Button>
               </CardFooter>
             </Card>
           ) : (
             <Card>
               <CardHeader>
-                <CardTitle>{t("member:invite.form_title")}</CardTitle>
+                <CardTitle>{t("workspace-member:invite.form_title")}</CardTitle>
                 <CardDescription>
-                  {t("member:invite.form_description")}
+                  {t("workspace-member:invite.form_description")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -249,8 +254,10 @@ function InviteMemberForm() {
                         {(field) => (
                           <Input
                             type="email"
-                            label={t("member:invite.email_label")}
-                            placeholder={t("member:invite.email_placeholder")}
+                            label={t("workspace-member:invite.email_label")}
+                            placeholder={t(
+                              "workspace-member:invite.email_placeholder",
+                            )}
                             value={field.state.value}
                             onChange={(event) =>
                               field.handleChange(event.target.value)
@@ -266,7 +273,7 @@ function InviteMemberForm() {
                         {(field) => (
                           <>
                             <RoleCheckboxGroup
-                              label={t("member:invite.role_label")}
+                              label={t("workspace-member:invite.role_label")}
                               options={grantableOptions}
                               value={field.state.value}
                               onValueChange={field.handleChange}
@@ -281,7 +288,9 @@ function InviteMemberForm() {
                     </FormLayoutItem>
                     {grantableOptions.length === 0 && (
                       <FormLayoutItem>
-                        <FieldError>{t("member:invite.no_roles")}</FieldError>
+                        <FieldError>
+                          {t("workspace-member:invite.no_roles")}
+                        </FieldError>
                       </FormLayoutItem>
                     )}
                     {error && (
@@ -299,7 +308,7 @@ function InviteMemberForm() {
                   loading={submitting}
                   disabled={!canInvite || grantableOptions.length === 0}
                 >
-                  {t("member:invite.confirm_and_copy")}
+                  {t("workspace-member:invite.confirm_and_copy")}
                 </Button>
               </CardFooter>
             </Card>

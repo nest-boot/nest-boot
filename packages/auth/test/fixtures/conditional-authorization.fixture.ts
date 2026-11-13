@@ -1,14 +1,18 @@
 import { RequestContext } from "@nest-boot/request-context";
 
-import { AuthAbility } from "../../src/auth.ability.js";
-import { Member } from "../../src/entities/member.entity.js";
-import { User } from "../../src/entities/user.entity.js";
-import { Workspace } from "../../src/entities/workspace.entity.js";
-import { MemberApiKeyService } from "../../src/services/member-api-key.service.js";
-import { SessionService } from "../../src/services/session.service.js";
-import { UserService } from "../../src/services/user.service.js";
-import { UserApiKeyService } from "../../src/services/user-api-key.service.js";
+import { UserApiKeyService } from "../../src/api-key/services/user-api-key.service.js";
+import { WorkspaceApiKeyService } from "../../src/api-key/services/workspace-api-key.service.js";
+import { AuthAbility } from "../../src/common/auth.ability.js";
+import { User } from "../../src/core/entities/user.entity.js";
+import { SessionService } from "../../src/core/services/session.service.js";
+import { UserService } from "../../src/core/services/user.service.js";
+import { Workspace } from "../../src/workspace/entities/workspace.entity.js";
+import { WorkspaceMember } from "../../src/workspace/entities/workspace-member.entity.js";
+import { WorkspaceMemberService } from "../../src/workspace/services/workspace-member.service.js";
 import { createWorkspaceServices } from "../workspace-service.fixture.js";
+import { createTestApiKeyService } from "./auth-context.fixture.js";
+import { createTestAuthContext } from "./auth-context.fixture.js";
+import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 /**
  * Runs a test with the fixture's user and workspace identity.
  * @param callback - Work to execute in the supplied context.
@@ -21,8 +25,8 @@ export async function withIdentity(
     RequestContext.set(User, data.user);
     RequestContext.set(Workspace, data.workspace);
     RequestContext.set(
-      Member,
-      Object.assign(new Member(), {
+      WorkspaceMember,
+      Object.assign(new WorkspaceMember(), {
         id: "member",
         user: data.user,
         workspace: data.workspace,
@@ -33,19 +37,31 @@ export async function withIdentity(
       { action: "manage", subject: "all" },
       {
         action: ["read", "write", "update", "revoke"],
-        subject: ["User", "Workspace", "Member", "Invitation", "Session"],
+        subject: [
+          "User",
+          "Workspace",
+          "WorkspaceMember",
+          "WorkspaceInvitation",
+          "Session",
+        ],
         inverted: true,
         conditions: { id: "blocked" },
       },
       {
         action: ["create", "write"],
-        subject: ["User", "Workspace", "Member", "UserApiKey", "MemberApiKey"],
+        subject: [
+          "User",
+          "Workspace",
+          "WorkspaceMember",
+          "UserApiKey",
+          "WorkspaceApiKey",
+        ],
         inverted: true,
         conditions: { name: "blocked" },
       },
       {
         action: "write",
-        subject: "Invitation",
+        subject: "WorkspaceInvitation",
         inverted: true,
         conditions: { email: "blocked@example.com" },
       },
@@ -83,16 +99,54 @@ function fixture() {
     workspace,
     userService: new UserService(
       result.em,
-      { workspace: { enabled: true } },
+      withAuthTestFeatures({ workspace: { enabled: true } }),
       { hash: vi.fn().mockResolvedValue("hash") } as never,
       {} as never,
+      createTestAuthContext(
+        result.em,
+        withAuthTestFeatures({ workspace: { enabled: true } }),
+      ),
     ),
-    sessionService: new SessionService({}, result.em),
-    userApiKeyService: new UserApiKeyService(result.em, {
-      workspace: { enabled: true },
-    }),
-    memberApiKeyService: new MemberApiKeyService(result.em, {
-      workspace: { enabled: true },
-    }),
+    sessionService: new SessionService(
+      {},
+      result.em,
+      createTestAuthContext(result.em, {}),
+    ),
+    userApiKeyService: new UserApiKeyService(
+      result.em,
+      withAuthTestFeatures({
+        workspace: { enabled: true },
+      }),
+      createTestApiKeyService(
+        result.em,
+        withAuthTestFeatures({
+          workspace: { enabled: true },
+        }),
+      ),
+    ),
+    workspaceApiKeyService: new WorkspaceApiKeyService(
+      result.em,
+      withAuthTestFeatures({
+        workspace: { enabled: true },
+      }),
+      createTestApiKeyService(
+        result.em,
+        withAuthTestFeatures({
+          workspace: { enabled: true },
+        }),
+      ),
+      new WorkspaceMemberService(
+        result.em,
+        withAuthTestFeatures({
+          workspace: { enabled: true },
+        }),
+        createTestAuthContext(
+          result.em,
+          withAuthTestFeatures({
+            workspace: { enabled: true },
+          }),
+        ),
+      ),
+    ),
   };
 }

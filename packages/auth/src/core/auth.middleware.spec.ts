@@ -1,0 +1,1091 @@
+import { EntityManager } from "@mikro-orm/core";
+import { REQUEST, RequestContext } from "@nest-boot/request-context";
+import { Test } from "@nestjs/testing";
+import { NextFunction, Request } from "express";
+import { type Mock } from "vitest";
+
+import { createTestAuthContext } from "../../test/fixtures/auth-context.fixture.js";
+import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
+import { mockRlsContext } from "../../test/mock-rls-context.js";
+import { ApiKey as ApiKeyRecord } from "../api-key/entities/api-key.entity.js";
+import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
+import {
+  WorkspaceApiKey as ApiKey,
+  WorkspaceApiKey as BaseApiKey,
+  WorkspaceApiKey,
+} from "../api-key/objects/workspace-api-key.object.js";
+import { ApiKeyAuthenticationService } from "../api-key/services/api-key-authentication.service.js";
+import { AuthAbility } from "../common/auth.ability.js";
+import {
+  Workspace as BaseWorkspace,
+  Workspace,
+  Workspace as WorkspaceEntity,
+} from "../workspace/entities/workspace.entity.js";
+import {
+  WorkspaceInvitation as BaseWorkspaceInvitation,
+  WorkspaceInvitation as WorkspaceInvitationEntity,
+} from "../workspace/entities/workspace-invitation.entity.js";
+import {
+  WorkspaceMember as BaseWorkspaceMember,
+  WorkspaceMember,
+  WorkspaceMember as WorkspaceMemberEntity,
+} from "../workspace/entities/workspace-member.entity.js";
+import { AuthMiddleware } from "./auth.middleware.js";
+import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
+import { AuthContext } from "./auth-context.js";
+import { API_KEY } from "./constants/auth.constants.js";
+import {
+  Account as AccountEntity,
+  Account as BaseAccount,
+} from "./entities/account.entity.js";
+import {
+  Session as BaseSession,
+  Session as SessionEntity,
+} from "./entities/session.entity.js";
+import {
+  User as BaseUser,
+  User,
+  User as UserEntity,
+} from "./entities/user.entity.js";
+import {
+  Verification as BaseVerification,
+  Verification as VerificationEntity,
+} from "./entities/verification.entity.js";
+import { type AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
+import { SessionService } from "./services/session.service.js";
+
+const TestApiKey = BaseApiKey;
+
+type TestApiKey = BaseApiKey;
+
+const TestUser = BaseUser;
+
+type TestUser = BaseUser;
+
+const TestSession = BaseSession;
+
+type TestSession = BaseSession;
+
+const TestWorkspace = BaseWorkspace;
+
+type TestWorkspace = BaseWorkspace;
+
+const TestWorkspaceMember = BaseWorkspaceMember;
+
+type TestWorkspaceMember = BaseWorkspaceMember;
+
+const testEntities = {
+  account: AccountEntity,
+  userApiKey: UserApiKey,
+  workspaceApiKey: ApiKey,
+  session: SessionEntity,
+  user: UserEntity,
+  verification: VerificationEntity,
+  workspace: WorkspaceEntity,
+  invitation: WorkspaceInvitationEntity,
+  member: WorkspaceMemberEntity,
+};
+
+/**
+ * Returns test middleware and its mocked dependencies.
+ * @param getCurrentAuthenticatedSession - Mock for resolving the authenticated session.
+ * @param findOne - Mock for the entity lookup.
+ * @param validate - Mock for API key authentication.
+ * @param entities - Entity classes registered for the operation.
+ * @param options - Authentication module configuration.
+ * @returns Test middleware and its mocked dependencies.
+ */
+async function createMiddleware(
+  getCurrentAuthenticatedSession: Mock,
+  findOne: Mock,
+  validate = vi.fn(),
+  entities: typeof testEntities = testEntities,
+  options: Partial<AuthModuleOptions> = { workspace: { enabled: true } },
+) {
+  const sessionService = {
+    getCurrentAuthenticatedSession,
+  } as unknown as SessionService;
+  const em = {
+    getContext: vi.fn().mockReturnThis(),
+    getSessionContext: vi.fn(),
+    getTransactionContext: vi.fn(),
+    setSessionContext: vi.fn(),
+    isInTransaction: vi.fn(),
+    fork: vi.fn(),
+    findOne,
+  };
+  const moduleRef = await Test.createTestingModule({
+    providers: [
+      AuthMiddleware,
+      AuthContext,
+      {
+        provide: MODULE_OPTIONS_TOKEN,
+        useValue: withAuthTestFeatures({
+          ...options,
+          workspace: { ...options.workspace, enabled: true },
+          entities,
+        }),
+      },
+      {
+        provide: SessionService,
+        useValue: sessionService,
+      },
+      {
+        provide: ApiKeyAuthenticationService,
+        useValue: { validate },
+      },
+      {
+        provide: EntityManager,
+        useValue: em,
+      },
+    ],
+  }).compile();
+  return {
+    em,
+    middleware: moduleRef.get(AuthMiddleware),
+    validate,
+  };
+}
+
+/**
+ * Returns result of the callback within the request context.
+ * @param request - HTTP request to expose through the test context.
+ * @param callback - Work to execute in the supplied context.
+ * @returns Result of the callback within the request context.
+ */
+async function runInRequestContext<T>(
+  request: Request,
+  callback: () => Promise<T>,
+): Promise<T> {
+  const context = new RequestContext({ type: "http" });
+  context.set(REQUEST, request);
+  return await RequestContext.run(context, callback);
+}
+
+describe("AuthMiddleware", () => {
+  it.each(["valid", "deleted", "failure"] as const)(
+    "revalidates a %s session after password reset and fails closed",
+    async (state) => {
+      const user = Object.assign(new TestUser(), { id: "user" });
+      const session = Object.assign(new TestSession(), {
+        id: "session",
+        token: "token",
+        user,
+      });
+      const findOne = vi.fn();
+      const { middleware, em } = await createMiddleware(vi.fn(), findOne);
+      mockRlsContext(em);
+      if (state === "failure") {
+        findOne.mockRejectedValue(new Error("Database unavailable"));
+      } else {
+        findOne.mockResolvedValue(state === "valid" ? session : null);
+      }
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          const ability = new AuthAbility([
+            { action: "manage", subject: "all" },
+          ]);
+          RequestContext.set(UserEntity, user);
+          RequestContext.set(SessionEntity, session);
+          RequestContext.set(WorkspaceEntity, new TestWorkspace());
+          RequestContext.set(AuthAbility, ability);
+          if (state === "failure") {
+            await expect(middleware.revalidateCurrentSession()).rejects.toThrow(
+              "Database unavailable",
+            );
+          } else {
+            await middleware.revalidateCurrentSession();
+          }
+          expect(findOne).toHaveBeenCalledWith(
+            SessionEntity,
+            {
+              id: session.id,
+              token: session.token,
+              expiresAt: { $gt: expect.any(Date) },
+            },
+            { refresh: true },
+          );
+          if (state === "valid") {
+            expect(RequestContext.get(SessionEntity)).toBe(session);
+            expect(RequestContext.get(AuthAbility)).toBe(ability);
+            expect(em.setSessionContext).not.toHaveBeenCalled();
+          } else {
+            expect(RequestContext.get(SessionEntity)).toBeNull();
+            expect(RequestContext.get(UserEntity)).toBeNull();
+            expect(RequestContext.get(WorkspaceEntity)).toBeNull();
+            expect(RequestContext.get(AuthAbility)?.can("manage", "all")).toBe(
+              false,
+            );
+            expect(em.setSessionContext).toHaveBeenCalledWith({
+              role: "anonymous",
+              variables: {
+                "app.user.id": "",
+                "app.workspace.id": "",
+                "app.system_account.id": "",
+                "app.member.id": "",
+              },
+            });
+          }
+        },
+      );
+    },
+  );
+  it("does not replace API-key or anonymous identity while revalidating a session", async () => {
+    const { middleware, em } = await createMiddleware(vi.fn(), vi.fn());
+    await middleware.revalidateCurrentSession();
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      const apiKey = new UserApiKey(new ApiKeyRecord());
+      RequestContext.set(API_KEY, apiKey);
+      await middleware.revalidateCurrentSession();
+      expect(RequestContext.get(API_KEY)).toBe(apiKey);
+    });
+    expect(em.findOne).not.toHaveBeenCalled();
+    expect(em.setSessionContext).not.toHaveBeenCalled();
+  });
+  it("revokes the replacement identity when its ability cannot be built", async () => {
+    const user = Object.assign(new TestUser(), { id: "replacement" });
+    const session = Object.assign(new TestSession(), {
+      user,
+      token: "replacement",
+      expiresAt: new Date(Date.now() + 60000),
+    });
+    const { middleware, em } = await createMiddleware(
+      vi.fn(),
+      vi.fn().mockResolvedValueOnce(session).mockResolvedValueOnce(user),
+      vi.fn(),
+      testEntities,
+      {
+        workspace: { enabled: true },
+        buildAbility: (_rules) => {
+          throw new Error("Invalid rules");
+        },
+        user: {},
+      },
+    );
+    mockRlsContext(em);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(BaseUser, new TestUser());
+      RequestContext.set(BaseSession, new TestSession());
+      await expect(
+        middleware.authenticateSession("replacement"),
+      ).rejects.toThrow("Invalid rules");
+      expect(RequestContext.get(BaseUser)).toBeNull();
+      expect(RequestContext.get(BaseSession)).toBeNull();
+      expect(RequestContext.get(AuthAbility)?.rules).toEqual([]);
+      expect(em.setSessionContext).toHaveBeenLastCalledWith({
+        role: "anonymous",
+        variables: {
+          "app.user.id": "",
+          "app.workspace.id": "",
+          "app.system_account.id": "",
+          "app.member.id": "",
+        },
+      });
+    });
+  });
+  it("hydrates registration results without authenticating the request or widening its database scope", async () => {
+    const { middleware, em } = await createMiddleware(vi.fn(), vi.fn());
+    const session = mockRlsContext(em);
+    const user = Object.assign(new TestUser(), { id: "registered-user" });
+    const fork = em.fork() as EntityManager;
+    em.fork.mockClear();
+    const findOneOrFail = vi.fn().mockResolvedValue(user);
+    Object.assign(fork, { findOneOrFail });
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(EntityManager, em as unknown as EntityManager);
+      await expect(middleware.resolveRegisteredUser(user.id)).resolves.toBe(
+        user,
+      );
+      await middleware.refreshCurrentUser();
+      expect(findOneOrFail).toHaveBeenCalledExactlyOnceWith(UserEntity, {
+        id: user.id,
+      });
+      expect(RequestContext.get(UserEntity)).toBeUndefined();
+      expect(RequestContext.get(SessionEntity)).toBeUndefined();
+      expect(RequestContext.get(EntityManager)).toBe(em);
+      expect(em.getSessionContext()).toBe(session);
+      expect(em.setSessionContext).not.toHaveBeenCalled();
+      expect(em.findOne).not.toHaveBeenCalled();
+    });
+  });
+  it("clears identity, abilities and database scope through the sign-out middleware boundary", async () => {
+    const { middleware, em } = await createMiddleware(vi.fn(), vi.fn());
+    mockRlsContext(em);
+    await RequestContext.run(new RequestContext({ type: "test" }), () => {
+      RequestContext.set(UserEntity, new TestUser());
+      RequestContext.set(SessionEntity, new TestSession());
+      RequestContext.set(WorkspaceEntity, new TestWorkspace());
+      RequestContext.set(WorkspaceMemberEntity, new TestWorkspaceMember());
+      RequestContext.set(API_KEY, new WorkspaceApiKey(new ApiKeyRecord()));
+      RequestContext.set(
+        AuthAbility,
+        new AuthAbility([
+          { action: "read", subject: UserEntity },
+          { action: "delete", subject: WorkspaceEntity },
+        ]),
+      );
+      middleware.clearAuthentication();
+      for (const token of [
+        UserEntity,
+        SessionEntity,
+        WorkspaceEntity,
+        WorkspaceMemberEntity,
+      ]) {
+        expect(RequestContext.get(token)).toBeNull();
+      }
+      expect(RequestContext.get(API_KEY)).toBeNull();
+      expect(RequestContext.get(AuthAbility)?.can("read", UserEntity)).toBe(
+        false,
+      );
+      expect(
+        RequestContext.get(AuthAbility)?.can("delete", WorkspaceEntity),
+      ).toBe(false);
+      expect(em.setSessionContext).toHaveBeenCalledExactlyOnceWith({
+        role: "anonymous",
+        variables: {
+          "app.user.id": "",
+          "app.workspace.id": "",
+          "app.system_account.id": "",
+          "app.member.id": "",
+        },
+      });
+    });
+  });
+  it.each([false, true])(
+    "preserves case in RLS grants and API-key intersections (key: %s)",
+    async (useKey) => {
+      const user = Object.assign(new TestUser(), {
+        id: "user-1",
+        roles: ["editor"],
+        permissions: ["User:read", "user:read"],
+      });
+      const workspace = Object.assign(new TestWorkspace(), {
+        id: "workspace-1",
+      });
+      const member = Object.assign(new TestWorkspaceMember(), {
+        user,
+        workspace,
+        roles: ["manager"],
+        permissions: ["Workspace:update", "workspace:update"],
+      });
+      const apiKey = Object.assign(new UserApiKey(new ApiKeyRecord()), {
+        user,
+        workspace: null,
+        permissions: ["user:read", "Workspace:UPDATE"],
+      });
+      const { middleware, em } = await createMiddleware(
+        vi
+          .fn()
+          .mockResolvedValue(
+            useKey ? null : { user, session: new TestSession() },
+          ),
+        vi.fn().mockResolvedValueOnce(workspace).mockResolvedValueOnce(member),
+        vi.fn().mockResolvedValue({ apiKey, user, ownerType: "user" }),
+        testEntities,
+        {
+          user: { roles: { editor: ["User:READ"] } },
+          workspace: {
+            enabled: true,
+            roles: { manager: ["Workspace:UPDATE"] },
+          },
+        },
+      );
+      const request = {
+        headers: {
+          "x-workspace-id": workspace.id,
+          ...(useKey ? { authorization: "Bearer sk-key" } : {}),
+        },
+      } as unknown as Request;
+      const next = vi.fn();
+      await runInRequestContext(request, () =>
+        middleware.use(request, {} as never, next),
+      );
+      expect(next).toHaveBeenCalledExactlyOnceWith();
+      expect(em.setSessionContext).toHaveBeenCalledWith({
+        role: "authenticated",
+        variables: {
+          "app.user.id": user.id,
+          "app.workspace.id": workspace.id,
+          "app.system_account.id": "",
+          "app.member.id": member.id,
+        },
+      });
+    },
+  );
+  it.each([
+    ["anonymous", false],
+    ["session", true],
+    ["session", false],
+    ["user-key", true],
+    ["user-key", false],
+    ["member-key", true],
+  ] as const)(
+    "stages only identities for %s (membership: %s)",
+    async (kind, hasWorkspaceMember) => {
+      const user = Object.assign(new TestUser(), {
+        id: "user-1",
+        roles: ["editor"],
+        permissions: ["user:read", "user:delete"],
+      });
+      const workspace = Object.assign(new TestWorkspace(), {
+        id: "workspace-1",
+      });
+      const member = Object.assign(new TestWorkspaceMember(), {
+        roles: ["manager"],
+        permissions: ["workspace-member:invite", "workspace:update"],
+        type: kind === "member-key" ? "SERVICE_ACCOUNT" : "USER",
+        user: kind === "member-key" ? null : user,
+        workspace,
+      });
+      const apiKey = Object.assign(
+        kind === "member-key"
+          ? new WorkspaceApiKey(new ApiKeyRecord())
+          : new UserApiKey(new ApiKeyRecord()),
+        {
+          user: kind === "member-key" ? null : user,
+          member: kind === "member-key" ? member : null,
+          permissions:
+            kind === "member-key"
+              ? ["workspace:update"]
+              : ["user:read", "workspace:update", "session:read"],
+        },
+      );
+      const { middleware, em } = await createMiddleware(
+        vi
+          .fn()
+          .mockResolvedValue(
+            kind === "session" ? { user, session: new TestSession() } : null,
+          ),
+        vi
+          .fn()
+          .mockResolvedValueOnce(workspace)
+          .mockResolvedValueOnce(hasWorkspaceMember ? member : null),
+        vi.fn().mockResolvedValue({
+          apiKey,
+          user: kind === "member-key" ? null : user,
+          member: kind === "member-key" ? member : null,
+          workspace,
+          ownerType: kind === "member-key" ? "workspace_member" : "user",
+        }),
+        testEntities,
+        {
+          user: { roles: { editor: ["user:read", "user:update"] } },
+          workspace: {
+            enabled: true,
+            roles: { manager: ["workspace-member:read", "workspace:update"] },
+          },
+        },
+      );
+      const request = {
+        headers: {
+          "x-workspace-id": workspace.id,
+          ...(kind.endsWith("key") ? { authorization: "Bearer sk-key" } : {}),
+        },
+      } as unknown as Request;
+      const next = vi.fn();
+      await runInRequestContext(request, () =>
+        middleware.use(request, {} as never, next),
+      );
+      expect(next).toHaveBeenCalledExactlyOnceWith();
+      expect(em.setSessionContext).toHaveBeenCalledExactlyOnceWith({
+        role: kind === "anonymous" ? "anonymous" : "authenticated",
+        variables: {
+          "app.user.id":
+            kind === "session" || kind === "user-key" ? user.id : "",
+          "app.workspace.id":
+            kind === "anonymous" || kind === "member-key" || hasWorkspaceMember
+              ? workspace.id
+              : "",
+          "app.system_account.id": "",
+          "app.member.id":
+            kind !== "anonymous" &&
+            (kind === "member-key" || hasWorkspaceMember)
+              ? member.id
+              : "",
+        },
+      });
+    },
+  );
+  it("refreshes the current profile without dropping its API-key permission ceiling", async () => {
+    const user = Object.assign(new TestUser(), {
+      id: "user",
+      name: "New name",
+      permissions: ["user:read", "user:delete"],
+    });
+    const key = Object.assign(new UserApiKey(new ApiKeyRecord()), {
+      permissions: ["user:read"],
+    });
+    const findOne = vi.fn().mockResolvedValue(user);
+    const { middleware, em } = await createMiddleware(
+      vi.fn(),
+      findOne,
+      vi.fn(),
+      testEntities,
+      { workspace: { enabled: true } },
+    );
+    mockRlsContext(em).variables = {
+      "app.user.id": user.id,
+      "app.workspace.id": "",
+      "app.system_account.id": "",
+      "app.member.id": "",
+    };
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(
+        BaseUser,
+        Object.assign(new TestUser(), { id: user.id, name: "Old name" }),
+      );
+      RequestContext.set(API_KEY, key);
+      await middleware.refreshCurrentUser();
+      expect(findOne).toHaveBeenCalledWith(
+        BaseUser,
+        { id: user.id },
+        { refresh: true },
+      );
+      expect(RequestContext.get(BaseUser)).toBe(user);
+      expect(RequestContext.get(API_KEY)).toBe(key);
+      expect(RequestContext.get(AuthAbility)?.can("read", BaseUser)).toBe(true);
+      expect(RequestContext.get(AuthAbility)?.can("delete", BaseUser)).toBe(
+        false,
+      );
+      expect(em.setSessionContext).not.toHaveBeenCalled();
+      findOne.mockResolvedValueOnce(null);
+      await expect(middleware.refreshCurrentUser()).rejects.toThrow(
+        "no longer available",
+      );
+      expect(RequestContext.get(BaseUser)).toBeNull();
+      expect(RequestContext.get(API_KEY)).toBeNull();
+      expect(em.setSessionContext).toHaveBeenLastCalledWith({
+        role: "anonymous",
+        variables: {
+          "app.user.id": "",
+          "app.workspace.id": "",
+          "app.system_account.id": "",
+          "app.member.id": "",
+        },
+      });
+    });
+  });
+  it("rejects identity changes inside an existing transaction", async () => {
+    const { middleware, em } = await createMiddleware(vi.fn(), vi.fn());
+    em.isInTransaction.mockReturnValue(true);
+    expect(() => {
+      middleware.assertAuthenticationCanChange();
+    }).toThrow("outside an active transaction");
+    expect(em.setSessionContext).not.toHaveBeenCalled();
+  });
+  it("replaces stale identity and abilities when adopting a newly issued session", async () => {
+    const user = Object.assign(new TestUser(), {
+      id: "new-user",
+      permissions: ["user:read"],
+    });
+    const session = Object.assign(new TestSession(), {
+      user: { id: user.id },
+      token: "new-token",
+    });
+    const findOne = vi
+      .fn()
+      .mockResolvedValueOnce(session)
+      .mockResolvedValueOnce(user)
+      .mockResolvedValueOnce(null);
+    const { middleware, em } = await createMiddleware(vi.fn(), findOne);
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(BaseUser, new TestUser());
+      RequestContext.set(API_KEY, new TestApiKey());
+      RequestContext.set(
+        BaseWorkspace,
+        Object.assign(new TestWorkspace(), { id: "old-workspace" }),
+      );
+      RequestContext.set(BaseWorkspaceMember, new TestWorkspaceMember());
+      RequestContext.set(AuthAbility, new AuthAbility());
+      await expect(middleware.authenticateSession("new-token")).resolves.toBe(
+        user,
+      );
+      expect(RequestContext.get(BaseSession)).toBe(session);
+      expect(RequestContext.get(BaseUser)).toBe(user);
+      expect(RequestContext.get<BaseApiKey>(API_KEY)).toBeNull();
+      expect(RequestContext.get(BaseWorkspaceMember)).toBeNull();
+      expect(RequestContext.get(AuthAbility)).toBeInstanceOf(AuthAbility);
+      expect(
+        RequestContext.get(AuthAbility)?.can("update", BaseWorkspace),
+      ).toBe(false);
+      expect(em.setSessionContext).toHaveBeenCalledWith({
+        role: "authenticated",
+        variables: {
+          "app.user.id": "new-user",
+          "app.workspace.id": "",
+          "app.system_account.id": "",
+          "app.member.id": "",
+        },
+      });
+    });
+  });
+  it("does not adopt missing or banned sessions", async () => {
+    const findOne = vi.fn().mockResolvedValue(null);
+    const { middleware, em } = await createMiddleware(vi.fn(), findOne);
+    await expect(middleware.authenticateSession("invalid")).rejects.toThrow(
+      "not valid",
+    );
+    expect(findOne).toHaveBeenCalledWith(SessionEntity, {
+      token: "invalid",
+      expiresAt: { $gt: expect.any(Date) },
+    });
+    findOne
+      .mockResolvedValueOnce({ user: { id: "banned" } })
+      .mockResolvedValueOnce({ banned: true });
+    await expect(
+      middleware.authenticateSession("banned-token"),
+    ).rejects.toThrow("not valid");
+    expect(em.setSessionContext).not.toHaveBeenCalled();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+  it.each([
+    ["anonymous", false, false, "workspace-1"],
+    ["session", true, true, "workspace-1"],
+    ["session", true, false, ""],
+    ["user-key", true, true, "workspace-1"],
+    ["user-key", true, false, ""],
+    ["member-key", false, true, "workspace-1"],
+  ] as const)(
+    "updates a staged session after %s authentication (user=%s, member=%s)",
+    async (kind, hasUser, hasWorkspaceMember, expectedWorkspace) => {
+      const user = Object.assign(new TestUser(), { id: "user-1" });
+      const workspace = Object.assign(new TestWorkspace(), {
+        id: "workspace-1",
+      });
+      const member = Object.assign(new TestWorkspaceMember(), {
+        id: "member-1",
+        type: kind === "member-key" ? "SERVICE_ACCOUNT" : "USER",
+        user: kind === "member-key" ? null : user,
+        workspace,
+      });
+      const findOne = vi
+        .fn()
+        .mockResolvedValueOnce(workspace)
+        .mockResolvedValueOnce(hasWorkspaceMember ? member : null);
+      const getCurrentAuthenticatedSession = vi
+        .fn()
+        .mockResolvedValue(
+          kind === "session" ? { user, session: new TestSession() } : null,
+        );
+      const validate = vi.fn().mockResolvedValue({
+        apiKey:
+          kind === "member-key"
+            ? Object.assign(new WorkspaceApiKey(new ApiKeyRecord()), { member })
+            : Object.assign(new UserApiKey(new ApiKeyRecord()), { user }),
+        ownerType: kind === "user-key" ? "user" : "workspace_member",
+        user: kind === "member-key" ? null : user,
+        member: kind === "member-key" ? member : null,
+        workspace,
+      });
+      const { middleware, em } = await createMiddleware(
+        getCurrentAuthenticatedSession,
+        findOne,
+        validate,
+      );
+      mockRlsContext(em);
+      const request = {
+        headers: {
+          "x-workspace-id": "workspace-1",
+          ...(kind.endsWith("key") ? { authorization: "Bearer sk-key" } : {}),
+        },
+      } as unknown as Request;
+      const next = vi.fn(() => {
+        expect(em.setSessionContext).toHaveBeenCalledExactlyOnceWith({
+          role: kind === "anonymous" ? "anonymous" : "authenticated",
+          variables: {
+            "app.user.id": hasUser ? "user-1" : "",
+            "app.workspace.id": expectedWorkspace,
+            "app.system_account.id": "",
+            "app.member.id": hasWorkspaceMember ? member.id : "",
+          },
+        });
+      });
+      await runInRequestContext(request, () =>
+        middleware.use(request, {} as never, next),
+      );
+      expect(next).toHaveBeenCalledExactlyOnceWith();
+      if (hasUser) {
+        expect(
+          vi.mocked(em.setSessionContext).mock.invocationCallOrder[0],
+        ).toBeGreaterThan(findOne.mock.invocationCallOrder[1]);
+      }
+    },
+  );
+  it("stages a database session even when the application did not configure one", async () => {
+    const { middleware, em } = await createMiddleware(
+      vi.fn().mockResolvedValue({
+        user: new TestUser(),
+        session: new TestSession(),
+      }),
+      vi.fn(),
+    );
+    const request = { headers: {} } as Request;
+    const next = vi.fn();
+    await runInRequestContext(request, () =>
+      middleware.use(request, {} as never, next),
+    );
+    expect(em.setSessionContext).toHaveBeenCalledWith({
+      role: "authenticated",
+      variables: {
+        "app.user.id": expect.any(String),
+        "app.workspace.id": "",
+        "app.system_account.id": "",
+        "app.member.id": "",
+      },
+    });
+    expect(next).toHaveBeenCalledExactlyOnceWith();
+  });
+  it("clears the selected workspace variable when no workspace resolves", async () => {
+    const { middleware, em } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      vi.fn().mockResolvedValue(null),
+    );
+    mockRlsContext(em);
+    const request = {
+      headers: { "x-workspace-id": "missing" },
+    } as unknown as Request;
+    await runInRequestContext(request, () =>
+      middleware.use(request, {} as never, vi.fn()),
+    );
+    expect(em.setSessionContext).toHaveBeenCalledWith({
+      role: "anonymous",
+      variables: {
+        "app.user.id": "",
+        "app.workspace.id": "",
+        "app.system_account.id": "",
+        "app.member.id": "",
+      },
+    });
+  });
+  it("forwards session staging errors without running the handler", async () => {
+    const { middleware, em } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      vi.fn(),
+    );
+    mockRlsContext(em);
+    const error = new Error("session cannot change during a transaction");
+    vi.mocked(em.setSessionContext).mockImplementation(() => {
+      throw error;
+    });
+    const request = { headers: {} } as Request;
+    const next = vi.fn();
+    await runInRequestContext(request, () =>
+      middleware.use(request, {} as never, next),
+    );
+    expect(next).toHaveBeenCalledExactlyOnceWith(error);
+  });
+  it("should continue without context when no session is returned", async () => {
+    const getCurrentAuthenticatedSession = vi.fn().mockResolvedValue(null);
+    const findOne = vi.fn();
+    const next = vi.fn() as NextFunction;
+    const { middleware } = await createMiddleware(
+      getCurrentAuthenticatedSession,
+      findOne,
+    );
+    const request = {
+      headers: {
+        "x-empty": undefined,
+        "x-test": ["a", "b"],
+      },
+    } as unknown as Request;
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, next);
+    });
+    expect(getCurrentAuthenticatedSession).toHaveBeenCalledWith();
+    expect(findOne).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+  it("does not register self aliases when base entities are configured", async () => {
+    const next = vi.fn() as NextFunction;
+    const alias = vi.spyOn(RequestContext, "alias");
+    const { middleware } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      vi.fn(),
+      vi.fn(),
+      {
+        account: BaseAccount,
+        userApiKey: UserApiKey,
+        workspaceApiKey: BaseApiKey,
+        session: BaseSession,
+        user: BaseUser,
+        verification: BaseVerification,
+        workspace: BaseWorkspace,
+        invitation: BaseWorkspaceInvitation,
+        member: BaseWorkspaceMember,
+      },
+    );
+    const request = { headers: {} } as Request;
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, next);
+    });
+    expect(alias).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledOnce();
+  });
+  it("should store authenticated user and session in request context", async () => {
+    const user = {
+      id: "user-1",
+    };
+    const session = {
+      token: "session-token",
+    };
+    const getCurrentAuthenticatedSession = vi.fn().mockResolvedValue({
+      session,
+      user,
+    });
+    const findOne = vi.fn();
+    const requestContextSet = vi.spyOn(RequestContext, "set");
+    const requestContextAlias = vi.spyOn(RequestContext, "alias");
+    const next = vi.fn() as NextFunction;
+    const { middleware } = await createMiddleware(
+      getCurrentAuthenticatedSession,
+      findOne,
+    );
+    const request = {
+      headers: {
+        authorization: "Bearer token",
+      },
+    } as unknown as Request;
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, next);
+      expect(RequestContext.get(BaseUser)).toBe(user);
+      expect(RequestContext.get(UserEntity)).toBe(user);
+      expect(RequestContext.get(BaseSession)).toBe(session);
+      expect(RequestContext.get(SessionEntity)).toBe(session);
+    });
+    expect(requestContextAlias).not.toHaveBeenCalled();
+    expect(findOne).not.toHaveBeenCalled();
+    expect(requestContextSet).toHaveBeenCalledWith(BaseUser, user);
+    expect(requestContextSet).toHaveBeenCalledWith(BaseSession, session);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+  it("gives a valid session precedence over a Bearer API key", async () => {
+    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const session = Object.assign(new TestSession(), {
+      token: "session-token",
+    });
+    const getCurrentAuthenticatedSession = vi
+      .fn()
+      .mockResolvedValue({ session, user });
+    const findOne = vi.fn();
+    const validate = vi.fn();
+    const { middleware } = await createMiddleware(
+      getCurrentAuthenticatedSession,
+      findOne,
+      validate,
+    );
+    const request = {
+      headers: { authorization: "Bearer sk-key" },
+    } as Request;
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, vi.fn());
+    });
+    expect(validate).not.toHaveBeenCalled();
+  });
+  it("restores a user key and resolves membership in the selected workspace", async () => {
+    const workspace = Object.assign(new TestWorkspace(), {
+      id: "workspace-1",
+      name: "Acme",
+    });
+    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const member = Object.assign(new TestWorkspaceMember(), {
+      id: "member-1",
+    });
+    const apiKey = { id: "key-1" };
+    const findOne = vi
+      .fn()
+      .mockResolvedValueOnce(workspace)
+      .mockResolvedValueOnce(member);
+    const validate = vi.fn().mockResolvedValue({
+      apiKey,
+      ownerType: "user",
+      user,
+    });
+    const { middleware } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      findOne,
+      validate,
+    );
+    const set = vi.spyOn(RequestContext, "set");
+    const request = {
+      headers: {
+        authorization: "Bearer sk-key",
+        "x-workspace-id": "workspace-1",
+      },
+    } as unknown as Request;
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, vi.fn());
+      expect(RequestContext.get(WorkspaceEntity)).toBe(workspace);
+      expect(RequestContext.get(API_KEY)).toBe(apiKey);
+      expect(RequestContext.get(UserEntity)).toBe(user);
+      expect(RequestContext.get(WorkspaceMemberEntity)).toBe(member);
+    });
+    expect(validate).toHaveBeenCalledWith("sk-key");
+    expect(set).toHaveBeenCalledWith(BaseWorkspace, workspace);
+    expect(set).toHaveBeenCalledWith(API_KEY, apiKey);
+    expect(set).toHaveBeenCalledWith(BaseUser, user);
+    expect(findOne).toHaveBeenLastCalledWith(expect.any(Function), {
+      status: "ACTIVE",
+      user,
+      workspace,
+    });
+    expect(set).toHaveBeenCalledWith(BaseWorkspaceMember, member);
+  });
+  it("does not restore a disabled membership into the auth context", async () => {
+    const workspace = Object.assign(new TestWorkspace(), {
+      id: "workspace-1",
+    });
+    const user = Object.assign(new TestUser(), { id: "user-1" });
+    const findOne = vi
+      .fn()
+      .mockResolvedValueOnce(workspace)
+      .mockResolvedValueOnce(null);
+    const validate = vi.fn().mockResolvedValue({
+      apiKey: { id: "key-1" },
+      ownerType: "user",
+      user,
+    });
+    const { middleware } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      findOne,
+      validate,
+    );
+    const set = vi.spyOn(RequestContext, "set");
+    const request = {
+      headers: {
+        authorization: "Bearer sk-key",
+        "x-workspace-id": "workspace-1",
+      },
+    } as unknown as Request;
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, vi.fn());
+    });
+    expect(findOne).toHaveBeenLastCalledWith(expect.any(Function), {
+      status: "ACTIVE",
+      user,
+      workspace,
+    });
+    expect(set).not.toHaveBeenCalledWith(
+      BaseWorkspaceMember,
+      expect.anything(),
+    );
+  });
+  it("restores a workspace key and rejects a conflicting workspace selector", async () => {
+    const selectedWorkspace = Object.assign(new TestWorkspace(), {
+      id: "workspace-1",
+      name: "Selected",
+    });
+    const ownerWorkspace = Object.assign(new TestWorkspace(), {
+      id: "workspace-2",
+      name: "Owner",
+    });
+    const validate = vi.fn().mockResolvedValue({
+      apiKey: { id: "key-1" },
+      ownerType: "workspace_member",
+      workspace: ownerWorkspace,
+    });
+    const { middleware } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      vi.fn().mockResolvedValue(selectedWorkspace),
+      validate,
+    );
+    const next = vi.fn();
+    const request = {
+      headers: {
+        authorization: "Bearer sk-key",
+        "x-workspace-id": "workspace-1",
+      },
+    } as unknown as Request;
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, next);
+    });
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 401 }));
+  });
+  it("reads the selected workspace from the raw Cookie header", async () => {
+    const workspace = Object.assign(new TestWorkspace(), {
+      id: "workspace-1",
+      name: "Acme",
+    });
+    const findOne = vi.fn().mockResolvedValue(workspace);
+    const { middleware } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      findOne,
+    );
+    const request = {
+      headers: {
+        cookie: "unrelated=value; workspace_id=workspace-1",
+      },
+    } as unknown as Request;
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, vi.fn());
+      expect(RequestContext.get(BaseWorkspace)).toBe(workspace);
+    });
+    expect(findOne).toHaveBeenCalledWith(WorkspaceEntity, {
+      id: "workspace-1",
+    });
+  });
+});
+
+describe("optional workspace behavior", () => {
+  it.each(["session", "user-key", "anonymous"])(
+    "ignores workspace selectors and membership lookup for disabled %s authentication",
+    async (kind) => {
+      const user = new User();
+      const sessionService = {
+        getCurrentAuthenticatedSession: vi
+          .fn()
+          .mockResolvedValue(kind === "session" ? { user, session: {} } : null),
+      };
+      const apiKeys = {
+        validate: vi.fn().mockResolvedValue({
+          ownerType: "user",
+          user,
+          apiKey: new UserApiKey(new ApiKeyRecord()),
+        }),
+      };
+      const em = { findOne: vi.fn(), setSessionContext: vi.fn() };
+      const middleware = new AuthMiddleware(
+        withAuthTestFeatures({}),
+        sessionService as unknown as SessionService,
+        apiKeys as unknown as ApiKeyAuthenticationService,
+        em as unknown as EntityManager,
+        createTestAuthContext(em, withAuthTestFeatures({})),
+      );
+      const request = {
+        headers: {
+          "x-workspace-id": "123",
+          cookie: "workspace_id=456",
+          ...(kind === "user-key"
+            ? { authorization: "Bearer personal-key" }
+            : {}),
+        },
+      } as unknown as Request;
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(REQUEST, request);
+          const next = vi.fn();
+          await middleware.use(request, {} as never, next);
+          expect(next).toHaveBeenCalledExactlyOnceWith();
+          expect(RequestContext.get(Workspace)).toBeFalsy();
+          expect(RequestContext.get(WorkspaceMember)).toBeFalsy();
+          expect(RequestContext.get(User)).toBe(
+            kind === "anonymous" ? null : user,
+          );
+          expect(em.findOne).not.toHaveBeenCalled();
+          expect(em.setSessionContext).toHaveBeenCalledWith(
+            expect.objectContaining({
+              variables: expect.objectContaining({
+                "app.workspace.id": "",
+                "app.system_account.id": "",
+                "app.member.id": "",
+              }),
+            }),
+          );
+        },
+      );
+    },
+  );
+});
