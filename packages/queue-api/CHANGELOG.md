@@ -1,5 +1,26 @@
 # @nest-boot/queue-api
 
+## 8.1.1
+
+### Patch Changes
+
+- 5278540: Add built-in `nb database:*` commands for database creation, migrations, schema management, and seeders. Commands use the application's initialized ORM, return CLI exit codes, and close resources through CommandFactory. Schema create/update/drop print SQL unless `--run` is supplied.
+  
+  Enable module entity auto-loading by default and add `DatabaseModule.forFeatureAsync` for configuration-dependent entity registration before ORM initialization. Include migration and seeder extensions in framework defaults. The database package now requires `@nest-boot/command`.
+  
+  AuthModule automatically registers its existing entities with DatabaseModule, including asynchronous module options. Remove `withAuthDatabaseConfig` and use the application CLI module graph for database commands. Auth now requires the DatabaseModule integration. QueueApiModule automatically registers its Job history entity. Move custom standalone MikroORM configuration into DatabaseModule; the example removes its config file and switches migration/seeder scripts to `nb`.
+- 58faaca: Make workspace features opt-in with `workspace: { enabled: true }`. Omission, an empty object, and `enabled: false` now load only base authentication. Workspace, member, invitation, service-account, and member API-key services and GraphQL APIs are available only when enabled. Disabled middleware ignores workspace selectors and does not query member credentials or memberships; its default user roles no longer grant workspace creation.
+  
+  AuthModule selects base or workspace entities from the resolved synchronous or asynchronous options. The exported `entities` array contains base authentication entities and `workspaceEntities` contains the optional models for direct ORM consumers. Remove the inverse `User.members` collection to prevent discovery of optional entities; use `WorkspaceMemberService` instead. Existing workspace users must explicitly enable `workspace: { enabled: true }`.
+- Updated dependencies [5278540]
+- Updated dependencies [49c8b4e]
+- Updated dependencies [9c70019]
+- Updated dependencies [58faaca]
+- Updated dependencies [5732acb]
+  - @nest-boot/database@8.2.0
+  - @nest-boot/auth@8.2.0
+  - @nest-boot/graphql-connection@8.2.0
+
 ## 8.1.0
 
 ### Minor Changes
