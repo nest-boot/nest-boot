@@ -499,8 +499,9 @@ it does not merge or independently derive permissions.
 
 The built-in User SELECT policy permits the `authenticated` database role to
 read all User rows; anonymous reads remain denied. User profile visibility is
-enforced by Service Ability checks, not by this SELECT policy. Custom permissions
-can therefore grant User read actions without a database permission-name mapping.
+enforced by Service Ability checks, not by this SELECT policy. Services enforce
+built-in Auth permissions and self-service boundaries; business permission
+extensions target application-owned entities.
 Do not expose direct User ORM/SQL queries without Service authorization. User
 writes and Session reads likewise rely on Service authorization. Database request
 variables do not carry application permissions; other RLS policies retain their

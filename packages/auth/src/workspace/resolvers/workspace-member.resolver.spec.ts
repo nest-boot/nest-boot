@@ -13,6 +13,32 @@ import { type WorkspaceMemberService } from "../services/workspace-member.servic
 import { WorkspaceMemberResolver } from "./workspace-member.resolver.js";
 
 describe("WorkspaceMemberResolver", () => {
+  it("accepts an explicit null email for a service account", async () => {
+    const workspace = new Workspace();
+    const { resolver, workspaceMemberService } = createResolver({
+      workspaceMemberService: {
+        addWorkspaceServiceAccount: vi
+          .fn()
+          .mockResolvedValue({ id: "service-member" }),
+      },
+    });
+    await expect(
+      resolver.addWorkspaceMember(workspace, {
+        type: WorkspaceMemberType.SERVICE_ACCOUNT,
+        name: "Bot",
+        email: null,
+      }),
+    ).resolves.toEqual({ id: "service-member" });
+    expect(
+      workspaceMemberService.addWorkspaceServiceAccount,
+    ).toHaveBeenCalledWith(workspace, "Bot", {
+      roles: undefined,
+      permissions: undefined,
+    });
+    expect(
+      workspaceMemberService.addWorkspaceMemberByEmail,
+    ).not.toHaveBeenCalled();
+  });
   it("requires the appropriate identity fields when adding user members and service accounts", async () => {
     const workspace = new Workspace();
     const { resolver, workspaceMemberService } = createResolver({

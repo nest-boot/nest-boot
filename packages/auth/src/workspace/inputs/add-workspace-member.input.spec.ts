@@ -4,6 +4,18 @@ import { AddWorkspaceMemberInput } from "./add-workspace-member.input.js";
 
 describe("input validation", () => {
   describe("AddWorkspaceMemberInput validation", () => {
+    it.each([undefined, null])(
+      "accepts an absent service-account email (%s)",
+      (email) => {
+        expect(
+          toZodSchema(AddWorkspaceMemberInput).safeParse({
+            type: "SERVICE_ACCOUNT",
+            name: "Bot",
+            email,
+          }).success,
+        ).toBe(true);
+      },
+    );
     it.each([
       {
         Input: AddWorkspaceMemberInput,

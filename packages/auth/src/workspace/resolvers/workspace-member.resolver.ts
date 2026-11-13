@@ -109,7 +109,7 @@ export class WorkspaceMemberResolver {
     @Args("input") input: AddWorkspaceMemberInput,
   ): Promise<AddWorkspaceMemberPayload> {
     if (input.type === WorkspaceMemberType.SERVICE_ACCOUNT) {
-      if (!input.name || input.email !== undefined) {
+      if (!input.name || input.email != null) {
         throw new BadRequestException(
           "Service accounts require a name and cannot link a login email",
         );

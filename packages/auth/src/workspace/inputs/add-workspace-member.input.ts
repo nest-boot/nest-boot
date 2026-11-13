@@ -29,7 +29,7 @@ export class AddWorkspaceMemberInput {
   permissions?: WorkspacePermission[];
 
   /** Email address of the existing login user; required for USER. */
-  @ZodField((z) => z.email().max(255).optional())
+  @ZodField((z) => z.email().max(255).nullish())
   @Field(() => String, { nullable: true })
-  email?: string;
+  email?: string | null;
 }

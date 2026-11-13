@@ -4,6 +4,8 @@ import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { REQUEST, RequestContext, RESPONSE } from "@nest-boot/request-context";
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { makeSignature } from "better-auth/crypto";
+import { parseCookie } from "cookie";
 import { type Mocked } from "vitest";
 
 import { createTestAuthContext } from "../../../test/fixtures/auth-context.fixture.js";
@@ -121,11 +123,111 @@ async function createService(
   };
 }
 
+/**
+ * Runs a session-only operation under an explicitly authenticated request.
+ * @param run - Operation and assertions to execute.
+ * @returns Result of the request operation.
+ */
+async function inSession<T>(run: () => Promise<T>): Promise<T> {
+  return await RequestContext.run(
+    new RequestContext({ type: "test" }),
+    async () => {
+      RequestContext.set(
+        Session,
+        Object.assign(new Session(), { id: "current", token: "current-token" }),
+      );
+      return await run();
+    },
+  );
+}
+
 describe("SessionService", () => {
   beforeEach(() => {
     requestHeaders.delete("authorization");
     requestHeaders.set("cookie", "session=value");
   });
+  it("binds upstream calls to the current session and removes stale authentication and caches", async () => {
+    const { service } = await createService();
+    requestHeaders.set("authorization", "Bearer another-credential");
+    const originalCookie = [
+      "application=value",
+      "better-auth.session_token=old-session",
+      "better-auth.session_data=old-cache",
+      "better-auth.session_data.0=chunk",
+      "better-auth.session_data.01=another-chunk",
+      "better-auth.account_data=old-account",
+      "better-auth.account_data.0=account-chunk",
+    ].join("; ");
+    requestHeaders.set("cookie", originalCookie);
+    await inSession(async () => {
+      const result = await service.getCurrentSessionHeaders();
+      expect(result.get("authorization")).toBeNull();
+      expect(parseCookie(result.get("cookie") ?? "")).toEqual({
+        application: "value",
+        "better-auth.session_token": `current-token.${await makeSignature("current-token", authContext.secret)}`,
+      });
+      RequestContext.set(
+        Session,
+        Object.assign(new Session(), { token: "rotated-token" }),
+      );
+      const rotated = await service.getCurrentSessionHeaders();
+      expect(
+        parseCookie(rotated.get("cookie") ?? "")["better-auth.session_token"],
+      ).toBe(
+        `rotated-token.${await makeSignature("rotated-token", authContext.secret)}`,
+      );
+      const selected = await service.getCurrentSessionHeaders(true);
+      expect(parseCookie(selected.get("cookie") ?? "")).toMatchObject({
+        "better-auth.account_data": "old-account",
+        "better-auth.account_data.0": "account-chunk",
+      });
+      expect(
+        parseCookie(selected.get("cookie") ?? "")["better-auth.session_data"],
+      ).toBeUndefined();
+    });
+    expect(requestHeaders.get("cookie")).toBe(originalCookie);
+    expect(requestHeaders.get("authorization")).toBe(
+      "Bearer another-credential",
+    );
+  });
+  it.each(["anonymous", "user-only", "api-key"] as const)(
+    "rejects %s self-service without calling Better Auth or changing identity",
+    async (principal) => {
+      const { service, api, em } = await createService();
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          if (principal !== "anonymous") {
+            RequestContext.set(User, new User());
+          }
+          const key = new WorkspaceApiKey(new ApiKey());
+          if (principal === "api-key") {
+            RequestContext.set(
+              Session,
+              Object.assign(new Session(), { token: "session-token" }),
+            );
+            RequestContext.set(API_KEY, key);
+          }
+          for (const invoke of [
+            () => service.getCurrentSessionHeaders(),
+            () => service.listCurrentUserSessions(),
+            () => service.revokeCurrentUserSession("target"),
+            () => service.revokeCurrentUserOtherSessions(),
+            () => service.revokeCurrentUserSessions(),
+          ]) {
+            await expect(invoke()).rejects.toThrow(ForbiddenException);
+          }
+          if (principal === "api-key") {
+            expect(RequestContext.get(API_KEY)).toBe(key);
+          }
+        },
+      );
+      for (const operation of Object.values(api)) {
+        expect(operation).not.toHaveBeenCalled();
+      }
+      expect(em.find).not.toHaveBeenCalled();
+    },
+  );
   it("resolves configured application user and session entities", async () => {
     const api = createApi();
     const user = Object.assign(new User(), { id: "user-1" });
@@ -333,10 +435,9 @@ describe("SessionService", () => {
       findOne: vi.fn(),
     };
     const { service } = await createService(api, em);
-    await expect(service.listCurrentUserSessions()).resolves.toEqual([
-      session2,
-      session1,
-    ]);
+    await expect(
+      inSession(() => service.listCurrentUserSessions()),
+    ).resolves.toEqual([session2, session1]);
     expect(em.find).toHaveBeenCalledWith(Session, {
       token: { $in: ["session-2", "missing", "session-1"] },
     });
@@ -367,6 +468,10 @@ describe("SessionService", () => {
       async () => {
         const sessionContext = mockRlsContext(em);
         RequestContext.set(EntityManager, em as unknown as EntityManager);
+        RequestContext.set(
+          Session,
+          Object.assign(new Session(), { token: "current-token" }),
+        );
         await expect(service.listCurrentUserSessions()).resolves.toEqual([
           session,
         ]);
@@ -379,7 +484,9 @@ describe("SessionService", () => {
     const api = createApi();
     api.listSessions.mockResolvedValue([]);
     const { em, service } = await createService(api);
-    await expect(service.listCurrentUserSessions()).resolves.toEqual([]);
+    await expect(
+      inSession(() => service.listCurrentUserSessions()),
+    ).resolves.toEqual([]);
     expect(em.find).not.toHaveBeenCalled();
   });
   it("revokes one session by public ID without exposing its token", async () => {
@@ -391,21 +498,21 @@ describe("SessionService", () => {
       token: "secret-session-token",
     });
     vi.spyOn(service, "listCurrentUserSessions").mockResolvedValue([session]);
-    await expect(service.revokeCurrentUserSession("session-1")).resolves.toBe(
-      true,
-    );
+    await expect(
+      inSession(() => service.revokeCurrentUserSession("session-1")),
+    ).resolves.toBe(true);
     expect(api.revokeSession).toHaveBeenCalledWith({
       body: { token: "secret-session-token" },
-      headers: requestHeaders,
+      headers: expect.any(Headers),
     });
   });
   it("does not revoke a session ID outside the authenticated user's sessions", async () => {
     const api = createApi();
     const { service } = await createService(api);
     vi.spyOn(service, "listCurrentUserSessions").mockResolvedValue([]);
-    await expect(service.revokeCurrentUserSession("session-1")).resolves.toBe(
-      false,
-    );
+    await expect(
+      inSession(() => service.revokeCurrentUserSession("session-1")),
+    ).resolves.toBe(false);
     expect(api.revokeSession).not.toHaveBeenCalled();
   });
   it.each(["one", "all"] as const)(
@@ -459,7 +566,10 @@ describe("SessionService", () => {
     const api = createApi();
     api.revokeSession.mockResolvedValue({ status: true });
     const { service } = await createService(api);
-    const session = Object.assign(new Session(), { id: "current" });
+    const session = Object.assign(new Session(), {
+      id: "current",
+      token: "current-token",
+    });
     vi.spyOn(service, "listCurrentUserSessions").mockResolvedValue([
       Object.assign(new Session(), { id: "other", token: "other-token" }),
     ]);
@@ -475,18 +585,22 @@ describe("SessionService", () => {
     const api = createApi();
     api.revokeOtherSessions.mockResolvedValue({ status: true });
     const { service } = await createService(api);
-    await expect(service.revokeCurrentUserOtherSessions()).resolves.toBe(true);
+    await expect(
+      inSession(() => service.revokeCurrentUserOtherSessions()),
+    ).resolves.toBe(true);
     expect(api.revokeOtherSessions).toHaveBeenCalledWith({
-      headers: requestHeaders,
+      headers: expect.any(Headers),
     });
   });
   it("revokes every session", async () => {
     const api = createApi();
     api.revokeSessions.mockResolvedValue({ status: true });
     const { service } = await createService(api);
-    await expect(service.revokeCurrentUserSessions()).resolves.toBe(true);
+    await expect(
+      inSession(() => service.revokeCurrentUserSessions()),
+    ).resolves.toBe(true);
     expect(api.revokeSessions).toHaveBeenCalledWith({
-      headers: requestHeaders,
+      headers: expect.any(Headers),
     });
   });
 });

@@ -78,7 +78,10 @@ async function createService(
     impersonateUser: vi.fn(),
     stopImpersonating: vi.fn(),
   };
-  const sessionService = { setSessionCookie: vi.fn() };
+  const sessionService = {
+    setSessionCookie: vi.fn(),
+    getCurrentSessionHeaders: vi.fn().mockResolvedValue(requestHeaders),
+  };
   const moduleRef = await Test.createTestingModule({
     providers: [
       AuthService,
@@ -137,6 +140,168 @@ describe("password policy", () => {
 });
 
 describe("current user identity", () => {
+  it.each(["getAccessToken", "refreshToken", "getAccountInfo"] as const)(
+    "preserves an account cookie only for an explicit selector in %s",
+    async (operation) => {
+      const { service, api, sessionService } = await createService();
+      api.getAccessToken.mockResolvedValue({
+        accessToken: "access",
+        scopes: [],
+      });
+      api.refreshToken.mockResolvedValue({
+        accountId: "account",
+        providerId: "provider",
+      });
+      api.accountInfo.mockResolvedValue({});
+      for (const selector of [
+        { accountId: "account" },
+        { useAccountCookie: true },
+      ] as const) {
+        await service[operation](selector);
+        expect(
+          sessionService.getCurrentSessionHeaders,
+        ).toHaveBeenLastCalledWith("useAccountCookie" in selector);
+      }
+    },
+  );
+  it.each([
+    { name: "signOut", invoke: (service: AuthService) => service.signOut() },
+    {
+      name: "updateCurrentUser",
+      invoke: (service: AuthService) =>
+        service.updateCurrentUser({ name: "Updated" }),
+    },
+    {
+      name: "changeCurrentUserEmail",
+      invoke: (service: AuthService) =>
+        service.changeCurrentUserEmail({ newEmail: "new@example.test" }),
+    },
+    {
+      name: "changeCurrentUserPassword",
+      invoke: (service: AuthService) =>
+        service.changeCurrentUserPassword({
+          currentPassword: "old-password",
+          newPassword: "new-password",
+        }),
+    },
+    {
+      name: "setCurrentUserPassword",
+      invoke: (service: AuthService) =>
+        service.setCurrentUserPassword("new-password"),
+    },
+    {
+      name: "verifyCurrentUserPassword",
+      invoke: (service: AuthService) =>
+        service.verifyCurrentUserPassword("password"),
+    },
+    {
+      name: "deleteCurrentUser",
+      invoke: (service: AuthService) => service.deleteCurrentUser(),
+    },
+    {
+      name: "listCurrentUserAccounts",
+      invoke: (service: AuthService) => service.listCurrentUserAccounts(),
+    },
+    {
+      name: "linkCurrentUserAccount",
+      invoke: (service: AuthService) =>
+        service.linkCurrentUserAccount({ provider: "github" }),
+    },
+    {
+      name: "unlinkCurrentUserAccount",
+      invoke: (service: AuthService) =>
+        service.unlinkCurrentUserAccount({ accountId: "account" }),
+    },
+    {
+      name: "getAccessToken",
+      invoke: (service: AuthService) =>
+        service.getAccessToken({ accountId: "account" }),
+    },
+    {
+      name: "refreshToken",
+      invoke: (service: AuthService) =>
+        service.refreshToken({ accountId: "account" }),
+    },
+    {
+      name: "getAccountInfo",
+      invoke: (service: AuthService) =>
+        service.getAccountInfo({ accountId: "account" }),
+    },
+  ])(
+    "requires the verified session before $name reaches Better Auth",
+    async ({ invoke }) => {
+      const { service, sessionService, api, authMiddleware } =
+        await createService();
+      sessionService.getCurrentSessionHeaders.mockRejectedValue(
+        new Error("A user session is required"),
+      );
+      await expect(invoke(service)).rejects.toThrow(
+        "A user session is required",
+      );
+      for (const operation of Object.values(api)) {
+        expect(operation).not.toHaveBeenCalled();
+      }
+      expect(authMiddleware.clearAuthentication).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["sign-up", "sign-in", "social-sign-in"] as const)(
+    "validates %s before publishing cookies and adopts the issued identity only once",
+    async (operation) => {
+      const { service, api, authMiddleware } = await createService();
+      const user = Object.assign(new User(), { id: "issued-user" });
+      const token = "issued-session";
+      const backend =
+        operation === "sign-up"
+          ? api.signUpEmail
+          : operation === "sign-in"
+            ? api.signInEmail
+            : api.signInSocial;
+      backend.mockResolvedValue({
+        response: { token, user: { id: user.id }, redirect: false },
+        headers: new Headers({
+          "set-cookie": "better-auth.session_token=issued; Path=/",
+        }),
+      });
+      const appendHeader = vi.fn(() => {
+        expect(RequestContext.get(User)).toBe(user);
+        expect(RequestContext.get(Session)?.token).toBe(token);
+      });
+      const context = new RequestContext({ type: "http" });
+      context.set(REQUEST, { headers: {} });
+      context.set(RESPONSE, { appendHeader });
+      const signup = {
+        email: "new@example.test",
+        password: "password",
+        name: "New user",
+      };
+      await RequestContext.run(context, async () => {
+        authMiddleware.authenticateSession.mockRejectedValueOnce(
+          new Error("Rejected session"),
+        );
+        await expect(
+          operation === "sign-up"
+            ? service.signUp(signup)
+            : operation === "sign-in"
+              ? service.signIn(signup)
+              : service.signInSocial({ provider: "github" }),
+        ).rejects.toThrow("Rejected session");
+        expect(appendHeader).not.toHaveBeenCalled();
+        authMiddleware.authenticateSession.mockImplementation(() => {
+          RequestContext.set(User, user);
+          RequestContext.set(Session, Object.assign(new Session(), { token }));
+          return Promise.resolve(user);
+        });
+        await (operation === "sign-up"
+          ? service.signUpPayload(signup)
+          : operation === "sign-in"
+            ? service.signInEntity(signup)
+            : service.signInSocialEntity({ provider: "github" }));
+        expect(appendHeader).toHaveBeenCalledOnce();
+        expect(authMiddleware.authenticateSession).toHaveBeenCalledTimes(2);
+      });
+    },
+  );
   it.each(["signOut", "updateCurrentUser", "changeCurrentUserEmail"] as const)(
     "publishes %s identity changes only after a successful response",
     async (method) => {

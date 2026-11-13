@@ -997,6 +997,28 @@ describe("WorkspaceInvitationService", () => {
   });
 });
 
+describe("recipient authorization", () => {
+  it.each(["pending", "accepted", "canceled", "rejected"] as const)(
+    "does not reveal a foreign invitation's %s status",
+    async (status) => {
+      const { em, workspaceInvitationService } = createWorkspaceServices();
+      const user = Object.assign(createTestUser(), {
+        email: "recipient@example.test",
+      });
+      const invitation = Object.assign(createTestWorkspaceInvitation(), {
+        email: "another@example.test",
+        status,
+      });
+      await expect(
+        workspaceInvitationService.rejectWorkspaceInvitation(user, invitation),
+      ).rejects.toThrow(
+        "Workspace invitation belongs to another email address",
+      );
+      expect(em.nativeUpdate).not.toHaveBeenCalled();
+    },
+  );
+});
+
 describe("read authorization", () => {
   describe("WorkspaceInvitationService read authorization", () => {
     const options = {};

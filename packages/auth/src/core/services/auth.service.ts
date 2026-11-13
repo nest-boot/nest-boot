@@ -117,7 +117,7 @@ export class AuthService {
   async signUpPayload(options: SignUpOptions): Promise<SignUpPayload> {
     const result = await this.signUp(options);
     if (result.token) {
-      await this.authMiddleware.authenticateSession(result.token);
+      await this.resolveResultUser(result.user, result.token);
     }
     return { id: result.user.id, token: result.token };
   }
@@ -157,6 +157,15 @@ export class AuthService {
     token: string | null,
   ): Promise<User> {
     if (token) {
+      const current = RequestContext.isActive()
+        ? RequestContext.get(User)
+        : null;
+      const session = RequestContext.isActive()
+        ? RequestContext.get(Session)
+        : null;
+      if (current && session?.token === token) {
+        return current;
+      }
       const entity = await this.authMiddleware.authenticateSession(token);
       return entity;
     }
@@ -201,6 +210,9 @@ export class AuthService {
       headers: headers(),
       returnHeaders: true,
     });
+    if (result.response.token) {
+      await this.authMiddleware.authenticateSession(result.response.token);
+    }
     applyAuthResponseCookies(result.headers);
     return result.response;
   }
@@ -217,6 +229,9 @@ export class AuthService {
       headers: headers(),
       returnHeaders: true,
     });
+    if (result.response.token) {
+      await this.authMiddleware.authenticateSession(result.response.token);
+    }
     applyAuthResponseCookies(result.headers);
     return this.normalizeSignInResult(result.response);
   }
@@ -235,8 +250,12 @@ export class AuthService {
       headers: headers(),
       returnHeaders: true,
     });
+    const response = this.normalizeSignInSocialResult(result.response);
+    if (response.token) {
+      await this.authMiddleware.authenticateSession(response.token);
+    }
     applyAuthResponseCookies(result.headers);
-    return this.normalizeSignInSocialResult(result.response);
+    return response;
   }
 
   /**
@@ -246,7 +265,7 @@ export class AuthService {
   async signOut(): Promise<boolean> {
     this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.signOut({
-      headers: headers(),
+      headers: await this.sessionService.getCurrentSessionHeaders(),
       returnHeaders: true,
     });
     if (result.response.success) {
@@ -301,7 +320,7 @@ export class AuthService {
   async verifyCurrentUserPassword(password: string): Promise<boolean> {
     const result = await this.auth.api.verifyPassword({
       body: { password },
-      headers: headers(),
+      headers: await this.sessionService.getCurrentSessionHeaders(),
     });
     return result.status;
   }
@@ -315,7 +334,7 @@ export class AuthService {
     this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.updateUser({
       body: options,
-      headers: headers(),
+      headers: await this.sessionService.getCurrentSessionHeaders(),
       returnHeaders: true,
     });
     if (result.response.status) {
@@ -336,7 +355,7 @@ export class AuthService {
     this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.changeEmail({
       body: options,
-      headers: headers(),
+      headers: await this.sessionService.getCurrentSessionHeaders(),
       returnHeaders: true,
     });
     // A successful response may only queue verification; reload persisted state.
@@ -360,7 +379,7 @@ export class AuthService {
     }
     const result = await this.auth.api.changePassword({
       body: options,
-      headers: headers(),
+      headers: await this.sessionService.getCurrentSessionHeaders(),
       returnHeaders: true,
     });
     if (result.response.token) {
@@ -384,7 +403,7 @@ export class AuthService {
   async setCurrentUserPassword(newPassword: string): Promise<boolean> {
     const result = await this.auth.api.setPassword({
       body: { newPassword },
-      headers: headers(),
+      headers: await this.sessionService.getCurrentSessionHeaders(),
     });
     return result.status;
   }
@@ -400,7 +419,7 @@ export class AuthService {
     this.authMiddleware.assertAuthenticationCanChange();
     const result = await this.auth.api.deleteUser({
       body: options ?? {},
-      headers: headers(),
+      headers: await this.sessionService.getCurrentSessionHeaders(),
       returnHeaders: true,
     });
     if (result.response.success && result.response.message === "User deleted") {
@@ -415,7 +434,9 @@ export class AuthService {
    * @returns Provider accounts linked to the authenticated user.
    */
   async listCurrentUserAccounts(): Promise<AuthAccount[]> {
-    return await this.auth.api.listUserAccounts({ headers: headers() });
+    return await this.auth.api.listUserAccounts({
+      headers: await this.sessionService.getCurrentSessionHeaders(),
+    });
   }
 
   /**
@@ -428,7 +449,7 @@ export class AuthService {
   ): Promise<LinkAuthSocialAccountResult> {
     const result = await this.auth.api.linkSocialAccount({
       body: options,
-      headers: headers(),
+      headers: await this.sessionService.getCurrentSessionHeaders(),
       returnHeaders: true,
     });
     applyAuthResponseCookies(result.headers);
@@ -445,7 +466,7 @@ export class AuthService {
   ): Promise<boolean> {
     const result = await this.auth.api.unlinkAccount({
       body: options,
-      headers: headers(),
+      headers: await this.sessionService.getCurrentSessionHeaders(),
     });
     return result.status;
   }
@@ -460,7 +481,9 @@ export class AuthService {
   ): Promise<AuthAccessToken> {
     const result = await this.auth.api.getAccessToken({
       body: selector,
-      headers: headers(),
+      headers: await this.sessionService.getCurrentSessionHeaders(
+        "useAccountCookie" in selector,
+      ),
     });
 
     return {
@@ -481,7 +504,9 @@ export class AuthService {
   ): Promise<AuthRefreshedToken> {
     const result = await this.auth.api.refreshToken({
       body: selector,
-      headers: headers(),
+      headers: await this.sessionService.getCurrentSessionHeaders(
+        "useAccountCookie" in selector,
+      ),
     });
 
     return {
@@ -507,7 +532,9 @@ export class AuthService {
   >(selector: AuthAccountSelector): Promise<AuthAccountInfo<UserInfo, Data>> {
     return (await this.auth.api.accountInfo({
       query: selector,
-      headers: headers(),
+      headers: await this.sessionService.getCurrentSessionHeaders(
+        "useAccountCookie" in selector,
+      ),
     })) as AuthAccountInfo<UserInfo, Data>;
   }
 

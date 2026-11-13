@@ -119,8 +119,9 @@ Service methods use explicit domain names without deprecated aliases:
 - `UserService.setUserRoles` replaces roles, while `setUserPermissions` replaces
   direct grants. `getEffectiveUserPermissions` and
   `WorkspaceMemberService.getEffectiveWorkspaceMemberPermissions` include role-derived grants.
-- `UserApiKeyService` and `WorkspaceApiKeyService` uses `createUserApiKey`, `updateUserApiKey`, `deleteUserApiKey`
-  and their workspace counterparts, matching its existing lookup names.
+- `UserApiKeyService`, `WorkspaceApiKeyService` and `SystemApiKeyService` use
+  scope-specific `create*ApiKey`, `update*ApiKey`, `revoke*ApiKey`, `delete*ApiKey`
+  and lookup names.
 - `WorkspaceMemberService.getWorkspaceMemberByUser(workspace, user)` finds only active
   memberships; `getWorkspaceMember(id)` reads a member in the request's selected workspace.
   It replaces `getWorkspaceMemberById(workspace, memberId)` without an alias. The Service
@@ -131,6 +132,13 @@ Service methods use explicit domain names without deprecated aliases:
 - `AuthService.updateCurrentUser` and `deleteCurrentUser` are self-service flows;
   `UserService.updateUser` and `deleteUser` still target a specified user.
   `AuthService.getAccountInfo` reads provider account information server-side.
+- Session-bound Auth and Session service operations require the verified request
+  session and reject API keys. Upstream calls use its signed cookie, rather than stale
+  incoming authentication headers or session caches; an explicit `useAccountCookie`
+  selector retains OAuth account data for upstream owner validation.
+- Registration and sign-in validate and adopt an issued session before publishing
+  cookies. GraphQL payload/entity methods reuse that identity; tokenless registration
+  and OAuth redirects do not authenticate the request.
 
 `update*` methods patch fields, `set*` methods replace a value or collection, and
 domain operations such as `removeWorkspaceMember`, `revokeSession`, and `cancelWorkspaceInvitation`

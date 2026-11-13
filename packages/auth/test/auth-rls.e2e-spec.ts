@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { EntityManager, ref } from "@mikro-orm/core";
 import { MikroORM } from "@mikro-orm/pglite";
 import { getDatabaseConfig } from "@nest-boot/database";
-import { REQUEST, RequestContext } from "@nest-boot/request-context";
+import { REQUEST, RequestContext, RESPONSE } from "@nest-boot/request-context";
 import { type FactoryProvider, ForbiddenException } from "@nestjs/common";
 import type { Request } from "express";
 
@@ -12,6 +12,7 @@ import { ApiKey } from "../src/api-key/entities/api-key.entity.js";
 import { ApiKeyAuthenticationService } from "../src/api-key/services/api-key-authentication.service.js";
 import { mikroOrmAdapter } from "../src/core/adapters/mikro-orm-adapter.js";
 import { AUTH_TOKEN } from "../src/core/constants/auth.constants.js";
+import { createAuthInstance } from "../src/core/create-auth-instance.js";
 import { UserDeletionService } from "../src/core/services/user-deletion.service.js";
 import { entities, workspaceEntities } from "../src/index.js";
 import {
@@ -75,6 +76,148 @@ describe("Auth services and native RLS boundaries", () => {
   }, 30000);
   afterAll(async () => {
     await orm?.close();
+  });
+  it("binds self-service to a newly signed-in session instead of stale request cookies", async () => {
+    const options = withAuthTestFeatures({
+      baseURL: "http://localhost:4100",
+      secret: "session-binding-integration-secret-long-enough",
+      session: { cookieCache: { enabled: true } },
+      emailAndPassword: {
+        enabled: true,
+        requireEmailVerification: false,
+        password: {
+          hash: (value) => Promise.resolve(`test:${value}`),
+          verify: ({ hash, password }) =>
+            Promise.resolve(hash === `test:${password}`),
+        },
+      },
+    });
+    const admin = orm.em.fork();
+    const backend = createAuthInstance(
+      options,
+      orm,
+      { sendMail: vi.fn() } as never,
+      {} as never,
+      new UserDeletionService(admin),
+      createTestAuthContext(orm.em, options),
+    );
+    const firstEmail = `${randomUUID()}@example.test`;
+    const secondEmail = `${randomUUID()}@example.test`;
+    const first = await backend.api.signUpEmail({
+      body: {
+        email: firstEmail,
+        name: "First user",
+        password: "first-password",
+      },
+      returnHeaders: true,
+    });
+    const second = await backend.api.signUpEmail({
+      body: {
+        email: secondEmail,
+        name: "Second user",
+        password: "second-password",
+      },
+    });
+    assert(first.response.token);
+    const cookie = first.headers
+      .getSetCookie()
+      .map((value) => value.split(";")[0])
+      .join("; ");
+    const firstUser = await admin.findOneOrFail(User, first.response.user.id);
+    const firstSession = await admin.findOneOrFail(Session, {
+      token: first.response.token,
+    });
+    const em = orm.em.fork();
+    const authContext = createTestAuthContext(em, options);
+    const sessions = new SessionService(backend, em, authContext);
+    const middleware = new AuthMiddleware(
+      options,
+      sessions,
+      {} as never,
+      em,
+      authContext,
+    );
+    const service = new AuthService(backend, middleware, {} as never, sessions);
+    const request = {
+      headers: {
+        cookie,
+        origin: options.baseURL,
+        authorization: "Bearer unrelated-api-key",
+      },
+    };
+    const publishedIdentities: (string | null)[] = [];
+    const context = new RequestContext({ type: "http" });
+    context.set(REQUEST, request);
+    context.set(RESPONSE, {
+      appendHeader: () =>
+        publishedIdentities.push(RequestContext.get(User)?.id ?? null),
+    });
+    try {
+      await RequestContext.run(context, async () => {
+        RequestContext.set(EntityManager, em);
+        await middleware.use(request as Request, {} as never, (error) => {
+          if (error) {
+            throw error;
+          }
+        });
+        expect(RequestContext.get(User)?.id).toBe(firstUser.id);
+        const signedIn = await service.signInEntity({
+          email: secondEmail,
+          password: "second-password",
+        });
+        expect(signedIn.user.id).toBe(second.user.id);
+        expect(publishedIdentities.length).toBeGreaterThan(0);
+        expect(publishedIdentities.every((id) => id === second.user.id)).toBe(
+          true,
+        );
+        await expect(
+          service.verifyCurrentUserPassword("second-password"),
+        ).resolves.toBe(true);
+        await expect(
+          service.updateCurrentUser({ name: "Updated second user" }),
+        ).resolves.toBe(true);
+        expect(
+          (await admin.findOneOrFail(User, second.user.id, { refresh: true }))
+            .name,
+        ).toBe("Updated second user");
+        expect(
+          (await admin.findOneOrFail(User, firstUser.id, { refresh: true }))
+            .name,
+        ).toBe("First user");
+        const listed = await sessions.listCurrentUserSessions();
+        expect(listed.length).toBeGreaterThan(0);
+        expect(
+          listed.every((session) => session.user.id === second.user.id),
+        ).toBe(true);
+        await expect(sessions.revokeCurrentUserSessions()).resolves.toBe(true);
+        expect(RequestContext.get(Session)).toBeNull();
+        expect(await admin.count(Session, { id: firstSession.id })).toBe(1);
+        expect(await admin.count(Session, { user: second.user.id })).toBe(0);
+        stageIdentity({
+          user: signedIn.user,
+          session: null,
+          apiKey: Object.assign(new UserApiKey(new ApiKey()), {
+            user: signedIn.user,
+            permissions: [],
+          }),
+        });
+        await expect(
+          service.updateCurrentUser({
+            name: "Must not change the cookie owner",
+          }),
+        ).rejects.toThrow(ForbiddenException);
+        await expect(sessions.listCurrentUserSessions()).rejects.toThrow(
+          ForbiddenException,
+        );
+        expect(
+          (await admin.findOneOrFail(User, firstUser.id, { refresh: true }))
+            .name,
+        ).toBe("First user");
+        expect(request.headers.cookie).toBe(cookie);
+      });
+    } finally {
+      await admin.nativeDelete(User, { id: [firstUser.id, second.user.id] });
+    }
   });
   it.each([false, true])(
     "revalidates request identity after a real password reset (revoke=%s)",

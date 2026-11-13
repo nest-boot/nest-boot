@@ -576,13 +576,13 @@ export class WorkspaceInvitationService {
         invitation,
         em,
       );
-      if (invitation.status !== "pending") {
-        throw new BadRequestException("Workspace invitation is not pending");
-      }
-      if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
+      if (invitation.email.toLowerCase() !== user.email.trim().toLowerCase()) {
         throw new ForbiddenException(
           "Workspace invitation belongs to another email address",
         );
+      }
+      if (invitation.status !== "pending") {
+        throw new BadRequestException("Workspace invitation is not pending");
       }
       const updated = await em.nativeUpdate(
         WorkspaceInvitation,

@@ -13,12 +13,14 @@ import {
 } from "@nest-boot/request-context";
 import {
   BadRequestException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { makeSignature } from "better-auth/crypto";
 import type { BetterAuthCookies } from "better-auth/types";
+import { parseCookie, stringifyCookie } from "cookie";
 import type { GraphQLResolveInfo } from "graphql";
 
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
@@ -55,6 +57,42 @@ export class SessionService {
   }
 
   private readonly auth: BetterAuthAdapter;
+
+  /**
+   * Binds a Better Auth operation to the session already verified for this request.
+   * @param keepAccountCookie - Preserve explicitly selected OAuth account data for upstream owner validation.
+   * @returns Request headers with only the current session's authentication cookies.
+   * @internal
+   */
+  async getCurrentSessionHeaders(keepAccountCookie = false): Promise<Headers> {
+    const session = RequestContext.isActive()
+      ? RequestContext.get(Session)
+      : null;
+    if (!session || getCurrentApiKey()) {
+      throw new ForbiddenException("A user session is required");
+    }
+    const { authCookies, secret } = await this.auth.$context;
+    const requestHeaders = new Headers(headers());
+    requestHeaders.delete("authorization");
+    const identityCookies = [
+      authCookies.sessionToken,
+      authCookies.sessionData,
+      ...(!keepAccountCookie ? [authCookies.accountData] : []),
+    ];
+    const requestCookies = Object.fromEntries(
+      Object.entries(parseCookie(requestHeaders.get("cookie") ?? "")).filter(
+        ([name]) =>
+          !identityCookies.some(
+            (cookie) =>
+              name === cookie.name || name.startsWith(cookie.name + "."),
+          ),
+      ),
+    );
+    requestCookies[authCookies.sessionToken.name] =
+      await createSignedCookieValue(session.token, secret);
+    requestHeaders.set("cookie", stringifyCookie(requestCookies));
+    return requestHeaders;
+  }
 
   /**
    * Paginates active sessions visible to the caller for the parent user.
@@ -292,8 +330,11 @@ export class SessionService {
    * @returns Active session entities in the order returned by the auth backend.
    */
   async listCurrentUserSessions(): Promise<Session[]> {
+    const requestHeaders = await this.getCurrentSessionHeaders();
     return await runAuthQuery(this.em, async (em) => {
-      const data = await this.auth.api.listSessions({ headers: headers() });
+      const data = await this.auth.api.listSessions({
+        headers: requestHeaders,
+      });
       if (data.length === 0) {
         return [];
       }
@@ -321,6 +362,7 @@ export class SessionService {
    */
   async revokeCurrentUserSession(id: string): Promise<boolean> {
     this.assertRevocationCanCommit();
+    const requestHeaders = await this.getCurrentSessionHeaders();
     const session = (await this.listCurrentUserSessions()).find(
       (candidate) => String(candidate.id) === id,
     );
@@ -335,7 +377,7 @@ export class SessionService {
 
     const result = await this.auth.api.revokeSession({
       body: { token: session.token },
-      headers: headers(),
+      headers: requestHeaders,
     });
     if (result.status && revokesCurrent) {
       this.authContext.clear();
@@ -350,7 +392,7 @@ export class SessionService {
   async revokeCurrentUserOtherSessions(): Promise<boolean> {
     this.assertRevocationCanCommit();
     const result = await this.auth.api.revokeOtherSessions({
-      headers: headers(),
+      headers: await this.getCurrentSessionHeaders(),
     });
     return result.status;
   }
@@ -361,7 +403,9 @@ export class SessionService {
    */
   async revokeCurrentUserSessions(): Promise<boolean> {
     this.assertRevocationCanCommit();
-    const result = await this.auth.api.revokeSessions({ headers: headers() });
+    const result = await this.auth.api.revokeSessions({
+      headers: await this.getCurrentSessionHeaders(),
+    });
     if (result.status) {
       this.authContext.clear();
     }

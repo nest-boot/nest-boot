@@ -347,6 +347,7 @@ describe("exported input contracts", () => {
         permissions: ["workspace:read"],
       },
       required: [],
+      nullable: ["email"],
     },
     {
       name: "AuthChangeEmailInput",
