@@ -318,6 +318,81 @@ await this.userService.chunkById(
 );
 ```
 
+## Searchable Properties
+
+Use `onFullTextCreate()` and `onFullTextUpdate()` with native MikroORM properties:
+
+```typescript
+import { t } from "@mikro-orm/core";
+import { Entity, Index, Property } from "@mikro-orm/decorators/legacy";
+import { FullTextType } from "@mikro-orm/postgresql";
+import { onFullTextCreate, onFullTextUpdate } from "@nest-boot/database";
+
+@Entity()
+class Book {
+  @Property({ type: t.text })
+  title!: string;
+
+  @Property({ type: t.text })
+  description!: string;
+
+  @Index({ type: "fulltext" })
+  @Property({
+    type: FullTextType,
+    hidden: true,
+    nullable: true,
+    onCreate: onFullTextCreate(["title", "description"]),
+    onUpdate: onFullTextUpdate(["title", "description"]),
+  })
+  searchableText!: string | null;
+}
+```
+
+Each helper accepts a single property name (`"title"`), a singleton list (`["title"]`), or multiple names (`["title", "description"]`). Sources are segmented separately, lowercased and joined into one string. Empty, punctuation-only and non-string sources are skipped; when no words remain, the result is `null`, so configure the target as nullable. The update helper recomputes only when a source changes according to MikroORM's snapshot comparator; unrelated updates preserve the existing target value. Creation and update must be configured separately.
+
+`@SearchableProperty()` is shorthand for the same native configuration. It supplies `FullTextType`, a full-text index and both callbacks, with `hidden: true` by default:
+
+```typescript
+import { SearchableProperty } from "@nest-boot/database";
+
+// Inside Book:
+@SearchableProperty({
+  properties: ["title", "description"],
+  nullable: true,
+})
+searchableText!: string | null;
+```
+
+The decorator accepts the same three source forms. Its options omit `type`, `index`, `onCreate` and `onUpdate`, which it manages internally. Other property options, including `hidden`, remain configurable.
+
+The entity ESLint rules infer `nullable` from the field type and remove managed options from `SearchableProperty`. They recognize decorator aliases and namespace imports. Both native `@Property` and `@SearchableProperty` infer the entity type from the surrounding class, so autofix removes redundant explicit type arguments. Source names remain checked against the class, and native `FullTextType` and lifecycle callbacks are preserved. The `entity-property-no-spread` rule requires explicit options in entity field decorators instead of shared configuration spreads such as `...shared`; these must be expanded manually.
+
+The helpers use native `Intl.Segmenter` with the runtime's default locale and word granularity, retaining word-like segments. They lazily reuse one segmenter and fall back to Unicode letter, combining mark and number runs when it is unavailable. No language setting or additional tokenizer dependency is required.
+
+`tokenizer()` is also exported for query input, so indexing and queries use the same word boundaries, including Chinese text without spaces:
+
+```typescript
+import { tokenizer } from "@nest-boot/database";
+
+const term = tokenizer(input).join(" ");
+const books = term
+  ? await em.find(Book, { searchableText: { $fulltext: term } })
+  : [];
+```
+
+`FullTextType` converts stored text into PostgreSQL `tsvector`; `$fulltext` handles matching with the default `simple` configuration. Tokenization does not add stemming, stop-word removal or diacritic folding. See [MikroORM full-text searching](https://mikro-orm.io/docs/query-conditions#full-text-searching).
+
+For other derived properties, `whenChanged(callback, properties)` is exported as a general guard:
+
+```typescript
+import { whenChanged } from "@nest-boot/database";
+
+// A native Property option:
+onUpdate: whenChanged((book: Book) => book.title, ["title"]);
+```
+
+The guard invokes the callback when any dependency changes and otherwise preserves the target's current value. Use the returned function directly as `onUpdate`, since it reads the target name from MikroORM's property callback context. It does not replace `onCreate`. When a dependency changes, all source properties must either be loaded or explicitly assigned. Otherwise the guard throws before the update is written, so a partial entity cannot overwrite a combined search index with missing source text. Load the remaining sources before retrying; unrelated partial updates still preserve the stored index.
+
 ## Encrypted Properties
 
 The `@nest-boot/database-crypt` module provides the `@EncryptedProperty()` decorator for transparent field encryption using the `@nest-boot/crypt` module:

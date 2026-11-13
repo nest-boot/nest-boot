@@ -1,19 +1,17 @@
 import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
 
 import { createRule } from "../../utils/createRule.js";
-import {
-  hasClassDecorator,
-  hasPropertyDecorator,
-} from "../../utils/decorators.js";
+import { importedBindingName } from "../../utils/named-imports.js";
 
 export default createRule({
-  name: "entity-field-definite-assignment",
+  name: "entity-property-definite-assignment",
   meta: {
     type: "suggestion",
     fixable: "code",
     schema: [],
     docs: {
-      description: "Avoid looping over enums.",
+      description:
+        "Require definite assignment assertions for uninitialized entity properties.",
     },
     messages: {
       addDefiniteAssignment: "Add definite assignment assertion (!).",
@@ -23,9 +21,25 @@ export default createRule({
   defaultOptions: [],
   create(context) {
     const source = context.sourceCode;
+    const decoratorModules = [
+      "@mikro-orm/decorators/legacy",
+      "@nest-boot/database",
+      "@nest-boot/database-crypt",
+      "@nest-boot/database-hash",
+    ];
+    const decoratorName = (decorator: TSESTree.Decorator) =>
+      decorator.expression.type === AST_NODE_TYPES.CallExpression
+        ? importedBindingName(
+            source,
+            decoratorModules,
+            decorator.expression.callee,
+          )
+        : null;
 
     const isEntityClass = (node: TSESTree.ClassDeclaration): boolean => {
-      return hasClassDecorator(node, "Entity");
+      return node.decorators.some(
+        (decorator) => decoratorName(decorator) === "Entity",
+      );
     };
 
     const getPropertyName = (
@@ -87,16 +101,19 @@ export default createRule({
             return;
           }
           if (
-            !hasPropertyDecorator(member, [
-              "Property",
-              "Enum",
-              "OneToOne",
-              "OneToMany",
-              "ManyToOne",
-              "ManyToMany",
-              "EncryptedProperty",
-              "HashedProperty",
-            ])
+            !member.decorators.some((decorator) =>
+              [
+                "Property",
+                "Enum",
+                "OneToOne",
+                "OneToMany",
+                "ManyToOne",
+                "ManyToMany",
+                "EncryptedProperty",
+                "HashedProperty",
+                "SearchableProperty",
+              ].includes(decoratorName(decorator) ?? ""),
+            )
           ) {
             return;
           }

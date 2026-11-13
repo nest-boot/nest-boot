@@ -35,6 +35,7 @@ interface TypeInfo {
 export default createRule<
   [],
   | "alignPropertyDecoratorWithTsType"
+  | "alignSearchablePropertyOptions"
   | "removePropertyDecorator"
   | "useEnumDecorator"
   | "useOptTypeForInitializedProperty"
@@ -52,6 +53,8 @@ export default createRule<
     messages: {
       alignPropertyDecoratorWithTsType:
         "@Property decorator should align with the TypeScript type (type and nullable).",
+      alignSearchablePropertyOptions:
+        "@SearchableProperty should infer its entity type from the class, align nullable and omit type, index, onCreate and onUpdate.",
       removePropertyDecorator:
         "Property has a @{{decoratorName}} decorator, @Property decorator should be removed.",
       useEnumDecorator:
@@ -68,10 +71,16 @@ export default createRule<
     let importLocation: TSESTree.Node = source.ast;
     const coreModule = "@mikro-orm/core";
     const decoratorsModule = "@mikro-orm/decorators/legacy";
+    const fullTextModules = [
+      "@mikro-orm/sql",
+      "@mikro-orm/postgresql",
+      "@mikro-orm/pglite",
+    ];
     const coreName = (local: TSESTree.Node) =>
       importedBindingName(source, coreModule, local);
     const decoratorModules = [
       decoratorsModule,
+      "@nest-boot/database",
       "@nest-boot/database-crypt",
       "@nest-boot/database-hash",
     ];
@@ -741,6 +750,17 @@ export default createRule<
           ) {
             type = `t.${prop.value.property.name}`;
             typeReference = prop.value.object;
+          } else {
+            const reference =
+              prop.value.type === AST_NODE_TYPES.NewExpression
+                ? prop.value.callee
+                : prop.value;
+            if (
+              importedBindingName(source, fullTextModules, reference) ===
+              "FullTextType"
+            ) {
+              typeReference = reference;
+            }
           }
         } else if (prop.key.name === "nullable") {
           if (
@@ -896,6 +916,17 @@ export default createRule<
             return;
           }
 
+          const searchableDecorator = member.decorators.find(
+            (
+              decorator,
+            ): decorator is TSESTree.Decorator & {
+              expression: TSESTree.CallExpression;
+            } =>
+              decorator.expression.type === AST_NODE_TYPES.CallExpression &&
+              decoratorName(decorator.expression.callee) ===
+                "SearchableProperty",
+          );
+
           // Check relation decorators (OneToOne, OneToMany, ManyToOne, ManyToMany)
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           const hasRelationDecorator = member.decorators?.some(
@@ -927,17 +958,16 @@ export default createRule<
           ];
 
           // Find property-like decorator
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          const propertyLikeDecorator = member.decorators?.find(
-            (decorator: TSESTree.Decorator) => {
+          const propertyLikeDecorator =
+            searchableDecorator ??
+            member.decorators.find((decorator: TSESTree.Decorator) => {
               if (decorator.expression.type === AST_NODE_TYPES.CallExpression) {
                 return propertyLikeDecorators.includes(
                   decoratorName(decorator.expression.callee) ?? "",
                 );
               }
               return false;
-            },
-          );
+            });
 
           // Get decorator name
           const getDecoratorName = (
@@ -1065,6 +1095,81 @@ export default createRule<
             }
           }
 
+          if (searchableDecorator) {
+            const call = searchableDecorator.expression;
+            const typeArguments = call.typeArguments;
+            const argument = call.arguments.at(0);
+            if (argument?.type !== AST_NODE_TYPES.ObjectExpression) {
+              if (typeArguments) {
+                context.report({
+                  node: searchableDecorator,
+                  messageId: "alignSearchablePropertyOptions",
+                  fix: (fixer) => fixer.remove(typeArguments),
+                });
+              }
+              return;
+            }
+            const optionName = (
+              option: TSESTree.Property | TSESTree.SpreadElement,
+            ) => {
+              if (option.type !== AST_NODE_TYPES.Property) {
+                return undefined;
+              }
+              if (
+                !option.computed &&
+                option.key.type === AST_NODE_TYPES.Identifier
+              ) {
+                return option.key.name;
+              }
+              return option.key.type === AST_NODE_TYPES.Literal &&
+                typeof option.key.value === "string"
+                ? option.key.value
+                : undefined;
+            };
+            const managed = new Set(["type", "index", "onCreate", "onUpdate"]);
+            const nullableOption = argument.properties.findLast(
+              (option) => optionName(option) === "nullable",
+            );
+            const nullable =
+              nullableOption?.type === AST_NODE_TYPES.Property &&
+              nullableOption.value.type === AST_NODE_TYPES.Literal &&
+              nullableOption.value.value === true;
+            const hasManaged = argument.properties.some((option) =>
+              managed.has(optionName(option) ?? ""),
+            );
+            const alignOptions = hasManaged || nullable !== typeInfo.isNullable;
+            if (typeArguments || alignOptions) {
+              context.report({
+                node: searchableDecorator,
+                messageId: "alignSearchablePropertyOptions",
+                fix: (fixer) => {
+                  const fixes: RuleFix[] = [];
+                  if (typeArguments) {
+                    fixes.push(fixer.remove(typeArguments));
+                  }
+                  if (!alignOptions) {
+                    return fixes;
+                  }
+                  const options = argument.properties
+                    .filter(
+                      (option) =>
+                        !managed.has(optionName(option) ?? "") &&
+                        optionName(option) !== "nullable",
+                    )
+                    .map((option) => source.getText(option));
+                  if (typeInfo.isNullable) {
+                    options.push("nullable: true");
+                  }
+                  fixes.push(
+                    fixer.replaceText(argument, `{ ${options.join(", ")} }`),
+                  );
+                  return fixes;
+                },
+              });
+            }
+            return;
+          }
+
           // If there is an @Enum decorator, check its configuration regardless of whether the type is recognized as enum
           if (enumDecorator) {
             const enumConfig = parseEnumDecorator(enumDecorator);
@@ -1157,8 +1262,44 @@ export default createRule<
             return;
           }
 
+          // Shared options must be made explicit before their type settings can be aligned.
+          const propertyCall = propertyDecorator.expression;
+          if (
+            currentDecoratorName === "Property" &&
+            propertyCall.type === AST_NODE_TYPES.CallExpression &&
+            propertyCall.arguments.some(
+              (argument) =>
+                argument.type === AST_NODE_TYPES.SpreadElement ||
+                (argument.type === AST_NODE_TYPES.ObjectExpression &&
+                  argument.properties.some(
+                    (option) => option.type === AST_NODE_TYPES.SpreadElement,
+                  )),
+            )
+          ) {
+            if (propertyCall.typeArguments) {
+              const typeArguments = propertyCall.typeArguments;
+              context.report({
+                node: propertyDecorator,
+                messageId: "alignPropertyDecoratorWithTsType",
+                fix: (fixer) => fixer.remove(typeArguments),
+              });
+            }
+            return;
+          }
+
           // Check if existing decorator matches the type
           const currentConfig = parsePropertyDecorator(propertyDecorator);
+          if (
+            typeInfo.propertyType === "t.string" &&
+            currentConfig.typeReference &&
+            importedBindingName(
+              source,
+              fullTextModules,
+              currentConfig.typeReference,
+            ) === "FullTextType"
+          ) {
+            typeInfo.propertyType = currentConfig.type;
+          }
           let expectedType = typeInfo.propertyType;
 
           // PrimaryKey number type expects t.integer
@@ -1169,6 +1310,11 @@ export default createRule<
             expectedType = "t.integer";
           }
 
+          const typeArguments =
+            currentDecoratorName === "Property" &&
+            propertyCall.type === AST_NODE_TYPES.CallExpression
+              ? propertyCall.typeArguments
+              : undefined;
           let needReport =
             (propertyDecorator.expression.type ===
               AST_NODE_TYPES.CallExpression &&
@@ -1224,6 +1370,13 @@ export default createRule<
           }
 
           if (!needReport) {
+            if (typeArguments) {
+              context.report({
+                node: propertyDecorator,
+                messageId: "alignPropertyDecoratorWithTsType",
+                fix: (fixer) => fixer.remove(typeArguments),
+              });
+            }
             return;
           }
 

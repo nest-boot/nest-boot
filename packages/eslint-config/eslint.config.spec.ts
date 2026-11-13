@@ -14,7 +14,8 @@ describe("eslint config", () => {
       projectService: true,
     });
     expect(nestBootConfig?.rules).toMatchObject({
-      "@nest-boot/entity-field-definite-assignment": "error",
+      "@nest-boot/entity-property-definite-assignment": "error",
+      "@nest-boot/entity-property-no-spread": "error",
       "@nest-boot/entity-property-config-from-types": "error",
       "@nest-boot/graphql-field-definite-assignment": "error",
       "@nest-boot/graphql-field-config-from-types": "error",
