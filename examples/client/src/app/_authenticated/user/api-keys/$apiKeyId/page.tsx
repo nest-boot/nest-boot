@@ -181,6 +181,16 @@ function ApiKeyDetailsPage() {
         "write",
         createAbilitySubject("UserApiKey", apiKey),
       )}
+      canEditName={ability.can(
+        "write",
+        createAbilitySubject("UserApiKey", apiKey),
+        "name",
+      )}
+      canEditPermissions={ability.can(
+        "write",
+        createAbilitySubject("UserApiKey", apiKey),
+        "permissions",
+      )}
       listPath={"/user/api-keys"}
       listSearch={backSearch}
       paginationActions={{

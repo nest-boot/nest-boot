@@ -122,7 +122,7 @@ invitations. Each service checks its own authorization and retains request RLS.
 
 ## Workspace-visible member profiles
 
-Built-in `WorkspaceMember` owns name/email, and `Workspace.members` / `User.members` own the inverse collections. Applications do not redeclare these fields. Raw ORM collections stay hidden from GraphQL; connection
+Built-in `WorkspaceMember` owns name/email, and `Workspace.members` provides the inverse member collection. `User.members` is removed; use `WorkspaceMemberService` for membership queries. Applications do not redeclare these fields. Raw ORM collections stay hidden from GraphQL; connection
 field resolvers remain responsible for authorized pagination. The example's
 `Workspace.features` field and enum have been removed.
 

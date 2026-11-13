@@ -372,8 +372,10 @@ updatePost(@Args("id") id: string) {
 
 WorkspaceMember API Key 仅贡献工作区授权。User API Key 贡献用户授权，并在成员关系有效时
 贡献工作区授权；调用回调前，各来源都已受凭证权限上限约束。守卫检查最终的 `AuthAbility`。
-内置工作区规则匹配当前工作区 ID；前端对 WorkspaceMember、WorkspaceInvitation、WorkspaceApiKey 做实例
-检查时，应查询 `workspaceId`。自定义业务规则需要使用回调上下文显式声明对象条件。
+内置工作区规则匹配当前工作区 ID；前端对 WorkspaceMember、WorkspaceInvitation 做实例检查时，
+应查询 `workspaceId`。WorkspaceApiKey 没有 GraphQL `workspaceId` 字段；在工作区范围查询成功后，
+按示例详情页的方式，将当前选中的工作区 ID 加到客户端 Ability subject 中。
+自定义业务规则需要使用回调上下文显式声明对象条件。
 
 Auth 自动映射内置权限。业务扩展显式绑定权限，例如 `can({ user: "post:read" }, "read", Post)`。
 即使回调没有检查权限数组，工厂仍会检查有效权限，因此不具备 `post:read` 的 API Key
@@ -449,21 +451,31 @@ User 写入及 Session 读取同样由 Service 授权。数据库请求变量不
 | `workspaceScopePolicy()` | `bigint` | `workspace` | `all`     | `["authenticated"]` |
 
 ```typescript
-import { Entity } from "@mikro-orm/decorators/legacy";
+import { Entity, ManyToOne, PrimaryKey } from "@mikro-orm/decorators/legacy";
 import {
-  WorkspaceMember,
+  User,
+  Workspace,
   userScopePolicy,
   workspaceScopePolicy,
 } from "@nest-boot/auth";
 
 @Entity({
   policies: [
-    // 跨工作区读取本人的成员关系，但不授予跨工作区写权限。
+    // 跨工作区读取自己的文章；写操作仍限定在当前工作区。
     userScopePolicy({ command: "select" }),
     workspaceScopePolicy(),
   ],
 })
-export class WorkspaceMember extends WorkspaceMember {}
+export class Post {
+  @PrimaryKey()
+  id!: number;
+
+  @ManyToOne(() => User)
+  user!: User;
+
+  @ManyToOne(() => Workspace)
+  workspace!: Workspace;
+}
 ```
 
 `property` 是实体属性名，不是数据库列名；原生回调会读取映射后的列名。适用于标量 ID

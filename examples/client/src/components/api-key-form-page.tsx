@@ -98,6 +98,7 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
   onDelete,
 }: ApiKeyFormPageProps<Permission>) {
   const { t } = useTranslation();
+  const canSave = canWrite && (!apiKey || canEditName || canEditPermissions);
   const formId = useId();
   const { secret } = useCreatedApiKey();
   const createdKey = apiKey ? secret : undefined;
@@ -140,7 +141,7 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
       onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
     },
     onSubmit: async ({ value, formApi }) => {
-      if (!canWrite || pendingAction) return;
+      if (!canSave || pendingAction) return;
       if (
         memberOptions &&
         ownerType === "serviceAccount" &&
@@ -297,7 +298,7 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
         onSubmit={(event) => {
           event.preventDefault();
           event.stopPropagation();
-          if (form.state.isSubmitting || pendingAction || !canWrite) return;
+          if (form.state.isSubmitting || pendingAction || !canSave) return;
           form.setErrorMap({ onSubmit: undefined });
           form.handleSubmit();
         }}
@@ -450,7 +451,7 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
                   )}
                 </FormLayout>
               </CardContent>
-              {canWrite && (
+              {canSave && (
                 <CardFooter>
                   <Button
                     type="submit"

@@ -417,9 +417,11 @@ WorkspaceMember API keys contribute only workspace grants. User API keys contrib
 user grants and, with a live membership, workspace grants. Each source is
 limited by the credential before `buildAbility` runs. The Guard checks the
 resulting `AuthAbility`. Built-in workspace rules match the selected workspace's
-ID; select `workspaceId` on WorkspaceMember, WorkspaceInvitation, and WorkspaceApiKey when checking
-their instances in the client. Business rules must declare their own object
-conditions using the callback context.
+ID; select `workspaceId` on WorkspaceMember and WorkspaceInvitation when checking
+their instances in the client. WorkspaceApiKey has no GraphQL `workspaceId` field;
+after a workspace-scoped query, add the selected workspace ID to the client ability
+subject as the example detail page does. Business rules must declare their own
+object conditions using the callback context.
 
 Auth maps built-in permissions automatically. Business extensions bind their
 rules explicitly, for example `can({ user: "post:read" }, "read", Post)`. The factory
@@ -513,21 +515,31 @@ definitions. Every option is optional:
 | `workspaceScopePolicy()` | `bigint` | `workspace` | `all`     | `["authenticated"]` |
 
 ```typescript
-import { Entity } from "@mikro-orm/decorators/legacy";
+import { Entity, ManyToOne, PrimaryKey } from "@mikro-orm/decorators/legacy";
 import {
-  WorkspaceMember,
+  User,
+  Workspace,
   userScopePolicy,
   workspaceScopePolicy,
 } from "@nest-boot/auth";
 
 @Entity({
   policies: [
-    // Read your memberships across workspaces; do not grant cross-workspace writes.
+    // Read your posts across workspaces; writes remain workspace-scoped.
     userScopePolicy({ command: "select" }),
     workspaceScopePolicy(),
   ],
 })
-export class WorkspaceMember extends WorkspaceMember {}
+export class Post {
+  @PrimaryKey()
+  id!: number;
+
+  @ManyToOne(() => User)
+  user!: User;
+
+  @ManyToOne(() => Workspace)
+  workspace!: Workspace;
+}
 ```
 
 `property` names an entity property, not its SQL column. Native callbacks resolve

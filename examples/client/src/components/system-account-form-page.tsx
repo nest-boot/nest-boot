@@ -60,6 +60,7 @@ export function SystemAccountFormPage({
   onDelete,
 }: Props) {
   const { t } = useTranslation();
+  const canSave = canWrite && (!account || canEditName || canEditPermissions);
   const id = useId();
   const user = useCurrentUserContext();
   const [pending, setPending] = useState(false);
@@ -87,7 +88,7 @@ export function SystemAccountFormPage({
       onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
     },
     onSubmit: async ({ value, formApi }) => {
-      if (!canWrite || pending) return;
+      if (!canSave || pending) return;
       try {
         const changed =
           !account ||
@@ -114,7 +115,9 @@ export function SystemAccountFormPage({
     getFormErrorMessage(state.errors),
   );
   const action = async (remove: boolean) => {
-    if (pending || submitting || !canWrite) return;
+    const operation = remove ? onDelete : onToggle;
+    if (!account || pending || submitting || !canWrite || !operation) return;
+    if (!remove && !canToggle) return;
     setPending(true);
     try {
       if (
@@ -128,7 +131,7 @@ export function SystemAccountFormPage({
         }))
       )
         return;
-      await (remove ? onDelete?.() : onToggle?.());
+      await operation();
     } catch (error) {
       toast.add({
         type: "error",
@@ -152,7 +155,7 @@ export function SystemAccountFormPage({
       secondaryActions={
         account && canWrite
           ? [
-              ...(canToggle
+              ...(canToggle && onToggle
                 ? [
                     {
                       label: t(
@@ -163,12 +166,16 @@ export function SystemAccountFormPage({
                     },
                   ]
                 : []),
-              {
-                label: t("action.delete"),
-                destructive: true,
-                disabled: pending || submitting,
-                onAction: () => action(true),
-              },
+              ...(onDelete
+                ? [
+                    {
+                      label: t("action.delete"),
+                      destructive: true,
+                      disabled: pending || submitting,
+                      onAction: () => action(true),
+                    },
+                  ]
+                : []),
             ]
           : undefined
       }
@@ -202,7 +209,7 @@ export function SystemAccountFormPage({
                 onSubmit={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
-                  if (!submitting && !pending) {
+                  if (canSave && !submitting && !pending) {
                     form.setErrorMap({ onSubmit: undefined });
                     void form.handleSubmit();
                   }
@@ -257,7 +264,7 @@ export function SystemAccountFormPage({
                 </FormLayout>
               </form>
             </CardContent>
-            {canWrite && (
+            {canSave && (
               <CardFooter>
                 <Button
                   type="submit"

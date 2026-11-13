@@ -105,8 +105,8 @@ GraphQL 工作区更新、成员创建/更新/角色/权限设置返回仅含 `i
 
 ## 用户成员与工作区可见资料
 
-`WorkspaceMember` 内置姓名和邮箱，`Workspace.members` 和 `User.members` 内置反向集合。
-应用无需重复声明这些字段或关联。
+`WorkspaceMember` 内置姓名和邮箱，`Workspace.members` 提供成员反向集合。
+`User.members` 已移除，请通过 `WorkspaceMemberService` 查询成员关系。应用无需重复声明这些字段或关联。
 原始 ORM 集合不直接暴露为 GraphQL 字段，分页仍由带权限检查的连接字段解决器提供。
 示例的 `Workspace.features` 字段及枚举已移除。
 

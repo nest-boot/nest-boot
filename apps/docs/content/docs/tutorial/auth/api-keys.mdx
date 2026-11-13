@@ -13,7 +13,7 @@ description: "Authenticate personal and workspace automation with scoped API key
 
 Personal key management uses `user-api-key:read` and `user-api-key:write`.
 WorkspaceMember key management uses `workspace-api-key:read` and `workspace-api-key:write`.
-`read` allows queries; `write` allows creation, updates, enabling/disabling, and
+`read` allows queries; `write` allows creation, updates, permanent revocation, and
 deletion. Neither permission implies the other. Ownership and grant ceilings still apply.
 In the example, both user roles include personal key-management permissions.
 API-key requests receive only the explicitly granted actions after permission
@@ -43,16 +43,19 @@ mutation {
 `WorkspaceApiKeyService.createWorkspaceApiKey(workspace, { member, ...options })`
 accepts a member entity or ID; GraphQL accepts optional `input.memberId`.
 A user can issue keys for their own membership or an active service account
-in the selected workspace, never another user's membership. Omitting the owner
-uses the current member. The example form defaults to **You**, passing the current
-member ID. Choose **Service account** to show a searchable account dropdown.
-When that dropdown is left unselected, the frontend first calls `addWorkspaceMember` with
-`type: SERVICE_ACCOUNT` and the key name, then passes the returned `memberId`
-to `createWorkspaceApiKey`. Account and key creation are separate API operations,
-requiring `workspace-service-account:write` and `workspace-api-key:write`, respectively.
-Selected permissions are sent to `addWorkspaceMember` as direct grants with `roles: []`.
-With no selection, roles and permissions are omitted, assigning the configured
-default workspace role (MEMBER by default).
+in the selected workspace, never another user's membership. Omitting `member` or
+`input.memberId` creates a new service account and its key in one transaction,
+using the key name for the account. Selected permissions become direct account
+grants with `roles: []`; an empty selection uses the configured default workspace
+role (MEMBER by default).
+
+The example form defaults to **You** and explicitly passes the current member ID.
+Choose **Service account** to select an existing account or leave the dropdown
+empty to create one. The frontend sends one `createWorkspaceApiKey` mutation.
+Creating a new account requires both `workspace-service-account:write` and
+`workspace-api-key:write`; using an existing member requires key-management
+permission and the normal owner/issuer checks. If either creation fails, neither
+record is committed.
 
 Creation and updates cannot grant permissions beyond the target member's effective
 roles and direct grants or the issuer's grants. At request time, non-empty key
@@ -72,8 +75,8 @@ their own migration.
 
 ## Service API
 
-- `getUserApiKey`, `createUserApiKey`, `updateUserApiKey`, and `deleteUserApiKey`;
-- `getWorkspaceApiKey`, `createWorkspaceApiKey`, `updateWorkspaceApiKey`, and `deleteWorkspaceApiKey`;
+- `getUserApiKey`, `createUserApiKey`, `updateUserApiKey`, `revokeUserApiKey`, and `deleteUserApiKey`;
+- `getWorkspaceApiKey`, `createWorkspaceApiKey`, `updateWorkspaceApiKey`, `revokeWorkspaceApiKey`, and `deleteWorkspaceApiKey`;
 - `UserApiKeyService.getUserApiKeyConnection(user, args)` and `WorkspaceApiKeyService.getWorkspaceApiKeyConnection(workspace, args)` return connections;
   Authentication and usage tracking are internal infrastructure responsibilities; consumers use the two management services.
 
@@ -126,8 +129,8 @@ Apply the example's `Initial → generated schema migrations`. It supplies unifo
 Service authorization.
 
 Create methods return the plaintext key exactly once. The database stores a
-SHA-256 hash of the complete key, the display-safe `start` and `prefix`, enabled
-state, permissions, expiration, and usage timestamps. Successful authenticated
+SHA-256 hash of the complete key, the display-safe `start` and `prefix`,
+`revokedAt`, permissions, expiration, and usage timestamps. Successful authenticated
 requests update `lastUsedAt` automatically. A custom prefix must contain 1–32
 lowercase ASCII letters, digits, underscores, or hyphens and start with a letter.
 User keys default to `user_`; member keys default to `ws_`.
@@ -239,11 +242,13 @@ Browser sessions can still manage all keys they own, subject to the normal
 ability checks. Updates that omit `permissions` preserve the stored value;
 passing `null` clears it.
 
-An authorized caller can disable a key with `{ enabled: false }`, without replacing
-its permissions, even if those stored permissions no longer satisfy the configured
-allowlist or the issuer's current grants. Ownership, update ability, and the
-authenticating key's stored-permission ceiling still apply. Re-enabling the key,
-other updates, and explicit permission replacements validate permissions normally.
+Use `revokeUserApiKey(id)`, `revokeWorkspaceApiKey(id)` or `revokeSystemApiKey(id)`
+to permanently revoke a key. Revocation sets `revokedAt` once and preserves its
+permissions; repeating the operation retains the original timestamp. Keys have no
+`enabled` field and cannot be re-enabled. Ownership, write ability, field
+authorization and credential ceilings still apply. Revocation remains available
+when stored grants have retired or no longer satisfy the configured allowlist;
+explicit permission replacements still validate the requested grants.
 
 ## Transport
 
@@ -302,9 +307,9 @@ mutation {
 }
 ```
 
-Use the returned ID with `createSystemApiKey(systemAccountId, input)`. Its creation result contains `{ entity, apiKey }`; send the plaintext as `Authorization: Bearer <key>`. Subsequent queries expose only metadata. Use `SystemAccountService` and `SystemApiKeyService` for programmatic management; `SystemAccount.apiKeys` provides cursor pagination.
+Pass the returned ID as `input.systemAccountId` to `createSystemApiKey(input)`. Omit the ID to create a system account with the key name and effective key permissions in the same transaction; this also requires account-creation permission. Selecting an existing account does not create or modify it. Its creation result contains `{ entity, apiKey }`; send the plaintext as `Authorization: Bearer <key>`. Subsequent queries expose only metadata. Use `SystemAccountService` and `SystemApiKeyService` for programmatic management; `SystemAccount.apiKeys` provides cursor pagination.
 
-Configure defaults and ceilings under `apiKey.system` (`defaultPrefix`, `defaultPermissions`, `allowedPermissions`), with default prefix `sys_`. Effective permissions are the intersection of the account, explicit key grants and configured ceiling. Empty grants authorize nothing. Account disablement invalidates all owned credentials, while key disablement/expiry/deletion affects one credential. A system credential creates no user or membership identity.
+Configure defaults and ceilings under `apiKey.system` (`defaultPrefix`, `defaultPermissions`, `allowedPermissions`), with default prefix `sys_`. Effective permissions are the intersection of the account, explicit key grants and configured ceiling. Empty grants authorize nothing. Account disablement invalidates all owned credentials, while key revocation/expiry/deletion affects one credential. Deleting an account atomically revokes its keys and retains their audit records. A system credential creates no user or membership identity.
 
 Available platform grants are `user:read`, `user:update`, `user:delete`, `workspace:read-any`, `workspace:update-any`, and `workspace:delete-any`. User services retain their permission checks. The explicit workspace endpoints are `workspaces`, `platformWorkspace(id)`, `updatePlatformWorkspace(id, input)`, and `deletePlatformWorkspace(id)`. Workspace grants have no effect when the feature is disabled, and do not grant access to business tables automatically.
 

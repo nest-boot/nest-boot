@@ -73,7 +73,7 @@ user session and does not require `workspace-member:invite`.
 - `rejectWorkspaceInvitation(user, invitation)`;
 - `cancelWorkspaceInvitation(invitation)`.
 
-`invitation(id)` calls `getWorkspaceInvitation(id)` without passing a user.
+`workspaceInvitation(id)` calls `getWorkspaceInvitation(id)` without passing a user.
 This method checks read permission and queries the request's ORM manager without
 bypassing RLS or disabling filters. Configure both workspace-scoped and recipient
 SELECT policies: a recipient must be able to read their invitation before joining

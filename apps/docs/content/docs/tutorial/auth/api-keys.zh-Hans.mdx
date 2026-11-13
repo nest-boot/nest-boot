@@ -10,7 +10,7 @@ description: "使用带权限范围的 API Key 认证个人和工作区自动化
 
 个人 Key 管理使用 `user-api-key:read` 和 `user-api-key:write`；
 成员 Key 管理使用 `workspace-api-key:read` 和 `workspace-api-key:write`。
-`read` 允许查询，`write` 允许创建、更新、启停和删除，二者不互相隐含。
+`read` 允许查询，`write` 允许创建、更新、永久撤销和删除，二者不互相隐含。
 资源归属与可授予权限上限检查仍然生效。
 示例的两个用户角色均包含个人 Key 管理权限。API Key 请求只会获得权限取交集后明确
 授予的操作，不再无条件继承 `manage` 规则。
@@ -36,13 +36,14 @@ mutation {
 
 Service 的 `createWorkspaceApiKey(workspace, { member, ...options })` 可传成员实体或 ID；
 GraphQL 接口接收 `input.memberId`。用户只能为自己的 USER 成员或所选工作区的活动
-服务账号创建 Key。省略归属时使用当前 member。
-前端默认选择「你」，传入当前 member ID；选择「服务账号」后显示可搜索的下拉框。
-此时未选择具体账号，先调用 `addWorkspaceMember`，按 Key 名称
-创建 `SERVICE_ACCOUNT`，再把返回的 `memberId` 传给 `createWorkspaceApiKey`。
-这是两个独立 API 调用，分别需要 `workspace-service-account:write` 和 `workspace-api-key:write`。
-勾选权限时，创建账号传入 `roles: []` 和对应直接权限；未勾选时省略角色和权限，
-使用配置的默认工作区角色（默认 MEMBER）。
+服务账号创建 Key。省略 `member` 或 `input.memberId` 时，后端在同一个事务内
+创建服务账号和密钥，账号使用密钥名称。勾选权限时，账号使用 `roles: []` 和对应
+直接权限；未勾选时使用配置的默认工作区角色（默认 MEMBER）。
+
+前端默认选择「你」，显式传入当前 member ID；选择「服务账号」后可选择已有账号，
+或留空自动创建。前端只发送一次 `createWorkspaceApiKey` mutation。
+自动创建账号需要同时具备 `workspace-service-account:write` 和 `workspace-api-key:write`；
+使用已有 member 只需密钥管理权限及正常的归属、签发者检查。任一步失败都会回滚两条记录。
 
 创建和更新不能超出目标成员的有效权限或签发者授权范围。非空 Key 权限在运行时与
 所属成员当前权限取交集；`permissions: []` 则不额外限制，继承成员的完整当前权限。
@@ -58,8 +59,8 @@ beta 示例保留 init，其余迁移按最终模型重新生成为 `Migration20
 
 ## 服务 API
 
-- `getUserApiKey`、`createUserApiKey`、`updateUserApiKey` 与 `deleteUserApiKey`；
-- `getWorkspaceApiKey`、`createWorkspaceApiKey`、`updateWorkspaceApiKey` 与 `deleteWorkspaceApiKey`；
+- `getUserApiKey`、`createUserApiKey`、`updateUserApiKey`、`revokeUserApiKey` 与 `deleteUserApiKey`；
+- `getWorkspaceApiKey`、`createWorkspaceApiKey`、`updateWorkspaceApiKey`、`revokeWorkspaceApiKey` 与 `deleteWorkspaceApiKey`；
 - `UserApiKeyService.getUserApiKeyConnection(user, args)` 与 `WorkspaceApiKeyService.getWorkspaceApiKeyConnection(workspace, args)` 返回连接分页；
   认证和使用时间更新由内部基础设施负责；业务代码使用两个管理 Service。
 
@@ -107,7 +108,7 @@ Service 从持久化记录解析归属，并从请求上下文检查当前用户
 自定义应用仍需配置正确的策略，不能用 RLS 替代 Service 检查。
 
 创建方法只会返回一次明文 Key。数据库保存完整 Key 的 SHA-256 哈希、可安全展示的
-`start` 与 `prefix`、启用状态、权限、过期时间和使用时间。认证成功的请求会自动更新
+`start` 与 `prefix`、`revokedAt`、权限、过期时间和使用时间。认证成功的请求会自动更新
 `lastUsedAt`。自定义前缀长度为 1–32 位，只能包含小写英文字母、数字、下划线和连字符，且首位必须是字母；用户密钥默认前缀为 `user_`，工作空间密钥为 `ws_`。生成的 Key 用于
 Bearer 请求头。
 
@@ -198,9 +199,10 @@ Service 仍会校验每次写入，这份列表不能替代授权检查。
 通过后，仍可管理所属范围内的全部 Key。
 更新时省略 `permissions` 会保留原值，传入 `null` 则会清空。
 
-具有权限的调用者可以使用 `{ enabled: false }` 停用 Key，不替换其权限；即使旧权限已不再
-符合配置白名单或签发者当前授权，也允许停用。归属、更新能力及当前认证 Key 对目标已存储
-权限的上限检查仍然生效。重新启用、其他更新和显式替换权限仍按正常规则校验。
+使用 `revokeUserApiKey(id)`、`revokeWorkspaceApiKey(id)` 或 `revokeSystemApiKey(id)`
+永久撤销密钥。撤销只设置一次 `revokedAt`，保留原权限；重复调用不会覆盖首次撤销时间。
+密钥没有 `enabled` 字段，也不能重新启用。归属、写入能力、字段授权和凭证权限上限检查
+仍然生效。即使存储权限已下线或不再符合配置白名单，仍可撤销；显式替换权限时仍需校验新授权。
 
 ## 传输方式
 
@@ -253,9 +255,9 @@ mutation {
 }
 ```
 
-使用返回的 ID 调用 `createSystemApiKey(systemAccountId, input)`，结果为 `{ entity, apiKey }`。明文只在创建时返回一次，通过 `Authorization: Bearer <key>` 使用；后续查询不公开哈希或明文。程序调用使用 `SystemAccountService` 和 `SystemApiKeyService`；`SystemAccount.apiKeys` 提供游标分页。
+将返回的 ID 作为 `input.systemAccountId` 传给 `createSystemApiKey(input)`。省略 ID 时，会在同一个事务内按密钥名称和有效权限创建系统账户及密钥，并额外检查账户创建权限；选择已有账户不会创建或修改该账户。创建结果为 `{ entity, apiKey }`。明文只在创建时返回一次，通过 `Authorization: Bearer <key>` 使用；后续查询不公开哈希或明文。程序调用使用 `SystemAccountService` 和 `SystemApiKeyService`；`SystemAccount.apiKeys` 提供游标分页。
 
-`apiKey.system` 支持 `defaultPrefix`、`defaultPermissions`、`allowedPermissions`，默认前缀为 `sys_`。有效权限取“账户当前权限 ∩ 密钥显式授权 ∩ 配置上限”，空权限列表不授予任何访问能力。禁用账户会使全部所属密钥失效；禁用、过期或删除密钥只影响该密钥。认证不会伪造 User、WorkspaceMember 或选中的 workspace 身份。
+`apiKey.system` 支持 `defaultPrefix`、`defaultPermissions`、`allowedPermissions`，默认前缀为 `sys_`。有效权限取“账户当前权限 ∩ 密钥显式授权 ∩ 配置上限”，空权限列表不授予任何访问能力。禁用账户会使全部所属密钥失效；撤销、过期或删除密钥只影响该密钥。删除系统账户会在同一事务内撤销所属密钥，并保留密钥审计记录。认证不会伪造 User、WorkspaceMember 或选中的 workspace 身份。
 
 内置平台权限为 `user:read`、`user:update`、`user:delete`、`workspace:read-any`、`workspace:update-any`、`workspace:delete-any`。用户操作仍经过 User Service 授权；平台工作区入口单独提供 `workspaces`、`platformWorkspace(id)`、`updatePlatformWorkspace(id, input)`、`deletePlatformWorkspace(id)`。关闭 workspace 后对应权限不生效，也不会自动开放业务表。
 

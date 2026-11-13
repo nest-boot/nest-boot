@@ -41,7 +41,7 @@ AuthModule.forRoot({
 
 System-only applications register SystemAccount and ApiKey for authentication without exposing system-account GraphQL types or management endpoints. Provision credentials through a trusted seeder or internal ORM code and use them on application-owned APIs; built-in user/system management APIs stay disabled until administration is enabled.
 
-Disabled features register no corresponding services, GraphQL APIs or persistence tables. `ApiKey.owner` includes only active owner types and is nullable when identity access is unavailable; it does not pull disabled features into the schema.
+Disabled features register no corresponding services, GraphQL APIs or persistence tables. The internal MikroORM `ApiKey.owner` relation targets only enabled owner types. GraphQL exposes nullable `UserApiKey.user`, `WorkspaceApiKey.member` and `SystemApiKey.systemAccount` fields, which return null when identity access is unavailable. There is no GraphQL `ApiKey` type or `owner` union, and disabled features are not pulled into the schema.
 
 ## Module Options
 

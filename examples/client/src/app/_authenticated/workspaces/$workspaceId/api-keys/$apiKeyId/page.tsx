@@ -213,6 +213,16 @@ function ApiKeyDetailsPage() {
         "write",
         createAbilitySubject("WorkspaceApiKey", apiKey),
       )}
+      canEditName={ability.can(
+        "write",
+        createAbilitySubject("WorkspaceApiKey", apiKey),
+        "name",
+      )}
+      canEditPermissions={ability.can(
+        "write",
+        createAbilitySubject("WorkspaceApiKey", apiKey),
+        "permissions",
+      )}
       listPath={listPath}
       listSearch={backSearch}
       paginationActions={{

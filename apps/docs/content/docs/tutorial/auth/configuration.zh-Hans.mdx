@@ -39,7 +39,7 @@ AuthModule.forRoot({
 
 只开启 system 时，会注册用于认证的 SystemAccount 和 ApiKey，但不引入管理员 GraphQL 类型或管理接口。通过可信 seeder 或内部 ORM 代码预置凭证，供应用自己的 API 使用；内置用户、系统账户及密钥管理接口仍由 admin 控制。
 
-关闭的功能不会注册对应服务、GraphQL API 或实体表。`ApiKey.owner` 联合字段只包含实际启用的 owner 类型；没有访问 owner 的权限时返回 null，不会额外引入关闭的功能。
+关闭的功能不会注册对应服务、GraphQL API 或实体表。MikroORM 内部的 `ApiKey.owner` 多态关联只指向已启用的归属类型。GraphQL 分别暴露可空的 `UserApiKey.user`、`WorkspaceApiKey.member` 和 `SystemApiKey.systemAccount`；没有访问关联身份的权限时返回 null。GraphQL 不提供 `ApiKey` 类型或 `owner` 联合字段，也不会额外引入关闭的功能。
 
 ## 模块选项
 
