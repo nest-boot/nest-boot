@@ -10,9 +10,9 @@ description: "@nest-boot/graphql-connection 模块提供遵循 Relay 连接规�
 需要 MikroORM 7.2 或更高版本。游标分页遵循数据库平台原生的空值排序规则，可空字段的正向和反向遍历均适用。
 
 ```bash
-npm install @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0 @mikro-orm/decorators@^7.2.0
+npm install @nest-boot/graphql-connection @nest-boot/graphql @nest-boot/database @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0 @mikro-orm/decorators@^7.2.0
 # 或
-pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0 @mikro-orm/decorators@^7.2.0
+pnpm add @nest-boot/graphql-connection @nest-boot/graphql @nest-boot/database @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0 @mikro-orm/decorators@^7.2.0
 ```
 
 ## 基本用法
@@ -111,17 +111,16 @@ export class UserResolver {
 字符串字段可以把全文检索映射到专门的 MikroORM 全文检索属性：
 
 ```typescript
-import { Entity, Index, Property } from "@mikro-orm/decorators/legacy";
-import { FullTextType } from "@mikro-orm/postgresql";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
 
 @Entity()
 class Book {
   @Property()
   title!: string;
 
-  @Index({ type: "fulltext" })
-  @Property({ type: FullTextType, onUpdate: (book) => book.title })
-  searchableTitle!: string;
+  @SearchableProperty({ properties: "title", nullable: true })
+  searchableTitle!: string | null;
 }
 
 export const { Connection: BookConnection } = new ConnectionBuilder(Book)
@@ -135,7 +134,9 @@ export const { Connection: BookConnection } = new ConnectionBuilder(Book)
   .build();
 ```
 
-这样配置后，`filter: { title: { $fulltext: "nest" } }` 和 `query: "title:nest"` 都会查询 `searchableTitle`；`$eq` 等普通操作符仍然查询 `title`。
+这样配置后，`filter: { title: { $fulltext: "你好世界" } }` 和 `query: "title:你好世界"` 都会查询 `searchableTitle`。连接模块会在执行记录查询和计数前，自动调用 `@nest-boot/database` 的 `tokenizer` 处理 `$fulltext` 的文本值，与 `SearchableProperty` 入库分词保持一致，无需调用方手动分词。逻辑组合、关联条件和程序调用中的 `options.where` 也遵循相同规则；`$eq` 等普通比较的文本保持原样。
+
+仅含标点或空白的全文检索值会保留为空的 `$fulltext` 条件，匹配零条记录。采用多语言分词时，已有索引字段的数据也应使用相同的分词器重新生成。
 
 ### 按天筛选日期
 

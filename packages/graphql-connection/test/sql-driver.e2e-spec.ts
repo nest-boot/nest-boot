@@ -1,8 +1,12 @@
 import { EntityManager, EntitySchema, MikroORM } from "@mikro-orm/core";
 import { PgliteDriver } from "@mikro-orm/pglite";
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
-import { SqlEntityManager } from "@mikro-orm/sql";
-import { DatabaseModule } from "@nest-boot/database";
+import { FullTextType, SqlEntityManager } from "@mikro-orm/sql";
+import {
+  DatabaseModule,
+  onFullTextCreate,
+  onFullTextUpdate,
+} from "@nest-boot/database";
 import { Test } from "@nestjs/testing";
 
 import {
@@ -27,7 +31,104 @@ const BookSchema = new EntitySchema({
   },
 });
 
+class SearchableConnectionBook {
+  id!: number;
+  title!: string;
+  searchableTitle!: string | null;
+}
+
+const SearchableBookSchema = new EntitySchema({
+  class: SearchableConnectionBook,
+  properties: {
+    id: { type: "number", primary: true },
+    title: { type: "string" },
+    searchableTitle: {
+      type: FullTextType,
+      nullable: true,
+      onCreate: onFullTextCreate("title"),
+      onUpdate: onFullTextUpdate("title"),
+    },
+  },
+});
+
 describe("GraphQL connection and official SQL driver integration", () => {
+  it("uses matching full-text boundaries for query syntax, GraphQL filters and programmatic conditions", async () => {
+    const orm = await MikroORM.init({
+      driver: PgliteDriver,
+      entities: [SearchableBookSchema],
+      dbName: "memory://",
+    });
+    try {
+      await orm.schema.create();
+      const em = orm.em.fork();
+      em.create(SearchableConnectionBook, { id: 1, title: "你好世界 HELLO" });
+      em.create(SearchableConnectionBook, { id: 2, title: "你好上海 HELLO" });
+      em.create(SearchableConnectionBook, { id: 3, title: "Goodbye 世界" });
+      await em.flush();
+      const { Connection, Filter } = new ConnectionBuilder(
+        SearchableConnectionBook,
+      )
+        .addField({
+          field: "title",
+          type: "string",
+          filterable: true,
+          searchable: true,
+          fulltext: "searchableTitle",
+        })
+        .build();
+      const manager = new ConnectionManager(em);
+      const queried = await manager.find(Connection, {
+        first: 10,
+        query: "你好世界",
+      });
+      expect(queried.edges.map(({ node }) => node.id)).toEqual([1]);
+      expect(queried.totalCount).toBe(1);
+
+      const filtered = await manager.find(Connection, {
+        first: 10,
+        filter: Filter.parseValue({ title: { $fulltext: "你好世界, HELLO!" } }),
+      });
+      expect(filtered.edges.map(({ node }) => node.id)).toEqual([1]);
+      expect(filtered.totalCount).toBe(1);
+
+      const constrained = await manager.find(
+        Connection,
+        { first: 10 },
+        {
+          where: {
+            $or: [
+              { searchableTitle: { $fulltext: "你好上海" } },
+              { searchableTitle: { $fulltext: "GOODBYE" } },
+            ],
+          },
+        },
+      );
+      expect(constrained.edges.map(({ node }) => node.id)).toEqual([2, 3]);
+      expect(constrained.totalCount).toBe(2);
+
+      const combined = await manager.find(
+        Connection,
+        {
+          first: 10,
+          query: "title:你好世界",
+          filter: Filter.parseValue({ title: { $fulltext: "HELLO!" } }),
+        },
+        { where: { title: { $eq: "你好世界 HELLO" } } },
+      );
+      expect(combined.edges.map(({ node }) => node.id)).toEqual([1]);
+      expect(combined.totalCount).toBe(1);
+
+      const empty = await manager.find(Connection, {
+        first: 10,
+        filter: Filter.parseValue({ title: { $fulltext: "!!!" } }),
+      });
+      expect(empty.edges).toEqual([]);
+      expect(empty.totalCount).toBe(0);
+    } finally {
+      await orm.close(true);
+    }
+  });
+
   it.each([
     { direction: OrderDirection.ASC, backward: false },
     { direction: OrderDirection.ASC, backward: true },
@@ -56,7 +157,7 @@ describe("GraphQL connection and official SQL driver integration", () => {
           .build();
         const manager = new ConnectionManager(em);
         const ids: number[] = [];
-        let cursor: string | undefined;
+        let cursor: string | null | undefined;
         let hasMore = true;
         for (let page = 0; hasMore && page < 6; page++) {
           const result = await manager.find(Connection, {

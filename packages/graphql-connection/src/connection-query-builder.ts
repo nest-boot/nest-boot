@@ -25,6 +25,7 @@ import {
   EdgeInterface,
 } from "./interfaces/index.js";
 import { ConnectionClass } from "./types/index.js";
+import { normalizeFullTextFilter } from "./utils/normalize-full-text-filter.js";
 
 const TOTAL_COUNT_LIMIT = 10_000;
 
@@ -298,12 +299,14 @@ export class ConnectionQueryBuilder<
     }
 
     if (filterQueryGroup.length === 1) {
-      return filterQueryGroup[0];
+      return normalizeFullTextFilter(
+        filterQueryGroup[0],
+      ) as FilterQuery<Entity>;
     }
 
-    return {
+    return normalizeFullTextFilter({
       $and: filterQueryGroup,
-    } as FilterQuery<Entity>;
+    }) as FilterQuery<Entity>;
   }
 
   private async getTotalCount(): Promise<number> {

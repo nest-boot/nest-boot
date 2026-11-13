@@ -73,6 +73,7 @@
   "peerDependencies": {
     "@mikro-orm/core": "^7.2.0",
     "@mikro-orm/sql": "^7.2.0",
+    "@nest-boot/database": "workspace:^",
     "@nest-boot/graphql": "workspace:^",
     "@nest-boot/request-context": "workspace:^",
     "@nestjs/apollo": "^14.0.0",

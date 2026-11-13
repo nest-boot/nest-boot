@@ -10,9 +10,9 @@ The `@nest-boot/graphql-connection` module provides cursor-based pagination for 
 Requires MikroORM 7.2 or later. Cursor pagination follows the database platform's native null ordering, including when traversing nullable sort fields in either direction.
 
 ```bash
-npm install @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0 @mikro-orm/decorators@^7.2.0
+npm install @nest-boot/graphql-connection @nest-boot/graphql @nest-boot/database @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0 @mikro-orm/decorators@^7.2.0
 # or
-pnpm add @nest-boot/graphql-connection @nest-boot/graphql @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0 @mikro-orm/decorators@^7.2.0
+pnpm add @nest-boot/graphql-connection @nest-boot/graphql @nest-boot/database @mikro-orm/core@^7.2.0 @mikro-orm/sql@^7.2.0 @mikro-orm/decorators@^7.2.0
 ```
 
 ## Basic Usage
@@ -114,17 +114,16 @@ MongoDB-style filter syntax with operators: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, 
 String fields can map full-text filters to a dedicated MikroORM full-text property:
 
 ```typescript
-import { Entity, Index, Property } from "@mikro-orm/decorators/legacy";
-import { FullTextType } from "@mikro-orm/postgresql";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
 
 @Entity()
 class Book {
   @Property()
   title!: string;
 
-  @Index({ type: "fulltext" })
-  @Property({ type: FullTextType, onUpdate: (book) => book.title })
-  searchableTitle!: string;
+  @SearchableProperty({ properties: "title", nullable: true })
+  searchableTitle!: string | null;
 }
 
 export const { Connection: BookConnection } = new ConnectionBuilder(Book)
@@ -138,7 +137,9 @@ export const { Connection: BookConnection } = new ConnectionBuilder(Book)
   .build();
 ```
 
-With that configuration, `filter: { title: { $fulltext: "nest" } }` and `query: "title:nest"` both search `searchableTitle`, while regular operators such as `$eq` still target `title`.
+With that configuration, `filter: { title: { $fulltext: "你好世界" } }` and `query: "title:你好世界"` both search `searchableTitle`. Before querying records or counts, the connection automatically applies `@nest-boot/database`'s `tokenizer` to `$fulltext` strings, using the same word boundaries as `SearchableProperty`. Callers do not need to tokenize input themselves. Logical groups, relation conditions, and programmatic `options.where` use the same normalization; regular comparison text such as `$eq` stays unchanged.
+
+A full-text value containing only whitespace or punctuation remains an empty `$fulltext` condition and matches no records. Regenerate existing search-column values with the same tokenizer when adopting multilingual full-text queries.
 
 ### Calendar-date filters
 
