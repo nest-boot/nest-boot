@@ -15,11 +15,11 @@ entities into `RequestContext`. Transport code should use decorators instead of
 reading context tokens directly.
 
 ```typescript
-import { CurrentSession, CurrentUser } from "@nest-boot/auth";
+import { AuthSession, AuthUser } from "@nest-boot/auth";
 
 profile(
-  @CurrentUser() user: User,
-  @CurrentSession() session: Session,
+  @AuthUser() user: User,
+  @AuthSession() session: Session,
 ) {
   return { user, session };
 }

@@ -16,6 +16,7 @@ import {
   createWorkspaceServices,
 } from "../../../test/workspace-service.fixture.js";
 import { ApiKey } from "../../api-key/entities/api-key.entity.js";
+import type { ApiKeyObject } from "../../api-key/objects/api-key.object.js";
 import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
 import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { AuthAbility } from "../../common/auth.ability.js";
@@ -26,7 +27,7 @@ import {
   canGrantPermissions,
 } from "../../common/utils/permission-grants.util.js";
 import { createAuthAbility } from "../../core/auth-ability.factory.js";
-import { API_KEY } from "../../core/constants/auth.constants.js";
+import { SELECTED_WORKSPACE } from "../../core/constants/auth.constants.js";
 import { Session } from "../../core/entities/session.entity.js";
 import { User } from "../../core/entities/user.entity.js";
 import {
@@ -83,7 +84,7 @@ describe("WorkspaceMemberService", () => {
         async () => {
           restoreAuthorization();
           RequestContext.set(User, createTestUser());
-          RequestContext.set(Workspace, workspace);
+          RequestContext.set(SELECTED_WORKSPACE, workspace);
           RequestContext.set(
             AuthAbility,
             createAuthAbility(
@@ -119,7 +120,7 @@ describe("WorkspaceMemberService", () => {
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       restoreAuthorization();
       RequestContext.set(User, createTestUser());
-      RequestContext.set(Workspace, workspace);
+      RequestContext.set(SELECTED_WORKSPACE, workspace);
       RequestContext.set(
         AuthAbility,
         createAuthAbility(
@@ -157,7 +158,7 @@ describe("WorkspaceMemberService", () => {
         async () => {
           restoreAuthorization();
           RequestContext.set(User, createTestUser());
-          RequestContext.set(Workspace, workspace);
+          RequestContext.set(SELECTED_WORKSPACE, workspace);
           RequestContext.set(
             AuthAbility,
             createAuthAbility(
@@ -216,10 +217,10 @@ describe("WorkspaceMemberService", () => {
         permissions: field === "permissions" ? ["workspace:delete"] : [],
       });
       mockRlsContext(em).variables = {
-        "app.user.id": user.id,
-        "app.workspace.id": workspace.id,
-        "app.system_account.id": "",
-        "app.member.id": current.id,
+        "app.auth.user.id": user.id,
+        "app.auth.workspace.id": workspace.id,
+        "app.selected.workspace.id": workspace.id,
+        "app.auth.workspace_member.id": current.id,
       };
       em.findOne.mockResolvedValue(locked);
       await RequestContext.run(
@@ -230,7 +231,7 @@ describe("WorkspaceMemberService", () => {
           ]);
           RequestContext.set(User, user);
           RequestContext.set(WorkspaceMember, current);
-          RequestContext.set(Workspace, workspace);
+          RequestContext.set(SELECTED_WORKSPACE, workspace);
           RequestContext.set(AuthAbility, ability);
           const update = () =>
             field === "roles"
@@ -251,7 +252,9 @@ describe("WorkspaceMemberService", () => {
           expect(em.setSessionContext).not.toHaveBeenCalled();
           await update();
           expect(RequestContext.get(WorkspaceMember)).toBe(locked);
-          expect(RequestContext.get(Workspace)).toBe(workspace);
+          expect(RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)).toBe(
+            workspace,
+          );
           expect(
             RequestContext.get(AuthAbility)?.can("delete", Workspace),
           ).toBe(false);
@@ -278,7 +281,7 @@ describe("WorkspaceMemberService", () => {
           RequestContext.set(User, createTestUser());
           RequestContext.set(WorkspaceMember, current);
           const workspace = createTestWorkspace();
-          RequestContext.set(Workspace, workspace);
+          RequestContext.set(SELECTED_WORKSPACE, workspace);
           RequestContext.set(
             AuthAbility,
             createAuthAbility(
@@ -332,7 +335,7 @@ describe("WorkspaceMemberService", () => {
         withAuthTestFeatures({ workspace: { enabled: true } }),
       );
       RequestContext.set(WorkspaceMember, current);
-      RequestContext.set(Workspace, workspace);
+      RequestContext.set(SELECTED_WORKSPACE, workspace);
       RequestContext.set(AuthAbility, ability);
       em.findOne.mockResolvedValue(current);
       await workspaceMemberService.updateWorkspaceMember(current, {
@@ -443,6 +446,61 @@ describe("WorkspaceMemberService", () => {
       expect(em.remove).not.toHaveBeenCalled();
     },
   );
+  it.each([false, true])(
+    "clears private scope after disabling the same managed member while retaining selection (workspace key=%s)",
+    async (workspaceKey) => {
+      const { em, workspaceMemberService } = createWorkspaceServices();
+      mockRlsContext(em);
+      const workspace = createTestWorkspace();
+      const user = createTestUser();
+      const member = Object.assign(createTestWorkspaceMember(), {
+        user: user as never,
+        workspace: workspace as never,
+        roles: ["owner"],
+      });
+      em.findOne.mockResolvedValue(member);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(User, user);
+          RequestContext.set(SELECTED_WORKSPACE, workspace);
+          RequestContext.set(WorkspaceMember, member);
+          if (workspaceKey) {
+            RequestContext.set<ApiKeyObject | null>(
+              ApiKey,
+              new WorkspaceApiKey(
+                Object.assign(new ApiKey(), {
+                  owner: { id: member.id, unwrap: () => member },
+                }),
+              ),
+            );
+          }
+          const context = createTestAuthContext(em, {
+            workspace: { enabled: true },
+          });
+          context.initialize({});
+          expect(context.authWorkspace).toBe(workspace);
+          await workspaceMemberService.updateWorkspaceMember(member, {
+            status: "DISABLED",
+          });
+          expect(context.selectedWorkspace).toBe(workspace);
+          expect(context.member).toBeNull();
+          expect(context.authWorkspace).toBeNull();
+          expect(context.user).toBe(workspaceKey ? null : user);
+          expect(context.apiKey).toBeNull();
+          expect(em.setSessionContext).toHaveBeenLastCalledWith({
+            role: workspaceKey ? "anonymous" : "authenticated",
+            variables: {
+              "app.auth.user.id": workspaceKey ? "" : user.id,
+              "app.auth.workspace_member.id": "",
+              "app.auth.workspace.id": "",
+              "app.selected.workspace.id": workspace.id,
+            },
+          });
+        },
+      );
+    },
+  );
   it("allows the current member to leave without any workspace ability rules", async () => {
     const { em } = createWorkspaceServices();
     restoreAuthorization();
@@ -463,7 +521,7 @@ describe("WorkspaceMemberService", () => {
     );
     em.findOne.mockResolvedValue(lockedWorkspaceMember);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(Workspace, workspace);
+      RequestContext.set(SELECTED_WORKSPACE, workspace);
       RequestContext.set(WorkspaceMember, member);
       const user = createTestUser();
       member.user = user as never;
@@ -474,11 +532,13 @@ describe("WorkspaceMemberService", () => {
         lockedWorkspaceMember,
       );
       expect(RequestContext.get(WorkspaceMember)).toBeNull();
-      expect(RequestContext.get(Workspace)).toBeNull();
+      expect(RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)).toBe(
+        workspace,
+      );
       expect(can("delete", workspace)).toBe(false);
       expect(em.setSessionContext).toHaveBeenCalledWith(
         expect.objectContaining({
-          variables: expect.objectContaining({ "app.workspace.id": "" }),
+          variables: expect.objectContaining({ "app.auth.workspace.id": "" }),
         }),
       );
     });
@@ -512,7 +572,7 @@ describe("WorkspaceMemberService", () => {
         new RequestContext({ type: "test" }),
         async () => {
           RequestContext.set(
-            Workspace,
+            SELECTED_WORKSPACE,
             mismatch === "workspace"
               ? Object.assign(createTestWorkspace(), { id: "other-workspace" })
               : workspace,
@@ -553,7 +613,7 @@ describe("WorkspaceMemberService", () => {
     );
     em.findOne.mockResolvedValue(null);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(Workspace, workspace);
+      RequestContext.set(SELECTED_WORKSPACE, workspace);
       RequestContext.set(WorkspaceMember, member);
       const user = createTestUser();
       member.user = user as never;
@@ -647,7 +707,10 @@ describe("WorkspaceMemberService", () => {
       );
       expect(authorization.assertCurrentWorkspace).not.toHaveBeenCalled();
       expect(authorization.authorize).not.toHaveBeenCalled();
-      RequestContext.set(API_KEY, new WorkspaceApiKey(new ApiKey()));
+      RequestContext.set<ApiKeyObject | null>(
+        ApiKey,
+        new WorkspaceApiKey(new ApiKey()),
+      );
       RequestContext.set(
         User,
         Object.assign(createTestUser(), { id: "other" }),
@@ -677,7 +740,7 @@ describe("WorkspaceMemberService", () => {
     const context = mockRlsContext(em);
     em.findOne.mockResolvedValue(null);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(Workspace, createTestWorkspace());
+      RequestContext.set(SELECTED_WORKSPACE, createTestWorkspace());
       await expect(
         workspaceMemberService.getWorkspaceMember("hidden"),
       ).resolves.toBeNull();
@@ -732,7 +795,7 @@ describe("WorkspaceMemberService", () => {
       throw new ForbiddenException();
     });
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(Workspace, createTestWorkspace());
+      RequestContext.set(SELECTED_WORKSPACE, createTestWorkspace());
       await expect(
         workspaceMemberService.getWorkspaceMember("member-1"),
       ).rejects.toThrow(ForbiddenException);
@@ -746,7 +809,7 @@ describe("WorkspaceMemberService", () => {
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
-          RequestContext.set(Workspace, workspace);
+          RequestContext.set(SELECTED_WORKSPACE, workspace);
           await workspaceMemberService.getWorkspaceMember("member-1");
           expect(em.findOne).toHaveBeenLastCalledWith(WorkspaceMember, {
             id: "member-1",
@@ -1389,7 +1452,7 @@ describe("WorkspaceMemberService", () => {
     const member = createTestWorkspaceMember();
     em.findOne.mockResolvedValue(member);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(Workspace, workspace);
+      RequestContext.set(SELECTED_WORKSPACE, workspace);
       await expect(
         workspaceMemberService.getWorkspaceMember(member.id),
       ).resolves.toBe(member);
@@ -1495,7 +1558,7 @@ describe("WorkspaceMemberService", () => {
       createTestAuthContext(em, { workspace: { enabled: true } }),
     );
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(Workspace, workspace);
+      RequestContext.set(SELECTED_WORKSPACE, workspace);
       RequestContext.set(WorkspaceMember, member);
       const user = createTestUser();
       member.user = user as never;
@@ -1569,7 +1632,7 @@ describe("permission management", () => {
         await RequestContext.run(new RequestContext({ type: "test" }), () => {
           const user = createTestUser();
           RequestContext.set(User, user);
-          RequestContext.set(Workspace, workspace);
+          RequestContext.set(SELECTED_WORKSPACE, workspace);
           if (key !== "workspace") {
             RequestContext.set(
               WorkspaceMember,
@@ -1581,8 +1644,8 @@ describe("permission management", () => {
             );
           }
           if (key) {
-            RequestContext.set(
-              API_KEY,
+            RequestContext.set<ApiKeyObject | null>(
+              ApiKey,
               Object.assign(
                 key === "user"
                   ? new UserApiKey(new ApiKey())
@@ -1747,11 +1810,11 @@ describe("permission management", () => {
           new RequestContext({ type: "test" }),
           async () => {
             RequestContext.set(User, user);
-            RequestContext.set(Workspace, workspace);
+            RequestContext.set(SELECTED_WORKSPACE, workspace);
             RequestContext.set(WorkspaceMember, actor);
             if (scenario.key) {
-              RequestContext.set(
-                API_KEY,
+              RequestContext.set<ApiKeyObject | null>(
+                ApiKey,
                 Object.assign(
                   scenario.key === "user"
                     ? new UserApiKey(new ApiKey())
@@ -1809,7 +1872,7 @@ describe("conditional authorization", () => {
         const entity =
           kind === "member"
             ? RequestContext.get(WorkspaceMember)
-            : RequestContext.get(Workspace);
+            : RequestContext.get<Workspace | null>(SELECTED_WORKSPACE);
         if (!entity) {
           throw new Error("Missing test identity");
         }
@@ -1835,7 +1898,7 @@ describe("conditional authorization", () => {
         RequestContext.set(AuthAbility, null);
         expect(() => read()).toThrow(ForbiddenException);
         RequestContext.set(WorkspaceMember, null);
-        RequestContext.set(Workspace, null);
+        RequestContext.set(SELECTED_WORKSPACE, null);
         expect(read()).toBeNull();
       });
     });

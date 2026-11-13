@@ -141,8 +141,9 @@ Queue job contracts now live in `readonly jobSchemas`, replacing BaseQueue's Dat
   remove defaults. Custom permissions require explicit role grants. Use a new
   role for a restricted grant set. Entity `set*` mutations still replace stored
   values. API-key `allowedPermissions` remains a ceiling, not an additive list.
-- Rename database request identity variables to `app.user.id` and
-  `app.workspace.id`, and add `app.member.id` for the active member. Application permissions are no longer sent to the database;
+- Rename database request identity variables to `app.auth.user.id` and
+  `app.auth.workspace.id`, add `app.auth.workspace_member.id` for the active member,
+  and keep the independent target in `app.selected.workspace.id`. Application permissions are no longer sent to the database;
   Services enforce Ability checks and API-key ceilings. RLS retains ownership
   and workspace boundaries, not application permission-name checks.
 - Auth sessions now use the primary database exclusively; remove any

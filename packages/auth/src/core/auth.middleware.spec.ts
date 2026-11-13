@@ -8,6 +8,9 @@ import { createTestAuthContext } from "../../test/fixtures/auth-context.fixture.
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { mockRlsContext } from "../../test/mock-rls-context.js";
 import { ApiKey as ApiKeyRecord } from "../api-key/entities/api-key.entity.js";
+import { SystemAccount } from "../api-key/entities/system-account.entity.js";
+import type { ApiKeyObject } from "../api-key/objects/api-key.object.js";
+import { SystemApiKey } from "../api-key/objects/system-api-key.object.js";
 import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
 import {
   WorkspaceApiKey as ApiKey,
@@ -33,7 +36,7 @@ import {
 import { AuthMiddleware } from "./auth.middleware.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import { AuthContext } from "./auth-context.js";
-import { API_KEY } from "./constants/auth.constants.js";
+import { SELECTED_WORKSPACE } from "./constants/auth.constants.js";
 import {
   Account as AccountEntity,
   Account as BaseAccount,
@@ -122,7 +125,10 @@ async function createMiddleware(
         provide: MODULE_OPTIONS_TOKEN,
         useValue: withAuthTestFeatures({
           ...options,
-          workspace: { ...options.workspace, enabled: true },
+          workspace: {
+            ...options.workspace,
+            enabled: options.workspace?.enabled ?? true,
+          },
           entities,
         }),
       },
@@ -163,6 +169,80 @@ async function runInRequestContext<T>(
 }
 
 describe("AuthMiddleware", () => {
+  it("ignores both workspace selectors when workspace features are disabled", async () => {
+    const findOne = vi.fn();
+    const { middleware } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      findOne,
+      vi.fn(),
+      testEntities,
+      { workspace: { enabled: false } },
+    );
+    const request = {
+      headers: {
+        "x-workspace-id": "invalid",
+        cookie: "workspace_id=also-invalid",
+      },
+    } as unknown as Request;
+    const next = vi.fn();
+    await runInRequestContext(request, async () => {
+      await middleware.use(request, {} as never, next);
+      expect(
+        RequestContext.get<Workspace | null>(SELECTED_WORKSPACE),
+      ).toBeNull();
+    });
+    expect(next).toHaveBeenCalledExactlyOnceWith();
+    expect(findOne).not.toHaveBeenCalled();
+  });
+  it.each([true, false])(
+    "preserves a system credential's selected workspace without a member (selected: %s)",
+    async (selected) => {
+      const workspace = selected ? new Workspace() : null;
+      const account = Object.assign(new SystemAccount(), {
+        permissions: ["workspace:read-any"],
+      });
+      const apiKey = Object.assign(new SystemApiKey(new ApiKeyRecord()), {
+        owner: { id: account.id, unwrap: () => account },
+        permissions: ["workspace:read-any"],
+      });
+      const findOne = vi.fn().mockResolvedValue(workspace);
+      const { middleware, em } = await createMiddleware(
+        vi.fn().mockResolvedValue(null),
+        findOne,
+        vi.fn().mockResolvedValue({
+          apiKey,
+          ownerType: "system_account",
+          systemAccount: account,
+        }),
+      );
+      const next = vi.fn();
+      const request = {
+        headers: {
+          authorization: "Bearer sys-key",
+          ...(workspace ? { "x-workspace-id": workspace.id } : {}),
+        },
+      } as unknown as Request;
+      await runInRequestContext(request, async () => {
+        await middleware.use(request, {} as never, next);
+        expect(next).toHaveBeenCalledExactlyOnceWith();
+        expect(RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)).toBe(
+          workspace,
+        );
+        expect(RequestContext.get(User)).toBeNull();
+        expect(RequestContext.get(WorkspaceMember)).toBeNull();
+        expect(em.setSessionContext).toHaveBeenCalledWith({
+          role: "authenticated",
+          variables: {
+            "app.auth.user.id": "",
+            "app.auth.workspace_member.id": "",
+            "app.auth.workspace.id": workspace?.id ?? "",
+            "app.selected.workspace.id": workspace?.id ?? "",
+          },
+        });
+      });
+      expect(findOne).toHaveBeenCalledTimes(selected ? 1 : 0);
+    },
+  );
   it.each(["valid", "deleted", "failure"] as const)(
     "revalidates a %s session after password reset and fails closed",
     async (state) => {
@@ -188,7 +268,7 @@ describe("AuthMiddleware", () => {
           ]);
           RequestContext.set(UserEntity, user);
           RequestContext.set(SessionEntity, session);
-          RequestContext.set(WorkspaceEntity, new TestWorkspace());
+          RequestContext.set(SELECTED_WORKSPACE, new TestWorkspace());
           RequestContext.set(AuthAbility, ability);
           if (state === "failure") {
             await expect(middleware.revalidateCurrentSession()).rejects.toThrow(
@@ -213,17 +293,20 @@ describe("AuthMiddleware", () => {
           } else {
             expect(RequestContext.get(SessionEntity)).toBeNull();
             expect(RequestContext.get(UserEntity)).toBeNull();
-            expect(RequestContext.get(WorkspaceEntity)).toBeNull();
+            expect(
+              RequestContext.get<Workspace | null>(SELECTED_WORKSPACE),
+            ).toBeInstanceOf(WorkspaceEntity);
             expect(RequestContext.get(AuthAbility)?.can("manage", "all")).toBe(
               false,
             );
             expect(em.setSessionContext).toHaveBeenCalledWith({
               role: "anonymous",
               variables: {
-                "app.user.id": "",
-                "app.workspace.id": "",
-                "app.system_account.id": "",
-                "app.member.id": "",
+                "app.auth.user.id": "",
+                "app.auth.workspace.id": "",
+                "app.selected.workspace.id":
+                  RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)?.id,
+                "app.auth.workspace_member.id": "",
               },
             });
           }
@@ -236,9 +319,9 @@ describe("AuthMiddleware", () => {
     await middleware.revalidateCurrentSession();
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       const apiKey = new UserApiKey(new ApiKeyRecord());
-      RequestContext.set(API_KEY, apiKey);
+      RequestContext.set<ApiKeyObject | null>(ApiKeyRecord, apiKey);
       await middleware.revalidateCurrentSession();
-      expect(RequestContext.get(API_KEY)).toBe(apiKey);
+      expect(RequestContext.get(ApiKeyRecord)).toBe(apiKey);
     });
     expect(em.findOne).not.toHaveBeenCalled();
     expect(em.setSessionContext).not.toHaveBeenCalled();
@@ -276,10 +359,10 @@ describe("AuthMiddleware", () => {
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "anonymous",
         variables: {
-          "app.user.id": "",
-          "app.workspace.id": "",
-          "app.system_account.id": "",
-          "app.member.id": "",
+          "app.auth.user.id": "",
+          "app.auth.workspace.id": "",
+          "app.selected.workspace.id": "",
+          "app.auth.workspace_member.id": "",
         },
       });
     });
@@ -315,9 +398,12 @@ describe("AuthMiddleware", () => {
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       RequestContext.set(UserEntity, new TestUser());
       RequestContext.set(SessionEntity, new TestSession());
-      RequestContext.set(WorkspaceEntity, new TestWorkspace());
+      RequestContext.set(SELECTED_WORKSPACE, new TestWorkspace());
       RequestContext.set(WorkspaceMemberEntity, new TestWorkspaceMember());
-      RequestContext.set(API_KEY, new WorkspaceApiKey(new ApiKeyRecord()));
+      RequestContext.set<ApiKeyObject | null>(
+        ApiKeyRecord,
+        new WorkspaceApiKey(new ApiKeyRecord()),
+      );
       RequestContext.set(
         AuthAbility,
         new AuthAbility([
@@ -326,15 +412,10 @@ describe("AuthMiddleware", () => {
         ]),
       );
       middleware.clearAuthentication();
-      for (const token of [
-        UserEntity,
-        SessionEntity,
-        WorkspaceEntity,
-        WorkspaceMemberEntity,
-      ]) {
+      for (const token of [UserEntity, SessionEntity, WorkspaceMemberEntity]) {
         expect(RequestContext.get(token)).toBeNull();
       }
-      expect(RequestContext.get(API_KEY)).toBeNull();
+      expect(RequestContext.get(ApiKeyRecord)).toBeNull();
       expect(RequestContext.get(AuthAbility)?.can("read", UserEntity)).toBe(
         false,
       );
@@ -344,10 +425,12 @@ describe("AuthMiddleware", () => {
       expect(em.setSessionContext).toHaveBeenCalledExactlyOnceWith({
         role: "anonymous",
         variables: {
-          "app.user.id": "",
-          "app.workspace.id": "",
-          "app.system_account.id": "",
-          "app.member.id": "",
+          "app.auth.user.id": "",
+          "app.auth.workspace.id": "",
+          "app.selected.workspace.id": RequestContext.get<Workspace | null>(
+            SELECTED_WORKSPACE,
+          )?.id,
+          "app.auth.workspace_member.id": "",
         },
       });
     });
@@ -361,7 +444,7 @@ describe("AuthMiddleware", () => {
         permissions: ["User:read", "user:read"],
       });
       const workspace = Object.assign(new TestWorkspace(), {
-        id: "workspace-1",
+        id: "101",
       });
       const member = Object.assign(new TestWorkspaceMember(), {
         user,
@@ -405,10 +488,10 @@ describe("AuthMiddleware", () => {
       expect(em.setSessionContext).toHaveBeenCalledWith({
         role: "authenticated",
         variables: {
-          "app.user.id": user.id,
-          "app.workspace.id": workspace.id,
-          "app.system_account.id": "",
-          "app.member.id": member.id,
+          "app.auth.user.id": user.id,
+          "app.auth.workspace.id": workspace.id,
+          "app.selected.workspace.id": workspace.id,
+          "app.auth.workspace_member.id": member.id,
         },
       });
     },
@@ -429,7 +512,7 @@ describe("AuthMiddleware", () => {
         permissions: ["user:read", "user:delete"],
       });
       const workspace = Object.assign(new TestWorkspace(), {
-        id: "workspace-1",
+        id: "101",
       });
       const member = Object.assign(new TestWorkspaceMember(), {
         roles: ["manager"],
@@ -491,14 +574,15 @@ describe("AuthMiddleware", () => {
       expect(em.setSessionContext).toHaveBeenCalledExactlyOnceWith({
         role: kind === "anonymous" ? "anonymous" : "authenticated",
         variables: {
-          "app.user.id":
+          "app.auth.user.id":
             kind === "session" || kind === "user-key" ? user.id : "",
-          "app.workspace.id":
-            kind === "anonymous" || kind === "member-key" || hasWorkspaceMember
+          "app.auth.workspace.id":
+            kind !== "anonymous" &&
+            (kind === "member-key" || hasWorkspaceMember)
               ? workspace.id
               : "",
-          "app.system_account.id": "",
-          "app.member.id":
+          "app.selected.workspace.id": workspace.id,
+          "app.auth.workspace_member.id":
             kind !== "anonymous" &&
             (kind === "member-key" || hasWorkspaceMember)
               ? member.id
@@ -525,17 +609,17 @@ describe("AuthMiddleware", () => {
       { workspace: { enabled: true } },
     );
     mockRlsContext(em).variables = {
-      "app.user.id": user.id,
-      "app.workspace.id": "",
-      "app.system_account.id": "",
-      "app.member.id": "",
+      "app.auth.user.id": user.id,
+      "app.auth.workspace.id": "",
+      "app.selected.workspace.id": "",
+      "app.auth.workspace_member.id": "",
     };
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(
         BaseUser,
         Object.assign(new TestUser(), { id: user.id, name: "Old name" }),
       );
-      RequestContext.set(API_KEY, key);
+      RequestContext.set<ApiKeyObject | null>(ApiKeyRecord, key);
       await middleware.refreshCurrentUser();
       expect(findOne).toHaveBeenCalledWith(
         BaseUser,
@@ -543,7 +627,7 @@ describe("AuthMiddleware", () => {
         { refresh: true },
       );
       expect(RequestContext.get(BaseUser)).toBe(user);
-      expect(RequestContext.get(API_KEY)).toBe(key);
+      expect(RequestContext.get(ApiKeyRecord)).toBe(key);
       expect(RequestContext.get(AuthAbility)?.can("read", BaseUser)).toBe(true);
       expect(RequestContext.get(AuthAbility)?.can("delete", BaseUser)).toBe(
         false,
@@ -554,14 +638,14 @@ describe("AuthMiddleware", () => {
         "no longer available",
       );
       expect(RequestContext.get(BaseUser)).toBeNull();
-      expect(RequestContext.get(API_KEY)).toBeNull();
+      expect(RequestContext.get(ApiKeyRecord)).toBeNull();
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "anonymous",
         variables: {
-          "app.user.id": "",
-          "app.workspace.id": "",
-          "app.system_account.id": "",
-          "app.member.id": "",
+          "app.auth.user.id": "",
+          "app.auth.workspace.id": "",
+          "app.selected.workspace.id": "",
+          "app.auth.workspace_member.id": "",
         },
       });
     });
@@ -591,9 +675,9 @@ describe("AuthMiddleware", () => {
     const { middleware, em } = await createMiddleware(vi.fn(), findOne);
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(BaseUser, new TestUser());
-      RequestContext.set(API_KEY, new TestApiKey());
+      RequestContext.set<ApiKeyObject | null>(ApiKeyRecord, new TestApiKey());
       RequestContext.set(
-        BaseWorkspace,
+        SELECTED_WORKSPACE,
         Object.assign(new TestWorkspace(), { id: "old-workspace" }),
       );
       RequestContext.set(BaseWorkspaceMember, new TestWorkspaceMember());
@@ -603,7 +687,7 @@ describe("AuthMiddleware", () => {
       );
       expect(RequestContext.get(BaseSession)).toBe(session);
       expect(RequestContext.get(BaseUser)).toBe(user);
-      expect(RequestContext.get<BaseApiKey>(API_KEY)).toBeNull();
+      expect(RequestContext.get<BaseApiKey>(ApiKeyRecord)).toBeNull();
       expect(RequestContext.get(BaseWorkspaceMember)).toBeNull();
       expect(RequestContext.get(AuthAbility)).toBeInstanceOf(AuthAbility);
       expect(
@@ -612,10 +696,10 @@ describe("AuthMiddleware", () => {
       expect(em.setSessionContext).toHaveBeenCalledWith({
         role: "authenticated",
         variables: {
-          "app.user.id": "new-user",
-          "app.workspace.id": "",
-          "app.system_account.id": "",
-          "app.member.id": "",
+          "app.auth.user.id": "new-user",
+          "app.auth.workspace.id": "",
+          "app.selected.workspace.id": "old-workspace",
+          "app.auth.workspace_member.id": "",
         },
       });
     });
@@ -642,18 +726,18 @@ describe("AuthMiddleware", () => {
     vi.restoreAllMocks();
   });
   it.each([
-    ["anonymous", false, false, "workspace-1"],
-    ["session", true, true, "workspace-1"],
-    ["session", true, false, ""],
-    ["user-key", true, true, "workspace-1"],
-    ["user-key", true, false, ""],
-    ["member-key", false, true, "workspace-1"],
+    ["anonymous", false, false, "101"],
+    ["session", true, true, "101"],
+    ["session", true, false, "101"],
+    ["user-key", true, true, "101"],
+    ["user-key", true, false, "101"],
+    ["member-key", false, true, "101"],
   ] as const)(
     "updates a staged session after %s authentication (user=%s, member=%s)",
     async (kind, hasUser, hasWorkspaceMember, expectedWorkspace) => {
       const user = Object.assign(new TestUser(), { id: "user-1" });
       const workspace = Object.assign(new TestWorkspace(), {
-        id: "workspace-1",
+        id: "101",
       });
       const member = Object.assign(new TestWorkspaceMember(), {
         id: "member-1",
@@ -688,7 +772,7 @@ describe("AuthMiddleware", () => {
       mockRlsContext(em);
       const request = {
         headers: {
-          "x-workspace-id": "workspace-1",
+          "x-workspace-id": "101",
           ...(kind.endsWith("key") ? { authorization: "Bearer sk-key" } : {}),
         },
       } as unknown as Request;
@@ -696,10 +780,12 @@ describe("AuthMiddleware", () => {
         expect(em.setSessionContext).toHaveBeenCalledExactlyOnceWith({
           role: kind === "anonymous" ? "anonymous" : "authenticated",
           variables: {
-            "app.user.id": hasUser ? "user-1" : "",
-            "app.workspace.id": expectedWorkspace,
-            "app.system_account.id": "",
-            "app.member.id": hasWorkspaceMember ? member.id : "",
+            "app.auth.user.id": hasUser ? "user-1" : "",
+            "app.auth.workspace.id": hasWorkspaceMember
+              ? expectedWorkspace
+              : "",
+            "app.selected.workspace.id": expectedWorkspace,
+            "app.auth.workspace_member.id": hasWorkspaceMember ? member.id : "",
           },
         });
       });
@@ -730,10 +816,10 @@ describe("AuthMiddleware", () => {
     expect(em.setSessionContext).toHaveBeenCalledWith({
       role: "authenticated",
       variables: {
-        "app.user.id": expect.any(String),
-        "app.workspace.id": "",
-        "app.system_account.id": "",
-        "app.member.id": "",
+        "app.auth.user.id": expect.any(String),
+        "app.auth.workspace.id": "",
+        "app.selected.workspace.id": "",
+        "app.auth.workspace_member.id": "",
       },
     });
     expect(next).toHaveBeenCalledExactlyOnceWith();
@@ -745,7 +831,7 @@ describe("AuthMiddleware", () => {
     );
     mockRlsContext(em);
     const request = {
-      headers: { "x-workspace-id": "missing" },
+      headers: { "x-workspace-id": "999999999999999" },
     } as unknown as Request;
     await runInRequestContext(request, () =>
       middleware.use(request, {} as never, vi.fn()),
@@ -753,10 +839,10 @@ describe("AuthMiddleware", () => {
     expect(em.setSessionContext).toHaveBeenCalledWith({
       role: "anonymous",
       variables: {
-        "app.user.id": "",
-        "app.workspace.id": "",
-        "app.system_account.id": "",
-        "app.member.id": "",
+        "app.auth.user.id": "",
+        "app.auth.workspace.id": "",
+        "app.selected.workspace.id": "",
+        "app.auth.workspace_member.id": "",
       },
     });
   });
@@ -886,7 +972,7 @@ describe("AuthMiddleware", () => {
   });
   it("restores a user key and resolves membership in the selected workspace", async () => {
     const workspace = Object.assign(new TestWorkspace(), {
-      id: "workspace-1",
+      id: "101",
       name: "Acme",
     });
     const user = Object.assign(new TestUser(), { id: "user-1" });
@@ -912,19 +998,21 @@ describe("AuthMiddleware", () => {
     const request = {
       headers: {
         authorization: "Bearer sk-key",
-        "x-workspace-id": "workspace-1",
+        "x-workspace-id": "101",
       },
     } as unknown as Request;
     await runInRequestContext(request, async () => {
       await middleware.use(request, {} as never, vi.fn());
-      expect(RequestContext.get(WorkspaceEntity)).toBe(workspace);
-      expect(RequestContext.get(API_KEY)).toBe(apiKey);
+      expect(RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)).toBe(
+        workspace,
+      );
+      expect(RequestContext.get(ApiKeyRecord)).toBe(apiKey);
       expect(RequestContext.get(UserEntity)).toBe(user);
       expect(RequestContext.get(WorkspaceMemberEntity)).toBe(member);
     });
     expect(validate).toHaveBeenCalledWith("sk-key");
-    expect(set).toHaveBeenCalledWith(BaseWorkspace, workspace);
-    expect(set).toHaveBeenCalledWith(API_KEY, apiKey);
+    expect(set).toHaveBeenCalledWith(SELECTED_WORKSPACE, workspace);
+    expect(set).toHaveBeenCalledWith(ApiKeyRecord, apiKey);
     expect(set).toHaveBeenCalledWith(BaseUser, user);
     expect(findOne).toHaveBeenLastCalledWith(expect.any(Function), {
       status: "ACTIVE",
@@ -935,7 +1023,7 @@ describe("AuthMiddleware", () => {
   });
   it("does not restore a disabled membership into the auth context", async () => {
     const workspace = Object.assign(new TestWorkspace(), {
-      id: "workspace-1",
+      id: "101",
     });
     const user = Object.assign(new TestUser(), { id: "user-1" });
     const findOne = vi
@@ -956,7 +1044,7 @@ describe("AuthMiddleware", () => {
     const request = {
       headers: {
         authorization: "Bearer sk-key",
-        "x-workspace-id": "workspace-1",
+        "x-workspace-id": "101",
       },
     } as unknown as Request;
     await runInRequestContext(request, async () => {
@@ -972,19 +1060,21 @@ describe("AuthMiddleware", () => {
       expect.anything(),
     );
   });
-  it("restores a workspace key and rejects a conflicting workspace selector", async () => {
+  it("keeps a workspace key's authentication separate from a different selected workspace", async () => {
     const selectedWorkspace = Object.assign(new TestWorkspace(), {
-      id: "workspace-1",
+      id: "101",
       name: "Selected",
     });
     const ownerWorkspace = Object.assign(new TestWorkspace(), {
-      id: "workspace-2",
+      id: "102",
       name: "Owner",
     });
     const validate = vi.fn().mockResolvedValue({
       apiKey: { id: "key-1" },
       ownerType: "workspace_member",
       workspace: ownerWorkspace,
+      user: null,
+      member: new WorkspaceMember(),
     });
     const { middleware } = await createMiddleware(
       vi.fn().mockResolvedValue(null),
@@ -995,17 +1085,21 @@ describe("AuthMiddleware", () => {
     const request = {
       headers: {
         authorization: "Bearer sk-key",
-        "x-workspace-id": "workspace-1",
+        "x-workspace-id": "101",
       },
     } as unknown as Request;
     await runInRequestContext(request, async () => {
       await middleware.use(request, {} as never, next);
+      expect(RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)).toBe(
+        selectedWorkspace,
+      );
+      expect(RequestContext.get(WorkspaceMember)).toBeNull();
     });
-    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 401 }));
+    expect(next).toHaveBeenCalledExactlyOnceWith();
   });
   it("reads the selected workspace from the raw Cookie header", async () => {
     const workspace = Object.assign(new TestWorkspace(), {
-      id: "workspace-1",
+      id: "101",
       name: "Acme",
     });
     const findOne = vi.fn().mockResolvedValue(workspace);
@@ -1015,15 +1109,17 @@ describe("AuthMiddleware", () => {
     );
     const request = {
       headers: {
-        cookie: "unrelated=value; workspace_id=workspace-1",
+        cookie: "unrelated=value; workspace_id=101",
       },
     } as unknown as Request;
     await runInRequestContext(request, async () => {
       await middleware.use(request, {} as never, vi.fn());
-      expect(RequestContext.get(BaseWorkspace)).toBe(workspace);
+      expect(RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)).toBe(
+        workspace,
+      );
     });
     expect(findOne).toHaveBeenCalledWith(WorkspaceEntity, {
-      id: "workspace-1",
+      id: "101",
     });
   });
 });
@@ -1069,7 +1165,9 @@ describe("optional workspace behavior", () => {
           const next = vi.fn();
           await middleware.use(request, {} as never, next);
           expect(next).toHaveBeenCalledExactlyOnceWith();
-          expect(RequestContext.get(Workspace)).toBeFalsy();
+          expect(
+            RequestContext.get<Workspace | null>(SELECTED_WORKSPACE),
+          ).toBeFalsy();
           expect(RequestContext.get(WorkspaceMember)).toBeFalsy();
           expect(RequestContext.get(User)).toBe(
             kind === "anonymous" ? null : user,
@@ -1078,9 +1176,9 @@ describe("optional workspace behavior", () => {
           expect(em.setSessionContext).toHaveBeenCalledWith(
             expect.objectContaining({
               variables: expect.objectContaining({
-                "app.workspace.id": "",
-                "app.system_account.id": "",
-                "app.member.id": "",
+                "app.auth.workspace.id": "",
+                "app.selected.workspace.id": "",
+                "app.auth.workspace_member.id": "",
               }),
             }),
           );

@@ -26,7 +26,7 @@ test("formats table dates in the browser time zone and updates them with the UI 
     }
     const response = await route.fetch();
     const json = await response.json();
-    for (const { node } of json.data.currentUser.workspaces.edges) {
+    for (const { node } of json.data.currentUser?.workspaces.edges ?? []) {
       // A UTC timestamp whose local calendar date is the preceding day.
       node.createdAt = "2026-01-02T04:00:00.000Z";
       node.updatedAt = "2026-01-02T04:00:00.000Z";

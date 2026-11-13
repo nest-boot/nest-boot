@@ -1,12 +1,12 @@
 import type { User } from "../../core/entities/user.entity.js";
 import type { Workspace } from "../../workspace/entities/workspace.entity.js";
 import type { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
-import type { WorkspaceApiKey } from "../objects/workspace-api-key.object.js";
+import type { OwnedApiKey } from "../entities/api-key.entity.js";
 
 /** Successful authentication for a member-owned, workspace-scoped API key. */
 export interface WorkspaceApiKeyValidation {
   /** Validated API-key entity. */
-  apiKey: WorkspaceApiKey;
+  apiKey: OwnedApiKey<"workspace_member">;
   /** Identifies the owner branch. */
   ownerType: "workspace_member";
   /** WorkspaceMember represented by the key. */

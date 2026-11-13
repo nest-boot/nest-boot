@@ -9,9 +9,11 @@ import {
 } from "@nest-boot/graphql";
 import { BadRequestException } from "@nestjs/common";
 
+import { Public } from "../../common/decorators/public.decorator.js";
 import { filterPermissionValues } from "../../common/utils/filter-permission-values.util.js";
 import { User } from "../../core/entities/user.entity.js";
-import { CurrentWorkspace } from "../decorators/current-workspace.decorator.js";
+import { AuthWorkspaceMember } from "../decorators/auth-workspace-member.decorator.js";
+import { SelectedWorkspace } from "../decorators/selected-workspace.decorator.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceMember } from "../entities/workspace-member.entity.js";
 import { WorkspaceMemberType } from "../enums/workspace-member-type.enum.js";
@@ -78,11 +80,15 @@ export class WorkspaceMemberResolver {
 
   /**
    * Returns the workspace member selected for the current request.
+   * @param member - Authenticated member matching the selected workspace, or null.
    * @returns Current workspace member, or null when no member was resolved.
    */
+  @Public()
   @Query(() => WorkspaceMember, { nullable: true })
-  currentWorkspaceMember(): WorkspaceMember | null {
-    return this.workspaceMemberService.getCurrentWorkspaceMember();
+  currentWorkspaceMember(
+    @AuthWorkspaceMember() member: WorkspaceMember | null,
+  ): WorkspaceMember | null {
+    return member;
   }
 
   /**
@@ -105,7 +111,7 @@ export class WorkspaceMemberResolver {
    */
   @Mutation(() => AddWorkspaceMemberPayload)
   async addWorkspaceMember(
-    @CurrentWorkspace() workspace: Workspace,
+    @SelectedWorkspace() workspace: Workspace,
     @Args("input") input: AddWorkspaceMemberInput,
   ): Promise<AddWorkspaceMemberPayload> {
     if (input.type === WorkspaceMemberType.SERVICE_ACCOUNT) {

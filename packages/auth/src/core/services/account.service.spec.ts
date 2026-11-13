@@ -6,9 +6,9 @@ import type { GraphQLResolveInfo } from "graphql";
 
 import { mockRlsContext } from "../../../test/mock-rls-context.js";
 import { ApiKey } from "../../api-key/entities/api-key.entity.js";
+import type { ApiKeyObject } from "../../api-key/objects/api-key.object.js";
 import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { AccountConnection } from "../connections/account.connection-definition.js";
-import { API_KEY } from "../constants/auth.constants.js";
 import { Account } from "../entities/account.entity.js";
 import { User } from "../entities/user.entity.js";
 import { AccountService } from "./account.service.js";
@@ -92,7 +92,10 @@ describe("AccountService", () => {
               );
             }
             if (identity === "api-key") {
-              RequestContext.set(API_KEY, new WorkspaceApiKey(new ApiKey()));
+              RequestContext.set<ApiKeyObject | null>(
+                ApiKey,
+                new WorkspaceApiKey(new ApiKey()),
+              );
             }
             await check();
           },

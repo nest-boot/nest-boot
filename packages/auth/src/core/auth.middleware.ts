@@ -121,7 +121,7 @@ export class AuthMiddleware implements NestMiddleware {
       throw new UnauthorizedException("The new session is not valid");
     }
     try {
-      const workspace = this.authContext.workspace;
+      const workspace = this.authContext.selectedWorkspace;
       const member = await this.findWorkspaceMember(data.user, workspace);
       this.authContext.initialize({
         apiKey: null,
@@ -215,29 +215,20 @@ export class AuthMiddleware implements NestMiddleware {
         user: null,
         session: null,
         member: null,
-        workspace: null,
-      };
-    }
-    if (validation.ownerType === "user") {
-      return {
-        apiKey: validation.apiKey,
-        user: validation.user,
-        session: null,
         workspace,
-        member: await this.findWorkspaceMember(validation.user, workspace),
       };
-    }
-    if (workspace && workspace.id !== validation.workspace.id) {
-      throw new UnauthorizedException(
-        "WorkspaceMember API key does not belong to the selected workspace",
-      );
     }
     return {
       apiKey: validation.apiKey,
       user: validation.user,
       session: null,
-      member: validation.member,
-      workspace: validation.workspace,
+      workspace,
+      member:
+        validation.ownerType === "user"
+          ? await this.findWorkspaceMember(validation.user, workspace)
+          : workspace?.id === validation.workspace.id
+            ? validation.member
+            : null,
     };
   }
 
@@ -250,7 +241,13 @@ export class AuthMiddleware implements NestMiddleware {
       (Array.isArray(header) ? header[0] : header) ??
       cookies().get("workspace_id")?.value
     )?.trim();
-    return id ? await this.em.findOne(Workspace, { id }) : null;
+    if (!id) {
+      return null;
+    }
+    if (!/^\d+$/.test(id) || BigInt(id) > 9223372036854775807n) {
+      throw new BadRequestException("Invalid workspace ID");
+    }
+    return await this.em.findOne(Workspace, { id });
   }
 
   private async findWorkspaceMember(

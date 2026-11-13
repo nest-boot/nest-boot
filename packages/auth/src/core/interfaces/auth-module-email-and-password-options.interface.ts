@@ -1,6 +1,6 @@
 import type { AuthSendResetPassword } from "../types/auth-send-reset-password.type.js";
 import type { AuthModulePasswordOptions } from "./auth-module-password-options.interface.js";
-import type { AuthUser } from "./auth-user.interface.js";
+import type { AuthUserData } from "./auth-user-data.interface.js";
 
 /** Email and password authentication options owned by AuthModule. */
 export interface AuthModuleEmailAndPasswordOptions {
@@ -20,7 +20,7 @@ export interface AuthModuleEmailAndPasswordOptions {
   resetPasswordTokenExpiresIn?: number;
   /** Runs after a password has been reset successfully. */
   onPasswordReset?: (
-    data: { user: AuthUser },
+    data: { user: AuthUserData },
     request?: Request,
   ) => Promise<void>;
   /** Password hashing and verification callbacks. */
@@ -31,7 +31,7 @@ export interface AuthModuleEmailAndPasswordOptions {
   revokeSessionsOnPasswordReset?: boolean;
   /** Runs when registration is attempted for an existing email address. */
   onExistingUserSignUp?: (
-    data: { user: AuthUser },
+    data: { user: AuthUserData },
     request?: Request,
   ) => Promise<void>;
 }

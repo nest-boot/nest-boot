@@ -2,15 +2,20 @@ import { EntityManager } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
 import { Inject, Injectable } from "@nestjs/common";
 
+import {
+  ApiKey,
+  type ApiKeyRecord,
+} from "../api-key/entities/api-key.entity.js";
 import type { ApiKeyObject } from "../api-key/objects/api-key.object.js";
 import { getCurrentApiKey } from "../api-key/utils/get-current-api-key.util.js";
 import { AuthAbility } from "../common/auth.ability.js";
 import { invalidateRequestPermissions } from "../common/utils/resolve-request-permissions.util.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
+import { resolveAuthWorkspace } from "../workspace/utils/resolve-auth-workspace.util.js";
 import { resolveRequestWorkspaceMember } from "../workspace/utils/resolve-request-workspace-member.util.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
-import { API_KEY } from "./constants/auth.constants.js";
+import { SELECTED_WORKSPACE } from "./constants/auth.constants.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
 import type { AuthContextPatch } from "./interfaces/auth-context-patch.interface.js";
@@ -31,18 +36,27 @@ export class AuthContext {
       ? (RequestContext.get(User) ?? null)
       : null;
   }
-  get member(): WorkspaceMember | null {
-    return RequestContext.isActive()
-      ? (RequestContext.get(WorkspaceMember) ?? null)
-      : null;
-  }
-  get workspace(): Workspace | null {
-    return RequestContext.isActive()
-      ? (RequestContext.get(Workspace) ?? null)
-      : null;
-  }
-  get apiKey(): ApiKeyObject | null {
+
+  get apiKey(): ApiKeyRecord | null {
     return getCurrentApiKey();
+  }
+
+  /**
+   * Workspace scope established from the current identity and effective grants.
+   * @returns Authenticated workspace, or null without effective workspace access.
+   */
+  get authWorkspace(): Workspace | null {
+    return resolveAuthWorkspace(this.options);
+  }
+
+  get member(): WorkspaceMember | null {
+    return resolveRequestWorkspaceMember();
+  }
+
+  get selectedWorkspace(): Workspace | null {
+    return RequestContext.isActive()
+      ? (RequestContext.get<Workspace | null>(SELECTED_WORKSPACE) ?? null)
+      : null;
   }
 
   /**
@@ -88,15 +102,28 @@ export class AuthContext {
 
   clear(): void {
     if (RequestContext.isActive()) {
-      clearAuthenticationContext(this.requestManager);
+      if (!RequestContext.get(EntityManager)) {
+        RequestContext.set(EntityManager, this.requestManager);
+      }
+      clearAuthenticationContext();
     }
   }
 
+  /** Clears a deleted target and its associated authenticated membership. */
   clearWorkspace(): void {
+    if (!RequestContext.isActive()) {
+      return;
+    }
+    RequestContext.set(SELECTED_WORKSPACE, null);
+    this.clearWorkspaceMember();
+  }
+
+  /** Revokes membership without changing the independently selected target. */
+  clearWorkspaceMember(): void {
     if (this.apiKey?.ownerType === "workspace_member") {
       this.clear();
     } else {
-      this.set({ member: null, workspace: null });
+      this.set({ member: null });
     }
   }
 
@@ -115,6 +142,7 @@ export class AuthContext {
       return;
     }
     invalidateRequestPermissions();
+    RequestContext.set(Workspace, this.authWorkspace);
     RequestContext.set(AuthAbility, new AuthAbility());
     RequestContext.set(AuthAbility, buildRequestAbility(this.options));
   }
@@ -132,17 +160,17 @@ export class AuthContext {
     if ("user" in patch) {
       RequestContext.set(User, patch.user ?? null);
     }
-    if ("member" in patch) {
-      RequestContext.set(WorkspaceMember, patch.member ?? null);
-    }
-    if ("workspace" in patch) {
-      RequestContext.set(Workspace, patch.workspace ?? null);
-    }
     if ("session" in patch) {
       RequestContext.set(Session, patch.session ?? null);
     }
     if ("apiKey" in patch) {
-      RequestContext.set(API_KEY, patch.apiKey ?? null);
+      RequestContext.set<ApiKeyObject | null>(ApiKey, patch.apiKey ?? null);
+    }
+    if ("workspace" in patch) {
+      RequestContext.set(SELECTED_WORKSPACE, patch.workspace ?? null);
+    }
+    if ("member" in patch) {
+      RequestContext.set(WorkspaceMember, patch.member ?? null);
     }
     invalidateRequestPermissions();
     RequestContext.set(AuthAbility, null);
@@ -151,20 +179,16 @@ export class AuthContext {
   private databaseScope() {
     const user = this.user;
     const apiKey = this.apiKey;
-    const workspace = this.workspace;
+    const workspace = this.selectedWorkspace;
     const member = resolveRequestWorkspaceMember();
     const authenticated = Boolean(user ?? apiKey);
     return {
       role: authenticated ? "authenticated" : "anonymous",
       variables: {
-        "app.user.id": user?.id ?? "",
-        "app.workspace.id":
-          !authenticated || member ? (workspace?.id ?? "") : "",
-        "app.system_account.id":
-          apiKey?.ownerType === "system_account"
-            ? (apiKey.systemAccount?.id ?? "")
-            : "",
-        "app.member.id": member?.id ?? "",
+        "app.auth.user.id": user?.id ?? "",
+        "app.auth.workspace.id": this.authWorkspace?.id ?? "",
+        "app.auth.workspace_member.id": member?.id ?? "",
+        "app.selected.workspace.id": workspace?.id ?? "",
       },
     };
   }

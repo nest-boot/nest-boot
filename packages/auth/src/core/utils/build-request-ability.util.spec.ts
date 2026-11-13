@@ -5,16 +5,58 @@ import { assert } from "vitest";
 import { stageIdentity } from "../../../test/fixtures/auth-context.fixture.js";
 import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
 import { ApiKey } from "../../api-key/entities/api-key.entity.js";
+import { SystemAccount } from "../../api-key/entities/system-account.entity.js";
+import { SystemApiKey } from "../../api-key/objects/system-api-key.object.js";
 import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
 import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import type { AbilityRules } from "../../common/interfaces/ability-rules.interface.js";
 import { serializeAbilityRules } from "../../common/utils/serialize-ability-rules.util.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
+import { SELECTED_WORKSPACE } from "../constants/auth.constants.js";
 import { User } from "../entities/user.entity.js";
 import { buildRequestAbility } from "./build-request-ability.util.js";
 
 describe("framework-owned request abilities", () => {
+  it.each([true, false])(
+    "exposes the system credential's workspace to business rules only when enabled (%s)",
+    (enabled) => {
+      const workspace = new Workspace();
+      const account = Object.assign(new SystemAccount(), {
+        permissions: ["workspace:update-any"],
+      });
+      const apiKey = Object.assign(new SystemApiKey(new ApiKey()), {
+        owner: { id: account.id, unwrap: () => account },
+        permissions: ["workspace:update-any"],
+      });
+      stageIdentity({ apiKey, user: null, member: null, workspace });
+      const configure = vi.fn(({ can }: AbilityRules, context) => {
+        expect(context.user).toBeNull();
+        expect(context.member).toBeNull();
+        expect(context.workspace).toBe(enabled ? workspace : null);
+        expect(context.workspacePermissions).toEqual([]);
+        if (context.workspace) {
+          can({ user: "workspace:update-any" }, "write", "Report", {
+            workspaceId: context.workspace.id,
+          });
+        }
+      });
+      const ability = buildRequestAbility(
+        withAuthTestFeatures({
+          workspace: { enabled },
+          buildAbility: configure,
+        }),
+      );
+      expect(configure).toHaveBeenCalledOnce();
+      expect(
+        ability.can("write", subject("Report", { workspaceId: workspace.id })),
+      ).toBe(enabled);
+      expect(
+        ability.can("write", subject("Report", { workspaceId: "another" })),
+      ).toBe(false);
+      expect(ability.can("write", WorkspaceMember)).toBe(false);
+    },
+  );
   it("keeps field restrictions and class/string subjects consistent after serialization", () => {
     RequestContext.set(
       User,
@@ -96,10 +138,10 @@ describe("framework-owned request abilities", () => {
       WorkspaceMember,
       Object.assign(new WorkspaceMember(), { roles: ["owner"] }),
     );
-    RequestContext.set(Workspace, new Workspace());
+    RequestContext.set(SELECTED_WORKSPACE, new Workspace());
     Object.assign(requireWorkspaceMember(), {
       user: RequestContext.get(User),
-      workspace: RequestContext.get(Workspace),
+      workspace: RequestContext.get<Workspace | null>(SELECTED_WORKSPACE),
     });
     stageIdentity({
       apiKey: Object.assign(new UserApiKey(new ApiKey()), {

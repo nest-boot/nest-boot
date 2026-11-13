@@ -11,7 +11,6 @@ import { SystemAccount } from "../entities/system-account.entity.js";
 import type { ApiKeyObject } from "../objects/api-key.object.js";
 import type { ApiKeyValidation } from "../types/api-key-validation.type.js";
 import { hashApiKey } from "../utils/api-key-credential.util.js";
-import { toApiKeyView } from "../utils/api-key-view.util.js";
 import { assertApiKeyOwner } from "../utils/assert-api-key-owner.util.js";
 
 /**
@@ -52,7 +51,7 @@ export class ApiKeyAuthenticationService {
           key,
           ownerType: { $in: owners },
         },
-        { refresh: true },
+        { refresh: true, exclude: ["key"] },
       );
       if (!apiKey || !owners.includes(apiKey.ownerType)) {
         throw new UnauthorizedException("Invalid API key");
@@ -78,7 +77,7 @@ export class ApiKeyAuthenticationService {
         }
         assertApiKeyOwner(apiKey, "system_account");
         return {
-          apiKey: toApiKeyView(apiKey),
+          apiKey,
           ownerType: "system_account",
           systemAccount,
         };
@@ -95,7 +94,7 @@ export class ApiKeyAuthenticationService {
           throw new UnauthorizedException("Invalid API key");
         }
         assertApiKeyOwner(apiKey, "user");
-        return { apiKey: toApiKeyView(apiKey), ownerType: "user", user };
+        return { apiKey, ownerType: "user", user };
       }
       const member = await em.findOne(WorkspaceMember, ownerId, {
         refresh: true,
@@ -117,7 +116,7 @@ export class ApiKeyAuthenticationService {
       const workspace = Reference.unwrapReference(member.workspace);
       assertApiKeyOwner(apiKey, "workspace_member");
       return {
-        apiKey: toApiKeyView(apiKey),
+        apiKey,
         ownerType: "workspace_member",
         workspace,
         member,
@@ -132,15 +131,20 @@ export class ApiKeyAuthenticationService {
    * @returns Callback that records usage for the captured key.
    */
   captureUsage(apiKey: ApiKeyObject): () => Promise<ApiKeyObject> {
-    const system = apiKey.ownerType === "system_account";
-    // System credentials have no request-role SQL access. Only the framework's
-    // captured usage writer bypasses RLS, with an isolated manager and exact key ID.
-    // Human/member usage retains the caller's transaction and database scope.
+    const isolated =
+      apiKey.ownerType === "system_account" ||
+      (apiKey.ownerType === "workspace_member" &&
+        this.em.getSessionContext()?.variables?.[
+          "app.auth.workspace_member.id"
+        ] !== apiKey.member?.id);
+    // System credentials and member keys used outside their owning workspace have
+    // no request-role access to their key row. Isolate only that captured audit
+    // write; never change the business request's database scope or transaction.
     const manager = this.em.fork({
       useContext: false,
-      keepTransactionContext: !system,
+      keepTransactionContext: !isolated,
     });
-    if (system) {
+    if (isolated) {
       manager.clearSessionContext();
     }
     return () => this.writeUsage(manager, apiKey);

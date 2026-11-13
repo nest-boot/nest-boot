@@ -20,6 +20,7 @@ import { authorize } from "../../common/utils/authorize.util.js";
 import { runAuthQuery } from "../../common/utils/run-auth-query.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
 import { AuthContext } from "../../core/auth-context.js";
+import { SELECTED_WORKSPACE } from "../../core/constants/auth.constants.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
 import {
@@ -129,7 +130,10 @@ export class WorkspaceService {
         { clear: true },
       ),
     );
-    if (RequestContext.isActive() && RequestContext.get(Workspace)?.id === id) {
+    if (
+      RequestContext.isActive() &&
+      RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)?.id === id
+    ) {
       this.authContext.set({ workspace });
     }
     return workspace;
@@ -161,7 +165,10 @@ export class WorkspaceService {
         { clear: true },
       ),
     );
-    if (RequestContext.isActive() && RequestContext.get(Workspace)?.id === id) {
+    if (
+      RequestContext.isActive() &&
+      RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)?.id === id
+    ) {
       this.authContext.clearWorkspace();
     }
     return workspace;
@@ -175,7 +182,7 @@ export class WorkspaceService {
     if (!RequestContext.isActive()) {
       return null;
     }
-    const workspace = RequestContext.get(Workspace);
+    const workspace = RequestContext.get<Workspace | null>(SELECTED_WORKSPACE);
     const user = RequestContext.get(User);
     const member = getCurrentWorkspaceMember();
     if (user && workspace && !member) {
@@ -184,7 +191,12 @@ export class WorkspaceService {
       );
     }
     if (workspace) {
-      authorize("read", workspace);
+      authorize(
+        getCurrentApiKey()?.ownerType === "system_account"
+          ? "read-any"
+          : "read",
+        workspace,
+      );
     }
     return workspace ?? null;
   }
@@ -192,7 +204,7 @@ export class WorkspaceService {
   private assertCurrentWorkspaceCanChange(id: string): void {
     if (
       RequestContext.isActive() &&
-      RequestContext.get(Workspace)?.id === id &&
+      RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)?.id === id &&
       this.em.isInTransaction()
     ) {
       throw new BadRequestException(
@@ -259,7 +271,7 @@ export class WorkspaceService {
    */
   async findOne(where: FilterQuery<Workspace>): Promise<Workspace | null> {
     const current = RequestContext.isActive()
-      ? RequestContext.get(Workspace)
+      ? RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)
       : null;
     if (!current) {
       throw new ForbiddenException("A workspace must be selected");

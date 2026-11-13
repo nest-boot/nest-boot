@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/workspaces/")({
       query: GET_FIRST_WORKSPACE_FROM_WORKSPACES_ROUTE,
     });
 
-    const workspace = data?.currentUser.workspaces?.edges?.[0]?.node;
+    const workspace = data?.currentUser?.workspaces?.edges?.[0]?.node;
 
     if (!workspace) {
       throw redirect({ to: "/user/workspaces" });

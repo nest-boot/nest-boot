@@ -10,8 +10,9 @@ import type { User } from "../entities/user.entity.js";
  */
 export interface AuthContextPatch {
   user?: User | null;
-  member?: WorkspaceMember | null;
-  workspace?: Workspace | null;
   session?: Session | null;
   apiKey?: ApiKeyObject | null;
+  /** Independent selection; authenticated workspace scope is derived. */
+  workspace?: Workspace | null;
+  member?: WorkspaceMember | null;
 }

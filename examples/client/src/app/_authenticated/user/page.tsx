@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Boxes, CircleUserRound, KeyRound, LockKeyhole } from "lucide-react";
-import { useCurrentUserContext } from "../contexts/current-user-context";
+import { useAuthUserContext } from "../contexts/auth-user-context";
 import { Link } from "@/components/link";
 import {
   OverviewCard,
@@ -45,7 +45,7 @@ export const Route = createFileRoute("/_authenticated/user/")({
 function Overview() {
   const { t } = useTranslation();
   const ability = useAbility();
-  const user = useCurrentUserContext();
+  const user = useAuthUserContext();
   const canReadApiKeys = ability.can("read", "UserApiKey");
   const { data, loading, error, refetch } = useQuery(GET_OVERVIEW, {
     variables: { includeApiKeys: canReadApiKeys },

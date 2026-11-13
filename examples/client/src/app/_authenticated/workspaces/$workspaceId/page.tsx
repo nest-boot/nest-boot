@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { KeyRound, UsersRound } from "lucide-react";
-import { useCurrentWorkspaceContext } from "./contexts/current-workspace-context";
+import { useSelectedWorkspaceContext } from "./contexts/selected-workspace-context";
 import { Link } from "@/components/link";
 import {
   OverviewCard,
@@ -47,7 +47,7 @@ export const Route = createFileRoute(
 function Overview() {
   const { t } = useTranslation();
   const ability = useAbility();
-  const workspace = useCurrentWorkspaceContext();
+  const workspace = useSelectedWorkspaceContext();
   const canReadWorkspaceMembers = ability.can("read", "WorkspaceMember");
   const canReadApiKeys = ability.can("read", "WorkspaceApiKey");
   const { data, loading, error, refetch } = useQuery(GET_OVERVIEW, {

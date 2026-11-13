@@ -1,5 +1,5 @@
 /** Public user data returned by authentication operations. */
-export interface AuthUser {
+export interface AuthUserData {
   /** Unique user identifier. */
   id: string;
   /** User display name. */

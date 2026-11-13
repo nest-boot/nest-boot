@@ -8,8 +8,10 @@ import { MikroORM } from "@mikro-orm/pglite";
 import { RequestContext } from "@nest-boot/request-context";
 
 import { runAuthQuery } from "../src/common/utils/run-auth-query.js";
+import { SELECTED_WORKSPACE } from "../src/core/constants/auth.constants.js";
 import { Session } from "../src/core/entities/session.entity.js";
 import { User } from "../src/core/entities/user.entity.js";
+import { Workspace } from "../src/workspace/entities/workspace.entity.js";
 import { createTestAuthContext } from "./fixtures/auth-context.fixture.js";
 
 @Entity({
@@ -18,9 +20,9 @@ import { createTestAuthContext } from "./fixtures/auth-context.fixture.js";
       name: "auth_record_workspace",
       roles: ["auth_query_reader"],
       using: (columns) =>
-        `${columns.workspace} = current_setting('app.workspace.id', true)`,
+        `${columns.workspace} = current_setting('app.auth.workspace.id', true)`,
       check: (columns) =>
-        `${columns.workspace} = current_setting('app.workspace.id', true)`,
+        `${columns.workspace} = current_setting('app.auth.workspace.id', true)`,
     },
   ],
 })
@@ -39,7 +41,7 @@ describe("runAuthQuery with native RLS", () => {
   let orm: MikroORM;
   const session: SessionContext = {
     role: "auth_query_reader",
-    variables: { "app.workspace.id": "one" },
+    variables: { "app.auth.workspace.id": "one" },
   };
 
   beforeAll(async () => {
@@ -127,6 +129,10 @@ describe("runAuthQuery with native RLS", () => {
         const currentSession = new Session();
         RequestContext.set(User, user);
         RequestContext.set(Session, currentSession);
+        const workspace = Object.assign(new Workspace(), {
+          id: "selected-workspace",
+        });
+        RequestContext.set(SELECTED_WORKSPACE, workspace);
         const operation = runAuthQuery(em, async (authEm) => {
           await authEm.getConnection().execute("select 1");
           createTestAuthContext(authEm, {}).clear();
@@ -146,10 +152,18 @@ describe("runAuthQuery with native RLS", () => {
           expect(RequestContext.get(Session)).toBeNull();
           expect(em.getSessionContext()).toMatchObject({
             role: "anonymous",
-            variables: { "app.user.id": "" },
+            variables: {
+              "app.auth.user.id": "",
+              "app.auth.workspace.id": "",
+              "app.auth.workspace_member.id": "",
+              "app.selected.workspace.id": workspace.id,
+            },
           });
         }
         expect(RequestContext.get(CoreEntityManager)).toBe(em);
+        expect(RequestContext.get<Workspace>(SELECTED_WORKSPACE)).toBe(
+          workspace,
+        );
       });
     },
   );

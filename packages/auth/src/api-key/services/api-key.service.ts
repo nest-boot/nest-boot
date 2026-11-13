@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 
 import { authorize } from "../../common/utils/authorize.util.js";
+import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
 import { AuthContext } from "../../core/auth-context.js";
 import { ApiKey, type ApiKeyRecord } from "../entities/api-key.entity.js";
 import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
@@ -15,7 +16,6 @@ import {
   generateApiKey,
   hashApiKey,
 } from "../utils/api-key-credential.util.js";
-import { toApiKeyView } from "../utils/api-key-view.util.js";
 import { isCurrentApiKey } from "../utils/is-current-api-key.util.js";
 
 /**
@@ -205,7 +205,9 @@ export class ApiKeyService {
     ) {
       this.authContext.clear();
     } else {
-      this.authContext.set({ apiKey: toApiKeyView(apiKey) });
+      const identity = omitCredentials(apiKey, ["key"]);
+      identity.permissions = [...apiKey.permissions];
+      this.authContext.set({ apiKey: identity });
     }
   }
 

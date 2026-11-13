@@ -17,6 +17,7 @@ import { assert, type Mock, type MockedFunction } from "vitest";
 import { stageIdentity } from "../../test/fixtures/auth-context.fixture.js";
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { ApiKey } from "../api-key/entities/api-key.entity.js";
+import type { ApiKeyObject } from "../api-key/objects/api-key.object.js";
 import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
 import { WorkspaceApiKey } from "../api-key/objects/workspace-api-key.object.js";
 import { AuthAbility } from "../common/auth.ability.js";
@@ -40,7 +41,10 @@ import { AuthGuard } from "./auth.guard.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
 import * as abilityFactory from "./auth-ability.factory.js";
 import { AuthContext } from "./auth-context.js";
-import { API_KEY, IS_PUBLIC_KEY } from "./constants/auth.constants.js";
+import {
+  IS_PUBLIC_KEY,
+  SELECTED_WORKSPACE,
+} from "./constants/auth.constants.js";
 import { Session as BaseSession } from "./entities/session.entity.js";
 import { User as BaseUser } from "./entities/user.entity.js";
 import { type AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
@@ -136,7 +140,7 @@ describe("AuthGuard", () => {
     await RequestContext.run(new RequestContext({ type: "http" }), async () => {
       RequestContext.set(BaseSession, new BaseSession());
       RequestContext.set(BaseUser, original);
-      RequestContext.set(Workspace, workspace);
+      RequestContext.set(SELECTED_WORKSPACE, workspace);
       RequestContext.set(
         WorkspaceMember,
         Object.assign(new WorkspaceMember(), {
@@ -153,7 +157,7 @@ describe("AuthGuard", () => {
       );
       RequestContext.set(BaseUser, replacement);
       RequestContext.set<WorkspaceMember | null>(WorkspaceMember, null);
-      RequestContext.set<Workspace | null>(Workspace, null);
+      RequestContext.set<Workspace | null>(SELECTED_WORKSPACE, null);
       guard.refreshAbility();
       const refreshed = RequestContext.get(AuthAbility);
       expect(refreshed).not.toBe(originalAbility);
@@ -241,7 +245,7 @@ describe("AuthGuard", () => {
   });
   it.each([UserApiKey, WorkspaceApiKey])(
     "accepts an API key without a session (%s)",
-    async (ApiKey) => {
+    async (Key) => {
       const { guard } = await createGuard(
         AuthGuard,
         vi.fn(() => false),
@@ -249,7 +253,7 @@ describe("AuthGuard", () => {
       await RequestContext.run(
         new RequestContext({ type: "http" }),
         async () => {
-          RequestContext.set(API_KEY, new ApiKey());
+          RequestContext.set<ApiKeyObject | null>(ApiKey, new Key());
           await expect(guard.canActivate(createContext())).resolves.toBe(true);
         },
       );
@@ -485,7 +489,7 @@ describe("permission checks", () => {
       });
       await RequestContext.run(createAuthRequestContext("http"), async () => {
         RequestContext.set(BaseUser, user);
-        RequestContext.set(BaseWorkspace, workspace);
+        RequestContext.set(SELECTED_WORKSPACE, workspace);
         RequestContext.set(BaseWorkspaceMember, createRequestWorkspaceMember());
         await expect(guard.canActivate(createContext())).resolves.toBe(true);
       });
@@ -559,7 +563,7 @@ describe("permission checks", () => {
         id: "workspace-1",
       });
       await RequestContext.run(createWorkspaceRequestContext(), async () => {
-        RequestContext.set(BaseWorkspace, workspace);
+        RequestContext.set(SELECTED_WORKSPACE, workspace);
         RequestContext.set(
           BaseWorkspaceMember,
           Object.assign(createRequestWorkspaceMember(), {
@@ -598,7 +602,7 @@ describe("permission checks", () => {
         id: "workspace-1",
       });
       await RequestContext.run(createAuthRequestContext("http"), async () => {
-        RequestContext.set(BaseWorkspace, workspace);
+        RequestContext.set(SELECTED_WORKSPACE, workspace);
         RequestContext.set(
           BaseWorkspaceMember,
           Object.assign(createRequestWorkspaceMember(), {
@@ -1174,9 +1178,9 @@ describe("permission checks", () => {
       const subjectCallback = vi.fn(
         (
           self: typeof handlerThis,
-          currentWorkspace: typeof workspace,
+          selectedWorkspace: typeof workspace,
           id: string,
-        ) => self.workspaceService.findSubject(currentWorkspace, id),
+        ) => self.workspaceService.findSubject(selectedWorkspace, id),
       );
       const canMock = vi.fn(() => true);
       const ability = {
@@ -1247,9 +1251,9 @@ describe("permission checks", () => {
       const subjectCallback = vi.fn(
         (
           self: typeof handlerThis,
-          currentWorkspace: typeof workspace,
+          selectedWorkspace: typeof workspace,
           id: string,
-        ) => self.workspaceService.findSubject(currentWorkspace, id),
+        ) => self.workspaceService.findSubject(selectedWorkspace, id),
       );
       const canMock = vi.fn(() => true);
       const ability = {
@@ -1491,8 +1495,8 @@ describe("permission checks", () => {
         subjectCallback: () => User,
       });
       await RequestContext.run(createAuthRequestContext("http"), async () => {
-        RequestContext.set(
-          API_KEY,
+        RequestContext.set<ApiKeyObject | null>(
+          ApiKey,
           Object.assign(new UserApiKey(new ApiKey()), {
             workspace: null,
             user: ref(UserOwner, new UserOwner()),
@@ -1524,7 +1528,7 @@ describe("permission checks", () => {
         malformedKey.user = ref(UserOwner, new UserOwner());
         // Simulate persisted data that violates the non-null permissions contract.
         Reflect.set(malformedKey, "permissions", null);
-        RequestContext.set(API_KEY, malformedKey);
+        RequestContext.set<ApiKeyObject | null>(ApiKey, malformedKey);
         RequestContext.set(
           BaseUser,
           Object.assign(new BaseUser(), {
@@ -1556,8 +1560,8 @@ describe("permission checks", () => {
             permissions: ["workspace:update", "post:read"],
           }),
         );
-        RequestContext.set(
-          API_KEY,
+        RequestContext.set<ApiKeyObject | null>(
+          ApiKey,
           Object.assign(new WorkspaceApiKey(new ApiKey()), {
             member: ref(BaseWorkspaceMember, requireWorkspaceMember()),
             permissions: ["workspace:update"],
@@ -1590,8 +1594,8 @@ describe("permission checks", () => {
             permissions: ["workspace:update", "post:read"],
           }),
         );
-        RequestContext.set(
-          API_KEY,
+        RequestContext.set<ApiKeyObject | null>(
+          ApiKey,
           Object.assign(new WorkspaceApiKey(new ApiKey()), {
             member: ref(BaseWorkspaceMember, requireWorkspaceMember()),
             permissions: ["post:read"],
@@ -1610,8 +1614,8 @@ describe("permission checks", () => {
       await RequestContext.run(
         createUserWorkspaceRequestContext(),
         async () => {
-          RequestContext.set(
-            API_KEY,
+          RequestContext.set<ApiKeyObject | null>(
+            ApiKey,
             Object.assign(new UserApiKey(new ApiKey()), {
               workspace: null,
               user: ref(UserOwner, new UserOwner()),
@@ -1629,8 +1633,8 @@ describe("permission checks", () => {
             roles: ["member"],
           }),
         );
-        RequestContext.set(
-          API_KEY,
+        RequestContext.set<ApiKeyObject | null>(
+          ApiKey,
           Object.assign(new UserApiKey(new ApiKey()), {
             workspace: null,
             user: ref(UserOwner, new UserOwner()),
@@ -1647,8 +1651,8 @@ describe("permission checks", () => {
             roles: ["member"],
           }),
         );
-        RequestContext.set(
-          API_KEY,
+        RequestContext.set<ApiKeyObject | null>(
+          ApiKey,
           Object.assign(new UserApiKey(new ApiKey()), {
             workspace: null,
             user: ref(UserOwner, new UserOwner()),
@@ -1678,8 +1682,8 @@ describe("permission checks", () => {
         subjectCallback: () => User,
       });
       await RequestContext.run(createAuthRequestContext("http"), async () => {
-        RequestContext.set(
-          API_KEY,
+        RequestContext.set<ApiKeyObject | null>(
+          ApiKey,
           Object.assign(new UserApiKey(new ApiKey()), {
             workspace: null,
             user: ref(UserOwner, new UserOwner()),
@@ -1693,8 +1697,8 @@ describe("permission checks", () => {
         await expect(guard.canActivate(createContext())).resolves.toBe(false);
       });
       await RequestContext.run(createAuthRequestContext("http"), async () => {
-        RequestContext.set(
-          API_KEY,
+        RequestContext.set<ApiKeyObject | null>(
+          ApiKey,
           Object.assign(new UserApiKey(new ApiKey()), {
             workspace: null,
             user: ref(UserOwner, new UserOwner()),
@@ -1941,7 +1945,7 @@ describe("permission checks", () => {
     const user = new BaseUser();
     const workspace = Object.assign(new BaseWorkspace(), { id: "workspace-1" });
     context.set(BaseUser, user);
-    context.set(BaseWorkspace, workspace);
+    context.set(SELECTED_WORKSPACE, workspace);
     context.set(
       BaseWorkspaceMember,
       Object.assign(createRequestWorkspaceMember(), {
@@ -1962,7 +1966,7 @@ describe("permission checks", () => {
     const context = new RequestContext({ type: "http" });
     context.set(BaseUser, new BaseUser());
     context.set(
-      BaseWorkspace,
+      SELECTED_WORKSPACE,
       Object.assign(new BaseWorkspace(), { id: "workspace-1" }),
     );
     return context;
@@ -2032,7 +2036,7 @@ describe("permission checks", () => {
       ? RequestContext.get(BaseUser)
       : null;
     const workspace = RequestContext.isActive()
-      ? RequestContext.get(BaseWorkspace)
+      ? RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)
       : null;
     if (user) {
       member.user = ref(BaseUser, user);
@@ -2048,7 +2052,7 @@ describe("permission checks", () => {
    * @returns Workspace stored in the current test context.
    */
   function requireWorkspace(): BaseWorkspace {
-    const workspace = RequestContext.get(BaseWorkspace);
+    const workspace = RequestContext.get<Workspace | null>(SELECTED_WORKSPACE);
     assert(workspace);
     return workspace;
   }

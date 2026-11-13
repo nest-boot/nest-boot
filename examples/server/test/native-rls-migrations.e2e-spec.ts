@@ -20,6 +20,7 @@ import { entities as queueEntities } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
 import { Migration20261111092714 } from '../src/database/migrations/Migration20261111092714.js';
+import { Migration20261113155404_AuthWorkspaceContext } from '../src/database/migrations/Migration20261113155404_AuthWorkspaceContext.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
@@ -51,6 +52,7 @@ describe('example native RLS migrations with PGlite', () => {
           migrationsList: [
             Migration00000000000000_Initial,
             Migration20261111092714,
+            Migration20261113155404_AuthWorkspaceContext,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',
@@ -208,7 +210,7 @@ describe('example native RLS migrations with PGlite', () => {
 
   it('creates the complete baseline through the official Migrator', async () => {
     expect(await orm.migrator.getPending()).toEqual([]);
-    expect(await orm.migrator.getExecuted()).toHaveLength(2);
+    expect(await orm.migrator.getExecuted()).toHaveLength(3);
     const policies = await orm.em.execute<
       {
         policyname: string;
@@ -216,7 +218,7 @@ describe('example native RLS migrations with PGlite', () => {
         with_check: string;
       }[]
     >(
-      "select policyname, qual, with_check from pg_policies where qual like '%app.workspace.id%'",
+      "select policyname, qual, with_check from pg_policies where qual like '%app.auth.workspace.id%'",
     );
     expect(policies.map(({ policyname }) => policyname).sort()).toEqual([
       'api_key_all_policy',
@@ -226,10 +228,10 @@ describe('example native RLS migrations with PGlite', () => {
       'workspace_update_policy',
     ]);
     for (const policy of policies) {
-      expect(policy.qual).toContain('app.workspace.id');
+      expect(policy.qual).toContain('app.auth.workspace.id');
       expect(policy.qual).not.toContain('app.workspace_id');
       if (policy.with_check) {
-        expect(policy.with_check).toContain('app.workspace.id');
+        expect(policy.with_check).toContain('app.auth.workspace.id');
       }
     }
   });
@@ -247,7 +249,10 @@ describe('example native RLS migrations with PGlite', () => {
     const admin = orm.em.fork();
     await admin.insert(Workspace, { name: 'Example' });
     const em = orm.em.fork({
-      session: { role: 'anonymous', variables: { 'app.workspace.id': '1' } },
+      session: {
+        role: 'anonymous',
+        variables: { 'app.auth.workspace.id': '1' },
+      },
     });
     expect(
       (await em.find(Workspace, {})).map((workspace) => workspace.id),
@@ -259,7 +264,7 @@ describe('example native RLS migrations with PGlite', () => {
     expect(
       await em.nativeUpdate(Workspace, { id: '1' }, { name: 'Allowed' }),
     ).toBe(1);
-    em.setSessionContext({ variables: { 'app.workspace.id': '2' } });
+    em.setSessionContext({ variables: { 'app.auth.workspace.id': '2' } });
     expect(
       await em.nativeUpdate(Workspace, { id: '1' }, { name: 'Denied' }),
     ).toBe(0);

@@ -9,6 +9,7 @@ import { createTestAuthContext } from "../../test/fixtures/auth-context.fixture.
 import { stageIdentity } from "../../test/fixtures/auth-context.fixture.js";
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { ApiKey } from "../api-key/entities/api-key.entity.js";
+import type { ApiKeyObject } from "../api-key/objects/api-key.object.js";
 import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
 import { WorkspaceApiKey } from "../api-key/objects/workspace-api-key.object.js";
 import { toApiKeyView } from "../api-key/utils/api-key-view.util.js";
@@ -23,7 +24,7 @@ import { serializeAbilityRules } from "../common/utils/serialize-ability-rules.u
 import { Workspace } from "../workspace/entities/workspace.entity.js";
 import { WorkspaceInvitation } from "../workspace/entities/workspace-invitation.entity.js";
 import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
-import { API_KEY } from "./constants/auth.constants.js";
+import { SELECTED_WORKSPACE } from "./constants/auth.constants.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
 import { type AuthModuleOptions } from "./interfaces/auth-module-options.interface.js";
@@ -121,14 +122,21 @@ describe("AuthContext", () => {
           expect(can("read", User)).toBe(
             credential === "session" || credential === "user-key",
           );
-          createTestAuthContext(em, {}).initialize({});
+          createTestAuthContext(em, withAuthTestFeatures(options)).initialize(
+            {},
+          );
+          expect(RequestContext.get(Workspace)).toBe(valid ? workspace : null);
+          expect(RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)).toBe(
+            state === "no-workspace" ? null : workspace,
+          );
           expect(em.setSessionContext).toHaveBeenLastCalledWith({
             role: "authenticated",
             variables: {
-              "app.user.id": user?.id ?? "",
-              "app.workspace.id": valid ? workspace.id : "",
-              "app.system_account.id": "",
-              "app.member.id": valid ? member.id : "",
+              "app.auth.user.id": user?.id ?? "",
+              "app.auth.workspace.id": valid ? workspace.id : "",
+              "app.selected.workspace.id":
+                state === "no-workspace" ? "" : workspace.id,
+              "app.auth.workspace_member.id": valid ? member.id : "",
             },
           });
         });
@@ -158,14 +166,21 @@ describe("AuthContext", () => {
           "workspace:read",
         ]),
       ).toBe(false);
-      createTestAuthContext(em, {}).initialize({});
+      createTestAuthContext(
+        em,
+        withAuthTestFeatures({ workspace: { enabled: true } }),
+      ).initialize({});
+      expect(RequestContext.get(Workspace)).toBeNull();
+      expect(RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)).toBe(
+        workspace,
+      );
       expect(em.setSessionContext).toHaveBeenCalledWith({
         role: "anonymous",
         variables: {
-          "app.user.id": "",
-          "app.workspace.id": workspace.id,
-          "app.system_account.id": "",
-          "app.member.id": "",
+          "app.auth.user.id": "",
+          "app.auth.workspace.id": "",
+          "app.selected.workspace.id": workspace.id,
+          "app.auth.workspace_member.id": "",
         },
       });
     });
@@ -178,14 +193,17 @@ describe("AuthContext", () => {
     const second = Object.assign(new WorkspaceMember(), { user, workspace });
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       stageIdentity({ user, workspace, member: first });
-      createTestAuthContext(em, {}).initialize({});
+      createTestAuthContext(
+        em,
+        withAuthTestFeatures({ workspace: { enabled: true } }),
+      ).initialize({});
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "authenticated",
         variables: {
-          "app.user.id": user.id,
-          "app.workspace.id": workspace.id,
-          "app.system_account.id": "",
-          "app.member.id": first.id,
+          "app.auth.user.id": user.id,
+          "app.auth.workspace.id": workspace.id,
+          "app.selected.workspace.id": workspace.id,
+          "app.auth.workspace_member.id": first.id,
         },
       });
       createTestAuthContext(
@@ -195,34 +213,34 @@ describe("AuthContext", () => {
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "authenticated",
         variables: {
-          "app.user.id": user.id,
-          "app.workspace.id": workspace.id,
-          "app.system_account.id": "",
-          "app.member.id": second.id,
+          "app.auth.user.id": user.id,
+          "app.auth.workspace.id": workspace.id,
+          "app.selected.workspace.id": workspace.id,
+          "app.auth.workspace_member.id": second.id,
         },
       });
       second.status = "DISABLED";
       createTestAuthContext(
         em,
         withAuthTestFeatures({ workspace: { enabled: true } }),
-      ).clearWorkspace();
+      ).clearWorkspaceMember();
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "authenticated",
         variables: {
-          "app.user.id": user.id,
-          "app.workspace.id": "",
-          "app.system_account.id": "",
-          "app.member.id": "",
+          "app.auth.user.id": user.id,
+          "app.auth.workspace.id": "",
+          "app.selected.workspace.id": workspace.id,
+          "app.auth.workspace_member.id": "",
         },
       });
       createTestAuthContext(em, {}).clear();
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "anonymous",
         variables: {
-          "app.user.id": "",
-          "app.workspace.id": "",
-          "app.system_account.id": "",
-          "app.member.id": "",
+          "app.auth.user.id": "",
+          "app.auth.workspace.id": "",
+          "app.selected.workspace.id": workspace.id,
+          "app.auth.workspace_member.id": "",
         },
       });
     });
@@ -384,8 +402,10 @@ describe("AuthContext", () => {
         expect(RequestContext.get(User)).toBeNull();
         expect(RequestContext.get(Session)).toBeNull();
         expect(RequestContext.get(WorkspaceMember)).toBeNull();
-        expect(RequestContext.get(Workspace)).toBeNull();
-        expect(RequestContext.get(API_KEY)).toBeNull();
+        expect(
+          RequestContext.get<Workspace | null>(SELECTED_WORKSPACE),
+        ).toBeInstanceOf(Workspace);
+        expect(RequestContext.get(ApiKey)).toBeNull();
         expect(RequestContext.get(AuthAbility)?.rules).toEqual([]);
         expect(
           resolveRequestPermissions(withAuthTestFeatures(options)),
@@ -397,10 +417,12 @@ describe("AuthContext", () => {
         expect(em.setSessionContext).toHaveBeenLastCalledWith({
           role: "anonymous",
           variables: {
-            "app.user.id": "",
-            "app.workspace.id": "",
-            "app.system_account.id": "",
-            "app.member.id": "",
+            "app.auth.user.id": "",
+            "app.auth.workspace.id": "",
+            "app.selected.workspace.id": RequestContext.get<Workspace | null>(
+              SELECTED_WORKSPACE,
+            )?.id,
+            "app.auth.workspace_member.id": "",
           },
         });
       });
@@ -465,7 +487,7 @@ describe("AuthContext", () => {
         expect(RequestContext.get(AuthAbility)?.can("delete", Workspace)).toBe(
           false,
         );
-        expect(RequestContext.get(API_KEY)).toBe(
+        expect(RequestContext.get(ApiKey)).toBe(
           Key === UserApiKey ? key : null,
         );
         if (Key === UserApiKey) {
@@ -544,13 +566,13 @@ describe("post-commit authorization", () => {
               status: "ACTIVE",
             }),
           );
-          RequestContext.set(Workspace, new Workspace());
+          RequestContext.set(SELECTED_WORKSPACE, new Workspace());
           Object.assign(requireWorkspaceMember(), {
             user: RequestContext.get(User),
-            workspace: RequestContext.get(Workspace),
+            workspace: RequestContext.get<Workspace | null>(SELECTED_WORKSPACE),
           });
-          RequestContext.set(
-            API_KEY,
+          RequestContext.set<ApiKeyObject | null>(
+            ApiKey,
             Object.assign(new UserApiKey(new ApiKey()), {
               permissions: ["user:read", "workspace:read"],
             }),
@@ -708,10 +730,10 @@ describe("unified request abilities", () => {
         expect(em.setSessionContext).toHaveBeenCalledWith({
           role: "authenticated",
           variables: {
-            "app.user.id": first.user.id,
-            "app.workspace.id": second.workspace.id,
-            "app.system_account.id": "",
-            "app.member.id": second.member.id,
+            "app.auth.user.id": first.user.id,
+            "app.auth.workspace.id": second.workspace.id,
+            "app.selected.workspace.id": second.workspace.id,
+            "app.auth.workspace_member.id": second.member.id,
           },
         });
       });

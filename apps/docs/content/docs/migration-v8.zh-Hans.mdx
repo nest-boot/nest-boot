@@ -123,7 +123,7 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 - 用户与工作区的权限目录、角色映射现在追加到内置默认值。同名角色的权限合并去重，
   空配置不会移除默认值，自定义权限仍需显式授予角色。需要受限授权时请定义新角色。
   实体 `set*` 方法仍替换存储值；API Key 的 `allowedPermissions` 仍是上限而非追加列表。
-- 数据库请求身份变量改为 `app.user.id` 和 `app.workspace.id`，并新增 `app.member.id` 表示当前有效成员。不再向数据库传递
+- 数据库请求身份变量改为 `app.auth.user.id` 和 `app.auth.workspace.id`，并新增 `app.auth.workspace_member.id` 表示当前有效成员，`app.selected.workspace.id` 单独表示选择目标。不再向数据库传递
   应用权限列表；Service 负责 Ability 检查与 API Key 权限上限。RLS 保留归属、
   工作区隔离，不再检查应用权限名。
 - 认证 Session 现在只使用主数据库；请移除 `AuthModuleOptions.secondaryStorage` 配置。

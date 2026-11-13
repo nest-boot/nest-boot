@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { Link } from "@/components/link";
 import { WorkspaceServiceAccountForm } from "@/components/workspace-service-account-form";
 import { Page } from "@/components/thread-ui/page";
@@ -68,7 +68,7 @@ function CreateWorkspaceServiceAccountPage() {
   const { t } = useTranslation();
   const { workspaceId } = Route.useParams();
   const { roleOptions, permissionOptions } = Route.useRouteContext();
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   const { backSearch } = useResourceNavigation({
     key: [currentUser.id, ...getWorkspaceMembersResourceKey(workspaceId)],
     searchSchema: workspaceMemberSearchSchema,

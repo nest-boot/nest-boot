@@ -55,8 +55,12 @@ describe("auth GraphQL schema", () => {
       WorkspaceInvitationResolver,
       SystemAccountResolver,
     ]);
+    expect(schema.getQueryType()?.getFields().authWorkspace).toBeUndefined();
+    expect(
+      schema.getQueryType()?.getFields().currentWorkspace.type.toString(),
+    ).toBe("Workspace");
     expect(schema.getQueryType()?.getFields().currentUser.type.toString()).toBe(
-      "User!",
+      "User",
     );
     expect(schema.getQueryType()?.getFields().user.type.toString()).toBe(
       "User",

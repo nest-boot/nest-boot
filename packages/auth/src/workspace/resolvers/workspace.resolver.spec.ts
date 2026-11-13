@@ -73,19 +73,17 @@ describe("WorkspaceResolver", () => {
       ForbiddenException,
     );
   });
-  it("delegates current workspace access and failures to the service", () => {
+  it("returns the injected authenticated workspace separately from selection", () => {
+    const workspace = new Workspace();
+    const { resolver } = createResolver();
+    expect(resolver.currentWorkspace(workspace)).toBe(workspace);
+    expect(resolver.currentWorkspace(null)).toBeNull();
+  });
+  it("returns the selected workspace independently of service authorization", () => {
     const workspace = { id: "workspace_1" } as Workspace;
-    const getCurrentWorkspace = vi
-      .fn()
-      .mockReturnValueOnce(workspace)
-      .mockReturnValueOnce(null)
-      .mockImplementationOnce(() => {
-        throw new ForbiddenException();
-      });
-    const { resolver } = createResolver({ getCurrentWorkspace });
-    expect(resolver.currentWorkspace()).toBe(workspace);
-    expect(resolver.currentWorkspace()).toBeNull();
-    expect(() => resolver.currentWorkspace()).toThrow(ForbiddenException);
+    const { resolver } = createResolver();
+    expect(resolver.selectedWorkspace(workspace)).toBe(workspace);
+    expect(resolver.selectedWorkspace(null)).toBeNull();
   });
   it("forwards workspace lookup arguments and nullable service results", async () => {
     const workspace = { id: "workspace_1" } as Workspace;

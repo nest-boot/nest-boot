@@ -89,11 +89,11 @@ describe("WorkspaceMemberResolver", () => {
         getCurrentWorkspaceMember: vi.fn(() => member),
       },
     });
-    expect(resolver.currentWorkspaceMember()).toBe(member);
+    expect(resolver.currentWorkspaceMember(member)).toBe(member);
   });
   it("returns null when no current workspace member is available", () => {
     const { resolver } = createResolver();
-    expect(resolver.currentWorkspaceMember()).toBeNull();
+    expect(resolver.currentWorkspaceMember(null)).toBeNull();
   });
   it("finds a member by id through the service", async () => {
     const member = { id: "member_1" } as WorkspaceMember;

@@ -38,6 +38,7 @@ import {
 import { runAuthQuery } from "../../common/utils/run-auth-query.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
 import { AuthContext } from "../../core/auth-context.js";
+import { SELECTED_WORKSPACE } from "../../core/constants/auth.constants.js";
 import { User } from "../../core/entities/user.entity.js";
 import type { AuthModuleOptions } from "../../core/interfaces/auth-module-options.interface.js";
 import type { AuthModuleRoles } from "../../core/types/auth-module-roles.type.js";
@@ -165,7 +166,7 @@ export class WorkspaceMemberService {
    */
   async getWorkspaceMember(id: string): Promise<WorkspaceMember | null> {
     const workspace = RequestContext.isActive()
-      ? RequestContext.get(Workspace)
+      ? RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)
       : undefined;
     if (!workspace) {
       throw new ForbiddenException("A workspace must be selected");
@@ -627,7 +628,7 @@ export class WorkspaceMemberService {
         assertCurrentWorkspaceMember(lockedWorkspaceMember);
       },
     );
-    this.authContext.clearWorkspace();
+    this.authContext.clearWorkspaceMember();
     return removed;
   }
 
@@ -772,11 +773,11 @@ export class WorkspaceMemberService {
   }
 
   private syncCurrentMember(member: WorkspaceMember): void {
-    if (this.authContext.member?.id !== member.id) {
+    if (!this.isCurrentWorkspaceMember(member)) {
       return;
     }
     if (member.status !== "ACTIVE") {
-      this.authContext.clearWorkspace();
+      this.authContext.clearWorkspaceMember();
     } else {
       this.authContext.set({ member });
     }

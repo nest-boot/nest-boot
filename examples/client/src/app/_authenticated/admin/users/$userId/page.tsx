@@ -7,7 +7,7 @@ import dayjs from "dayjs";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 
-import { useCurrentUserContext } from "../../../contexts/current-user-context";
+import { useAuthUserContext } from "../../../contexts/auth-user-context";
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 import type { UserPermission } from "@/lib/permissions";
 import type { UserRole } from "@/gql/graphql";
@@ -248,7 +248,7 @@ function AdminUserDetails() {
   const { userId } = Route.useParams();
   const { user: initialUser } = Route.useRouteContext();
   const navigate = useNavigate();
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   const ability = useAbility();
   const { data, loading, refetch, fetchMore } = useQuery(
     GET_USER_FROM_USER_ROUTE,

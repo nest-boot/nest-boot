@@ -1,7 +1,6 @@
 import { EntityManager } from "@mikro-orm/core";
 import { MikroORM } from "@mikro-orm/postgresql";
 import {
-  API_KEY,
   AuthContext,
   AuthGuard,
   type AuthModuleOptions,
@@ -14,6 +13,8 @@ import {
   WorkspaceMemberStatus,
   WorkspaceService,
 } from "@nest-boot/auth";
+import { SELECTED_WORKSPACE } from "@nest-boot/auth";
+import { ApiKey } from "@nest-boot/auth";
 import { GraphQLModule } from "@nest-boot/graphql";
 import { BaseQueue, Queue, type QueueManager } from "@nest-boot/queue";
 import { RequestContext } from "@nest-boot/request-context";
@@ -188,7 +189,7 @@ describe("scoped Job GraphQL API", () => {
         }
         if (workspaceId) {
           const workspace = Object.assign(new Workspace(), { id: workspaceId });
-          context.set(Workspace, workspace);
+          context.set(SELECTED_WORKSPACE, workspace);
           if (req.header("x-test-member") !== "false") {
             context.set(
               WorkspaceMember,
@@ -204,8 +205,8 @@ describe("scoped Job GraphQL API", () => {
           }
         }
         if (req.header("x-test-api-key") === "true") {
-          context.set(
-            API_KEY,
+          context.set<UserApiKey>(
+            ApiKey,
             Object.assign(new UserApiKey(), {
               id: "401",
               user,

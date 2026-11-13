@@ -1,4 +1,4 @@
-it("resolves API_KEY from the current request", async () => {
+it("resolves Session from the current request", async () => {
   const expected = { id: "current" };
   const get = vi.fn<(token: symbol | { name?: string }) => unknown>(
     () => expected,
@@ -14,12 +14,12 @@ it("resolves API_KEY from the current request", async () => {
     createParamDecorator: (factory: () => unknown) => factory,
   }));
   try {
-    const { CurrentApiKey } = await import("./current-api-key.decorator.js");
-    expect(CurrentApiKey()).toBe(expected);
+    const { AuthSession } = await import("./auth-session.decorator.js");
+    expect(AuthSession()).toBe(expected);
     expect(get).toHaveBeenCalledTimes(1);
     const token = get.mock.calls[0][0];
     expect(typeof token === "symbol" ? token.description : token.name).toBe(
-      "API_KEY",
+      "Session",
     );
   } finally {
     vi.doUnmock("@nest-boot/request-context");

@@ -18,7 +18,7 @@ import { createAbilitySubject } from "@/lib/ability";
 import { getNextSearch, getPreviousSearch } from "@/lib/graphql-connection";
 import { systemAccountSearchSchema } from "@/schemas/system-account-search-schema";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 
 const LIST = graphql(`
   query managedSystemAccounts(
@@ -67,7 +67,7 @@ function Accounts() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const ability = useAbility();
-  const user = useCurrentUserContext();
+  const user = useAuthUserContext();
   useResourceNavigation({
     key: [user.id, "admin", "system-accounts"],
     searchSchema: systemAccountSearchSchema,

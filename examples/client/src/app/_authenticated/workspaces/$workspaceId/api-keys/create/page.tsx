@@ -1,11 +1,11 @@
 import { useMutation } from "@apollo/client/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
-import { useCurrentWorkspaceMemberContext } from "../../contexts/current-workspace-member-context";
+import { useAuthWorkspaceMemberContext } from "../../contexts/auth-workspace-member-context";
 import { WorkspaceMemberType } from "@/gql/graphql";
 import { createAbilitySubject } from "@/lib/ability";
 import { graphql } from "@/gql";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 
 import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-context";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
@@ -44,7 +44,7 @@ const GET_WORKSPACE_API_KEY_OPTIONS = graphql(`
     $after: String
     $memberFilter: WorkspaceMemberFilter
   ) {
-    currentWorkspace @include(if: $includeWorkspaceMembers) {
+    selectedWorkspace @include(if: $includeWorkspaceMembers) {
       members(first: 100, after: $after, filter: $memberFilter) {
         edges {
           node {
@@ -107,8 +107,8 @@ export const Route = createFileRoute(
         throw error;
       });
     const members =
-      data?.currentWorkspace?.members.edges.map(({ node }) => node) ?? [];
-    let pageInfo = data?.currentWorkspace?.members.pageInfo;
+      data?.selectedWorkspace?.members.edges.map(({ node }) => node) ?? [];
+    let pageInfo = data?.selectedWorkspace?.members.pageInfo;
     while (pageInfo?.hasNextPage && pageInfo.endCursor) {
       const page = await context.apolloClient.query({
         query: GET_WORKSPACE_API_KEY_OPTIONS,
@@ -121,11 +121,11 @@ export const Route = createFileRoute(
         context: { headers: { "x-workspace-id": params.workspaceId } },
       });
       members.push(
-        ...(page.data?.currentWorkspace?.members.edges.map(
+        ...(page.data?.selectedWorkspace?.members.edges.map(
           ({ node }) => node,
         ) ?? []),
       );
-      pageInfo = page.data?.currentWorkspace?.members.pageInfo;
+      pageInfo = page.data?.selectedWorkspace?.members.pageInfo;
     }
     return {
       canCreateWorkspaceServiceAccount,
@@ -143,8 +143,8 @@ function CreateApiKeyPage() {
   const navigate = Route.useNavigate();
   const { setCreatedKey } = useCreatedApiKey();
   const { workspaceId } = Route.useParams();
-  const currentUser = useCurrentUserContext();
-  const currentWorkspaceMember = useCurrentWorkspaceMemberContext();
+  const currentUser = useAuthUserContext();
+  const currentWorkspaceMember = useAuthWorkspaceMemberContext();
   const { backSearch } = useResourceNavigation({
     key: [currentUser.id, ...getWorkspaceApiKeysResourceKey(workspaceId)],
     searchSchema: apiKeySearchSchema,

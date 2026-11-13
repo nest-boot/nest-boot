@@ -290,7 +290,7 @@
           "command": "select",
           "type": "permissive",
           "roles": ["authenticated"],
-          "using": "\"user_id\" = nullif(current_setting('app.user.id', true), '')::bigint"
+          "using": "\"user_id\" = nullif(current_setting('app.auth.user.id', true), '')::bigint"
         }
       ],
       "rlsEnabled": true
@@ -613,8 +613,8 @@
           "command": "all",
           "type": "permissive",
           "roles": ["authenticated"],
-          "using": "((\"owner_type\" = 'user' AND \"owner_id\" = nullif(current_setting('app.user.id', true), '')::bigint) OR (\"owner_type\" = 'workspace_member' AND EXISTS (SELECT 1 FROM \"workspace_member\" WHERE \"workspace_member\".\"id\" = \"owner_id\" AND \"workspace_member\".\"workspace_id\" = nullif(current_setting('app.workspace.id', true), '')::bigint)))",
-          "check": "((\"owner_type\" = 'user' AND \"owner_id\" = nullif(current_setting('app.user.id', true), '')::bigint) OR (\"owner_type\" = 'workspace_member' AND EXISTS (SELECT 1 FROM \"workspace_member\" WHERE \"workspace_member\".\"id\" = \"owner_id\" AND \"workspace_member\".\"workspace_id\" = nullif(current_setting('app.workspace.id', true), '')::bigint)))"
+          "using": "((\"owner_type\" = 'user' AND \"owner_id\" = nullif(current_setting('app.auth.user.id', true), '')::bigint) OR (\"owner_type\" = 'workspace_member' AND nullif(current_setting('app.auth.workspace_member.id', true), '') IS NOT NULL AND EXISTS (SELECT 1 FROM \"workspace_member\" WHERE \"workspace_member\".\"id\" = \"owner_id\" AND \"workspace_member\".\"workspace_id\" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint)))",
+          "check": "((\"owner_type\" = 'user' AND \"owner_id\" = nullif(current_setting('app.auth.user.id', true), '')::bigint) OR (\"owner_type\" = 'workspace_member' AND nullif(current_setting('app.auth.workspace_member.id', true), '') IS NOT NULL AND EXISTS (SELECT 1 FROM \"workspace_member\" WHERE \"workspace_member\".\"id\" = \"owner_id\" AND \"workspace_member\".\"workspace_id\" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint)))"
         }
       ],
       "rlsEnabled": true
@@ -1838,7 +1838,7 @@
           "command": "delete",
           "type": "permissive",
           "roles": ["authenticated"],
-          "using": "\"id\" = nullif(current_setting('app.workspace.id', true), '')::bigint"
+          "using": "\"id\" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint"
         },
         {
           "name": "workspace_select_policy",
@@ -1852,8 +1852,8 @@
           "command": "update",
           "type": "permissive",
           "roles": ["authenticated"],
-          "using": "\"id\" = nullif(current_setting('app.workspace.id', true), '')::bigint",
-          "check": "\"id\" = nullif(current_setting('app.workspace.id', true), '')::bigint"
+          "using": "\"id\" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint",
+          "check": "\"id\" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint"
         }
       ],
       "rlsEnabled": true
@@ -2086,15 +2086,15 @@
           "command": "all",
           "type": "permissive",
           "roles": ["authenticated"],
-          "using": "\"workspace_id\" = nullif(current_setting('app.workspace.id', true), '')::bigint",
-          "check": "\"workspace_id\" = nullif(current_setting('app.workspace.id', true), '')::bigint"
+          "using": "\"workspace_id\" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint",
+          "check": "\"workspace_id\" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint"
         },
         {
           "name": "workspace_invitation_recipient_select_policy",
           "command": "select",
           "type": "permissive",
           "roles": ["authenticated"],
-          "using": "\"email\" = (select lower(\"recipient\".\"email\") from \"user\" as \"recipient\" where \"recipient\".\"id\" = nullif(current_setting('app.user.id', true), '')::bigint)"
+          "using": "\"email\" = (select lower(\"recipient\".\"email\") from \"user\" as \"recipient\" where \"recipient\".\"id\" = nullif(current_setting('app.auth.user.id', true), '')::bigint)"
         }
       ],
       "rlsEnabled": true
@@ -2380,15 +2380,15 @@
           "command": "all",
           "type": "permissive",
           "roles": ["authenticated"],
-          "using": "\"workspace_id\" = nullif(current_setting('app.workspace.id', true), '')::bigint",
-          "check": "\"workspace_id\" = nullif(current_setting('app.workspace.id', true), '')::bigint"
+          "using": "\"workspace_id\" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint",
+          "check": "\"workspace_id\" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint"
         },
         {
           "name": "workspace_member_select_policy",
           "command": "select",
           "type": "permissive",
           "roles": ["authenticated"],
-          "using": "\"user_id\" = nullif(current_setting('app.user.id', true), '')::bigint"
+          "using": "\"user_id\" = nullif(current_setting('app.auth.user.id', true), '')::bigint"
         }
       ],
       "rlsEnabled": true

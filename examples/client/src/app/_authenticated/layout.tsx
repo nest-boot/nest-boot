@@ -2,7 +2,7 @@ import { useMutation } from "@apollo/client/react";
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
-import { CurrentUserProvider } from "./contexts/current-user-context";
+import { AuthUserProvider } from "./contexts/auth-user-context";
 import { CreatedApiKeyProvider } from "./contexts/created-api-key-context";
 import { Button } from "@/components/thread-ui/button";
 import { graphql } from "@/gql";
@@ -73,13 +73,13 @@ export const Route = createFileRoute("/_authenticated")({
 function AuthenticatedLayout() {
   const { currentUser, ability } = Route.useRouteContext();
   return (
-    <CurrentUserProvider value={currentUser}>
+    <AuthUserProvider value={currentUser}>
       <AbilityProvider ability={ability}>
         <CreatedApiKeyProvider key={currentUser.id}>
           <AuthenticatedContent />
         </CreatedApiKeyProvider>
       </AbilityProvider>
-    </CurrentUserProvider>
+    </AuthUserProvider>
   );
 }
 

@@ -13,7 +13,7 @@ import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { getWorkspaceMembersResourceKey } from "@/lib/resource-keys";
 import { workspaceMemberSearchSchema } from "@/schemas/workspace-member-search-schema";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
@@ -58,7 +58,7 @@ const GET_WORKSPACE_MEMBERS_FROM_WORKSPACE_MEMBERS_ROUTE = graphql(`
     $invitationFilter: WorkspaceInvitationFilter
     $includeWorkspaceInvitations: Boolean! = false
   ) {
-    currentWorkspace {
+    selectedWorkspace {
       members(
         after: $after
         before: $before
@@ -88,7 +88,7 @@ const GET_WORKSPACE_MEMBERS_FROM_WORKSPACE_MEMBERS_ROUTE = graphql(`
         }
       }
     }
-    currentWorkspace {
+    selectedWorkspace {
       invitations(
         first: $invitationFirst
         last: $invitationLast
@@ -160,7 +160,7 @@ function WorkspaceMembersComponent() {
   const { t, i18n } = useTranslation();
   const search = Route.useSearch();
   const { workspaceId } = Route.useParams();
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   useResourceNavigation({
     key: [currentUser.id, ...getWorkspaceMembersResourceKey(workspaceId)],
     searchSchema: workspaceMemberSearchSchema,
@@ -222,11 +222,11 @@ function WorkspaceMembersComponent() {
   );
 
   const members =
-    data?.currentWorkspace?.members.edges.map((edge) => edge.node) ?? [];
+    data?.selectedWorkspace?.members.edges.map((edge) => edge.node) ?? [];
   const pendingWorkspaceInvitations =
-    data?.currentWorkspace?.invitations?.edges.map(({ node }) => node) ?? [];
-  const invitationPageInfo = data?.currentWorkspace?.invitations?.pageInfo;
-  const pageInfo = data?.currentWorkspace?.members.pageInfo;
+    data?.selectedWorkspace?.invitations?.edges.map(({ node }) => node) ?? [];
+  const invitationPageInfo = data?.selectedWorkspace?.invitations?.pageInfo;
+  const pageInfo = data?.selectedWorkspace?.members.pageInfo;
 
   const membersColumnHelper =
     createDataTableColumnHelper<(typeof members)[number]>();

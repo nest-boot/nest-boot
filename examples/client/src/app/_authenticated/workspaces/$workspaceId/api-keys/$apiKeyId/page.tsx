@@ -8,7 +8,7 @@ import { REVOKE_WORKSPACE_API_KEY } from "@/graphql/mutations/revoke-workspace-a
 import { getApiKeyUpdateInput } from "@/lib/api-key-update";
 import { graphql } from "@/gql";
 import { UPDATE_WORKSPACE_API_KEY } from "@/graphql/mutations/update-workspace-api-key";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-context";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import { Link } from "@/components/link";
@@ -47,7 +47,7 @@ const GET_WORKSPACE_API_KEY = graphql(`
       grantable
       default
     }
-    currentWorkspace {
+    selectedWorkspace {
       apiKey(id: $id) {
         member {
           __typename
@@ -76,7 +76,7 @@ const GET_WORKSPACE_API_KEY_NEIGHBORS = graphql(`
     $orderBy: WorkspaceApiKeyOrder
     $query: String
   ) {
-    currentWorkspace {
+    selectedWorkspace {
       id
     }
     previous: workspaceApiKeys(
@@ -131,7 +131,7 @@ export const Route = createFileRoute(
         if (isAccessDenied(error)) throw denied();
         throw error;
       });
-    const metadata = data?.currentWorkspace?.apiKey;
+    const metadata = data?.selectedWorkspace?.apiKey;
     const apiKey = metadata
       ? { ...metadata, workspaceId: params.workspaceId }
       : undefined;
@@ -165,7 +165,7 @@ function ApiKeyDetailsPage() {
   const [loadNeighbors] = useLazyQuery(GET_WORKSPACE_API_KEY_NEIGHBORS, {
     fetchPolicy: "no-cache",
   });
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   const query = useCallback(
     async ({
       search,
@@ -184,7 +184,7 @@ function ApiKeyDetailsPage() {
           queryDeduplication: false,
         },
       });
-      if (data?.currentWorkspace?.id !== workspaceId) return undefined;
+      if (data?.selectedWorkspace?.id !== workspaceId) return undefined;
       return {
         previousEdge: data.previous.edges[0],
         nextEdge: data.next.edges[0],

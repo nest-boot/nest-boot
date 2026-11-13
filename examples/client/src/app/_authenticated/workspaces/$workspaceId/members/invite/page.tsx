@@ -6,7 +6,7 @@ import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Check, Copy } from "lucide-react";
 import z from "zod";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { getWorkspaceMembersResourceKey } from "@/lib/resource-keys";
 import { workspaceMemberSearchSchema } from "@/schemas/workspace-member-search-schema";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
@@ -93,7 +93,7 @@ function InviteWorkspaceMemberForm() {
   const { t } = useTranslation();
   const { workspaceId } = Route.useParams();
   const { roleOptions } = Route.useRouteContext();
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   const { backSearch } = useResourceNavigation({
     key: [currentUser.id, ...getWorkspaceMembersResourceKey(workspaceId)],
     searchSchema: workspaceMemberSearchSchema,

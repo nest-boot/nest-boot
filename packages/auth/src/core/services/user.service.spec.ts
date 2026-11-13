@@ -18,6 +18,7 @@ import { mockAuthorization } from "../../../test/mock-authorization.js";
 import { mockRlsContext } from "../../../test/mock-rls-context.js";
 import { type CreateUserOptions } from "../../admin/interfaces/create-user-options.interface.js";
 import { ApiKey } from "../../api-key/entities/api-key.entity.js";
+import type { ApiKeyObject } from "../../api-key/objects/api-key.object.js";
 import { UserApiKey } from "../../api-key/objects/user-api-key.object.js";
 import { AuthAbility } from "../../common/auth.ability.js";
 import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
@@ -25,7 +26,6 @@ import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceInvitation } from "../../workspace/entities/workspace-invitation.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
-import { API_KEY } from "../constants/auth.constants.js";
 import { DEFAULT_USER_PERMISSIONS } from "../constants/user.constants.js";
 import { Account } from "../entities/account.entity.js";
 import { Session } from "../entities/session.entity.js";
@@ -58,14 +58,14 @@ describe("UserService", () => {
     });
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
       RequestContext.set(User, user);
-      RequestContext.set(API_KEY, key);
+      RequestContext.set<ApiKeyObject | null>(ApiKey, key);
       em.nativeUpdate.mockRejectedValueOnce(new Error("Usage write failed"));
       await expect(service.banUser(user)).rejects.toThrow("Usage write failed");
       expect(user.banned).toBe(false);
       expect(key.lastUsedAt).toBeNull();
-      expect(RequestContext.get(API_KEY)).toBe(key);
+      expect(RequestContext.get(ApiKey)).toBe(key);
       em.nativeUpdate.mockImplementationOnce(() => {
-        expect(RequestContext.get(API_KEY)).toBe(key);
+        expect(RequestContext.get(ApiKey)).toBe(key);
         return Promise.resolve(1);
       });
       await service.banUser(user);
@@ -78,7 +78,7 @@ describe("UserService", () => {
         },
       );
       expect(user.banned).toBe(true);
-      expect(RequestContext.get(API_KEY)).toBeNull();
+      expect(RequestContext.get(ApiKey)).toBeNull();
       expect(RequestContext.get(User)).toBeNull();
     });
   });
@@ -161,10 +161,10 @@ describe("UserService", () => {
         field === "permissions" ? current : Object.assign(new User(), current);
       em.findOne.mockResolvedValue(stored);
       mockRlsContext(em).variables = {
-        "app.user.id": current.id,
-        "app.workspace.id": "",
-        "app.system_account.id": "",
-        "app.member.id": "",
+        "app.auth.user.id": current.id,
+        "app.auth.workspace.id": "",
+        "app.selected.workspace.id": "",
+        "app.auth.workspace_member.id": "",
       };
       await RequestContext.run(
         new RequestContext({ type: "test" }),

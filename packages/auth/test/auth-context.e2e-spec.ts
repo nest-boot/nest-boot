@@ -248,9 +248,9 @@ describe("Auth request identity and persistence boundaries", () => {
         await firstCleared;
         expect(context.user?.id).toBe("second");
         expect(second.getSessionContext()?.role).toBe("authenticated");
-        expect(second.getSessionContext()?.variables?.["app.user.id"]).toBe(
-          "second",
-        );
+        expect(
+          second.getSessionContext()?.variables?.["app.auth.user.id"],
+        ).toBe("second");
       }),
     ]);
   });

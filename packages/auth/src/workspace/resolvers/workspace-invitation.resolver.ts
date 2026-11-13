@@ -9,9 +9,9 @@ import {
 } from "@nest-boot/graphql";
 import { NotFoundException } from "@nestjs/common";
 
-import { CurrentUser } from "../../core/decorators/current-user.decorator.js";
+import { AuthUser } from "../../core/decorators/auth-user.decorator.js";
 import { User } from "../../core/entities/user.entity.js";
-import { CurrentWorkspace } from "../decorators/current-workspace.decorator.js";
+import { SelectedWorkspace } from "../decorators/selected-workspace.decorator.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceInvitation } from "../entities/workspace-invitation.entity.js";
 import { CreateWorkspaceInvitationInput } from "../inputs/create-workspace-invitation.input.js";
@@ -80,8 +80,8 @@ export class WorkspaceInvitationResolver {
    */
   @Mutation(() => CreateWorkspaceInvitationPayload)
   async createWorkspaceInvitation(
-    @CurrentWorkspace() workspace: Workspace,
-    @CurrentUser() user: User,
+    @SelectedWorkspace() workspace: Workspace,
+    @AuthUser() user: User,
     @Args("input") input: CreateWorkspaceInvitationInput,
   ): Promise<CreateWorkspaceInvitationPayload> {
     const invitation =
@@ -102,7 +102,7 @@ export class WorkspaceInvitationResolver {
   @Mutation(() => AcceptWorkspaceInvitationPayload)
   async acceptWorkspaceInvitation(
     @Args("id", { type: () => ID }) id: string,
-    @CurrentUser() user: User,
+    @AuthUser() user: User,
   ): Promise<AcceptWorkspaceInvitationPayload> {
     const result =
       await this.workspaceInvitationService.acceptWorkspaceInvitation(user, id);
@@ -125,7 +125,7 @@ export class WorkspaceInvitationResolver {
   @Mutation(() => RejectWorkspaceInvitationPayload)
   async rejectWorkspaceInvitation(
     @Args("id", { type: () => ID }) id: string,
-    @CurrentUser() user: User,
+    @AuthUser() user: User,
   ): Promise<RejectWorkspaceInvitationPayload> {
     const invitation =
       await this.workspaceInvitationService.rejectWorkspaceInvitation(user, id);

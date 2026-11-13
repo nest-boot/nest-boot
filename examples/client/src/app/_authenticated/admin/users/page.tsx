@@ -7,7 +7,7 @@ import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { isEmpty } from "lodash";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { adminUserSearchSchema } from "@/schemas/admin-user-search-schema";
 import { adminUsersResourceKey } from "@/lib/resource-keys";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
@@ -75,7 +75,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/")({
 function AdminUsersPage() {
   const { t, i18n } = useTranslation();
   const search = Route.useSearch();
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   useResourceNavigation({
     key: [currentUser.id, ...adminUsersResourceKey],
     searchSchema: adminUserSearchSchema,

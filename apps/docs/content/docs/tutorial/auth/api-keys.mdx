@@ -5,11 +5,21 @@ description: "Authenticate personal and workspace automation with scoped API key
 
 `UserApiKeyService` and `WorkspaceApiKeyService` manage personal keys owned by users and workspace-scoped keys owned by members.
 
-- A **user key** restores its user and may access a selected workspace only
-  while that user remains an active member.
-- A **member key** restores its owning member and workspace. User members
-  also restore their login user; service accounts have no login user. Disabled
-  members and currently banned login users cannot authenticate.
+- A **user key** restores its user. Its private workspace grants require an active
+  membership in the selected workspace; public resources use their own access rules.
+- A **member key** authenticates its owning member without selecting a workspace.
+  Select a workspace through `x-workspace-id` or the workspace Cookie. Its member
+  grants apply only when that selection matches the owner's workspace. Other
+  workspaces may still expose public resources. User members also restore their
+  login user; service accounts have no login user. Disabled members and currently
+  banned login users cannot authenticate.
+
+Workspace selection is independent of authentication and authorization. Anonymous
+requests and credentials without membership may select an existing workspace.
+Public endpoints can use `@SelectedWorkspace()` and an explicit public-read RLS
+policy; private services still check effective permissions. With no selector,
+no credential supplies a default workspace. A header takes precedence over the
+`workspace_id` Cookie, and disabling workspace features ignores both.
 
 Personal key management uses `user-api-key:read` and `user-api-key:write`.
 WorkspaceMember key management uses `workspace-api-key:read` and `workspace-api-key:write`.
@@ -81,7 +91,7 @@ their own migration.
   Authentication and usage tracking are internal infrastructure responsibilities; consumers use the two management services.
 
 GraphQL exposes the connections as `User.apiKeys` and `workspaceApiKeys`,
-usually queried through `currentUser` or `currentWorkspace`. The service performs
+usually queried through `currentUser` or `selectedWorkspace`. The service performs
 authorization and invokes `ConnectionManager` in the request ORM context with native RLS; the
 resolver passes its parent and connection arguments without running queries itself.
 Connection methods check the current identity and read ability directly. Ownership
@@ -105,7 +115,7 @@ query Keys($userKeyId: ID!, $memberKeyId: ID!) {
       name
     }
   }
-  currentWorkspace {
+  selectedWorkspace {
     apiKey(id: $memberKeyId) {
       id
       name
@@ -261,13 +271,13 @@ Authorization: Bearer sk-4tR9s...
 `x-api-key` is not supported. Cookie session resolution runs first. When no
 valid Cookie session exists, the Bearer credential is treated as an API key.
 
-Use `@CurrentApiKey()` when a handler needs the credential that authenticated
+Use `@AuthApiKey()` when a handler needs the credential that authenticated
 the request:
 
 ```typescript
-import { type ApiKey, CurrentApiKey } from "@nest-boot/auth";
+import { AuthApiKey, type ApiKeyRecord } from "@nest-boot/auth";
 
-audit(@CurrentApiKey() apiKey: ApiKey | null) {
+audit(@AuthApiKey() apiKey: ApiKeyRecord | null) {
   return apiKey;
 }
 ```
@@ -281,7 +291,9 @@ The top-level builder receives both scoped permission arrays and produces one
 `AuthAbility`, which the guard checks.
 
 The example baseline `Initial → generated schema migrations` also includes:
-API-key creation and usage tracking retain request RLS and use default INSERT/UPDATE privileges. Services exclude credential hashes from ordinary reads and prevent ownership changes; direct SQL does not have these column restrictions. Auth infrastructure
+The identity decorators are `@AuthUser()`, `@AuthWorkspaceMember()`, `@AuthWorkspace()` and `@SelectedWorkspace()`. `AuthWorkspaceMember` always matches the selected target; credential ownership remains available through the API-key metadata. Authentication response payload types use `AuthUserData` to distinguish them from the `AuthUser` decorator.
+
+API-key creation retains request RLS and uses default INSERT/UPDATE privileges. Usage tracking retains the captured request scope when it can access the authenticating key; system keys and workspace keys used outside their owner's workspace use an isolated internal writer restricted to the captured key ID. Services exclude credential hashes from ordinary reads and prevent ownership changes; direct SQL does not have these column restrictions. Auth infrastructure
 establishes the isolated credential-validation context; both management services use their injected `this.em`.
 
 ## Persistence
@@ -316,6 +328,10 @@ Available platform grants are `user:read`, `user:update`, `user:delete`, `worksp
 Polymorphic relations have no native owner FK or custom owner triggers. Deleting User, WorkspaceMember, SystemAccount or a workspace retains API-key records and their stored owner identifiers for audit. Authentication reloads the concrete owner with a fresh database query and rejects missing, disabled or banned identities. Failed authentication does not delete the record or update its usage timestamps. There is no lazy or scheduled cleanup. System-key audit queries retain metadata and return a null related account when it has been deleted.
 
 System credentials and accounts are unavailable to request-role SQL; only administrator-session services manage them. The framework records successful usage through an isolated writer scoped to the captured key ID.
+
+System keys select an existing workspace through `x-workspace-id` or, when the header is absent, the `workspace_id` Cookie. `@SelectedWorkspace()` and `AuthContext.selectedWorkspace` expose the target without granting access. `@AuthWorkspace()` and `AuthContext.authWorkspace` expose the selected workspace only when effective system workspace grants establish a scope. The `user` and `member` identities remain null. The nullable GraphQL queries are `currentUser`, `currentSession`, `currentWorkspaceMember`, `currentWorkspace` and `selectedWorkspace`. Business `buildAbility` callbacks receive the authenticated scope as `workspace` and the independent target as `selectedWorkspace`; they continue to use effective permission grants and resource conditions.
+
+All authenticated credential types use the `authenticated` database role. Auth stages four variables: `app.auth.user.id`, `app.auth.workspace_member.id`, `app.auth.workspace.id` and `app.selected.workspace.id`. System credentials carry no database account identifier and use no separate role. Effective workspace grants can establish the authenticated scope for the selected target; empty, user-only or disallowed grants cannot. Private policies use the authenticated scope. Public-read policies can instead match the selected target and a public-row condition. An explicit empty header clears selection, unknown IDs do not fall back to the Cookie, malformed IDs return 400, and disabling workspace features ignores both selectors.
 
 Manage system credentials under `/admin/api-keys` and independent accounts under `/admin/system-accounts` in the example client. When creating a key, select an existing enabled account or leave the selector empty to create an account using the key name and selected permissions, as with workspace service-account keys. Account pages edit the permission ceiling and enabled state. Newly created secrets appear once. Permission choices and key defaults come from the server, bounded by administrator, account and configuration grants.
 

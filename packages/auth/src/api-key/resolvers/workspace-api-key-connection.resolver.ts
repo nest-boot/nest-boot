@@ -10,7 +10,7 @@ import {
 import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
 import { type GraphQLResolveInfo } from "graphql";
 
-import { CurrentWorkspace } from "../../workspace/decorators/current-workspace.decorator.js";
+import { SelectedWorkspace } from "../../workspace/decorators/selected-workspace.decorator.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import {
   WorkspaceApiKeyConnection,
@@ -52,7 +52,7 @@ export class WorkspaceApiKeyConnectionResolver {
    */
   @Query(() => WorkspaceApiKeyConnection)
   async workspaceApiKeys(
-    @CurrentWorkspace() workspace: Workspace,
+    @SelectedWorkspace() workspace: Workspace,
     @Args({ type: () => WorkspaceApiKeyConnectionArgs })
     args: ConnectionArgsInterface<ApiKey>,
     @Info() info?: GraphQLResolveInfo,

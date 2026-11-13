@@ -27,7 +27,7 @@ describe.each([{ scope: "user", create: userScopePolicy }])(
         check: expect.any(Function),
       });
       expect(resolve(policy.using, { [scope]: "owner_ref" })).toBe(
-        `"owner_ref" = nullif(current_setting('app.${scope}.id', true), '')::bigint`,
+        `"owner_ref" = nullif(current_setting('app.auth.${scope}.id', true), '')::bigint`,
       );
       expect(policy.using).toBe(policy.check);
     });
@@ -54,7 +54,7 @@ describe.each([{ scope: "user", create: userScopePolicy }])(
         expect(policy.name).toBe("owner_access");
         expect(policy.roles).toEqual(["reader"]);
         expect(resolve(policy.using, { owner: 'Owner"ID' })).toBe(
-          `"Owner""ID" = nullif(current_setting('app.${scope}.id', true), '')::${type}`,
+          `"Owner""ID" = nullif(current_setting('app.auth.${scope}.id', true), '')::${type}`,
         );
       },
     );

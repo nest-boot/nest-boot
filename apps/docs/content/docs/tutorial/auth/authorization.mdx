@@ -160,7 +160,7 @@ The ability is cached in `RequestContext` and rebuilt after identity or authoriz
 
 Class-level checks only gate an operation; conditional rules are also evaluated
 against loaded entities and proposed entities before creation. `currentWorkspaceMember`
-and `currentWorkspace` also check the selected instance's workspace read rules;
+and `selectedWorkspace` also check the selected instance's workspace read rules;
 being present in the request context does not bypass authorization. CASL-authorized
 connections validate each returned node and reject the entire page if one is
 denied, rather than silently filtering a page and changing its pagination.
@@ -380,7 +380,7 @@ posts() {
 
 @Can("read", () => User)
 @Query(() => User)
-me(@CurrentUser() user: User) {
+me(@AuthUser() user: User) {
   return user;
 }
 ```
@@ -550,23 +550,20 @@ For example, `userScopePolicy({ property: "owner", type: "uuid" })` matches an
 owner UUID. On the User entity itself, use `property: "id"`.
 `command`, `roles` and the optional policy `name` can also be overridden.
 
-The policies compare against `app.user.id` or `app.workspace.id` and preserve
+The policies compare against `app.auth.user.id` or `app.auth.workspace.id` and preserve
 `nullif(current_setting(..., true), '')`, so missing/empty identifiers match no
 rows. They are permissive policies: policies for the same operation combine with
 OR. They do not check workspace lifecycle or replace Service authorization.
 Continue to configure database roles, table privileges and trusted session
 variables separately.
 
-Auth stages identity variables `app.user.id`, `app.workspace.id`, and `app.member.id`, but does not
-pass application permissions to the database. Services enforce Ability rules,
-custom permissions and API-key ceilings; RLS handles ownership, workspace
-isolation. Authenticated User reads/writes and Session reads
-rely on Service authorization. Do not expose direct ORM/SQL access to these
-records as an alternative to Services. Old identity keys are no longer supported.
+Auth stages `app.auth.user.id`, `app.auth.workspace_member.id`, `app.auth.workspace.id` and `app.selected.workspace.id`. The selected workspace is a request target, while the authenticated workspace is backed by effective membership or system workspace grants. Application permission arrays stay out of the database. Services enforce CASL actions, fields and conditions; RLS restricts ownership and row scope. User and Session operations retain their Service authorization boundaries.
 
-`app.member.id` identifies the authenticated active member in the selected workspace, including service accounts. It is empty for anonymous requests or when no active member is available, and is cleared when workspace access or authentication is revoked.
+`app.auth.workspace_member.id` identifies the authenticated active member in the selected workspace, including service accounts. It is empty for anonymous requests or when no active member is available, and is cleared when workspace access or authentication is revoked.
 
-All credential scopes share `api_key`. RLS checks the stored owner discriminator and ID: user keys match `app.user.id`, member keys resolve their workspace to match `app.workspace.id`, and system keys remain inaccessible through request-role SQL. Deleting an owner retains the key for audit; authentication freshly reloads the owner and rejects missing identities. Default privileges authorize table operations, while services hide credential hashes, prevent ownership changes and enforce application authorization.
+System API keys use the same `authenticated` role and can establish an authenticated workspace scope from effective account/key workspace grants without a user or member identity. Selection alone never establishes that scope. Anonymous requests, non-members and workspace keys selecting another workspace can still read explicitly public rows through a separate SELECT policy using `app.selected.workspace.id` and the public-row condition. The request database context is prepared before business transactions, without switching it per resource operation.
+
+All credential scopes share `api_key`. RLS checks the stored owner discriminator and ID: user keys match `app.auth.user.id`, member keys resolve their workspace to match `app.auth.workspace.id`, and system keys remain inaccessible through request-role SQL. Deleting an owner retains the key for audit; authentication freshly reloads the owner and rejects missing identities. Default privileges authorize table operations, while services hide credential hashes, prevent ownership changes and enforce application authorization.
 
 These are plain factories, not filters or decorators. Neither runtime nor CLI
 needs a custom discovery hook. Generate and apply migrations after changing
@@ -575,6 +572,8 @@ For custom application entities that need soft deletion, compose
 [`softDeletePolicies()`](/docs/tutorial/database#soft-delete-rls-policies).
 
 ## Authorization Changes Within a Request
+
+Clearing authentication, disabling membership, or leaving a workspace preserves the independent selection for public access. Deleting the selected workspace clears selection as well.
 
 After a Service commits changes to the current user's profile, roles, permissions
 or ban state, the current member's profile, roles, permissions or status, or the

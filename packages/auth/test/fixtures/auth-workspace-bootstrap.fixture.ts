@@ -171,7 +171,7 @@ export async function verifyAuthBootstrap(
       schema.getMutationType()?.getFields().createUserApiKey,
     ).toBeDefined();
     for (const name of [
-      "currentWorkspace",
+      "selectedWorkspace",
       "workspaceApiKeys",
       "currentWorkspaceMember",
       "workspaceRoles",

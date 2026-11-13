@@ -2,27 +2,27 @@ import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import type { GetCurrentUserFromAuthenticatedRouteQuery } from "@/gql/graphql";
 
-type CurrentUser = NonNullable<
+type AuthUser = NonNullable<
   GetCurrentUserFromAuthenticatedRouteQuery["currentUser"]
 >;
-const CurrentUserContext = createContext<CurrentUser | null>(null);
+const AuthUserContext = createContext<AuthUser | null>(null);
 
 /** Shares the identity already loaded and authorized by the route. */
-export function CurrentUserProvider({
+export function AuthUserProvider({
   value,
   children,
 }: {
-  value: CurrentUser;
+  value: AuthUser;
   children: ReactNode;
 }) {
-  return <CurrentUserContext value={value}>{children}</CurrentUserContext>;
+  return <AuthUserContext value={value}>{children}</AuthUserContext>;
 }
 
-export function useCurrentUserContext() {
-  const context = useContext(CurrentUserContext);
+export function useAuthUserContext() {
+  const context = useContext(AuthUserContext);
   if (!context)
     throw new Error(
-      "useCurrentUserContext must be used within a CurrentUserProvider",
+      "useAuthUserContext must be used within a AuthUserProvider",
     );
   return context;
 }

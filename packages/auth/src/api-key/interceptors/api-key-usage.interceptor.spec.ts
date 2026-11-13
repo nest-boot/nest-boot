@@ -4,7 +4,8 @@ import type { CallHandler, ExecutionContext } from "@nestjs/common";
 import { defer, lastValueFrom, of, throwError } from "rxjs";
 import type { Mocked } from "vitest";
 
-import { API_KEY } from "../../core/constants/auth.constants.js";
+import { ApiKey } from "../entities/api-key.entity.js";
+import type { ApiKeyObject } from "../objects/api-key.object.js";
 import { WorkspaceApiKey as BaseApiKey } from "../objects/workspace-api-key.object.js";
 import type { ApiKeyAuthenticationService } from "../services/api-key-authentication.service.js";
 import { ApiKeyUsageInterceptor } from "./api-key-usage.interceptor.js";
@@ -20,13 +21,13 @@ describe("ApiKeyUsageInterceptor", () => {
       recordUsage,
     } as unknown as Mocked<ApiKeyAuthenticationService>;
     await RequestContext.run(new RequestContext({ type: "test" }), async () => {
-      RequestContext.set(API_KEY, apiKey);
+      RequestContext.set<ApiKeyObject | null>(ApiKey, apiKey);
       const stream = new ApiKeyUsageInterceptor(service).intercept(
         {} as ExecutionContext,
         {
           handle: () =>
             defer(() => {
-              RequestContext.set(API_KEY, null);
+              RequestContext.set<ApiKeyObject | null>(ApiKey, null);
               return of("new identity");
             }),
         },
@@ -45,7 +46,7 @@ describe("ApiKeyUsageInterceptor", () => {
     const interceptor = new ApiKeyUsageInterceptor(service);
     vi.spyOn(RequestContext, "isActive").mockReturnValue(true);
     vi.spyOn(RequestContext, "get").mockImplementation((token) =>
-      token === API_KEY ? apiKey : undefined,
+      token === ApiKey ? apiKey : undefined,
     );
 
     await expect(

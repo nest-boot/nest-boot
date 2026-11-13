@@ -9,7 +9,7 @@ import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
 import { useAbility } from "@/contexts/ability-context";
 import { graphql } from "@/gql";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 
 const LIST = graphql(`
   query systemApiKeys(
@@ -66,7 +66,7 @@ function Keys() {
   const { t } = useTranslation();
   const search = Route.useSearch();
   const ability = useAbility();
-  const user = useCurrentUserContext();
+  const user = useAuthUserContext();
   useResourceNavigation({
     key: [user.id, ...adminApiKeysResourceKey],
     searchSchema: apiKeySearchSchema,

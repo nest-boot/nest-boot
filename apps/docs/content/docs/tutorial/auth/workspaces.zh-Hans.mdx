@@ -14,13 +14,13 @@ AuthModule 会自动注册对应实体，`nb database` 命令复用相同配置�
 
 ```typescript
 import {
-  CurrentWorkspace,
-  CurrentWorkspaceMember,
+  SelectedWorkspace,
+  AuthWorkspaceMember,
 } from "@nest-boot/auth";
 
-currentWorkspace(
-  @CurrentWorkspace() workspace: Workspace,
-  @CurrentWorkspaceMember() member: WorkspaceMember,
+selectedWorkspace(
+  @SelectedWorkspace() workspace: Workspace,
+  @AuthWorkspaceMember() member: WorkspaceMember,
 ) {
   return { workspace, member };
 }

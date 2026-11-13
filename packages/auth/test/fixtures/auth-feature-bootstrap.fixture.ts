@@ -149,7 +149,7 @@ export async function verifyAuthFeatures(
     expect(!!queries.systemAccounts).toBe(expected.admin);
     expect(!!mutations.impersonateUser).toBe(expected.admin);
     expect(!!mutations.createSystemAccount).toBe(expected.admin);
-    expect(!!queries.currentWorkspace).toBe(expected.workspace);
+    expect(!!queries.selectedWorkspace).toBe(expected.workspace);
     expect(!!queries.workspaceApiKeys).toBe(
       expected.owners.includes("WorkspaceMember"),
     );

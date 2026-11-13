@@ -1,5 +1,5 @@
 import type { AuthDeleteAccountVerificationData } from "./auth-delete-account-verification-data.interface.js";
-import type { AuthUser } from "./auth-user.interface.js";
+import type { AuthUserData } from "./auth-user-data.interface.js";
 
 /** User-deletion lifecycle options. */
 export interface AuthModuleDeleteUserOptions {
@@ -11,9 +11,9 @@ export interface AuthModuleDeleteUserOptions {
     request?: Request,
   ) => Promise<void>;
   /** Runs before coordinated user deletion. */
-  beforeDelete?: (user: AuthUser, request?: Request) => Promise<void>;
+  beforeDelete?: (user: AuthUserData, request?: Request) => Promise<void>;
   /** Runs after coordinated user deletion. */
-  afterDelete?: (user: AuthUser, request?: Request) => Promise<void>;
+  afterDelete?: (user: AuthUserData, request?: Request) => Promise<void>;
   /** Account-deletion token lifetime in seconds. */
   deleteTokenExpiresIn?: number;
 }

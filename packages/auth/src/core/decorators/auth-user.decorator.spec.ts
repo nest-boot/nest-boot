@@ -1,4 +1,4 @@
-it("resolves WorkspaceMember from the current request", async () => {
+it("resolves User from the current request", async () => {
   const expected = { id: "current" };
   const get = vi.fn<(token: symbol | { name?: string }) => unknown>(
     () => expected,
@@ -14,13 +14,12 @@ it("resolves WorkspaceMember from the current request", async () => {
     createParamDecorator: (factory: () => unknown) => factory,
   }));
   try {
-    const { CurrentWorkspaceMember } =
-      await import("./current-workspace-member.decorator.js");
-    expect(CurrentWorkspaceMember()).toBe(expected);
+    const { AuthUser } = await import("./auth-user.decorator.js");
+    expect(AuthUser()).toBe(expected);
     expect(get).toHaveBeenCalledTimes(1);
     const token = get.mock.calls[0][0];
     expect(typeof token === "symbol" ? token.description : token.name).toBe(
-      "WorkspaceMember",
+      "User",
     );
   } finally {
     vi.doUnmock("@nest-boot/request-context");

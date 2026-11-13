@@ -1,11 +1,11 @@
 import type { EntityManager } from '@mikro-orm/core';
 import {
-  API_KEY,
+  ApiKey,
   AuthContext,
   AuthResolver,
   type AuthService,
+  SELECTED_WORKSPACE,
   User,
-  UserApiKey,
   Workspace,
   WorkspaceApiKeyService,
   WorkspaceMember,
@@ -54,7 +54,7 @@ describe('business authorization recipe', () => {
             permissions: [],
           });
           RequestContext.set(User, user);
-          RequestContext.set(Workspace, workspace);
+          RequestContext.set(SELECTED_WORKSPACE, workspace);
           RequestContext.set(
             WorkspaceMember,
             Object.assign(new WorkspaceMember(), {
@@ -67,8 +67,8 @@ describe('business authorization recipe', () => {
           );
           if (key !== undefined) {
             RequestContext.set(
-              API_KEY,
-              Object.assign(new UserApiKey(), { user, permissions: key }),
+              ApiKey,
+              Object.assign(new ApiKey(), { user, permissions: key }),
             );
           }
           // Production requests initialize AuthContext through the middleware.

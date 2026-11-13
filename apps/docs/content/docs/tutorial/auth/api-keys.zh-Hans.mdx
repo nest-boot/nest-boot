@@ -5,8 +5,10 @@ description: "使用带权限范围的 API Key 认证个人和工作区自动化
 
 `UserApiKeyService` 和 `WorkspaceApiKeyService` 管理归属于用户的个人 Key 和归属于 member 的工作区范围 Key。
 
-- **User Key** 会恢复所属用户；只有该用户仍是所选工作区的活动成员时，才能访问工作区资源。
-- **WorkspaceMember Key** 会恢复所属 member 和工作区。用户成员还会恢复登录用户；服务账号没有登录用户。停用成员或封禁其登录用户后，Key 不能继续认证。
+- **User Key** 会恢复所属用户；私有工作区权限要求用户是所选工作区的有效成员，公开资源按自身规则开放。
+- **WorkspaceMember Key** 认证所属成员，但不会自动选择工作区。通过 `x-workspace-id` 或工作区 Cookie 选择目标；只有选中归属工作区时，才建立当前成员及其私有权限。其他工作区仍可提供公开资源。用户成员还会恢复登录用户，服务账号没有登录用户；停用成员或封禁其登录用户后，Key 不能继续认证。
+
+工作区选择与认证、授权分开：匿名请求和没有成员关系的凭证也可以选择已存在的工作区。公开接口可以使用 `@SelectedWorkspace()`，并配置独立的公开读取 RLS 策略；私有服务继续检查有效权限。未提供选择器时，任何凭证都不会自动补上工作区。请求头优先于 `workspace_id` Cookie；关闭 workspace 功能时忽略两者。
 
 个人 Key 管理使用 `user-api-key:read` 和 `user-api-key:write`；
 成员 Key 管理使用 `workspace-api-key:read` 和 `workspace-api-key:write`。
@@ -15,6 +17,8 @@ description: "使用带权限范围的 API Key 认证个人和工作区自动化
 示例的两个用户角色均包含个人 Key 管理权限。API Key 请求只会获得权限取交集后明确
 授予的操作，不再无条件继承 `manage` 规则。
 前端消费服务端权限选项，只预选同时满足 `default` 与 `grantable` 的项。
+
+装饰器统一为 `@AuthUser()`、`@AuthWorkspaceMember()`、`@AuthWorkspace()`、`@SelectedWorkspace()`。成员身份始终与选择目标匹配，凭证原始归属保留在密钥元数据中。认证操作返回的用户数据类型命名为 `AuthUserData`，与 `AuthUser` 装饰器区分。
 
 ## 开启密钥范围
 
@@ -65,7 +69,7 @@ beta 示例保留 init，其余迁移按最终模型重新生成为 `Migration20
   认证和使用时间更新由内部基础设施负责；业务代码使用两个管理 Service。
 
 GraphQL 连接字段为 `User.apiKeys` 和 `workspaceApiKeys`，通常通过 `currentUser`
-或 `currentWorkspace` 查询。Service 完成授权后在请求的 ORM 上下文中保留原生 RLS 并调用
+或 `selectedWorkspace` 查询。Service 完成授权后在请求的 ORM 上下文中保留原生 RLS 并调用
 `ConnectionManager`；Resolver 仅传递父对象与连接参数，不执行数据库查询。
 连接方法直接检查当前身份与读取能力；所有权和 API Key 权限上限过滤由内部逻辑与
 单条查询共用，不再公开构造过滤条件的方法。
@@ -85,7 +89,7 @@ query Keys($userKeyId: ID!, $memberKeyId: ID!) {
       name
     }
   }
-  currentWorkspace {
+  selectedWorkspace {
     apiKey(id: $memberKeyId) {
       id
       name
@@ -215,12 +219,12 @@ Authorization: Bearer sk-4tR9s...
 不支持 `x-api-key`。模块会优先解析 Cookie Session；没有有效 Cookie Session 时，
 Bearer 凭据才会作为 API Key 校验。
 
-处理器需要读取本次请求使用的 Key 时，可以使用 `@CurrentApiKey()`：
+处理器需要读取本次请求使用的 Key 时，可以使用 `@AuthApiKey()`：
 
 ```typescript
-import { type ApiKey, CurrentApiKey } from "@nest-boot/auth";
+import { AuthApiKey, type ApiKeyRecord } from "@nest-boot/auth";
 
-audit(@CurrentApiKey() apiKey: ApiKey | null) {
+audit(@AuthApiKey() apiKey: ApiKeyRecord | null) {
   return apiKey;
 }
 ```
@@ -257,9 +261,13 @@ mutation {
 
 将返回的 ID 作为 `input.systemAccountId` 传给 `createSystemApiKey(input)`。省略 ID 时，会在同一个事务内按密钥名称和有效权限创建系统账户及密钥，并额外检查账户创建权限；选择已有账户不会创建或修改该账户。创建结果为 `{ entity, apiKey }`。明文只在创建时返回一次，通过 `Authorization: Bearer <key>` 使用；后续查询不公开哈希或明文。程序调用使用 `SystemAccountService` 和 `SystemApiKeyService`；`SystemAccount.apiKeys` 提供游标分页。
 
-`apiKey.system` 支持 `defaultPrefix`、`defaultPermissions`、`allowedPermissions`，默认前缀为 `sys_`。有效权限取“账户当前权限 ∩ 密钥显式授权 ∩ 配置上限”，空权限列表不授予任何访问能力。禁用账户会使全部所属密钥失效；撤销、过期或删除密钥只影响该密钥。删除系统账户会在同一事务内撤销所属密钥，并保留密钥审计记录。认证不会伪造 User、WorkspaceMember 或选中的 workspace 身份。
+`apiKey.system` 支持 `defaultPrefix`、`defaultPermissions`、`allowedPermissions`，默认前缀为 `sys_`。有效权限取“账户当前权限 ∩ 密钥显式授权 ∩ 配置上限”，空权限列表不授予任何访问能力。禁用账户会使全部所属密钥失效；撤销、过期或删除密钥只影响该密钥。删除系统账户会在同一事务内撤销所属密钥，并保留密钥审计记录。认证不会伪造 User 或 WorkspaceMember 身份。
 
 内置平台权限为 `user:read`、`user:update`、`user:delete`、`workspace:read-any`、`workspace:update-any`、`workspace:delete-any`。用户操作仍经过 User Service 授权；平台工作区入口单独提供 `workspaces`、`platformWorkspace(id)`、`updatePlatformWorkspace(id, input)`、`deletePlatformWorkspace(id)`。关闭 workspace 后对应权限不生效，也不会自动开放业务表。
+
+系统密钥通过 `x-workspace-id` 或请求头缺失时的 `workspace_id` Cookie 选择目标。`@SelectedWorkspace()`、`AuthContext.selectedWorkspace` 只暴露选择，不授予权限；只有有效的系统工作区权限支持该作用域时，`@AuthWorkspace()`、`AuthContext.authWorkspace` 才返回所选工作区。`user`、`member` 仍为 null。GraphQL 对应五个可空查询：`currentUser`、`currentSession`、`currentWorkspaceMember`、`currentWorkspace`、`selectedWorkspace`。业务 `buildAbility` 的 `workspace` 表示认证作用域，`selectedWorkspace` 表示独立选择，继续通过有效权限和资源条件构造授权。
+
+所有已认证凭证都使用 `authenticated` 数据库角色。Auth 设置 `app.auth.user.id`、`app.auth.workspace_member.id`、`app.auth.workspace.id` 和 `app.selected.workspace.id`，不传系统账户 ID，也不创建单独角色。系统凭证的有效工作区权限可以为所选目标建立认证作用域；空权限、仅用户权限或被配置上限排除的权限不能建立该作用域。私有策略使用认证作用域，公开读取策略可使用所选目标与公开行条件。显式空 Header 清除选择，未知 ID 不回退 Cookie，无效 ID 返回 400；关闭 workspace 功能时忽略两种选择器。
 
 多态 owner 不建立普通外键，也不使用自定义 owner 触发器。删除 User、WorkspaceMember、SystemAccount 或工作空间时，API Key 记录及原始归属 ID 保留用于审计。认证每次重新查询具体 owner；归属身份不存在、停用或被封禁时拒绝使用，失败认证不删除记录，也不更新使用时间。不提供访问时清理或定时清理。系统密钥审计查询仍返回元数据，已删除的关联账户返回 null。示例基线针对全新数据库生成。
 

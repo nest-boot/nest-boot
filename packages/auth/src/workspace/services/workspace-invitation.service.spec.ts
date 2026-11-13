@@ -19,10 +19,11 @@ import {
   createWorkspaceServices,
 } from "../../../test/workspace-service.fixture.js";
 import { ApiKey } from "../../api-key/entities/api-key.entity.js";
+import type { ApiKeyObject } from "../../api-key/objects/api-key.object.js";
 import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.js";
 import { AuthAbility } from "../../common/auth.ability.js";
 import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
-import { API_KEY } from "../../core/constants/auth.constants.js";
+import { SELECTED_WORKSPACE } from "../../core/constants/auth.constants.js";
 import { Session } from "../../core/entities/session.entity.js";
 import { User } from "../../core/entities/user.entity.js";
 import { WorkspaceInvitationConnection } from "../connections/workspace-invitation.connection-definition.js";
@@ -1112,7 +1113,7 @@ describe("read authorization", () => {
               const selected = Object.assign(createTestWorkspace(), {
                 id: scenario.selected,
               });
-              RequestContext.set(Workspace, selected);
+              RequestContext.set(SELECTED_WORKSPACE, selected);
               if (scenario.member) {
                 RequestContext.set(
                   WorkspaceMember,
@@ -1231,10 +1232,10 @@ describe("read authorization", () => {
           const workspace = Object.assign(createTestWorkspace(), {
             id: scenario.selected,
           });
-          RequestContext.set(Workspace, workspace);
+          RequestContext.set(SELECTED_WORKSPACE, workspace);
           if (scenario.key) {
-            RequestContext.set(
-              API_KEY,
+            RequestContext.set<ApiKeyObject | null>(
+              ApiKey,
               Object.assign(new WorkspaceApiKey(new ApiKey()), {
                 user: null,
                 workspace: ref(Workspace, workspace),

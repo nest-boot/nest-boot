@@ -4,8 +4,10 @@ import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.j
 import type { AuthAbility } from "../../common/auth.ability.js";
 import { resolveRequestPermissions } from "../../common/utils/resolve-request-permissions.util.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
+import { resolveAuthWorkspace } from "../../workspace/utils/resolve-auth-workspace.util.js";
 import { resolveRequestWorkspaceMember } from "../../workspace/utils/resolve-request-workspace-member.util.js";
 import { createAuthAbility } from "../auth-ability.factory.js";
+import { SELECTED_WORKSPACE } from "../constants/auth.constants.js";
 import { User } from "../entities/user.entity.js";
 import type { AuthModuleOptions } from "../interfaces/auth-module-options.interface.js";
 
@@ -22,12 +24,16 @@ export function buildRequestAbility(options: AuthModuleOptions): AuthAbility {
     options.workspace?.enabled === true
       ? resolveRequestWorkspaceMember()
       : null;
-  const workspace = member ? (RequestContext.get(Workspace) ?? null) : null;
+  const workspace = resolveAuthWorkspace(options);
   const permissions = resolveRequestPermissions(options);
   return createAuthAbility(
     {
       user,
       workspace,
+      selectedWorkspace:
+        options.workspace?.enabled === true
+          ? (RequestContext.get<Workspace | null>(SELECTED_WORKSPACE) ?? null)
+          : null,
       member,
       userPermissions:
         user || apiKey?.ownerType === "system_account" ? permissions.user : [],

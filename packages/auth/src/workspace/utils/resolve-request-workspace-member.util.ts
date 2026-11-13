@@ -1,6 +1,7 @@
 import { RequestContext } from "@nest-boot/request-context";
 
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
+import { SELECTED_WORKSPACE } from "../../core/constants/auth.constants.js";
 import { User } from "../../core/entities/user.entity.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { WorkspaceMember } from "../entities/workspace-member.entity.js";
@@ -15,7 +16,7 @@ export function resolveRequestWorkspaceMember(): WorkspaceMember | null {
     return null;
   }
   const member = RequestContext.get(WorkspaceMember);
-  const workspace = RequestContext.get(Workspace);
+  const workspace = RequestContext.get<Workspace | null>(SELECTED_WORKSPACE);
   if (
     !workspace ||
     member?.status !== "ACTIVE" ||

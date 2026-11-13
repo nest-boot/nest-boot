@@ -361,7 +361,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
     const keyed = await gql(
       `{workspaceJobs(first:10,filter:{queue:"report-queue",name:"generate-report"}){totalCount edges{node{id}}}}`,
-      { bearerToken: key.apiKey },
+      { bearerToken: key.apiKey, workspaceId: workspace.id },
     );
     expectNoGraphQLErrors(keyed);
     expect(keyed.body.data.workspaceJobs.totalCount).toBe(1);
@@ -371,6 +371,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expectGraphQLError(
       await gql('{userJobs(first:10){totalCount}}', {
         bearerToken: key.apiKey,
+        workspaceId: workspace.id,
       }),
     );
     const system = `{systemJob(id:"${ids.background}"){id} systemJobs(first:10,filter:{queue:"report-queue",name:"generate-report"}){totalCount}}`;
@@ -503,7 +504,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       }
     `);
 
-    expectGraphQLError(rejectedCurrentUser);
+    expectNoGraphQLErrors(rejectedCurrentUser);
+    expect(rejectedCurrentUser.body.data.currentUser).toBeNull();
 
     const currentUser = await gql(
       /* GraphQL */ `
@@ -627,7 +629,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const unauthenticated = await gql('query { currentUser { id } }', {
       cookies: collectSetCookies(registered),
     });
-    expect(unauthenticated.body.errors).toBeDefined();
+    expectNoGraphQLErrors(unauthenticated);
+    expect(unauthenticated.body.data.currentUser).toBeNull();
     await verifyEmail(email);
 
     const loggedIn = await gql(
@@ -742,18 +745,11 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(revokedSession);
     expect(revokedSession.body.data.revokeCurrentUserSession).toBe(true);
-    expectGraphQLError(
-      await gql(
-        /* GraphQL */ `
-          query {
-            currentUser {
-              id
-            }
-          }
-        `,
-        { cookies: otherCookies },
-      ),
-    );
+    const revokedIdentity = await gql('query { currentUser { id } }', {
+      cookies: otherCookies,
+    });
+    expectNoGraphQLErrors(revokedIdentity);
+    expect(revokedIdentity.body.data.currentUser).toBeNull();
 
     const changedPassword = 'graphql-changed-password';
     const passwordChanged = await gql(
@@ -1728,7 +1724,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expectGraphQLError(
       await gql(query, { bearerToken: key.apiKey, variables: { first: 10 } }),
     );
-    expectGraphQLError(await gql(query, { variables: { first: 10 } }));
+    const anonymous = await gql(query, { variables: { first: 10 } });
+    expectNoGraphQLErrors(anonymous);
+    expect(anonymous.body.data.currentUser).toBeNull();
     expectGraphQLError(
       await gql(
         'query($id: ID!) { user(id: $id) { accounts(first: 10) { totalCount } } }',
@@ -1934,18 +1932,11 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       currentUser: { id: administrator.user.id },
       currentSession: { impersonatedById: null },
     });
-    expectGraphQLError(
-      await gql(
-        /* GraphQL */ `
-          query {
-            currentUser {
-              id
-            }
-          }
-        `,
-        { cookies: impersonationCookies },
-      ),
-    );
+    const expiredIdentity = await gql('query { currentUser { id } }', {
+      cookies: impersonationCookies,
+    });
+    expectNoGraphQLErrors(expiredIdentity);
+    expect(expiredIdentity.body.data.currentUser).toBeNull();
   });
 
   it('commits impersonation revocation before rejecting restoration of a banned administrator', async () => {
@@ -1997,7 +1988,11 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       ]),
     ).toEqual([]);
     expect(await readSessions()).toEqual([]);
-    expectGraphQLError(await gql('query { currentUser { id } }', { cookies }));
+    const expiredIdentity = await gql('query { currentUser { id } }', {
+      cookies,
+    });
+    expectNoGraphQLErrors(expiredIdentity);
+    expect(expiredIdentity.body.data.currentUser).toBeNull();
     expectNoGraphQLErrors(
       await gql('query { currentUser { id } }', { cookies: target.cookies }),
     );
@@ -2073,11 +2068,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         `,
         { cookies },
       );
-      expect(rejected.body.errors).toEqual([
-        expect.objectContaining({
-          extensions: expect.objectContaining({ code: 'UNAUTHORIZED' }),
-        }),
-      ]);
+      expectNoGraphQLErrors(rejected);
+      expect(rejected.body.data.currentUser).toBeNull();
     }
 
     const unaffected = await gql(
@@ -2352,13 +2344,13 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       >(`select last_used_at from ${table} where id = ?`, [key.entity.id]);
       expect(stored.last_used_at).not.toBeNull();
       const current = await gql(
-        'query { currentUser { id } currentWorkspace { id } }',
+        'query { currentUser { id } selectedWorkspace { id } }',
         { cookies: collectSetCookies(response) },
       );
       expectNoGraphQLErrors(current);
       expect(current.body.data).toEqual({
         currentUser: { id: target.user.id },
-        currentWorkspace: null,
+        selectedWorkspace: null,
       });
     },
   );
@@ -2473,12 +2465,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     ).toEqual([{ name: member.name, status: 'ACTIVE' }]);
 
     const current = await gql(
-      'query { currentWorkspace { id } currentWorkspaceMember { id name status } }',
+      'query { selectedWorkspace { id } currentWorkspaceMember { id name status } }',
       options,
     );
     expectNoGraphQLErrors(current);
     expect(current.body.data).toEqual({
-      currentWorkspace: { id: workspace.id },
+      selectedWorkspace: { id: workspace.id },
       currentWorkspaceMember: { ...member, status: 'ACTIVE' },
     });
   });
@@ -2587,7 +2579,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         expectNoGraphQLErrors(response);
       }
       expect(await readKey()).toEqual([{ id: key.entity.id }]);
-      const rejected = await gql('query { currentWorkspace { id } }', {
+      const rejected = await gql('query { selectedWorkspace { id } }', {
         bearerToken: key.apiKey,
         workspaceId: workspace.id,
       });
@@ -2651,14 +2643,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       ]),
     ).toEqual([{ id: workspace.id }]);
     const current = await gql(
-      'query { currentUser { id } currentWorkspaceMember { id } currentWorkspace { id } }',
+      'query { currentUser { id } currentWorkspaceMember { id } selectedWorkspace { id } }',
       { cookies: owner.cookies },
     );
     expectNoGraphQLErrors(current);
     expect(current.body.data).toEqual({
       currentUser: { id: owner.user.id },
       currentWorkspaceMember: null,
-      currentWorkspace: null,
+      selectedWorkspace: null,
     });
   });
 
@@ -3054,7 +3046,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const fromHeader = await gql(
       /* GraphQL */ `
         query {
-          currentWorkspace {
+          selectedWorkspace {
             id
             name
           }
@@ -3071,7 +3063,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectNoGraphQLErrors(fromHeader);
-    expect(fromHeader.body.data.currentWorkspace).toEqual(aliceWorkspace);
+    expect(fromHeader.body.data.selectedWorkspace).toEqual(aliceWorkspace);
     expect(fromHeader.body.data.currentWorkspaceMember).toMatchObject({
       roles: ['OWNER'],
       user: {
@@ -3082,7 +3074,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const fromCookie = await gql(
       /* GraphQL */ `
         query {
-          currentWorkspace {
+          selectedWorkspace {
             id
             name
           }
@@ -3097,7 +3089,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectNoGraphQLErrors(fromCookie);
-    expect(fromCookie.body.data.currentWorkspace).toEqual(aliceWorkspace);
+    expect(fromCookie.body.data.selectedWorkspace).toEqual(aliceWorkspace);
     expect(fromCookie.body.data.currentWorkspaceMember.roles).toEqual([
       'OWNER',
     ]);
@@ -3105,7 +3097,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const crossWorkspace = await gql(
       /* GraphQL */ `
         query {
-          currentWorkspace {
+          selectedWorkspace {
             id
             name
           }
@@ -3120,8 +3112,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       { cookies: alice.cookies, workspaceId: bobWorkspace.id },
     );
 
-    expectGraphQLError(crossWorkspace);
-    expect(crossWorkspace.body.data.currentWorkspace).toBeNull();
+    expectNoGraphQLErrors(crossWorkspace);
+    expect(crossWorkspace.body.data.selectedWorkspace).toEqual(bobWorkspace);
     expect(crossWorkspace.body.data.currentWorkspaceMember).toBeNull();
     expect(crossWorkspace.body.data.currentSession.id).toEqual(
       expect.any(String),
@@ -3130,7 +3122,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const withoutWorkspace = await gql(
       /* GraphQL */ `
         query {
-          currentWorkspace {
+          selectedWorkspace {
             id
           }
           currentWorkspaceMember {
@@ -3142,7 +3134,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectNoGraphQLErrors(withoutWorkspace);
-    expect(withoutWorkspace.body.data.currentWorkspace).toBeNull();
+    expect(withoutWorkspace.body.data.selectedWorkspace).toBeNull();
     expect(withoutWorkspace.body.data.currentWorkspaceMember).toBeNull();
 
     const aliceWorkspaces = await gql(
@@ -3416,7 +3408,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     const scoped = await gql(
       `query($filter: WorkspaceInvitationFilter) {
-      currentWorkspace { invitations(first: 1, filter: $filter) { edges { node { id } } totalCount pageInfo { hasNextPage } } }
+      selectedWorkspace { invitations(first: 1, filter: $filter) { edges { node { id } } totalCount pageInfo { hasNextPage } } }
     }`,
       {
         cookies: owner.cookies,
@@ -3425,10 +3417,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       },
     );
     expectNoGraphQLErrors(scoped);
-    expect(scoped.body.data.currentWorkspace.invitations.totalCount).toBe(2);
-    expect(scoped.body.data.currentWorkspace.invitations.edges).toHaveLength(1);
+    expect(scoped.body.data.selectedWorkspace.invitations.totalCount).toBe(2);
+    expect(scoped.body.data.selectedWorkspace.invitations.edges).toHaveLength(
+      1,
+    );
     expect(
-      scoped.body.data.currentWorkspace.invitations.pageInfo.hasNextPage,
+      scoped.body.data.selectedWorkspace.invitations.pageInfo.hasNextPage,
     ).toBe(true);
 
     for (const field of ['invitations', 'members']) {
@@ -3862,7 +3856,11 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       name: 'WorkspaceMember writer',
       permissions: ['WORKSPACE_MEMBER__WRITE'],
     });
-    const auth = { bearerToken: key.apiKey, variables: { id: member.id } };
+    const auth = {
+      bearerToken: key.apiKey,
+      workspaceId: workspace.id,
+      variables: { id: member.id },
+    };
     expectNoGraphQLErrors(
       await gql(
         'mutation($id: ID!) { updateWorkspaceMember(id: $id, input: { name: "Updated" }) { id } }',
@@ -3880,11 +3878,13 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       expect(response.body.errors[0].extensions.code).toBe('FORBIDDEN');
     }
     for (const query of [
-      'query { currentWorkspace { id } }',
       'query { workspaceMember(id: "missing") { id } }',
       'query { workspaceInvitation(id: "missing") { id } }',
     ]) {
-      const response = await gql(query, { bearerToken: key.apiKey });
+      const response = await gql(query, {
+        bearerToken: key.apiKey,
+        workspaceId: workspace.id,
+      });
       expect(response.body.errors[0].extensions.code).toBe('FORBIDDEN');
     }
     expect(
@@ -3940,6 +3940,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       `,
       {
         bearerToken: key.apiKey,
+        workspaceId: workspace.id,
         variables: { id: invitation.id, otherId: otherWorkspaceInvitation.id },
       },
     );
@@ -3969,7 +3970,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const byBearer = await gql(
       /* GraphQL */ `
         query {
-          currentWorkspace {
+          selectedWorkspace {
             id
             name
           }
@@ -3978,11 +3979,11 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           }
         }
       `,
-      { bearerToken: createdKey.apiKey },
+      { bearerToken: createdKey.apiKey, workspaceId: workspace.id },
     );
 
     expectNoGraphQLErrors(byBearer);
-    expect(byBearer.body.data.currentWorkspace).toEqual(workspace);
+    expect(byBearer.body.data.selectedWorkspace).toEqual(workspace);
     expect(byBearer.body.data.currentWorkspaceMember).toEqual({
       id: createdKey.memberId,
     });
@@ -3990,7 +3991,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const membersByBearer = await gql(
       /* GraphQL */ `
         query {
-          currentWorkspace {
+          selectedWorkspace {
             members(first: 10) {
               edges {
                 node {
@@ -4001,18 +4002,18 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           }
         }
       `,
-      { bearerToken: createdKey.apiKey },
+      { bearerToken: createdKey.apiKey, workspaceId: workspace.id },
     );
 
     expectNoGraphQLErrors(membersByBearer);
     expect(
-      membersByBearer.body.data.currentWorkspace.members.edges,
+      membersByBearer.body.data.selectedWorkspace.members.edges,
     ).not.toHaveLength(0);
 
     const apiKeyWithWorkspaceHeader = await gql(
       /* GraphQL */ `
         query {
-          currentWorkspace {
+          selectedWorkspace {
             id
           }
         }
@@ -4021,7 +4022,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectNoGraphQLErrors(apiKeyWithWorkspaceHeader);
-    expect(apiKeyWithWorkspaceHeader.body.data.currentWorkspace).toEqual({
+    expect(apiKeyWithWorkspaceHeader.body.data.selectedWorkspace).toEqual({
       id: workspace.id,
     });
 
@@ -4050,6 +4051,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       'query { currentWorkspaceMember { id type } }',
       {
         bearerToken: serviceAccountKey.apiKey,
+        workspaceId: workspace.id,
       },
     );
     expectNoGraphQLErrors(serviceIdentity);
@@ -4059,14 +4061,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
     const serviceCurrentUser = await gql('query { currentUser { id } }', {
       bearerToken: serviceAccountKey.apiKey,
+      workspaceId: workspace.id,
     });
-    expectGraphQLError(serviceCurrentUser);
-    expect(serviceCurrentUser.body.errors).toEqual([
-      expect.objectContaining({
-        message: 'A user identity is required',
-        extensions: expect.objectContaining({ code: 'FORBIDDEN' }),
-      }),
-    ]);
+    expectNoGraphQLErrors(serviceCurrentUser);
+    expect(serviceCurrentUser.body.data.currentUser).toBeNull();
 
     const sessionTakesPrecedence = await gql(
       /* GraphQL */ `
@@ -4089,7 +4087,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const touchedKey = await gql(
       /* GraphQL */ `
         query ApiKey($id: ID!) {
-          currentWorkspace {
+          selectedWorkspace {
             apiKey(id: $id) {
               id
               name
@@ -4109,7 +4107,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectNoGraphQLErrors(touchedKey);
-    expect(touchedKey.body.data.currentWorkspace.apiKey).toMatchObject({
+    expect(touchedKey.body.data.selectedWorkspace.apiKey).toMatchObject({
       id: createdKey.entity.id,
       name: 'Runtime key',
       permissions: [
@@ -4118,7 +4116,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         'WORKSPACE__UPDATE',
       ],
     });
-    expect(touchedKey.body.data.currentWorkspace.apiKey.lastUsedAt).toEqual(
+    expect(touchedKey.body.data.selectedWorkspace.apiKey.lastUsedAt).toEqual(
       expect.any(String),
     );
 
@@ -4200,7 +4198,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           currentUser {
             id
           }
-          currentWorkspace {
+          selectedWorkspace {
             id
           }
           currentWorkspaceMember {
@@ -4216,7 +4214,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(authenticated);
     expect(authenticated.body.data.currentUser.id).toBe(user.user.id);
-    expect(authenticated.body.data.currentWorkspace.id).toBe(workspace.id);
+    expect(authenticated.body.data.selectedWorkspace.id).toBe(workspace.id);
     expect(authenticated.body.data.currentWorkspaceMember.id).toEqual(
       expect.any(String),
     );
@@ -4225,7 +4223,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const rejectedCrossWorkspace = await gql(
       /* GraphQL */ `
         query {
-          currentWorkspace {
+          selectedWorkspace {
             id
           }
         }
@@ -4236,7 +4234,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       },
     );
 
-    expectGraphQLError(rejectedCrossWorkspace);
+    expectNoGraphQLErrors(rejectedCrossWorkspace);
+    expect(rejectedCrossWorkspace.body.data.selectedWorkspace).toEqual({
+      id: outsiderWorkspace.id,
+    });
 
     const listed = await gql(
       /* GraphQL */ `
@@ -4380,7 +4381,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
               delete: 'deleteUserApiKey',
             }
           : {
-              parent: 'currentWorkspace',
+              parent: 'selectedWorkspace',
               create: 'createWorkspaceApiKey',
               update: 'updateWorkspaceApiKey',
               delete: 'deleteWorkspaceApiKey',
@@ -4408,6 +4409,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       ) =>
         gql(queries[operation], {
           bearerToken,
+          workspaceId: workspace.id,
           variables:
             scope === 'workspace' && operation === 'create'
               ? {
@@ -4579,17 +4581,17 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const allowed = await gql(
       /* GraphQL */ `
         query {
-          currentWorkspace {
+          selectedWorkspace {
             id
             name
           }
         }
       `,
-      { bearerToken: restrictedKey.apiKey },
+      { bearerToken: restrictedKey.apiKey, workspaceId: workspace.id },
     );
 
     expectNoGraphQLErrors(allowed);
-    expect(allowed.body.data.currentWorkspace).toEqual(workspace);
+    expect(allowed.body.data.selectedWorkspace).toEqual(workspace);
 
     const updated = await gql(
       /* GraphQL */ `
@@ -4604,6 +4606,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       `,
       {
         bearerToken: restrictedKey.apiKey,
+        workspaceId: workspace.id,
         variables: { workspaceId: workspace.id },
       },
     );
@@ -4628,6 +4631,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       `,
       {
         bearerToken: restrictedKey.apiKey,
+        workspaceId: workspace.id,
         variables: { workspaceId: workspace.id },
       },
     );
@@ -4660,12 +4664,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const rejectedDisabledKey = await gql(
       /* GraphQL */ `
         query {
-          currentWorkspace {
+          selectedWorkspace {
             id
           }
         }
       `,
-      { bearerToken: restrictedKey.apiKey },
+      { bearerToken: restrictedKey.apiKey, workspaceId: workspace.id },
     );
 
     expect(rejectedDisabledKey.status).toBe(401);
@@ -4811,7 +4815,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       permissions: [],
     });
     expectNoGraphQLErrors(
-      await gql('query { currentWorkspace { id } }', {
+      await gql('query { selectedWorkspace { id } }', {
         bearerToken: memberKey.apiKey,
       }),
     );
@@ -4848,14 +4852,14 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
     const query = /* GraphQL */ `
       query {
-        currentWorkspace {
+        selectedWorkspace {
           id
           name
         }
         currentWorkspaceMember {
           id
         }
-        currentWorkspace {
+        selectedWorkspace {
           members(first: 10) {
             totalCount
             edges {
@@ -4888,7 +4892,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
               },
             },
             {
-              options: { bearerToken: fixture.memberKey.apiKey },
+              options: {
+                bearerToken: fixture.memberKey.apiKey,
+                workspaceId: fixture.workspace.id,
+              },
             },
             {
               // A cookie session takes precedence over a key belonging to another workspace;
@@ -4906,13 +4913,13 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           return identities.map(async ({ options }) => {
             const result = await gql(query, options);
             expectNoGraphQLErrors(result);
-            expect(result.body.data.currentWorkspace).toMatchObject(
+            expect(result.body.data.selectedWorkspace).toMatchObject(
               fixture.workspace,
             );
             expect(result.body.data.currentWorkspaceMember).toEqual({
               id: expect.any(String),
             });
-            expect(result.body.data.currentWorkspace.members).toEqual({
+            expect(result.body.data.selectedWorkspace.members).toEqual({
               totalCount: 1,
               edges: [{ node: { roles: ['OWNER'] } }],
             });
@@ -4921,10 +4928,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       );
 
       const anonymous = await gql(
-        'query { currentWorkspace { members(first: 10) { totalCount } } }',
+        'query { selectedWorkspace { members(first: 10) { totalCount } } }',
       );
-      expectGraphQLError(anonymous);
-      expect(anonymous.body.data).toEqual({ currentWorkspace: null });
+      expectNoGraphQLErrors(anonymous);
+      expect(anonymous.body.data).toEqual({ selectedWorkspace: null });
     }
   }, 20_000);
 
@@ -5012,7 +5019,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
   );
 
   it.each(['header', 'cookie'] as const)(
-    'rejects a workspace key selecting a different workspace through a %s',
+    'selects another workspace through a %s without carrying private member scope',
     async (selection) => {
       const owner = await createAuthenticatedUser('Scoped Key Owner');
       const workspace = await createWorkspace(owner, 'Key Workspace');
@@ -5024,22 +5031,47 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         name: 'Workspace-bound key',
         permissions: ['WORKSPACE__READ'],
       });
-      const query = 'query { currentWorkspace { id name } }';
-      const rejected = await gql(query, {
+      const query =
+        'query { selectedWorkspace { id name } currentWorkspace { id } currentWorkspaceMember { id } }';
+      const selected = await gql(query, {
         bearerToken: key.apiKey,
         ...(selection === 'header'
           ? { workspaceId: otherWorkspace.id }
           : { cookies: [`workspace_id=${otherWorkspace.id}`] }),
       });
-      expect(rejected.status).toBe(401);
-      expect(rejected.body).toMatchObject({
-        message:
-          'WorkspaceMember API key does not belong to the selected workspace',
+      expectNoGraphQLErrors(selected);
+      expect(selected.body.data).toEqual({
+        selectedWorkspace: otherWorkspace,
+        currentWorkspace: null,
+        currentWorkspaceMember: null,
       });
-      expect(rejected.body.data).toBeUndefined();
-      const allowed = await gql(query, { bearerToken: key.apiKey });
+      const denied = await gql(
+        'mutation($id: ID!) { updateWorkspace(id: $id, input: {name: "Denied"}) {id} }',
+        {
+          bearerToken: key.apiKey,
+          workspaceId: otherWorkspace.id,
+          variables: { id: otherWorkspace.id },
+        },
+      );
+      expectGraphQLError(denied);
+      expect(denied.body.errors[0].extensions.code).toBe('FORBIDDEN');
+      const unselected = await gql(query, { bearerToken: key.apiKey });
+      expectNoGraphQLErrors(unselected);
+      expect(unselected.body.data).toEqual({
+        selectedWorkspace: null,
+        currentWorkspace: null,
+        currentWorkspaceMember: null,
+      });
+      const allowed = await gql(query, {
+        bearerToken: key.apiKey,
+        workspaceId: workspace.id,
+      });
       expectNoGraphQLErrors(allowed);
-      expect(allowed.body.data.currentWorkspace).toEqual(workspace);
+      expect(allowed.body.data.selectedWorkspace).toEqual(workspace);
+      expect(allowed.body.data.currentWorkspace).toEqual({ id: workspace.id });
+      expect(allowed.body.data.currentWorkspaceMember).toEqual({
+        id: key.memberId,
+      });
     },
   );
 
@@ -5148,15 +5180,15 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       }
       const id = response.body.data.createWorkspace.id as string;
       const lookup = await gql(
-        'query { currentWorkspace { id name members(first: 1) { edges { node { id } } } } }',
+        'query { selectedWorkspace { id name members(first: 1) { edges { node { id } } } } }',
         { cookies: owner.cookies, workspaceId: id },
       );
       expectNoGraphQLErrors(lookup);
-      expect(lookup.body.data.currentWorkspace).toMatchObject({
+      expect(lookup.body.data.selectedWorkspace).toMatchObject({
         id,
         name: 'Payload workspace',
       });
-      expect(lookup.body.data.currentWorkspace.members.edges).toHaveLength(1);
+      expect(lookup.body.data.selectedWorkspace.members.edges).toHaveLength(1);
     },
   );
 
@@ -5376,7 +5408,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
     expectNoGraphQLErrors(update);
     const query = `query ($query: String) {
-      currentWorkspace { members(first: 10, query: $query) {
+      selectedWorkspace { members(first: 10, query: $query) {
         totalCount edges { node { id name email } }
       } }
     }`;
@@ -5387,7 +5419,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         variables: { query: 'Shared*' },
       });
       expectNoGraphQLErrors(visible);
-      expect(visible.body.data.currentWorkspace.members).toEqual({
+      expect(visible.body.data.selectedWorkspace.members).toEqual({
         totalCount: 1,
         edges: [
           {
@@ -5405,7 +5437,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           variables: { query: search },
         });
         expectNoGraphQLErrors(hidden);
-        expect(hidden.body.data.currentWorkspace.members.totalCount).toBe(0);
+        expect(hidden.body.data.selectedWorkspace.members.totalCount).toBe(0);
       }
       const hiddenUser = await gql(
         'query ($id: ID!) { workspaceMember(id: $id) { name email user { name email } } }',

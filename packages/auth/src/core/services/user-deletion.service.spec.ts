@@ -83,7 +83,7 @@ function createService(scoped = false) {
       scoped
         ? {
             role: "authenticated",
-            variables: { "app.user.id": "administrator" },
+            variables: { "app.auth.user.id": "administrator" },
           }
         : undefined,
     ),

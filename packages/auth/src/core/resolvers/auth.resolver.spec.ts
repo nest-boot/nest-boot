@@ -5,6 +5,7 @@ import type { Mocked } from "vitest";
 import { AuthAbility } from "../../common/auth.ability.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
+import { SELECTED_WORKSPACE } from "../constants/auth.constants.js";
 import { User } from "../entities/user.entity.js";
 import { type User as BaseUser } from "../entities/user.entity.js";
 import { type AuthService } from "../services/auth.service.js";
@@ -25,7 +26,7 @@ describe("AuthResolver", () => {
       expect(() => resolver.currentAbilityRules()).toThrow(ForbiddenException);
       RequestContext.set(User, new User());
       RequestContext.set(WorkspaceMember, new WorkspaceMember());
-      RequestContext.set(Workspace, new Workspace());
+      RequestContext.set(SELECTED_WORKSPACE, new Workspace());
       RequestContext.set(
         AuthAbility,
         new AuthAbility([
@@ -118,17 +119,17 @@ describe("AuthResolver", () => {
     const user = { id: "user-1" } as BaseUser;
     const { resolver } = createResolver({ getCurrentUser: vi.fn(() => user) });
 
-    expect(resolver.currentUser()).toBe(user);
+    expect(resolver.currentUser(user)).toBe(user);
   });
 
-  it("rejects an authenticated principal without a user identity", () => {
+  it("returns null for an authenticated principal without a user identity", () => {
     const { resolver } = createResolver({
       getCurrentUser: vi.fn(() => {
         throw new ForbiddenException();
       }),
     });
 
-    expect(() => resolver.currentUser()).toThrow(ForbiddenException);
+    expect(resolver.currentUser(null)).toBeNull();
   });
 
   it("exposes configured social providers without requiring a session", async () => {

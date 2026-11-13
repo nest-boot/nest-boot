@@ -16,13 +16,13 @@ user's active membership, and stores both entities in `RequestContext`.
 
 ```typescript
 import {
-  CurrentWorkspace,
-  CurrentWorkspaceMember,
+  SelectedWorkspace,
+  AuthWorkspaceMember,
 } from "@nest-boot/auth";
 
-currentWorkspace(
-  @CurrentWorkspace() workspace: Workspace,
-  @CurrentWorkspaceMember() member: WorkspaceMember,
+selectedWorkspace(
+  @SelectedWorkspace() workspace: Workspace,
+  @AuthWorkspaceMember() member: WorkspaceMember,
 ) {
   return { workspace, member };
 }
