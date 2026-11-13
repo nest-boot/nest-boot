@@ -1,16 +1,15 @@
 import type { EntityManager } from '@mikro-orm/core';
 import {
+  ApiKey,
   AuthContext,
   AuthResolver,
   type AuthService,
+  SELECTED_WORKSPACE,
   User,
-  UserApiKey,
   Workspace,
   WorkspaceApiKeyService,
   WorkspaceMember,
 } from '@nest-boot/auth';
-import { SELECTED_WORKSPACE } from '@nest-boot/auth';
-import { ApiKey } from '@nest-boot/auth';
 import { RequestContext } from '@nest-boot/request-context';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
@@ -69,7 +68,7 @@ describe('business authorization recipe', () => {
           if (key !== undefined) {
             RequestContext.set(
               ApiKey,
-              Object.assign(new UserApiKey(), { user, permissions: key }),
+              Object.assign(new ApiKey(), { user, permissions: key }),
             );
           }
           // Production requests initialize AuthContext through the middleware.
