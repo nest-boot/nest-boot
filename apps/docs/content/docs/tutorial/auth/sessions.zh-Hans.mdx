@@ -13,11 +13,11 @@ credentials，让浏览器能够保存并自动携带 Cookie。API Key 使用独
 `RequestContext`。传输层代码应使用装饰器，而不是直接读取上下文 token。
 
 ```typescript
-import { CurrentSession, CurrentUser } from "@nest-boot/auth";
+import { AuthSession, AuthUser } from "@nest-boot/auth";
 
 profile(
-  @CurrentUser() user: User,
-  @CurrentSession() session: Session,
+  @AuthUser() user: User,
+  @AuthSession() session: Session,
 ) {
   return { user, session };
 }

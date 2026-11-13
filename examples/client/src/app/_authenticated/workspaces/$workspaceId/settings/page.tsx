@@ -7,9 +7,9 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { useCurrentWorkspaceContext } from "../contexts/current-workspace-context";
+import { useSelectedWorkspaceContext } from "../contexts/selected-workspace-context";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { workspaceSearchSchema } from "@/schemas/workspace-search-schema";
 import { workspacesResourceKey } from "@/lib/resource-keys";
@@ -85,8 +85,8 @@ function SettingsComponent() {
   const router = useRouter();
   const navigate = useNavigate();
 
-  const workspace = useCurrentWorkspaceContext();
-  const currentUser = useCurrentUserContext();
+  const workspace = useSelectedWorkspaceContext();
+  const currentUser = useAuthUserContext();
   const { backSearch } = useResourceNavigation({
     key: [currentUser.id, ...workspacesResourceKey],
     searchSchema: workspaceSearchSchema,

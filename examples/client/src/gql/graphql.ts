@@ -775,11 +775,12 @@ export type Query = {
   __typename?: "Query";
   currentAbilityRules: Array<AuthAbilityRuleType>;
   currentSession?: Maybe<Session>;
-  currentUser: User;
+  currentUser?: Maybe<User>;
   currentWorkspace?: Maybe<Workspace>;
   currentWorkspaceMember?: Maybe<WorkspaceMember>;
   passwordPolicy: PasswordPolicy;
   platformWorkspace?: Maybe<Workspace>;
+  selectedWorkspace?: Maybe<Workspace>;
   socialProviders: Array<AuthSocialProviderType>;
   systemAccount?: Maybe<SystemAccount>;
   systemAccountPermissions: Array<SystemAccountPermissionOption>;
@@ -2201,7 +2202,7 @@ export type GetWorkspacesFromWorkspaceSwitcherQueryVariables = Exact<{
 
 export type GetWorkspacesFromWorkspaceSwitcherQuery = {
   __typename?: "Query";
-  currentUser: {
+  currentUser?: {
     __typename?: "User";
     workspaces: {
       __typename?: "WorkspaceConnection";
@@ -2218,7 +2219,7 @@ export type GetWorkspacesFromWorkspaceSwitcherQuery = {
         endCursor?: string | null;
       };
     };
-  };
+  } | null;
 };
 
 export type GetCurrentUserFromAuthenticatedRouteQueryVariables = Exact<{
@@ -2227,13 +2228,13 @@ export type GetCurrentUserFromAuthenticatedRouteQueryVariables = Exact<{
 
 export type GetCurrentUserFromAuthenticatedRouteQuery = {
   __typename?: "Query";
-  currentUser: {
+  currentUser?: {
     __typename?: "User";
     id: string;
     name: string;
     email: string;
     permissions: Array<UserPermission>;
-  };
+  } | null;
   currentSession?: {
     __typename?: "Session";
     impersonatedById?: string | null;
@@ -2290,7 +2291,7 @@ export type GetUserApiKeyDetailsQuery = {
     grantable: boolean;
     default: boolean;
   }>;
-  currentUser: {
+  currentUser?: {
     __typename?: "User";
     apiKey?: {
       __typename?: "UserApiKey";
@@ -2304,7 +2305,7 @@ export type GetUserApiKeyDetailsQuery = {
       lastUsedAt?: any | null;
       expiresAt?: any | null;
     } | null;
-  };
+  } | null;
 };
 
 export type GetUserApiKeyNeighborsQueryVariables = Exact<{
@@ -2316,7 +2317,7 @@ export type GetUserApiKeyNeighborsQueryVariables = Exact<{
 
 export type GetUserApiKeyNeighborsQuery = {
   __typename?: "Query";
-  currentUser: {
+  currentUser?: {
     __typename?: "User";
     id: string;
     previous: {
@@ -2335,7 +2336,7 @@ export type GetUserApiKeyNeighborsQuery = {
         node: { __typename?: "UserApiKey"; id: string };
       }>;
     };
-  };
+  } | null;
 };
 
 export type CreateUserApiKeyMutationVariables = Exact<{
@@ -2388,7 +2389,7 @@ export type GetUserApiKeysQueryVariables = Exact<{
 
 export type GetUserApiKeysQuery = {
   __typename?: "Query";
-  currentUser: {
+  currentUser?: {
     __typename?: "User";
     apiKeys: {
       __typename?: "UserApiKeyConnection";
@@ -2415,7 +2416,7 @@ export type GetUserApiKeysQuery = {
         startCursor?: string | null;
       };
     };
-  };
+  } | null;
 };
 
 export type GetUserOverviewQueryVariables = Exact<{
@@ -2424,7 +2425,7 @@ export type GetUserOverviewQueryVariables = Exact<{
 
 export type GetUserOverviewQuery = {
   __typename?: "Query";
-  currentUser: {
+  currentUser?: {
     __typename?: "User";
     id: string;
     workspaces: {
@@ -2442,7 +2443,7 @@ export type GetUserOverviewQuery = {
       totalCount: number;
       totalCountRelation: TotalCountRelation;
     };
-  };
+  } | null;
 };
 
 export type UpdateUserFromUserRouteMutationVariables = Exact<{
@@ -2481,7 +2482,7 @@ export type GetSessionsFromUserSecurityQueryVariables = Exact<{
 
 export type GetSessionsFromUserSecurityQuery = {
   __typename?: "Query";
-  currentUser: {
+  currentUser?: {
     __typename?: "User";
     id: string;
     sessions: {
@@ -2504,7 +2505,7 @@ export type GetSessionsFromUserSecurityQuery = {
         };
       }>;
     };
-  };
+  } | null;
 };
 
 export type RevokeSessionFromUserSecurityMutationVariables = Exact<{
@@ -2531,7 +2532,7 @@ export type GetAccountsFromUserSecurityQueryVariables = Exact<{
 
 export type GetAccountsFromUserSecurityQuery = {
   __typename?: "Query";
-  currentUser: {
+  currentUser?: {
     __typename?: "User";
     id: string;
     accounts: {
@@ -2555,7 +2556,7 @@ export type GetAccountsFromUserSecurityQuery = {
         };
       }>;
     };
-  };
+  } | null;
 };
 
 export type GetSocialProvidersFromUserSecurityQueryVariables = Exact<{
@@ -2631,7 +2632,7 @@ export type GetWorkspacesFromUserWorkspacesRouteQueryVariables = Exact<{
 
 export type GetWorkspacesFromUserWorkspacesRouteQuery = {
   __typename?: "Query";
-  currentUser: {
+  currentUser?: {
     __typename?: "User";
     workspaces: {
       __typename?: "WorkspaceConnection";
@@ -2674,7 +2675,7 @@ export type GetWorkspacesFromUserWorkspacesRouteQuery = {
         hasPreviousPage: boolean;
       };
     };
-  };
+  } | null;
 };
 
 export type AcceptWorkspaceInvitationFromUserWorkspacesRouteMutationVariables =
@@ -2735,7 +2736,7 @@ export type GetWorkspaceApiKeyDetailsQuery = {
     grantable: boolean;
     default: boolean;
   }>;
-  currentWorkspace?: {
+  selectedWorkspace?: {
     __typename?: "Workspace";
     apiKey?: {
       __typename?: "WorkspaceApiKey";
@@ -2766,7 +2767,7 @@ export type GetWorkspaceApiKeyNeighborsQueryVariables = Exact<{
 
 export type GetWorkspaceApiKeyNeighborsQuery = {
   __typename?: "Query";
-  currentWorkspace?: { __typename?: "Workspace"; id: string } | null;
+  selectedWorkspace?: { __typename?: "Workspace"; id: string } | null;
   previous: {
     __typename?: "WorkspaceApiKeyConnection";
     edges: Array<{
@@ -2817,7 +2818,7 @@ export type GetWorkspaceApiKeyOptionsQueryVariables = Exact<{
 
 export type GetWorkspaceApiKeyOptionsQuery = {
   __typename?: "Query";
-  currentWorkspace?: {
+  selectedWorkspace?: {
     __typename?: "Workspace";
     members: {
       __typename?: "WorkspaceMemberConnection";
@@ -2972,7 +2973,7 @@ export type GetWorkspaceMemberNeighborsQueryVariables = Exact<{
 
 export type GetWorkspaceMemberNeighborsQuery = {
   __typename?: "Query";
-  currentWorkspace?: {
+  selectedWorkspace?: {
     __typename?: "Workspace";
     id: string;
     previous: {
@@ -3113,7 +3114,7 @@ export type GetWorkspaceMembersFromWorkspaceMembersRouteQueryVariables = Exact<{
 
 export type GetWorkspaceMembersFromWorkspaceMembersRouteQuery = {
   __typename?: "Query";
-  currentWorkspace?: {
+  selectedWorkspace?: {
     __typename?: "Workspace";
     members: {
       __typename?: "WorkspaceMemberConnection";
@@ -3235,7 +3236,7 @@ export type GetFirstWorkspaceFromWorkspacesRouteQueryVariables = Exact<{
 
 export type GetFirstWorkspaceFromWorkspacesRouteQuery = {
   __typename?: "Query";
-  currentUser: {
+  currentUser?: {
     __typename?: "User";
     workspaces: {
       __typename?: "WorkspaceConnection";
@@ -3244,7 +3245,7 @@ export type GetFirstWorkspaceFromWorkspacesRouteQuery = {
         node: { __typename?: "Workspace"; id: string };
       }>;
     };
-  };
+  } | null;
 };
 
 export type SignInFromLoginFormMutationVariables = Exact<{
@@ -3312,7 +3313,7 @@ export type GetCurrentUserFromAuthLayoutQueryVariables = Exact<{
 
 export type GetCurrentUserFromAuthLayoutQuery = {
   __typename?: "Query";
-  currentUser: { __typename?: "User"; id: string };
+  currentUser?: { __typename?: "User"; id: string } | null;
 };
 
 export type ResetPasswordFromResetPasswordMutationVariables = Exact<{
@@ -3339,7 +3340,12 @@ export type GetCurrentUserFromInviteRouteQueryVariables = Exact<{
 
 export type GetCurrentUserFromInviteRouteQuery = {
   __typename?: "Query";
-  currentUser: { __typename?: "User"; id: string; name: string; email: string };
+  currentUser?: {
+    __typename?: "User";
+    id: string;
+    name: string;
+    email: string;
+  } | null;
 };
 
 export type GetWorkspaceInvitationFromInviteRouteQueryVariables = Exact<{
@@ -8062,7 +8068,7 @@ export const GetWorkspaceApiKeyDetailsDocument = {
           },
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentWorkspace" },
+            name: { kind: "Name", value: "selectedWorkspace" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -8202,7 +8208,7 @@ export const GetWorkspaceApiKeyNeighborsDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentWorkspace" },
+            name: { kind: "Name", value: "selectedWorkspace" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -8506,7 +8512,7 @@ export const GetWorkspaceApiKeyOptionsDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentWorkspace" },
+            name: { kind: "Name", value: "selectedWorkspace" },
             directives: [
               {
                 kind: "Directive",
@@ -9247,7 +9253,7 @@ export const GetWorkspaceMemberNeighborsDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentWorkspace" },
+            name: { kind: "Name", value: "selectedWorkspace" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -9886,7 +9892,7 @@ export const GetWorkspaceMembersFromWorkspaceMembersRouteDocument = {
         selections: [
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentWorkspace" },
+            name: { kind: "Name", value: "selectedWorkspace" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [
@@ -10040,7 +10046,7 @@ export const GetWorkspaceMembersFromWorkspaceMembersRouteDocument = {
           },
           {
             kind: "Field",
-            name: { kind: "Name", value: "currentWorkspace" },
+            name: { kind: "Name", value: "selectedWorkspace" },
             selectionSet: {
               kind: "SelectionSet",
               selections: [

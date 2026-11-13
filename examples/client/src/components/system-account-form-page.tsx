@@ -22,7 +22,7 @@ import { toast } from "@/components/thread-ui/toast";
 import { getFormErrorMessage } from "@/lib/form-errors";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { systemAccountSearchSchema } from "@/schemas/system-account-search-schema";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 
 interface Account {
   id: string;
@@ -62,7 +62,7 @@ export function SystemAccountFormPage({
   const { t } = useTranslation();
   const canSave = canWrite && (!account || canEditName || canEditPermissions);
   const id = useId();
-  const user = useCurrentUserContext();
+  const user = useAuthUserContext();
   const [pending, setPending] = useState(false);
   const { backSearch } = useResourceNavigation({
     key: [user.id, "admin", "system-accounts"],

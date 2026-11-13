@@ -3,7 +3,7 @@ import md5 from "md5";
 import { Boxes } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { useCurrentUserContext } from "../contexts/current-user-context";
+import { useAuthUserContext } from "../contexts/auth-user-context";
 import { UserMenu } from "./user-menu";
 import { WorkspaceMenu } from "./workspace-menu";
 import type { Workspace } from "@/components/thread-ui/sidebar-account-menu";
@@ -17,7 +17,7 @@ import { useSidebar } from "@/components/ui/sidebar";
 
 export function AppAccountMenu({ workspace }: { workspace?: Workspace }) {
   const { t } = useTranslation();
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   const { setOpenMobile } = useSidebar();
   const [open, setOpen] = useState(false);
   const [workspaces, setWorkspaces] = useState<Array<Workspace>>([]);

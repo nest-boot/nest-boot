@@ -67,7 +67,7 @@ of optional entities; use `WorkspaceMemberService` for membership queries.
 ## WorkspaceMember and WorkspaceInvitation rename
 
 Use `WorkspaceMember`,
-`WorkspaceInvitation`, `WorkspaceMemberService`, `WorkspaceInvitationService`, and `CurrentWorkspaceMember`.
+`WorkspaceInvitation`, `WorkspaceMemberService`, `WorkspaceInvitationService`, and `AuthWorkspaceMember`.
 Workspace ownership remains the
 `workspace` relation, and workspace-role configuration still lives under
 `workspace`.
@@ -388,8 +388,24 @@ RLS-scoped manager. Foreign keys cascade to members and invitations. Users and A
 context or restore operation. Successful deletion clears the request's workspace
 identity and ability. Keys whose member was deleted retain their metadata and usage timestamps for audit, but cannot authenticate.
 
-Database request contexts use `app.user.id`, `app.workspace.id`, and `app.member.id`.
-`app.member.id` identifies the active member in the selected workspace for authenticated
+Request decorators distinguish `@AuthUser()`, `@AuthSession()`, `@AuthApiKey()`, `@AuthWorkspaceMember()`,
+`@AuthWorkspace()` and `@SelectedWorkspace()`. GraphQL retains `currentUser`, `currentSession` and `currentWorkspaceMember`,
+with `selectedWorkspace` for selection and `currentWorkspace` for authenticated workspace scope.
+
+All credentials use Header `x-workspace-id` or Cookie `workspace_id` to select a
+target. The Header takes precedence, including an empty Header that clears
+selection. Workspace keys require explicit selection and retain private grants
+only in their owning workspace. Any identity can select a different workspace
+for explicitly public resources.
+
+Database request contexts use `app.auth.user.id`, `app.auth.workspace_member.id`,
+`app.auth.workspace.id`, and `app.selected.workspace.id`. The selected target does
+not grant authentication. Matching active membership or effective system
+workspace grants establish the authenticated workspace scope. System API keys
+use the `authenticated` role with no user or member identity. Clearing
+credentials or membership retains selection for public access; deleting the
+selected workspace also clears selection.
+`app.auth.workspace_member.id` identifies the active member in the selected workspace for authenticated
 requests, including service accounts; it is empty when no active member is present
 and is cleared when workspace access or authentication is revoked.
 Application permissions are not passed to the database. Services enforce Ability
@@ -491,7 +507,7 @@ field resolvers may target these classes without replacing built-in fields.
 
 ## Native query migration
 
-- Single-key queries move from root `userApiKey(id)` to `User.apiKey(id)` and from root `apiKey(id)` to `Workspace.apiKey(id)`. They resolve `UserApiKey` and `WorkspaceApiKey`, respectively, with nullable field results and pass their parent to `UserApiKeyService` and `WorkspaceApiKeyService`; mutation authorization is unchanged (see the operation naming migration below). Query through `currentUser { apiKey(id: ...) { id } }` or `currentWorkspace { apiKey(id: ...) { id } }`. Service authorization, ownership filters, permission ceilings and request RLS remain in effect.
+- Single-key queries move from root `userApiKey(id)` to `User.apiKey(id)` and from root `apiKey(id)` to `Workspace.apiKey(id)`. They resolve `UserApiKey` and `WorkspaceApiKey`, respectively, with nullable field results and pass their parent to `UserApiKeyService` and `WorkspaceApiKeyService`; mutation authorization is unchanged (see the operation naming migration below). Query through `currentUser { apiKey(id: ...) { id } }` or `selectedWorkspace { apiKey(id: ...) { id } }`. Service authorization, ownership filters, permission ceilings and request RLS remain in effect.
 - `users` uses `UserConnectionArgs` / `UserConnection` (first/after or last/before, query/filter/orderBy). `ListUsersInput` and `UserListType` are removed.
 - `User.accounts` now returns `AccountConnection!` through `AccountService.getAccountConnectionByUser(user, args)`: use `currentUser { accounts(first: 20) { edges { node { id providerId scopes } } pageInfo { hasNextPage endCursor } } }`. The array shape and `UserService.listUserAccounts` are removed. Account inspection requires the owning browser session; API keys are rejected and credentials are excluded.
 - Registration/sign-in payloads reference the built-in `User`, not `AuthUserType`. The entity-oriented AuthService methods establish the newly issued session and refresh RLS and abilities before resolving nested fields. Registration without a session does not authenticate the request; protected nested fields still require authentication.
@@ -713,7 +729,7 @@ for invitation creation.
 
 Update operation documents, ability subject mappings, and generated client types together. The example uses a fresh-database baseline: infrastructure initialization followed by a MikroORM-generated schema that creates the shared API-key table and system accounts directly.
 
-Authentication and successful-use tracking are internal infrastructure responsibilities. Credential lookup queries the shared `api_key` table by hash and restricts matches to enabled identity kinds. `@CurrentApiKey()` returns request credential metadata; use the scoped services to mutate credentials.
+Authentication and successful-use tracking are internal infrastructure responsibilities. Credential lookup queries the shared `api_key` table by hash and restricts matches to enabled identity kinds. `@AuthApiKey()` returns request credential metadata; use the scoped services to mutate credentials.
 
 ## Removed collection APIs
 

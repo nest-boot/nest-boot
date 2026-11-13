@@ -51,7 +51,7 @@ describe.runIf(/^postgres(?:ql)?:/i.test(process.env.DATABASE_URL ?? ""))(
         `alter table ${table} enable row level security`,
       );
       await connection.execute(
-        `create policy lookup_workspace on ${table} to "${role}" using (workspace = current_setting('app.workspace.id', true))`,
+        `create policy lookup_workspace on ${table} to "${role}" using (workspace = current_setting('app.auth.workspace.id', true))`,
       );
       await connection.execute(
         `grant usage on schema "${schema}" to "${role}"`,
@@ -75,7 +75,7 @@ describe.runIf(/^postgres(?:ql)?:/i.test(process.env.DATABASE_URL ?? ""))(
       "restores the caller role and reuses its physical connection (failure=%s)",
       async (failure) => {
         const em = orm.em.fork({
-          session: { role, variables: { "app.workspace.id": "one" } },
+          session: { role, variables: { "app.auth.workspace.id": "one" } },
         });
         await RequestContext.run(
           new RequestContext({ type: "test" }),

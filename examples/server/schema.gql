@@ -462,11 +462,12 @@ type PasswordPolicy {
 type Query {
   currentAbilityRules: [AuthAbilityRuleType!]!
   currentSession: Session
-  currentUser: User!
+  currentUser: User
   currentWorkspace: Workspace
   currentWorkspaceMember: WorkspaceMember
   passwordPolicy: PasswordPolicy!
   platformWorkspace(id: ID!): Workspace
+  selectedWorkspace: Workspace
   socialProviders: [AuthSocialProviderType!]!
   systemAccount(id: ID!): SystemAccount
   systemAccountPermissions: [SystemAccountPermissionOption!]!

@@ -11,7 +11,7 @@ export function mockRlsContext(
 ): SessionContext {
   const context: SessionContext = {
     role: "authenticated",
-    variables: { "app.workspace.id": "workspace-1" },
+    variables: { "app.auth.workspace.id": "workspace-1" },
   };
   vi.mocked(em.getSessionContext).mockReturnValue(context);
   const fork = {

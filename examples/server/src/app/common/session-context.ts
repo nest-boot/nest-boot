@@ -1,8 +1,8 @@
 import type { ForkOptions } from '@mikro-orm/core';
-import { cookies, headers, RequestContext } from '@nest-boot/request-context';
+import { RequestContext } from '@nest-boot/request-context';
 
 /**
- * 认证前的数据库 session：所选工作区与匿名角色。
+ * 认证前仅建立匿名数据库上下文；选择器由 AuthMiddleware 统一解析。
  * @returns Initial database role and scope variables for the request.
  */
 export function createSessionContext(): ForkOptions['session'] {
@@ -13,12 +13,10 @@ export function createSessionContext(): ForkOptions['session'] {
   return {
     role: 'anonymous',
     variables: {
-      'app.user.id': '',
-      'app.workspace.id': (
-        headers().get('x-workspace-id') ??
-        cookies().get('workspace_id')?.value ??
-        ''
-      ).trim(),
+      'app.auth.user.id': '',
+      'app.auth.workspace_member.id': '',
+      'app.auth.workspace.id': '',
+      'app.selected.workspace.id': '',
     },
   };
 }

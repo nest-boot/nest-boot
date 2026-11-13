@@ -115,18 +115,18 @@ test.describe("workspace management", () => {
         .click();
       await expect(page.getByText("Member updated successfully")).toBeVisible();
 
-      const { currentWorkspace } = await graphqlRequest<{
-        currentWorkspace: {
+      const { selectedWorkspace } = await graphqlRequest<{
+        selectedWorkspace: {
           members: { edges: Array<{ node: { roles: Array<string> } }> };
         };
       }>(
         page.request,
-        "query { currentWorkspace { members(first: 10) { edges { node { roles } } } } }",
+        "query { selectedWorkspace { members(first: 10) { edges { node { roles } } } } }",
         {},
         { "x-workspace-id": workspaceId },
       );
       expect(
-        currentWorkspace.members.edges.filter(({ node }) =>
+        selectedWorkspace.members.edges.filter(({ node }) =>
           node.roles.includes("OWNER"),
         ),
       ).toHaveLength(2);
@@ -358,5 +358,5 @@ async function listWorkspaces(
     variables,
   );
 
-  return data.currentUser.workspaces;
+  return data.currentUser?.workspaces;
 }

@@ -3,6 +3,7 @@ import { Args, ID, Mutation, Query, Resolver } from "@nest-boot/graphql";
 import { Public } from "../../common/decorators/public.decorator.js";
 import { getAuthAbility } from "../../common/utils/get-auth-ability.util.js";
 import { serializeAbilityRules } from "../../common/utils/serialize-ability-rules.util.js";
+import { AuthUser } from "../decorators/auth-user.decorator.js";
 import { User } from "../entities/user.entity.js";
 import { AuthChangeEmailInput } from "../inputs/auth-change-email.input.js";
 import { AuthChangePasswordInput } from "../inputs/auth-change-password.input.js";
@@ -48,11 +49,13 @@ export class AuthResolver {
 
   /**
    * Returns the currently authenticated user.
+   * @param user - Authenticated user, or null for anonymous and system credentials.
    * @returns Authenticated user from the current request.
    */
-  @Query(() => User)
-  currentUser(): User {
-    return this.authService.getCurrentUser();
+  @Public()
+  @Query(() => User, { nullable: true })
+  currentUser(@AuthUser() user: User | null): User | null {
+    return user;
   }
 
   /**

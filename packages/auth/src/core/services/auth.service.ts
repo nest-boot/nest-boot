@@ -15,7 +15,7 @@ import type { AuthAccountInfo } from "../interfaces/auth-account-info.interface.
 import type { AuthProviderUserInfo } from "../interfaces/auth-provider-user-info.interface.js";
 import type { AuthRefreshedToken } from "../interfaces/auth-refreshed-token.interface.js";
 import type { AuthSocialProvider } from "../interfaces/auth-social-provider.interface.js";
-import type { AuthUser } from "../interfaces/auth-user.interface.js";
+import type { AuthUserData } from "../interfaces/auth-user-data.interface.js";
 import type { ChangeAuthEmailOptions } from "../interfaces/change-auth-email-options.interface.js";
 import type { ChangeAuthPasswordOptions } from "../interfaces/change-auth-password-options.interface.js";
 import type { ChangeAuthPasswordResult } from "../interfaces/change-auth-password-result.interface.js";
@@ -153,7 +153,7 @@ export class AuthService {
   }
 
   private async resolveResultUser(
-    user: AuthUser,
+    user: AuthUserData,
     token: string | null,
   ): Promise<User> {
     if (token) {
@@ -545,7 +545,7 @@ export class AuthService {
     redirect: boolean;
     url?: string;
     token?: string;
-    user?: AuthUser;
+    user?: AuthUserData;
   }): SignInSocialResult {
     return {
       redirect: result.redirect,

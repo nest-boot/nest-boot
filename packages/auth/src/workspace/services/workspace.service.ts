@@ -184,7 +184,12 @@ export class WorkspaceService {
       );
     }
     if (workspace) {
-      authorize("read", workspace);
+      authorize(
+        getCurrentApiKey()?.ownerType === "system_account"
+          ? "read-any"
+          : "read",
+        workspace,
+      );
     }
     return workspace ?? null;
   }

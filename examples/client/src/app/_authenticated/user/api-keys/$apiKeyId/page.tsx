@@ -8,7 +8,7 @@ import { REVOKE_USER_API_KEY } from "@/graphql/mutations/revoke-user-api-key";
 import { getApiKeyUpdateInput } from "@/lib/api-key-update";
 import { graphql } from "@/gql";
 import { UPDATE_USER_API_KEY } from "@/graphql/mutations/update-user-api-key";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-context";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import { Link } from "@/components/link";
@@ -143,7 +143,7 @@ function ApiKeyDetailsPage() {
   const [loadNeighbors] = useLazyQuery(GET_USER_API_KEY_NEIGHBORS, {
     fetchPolicy: "network-only",
   });
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   const query = useCallback(
     async ({
       search,
@@ -160,8 +160,8 @@ function ApiKeyDetailsPage() {
       });
       if (!data?.currentUser) return undefined;
       return {
-        previousEdge: data.currentUser.previous.edges[0],
-        nextEdge: data.currentUser.next.edges[0],
+        previousEdge: data.currentUser?.previous.edges[0],
+        nextEdge: data.currentUser?.next.edges[0],
       };
     },
     [apiKey, loadNeighbors],

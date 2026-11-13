@@ -19,7 +19,7 @@ import { createAbilitySubject } from "@/lib/ability";
 import { isAccessDenied } from "@/lib/auth-errors";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 
 export const Route = createFileRoute(
   "/_authenticated/admin/api-keys/$apiKeyId/",
@@ -61,7 +61,7 @@ function Details() {
   const ability = useAbility();
   const router = useRouter();
   const navigate = Route.useNavigate();
-  const user = useCurrentUserContext();
+  const user = useAuthUserContext();
   const { backSearch } = useResourceNavigation({
     key: [user.id, ...adminApiKeysResourceKey],
     searchSchema: apiKeySearchSchema,

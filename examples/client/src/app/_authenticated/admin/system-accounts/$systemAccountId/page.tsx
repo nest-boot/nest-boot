@@ -11,7 +11,7 @@ import { createAbilitySubject } from "@/lib/ability";
 import { useAbility } from "@/contexts/ability-context";
 import { systemAccountSearchSchema } from "@/schemas/system-account-search-schema";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 
 export const Route = createFileRoute(
   "/_authenticated/admin/system-accounts/$systemAccountId/",
@@ -21,7 +21,7 @@ function Details() {
   const ability = useAbility();
   const router = useRouter();
   const navigate = Route.useNavigate();
-  const user = useCurrentUserContext();
+  const user = useAuthUserContext();
   const { backSearch } = useResourceNavigation({
     key: [user.id, "admin", "system-accounts"],
     searchSchema: systemAccountSearchSchema,

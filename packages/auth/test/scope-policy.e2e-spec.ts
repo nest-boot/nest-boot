@@ -102,7 +102,12 @@ describe("scope policy factories with native PGlite RLS", () => {
     orm.em.fork({
       session: {
         role: "authenticated",
-        variables: { [`app.${scope}.id`]: id },
+        variables: {
+          [scope === "workspace"
+            ? "app.auth.workspace.id"
+            : "app.auth.user.id"]: id,
+          "app.auth.workspace_member.id": scope === "workspace" ? "1" : "",
+        },
       },
     });
 

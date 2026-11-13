@@ -63,7 +63,7 @@ test.describe("API keys", () => {
       );
       const id = new URL(issuer.url()).pathname.split("/").at(-1)!;
       const data = await graphqlRequest<{
-        currentWorkspace: {
+        selectedWorkspace: {
           apiKey: {
             id: string;
             permissions: Array<string>;
@@ -73,19 +73,19 @@ test.describe("API keys", () => {
         };
       }>(
         page.request,
-        `query ($id: ID!, $memberFilter: WorkspaceMemberFilter) { currentWorkspace {
+        `query ($id: ID!, $memberFilter: WorkspaceMemberFilter) { selectedWorkspace {
         apiKey(id: $id) { id permissions member { __typename  id  } }
         members(first: 10, filter: $memberFilter) { totalCount }
       } }`,
         { id, memberFilter: { type: { $eq: "SERVICE_ACCOUNT" } } },
         headers,
       );
-      expect(data.currentWorkspace.apiKey).toEqual({
+      expect(data.selectedWorkspace.apiKey).toEqual({
         id,
         permissions: [],
         member: { __typename: "WorkspaceMember", id: memberId },
       });
-      expect(data.currentWorkspace.members.totalCount).toBe(0);
+      expect(data.selectedWorkspace.members.totalCount).toBe(0);
       const { workspaceMember: member } = await graphqlRequest<{
         workspaceMember: {
           apiKeys: { edges: Array<{ node: { id: string } }> };
@@ -220,7 +220,7 @@ test.describe("API keys", () => {
     });
     const readKey = (id: string) =>
       graphqlRequest<{
-        currentWorkspace: {
+        selectedWorkspace: {
           apiKey: {
             id: string;
             permissions: Array<string>;
@@ -229,7 +229,7 @@ test.describe("API keys", () => {
         };
       }>(
         page.request,
-        `query ($id: ID!) { currentWorkspace { apiKey(id: $id) { id permissions member { __typename  id  } } } }`,
+        `query ($id: ID!) { selectedWorkspace { apiKey(id: $id) { id permissions member { __typename  id  } } } }`,
         { id },
         headers,
       );
@@ -255,7 +255,7 @@ test.describe("API keys", () => {
     );
     expect(creationOperations).toEqual(["createWorkspaceApiKey"]);
     const existingId = new URL(page.url()).pathname.split("/").at(-1)!;
-    expect((await readKey(existingId)).currentWorkspace.apiKey).toEqual({
+    expect((await readKey(existingId)).selectedWorkspace.apiKey).toEqual({
       id: existingId,
       permissions: [],
       member: { __typename: "WorkspaceMember", id: addWorkspaceMember.id },
@@ -282,10 +282,10 @@ test.describe("API keys", () => {
       "createWorkspaceApiKey",
     ]);
     const automaticId = new URL(page.url()).pathname.split("/").at(-1)!;
-    const key = (await readKey(automaticId)).currentWorkspace.apiKey;
+    const key = (await readKey(automaticId)).selectedWorkspace.apiKey;
     expect(key.permissions).toEqual([]);
-    const { currentWorkspace: createdOwner } = await graphqlRequest<{
-      currentWorkspace: {
+    const { selectedWorkspace: createdOwner } = await graphqlRequest<{
+      selectedWorkspace: {
         members: {
           edges: Array<{
             node: {
@@ -301,7 +301,7 @@ test.describe("API keys", () => {
       };
     }>(
       page.request,
-      "query($filter: WorkspaceMemberFilter) { currentWorkspace { members(first: 10, filter: $filter) { edges { node { id name type roles permissions apiKeys(first: 10) { edges { node { id } } } } } } } }",
+      "query($filter: WorkspaceMemberFilter) { selectedWorkspace { members(first: 10, filter: $filter) { edges { node { id name type roles permissions apiKeys(first: 10) { edges { node { id } } } } } } } }",
       { filter: { name, type: "SERVICE_ACCOUNT" } },
       headers,
     );

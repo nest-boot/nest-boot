@@ -42,7 +42,9 @@ export function createScopePolicy(
       );
     }
     const column = columns[property].replaceAll('"', '""');
-    return `"${column}" = nullif(current_setting('app.${scope}.id', true), '')::${type}`;
+    const variable =
+      scope === "workspace" ? "app.auth.workspace.id" : "app.auth.user.id";
+    return `"${column}" = nullif(current_setting('${variable}', true), '')::${type}`;
   };
 
   return {

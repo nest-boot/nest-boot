@@ -216,10 +216,10 @@ describe("WorkspaceMemberService", () => {
         permissions: field === "permissions" ? ["workspace:delete"] : [],
       });
       mockRlsContext(em).variables = {
-        "app.user.id": user.id,
-        "app.workspace.id": workspace.id,
-        "app.system_account.id": "",
-        "app.member.id": current.id,
+        "app.auth.user.id": user.id,
+        "app.auth.workspace.id": workspace.id,
+        "app.selected.workspace.id": workspace.id,
+        "app.auth.workspace_member.id": current.id,
       };
       em.findOne.mockResolvedValue(locked);
       await RequestContext.run(
@@ -443,6 +443,61 @@ describe("WorkspaceMemberService", () => {
       expect(em.remove).not.toHaveBeenCalled();
     },
   );
+  it.each([false, true])(
+    "clears private scope after disabling the same managed member while retaining selection (workspace key=%s)",
+    async (workspaceKey) => {
+      const { em, workspaceMemberService } = createWorkspaceServices();
+      mockRlsContext(em);
+      const workspace = createTestWorkspace();
+      const user = createTestUser();
+      const member = Object.assign(createTestWorkspaceMember(), {
+        user: user as never,
+        workspace: workspace as never,
+        roles: ["owner"],
+      });
+      em.findOne.mockResolvedValue(member);
+      await RequestContext.run(
+        new RequestContext({ type: "test" }),
+        async () => {
+          RequestContext.set(User, user);
+          RequestContext.set(Workspace, workspace);
+          RequestContext.set(WorkspaceMember, member);
+          if (workspaceKey) {
+            RequestContext.set(
+              API_KEY,
+              new WorkspaceApiKey(
+                Object.assign(new ApiKey(), {
+                  owner: { id: member.id, unwrap: () => member },
+                }),
+              ),
+            );
+          }
+          const context = createTestAuthContext(em, {
+            workspace: { enabled: true },
+          });
+          context.initialize({});
+          expect(context.authWorkspace).toBe(workspace);
+          await workspaceMemberService.updateWorkspaceMember(member, {
+            status: "DISABLED",
+          });
+          expect(context.selectedWorkspace).toBe(workspace);
+          expect(context.member).toBeNull();
+          expect(context.authWorkspace).toBeNull();
+          expect(context.user).toBe(workspaceKey ? null : user);
+          expect(context.apiKey).toBeNull();
+          expect(em.setSessionContext).toHaveBeenLastCalledWith({
+            role: workspaceKey ? "anonymous" : "authenticated",
+            variables: {
+              "app.auth.user.id": workspaceKey ? "" : user.id,
+              "app.auth.workspace_member.id": "",
+              "app.auth.workspace.id": "",
+              "app.selected.workspace.id": workspace.id,
+            },
+          });
+        },
+      );
+    },
+  );
   it("allows the current member to leave without any workspace ability rules", async () => {
     const { em } = createWorkspaceServices();
     restoreAuthorization();
@@ -474,11 +529,11 @@ describe("WorkspaceMemberService", () => {
         lockedWorkspaceMember,
       );
       expect(RequestContext.get(WorkspaceMember)).toBeNull();
-      expect(RequestContext.get(Workspace)).toBeNull();
+      expect(RequestContext.get(Workspace)).toBe(workspace);
       expect(can("delete", workspace)).toBe(false);
       expect(em.setSessionContext).toHaveBeenCalledWith(
         expect.objectContaining({
-          variables: expect.objectContaining({ "app.workspace.id": "" }),
+          variables: expect.objectContaining({ "app.auth.workspace.id": "" }),
         }),
       );
     });

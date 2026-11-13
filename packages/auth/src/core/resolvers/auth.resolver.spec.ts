@@ -118,17 +118,17 @@ describe("AuthResolver", () => {
     const user = { id: "user-1" } as BaseUser;
     const { resolver } = createResolver({ getCurrentUser: vi.fn(() => user) });
 
-    expect(resolver.currentUser()).toBe(user);
+    expect(resolver.currentUser(user)).toBe(user);
   });
 
-  it("rejects an authenticated principal without a user identity", () => {
+  it("returns null for an authenticated principal without a user identity", () => {
     const { resolver } = createResolver({
       getCurrentUser: vi.fn(() => {
         throw new ForbiddenException();
       }),
     });
 
-    expect(() => resolver.currentUser()).toThrow(ForbiddenException);
+    expect(resolver.currentUser(null)).toBeNull();
   });
 
   it("exposes configured social providers without requiring a session", async () => {

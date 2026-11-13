@@ -1,6 +1,6 @@
 import { toZodSchema, type ZodClass } from "@nest-boot/validator";
 
-import { CurrentApiKey } from "./api-key/decorators/current-api-key.decorator.js";
+import { AuthApiKey } from "./api-key/decorators/auth-api-key.decorator.js";
 import { WorkspaceApiKey } from "./api-key/objects/workspace-api-key.object.js";
 import { UserApiKeyService } from "./api-key/services/user-api-key.service.js";
 import { WorkspaceApiKeyService } from "./api-key/services/workspace-api-key.service.js";
@@ -24,8 +24,8 @@ import { SessionService } from "./core/services/session.service.js";
 import { UserService } from "./core/services/user.service.js";
 import * as auth from "./index.js";
 import * as publicApi from "./index.js";
-import { CurrentWorkspace } from "./workspace/decorators/current-workspace.decorator.js";
-import { CurrentWorkspaceMember } from "./workspace/decorators/current-workspace-member.decorator.js";
+import { AuthWorkspaceMember } from "./workspace/decorators/auth-workspace-member.decorator.js";
+import { SelectedWorkspace } from "./workspace/decorators/selected-workspace.decorator.js";
 import { Workspace } from "./workspace/entities/workspace.entity.js";
 import { WorkspaceInvitation } from "./workspace/entities/workspace-invitation.entity.js";
 import { WorkspaceMember } from "./workspace/entities/workspace-member.entity.js";
@@ -264,9 +264,9 @@ describe("public API", () => {
     expect(publicApi.AuthModule).toBe(AuthModule);
     expect(publicApi.AuthService).toBe(AuthService);
     expect(publicApi.Can).toBe(Can);
-    expect(publicApi.CurrentApiKey).toBe(CurrentApiKey);
-    expect(publicApi.CurrentWorkspace).toBe(CurrentWorkspace);
-    expect(publicApi.CurrentWorkspaceMember).toBe(CurrentWorkspaceMember);
+    expect(publicApi.AuthApiKey).toBe(AuthApiKey);
+    expect(publicApi.SelectedWorkspace).toBe(SelectedWorkspace);
+    expect(publicApi.AuthWorkspaceMember).toBe(AuthWorkspaceMember);
     expect(publicApi.Public).toBe(Public);
     expect(publicApi.Account).toBe(Account);
     expect(publicApi.WorkspaceApiKey).toBe(WorkspaceApiKey);
@@ -660,11 +660,11 @@ describe("public decorator exports", () => {
   it("exports the public and current-identity decorators", () => {
     expect(publicApi.Public).toBe(Public);
     for (const name of [
-      "CurrentSession",
-      "CurrentUser",
-      "CurrentApiKey",
-      "CurrentWorkspace",
-      "CurrentWorkspaceMember",
+      "AuthSession",
+      "AuthUser",
+      "AuthApiKey",
+      "SelectedWorkspace",
+      "AuthWorkspaceMember",
     ]) {
       expect(publicApi).toHaveProperty(name);
     }

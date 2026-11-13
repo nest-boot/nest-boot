@@ -8,7 +8,7 @@ import {
   Resolver,
 } from "@nest-boot/graphql";
 
-import { CurrentSession } from "../decorators/current-session.decorator.js";
+import { AuthSession } from "../decorators/auth-session.decorator.js";
 import { Session } from "../entities/session.entity.js";
 import { User } from "../entities/user.entity.js";
 import { SessionService } from "../services/session.service.js";
@@ -29,7 +29,7 @@ export class SessionResolver {
    */
   @Query(() => Session, { nullable: true })
   currentSession(
-    @CurrentSession() currentSession: Session | null,
+    @AuthSession() currentSession: Session | null,
   ): Session | null {
     return currentSession;
   }
@@ -43,7 +43,7 @@ export class SessionResolver {
   @ResolveField(() => Boolean)
   current(
     @Parent() session: Session,
-    @CurrentSession() currentSession: Session | null,
+    @AuthSession() currentSession: Session | null,
   ): boolean {
     return session.id === currentSession?.id;
   }

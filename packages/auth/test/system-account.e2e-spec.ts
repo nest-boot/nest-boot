@@ -108,7 +108,7 @@ describe("independent system accounts with real persistence and authentication",
       const em = orm.em.fork({
         session: {
           role: "authenticated",
-          variables: { "app.user.id": user.id },
+          variables: { "app.auth.user.id": user.id },
         },
       });
       RequestContext.set(EntityManager, em);
@@ -230,17 +230,16 @@ describe("independent system accounts with real persistence and authentication",
     ).toEqual([{ user_key: null, member_key: null, system_key: null }]);
   });
 
-  it("authenticates without a user, member or selected workspace and reads all tenants only through granted platform APIs", async () => {
+  it("selects a workspace without a user or member and retains platform grant boundaries", async () => {
     const issued = await issue();
     await withKey(issued.apiKey, async (em) => {
       expect(RequestContext.get(User)).toBeNull();
       expect(RequestContext.get(WorkspaceMember)).toBeNull();
-      expect(RequestContext.get(Workspace)).toBeNull();
+      expect(RequestContext.get(Workspace)?.id).toBe(otherWorkspace.id);
       expect(em.getSessionContext()?.variables).toMatchObject({
-        "app.user.id": "",
-        "app.member.id": "",
-        "app.workspace.id": "",
-        "app.system_account.id": issued.account.id,
+        "app.auth.user.id": "",
+        "app.auth.workspace_member.id": "",
+        "app.auth.workspace.id": otherWorkspace.id,
       });
       const service = new WorkspaceService(
         em,
@@ -919,7 +918,6 @@ describe("independent system accounts with real persistence and authentication",
       orm.em.fork({
         session: {
           role: "authenticated",
-          variables: { "app.system_account.id": issued.account.id },
         },
       }),
       withAuthTestFeatures(options),

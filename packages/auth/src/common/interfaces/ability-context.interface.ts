@@ -12,8 +12,10 @@ export interface AbilityContext<
   readonly systemAccount?: SystemAccount | null;
   /** Authenticated user; absent for anonymous and member API-key requests. */
   readonly user: User | null;
-  /** Selected workspace with an active membership matching the credential owner. */
+  /** Authenticated workspace backed by matching membership or effective system grants. */
   readonly workspace: Workspace | null;
+  /** Request-selected target; selection alone carries no grants. */
+  readonly selectedWorkspace?: Workspace | null;
   /** Active user or service-account membership; absent outside an authorized workspace. */
   readonly member: WorkspaceMember | null;
   /** Effective user grants after applying the authenticating credential's ceiling. */

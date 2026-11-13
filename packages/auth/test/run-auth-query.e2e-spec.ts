@@ -18,9 +18,9 @@ import { createTestAuthContext } from "./fixtures/auth-context.fixture.js";
       name: "auth_record_workspace",
       roles: ["auth_query_reader"],
       using: (columns) =>
-        `${columns.workspace} = current_setting('app.workspace.id', true)`,
+        `${columns.workspace} = current_setting('app.auth.workspace.id', true)`,
       check: (columns) =>
-        `${columns.workspace} = current_setting('app.workspace.id', true)`,
+        `${columns.workspace} = current_setting('app.auth.workspace.id', true)`,
     },
   ],
 })
@@ -39,7 +39,7 @@ describe("runAuthQuery with native RLS", () => {
   let orm: MikroORM;
   const session: SessionContext = {
     role: "auth_query_reader",
-    variables: { "app.workspace.id": "one" },
+    variables: { "app.auth.workspace.id": "one" },
   };
 
   beforeAll(async () => {
@@ -146,7 +146,7 @@ describe("runAuthQuery with native RLS", () => {
           expect(RequestContext.get(Session)).toBeNull();
           expect(em.getSessionContext()).toMatchObject({
             role: "anonymous",
-            variables: { "app.user.id": "" },
+            variables: { "app.auth.user.id": "" },
           });
         }
         expect(RequestContext.get(CoreEntityManager)).toBe(em);

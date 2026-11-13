@@ -321,7 +321,7 @@ describe("Auth services and native RLS boundaries", () => {
         const em = orm.em.fork({
           session: {
             role: "authenticated",
-            variables: { "app.user.id": user.id },
+            variables: { "app.auth.user.id": user.id },
           },
         });
         const sessions = new SessionService(
@@ -467,7 +467,7 @@ describe("Auth services and native RLS boundaries", () => {
         });
         em.setSessionContext({
           role: "authenticated",
-          variables: { "app.user.id": user.id },
+          variables: { "app.auth.user.id": user.id },
         });
         const sessions = new SessionService(
           backend,
@@ -701,8 +701,8 @@ describe("Auth services and native RLS boundaries", () => {
       em.setSessionContext({
         role,
         variables: {
-          "app.user.id": id,
-          "app.workspace.id": "",
+          "app.auth.user.id": id,
+          "app.auth.workspace.id": "",
         },
       });
       return em;
@@ -845,8 +845,8 @@ describe("Auth services and native RLS boundaries", () => {
         session: {
           role: "authenticated",
           variables: {
-            "app.user.id": id,
-            "app.workspace.id": "",
+            "app.auth.user.id": id,
+            "app.auth.workspace.id": "",
           },
         },
       });
@@ -979,9 +979,10 @@ describe("Auth services and native RLS boundaries", () => {
         await middleware.use(request, {} as never, next);
         expect(next).toHaveBeenCalledExactlyOnceWith();
         const [values] = await em.execute(`select
-          current_setting('app.user.id', true) as user_id,
-          current_setting('app.workspace.id', true) as workspace_id,
-          current_setting('app.member.id', true) as member_id,
+          current_setting('app.auth.user.id', true) as user_id,
+          current_setting('app.auth.workspace.id', true) as workspace_id,
+          current_setting('app.selected.workspace.id', true) as selected_workspace_id,
+          current_setting('app.auth.workspace_member.id', true) as member_id,
           nullif(current_setting('app.user.permissions', true), '') as user_permissions,
           nullif(current_setting('app.workspace.permissions', true), '') as workspace_permissions`);
         return values;
@@ -991,13 +992,15 @@ describe("Auth services and native RLS boundaries", () => {
       expect(await readContext(true)).toEqual({
         user_id: user.id,
         workspace_id: workspace.id,
+        selected_workspace_id: workspace.id,
         member_id: member.id,
         user_permissions: null,
         workspace_permissions: null,
       });
       expect(await readContext(false)).toEqual({
         user_id: "",
-        workspace_id: workspace.id,
+        workspace_id: "",
+        selected_workspace_id: workspace.id,
         member_id: "",
         user_permissions: null,
         workspace_permissions: null,
@@ -1062,7 +1065,7 @@ describe("Auth services and native RLS boundaries", () => {
       expect(policy.qual).toContain("current_setting");
       expect(policy.qual).not.toMatch(/from\s+workspace\b|deleted_at/i);
       if (policy.with_check) {
-        expect(policy.with_check).toContain("app.workspace.id");
+        expect(policy.with_check).toContain("app.auth.workspace.id");
         expect(policy.with_check).not.toMatch(/exists|deleted_at/i);
       }
     }
@@ -1112,7 +1115,7 @@ describe("Auth services and native RLS boundaries", () => {
           : {
               session: {
                 role: "anonymous",
-                variables: { "app.workspace.id": "1" },
+                variables: { "app.auth.workspace.id": "1" },
               },
             },
       );
@@ -1147,10 +1150,10 @@ describe("Auth services and native RLS boundaries", () => {
       );
       const request = {
         headers: {
-          ...(kind === "member-key" ? {} : { "x-workspace-id": "1" }),
+          "x-workspace-id": "1",
           ...(kind.endsWith("key") ? { authorization: "Bearer sk-key" } : {}),
         },
-      } as Request;
+      } as unknown as Request;
       const context = new RequestContext({ type: "http" });
       context.set(REQUEST, request);
       await RequestContext.run(context, async () => {
@@ -1159,13 +1162,14 @@ describe("Auth services and native RLS boundaries", () => {
         expect(next).toHaveBeenCalledExactlyOnceWith();
         expect(
           await em.execute(
-            "select current_user as role, current_setting('app.user.id', true) as app_user, current_setting('app.workspace.id', true) as app_workspace, current_setting('app.member.id', true) as app_member",
+            "select current_user as role, current_setting('app.auth.user.id', true) as app_user, current_setting('app.auth.workspace.id', true) as app_workspace, current_setting('app.auth.workspace_member.id', true) as app_member",
           ),
         ).toEqual([
           {
             role: kind === "anonymous" ? "anonymous" : "authenticated",
             app_user: hasUser ? user.id : "",
-            app_workspace: kind === "non-member" ? "" : "1",
+            app_workspace:
+              kind === "anonymous" || kind === "non-member" ? "" : "1",
             app_member: member?.id ?? "",
           },
         ]);
@@ -1222,10 +1226,9 @@ describe("Auth services and native RLS boundaries", () => {
         session: {
           role: "authenticated",
           variables: {
-            "app.workspace.id": workspace.id,
-            "app.user.id": user.id,
-            "app.system_account.id": "",
-            "app.member.id": actor.id,
+            "app.auth.workspace.id": workspace.id,
+            "app.auth.user.id": user.id,
+            "app.auth.workspace_member.id": actor.id,
           },
         },
       });
@@ -1311,10 +1314,9 @@ describe("Auth services and native RLS boundaries", () => {
         session: {
           role: "authenticated",
           variables: {
-            "app.user.id": user.id,
-            "app.workspace.id": workspace.id,
-            "app.system_account.id": "",
-            "app.member.id": actor.id,
+            "app.auth.user.id": user.id,
+            "app.auth.workspace.id": workspace.id,
+            "app.auth.workspace_member.id": actor.id,
           },
         },
       });
@@ -1476,10 +1478,9 @@ describe("Auth services and native RLS boundaries", () => {
       session: {
         role: "authenticated",
         variables: {
-          "app.user.id": user.id,
-          "app.workspace.id": workspace.id,
-          "app.system_account.id": "",
-          "app.member.id": actor.id,
+          "app.auth.user.id": user.id,
+          "app.auth.workspace.id": workspace.id,
+          "app.auth.workspace_member.id": actor.id,
         },
       },
     });
@@ -1566,7 +1567,11 @@ describe("Auth services and native RLS boundaries", () => {
     await admin.persist(member).flush();
     const session = {
       role: "authenticated",
-      variables: { "app.workspace.id": workspace.id, "app.user.id": "" },
+      variables: {
+        "app.auth.workspace.id": workspace.id,
+        "app.auth.user.id": "",
+        "app.auth.workspace_member.id": member.id,
+      },
     };
     const scoped = orm.em.fork({ session });
     const service = new WorkspaceMemberService(
@@ -1634,7 +1639,20 @@ describe("Auth services and native RLS boundaries", () => {
     let keys: ApiKey[];
 
     const scoped = (variables?: Record<string, string>, role = probeRole) =>
-      orm.em.fork({ session: { role, variables } });
+      orm.em.fork({
+        session: {
+          role,
+          variables: {
+            ...(variables?.["app.auth.workspace.id"]
+              ? {
+                  "app.auth.workspace_member.id":
+                    variables["app.auth.workspace.id"],
+                }
+              : {}),
+            ...variables,
+          },
+        },
+      });
 
     const insertKey = (
       em: ReturnType<typeof scoped>,
@@ -1803,8 +1821,8 @@ describe("Auth services and native RLS boundaries", () => {
       "restricts all operations by owner type and ID: $name",
       async (identity) => {
         const em = scoped({
-          "app.user.id": identity.user,
-          "app.workspace.id": identity.workspace,
+          "app.auth.user.id": identity.user,
+          "app.auth.workspace.id": identity.workspace,
         });
         const visibleIds = identity.visible
           .map((index) => keys[index].id)
@@ -1829,7 +1847,7 @@ describe("Auth services and native RLS boundaries", () => {
       expect(await scoped().find(ApiKey, {})).toEqual([]);
       expect(await scoped().find(ApiKey, {})).toEqual([]);
       const anonymous = scoped(
-        { "app.user.id": userId, "app.workspace.id": userId },
+        { "app.auth.user.id": userId, "app.auth.workspace.id": userId },
         anonymousProbeRole,
       );
       expect(await anonymous.find(ApiKey, {})).toEqual([]);
@@ -1849,8 +1867,9 @@ describe("Auth services and native RLS boundaries", () => {
       "checks the required owner on insert and update for %s keys",
       async (ownerType) => {
         const em = scoped({
-          "app.user.id": ownerType === "user" ? userId : "",
-          "app.workspace.id": ownerType === "workspace_member" ? userId : "",
+          "app.auth.user.id": ownerType === "user" ? userId : "",
+          "app.auth.workspace.id":
+            ownerType === "workspace_member" ? userId : "",
         });
         const otherType = ownerType === "user" ? "workspace_member" : "user";
         const id = ownerType === "user" ? "900101" : "900102";
@@ -1899,7 +1918,11 @@ describe("Auth services and native RLS boundaries", () => {
       orm.em.fork({
         session: {
           role: "authenticated",
-          variables: { "app.user.id": userId, "app.workspace.id": workspaceId },
+          variables: {
+            "app.auth.user.id": userId,
+            "app.auth.workspace.id": workspaceId,
+            "app.auth.workspace_member.id": ownWorkspaceMember.id,
+          },
         },
       });
     const options = { workspace: { enabled: true } };
@@ -2092,9 +2115,9 @@ describe("Auth services and native RLS boundaries", () => {
           ).getWorkspaceInvitationConnectionByUser(user, { first: 20 });
           expect(hidden.edges).toEqual([]);
           expect(hidden.totalCount).toBe(0);
-          expect(em.getSessionContext()?.variables?.["app.workspace.id"]).toBe(
-            "",
-          );
+          expect(
+            em.getSessionContext()?.variables?.["app.auth.workspace.id"],
+          ).toBe("");
         },
       );
     });
@@ -2130,7 +2153,9 @@ describe("Auth services and native RLS boundaries", () => {
       expect((await admin.findOneOrFail(User, user.id)).name).toBe(
         "Policy user",
       );
-      expect(em.getSessionContext()?.variables?.["app.workspace.id"]).toBe("");
+      expect(em.getSessionContext()?.variables?.["app.auth.workspace.id"]).toBe(
+        "",
+      );
     });
 
     it("rolls back workspace creation when owner membership persistence fails", async () => {
@@ -2331,9 +2356,9 @@ describe("Auth services and native RLS boundaries", () => {
         await middleware.use(request, {} as never, next);
         expect(next).toHaveBeenCalledExactlyOnceWith();
         expect(RequestContext.get(Workspace)).toBeNull();
-        expect(em.getSessionContext()?.variables?.["app.workspace.id"]).toBe(
-          "",
-        );
+        expect(
+          em.getSessionContext()?.variables?.["app.auth.workspace.id"],
+        ).toBe("");
         await expect(
           em.insert(WorkspaceMember, {
             workspace: workspace.id,
@@ -2419,8 +2444,9 @@ describe("Auth services and native RLS boundaries", () => {
         session: {
           role: "authenticated",
           variables: {
-            "app.user.id": id,
-            "app.workspace.id": workspace.id,
+            "app.auth.user.id": id,
+            "app.auth.workspace.id": workspace.id,
+            "app.auth.workspace_member.id": owner.id,
           },
         },
       });
@@ -2531,7 +2557,7 @@ describe("Auth services and native RLS boundaries", () => {
     const em = orm.em.fork({
       session: {
         role: "authenticated",
-        variables: { "app.user.id": actor.id },
+        variables: { "app.auth.user.id": actor.id },
       },
     });
     const users = new UserService(
@@ -2580,7 +2606,7 @@ describe("Auth services and native RLS boundaries", () => {
           expect(await admin.count(User, target.id)).toBe(0);
           expect(await admin.count(Session, session.id)).toBe(0);
           expect(em.getSessionContext()?.variables).toEqual({
-            "app.user.id": actor.id,
+            "app.auth.user.id": actor.id,
           });
         },
       );

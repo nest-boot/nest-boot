@@ -12,7 +12,7 @@ import {
 import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
 import { type GraphQLResolveInfo } from "graphql";
 
-import { CurrentWorkspace } from "../../workspace/decorators/current-workspace.decorator.js";
+import { SelectedWorkspace } from "../../workspace/decorators/selected-workspace.decorator.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
 import {
@@ -46,7 +46,7 @@ export class WorkspaceApiKeyResolver {
    */
   @Query(() => [WorkspaceApiKeyPermissionOption])
   workspaceApiKeyPermissions(
-    @CurrentWorkspace() workspace: Workspace,
+    @SelectedWorkspace() workspace: Workspace,
   ): WorkspaceApiKeyPermissionOption[] {
     return this.apiKeyService.getWorkspaceApiKeyPermissions(workspace);
   }
@@ -60,7 +60,7 @@ export class WorkspaceApiKeyResolver {
   @Mutation(() => CreateWorkspaceApiKeyResult)
   async createWorkspaceApiKey(
     @Args("input") input: CreateWorkspaceApiKeyInput,
-    @CurrentWorkspace() workspace: Workspace,
+    @SelectedWorkspace() workspace: Workspace,
   ): Promise<CreateWorkspaceApiKeyResult> {
     const { memberId, ...options } = input;
     return await this.apiKeyService.createWorkspaceApiKey(workspace, {

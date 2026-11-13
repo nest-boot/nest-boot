@@ -13,7 +13,7 @@ import { Check, X } from "lucide-react";
 import { isEmpty } from "lodash";
 import type { DataFilterField } from "@/components/thread-ui/data-filter";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { workspaceSearchSchema } from "@/schemas/workspace-search-schema";
 import { workspacesResourceKey } from "@/lib/resource-keys";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
@@ -138,7 +138,7 @@ export const Route = createFileRoute("/_authenticated/user/workspaces/")({
 function UserWorkspacesComponent() {
   const { t, i18n } = useTranslation();
   const search = Route.useSearch();
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   useResourceNavigation({
     key: [currentUser.id, ...workspacesResourceKey],
     searchSchema: workspaceSearchSchema,
@@ -227,11 +227,11 @@ function UserWorkspacesComponent() {
   };
 
   const workspaces =
-    data?.currentUser.workspaces.edges.map(({ node }) => node) ?? [];
+    data?.currentUser?.workspaces.edges.map(({ node }) => node) ?? [];
   const invitations =
-    data?.currentUser.invitations.edges.map(({ node }) => node) ?? [];
-  const invitationPageInfo = data?.currentUser.invitations.pageInfo;
-  const pageInfo = data?.currentUser.workspaces.pageInfo;
+    data?.currentUser?.invitations.edges.map(({ node }) => node) ?? [];
+  const invitationPageInfo = data?.currentUser?.invitations.pageInfo;
+  const pageInfo = data?.currentUser?.workspaces.pageInfo;
   const invitationActionPending =
     acceptingWorkspaceInvitationId !== null ||
     rejectingWorkspaceInvitationId !== null;

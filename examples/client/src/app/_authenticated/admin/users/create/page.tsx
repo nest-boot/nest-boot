@@ -6,7 +6,7 @@ import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { Link } from "@/components/link";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { adminUserSearchSchema } from "@/schemas/admin-user-search-schema";
 import { adminUsersResourceKey } from "@/lib/resource-keys";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
@@ -52,7 +52,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/create/")({
 function CreateUserPage() {
   const { t } = useTranslation();
   const formId = useId();
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   const { backSearch } = useResourceNavigation({
     key: [currentUser.id, ...adminUsersResourceKey],
     searchSchema: adminUserSearchSchema,

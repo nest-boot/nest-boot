@@ -1174,9 +1174,9 @@ describe("permission checks", () => {
       const subjectCallback = vi.fn(
         (
           self: typeof handlerThis,
-          currentWorkspace: typeof workspace,
+          selectedWorkspace: typeof workspace,
           id: string,
-        ) => self.workspaceService.findSubject(currentWorkspace, id),
+        ) => self.workspaceService.findSubject(selectedWorkspace, id),
       );
       const canMock = vi.fn(() => true);
       const ability = {
@@ -1247,9 +1247,9 @@ describe("permission checks", () => {
       const subjectCallback = vi.fn(
         (
           self: typeof handlerThis,
-          currentWorkspace: typeof workspace,
+          selectedWorkspace: typeof workspace,
           id: string,
-        ) => self.workspaceService.findSubject(currentWorkspace, id),
+        ) => self.workspaceService.findSubject(selectedWorkspace, id),
       );
       const canMock = vi.fn(() => true);
       const ability = {

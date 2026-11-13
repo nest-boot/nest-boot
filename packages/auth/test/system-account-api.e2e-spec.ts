@@ -556,9 +556,9 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     expect(data(access).users.totalCount).toBe(2);
     expect(data(access).platformWorkspace.id).toBe(workspaceId);
     expect(
-      (await graphql("{ currentUser { id } }", {}, plaintext, true)).errors?.[0]
-        ?.extensions.code,
-    ).toBe("FORBIDDEN");
+      data(await graphql("{ currentUser { id } }", {}, plaintext, true))
+        .currentUser,
+    ).toBeNull();
     const denied = await graphql(
       'mutation { createSystemAccount(input: {name: "Escalation"}) { id } }',
       {},

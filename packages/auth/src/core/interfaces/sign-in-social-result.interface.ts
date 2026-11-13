@@ -1,7 +1,7 @@
-import type { AuthUser } from "./auth-user.interface.js";
+import type { AuthUserData } from "./auth-user-data.interface.js";
 
 /** Result returned when starting a social or generic OAuth sign-in flow. */
-export interface SignInSocialResult<User extends AuthUser = AuthUser> {
+export interface SignInSocialResult<User extends AuthUserData = AuthUserData> {
   /** Whether a browser client should navigate to {@link url}. */
   redirect: boolean;
   /** Provider authorization URL, or `null` for direct token sign-in. */

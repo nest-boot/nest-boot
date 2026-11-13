@@ -1,6 +1,6 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
-import { CurrentWorkspaceProvider } from "./contexts/current-workspace-context";
-import { CurrentWorkspaceMemberProvider } from "./contexts/current-workspace-member-context";
+import { SelectedWorkspaceProvider } from "./contexts/selected-workspace-context";
+import { AuthWorkspaceMemberProvider } from "./contexts/auth-workspace-member-context";
 import { WorkspaceSidebar } from "./components/workspace-sidebar";
 import { graphql } from "@/gql";
 import { Layout, LayoutContent } from "@/components/thread-ui/layout";
@@ -65,7 +65,7 @@ export const Route = createFileRoute("/_authenticated/workspaces/$workspaceId")(
 
       return {
         currentWorkspaceMember: data.currentWorkspaceMember,
-        currentWorkspace: data.workspace,
+        selectedWorkspace: data.workspace,
         ability,
       };
     },
@@ -73,21 +73,21 @@ export const Route = createFileRoute("/_authenticated/workspaces/$workspaceId")(
 );
 
 function WorkspaceLayout() {
-  const { currentWorkspace, currentWorkspaceMember, ability } =
+  const { selectedWorkspace, currentWorkspaceMember, ability } =
     Route.useRouteContext();
   return (
-    <CurrentWorkspaceProvider value={currentWorkspace}>
-      <CurrentWorkspaceMemberProvider value={currentWorkspaceMember}>
+    <SelectedWorkspaceProvider value={selectedWorkspace}>
+      <AuthWorkspaceMemberProvider value={currentWorkspaceMember}>
         <AbilityProvider ability={ability}>
           <Layout>
-            <WorkspaceSidebar workspace={currentWorkspace} />
+            <WorkspaceSidebar workspace={selectedWorkspace} />
 
             <LayoutContent>
               <Outlet />
             </LayoutContent>
           </Layout>
         </AbilityProvider>
-      </CurrentWorkspaceMemberProvider>
-    </CurrentWorkspaceProvider>
+      </AuthWorkspaceMemberProvider>
+    </SelectedWorkspaceProvider>
   );
 }

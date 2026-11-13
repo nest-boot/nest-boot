@@ -12,11 +12,11 @@ test("refreshes the workspace menu after changes outside its Apollo cache", asyn
     email: `${seed}@example.com`,
     name: "Workspace menu owner",
   });
-  const currentWorkspace = await createWorkspaceByApi(
+  const selectedWorkspace = await createWorkspaceByApi(
     page,
     `Current workspace ${seed}`,
   );
-  await page.goto(`/workspaces/${currentWorkspace.id}`);
+  await page.goto(`/workspaces/${selectedWorkspace.id}`);
   const menuResponse = page.waitForResponse(
     (response) =>
       response
@@ -82,10 +82,10 @@ test("retries menu requests and keeps pagination within the current opening", as
     email: `${uniqueSeed("workspace-menu-retry")}@example.com`,
     name: "Workspace menu retries",
   });
-  const currentWorkspace = await createWorkspaceByApi(page, "Workspace 1");
-  await page.goto(`/workspaces/${currentWorkspace.id}`);
+  const selectedWorkspace = await createWorkspaceByApi(page, "Workspace 1");
+  await page.goto(`/workspaces/${selectedWorkspace.id}`);
   const workspaces = Array.from({ length: 11 }, (_, index) => ({
-    id: index === 0 ? currentWorkspace.id : String(index + 1),
+    id: index === 0 ? selectedWorkspace.id : String(index + 1),
     name: `Workspace ${index + 1}`,
   }));
   let initialRequests = 0;
@@ -156,11 +156,11 @@ test("ignores a late page from a closed workspace menu", async ({ page }) => {
     email: `${uniqueSeed("workspace-menu-late-page")}@example.com`,
     name: "Workspace menu race",
   });
-  const currentWorkspace = await createWorkspaceByApi(
+  const selectedWorkspace = await createWorkspaceByApi(
     page,
     "Selected workspace",
   );
-  await page.goto(`/workspaces/${currentWorkspace.id}`);
+  await page.goto(`/workspaces/${selectedWorkspace.id}`);
   let opening = 0;
   let releasePage!: () => void;
   let pageRequested!: () => void;

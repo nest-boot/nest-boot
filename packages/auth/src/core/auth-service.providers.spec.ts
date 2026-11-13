@@ -38,7 +38,7 @@ describe("auth service execution boundaries", () => {
     em.fork.mockReturnValue(isolated);
     const session = {
       role: "authenticated",
-      variables: { "app.user.id": "user-1" },
+      variables: { "app.auth.user.id": "user-1" },
     };
     em.getSessionContext.mockReturnValue(session);
     const user = Object.assign(new User(), { id: "user-1" });
@@ -89,8 +89,9 @@ describe("auth service execution boundaries", () => {
       em.getSessionContext.mockReturnValue({
         role: "authenticated",
         variables: {
-          "app.user.id": "target",
-          "app.workspace.id": "workspace-1",
+          "app.auth.user.id": "target",
+          "app.auth.workspace.id": "workspace-1",
+          "app.selected.workspace.id": "workspace-1",
         },
       });
       const user = Object.assign(new User(), { id: "target" });
@@ -139,7 +140,7 @@ describe("auth service execution boundaries", () => {
             expect(RequestContext.get(AuthAbility)).toBe(ability);
             expect(em.setSessionContext).not.toHaveBeenCalled();
           } else {
-            for (const token of [User, Session, Workspace, WorkspaceMember]) {
+            for (const token of [User, Session, WorkspaceMember]) {
               expect(RequestContext.get(token)).toBeNull();
             }
             expect(RequestContext.get(AuthAbility)?.can("update", User)).toBe(
@@ -148,10 +149,10 @@ describe("auth service execution boundaries", () => {
             expect(em.setSessionContext).toHaveBeenCalledWith({
               role: "anonymous",
               variables: {
-                "app.user.id": "",
-                "app.workspace.id": "",
-                "app.system_account.id": "",
-                "app.member.id": "",
+                "app.auth.user.id": "",
+                "app.auth.workspace.id": "",
+                "app.selected.workspace.id": RequestContext.get(Workspace)?.id,
+                "app.auth.workspace_member.id": "",
               },
             });
           }
@@ -166,7 +167,7 @@ describe("auth service execution boundaries", () => {
       const { em } = createWorkspaceServices();
       em.getSessionContext.mockReturnValue({
         role: "authenticated",
-        variables: { "app.workspace.id": "workspace-1" },
+        variables: { "app.auth.workspace.id": "workspace-1" },
       });
       const workspace = createTestWorkspace();
       const member = createTestWorkspaceMember();
@@ -209,7 +210,9 @@ describe("auth service execution boundaries", () => {
           } else {
             expect(em.setSessionContext).toHaveBeenCalledWith(
               expect.objectContaining({
-                variables: expect.objectContaining({ "app.workspace.id": "" }),
+                variables: expect.objectContaining({
+                  "app.auth.workspace.id": "",
+                }),
               }),
             );
           }

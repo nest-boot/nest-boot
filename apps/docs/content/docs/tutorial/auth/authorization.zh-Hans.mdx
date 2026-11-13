@@ -148,7 +148,7 @@ health(): string {
 Ability 缓存在 `RequestContext` 中，身份或授权变化后统一重建。
 
 类型级检查只用于操作准入；条件规则还会对加载出的实体及创建前的待写入实体进行判断。
-`currentWorkspaceMember` 和 `currentWorkspace` 同样检查当前实例的工作区读取规则，
+`currentWorkspaceMember` 和 `selectedWorkspace` 同样检查当前实例的工作区读取规则，
 不会因为实体已在请求上下文中就绕过授权。
 由 CASL 授权的连接会检查每个返回节点，任一节点被拒绝就拒绝整页，不在分页后静默
 过滤节点以免改变分页结果。管理接口批量撤销会话时，会先锁定并授权所有目标，再执行
@@ -339,7 +339,7 @@ posts() {
 
 @Can("read", () => User)
 @Query(() => User)
-me(@CurrentUser() user: User) {
+me(@AuthUser() user: User) {
   return user;
 }
 ```
@@ -483,17 +483,16 @@ export class Post {
 `uuid`、`text`。例如 `userScopePolicy({ property: "owner", type: "uuid" })`；
 用于 User 实体自身时指定 `property: "id"`。还可以覆盖 `command`、`roles` 和可选的 `name`。
 
-策略分别比较 `app.user.id` 和 `app.workspace.id`，保留
+策略分别比较 `app.auth.user.id` 和 `app.auth.workspace.id`，保留
 `nullif(current_setting(..., true), '')`，变量缺失或为空时不会匹配记录。
 这些是允许型策略，同一操作的多条策略按 OR 合并；不查询工作区生命周期，也不替代
 Service 授权。数据库角色、表权限及可信 session 变量仍需单独配置。
 
-Auth 只传递身份变量 `app.user.id`、`app.workspace.id` 和 `app.member.id`，不向数据库传递应用权限列表。
-Service 负责 Ability、自定义权限与 API Key 权限上限检查；RLS 保留归属和工作区隔离。
-authenticated 角色的 User 读写及 Session 读取由 Service 授权，不能通过直接 ORM/SQL
-访问替代 Service 的权限检查。旧身份变量不再支持。
+Auth 设置 `app.auth.user.id`、`app.auth.workspace_member.id`、`app.auth.workspace.id` 和 `app.selected.workspace.id`。所选工作区只表示请求目标，认证工作区由有效成员关系或系统工作区权限建立。数据库不接收应用权限数组；Service 检查 CASL 动作、字段和条件，RLS 负责归属与行范围。User、Session 操作继续保留 Service 授权边界。
 
-`app.member.id` 是已认证请求在当前工作区中的有效成员 ID，也适用于服务账号。匿名请求或没有有效成员时为空；撤销工作区访问或清空认证身份时会清空该变量。
+`app.auth.workspace_member.id` 是已认证请求在当前工作区中的有效成员 ID，也适用于服务账号。匿名请求或没有有效成员时为空；撤销工作区访问或清空认证身份时会清空该变量。
+
+SystemApiKey 同样使用 `authenticated` 角色，根据账户、密钥和配置上限的有效工作区权限建立认证作用域，不创建用户或成员身份。单独选择工作区不会建立认证作用域。匿名请求、非成员用户和选择其他工作区的 WorkspaceApiKey，可以通过独立 SELECT 策略读取公开行：策略比较 `app.selected.workspace.id` 并检查公开标志。数据库上下文在业务事务开始前准备，不按资源操作切换。
 
 三种 Key 共用 `api_key` 表，RLS 通过多态 owner 区分用户、成员与系统账户。User、WorkspaceMember 的管理边界保持不变；SystemAccount 凭证由用户管理员通过会话管理，平台权限不自动开放业务表。删除归属身份后保留密钥审计记录；认证时确认 owner 仍存在，否则拒绝使用。
 
@@ -503,6 +502,8 @@ authenticated 角色的 User 读写及 Session 读取由 Service 授权，不能
 [`softDeletePolicies()`](/docs/tutorial/database#软删除-rls-策略)。
 
 ## 同一请求内的授权变更
+
+清除认证、停用成员或退出工作区只撤销认证作用域，保留用于公开访问的工作区选择。删除所选工作区时也会清空选择。
 
 Service 提交当前用户的资料、角色、权限或封禁状态变更，当前成员的资料、角色、权限及状态变更，
 或当前工作区资料变更后，

@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { CircleX, MailCheck } from "lucide-react";
 import { z } from "zod";
 
-import { useCurrentUserContext } from "../../contexts/current-user-context";
+import { useAuthUserContext } from "../../contexts/auth-user-context";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import {
   PageLayout,
@@ -58,7 +58,7 @@ export const Route = createFileRoute("/_authenticated/user/profile/")({
 function UserComponent() {
   const { t } = useTranslation();
   const router = useRouter();
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   const [updateUser] = useMutation(UPDATE_USER_FROM_USER_ROUTE);
   const [changeEmail] = useMutation(CHANGE_EMAIL_FROM_USER_ROUTE);
   const search = Route.useSearch();

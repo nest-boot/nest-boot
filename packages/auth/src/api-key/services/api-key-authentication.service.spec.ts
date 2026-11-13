@@ -83,6 +83,37 @@ function fixture() {
 }
 
 describe("API-key authentication", () => {
+  it.each([true, false])(
+    "records member-key usage without changing the request scope (matching member: %s)",
+    async (matching) => {
+      const { service, em, memberKey, member } = fixture();
+      em.getSessionContext.mockReturnValue({
+        variables: {
+          "app.auth.workspace_member.id": matching ? member.id : "",
+        },
+      });
+      const recorder = {
+        nativeUpdate: vi.fn().mockResolvedValue(1),
+        clearSessionContext: vi.fn(),
+      };
+      const fork = vi.fn().mockReturnValue(recorder);
+      Object.assign(em, { fork });
+      await service.captureUsage(memberKey)();
+      expect(fork).toHaveBeenCalledExactlyOnceWith({
+        useContext: false,
+        keepTransactionContext: matching,
+      });
+      expect(recorder.clearSessionContext).toHaveBeenCalledTimes(
+        matching ? 0 : 1,
+      );
+      expect(recorder.nativeUpdate).toHaveBeenCalledExactlyOnceWith(
+        ApiKey,
+        { id: memberKey.id, ownerType: "workspace_member" },
+        { lastUsedAt: expect.any(Date), updatedAt: expect.any(Date) },
+      );
+      expect(em.nativeUpdate).not.toHaveBeenCalled();
+    },
+  );
   it.each(["user", "service-account"])(
     "resolves the member identity of a %s key and rejects disabled members",
     async (kind) => {

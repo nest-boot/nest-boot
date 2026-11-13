@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useTranslation } from "react-i18next";
 import { graphql } from "@/gql";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { useAbility } from "@/contexts/ability-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 
@@ -79,7 +79,7 @@ function ApiKeysComponent() {
   const { t } = useTranslation();
   const ability = useAbility();
   const search = Route.useSearch();
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   useResourceNavigation({
     key: [currentUser.id, ...getWorkspaceApiKeysResourceKey(workspaceId)],
     searchSchema: apiKeySearchSchema,

@@ -337,10 +337,10 @@ describe("API-key management", () => {
             RequestContext.set(AuthAbility, ability);
             em.findOne.mockResolvedValue(key);
             mockRlsContext(em).variables = {
-              "app.user.id": user.id,
-              "app.workspace.id": createTestWorkspace().id,
-              "app.system_account.id": "",
-              "app.member.id": createTestWorkspaceMember().id,
+              "app.auth.user.id": user.id,
+              "app.auth.workspace.id": createTestWorkspace().id,
+              "app.selected.workspace.id": createTestWorkspace().id,
+              "app.auth.workspace_member.id": createTestWorkspaceMember().id,
             };
             const update =
               scope === "user"
@@ -405,14 +405,15 @@ describe("API-key management", () => {
               expect(RequestContext.get(API_KEY)).toBeNull();
               expect(RequestContext.get(User)).toBeNull();
               expect(RequestContext.get(WorkspaceMember)).toBeNull();
-              expect(RequestContext.get(Workspace)).toBeNull();
+              expect(RequestContext.get(Workspace)).toBeInstanceOf(Workspace);
               expect(em.setSessionContext).toHaveBeenCalledWith({
                 role: "anonymous",
                 variables: {
-                  "app.user.id": "",
-                  "app.workspace.id": "",
-                  "app.system_account.id": "",
-                  "app.member.id": "",
+                  "app.auth.user.id": "",
+                  "app.auth.workspace.id": "",
+                  "app.selected.workspace.id":
+                    RequestContext.get(Workspace)?.id,
+                  "app.auth.workspace_member.id": "",
                 },
               });
             }

@@ -627,7 +627,7 @@ export class WorkspaceMemberService {
         assertCurrentWorkspaceMember(lockedWorkspaceMember);
       },
     );
-    this.authContext.clearWorkspace();
+    this.authContext.clearWorkspaceMember();
     return removed;
   }
 
@@ -772,11 +772,11 @@ export class WorkspaceMemberService {
   }
 
   private syncCurrentMember(member: WorkspaceMember): void {
-    if (this.authContext.member?.id !== member.id) {
+    if (!this.isCurrentWorkspaceMember(member)) {
       return;
     }
     if (member.status !== "ACTIVE") {
-      this.authContext.clearWorkspace();
+      this.authContext.clearWorkspaceMember();
     } else {
       this.authContext.set({ member });
     }

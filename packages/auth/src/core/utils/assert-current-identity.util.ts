@@ -12,11 +12,11 @@ import { User } from "../entities/user.entity.js";
  * @param user - Value used for this operation.
  */
 export function assertCurrentUser(user: User): void {
-  const currentUser = RequestContext.isActive()
+  const authUser = RequestContext.isActive()
     ? RequestContext.get(User)
     : undefined;
 
-  if (!currentUser || String(currentUser.id) !== String(user.id)) {
+  if (!authUser || String(authUser.id) !== String(user.id)) {
     throw new ForbiddenException("The operation belongs to another user");
   }
 }
@@ -53,13 +53,13 @@ export function assertCurrentSession(session: Session): void {
  * @param workspace - Value used for this operation.
  */
 export function assertCurrentWorkspace(workspace: Workspace): void {
-  const currentWorkspace = RequestContext.isActive()
+  const selectedWorkspace = RequestContext.isActive()
     ? RequestContext.get(Workspace)
     : undefined;
 
   if (
-    !currentWorkspace ||
-    String(currentWorkspace.id) !== String(workspace.id)
+    !selectedWorkspace ||
+    String(selectedWorkspace.id) !== String(workspace.id)
   ) {
     throw new ForbiddenException("The operation belongs to another workspace");
   }
@@ -72,14 +72,14 @@ export function assertCurrentWorkspace(workspace: Workspace): void {
 export function assertCurrentWorkspaceMember(
   member: WorkspaceMember | null | undefined,
 ): void {
-  const currentWorkspaceMember = RequestContext.isActive()
+  const authWorkspaceMember = RequestContext.isActive()
     ? RequestContext.get(WorkspaceMember)
     : undefined;
 
   if (
     !member ||
-    !currentWorkspaceMember ||
-    String(currentWorkspaceMember.id) !== String(member.id)
+    !authWorkspaceMember ||
+    String(authWorkspaceMember.id) !== String(member.id)
   ) {
     throw new ForbiddenException(
       "The operation belongs to another workspace member",

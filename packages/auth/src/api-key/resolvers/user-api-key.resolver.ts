@@ -11,7 +11,7 @@ import {
 import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
 import { type GraphQLResolveInfo } from "graphql";
 
-import { CurrentUser } from "../../core/decorators/current-user.decorator.js";
+import { AuthUser } from "../../core/decorators/auth-user.decorator.js";
 import { User } from "../../core/entities/user.entity.js";
 import {
   UserApiKeyConnection,
@@ -43,9 +43,7 @@ export class UserApiKeyResolver {
    * @returns Permission choices and grant availability for user API keys.
    */
   @Query(() => [UserApiKeyPermissionOption])
-  userApiKeyPermissions(
-    @CurrentUser() user: User,
-  ): UserApiKeyPermissionOption[] {
+  userApiKeyPermissions(@AuthUser() user: User): UserApiKeyPermissionOption[] {
     return this.apiKeyService.getUserApiKeyPermissions(user);
   }
 
@@ -58,7 +56,7 @@ export class UserApiKeyResolver {
   @Mutation(() => CreateUserApiKeyResult)
   async createUserApiKey(
     @Args("input") input: CreateUserApiKeyInput,
-    @CurrentUser() user: User,
+    @AuthUser() user: User,
   ): Promise<CreateUserApiKeyResult> {
     return await this.apiKeyService.createUserApiKey(user, input);
   }

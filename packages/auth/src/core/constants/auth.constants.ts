@@ -9,3 +9,6 @@ export const IS_PUBLIC_KEY = Symbol("IS_PUBLIC_KEY");
 
 /** Request-context token for the authenticated API credential. */
 export const API_KEY = Symbol("API_KEY");
+
+/** Request-context token for the authenticated workspace scope. */
+export const AUTH_WORKSPACE = Symbol("AUTH_WORKSPACE");

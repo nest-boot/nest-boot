@@ -1,5 +1,5 @@
 import type { AuthSendVerificationEmail } from "../types/auth-send-verification-email.type.js";
-import type { AuthUser } from "./auth-user.interface.js";
+import type { AuthUserData } from "./auth-user-data.interface.js";
 
 /** Email verification options owned by AuthModule. */
 export interface AuthModuleEmailVerificationOptions {
@@ -15,9 +15,12 @@ export interface AuthModuleEmailVerificationOptions {
   expiresIn?: number;
   /** Runs immediately before an email address is verified. */
   beforeEmailVerification?: (
-    user: AuthUser,
+    user: AuthUserData,
     request?: Request,
   ) => Promise<void>;
   /** Runs after an email address has been verified. */
-  afterEmailVerification?: (user: AuthUser, request?: Request) => Promise<void>;
+  afterEmailVerification?: (
+    user: AuthUserData,
+    request?: Request,
+  ) => Promise<void>;
 }

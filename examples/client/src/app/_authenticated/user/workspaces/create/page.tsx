@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@apollo/client/react";
 import { useTranslation } from "react-i18next";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { workspaceSearchSchema } from "@/schemas/workspace-search-schema";
 import { workspacesResourceKey } from "@/lib/resource-keys";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
@@ -37,7 +37,7 @@ export const Route = createFileRoute("/_authenticated/user/workspaces/create/")(
 
 function CreateWorkspaceComponent() {
   const { t } = useTranslation();
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   const { backSearch } = useResourceNavigation({
     key: [currentUser.id, ...workspacesResourceKey],
     searchSchema: workspaceSearchSchema,

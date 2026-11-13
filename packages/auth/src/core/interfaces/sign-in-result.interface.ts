@@ -1,7 +1,7 @@
-import type { AuthUser } from "./auth-user.interface.js";
+import type { AuthUserData } from "./auth-user-data.interface.js";
 
 /** Result returned after signing in with email and password. */
-export interface SignInResult<User extends AuthUser = AuthUser> {
+export interface SignInResult<User extends AuthUserData = AuthUserData> {
   /** Whether the caller should redirect to {@link url}. */
   redirect: boolean;
   /** Created session token. */

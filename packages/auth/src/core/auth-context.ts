@@ -8,9 +8,10 @@ import { AuthAbility } from "../common/auth.ability.js";
 import { invalidateRequestPermissions } from "../common/utils/resolve-request-permissions.util.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
+import { resolveAuthWorkspace } from "../workspace/utils/resolve-auth-workspace.util.js";
 import { resolveRequestWorkspaceMember } from "../workspace/utils/resolve-request-workspace-member.util.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
-import { API_KEY } from "./constants/auth.constants.js";
+import { API_KEY, AUTH_WORKSPACE } from "./constants/auth.constants.js";
 import { Session } from "./entities/session.entity.js";
 import { User } from "./entities/user.entity.js";
 import type { AuthContextPatch } from "./interfaces/auth-context-patch.interface.js";
@@ -32,17 +33,23 @@ export class AuthContext {
       : null;
   }
   get member(): WorkspaceMember | null {
-    return RequestContext.isActive()
-      ? (RequestContext.get(WorkspaceMember) ?? null)
-      : null;
+    return resolveRequestWorkspaceMember();
   }
-  get workspace(): Workspace | null {
+  get selectedWorkspace(): Workspace | null {
     return RequestContext.isActive()
       ? (RequestContext.get(Workspace) ?? null)
       : null;
   }
   get apiKey(): ApiKeyObject | null {
     return getCurrentApiKey();
+  }
+
+  /**
+   * Workspace scope established from the current identity and effective grants.
+   * @returns Authenticated workspace, or null without effective workspace access.
+   */
+  get authWorkspace(): Workspace | null {
+    return resolveAuthWorkspace(this.options);
   }
 
   /**
@@ -92,11 +99,21 @@ export class AuthContext {
     }
   }
 
+  /** Clears a deleted target and its associated authenticated membership. */
   clearWorkspace(): void {
+    if (!RequestContext.isActive()) {
+      return;
+    }
+    RequestContext.set(Workspace, null);
+    this.clearWorkspaceMember();
+  }
+
+  /** Revokes membership without changing the independently selected target. */
+  clearWorkspaceMember(): void {
     if (this.apiKey?.ownerType === "workspace_member") {
       this.clear();
     } else {
-      this.set({ member: null, workspace: null });
+      this.set({ member: null });
     }
   }
 
@@ -115,6 +132,7 @@ export class AuthContext {
       return;
     }
     invalidateRequestPermissions();
+    RequestContext.set(AUTH_WORKSPACE, this.authWorkspace);
     RequestContext.set(AuthAbility, new AuthAbility());
     RequestContext.set(AuthAbility, buildRequestAbility(this.options));
   }
@@ -151,20 +169,16 @@ export class AuthContext {
   private databaseScope() {
     const user = this.user;
     const apiKey = this.apiKey;
-    const workspace = this.workspace;
+    const workspace = this.selectedWorkspace;
     const member = resolveRequestWorkspaceMember();
     const authenticated = Boolean(user ?? apiKey);
     return {
       role: authenticated ? "authenticated" : "anonymous",
       variables: {
-        "app.user.id": user?.id ?? "",
-        "app.workspace.id":
-          !authenticated || member ? (workspace?.id ?? "") : "",
-        "app.system_account.id":
-          apiKey?.ownerType === "system_account"
-            ? (apiKey.systemAccount?.id ?? "")
-            : "",
-        "app.member.id": member?.id ?? "",
+        "app.auth.user.id": user?.id ?? "",
+        "app.auth.workspace.id": this.authWorkspace?.id ?? "",
+        "app.selected.workspace.id": workspace?.id ?? "",
+        "app.auth.workspace_member.id": member?.id ?? "",
       },
     };
   }

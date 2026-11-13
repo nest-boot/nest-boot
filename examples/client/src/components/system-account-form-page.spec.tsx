@@ -18,8 +18,8 @@ import type { PageProps } from "./thread-ui/page";
 import type { ReactNode } from "react";
 import { createAbility, createAbilitySubject } from "@/lib/ability";
 
-vi.mock("@/app/_authenticated/contexts/current-user-context", () => ({
-  useCurrentUserContext: () => ({ id: "administrator" }),
+vi.mock("@/app/_authenticated/contexts/auth-user-context", () => ({
+  useAuthUserContext: () => ({ id: "administrator" }),
 }));
 vi.mock("@/hooks/use-resource-navigation", () => ({
   useResourceNavigation: () => ({ backSearch: {} }),

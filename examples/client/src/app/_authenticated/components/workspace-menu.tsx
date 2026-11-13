@@ -58,7 +58,7 @@ export function WorkspaceMenu({
     GET_WORKSPACES_FROM_WORKSPACE_SWITCHER,
     { variables: { first: 10 }, fetchPolicy: "no-cache" },
   );
-  const connection = data?.currentUser.workspaces;
+  const connection = data?.currentUser?.workspaces;
   useEffect(() => {
     onWorkspacesChange(
       connection?.edges.map(({ node: workspace }) => ({
@@ -84,6 +84,8 @@ export function WorkspaceMenu({
       await fetchMore({
         variables: { after },
         updateQuery(previous, { fetchMoreResult }) {
+          if (!previous.currentUser || !fetchMoreResult.currentUser)
+            return fetchMoreResult;
           const current = previous.currentUser.workspaces;
           const incoming = fetchMoreResult.currentUser.workspaces;
           return {

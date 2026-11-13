@@ -132,15 +132,20 @@ export class ApiKeyAuthenticationService {
    * @returns Callback that records usage for the captured key.
    */
   captureUsage(apiKey: ApiKeyObject): () => Promise<ApiKeyObject> {
-    const system = apiKey.ownerType === "system_account";
-    // System credentials have no request-role SQL access. Only the framework's
-    // captured usage writer bypasses RLS, with an isolated manager and exact key ID.
-    // Human/member usage retains the caller's transaction and database scope.
+    const isolated =
+      apiKey.ownerType === "system_account" ||
+      (apiKey.ownerType === "workspace_member" &&
+        this.em.getSessionContext()?.variables?.[
+          "app.auth.workspace_member.id"
+        ] !== apiKey.member?.id);
+    // System credentials and member keys used outside their owning workspace have
+    // no request-role access to their key row. Isolate only that captured audit
+    // write; never change the business request's database scope or transaction.
     const manager = this.em.fork({
       useContext: false,
-      keepTransactionContext: !system,
+      keepTransactionContext: !isolated,
     });
-    if (system) {
+    if (isolated) {
       manager.clearSessionContext();
     }
     return () => this.writeUsage(manager, apiKey);

@@ -152,7 +152,7 @@ test.describe("administrator impersonation", () => {
           }
         `,
       );
-      targetId = target.currentUser.id;
+      targetId = target.currentUser?.id;
     } finally {
       await targetContext.close();
     }

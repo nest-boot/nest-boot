@@ -11,7 +11,8 @@ import {
 import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
 import { type GraphQLResolveInfo } from "graphql";
 
-import { CurrentUser } from "../../core/decorators/current-user.decorator.js";
+import { Public } from "../../common/decorators/public.decorator.js";
+import { AuthUser } from "../../core/decorators/auth-user.decorator.js";
 import { User } from "../../core/entities/user.entity.js";
 import {
   WorkspaceConnection,
@@ -25,7 +26,9 @@ import {
   WorkspaceMemberConnection,
   WorkspaceMemberConnectionArgs,
 } from "../connections/workspace-member.connection-definition.js";
-import { CurrentWorkspaceMember } from "../decorators/current-workspace-member.decorator.js";
+import { AuthWorkspace } from "../decorators/auth-workspace.decorator.js";
+import { AuthWorkspaceMember } from "../decorators/auth-workspace-member.decorator.js";
+import { SelectedWorkspace } from "../decorators/selected-workspace.decorator.js";
 import { Workspace } from "../entities/workspace.entity.js";
 import { type WorkspaceInvitation } from "../entities/workspace-invitation.entity.js";
 import { WorkspaceMember } from "../entities/workspace-member.entity.js";
@@ -147,11 +150,28 @@ export class WorkspaceResolver {
 
   /**
    * Returns the workspace selected for the current request.
+   * @param workspace - Selected target, independent of authentication or membership.
    * @returns Current workspace, or null when none is selected.
    */
+  @Public()
   @Query(() => Workspace, { nullable: true })
-  currentWorkspace(): Workspace | null {
-    return this.workspaceService.getCurrentWorkspace();
+  selectedWorkspace(
+    @SelectedWorkspace() workspace: Workspace | null,
+  ): Workspace | null {
+    return workspace;
+  }
+
+  /**
+   * Returns the authenticated workspace scope for this request.
+   * @param workspace - Selected workspace backed by effective membership or system grants.
+   * @returns Authenticated workspace, or null when selection has no private scope.
+   */
+  @Public()
+  @Query(() => Workspace, { nullable: true })
+  currentWorkspace(
+    @AuthWorkspace() workspace: Workspace | null,
+  ): Workspace | null {
+    return workspace;
   }
 
   /**
@@ -163,7 +183,7 @@ export class WorkspaceResolver {
   @Query(() => Workspace, { nullable: true })
   async workspace(
     @Args({ name: "id", type: () => ID }) id: string,
-    @CurrentUser() user: User,
+    @AuthUser() user: User,
   ): Promise<Workspace | null> {
     return await this.workspaceService.getUserWorkspace(id, user);
   }
@@ -176,7 +196,7 @@ export class WorkspaceResolver {
    */
   @Mutation(() => CreateWorkspacePayload)
   async createWorkspace(
-    @CurrentUser() user: User,
+    @AuthUser() user: User,
     @Args("input") input: CreateWorkspaceInput,
   ): Promise<CreateWorkspacePayload> {
     const workspace = await this.workspaceService.createWorkspace(user, input);
@@ -218,7 +238,7 @@ export class WorkspaceResolver {
    */
   @Mutation(() => LeaveWorkspacePayload)
   async leaveWorkspace(
-    @CurrentWorkspaceMember() member: WorkspaceMember,
+    @AuthWorkspaceMember() member: WorkspaceMember,
   ): Promise<LeaveWorkspacePayload> {
     const removed = await this.workspaceMemberService.leaveWorkspace(member);
     return { memberId: removed.id };

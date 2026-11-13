@@ -180,12 +180,12 @@ function UserSecurityComponent() {
   const [unlinkingAccountId, setUnlinkingAccountId] = useState<string>();
   const [linkingProviderId, setLinkingProviderId] = useState<string>();
   const sessions =
-    sessionData?.currentUser.sessions.edges.map(({ node }) => node) ?? [];
+    sessionData?.currentUser?.sessions.edges.map(({ node }) => node) ?? [];
   const accounts =
-    accountData?.currentUser.accounts.edges.map(({ node }) => node) ?? [];
+    accountData?.currentUser?.accounts.edges.map(({ node }) => node) ?? [];
   const socialProviders = socialProviderData?.socialProviders ?? [];
   const linkableProviders =
-    accountData && !accountData.currentUser.accounts.pageInfo.hasNextPage
+    accountData && !accountData.currentUser?.accounts.pageInfo.hasNextPage
       ? socialProviders.filter(
           (provider) =>
             !accounts.some((account) => account.providerId === provider.id),
@@ -608,7 +608,7 @@ function UserSecurityComponent() {
           </Card>
         </PageLayoutSection>
 
-        {sessionData?.currentUser.sessions.pageInfo.hasNextPage && (
+        {sessionData?.currentUser?.sessions.pageInfo.hasNextPage && (
           <PageLayoutSection>
             <Button
               variant="outline"
@@ -616,21 +616,25 @@ function UserSecurityComponent() {
               onClick={() =>
                 fetchMoreSessions({
                   variables: {
-                    after: sessionData.currentUser.sessions.pageInfo.endCursor,
+                    after: sessionData.currentUser?.sessions.pageInfo.endCursor,
                   },
-                  updateQuery: (previous, { fetchMoreResult }) => ({
-                    ...fetchMoreResult,
-                    currentUser: {
-                      ...fetchMoreResult.currentUser,
-                      sessions: {
-                        ...fetchMoreResult.currentUser.sessions,
-                        edges: [
-                          ...previous.currentUser.sessions.edges,
-                          ...fetchMoreResult.currentUser.sessions.edges,
-                        ],
+                  updateQuery: (previous, { fetchMoreResult }) => {
+                    if (!previous.currentUser || !fetchMoreResult.currentUser)
+                      return fetchMoreResult;
+                    return {
+                      ...fetchMoreResult,
+                      currentUser: {
+                        ...fetchMoreResult.currentUser,
+                        sessions: {
+                          ...fetchMoreResult.currentUser.sessions,
+                          edges: [
+                            ...previous.currentUser.sessions.edges,
+                            ...fetchMoreResult.currentUser.sessions.edges,
+                          ],
+                        },
                       },
-                    },
-                  }),
+                    };
+                  },
                 })
               }
             >
@@ -672,7 +676,7 @@ function UserSecurityComponent() {
                           </p>
                         </div>
                         {!credential &&
-                        (accountData?.currentUser.accounts.totalCount ?? 0) >
+                        (accountData?.currentUser?.accounts.totalCount ?? 0) >
                           1 ? (
                           <Button
                             type="button"
@@ -713,7 +717,7 @@ function UserSecurityComponent() {
           </Card>
         </PageLayoutSection>
 
-        {accountData?.currentUser.accounts.pageInfo.hasNextPage && (
+        {accountData?.currentUser?.accounts.pageInfo.hasNextPage && (
           <PageLayoutSection>
             <Button
               variant="outline"
@@ -721,21 +725,25 @@ function UserSecurityComponent() {
               onClick={() =>
                 fetchMoreAccounts({
                   variables: {
-                    after: accountData.currentUser.accounts.pageInfo.endCursor,
+                    after: accountData.currentUser?.accounts.pageInfo.endCursor,
                   },
-                  updateQuery: (previous, { fetchMoreResult }) => ({
-                    ...fetchMoreResult,
-                    currentUser: {
-                      ...fetchMoreResult.currentUser,
-                      accounts: {
-                        ...fetchMoreResult.currentUser.accounts,
-                        edges: [
-                          ...previous.currentUser.accounts.edges,
-                          ...fetchMoreResult.currentUser.accounts.edges,
-                        ],
+                  updateQuery: (previous, { fetchMoreResult }) => {
+                    if (!previous.currentUser || !fetchMoreResult.currentUser)
+                      return fetchMoreResult;
+                    return {
+                      ...fetchMoreResult,
+                      currentUser: {
+                        ...fetchMoreResult.currentUser,
+                        accounts: {
+                          ...fetchMoreResult.currentUser.accounts,
+                          edges: [
+                            ...previous.currentUser.accounts.edges,
+                            ...fetchMoreResult.currentUser.accounts.edges,
+                          ],
+                        },
                       },
-                    },
-                  }),
+                    };
+                  },
                 })
               }
             >

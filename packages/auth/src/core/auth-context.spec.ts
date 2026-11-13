@@ -121,14 +121,17 @@ describe("AuthContext", () => {
           expect(can("read", User)).toBe(
             credential === "session" || credential === "user-key",
           );
-          createTestAuthContext(em, {}).initialize({});
+          createTestAuthContext(em, withAuthTestFeatures(options)).initialize(
+            {},
+          );
           expect(em.setSessionContext).toHaveBeenLastCalledWith({
             role: "authenticated",
             variables: {
-              "app.user.id": user?.id ?? "",
-              "app.workspace.id": valid ? workspace.id : "",
-              "app.system_account.id": "",
-              "app.member.id": valid ? member.id : "",
+              "app.auth.user.id": user?.id ?? "",
+              "app.auth.workspace.id": valid ? workspace.id : "",
+              "app.selected.workspace.id":
+                state === "no-workspace" ? "" : workspace.id,
+              "app.auth.workspace_member.id": valid ? member.id : "",
             },
           });
         });
@@ -158,14 +161,17 @@ describe("AuthContext", () => {
           "workspace:read",
         ]),
       ).toBe(false);
-      createTestAuthContext(em, {}).initialize({});
+      createTestAuthContext(
+        em,
+        withAuthTestFeatures({ workspace: { enabled: true } }),
+      ).initialize({});
       expect(em.setSessionContext).toHaveBeenCalledWith({
         role: "anonymous",
         variables: {
-          "app.user.id": "",
-          "app.workspace.id": workspace.id,
-          "app.system_account.id": "",
-          "app.member.id": "",
+          "app.auth.user.id": "",
+          "app.auth.workspace.id": "",
+          "app.selected.workspace.id": workspace.id,
+          "app.auth.workspace_member.id": "",
         },
       });
     });
@@ -178,14 +184,17 @@ describe("AuthContext", () => {
     const second = Object.assign(new WorkspaceMember(), { user, workspace });
     await RequestContext.run(new RequestContext({ type: "test" }), () => {
       stageIdentity({ user, workspace, member: first });
-      createTestAuthContext(em, {}).initialize({});
+      createTestAuthContext(
+        em,
+        withAuthTestFeatures({ workspace: { enabled: true } }),
+      ).initialize({});
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "authenticated",
         variables: {
-          "app.user.id": user.id,
-          "app.workspace.id": workspace.id,
-          "app.system_account.id": "",
-          "app.member.id": first.id,
+          "app.auth.user.id": user.id,
+          "app.auth.workspace.id": workspace.id,
+          "app.selected.workspace.id": workspace.id,
+          "app.auth.workspace_member.id": first.id,
         },
       });
       createTestAuthContext(
@@ -195,34 +204,34 @@ describe("AuthContext", () => {
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "authenticated",
         variables: {
-          "app.user.id": user.id,
-          "app.workspace.id": workspace.id,
-          "app.system_account.id": "",
-          "app.member.id": second.id,
+          "app.auth.user.id": user.id,
+          "app.auth.workspace.id": workspace.id,
+          "app.selected.workspace.id": workspace.id,
+          "app.auth.workspace_member.id": second.id,
         },
       });
       second.status = "DISABLED";
       createTestAuthContext(
         em,
         withAuthTestFeatures({ workspace: { enabled: true } }),
-      ).clearWorkspace();
+      ).clearWorkspaceMember();
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "authenticated",
         variables: {
-          "app.user.id": user.id,
-          "app.workspace.id": "",
-          "app.system_account.id": "",
-          "app.member.id": "",
+          "app.auth.user.id": user.id,
+          "app.auth.workspace.id": "",
+          "app.selected.workspace.id": workspace.id,
+          "app.auth.workspace_member.id": "",
         },
       });
       createTestAuthContext(em, {}).clear();
       expect(em.setSessionContext).toHaveBeenLastCalledWith({
         role: "anonymous",
         variables: {
-          "app.user.id": "",
-          "app.workspace.id": "",
-          "app.system_account.id": "",
-          "app.member.id": "",
+          "app.auth.user.id": "",
+          "app.auth.workspace.id": "",
+          "app.selected.workspace.id": workspace.id,
+          "app.auth.workspace_member.id": "",
         },
       });
     });
@@ -384,7 +393,7 @@ describe("AuthContext", () => {
         expect(RequestContext.get(User)).toBeNull();
         expect(RequestContext.get(Session)).toBeNull();
         expect(RequestContext.get(WorkspaceMember)).toBeNull();
-        expect(RequestContext.get(Workspace)).toBeNull();
+        expect(RequestContext.get(Workspace)).toBeInstanceOf(Workspace);
         expect(RequestContext.get(API_KEY)).toBeNull();
         expect(RequestContext.get(AuthAbility)?.rules).toEqual([]);
         expect(
@@ -397,10 +406,10 @@ describe("AuthContext", () => {
         expect(em.setSessionContext).toHaveBeenLastCalledWith({
           role: "anonymous",
           variables: {
-            "app.user.id": "",
-            "app.workspace.id": "",
-            "app.system_account.id": "",
-            "app.member.id": "",
+            "app.auth.user.id": "",
+            "app.auth.workspace.id": "",
+            "app.selected.workspace.id": RequestContext.get(Workspace)?.id,
+            "app.auth.workspace_member.id": "",
           },
         });
       });
@@ -708,10 +717,10 @@ describe("unified request abilities", () => {
         expect(em.setSessionContext).toHaveBeenCalledWith({
           role: "authenticated",
           variables: {
-            "app.user.id": first.user.id,
-            "app.workspace.id": second.workspace.id,
-            "app.system_account.id": "",
-            "app.member.id": second.member.id,
+            "app.auth.user.id": first.user.id,
+            "app.auth.workspace.id": second.workspace.id,
+            "app.selected.workspace.id": second.workspace.id,
+            "app.auth.workspace_member.id": second.member.id,
           },
         });
       });

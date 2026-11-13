@@ -2,7 +2,7 @@ import { useMutation } from "@apollo/client/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
 import { graphql } from "@/gql";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 
 import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-context";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
@@ -69,7 +69,7 @@ export const Route = createFileRoute("/_authenticated/user/api-keys/create/")({
 function CreateApiKeyPage() {
   const navigate = Route.useNavigate();
   const { setCreatedKey } = useCreatedApiKey();
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   const { backSearch } = useResourceNavigation({
     key: [currentUser.id, ...userApiKeysResourceKey],
     searchSchema: apiKeySearchSchema,

@@ -573,10 +573,10 @@ describe("WorkspaceService and cross-domain coordination", () => {
             expect(em.setSessionContext).toHaveBeenCalledWith({
               role: "anonymous",
               variables: {
-                "app.user.id": "",
-                "app.workspace.id": "",
-                "app.system_account.id": "",
-                "app.member.id": "",
+                "app.auth.user.id": "",
+                "app.auth.workspace.id": "",
+                "app.selected.workspace.id": "",
+                "app.auth.workspace_member.id": "",
               },
             });
           } else {
@@ -587,7 +587,9 @@ describe("WorkspaceService and cross-domain coordination", () => {
             }
             expect(em.setSessionContext).toHaveBeenCalledWith(
               expect.objectContaining({
-                variables: expect.objectContaining({ "app.workspace.id": "" }),
+                variables: expect.objectContaining({
+                  "app.auth.workspace.id": "",
+                }),
               }),
             );
           }

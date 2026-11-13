@@ -13,7 +13,7 @@ import {
   getPermissionOptions,
 } from "@/lib/permissions";
 import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-context";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
 import { adminApiKeysResourceKey } from "@/lib/resource-keys";
@@ -63,7 +63,7 @@ function Create() {
   const permissionOptions = selected?.apiKeyPermissions ?? keyPermissionOptions;
   const navigate = Route.useNavigate();
   const { setCreatedKey } = useCreatedApiKey();
-  const user = useCurrentUserContext();
+  const user = useAuthUserContext();
   const issued = useRef<{ id: string; secret: string } | undefined>(undefined);
   const { backSearch } = useResourceNavigation({
     key: [user.id, ...adminApiKeysResourceKey],

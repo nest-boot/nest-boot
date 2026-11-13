@@ -9,7 +9,7 @@ import {
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 
-import { useCurrentWorkspaceMemberContext } from "../../contexts/current-workspace-member-context";
+import { useAuthWorkspaceMemberContext } from "../../contexts/auth-workspace-member-context";
 import { WorkspaceMemberProfileForm } from "./components/workspace-member-profile-form";
 import { WorkspaceMemberRolesForm } from "./components/workspace-member-roles-form";
 import { WorkspaceMemberPermissionsForm } from "./components/workspace-member-permissions-form";
@@ -18,7 +18,7 @@ import type { GetWorkspaceMemberFromWorkspaceMemberRouteQuery } from "@/gql/grap
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { Link } from "@/components/link";
-import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
+import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { getWorkspaceMembersResourceKey } from "@/lib/resource-keys";
 import { workspaceMemberSearchSchema } from "@/schemas/workspace-member-search-schema";
@@ -44,7 +44,7 @@ const GET_WORKSPACE_MEMBER_NEIGHBORS = graphql(`
     $filter: WorkspaceMemberFilter
     $orderBy: WorkspaceMemberOrder
   ) {
-    currentWorkspace {
+    selectedWorkspace {
       id
       previous: members(
         last: 1
@@ -185,7 +185,7 @@ function WorkspaceMemberDetails({
   const router = useRouter();
   const navigate = useNavigate();
   const { workspaceId } = Route.useParams();
-  const currentWorkspaceMember = useCurrentWorkspaceMemberContext();
+  const currentWorkspaceMember = useAuthWorkspaceMemberContext();
   const ability = useAbility();
   const [updateWorkspaceMemberStatus] = useMutation(
     UPDATE_WORKSPACE_MEMBER_STATUS_FROM_WORKSPACE_MEMBERS_ROUTE,
@@ -198,7 +198,7 @@ function WorkspaceMemberDetails({
   const [loadNeighbors] = useLazyQuery(GET_WORKSPACE_MEMBER_NEIGHBORS, {
     fetchPolicy: "network-only",
   });
-  const currentUser = useCurrentUserContext();
+  const currentUser = useAuthUserContext();
   const navigation = useResourceNavigation({
     key: [currentUser.id, ...getWorkspaceMembersResourceKey(workspaceId)],
     searchSchema: workspaceMemberSearchSchema,
@@ -218,10 +218,10 @@ function WorkspaceMemberDetails({
           },
           context: { headers: { "x-workspace-id": workspaceId } },
         });
-        if (data?.currentWorkspace?.id !== workspaceId) return undefined;
+        if (data?.selectedWorkspace?.id !== workspaceId) return undefined;
         return {
-          previousEdge: data.currentWorkspace.previous.edges[0],
-          nextEdge: data.currentWorkspace.next.edges[0],
+          previousEdge: data.selectedWorkspace.previous.edges[0],
+          nextEdge: data.selectedWorkspace.next.edges[0],
         };
       },
       [member, loadNeighbors, workspaceId],

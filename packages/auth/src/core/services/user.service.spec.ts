@@ -161,10 +161,10 @@ describe("UserService", () => {
         field === "permissions" ? current : Object.assign(new User(), current);
       em.findOne.mockResolvedValue(stored);
       mockRlsContext(em).variables = {
-        "app.user.id": current.id,
-        "app.workspace.id": "",
-        "app.system_account.id": "",
-        "app.member.id": "",
+        "app.auth.user.id": current.id,
+        "app.auth.workspace.id": "",
+        "app.selected.workspace.id": "",
+        "app.auth.workspace_member.id": "",
       };
       await RequestContext.run(
         new RequestContext({ type: "test" }),
