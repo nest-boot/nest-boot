@@ -1,7 +1,7 @@
 import { graphql } from "@/gql";
 
 export const UPDATE_WORKSPACE_API_KEY = graphql(`
-  mutation updateWorkspaceApiKeyFromApiKeysRoute(
+  mutation updateWorkspaceApiKey(
     $id: ID!
     $input: UpdateWorkspaceApiKeyInput!
   ) {

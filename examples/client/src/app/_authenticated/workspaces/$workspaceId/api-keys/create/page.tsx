@@ -20,9 +20,7 @@ import {
 import { isAccessDenied } from "@/lib/auth-errors";
 
 const CREATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
-  mutation createWorkspaceApiKeyFromApiKeysRoute(
-    $input: CreateWorkspaceApiKeyInput!
-  ) {
+  mutation createWorkspaceApiKey($input: CreateWorkspaceApiKeyInput!) {
     createWorkspaceApiKey(input: $input) {
       apiKey
       entity {
@@ -36,16 +34,6 @@ const CREATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
         lastUsedAt
         expiresAt
       }
-    }
-  }
-`);
-
-const ADD_WORKSPACE_SERVICE_ACCOUNT_FOR_API_KEY = graphql(`
-  mutation addWorkspaceServiceAccountForApiKey(
-    $input: AddWorkspaceMemberInput!
-  ) {
-    addWorkspaceMember(input: $input) {
-      id
     }
   }
 `);
@@ -163,12 +151,6 @@ function CreateApiKeyPage() {
   });
   const { permissionOptions, memberOptions, canCreateWorkspaceServiceAccount } =
     Route.useRouteContext();
-  const [addWorkspaceServiceAccount] = useMutation(
-    ADD_WORKSPACE_SERVICE_ACCOUNT_FOR_API_KEY,
-    {
-      fetchPolicy: "no-cache",
-    },
-  );
   const [createApiKey] = useMutation(CREATE_API_KEY_FROM_API_KEYS_ROUTE, {
     fetchPolicy: "no-cache",
   });
@@ -185,24 +167,8 @@ function CreateApiKeyPage() {
       permissionOptions={getPermissionOptions(permissionOptions)}
       defaultPermissions={getDefaultApiKeyPermissions(permissionOptions)}
       onSave={async (input) => {
-        let memberId = input.memberId;
-        if (!memberId) {
-          const result = await addWorkspaceServiceAccount({
-            variables: {
-              input: {
-                type: WorkspaceMemberType.SERVICE_ACCOUNT,
-                name: input.name,
-                ...(input.permissions.length
-                  ? { roles: [], permissions: input.permissions }
-                  : {}),
-              },
-            },
-          });
-          memberId = result.data?.addWorkspaceMember.id;
-          if (!memberId) throw new Error(t("api-key:form.save_failed"));
-        }
         const result = await createApiKey({
-          variables: { input: { ...input, memberId } },
+          variables: { input },
         });
         const created = result.data?.createWorkspaceApiKey;
         if (!created) throw new Error(t("api-key:form.save_failed"));

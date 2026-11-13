@@ -351,8 +351,8 @@ export async function verifyAuthFeatures(
       expect(invited.errors).toBeUndefined();
       if (expected.owners.includes("WorkspaceMember")) {
         const key = await graphql(
-          'mutation { createWorkspaceApiKey(input: {name: "Workspace key"}) { apiKey entity { id member { __typename  id workspaceId  } } } }',
-          {},
+          'mutation($id: ID!) { createWorkspaceApiKey(input: {memberId: $id, name: "Workspace key"}) { apiKey entity { id member { __typename  id workspaceId  } } } }',
+          { id: workspaceRoles.data?.currentWorkspaceMember.id },
           { "x-workspace-id": workspaceId },
         );
         expect(key.errors).toBeUndefined();
@@ -402,7 +402,7 @@ export async function verifyAuthFeatures(
       expect(account.errors).toBeUndefined();
       if (expected.owners.includes("SystemAccount")) {
         const key = await graphql(
-          'mutation($id: ID!) { createSystemApiKey(systemAccountId: $id, input: {name: "System key", permissions: [USER__READ]}) {apiKey entity {id systemAccount { __typename id }}}}',
+          'mutation($id: ID!) { createSystemApiKey(input: {systemAccountId: $id,name: "System key", permissions: [USER__READ]}) {apiKey entity {id systemAccount { __typename id }}}}',
           { id: account.data?.createSystemAccount.id },
         );
         expect(key.errors).toBeUndefined();

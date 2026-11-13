@@ -11,6 +11,8 @@ import type { AuthModuleOptions } from "../../src/core/interfaces/auth-module-op
 import * as identityAccess from "../../src/core/utils/assert-current-identity.util.js";
 import { Workspace } from "../../src/workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../src/workspace/entities/workspace-member.entity.js";
+import { WorkspaceMemberService } from "../../src/workspace/services/workspace-member.service.js";
+import { createTestAuthContext } from "./auth-context.fixture.js";
 import { createTestApiKeyService } from "./auth-context.fixture.js";
 import { withAuthTestFeatures } from "./enabled-auth-features.fixture.js";
 /**
@@ -114,6 +116,7 @@ export function createService(
     create: vi.fn((_entity, data) => Object.assign(new _entity(), data)),
     findOne: vi.fn(),
     populate: vi.fn().mockImplementation((entity) => Promise.resolve(entity)),
+    refreshOrFail: vi.fn((entity) => Promise.resolve(entity)),
     createQueryBuilder: vi.fn(() => ({
       select: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
@@ -153,6 +156,11 @@ export function createService(
     em,
     withAuthTestFeatures(options),
     createTestApiKeyService(em, withAuthTestFeatures(options)),
+    new WorkspaceMemberService(
+      em,
+      withAuthTestFeatures(options),
+      createTestAuthContext(em, withAuthTestFeatures(options)),
+    ),
   );
   return {
     authorization,

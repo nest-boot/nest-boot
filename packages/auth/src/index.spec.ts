@@ -317,13 +317,14 @@ describe("exported input contracts", () => {
     {
       name: "CreateSystemApiKeyInput",
       values: {
+        systemAccountId: "account-1",
         name: "Key",
         permissions: ["user:read"],
         prefix: "sys_",
         expiresAt: new Date("2030-01-01T00:00:00Z"),
       },
       required: ["name"],
-      nullable: ["permissions", "expiresAt"],
+      nullable: ["systemAccountId", "permissions", "expiresAt"],
     },
     {
       name: "UpdateSystemApiKeyInput",
@@ -459,7 +460,7 @@ describe("exported input contracts", () => {
         permissions: ["Custom:Read"],
       },
       required: ["name"],
-      nullable: ["expiresAt", "permissions"],
+      nullable: ["memberId", "expiresAt", "permissions"],
     },
     {
       name: "CreateWorkspaceInvitationInput",

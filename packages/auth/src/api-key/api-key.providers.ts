@@ -29,16 +29,24 @@ export const apiKeyProviders: Provider[] = [
   featureProvider(
     WorkspaceApiKeyService,
     "workspaceApiKey",
-    [EntityManager, ApiKeyService],
-    (options, em: EntityManager, apiKeys: ApiKeyService) =>
-      new WorkspaceApiKeyService(em, options, apiKeys),
+    [EntityManager, ApiKeyService, WorkspaceMemberService],
+    (
+      options,
+      em: EntityManager,
+      apiKeys: ApiKeyService,
+      members: WorkspaceMemberService,
+    ) => new WorkspaceApiKeyService(em, options, apiKeys, members),
   ),
   featureProvider(
     SystemApiKeyService,
     "systemApiKeyManagement",
-    [EntityManager, ApiKeyService],
-    (options, em: EntityManager, apiKeys: ApiKeyService) =>
-      new SystemApiKeyService(em, options, apiKeys),
+    [EntityManager, ApiKeyService, SystemAccountService],
+    (
+      options,
+      em: EntityManager,
+      apiKeys: ApiKeyService,
+      accounts: SystemAccountService,
+    ) => new SystemApiKeyService(em, options, apiKeys, accounts),
   ),
   featureProvider(
     UserApiKeyResolver,

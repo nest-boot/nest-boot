@@ -13,6 +13,7 @@ import {
 } from "@nestjs/common";
 import type { GraphQLResolveInfo } from "graphql";
 
+import { SystemAccountService } from "../../admin/services/system-account.service.js";
 import { assertSystemAccountAdministrator } from "../../admin/utils/assert-system-account-administrator.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
 import {
@@ -26,7 +27,7 @@ import type { AuthModuleOptions } from "../../core/interfaces/auth-module-option
 import { SystemApiKeyConnection } from "../connections/system-api-key.connection-definition.js";
 import { ApiKey } from "../entities/api-key.entity.js";
 import { SystemAccount } from "../entities/system-account.entity.js";
-import type { CreateApiKeyOptions } from "../interfaces/create-api-key-options.interface.js";
+import type { CreateSystemApiKeyOptions } from "../interfaces/create-system-api-key-options.interface.js";
 import type { CreatedApiKey } from "../interfaces/created-api-key.interface.js";
 import type { UpdateApiKeyOptions } from "../interfaces/update-api-key-options.interface.js";
 import { SystemApiKey } from "../objects/system-api-key.object.js";
@@ -47,6 +48,7 @@ export class SystemApiKeyService {
     private readonly em: EntityManager,
     @Inject(MODULE_OPTIONS_TOKEN) private readonly options: AuthModuleOptions,
     private readonly apiKeys: ApiKeyService,
+    private readonly accounts: SystemAccountService,
   ) {}
 
   /**
@@ -169,13 +171,11 @@ export class SystemApiKeyService {
 
   /**
    * Issues plaintext once, bounded by account, administrator and configured ceilings.
-   * @param systemAccountId - Identifier of the owning system account.
    * @param input - Requested metadata and permission changes.
    * @returns Created credential with its one-time plaintext key.
    */
   async createSystemApiKey(
-    systemAccountId: string,
-    input: CreateApiKeyOptions,
+    input: CreateSystemApiKeyOptions,
   ): Promise<CreatedApiKey<SystemApiKey>> {
     const user = this.assertAccess("write");
     const permissions = normalizeApiKeyPermissions(
@@ -194,11 +194,17 @@ export class SystemApiKeyService {
     return await runAuthQuery(this.em, (em) =>
       em.transactional(
         async (tx) => {
-          const account = await tx.findOne(
-            SystemAccount,
-            { id: systemAccountId, enabled: true },
-            { lockMode: LockMode.PESSIMISTIC_WRITE },
-          );
+          const account =
+            input.systemAccountId != null
+              ? await tx.findOne(
+                  SystemAccount,
+                  { id: input.systemAccountId, enabled: true },
+                  { lockMode: LockMode.PESSIMISTIC_WRITE },
+                )
+              : await this.accounts.createSystemAccount({
+                  name: input.name,
+                  permissions,
+                });
           if (!account) {
             throw new NotFoundException("Enabled system account not found");
           }
@@ -213,10 +219,7 @@ export class SystemApiKeyService {
             createdBy: user.id,
           });
           assertApiKeyOwner(entity, "system_account");
-          authorize("write", entity);
-          for (const field of ["name", "permissions"]) {
-            authorize("write", entity, field);
-          }
+          this.apiKeys.authorizeCreation(entity, input);
           await tx.persist(entity).flush();
           return { apiKey, entity: toApiKeyView(entity) };
         },

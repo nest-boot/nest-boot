@@ -12,7 +12,7 @@ import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { useCurrentUserContext } from "@/app/_authenticated/contexts/current-user-context";
 
 const LIST = graphql(`
-  query managedSystemAccountKeys(
+  query systemApiKeys(
     $first: Int
     $last: Int
     $after: String

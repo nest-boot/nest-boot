@@ -1182,6 +1182,11 @@ describe("Auth services and native RLS boundaries", () => {
             em,
             withAuthTestFeatures(options),
             createTestApiKeyService(em, withAuthTestFeatures(options)),
+            new WorkspaceMemberService(
+              em,
+              withAuthTestFeatures(options),
+              createTestAuthContext(em, withAuthTestFeatures(options)),
+            ),
           );
           const created = await service.createWorkspaceApiKey(workspace, {
             name: "Deploy",
@@ -1338,6 +1343,18 @@ describe("Auth services and native RLS boundaries", () => {
           withAuthTestFeatures({
             workspace: { enabled: true },
           }),
+        ),
+        new WorkspaceMemberService(
+          em,
+          withAuthTestFeatures({
+            workspace: { enabled: true },
+          }),
+          createTestAuthContext(
+            em,
+            withAuthTestFeatures({
+              workspace: { enabled: true },
+            }),
+          ),
         ),
       );
       const page = await service.getWorkspaceApiKeyConnection(workspace, {

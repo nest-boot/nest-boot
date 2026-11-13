@@ -8,10 +8,10 @@ import { WorkspaceApiKeyPermission } from "../enums/workspace-api-key-permission
  */
 @InputType()
 export class CreateWorkspaceApiKeyInput {
-  /** Owning member; omission uses the current member. */
-  @ZodField((z) => z.string().min(1).optional())
+  /** Existing owning member; omission creates a service account atomically with the key. */
+  @ZodField((z) => z.string().min(1).nullish())
   @Field(() => ID, { nullable: true })
-  memberId?: string;
+  memberId?: string | null;
 
   /** API key display name. */
   @ZodField((z) => z.string().trim().min(1).max(255))

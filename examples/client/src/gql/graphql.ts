@@ -310,6 +310,7 @@ export type CreateSystemApiKeyInput = {
   name: Scalars["String"]["input"];
   permissions?: InputMaybe<Array<SystemApiKeyPermission>>;
   prefix?: InputMaybe<Scalars["String"]["input"]>;
+  systemAccountId?: InputMaybe<Scalars["ID"]["input"]>;
 };
 
 export type CreateSystemApiKeyResult = {
@@ -546,7 +547,6 @@ export type MutationCreateSystemAccountArgs = {
 
 export type MutationCreateSystemApiKeyArgs = {
   input: CreateSystemApiKeyInput;
-  systemAccountId: Scalars["ID"]["input"];
 };
 
 export type MutationCreateUserArgs = {
@@ -1838,7 +1838,7 @@ export type WorkspaceRoleOption = {
   role: WorkspaceRole;
 };
 
-export type ManagedSystemAccountKeysQueryVariables = Exact<{
+export type SystemApiKeysQueryVariables = Exact<{
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
   after?: InputMaybe<Scalars["String"]["input"]>;
@@ -1848,7 +1848,7 @@ export type ManagedSystemAccountKeysQueryVariables = Exact<{
   orderBy?: InputMaybe<SystemApiKeyOrder>;
 }>;
 
-export type ManagedSystemAccountKeysQuery = {
+export type SystemApiKeysQuery = {
   __typename?: "Query";
   systemApiKeys: {
     __typename?: "SystemApiKeyConnection";
@@ -2703,11 +2703,11 @@ export type RejectWorkspaceInvitationFromUserWorkspacesRouteMutation = {
   };
 };
 
-export type DeleteWorkspaceApiKeyFromApiKeysRouteMutationVariables = Exact<{
+export type DeleteWorkspaceApiKeyMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
 }>;
 
-export type DeleteWorkspaceApiKeyFromApiKeysRouteMutation = {
+export type DeleteWorkspaceApiKeyMutation = {
   __typename?: "Mutation";
   deleteWorkspaceApiKey: {
     __typename?: "WorkspaceApiKey";
@@ -2785,11 +2785,11 @@ export type GetWorkspaceApiKeyNeighborsQuery = {
   };
 };
 
-export type CreateWorkspaceApiKeyFromApiKeysRouteMutationVariables = Exact<{
+export type CreateWorkspaceApiKeyMutationVariables = Exact<{
   input: CreateWorkspaceApiKeyInput;
 }>;
 
-export type CreateWorkspaceApiKeyFromApiKeysRouteMutation = {
+export type CreateWorkspaceApiKeyMutation = {
   __typename?: "Mutation";
   createWorkspaceApiKey: {
     __typename?: "CreateWorkspaceApiKeyResult";
@@ -2807,15 +2807,6 @@ export type CreateWorkspaceApiKeyFromApiKeysRouteMutation = {
       expiresAt?: any | null;
     };
   };
-};
-
-export type AddWorkspaceServiceAccountForApiKeyMutationVariables = Exact<{
-  input: AddWorkspaceMemberInput;
-}>;
-
-export type AddWorkspaceServiceAccountForApiKeyMutation = {
-  __typename?: "Mutation";
-  addWorkspaceMember: { __typename?: "AddWorkspaceMemberPayload"; id: string };
 };
 
 export type GetWorkspaceApiKeyOptionsQueryVariables = Exact<{
@@ -3406,11 +3397,11 @@ export type RevokeUserApiKeyFromApiKeysRouteMutation = {
   };
 };
 
-export type RevokeWorkspaceApiKeyFromApiKeysRouteMutationVariables = Exact<{
+export type RevokeWorkspaceApiKeyMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
 }>;
 
-export type RevokeWorkspaceApiKeyFromApiKeysRouteMutation = {
+export type RevokeWorkspaceApiKeyMutation = {
   __typename?: "Mutation";
   revokeWorkspaceApiKey: {
     __typename?: "WorkspaceApiKey";
@@ -3440,12 +3431,12 @@ export type UpdateUserApiKeyFromUserApiKeysRouteMutation = {
   };
 };
 
-export type UpdateWorkspaceApiKeyFromApiKeysRouteMutationVariables = Exact<{
+export type UpdateWorkspaceApiKeyMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
   input: UpdateWorkspaceApiKeyInput;
 }>;
 
-export type UpdateWorkspaceApiKeyFromApiKeysRouteMutation = {
+export type UpdateWorkspaceApiKeyMutation = {
   __typename?: "Mutation";
   updateWorkspaceApiKey: {
     __typename?: "WorkspaceApiKey";
@@ -3520,12 +3511,11 @@ export type DeleteManagedSystemAccountMutation = {
   deleteSystemAccount: { __typename?: "SystemAccount"; id: string };
 };
 
-export type CreateManagedSystemAccountKeyMutationVariables = Exact<{
-  systemAccountId: Scalars["ID"]["input"];
+export type CreateSystemApiKeyMutationVariables = Exact<{
   input: CreateSystemApiKeyInput;
 }>;
 
-export type CreateManagedSystemAccountKeyMutation = {
+export type CreateSystemApiKeyMutation = {
   __typename?: "Mutation";
   createSystemApiKey: {
     __typename?: "CreateSystemApiKeyResult";
@@ -3534,11 +3524,11 @@ export type CreateManagedSystemAccountKeyMutation = {
   };
 };
 
-export type ManagedSystemAccountKeyQueryVariables = Exact<{
+export type SystemApiKeyQueryVariables = Exact<{
   id: Scalars["ID"]["input"];
 }>;
 
-export type ManagedSystemAccountKeyQuery = {
+export type SystemApiKeyQuery = {
   __typename?: "Query";
   systemApiKey?: {
     __typename?: "SystemApiKey";
@@ -3559,21 +3549,21 @@ export type ManagedSystemAccountKeyQuery = {
   } | null;
 };
 
-export type UpdateManagedSystemAccountKeyMutationVariables = Exact<{
+export type UpdateSystemApiKeyMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
   input: UpdateSystemApiKeyInput;
 }>;
 
-export type UpdateManagedSystemAccountKeyMutation = {
+export type UpdateSystemApiKeyMutation = {
   __typename?: "Mutation";
   updateSystemApiKey: { __typename?: "SystemApiKey"; id: string };
 };
 
-export type DeleteManagedSystemAccountKeyMutationVariables = Exact<{
+export type DeleteSystemApiKeyMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
 }>;
 
-export type DeleteManagedSystemAccountKeyMutation = {
+export type DeleteSystemApiKeyMutation = {
   __typename?: "Mutation";
   deleteSystemApiKey: { __typename?: "SystemApiKey"; id: string };
 };
@@ -3623,11 +3613,11 @@ export type SystemKeyAccountChoicesQuery = {
   };
 };
 
-export type RevokeManagedSystemAccountKeyMutationVariables = Exact<{
+export type RevokeSystemApiKeyMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
 }>;
 
-export type RevokeManagedSystemAccountKeyMutation = {
+export type RevokeSystemApiKeyMutation = {
   __typename?: "Mutation";
   revokeSystemApiKey: {
     __typename?: "SystemApiKey";
@@ -3647,13 +3637,13 @@ export type GetPasswordPolicyQuery = {
   };
 };
 
-export const ManagedSystemAccountKeysDocument = {
+export const SystemApiKeysDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "query",
-      name: { kind: "Name", value: "managedSystemAccountKeys" },
+      name: { kind: "Name", value: "systemApiKeys" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -3889,10 +3879,7 @@ export const ManagedSystemAccountKeysDocument = {
       },
     },
   ],
-} as unknown as DocumentNode<
-  ManagedSystemAccountKeysQuery,
-  ManagedSystemAccountKeysQueryVariables
->;
+} as unknown as DocumentNode<SystemApiKeysQuery, SystemApiKeysQueryVariables>;
 export const GetAdminOverviewDocument = {
   kind: "Document",
   definitions: [
@@ -7988,13 +7975,13 @@ export const RejectWorkspaceInvitationFromUserWorkspacesRouteDocument = {
   RejectWorkspaceInvitationFromUserWorkspacesRouteMutation,
   RejectWorkspaceInvitationFromUserWorkspacesRouteMutationVariables
 >;
-export const DeleteWorkspaceApiKeyFromApiKeysRouteDocument = {
+export const DeleteWorkspaceApiKeyDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "deleteWorkspaceApiKeyFromApiKeysRoute" },
+      name: { kind: "Name", value: "deleteWorkspaceApiKey" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -8041,8 +8028,8 @@ export const DeleteWorkspaceApiKeyFromApiKeysRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  DeleteWorkspaceApiKeyFromApiKeysRouteMutation,
-  DeleteWorkspaceApiKeyFromApiKeysRouteMutationVariables
+  DeleteWorkspaceApiKeyMutation,
+  DeleteWorkspaceApiKeyMutationVariables
 >;
 export const GetWorkspaceApiKeyDetailsDocument = {
   kind: "Document",
@@ -8384,13 +8371,13 @@ export const GetWorkspaceApiKeyNeighborsDocument = {
   GetWorkspaceApiKeyNeighborsQuery,
   GetWorkspaceApiKeyNeighborsQueryVariables
 >;
-export const CreateWorkspaceApiKeyFromApiKeysRouteDocument = {
+export const CreateWorkspaceApiKeyDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "createWorkspaceApiKeyFromApiKeysRoute" },
+      name: { kind: "Name", value: "createWorkspaceApiKey" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -8471,62 +8458,8 @@ export const CreateWorkspaceApiKeyFromApiKeysRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  CreateWorkspaceApiKeyFromApiKeysRouteMutation,
-  CreateWorkspaceApiKeyFromApiKeysRouteMutationVariables
->;
-export const AddWorkspaceServiceAccountForApiKeyDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "mutation",
-      name: { kind: "Name", value: "addWorkspaceServiceAccountForApiKey" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "input" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "AddWorkspaceMemberInput" },
-            },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "addWorkspaceMember" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "input" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "input" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  AddWorkspaceServiceAccountForApiKeyMutation,
-  AddWorkspaceServiceAccountForApiKeyMutationVariables
+  CreateWorkspaceApiKeyMutation,
+  CreateWorkspaceApiKeyMutationVariables
 >;
 export const GetWorkspaceApiKeyOptionsDocument = {
   kind: "Document",
@@ -11334,13 +11267,13 @@ export const RevokeUserApiKeyFromApiKeysRouteDocument = {
   RevokeUserApiKeyFromApiKeysRouteMutation,
   RevokeUserApiKeyFromApiKeysRouteMutationVariables
 >;
-export const RevokeWorkspaceApiKeyFromApiKeysRouteDocument = {
+export const RevokeWorkspaceApiKeyDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "revokeWorkspaceApiKeyFromApiKeysRoute" },
+      name: { kind: "Name", value: "revokeWorkspaceApiKey" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -11380,8 +11313,8 @@ export const RevokeWorkspaceApiKeyFromApiKeysRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  RevokeWorkspaceApiKeyFromApiKeysRouteMutation,
-  RevokeWorkspaceApiKeyFromApiKeysRouteMutationVariables
+  RevokeWorkspaceApiKeyMutation,
+  RevokeWorkspaceApiKeyMutationVariables
 >;
 export const UpdateUserApiKeyFromUserApiKeysRouteDocument = {
   kind: "Document",
@@ -11461,13 +11394,13 @@ export const UpdateUserApiKeyFromUserApiKeysRouteDocument = {
   UpdateUserApiKeyFromUserApiKeysRouteMutation,
   UpdateUserApiKeyFromUserApiKeysRouteMutationVariables
 >;
-export const UpdateWorkspaceApiKeyFromApiKeysRouteDocument = {
+export const UpdateWorkspaceApiKeyDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "updateWorkspaceApiKeyFromApiKeysRoute" },
+      name: { kind: "Name", value: "updateWorkspaceApiKey" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -11536,8 +11469,8 @@ export const UpdateWorkspaceApiKeyFromApiKeysRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  UpdateWorkspaceApiKeyFromApiKeysRouteMutation,
-  UpdateWorkspaceApiKeyFromApiKeysRouteMutationVariables
+  UpdateWorkspaceApiKeyMutation,
+  UpdateWorkspaceApiKeyMutationVariables
 >;
 export const SystemAccountPermissionChoicesDocument = {
   kind: "Document",
@@ -11794,25 +11727,14 @@ export const DeleteManagedSystemAccountDocument = {
   DeleteManagedSystemAccountMutation,
   DeleteManagedSystemAccountMutationVariables
 >;
-export const CreateManagedSystemAccountKeyDocument = {
+export const CreateSystemApiKeyDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "createManagedSystemAccountKey" },
+      name: { kind: "Name", value: "createSystemApiKey" },
       variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "systemAccountId" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
-          },
-        },
         {
           kind: "VariableDefinition",
           variable: {
@@ -11835,14 +11757,6 @@ export const CreateManagedSystemAccountKeyDocument = {
             kind: "Field",
             name: { kind: "Name", value: "createSystemApiKey" },
             arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "systemAccountId" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "systemAccountId" },
-                },
-              },
               {
                 kind: "Argument",
                 name: { kind: "Name", value: "input" },
@@ -11874,16 +11788,16 @@ export const CreateManagedSystemAccountKeyDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  CreateManagedSystemAccountKeyMutation,
-  CreateManagedSystemAccountKeyMutationVariables
+  CreateSystemApiKeyMutation,
+  CreateSystemApiKeyMutationVariables
 >;
-export const ManagedSystemAccountKeyDocument = {
+export const SystemApiKeyDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "query",
-      name: { kind: "Name", value: "managedSystemAccountKey" },
+      name: { kind: "Name", value: "systemApiKey" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -11944,17 +11858,14 @@ export const ManagedSystemAccountKeyDocument = {
       },
     },
   ],
-} as unknown as DocumentNode<
-  ManagedSystemAccountKeyQuery,
-  ManagedSystemAccountKeyQueryVariables
->;
-export const UpdateManagedSystemAccountKeyDocument = {
+} as unknown as DocumentNode<SystemApiKeyQuery, SystemApiKeyQueryVariables>;
+export const UpdateSystemApiKeyDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "updateManagedSystemAccountKey" },
+      name: { kind: "Name", value: "updateSystemApiKey" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -12015,16 +11926,16 @@ export const UpdateManagedSystemAccountKeyDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  UpdateManagedSystemAccountKeyMutation,
-  UpdateManagedSystemAccountKeyMutationVariables
+  UpdateSystemApiKeyMutation,
+  UpdateSystemApiKeyMutationVariables
 >;
-export const DeleteManagedSystemAccountKeyDocument = {
+export const DeleteSystemApiKeyDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "deleteManagedSystemAccountKey" },
+      name: { kind: "Name", value: "deleteSystemApiKey" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -12063,8 +11974,8 @@ export const DeleteManagedSystemAccountKeyDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  DeleteManagedSystemAccountKeyMutation,
-  DeleteManagedSystemAccountKeyMutationVariables
+  DeleteSystemApiKeyMutation,
+  DeleteSystemApiKeyMutationVariables
 >;
 export const SystemKeyPermissionChoicesDocument = {
   kind: "Document",
@@ -12265,13 +12176,13 @@ export const SystemKeyAccountChoicesDocument = {
   SystemKeyAccountChoicesQuery,
   SystemKeyAccountChoicesQueryVariables
 >;
-export const RevokeManagedSystemAccountKeyDocument = {
+export const RevokeSystemApiKeyDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "revokeManagedSystemAccountKey" },
+      name: { kind: "Name", value: "revokeSystemApiKey" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -12311,8 +12222,8 @@ export const RevokeManagedSystemAccountKeyDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  RevokeManagedSystemAccountKeyMutation,
-  RevokeManagedSystemAccountKeyMutationVariables
+  RevokeSystemApiKeyMutation,
+  RevokeSystemApiKeyMutationVariables
 >;
 export const GetPasswordPolicyDocument = {
   kind: "Document",

@@ -249,7 +249,7 @@ export class UserApiKeyService {
           createdBy: user.id,
         });
         assertApiKeyOwner(entity, "user");
-        authorize("write", entity);
+        this.apiKeys.authorizeCreation(entity, options);
         await em.persist(entity).flush();
         return entity;
       },

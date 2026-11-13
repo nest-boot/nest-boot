@@ -91,21 +91,30 @@ describe("API-key management", () => {
       },
     );
 
-    apiKeyTest(
-      "uses the current member when no owner is supplied",
-      async () => {
-        const { service } = createService();
-        const current = RequestContext.get(WorkspaceMember);
-        const created = await service.createWorkspaceApiKey(
-          createTestWorkspace(),
-          {
-            name: "Own key",
-            permissions: [],
-          },
-        );
-        expect(created.entity.member).toBe(current);
-      },
-    );
+    for (const permissions of [[], ["workspace:read"]]) {
+      apiKeyTest(
+        `creates a service account when no owner is supplied (${String(permissions.length)} explicit grants)`,
+        async () => {
+          const { service } = createService();
+          const current = RequestContext.get(WorkspaceMember);
+          const created = await service.createWorkspaceApiKey(
+            createTestWorkspace(),
+            {
+              name: "Automation",
+              permissions,
+            },
+          );
+          expect(created.entity.member?.id).not.toBe(current?.id);
+          expect(created.entity.member).toMatchObject({
+            name: "Automation",
+            type: "SERVICE_ACCOUNT",
+            user: null,
+            roles: permissions.length ? [] : ["member"],
+            permissions,
+          });
+        },
+      );
+    }
     apiKeyTest(
       "accepts a member entity without creating another service account",
       async () => {
@@ -2111,3 +2120,36 @@ describe("conditional service authorization", () => {
     );
   });
 });
+
+for (const field of ["name", "permissions", "expiresAt", "prefix"] as const) {
+  apiKeyTest(`rejects creation when ${field} is not writable`, async () => {
+    const configuration: AuthModuleOptions = {
+      workspace: { enabled: true },
+      buildAbility: ({ cannot }) => {
+        cannot("write", WorkspaceApiKey, [field]);
+      },
+    };
+    const { service, em, authorization } = createService(configuration);
+    authorization.authorize.mockRestore();
+    const user = Object.assign(createTestUser(), { roles: ["admin"] });
+    stageIdentity({ user });
+    createTestAuthContext(
+      undefined,
+      withAuthTestFeatures(configuration),
+    ).refresh();
+    const input = {
+      name: "Denied",
+      permissions: ["workspace:read"],
+      expiresAt: new Date(Date.now() + 60_000),
+      prefix: "custom_",
+    };
+    await expect(
+      service.createWorkspaceApiKey(createTestWorkspace(), {
+        ...input,
+        member: createTestWorkspaceMember(),
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(em.persist.mock.calls).toHaveLength(0);
+    expect(em.flush.mock.calls).toHaveLength(0);
+  });
+}

@@ -4,6 +4,7 @@ import {
   type FilterObject,
   LockMode,
   Reference,
+  TransactionPropagation,
 } from "@mikro-orm/core";
 import type { SqlEntityManager } from "@mikro-orm/sql";
 import {
@@ -328,7 +329,7 @@ export class WorkspaceMemberService {
         await em.persist(member).flush();
         return member;
       },
-      { clear: true },
+      { clear: true, propagation: TransactionPropagation.REQUIRED },
     );
   }
 

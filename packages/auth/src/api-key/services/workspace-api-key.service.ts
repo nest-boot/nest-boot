@@ -38,6 +38,7 @@ import {
 } from "../../core/utils/assert-current-identity.util.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
+import { WorkspaceMemberService } from "../../workspace/services/workspace-member.service.js";
 import { WorkspaceApiKeyConnection } from "../connections/workspace-api-key.connection-definition.js";
 import { ApiKey, type OwnedApiKey } from "../entities/api-key.entity.js";
 import type { CreateWorkspaceApiKeyOptions } from "../interfaces/create-workspace-api-key-options.interface.js";
@@ -65,6 +66,7 @@ export class WorkspaceApiKeyService {
    * @param em - Entity manager used for persistence.
    * @param authOptions - Authentication module configuration.
    * @param apiKeys - Shared credential persistence service.
+   * @param members - Workspace service-account creation service.
    */
   constructor(
     /** MikroORM entity manager used for API-key persistence. */
@@ -72,6 +74,7 @@ export class WorkspaceApiKeyService {
     @Inject(MODULE_OPTIONS_TOKEN)
     private readonly authOptions: AuthModuleOptions,
     private readonly apiKeys: ApiKeyService,
+    private readonly members: WorkspaceMemberService,
   ) {}
 
   /**
@@ -184,12 +187,7 @@ export class WorkspaceApiKeyService {
       "member",
       options.permissions,
     );
-    const member = await this.getCreationWorkspaceMember(
-      workspace,
-      options.member,
-    );
-    this.assertWorkspaceMemberPermissionCeiling(member, permissions);
-    return await this.createKey(member, options, permissions);
+    return await this.createKey(workspace, options, permissions);
   }
 
   /**
@@ -260,7 +258,7 @@ export class WorkspaceApiKeyService {
 
   private async getCreationWorkspaceMember(
     workspace: Workspace,
-    owner?: WorkspaceMember | string,
+    owner: WorkspaceMember | string,
   ): Promise<WorkspaceMember> {
     const member =
       typeof owner === "string"
@@ -269,7 +267,7 @@ export class WorkspaceApiKeyService {
             { id: owner, workspace },
             { populate: ["workspace", "user"], refresh: true },
           )
-        : (owner ?? RequestContext.get(WorkspaceMember));
+        : owner;
     if (!member) {
       throw new NotFoundException("Workspace member not found");
     }
@@ -295,7 +293,7 @@ export class WorkspaceApiKeyService {
   }
 
   private async createKey(
-    member: WorkspaceMember,
+    workspace: Workspace,
     options: CreateWorkspaceApiKeyOptions,
     permissions: string[],
   ): Promise<CreatedApiKey<WorkspaceApiKey>> {
@@ -308,13 +306,22 @@ export class WorkspaceApiKeyService {
     );
     const entity = await this.em.transactional(
       async (em) => {
+        const member =
+          options.member !== undefined
+            ? await this.getCreationWorkspaceMember(workspace, options.member)
+            : await this.members.addWorkspaceServiceAccount(
+                workspace,
+                options.name,
+                permissions.length ? { roles: [], permissions } : {},
+              );
+        this.assertWorkspaceMemberPermissionCeiling(member, permissions);
         const entity = em.create(ApiKey, {
           ...data,
           owner: member,
           createdBy: RequestContext.get(User)?.id ?? null,
         });
         assertApiKeyOwner(entity, "workspace_member");
-        authorize("write", entity);
+        this.apiKeys.authorizeCreation(entity, options);
         await em.persist(entity).flush();
         return entity;
       },
@@ -322,7 +329,7 @@ export class WorkspaceApiKeyService {
     );
     this.logger.log("API key created", {
       apiKeyId: entity.id,
-      ownerId: member.id,
+      ownerId: entity.owner.id,
       ownerType: "workspace_member",
     });
     return { apiKey, entity: toApiKeyView(entity) };

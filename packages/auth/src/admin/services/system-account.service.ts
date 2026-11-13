@@ -1,4 +1,8 @@
-import { EntityManager, LockMode } from "@mikro-orm/core";
+import {
+  EntityManager,
+  LockMode,
+  TransactionPropagation,
+} from "@mikro-orm/core";
 import type { SqlEntityManager } from "@mikro-orm/sql";
 import {
   type ConnectionArgsInterface,
@@ -130,7 +134,7 @@ export class SystemAccountService {
           await em.persist(account).flush();
           return account;
         },
-        { clear: true },
+        { clear: true, propagation: TransactionPropagation.REQUIRED },
       ),
     );
   }

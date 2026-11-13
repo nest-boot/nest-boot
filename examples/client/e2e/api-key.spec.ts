@@ -215,13 +215,7 @@ test.describe("API keys", () => {
         return;
       const payload = request.postDataJSON() as { operationName?: string };
       const operation = payload?.operationName;
-      if (
-        operation &&
-        [
-          "addWorkspaceServiceAccountForApiKey",
-          "createWorkspaceApiKeyFromApiKeysRoute",
-        ].includes(operation)
-      )
+      if (operation && ["createWorkspaceApiKey"].includes(operation))
         creationOperations.push(operation);
     });
     const readKey = (id: string) =>
@@ -259,9 +253,7 @@ test.describe("API keys", () => {
     await expect(page.getByLabel("Key", { exact: true })).toHaveValue(
       /^ws_[A-Za-z0-9_-]{64}$/,
     );
-    expect(creationOperations).toEqual([
-      "createWorkspaceApiKeyFromApiKeysRoute",
-    ]);
+    expect(creationOperations).toEqual(["createWorkspaceApiKey"]);
     const existingId = new URL(page.url()).pathname.split("/").at(-1)!;
     expect((await readKey(existingId)).currentWorkspace.apiKey).toEqual({
       id: existingId,
@@ -286,9 +278,8 @@ test.describe("API keys", () => {
       /^ws_[A-Za-z0-9_-]{64}$/,
     );
     expect(creationOperations).toEqual([
-      "createWorkspaceApiKeyFromApiKeysRoute",
-      "addWorkspaceServiceAccountForApiKey",
-      "createWorkspaceApiKeyFromApiKeysRoute",
+      "createWorkspaceApiKey",
+      "createWorkspaceApiKey",
     ]);
     const automaticId = new URL(page.url()).pathname.split("/").at(-1)!;
     const key = (await readKey(automaticId)).currentWorkspace.apiKey;
@@ -358,10 +349,9 @@ test.describe("API keys", () => {
       yourWorkspaceMembership.apiKeys.edges.map(({ node }) => node.id),
     ).toContain(youId);
     expect(creationOperations).toEqual([
-      "createWorkspaceApiKeyFromApiKeysRoute",
-      "addWorkspaceServiceAccountForApiKey",
-      "createWorkspaceApiKeyFromApiKeysRoute",
-      "createWorkspaceApiKeyFromApiKeysRoute",
+      "createWorkspaceApiKey",
+      "createWorkspaceApiKey",
+      "createWorkspaceApiKey",
     ]);
   });
 

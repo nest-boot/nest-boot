@@ -7,11 +7,11 @@ import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { SystemApiKeyPermission } from "@/gql/graphql";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import {
-  DELETE_SYSTEM_KEY,
-  REVOKE_SYSTEM_KEY,
-  SYSTEM_KEY_DETAILS,
-  SYSTEM_KEY_PERMISSIONS,
-  UPDATE_SYSTEM_KEY,
+  DELETE_SYSTEM_API_KEY,
+  REVOKE_SYSTEM_API_KEY,
+  SYSTEM_API_KEY_DETAILS,
+  SYSTEM_API_KEY_PERMISSIONS,
+  UPDATE_SYSTEM_API_KEY,
 } from "@/graphql/system-accounts";
 import { getPermissionOptions } from "@/lib/permissions";
 import { useAbility } from "@/contexts/ability-context";
@@ -29,7 +29,7 @@ export const Route = createFileRoute(
     const denied = () => redirect({ to: "/admin/api-keys" });
     const { data } = await context.apolloClient
       .query({
-        query: SYSTEM_KEY_DETAILS,
+        query: SYSTEM_API_KEY_DETAILS,
         variables: { id: params.apiKeyId },
         fetchPolicy: "network-only",
       })
@@ -44,7 +44,7 @@ export const Route = createFileRoute(
     )
       throw denied();
     const choices = await context.apolloClient.query({
-      query: SYSTEM_KEY_PERMISSIONS,
+      query: SYSTEM_API_KEY_PERMISSIONS,
       variables: { apiKeyId: apiKey.id },
       fetchPolicy: "network-only",
     });
@@ -66,9 +66,9 @@ function Details() {
     key: [user.id, ...adminApiKeysResourceKey],
     searchSchema: apiKeySearchSchema,
   });
-  const [update] = useMutation(UPDATE_SYSTEM_KEY);
-  const [revoke] = useMutation(REVOKE_SYSTEM_KEY);
-  const [remove] = useMutation(DELETE_SYSTEM_KEY);
+  const [update] = useMutation(UPDATE_SYSTEM_API_KEY);
+  const [revoke] = useMutation(REVOKE_SYSTEM_API_KEY);
+  const [remove] = useMutation(DELETE_SYSTEM_API_KEY);
   return (
     <ApiKeyFormPage
       ownerName={

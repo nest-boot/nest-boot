@@ -49,6 +49,7 @@ export * from "./api-key/interceptors/api-key-usage.interceptor.js";
 export * from "./api-key/interfaces/auth-module-api-key-options.interface.js";
 export * from "./api-key/interfaces/auth-module-api-key-scope-options.interface.js";
 export * from "./api-key/interfaces/create-api-key-options.interface.js";
+export * from "./api-key/interfaces/create-system-api-key-options.interface.js";
 export * from "./api-key/interfaces/create-workspace-api-key-options.interface.js";
 export * from "./api-key/interfaces/created-api-key.interface.js";
 export * from "./api-key/interfaces/system-api-key-validation.interface.js";

@@ -8,6 +8,7 @@ import { SessionService } from "../../src/core/services/session.service.js";
 import { UserService } from "../../src/core/services/user.service.js";
 import { Workspace } from "../../src/workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../src/workspace/entities/workspace-member.entity.js";
+import { WorkspaceMemberService } from "../../src/workspace/services/workspace-member.service.js";
 import { createWorkspaceServices } from "../workspace-service.fixture.js";
 import { createTestApiKeyService } from "./auth-context.fixture.js";
 import { createTestAuthContext } from "./auth-context.fixture.js";
@@ -133,6 +134,18 @@ function fixture() {
         withAuthTestFeatures({
           workspace: { enabled: true },
         }),
+      ),
+      new WorkspaceMemberService(
+        result.em,
+        withAuthTestFeatures({
+          workspace: { enabled: true },
+        }),
+        createTestAuthContext(
+          result.em,
+          withAuthTestFeatures({
+            workspace: { enabled: true },
+          }),
+        ),
       ),
     ),
   };

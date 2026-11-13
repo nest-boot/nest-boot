@@ -11,6 +11,8 @@ import { GraphQLModule } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
 
 import { ApiKey } from "../src/api-key/entities/api-key.entity.js";
+import { SystemAccount } from "../src/api-key/entities/system-account.entity.js";
+import { SystemApiKey } from "../src/api-key/objects/system-api-key.object.js";
 import { AuthGuard } from "../src/core/auth.guard.js";
 import { AuthModule } from "../src/core/auth.module.js";
 import { User } from "../src/core/entities/user.entity.js";
@@ -60,17 +62,22 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
   let cookies: string;
   let ordinaryCookies: string;
   let workspaceId: string;
+  let blockedCreationField: string | undefined;
 
   const graphql = async (
     query: string,
     variables: Record<string, unknown> = {},
     credential: string = cookies,
     bearer = false,
+    selectedWorkspaceId?: string,
   ): Promise<GraphQLResult> => {
     const response = await fetch(baseURL + "/graphql", {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        ...(selectedWorkspaceId
+          ? { "x-workspace-id": selectedWorkspaceId }
+          : {}),
         ...(credential
           ? bearer
             ? { authorization: `Bearer ${credential}` }
@@ -98,6 +105,11 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
               "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_",
             baseURL: "http://localhost:3000",
             workspace: { enabled: true },
+            buildAbility: ({ cannot }) => {
+              if (blockedCreationField) {
+                cannot("write", SystemApiKey, [blockedCreationField]);
+              }
+            },
             user: {
               adminRoles: ["admin", "key-reader"],
               roles: { "key-reader": ["system-account-api-key:read"] },
@@ -164,6 +176,99 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     await app?.close();
   });
 
+  it.each([undefined, null])(
+    "creates a system key and its account with an omitted/null owner (%s)",
+    async (systemAccountId) => {
+      const name = crypto.randomUUID();
+      const result = data(
+        await graphql(
+          "mutation($input: CreateSystemApiKeyInput!) { createSystemApiKey(input: $input) { entity { id systemAccount { id name permissions } } } }",
+          { input: { name, systemAccountId, permissions: ["USER__READ"] } },
+        ),
+      ).createSystemApiKey.entity;
+      expect(result.systemAccount).toMatchObject({
+        name,
+        permissions: ["USER__READ"],
+      });
+      expect(await orm.em.fork().count(SystemAccount, { name })).toBe(1);
+      await graphql(
+        "mutation($id: ID!) { deleteSystemApiKey(id: $id) { id } }",
+        { id: result.id },
+      );
+      await graphql(
+        "mutation($id: ID!) { deleteSystemAccount(id: $id) { id } }",
+        { id: result.systemAccount.id },
+      );
+    },
+  );
+
+  it("rolls back automatic account creation on a denied field and retries without an orphan", async () => {
+    const name = crypto.randomUUID();
+    blockedCreationField = "prefix";
+    try {
+      const query =
+        "mutation($input: CreateSystemApiKeyInput!) { createSystemApiKey(input: $input) { entity { id systemAccount { id } } } }";
+      const denied = await graphql(query, {
+        input: { name, prefix: "denied_", permissions: ["USER__READ"] },
+      });
+      expect(denied.errors?.[0]?.extensions.code).toBe("FORBIDDEN");
+      expect(await orm.em.fork().count(SystemAccount, { name })).toBe(0);
+      expect(await orm.em.fork().count(ApiKey, { name })).toBe(0);
+      const created = data(
+        await graphql(query, { input: { name, permissions: ["USER__READ"] } }),
+      ).createSystemApiKey.entity;
+      expect(await orm.em.fork().count(SystemAccount, { name })).toBe(1);
+      await graphql(
+        "mutation($id: ID!) { deleteSystemApiKey(id: $id) { id } }",
+        { id: created.id },
+      );
+      await graphql(
+        "mutation($id: ID!) { deleteSystemAccount(id: $id) { id } }",
+        { id: created.systemAccount.id },
+      );
+    } finally {
+      blockedCreationField = undefined;
+    }
+  });
+
+  it("creates a workspace service member and its key from one GraphQL input", async () => {
+    const workspace = data(
+      await graphql(
+        'mutation { createWorkspace(input: {name: "Atomic GraphQL"}) { id } }',
+      ),
+    ).createWorkspace.id;
+    const result = data(
+      await graphql(
+        'mutation { createWorkspaceApiKey(input: {name: "Atomic member", permissions: [WORKSPACE__READ]}) { entity { id member { id type name roles permissions workspaceId } } } }',
+        {},
+        cookies,
+        false,
+        workspace,
+      ),
+    ).createWorkspaceApiKey.entity;
+    expect(result.member).toMatchObject({
+      type: "SERVICE_ACCOUNT",
+      name: "Atomic member",
+      roles: [],
+      permissions: ["WORKSPACE__READ"],
+      workspaceId: workspace,
+    });
+    await graphql(
+      "mutation($id: ID!) { deleteWorkspaceApiKey(id: $id) { id } }",
+      { id: result.id },
+      cookies,
+      false,
+      workspace,
+    );
+    await graphql(
+      "mutation($id: ID!) { deleteWorkspace(id: $id) { id } }",
+      { id: workspace },
+      cookies,
+      false,
+      workspace,
+    );
+  });
+
   it("requires a human administrator session and rejects unauthenticated callers", async () => {
     const mutation =
       'mutation { createSystemAccount(input: {name: "Denied"}) { id } }';
@@ -205,7 +310,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
       const ids: string[] = [];
       for (const owner of [first, second]) {
         const result = await graphql(
-          'mutation($id: ID!) { createSystemApiKey(systemAccountId: $id, input: {name: "Global list", permissions: [USER__READ]}) { entity { id } } }',
+          'mutation($id: ID!) { createSystemApiKey(input: {systemAccountId: $id,name: "Global list", permissions: [USER__READ]}) { entity { id } } }',
           { id: owner },
         );
         ids.push(data(result).createSystemApiKey.entity.id);
@@ -317,7 +422,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
           for (const denied of [
             "{ systemAccounts(first: 1) { totalCount } }",
             'mutation { createSystemAccount(input: { name: "Denied" }) { id } }',
-            'mutation($id: ID!) { createSystemApiKey(systemAccountId: $id, input: {name: "Denied"}) { entity { id } } }',
+            'mutation($id: ID!) { createSystemApiKey(input: {systemAccountId: $id,name: "Denied"}) { entity { id } } }',
           ]) {
             expect(
               (await graphql(denied, { id: first }, ordinaryCookies))
@@ -348,7 +453,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     ).createSystemAccount.id;
     const issued: { apiKey: string; entity: { id: string } } = data(
       await graphql(
-        'mutation($id: ID!) { createSystemApiKey(systemAccountId: $id, input: {name: "Audit credential", permissions: [USER__READ]}) {apiKey entity {id}} }',
+        'mutation($id: ID!) { createSystemApiKey(input: {systemAccountId: $id,name: "Audit credential", permissions: [USER__READ]}) {apiKey entity {id}} }',
         { id: accountId },
       ),
     ).createSystemApiKey;
@@ -405,7 +510,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
       permissions: ["USER__READ", "WORKSPACE__READ_ANY"],
     });
     const key = await graphql(
-      'mutation($id: ID!) { createSystemApiKey(systemAccountId: $id, input: {name: "Deployment", permissions: [USER__READ, WORKSPACE__READ_ANY]}) { apiKey entity { id name createdById } } }',
+      'mutation($id: ID!) { createSystemApiKey(input: {systemAccountId: $id,name: "Deployment", permissions: [USER__READ, WORKSPACE__READ_ANY]}) { apiKey entity { id name createdById } } }',
       { id: accountId },
     );
     expect(key.errors).toBeUndefined();

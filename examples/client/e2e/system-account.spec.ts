@@ -11,7 +11,8 @@ test("manages system identities and credentials under admin, with one-time secre
 }) => {
   test.setTimeout(90_000);
   await signInAsE2eAdministrator(page);
-  const name = uniqueSeed("system-account");
+  const initialName = uniqueSeed("system-account");
+  const name = `${initialName} retry`;
   await page.goto("/admin/api-keys");
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(
@@ -20,14 +21,14 @@ test("manages system identities and credentials under admin, with one-time secre
   await expect(page.getByRole("tab", { name: "You", exact: true })).toHaveCount(
     0,
   );
-  await page.getByLabel("Name", { exact: true }).fill(name);
+  await page.getByLabel("Name", { exact: true }).fill(initialName);
   await getPermissionCheckbox(page, "USER__READ").check();
   let attempts = 0;
   let accountsCreated = 0;
   await page.route("**/graphql", async (route) => {
     const operation = route.request().postDataJSON().operationName;
     if (operation === "createManagedSystemAccount") accountsCreated++;
-    if (operation === "createManagedSystemAccountKey" && ++attempts === 1) {
+    if (operation === "createSystemApiKey" && ++attempts === 1) {
       await route.fulfill({
         json: { errors: [{ message: "Temporary creation failure" }] },
       });
@@ -39,13 +40,17 @@ test("manages system identities and credentials under admin, with one-time secre
   await expect(
     page.getByText("Temporary creation failure", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(name);
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
+    initialName,
+  );
+  await page.getByLabel("Name", { exact: true }).fill(name);
+  await getPermissionCheckbox(page, "WORKSPACE__READ_ANY").check();
   await page.getByRole("button", { name: "Create", exact: true }).click();
   const secretField = page.getByLabel("Key", { exact: true });
   await expect(secretField).toHaveValue(/^sys_[A-Za-z0-9_-]{64}$/);
   const secret = await secretField.inputValue();
   expect(attempts).toBe(2);
-  expect(accountsCreated).toBe(1);
+  expect(accountsCreated).toBe(0);
   await expect(page.getByLabel("Owned by", { exact: true })).toHaveValue(name);
   const keyId = new URL(page.url()).pathname.split("/").filter(Boolean).at(-1);
   const { systemAccounts } = await graphqlRequest<{
@@ -62,12 +67,13 @@ test("manages system identities and credentials under admin, with one-time secre
     "query($filter: SystemAccountFilter) { systemAccounts(first: 10, filter: $filter) { edges { node { id apiKeys(first: 10) { edges { node { id } } } } } } }",
     { filter: { name } },
   );
+  expect(systemAccounts.edges).toHaveLength(1);
   const accountId = systemAccounts.edges[0].node.id;
   expect(
     systemAccounts.edges[0].node.apiKeys.edges.map(({ node }) => node.id),
   ).toContain(keyId);
   await expect(
-    getPermissionCheckbox(page, "WORKSPACE__READ_ANY"),
+    getPermissionCheckbox(page, "WORKSPACE__UPDATE_ANY"),
   ).toBeDisabled();
 
   const keyPath = new URL(page.url()).pathname;
@@ -147,7 +153,7 @@ test("manages system identities and credentials under admin, with one-time secre
       createSystemApiKey: { apiKey: string; entity: { id: string } };
     }>(
       page.request,
-      'mutation($id: ID!) { createSystemApiKey(systemAccountId: $id, input: {name: "Retained audit credential", permissions: [USER__READ]}) { apiKey entity { id } } }',
+      'mutation($id: ID!) { createSystemApiKey(input: {systemAccountId: $id,name: "Retained audit credential", permissions: [USER__READ]}) { apiKey entity { id } } }',
       { id: accountId },
     );
     const activeCredential = await read(dependent.apiKey);

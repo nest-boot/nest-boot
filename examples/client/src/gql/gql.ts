@@ -14,7 +14,7 @@ import { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
-  "\n  query managedSystemAccountKeys(\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemApiKeyFilter\n    $orderBy: SystemApiKeyOrder\n  ) {\n    systemApiKeys(\n      first: $first\n      last: $last\n      after: $after\n      before: $before\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          systemAccount {\n            __typename\n\n            id\n            name\n          }\n          revokedAt\n          permissions\n          prefix\n          start\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n    }\n  }\n": typeof types.ManagedSystemAccountKeysDocument;
+  "\n  query systemApiKeys(\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemApiKeyFilter\n    $orderBy: SystemApiKeyOrder\n  ) {\n    systemApiKeys(\n      first: $first\n      last: $last\n      after: $after\n      before: $before\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          systemAccount {\n            __typename\n\n            id\n            name\n          }\n          revokedAt\n          permissions\n          prefix\n          start\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n    }\n  }\n": typeof types.SystemApiKeysDocument;
   "\n  query getAdminOverview($includeUsers: Boolean! = true) {\n    users(first: 1) @include(if: $includeUsers) {\n      totalCount\n      totalCountRelation\n    }\n  }\n": typeof types.GetAdminOverviewDocument;
   "\n  query getAdminSystemAccountOverview {\n    systemAccounts(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n": typeof types.GetAdminSystemAccountOverviewDocument;
   "\n  query getAdminSystemKeyOverview {\n    systemApiKeys(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n": typeof types.GetAdminSystemKeyOverviewDocument;
@@ -59,11 +59,10 @@ type Documents = {
   "\n  query getWorkspacesFromUserWorkspacesRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $orderBy: WorkspaceOrder\n    $query: String\n    $filter: WorkspaceFilter\n    $invitationFirst: Int\n    $invitationLast: Int\n    $invitationAfter: String\n    $invitationBefore: String\n  ) {\n    currentUser {\n      workspaces(\n        after: $after\n        before: $before\n        first: $first\n        last: $last\n        orderBy: $orderBy\n        query: $query\n        filter: $filter\n      ) {\n        edges {\n          node {\n            id\n            name\n            createdAt\n            updatedAt\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n          hasPreviousPage\n          startCursor\n        }\n      }\n    }\n    currentUser {\n      invitations(\n        first: $invitationFirst\n        last: $invitationLast\n        after: $invitationAfter\n        before: $invitationBefore\n        orderBy: { field: CREATED_AT, direction: DESC }\n      ) {\n        edges {\n          node {\n            workspaceId\n            id\n            roles\n            expiresAt\n            workspace {\n              id\n              name\n            }\n          }\n        }\n        pageInfo {\n          endCursor\n          startCursor\n          hasNextPage\n          hasPreviousPage\n        }\n      }\n    }\n  }\n": typeof types.GetWorkspacesFromUserWorkspacesRouteDocument;
   "\n  mutation acceptWorkspaceInvitationFromUserWorkspacesRoute($id: ID!) {\n    acceptWorkspaceInvitation(id: $id) {\n      id\n    }\n  }\n": typeof types.AcceptWorkspaceInvitationFromUserWorkspacesRouteDocument;
   "\n  mutation rejectWorkspaceInvitationFromUserWorkspacesRoute($id: ID!) {\n    rejectWorkspaceInvitation(id: $id) {\n      id\n    }\n  }\n": typeof types.RejectWorkspaceInvitationFromUserWorkspacesRouteDocument;
-  "\n  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.DeleteWorkspaceApiKeyFromApiKeysRouteDocument;
+  "\n  mutation deleteWorkspaceApiKey($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.DeleteWorkspaceApiKeyDocument;
   "\n  query getWorkspaceApiKeyDetails($id: ID!) {\n    workspaceApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n    currentWorkspace {\n      apiKey(id: $id) {\n        member {\n          __typename\n\n          id\n          name\n        }\n        id\n        name\n        start\n        prefix\n        revokedAt\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n": typeof types.GetWorkspaceApiKeyDetailsDocument;
   "\n  query getWorkspaceApiKeyNeighbors(\n    $cursor: String!\n    $filter: WorkspaceApiKeyFilter\n    $orderBy: WorkspaceApiKeyOrder\n    $query: String\n  ) {\n    currentWorkspace {\n      id\n    }\n    previous: workspaceApiKeys(\n      last: 1\n      before: $cursor\n      filter: $filter\n      orderBy: $orderBy\n      query: $query\n    ) {\n      edges {\n        cursor\n        node {\n          id\n        }\n      }\n    }\n    next: workspaceApiKeys(\n      first: 1\n      after: $cursor\n      filter: $filter\n      orderBy: $orderBy\n      query: $query\n    ) {\n      edges {\n        cursor\n        node {\n          id\n        }\n      }\n    }\n  }\n": typeof types.GetWorkspaceApiKeyNeighborsDocument;
-  "\n  mutation createWorkspaceApiKeyFromApiKeysRoute(\n    $input: CreateWorkspaceApiKeyInput!\n  ) {\n    createWorkspaceApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n        name\n        start\n        prefix\n        revokedAt\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n": typeof types.CreateWorkspaceApiKeyFromApiKeysRouteDocument;
-  "\n  mutation addWorkspaceServiceAccountForApiKey(\n    $input: AddWorkspaceMemberInput!\n  ) {\n    addWorkspaceMember(input: $input) {\n      id\n    }\n  }\n": typeof types.AddWorkspaceServiceAccountForApiKeyDocument;
+  "\n  mutation createWorkspaceApiKey($input: CreateWorkspaceApiKeyInput!) {\n    createWorkspaceApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n        name\n        start\n        prefix\n        revokedAt\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n": typeof types.CreateWorkspaceApiKeyDocument;
   "\n  query getWorkspaceApiKeyOptions(\n    $includeWorkspaceMembers: Boolean! = false\n    $after: String\n    $memberFilter: WorkspaceMemberFilter\n  ) {\n    currentWorkspace @include(if: $includeWorkspaceMembers) {\n      members(first: 100, after: $after, filter: $memberFilter) {\n        edges {\n          node {\n            id\n            name\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n        }\n      }\n    }\n    workspaceApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n": typeof types.GetWorkspaceApiKeyOptionsDocument;
   "\n  query getApiKeysFromApiKeysRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceApiKeyFilter\n    $orderBy: WorkspaceApiKeyOrder\n    $query: String\n  ) {\n    workspaceApiKeys(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          member {\n            __typename\n\n            id\n            name\n            type\n            workspaceId\n          }\n          name\n          start\n          prefix\n          revokedAt\n          permissions\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n": typeof types.GetApiKeysFromApiKeysRouteDocument;
   "\n  query getCurrentWorkspaceFromWorkspaceLayout($workspaceId: ID!) {\n    workspace(id: $workspaceId) {\n      id\n      name\n      createdAt\n      updatedAt\n    }\n    currentWorkspaceMember {\n      workspaceId\n      id\n      roles\n      permissions\n      type\n      status\n      name\n      email\n    }\n    currentAbilityRules {\n      actions\n      subjects\n      fields\n      conditions\n      inverted\n      reason\n    }\n  }\n": typeof types.GetCurrentWorkspaceFromWorkspaceLayoutDocument;
@@ -97,26 +96,26 @@ type Documents = {
   "\n  mutation acceptWorkspaceInvitationFromInviteRoute($id: ID!) {\n    acceptWorkspaceInvitation(id: $id) {\n      id\n      memberId\n      workspaceId\n    }\n  }\n": typeof types.AcceptWorkspaceInvitationFromInviteRouteDocument;
   "\n  mutation addWorkspaceServiceAccountFromWorkspaceMembersRoute(\n    $input: AddWorkspaceMemberInput!\n  ) {\n    addWorkspaceMember(input: $input) {\n      id\n    }\n  }\n": typeof types.AddWorkspaceServiceAccountFromWorkspaceMembersRouteDocument;
   "\n  mutation revokeUserApiKeyFromApiKeysRoute($id: ID!) {\n    revokeUserApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n": typeof types.RevokeUserApiKeyFromApiKeysRouteDocument;
-  "\n  mutation revokeWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    revokeWorkspaceApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n": typeof types.RevokeWorkspaceApiKeyFromApiKeysRouteDocument;
+  "\n  mutation revokeWorkspaceApiKey($id: ID!) {\n    revokeWorkspaceApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n": typeof types.RevokeWorkspaceApiKeyDocument;
   "\n  mutation updateUserApiKeyFromUserApiKeysRoute(\n    $id: ID!\n    $input: UpdateUserApiKeyInput!\n  ) {\n    updateUserApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.UpdateUserApiKeyFromUserApiKeysRouteDocument;
-  "\n  mutation updateWorkspaceApiKeyFromApiKeysRoute(\n    $id: ID!\n    $input: UpdateWorkspaceApiKeyInput!\n  ) {\n    updateWorkspaceApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.UpdateWorkspaceApiKeyFromApiKeysRouteDocument;
+  "\n  mutation updateWorkspaceApiKey(\n    $id: ID!\n    $input: UpdateWorkspaceApiKeyInput!\n  ) {\n    updateWorkspaceApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.UpdateWorkspaceApiKeyDocument;
   "\n  query systemAccountPermissionChoices {\n    systemAccountPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n": typeof types.SystemAccountPermissionChoicesDocument;
   "\n  query managedSystemAccount($id: ID!) {\n    systemAccount(id: $id) {\n      id\n      name\n      enabled\n      permissions\n      createdById\n      createdAt\n    }\n  }\n": typeof types.ManagedSystemAccountDocument;
   "\n  mutation createManagedSystemAccount($input: CreateSystemAccountInput!) {\n    createSystemAccount(input: $input) {\n      id\n    }\n  }\n": typeof types.CreateManagedSystemAccountDocument;
   "\n  mutation updateManagedSystemAccount(\n    $id: ID!\n    $input: UpdateSystemAccountInput!\n  ) {\n    updateSystemAccount(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateManagedSystemAccountDocument;
   "\n  mutation deleteManagedSystemAccount($id: ID!) {\n    deleteSystemAccount(id: $id) {\n      id\n    }\n  }\n": typeof types.DeleteManagedSystemAccountDocument;
-  "\n  mutation createManagedSystemAccountKey(\n    $systemAccountId: ID!\n    $input: CreateSystemApiKeyInput!\n  ) {\n    createSystemApiKey(systemAccountId: $systemAccountId, input: $input) {\n      apiKey\n      entity {\n        id\n      }\n    }\n  }\n": typeof types.CreateManagedSystemAccountKeyDocument;
-  "\n  query managedSystemAccountKey($id: ID!) {\n    systemApiKey(id: $id) {\n      id\n      name\n      systemAccount {\n        __typename\n\n        id\n        name\n      }\n      revokedAt\n      permissions\n      prefix\n      start\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.ManagedSystemAccountKeyDocument;
-  "\n  mutation updateManagedSystemAccountKey(\n    $id: ID!\n    $input: UpdateSystemApiKeyInput!\n  ) {\n    updateSystemApiKey(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateManagedSystemAccountKeyDocument;
-  "\n  mutation deleteManagedSystemAccountKey($id: ID!) {\n    deleteSystemApiKey(id: $id) {\n      id\n    }\n  }\n": typeof types.DeleteManagedSystemAccountKeyDocument;
+  "\n  mutation createSystemApiKey($input: CreateSystemApiKeyInput!) {\n    createSystemApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n      }\n    }\n  }\n": typeof types.CreateSystemApiKeyDocument;
+  "\n  query systemApiKey($id: ID!) {\n    systemApiKey(id: $id) {\n      id\n      name\n      systemAccount {\n        __typename\n\n        id\n        name\n      }\n      revokedAt\n      permissions\n      prefix\n      start\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n": typeof types.SystemApiKeyDocument;
+  "\n  mutation updateSystemApiKey($id: ID!, $input: UpdateSystemApiKeyInput!) {\n    updateSystemApiKey(id: $id, input: $input) {\n      id\n    }\n  }\n": typeof types.UpdateSystemApiKeyDocument;
+  "\n  mutation deleteSystemApiKey($id: ID!) {\n    deleteSystemApiKey(id: $id) {\n      id\n    }\n  }\n": typeof types.DeleteSystemApiKeyDocument;
   "\n  query systemKeyPermissionChoices($systemAccountId: ID, $apiKeyId: ID) {\n    systemApiKeyPermissions(\n      systemAccountId: $systemAccountId\n      apiKeyId: $apiKeyId\n    ) {\n      permission\n      grantable\n      default\n    }\n  }\n": typeof types.SystemKeyPermissionChoicesDocument;
   "\n  query systemKeyAccountChoices($after: String) {\n    systemAccounts(first: 100, after: $after, filter: { enabled: true }) {\n      edges {\n        node {\n          id\n          name\n          apiKeyPermissions {\n            permission\n            grantable\n            default\n          }\n        }\n      }\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n    }\n  }\n": typeof types.SystemKeyAccountChoicesDocument;
-  "\n  mutation revokeManagedSystemAccountKey($id: ID!) {\n    revokeSystemApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n": typeof types.RevokeManagedSystemAccountKeyDocument;
+  "\n  mutation revokeSystemApiKey($id: ID!) {\n    revokeSystemApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n": typeof types.RevokeSystemApiKeyDocument;
   "\n  query getPasswordPolicy {\n    passwordPolicy {\n      minLength\n      maxLength\n    }\n  }\n": typeof types.GetPasswordPolicyDocument;
 };
 const documents: Documents = {
-  "\n  query managedSystemAccountKeys(\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemApiKeyFilter\n    $orderBy: SystemApiKeyOrder\n  ) {\n    systemApiKeys(\n      first: $first\n      last: $last\n      after: $after\n      before: $before\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          systemAccount {\n            __typename\n\n            id\n            name\n          }\n          revokedAt\n          permissions\n          prefix\n          start\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n    }\n  }\n":
-    types.ManagedSystemAccountKeysDocument,
+  "\n  query systemApiKeys(\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemApiKeyFilter\n    $orderBy: SystemApiKeyOrder\n  ) {\n    systemApiKeys(\n      first: $first\n      last: $last\n      after: $after\n      before: $before\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          systemAccount {\n            __typename\n\n            id\n            name\n          }\n          revokedAt\n          permissions\n          prefix\n          start\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n    }\n  }\n":
+    types.SystemApiKeysDocument,
   "\n  query getAdminOverview($includeUsers: Boolean! = true) {\n    users(first: 1) @include(if: $includeUsers) {\n      totalCount\n      totalCountRelation\n    }\n  }\n":
     types.GetAdminOverviewDocument,
   "\n  query getAdminSystemAccountOverview {\n    systemAccounts(first: 1) {\n      totalCount\n      totalCountRelation\n    }\n  }\n":
@@ -205,16 +204,14 @@ const documents: Documents = {
     types.AcceptWorkspaceInvitationFromUserWorkspacesRouteDocument,
   "\n  mutation rejectWorkspaceInvitationFromUserWorkspacesRoute($id: ID!) {\n    rejectWorkspaceInvitation(id: $id) {\n      id\n    }\n  }\n":
     types.RejectWorkspaceInvitationFromUserWorkspacesRouteDocument,
-  "\n  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
-    types.DeleteWorkspaceApiKeyFromApiKeysRouteDocument,
+  "\n  mutation deleteWorkspaceApiKey($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
+    types.DeleteWorkspaceApiKeyDocument,
   "\n  query getWorkspaceApiKeyDetails($id: ID!) {\n    workspaceApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n    currentWorkspace {\n      apiKey(id: $id) {\n        member {\n          __typename\n\n          id\n          name\n        }\n        id\n        name\n        start\n        prefix\n        revokedAt\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n":
     types.GetWorkspaceApiKeyDetailsDocument,
   "\n  query getWorkspaceApiKeyNeighbors(\n    $cursor: String!\n    $filter: WorkspaceApiKeyFilter\n    $orderBy: WorkspaceApiKeyOrder\n    $query: String\n  ) {\n    currentWorkspace {\n      id\n    }\n    previous: workspaceApiKeys(\n      last: 1\n      before: $cursor\n      filter: $filter\n      orderBy: $orderBy\n      query: $query\n    ) {\n      edges {\n        cursor\n        node {\n          id\n        }\n      }\n    }\n    next: workspaceApiKeys(\n      first: 1\n      after: $cursor\n      filter: $filter\n      orderBy: $orderBy\n      query: $query\n    ) {\n      edges {\n        cursor\n        node {\n          id\n        }\n      }\n    }\n  }\n":
     types.GetWorkspaceApiKeyNeighborsDocument,
-  "\n  mutation createWorkspaceApiKeyFromApiKeysRoute(\n    $input: CreateWorkspaceApiKeyInput!\n  ) {\n    createWorkspaceApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n        name\n        start\n        prefix\n        revokedAt\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n":
-    types.CreateWorkspaceApiKeyFromApiKeysRouteDocument,
-  "\n  mutation addWorkspaceServiceAccountForApiKey(\n    $input: AddWorkspaceMemberInput!\n  ) {\n    addWorkspaceMember(input: $input) {\n      id\n    }\n  }\n":
-    types.AddWorkspaceServiceAccountForApiKeyDocument,
+  "\n  mutation createWorkspaceApiKey($input: CreateWorkspaceApiKeyInput!) {\n    createWorkspaceApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n        name\n        start\n        prefix\n        revokedAt\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n":
+    types.CreateWorkspaceApiKeyDocument,
   "\n  query getWorkspaceApiKeyOptions(\n    $includeWorkspaceMembers: Boolean! = false\n    $after: String\n    $memberFilter: WorkspaceMemberFilter\n  ) {\n    currentWorkspace @include(if: $includeWorkspaceMembers) {\n      members(first: 100, after: $after, filter: $memberFilter) {\n        edges {\n          node {\n            id\n            name\n          }\n        }\n        pageInfo {\n          endCursor\n          hasNextPage\n        }\n      }\n    }\n    workspaceApiKeyPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n":
     types.GetWorkspaceApiKeyOptionsDocument,
   "\n  query getApiKeysFromApiKeysRoute(\n    $after: String\n    $before: String\n    $first: Int\n    $last: Int\n    $filter: WorkspaceApiKeyFilter\n    $orderBy: WorkspaceApiKeyOrder\n    $query: String\n  ) {\n    workspaceApiKeys(\n      after: $after\n      before: $before\n      first: $first\n      last: $last\n      orderBy: $orderBy\n      filter: $filter\n      query: $query\n    ) {\n      edges {\n        node {\n          id\n          member {\n            __typename\n\n            id\n            name\n            type\n            workspaceId\n          }\n          name\n          start\n          prefix\n          revokedAt\n          permissions\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        endCursor\n        hasNextPage\n        hasPreviousPage\n        startCursor\n      }\n    }\n  }\n":
@@ -281,12 +278,12 @@ const documents: Documents = {
     types.AddWorkspaceServiceAccountFromWorkspaceMembersRouteDocument,
   "\n  mutation revokeUserApiKeyFromApiKeysRoute($id: ID!) {\n    revokeUserApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n":
     types.RevokeUserApiKeyFromApiKeysRouteDocument,
-  "\n  mutation revokeWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    revokeWorkspaceApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n":
-    types.RevokeWorkspaceApiKeyFromApiKeysRouteDocument,
+  "\n  mutation revokeWorkspaceApiKey($id: ID!) {\n    revokeWorkspaceApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n":
+    types.RevokeWorkspaceApiKeyDocument,
   "\n  mutation updateUserApiKeyFromUserApiKeysRoute(\n    $id: ID!\n    $input: UpdateUserApiKeyInput!\n  ) {\n    updateUserApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
     types.UpdateUserApiKeyFromUserApiKeysRouteDocument,
-  "\n  mutation updateWorkspaceApiKeyFromApiKeysRoute(\n    $id: ID!\n    $input: UpdateWorkspaceApiKeyInput!\n  ) {\n    updateWorkspaceApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
-    types.UpdateWorkspaceApiKeyFromApiKeysRouteDocument,
+  "\n  mutation updateWorkspaceApiKey(\n    $id: ID!\n    $input: UpdateWorkspaceApiKeyInput!\n  ) {\n    updateWorkspaceApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
+    types.UpdateWorkspaceApiKeyDocument,
   "\n  query systemAccountPermissionChoices {\n    systemAccountPermissions {\n      permission\n      grantable\n      default\n    }\n  }\n":
     types.SystemAccountPermissionChoicesDocument,
   "\n  query managedSystemAccount($id: ID!) {\n    systemAccount(id: $id) {\n      id\n      name\n      enabled\n      permissions\n      createdById\n      createdAt\n    }\n  }\n":
@@ -297,20 +294,20 @@ const documents: Documents = {
     types.UpdateManagedSystemAccountDocument,
   "\n  mutation deleteManagedSystemAccount($id: ID!) {\n    deleteSystemAccount(id: $id) {\n      id\n    }\n  }\n":
     types.DeleteManagedSystemAccountDocument,
-  "\n  mutation createManagedSystemAccountKey(\n    $systemAccountId: ID!\n    $input: CreateSystemApiKeyInput!\n  ) {\n    createSystemApiKey(systemAccountId: $systemAccountId, input: $input) {\n      apiKey\n      entity {\n        id\n      }\n    }\n  }\n":
-    types.CreateManagedSystemAccountKeyDocument,
-  "\n  query managedSystemAccountKey($id: ID!) {\n    systemApiKey(id: $id) {\n      id\n      name\n      systemAccount {\n        __typename\n\n        id\n        name\n      }\n      revokedAt\n      permissions\n      prefix\n      start\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
-    types.ManagedSystemAccountKeyDocument,
-  "\n  mutation updateManagedSystemAccountKey(\n    $id: ID!\n    $input: UpdateSystemApiKeyInput!\n  ) {\n    updateSystemApiKey(id: $id, input: $input) {\n      id\n    }\n  }\n":
-    types.UpdateManagedSystemAccountKeyDocument,
-  "\n  mutation deleteManagedSystemAccountKey($id: ID!) {\n    deleteSystemApiKey(id: $id) {\n      id\n    }\n  }\n":
-    types.DeleteManagedSystemAccountKeyDocument,
+  "\n  mutation createSystemApiKey($input: CreateSystemApiKeyInput!) {\n    createSystemApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n      }\n    }\n  }\n":
+    types.CreateSystemApiKeyDocument,
+  "\n  query systemApiKey($id: ID!) {\n    systemApiKey(id: $id) {\n      id\n      name\n      systemAccount {\n        __typename\n\n        id\n        name\n      }\n      revokedAt\n      permissions\n      prefix\n      start\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n":
+    types.SystemApiKeyDocument,
+  "\n  mutation updateSystemApiKey($id: ID!, $input: UpdateSystemApiKeyInput!) {\n    updateSystemApiKey(id: $id, input: $input) {\n      id\n    }\n  }\n":
+    types.UpdateSystemApiKeyDocument,
+  "\n  mutation deleteSystemApiKey($id: ID!) {\n    deleteSystemApiKey(id: $id) {\n      id\n    }\n  }\n":
+    types.DeleteSystemApiKeyDocument,
   "\n  query systemKeyPermissionChoices($systemAccountId: ID, $apiKeyId: ID) {\n    systemApiKeyPermissions(\n      systemAccountId: $systemAccountId\n      apiKeyId: $apiKeyId\n    ) {\n      permission\n      grantable\n      default\n    }\n  }\n":
     types.SystemKeyPermissionChoicesDocument,
   "\n  query systemKeyAccountChoices($after: String) {\n    systemAccounts(first: 100, after: $after, filter: { enabled: true }) {\n      edges {\n        node {\n          id\n          name\n          apiKeyPermissions {\n            permission\n            grantable\n            default\n          }\n        }\n      }\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n    }\n  }\n":
     types.SystemKeyAccountChoicesDocument,
-  "\n  mutation revokeManagedSystemAccountKey($id: ID!) {\n    revokeSystemApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n":
-    types.RevokeManagedSystemAccountKeyDocument,
+  "\n  mutation revokeSystemApiKey($id: ID!) {\n    revokeSystemApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n":
+    types.RevokeSystemApiKeyDocument,
   "\n  query getPasswordPolicy {\n    passwordPolicy {\n      minLength\n      maxLength\n    }\n  }\n":
     types.GetPasswordPolicyDocument,
 };
@@ -333,8 +330,8 @@ export function graphql(source: string): unknown;
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  query managedSystemAccountKeys(\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemApiKeyFilter\n    $orderBy: SystemApiKeyOrder\n  ) {\n    systemApiKeys(\n      first: $first\n      last: $last\n      after: $after\n      before: $before\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          systemAccount {\n            __typename\n\n            id\n            name\n          }\n          revokedAt\n          permissions\n          prefix\n          start\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n    }\n  }\n",
-): (typeof documents)["\n  query managedSystemAccountKeys(\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemApiKeyFilter\n    $orderBy: SystemApiKeyOrder\n  ) {\n    systemApiKeys(\n      first: $first\n      last: $last\n      after: $after\n      before: $before\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          systemAccount {\n            __typename\n\n            id\n            name\n          }\n          revokedAt\n          permissions\n          prefix\n          start\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n    }\n  }\n"];
+  source: "\n  query systemApiKeys(\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemApiKeyFilter\n    $orderBy: SystemApiKeyOrder\n  ) {\n    systemApiKeys(\n      first: $first\n      last: $last\n      after: $after\n      before: $before\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          systemAccount {\n            __typename\n\n            id\n            name\n          }\n          revokedAt\n          permissions\n          prefix\n          start\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n    }\n  }\n",
+): (typeof documents)["\n  query systemApiKeys(\n    $first: Int\n    $last: Int\n    $after: String\n    $before: String\n    $query: String\n    $filter: SystemApiKeyFilter\n    $orderBy: SystemApiKeyOrder\n  ) {\n    systemApiKeys(\n      first: $first\n      last: $last\n      after: $after\n      before: $before\n      query: $query\n      filter: $filter\n      orderBy: $orderBy\n    ) {\n      edges {\n        node {\n          id\n          name\n          systemAccount {\n            __typename\n\n            id\n            name\n          }\n          revokedAt\n          permissions\n          prefix\n          start\n          createdAt\n          lastUsedAt\n          expiresAt\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -603,8 +600,8 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n",
-): (typeof documents)["\n  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n"];
+  source: "\n  mutation deleteWorkspaceApiKey($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n",
+): (typeof documents)["\n  mutation deleteWorkspaceApiKey($id: ID!) {\n    deleteWorkspaceApiKey(id: $id) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -621,14 +618,8 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation createWorkspaceApiKeyFromApiKeysRoute(\n    $input: CreateWorkspaceApiKeyInput!\n  ) {\n    createWorkspaceApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n        name\n        start\n        prefix\n        revokedAt\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n",
-): (typeof documents)["\n  mutation createWorkspaceApiKeyFromApiKeysRoute(\n    $input: CreateWorkspaceApiKeyInput!\n  ) {\n    createWorkspaceApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n        name\n        start\n        prefix\n        revokedAt\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(
-  source: "\n  mutation addWorkspaceServiceAccountForApiKey(\n    $input: AddWorkspaceMemberInput!\n  ) {\n    addWorkspaceMember(input: $input) {\n      id\n    }\n  }\n",
-): (typeof documents)["\n  mutation addWorkspaceServiceAccountForApiKey(\n    $input: AddWorkspaceMemberInput!\n  ) {\n    addWorkspaceMember(input: $input) {\n      id\n    }\n  }\n"];
+  source: "\n  mutation createWorkspaceApiKey($input: CreateWorkspaceApiKeyInput!) {\n    createWorkspaceApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n        name\n        start\n        prefix\n        revokedAt\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n",
+): (typeof documents)["\n  mutation createWorkspaceApiKey($input: CreateWorkspaceApiKeyInput!) {\n    createWorkspaceApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n        name\n        start\n        prefix\n        revokedAt\n        permissions\n        createdAt\n        lastUsedAt\n        expiresAt\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -831,8 +822,8 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation revokeWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    revokeWorkspaceApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n",
-): (typeof documents)["\n  mutation revokeWorkspaceApiKeyFromApiKeysRoute($id: ID!) {\n    revokeWorkspaceApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n"];
+  source: "\n  mutation revokeWorkspaceApiKey($id: ID!) {\n    revokeWorkspaceApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n",
+): (typeof documents)["\n  mutation revokeWorkspaceApiKey($id: ID!) {\n    revokeWorkspaceApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -843,8 +834,8 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation updateWorkspaceApiKeyFromApiKeysRoute(\n    $id: ID!\n    $input: UpdateWorkspaceApiKeyInput!\n  ) {\n    updateWorkspaceApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n",
-): (typeof documents)["\n  mutation updateWorkspaceApiKeyFromApiKeysRoute(\n    $id: ID!\n    $input: UpdateWorkspaceApiKeyInput!\n  ) {\n    updateWorkspaceApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n"];
+  source: "\n  mutation updateWorkspaceApiKey(\n    $id: ID!\n    $input: UpdateWorkspaceApiKeyInput!\n  ) {\n    updateWorkspaceApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n",
+): (typeof documents)["\n  mutation updateWorkspaceApiKey(\n    $id: ID!\n    $input: UpdateWorkspaceApiKeyInput!\n  ) {\n    updateWorkspaceApiKey(id: $id, input: $input) {\n      id\n      name\n      start\n      prefix\n      revokedAt\n      permissions\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -879,26 +870,26 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation createManagedSystemAccountKey(\n    $systemAccountId: ID!\n    $input: CreateSystemApiKeyInput!\n  ) {\n    createSystemApiKey(systemAccountId: $systemAccountId, input: $input) {\n      apiKey\n      entity {\n        id\n      }\n    }\n  }\n",
-): (typeof documents)["\n  mutation createManagedSystemAccountKey(\n    $systemAccountId: ID!\n    $input: CreateSystemApiKeyInput!\n  ) {\n    createSystemApiKey(systemAccountId: $systemAccountId, input: $input) {\n      apiKey\n      entity {\n        id\n      }\n    }\n  }\n"];
+  source: "\n  mutation createSystemApiKey($input: CreateSystemApiKeyInput!) {\n    createSystemApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n      }\n    }\n  }\n",
+): (typeof documents)["\n  mutation createSystemApiKey($input: CreateSystemApiKeyInput!) {\n    createSystemApiKey(input: $input) {\n      apiKey\n      entity {\n        id\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  query managedSystemAccountKey($id: ID!) {\n    systemApiKey(id: $id) {\n      id\n      name\n      systemAccount {\n        __typename\n\n        id\n        name\n      }\n      revokedAt\n      permissions\n      prefix\n      start\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n",
-): (typeof documents)["\n  query managedSystemAccountKey($id: ID!) {\n    systemApiKey(id: $id) {\n      id\n      name\n      systemAccount {\n        __typename\n\n        id\n        name\n      }\n      revokedAt\n      permissions\n      prefix\n      start\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n"];
+  source: "\n  query systemApiKey($id: ID!) {\n    systemApiKey(id: $id) {\n      id\n      name\n      systemAccount {\n        __typename\n\n        id\n        name\n      }\n      revokedAt\n      permissions\n      prefix\n      start\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n",
+): (typeof documents)["\n  query systemApiKey($id: ID!) {\n    systemApiKey(id: $id) {\n      id\n      name\n      systemAccount {\n        __typename\n\n        id\n        name\n      }\n      revokedAt\n      permissions\n      prefix\n      start\n      createdAt\n      lastUsedAt\n      expiresAt\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation updateManagedSystemAccountKey(\n    $id: ID!\n    $input: UpdateSystemApiKeyInput!\n  ) {\n    updateSystemApiKey(id: $id, input: $input) {\n      id\n    }\n  }\n",
-): (typeof documents)["\n  mutation updateManagedSystemAccountKey(\n    $id: ID!\n    $input: UpdateSystemApiKeyInput!\n  ) {\n    updateSystemApiKey(id: $id, input: $input) {\n      id\n    }\n  }\n"];
+  source: "\n  mutation updateSystemApiKey($id: ID!, $input: UpdateSystemApiKeyInput!) {\n    updateSystemApiKey(id: $id, input: $input) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation updateSystemApiKey($id: ID!, $input: UpdateSystemApiKeyInput!) {\n    updateSystemApiKey(id: $id, input: $input) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation deleteManagedSystemAccountKey($id: ID!) {\n    deleteSystemApiKey(id: $id) {\n      id\n    }\n  }\n",
-): (typeof documents)["\n  mutation deleteManagedSystemAccountKey($id: ID!) {\n    deleteSystemApiKey(id: $id) {\n      id\n    }\n  }\n"];
+  source: "\n  mutation deleteSystemApiKey($id: ID!) {\n    deleteSystemApiKey(id: $id) {\n      id\n    }\n  }\n",
+): (typeof documents)["\n  mutation deleteSystemApiKey($id: ID!) {\n    deleteSystemApiKey(id: $id) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -915,8 +906,8 @@ export function graphql(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
-  source: "\n  mutation revokeManagedSystemAccountKey($id: ID!) {\n    revokeSystemApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n",
-): (typeof documents)["\n  mutation revokeManagedSystemAccountKey($id: ID!) {\n    revokeSystemApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n"];
+  source: "\n  mutation revokeSystemApiKey($id: ID!) {\n    revokeSystemApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n",
+): (typeof documents)["\n  mutation revokeSystemApiKey($id: ID!) {\n    revokeSystemApiKey(id: $id) {\n      id\n      revokedAt\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

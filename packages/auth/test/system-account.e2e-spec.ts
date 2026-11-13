@@ -124,6 +124,7 @@ describe("independent system accounts with real persistence and authentication",
           em,
           withAuthTestFeatures(options),
           createTestApiKeyService(em, withAuthTestFeatures(options)),
+          new SystemAccountService(em, withAuthTestFeatures(options)),
         ),
         em,
       );
@@ -135,7 +136,8 @@ describe("independent system accounts with real persistence and authentication",
         name: randomUUID(),
         permissions,
       });
-      const key = await keys.createSystemApiKey(account.id, {
+      const key = await keys.createSystemApiKey({
+        systemAccountId: account.id,
         name: "Integration",
         permissions,
       });
@@ -286,6 +288,7 @@ describe("independent system accounts with real persistence and authentication",
           em,
           withAuthTestFeatures(options),
           createTestApiKeyService(em, withAuthTestFeatures(options)),
+          new SystemAccountService(em, withAuthTestFeatures(options)),
         );
         await expect(
           accounts.createSystemAccount({
@@ -297,7 +300,8 @@ describe("independent system accounts with real persistence and authentication",
           accounts.getSystemAccountConnection({ first: 1 }),
         ).rejects.toThrow(/administrator session/i);
         await expect(
-          keys.createSystemApiKey("1", {
+          keys.createSystemApiKey({
+            systemAccountId: "1",
             name: "Escalation",
             permissions: ["user:read"],
           }),
@@ -316,7 +320,10 @@ describe("independent system accounts with real persistence and authentication",
   it("requires explicit system-key grants; an empty list never inherits account privileges", async () => {
     const { account } = await issue();
     const created = await asAdministrator((_accounts, keys) =>
-      keys.createSystemApiKey(account.id, { name: "No grants" }),
+      keys.createSystemApiKey({
+        systemAccountId: account.id,
+        name: "No grants",
+      }),
     );
     await withKey(created.apiKey, async (em) => {
       expect(
@@ -341,18 +348,21 @@ describe("independent system accounts with real persistence and authentication",
         permissions: ["user:read"],
       });
       await expect(
-        keys.createSystemApiKey(account.id, {
+        keys.createSystemApiKey({
+          systemAccountId: account.id,
           name: "Too broad",
           permissions: ["workspace:read-any"],
         }),
       ).rejects.toThrow(/exceed system account/i);
       await expect(
-        keys.createSystemApiKey(account.id, {
+        keys.createSystemApiKey({
+          systemAccountId: account.id,
           name: "Config",
           permissions: ["user:delete"],
         }),
       ).rejects.toThrow(/configured allowedPermissions/i);
-      const created = await keys.createSystemApiKey(account.id, {
+      const created = await keys.createSystemApiKey({
+        systemAccountId: account.id,
         name: "Valid",
         permissions: ["user:read"],
       });
@@ -429,7 +439,8 @@ describe("independent system accounts with real persistence and authentication",
       });
       return {
         account,
-        ...(await keys.createSystemApiKey(account.id, {
+        ...(await keys.createSystemApiKey({
+          systemAccountId: account.id,
           name: "Independent",
           permissions: ["user:read"],
         })),
@@ -515,7 +526,10 @@ describe("independent system accounts with real persistence and authentication",
         accounts.deleteSystemAccount("9999999999999"),
       ).rejects.toThrow(/not found/i);
       await expect(
-        keys.createSystemApiKey("9999999999999", { name: "Missing" }),
+        keys.createSystemApiKey({
+          systemAccountId: "9999999999999",
+          name: "Missing",
+        }),
       ).rejects.toThrow(/not found/i);
       await expect(
         keys.updateSystemApiKey("9999999999999", { name: "Missing" }),
@@ -563,9 +577,11 @@ describe("independent system accounts with real persistence and authentication",
         em,
         withAuthTestFeatures(configuration),
         createTestApiKeyService(em, withAuthTestFeatures(configuration)),
+        new SystemAccountService(em, withAuthTestFeatures(configuration)),
       );
       await expect(
-        keys.createSystemApiKey(account.id, {
+        keys.createSystemApiKey({
+          systemAccountId: account.id,
           name: "Excessive",
           permissions: ["workspace:read-any"],
         }),
@@ -684,6 +700,7 @@ describe("independent system accounts with real persistence and authentication",
         em,
         withAuthTestFeatures(configuration),
         createTestApiKeyService(em, withAuthTestFeatures(configuration)),
+        new SystemAccountService(em, withAuthTestFeatures(configuration)),
       );
       await expect(
         keys.updateSystemApiKey(issued.entity.id, {
@@ -719,6 +736,7 @@ describe("independent system accounts with real persistence and authentication",
         em,
         withAuthTestFeatures(configuration),
         createTestApiKeyService(em, withAuthTestFeatures(configuration)),
+        new SystemAccountService(em, withAuthTestFeatures(configuration)),
       );
       await expect(
         accounts.createSystemAccount({ name: "Blocked" }),
@@ -727,7 +745,10 @@ describe("independent system accounts with real persistence and authentication",
         accounts.updateSystemAccount(issued.account.id, { name: "Blocked" }),
       ).rejects.toThrow(/not allowed/i);
       await expect(
-        keys.createSystemApiKey(issued.account.id, { name: "Blocked" }),
+        keys.createSystemApiKey({
+          systemAccountId: issued.account.id,
+          name: "Blocked",
+        }),
       ).rejects.toThrow(/not allowed/i);
       await expect(
         keys.updateSystemApiKey(issued.entity.id, { name: "Blocked" }),
@@ -767,6 +788,7 @@ describe("independent system accounts with real persistence and authentication",
         em,
         withAuthTestFeatures(configuration),
         createTestApiKeyService(em, withAuthTestFeatures(configuration)),
+        new SystemAccountService(em, withAuthTestFeatures(configuration)),
       );
       await expect(
         accounts.createSystemAccount({ name: "Blocked" }),
@@ -775,7 +797,10 @@ describe("independent system accounts with real persistence and authentication",
         accounts.updateSystemAccount(issued.account.id, { name: "Blocked" }),
       ).rejects.toThrow(/not allowed/i);
       await expect(
-        keys.createSystemApiKey(issued.account.id, { name: "Blocked" }),
+        keys.createSystemApiKey({
+          systemAccountId: issued.account.id,
+          name: "Blocked",
+        }),
       ).rejects.toThrow(/not allowed/i);
       await expect(
         keys.updateSystemApiKey(issued.entity.id, { name: "Blocked" }),
@@ -817,7 +842,8 @@ describe("independent system accounts with real persistence and authentication",
           scoped,
           withAuthTestFeatures(options),
           createTestApiKeyService(scoped, withAuthTestFeatures(options)),
-        ).createSystemApiKey("1", { name: "Denied" }),
+          new SystemAccountService(scoped, withAuthTestFeatures(options)),
+        ).createSystemApiKey({ systemAccountId: "1", name: "Denied" }),
       ).rejects.toThrow(/session/i);
     });
   });
@@ -831,6 +857,9 @@ describe("independent system accounts with real persistence and authentication",
             apiKey: { enabled: true, system: { enabled: true } },
           },
           createTestApiKeyService(em, {
+            apiKey: { enabled: true, system: { enabled: true } },
+          }),
+          new SystemAccountService(em, {
             apiKey: { enabled: true, system: { enabled: true } },
           }),
         ).getSystemApiKeyPermissions(),
@@ -1071,6 +1100,7 @@ describe("independent system accounts with real persistence and authentication",
         em,
         withAuthTestFeatures(configuration),
         createTestApiKeyService(em, withAuthTestFeatures(configuration)),
+        new SystemAccountService(em, withAuthTestFeatures(configuration)),
       );
       await expect(keys.revokeSystemApiKey(issued.entity.id)).rejects.toThrow(
         /not allowed/i,
@@ -1210,6 +1240,7 @@ describe("independent system accounts with real persistence and authentication",
         em,
         withAuthTestFeatures(configuration),
         createTestApiKeyService(em, withAuthTestFeatures(configuration)),
+        new SystemAccountService(em, withAuthTestFeatures(configuration)),
       );
       await expect(
         keys.updateSystemApiKey(issued.entity.id, { name: "Forbidden rename" }),

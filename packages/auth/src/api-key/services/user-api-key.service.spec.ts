@@ -772,3 +772,33 @@ describe("conditional service authorization", () => {
     );
   });
 });
+
+for (const field of ["name", "permissions", "expiresAt", "prefix"] as const) {
+  apiKeyTest(`rejects creation when ${field} is not writable`, async () => {
+    const configuration: AuthModuleOptions = {
+      workspace: { enabled: true },
+      buildAbility: ({ cannot }) => {
+        cannot("write", UserApiKey, [field]);
+      },
+    };
+    const { service, em, authorization } = createService(configuration);
+    authorization.authorize.mockRestore();
+    const user = Object.assign(createTestUser(), { roles: ["admin"] });
+    stageIdentity({ user });
+    createTestAuthContext(
+      undefined,
+      withAuthTestFeatures(configuration),
+    ).refresh();
+    const input = {
+      name: "Denied",
+      permissions: ["user-api-key:read"],
+      expiresAt: new Date(Date.now() + 60_000),
+      prefix: "custom_",
+    };
+    await expect(service.createUserApiKey(user, input)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(em.persist.mock.calls).toHaveLength(0);
+    expect(em.flush.mock.calls).toHaveLength(0);
+  });
+}

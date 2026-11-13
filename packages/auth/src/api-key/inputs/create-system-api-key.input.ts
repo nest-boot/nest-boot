@@ -1,4 +1,4 @@
-import { Field, InputType } from "@nest-boot/graphql";
+import { Field, ID, InputType } from "@nest-boot/graphql";
 import { ZodField } from "@nest-boot/validator";
 
 import { SystemApiKeyPermission } from "../enums/system-api-key-permission.enum.js";
@@ -8,6 +8,11 @@ import { SystemApiKeyPermission } from "../enums/system-api-key-permission.enum.
  */
 @InputType()
 export class CreateSystemApiKeyInput {
+  /** Existing system account; omission creates one atomically with the key. */
+  @ZodField((z) => z.string().min(1).nullish())
+  @Field(() => ID, { nullable: true })
+  systemAccountId?: string | null;
+
   /** API key display name. */
   @ZodField((z) => z.string().trim().min(1).max(255))
   @Field(() => String)

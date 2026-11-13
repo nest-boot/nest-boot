@@ -25,7 +25,7 @@ import {
 import { isAccessDenied } from "@/lib/auth-errors";
 
 const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
-  mutation deleteWorkspaceApiKeyFromApiKeysRoute($id: ID!) {
+  mutation deleteWorkspaceApiKey($id: ID!) {
     deleteWorkspaceApiKey(id: $id) {
       id
       name

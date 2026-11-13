@@ -313,15 +313,15 @@ accepts an existing member entity or ID. GraphQL accepts `input.memberId`.
 Only the caller's own USER member or an active SERVICE_ACCOUNT member in the
 selected workspace may own the new key.
 
-Omitting the owner uses the current member. The example form defaults to **You**,
-passing the current member ID. Choosing **Service account** displays a searchable
-account dropdown. If no account is selected, the frontend first calls `addWorkspaceMember`
-to create a service account named after the key, then calls `createWorkspaceApiKey`
-with its `memberId`. Account creation requires `workspace-service-account:write`; key creation
-requires `workspace-api-key:write`. These are separate operations. With selected
-permissions, `addWorkspaceMember` receives `roles: []` and those direct permissions. With
-no selection, it omits roles and permissions to use the configured default
-workspace role (MEMBER by default).
+The example form defaults to **You**, passing the current member ID. Choosing
+**Service account** displays a searchable account dropdown. When `memberId` is
+omitted, `createWorkspaceApiKey` creates a service account named after the key
+and the credential in one transaction. Existing owners are used without changing
+their roles or grants. Automatic creation additionally requires
+`workspace-service-account:write`; key creation requires `workspace-api-key:write`.
+With explicit key grants, the new account receives `roles: []` and those direct
+permissions. With no grants, it uses the configured default workspace role
+(MEMBER by default). Any failure rolls back both records.
 
 Empty API-key permissions (`[]`, including explicit `null` normalized to `[]`)
 inherit the owning user's or member's complete current permissions. Non-empty
@@ -769,7 +769,15 @@ mutation {
 }
 ```
 
-Create its credential with `createSystemApiKey(systemAccountId, input)` and send the returned plaintext as `Authorization: Bearer <key>`. The plaintext is returned once; metadata queries never return its hash or plaintext. The default prefix is `sys_`, configurable through `apiKey.system.defaultPrefix` (or `API_KEY_PREFIX`). Its `allowedPermissions` and `defaultPermissions` follow the existing scoped configuration shape.
+Create its credential with `createSystemApiKey(input: { systemAccountId, name, permissions })` and send the returned plaintext as `Authorization: Bearer <key>`. The plaintext is returned once; metadata queries never return its hash or plaintext. The default prefix is `sys_`, configurable through `apiKey.system.defaultPrefix` (or `API_KEY_PREFIX`). Its `allowedPermissions` and `defaultPermissions` follow the existing scoped configuration shape.
+
+Omitting `systemAccountId` creates an account with the key's name and normalized
+grants in the same transaction. This requires both `system-account:write` and
+`system-account-api-key:write`; using an existing account does not require creating
+or updating that account. The frontend submits one mutation and retains no partial
+account state. A failed creation can be retried with edited fields without leaving
+an account behind. Both owner-creation services use native `REQUIRED` transaction
+propagation to join the credential transaction.
 
 System-key grants are the intersection of the account's current permissions, the key's explicit permissions and the configured key allowlist. An empty system-key grant list grants nothing. Disabling the account invalidates every owned key on subsequent requests; revoking, expiring or deleting one key affects that key. System authentication creates no User, WorkspaceMember or selected-workspace identity.
 
@@ -790,5 +798,7 @@ API keys use `revokedAt: Date | null` instead of an `enabled` column or field. `
 Persistence services and the injected `ApiKeyService` work with native `ApiKey` records, including native records queried without their hash. Owner validation narrows only the polymorphic relation. Public service results and committed request identities are projected into `UserApiKey`, `WorkspaceApiKey` or `SystemApiKey` DTOs; updates never publish an ORM-managed entity as the request credential. Use these concrete DTO types directly instead of the removed identity alias `ApiKeyMetadata<T>`.
 
 Services publish request identity changes directly after successful persistence. Updating, revoking or deleting the authenticating API key requires execution outside externally owned transactions, matching the restrictions for current User/WorkspaceMember authorization changes and workspace exit. Administrative revocation of the current session and platform changes to the selected workspace follow the same rule, including transactions without RLS. Other credentials and workspaces can still be changed inside transactions. There is no transaction subscriber, deferred identity queue or Nest event bus.
+
+All three key creation paths authorize the resulting record, mandatory name/grant fields, and any supplied expiration or prefix before persisting. Omitted optional fields use server defaults without requiring write access to override them.
 
 Shared key updates and revocations use atomic SQL writes and detached result records. They do not dirty the caller's managed entities, preventing an outer flush from replaying changes rolled back to a savepoint. All three key scopes enforce instance and requested-field authorization before the write. Usage recording captures its manager in a callback rather than constructing another service, and publishes timestamps only after persistence succeeds.

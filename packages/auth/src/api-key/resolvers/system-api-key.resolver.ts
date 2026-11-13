@@ -106,16 +106,12 @@ export class SystemApiKeyResolver {
 
   /**
    * Returns a newly issued plaintext credential once.
-   * @param systemAccountId - Identifier of the owning system account.
    * @param input - Requested metadata and permission changes.
    * @returns Created credential with its one-time plaintext key.
    */
   @Mutation(() => CreateSystemApiKeyResult)
-  createSystemApiKey(
-    @Args("systemAccountId", { type: () => ID }) systemAccountId: string,
-    @Args("input") input: CreateSystemApiKeyInput,
-  ) {
-    return this.keys.createSystemApiKey(systemAccountId, input);
+  createSystemApiKey(@Args("input") input: CreateSystemApiKeyInput) {
+    return this.keys.createSystemApiKey(input);
   }
 
   /**

@@ -159,6 +159,7 @@ describe('business authorization recipe', () => {
             {} as EntityManager,
             reportAuthOptions,
             {} as ConstructorParameters<typeof WorkspaceApiKeyService>[2],
+            {} as ConstructorParameters<typeof WorkspaceApiKeyService>[3],
           ).getWorkspaceApiKeyPermissions(workspace);
           const read = catalog.find(
             (option) => option.permission === 'report:read',

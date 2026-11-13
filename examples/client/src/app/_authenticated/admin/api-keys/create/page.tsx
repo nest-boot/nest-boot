@@ -5,9 +5,8 @@ import { t } from "i18next";
 import { SystemApiKeyPermission } from "@/gql/graphql";
 import { ApiKeyFormPage } from "@/components/api-key-form-page";
 import {
-  CREATE_SYSTEM_ACCOUNT,
-  CREATE_SYSTEM_KEY,
-  SYSTEM_KEY_ACCOUNTS,
+  CREATE_SYSTEM_API_KEY,
+  SYSTEM_API_KEY_ACCOUNTS,
 } from "@/graphql/system-accounts";
 import {
   getDefaultApiKeyPermissions,
@@ -34,7 +33,7 @@ export const Route = createFileRoute("/_authenticated/admin/api-keys/create/")({
     const read = async (after?: string) =>
       await context.apolloClient
         .query({
-          query: SYSTEM_KEY_ACCOUNTS,
+          query: SYSTEM_API_KEY_ACCOUNTS,
           variables: { after },
           fetchPolicy: "network-only",
         })
@@ -65,16 +64,12 @@ function Create() {
   const navigate = Route.useNavigate();
   const { setCreatedKey } = useCreatedApiKey();
   const user = useCurrentUserContext();
-  const preparedAccount = useRef<string | undefined>(undefined);
   const issued = useRef<{ id: string; secret: string } | undefined>(undefined);
   const { backSearch } = useResourceNavigation({
     key: [user.id, ...adminApiKeysResourceKey],
     searchSchema: apiKeySearchSchema,
   });
-  const [createAccount] = useMutation(CREATE_SYSTEM_ACCOUNT, {
-    fetchPolicy: "no-cache",
-  });
-  const [createKey] = useMutation(CREATE_SYSTEM_KEY, {
+  const [createKey] = useMutation(CREATE_SYSTEM_API_KEY, {
     fetchPolicy: "no-cache",
   });
   return (
@@ -102,24 +97,11 @@ function Create() {
       }}
       onSave={async ({ systemAccountId, name, permissions }) => {
         if (!issued.current) {
-          let accountId = systemAccountId;
-          if (!accountId) {
-            if (!canCreateAccount)
-              throw new Error(t("admin:system_accounts.select_required"));
-            if (!preparedAccount.current) {
-              const { data } = await createAccount({
-                variables: { input: { name, permissions } },
-              });
-              if (!data?.createSystemAccount.id)
-                throw new Error(t("api-key:form.save_failed"));
-              preparedAccount.current = data.createSystemAccount.id;
-            }
-            accountId = preparedAccount.current;
-          }
+          if (!systemAccountId && !canCreateAccount)
+            throw new Error(t("admin:system_accounts.select_required"));
           const { data } = await createKey({
             variables: {
-              systemAccountId: accountId,
-              input: { name, permissions },
+              input: { systemAccountId, name, permissions },
             },
           });
           const created = data?.createSystemApiKey;

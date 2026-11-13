@@ -19,7 +19,7 @@ import { toApiKeyView } from "../utils/api-key-view.util.js";
 import { isCurrentApiKey } from "../utils/is-current-api-key.util.js";
 
 /**
- * Persists already-authorized key changes and publishes their committed identity effects.
+ * Shared credential authorization, persistence and request-identity synchronization.
  * @internal
  */
 @Injectable()
@@ -55,6 +55,25 @@ export class ApiKeyService {
         start: apiKey.slice(0, 8),
       },
     };
+  }
+
+  /**
+   * Authorizes the created record and every caller-controlled credential field.
+   * @param apiKey - Credential with its concrete owner already assigned.
+   * @param input - Requested creation fields.
+   */
+  authorizeCreation(apiKey: ApiKeyRecord, input: CreateApiKeyOptions): void {
+    authorize("write", apiKey);
+    const fields = ["name", "permissions"];
+    if (input.expiresAt !== undefined) {
+      fields.push("expiresAt");
+    }
+    if (input.prefix !== undefined) {
+      fields.push("prefix");
+    }
+    for (const field of fields) {
+      authorize("write", apiKey, field);
+    }
   }
 
   /**

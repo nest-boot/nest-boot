@@ -219,6 +219,7 @@ input CreateSystemApiKeyInput {
   name: String!
   permissions: [SystemApiKeyPermission!]
   prefix: String
+  systemAccountId: ID
 }
 
 type CreateSystemApiKeyResult {
@@ -380,7 +381,7 @@ type Mutation {
   changeCurrentUserEmail(input: AuthChangeEmailInput!): Boolean!
   changeCurrentUserPassword(input: AuthChangePasswordInput!): AuthChangePasswordResultType!
   createSystemAccount(input: CreateSystemAccountInput!): SystemAccount!
-  createSystemApiKey(input: CreateSystemApiKeyInput!, systemAccountId: ID!): CreateSystemApiKeyResult!
+  createSystemApiKey(input: CreateSystemApiKeyInput!): CreateSystemApiKeyResult!
   createUser(input: CreateUserInput!): CreateUserPayload!
   createUserApiKey(input: CreateUserApiKeyInput!): CreateUserApiKeyResult!
   createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload!
