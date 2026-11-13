@@ -63,7 +63,13 @@ await CommandFactory.run({ module: class CliModule {}, imports: [
       );
       const result = spawnSync(
         process.execPath,
-        [join(commandDirectory, "bin/nb"), "database:schema:create", "--dump"],
+        [
+          join(commandDirectory, "bin/nb"),
+          "database",
+          "schema",
+          "create",
+          "--dump",
+        ],
         {
           cwd: directory,
           encoding: "utf8",
@@ -84,7 +90,9 @@ await CommandFactory.run({ module: class CliModule {}, imports: [
         process.execPath,
         [
           join(commandDirectory, "bin/nb"),
-          "database:migration:create",
+          "database",
+          "migration",
+          "create",
           "--blank",
           "--name",
           "proof",
@@ -112,7 +120,7 @@ await CommandFactory.run({ module: class CliModule {}, imports: [
       ).toBe(true);
       const applied = spawnSync(
         process.execPath,
-        [join(commandDirectory, "bin/nb"), "database:migration:up"],
+        [join(commandDirectory, "bin/nb"), "database", "migration", "up"],
         {
           cwd: directory,
           encoding: "utf8",

@@ -65,7 +65,7 @@ async function bootstrap() {
 void bootstrap();
 ```
 
-其他模块只需将命令类加入 `providers`，CLI 根模块导入这些模块即可自动发现，命令不需要 export。`paths` 支持多级命令和别名，路径重复会在执行前报错。
+其他模块只需将命令类加入 `providers`，CLI 根模块导入这些模块即可自动发现，命令不需要 export。`paths` 支持多级命令和别名，每个单词单独作为一个路径段：`["database", "migration", "create"]` 对应 `nb database migration create`。路径重复会在执行前报错。输入 `nb database` 或 `nb database migration` 这样的命令组前缀，会列出匹配的子命令并正常退出，不会执行这些子命令。完整命令保持原有行为，追加 `--help` 可查看其选项。
 
 ```bash
 pnpm exec nb greet Alice --loud
@@ -122,5 +122,5 @@ nb --help
 
 在应用目录运行 `nb`。项目自身仍需安装 `@nest-boot/command` 及其 peer dependencies，并提供 CLI 入口和 `CommandModule` 注册。全局安装提供执行入口；命令与依赖注入使用项目自己的实现。
 
-导入 `DatabaseModule.forRoot/forRootAsync` 后，可直接使用 `nb database:migration:*`、
-`nb database:schema:*` 和 `nb database:seeder:*`，详见 [数据库教程](/docs/tutorial/database)。
+导入 `DatabaseModule.forRoot/forRootAsync` 后，可直接使用 `nb database migration`、
+`nb database schema` 和 `nb database seeder`，详见 [数据库教程](/docs/tutorial/database)。

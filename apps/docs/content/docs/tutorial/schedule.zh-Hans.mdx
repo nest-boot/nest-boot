@@ -29,7 +29,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-`QueueModule` 在模块树中注册一次，例如放在 `CommonModule` 中。`ScheduleModule` 使用其全局服务，支持 `connection` 和 `concurrency`。定时任务在应用初始化时注册，此时不会创建 worker；运行 `nb queue:start --queue schedule` 后才启动消费者。队列名称固定为 `schedule`；不传 `--queue` 时也会启动定时任务队列。不需要消费定时任务时，只选择要启动的业务消费者。队列存储和调度登记使用 Redis 的 `REDIS_URL`，不依赖数据库或迁移。
+`QueueModule` 在模块树中注册一次，例如放在 `CommonModule` 中。`ScheduleModule` 使用其全局服务，支持 `connection` 和 `concurrency`。定时任务在应用初始化时注册，此时不会创建 worker；运行 `nb queue start --queue schedule` 后才启动消费者。队列名称固定为 `schedule`；不传 `--queue` 时也会启动定时任务队列。不需要消费定时任务时，只选择要启动的业务消费者。队列存储和调度登记使用 Redis 的 `REDIS_URL`，不依赖数据库或迁移。
 
 共享 Redis 连接的不同应用应使用不同的 `prefix`；同一应用的副本使用相同 prefix。Worker 和旧 scheduler 清理都只作用于该命名空间的 schedule 队列：
 

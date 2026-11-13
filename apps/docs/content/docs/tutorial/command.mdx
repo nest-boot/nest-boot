@@ -65,7 +65,7 @@ async function bootstrap() {
 void bootstrap();
 ```
 
-Every imported module can contribute commands by registering decorated classes in `providers`; commands do not need to be exported. Paths support nested commands and aliases. Duplicate paths fail before execution.
+Every imported module can contribute commands by registering decorated classes in `providers`; commands do not need to be exported. Paths support nested commands and aliases. Define each word as a separate path segment: `["database", "migration", "create"]` runs as `nb database migration create`. Duplicate paths fail before execution. Entering a group prefix, such as `nb database` or `nb database migration`, lists matching subcommands and exits successfully without running them. Complete commands keep their normal behavior; append `--help` to see their options.
 
 ```bash
 pnpm exec nb greet Alice --loud
@@ -122,5 +122,5 @@ nb --help
 
 Run `nb` from the application directory. The project still installs `@nest-boot/command` and its peers and provides its own CLI entry and CommandModule registration. Global installation supplies the executable; commands and providers come from the project.
 
-Import `DatabaseModule.forRoot/forRootAsync` to discover built-in `nb database:migration:*`,
-`nb database:schema:*`, and `nb database:seeder:*` commands. See the [Database tutorial](/docs/tutorial/database).
+Import `DatabaseModule.forRoot/forRootAsync` to discover built-in `nb database migration`,
+`nb database schema`, and `nb database seeder` commands. See the [Database tutorial](/docs/tutorial/database).

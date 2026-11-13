@@ -59,6 +59,12 @@ pnpm exec nb greet Alice --loud
 pnpm exec nb --help
 ```
 
+Use a separate path segment for each command word. For example,
+`["database", "migration", "create"]` runs as `nb database migration create`.
+Enter a group prefix, such as `nb database` or `nb database migration`, to list
+matching subcommands without executing them. Add `--help` to a complete command
+to see its options.
+
 Modules register command classes in `providers`; the CLI discovers commands across the imported module tree and retains Nest dependency injection. Commands and dependencies must be singletons. Parameter types are inferred by `Option` helpers. Commands implement `async execute()` and can return an exit code.
 
 Development prefers `src/cli.ts`; production (`NODE_ENV=production`) prefers `dist/cli.js`. The entry calls `CommandFactory.run(AppModule)`, which sets `process.exitCode` internally; it needs no exports. Call the factory once from the CLI bootstrap. Every command runs in an independent `RequestContext` of type `"command"`, including registered context middleware. `CommandModule` imports `RequestContextModule` automatically. Application initialization and shutdown hooks run normally; execution always closes the Nest application context. Source execution uses `ts-node` in transpile-only mode with its `experimentalResolver` and `preferTsExts` options enabled. ESM loading, relative extension remapping, decorator metadata and JSX follow the project tsconfig and `ts-node` settings. Source applications use `"type": "module"` and `module`/`moduleResolution` set to `"NodeNext"`. Configure `experimentalDecorators` and `emitDecoratorMetadata` for Nest dependency injection. Without a tsconfig, the CLI uses NodeNext and Nest decorator defaults.

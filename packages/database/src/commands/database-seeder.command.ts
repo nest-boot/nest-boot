@@ -4,7 +4,7 @@ import { DatabaseCommand } from "./database.command.js";
 
 /** Executes the configured default seeder or a named seeder. */
 @Command({
-  paths: [["database:seeder:run"]],
+  paths: [["database", "seeder", "run"]],
   usage: { description: "Run the default seeder, or select one with --class." },
 })
 export class DatabaseSeederRunCommand extends DatabaseCommand {
@@ -21,7 +21,7 @@ export class DatabaseSeederRunCommand extends DatabaseCommand {
 
 /** Creates a new seeder class. */
 @Command({
-  paths: [["database:seeder:create"]],
+  paths: [["database", "seeder", "create"]],
   usage: { description: "Create a seeder class." },
 })
 export class DatabaseSeederCreateCommand extends DatabaseCommand {

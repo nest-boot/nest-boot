@@ -4,7 +4,7 @@ import { Inject } from "@nestjs/common";
 import { ReportsQueue } from "./reports.queue.js";
 
 /** A normal application command that produces work without starting consumers. */
-@Command({ paths: [["report:enqueue"]] })
+@Command({ paths: [["report", "enqueue"]] })
 export class EnqueueReportCommand extends BaseCommand {
   constructor(@Inject(ReportsQueue) private readonly reports: ReportsQueue) {
     super();

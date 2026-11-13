@@ -12,7 +12,7 @@ ESM 发布，并要求 Node.js 24.21.0 或更高版本。
 `workspace: { enabled: true }`，Auth 会向 DatabaseModule 自动注册启用的实体。
 已移除 `withAuthDatabaseConfig`，请删除调用与导入。
 
-改用 `nb database:migration:*`、`nb database:schema:*` 与 `nb database:seeder:*`。
+改用 `nb database migration`、`nb database schema` 与 `nb database seeder`。
 CLI 入口通过 `CommandFactory.run(AppModule)` 使用运行时模块配置。将旧
 `mikro-orm.config.ts` 中的定制选项移入 `DatabaseModule.forRoot/forRootAsync`，
 然后删除独立配置文件及 package.json 中的 `mikro-orm` 配置。
@@ -49,7 +49,7 @@ GraphQL 应用还应使用 `@nestjs/graphql@^14` 与 `@nestjs/apollo@^14`；
 
 模块类和配置类型分别改为 `DatabaseModule`、`DatabaseModuleOptions`，替代
 `MikroOrmModule`、`MikroOrmModuleOptions`。数据库集成仍使用 MikroORM；上游依赖和
-CLI 使用 `nb database:*`，与运行时共享 DatabaseModule 配置。
+CLI 使用 `nb database`，与运行时共享 DatabaseModule 配置。
 
 自定义请求上下文中间件的依赖名称从 `"mikro-orm"` 改为 `"database"`。请更新
 `RequestContext.registerMiddleware()` 的依赖参数，确保实体管理器先完成初始化。
@@ -82,7 +82,7 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
 
 将 `@nest-boot/bullmq` 改为 `@nest-boot/queue`。使用 `QueueModule`、`@Queue(name)` 和 `BaseQueue`，消费者通过 `@Processor(QueueClass)` 继承 `BaseProcessor`，并注册对应队列类。Processor 必须为单例，Worker 不单独拆分。运行参数改为构造函数 `super(options)`；删除 QueueModule.forRoot/forRootAsync 和模块配置 token，直接导入 QueueModule。Worker 和 QueueEvents 通过内部 Symbol 引用保存并提供只读 getter，移除事件装饰器、QueueEventsHost 和 Processor `.on()` 订阅。移除 `@nestjs/bullmq`、`BullMQMikroORMModule` 和 `QueueDatabaseModule`。Queue 规则统一使用 @nest-boot/queue 命名空间，共享配置默认启用 processor-name。
 
-队列使用 Redis，配置 `REDIS_URL` 或显式 `connection`。保留 `bullmq` 依赖，移除 `queue:migrate`。`nb queue:start` 启动消费者，也可通过 `--queue` 选择队列。
+队列使用 Redis，配置 `REDIS_URL` 或显式 `connection`。保留 `bullmq` 依赖，移除 `queue:migrate`。`nb queue start` 启动消费者，也可通过 `--queue` 选择队列。
 
 每个已注册 Queue 都启动原生 QueueEvents，不依赖数据库。需要持久化记录和认证保护的 GraphQL 查询时，安装 `@nest-boot/queue-api` 并导入 QueueApiModule，JobEntity、JobStatus 和 JobService 改从该包导入。应用配置全局 DatabaseModule、GraphQLModule 和 AuthModule，将 JobEntity 作为普通实体注册并走标准应用迁移。扩展通过去重的 job 队列同步记录，直接使用 BullMQ 调度每日清理，不依赖 schedule。UUID 由数据库生成，bigint last_event_ms 和 last_event_seq 防止乱序覆盖。仅导入 QueueModule 不再需要 EntityManager 或 API 模块。移除 withQueueDatabaseConfig 和单独的队列 schema 配置。
 
@@ -198,7 +198,7 @@ Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
 `WorkspaceMember`、`WorkspaceInvitation`、`SystemAccount` 和 `ApiKey` 具体实体，以及 GraphQL 元数据、关联、RLS 策略和连接。
 不再提供认证 `Base*` 类或 `AuthModuleOptions.entities` 替换配置。
 
-AuthModule 通过 DatabaseModule 注册已启用实体。应用使用 `nb database:*` 命令共享运行时配置，无需单独的 MikroORM 配置文件。
+AuthModule 通过 DatabaseModule 注册已启用实体。应用使用 `nb database` 命令共享运行时配置，无需单独的 MikroORM 配置文件。
 AuthModule 自动选择已启用的原生 Schema；独立 ORM 可以注册完整模型：
 
 ```typescript

@@ -21,9 +21,10 @@ export class CommandRegistry {
   /**
    * Registers command adapters while retaining the actual Nest provider instances.
    * @param cli - Parser receiving all commands in this application context.
+   * @returns Registered command paths, including aliases.
    */
-  register(cli: Cli): void {
-    const paths = new Set<string>();
+  register(cli: Cli): string[][] {
+    const paths = new Map<string, string[]>();
     const instances = new Set<BaseCommand>();
     const adapters = new Map<CommandClass, CommandClass>();
     for (const wrapper of this.discovery.getProviders()) {
@@ -73,10 +74,11 @@ export class CommandRegistry {
         if (paths.has(key)) {
           throw new Error(`Duplicate command path: ${path.join(" ")}`);
         }
-        paths.add(key);
+        paths.set(key, path);
       }
       cli.register(this.createAdapter(instance, options, adapters));
     }
+    return [...paths.values()];
   }
 
   /**

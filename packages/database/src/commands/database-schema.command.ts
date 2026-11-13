@@ -11,7 +11,7 @@ abstract class DatabaseSchemaCommand extends DatabaseCommand {
 
 /** Creates tables from current entity metadata. */
 @Command({
-  paths: [["database:schema:create"]],
+  paths: [["database", "schema", "create"]],
   usage: { description: "Print CREATE SQL, or execute it with --run." },
 })
 export class DatabaseSchemaCreateCommand extends DatabaseSchemaCommand {
@@ -29,7 +29,7 @@ export class DatabaseSchemaCreateCommand extends DatabaseSchemaCommand {
 
 /** Updates tables from current entity metadata. */
 @Command({
-  paths: [["database:schema:update"]],
+  paths: [["database", "schema", "update"]],
   usage: { description: "Print schema changes, or execute them with --run." },
 })
 export class DatabaseSchemaUpdateCommand extends DatabaseSchemaCommand {
@@ -53,7 +53,7 @@ export class DatabaseSchemaUpdateCommand extends DatabaseSchemaCommand {
 
 /** Drops the schema's mapped tables. */
 @Command({
-  paths: [["database:schema:drop"]],
+  paths: [["database", "schema", "drop"]],
   usage: { description: "Print DROP SQL, or execute it with --run." },
 })
 export class DatabaseSchemaDropCommand extends DatabaseSchemaCommand {
@@ -75,7 +75,7 @@ export class DatabaseSchemaDropCommand extends DatabaseSchemaCommand {
 
 /** Recreates tables from current entity metadata. */
 @Command({
-  paths: [["database:schema:fresh"]],
+  paths: [["database", "schema", "fresh"]],
   usage: { description: "Drop and recreate the schema with --run." },
 })
 export class DatabaseSchemaFreshCommand extends DatabaseCommand {
@@ -84,7 +84,7 @@ export class DatabaseSchemaFreshCommand extends DatabaseCommand {
   seed = Option.String("--seed");
   async execute(): Promise<void> {
     if (!this.run) {
-      throw new Error("database:schema:fresh requires --run.");
+      throw new Error("database schema fresh requires --run.");
     }
     await this.orm.schema.refresh({ schema: this.schema });
     if (this.seed) {

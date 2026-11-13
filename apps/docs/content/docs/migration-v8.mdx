@@ -13,7 +13,7 @@ Workspaces are disabled by default. Existing workspace applications must set
 entities with DatabaseModule. `withAuthDatabaseConfig` has been removed; delete its calls
 and imports.
 
-Use `nb database:migration:*`, `nb database:schema:*`, and `nb database:seeder:*` through
+Use `nb database migration`, `nb database schema`, and `nb database seeder` through
 the CLI entry calling `CommandFactory.run(AppModule)`. Move custom options from
 `mikro-orm.config.ts` into `DatabaseModule.forRoot/forRootAsync`, then remove that file
 and its package.json configuration. Auth and QueueApi register their own entities;
@@ -53,7 +53,7 @@ Rename database configuration imports and calls from `loadConfigFromEnv()` to
 Import `DatabaseModule` and `DatabaseModuleOptions` instead of
 `MikroOrmModule` and `MikroOrmModuleOptions`. The database integration continues
 using MikroORM and its `@mikro-orm/*` dependencies. Database commands now use
-`nb database:*` with runtime module configuration.
+`nb database` with runtime module configuration.
 
 Custom request-context middleware must depend on `"database"` instead of
 `"mikro-orm"`. Update dependency strings passed to
@@ -90,7 +90,7 @@ provide a CommonJS `require` entry.
 
 Replace `@nest-boot/bullmq` with `@nest-boot/queue`. Use `QueueModule`, `@Queue(name)` and `BaseQueue`; consumers extend `BaseProcessor` with `@Processor(QueueClass)` and register the queue class. Processors must be singletons; Workers stay managed by BaseProcessor. Move runtime settings to constructor `super(options)`, import QueueModule directly, and remove forRoot/forRootAsync and module option tokens. Worker and QueueEvents references use read-only getters backed by internal Symbols; remove event decorators, QueueEventsHost and Processor `.on()` subscriptions. Remove `@nestjs/bullmq`, `BullMQMikroORMModule` and `QueueDatabaseModule`. Queue rules use the @nest-boot/queue namespace; processor-name is enabled by the shared config.
 
-Queues use Redis through `REDIS_URL` or explicit `connection` options. Keep `bullmq`; remove `queue:migrate`. `nb queue:start` starts consumers, with optional `--queue` selection.
+Queues use Redis through `REDIS_URL` or explicit `connection` options. Keep `bullmq`; remove `queue:migrate`. `nb queue start` starts consumers, with optional `--queue` selection.
 
 Every registered Queue starts native QueueEvents without database dependencies. To persist records and expose authenticated GraphQL queries, install `@nest-boot/queue-api`, import `QueueApiModule`, and import `JobEntity`, `JobStatus` and `JobService` from that package. Configure the application's global DatabaseModule, GraphQLModule and AuthModule. Register JobEntity as an ordinary entity and use standard application migrations. The extension forwards events to the deduplicated `job` queue and schedules daily cleanup directly through BullMQ; it does not depend on schedule. Job UUIDs are database-generated; bigint last_event_ms and last_event_seq prevent out-of-order overwrites. QueueModule alone needs no EntityManager or API modules. Remove withQueueDatabaseConfig and separate queue schema configuration.
 
@@ -237,7 +237,7 @@ metadata, relations, RLS policies, and connections. There are no public auth
 `Base*` classes or `AuthModuleOptions.entities` overrides.
 
 AuthModule registers enabled entities through DatabaseModule. Use the application’s
-`nb database:*` commands to share runtime options; no separate MikroORM config is required.
+`nb database` commands to share runtime options; no separate MikroORM config is required.
 AuthModule selects the enabled entity classes and API-key schema automatically. Standalone ORM consumers can register the complete model:
 
 ```typescript

@@ -72,8 +72,8 @@ unchanged; updated data is validated before the next processing attempt.
 Workers start explicitly. Configure a CLI with `CommandModule`, then run:
 
 ```bash
-nb queue:start
-nb queue:start --queue email
+nb queue start
+nb queue start --queue email
 ```
 
 Without filters, all registered consumers start. Filters apply uniformly,
