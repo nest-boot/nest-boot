@@ -2258,11 +2258,11 @@ export type StopImpersonatingFromAuthenticatedRouteMutation = {
   stopImpersonating?: { __typename?: "User"; id: string } | null;
 };
 
-export type DeleteUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
+export type DeleteUserApiKeyMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
 }>;
 
-export type DeleteUserApiKeyFromUserApiKeysRouteMutation = {
+export type DeleteUserApiKeyMutation = {
   __typename?: "Mutation";
   deleteUserApiKey: {
     __typename?: "UserApiKey";
@@ -2338,11 +2338,11 @@ export type GetUserApiKeyNeighborsQuery = {
   };
 };
 
-export type CreateUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
+export type CreateUserApiKeyMutationVariables = Exact<{
   input: CreateUserApiKeyInput;
 }>;
 
-export type CreateUserApiKeyFromUserApiKeysRouteMutation = {
+export type CreateUserApiKeyMutation = {
   __typename?: "Mutation";
   createUserApiKey: {
     __typename?: "CreateUserApiKeyResult";
@@ -2376,7 +2376,7 @@ export type GetUserApiKeyOptionsQuery = {
   }>;
 };
 
-export type GetUserApiKeysFromUserApiKeysRouteQueryVariables = Exact<{
+export type GetUserApiKeysQueryVariables = Exact<{
   after?: InputMaybe<Scalars["String"]["input"]>;
   before?: InputMaybe<Scalars["String"]["input"]>;
   first?: InputMaybe<Scalars["Int"]["input"]>;
@@ -2386,7 +2386,7 @@ export type GetUserApiKeysFromUserApiKeysRouteQueryVariables = Exact<{
   query?: InputMaybe<Scalars["String"]["input"]>;
 }>;
 
-export type GetUserApiKeysFromUserApiKeysRouteQuery = {
+export type GetUserApiKeysQuery = {
   __typename?: "Query";
   currentUser: {
     __typename?: "User";
@@ -2840,7 +2840,7 @@ export type GetWorkspaceApiKeyOptionsQuery = {
   }>;
 };
 
-export type GetApiKeysFromApiKeysRouteQueryVariables = Exact<{
+export type GetWorkspaceApiKeysQueryVariables = Exact<{
   after?: InputMaybe<Scalars["String"]["input"]>;
   before?: InputMaybe<Scalars["String"]["input"]>;
   first?: InputMaybe<Scalars["Int"]["input"]>;
@@ -2850,7 +2850,7 @@ export type GetApiKeysFromApiKeysRouteQueryVariables = Exact<{
   query?: InputMaybe<Scalars["String"]["input"]>;
 }>;
 
-export type GetApiKeysFromApiKeysRouteQuery = {
+export type GetWorkspaceApiKeysQuery = {
   __typename?: "Query";
   workspaceApiKeys: {
     __typename?: "WorkspaceApiKeyConnection";
@@ -3384,11 +3384,11 @@ export type AddWorkspaceServiceAccountFromWorkspaceMembersRouteMutation = {
   addWorkspaceMember: { __typename?: "AddWorkspaceMemberPayload"; id: string };
 };
 
-export type RevokeUserApiKeyFromApiKeysRouteMutationVariables = Exact<{
+export type RevokeUserApiKeyMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
 }>;
 
-export type RevokeUserApiKeyFromApiKeysRouteMutation = {
+export type RevokeUserApiKeyMutation = {
   __typename?: "Mutation";
   revokeUserApiKey: {
     __typename?: "UserApiKey";
@@ -3410,12 +3410,12 @@ export type RevokeWorkspaceApiKeyMutation = {
   };
 };
 
-export type UpdateUserApiKeyFromUserApiKeysRouteMutationVariables = Exact<{
+export type UpdateUserApiKeyMutationVariables = Exact<{
   id: Scalars["ID"]["input"];
   input: UpdateUserApiKeyInput;
 }>;
 
-export type UpdateUserApiKeyFromUserApiKeysRouteMutation = {
+export type UpdateUserApiKeyMutation = {
   __typename?: "Mutation";
   updateUserApiKey: {
     __typename?: "UserApiKey";
@@ -5883,13 +5883,13 @@ export const StopImpersonatingFromAuthenticatedRouteDocument = {
   StopImpersonatingFromAuthenticatedRouteMutation,
   StopImpersonatingFromAuthenticatedRouteMutationVariables
 >;
-export const DeleteUserApiKeyFromUserApiKeysRouteDocument = {
+export const DeleteUserApiKeyDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "deleteUserApiKeyFromUserApiKeysRoute" },
+      name: { kind: "Name", value: "deleteUserApiKey" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -5936,8 +5936,8 @@ export const DeleteUserApiKeyFromUserApiKeysRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  DeleteUserApiKeyFromUserApiKeysRouteMutation,
-  DeleteUserApiKeyFromUserApiKeysRouteMutationVariables
+  DeleteUserApiKeyMutation,
+  DeleteUserApiKeyMutationVariables
 >;
 export const GetUserApiKeyDetailsDocument = {
   kind: "Document",
@@ -6258,13 +6258,13 @@ export const GetUserApiKeyNeighborsDocument = {
   GetUserApiKeyNeighborsQuery,
   GetUserApiKeyNeighborsQueryVariables
 >;
-export const CreateUserApiKeyFromUserApiKeysRouteDocument = {
+export const CreateUserApiKeyDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "createUserApiKeyFromUserApiKeysRoute" },
+      name: { kind: "Name", value: "createUserApiKey" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -6345,8 +6345,8 @@ export const CreateUserApiKeyFromUserApiKeysRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  CreateUserApiKeyFromUserApiKeysRouteMutation,
-  CreateUserApiKeyFromUserApiKeysRouteMutationVariables
+  CreateUserApiKeyMutation,
+  CreateUserApiKeyMutationVariables
 >;
 export const GetUserApiKeyOptionsDocument = {
   kind: "Document",
@@ -6378,13 +6378,13 @@ export const GetUserApiKeyOptionsDocument = {
   GetUserApiKeyOptionsQuery,
   GetUserApiKeyOptionsQueryVariables
 >;
-export const GetUserApiKeysFromUserApiKeysRouteDocument = {
+export const GetUserApiKeysDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "query",
-      name: { kind: "Name", value: "getUserApiKeysFromUserApiKeysRoute" },
+      name: { kind: "Name", value: "getUserApiKeys" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -6611,10 +6611,7 @@ export const GetUserApiKeysFromUserApiKeysRouteDocument = {
       },
     },
   ],
-} as unknown as DocumentNode<
-  GetUserApiKeysFromUserApiKeysRouteQuery,
-  GetUserApiKeysFromUserApiKeysRouteQueryVariables
->;
+} as unknown as DocumentNode<GetUserApiKeysQuery, GetUserApiKeysQueryVariables>;
 export const GetUserOverviewDocument = {
   kind: "Document",
   definitions: [
@@ -8627,13 +8624,13 @@ export const GetWorkspaceApiKeyOptionsDocument = {
   GetWorkspaceApiKeyOptionsQuery,
   GetWorkspaceApiKeyOptionsQueryVariables
 >;
-export const GetApiKeysFromApiKeysRouteDocument = {
+export const GetWorkspaceApiKeysDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "query",
-      name: { kind: "Name", value: "getApiKeysFromApiKeysRoute" },
+      name: { kind: "Name", value: "getWorkspaceApiKeys" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -8881,8 +8878,8 @@ export const GetApiKeysFromApiKeysRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  GetApiKeysFromApiKeysRouteQuery,
-  GetApiKeysFromApiKeysRouteQueryVariables
+  GetWorkspaceApiKeysQuery,
+  GetWorkspaceApiKeysQueryVariables
 >;
 export const GetCurrentWorkspaceFromWorkspaceLayoutDocument = {
   kind: "Document",
@@ -11218,13 +11215,13 @@ export const AddWorkspaceServiceAccountFromWorkspaceMembersRouteDocument = {
   AddWorkspaceServiceAccountFromWorkspaceMembersRouteMutation,
   AddWorkspaceServiceAccountFromWorkspaceMembersRouteMutationVariables
 >;
-export const RevokeUserApiKeyFromApiKeysRouteDocument = {
+export const RevokeUserApiKeyDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "revokeUserApiKeyFromApiKeysRoute" },
+      name: { kind: "Name", value: "revokeUserApiKey" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -11264,8 +11261,8 @@ export const RevokeUserApiKeyFromApiKeysRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  RevokeUserApiKeyFromApiKeysRouteMutation,
-  RevokeUserApiKeyFromApiKeysRouteMutationVariables
+  RevokeUserApiKeyMutation,
+  RevokeUserApiKeyMutationVariables
 >;
 export const RevokeWorkspaceApiKeyDocument = {
   kind: "Document",
@@ -11316,13 +11313,13 @@ export const RevokeWorkspaceApiKeyDocument = {
   RevokeWorkspaceApiKeyMutation,
   RevokeWorkspaceApiKeyMutationVariables
 >;
-export const UpdateUserApiKeyFromUserApiKeysRouteDocument = {
+export const UpdateUserApiKeyDocument = {
   kind: "Document",
   definitions: [
     {
       kind: "OperationDefinition",
       operation: "mutation",
-      name: { kind: "Name", value: "updateUserApiKeyFromUserApiKeysRoute" },
+      name: { kind: "Name", value: "updateUserApiKey" },
       variableDefinitions: [
         {
           kind: "VariableDefinition",
@@ -11391,8 +11388,8 @@ export const UpdateUserApiKeyFromUserApiKeysRouteDocument = {
     },
   ],
 } as unknown as DocumentNode<
-  UpdateUserApiKeyFromUserApiKeysRouteMutation,
-  UpdateUserApiKeyFromUserApiKeysRouteMutationVariables
+  UpdateUserApiKeyMutation,
+  UpdateUserApiKeyMutationVariables
 >;
 export const UpdateWorkspaceApiKeyDocument = {
   kind: "Document",

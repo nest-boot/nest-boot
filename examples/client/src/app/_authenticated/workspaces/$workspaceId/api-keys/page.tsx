@@ -12,8 +12,8 @@ import { apiKeySearchSchema } from "@/schemas/api-key-search-schema";
 import { createAbilitySubject } from "@/lib/ability";
 import { getWorkspaceApiKeysResourceKey } from "@/lib/resource-keys";
 
-const GET_API_KEYS_FROM_API_KEYS_ROUTE = graphql(`
-  query getApiKeysFromApiKeysRoute(
+const GET_WORKSPACE_API_KEYS = graphql(`
+  query getWorkspaceApiKeys(
     $after: String
     $before: String
     $first: Int
@@ -85,7 +85,7 @@ function ApiKeysComponent() {
     searchSchema: apiKeySearchSchema,
     search,
   });
-  const { data } = useQuery(GET_API_KEYS_FROM_API_KEYS_ROUTE, {
+  const { data } = useQuery(GET_WORKSPACE_API_KEYS, {
     fetchPolicy: "no-cache",
     context: {
       headers: { "x-workspace-id": workspaceId },

@@ -24,7 +24,7 @@ import {
 } from "@/lib/permissions";
 import { isAccessDenied } from "@/lib/auth-errors";
 
-const DELETE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
+const DELETE_WORKSPACE_API_KEY = graphql(`
   mutation deleteWorkspaceApiKey($id: ID!) {
     deleteWorkspaceApiKey(id: $id) {
       id
@@ -159,7 +159,7 @@ function ApiKeyDetailsPage() {
   const ability = useAbility();
   const router = useRouter();
   const navigate = Route.useNavigate();
-  const [deleteApiKey] = useMutation(DELETE_API_KEY_FROM_API_KEYS_ROUTE);
+  const [deleteApiKey] = useMutation(DELETE_WORKSPACE_API_KEY);
   const [revoke] = useMutation(REVOKE_WORKSPACE_API_KEY);
   const [updateApiKey] = useMutation(UPDATE_WORKSPACE_API_KEY);
   const [loadNeighbors] = useLazyQuery(GET_WORKSPACE_API_KEY_NEIGHBORS, {

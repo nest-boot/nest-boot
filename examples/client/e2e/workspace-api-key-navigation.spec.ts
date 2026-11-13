@@ -65,13 +65,13 @@ test("isolates two workspaces' list search, creation returns and detail navigati
   for (const workspace of [one, two]) {
     await page.goto(workspace.url);
     await expect(
-      page.getByRole("link", { name: workspace.keys[0].name, exact: true }),
+      page.locator(`a[href="${workspace.path}/${workspace.keys[0].id}"]`),
     ).toBeVisible();
     await page.getByRole("button", { name: "Next page", exact: true }).click();
     const current = workspace === one ? workspace.keys[2] : workspace.keys[3];
     await expect(page.getByRole("row").nth(1)).toContainText(current.name);
     listUrls.push(page.url());
-    await page.getByRole("link", { name: current.name, exact: true }).click();
+    await page.locator(`a[href="${workspace.path}/${current.id}"]`).click();
     await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
       current.name,
     );
@@ -203,7 +203,7 @@ test("retains custom page size and the latest list position after returning from
   );
   await page.goto(workspace.url);
   await page
-    .getByRole("link", { name: workspace.keys[1].name, exact: true })
+    .locator(`a[href="${workspace.path}/${workspace.keys[1].id}"]`)
     .click();
   await expect(
     page.getByLabel("Previous item", { exact: true }),

@@ -19,7 +19,7 @@ import {
 } from "@/lib/permissions";
 import { isAccessDenied } from "@/lib/auth-errors";
 
-const CREATE_API_KEY_FROM_API_KEYS_ROUTE = graphql(`
+const CREATE_WORKSPACE_API_KEY = graphql(`
   mutation createWorkspaceApiKey($input: CreateWorkspaceApiKeyInput!) {
     createWorkspaceApiKey(input: $input) {
       apiKey
@@ -151,7 +151,7 @@ function CreateApiKeyPage() {
   });
   const { permissionOptions, memberOptions, canCreateWorkspaceServiceAccount } =
     Route.useRouteContext();
-  const [createApiKey] = useMutation(CREATE_API_KEY_FROM_API_KEYS_ROUTE, {
+  const [createApiKey] = useMutation(CREATE_WORKSPACE_API_KEY, {
     fetchPolicy: "no-cache",
   });
   return (
