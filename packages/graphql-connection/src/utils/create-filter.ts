@@ -1,4 +1,5 @@
 import { FilterQuery } from "@mikro-orm/core";
+import { tokenizer } from "@nest-boot/database";
 import { REQUEST, RequestContext } from "@nest-boot/request-context";
 import { GraphQLError, GraphQLScalarType, Kind, ValueNode } from "graphql";
 import {
@@ -134,7 +135,13 @@ export function createFilter<Entity extends object>(
     .filter((field) => field.filterable !== false)
     .map((field) => field.field);
 
-  const builder = new FilterQuerySchemaBuilder<Entity>(filterOptions);
+  const builder = new FilterQuerySchemaBuilder<Entity>({
+    ...filterOptions,
+    operatorTransforms: {
+      $fulltext: (value) => tokenizer(value).join(" "),
+      ...filterOptions?.operatorTransforms,
+    },
+  });
 
   for (const [, options] of fieldOptionsMap) {
     if (options.filterable !== false) {

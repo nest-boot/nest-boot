@@ -1219,8 +1219,8 @@ importers:
         specifier: ^4.18.1
         version: 4.18.1
       mikro-orm-filter-query-schema:
-        specifier: ^1.4.0
-        version: 1.4.0
+        specifier: ^1.6.0
+        version: 1.6.0
       search-syntax:
         specifier: ^4.0.0
         version: 4.0.0
@@ -9634,8 +9634,8 @@ packages:
     resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
     engines: {node: '>=8.6'}
 
-  mikro-orm-filter-query-schema@1.4.0:
-    resolution: {integrity: sha512-1TnsQwEqB9qfifb7yChkIscAMoGbcH2DCdruYtGKJU9QxTrZRdYz+jDl4mgkvYkokFf+iQCjK5lipjqFaSdIyw==}
+  mikro-orm-filter-query-schema@1.6.0:
+    resolution: {integrity: sha512-QRK2GAeU5vNPSnJeBnJKq0rZmz1KVLVtK3/QaI9dS/IfDkdsYzQ6pRayoqOMv0Bfqn9mb2mQmghu4COhkCuzWg==}
 
   mime-db@1.52.0:
     resolution: {integrity: sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==}
@@ -19964,8 +19964,9 @@ snapshots:
       braces: 3.0.3
       picomatch: 2.3.2
 
-  mikro-orm-filter-query-schema@1.4.0:
+  mikro-orm-filter-query-schema@1.6.0:
     dependencies:
+      dayjs: 1.11.23
       zod: 4.6.5
 
   mime-db@1.52.0: {}

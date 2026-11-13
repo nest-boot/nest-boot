@@ -108,10 +108,10 @@ describe("ConnectionBuilder", () => {
     ]);
     expect(
       result.filterQuerySchema.parse({
-        title: { $fulltext: "search term" },
+        title: { $fulltext: "你好世界 HELLO!" },
       }),
     ).toEqual({
-      searchableTitle: { $fulltext: "search term" },
+      searchableTitle: { $fulltext: "你好 世界 hello" },
     });
     expect(
       result.Filter.parseValue(JSON.stringify({ authorName: { $eq: "Ada" } })),

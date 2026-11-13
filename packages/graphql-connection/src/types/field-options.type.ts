@@ -22,7 +22,8 @@ export interface BaseFieldOptions {
    * Only applicable to string fields.
    *
    * When combined with `fulltext: "fieldPath"`, search queries use
-   * `$fulltext` on the configured full-text field path.
+   * `$fulltext` on the configured full-text field path. Full-text operands
+   * are automatically segmented with the database tokenizer in the filter schema.
    */
   searchable?: boolean;
 }
@@ -142,7 +143,7 @@ export type ConnectionFieldOptions<Entity extends object> = BaseFieldOptions &
     array?: boolean;
 
     /**
-     * Enables `$fulltext`; when set to a string path, maps `$fulltext` there.
+     * Enables tokenized `$fulltext`; a string path maps it to that property.
      */
     fulltext?: boolean | string;
 

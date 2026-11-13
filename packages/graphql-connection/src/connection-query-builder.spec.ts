@@ -265,6 +265,53 @@ describe("ConnectionQueryBuilder", () => {
     });
   });
 
+  it.each([
+    { query: "title:你好世界" },
+    { query: 'title:"你好世界 HELLO!"' },
+    { query: "你好世界" },
+  ])(
+    "automatically tokenizes full-text query syntax: $query",
+    async ({ query }) => {
+      const { entityManager, find, limitedCountQueryBuilder } =
+        createEntityManager();
+      await new ConnectionQueryBuilder(
+        entityManager,
+        BookConnection as unknown as ConnectionClass<Book>,
+        { first: 10, query },
+      ).query();
+      const operand = query.includes("HELLO") ? "你好 世界 hello" : "你好 世界";
+      const expected = { searchableTitle: { $fulltext: operand } };
+      expect(find).toHaveBeenCalledWith(
+        BookEntity,
+        expected,
+        expect.any(Object),
+      );
+      expect(limitedCountQueryBuilder.where).toHaveBeenCalledWith(expected);
+    },
+  );
+
+  it("passes programmatic filters and option constraints unchanged to records and counts", async () => {
+    const { entityManager, find, limitedCountQueryBuilder } =
+      createEntityManager();
+    const filter = { searchableTitle: { $fulltext: "你好世界" } };
+    const where = { $or: [{ searchableTitle: { $fulltext: "HELLO!" } }] };
+    await new ConnectionQueryBuilder(
+      entityManager,
+      BookConnection as unknown as ConnectionClass<Book>,
+      { first: 10, filter },
+      { where },
+    ).query();
+    const expected = {
+      $and: [where, filter],
+    };
+    expect(find).toHaveBeenCalledWith(BookEntity, expected, expect.any(Object));
+    expect(limitedCountQueryBuilder.where).toHaveBeenCalledWith(expected);
+    expect(filter.searchableTitle.$fulltext).toBe("你好世界");
+    expect(where.$or[0].searchableTitle.$fulltext).toBe("HELLO!");
+    expect(find.mock.calls[0]?.[1].$and[0]).toBe(where);
+    expect(find.mock.calls[0]?.[1].$and[1]).toBe(filter);
+  });
+
   it("keeps query string searches on fields without fulltext enabled", async () => {
     const fieldOptionsMap = createFieldOptionsMap();
     const isbnField = {
