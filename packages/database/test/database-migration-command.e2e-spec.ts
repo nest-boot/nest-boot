@@ -21,7 +21,9 @@ describe("database migration commands", { timeout: 30000 }, () => {
   it("generates a migration and SQL in the requested directory without creating entity tables", async () => {
     const directory = join(app.directory, "custom-migrations");
     const output = await app.succeed(
-      "database:migration:create",
+      "database",
+      "migration",
+      "create",
       "--name",
       "initial",
       "--path",
@@ -39,24 +41,24 @@ describe("database migration commands", { timeout: 30000 }, () => {
 
   it("tracks pending and executed migrations and avoids generating an empty migration", async () => {
     const migration = await app.generateMigration("initial");
-    expect(await app.succeed("database:migration:list")).toBe(
+    expect(await app.succeed("database", "migration", "list")).toBe(
       "No executed migrations.\n",
     );
-    expect(await app.succeed("database:migration:pending")).toBe(
+    expect(await app.succeed("database", "migration", "pending")).toBe(
       `${migration}\n`,
     );
-    await app.succeed("database:migration:up", "--from", "0");
+    await app.succeed("database", "migration", "up", "--from", "0");
     expect(await app.hasTable("command_record")).toBe(true);
-    expect(await app.succeed("database:migration:list")).toMatch(
+    expect(await app.succeed("database", "migration", "list")).toMatch(
       new RegExp(`${migration}\\t\\d{4}-\\d{2}-\\d{2}T`),
     );
-    expect(await app.succeed("database:migration:pending")).toBe(
+    expect(await app.succeed("database", "migration", "pending")).toBe(
       "No pending migrations.\n",
     );
-    expect(await app.succeed("database:migration:up")).toBe(
+    expect(await app.succeed("database", "migration", "up")).toBe(
       "Applied 0 migration(s).\n",
     );
-    expect(await app.succeed("database:migration:create")).toBe(
+    expect(await app.succeed("database", "migration", "create")).toBe(
       "Schema is up-to-date.\n",
     );
     expect(await app.migrationNames()).toEqual([migration]);
@@ -66,12 +68,16 @@ describe("database migration commands", { timeout: 30000 }, () => {
     const first = await app.generateMigration("initial");
     app.setFeatureEnabled(true);
     const second = await app.generateMigration("optional");
-    await app.succeed("database:migration:up", "--to", first);
+    await app.succeed("database", "migration", "up", "--to", first);
     expect(await app.hasTable("command_record")).toBe(true);
     expect(await app.hasTable("added_record")).toBe(false);
-    expect(await app.succeed("database:migration:pending")).toBe(`${second}\n`);
+    expect(await app.succeed("database", "migration", "pending")).toBe(
+      `${second}\n`,
+    );
     await app.succeed(
-      "database:migration:up",
+      "database",
+      "migration",
+      "up",
       "--from",
       first,
       "--to",
@@ -80,10 +86,10 @@ describe("database migration commands", { timeout: 30000 }, () => {
       "public",
     );
     expect(await app.hasTable("added_record")).toBe(true);
-    await app.succeed("database:migration:down", "--to", "0");
+    await app.succeed("database", "migration", "down", "--to", "0");
     expect(await app.hasTable("command_record")).toBe(false);
     expect(await app.hasTable("added_record")).toBe(false);
-    expect(await app.succeed("database:migration:list")).toBe(
+    expect(await app.succeed("database", "migration", "list")).toBe(
       "No executed migrations.\n",
     );
   });
@@ -93,45 +99,56 @@ describe("database migration commands", { timeout: 30000 }, () => {
     app.setFeatureEnabled(true);
     const second = await app.generateMigration("optional");
     await app.succeed(
-      "database:migration:up",
+      "database",
+      "migration",
+      "up",
       "--only",
       `${first},  ${second}, `,
     );
     await app.query("insert into command_record (name) values ('keep')");
     expect(await app.hasTable("added_record")).toBe(true);
-    await app.succeed("database:migration:down", "--only", second);
+    await app.succeed("database", "migration", "down", "--only", second);
     expect(await app.hasTable("added_record")).toBe(false);
     expect(await app.records()).toEqual([{ name: "keep" }]);
-    expect(await app.succeed("database:migration:pending")).toBe(`${second}\n`);
+    expect(await app.succeed("database", "migration", "pending")).toBe(
+      `${second}\n`,
+    );
   });
 
   it.each(["--from", "--to"])(
     "rejects --only with %s before changing data or migration history",
     async (range) => {
       const migration = await app.generateMigration("initial");
-      await app.succeed("database:migration:up");
+      await app.succeed("database", "migration", "up");
       await app.query("insert into command_record (name) values ('keep')");
-      const history = await app.succeed("database:migration:list");
-      for (const command of [
-        "database:migration:up",
-        "database:migration:down",
-      ]) {
-        const result = await app.run(command, "--only", migration, range, "0");
+      const history = await app.succeed("database", "migration", "list");
+      for (const command of ["up", "down"]) {
+        const result = await app.run(
+          "database",
+          "migration",
+          command,
+          "--only",
+          migration,
+          range,
+          "0",
+        );
         expect(result.code).toBe(1);
         expect(result.output).toContain("Use --only or --from/--to");
         expect(await app.records()).toEqual([{ name: "keep" }]);
-        expect(await app.succeed("database:migration:list")).toBe(history);
+        expect(await app.succeed("database", "migration", "list")).toBe(
+          history,
+        );
       }
     },
   );
 
   it("returns a failing check for a new entity without changing existing data", async () => {
     await app.generateMigration("initial");
-    await app.succeed("database:migration:up");
+    await app.succeed("database", "migration", "up");
     await app.query("insert into command_record (name) values ('keep')");
-    await app.succeed("database:migration:check");
+    await app.succeed("database", "migration", "check");
     app.setFeatureEnabled(true);
-    const result = await app.run("database:migration:check");
+    const result = await app.run("database", "migration", "check");
     expect(result.code).toBe(1);
     expect(result.output).toContain("Schema changes require a migration.");
     expect(await app.hasTable("added_record")).toBe(false);
@@ -142,10 +159,12 @@ describe("database migration commands", { timeout: 30000 }, () => {
     "fresh reruns migration history and replaces existing data (seed: %s)",
     async (seed) => {
       const migration = await app.generateMigration("initial");
-      await app.succeed("database:migration:up");
+      await app.succeed("database", "migration", "up");
       await app.query("insert into command_record (name) values ('old')");
       await app.succeed(
-        "database:migration:fresh",
+        "database",
+        "migration",
+        "fresh",
         ...(seed ? ["--seed", "ConfiguredSeeder"] : []),
       );
       expect(await app.records()).toEqual(seed ? [{ name: "configured" }] : []);

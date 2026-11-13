@@ -49,7 +49,7 @@ This is a startup setting. Use a fresh process when changing feature modes,
 because Nest GraphQL retains type and resolver metadata for the process lifetime.
 
 AuthModule automatically registers its enabled entities through `DatabaseModule`.
-Use `nb database:migration:*`, `nb database:schema:*`, and `nb database:seeder:*`
+Use `nb database migration`, `nb database schema`, and `nb database seeder`
 from your application's CLI entry to share runtime configuration and entity metadata.
 No separate MikroORM config file or auth configuration helper is needed.
 For direct ORM consumers, `entities` and `workspaceEntities` contain the complete model, including the native `ApiKeySchema`. Use `createApiKeySchema({ user, workspace, system })` to select enabled credential owners and register the required owner classes alongside it. Auth entities share the application database schema; Auth has no separate schema configuration.
@@ -100,7 +100,7 @@ inherit ORM state or expose stored credential hashes.
 
 `AuthModule` registers the core entities through `DatabaseModule` automatically and
 includes workspace models when `workspace.enabled` is true. Use the application's
-`nb database:*` commands for schema, migration, and seeding operations; no separate
+`nb database` commands for schema, migration, and seeding operations; no separate
 `mikro-orm.config.ts` is needed. Direct MikroORM consumers register the required entity classes and native API-key schema explicitly. All Auth models share the application database schema; Auth does not read database environment configuration or configure SQL search paths.
 
 Use separate related business entities and additional field resolvers to extend

@@ -66,39 +66,43 @@ async function waitForOutput(
   );
 }
 
-it("registers schedules and keeps consumers uninitialized when executing ordinary commands", async () => {
-  const job = await reports.add("report", {});
-  const process = run(["--help"]);
-  await vi.waitFor(
-    () => {
-      expect(process.child.exitCode).toBe(0);
-    },
-    {
-      timeout: 10_000,
-    },
-  );
-  expect(process.output()).toContain("queue:start");
-  expect(await job.getState()).toBe("waiting");
-  const schedules = new BullmqQueue("schedule", fixture.options);
-  try {
-    expect(await schedules.getJobSchedulers()).toEqual([
-      expect.objectContaining({
-        key: "TasksService.tick",
-        name: "run",
-        template: expect.objectContaining({
-          data: { name: "TasksService.tick" },
+it.each([["--help"], ["queue"], ["queue", "--help"]].map((args) => [args]))(
+  "registers schedules and keeps consumers uninitialized when listing commands with %j",
+  async (args) => {
+    const job = await reports.add("report", {});
+    const process = run(args);
+    await vi.waitFor(
+      () => {
+        expect(process.child.exitCode).toBe(0);
+      },
+      {
+        timeout: 10_000,
+      },
+    );
+    expect(process.output()).toContain("queue start");
+    expect(await job.getState()).toBe("waiting");
+    const schedules = new BullmqQueue("schedule", fixture.options);
+    try {
+      expect(await schedules.getJobSchedulers()).toEqual([
+        expect.objectContaining({
+          key: "TasksService.tick",
+          name: "run",
+          template: expect.objectContaining({
+            data: { name: "TasksService.tick" },
+          }),
         }),
-      }),
-    ]);
-  } finally {
-    await schedules.close();
-  }
-});
+      ]);
+    } finally {
+      await schedules.close();
+    }
+  },
+);
 
 it("runs only selected queues and drains the active job on SIGTERM", async () => {
   const waiting = await emails.add("email", {});
   const process = run([
-    "queue:start",
+    "queue",
+    "start",
     "--queue",
     "reports",
     "--queue",
@@ -131,7 +135,7 @@ it("runs only selected queues and drains the active job on SIGTERM", async () =>
 it("runs every registered queue including scheduled handlers and exits cleanly on SIGINT", async () => {
   const first = await reports.add("report", {});
   const second = await emails.add("email", {});
-  const process = run(["queue:start"]);
+  const process = run(["queue", "start"]);
   await waitForOutput(process, "Queue workers running:");
   await waitForOutput(process, "TICK");
   await vi.waitFor(async () => {
@@ -157,7 +161,7 @@ it("runs every registered queue including scheduled handlers and exits cleanly o
 
 it("reports an unknown queue and exits without consuming jobs", async () => {
   const job = await reports.add("report", {});
-  const process = run(["queue:start", "--queue", "typo"]);
+  const process = run(["queue", "start", "--queue", "typo"]);
   await vi.waitFor(
     () => {
       expect(process.child.exitCode).toBe(1);
@@ -171,7 +175,7 @@ it("reports an unknown queue and exits without consuming jobs", async () => {
 });
 
 it("enqueues work from an ordinary command without creating workers", async () => {
-  const running = run(["report:enqueue"]);
+  const running = run(["report", "enqueue"]);
   expect(await running.exited, running.output()).toBe(0);
   const jobs = await reports.getJobs(["waiting"]);
   expect(jobs).toHaveLength(1);

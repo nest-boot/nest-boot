@@ -50,7 +50,7 @@ Auth 内置 `User`、`Account`、`Session`、`Verification`、`Workspace`、
 工作区开关仅在 Auth 配置一次。普通业务模块可使用 `DatabaseModule.forFeature()` 注册实体。
 `QueueApiModule` 同样会自动注册任务历史实体。
 
-应用的 HTTP、REPL 和 CLI 入口导入相同模块，通过 `nb database:*` 执行数据库命令，
+应用的 HTTP、REPL 和 CLI 入口导入相同模块，通过 `nb database` 执行数据库命令，
 不再需要独立的 MikroORM 配置文件。自定义字段请使用独立业务关联实体与额外字段 Resolver。
 关联目标直接导入内置实体，不要重新声明或注册同名实体。`User.members` 已移除，
 请通过 `WorkspaceMemberService` 查询成员关系。工作区服务与 resolver 仅在功能开启后可用。

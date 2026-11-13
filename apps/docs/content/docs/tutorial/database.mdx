@@ -89,32 +89,32 @@ export class CommonModule {}
 
 ### Database commands and entity registration
 
-`@nest-boot/database` provides `nb database:*` commands. The CLI entry calls
+`@nest-boot/database` provides `nb database` commands. The CLI entry calls
 `CommandFactory.run(AppModule)` to load the shared module graph without a
 `mikro-orm.config.ts`. Configure connections, migration paths, and seeder settings
 in `DatabaseModule.forRoot/forRootAsync`. Follow the [Command tutorial](/docs/tutorial/command)
 to register `CommandModule` and the CLI entry first.
 
 ```bash
-pnpm exec nb database:migration:create --name add-posts
-pnpm exec nb database:migration:up
-pnpm exec nb database:migration:down --to 0
-pnpm exec nb database:migration:list
-pnpm exec nb database:migration:pending
-pnpm exec nb database:migration:check
-pnpm exec nb database:seeder:create DemoSeeder
-pnpm exec nb database:seeder:run --class DemoSeeder
+pnpm exec nb database migration create --name add-posts
+pnpm exec nb database migration up
+pnpm exec nb database migration down --to 0
+pnpm exec nb database migration list
+pnpm exec nb database migration pending
+pnpm exec nb database migration check
+pnpm exec nb database seeder create DemoSeeder
+pnpm exec nb database seeder run --class DemoSeeder
 ```
 
-`database:migration:check` exits with status 1 when a new migration is needed, otherwise 0.
+`database migration check` exits with status 1 when a new migration is needed, otherwise 0.
 Migration creation supports `--blank`, `--initial`, `--name`, `--path`, and `--dump`.
 `up/down` support `--from`, `--to`, `--only` (comma-separated names), and `--schema`.
 
-`database:schema:create/update/drop` print SQL by default; pass `--run` to execute it.
+`database schema create/update/drop` print SQL by default; pass `--run` to execute it.
 Schema updates also support `--safe` and `--no-drop-tables`.
-`database:schema:fresh --run` drops and recreates the schema;
-`database:migration:fresh` drops it and reapplies all migrations. Both fresh commands
-accept `--seed SeederName`. `database:create` creates the configured database.
+`database schema fresh --run` drops and recreates the schema;
+`database migration fresh` drops it and reapplies all migrations. Both fresh commands
+accept `--seed SeederName`. `database create` creates the configured database.
 
 `DatabaseModule` enables `autoLoadEntities` by default and collects business entities
 registered through `forFeature()`:

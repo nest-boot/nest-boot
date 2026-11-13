@@ -79,8 +79,8 @@ readiness does not guarantee that the first stream read has started. Retain sour
 jobs long enough to capture full snapshots; when a source job is already removed,
 only metadata carried by the event remains available.
 
-Start all registered consumers with `nb queue:start`, or use
-`nb queue:start --queue job` for synchronization and cleanup alone. When filtering,
+Start all registered consumers with `nb queue start`, or use
+`nb queue start --queue job` for synchronization and cleanup alone. When filtering,
 select `job` explicitly in the process intended to persist history. Shutdown drains
 source Workers, then event readers and pending submissions, then the Job Worker.
 

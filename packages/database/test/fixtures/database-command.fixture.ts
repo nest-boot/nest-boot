@@ -187,7 +187,7 @@ export async function databaseCommandFixture(options: FixtureOptions = {}) {
         .map((name) => name.replace(/\.js$/, ""))
         .sort(),
     generateMigration: async (name: string) => {
-      await succeed("database:migration:create", "--name", name);
+      await succeed("database", "migration", "create", "--name", name);
       const names = (await readdir(migrations)).filter((file) =>
         file.endsWith(`_${name}.js`),
       );

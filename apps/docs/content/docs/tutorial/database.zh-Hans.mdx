@@ -86,30 +86,30 @@ export class CommonModule {}
 
 ### 数据库命令与实体注册
 
-`@nest-boot/database` 提供 `nb database:*` 命令。CLI 入口通过
+`@nest-boot/database` 提供 `nb database` 命令。CLI 入口通过
 `CommandFactory.run(AppModule)` 启动共享模块，无需 `mikro-orm.config.ts`。
 连接、迁移目录和 seeder 选项均在 `DatabaseModule.forRoot/forRootAsync` 中配置。
 请先按 [Command 教程](/docs/tutorial/command) 注册 `CommandModule` 与 CLI 入口。
 
 ```bash
-pnpm exec nb database:migration:create --name add-posts
-pnpm exec nb database:migration:up
-pnpm exec nb database:migration:down --to 0
-pnpm exec nb database:migration:list
-pnpm exec nb database:migration:pending
-pnpm exec nb database:migration:check
-pnpm exec nb database:seeder:create DemoSeeder
-pnpm exec nb database:seeder:run --class DemoSeeder
+pnpm exec nb database migration create --name add-posts
+pnpm exec nb database migration up
+pnpm exec nb database migration down --to 0
+pnpm exec nb database migration list
+pnpm exec nb database migration pending
+pnpm exec nb database migration check
+pnpm exec nb database seeder create DemoSeeder
+pnpm exec nb database seeder run --class DemoSeeder
 ```
 
-`database:migration:check` 在需要新迁移时返回退出码 1，否则返回 0。
-`database:migration:create` 支持 `--blank`、`--initial`、`--name`、`--path` 和 `--dump`。
+`database migration check` 在需要新迁移时返回退出码 1，否则返回 0。
+`database migration create` 支持 `--blank`、`--initial`、`--name`、`--path` 和 `--dump`。
 `up/down` 支持 `--from`、`--to`、`--only`（逗号分隔名称）与 `--schema`。
 
-`database:schema:create/update/drop` 默认打印 SQL，使用 `--run` 执行；
-`update` 还支持 `--safe` 和 `--no-drop-tables`。`database:schema:fresh --run`
-删除并重建 schema；`database:migration:fresh` 删除 schema 后重新应用所有迁移。
-两种 fresh 命令均支持 `--seed SeederName`。`database:create` 创建配置的数据库。
+`database schema create/update/drop` 默认打印 SQL，使用 `--run` 执行；
+`update` 还支持 `--safe` 和 `--no-drop-tables`。`database schema fresh --run`
+删除并重建 schema；`database migration fresh` 删除 schema 后重新应用所有迁移。
+两种 fresh 命令均支持 `--seed SeederName`。`database create` 创建配置的数据库。
 
 `DatabaseModule` 默认启用 `autoLoadEntities`，收集业务模块通过 `forFeature()` 注册的实体：
 

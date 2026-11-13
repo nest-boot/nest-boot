@@ -128,7 +128,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
 
     await waitForServer(baseUrl, serverProcess, () => serverOutput);
-    workerProcess = spawn(process.execPath, ['dist/cli.js', 'queue:start'], {
+    workerProcess = spawn(process.execPath, ['dist/cli.js', 'queue', 'start'], {
       cwd: process.cwd(),
       env: createServerEnv(),
     });
