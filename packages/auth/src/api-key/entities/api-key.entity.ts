@@ -141,6 +141,9 @@ export class ApiKey extends BaseEntity {
   /** API-key display name. */
   name!: string;
 
+  /** Tokenized display name used only for indexed search. */
+  searchableName?: string | null;
+
   /** Starting characters retained for recognition in user interfaces. */
   start?: Opt<string> | null = null;
 

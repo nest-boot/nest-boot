@@ -2656,9 +2656,9 @@ describe("Auth services and native RLS boundaries", () => {
     }
     expect(
       await admin.execute(
-        "select column_name from information_schema.columns where table_schema = 'public' and table_name = 'workspace_member' and column_name in ('type', 'searchable_name')",
+        "select column_name from information_schema.columns where table_schema = 'public' and table_name = 'workspace_member' and column_name in ('type', 'searchable_name') order by column_name",
       ),
-    ).toEqual([{ column_name: "type" }]);
+    ).toEqual([{ column_name: "searchable_name" }, { column_name: "type" }]);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe("");
   });
 });

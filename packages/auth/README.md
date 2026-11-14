@@ -509,6 +509,23 @@ They reference built-in classes directly; no named-type registration, resolver
 factories, or application connection definitions are required. Additional application
 field resolvers may target these classes without replacing built-in fields.
 
+## Name search
+
+User, Workspace, WorkspaceMember, SystemAccount and all three API-key connections
+search names by token through their existing `query` argument. For example,
+`Deployment` matches `Production Deployment`, and Chinese search input uses the
+same tokenizer as indexed names. This is word search rather than arbitrary
+substring matching. The hidden `searchableName` property is maintained by ORM
+creation and name updates and has a native full-text index; it is not a GraphQL
+field. The three API-key connections share the ApiKey table and index.
+
+Email fields retain their existing exact/prefix filtering, including
+`email:alice*` on users and workspace members. Existing explicit name prefix
+queries such as `name:Alice*` also remain supported there. Credentials and their
+hashes never participate in name search. Generate schema migrations from your
+registered entities before using the new search fields. The example's generated
+schema migration is rebuilt from the current definitions for a fresh database.
+
 ## Native query migration
 
 - Single-key queries move from root `userApiKey(id)` to `User.apiKey(id)` and from root `apiKey(id)` to `Workspace.apiKey(id)`. They resolve `UserApiKey` and `WorkspaceApiKey`, respectively, with nullable field results and pass their parent to `UserApiKeyService` and `WorkspaceApiKeyService`; mutation authorization is unchanged (see the operation naming migration below). Query through `currentUser { apiKey(id: ...) { id } }` or `selectedWorkspace { apiKey(id: ...) { id } }`. Service authorization, ownership filters, permission ceilings and request RLS remain in effect.

@@ -25,7 +25,13 @@ export function createApiKeyConnection<Key extends ApiKeyObject>(
   const fields = new Map<string, ConnectionFieldOptions<ApiKey>>([
     [
       "name",
-      { field: "name", type: "string", searchable: true, filterable: true },
+      {
+        field: "name",
+        type: "string",
+        searchable: true,
+        filterable: true,
+        fulltext: "searchableName",
+      },
     ],
     ["prefix", { field: "prefix", type: "string", filterable: true }],
     [

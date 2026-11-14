@@ -10,7 +10,8 @@ import {
   Property,
   Unique,
 } from "@mikro-orm/decorators/legacy";
-import { Field, ID, ObjectType } from "@nest-boot/graphql";
+import { SearchableProperty } from "@nest-boot/database";
+import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
 import { userScopePolicy } from "../../common/policies/user-scope.policy.js";
@@ -58,6 +59,11 @@ export class WorkspaceMember extends BaseEntity {
   @Property({ type: t.string })
   @Field(() => String)
   name!: string;
+
+  /** Tokenized display name used only for indexed search. */
+  @SearchableProperty({ properties: "name", nullable: true })
+  @HideField()
+  searchableName?: string | null;
 
   /** Non-unique contact email shared inside this workspace, independent of login identity. */
   @Property({ type: t.string, nullable: true })

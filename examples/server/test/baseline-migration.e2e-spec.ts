@@ -5,8 +5,7 @@ import { entities as authEntities, workspaceEntities } from '@nest-boot/auth';
 import { JobEntity } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20261111092714 } from '../src/database/migrations/Migration20261111092714.js';
-import { Migration20261113155404_AuthWorkspaceContext } from '../src/database/migrations/Migration20261113155404_AuthWorkspaceContext.js';
+import { Migration20261114140546_AuthSchema } from '../src/database/migrations/Migration20261114140546_AuthSchema.js';
 import { createDatabaseFixture } from './postgres.fixture.js';
 
 it('builds the current example schema from ordered migrations and can roll back and rebuild it', async () => {
@@ -27,7 +26,7 @@ it('builds the current example schema from ordered migrations and can roll back 
   const orm = await MikroORM.init(options);
   try {
     const migrated = await orm.migrator.up();
-    expect(migrated).toHaveLength(3);
+    expect(migrated).toHaveLength(2);
     expect(migrated[0].name).toBe(Migration00000000000000_Initial.name);
     const listed = await MikroORM.init({
       ...options,
@@ -35,8 +34,7 @@ it('builds the current example schema from ordered migrations and can roll back 
         ...options.migrations,
         migrationsList: [
           Migration00000000000000_Initial,
-          Migration20261111092714,
-          Migration20261113155404_AuthWorkspaceContext,
+          Migration20261114140546_AuthSchema,
         ],
       },
     });
@@ -113,7 +111,7 @@ it('builds the current example schema from ordered migrations and can roll back 
       ).rows.map(({ extname }) => extname),
     ).toEqual(['pgcrypto', 'uuid-ossp']);
 
-    expect(await orm.migrator.up()).toHaveLength(3);
+    expect(await orm.migrator.up()).toHaveLength(2);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
     expect(await orm.migrator.checkSchema()).toBe(false);
   } finally {

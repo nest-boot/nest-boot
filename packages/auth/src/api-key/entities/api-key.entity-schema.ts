@@ -1,4 +1,6 @@
 import { EntitySchema, t } from "@mikro-orm/core";
+import { FullTextType } from "@mikro-orm/sql";
+import { onFullTextCreate, onFullTextUpdate } from "@nest-boot/database";
 
 import { User } from "../../core/entities/user.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
@@ -29,6 +31,13 @@ export function createApiKeySchema({
   const properties = {
     id: { type: new t.bigint("string"), primary: true },
     name: { type: t.string },
+    searchableName: {
+      type: FullTextType,
+      nullable: true,
+      hidden: true,
+      onCreate: onFullTextCreate<Pick<ApiKey, "name">>("name"),
+      onUpdate: onFullTextUpdate<Pick<ApiKey, "name">>("name"),
+    },
     start: { type: t.string, nullable: true },
     prefix: { type: t.string, nullable: true },
     key: { type: t.text, unique: true },
@@ -85,6 +94,7 @@ export function createApiKeySchema({
       },
     ],
     indexes: [
+      { properties: ["searchableName"], type: "fulltext" },
       { properties: ["owner"] },
       { properties: ["key"] },
       { properties: ["prefix"] },

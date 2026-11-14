@@ -7,22 +7,24 @@ import { createWorkspaceByApi } from "./utils/workspace";
 test("filters workspaces, preserves pagination state, and opens rows without an arrow action", async ({
   page,
 }) => {
-  const name = uniqueSeed("workspace-filter");
+  const seed = uniqueSeed("workspace-filter");
+  const name = `${seed} Deployment`;
+  const query = "deployment";
   await registerUser(page, {
-    email: `${name}@example.com`,
+    email: `${seed}@example.com`,
     name: "Workspace filter owner",
   });
   for (let index = 0; index < 3; index += 1) {
     await createWorkspaceByApi(page, name);
   }
-  const other = await createWorkspaceByApi(page, `${name}-other`);
+  const other = await createWorkspaceByApi(page, `${seed} Archive`);
 
   await page.goto("/user/workspaces");
   const links = page.getByRole("table").getByRole("link");
   const search = page.getByRole("textbox", { name: "Search", exact: true });
   await expect(links).toHaveCount(4);
   await expect(page.getByRole("columnheader")).toHaveCount(3);
-  await search.fill(name);
+  await search.fill(query);
   await search.press("Enter");
   await expect(links).toHaveCount(3);
 
@@ -42,7 +44,7 @@ test("filters workspaces, preserves pagination state, and opens rows without an 
   await page.keyboard.press("Escape");
   await expect(links).toHaveCount(3);
   expect(new URL(page.url()).searchParams.has("after")).toBe(false);
-  expect(new URL(page.url()).searchParams.get("query")).toBe(name);
+  expect(new URL(page.url()).searchParams.get("query")).toBe(query);
 
   const filteredPageUrl = new URL(page.url());
   filteredPageUrl.searchParams.set("first", "2");
@@ -57,7 +59,7 @@ test("filters workspaces, preserves pagination state, and opens rows without an 
   await expect(links).toHaveCount(2);
   await page.reload();
   await expect(links).toHaveCount(2);
-  await expect(search).toHaveValue(name);
+  await expect(search).toHaveValue(query);
   expect(new URL(page.url()).searchParams.get("filter")).toBe(filterParam);
 
   await search.fill("");

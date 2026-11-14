@@ -6,7 +6,8 @@ import {
   Property,
   Unique,
 } from "@mikro-orm/decorators/legacy";
-import { Field, ID, ObjectType } from "@nest-boot/graphql";
+import { SearchableProperty } from "@nest-boot/database";
+import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
 import { UserPermission } from "../enums/user-permission.enum.js";
@@ -48,6 +49,11 @@ export class User extends BaseEntity {
   @Property({ type: t.string })
   @Field(() => String)
   name!: string;
+
+  /** Tokenized display name used only for indexed search. */
+  @SearchableProperty({ properties: "name", nullable: true })
+  @HideField()
+  searchableName?: string | null;
 
   /** Unique email address of the user. */
   @Property({ type: t.string })
