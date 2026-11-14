@@ -6,6 +6,7 @@ import { User } from "../entities/user.entity.js";
 const { Connection, ConnectionArgs } = new ConnectionBuilder(User)
   .addField({
     field: "name",
+    fulltext: "searchableName",
     prefix: true,
     searchable: true,
     filterable: true,

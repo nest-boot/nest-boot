@@ -6,6 +6,7 @@ import {
   PrimaryKey,
   Property,
 } from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
 import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
@@ -38,6 +39,11 @@ export class Workspace extends BaseEntity {
   @Property({ type: t.string })
   @Field(() => String)
   name!: string;
+
+  /** Tokenized display name used only for indexed search. */
+  @SearchableProperty({ properties: "name", nullable: true })
+  @HideField()
+  searchableName?: string | null;
 
   /** Timestamp when the workspace was created. */
   @Property({

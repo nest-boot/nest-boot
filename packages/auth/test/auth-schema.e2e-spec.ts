@@ -56,6 +56,19 @@ describe("auth GraphQL schema", () => {
       SystemAccountResolver,
     ]);
     expect(schema.getQueryType()?.getFields().authWorkspace).toBeUndefined();
+    for (const type of [
+      "User",
+      "Workspace",
+      "WorkspaceMember",
+      "SystemAccount",
+      "UserApiKey",
+      "WorkspaceApiKey",
+      "SystemApiKey",
+    ]) {
+      expect(
+        (schema.getType(type) as GraphQLObjectType).getFields(),
+      ).not.toHaveProperty("searchableName");
+    }
     expect(
       schema.getQueryType()?.getFields().currentWorkspace.type.toString(),
     ).toBe("Workspace");

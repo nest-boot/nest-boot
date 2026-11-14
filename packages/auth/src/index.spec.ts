@@ -204,13 +204,14 @@ describe("public API", () => {
       "ApiKey",
       "SystemAccount",
     ] as const;
-    expect([
+    const concrete = [
       ...publicApi.entities,
       ...publicApi.workspaceEntities,
-    ]).toHaveLength(names.length);
+    ].filter((entity) => typeof entity === "function" || !entity.meta.abstract);
+    expect(concrete).toHaveLength(names.length);
     for (const name of names) {
       expect(
-        [...publicApi.entities, ...publicApi.workspaceEntities].map((entity) =>
+        concrete.map((entity) =>
           typeof entity === "function" ? entity : entity.class,
         ),
       ).toContain(publicApi[name]);

@@ -52,7 +52,7 @@ AuthModule automatically registers its enabled entities through `DatabaseModule`
 Use `nb database migration`, `nb database schema`, and `nb database seeder`
 from your application's CLI entry to share runtime configuration and entity metadata.
 No separate MikroORM config file or auth configuration helper is needed.
-For direct ORM consumers, `entities` and `workspaceEntities` contain the complete model, including the native `ApiKeySchema`. Use `createApiKeySchema({ user, workspace, system })` to select enabled credential owners and register the required owner classes alongside it. Auth entities share the application database schema; Auth has no separate schema configuration.
+For direct ORM consumers, `entities` and `workspaceEntities` contain the complete model, including the decorated `ApiKey` and abstract `BaseApiKeySchema`. Register `ApiKey` alongside `createBaseApiKeySchema({ user, workspace, system })` and the enabled owner classes for a feature-specific model. `BaseApiKey` declares only the owner relation; its schema supplies feature-dependent owner targets, constraints and RLS. Ordinary fields, indexes and `SearchableProperty` are defined on `ApiKey`. Auth entities share the application database schema; Auth has no separate schema configuration.
 
 Disabled applications expose no workspace/member/invitation/member-key GraphQL APIs
 or user workspace/invitation relation fields. Their middleware ignores workspace
@@ -508,6 +508,25 @@ resolvers, input types, payloads, and connections are exported from this package
 They reference built-in classes directly; no named-type registration, resolver
 factories, or application connection definitions are required. Additional application
 field resolvers may target these classes without replacing built-in fields.
+
+## Name search
+
+User, Workspace, WorkspaceMember, SystemAccount and all three API-key connections
+search names by token through their existing `query` argument. For example,
+`Deployment` matches `Production Deployment`, and Chinese search input uses the
+same tokenizer as indexed names. This is word search rather than arbitrary
+substring matching. The hidden `searchableName` property is maintained by ORM
+creation and name updates and has a native full-text index; it is not a GraphQL
+field. The three API-key connections share the ApiKey table and index.
+Built-in key mutations and Better Auth bulk user updates maintain search tokens
+in the same native write as the name change.
+
+Email fields retain their existing exact/prefix filtering, including
+`email:alice*` on users and workspace members. Existing explicit name prefix
+queries such as `name:Alice*` also remain supported there. Credentials and their
+hashes never participate in name search. Generate schema migrations from your
+registered entities before using the new search fields. The example's generated
+schema migration is rebuilt from the current definitions for a fresh database.
 
 ## Native query migration
 

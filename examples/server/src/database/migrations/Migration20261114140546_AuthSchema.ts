@@ -1,7 +1,7 @@
 import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20261111092714 extends Migration {
-  override name = 'Migration20261111092714';
+export class Migration20261114140546_AuthSchema extends Migration {
+  override name = 'Migration20261114140546_AuthSchema';
 
   override up(): void | Promise<void> {
     this.addSql(
@@ -21,17 +21,23 @@ export class Migration20261111092714 extends Migration {
     );
 
     this.addSql(
-      `create table "user" ("id" bigserial primary key, "name" varchar(255) not null, "email" varchar(255) not null, "email_verified" boolean not null, "image" varchar(255) null, "roles" text[] not null, "permissions" text[] not null, "banned" boolean not null default false, "ban_reason" varchar(255) null, "ban_expires_at" timestamptz null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
+      `create table "user" ("id" bigserial primary key, "name" varchar(255) not null, "searchable_name" tsvector null, "email" varchar(255) not null, "email_verified" boolean not null, "image" varchar(255) null, "roles" text[] not null, "permissions" text[] not null, "banned" boolean not null default false, "ban_reason" varchar(255) null, "ban_expires_at" timestamptz null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
     );
     this.addSql(
       `alter table "user" add constraint "user_email_unique" unique ("email");`,
+    );
+    this.addSql(
+      `create index "user_searchable_name_index" on "public"."user" using gin("searchable_name");`,
     );
     this.addSql(
       `create index "user_created_at_index" on "user" ("created_at");`,
     );
 
     this.addSql(
-      `create table "system_account" ("id" bigserial primary key, "name" varchar(255) not null, "enabled" boolean not null default true, "permissions" text[] not null default '{}', "created_by_id" bigint null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
+      `create table "system_account" ("id" bigserial primary key, "name" varchar(255) not null, "searchable_name" tsvector null, "enabled" boolean not null default true, "permissions" text[] not null default '{}', "created_by_id" bigint null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
+    );
+    this.addSql(
+      `create index "system_account_searchable_name_index" on "public"."system_account" using gin("searchable_name");`,
     );
     this.addSql(
       `create index "system_account_created_at_index" on "system_account" ("created_at");`,
@@ -48,10 +54,13 @@ export class Migration20261111092714 extends Migration {
     );
 
     this.addSql(
-      `create table "api_key" ("id" bigserial primary key, "name" varchar(255) not null, "start" varchar(255) null, "prefix" varchar(255) null, "key" text not null, "revoked_at" timestamptz null, "permissions" text[] not null default '{}', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "last_used_at" timestamptz null, "expires_at" timestamptz null, "created_by_id" bigint null, "owner_type" varchar(255) not null, "owner_id" bigint not null);`,
+      `create table "api_key" ("id" bigserial primary key, "name" varchar(255) not null, "searchable_name" tsvector null, "start" varchar(255) null, "prefix" varchar(255) null, "key" text not null, "revoked_at" timestamptz null, "permissions" text[] not null default '{}', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "last_used_at" timestamptz null, "expires_at" timestamptz null, "created_by_id" bigint null, "owner_type" varchar(255) not null, "owner_id" bigint not null);`,
     );
     this.addSql(
       `alter table "api_key" add constraint "api_key_key_unique" unique ("key");`,
+    );
+    this.addSql(
+      `create index "api_key_searchable_name_index" on "public"."api_key" using gin("searchable_name");`,
     );
     this.addSql(
       `create index "api_key_owner_type_owner_id_index" on "api_key" ("owner_type", "owner_id");`,
@@ -80,7 +89,10 @@ export class Migration20261111092714 extends Migration {
     );
 
     this.addSql(
-      `create table "workspace" ("id" bigserial primary key, "name" varchar(255) not null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
+      `create table "workspace" ("id" bigserial primary key, "name" varchar(255) not null, "searchable_name" tsvector null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
+    );
+    this.addSql(
+      `create index "workspace_searchable_name_index" on "public"."workspace" using gin("searchable_name");`,
     );
     this.addSql(
       `create index "workspace_created_at_index" on "workspace" ("created_at");`,
@@ -106,7 +118,10 @@ export class Migration20261111092714 extends Migration {
     );
 
     this.addSql(
-      `create table "workspace_member" ("id" bigserial primary key, "name" varchar(255) not null, "email" varchar(255) null, "roles" text[] not null default '{member}', "type" text not null default 'USER', "status" text not null default 'ACTIVE', "permissions" text[] not null default '{}', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "user_id" bigint null, "workspace_id" bigint not null);`,
+      `create table "workspace_member" ("id" bigserial primary key, "name" varchar(255) not null, "searchable_name" tsvector null, "email" varchar(255) null, "roles" text[] not null default '{member}', "type" text not null default 'USER', "status" text not null default 'ACTIVE', "permissions" text[] not null default '{}', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "user_id" bigint null, "workspace_id" bigint not null);`,
+    );
+    this.addSql(
+      `create index "workspace_member_searchable_name_index" on "public"."workspace_member" using gin("searchable_name");`,
     );
     this.addSql(
       `create index "workspace_member_workspace_id_index" on "workspace_member" ("workspace_id");`,
@@ -163,7 +178,7 @@ export class Migration20261111092714 extends Migration {
     );
     this.addSql(`alter table "api_key" enable row level security;`);
     this.addSql(
-      `create policy "api_key_all_policy" on "api_key" to "authenticated" using ((("owner_type" = 'user' AND "owner_id" = nullif(current_setting('app.user.id', true), '')::bigint) OR ("owner_type" = 'workspace_member' AND EXISTS (SELECT 1 FROM "workspace_member" WHERE "workspace_member"."id" = "owner_id" AND "workspace_member"."workspace_id" = nullif(current_setting('app.workspace.id', true), '')::bigint)))) with check ((("owner_type" = 'user' AND "owner_id" = nullif(current_setting('app.user.id', true), '')::bigint) OR ("owner_type" = 'workspace_member' AND EXISTS (SELECT 1 FROM "workspace_member" WHERE "workspace_member"."id" = "owner_id" AND "workspace_member"."workspace_id" = nullif(current_setting('app.workspace.id', true), '')::bigint))));`,
+      `create policy "api_key_all_policy" on "api_key" to "authenticated" using ((("owner_type" = 'user' AND "owner_id" = nullif(current_setting('app.auth.user.id', true), '')::bigint) OR ("owner_type" = 'workspace_member' AND nullif(current_setting('app.auth.workspace_member.id', true), '') IS NOT NULL AND EXISTS (SELECT 1 FROM "workspace_member" WHERE "workspace_member"."id" = "owner_id" AND "workspace_member"."workspace_id" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint)))) with check ((("owner_type" = 'user' AND "owner_id" = nullif(current_setting('app.auth.user.id', true), '')::bigint) OR ("owner_type" = 'workspace_member' AND nullif(current_setting('app.auth.workspace_member.id', true), '') IS NOT NULL AND EXISTS (SELECT 1 FROM "workspace_member" WHERE "workspace_member"."id" = "owner_id" AND "workspace_member"."workspace_id" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint))));`,
     );
 
     this.addSql(
@@ -171,7 +186,7 @@ export class Migration20261111092714 extends Migration {
     );
     this.addSql(`alter table "account" enable row level security;`);
     this.addSql(
-      `create policy "account_select_policy" on "account" for select to "authenticated" using ("user_id" = nullif(current_setting('app.user.id', true), '')::bigint);`,
+      `create policy "account_select_policy" on "account" for select to "authenticated" using ("user_id" = nullif(current_setting('app.auth.user.id', true), '')::bigint);`,
     );
 
     this.addSql(`alter table "verification" enable row level security;`);
@@ -184,10 +199,10 @@ export class Migration20261111092714 extends Migration {
       `create policy "workspace_select_policy" on "workspace" for select to "authenticated", "anonymous" using (true);`,
     );
     this.addSql(
-      `create policy "workspace_update_policy" on "workspace" for update to "authenticated" using ("id" = nullif(current_setting('app.workspace.id', true), '')::bigint) with check ("id" = nullif(current_setting('app.workspace.id', true), '')::bigint);`,
+      `create policy "workspace_update_policy" on "workspace" for update to "authenticated" using ("id" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint) with check ("id" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint);`,
     );
     this.addSql(
-      `create policy "workspace_delete_policy" on "workspace" for delete to "authenticated" using ("id" = nullif(current_setting('app.workspace.id', true), '')::bigint);`,
+      `create policy "workspace_delete_policy" on "workspace" for delete to "authenticated" using ("id" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint);`,
     );
 
     this.addSql(
@@ -203,10 +218,10 @@ export class Migration20261111092714 extends Migration {
       `alter table "workspace_invitation" enable row level security;`,
     );
     this.addSql(
-      `create policy "workspace_invitation_all_policy" on "workspace_invitation" to "authenticated" using ("workspace_id" = nullif(current_setting('app.workspace.id', true), '')::bigint) with check ("workspace_id" = nullif(current_setting('app.workspace.id', true), '')::bigint);`,
+      `create policy "workspace_invitation_all_policy" on "workspace_invitation" to "authenticated" using ("workspace_id" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint) with check ("workspace_id" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint);`,
     );
     this.addSql(
-      `create policy "workspace_invitation_recipient_select_policy" on "workspace_invitation" for select to "authenticated" using ("email" = (select lower("recipient"."email") from "user" as "recipient" where "recipient"."id" = nullif(current_setting('app.user.id', true), '')::bigint));`,
+      `create policy "workspace_invitation_recipient_select_policy" on "workspace_invitation" for select to "authenticated" using ("email" = (select lower("recipient"."email") from "user" as "recipient" where "recipient"."id" = nullif(current_setting('app.auth.user.id', true), '')::bigint));`,
     );
 
     this.addSql(
@@ -226,10 +241,10 @@ export class Migration20261111092714 extends Migration {
     );
     this.addSql(`alter table "workspace_member" enable row level security;`);
     this.addSql(
-      `create policy "workspace_member_select_policy" on "workspace_member" for select to "authenticated" using ("user_id" = nullif(current_setting('app.user.id', true), '')::bigint);`,
+      `create policy "workspace_member_select_policy" on "workspace_member" for select to "authenticated" using ("user_id" = nullif(current_setting('app.auth.user.id', true), '')::bigint);`,
     );
     this.addSql(
-      `create policy "workspace_member_all_policy" on "workspace_member" to "authenticated" using ("workspace_id" = nullif(current_setting('app.workspace.id', true), '')::bigint) with check ("workspace_id" = nullif(current_setting('app.workspace.id', true), '')::bigint);`,
+      `create policy "workspace_member_all_policy" on "workspace_member" to "authenticated" using ("workspace_id" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint) with check ("workspace_id" = nullif(current_setting('app.auth.workspace.id', true), '')::bigint);`,
     );
   }
 

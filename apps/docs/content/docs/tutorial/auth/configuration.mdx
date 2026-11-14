@@ -256,7 +256,7 @@ pnpm exec nb database migration create --name add-auth
 pnpm exec nb database migration up
 ```
 
-Direct MikroORM consumers explicitly register the required entity classes and native `createApiKeySchema({ user, workspace, system })` definition. AuthModule performs feature-specific registration automatically.
+Direct MikroORM consumers explicitly register `ApiKey`, the enabled owner classes and abstract `createBaseApiKeySchema({ user, workspace, system })` definition. AuthModule performs feature-specific registration automatically.
 
 Use separate related business entities and additional field resolvers to extend
 these models. Import the built-in classes directly for relation targets; do not

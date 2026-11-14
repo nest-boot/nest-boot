@@ -8,6 +8,7 @@ const { Connection, ConnectionArgs, Edge } = new ConnectionBuilder(
 )
   .addField({
     field: "name",
+    fulltext: "searchableName",
     searchable: true,
     filterable: true,
     type: "string",
