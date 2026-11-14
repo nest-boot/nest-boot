@@ -1,14 +1,17 @@
+import { type Opt, type Ref, ref, Reference, t } from "@mikro-orm/core";
 import {
-  BaseEntity,
-  type Opt,
-  type Ref,
-  ref,
-  Reference,
-} from "@mikro-orm/core";
+  Entity,
+  Index,
+  ManyToOne,
+  PrimaryKey,
+  Property,
+} from "@mikro-orm/decorators/legacy";
+import { SearchableProperty } from "@nest-boot/database";
 import { Sonyflake } from "sonyflake-js";
 
 import { User } from "../../core/entities/user.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
+import { BaseApiKey } from "./base-api-key.entity.js";
 import { SystemAccount } from "./system-account.entity.js";
 
 /** Concrete identity types supported by the native polymorphic owner. */
@@ -27,13 +30,18 @@ export type OwnedApiKey<Kind extends keyof ApiKeyOwnerMap> = ApiKeyRecord & {
   owner: Ref<ApiKeyOwnerMap[Kind]>;
 };
 
-/** Credential persistence model, mapped by the native ApiKeySchema. */
-
-export class ApiKey extends BaseEntity {
+/** Shared credential entity with a feature-specific abstract owner mapping. */
+@Entity()
+@Index({ properties: ["owner"] })
+@Index({ properties: ["key"] })
+@Index({ properties: ["prefix"] })
+@Index({ properties: ["createdAt"] })
+export class ApiKey extends BaseApiKey {
   /**
    * Polymorphic owner discriminator, maintained by the owner relation.
    * @returns Concrete kind of the polymorphic credential owner.
    */
+  @Property({ type: t.string, persist: false, fieldName: "owner_type" })
   get ownerType(): Opt<"user" | "workspace_member" | "system_account"> {
     const owner = Reference.unwrapReference<
       User | WorkspaceMember | SystemAccount
@@ -44,9 +52,6 @@ export class ApiKey extends BaseEntity {
         ? "workspace_member"
         : "system_account";
   }
-
-  /** User, workspace member or independent system account that owns the credential. */
-  owner!: Ref<User | WorkspaceMember | SystemAccount>;
 
   /**
    * Owning user exposed by the user-key management API.
@@ -89,6 +94,7 @@ export class ApiKey extends BaseEntity {
   }
 
   /** Administrator or user recorded for audit, independent of credential ownership. */
+  @ManyToOne(() => User, { ref: true, nullable: true, deleteRule: "set null" })
   createdBy?: Opt<Ref<User>> | null = null;
 
   /**
@@ -136,38 +142,54 @@ export class ApiKey extends BaseEntity {
   }
 
   /** Primary key (Sonyflake ID, auto-generated). */
+  @PrimaryKey({ type: t.bigint })
   id: Opt<string> = Sonyflake.next().toString();
 
   /** API-key display name. */
+  @Property({ type: t.string })
   name!: string;
 
   /** Tokenized display name used only for indexed search. */
+  @SearchableProperty({ properties: "name", nullable: true })
   searchableName?: string | null;
 
   /** Starting characters retained for recognition in user interfaces. */
+  @Property({ type: t.string, nullable: true })
   start?: Opt<string> | null = null;
 
   /** Public prefix embedded in the plaintext key. */
+  @Property({ type: t.string, nullable: true })
   prefix?: Opt<string> | null = null;
 
   /** SHA-256 hash of the complete plaintext API key. */
+  @Property({ type: t.text, unique: true })
   key!: string;
 
   /** Permanent revocation timestamp; null means the key has not been revoked. */
+  @Property({ type: t.datetime, nullable: true })
   revokedAt: Opt<Date> | null = null;
 
   /** Operations that this API key may perform. */
+  @Property({ type: t.array, defaultRaw: "'{}'" })
   permissions: Opt<string[]> = [];
 
   /** Timestamp when the key was created. */
+  @Property({ type: t.datetime, defaultRaw: "now()" })
   createdAt: Opt<Date> = new Date();
 
   /** Timestamp of the last update. */
+  @Property({
+    type: t.datetime,
+    defaultRaw: "now()",
+    onUpdate: () => new Date(),
+  })
   updatedAt: Opt<Date> = new Date();
 
   /** Last successful usage timestamp. */
+  @Property({ type: t.datetime, nullable: true })
   lastUsedAt?: Opt<Date> | null = null;
 
   /** Expiration timestamp; `null` means the key does not expire. */
+  @Property({ type: t.datetime, nullable: true })
   expiresAt?: Opt<Date> | null = null;
 }

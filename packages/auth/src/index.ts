@@ -34,7 +34,8 @@ export * from "./api-key/connections/workspace-api-key.connection-definition.js"
 export * from "./api-key/constants/system-account.constants.js";
 export * from "./api-key/decorators/auth-api-key.decorator.js";
 export * from "./api-key/entities/api-key.entity.js";
-export * from "./api-key/entities/api-key.entity-schema.js";
+export * from "./api-key/entities/base-api-key.entity.js";
+export * from "./api-key/entities/base-api-key.entity-schema.js";
 export * from "./api-key/entities/system-account.entity.js";
 export * from "./api-key/enums/system-api-key-permission.enum.js";
 export * from "./api-key/enums/user-api-key-permission.enum.js";
