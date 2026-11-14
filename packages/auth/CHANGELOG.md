@@ -1,3 +1,27 @@
+## 8.3.0
+
+### Minor Changes
+
+- a6aa885: Enable tokenized name search for users, workspaces, workspace members, system accounts and all three API-key connections. Maintain hidden search properties and native full-text indexes through the existing database utilities, while preserving exact and prefix email filters. Generate schema migrations from the updated entities before using name search. The example migrations are regenerated for a fresh database. Keep the release in the 8.x series.
+  
+  Define ApiKey fields and indexes with ordinary decorators, including SearchableProperty. Keep only the optional polymorphic owner mapping, its constraints and RLS on the abstract BaseApiKey schema. Direct ORM consumers register ApiKey together with createBaseApiKeySchema({ user, workspace, system }).
+  
+  Refresh search tokens in the same native write when API keys or Better Auth users are renamed. Preserve bigint storage, database-generated defaults and string hydration for API-key identifiers when using the default metadata provider.
+- 618e81f: Separate workspace selection from authentication. Rename the request decorators to AuthUser, AuthSession, AuthApiKey, AuthWorkspaceMember, AuthWorkspace and SelectedWorkspace, while preserving currentUser, currentSession and currentWorkspaceMember GraphQL names. Expose selection through selectedWorkspace and authenticated workspace scope through currentWorkspace. Rename authentication response user data to AuthUserData. Update example clients and preserve the 8.x release series.
+  
+  Header selection takes precedence over the workspace Cookie for all credential types. Selection does not require membership or grant permissions. WorkspaceApiKey requires explicit selection for private access, applies member grants only in its owning workspace, and can access other workspaces through explicit public-resource rules. Malformed selectors return 400; empty headers clear selection and unknown IDs do not fall back to the Cookie.
+  
+  Project authenticated user, active workspace member, authenticated workspace and selected target into app.auth.user.id, app.auth.workspace_member.id, app.auth.workspace.id and app.selected.workspace.id. System credentials use the existing authenticated role and derive workspace scope from effective account/key/configuration grants without a database system-account identifier. Keep request context preparation outside business transactions. Generate example policy migrations from the native ORM metadata.
+  
+  Retain captured API-key usage auditing when member credentials access public resources outside their owning workspace, without changing the business request's scope.
+  
+  Use entity classes as authenticated identity tokens and SELECTED_WORKSPACE for independent selection. Resolve cleanup managers from RequestContext while keeping explicit persistence entry-point managers and standard Nest service injection. Update queue-api token consumption.
+
+### Patch Changes
+
+- Updated dependencies [783c5cd]
+  - @nest-boot/database@8.3.0
+
 ## 8.2.0
 
 ### Minor Changes
