@@ -518,6 +518,8 @@ same tokenizer as indexed names. This is word search rather than arbitrary
 substring matching. The hidden `searchableName` property is maintained by ORM
 creation and name updates and has a native full-text index; it is not a GraphQL
 field. The three API-key connections share the ApiKey table and index.
+Built-in key mutations and Better Auth bulk user updates maintain search tokens
+in the same native write as the name change.
 
 Email fields retain their existing exact/prefix filtering, including
 `email:alice*` on users and workspace members. Existing explicit name prefix

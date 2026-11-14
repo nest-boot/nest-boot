@@ -1,4 +1,5 @@
 import { EntityManager, TransactionContext } from "@mikro-orm/core";
+import { onFullTextCreate } from "@nest-boot/database";
 import { RequestContext } from "@nest-boot/request-context";
 import {
   BadRequestException,
@@ -111,11 +112,21 @@ export class ApiKeyService {
       authorize("write", updated, field);
     }
     if (Object.keys(data).length) {
+      // Native writes have no ORM snapshot, so maintain derived name tokens explicitly.
+      if (input.name !== undefined) {
+        updated.searchableName = onFullTextCreate<ApiKey>("name")(updated);
+      }
       updated.updatedAt = new Date();
       const affected = await this.manager.nativeUpdate(
         ApiKey,
         { id: apiKey.id, ownerType: apiKey.ownerType },
-        { ...data, updatedAt: updated.updatedAt },
+        {
+          ...data,
+          ...(input.name !== undefined && {
+            searchableName: updated.searchableName,
+          }),
+          updatedAt: updated.updatedAt,
+        },
       );
       if (affected === 0) {
         throw new NotFoundException("API key not found");
