@@ -1,6 +1,7 @@
 import { MetadataStorage } from "@mikro-orm/core";
 
 import { ApiKey } from "../api-key/entities/api-key.entity.js";
+import { BaseApiKeySchema } from "../api-key/entities/base-api-key.entity-schema.js";
 import { SystemAccount } from "../api-key/entities/system-account.entity.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
 import { WorkspaceInvitation } from "../workspace/entities/workspace-invitation.entity.js";
@@ -15,7 +16,7 @@ import { Verification } from "./entities/verification.entity.js";
 describe("built-in auth entity field ownership", () => {
   it.each([
     [Account, ["issuer", "accountId", "user"]],
-    [ApiKey, ["owner"]],
+    [ApiKey, ["id", "name", "searchableName", "key", "createdBy", "ownerType"]],
     [SystemAccount, ["permissions", "createdBy", "enabled"]],
     [Session, ["user", "token", "expiresAt"]],
     [User, ["name", "email"]],
@@ -38,5 +39,12 @@ describe("built-in auth entity field ownership", () => {
     for (const field of fields) {
       expect(metadata?.properties).toHaveProperty(field);
     }
+  });
+
+  it("keeps only the feature-dependent owner mapping on the abstract base", () => {
+    expect(BaseApiKeySchema.meta.abstract).toBe(true);
+    expect(Object.keys(BaseApiKeySchema.properties)).toEqual(["owner"]);
+    expect(BaseApiKeySchema.meta.policies).toHaveLength(1);
+    expect(BaseApiKeySchema.meta.checks).toHaveLength(1);
   });
 });

@@ -47,7 +47,11 @@ apiKeyTest(
     expect(em.nativeUpdate.mock.calls[0]).toEqual([
       ApiKey,
       { id: record.id, ownerType: "user" },
-      { name: "Renamed", updatedAt: expect.any(Date) },
+      {
+        name: "Renamed",
+        searchableName: "renamed",
+        updatedAt: expect.any(Date),
+      },
     ]);
     expect(updated).toBeInstanceOf(ApiKey);
     const identity = getCurrentApiKey();

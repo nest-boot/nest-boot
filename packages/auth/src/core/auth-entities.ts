@@ -1,4 +1,5 @@
-import { ApiKeySchema } from "../api-key/entities/api-key.entity-schema.js";
+import { ApiKey } from "../api-key/entities/api-key.entity.js";
+import { BaseApiKeySchema } from "../api-key/entities/base-api-key.entity-schema.js";
 import { SystemAccount } from "../api-key/entities/system-account.entity.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
 import { WorkspaceInvitation } from "../workspace/entities/workspace-invitation.entity.js";
@@ -14,7 +15,8 @@ export const entities = [
   Account,
   Session,
   Verification,
-  ApiKeySchema,
+  BaseApiKeySchema,
+  ApiKey,
   SystemAccount,
 ];
 

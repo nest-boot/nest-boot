@@ -503,6 +503,22 @@
           "enumItems": [],
           "mappedType": "datetime"
         },
+        "searchable_name": {
+          "name": "searchable_name",
+          "type": "tsvector",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": []
+        },
         "start": {
           "name": "start",
           "type": "varchar(255)",
@@ -586,6 +602,15 @@
           "keyName": "api_key_prefix_index",
           "primary": false,
           "unique": false
+        },
+        {
+          "columnNames": ["searchable_name"],
+          "composite": false,
+          "constraint": false,
+          "keyName": "api_key_searchable_name_index",
+          "primary": false,
+          "unique": false,
+          "type": "fulltext"
         }
       ],
       "checks": [
@@ -1270,6 +1295,22 @@
           "enumItems": [],
           "mappedType": "array"
         },
+        "searchable_name": {
+          "name": "searchable_name",
+          "type": "tsvector",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": []
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamptz(6)",
@@ -1304,6 +1345,15 @@
           "keyName": "system_account_pkey",
           "primary": true,
           "unique": true
+        },
+        {
+          "columnNames": ["searchable_name"],
+          "composite": false,
+          "constraint": false,
+          "keyName": "system_account_searchable_name_index",
+          "primary": false,
+          "unique": false,
+          "type": "fulltext"
         }
       ],
       "checks": [],
@@ -1522,6 +1572,22 @@
           "enumItems": [],
           "mappedType": "array"
         },
+        "searchable_name": {
+          "name": "searchable_name",
+          "type": "tsvector",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": []
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamptz(6)",
@@ -1564,6 +1630,15 @@
           "keyName": "user_pkey",
           "primary": true,
           "unique": true
+        },
+        {
+          "columnNames": ["searchable_name"],
+          "composite": false,
+          "constraint": false,
+          "keyName": "user_searchable_name_index",
+          "primary": false,
+          "unique": false,
+          "type": "fulltext"
         }
       ],
       "checks": [],
@@ -1792,6 +1867,22 @@
           "enumItems": [],
           "mappedType": "string"
         },
+        "searchable_name": {
+          "name": "searchable_name",
+          "type": "tsvector",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": []
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamptz(6)",
@@ -1826,6 +1917,15 @@
           "keyName": "workspace_pkey",
           "primary": true,
           "unique": true
+        },
+        {
+          "columnNames": ["searchable_name"],
+          "composite": false,
+          "constraint": false,
+          "keyName": "workspace_searchable_name_index",
+          "primary": false,
+          "unique": false,
+          "type": "fulltext"
         }
       ],
       "checks": [],
@@ -2205,6 +2305,22 @@
           "enumItems": [],
           "mappedType": "array"
         },
+        "searchable_name": {
+          "name": "searchable_name",
+          "type": "tsvector",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": []
+        },
         "status": {
           "name": "status",
           "type": "text",
@@ -2307,6 +2423,15 @@
           "keyName": "workspace_member_pkey",
           "primary": true,
           "unique": true
+        },
+        {
+          "columnNames": ["searchable_name"],
+          "composite": false,
+          "constraint": false,
+          "keyName": "workspace_member_searchable_name_index",
+          "primary": false,
+          "unique": false,
+          "type": "fulltext"
         },
         {
           "columnNames": ["user_id"],

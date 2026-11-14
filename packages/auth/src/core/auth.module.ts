@@ -24,7 +24,8 @@ import { APP_INTERCEPTOR } from "@nestjs/core";
 import { adminProviders } from "../admin/admin.providers.js";
 import { SystemAccountService } from "../admin/services/system-account.service.js";
 import { apiKeyProviders } from "../api-key/api-key.providers.js";
-import { createApiKeySchema } from "../api-key/entities/api-key.entity-schema.js";
+import { ApiKey } from "../api-key/entities/api-key.entity.js";
+import { createBaseApiKeySchema } from "../api-key/entities/base-api-key.entity-schema.js";
 import { SystemAccount } from "../api-key/entities/system-account.entity.js";
 import { ApiKeyUsageInterceptor } from "../api-key/interceptors/api-key-usage.interceptor.js";
 import { ApiKeyService } from "../api-key/services/api-key.service.js";
@@ -221,11 +222,12 @@ export class AuthModule extends ConfigurableModuleClass {
               Verification,
               ...(features.apiKey
                 ? [
-                    createApiKeySchema({
+                    createBaseApiKeySchema({
                       user: features.userApiKey,
                       workspace: features.workspaceApiKey,
                       system: features.systemApiKey,
                     }),
+                    ApiKey,
                   ]
                 : []),
               ...(features.systemAccount ? [SystemAccount] : []),

@@ -16,7 +16,10 @@ it("resolves WorkspaceMember from the current request", async () => {
             : null,
   );
   vi.resetModules();
-  vi.doMock("@nest-boot/request-context", () => ({
+  vi.doMock("@nest-boot/request-context", async () => ({
+    ...(await vi.importActual<typeof import("@nest-boot/request-context")>(
+      "@nest-boot/request-context",
+    )),
     RequestContext: { get, isActive: () => true },
   }));
   vi.doMock("@nestjs/common", async () => ({

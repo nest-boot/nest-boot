@@ -1,4 +1,5 @@
 import { type EntityManager, LockMode } from "@mikro-orm/core";
+import { onFullTextCreate } from "@nest-boot/database";
 import type {
   AdapterFactoryCustomizeAdapterCreator,
   Where,
@@ -101,14 +102,28 @@ export function createMikroOrmCustomAdapter({
           return resolver.toAdapterRecord(model, entity) as any;
         }),
       updateMany: async ({ model, where, update }) =>
-        await runUnrestricted(
-          async (em) =>
-            await em.nativeUpdate(
-              resolver.getEntityClass(model),
-              convertWhere(model, where),
-              resolver.toEntityData(model, update),
-            ),
-        ),
+        await runUnrestricted(async (em) => {
+          const entity = resolver.getEntityClass(model);
+          const data = resolver.toEntityData(model, update);
+          if (
+            entity === entities.user &&
+            typeof data.name === "string" &&
+            Object.hasOwn(
+              em.getMetadata().get(entity).properties,
+              "searchableName",
+            )
+          ) {
+            // Native bulk updates bypass snapshot-dependent derived-property callbacks.
+            data.searchableName = onFullTextCreate<{ name: string }>("name")({
+              name: data.name,
+            });
+          }
+          return await em.nativeUpdate(
+            entity,
+            convertWhere(model, where),
+            data,
+          );
+        }),
       delete: async ({ model, where }) => {
         await runUnrestricted(async (em) => {
           await em.nativeDelete(
