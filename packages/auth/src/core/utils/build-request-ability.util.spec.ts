@@ -1,6 +1,5 @@
 import { createMongoAbility, subject } from "@casl/ability";
 import { RequestContext } from "@nest-boot/request-context";
-import { assert } from "vitest";
 
 import { stageIdentity } from "../../../test/fixtures/auth-context.fixture.js";
 import { withAuthTestFeatures } from "../../../test/fixtures/enabled-auth-features.fixture.js";
@@ -12,7 +11,6 @@ import { WorkspaceApiKey } from "../../api-key/objects/workspace-api-key.object.
 import { serializeAbilityRules } from "../../common/utils/serialize-ability-rules.util.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../../workspace/entities/workspace-member.entity.js";
-import { SELECTED_WORKSPACE } from "../constants/auth.constants.js";
 import { User } from "../entities/user.entity.js";
 import type { BuildAbilityContext } from "../interfaces/build-ability-context.interface.js";
 import { buildRequestAbility } from "./build-request-ability.util.js";
@@ -87,9 +85,6 @@ describe("framework-owned request abilities", () => {
         },
       }),
     );
-    if (!ability) {
-      throw new Error("Expected user ability");
-    }
     expect(ability.can("read", new User())).toBe(true);
     expect(ability.can("delete", new User())).toBe(false);
     const restored = createMongoAbility(serializeAbilityRules(ability));
@@ -120,41 +115,28 @@ describe("framework-owned request abilities", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("builds built-in abilities without callbacks, using API-key intersections", () => {
-    RequestContext.set(User, Object.assign(new User(), { roles: ["admin"] }));
-    RequestContext.set(
-      WorkspaceMember,
-      Object.assign(new WorkspaceMember(), { roles: ["owner"] }),
-    );
-    RequestContext.set(SELECTED_WORKSPACE, new Workspace());
-    Object.assign(requireWorkspaceMember(), {
-      user: RequestContext.get(User),
-      workspace: RequestContext.get<Workspace | null>(SELECTED_WORKSPACE),
+    const user = Object.assign(new User(), { roles: ["admin"] });
+    const workspace = new Workspace();
+    const member = Object.assign(new WorkspaceMember(), {
+      user,
+      workspace,
+      roles: ["owner"],
     });
     stageIdentity({
+      user,
+      workspace,
+      member,
       apiKey: Object.assign(new UserApiKey(new ApiKey()), {
         permissions: ["user:read", "workspace:update"],
       }),
     });
-    expect(
-      buildRequestAbility(
-        withAuthTestFeatures({ workspace: { enabled: true } }),
-      )?.can("read", User),
-    ).toBe(true);
-    expect(
-      buildRequestAbility(
-        withAuthTestFeatures({ workspace: { enabled: true } }),
-      )?.can("delete", User),
-    ).toBe(false);
-    expect(
-      buildRequestAbility(
-        withAuthTestFeatures({ workspace: { enabled: true } }),
-      )?.can("update", Workspace),
-    ).toBe(true);
-    expect(
-      buildRequestAbility(
-        withAuthTestFeatures({ workspace: { enabled: true } }),
-      )?.can("delete", Workspace),
-    ).toBe(false);
+    const ability = buildRequestAbility(
+      withAuthTestFeatures({ workspace: { enabled: true } }),
+    );
+    expect(ability.can("read", User)).toBe(true);
+    expect(ability.can("delete", User)).toBe(false);
+    expect(ability.can("update", Workspace)).toBe(true);
+    expect(ability.can("delete", Workspace)).toBe(false);
   });
 
   it.each(["USER", "SERVICE_ACCOUNT"] as const)(
@@ -180,17 +162,17 @@ describe("framework-owned request abilities", () => {
       const ability = buildRequestAbility(
         withAuthTestFeatures({ workspace: { enabled: true } }),
       );
-      expect(ability?.can("read", Workspace)).toBe(true);
-      expect(ability?.can("update", Workspace)).toBe(true);
-      expect(ability?.can("delete", Workspace)).toBe(false);
-      expect(ability?.can("read", WorkspaceMember)).toBe(false);
-      expect(ability?.can("read", User)).toBe(false);
+      expect(ability.can("read", Workspace)).toBe(true);
+      expect(ability.can("update", Workspace)).toBe(true);
+      expect(ability.can("delete", Workspace)).toBe(false);
+      expect(ability.can("read", WorkspaceMember)).toBe(false);
+      expect(ability.can("read", User)).toBe(false);
       member.permissions = [];
       stageIdentity({ member });
       expect(
         buildRequestAbility(
           withAuthTestFeatures({ workspace: { enabled: true } }),
-        )?.can("update", Workspace),
+        ).can("update", Workspace),
       ).toBe(false);
     },
   );
@@ -214,9 +196,6 @@ describe("framework-owned request abilities", () => {
       },
     };
     const ability = buildRequestAbility(withAuthTestFeatures(options));
-    if (!ability) {
-      throw new Error("Expected a user ability");
-    }
     expect(ability.can("read", subject("Article", { authorId: "me" }))).toBe(
       true,
     );
@@ -230,10 +209,7 @@ describe("framework-owned request abilities", () => {
       apiKey: Object.assign(new UserApiKey(new ApiKey()), { permissions: [] }),
     });
     expect(
-      buildRequestAbility(withAuthTestFeatures(options))?.can(
-        "read",
-        "Article",
-      ),
+      buildRequestAbility(withAuthTestFeatures(options)).can("read", "Article"),
     ).toBe(true);
   });
 
@@ -315,12 +291,3 @@ describe("framework-owned request abilities", () => {
     },
   );
 });
-/**
- * Returns member stored in the current test context.
- * @returns WorkspaceMember stored in the current test context.
- */
-function requireWorkspaceMember(): WorkspaceMember {
-  const member = RequestContext.get(WorkspaceMember);
-  assert(member);
-  return member;
-}

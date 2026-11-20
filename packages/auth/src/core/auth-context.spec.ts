@@ -374,7 +374,7 @@ describe("AuthContext", () => {
     async (failure) => {
       const em = manager();
       const options: AuthModuleOptions = {
-        buildAbility: ({ builder: _rules }) => {
+        buildAbility: () => {
           if (failure === "ability") {
             throw new Error("Ability failed");
           }
@@ -430,7 +430,7 @@ describe("AuthContext", () => {
   );
   it("does not leave a partially prepared ability after a builder fails", async () => {
     const options: AuthModuleOptions = {
-      buildAbility: ({ builder: _rules }) => {
+      buildAbility: () => {
         throw new Error("Failed");
       },
 
@@ -540,7 +540,7 @@ describe("post-commit authorization", () => {
       "retains API-key ceilings and fails closed if the custom builder throws (failure=%s)",
       async (failure) => {
         const options: AuthModuleOptions = {
-          buildAbility: ({ builder: _rules }) => {
+          buildAbility: () => {
             if (failure) {
               throw new Error("Invalid ability configuration");
             }
@@ -929,12 +929,10 @@ describe("unified request abilities", () => {
         const options: AuthModuleOptions = {
           workspace: { enabled: true, permissions: ["report:read"] },
           buildAbility: ({ builder: { can }, workspace, permissions }) => {
-            if (workspace) {
-              if (permissions.includes("report:read")) {
-                can("read", "Report", {
-                  workspaceId: workspace.id,
-                });
-              }
+            if (workspace && permissions.includes("report:read")) {
+              can("read", "Report", {
+                workspaceId: workspace.id,
+              });
             }
           },
         };

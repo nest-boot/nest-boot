@@ -1835,32 +1835,21 @@ describe("permission checks", () => {
       getAllAndMerge: Mock;
       getAllAndOverride: Mock;
     };
-    const configureUserRules: MockedFunction<ScopedTestCallback> = vi.fn(
-      (builder, permissions) => {
-        if (buildFromPermissions) {
-          for (const permission of permissions) {
-            const [resource, action] = permission.split(":");
-            if ((resource === "post" || resource === "subject") && action) {
-              builder.can(action, resolveTestPermissionSubject(resource));
-            }
-          }
-          return;
+    const configureRules: ScopedTestCallback = (builder, permissions) => {
+      if (!buildFromPermissions) {
+        return;
+      }
+      for (const permission of permissions) {
+        const [resource, action] = permission.split(":");
+        if ((resource === "post" || resource === "subject") && action) {
+          builder.can(action, resolveTestPermissionSubject(resource));
         }
-      },
-    );
-    const configureWorkspaceRules: MockedFunction<ScopedTestCallback> = vi.fn(
-      (builder, permissions) => {
-        if (buildFromPermissions) {
-          for (const permission of permissions) {
-            const [resource, action] = permission.split(":");
-            if ((resource === "post" || resource === "subject") && action) {
-              builder.can(action, resolveTestPermissionSubject(resource));
-            }
-          }
-          return;
-        }
-      },
-    );
+      }
+    };
+    const configureUserRules: MockedFunction<ScopedTestCallback> =
+      vi.fn(configureRules);
+    const configureWorkspaceRules: MockedFunction<ScopedTestCallback> =
+      vi.fn(configureRules);
     const configure = ({
       builder: rules,
       ...context
