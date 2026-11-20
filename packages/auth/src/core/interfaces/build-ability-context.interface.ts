@@ -1,5 +1,7 @@
+import type { AbilityBuilder } from "@casl/ability";
+
+import type { AuthAbility } from "../../common/auth.ability.js";
 import type { AbilityContext } from "../../common/interfaces/ability-context.interface.js";
-import type { AbilityRules } from "../../common/interfaces/ability-rules.interface.js";
 
 /** Native CASL builder and effective request identity supplied to buildAbility. */
 export interface BuildAbilityContext<
@@ -7,5 +9,5 @@ export interface BuildAbilityContext<
   WorkspacePermission extends string = string,
 > extends AbilityContext<UserPermission, WorkspacePermission> {
   /** Native builder used to configure the single request ability. */
-  readonly builder: AbilityRules;
+  readonly builder: AbilityBuilder<AuthAbility>;
 }

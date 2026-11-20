@@ -83,7 +83,6 @@ export * from "./common/constants/permission.constants.js";
 export * from "./common/decorators/can.decorator.js";
 export * from "./common/decorators/public.decorator.js";
 export * from "./common/interfaces/ability-context.interface.js";
-export * from "./common/interfaces/ability-rules.interface.js";
 export * from "./common/interfaces/route-argument-metadata-value.interface.js";
 export * from "./common/interfaces/scope-policy-options.interface.js";
 export * from "./common/interfaces/serialized-ability-rule.interface.js";

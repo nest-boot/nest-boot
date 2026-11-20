@@ -878,10 +878,7 @@ describe("unified request abilities", () => {
               workspace: { enabled: true, permissions: ["report:read"] },
               buildAbility: ({ builder: { can }, permissions }) => {
                 if (permissions.includes("report:read")) {
-                  can("read", "PersonalReport");
-                }
-                if (permissions.includes("report:read")) {
-                  can("read", "WorkspaceReport");
+                  can("read", ["PersonalReport", "WorkspaceReport"]);
                 }
               },
             }),

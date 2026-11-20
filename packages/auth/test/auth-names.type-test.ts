@@ -3,8 +3,8 @@ import { expectTypeOf } from "vitest";
 
 import { AuthModule } from "../src/core/auth.module.js";
 import type {
-  AbilityRules,
   AuthAbility,
+  BuildAbilityContext,
   PermissionName,
   RoleName,
 } from "../src/index.js";
@@ -99,7 +99,9 @@ expectTypeOf(invalidPermission).toEqualTypeOf<never>();
 AuthModule.forRoot({
   buildAbility: ({ builder, permissions }) => {
     expectTypeOf(builder).toEqualTypeOf<AbilityBuilder<AuthAbility>>();
-    expectTypeOf<AbilityRules>().toEqualTypeOf<AbilityBuilder<AuthAbility>>();
+    expectTypeOf<BuildAbilityContext["builder"]>().toEqualTypeOf<
+      AbilityBuilder<AuthAbility>
+    >();
     if (permissions.includes("report:read")) {
       builder.can("read", "Report").because("Readable reports");
     }

@@ -24,54 +24,44 @@ import type { AuthModuleOptions } from "./interfaces/auth-module-options.interfa
 import { isAuthPermissionEnabled } from "./utils/resolve-auth-features.util.js";
 
 /**
- * Owns built-in permission mappings and configures application CASL rules.
- * @internal
- */
-
-/**
- * Builds and normalizes authorization rules from an explicit identity snapshot.
+ * Builds one request ability from built-in mappings and native CASL application rules.
  * @param context - Identity and effective permission snapshot.
  * @param options - Authentication module configuration.
- * @returns Result of the requested operation.
+ * @returns Unified ability for the supplied identity and effective grants.
  */
 export function createAuthAbility(
   context: Omit<AbilityContext, "permissions">,
   options: AuthModuleOptions = {},
 ): AuthAbility {
-  const scoped = {
+  const userPermissions = Object.freeze(
+    context.user || context.systemAccount
+      ? context.userPermissions.filter((permission) =>
+          isAuthPermissionEnabled(
+            options,
+            "user",
+            permission,
+            !!context.systemAccount,
+          ),
+        )
+      : [],
+  );
+  const workspacePermissions = Object.freeze(
+    options.workspace?.enabled === true && context.workspace
+      ? context.workspacePermissions.filter((permission) =>
+          isAuthPermissionEnabled(options, "workspace", permission),
+        )
+      : [],
+  );
+  const snapshot: AbilityContext = {
     ...context,
     workspace: options.workspace?.enabled === true ? context.workspace : null,
     member: options.workspace?.enabled === true ? context.member : null,
-    userPermissions: Object.freeze(
-      context.user || context.systemAccount
-        ? [
-            ...context.userPermissions.filter((permission) =>
-              isAuthPermissionEnabled(
-                options,
-                "user",
-                permission,
-                !!context.systemAccount,
-              ),
-            ),
-          ]
-        : [],
-    ),
-    workspacePermissions: Object.freeze(
-      options.workspace?.enabled === true && context.workspace
-        ? [
-            ...context.workspacePermissions.filter((permission) =>
-              isAuthPermissionEnabled(options, "workspace", permission),
-            ),
-          ]
-        : [],
-    ),
-  };
-  const snapshot: AbilityContext = Object.freeze({
-    ...scoped,
+    userPermissions,
+    workspacePermissions,
     permissions: Object.freeze([
-      ...new Set([...scoped.userPermissions, ...scoped.workspacePermissions]),
+      ...new Set([...userPermissions, ...workspacePermissions]),
     ]),
-  });
+  };
   const builder = new AbilityBuilder(AuthAbility);
   // Self-service operations are authorized explicitly by their Services.
   const subjects = {

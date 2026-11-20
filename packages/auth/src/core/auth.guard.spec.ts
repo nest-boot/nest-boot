@@ -26,7 +26,6 @@ import {
   CUSTOM_ROUTE_ARGS_METADATA,
   ROUTE_ARGS_METADATA,
 } from "../common/constants/permission.constants.js";
-import { type AbilityRules } from "../common/interfaces/ability-rules.interface.js";
 import * as authorization from "../common/utils/can.util.js";
 import { can } from "../common/utils/can.util.js";
 import {
@@ -521,7 +520,7 @@ describe("permission checks", () => {
   type TestAbility = AuthAbility;
 
   type ScopedTestCallback = (
-    rules: AbilityRules,
+    rules: AbilityBuilder<AuthAbility>,
     permissions: readonly string[],
     identity: BaseUser | BaseWorkspace,
   ) => void;
