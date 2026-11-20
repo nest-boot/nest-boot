@@ -128,20 +128,31 @@ describe("permission ability builders", () => {
     ).toBe(true);
   });
 
-  it("rejects asynchronous configuration instead of publishing incomplete rules", () => {
-    expect(() =>
-      createAuthAbility(
-        {
-          user: new User(),
-          workspace: null,
-          member: null,
-          userPermissions: [],
-          workspacePermissions: [],
-        },
-        { buildAbility: vi.fn().mockResolvedValue(undefined) },
-      ),
-    ).toThrow("buildAbility must be synchronous");
-  });
+  it.each(["promise", "object thenable", "callable thenable"] as const)(
+    "rejects asynchronous configuration returning a %s instead of publishing incomplete rules",
+    (type) => {
+      const promise = Promise.resolve();
+      const then = promise.then.bind(promise);
+      const result =
+        type === "promise"
+          ? promise
+          : type === "object thenable"
+            ? { then }
+            : Object.assign(() => undefined, { then });
+      expect(() =>
+        createAuthAbility(
+          {
+            user: new User(),
+            workspace: null,
+            member: null,
+            userPermissions: [],
+            workspacePermissions: [],
+          },
+          { buildAbility: vi.fn().mockReturnValue(result) },
+        ),
+      ).toThrow("buildAbility must be synchronous");
+    },
+  );
 
   it("keeps machine platform grants independent from human administrative features", () => {
     const options = { apiKey: { enabled: true, system: { enabled: true } } };

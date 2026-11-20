@@ -136,7 +136,7 @@ export function createAuthAbility(
   const result: unknown = configure?.(Object.freeze({ ...snapshot, builder }));
   if (
     result &&
-    typeof result === "object" &&
+    (typeof result === "object" || typeof result === "function") &&
     "then" in result &&
     typeof result.then === "function"
   ) {
