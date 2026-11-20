@@ -372,7 +372,7 @@ user's role/direct permissions and the key's permissions. Holding `user:set-role
 alone does not allow promotion to a more privileged role.
 
 `userRoles` and `workspaceRoles` return the full role catalog as `{ role, grantable }`
-objects. `permissions`, with `userPermissions` and `workspacePermissions` available when provenance matters similarly return
+objects. `userPermissions` and `workspacePermissions` similarly return
 `{ permission, grantable }` objects. The enum-valued fields preserve type-safe inputs;
 `grantable` reflects the current principal's grant ceiling, including API-key
 restrictions. Workspace role options require `workspace-member:set-roles` or `workspace-member:invite`
