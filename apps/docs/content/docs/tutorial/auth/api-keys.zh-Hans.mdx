@@ -128,7 +128,7 @@ Key 权限交集只做精确字符串匹配，不做规范化转换。
 GraphQL 使用独立的 `UserApiKeyPermission`、`WorkspaceApiKeyPermission` 枚举，将 `user-api-key:read` 映射为
 `USER_API_KEY__READ`，内部仍使用原值。
 Auth 将 `user-api-key:*` 在用户能力中映射到 `UserApiKey`，将 `workspace-api-key:*`
-在工作区能力中映射到 `WorkspaceApiKey`。业务扩展通过受约束的 `AbilityRules.can` 显式绑定自定义权限。
+在工作区能力中映射到 `WorkspaceApiKey`。业务扩展在 `buildAbility` 中先检查统一的有效 `permissions`，再调用原生 CASL `can`。无条件规则属于应用策略，不会自动执行凭证权限限制。
 
 ```typescript
 const workspacePermissions = [

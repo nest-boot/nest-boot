@@ -551,7 +551,7 @@ describe("API-key management", () => {
         async () => {
           const options: AuthModuleOptions = {
             workspace: { enabled: true },
-            buildAbility: ({ cannot }) => {
+            buildAbility: ({ builder: { cannot } }) => {
               cannot("read", UserApiKey, { revokedAt: { $ne: null } });
               cannot("read", WorkspaceApiKey, { revokedAt: { $ne: null } });
             },
@@ -592,7 +592,7 @@ describe("API-key management", () => {
         async () => {
           const options: AuthModuleOptions = {
             workspace: { enabled: true },
-            buildAbility: ({ cannot }) => {
+            buildAbility: ({ builder: { cannot } }) => {
               cannot("read", UserApiKey, { revokedAt: { $ne: null } });
               cannot("read", WorkspaceApiKey, { revokedAt: { $ne: null } });
             },
@@ -2129,7 +2129,7 @@ for (const field of ["name", "permissions", "expiresAt", "prefix"] as const) {
   apiKeyTest(`rejects creation when ${field} is not writable`, async () => {
     const configuration: AuthModuleOptions = {
       workspace: { enabled: true },
-      buildAbility: ({ cannot }) => {
+      buildAbility: ({ builder: { cannot } }) => {
         cannot("write", WorkspaceApiKey, [field]);
       },
     };

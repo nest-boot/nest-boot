@@ -60,7 +60,7 @@ Important Nest Boot options include:
 - **`user.changeEmail.enabled`** — enables the two-stage email-change flow;
 - **`user.defaultRole`**, **`user.adminRoles`**, **`user.permissions`**, **`user.roles`** — define user role lifecycles and authorization;
 - **`workspace.defaultRole`**, **`workspace.creatorRole`**, **`workspace.permissions`**, **`workspace.roles`** — define workspace role lifecycles and authorization;
-- **`buildAbility`** — builds one request Ability from user, workspace, member, and the two effective-permission sources.
+- **`buildAbility`** — configures one request Ability with a native CASL builder and a unified effective `permissions` snapshot.
 - **`workspace.sendWorkspaceInvitationEmail`** — delivers persisted workspace invitations;
 - **`apiKey.user`** — user-key defaults and grant limits;
 - **`apiKey.workspace`** — member-key defaults and grant limits;

@@ -31,7 +31,7 @@ function fixture(field: string) {
   RequestContext.set(User, user);
   RequestContext.set(Session, Object.assign(new Session(), { user }));
   const options = withAuthTestFeatures({
-    buildAbility: ({ cannot }) => {
+    buildAbility: ({ builder: { cannot } }) => {
       cannot("write", SystemApiKey, [field]);
     },
   } satisfies AuthModuleOptions);

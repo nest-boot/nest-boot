@@ -26,6 +26,8 @@ import { User } from "../src/core/entities/user.entity.js";
 import { Workspace } from "../src/workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../src/workspace/entities/workspace-member.entity.js";
 
+class Task {}
+
 let observedCredential: ApiKeyRecord | undefined;
 
 @Resolver()
@@ -41,7 +43,7 @@ class PermissionProbeResolver {
     return toApiKeyView(key);
   }
 
-  @Can("read", "Task")
+  @Can("read", Task)
   @Query(() => Boolean)
   permissionProbeTask(): boolean {
     return true;
@@ -125,9 +127,13 @@ describe("permission output after catalog removal", () => {
           user: { permissions: ["project:read"] },
           workspace: { enabled: true, permissions: ["task:read"] },
           emailAndPassword: { requireEmailVerification: false },
-          buildAbility: (rules) => {
-            rules.can({ user: "project:read" }, "read", "Project");
-            rules.can({ workspace: "task:read" }, "read", "Task");
+          buildAbility: ({ builder: rules, permissions }) => {
+            if (permissions.includes("project:read")) {
+              rules.can("read", "Project");
+            }
+            if (permissions.includes("task:read")) {
+              rules.can("read", Task).because("Task read permission");
+            }
           },
         }),
       ],
@@ -269,6 +275,20 @@ describe("permission output after catalog removal", () => {
         key.permissions,
       );
     }
+  });
+
+  it("checks a static class route with native CASL rules and serializes their reasons", async () => {
+    const output = await query(
+      "{ permissionProbeTask currentAbilityRules { actions subjects reason } }",
+      { "x-workspace-id": workspace.id },
+    );
+    expect(output.errors).toBeUndefined();
+    expect(output.data?.permissionProbeTask).toBe(true);
+    expect(output.data?.currentAbilityRules).toContainEqual({
+      actions: ["read"],
+      subjects: ["Task"],
+      reason: "Task read permission",
+    });
   });
 
   it("keeps a key restricted when every stored grant was removed from the output catalog", async () => {

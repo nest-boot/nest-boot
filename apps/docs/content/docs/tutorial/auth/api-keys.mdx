@@ -160,8 +160,9 @@ and key intersections use exact string equality without normalization.
 GraphQL uses separate `UserApiKeyPermission` and `WorkspaceApiKeyPermission` enums, mapping `user-api-key:read` to
 `USER_API_KEY__READ` on the wire while retaining the original value internally.
 Auth maps `user-api-key:*` to `UserApiKey` in user abilities and
-`workspace-api-key:*` to `WorkspaceApiKey` in workspace abilities. Business extensions bind
-custom permissions through the restricted `AbilityRules.can` API.
+`workspace-api-key:*` to `WorkspaceApiKey` in workspace abilities. Business extensions check the unified effective `permissions` in `buildAbility`
+before calling native CASL `can`. Unconditional rules are application policy
+and do not automatically enforce credential limits.
 
 ```typescript
 const workspacePermissions = [

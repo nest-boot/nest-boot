@@ -4,7 +4,7 @@ This optional, tested recipe is not registered by the running example applicatio
 It does not add an auth entity, database table, GraphQL resolver, or route.
 
 1. `report-auth.options.ts` declares the permission catalog, additive roles, and
-   permission-bound object rules. Merge these options with your existing
+   native CASL object rules. Merge these options with your existing
    `AuthModule.forRoot()` configuration when adopting the recipe. Merge nested
    options deliberately; do not overwrite unrelated callbacks or role grants.
 2. `report.ts` is a minimal business resource, separate from auth entities.
@@ -20,10 +20,13 @@ It does not add an auth entity, database table, GraphQL resolver, or route.
 
 `permissions` declares vocabulary; it grants nothing on its own. `roles` assigns
 permissions, and same-name roles extend the built-ins. Entity role/permission
-setters replace stored assignments. The `can({ workspace: permission }, action, subject, conditions)`
-callback automatically checks effective permissions, including credential ceilings;
-do not duplicate that check in the callback. Action names and subject classes remain
-case-sensitive, while GraphQL permission inputs use generated enum names.
+setters replace stored assignments. The `buildAbility` callback checks the unified
+`permissions` snapshot before calling standard CASL `can(action, subject, conditions)`.
+That snapshot includes role grants and credential ceilings. Unconditional custom
+rules are application policy and do not automatically check key permissions.
+`cannot` uses normal CASL declaration order, and `.because()` is supported.
+Action names and subject classes remain case-sensitive, while GraphQL permission
+inputs use generated enum names.
 
 The example deliberately uses operation/object authorization, not field-level
 restrictions. Built-in auth Service methods do not automatically enforce CASL field
@@ -35,7 +38,7 @@ Run the recipe's cross-layer tests:
 
 ```bash
 pnpm --filter @nest-boot/auth build
-pnpm --filter @nest-boot/example-server exec vitest run src/app/auth/examples/report-authorization.spec.ts
+pnpm --filter @nest-boot/example-server exec vitest run --config ./vitest.config.e2e.ts test/report-authorization.e2e-spec.ts
 ```
 
 The tests cover roles, direct grants, object conditions, empty/restricted API keys,

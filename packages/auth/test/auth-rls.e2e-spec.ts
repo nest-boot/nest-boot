@@ -2480,7 +2480,7 @@ describe("Auth services and native RLS boundaries", () => {
 
     const options: AuthModuleOptions = {
       workspace: { enabled: true },
-      buildAbility: (rules) => {
+      buildAbility: ({ builder: rules }) => {
         rules.cannot(["read"], User, { id: { $ne: target.id } });
       },
 

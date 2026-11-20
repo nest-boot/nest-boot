@@ -1,10 +1,11 @@
-import { createMongoAbility, subject } from "@casl/ability";
+import { AbilityBuilder, createMongoAbility, subject } from "@casl/ability";
 
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { SystemAccount } from "../api-key/entities/system-account.entity.js";
 import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
 import { WorkspaceApiKey } from "../api-key/objects/workspace-api-key.object.js";
 import { resolveApiKeyPermissionCatalog } from "../api-key/utils/api-key-permissions.util.js";
+import { AuthAbility } from "../common/auth.ability.js";
 import { resolveAuthCatalog } from "../common/utils/resolve-auth-catalog.util.js";
 import { serializeAbilityRules } from "../common/utils/serialize-ability-rules.util.js";
 import {
@@ -47,6 +48,101 @@ const buildWorkspacePermissionAbility = (permissions: readonly string[]) =>
   );
 
 describe("permission ability builders", () => {
+  it("passes a native CASL builder and one immutable effective permission set", () => {
+    const workspace = new Workspace();
+    const configure = vi.fn(({ builder, ...context }) => {
+      expect(builder).toBeInstanceOf(AbilityBuilder);
+      expect(context.permissions).toEqual(["report:read", "report:archive"]);
+      expect(Object.isFrozen(context.permissions)).toBe(true);
+      if (context.permissions.includes("report:read")) {
+        builder.can("read", "Report", ["title"], { workspaceId: workspace.id });
+        builder
+          .cannot("read", "Report", { hidden: true })
+          .because("Hidden report");
+      }
+    });
+    const ability = createAuthAbility(
+      {
+        user: new User(),
+        workspace,
+        member: null,
+        userPermissions: ["report:read"],
+        workspacePermissions: ["report:read", "report:archive"],
+      },
+      { workspace: { enabled: true }, buildAbility: configure },
+    );
+    expect(ability).toBeInstanceOf(AuthAbility);
+    expect(configure).toHaveBeenCalledOnce();
+    expect(configure.mock.calls[0]).toHaveLength(1);
+    const restored = createMongoAbility(serializeAbilityRules(ability));
+    for (const candidate of [ability, restored]) {
+      expect(
+        candidate.can(
+          "read",
+          subject("Report", { workspaceId: workspace.id }),
+          "title",
+        ),
+      ).toBe(true);
+      expect(
+        candidate.can(
+          "read",
+          subject("Report", { workspaceId: "other" }),
+          "title",
+        ),
+      ).toBe(false);
+      expect(
+        candidate.can(
+          "read",
+          subject("Report", { workspaceId: workspace.id, hidden: true }),
+          "title",
+        ),
+      ).toBe(false);
+      expect(
+        candidate.rules.some((rule) => rule.reason === "Hidden report"),
+      ).toBe(true);
+    }
+  });
+
+  it("uses CASL declaration order and supports expression callbacks", () => {
+    const context = {
+      user: new User(),
+      workspace: null,
+      member: null,
+      userPermissions: [],
+      workspacePermissions: [],
+    };
+    const ability = createAuthAbility(context, {
+      buildAbility: ({ builder: { can, cannot } }) => {
+        cannot("read", "Report");
+        can("read", "Report").because("Last rule wins");
+        can("delete", "Report");
+        cannot("delete", "Report");
+      },
+    });
+    expect(ability.can("read", "Report")).toBe(true);
+    expect(ability.can("delete", "Report")).toBe(false);
+    expect(
+      createAuthAbility(context, {
+        buildAbility: ({ builder: { can } }) => can("manage", "all"),
+      }).can("delete", User),
+    ).toBe(true);
+  });
+
+  it("rejects asynchronous configuration instead of publishing incomplete rules", () => {
+    expect(() =>
+      createAuthAbility(
+        {
+          user: new User(),
+          workspace: null,
+          member: null,
+          userPermissions: [],
+          workspacePermissions: [],
+        },
+        { buildAbility: vi.fn().mockResolvedValue(undefined) },
+      ),
+    ).toThrow("buildAbility must be synchronous");
+  });
+
   it("keeps machine platform grants independent from human administrative features", () => {
     const options = { apiKey: { enabled: true, system: { enabled: true } } };
     const context = {
@@ -87,8 +183,10 @@ describe("permission ability builders", () => {
       },
       {
         user: { permissions: ["project:read"] },
-        buildAbility: (rules) => {
-          rules.can({ user: "project:read" }, "read", "Project");
+        buildAbility: ({ builder: rules, permissions }) => {
+          if (permissions.includes("project:read")) {
+            rules.can("read", "Project");
+          }
         },
       },
     );
@@ -498,7 +596,7 @@ describe("explicit permission catalog", () => {
         },
         withAuthTestFeatures({
           workspace: { enabled: true },
-          buildAbility({ cannot }) {
+          buildAbility({ builder: { cannot } }) {
             cannot("write", WorkspaceInvitation, { status: "accepted" });
           },
         }),

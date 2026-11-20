@@ -116,10 +116,12 @@ exports 只提供 `import` 入口，不再提供 CommonJS `require` 入口。
   内置目录使用 `user:*`、`session:*`、`workspace:*`、`workspace-member:*` 与
   `invitation:*` 与 `api-key:*`。自定义角色和权限遵循小写命名约束，无效名称会被
   拒绝而非自动转换。角色授权、直接权限、API Key 权限与业务规则的拼写必须一致。
-- Auth 统一维护内置能力映射，请移除应用中重复构建 auth 规则的回调。
-  业务回调接收 `AbilityRules`，不返回值，通过 `can(permission, action, subject, conditions?)`
-  绑定权限。内置实体和 `all` 不能被额外授权；`cannot` 可追加限制。两种权限目录都内置
-  API Key CRUD 权限，前端继续消费最终序列化规则。详见[授权](./tutorial/auth/authorization)。
+- Auth 维护默认的内置能力映射。原生 CASL API 使用单对象回调
+  `buildAbility: ({ builder, permissions, workspace }) => { ... }`。
+  先检查有效 `permissions`，再调用 `builder.can(action, subject, conditions?)`。
+  `builder.cannot` 遵循 CASL 声明顺序，最后匹配的规则优先。
+  无条件自定义授权属于受信任的应用策略，可以覆盖内置授权；旧权限绑定签名需要显式迁移。
+  API Key CRUD 权限仍由框架映射，前端继续消费最终序列化规则。详见[授权](./tutorial/auth/authorization)。
 - 用户与工作区的权限目录、角色映射现在追加到内置默认值。同名角色的权限合并去重，
   空配置不会移除默认值，自定义权限仍需显式授予角色。需要受限授权时请定义新角色。
   实体 `set*` 方法仍替换存储值；API Key 的 `allowedPermissions` 仍是上限而非追加列表。

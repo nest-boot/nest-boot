@@ -200,7 +200,7 @@ describe("UserService", () => {
     "refreshes profile-dependent abilities after an own %s update commits, restoring fields on failure",
     async (target) => {
       const { service, em } = createService(true, {
-        buildAbility: ({ cannot }, { user }) => {
+        buildAbility: ({ builder: { cannot }, user }) => {
           if (!user) {
             return;
           }
@@ -279,7 +279,7 @@ describe("UserService", () => {
   });
   it("refreshes ban-dependent abilities only after an own unban commits", async () => {
     const { em, options, userDeletionService } = createService(true, {
-      buildAbility: ({ cannot }, { user }) => {
+      buildAbility: ({ builder: { cannot }, user }) => {
         if (!user) {
           return;
         }

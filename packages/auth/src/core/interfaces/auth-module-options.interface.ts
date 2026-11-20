@@ -34,7 +34,7 @@ export interface AuthModuleOptions<
   basePath?: string;
   /** Secret used for authentication signing and encryption. */
   secret?: string;
-  /** Synchronously extends the unified request ability; auth owns grants and credential ceilings. */
+  /** Synchronously configures native CASL rules; use context.permissions to honor effective grants and credential ceilings. */
   buildAbility?: BuildAbilityCallback<
     NoInfer<UserPermission | (typeof DEFAULT_USER_PERMISSIONS)[number]>,
     NoInfer<

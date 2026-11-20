@@ -166,6 +166,7 @@ export * from "./core/interfaces/auth-social-provider.interface.js";
 export * from "./core/interfaces/auth-social-provider-user-info.interface.js";
 export * from "./core/interfaces/auth-user-data.interface.js";
 export * from "./core/interfaces/authenticated-session.interface.js";
+export * from "./core/interfaces/build-ability-context.interface.js";
 export * from "./core/interfaces/change-auth-email-options.interface.js";
 export * from "./core/interfaces/change-auth-password-options.interface.js";
 export * from "./core/interfaces/change-auth-password-result.interface.js";

@@ -340,7 +340,7 @@ describe("AuthMiddleware", () => {
       testEntities,
       {
         workspace: { enabled: true },
-        buildAbility: (_rules) => {
+        buildAbility: ({ builder: _rules }) => {
           throw new Error("Invalid rules");
         },
         user: {},

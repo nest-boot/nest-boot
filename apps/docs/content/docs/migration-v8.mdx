@@ -130,12 +130,14 @@ Queue job contracts now live in `readonly jobSchemas`, replacing BaseQueue's Dat
   `invitation:*` and `api-key:*`. Custom role and permission names follow the
   lowercase naming contract; invalid names are rejected, not normalized.
   Role grants, direct/API-key permissions and business rules must use the same spelling.
-- Auth owns built-in ability mappings. Remove application callbacks that rebuild
-  auth rules. Business callbacks now receive `AbilityRules`, return nothing, and
-  grant through `can(permission, action, subject, conditions?)`. Built-in subjects
-  and `all` cannot receive custom grants; `cannot` can add restrictions. API-key
-  CRUD permissions are built into both scope catalogs. Frontends still consume
-  serialized final rules. See [authorization](./tutorial/auth/authorization).
+- Auth owns default built-in ability mappings. In the native CASL API, use
+  `buildAbility: ({ builder, permissions, workspace }) => { ... }` with one context
+  object. Check effective `permissions` before calling `builder.can(action, subject, conditions?)`.
+  `builder.cannot` follows CASL declaration order; the last matching rule wins.
+  Unconditional custom grants are trusted application policy and can override built-ins.
+  Migrate the older permission-binding signature explicitly. API-key CRUD permissions
+  remain built in, and frontends consume serialized final rules.
+  See [authorization](./tutorial/auth/authorization).
 - User/workspace permission catalogs and role maps now extend built-in defaults.
   Same-name role grants are merged and deduplicated; empty additions do not
   remove defaults. Custom permissions require explicit role grants. Use a new

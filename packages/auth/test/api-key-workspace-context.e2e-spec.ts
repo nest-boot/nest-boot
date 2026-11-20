@@ -230,35 +230,23 @@ describe("workspace selection independently of authentication", () => {
               permissions: ["resource:read", "resource:write"],
               roles: { owner: ["resource:read", "resource:write"] },
             },
-            buildAbility: ({ can }, { workspace }) => {
+            buildAbility: ({ builder: { can }, workspace, permissions }) => {
               if (!workspace) {
                 return;
               }
               const condition = { workspaceId: workspace.id };
-              can(
-                { workspace: "resource:read" },
-                "read",
-                WorkspaceResource,
-                condition,
-              );
-              can(
-                { workspace: "resource:write" },
-                "write",
-                WorkspaceResource,
-                condition,
-              );
-              can(
-                { user: "workspace:read-any" },
-                "read",
-                WorkspaceResource,
-                condition,
-              );
-              can(
-                { user: "workspace:update-any" },
-                "write",
-                WorkspaceResource,
-                condition,
-              );
+              if (permissions.includes("resource:read")) {
+                can("read", WorkspaceResource, condition);
+              }
+              if (permissions.includes("resource:write")) {
+                can("write", WorkspaceResource, condition);
+              }
+              if (permissions.includes("workspace:read-any")) {
+                can("read", WorkspaceResource, condition);
+              }
+              if (permissions.includes("workspace:update-any")) {
+                can("write", WorkspaceResource, condition);
+              }
             },
           }),
         ),

@@ -62,22 +62,26 @@ AuthModule.forRoot({
       "report-reader": ["report:read"],
     },
   },
-  buildAbility: ({ can }, { workspace }) => {
+  buildAbility: ({ builder, workspace, permissions }) => {
     if (!workspace) return;
-    can({ workspace: "report:read" }, "read", Report, {
-      workspaceId: workspace.id,
-    });
-    can({ workspace: "report:archive" }, "archive", Report, {
-      workspaceId: workspace.id,
-      archived: false,
-    });
+    if (permissions.includes("report:read")) {
+      builder.can("read", Report, {
+        workspaceId: workspace.id,
+      });
+    }
+    if (permissions.includes("report:archive")) {
+      builder.can("archive", Report, {
+        workspaceId: workspace.id,
+        archived: false,
+      });
+    }
   },
 });
 ```
 
-The callback's `can` is the permission-bound auth helper, not raw CASL `can`:
-it adds no rule unless the caller has the first argument's permission. Do not
-repeat `permissions.includes(...)`. A reader may read reports but not archive;
+The callback uses native CASL `can`. Check the unified effective
+`permissions` before adding each permission-controlled rule. This snapshot already
+accounts for roles and API-key limits: a reader may read reports but not archive;
 an owner using a read-only API key also cannot archive.
 
 Load the operation target before checking its conditions. Do not trust ownership
@@ -149,13 +153,13 @@ health(): string {
 
 Configure one top-level `buildAbility` callback. `AuthGuard` prepares a single
 `AuthAbility` for the current identity, even without a permission decorator.
-Its context contains `user`, `workspace`, `member`, `userPermissions`, and
-`workspacePermissions`. Identity fields are nullable: member-owned member API keys restore an
+Its context contains `user`, `workspace`, `member`, and unified effective
+`permissions`. Source-specific arrays are also available when needed. Identity fields are nullable: member-owned member API keys restore an
 active member, and service accounts have no login user. Workspace context requires
 an active member in the selected workspace. Check identity fields before using them in conditions.
 
 Auth owns built-in mappings; no callback is required for built-in operations.
-The callback runs once per identity snapshot, synchronously, and returns nothing.
+The callback runs once per identity snapshot, synchronously; its return value is ignored.
 The ability is cached in `RequestContext` and rebuilt after identity or authorization changes.
 
 Class-level checks only gate an operation; conditional rules are also evaluated
@@ -212,23 +216,33 @@ AuthModule.forRoot({
     permissions: userPermissions,
     roles: userRoles,
   },
-  buildAbility: ({ can }, { user, workspace, member }) => {
+  buildAbility: ({ builder, user, workspace, member, permissions }) => {
     if (user) {
-      can({ user: "post:read" }, "read", Post);
-      can({ user: "post:update" }, "update", Post, { authorId: user.id });
+      if (permissions.includes("post:read")) {
+        builder.can("read", Post);
+      }
+      if (permissions.includes("post:update")) {
+        builder.can("update", Post, { authorId: user.id });
+      }
     }
     if (workspace) {
-      can({ workspace: "post:create" }, "create", Post, {
-        workspaceId: workspace.id,
-      });
-      can({ workspace: "post:delete" }, "delete", Post, {
-        workspaceId: workspace.id,
-      });
-      if (member) {
-        can({ workspace: "post:archive" }, "archive", Post, {
+      if (permissions.includes("post:create")) {
+        builder.can("create", Post, {
           workspaceId: workspace.id,
-          assignedWorkspaceMemberId: member.id,
         });
+      }
+      if (permissions.includes("post:delete")) {
+        builder.can("delete", Post, {
+          workspaceId: workspace.id,
+        });
+      }
+      if (member) {
+        if (permissions.includes("post:archive")) {
+          builder.can("archive", Post, {
+            workspaceId: workspace.id,
+            assignedWorkspaceMemberId: member.id,
+          });
+        }
       }
     }
   },
@@ -236,23 +250,33 @@ AuthModule.forRoot({
 ```
 
 User and workspace scopes retain separate catalogs and role registries. Roles
-must reference permissions from their own scope. The context permission arrays
-are immutable, deduplicated, and already limited by the authenticating API key.
-They remain separate so equal custom permission names do not imply equal scope.
+must reference permissions from their own scope. `permissions` is their immutable,
+deduplicated effective union after credential limits and feature filtering.
+`userPermissions` and `workspacePermissions` remain available for policies that
+need provenance; equal names in the union represent the same permission.
 
-The first argument is a restricted `AbilityRules`, not a CASL builder.
-Bind each grant to exactly one source:
-`can({ user: permission }, action, subject, conditions?)` or
-`can({ workspace: permission }, action, subject, conditions?)`.
-A grant is added only when that scope's effective permissions contain the name.
-Field rules use `can(binding, action, subject, fields, conditions?)`.
-Unknown permission names, grants targeting built-in auth entities (by class or
-name), and grants targeting `all` are rejected. Use built-in permissions to grant
-auth operations; custom permission names cannot redefine their mappings.
-`cannot(action, subject, conditions?)` can restrict both business and built-in
-operations; it also supports fields and always takes precedence over extension
-grants, regardless of declaration order. The callback exposes neither mutable
-rules nor `build()`. It is a trusted application extension, not a JavaScript sandbox.
+The callback receives one context object: `{ builder, permissions, user, workspace, member, ... }`.
+`builder` is the native CASL `AbilityBuilder<AuthAbility>`.
+Use `can(action, subject, conditions?)`, `cannot(action, subject, conditions?)`,
+field overloads, and `.because(reason)`. Matching rules follow CASL declaration
+order; the last matching rule wins. The builder exposes `rules` and `build()`,
+but auth builds and stores the final ability itself. Return values are ignored;
+configuration must complete synchronously, and promises are rejected.
+
+The callback is trusted application policy. It can grant built-in subjects and
+`all`; unconditional grants are not automatically limited by API-key permissions.
+Check effective `permissions` and use the authenticated `workspace` for resource
+conditions. The framework's current-member status-field restriction still applies
+after configuration.
+
+### Migrate existing callbacks
+
+Move the builder into the single context argument (`buildAbility: ({ builder, permissions }) => { ... }`).
+Replace each `can(binding, action, subject, ...)` with an explicit effective
+permission check and standard `can(action, subject, ...)`. Use a source-specific
+array only when your policy requires provenance. Move restrictions after grants
+when they must take precedence. Native rule arguments are mutable; do not retain
+or mutate the builder after the callback. The old binding signature is removed.
 
 ## Manage Roles
 
@@ -348,7 +372,7 @@ user's role/direct permissions and the key's permissions. Holding `user:set-role
 alone does not allow promotion to a more privileged role.
 
 `userRoles` and `workspaceRoles` return the full role catalog as `{ role, grantable }`
-objects. `userPermissions` and `workspacePermissions` similarly return
+objects. `permissions`, with `userPermissions` and `workspacePermissions` available when provenance matters similarly return
 `{ permission, grantable }` objects. The enum-valued fields preserve type-safe inputs;
 `grantable` reflects the current principal's grant ceiling, including API-key
 restrictions. Workspace role options require `workspace-member:set-roles` or `workspace-member:invite`
@@ -425,11 +449,11 @@ after a workspace-scoped query, add the selected workspace ID to the client abil
 subject as the example detail page does. Business rules must declare their own
 object conditions using the callback context.
 
-Auth maps built-in permissions automatically. Business extensions bind their
-rules explicitly, for example `can({ user: "post:read" }, "read", Post)`. The factory
-checks effective permissions even if the callback does not inspect them, so an
-API key without `post:read` cannot acquire that rule. The frontend rehydrates the
-final serialized rules instead of maintaining a separate permission mapping.
+Auth maps built-in permissions automatically. Business extensions explicitly
+check effective grants, for example `if (permissions.includes("post:read"))
+can("read", Post)`. A restricted key cannot satisfy that check without the grant;
+unconditional custom rules remain the application's responsibility. The frontend
+rehydrates the final serialized rules instead of maintaining another mapping.
 
 ## Service Authorization Boundary
 
