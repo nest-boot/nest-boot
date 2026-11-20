@@ -368,17 +368,18 @@ profile updates do not accept authorization fields.
 
 ## Protect Routes
 
-Use `@Can(action, subjectCallback)` for both user and workspace operations. `AuthGuard`
+Use `@Can(action, subject)` for both user and workspace operations. `AuthGuard`
 checks the same unified ability as Services; decorators need no scope option.
+For static entity classes or string subject names, pass the subject directly:
 
 ```typescript
-@Can("read", () => Post)
+@Can("read", Post)
 @Query(() => [Post])
 posts() {
   return this.postService.findAll();
 }
 
-@Can("read", () => User)
+@Can("read", User)
 @Query(() => User)
 me(@AuthUser() user: User) {
   return user;
@@ -390,18 +391,19 @@ use `all` semantics. Class-level requirements are merged with method-level
 requirements, not replaced by them.
 
 ```typescript
-@Can("read", () => Post)
-@Can("update", () => Post)
+@Can("read", Post)
+@Can("update", Post)
 @Mutation(() => Post)
 updatePost() {
   // Requires both post:read and post:update.
 }
 ```
 
-Every subject callback returns an entity class or a concrete object, synchronously
-or asynchronously. It is evaluated once per requirement during the request, never
-when the decorator is declared. The callback receives the controller or resolver instance first, followed by its
-decorated method parameters.
+For record-level checks (or lazy resolution), pass a `CanSubjectCallback` that
+returns an entity class or a concrete object, synchronously or asynchronously.
+It is evaluated once per requirement during the request, never when the
+decorator is declared. The callback receives the controller or resolver instance
+first, followed by its decorated method parameters.
 
 ```typescript
 @Can("update", (self: PostResolver, id: string) =>

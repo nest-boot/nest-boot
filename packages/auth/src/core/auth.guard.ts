@@ -59,12 +59,11 @@ export class AuthGuard implements CanActivate {
       return true;
     }
     for (const requirement of metadata) {
-      // Require a prepared identity before resolving a protected subject callback.
+      // Require a prepared identity before resolving a protected subject.
       getAuthAbility();
-      const subject = await this.resolveSubject(
-        requirement.subjectCallback,
-        context,
-      );
+      const subject = requirement.subjectCallback
+        ? await this.resolveSubject(requirement.subjectCallback, context)
+        : requirement.subject;
       if (!can(requirement.action, subject)) {
         return false;
       }

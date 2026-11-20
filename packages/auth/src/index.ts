@@ -214,6 +214,7 @@ export * from "./core/types/auth-oauth-token-endpoint-auth.type.js";
 export * from "./core/types/auth-send-reset-password.type.js";
 export * from "./core/types/auth-send-verification-email.type.js";
 export * from "./core/types/build-ability-callback.type.js";
+export * from "./core/types/can-subject.type.js";
 export * from "./core/types/can-subject-callback.type.js";
 export * from "./core/types/permission-name.type.js";
 export * from "./core/types/role-name.type.js";

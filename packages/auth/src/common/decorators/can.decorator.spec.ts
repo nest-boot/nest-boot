@@ -5,6 +5,27 @@ import { Can } from "./can.decorator.js";
 class Subject {}
 
 describe("Can", () => {
+  it("stores a static entity class directly on a class", () => {
+    class Controller {}
+    const decorator = Can("read", Subject);
+    decorator(Controller);
+    expect(decorator.KEY).toBe(CAN_METADATA);
+    expect(Reflect.getMetadata(CAN_METADATA, Controller)).toEqual([
+      { action: "read", subject: Subject },
+    ]);
+  });
+
+  it("stores anonymous classes and string subject names directly", () => {
+    class Controller {}
+    const AnonymousSubject = class {};
+    Can("read", AnonymousSubject)(Controller);
+    Can("manage", "Task")(Controller);
+    expect(Reflect.getMetadata(CAN_METADATA, Controller)).toEqual([
+      { action: "read", subject: AnonymousSubject },
+      { action: "manage", subject: "Task" },
+    ]);
+  });
+
   it("stores a lazy subject callback on a class without executing it", () => {
     class Controller {}
     const subjectCallback = vi.fn(() => Subject);
@@ -39,28 +60,25 @@ describe("Can", () => {
   it("appends repeated requirements using all semantics", () => {
     class Controller {}
     const subjectCallback = () => Subject;
-    Can("read", subjectCallback)(Controller);
+    Can("read", Subject)(Controller);
     Can("update", subjectCallback)(Controller);
     expect(Reflect.getMetadata(CAN_METADATA, Controller)).toEqual([
-      { action: "read", subjectCallback },
+      { action: "read", subject: Subject },
       { action: "update", subjectCallback },
     ]);
   });
 
-  it("requires a callback", () => {
+  it("requires a valid subject type or callback", () => {
     expect(() => {
-      // @ts-expect-error Deliberately omit the callback to verify runtime validation.
+      // @ts-expect-error Deliberately omit the subject argument to verify runtime validation.
       return Can("read");
-    }).toThrow("Permission subject callback is required.");
+    }).toThrow("Permission subject type or callback is required.");
     expect(() => {
-      // @ts-expect-error Direct record arguments are not callbacks.
+      return Can("read", "");
+    }).toThrow("Permission subject type or callback is required.");
+    expect(() => {
+      // @ts-expect-error Direct record instances must be returned by a callback.
       return Can("read", new Subject());
-    }).toThrow("Permission subject callback is required.");
-  });
-
-  it("rejects direct entity classes in the decorator type", () => {
-    // @ts-expect-error Entity classes must be returned by a callback.
-    const decorator = Can("read", Subject);
-    expect(decorator.KEY).toBe(CAN_METADATA);
+    }).toThrow("Permission subject type or callback is required.");
   });
 });

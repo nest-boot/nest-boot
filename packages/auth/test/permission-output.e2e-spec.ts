@@ -41,13 +41,13 @@ class PermissionProbeResolver {
     return toApiKeyView(key);
   }
 
-  @Can("read", () => "Task")
+  @Can("read", "Task")
   @Query(() => Boolean)
   permissionProbeTask(): boolean {
     return true;
   }
 
-  @Can("read", () => "Project")
+  @Can("read", "Project")
   @Query(() => Boolean)
   permissionProbeProject(): boolean {
     return true;
