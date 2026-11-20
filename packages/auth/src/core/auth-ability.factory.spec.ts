@@ -1,10 +1,11 @@
-import { createMongoAbility, subject } from "@casl/ability";
+import { AbilityBuilder, createMongoAbility, subject } from "@casl/ability";
 
 import { withAuthTestFeatures } from "../../test/fixtures/enabled-auth-features.fixture.js";
 import { SystemAccount } from "../api-key/entities/system-account.entity.js";
 import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
 import { WorkspaceApiKey } from "../api-key/objects/workspace-api-key.object.js";
 import { resolveApiKeyPermissionCatalog } from "../api-key/utils/api-key-permissions.util.js";
+import { AuthAbility } from "../common/auth.ability.js";
 import { resolveAuthCatalog } from "../common/utils/resolve-auth-catalog.util.js";
 import { serializeAbilityRules } from "../common/utils/serialize-ability-rules.util.js";
 import {
@@ -47,6 +48,112 @@ const buildWorkspacePermissionAbility = (permissions: readonly string[]) =>
   );
 
 describe("permission ability builders", () => {
+  it("passes a native CASL builder and one immutable effective permission set", () => {
+    const workspace = new Workspace();
+    const configure = vi.fn(({ builder, ...context }) => {
+      expect(builder).toBeInstanceOf(AbilityBuilder);
+      expect(context.permissions).toEqual(["report:read", "report:archive"]);
+      expect(Object.isFrozen(context.permissions)).toBe(true);
+      if (context.permissions.includes("report:read")) {
+        builder.can("read", "Report", ["title"], { workspaceId: workspace.id });
+        builder
+          .cannot("read", "Report", { hidden: true })
+          .because("Hidden report");
+      }
+    });
+    const ability = createAuthAbility(
+      {
+        user: new User(),
+        workspace,
+        member: null,
+        userPermissions: ["report:read"],
+        workspacePermissions: ["report:read", "report:archive"],
+      },
+      { workspace: { enabled: true }, buildAbility: configure },
+    );
+    expect(ability).toBeInstanceOf(AuthAbility);
+    expect(configure).toHaveBeenCalledOnce();
+    expect(configure.mock.calls[0]).toHaveLength(1);
+    const restored = createMongoAbility(serializeAbilityRules(ability));
+    for (const candidate of [ability, restored]) {
+      expect(
+        candidate.can(
+          "read",
+          subject("Report", { workspaceId: workspace.id }),
+          "title",
+        ),
+      ).toBe(true);
+      expect(
+        candidate.can(
+          "read",
+          subject("Report", { workspaceId: "other" }),
+          "title",
+        ),
+      ).toBe(false);
+      expect(
+        candidate.can(
+          "read",
+          subject("Report", { workspaceId: workspace.id, hidden: true }),
+          "title",
+        ),
+      ).toBe(false);
+      expect(
+        candidate.rules.some((rule) => rule.reason === "Hidden report"),
+      ).toBe(true);
+    }
+  });
+
+  it("uses CASL declaration order and supports expression callbacks", () => {
+    const context = {
+      user: new User(),
+      workspace: null,
+      member: null,
+      userPermissions: [],
+      workspacePermissions: [],
+    };
+    const ability = createAuthAbility(context, {
+      buildAbility: ({ builder: { can, cannot } }) => {
+        cannot("read", "Report");
+        can("read", "Report").because("Last rule wins");
+        can("delete", "Report");
+        cannot("delete", "Report");
+      },
+    });
+    expect(ability.can("read", "Report")).toBe(true);
+    expect(ability.can("delete", "Report")).toBe(false);
+    expect(
+      createAuthAbility(context, {
+        buildAbility: ({ builder: { can } }) => can("manage", "all"),
+      }).can("delete", User),
+    ).toBe(true);
+  });
+
+  it.each(["promise", "object thenable", "callable thenable"] as const)(
+    "rejects asynchronous configuration returning a %s instead of publishing incomplete rules",
+    (type) => {
+      const promise = Promise.resolve();
+      const then = promise.then.bind(promise);
+      const result =
+        type === "promise"
+          ? promise
+          : type === "object thenable"
+            ? { then }
+            : Object.assign(() => undefined, { then });
+      expect(() =>
+        createAuthAbility(
+          {
+            user: new User(),
+            workspace: null,
+            member: null,
+            userPermissions: [],
+            workspacePermissions: [],
+          },
+          { buildAbility: vi.fn().mockReturnValue(result) },
+        ),
+      ).toThrow("buildAbility must be synchronous");
+    },
+  );
+
   it("keeps machine platform grants independent from human administrative features", () => {
     const options = { apiKey: { enabled: true, system: { enabled: true } } };
     const context = {
@@ -87,8 +194,10 @@ describe("permission ability builders", () => {
       },
       {
         user: { permissions: ["project:read"] },
-        buildAbility: (rules) => {
-          rules.can({ user: "project:read" }, "read", "Project");
+        buildAbility: ({ builder: rules, permissions }) => {
+          if (permissions.includes("project:read")) {
+            rules.can("read", "Project");
+          }
         },
       },
     );
@@ -256,23 +365,18 @@ describe("permission ability builders", () => {
     expect(
       buildWorkspacePermissionAbility(["user:read"]).can("read", User),
     ).toBe(false);
-    for (const permission of ["user:read"]) {
-      expect(buildUserPermissionAbility([permission]).can("read", User)).toBe(
-        true,
-      );
-    }
+    expect(buildUserPermissionAbility(["user:read"]).can("read", User)).toBe(
+      true,
+    );
   });
   it.each(["read", "write"])(
     "grants only the requested API-key %s action",
     (action) => {
-      for (const build of [
-        buildUserPermissionAbility,
-        buildWorkspacePermissionAbility,
-      ]) {
-        const ability =
-          build === buildUserPermissionAbility
-            ? buildUserPermissionAbility([`user-api-key:${action}`])
-            : buildWorkspacePermissionAbility([`workspace-api-key:${action}`]);
+      for (const [build, resource, Subject] of [
+        [buildUserPermissionAbility, "user-api-key", UserApiKey],
+        [buildWorkspacePermissionAbility, "workspace-api-key", WorkspaceApiKey],
+      ] as const) {
+        const ability = build([`${resource}:${action}`]);
         for (const candidate of [
           "read",
           "write",
@@ -280,14 +384,7 @@ describe("permission ability builders", () => {
           "update",
           "delete",
         ]) {
-          expect(
-            ability.can(
-              candidate,
-              build === buildUserPermissionAbility
-                ? UserApiKey
-                : WorkspaceApiKey,
-            ),
-          ).toBe(candidate === action);
+          expect(ability.can(candidate, Subject)).toBe(candidate === action);
         }
       }
     },
@@ -358,26 +455,8 @@ describe("explicit permission catalog", () => {
 
     it("does not add baseline abilities to empty credentials", () => {
       const abilities = [
-        createAuthAbility(
-          {
-            workspace: null,
-            member: null,
-            workspacePermissions: [],
-            user: new User(),
-            userPermissions: [],
-          },
-          withAuthTestFeatures({ workspace: { enabled: true } }),
-        ),
-        createAuthAbility(
-          {
-            user: null,
-            member: null,
-            userPermissions: [],
-            workspace: new Workspace(),
-            workspacePermissions: [],
-          },
-          withAuthTestFeatures({ workspace: { enabled: true } }),
-        ),
+        buildUserPermissionAbility([]),
+        buildWorkspacePermissionAbility([]),
       ];
       for (const ability of abilities) {
         for (const subject of [
@@ -409,16 +488,7 @@ describe("explicit permission catalog", () => {
     ] as const)(
       "keeps %s write independent from read and sensitive grants",
       (resource, subject) => {
-        const ability = createAuthAbility(
-          {
-            user: null,
-            member: null,
-            userPermissions: [],
-            workspace: new Workspace(),
-            workspacePermissions: [`${resource}:write`],
-          },
-          withAuthTestFeatures({ workspace: { enabled: true } }),
-        );
+        const ability = buildWorkspacePermissionAbility([`${resource}:write`]);
         expect(ability.can("write", subject)).toBe(true);
         expect(ability.can("read", subject)).toBe(false);
         expect(ability.can("set-roles", subject)).toBe(false);
@@ -427,59 +497,25 @@ describe("explicit permission catalog", () => {
     );
 
     it("uses workspace-member:invite for invitation management without granting member writes", () => {
-      const ability = createAuthAbility(
-        {
-          user: null,
-          member: null,
-          userPermissions: [],
-          workspace: new Workspace(),
-          workspacePermissions: ["workspace-member:invite"],
-        },
-        withAuthTestFeatures({ workspace: { enabled: true } }),
-      );
+      const ability = buildWorkspacePermissionAbility([
+        "workspace-member:invite",
+      ]);
       expect(ability.can("read", WorkspaceInvitation)).toBe(true);
       expect(ability.can("write", WorkspaceInvitation)).toBe(true);
       expect(ability.can("write", WorkspaceMember)).toBe(false);
       expect(ability.can("set-roles", WorkspaceMember)).toBe(false);
       expect(ability.can("set-permissions", WorkspaceMember)).toBe(false);
-      const memberWriter = createAuthAbility(
-        {
-          user: null,
-          member: null,
-          userPermissions: [],
-          workspace: new Workspace(),
-          workspacePermissions: ["workspace-member:write"],
-        },
-        withAuthTestFeatures({ workspace: { enabled: true } }),
-      );
+      const memberWriter = buildWorkspacePermissionAbility([
+        "workspace-member:write",
+      ]);
       expect(memberWriter.can("read", WorkspaceInvitation)).toBe(false);
       expect(memberWriter.can("write", WorkspaceInvitation)).toBe(false);
     });
 
     it("keeps personal and workspace key permissions separate", () => {
-      const userAbility = createAuthAbility(
-        {
-          workspace: null,
-          member: null,
-          workspacePermissions: [],
-          user: new User(),
-          userPermissions: ["user-api-key:write", "workspace-api-key:read"],
-        },
-        withAuthTestFeatures({ workspace: { enabled: true } }),
-      );
-      const workspaceAbility = createAuthAbility(
-        {
-          user: null,
-          member: null,
-          userPermissions: [],
-          workspace: new Workspace(),
-          workspacePermissions: [
-            "user-api-key:write",
-            "workspace-api-key:read",
-          ],
-        },
-        withAuthTestFeatures({ workspace: { enabled: true } }),
-      );
+      const permissions = ["user-api-key:write", "workspace-api-key:read"];
+      const userAbility = buildUserPermissionAbility(permissions);
+      const workspaceAbility = buildWorkspacePermissionAbility(permissions);
       expect(userAbility.can("write", UserApiKey)).toBe(true);
       expect(userAbility.can("read", UserApiKey)).toBe(false);
       expect(workspaceAbility.can("write", WorkspaceApiKey)).toBe(false);
@@ -498,7 +534,7 @@ describe("explicit permission catalog", () => {
         },
         withAuthTestFeatures({
           workspace: { enabled: true },
-          buildAbility({ cannot }) {
+          buildAbility({ builder: { cannot } }) {
             cannot("write", WorkspaceInvitation, { status: "accepted" });
           },
         }),
@@ -534,16 +570,7 @@ describe("explicit permission catalog", () => {
     });
 
     it("grants workspace creation explicitly through the user catalog", () => {
-      const ability = createAuthAbility(
-        {
-          workspace: null,
-          member: null,
-          workspacePermissions: [],
-          user: new User(),
-          userPermissions: ["workspace:create"],
-        },
-        withAuthTestFeatures({ workspace: { enabled: true } }),
-      );
+      const ability = buildUserPermissionAbility(["workspace:create"]);
       expect(ability.can("create", Workspace)).toBe(true);
       expect(ability.can("read", Workspace)).toBe(false);
       expect(DEFAULT_USER_ROLES.user).toContain("workspace:create");

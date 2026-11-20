@@ -422,8 +422,8 @@ Permission identifiers use lowercase `resource:action` names. Catalog membership
 grant ceilings and API-key intersections use exact string equality; invalid
 names are rejected rather than case-converted. Auth owns the mappings for
 `user:*`, `session:*`, `workspace:*`, `workspace-member:*`, `workspace-service-account:*`, and scoped API-key
-permissions. Custom permission names only grant business abilities through
-explicit permission-bound rules; they cannot redefine built-in auth operations.
+permissions by default. Application `buildAbility` callbacks use native CASL and
+check the unified effective `permissions` before declaring custom rules.
 
 Scoped user deletion authorizes the root DELETE with Service checks and RLS;
 accounts, sessions (including impersonation sessions), memberships and sent invitations are removed atomically by foreign-key cascades. All API-key records remain in `api_key` for audit, including keys belonging to deleted users or members. Authentication reloads the concrete owner and rejects credentials whose owner no longer exists. Workspaces and independent system accounts survive.
@@ -543,18 +543,55 @@ The example migration sequence `Initial → generated schema migrations` enables
 
 Auth builds its own permission-to-ability mappings in the pure `createAuthAbility` builder;
 one `AuthAbility` contains the rules for the current user and optional workspace.
-The top-level `buildAbility(rules, context)` receives
-`{ user, workspace, member, userPermissions, workspacePermissions }`; identity
-fields are nullable and permission sources remain separate.
-Use `can({ user: permission }, action, subject, conditions?)` or
-`can({ workspace: permission }, action, subject, conditions?)` for permission-bound
-business grants and `cannot(action, subject, conditions?)` for restrictions.
-Both support field restrictions. `@Can()`, `can()`, and `authorize()`
-evaluate this same ability. The frontend queries `currentAbilityRules` and uses
-`useAbility()` for both personal and workspace pages. Callbacks are synchronous and return nothing.
-They cannot grant operations on built-in auth entities or `all`, access the raw
-builder, or replace the resulting ability. Restrictions take precedence over
-business grants. The frontend consumes the final serialized rules.
+The top-level `buildAbility({ builder, ...context })` receives one context object containing the native CASL
+`AbilityBuilder<AuthAbility>` as `builder`, effective `permissions`, and the current identity. Use standard
+`can(action, subject, conditions?)`, `cannot(action, subject, conditions?)`, field
+rules, and `.because(reason)`. Rules retain CASL declaration order: the last
+matching rule wins. The old `AbilityRules` wrapper is removed.
+
+The context's readonly `permissions` is the deduplicated union of effective user
+and authenticated-workspace grants after role resolution, feature filtering, and
+API-key limits. Check it explicitly when mapping permissions to business rules:
+
+```typescript
+buildAbility: ({ builder, permissions, workspace }) => {
+  if (workspace && permissions.includes("task:read")) {
+    builder.can("read", Task, { workspaceId: workspace.id });
+  }
+  builder
+    .cannot("delete", Task, { archived: true })
+    .because("Keep archived tasks");
+};
+```
+
+Identity fields can be null. `selectedWorkspace` is an independent target and
+does not establish authenticated workspace access. The readonly `userPermissions`
+and `workspacePermissions` arrays remain available for policies that intentionally
+need permission provenance; ordinary rules can use `permissions` alone.
+
+Callbacks run synchronously once per identity snapshot. Auth builds the final
+ability from the configured builder; callback return values are ignored and
+promises are rejected. The builder is trusted application policy: unconditional
+`can("manage", "all")` grants exactly that access, and extensions can override
+built-in grants. Custom rules must inspect effective `permissions` and declare
+resource conditions to honor credential limits and workspace boundaries.
+`@Can()`, `can()`, `authorize()`, and serialized frontend rules consume this same
+unified ability. The framework still applies the current member's status-field
+restriction after the callback.
+
+### Migrating buildAbility to native CASL
+
+Change the callback to the single context argument `({ builder, permissions, workspace })`.
+Replace `can({ user: permission }, action, subject)` and
+`can({ workspace: permission }, action, subject)` with an explicit
+`permissions.includes(permission)` check followed by `can(action, subject)`.
+If equal permission names must have different meanings depending on origin, check
+`userPermissions` or `workspacePermissions` explicitly instead of the union.
+Move `cannot` after the corresponding `can` when the restriction must win;
+restrictions are no longer reordered. Native rule arguments and rule objects are
+mutable, so do not retain or mutate the builder after configuration.
+Use native `AbilityBuilder<AuthAbility>` in place of the removed `AbilityRules` type.
+This is a breaking configuration change; the old binding signature is removed.
 
 `@Can` accepts either a static `SubjectType` (entity class or subject name) or a
 `CanSubjectCallback`: use `@Can("read", User)` (or `@Can("read", "Task")`) for
@@ -562,8 +599,8 @@ static type checks and `@Can("update", (self: PostResolver, id: string) =>
 self.postService.findOneOrFail({ id }))` for record checks. Lazy callbacks such
 as `@Can("read", () => User)` remain supported and run once per requirement
 during the request (and may return a promise). Both `CanSubject` and
-`CanSubjectCallback` are exported. The synchronous, void-returning callback
-contract above applies to `buildAbility`, not to `@Can`.
+`CanSubjectCallback` are exported. The synchronous configuration requirement
+above applies to `buildAbility`, not to `@Can`.
 
 The exported `can()` and `authorize()` functions read the current request's
 `AuthAbility` on every call. Identity and workspace changes take effect on the

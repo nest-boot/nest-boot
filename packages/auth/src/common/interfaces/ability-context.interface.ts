@@ -18,6 +18,8 @@ export interface AbilityContext<
   readonly selectedWorkspace?: Workspace | null;
   /** Active user or service-account membership; absent outside an authorized workspace. */
   readonly member: WorkspaceMember | null;
+  /** Deduplicated effective grants from the user and authenticated workspace, bounded by the credential. */
+  readonly permissions: readonly (UserPermission | WorkspacePermission)[];
   /** Effective user grants after applying the authenticating credential's ceiling. */
   readonly userPermissions: readonly UserPermission[];
   /** Effective grants for the selected workspace, bounded by the credential. */

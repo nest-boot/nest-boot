@@ -6,17 +6,21 @@ const reportPermissions = ['report:read', 'report:archive'] as const;
 
 /** Merge into AuthModule.forRoot when adopting this optional recipe; the demo app does not register it. */
 export const reportAuthOptions = {
-  buildAbility: ({ can }, { workspace }) => {
+  buildAbility: ({ builder, workspace, permissions }) => {
     if (!workspace) {
       return;
     }
-    can({ workspace: 'report:read' }, 'read', Report, {
-      workspaceId: workspace.id,
-    });
-    can({ workspace: 'report:archive' }, 'archive', Report, {
-      workspaceId: workspace.id,
-      archived: false,
-    });
+    if (permissions.includes('report:read')) {
+      builder.can('read', Report, {
+        workspaceId: workspace.id,
+      });
+    }
+    if (permissions.includes('report:archive')) {
+      builder.can('archive', Report, {
+        workspaceId: workspace.id,
+        archived: false,
+      });
+    }
   },
 
   workspace: {

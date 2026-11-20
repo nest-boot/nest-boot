@@ -12,8 +12,6 @@ import { UserApiKey } from "../api-key/objects/user-api-key.object.js";
 import { WorkspaceApiKey } from "../api-key/objects/workspace-api-key.object.js";
 import { AuthAbility } from "../common/auth.ability.js";
 import type { AbilityContext } from "../common/interfaces/ability-context.interface.js";
-import { extendAbility } from "../common/utils/extend-ability.util.js";
-import { resolveAuthCatalog } from "../common/utils/resolve-auth-catalog.util.js";
 import { DEFAULT_WORKSPACE_PERMISSIONS } from "../workspace/constants/workspace.constants.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
 import { WorkspaceInvitation } from "../workspace/entities/workspace-invitation.entity.js";
@@ -26,48 +24,44 @@ import type { AuthModuleOptions } from "./interfaces/auth-module-options.interfa
 import { isAuthPermissionEnabled } from "./utils/resolve-auth-features.util.js";
 
 /**
- * Owns built-in permission mappings and validates business extensions.
- * @internal
- */
-
-/**
- * Builds and normalizes authorization rules from an explicit identity snapshot.
+ * Builds one request ability from built-in mappings and native CASL application rules.
  * @param context - Identity and effective permission snapshot.
  * @param options - Authentication module configuration.
- * @returns Result of the requested operation.
+ * @returns Unified ability for the supplied identity and effective grants.
  */
 export function createAuthAbility(
-  context: AbilityContext,
+  context: Omit<AbilityContext, "permissions">,
   options: AuthModuleOptions = {},
 ): AuthAbility {
-  const snapshot = Object.freeze({
+  const userPermissions = Object.freeze(
+    context.user || context.systemAccount
+      ? context.userPermissions.filter((permission) =>
+          isAuthPermissionEnabled(
+            options,
+            "user",
+            permission,
+            !!context.systemAccount,
+          ),
+        )
+      : [],
+  );
+  const workspacePermissions = Object.freeze(
+    options.workspace?.enabled === true && context.workspace
+      ? context.workspacePermissions.filter((permission) =>
+          isAuthPermissionEnabled(options, "workspace", permission),
+        )
+      : [],
+  );
+  const snapshot: AbilityContext = {
     ...context,
     workspace: options.workspace?.enabled === true ? context.workspace : null,
     member: options.workspace?.enabled === true ? context.member : null,
-    userPermissions: Object.freeze(
-      context.user || context.systemAccount
-        ? [
-            ...context.userPermissions.filter((permission) =>
-              isAuthPermissionEnabled(
-                options,
-                "user",
-                permission,
-                !!context.systemAccount,
-              ),
-            ),
-          ]
-        : [],
-    ),
-    workspacePermissions: Object.freeze(
-      options.workspace?.enabled === true && context.workspace
-        ? [
-            ...context.workspacePermissions.filter((permission) =>
-              isAuthPermissionEnabled(options, "workspace", permission),
-            ),
-          ]
-        : [],
-    ),
-  });
+    userPermissions,
+    workspacePermissions,
+    permissions: Object.freeze([
+      ...new Set([...userPermissions, ...workspacePermissions]),
+    ]),
+  };
   const builder = new AbilityBuilder(AuthAbility);
   // Self-service operations are authorized explicitly by their Services.
   const subjects = {
@@ -138,21 +132,17 @@ export function createAuthAbility(
       conditions,
     );
   }
-  const configure:
-    | ((
-        ...args: Parameters<NonNullable<typeof options.buildAbility>>
-      ) => unknown)
-    | undefined = options.buildAbility;
-  if (configure) {
-    extendAbility(
-      builder,
-      snapshot,
-      {
-        user: resolveAuthCatalog(options, "user").permissions,
-        workspace: resolveAuthCatalog(options, "workspace").permissions,
-      },
-      (rules) => configure(rules, snapshot),
-    );
+  const configure = options.buildAbility;
+  const result: unknown = configure?.(Object.freeze({ ...snapshot, builder }));
+  if (
+    result &&
+    (typeof result === "object" || typeof result === "function") &&
+    "then" in result &&
+    typeof result.then === "function"
+  ) {
+    // Configuration must finish before the request ability is published.
+    void Promise.resolve(result).catch(() => undefined);
+    throw new TypeError("buildAbility must be synchronous");
   }
   // WorkspaceMembers may edit their profile but cannot change their own active state.
   // Apply after extensions so the same invariant reaches every consumer.

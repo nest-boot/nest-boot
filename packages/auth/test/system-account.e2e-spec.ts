@@ -720,7 +720,7 @@ describe("independent system accounts with real persistence and authentication",
     const issued = await issue();
     const configuration: AuthModuleOptions = {
       ...options,
-      buildAbility: ({ cannot }) => {
+      buildAbility: ({ builder: { cannot } }) => {
         cannot("write", SystemAccount, { name: "Blocked" });
         cannot("write", SystemApiKey, { name: "Blocked" });
       },
@@ -769,7 +769,7 @@ describe("independent system accounts with real persistence and authentication",
     const issued = await issue();
     const configuration: AuthModuleOptions = {
       ...options,
-      buildAbility: ({ cannot }) => {
+      buildAbility: ({ builder: { cannot } }) => {
         cannot("write", SystemAccount, { name: "Blocked" });
         cannot("write", SystemApiKey, { name: "Blocked" });
       },
@@ -876,7 +876,7 @@ describe("independent system accounts with real persistence and authentication",
   it("checks proposed platform workspace changes before committing them", async () => {
     const configuration: AuthModuleOptions = {
       ...options,
-      buildAbility: ({ cannot }) => {
+      buildAbility: ({ builder: { cannot } }) => {
         cannot("update-any", Workspace, { name: "Blocked" });
       },
     };
@@ -1088,7 +1088,7 @@ describe("independent system accounts with real persistence and authentication",
     const issued = await issue(["user:read"]);
     const configuration: AuthModuleOptions = {
       ...options,
-      buildAbility: ({ cannot }) => {
+      buildAbility: ({ builder: { cannot } }) => {
         cannot("write", SystemApiKey, ["revokedAt"]);
       },
     };
@@ -1228,7 +1228,7 @@ describe("independent system accounts with real persistence and authentication",
     );
     const configuration: AuthModuleOptions = {
       ...options,
-      buildAbility: ({ cannot }) => {
+      buildAbility: ({ builder: { cannot } }) => {
         cannot("write", SystemApiKey, ["name"]);
       },
     };

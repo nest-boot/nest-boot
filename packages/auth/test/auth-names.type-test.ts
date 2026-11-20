@@ -1,7 +1,13 @@
+import type { AbilityBuilder } from "@casl/ability";
 import { expectTypeOf } from "vitest";
 
 import { AuthModule } from "../src/core/auth.module.js";
-import type { PermissionName, RoleName } from "../src/index.js";
+import type {
+  AuthAbility,
+  BuildAbilityContext,
+  PermissionName,
+  RoleName,
+} from "../src/index.js";
 
 // Checked by the auth typecheck task, not by the runtime test runner.
 type ValidRoles = "owner" | "admin" | "super-admin" | "level2" | "a";
@@ -91,12 +97,19 @@ expectTypeOf(invalidRole).toEqualTypeOf<never>();
 expectTypeOf(invalidPermission).toEqualTypeOf<never>();
 
 AuthModule.forRoot({
-  buildAbility: (rules) => {
-    rules.can({ user: "report:read" }, "read", "Report");
-    // @ts-expect-error A rule must bind to a declared permission.
-    rules.can({ user: "report:delete" }, "delete", "Report");
-    // @ts-expect-error The raw builder is not an extension point.
-    rules.build();
+  buildAbility: ({ builder, permissions }) => {
+    expectTypeOf(builder).toEqualTypeOf<AbilityBuilder<AuthAbility>>();
+    expectTypeOf<BuildAbilityContext["builder"]>().toEqualTypeOf<
+      AbilityBuilder<AuthAbility>
+    >();
+    if (permissions.includes("report:read")) {
+      builder.can("read", "Report").because("Readable reports");
+    }
+    // @ts-expect-error Effective permissions only accept declared catalog names.
+    permissions.includes("report:delete");
+    // @ts-expect-error The permission-binding argument was removed.
+    builder.can({ user: "report:read" }, "read", "Report");
+    expectTypeOf(builder.build()).toEqualTypeOf<AuthAbility>();
   },
 
   user: {
@@ -230,24 +243,35 @@ AuthModule.forRoot({
 AuthModule.forRoot({
   user: { permissions: ["report:read"] },
   workspace: { enabled: true, permissions: ["project:read"] },
-  buildAbility: (
-    { can },
-    { user, workspace, member, userPermissions, workspacePermissions },
-  ) => {
-    can({ user: "report:read" }, "read", "Report");
-    can({ workspace: "project:read" }, "read", "Project");
-    // @ts-expect-error User grants cannot bind a workspace-only permission.
-    can({ user: "project:read" }, "read", "Project");
-    // @ts-expect-error Exactly one permission source is required.
-    can({ user: "report:read", workspace: "project:read" }, "read", "Report");
-    // @ts-expect-error Source inference must not broaden the configured catalog.
-    can({ workspace: "project:delete" }, "delete", "Project");
+  buildAbility: ({
+    builder: { can, cannot },
+    user,
+    workspace,
+    member,
+    permissions,
+    userPermissions,
+    workspacePermissions,
+  }) => {
+    if (permissions.includes("report:read")) {
+      can("read", "Report");
+    }
+    if (permissions.includes("project:read")) {
+      can("read", "Project");
+    }
+    can(["read", "update"], "Report", ["title"], { published: true }).because(
+      "Published reports",
+    );
+    cannot("delete", "Report").because("Retain reports");
+    // @ts-expect-error Unknown permission names must not broaden the configured catalog.
+    permissions.includes("project:delete");
     expectTypeOf(user?.id).toExtend<string | undefined>();
     expectTypeOf(workspace?.id).toExtend<string | undefined>();
     expectTypeOf(member?.id).toExtend<string | undefined>();
+    // @ts-expect-error The combined effective permission snapshot is readonly.
+    permissions.push("report:read");
     // @ts-expect-error Effective permission snapshots are readonly.
     userPermissions.push("report:read");
-    // @ts-expect-error The workspace array does not contain user-only permissions.
+    // @ts-expect-error The workspace source still does not contain user-only permissions.
     workspacePermissions.includes("report:read");
   },
 });

@@ -59,22 +59,25 @@ AuthModule.forRoot({
       "report-reader": ["report:read"],
     },
   },
-  buildAbility: ({ can }, { workspace }) => {
+  buildAbility: ({ builder, workspace, permissions }) => {
     if (!workspace) return;
-    can({ workspace: "report:read" }, "read", Report, {
-      workspaceId: workspace.id,
-    });
-    can({ workspace: "report:archive" }, "archive", Report, {
-      workspaceId: workspace.id,
-      archived: false,
-    });
+    if (permissions.includes("report:read")) {
+      builder.can("read", Report, {
+        workspaceId: workspace.id,
+      });
+    }
+    if (permissions.includes("report:archive")) {
+      builder.can("archive", Report, {
+        workspaceId: workspace.id,
+        archived: false,
+      });
+    }
   },
 });
 ```
 
-回调中的 `can` 是 auth 提供的权限绑定工具，不是原始 CASL `can`。
-只有调用者拥有第一个参数对应的权限时才会生成规则，无需重复写
-`permissions.includes(...)`。只读角色不能归档；owner 使用只读 API Key 时同样不能归档。
+回调使用原生 CASL `can`，每条受权限控制的授权前显式检查统一的有效 `permissions`。
+该快照已经计算角色与 API Key 上限：只读成员不能归档，持只读 API Key 的 owner 也不能归档。
 
 先加载操作对象，再验证对象条件。不能信任客户端提交的归属字段，
 也不能只用路由层的类级判断代替对象检查：
@@ -141,10 +144,10 @@ health(): string {
 
 在模块顶层配置一个 `buildAbility` 回调。`AuthGuard` 即使没有权限装饰器，也会为
 当前身份准备一个 `AuthAbility`。回调上下文包含 `user`、`workspace`、`member`、
-`userPermissions` 和 `workspacePermissions`。身份字段可能为 null：WorkspaceMember API Key
+统一的有效 `permissions`；需要区分来源时也可使用 `userPermissions` 和 `workspacePermissions`。身份字段可能为 null：WorkspaceMember API Key
 会恢复活动 member；服务账号没有登录 user。工作区上下文要求所选工作区中的活动成员关系。构建条件前先检查身份。
 
-内置权限映射由 auth 维护，无需回调。回调对每份身份快照同步执行一次且不返回值。
+内置权限映射由 auth 维护，无需回调。回调对每份身份快照同步执行一次，返回值会被忽略。
 Ability 缓存在 `RequestContext` 中，身份或授权变化后统一重建。
 
 类型级检查只用于操作准入；条件规则还会对加载出的实体及创建前的待写入实体进行判断。
@@ -195,23 +198,33 @@ AuthModule.forRoot({
     permissions: userPermissions,
     roles: userRoles,
   },
-  buildAbility: ({ can }, { user, workspace, member }) => {
+  buildAbility: ({ builder, user, workspace, member, permissions }) => {
     if (user) {
-      can({ user: "post:read" }, "read", Post);
-      can({ user: "post:update" }, "update", Post, { authorId: user.id });
+      if (permissions.includes("post:read")) {
+        builder.can("read", Post);
+      }
+      if (permissions.includes("post:update")) {
+        builder.can("update", Post, { authorId: user.id });
+      }
     }
     if (workspace) {
-      can({ workspace: "post:create" }, "create", Post, {
-        workspaceId: workspace.id,
-      });
-      can({ workspace: "post:delete" }, "delete", Post, {
-        workspaceId: workspace.id,
-      });
-      if (member) {
-        can({ workspace: "post:archive" }, "archive", Post, {
+      if (permissions.includes("post:create")) {
+        builder.can("create", Post, {
           workspaceId: workspace.id,
-          assignedWorkspaceMemberId: member.id,
         });
+      }
+      if (permissions.includes("post:delete")) {
+        builder.can("delete", Post, {
+          workspaceId: workspace.id,
+        });
+      }
+      if (member) {
+        if (permissions.includes("post:archive")) {
+          builder.can("archive", Post, {
+            workspaceId: workspace.id,
+            assignedWorkspaceMemberId: member.id,
+          });
+        }
       }
     }
   },
@@ -219,19 +232,26 @@ AuthModule.forRoot({
 ```
 
 用户与工作区仍分别维护权限目录和角色注册表；角色引用的权限必须属于对应目录。
-上下文中的两个权限数组不可变、已去重，并已应用 API Key 权限上限。保留两个来源，
-避免同名自定义权限混淆作用域。
+`permissions` 是计算凭证上限、功能开关后的有效权限并集，不可变且已去重。
+需要区分来源的策略仍可使用 `userPermissions` 和 `workspacePermissions`；统一集合中的同名权限视为相同权限。
 
-首个参数是受约束的 `AbilityRules`，不是 CASL builder。每条授权明确绑定一个来源：
-`can({ user: permission }, action, subject, conditions?)` 或
-`can({ workspace: permission }, action, subject, conditions?)`。
-仅当对应作用域的有效权限包含该名称时才生成规则；字段规则使用
-`can(binding, action, subject, fields, conditions?)`。
-未知权限、针对内置 auth 实体（类或字符串名称）的额外授权，以及针对 `all` 的授权均被拒绝。
-内置操作必须使用内置权限，自定义权限名不能重新定义其映射。
-`cannot(action, subject, conditions?)` 可以限制业务和内置操作，也支持字段限制；
-拒绝规则始终优先于扩展授权，不受回调中的声明顺序影响。回调不提供可变规则数组或
-`build()`。它仍属于受信任的应用代码，不是 JavaScript 沙箱。
+回调只接收一个上下文对象：`{ builder, permissions, user, workspace, member, ... }`。
+其中 `builder` 是原生 CASL `AbilityBuilder<AuthAbility>`。使用标准
+`can(action, subject, conditions?)`、`cannot(action, subject, conditions?)`、字段重载和
+`.because(reason)`。遵循 CASL 声明顺序，最后匹配的规则优先。Builder 提供 `rules` 和
+`build()`，但最终 Ability 仍由 auth 构建并保存。回调必须同步完成，返回值会被忽略，返回 Promise 会报错。
+
+回调属于受信任的应用策略，可以对内置实体和 `all` 授权；无条件授权不会自动受 API Key
+权限限制。业务规则应显式检查有效 `permissions`，并使用认证后的 `workspace` 构造资源条件。
+框架仍在回调后追加“当前成员不可修改自身 status 字段”的限制。
+
+### 迁移已有回调
+
+先将回调改为单对象参数，例如 `buildAbility: ({ builder, permissions }) => { ... }`。
+将 `can(binding, action, subject, ...)` 替换为有效权限检查，再调用
+`can(action, subject, ...)`。只有确实需要区分来源时才使用对应来源数组。
+需要拒绝优先时，将 `cannot` 放在对应 `can` 之后；框架不再重排规则。
+原生规则参数可变，不要在回调结束后保留或修改 Builder。旧权限绑定签名已移除。
 
 ## 管理角色
 
@@ -377,9 +397,9 @@ WorkspaceMember API Key 仅贡献工作区授权。User API Key 贡献用户授�
 按示例详情页的方式，将当前选中的工作区 ID 加到客户端 Ability subject 中。
 自定义业务规则需要使用回调上下文显式声明对象条件。
 
-Auth 自动映射内置权限。业务扩展显式绑定权限，例如 `can({ user: "post:read" }, "read", Post)`。
-即使回调没有检查权限数组，工厂仍会检查有效权限，因此不具备 `post:read` 的 API Key
-不会获得这条规则。前端直接还原后端最终规则，不再单独维护权限映射。
+Auth 自动映射内置权限。业务扩展显式检查有效授权，例如
+`if (permissions.includes("post:read")) can("read", Post)`。不具备该有效权限的受限 API Key
+无法通过该检查；无条件自定义授权由应用策略负责。前端直接还原后端最终规则，无需单独维护权限映射。
 
 ## Service 授权边界
 

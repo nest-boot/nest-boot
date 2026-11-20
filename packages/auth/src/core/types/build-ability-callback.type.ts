@@ -1,11 +1,7 @@
-import type { AbilityContext } from "../../common/interfaces/ability-context.interface.js";
-import type { AbilityRules } from "../../common/interfaces/ability-rules.interface.js";
+import type { BuildAbilityContext } from "../interfaces/build-ability-context.interface.js";
 
-/** Synchronously extends one request ability with permission-bound business rules. */
+/** Synchronously configures native CASL rules using the request's effective permissions. */
 export type BuildAbilityCallback<
   UserPermission extends string = string,
   WorkspacePermission extends string = string,
-> = (
-  rules: AbilityRules<UserPermission, WorkspacePermission>,
-  context: AbilityContext<UserPermission, WorkspacePermission>,
-) => void;
+> = (context: BuildAbilityContext<UserPermission, WorkspacePermission>) => void;

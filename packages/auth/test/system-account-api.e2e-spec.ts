@@ -105,7 +105,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
               "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_",
             baseURL: "http://localhost:3000",
             workspace: { enabled: true },
-            buildAbility: ({ cannot }) => {
+            buildAbility: ({ builder: { cannot } }) => {
               if (blockedCreationField) {
                 cannot("write", SystemApiKey, [blockedCreationField]);
               }

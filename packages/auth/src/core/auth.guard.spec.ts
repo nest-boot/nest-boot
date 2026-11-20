@@ -1,4 +1,4 @@
-import { subject as caslSubject } from "@casl/ability";
+import { AbilityBuilder, subject as caslSubject } from "@casl/ability";
 import { EntityManager } from "@mikro-orm/core";
 import { ref } from "@mikro-orm/core";
 import { RequestContext } from "@nest-boot/request-context";
@@ -26,7 +26,6 @@ import {
   CUSTOM_ROUTE_ARGS_METADATA,
   ROUTE_ARGS_METADATA,
 } from "../common/constants/permission.constants.js";
-import { type AbilityRules } from "../common/interfaces/ability-rules.interface.js";
 import * as authorization from "../common/utils/can.util.js";
 import { can } from "../common/utils/can.util.js";
 import {
@@ -118,7 +117,7 @@ describe("AuthGuard", () => {
       vi.fn(() => false),
       {
         workspace: { enabled: true },
-        buildAbility: ({ cannot }, { user, workspace }) => {
+        buildAbility: ({ builder: { cannot }, user, workspace }) => {
           if (user) {
             cannot("read", BaseUser, { id: { $ne: user.id } });
           }
@@ -298,8 +297,10 @@ describe("AuthGuard", () => {
   });
   it("checks Can metadata on public routes without requiring a session", async () => {
     class Subject {}
-    const buildAbility = vi.fn((rules) => {
-      rules.can({ user: "subject:read" }, "read", Subject);
+    const buildAbility = vi.fn(({ builder: rules, permissions }) => {
+      if (permissions.includes("subject:read")) {
+        rules.can("read", Subject);
+      }
     });
     const { guard } = await createGuard(
       AuthGuard,
@@ -355,8 +356,10 @@ describe("AuthGuard", () => {
       getAllAndOverride,
       {
         workspace: { enabled: true },
-        buildAbility: (rules) => {
-          rules.can({ user: "subject:read" }, "read", Subject);
+        buildAbility: ({ builder: rules, permissions }) => {
+          if (permissions.includes("subject:read")) {
+            rules.can("read", Subject);
+          }
         },
         user: {
           permissions: ["subject:read"],
@@ -386,9 +389,13 @@ describe("AuthGuard", () => {
       vi.fn(() => false),
       {
         workspace: { enabled: true },
-        buildAbility: (rules) => {
-          rules.can({ user: "report:read" }, "read", Report);
-          rules.can({ user: "task:manage" }, "manage", "Task");
+        buildAbility: ({ builder: rules, permissions }) => {
+          if (permissions.includes("report:read")) {
+            rules.can("read", Report);
+          }
+          if (permissions.includes("task:manage")) {
+            rules.can("manage", "Task");
+          }
         },
         user: {
           permissions: ["report:read", "task:manage"],
@@ -424,8 +431,10 @@ describe("AuthGuard", () => {
       vi.fn(() => false),
       {
         workspace: { enabled: true },
-        buildAbility: (rules) => {
-          rules.can({ user: "report:read" }, "read", Report);
+        buildAbility: ({ builder: rules, permissions }) => {
+          if (permissions.includes("report:read")) {
+            rules.can("read", Report);
+          }
         },
         user: {
           permissions: ["report:read"],
@@ -511,7 +520,7 @@ describe("permission checks", () => {
   type TestAbility = AuthAbility;
 
   type ScopedTestCallback = (
-    rules: AbilityRules,
+    rules: AbilityBuilder<AuthAbility>,
     permissions: readonly string[],
     identity: BaseUser | BaseWorkspace,
   ) => void;
@@ -567,8 +576,8 @@ describe("permission checks", () => {
         ["workspace:read", "workspace-member:read"],
         workspace,
       );
-      expect(configureUserRules.mock.calls[0]?.[0]).not.toHaveProperty("build");
-      expect(configureWorkspaceRules.mock.calls[0]?.[0]).not.toHaveProperty(
+      expect(configureUserRules.mock.calls[0]?.[0]).toHaveProperty("build");
+      expect(configureWorkspaceRules.mock.calls[0]?.[0]).toHaveProperty(
         "build",
       );
     });
@@ -1826,44 +1835,25 @@ describe("permission checks", () => {
       getAllAndMerge: Mock;
       getAllAndOverride: Mock;
     };
-    const configureUserRules: MockedFunction<ScopedTestCallback> = vi.fn(
-      (builder, permissions) => {
-        if (buildFromPermissions) {
-          for (const permission of permissions) {
-            const [resource, action] = permission.split(":");
-            if ((resource === "post" || resource === "subject") && action) {
-              builder.can(
-                { user: permission },
-                action,
-                resolveTestPermissionSubject(resource),
-              );
-            }
-          }
-          return;
+    const configureRules: ScopedTestCallback = (builder, permissions) => {
+      if (!buildFromPermissions) {
+        return;
+      }
+      for (const permission of permissions) {
+        const [resource, action] = permission.split(":");
+        if ((resource === "post" || resource === "subject") && action) {
+          builder.can(action, resolveTestPermissionSubject(resource));
         }
-      },
-    );
-    const configureWorkspaceRules: MockedFunction<ScopedTestCallback> = vi.fn(
-      (builder, permissions) => {
-        if (buildFromPermissions) {
-          for (const permission of permissions) {
-            const [resource, action] = permission.split(":");
-            if ((resource === "post" || resource === "subject") && action) {
-              builder.can(
-                { workspace: permission },
-                action,
-                resolveTestPermissionSubject(resource),
-              );
-            }
-          }
-          return;
-        }
-      },
-    );
-    const configure = (
-      rules: AbilityRules,
-      context: import("../common/interfaces/ability-context.interface.js").AbilityContext,
-    ) => {
+      }
+    };
+    const configureUserRules: MockedFunction<ScopedTestCallback> =
+      vi.fn(configureRules);
+    const configureWorkspaceRules: MockedFunction<ScopedTestCallback> =
+      vi.fn(configureRules);
+    const configure = ({
+      builder: rules,
+      ...context
+    }: import("./interfaces/build-ability-context.interface.js").BuildAbilityContext) => {
       if (context.user) {
         configureUserRules(rules, context.userPermissions, context.user);
       }
@@ -1878,7 +1868,16 @@ describe("permission checks", () => {
     if (ability) {
       vi.spyOn(abilityFactory, "createAuthAbility").mockImplementation(
         (context) => {
-          configure({ can: vi.fn(), cannot: vi.fn() }, context);
+          configure({
+            builder: new AbilityBuilder(AuthAbility),
+            ...context,
+            permissions: [
+              ...new Set([
+                ...context.userPermissions,
+                ...context.workspacePermissions,
+              ]),
+            ],
+          });
           return ability;
         },
       );

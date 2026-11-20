@@ -374,7 +374,7 @@ describe("AuthContext", () => {
     async (failure) => {
       const em = manager();
       const options: AuthModuleOptions = {
-        buildAbility: (_rules) => {
+        buildAbility: () => {
           if (failure === "ability") {
             throw new Error("Ability failed");
           }
@@ -430,7 +430,7 @@ describe("AuthContext", () => {
   );
   it("does not leave a partially prepared ability after a builder fails", async () => {
     const options: AuthModuleOptions = {
-      buildAbility: (_rules) => {
+      buildAbility: () => {
         throw new Error("Failed");
       },
 
@@ -540,7 +540,7 @@ describe("post-commit authorization", () => {
       "retains API-key ceilings and fails closed if the custom builder throws (failure=%s)",
       async (failure) => {
         const options: AuthModuleOptions = {
-          buildAbility: (_rules) => {
+          buildAbility: () => {
             if (failure) {
               throw new Error("Invalid ability configuration");
             }
@@ -676,7 +676,7 @@ describe("unified request abilities", () => {
       });
     });
 
-    it("applies shared restrictions after grants from either permission source", async () => {
+    it("applies shared restrictions after business grants using CASL declaration order", async () => {
       await RequestContext.run(new RequestContext({ type: "test" }), () => {
         const current = identity();
         current.user.permissions = ["report:read"];
@@ -686,11 +686,12 @@ describe("unified request abilities", () => {
           withAuthTestFeatures({
             user: { permissions: ["report:read"] },
             workspace: { enabled: true, permissions: ["report:read"] },
-            buildAbility: ({ can, cannot }) => {
-              can({ user: "report:read" }, "read", "Report");
+            buildAbility: ({ builder: { can, cannot }, permissions }) => {
+              if (permissions.includes("report:read")) {
+                can("read", "Report");
+              }
               cannot("read", "Report", { private: true });
               cannot("update", "User");
-              can({ workspace: "report:read" }, "read", "Report");
             },
           }),
         );
@@ -761,11 +762,11 @@ describe("unified request abilities", () => {
         const ability = RequestContext.get(AuthAbility);
         assert(ability);
         expect(configure).toHaveBeenCalledOnce();
-        expect(configure.mock.calls[0][1]).toMatchObject(current);
-        expect(configure.mock.calls[0][1].userPermissions).toContain(
+        expect(configure.mock.calls[0][0]).toMatchObject(current);
+        expect(configure.mock.calls[0][0].userPermissions).toContain(
           "user:read",
         );
-        expect(configure.mock.calls[0][1].workspacePermissions).toContain(
+        expect(configure.mock.calls[0][0].workspacePermissions).toContain(
           "workspace-member:write",
         );
         expect(ability.can("read", User)).toBe(true);
@@ -851,7 +852,7 @@ describe("unified request abilities", () => {
           );
           expect(ability.can("read", User)).toBe(true);
           expect(ability.can("write", WorkspaceMember)).toBe(false);
-          expect(configure.mock.calls[0][1]).toMatchObject({
+          expect(configure.mock.calls[0][0]).toMatchObject({
             workspace: null,
             member: null,
             workspacePermissions: [],
@@ -861,7 +862,7 @@ describe("unified request abilities", () => {
     );
 
     it.each(["user", "workspace"] as const)(
-      "keeps same-name business permission bindings in their %s source",
+      "accepts the same business permission from the %s source",
       async (scope) => {
         await RequestContext.run(new RequestContext({ type: "test" }), () => {
           const current = identity();
@@ -875,16 +876,15 @@ describe("unified request abilities", () => {
             withAuthTestFeatures({
               user: { permissions: ["report:read"] },
               workspace: { enabled: true, permissions: ["report:read"] },
-              buildAbility: ({ can }) => {
-                can({ user: "report:read" }, "read", "PersonalReport");
-                can({ workspace: "report:read" }, "read", "WorkspaceReport");
+              buildAbility: ({ builder: { can }, permissions }) => {
+                if (permissions.includes("report:read")) {
+                  can("read", ["PersonalReport", "WorkspaceReport"]);
+                }
               },
             }),
           );
-          expect(ability.can("read", "PersonalReport")).toBe(scope === "user");
-          expect(ability.can("read", "WorkspaceReport")).toBe(
-            scope === "workspace",
-          );
+          expect(ability.can("read", "PersonalReport")).toBe(true);
+          expect(ability.can("read", "WorkspaceReport")).toBe(true);
         });
       },
     );
@@ -912,7 +912,7 @@ describe("unified request abilities", () => {
           expect(ability.can("read", current.member)).toBe(true);
           expect(ability.can("write", current.member)).toBe(false);
           if (Entity === WorkspaceApiKey) {
-            expect(configure.mock.calls[0][1]).toMatchObject({
+            expect(configure.mock.calls[0][0]).toMatchObject({
               user: null,
               member: current.member,
               userPermissions: [],
@@ -928,9 +928,9 @@ describe("unified request abilities", () => {
         current.member.permissions = ["report:read"];
         const options: AuthModuleOptions = {
           workspace: { enabled: true, permissions: ["report:read"] },
-          buildAbility: ({ can }, { workspace }) => {
-            if (workspace) {
-              can({ workspace: "report:read" }, "read", "Report", {
+          buildAbility: ({ builder: { can }, workspace, permissions }) => {
+            if (workspace && permissions.includes("report:read")) {
+              can("read", "Report", {
                 workspaceId: workspace.id,
               });
             }

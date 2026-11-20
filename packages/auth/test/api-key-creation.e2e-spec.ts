@@ -230,7 +230,7 @@ describe("atomic API key and service-account creation", () => {
       }
       const options = withAuthTestFeatures({
         workspace: { enabled: true },
-        buildAbility: ({ cannot }) => {
+        buildAbility: ({ builder: { cannot } }) => {
           cannot("write", scope === "system" ? SystemAccount : WorkspaceMember);
         },
       });
@@ -280,7 +280,7 @@ describe("atomic API key and service-account creation", () => {
       const name = crypto.randomUUID();
       const options = withAuthTestFeatures({
         workspace: { enabled: true },
-        buildAbility: ({ cannot }) => {
+        buildAbility: ({ builder: { cannot } }) => {
           cannot("write", scope === "system" ? SystemApiKey : WorkspaceApiKey, [
             "prefix",
           ]);

@@ -215,7 +215,7 @@ describe("Auth name search through real connection queries", () => {
           RequestContext.set(EntityManager, em);
           const options = withAuthTestFeatures({
             workspace: { enabled: true },
-            buildAbility: ({ cannot }) => {
+            buildAbility: ({ builder: { cannot } }) => {
               for (const subject of [
                 "UserApiKey",
                 "WorkspaceApiKey",

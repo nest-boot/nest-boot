@@ -92,7 +92,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
     "refreshes workspace-profile-dependent abilities after commit for a %s",
     async (principal) => {
       const { workspaceService, em } = createWorkspaceServices({
-        buildAbility: ({ cannot }, { workspace }) => {
+        buildAbility: ({ builder: { cannot }, workspace }) => {
           if (!workspace) {
             return;
           }
