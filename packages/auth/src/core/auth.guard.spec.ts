@@ -378,6 +378,69 @@ describe("AuthGuard", () => {
       context.getClass(),
     ]);
   });
+
+  it("evaluates static entity class and string subjects without resolving the handler instance", async () => {
+    class Report {}
+    const { guard, moduleRef } = await createGuard(
+      AuthGuard,
+      vi.fn(() => false),
+      {
+        workspace: { enabled: true },
+        buildAbility: (rules) => {
+          rules.can({ user: "report:read" }, "read", Report);
+          rules.can({ user: "task:manage" }, "manage", "Task");
+        },
+        user: {
+          permissions: ["report:read", "task:manage"],
+        },
+      },
+      vi.fn((key) =>
+        key === CAN_METADATA
+          ? [
+              { action: "read", subject: Report },
+              { action: "manage", subject: "Task" },
+            ]
+          : undefined,
+      ),
+    );
+    const resolveSpy = vi.spyOn(moduleRef, "resolve");
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      RequestContext.set(BaseSession, new BaseSession());
+      RequestContext.set(
+        BaseUser,
+        Object.assign(new BaseUser(), {
+          permissions: ["report:read", "task:manage"],
+        }),
+      );
+      await expect(guard.canActivate(createContext())).resolves.toBe(true);
+    });
+    expect(resolveSpy).not.toHaveBeenCalled();
+  });
+
+  it("denies static subject requirements when the principal lacks the ability or identity", async () => {
+    class Report {}
+    const { guard } = await createGuard(
+      AuthGuard,
+      vi.fn(() => false),
+      {
+        workspace: { enabled: true },
+        buildAbility: (rules) => {
+          rules.can({ user: "report:read" }, "read", Report);
+        },
+        user: {
+          permissions: ["report:read"],
+        },
+      },
+      vi.fn((key) =>
+        key === CAN_METADATA ? [{ action: "read", subject: Report }] : [],
+      ),
+    );
+    await RequestContext.run(new RequestContext({ type: "http" }), async () => {
+      RequestContext.set(BaseSession, new BaseSession());
+      RequestContext.set(BaseUser, new BaseUser());
+      await expect(guard.canActivate(createContext())).resolves.toBe(false);
+    });
+  });
 });
 
 /**
@@ -416,6 +479,7 @@ async function createGuard<T extends AuthGuard>(
   return {
     guard: moduleRef.get(guardType),
     access: authorization,
+    moduleRef,
   };
 }
 

@@ -556,13 +556,14 @@ They cannot grant operations on built-in auth entities or `all`, access the raw
 builder, or replace the resulting ability. Restrictions take precedence over
 business grants. The frontend consumes the final serialized rules.
 
-`@Can` now always receives a `CanSubjectCallback`: use `@Can("read", () => User)`
-for entity-type checks and `@Can("update", (self: PostResolver, id: string) =>
-self.postService.findOneOrFail({ id }))` for record checks. Callbacks run once per
-requirement during the request and may return a promise. Direct entity-class
-arguments and the `CanSubject` / `CanSubjectFactory` types are removed; use
-`CanSubjectCallback` instead. The synchronous, void-returning callback contract
-above applies to `buildAbility`, not to `@Can`.
+`@Can` accepts either a static `SubjectType` (entity class or subject name) or a
+`CanSubjectCallback`: use `@Can("read", User)` (or `@Can("read", "Task")`) for
+static type checks and `@Can("update", (self: PostResolver, id: string) =>
+self.postService.findOneOrFail({ id }))` for record checks. Lazy callbacks such
+as `@Can("read", () => User)` remain supported and run once per requirement
+during the request (and may return a promise). Both `CanSubject` and
+`CanSubjectCallback` are exported. The synchronous, void-returning callback
+contract above applies to `buildAbility`, not to `@Can`.
 
 The exported `can()` and `authorize()` functions read the current request's
 `AuthAbility` on every call. Identity and workspace changes take effect on the
