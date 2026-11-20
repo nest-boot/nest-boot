@@ -1,3 +1,9 @@
+## 8.4.0
+
+### Minor Changes
+
+- 2c774b0: Allow `@Can(action, subject)` to accept static `SubjectType` values (entity classes and subject names) directly in addition to `CanSubjectCallback`, and export the `CanSubject` union type.
+
 ## 8.3.0
 
 ### Minor Changes
