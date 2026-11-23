@@ -59,7 +59,7 @@ function CreateWorkspaceComponent() {
         variables: {
           input: {
             name: value.name,
-            slug: value.slug.trim() || null,
+            slug: value.slug,
           },
         },
       }).catch(() => ({ data: undefined }));
@@ -124,6 +124,7 @@ function CreateWorkspaceComponent() {
                           label={t("workspace:create.form.slug.label")}
                           placeholder="acme"
                           title={t("workspace:create.form.slug.format")}
+                          required
                           {...urlIdentifierInput}
                           value={field.state.value}
                           onChange={(event) =>

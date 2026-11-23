@@ -79,7 +79,7 @@
         "placeholder": "My Workspace"
       },
       "slug": {
-        "label": "Workspace slug (optional)",
+        "label": "Workspace slug",
         "format": "Use 3–30 lowercase letters, digits, or single hyphens. Start with a letter and end with a letter or digit."
       }
     }

@@ -42,10 +42,9 @@ different workspaces.
 - `updateWorkspace(id, input)`;
 - `deleteWorkspace(id)`.
 
-Creating a workspace requires a name and creates its active owner membership.
-The optional slug is unique when set. Slugs are 3–30 characters, start with a
-lowercase ASCII letter, and allow lowercase letters, digits and single hyphens
-between them. Workspaces without a slug can be selected by ID.
+Creating a workspace requires a name and unique slug and also creates its
+active owner membership. Slugs are 3–30 characters, start with a lowercase ASCII
+letter, and allow lowercase letters, digits and single hyphens between them.
 Query `workspace(id: ...)` or `workspace(slug: ...)` with exactly one selector.
 
 Deletion is permanent and requires delete ability for the selected workspace. Foreign keys

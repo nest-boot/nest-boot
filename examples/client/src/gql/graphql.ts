@@ -362,7 +362,7 @@ export type CreateWorkspaceApiKeyResult = {
 
 export type CreateWorkspaceInput = {
   name: Scalars["String"]["input"];
-  slug?: InputMaybe<Scalars["String"]["input"]>;
+  slug: Scalars["String"]["input"];
 };
 
 export type CreateWorkspaceInvitationInput = {
@@ -1540,7 +1540,7 @@ export type Workspace = {
   invitations: WorkspaceInvitationConnection;
   members: WorkspaceMemberConnection;
   name: Scalars["String"]["output"];
-  slug?: Maybe<Scalars["String"]["output"]>;
+  slug: Scalars["String"]["output"];
   updatedAt: Scalars["DateTime"]["output"];
 };
 

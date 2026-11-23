@@ -487,8 +487,7 @@ describe("exported input contracts", () => {
     {
       name: "CreateWorkspaceInput",
       values: { name: "Workspace", slug: "workspace" },
-      required: ["name"],
-      nullable: ["slug"],
+      required: ["name", "slug"],
     },
     {
       name: "SetWorkspaceMemberPermissionsInput",

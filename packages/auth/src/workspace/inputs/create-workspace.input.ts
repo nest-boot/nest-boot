@@ -13,8 +13,8 @@ export class CreateWorkspaceInput {
   @Field(() => String)
   name!: string;
 
-  /** Optional unique workspace URL slug. */
-  @ZodField(() => urlIdentifierSchema.nullish())
-  @Field(() => String, { nullable: true })
-  slug?: string | null;
+  /** Unique workspace URL slug. */
+  @ZodField(() => urlIdentifierSchema)
+  @Field(() => String)
+  slug!: string;
 }

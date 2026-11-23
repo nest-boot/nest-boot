@@ -2657,6 +2657,17 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     const create =
       'mutation ($input: CreateWorkspaceInput!) { createWorkspace(input: $input) { id } }';
+    for (const input of [
+      { name: 'Missing slug' },
+      { name: 'Null slug', slug: null },
+    ]) {
+      const rejected = await gql(create, {
+        cookies: owner.cookies,
+        variables: { input },
+      });
+      expectGraphQLError(rejected);
+      expect(rejected.body.errors[0].extensions.code).toBe('BAD_USER_INPUT');
+    }
     const duplicate = await gql(create, {
       cookies: stranger.cookies,
       variables: { input: { name: 'Duplicate', slug } },
@@ -5371,7 +5382,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         : null;
       const response = await gql(
         `mutation {
-          createWorkspace(input: { name: "Payload workspace"${selected ? ', slug: null' : ''} }) { __typename id }
+          createWorkspace(input: { name: "Payload workspace", slug: "payload-${selected ? 'selected' : 'unselected'}" }) { __typename id }
           ${original ? `updateWorkspace(id: "${original.id}", input: { name: "Original after create" }) { id }` : ''}
         }`,
         {
@@ -5397,14 +5408,13 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       }
       const id = response.body.data.createWorkspace.id as string;
       const lookup = await gql(
-        'query { selectedWorkspace { id name slug members(first: 1) { edges { node { id } } } } }',
+        'query { selectedWorkspace { id name members(first: 1) { edges { node { id } } } } }',
         { cookies: owner.cookies, workspaceId: id },
       );
       expectNoGraphQLErrors(lookup);
       expect(lookup.body.data.selectedWorkspace).toMatchObject({
         id,
         name: 'Payload workspace',
-        slug: null,
       });
       expect(lookup.body.data.selectedWorkspace.members.edges).toHaveLength(1);
     },

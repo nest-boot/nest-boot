@@ -11,6 +11,7 @@ export async function createFirstWorkspace(page: Page, name: string) {
   await page.getByRole("link", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/user\/workspaces\/create$/);
   await page.getByLabel("Name", { exact: true }).fill(name);
+  await page.locator("#slug").fill(newWorkspaceSlug());
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/workspaces\/\d+$/);
 

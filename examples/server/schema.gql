@@ -267,7 +267,7 @@ type CreateWorkspaceApiKeyResult {
 
 input CreateWorkspaceInput {
   name: String!
-  slug: String
+  slug: String!
 }
 
 input CreateWorkspaceInvitationInput {
@@ -1438,7 +1438,7 @@ type Workspace {
     query: String
   ): WorkspaceMemberConnection!
   name: String!
-  slug: String
+  slug: String!
   updatedAt: DateTime!
 }
 

@@ -40,9 +40,8 @@ selectedWorkspace(
 - `updateWorkspace(id, input)`；
 - `deleteWorkspace(id)`。
 
-创建工作区时必须提供名称，slug 选填，填写时须唯一。slug 长度为 3–30 个字符，
-以小写英文字母开头，允许小写英文字母、数字和夹在其间的单个连字符。
-未填写 slug 的工作区可以通过 ID 选择。GraphQL 查询
+创建工作区时必须提供名称和唯一 slug。slug 长度为 3–30 个字符，以小写英文字母开头，
+允许小写英文字母、数字和夹在其间的单个连字符。GraphQL 查询
 `workspace(id: ...)` 和 `workspace(slug: ...)` 任选其一，每次只传一个参数。
 
 创建工作区会同时创建已激活的所有者成员。删除采用硬删除，需要具备所选工作区的

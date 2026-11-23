@@ -345,7 +345,7 @@ export class WorkspaceService {
     return await runAuthQuery(this.em, async (em) => {
       assertCurrentUser(user);
       authorize("create", Workspace);
-      const parsed = urlIdentifierSchema.nullish().safeParse(input.slug);
+      const parsed = urlIdentifierSchema.safeParse(input.slug);
       if (!parsed.success) {
         throw new BadRequestException("Invalid workspace slug");
       }
@@ -356,7 +356,7 @@ export class WorkspaceService {
           async (em) => {
             const workspace = em.create(Workspace, {
               name: input.name,
-              slug: parsed.data ?? null,
+              slug: parsed.data,
             });
             authorize("create", workspace);
             const member = em.create(WorkspaceMember, {

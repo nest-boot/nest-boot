@@ -42,7 +42,7 @@ it('builds the current example schema from ordered migrations and can roll back 
           legacy.rows[0].id,
         ])
       ).rows,
-    ).toEqual([{ slug: null }]);
+    ).toEqual([{ slug: `workspace-${legacy.rows[0].id}` }]);
     const listed = await MikroORM.init({
       ...options,
       migrations: {

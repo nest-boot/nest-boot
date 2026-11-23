@@ -13,6 +13,8 @@ export class Migration20261123090000_WorkspaceSlugAndUsername extends Migration 
     );
 
     this.addSql(`alter table "workspace" add column "slug" varchar(30) null;`);
+    this.addSql(`update "workspace" set "slug" = 'workspace-' || "id"::text;`);
+    this.addSql(`alter table "workspace" alter column "slug" set not null;`);
     this.addSql(
       `alter table "workspace" add constraint "workspace_slug_unique" unique ("slug");`,
     );

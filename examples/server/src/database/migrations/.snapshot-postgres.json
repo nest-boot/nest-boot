@@ -1920,7 +1920,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "unique": true,
           "length": 30,
           "precision": null,

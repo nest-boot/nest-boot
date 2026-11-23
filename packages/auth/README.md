@@ -696,10 +696,11 @@ separately with the caller's read permissions.
 Clients must remove selections such as `name` or `members` from
 these mutation results and regenerate their GraphQL types.
 
-`CreateWorkspaceInput` accepts an optional unique `slug` of 3–30 characters.
-It starts with a lowercase ASCII letter and can contain lowercase letters,
-digits and single hyphens between them. Add a nullable, unique slug column when
-upgrading an existing database. Workspaces without a slug can be selected by ID.
+`CreateWorkspaceInput` requires a unique `slug` of 3–30 characters. It starts
+with a lowercase ASCII letter and can contain lowercase letters, digits and
+single hyphens between them. When upgrading an existing database, add the column as
+nullable, backfill a valid unique slug per workspace, then apply the `NOT NULL`
+and unique constraints. The example migration assigns `workspace-<id>`.
 
 `workspace(id: ID, slug: String)` and `user(id: ID, username: String)` each
 require exactly one argument. They use the same read authorization for either

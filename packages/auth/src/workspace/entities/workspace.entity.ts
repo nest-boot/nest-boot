@@ -50,15 +50,10 @@ export class Workspace extends BaseEntity {
   @Field(() => String)
   name!: string;
 
-  /** Optional unique workspace identifier for URL paths. */
-  @Property({
-    type: t.string,
-    length: URL_IDENTIFIER_MAX_LENGTH,
-    nullable: true,
-    unique: true,
-  })
-  @Field(() => String, { nullable: true })
-  slug: Opt<string> | null = null;
+  /** Unique workspace identifier for URL paths. */
+  @Property({ type: t.string, length: URL_IDENTIFIER_MAX_LENGTH, unique: true })
+  @Field(() => String)
+  slug!: string;
 
   /** Tokenized display name used only for indexed search. */
   @SearchableProperty({ properties: "name", nullable: true })

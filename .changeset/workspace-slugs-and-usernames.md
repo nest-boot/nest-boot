@@ -2,10 +2,11 @@
 "@nest-boot/auth": major
 ---
 
-Add an optional unique `Workspace.slug` and accept workspace IDs and slugs in
-the `x-workspace` header. Migrate callers from `x-workspace-id` to `x-workspace`.
-The `workspace_id` cookie accepts IDs. Add a nullable slug column when upgrading
-existing workspaces.
+Require a unique `Workspace.slug` and accept workspace IDs and slugs in the
+`x-workspace` header. Use `x-workspace` in place of `x-workspace-id`. The
+`workspace_id` cookie continues to accept IDs. Add and backfill the slug column
+before upgrading existing workspaces, and include `slug` in workspace creation
+inputs.
 
 Enable the Better Auth Username plugin with an optional unique `User.username`.
 Add a nullable username column when migrating existing users. Profile updates
