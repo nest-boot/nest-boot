@@ -1,3 +1,9 @@
+## 8.4.0
+
+### Minor Changes
+
+- 5fb9ad8: Ignore the `mastra` schema by default in `schemaGenerator.ignoreSchema` for both `DatabaseModule` and `getDatabaseConfig()`, preserving the default when partial `schemaGenerator` options are supplied while allowing explicit `ignoreSchema` overrides.
+
 ## 8.3.0
 
 ### Minor Changes
