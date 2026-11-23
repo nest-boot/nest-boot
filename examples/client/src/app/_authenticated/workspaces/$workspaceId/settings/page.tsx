@@ -16,7 +16,7 @@ import {
   submitForm,
 } from "@/lib/form";
 
-import { useFormChanges } from "@/hooks/use-form-changes";
+import { useFormChanges, useSyncFormChanges } from "@/hooks/use-form-changes";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
@@ -164,6 +164,7 @@ function SettingsComponent() {
       }
     },
   });
+  useSyncFormChanges(form, workspaceChanges);
 
   const handleDelete = async () => {
     try {

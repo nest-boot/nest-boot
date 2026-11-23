@@ -42,7 +42,7 @@ import { toast } from "@/components/thread-ui/toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { getFormErrorMessage } from "@/lib/form-errors";
-import { useFormChanges } from "@/hooks/use-form-changes";
+import { useFormChanges, useSyncFormChanges } from "@/hooks/use-form-changes";
 import { SubmitButton } from "@/components/form/submit-button";
 
 type CredentialPermission =
@@ -226,6 +226,7 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
     },
   });
   const submitting = useSelector(form.store, (state) => state.isSubmitting);
+  useSyncFormChanges(form, metadataChanges, Boolean(apiKey));
   const error = useSelector(form.store, (state) =>
     getFormErrorMessage(state.errors),
   );

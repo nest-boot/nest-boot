@@ -7,7 +7,7 @@ import { useForm } from "@tanstack/react-form";
 import type { WorkspaceMemberFormProps } from "./workspace-member-form-props";
 import type { GetWorkspaceMemberFromWorkspaceMemberRouteQuery } from "@/gql/graphql";
 import { defaultFormOptions, resetFormAfterSave, submitForm } from "@/lib/form";
-import { useFormChanges } from "@/hooks/use-form-changes";
+import { useFormChanges, useSyncFormChanges } from "@/hooks/use-form-changes";
 import { CardContent, CardFooter } from "@/components/ui/card";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { WorkspaceMemberType, WorkspaceRole } from "@/gql/graphql";
@@ -79,6 +79,7 @@ export function WorkspaceMemberRolesForm({
       }
     },
   });
+  useSyncFormChanges(form, roleChanges);
   return (
     <>
       <CardContent>

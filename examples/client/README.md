@@ -320,7 +320,12 @@ raw submit snapshot and `savedValues` contains the normalized values that were
 saved. The helper advances the saved defaults and restores any edits made while
 the request was pending, keeping them dirty for the next save. If no normalization
 is needed, omit its third argument. Failed requests retain the draft and comparison
-baseline. Query refreshes must not replace that baseline while editing.
+baseline. Edit pages attach `useSyncFormChanges(form, changes)` after `useForm`.
+It synchronizes new server snapshots into unedited fields while retaining local
+drafts, validation state and request errors. Refreshes received during submission
+are applied when it finishes. Shared create/edit pages enable synchronization
+only when editing an existing record. Key editors by record ID so drafts cannot
+carry over when switching records.
 Shared create/edit components pass complete creation values and the update
 patch separately to `onSave`; create routes use the complete values, and edit
 routes use the patch. Concurrent edits to the same field still use the server's

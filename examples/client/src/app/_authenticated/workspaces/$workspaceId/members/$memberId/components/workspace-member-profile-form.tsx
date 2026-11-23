@@ -10,7 +10,7 @@ import {
   resetFormAfterSave,
   submitForm,
 } from "@/lib/form";
-import { useFormChanges } from "@/hooks/use-form-changes";
+import { useFormChanges, useSyncFormChanges } from "@/hooks/use-form-changes";
 
 import { CardContent, CardFooter } from "@/components/ui/card";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
@@ -96,6 +96,7 @@ export function WorkspaceMemberProfileForm({
       }
     },
   });
+  useSyncFormChanges(form, profileChanges);
   return (
     <>
       <CardContent>

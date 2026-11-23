@@ -15,7 +15,7 @@ import {
   submitForm,
 } from "@/lib/form";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
-import { useFormChanges } from "@/hooks/use-form-changes";
+import { useFormChanges, useSyncFormChanges } from "@/hooks/use-form-changes";
 
 import {
   PageLayout,
@@ -66,6 +66,11 @@ export const Route = createFileRoute("/_authenticated/user/profile/")({
 });
 
 function UserComponent() {
+  const currentUser = useAuthUserContext();
+  return <UserProfile key={currentUser.id} />;
+}
+
+function UserProfile() {
   const { t } = useTranslation();
   const router = useRouter();
   const currentUser = useAuthUserContext();
@@ -124,6 +129,7 @@ function UserComponent() {
       }
     },
   });
+  useSyncFormChanges(form, profileChanges);
   const emailForm = useForm({
     ...defaultFormOptions,
     defaultValues: {

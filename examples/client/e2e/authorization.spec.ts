@@ -153,24 +153,19 @@ test("limits user detail queries and actions to the administrator's abilities", 
     await expect(
       page.getByRole("checkbox", { name: "Delete Users", exact: true }),
     ).toBeChecked();
-    await expect(
-      page
-        .locator('[data-slot="card"]')
-        .filter({ has: page.getByText("Permissions", { exact: true }) })
-        .getByRole("button", { name: "Save", exact: true }),
-    ).toBeDisabled();
+    const permissionSave = page
+      .locator('[data-slot="card"]')
+      .filter({ has: page.getByText("Permissions", { exact: true }) })
+      .getByRole("button", { name: "Save", exact: true });
+    await permissionSave.click();
+    await expect(permissionSave).toHaveAttribute("aria-disabled", "true");
     await page
       .getByRole("checkbox", { name: "Delete Users", exact: true })
       .uncheck();
     await expect(
       page.getByRole("checkbox", { name: "Delete Users", exact: true }),
     ).toBeDisabled();
-    await expect(
-      page
-        .locator('[data-slot="card"]')
-        .filter({ has: page.getByText("Permissions", { exact: true }) })
-        .getByRole("button", { name: "Save", exact: true }),
-    ).toBeEnabled();
+    await expect(permissionSave).not.toHaveAttribute("aria-disabled", "true");
 
     await setPermissions([]);
     await page.goto(`/admin/users/${target.id}`);

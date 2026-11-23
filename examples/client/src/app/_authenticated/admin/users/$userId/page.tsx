@@ -17,7 +17,7 @@ import {
 } from "@/lib/form";
 import { UserPermission, UserRole } from "@/gql/graphql";
 import { usePasswordPolicy } from "@/hooks/use-password-policy";
-import { useFormChanges } from "@/hooks/use-form-changes";
+import { useFormChanges, useSyncFormChanges } from "@/hooks/use-form-changes";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { Link } from "@/components/link";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
@@ -430,6 +430,7 @@ function AdminUserDetails() {
       }
     },
   });
+  useSyncFormChanges(profileForm, profileChanges);
   const roleChanges = useFormChanges(
     { roles: (user ?? initialUser).roles },
     { setFields: ["roles"] },
@@ -459,6 +460,7 @@ function AdminUserDetails() {
       }
     },
   });
+  useSyncFormChanges(rolesForm, roleChanges);
   const permissionChanges = useFormChanges(
     { permissions: (user ?? initialUser).permissions },
     { setFields: ["permissions"] },
@@ -488,6 +490,7 @@ function AdminUserDetails() {
       }
     },
   });
+  useSyncFormChanges(permissionsForm, permissionChanges);
   const passwordForm = useForm({
     ...defaultFormOptions,
     defaultValues: { password: "" },

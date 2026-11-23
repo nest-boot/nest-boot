@@ -57,7 +57,7 @@ function wrapper({ children }: { children: ReactNode }) {
 const apiKey = {
   id: "key",
   name: "Deployment",
-  permissions: [],
+  permissions: [] as Array<SystemApiKeyPermission>,
   createdAt: "2026-01-01T00:00:00.000Z",
   revokedAt: null,
   start: "sys_abc",
@@ -94,43 +94,90 @@ const props = {
 };
 
 describe("ApiKeyFormPage field authorization", () => {
-  it("keeps untouched grants out of the patch when server props refresh during a draft", async () => {
-    const onSave = vi.fn().mockResolvedValue(undefined);
-    const { rerender } = render(
-      <ApiKeyFormPage {...props} {...access(["name"])} onSave={onSave} />,
-      { wrapper },
-    );
-    fireEvent.change(screen.getByLabelText(apiKeyMessages.form.name.label), {
-      target: { value: "Draft name" },
-    });
-    rerender(
+  it("syncs refreshed grants without losing drafts or restoring a revoked permission", async () => {
+    let release!: () => void;
+    const onSave = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            release = resolve;
+          }),
+      )
+      .mockResolvedValue(undefined);
+    const read = SystemApiKeyPermission.USER__READ;
+    const update = SystemApiKeyPermission.USER__UPDATE;
+    const editor = (key: typeof apiKey) => (
       <ApiKeyFormPage
         {...props}
-        apiKey={{
-          ...apiKey,
-          permissions: [SystemApiKeyPermission.USER__READ],
-        }}
-        {...access(["name"])}
+        apiKey={key}
+        {...access(["name", "permissions"])}
+        permissionOptions={[read, update].map((value) => ({
+          value,
+          name: value,
+          description: "",
+        }))}
         onSave={onSave}
-      />,
+      />
     );
-    fireEvent.click(screen.getByRole("button", { name: /Save$/ }));
+    const { rerender } = render(editor({ ...apiKey, permissions: [read] }), {
+      wrapper,
+    });
+    const name = screen.getByLabelText<HTMLInputElement>(
+      apiKeyMessages.form.name.label,
+    );
+    const readGrant = screen.getByRole("checkbox", { name: read });
+    const updateGrant = screen.getByRole("checkbox", { name: update });
+    const save = screen.getByRole<HTMLButtonElement>("button", {
+      name: /Save$/,
+    });
+    fireEvent.change(name, { target: { value: "Draft name" } });
+    rerender(editor(apiKey));
+    expect(name.value).toBe("Draft name");
+    expect(readGrant.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(save);
     await waitFor(() =>
       expect(onSave).toHaveBeenCalledExactlyOnceWith(
         { name: "Draft name", permissions: [] },
         { name: "Draft name" },
       ),
     );
-    fireEvent.change(screen.getByLabelText(apiKeyMessages.form.name.label), {
-      target: { value: "Next name" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /Save$/ }));
+    // Refreshed server data can arrive before the save finishes.
+    rerender(editor({ ...apiKey, name: "Draft name", permissions: [update] }));
+    fireEvent.change(name, { target: { value: "Next name" } });
+    release();
+    await waitFor(() => expect(save.disabled).toBe(false));
+    expect(name.value).toBe("Next name");
+    await waitFor(() =>
+      expect(updateGrant.getAttribute("aria-checked")).toBe("true"),
+    );
+    expect(readGrant.getAttribute("aria-checked")).toBe("false");
+    // An intentional grant edit must start from the refreshed set.
+    fireEvent.click(updateGrant);
+    fireEvent.click(save);
     await waitFor(() =>
       expect(onSave).toHaveBeenLastCalledWith(
         { name: "Next name", permissions: [] },
-        { name: "Next name" },
+        { name: "Next name", permissions: [] },
       ),
     );
+    await waitFor(() => expect(save.disabled).toBe(false));
+    expect(name.value).toBe("Next name");
+    fireEvent.click(save);
+    await waitFor(() => expect(save.disabled).toBe(false));
+    expect(onSave).toHaveBeenCalledTimes(2);
+    rerender(editor({ ...apiKey, name: "Server name", permissions: [update] }));
+    expect(name.value).toBe("Server name");
+    expect(updateGrant.getAttribute("aria-checked")).toBe("true");
+    expect(save.disabled).toBe(false);
+    // A later refresh preserves an explicitly edited permissions draft.
+    fireEvent.click(updateGrant);
+    rerender(
+      editor({ ...apiKey, name: "Another server name", permissions: [read] }),
+    );
+    expect(name.value).toBe("Another server name");
+    expect(updateGrant.getAttribute("aria-checked")).toBe("false");
+    expect(readGrant.getAttribute("aria-checked")).toBe("false");
   });
 
   it("allows a revocation-only actor to revoke without offering or submitting a metadata save", async () => {

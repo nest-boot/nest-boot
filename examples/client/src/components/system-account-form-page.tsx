@@ -9,7 +9,7 @@ import {
   resetFormAfterSave,
   submitForm,
 } from "@/lib/form";
-import { useFormChanges } from "@/hooks/use-form-changes";
+import { useFormChanges, useSyncFormChanges } from "@/hooks/use-form-changes";
 import { SystemAccountPermission } from "@/gql/graphql";
 import { Page } from "@/components/thread-ui/page";
 import {
@@ -126,6 +126,7 @@ export function SystemAccountFormPage({
     },
   });
   const submitting = useSelector(form.store, (state) => state.isSubmitting);
+  useSyncFormChanges(form, metadataChanges, Boolean(account));
   const error = useSelector(form.store, (state) =>
     getFormErrorMessage(state.errors),
   );
