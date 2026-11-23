@@ -34,10 +34,13 @@ function EditableAccountExample({
 }: {
   save: (value: Partial<EditableAccount>) => Promise<void>;
 }) {
-  const changes = useFormChanges<EditableAccount>({
-    name: "Original",
-    permissions: ["READ"],
-  });
+  const changes = useFormChanges<EditableAccount>(
+    {
+      name: "Original",
+      permissions: ["READ"],
+    },
+    { revision: 0 },
+  );
   const form = useForm({
     ...defaultFormOptions,
     defaultValues: changes.defaultValues,

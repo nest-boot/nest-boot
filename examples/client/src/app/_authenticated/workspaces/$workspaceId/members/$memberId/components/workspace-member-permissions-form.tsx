@@ -43,7 +43,7 @@ export function WorkspaceMemberPermissionsForm({
   const [setPermissions] = useMutation(SET_WORKSPACE_MEMBER_PERMISSIONS);
   const permissionChanges = useFormChanges(
     { permissions: member.permissions },
-    { setFields: ["permissions"] },
+    { revision: member.updatedAt, setFields: ["permissions"] },
   );
   const form = useForm({
     ...defaultFormOptions,

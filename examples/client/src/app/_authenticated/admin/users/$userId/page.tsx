@@ -371,11 +371,21 @@ function AdminUserDetails() {
       ),
     );
 
-  const profileChanges = useFormChanges({
-    name: (user ?? initialUser).name.trim(),
-    email: (user ?? initialUser).email,
-    emailVerified: (user ?? initialUser).emailVerified,
-  });
+  const profileChanges = useFormChanges(
+    {
+      name: (user ?? initialUser).name.trim(),
+      email: (user ?? initialUser).email,
+      emailVerified: (user ?? initialUser).emailVerified,
+    },
+    {
+      revision: (user ?? initialUser).updatedAt,
+      normalize: (values) => ({
+        ...values,
+        name: values.name.trim(),
+        email: values.email.trim(),
+      }),
+    },
+  );
   const profileForm = useForm({
     ...defaultFormOptions,
     defaultValues: profileChanges.defaultValues,
@@ -397,11 +407,7 @@ function AdminUserDetails() {
 
     onSubmit: async ({ value, formApi }) => {
       if (!canUpdate) return;
-      const values = {
-        ...value,
-        name: value.name.trim(),
-        email: value.email.trim(),
-      };
+      const values = profileChanges.normalize(value);
       const changes = profileChanges.getChanges(values);
       const input = {
         ...(changes.name !== undefined ? { name: changes.name } : {}),
@@ -433,7 +439,7 @@ function AdminUserDetails() {
   useSyncFormChanges(profileForm, profileChanges);
   const roleChanges = useFormChanges(
     { roles: (user ?? initialUser).roles },
-    { setFields: ["roles"] },
+    { revision: (user ?? initialUser).updatedAt, setFields: ["roles"] },
   );
   const rolesForm = useForm({
     ...defaultFormOptions,
@@ -463,7 +469,7 @@ function AdminUserDetails() {
   useSyncFormChanges(rolesForm, roleChanges);
   const permissionChanges = useFormChanges(
     { permissions: (user ?? initialUser).permissions },
-    { setFields: ["permissions"] },
+    { revision: (user ?? initialUser).updatedAt, setFields: ["permissions"] },
   );
   const permissionsForm = useForm({
     ...defaultFormOptions,

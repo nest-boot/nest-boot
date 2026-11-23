@@ -37,6 +37,7 @@ interface Account {
   id: string;
   name: string;
   enabled: boolean;
+  updatedAt: string;
   permissions: Array<SystemAccountPermission>;
   createdById?: string | null;
 }
@@ -89,7 +90,11 @@ export function SystemAccountFormPage({
       permissions:
         account?.permissions ?? ([] as Array<SystemAccountPermission>),
     },
-    { setFields: ["permissions"] },
+    {
+      revision: account?.updatedAt,
+      setFields: ["permissions"],
+      normalize: (values) => ({ ...values, name: values.name.trim() }),
+    },
   );
   const form = useForm({
     ...defaultFormOptions,
@@ -107,7 +112,7 @@ export function SystemAccountFormPage({
 
     onSubmit: async ({ value, formApi }) => {
       if (!canSave || pending) return;
-      const values = { ...value, name: value.name.trim() };
+      const values = metadataChanges.normalize(value);
       const changes = metadataChanges.getChanges(values);
       if (account && !Object.keys(changes).length) return;
       try {

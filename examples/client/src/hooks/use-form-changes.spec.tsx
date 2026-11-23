@@ -8,7 +8,7 @@ afterEach(cleanup);
 describe("form change baseline", () => {
   it("keeps the loaded baseline when a refetch changes the props", () => {
     const { result, rerender } = renderHook(
-      (initial) => useFormChanges(initial),
+      (initial) => useFormChanges(initial, { revision: 0 }),
       { initialProps: { name: "Original", slug: "old-slug" } },
     );
     rerender({ name: "Server update", slug: "new-slug" });
@@ -22,12 +22,15 @@ describe("form change baseline", () => {
     const { result } = renderHook(() =>
       useFormChanges(
         { name: "Original", permissions: ["READ"] },
-        { setFields: ["permissions"] },
+        { revision: 0, setFields: ["permissions"] },
       ),
     );
     const saved = { name: "Saved", permissions: ["READ", "WRITE"] };
     expect(result.current.getChanges(saved)).toEqual(saved);
-    act(() => result.current.accept(saved));
+    act(() => {
+      result.current.accept(saved);
+      expect(result.current.getChanges(saved)).toEqual({});
+    });
     saved.permissions.push("OTHER");
     expect(
       result.current.getChanges({

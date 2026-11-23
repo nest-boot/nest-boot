@@ -7,42 +7,57 @@ import { getFormChanges } from "@/lib/form-changes";
 /** Track the edit baseline separately from incoming server snapshots. */
 export function useFormChanges<Values extends object>(
   initial: Values,
-  options?: FormChangesOptions<Values>,
+  options: FormChangesOptions<Values> & {
+    revision: string | number | undefined;
+    normalize?: (values: Values) => Values;
+  },
 ) {
-  const [defaultValues, accept] = useState(() => structuredClone(initial));
-  const lastServerValues = useRef(structuredClone(initial));
+  const normalize = options.normalize ?? ((values: Values) => values);
+  const baseline = useRef(structuredClone(normalize(initial)));
+  const [defaultValues, setDefaultValues] = useState(baseline.current);
+  const lastRevision = useRef(options.revision);
+  const accept = (values: Values) => {
+    const saved = structuredClone(normalize(values));
+    baseline.current = saved;
+    setDefaultValues(saved);
+  };
   return {
     defaultValues,
     getChanges: (values: Values) =>
-      getFormChanges(defaultValues, values, options),
+      getFormChanges(baseline.current, normalize(values), options),
     // Advance only after a successful save, together with resetFormAfterSave.
-    accept: (values: Values) => accept(structuredClone(values)),
+    accept,
+    normalize,
     /** Sync refreshed metadata from an effect, preserving edits and request errors. */
     sync: (form: AnyFormApi) => {
       if (
         form.state.isSubmitting ||
-        !Object.keys(getFormChanges(lastServerValues.current, initial, options))
-          .length
+        Object.is(lastRevision.current, options.revision)
       )
         return;
-      lastServerValues.current = structuredClone(initial);
+      lastRevision.current = options.revision;
+      const incoming = normalize(initial);
       const fields = Object.keys(initial) as Array<keyof Values & string>;
       const current = Object.fromEntries(
         fields.map((field) => [field, form.state.values[field]]),
       ) as Values;
-      const draft = getFormChanges(defaultValues, current, options);
+      const draft = getFormChanges(
+        baseline.current,
+        normalize(current),
+        options,
+      );
       form.update({
         ...form.options,
-        defaultValues: { ...form.options.defaultValues, ...initial },
+        defaultValues: { ...form.options.defaultValues, ...incoming },
       });
       for (const field of fields) {
         form.setFieldValue(
           field,
-          Object.hasOwn(draft, field) ? current[field] : initial[field],
+          Object.hasOwn(draft, field) ? current[field] : incoming[field],
           { dontUpdateMeta: true, dontRunListeners: true, dontValidate: true },
         );
       }
-      accept(structuredClone(initial));
+      accept(incoming);
     },
   };
 }

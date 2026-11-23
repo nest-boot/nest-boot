@@ -429,31 +429,46 @@ export class WorkspaceService {
     assertCurrentWorkspace(workspace);
     authorize("update", workspace);
     input = this.normalizeWorkspaceChanges(input);
-    // Authorize fields before assignment so changing a condition cannot bypass it.
-    for (const [field, value] of Object.entries(input)) {
-      if (value !== undefined) {
-        authorize("update", workspace, field);
-      }
-    }
     if (this.em.isInTransaction()) {
       throw new BadRequestException(
         "Change the current workspace outside an active transaction",
       );
     }
-    const previousName = workspace.name;
-    const previousSlug = workspace.slug;
+    const id = workspace.id;
     try {
-      this.em.assign(workspace, input, { ignoreUndefined: true });
-      authorize("update", workspace);
-      for (const [field, value] of Object.entries(input)) {
-        if (value !== undefined) {
-          authorize("update", workspace, field);
-        }
-      }
-      await this.em.flush();
+      workspace = await this.em.transactional(
+        async (em) => {
+          // Check and write the same locked, transaction-managed record.
+          const entity = await em.findOne(
+            Workspace,
+            { id },
+            {
+              refresh: true,
+              lockMode: LockMode.PESSIMISTIC_WRITE,
+            },
+          );
+          if (!entity) {
+            throw new NotFoundException("Workspace not found");
+          }
+          authorize("update", entity);
+          for (const [field, value] of Object.entries(input)) {
+            if (value !== undefined) {
+              authorize("update", entity, field);
+            }
+          }
+          em.assign(entity, input, { ignoreUndefined: true });
+          authorize("update", entity);
+          for (const [field, value] of Object.entries(input)) {
+            if (value !== undefined) {
+              authorize("update", entity, field);
+            }
+          }
+          await em.flush();
+          return entity;
+        },
+        { clear: true },
+      );
     } catch (error) {
-      workspace.name = previousName;
-      workspace.slug = previousSlug;
       if (error instanceof UniqueConstraintViolationException) {
         throw new ConflictException("Workspace slug is already taken");
       }

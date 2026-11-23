@@ -42,7 +42,7 @@ export function WorkspaceMemberRolesForm({
   const [setRoles] = useMutation(SET_WORKSPACE_MEMBER_ROLES);
   const roleChanges = useFormChanges(
     { roles: member.roles },
-    { setFields: ["roles"] },
+    { revision: member.updatedAt, setFields: ["roles"] },
   );
   const form = useForm({
     ...defaultFormOptions,

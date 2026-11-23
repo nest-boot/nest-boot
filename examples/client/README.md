@@ -311,7 +311,11 @@ or normalize the mutation input explicitly (for example, trim names and emails).
 
 Use `useFormChanges` with TanStack Form for editors. Its `defaultValues` keep a
 snapshot of normalized loaded values; `getChanges(values)` returns only fields
-that differ from that snapshot. Compare roles and permissions with
+that differ from that snapshot. Pass the record's `updatedAt` as `revision` so a
+fresh version is recognized even when its values match an older snapshot. Supply
+one `normalize` function for the editor and use `changes.normalize(value)` for
+mutation values; draft detection uses that same canonical representation while
+retaining raw text for actual drafts. Compare roles and permissions with
 `{ setFields: ["roles", "permissions"] }` so reordering does not replace grants.
 Preserve explicit clears (`null`, `false`, and empty arrays) and skip empty
 updates. After a successful request, call `accept(savedValues)` and
@@ -320,7 +324,9 @@ raw submit snapshot and `savedValues` contains the normalized values that were
 saved. The helper advances the saved defaults and restores any edits made while
 the request was pending, keeping them dirty for the next save. If no normalization
 is needed, omit its third argument. Failed requests retain the draft and comparison
-baseline. Edit pages attach `useSyncFormChanges(form, changes)` after `useForm`.
+baseline. `accept` advances the comparison reference immediately, before resetting
+the form can release deferred refreshes. Edit pages attach
+`useSyncFormChanges(form, changes)` after `useForm`.
 It synchronizes new server snapshots into unedited fields while retaining local
 drafts, validation state and request errors. Refreshes received during submission
 are applied when it finishes. Shared create/edit pages enable synchronization

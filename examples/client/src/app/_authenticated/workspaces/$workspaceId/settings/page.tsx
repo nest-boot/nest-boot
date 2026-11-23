@@ -119,10 +119,20 @@ function SettingsComponent() {
   const [leaveWorkspace, { loading: leaving }] = useMutation(
     LEAVE_WORKSPACE_FROM_SETTINGS_ROUTE,
   );
-  const workspaceChanges = useFormChanges({
-    name: workspace.name.trim(),
-    slug: workspace.slug,
-  });
+  const workspaceChanges = useFormChanges(
+    {
+      name: workspace.name.trim(),
+      slug: workspace.slug,
+    },
+    {
+      revision: workspace.updatedAt,
+      normalize: (values) => ({
+        ...values,
+        name: values.name.trim(),
+        slug: values.slug.trim(),
+      }),
+    },
+  );
   const form = useForm({
     ...defaultFormOptions,
     defaultValues: workspaceChanges.defaultValues,
@@ -139,7 +149,7 @@ function SettingsComponent() {
       }),
     },
     onSubmit: async ({ value }) => {
-      const values = { name: value.name.trim(), slug: value.slug.trim() };
+      const values = workspaceChanges.normalize(value);
       const input = workspaceChanges.getChanges(values);
       if (!Object.keys(input).length) return;
       try {

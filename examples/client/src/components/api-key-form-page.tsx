@@ -51,7 +51,7 @@ type CredentialPermission =
   | SystemApiKeyPermission;
 
 interface ApiKeyFormPageProps<Permission extends CredentialPermission> {
-  apiKey?: Omit<ApiKeyRow<Permission>, "owner">;
+  apiKey?: Omit<ApiKeyRow<Permission>, "owner"> & { updatedAt: string };
   ownerName?: string;
   canWrite: boolean;
   canEditName?: boolean;
@@ -131,7 +131,11 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
     );
   const metadataChanges = useFormChanges(
     { name: apiKey?.name.trim() ?? "", permissions: initialPermissions },
-    { setFields: ["permissions"] },
+    {
+      revision: apiKey?.updatedAt,
+      setFields: ["permissions"],
+      normalize: (values) => ({ ...values, name: values.name.trim() }),
+    },
   );
   const form = useForm({
     ...defaultFormOptions,
@@ -175,15 +179,16 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
         });
         return;
       }
+      const normalized = metadataChanges.normalize(value);
       const memberId =
         ownerType === "you" ? currentWorkspaceMemberId : value.memberId;
       const input = {
-        name: value.name.trim(),
+        name: normalized.name,
         ...(memberOptions && memberId ? { memberId } : {}),
         ...(systemOwner && value.systemAccountId
           ? { systemAccountId: value.systemAccountId }
           : {}),
-        permissions: value.permissions.filter(isPermission),
+        permissions: normalized.permissions.filter(isPermission),
       };
       const values = { name: input.name, permissions: input.permissions };
       const changed = metadataChanges.getChanges(values);

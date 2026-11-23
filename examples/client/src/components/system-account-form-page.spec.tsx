@@ -61,6 +61,7 @@ const account = {
   id: "account",
   name: "Deployment",
   enabled: true,
+  updatedAt: "2026-01-01T00:00:00.000Z",
   permissions: [],
 };
 function access(fields: Array<string>) {

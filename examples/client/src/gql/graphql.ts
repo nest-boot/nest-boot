@@ -2242,6 +2242,7 @@ export type GetCurrentUserFromAuthenticatedRouteQuery = {
     id: string;
     name: string;
     email: string;
+    updatedAt: any;
     permissions: Array<UserPermission>;
   } | null;
   currentSession?: {
@@ -2311,6 +2312,7 @@ export type GetUserApiKeyDetailsQuery = {
       revokedAt?: any | null;
       permissions: Array<UserApiKeyPermission>;
       createdAt: any;
+      updatedAt: any;
       lastUsedAt?: any | null;
       expiresAt?: any | null;
     } | null;
@@ -2756,6 +2758,7 @@ export type GetWorkspaceApiKeyDetailsQuery = {
       revokedAt?: any | null;
       permissions: Array<WorkspaceApiKeyPermission>;
       createdAt: any;
+      updatedAt: any;
       lastUsedAt?: any | null;
       expiresAt?: any | null;
       member?: {
@@ -3022,6 +3025,7 @@ export type GetWorkspaceMemberFromWorkspaceMemberRouteQuery = {
     name: string;
     email?: string | null;
     createdAt: any;
+    updatedAt: any;
   } | null;
   workspaceRoles: Array<{
     __typename?: "WorkspaceRoleOption";
@@ -3496,6 +3500,7 @@ export type ManagedSystemAccountQuery = {
     permissions: Array<SystemAccountPermission>;
     createdById?: string | null;
     createdAt: any;
+    updatedAt: any;
   } | null;
 };
 
@@ -3555,6 +3560,7 @@ export type SystemApiKeyQuery = {
     prefix?: string | null;
     start?: string | null;
     createdAt: any;
+    updatedAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
     systemAccount?: {
@@ -5831,6 +5837,7 @@ export const GetCurrentUserFromAuthenticatedRouteDocument = {
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "email" } },
+                { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
               ],
             },
@@ -6027,6 +6034,10 @@ export const GetUserApiKeyDetailsDocument = {
                       {
                         kind: "Field",
                         name: { kind: "Name", value: "createdAt" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "updatedAt" },
                       },
                       {
                         kind: "Field",
@@ -8140,6 +8151,10 @@ export const GetWorkspaceApiKeyDetailsDocument = {
                       },
                       {
                         kind: "Field",
+                        name: { kind: "Name", value: "updatedAt" },
+                      },
+                      {
+                        kind: "Field",
                         name: { kind: "Name", value: "lastUsedAt" },
                       },
                       {
@@ -9478,6 +9493,7 @@ export const GetWorkspaceMemberFromWorkspaceMemberRouteDocument = {
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "email" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
               ],
             },
           },
@@ -11558,6 +11574,7 @@ export const ManagedSystemAccountDocument = {
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
                 { kind: "Field", name: { kind: "Name", value: "createdById" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
               ],
             },
           },
@@ -11863,6 +11880,7 @@ export const SystemApiKeyDocument = {
                 { kind: "Field", name: { kind: "Name", value: "prefix" } },
                 { kind: "Field", name: { kind: "Name", value: "start" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                 { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
                 { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
               ],

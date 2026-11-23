@@ -59,6 +59,7 @@ const apiKey = {
   name: "Deployment",
   permissions: [] as Array<SystemApiKeyPermission>,
   createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
   revokedAt: null,
   start: "sys_abc",
   prefix: "sys_",
@@ -132,7 +133,7 @@ describe("ApiKeyFormPage field authorization", () => {
       name: /Save$/,
     });
     fireEvent.change(name, { target: { value: "Draft name" } });
-    rerender(editor(apiKey));
+    rerender(editor({ ...apiKey, updatedAt: "2026-01-02T00:00:00.000Z" }));
     expect(name.value).toBe("Draft name");
     expect(readGrant.getAttribute("aria-checked")).toBe("false");
     fireEvent.click(save);
@@ -143,7 +144,14 @@ describe("ApiKeyFormPage field authorization", () => {
       ),
     );
     // Refreshed server data can arrive before the save finishes.
-    rerender(editor({ ...apiKey, name: "Draft name", permissions: [update] }));
+    rerender(
+      editor({
+        ...apiKey,
+        name: "Draft name",
+        permissions: [update],
+        updatedAt: "2026-01-03T00:00:00.000Z",
+      }),
+    );
     fireEvent.change(name, { target: { value: "Next name" } });
     release();
     await waitFor(() => expect(save.disabled).toBe(false));
@@ -166,14 +174,27 @@ describe("ApiKeyFormPage field authorization", () => {
     fireEvent.click(save);
     await waitFor(() => expect(save.disabled).toBe(false));
     expect(onSave).toHaveBeenCalledTimes(2);
-    rerender(editor({ ...apiKey, name: "Server name", permissions: [update] }));
-    expect(name.value).toBe("Server name");
+    rerender(
+      editor({
+        ...apiKey,
+        name: "Draft name",
+        permissions: [update],
+        updatedAt: "2026-01-04T00:00:00.000Z",
+      }),
+    );
+    expect(name.value).toBe("Draft name");
     expect(updateGrant.getAttribute("aria-checked")).toBe("true");
     expect(save.disabled).toBe(false);
-    // A later refresh preserves an explicitly edited permissions draft.
+    // Ignore whitespace-only edits while preserving an explicit permissions draft.
+    fireEvent.change(name, { target: { value: "Draft name " } });
     fireEvent.click(updateGrant);
     rerender(
-      editor({ ...apiKey, name: "Another server name", permissions: [read] }),
+      editor({
+        ...apiKey,
+        name: "Another server name",
+        permissions: [read],
+        updatedAt: "2026-01-05T00:00:00.000Z",
+      }),
     );
     expect(name.value).toBe("Another server name");
     expect(updateGrant.getAttribute("aria-checked")).toBe("false");

@@ -46,10 +46,20 @@ export function WorkspaceMemberProfileForm({
     ? (["name"] as const)
     : (["name", "email"] as const);
   const [updateWorkspaceMember] = useMutation(UPDATE_WORKSPACE_MEMBER);
-  const profileChanges = useFormChanges({
-    name: member.name.trim(),
-    email: member.email ?? "",
-  });
+  const profileChanges = useFormChanges(
+    {
+      name: member.name.trim(),
+      email: member.email ?? "",
+    },
+    {
+      revision: member.updatedAt,
+      normalize: (values) => ({
+        ...values,
+        name: values.name.trim(),
+        email: values.email.trim(),
+      }),
+    },
+  );
   const form = useForm({
     ...defaultFormOptions,
     defaultValues: profileChanges.defaultValues,
@@ -73,7 +83,7 @@ export function WorkspaceMemberProfileForm({
       }),
     },
     onSubmit: async ({ value }) => {
-      const values = { name: value.name.trim(), email: value.email.trim() };
+      const values = profileChanges.normalize(value);
       const changes = profileChanges.getChanges(values);
       const input = {
         ...(changes.name !== undefined ? { name: changes.name } : {}),

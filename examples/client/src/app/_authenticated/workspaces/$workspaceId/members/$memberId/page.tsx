@@ -90,6 +90,7 @@ const GET_WORKSPACE_MEMBER_FROM_WORKSPACE_MEMBER_ROUTE = graphql(`
       name
       email
       createdAt
+      updatedAt
     }
     workspaceRoles {
       role

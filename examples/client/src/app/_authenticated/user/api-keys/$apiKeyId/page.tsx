@@ -52,6 +52,7 @@ const GET_USER_API_KEY = graphql(`
         revokedAt
         permissions
         createdAt
+        updatedAt
         lastUsedAt
         expiresAt
       }

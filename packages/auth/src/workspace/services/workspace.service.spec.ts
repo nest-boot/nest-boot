@@ -102,7 +102,13 @@ describe("WorkspaceService and cross-domain coordination", () => {
         },
       });
       const workspace = createTestWorkspace();
-      em.findOne.mockResolvedValue(workspace);
+      em.findOne.mockImplementation((_entity, _where, options) =>
+        Promise.resolve(
+          options?.lockMode === LockMode.PESSIMISTIC_WRITE
+            ? Object.assign(new Workspace(), workspace)
+            : workspace,
+        ),
+      );
       await RequestContext.run(
         new RequestContext({ type: "test" }),
         async () => {
@@ -497,6 +503,7 @@ describe("WorkspaceService and cross-domain coordination", () => {
   it("updates mutable workspace fields", async () => {
     const { authorization, em, workspaceService } = createWorkspaceServices();
     const workspace = createTestWorkspace();
+    em.findOne.mockResolvedValue(workspace);
     await expect(
       workspaceService.updateWorkspace(workspace, { name: "Renamed" }),
     ).resolves.toBe(workspace);
@@ -814,6 +821,25 @@ describe("conditional authorization", () => {
         expect(workspace.slug).toBe("protected-slug");
         expect(em.assign).not.toHaveBeenCalled();
         expect(em.flush).not.toHaveBeenCalled();
+
+        if (action === "update") {
+          workspace.slug = "public-slug";
+          em.findOne.mockResolvedValueOnce(
+            Object.assign(new Workspace(), workspace, {
+              slug: "protected-slug",
+            }),
+          );
+          await expect(update({ slug: "renamed-slug" })).rejects.toThrow(
+            ForbiddenException,
+          );
+          expect(em.findOne).toHaveBeenLastCalledWith(
+            Workspace,
+            { id: workspace.id },
+            expect.objectContaining({ lockMode: LockMode.PESSIMISTIC_WRITE }),
+          );
+          expect(em.assign).not.toHaveBeenCalled();
+          workspace.slug = "protected-slug";
+        }
 
         // A denial on another field must not block a legitimate name edit.
         await expect(update({ name: "Renamed" })).resolves.toBe(workspace);

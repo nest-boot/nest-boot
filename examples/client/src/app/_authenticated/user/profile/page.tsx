@@ -89,9 +89,15 @@ function UserProfile() {
     !emailChangeCompleted,
   );
 
-  const profileChanges = useFormChanges({
-    name: currentUser.name.trim(),
-  });
+  const profileChanges = useFormChanges(
+    {
+      name: currentUser.name.trim(),
+    },
+    {
+      revision: currentUser.updatedAt,
+      normalize: (values) => ({ ...values, name: values.name.trim() }),
+    },
+  );
   const form = useForm({
     ...defaultFormOptions,
     defaultValues: profileChanges.defaultValues,
@@ -105,8 +111,7 @@ function UserProfile() {
       }),
     },
     onSubmit: async ({ value }) => {
-      const name = value.name.trim();
-      const values = { name };
+      const values = profileChanges.normalize(value);
       const input = profileChanges.getChanges(values);
       if (!Object.keys(input).length) return;
 
