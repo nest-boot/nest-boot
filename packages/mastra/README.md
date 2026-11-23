@@ -22,6 +22,10 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
+NestJS owns the HTTP server. `server.*` configuration is forbidden in both TypeScript and at startup, including options returned by `forRootAsync`. Define custom endpoints with NestJS controllers and configure authentication, middleware, CORS, and exception handling through NestJS. `api.auth` and `api.customRouteAuthConfig` are also unsupported; use `@nest-boot/auth` for authorization.
+
+API and Studio paths include the application's global prefix. For example, `app.setGlobalPrefix("v1")` serves the API at `/v1/api/mastra` and Studio at `/v1/api/mastra/studio`.
+
 Register permission mapping in your `AuthModule` `buildAbility` callback to grant access to `/api/mastra/*`:
 
 ```typescript

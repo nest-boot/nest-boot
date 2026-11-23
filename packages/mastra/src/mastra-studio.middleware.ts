@@ -6,8 +6,15 @@ import path from "node:path";
 import {
   escapeStudioHtmlValue,
   injectStudioHtmlConfig,
+  normalizeStudioBase,
 } from "@mastra/deployer/build";
-import { Inject, Injectable, type NestMiddleware } from "@nestjs/common";
+import {
+  Inject,
+  Injectable,
+  type NestMiddleware,
+  Optional,
+} from "@nestjs/common";
+import { ApplicationConfig } from "@nestjs/core";
 import express, {
   type NextFunction,
   type Request,
@@ -56,25 +63,37 @@ function looksLikeMissingAsset(relativePath: string): boolean {
  */
 @Injectable()
 export class MastraStudioMiddleware implements NestMiddleware {
-  private readonly router: Router | null;
+  private router: Router | null | undefined;
 
-  constructor(@Inject(MASTRA_MODULE_OPTIONS) options: MastraModuleOptions) {
+  constructor(
+    @Inject(MASTRA_MODULE_OPTIONS)
+    private readonly options: MastraModuleOptions,
+    @Optional() private readonly applicationConfig?: ApplicationConfig,
+  ) {}
+
+  /**
+   * Builds the Studio router after the host has configured its global prefix.
+   * @returns Mounted Studio router, or null when Studio is unavailable
+   */
+  private createRouter(): Router | null {
     const { enabled: apiEnabled, serverOptions } = normalizeMastraApiOptions(
-      options.api,
+      this.options.api,
     );
     const studioOptions = normalizeMastraStudioOptions(
-      options.studio,
+      this.options.studio,
       apiEnabled,
     );
     const studioDir = resolveMastraStudioDistDir();
     const indexPath = path.join(studioDir, "index.html");
 
     if (!studioOptions.enabled || !existsSync(indexPath)) {
-      this.router = null;
-      return;
+      return null;
     }
 
-    const apiPrefix = serverOptions.prefix;
+    const globalPrefix = normalizeStudioBase(
+      this.applicationConfig?.getGlobalPrefix() ?? "",
+    );
+    const apiPrefix = `${globalPrefix}${serverOptions.prefix}`;
     const studioBasePath = resolveMastraStudioBasePath(apiPrefix);
     const devServerInstanceId = randomUUID();
 
@@ -172,7 +191,7 @@ export class MastraStudioMiddleware implements NestMiddleware {
 
     const mountedRouter = express.Router();
     mountedRouter.use(studioBasePath, studioRouter);
-    this.router = mountedRouter;
+    return mountedRouter;
   }
 
   /**
@@ -182,6 +201,7 @@ export class MastraStudioMiddleware implements NestMiddleware {
    * @param next - Next middleware callback
    */
   use(req: Request, res: Response, next: NextFunction): void {
+    this.router = this.router === undefined ? this.createRouter() : this.router;
     if (!this.router) {
       next();
       return;

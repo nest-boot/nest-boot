@@ -28,9 +28,10 @@
     "dev": "tsc -w -p tsconfig.build.json",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
-    "test": "vitest run",
-    "test:cov": "vitest run --coverage",
+    "test": "pnpm typecheck && vitest run",
+    "test:cov": "pnpm typecheck && vitest run --coverage",
     "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts --coverage"
   },

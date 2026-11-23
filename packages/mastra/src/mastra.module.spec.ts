@@ -560,10 +560,10 @@ describe("MastraModule", () => {
         const storage = pgWithClickhouseRef.get(Mastra).getStorage();
         expect(storage).toBeInstanceOf(MastraCompositeStore);
         expect(storage?.id).toBe("composite-storage");
-        expect(storage?.stores.observability).toBeInstanceOf(
+        expect(storage?.stores?.observability).toBeInstanceOf(
           ObservabilityStorageClickhouseVNext,
         );
-        expect(storage?.stores.memory).not.toBeUndefined();
+        expect(storage?.stores?.memory).not.toBeUndefined();
       } finally {
         await pgWithClickhouseRef.close();
       }
@@ -580,7 +580,7 @@ describe("MastraModule", () => {
       try {
         const storage = clickhouseOnlyRef.get(Mastra).getStorage();
         expect(storage).toBeInstanceOf(MastraCompositeStore);
-        expect(storage?.stores.observability).toBeInstanceOf(
+        expect(storage?.stores?.observability).toBeInstanceOf(
           ObservabilityStorageClickhouseVNext,
         );
       } finally {
@@ -643,7 +643,7 @@ describe("MastraModule", () => {
       try {
         const storage = fallbackPgAndChRef.get(Mastra).getStorage();
         expect(storage).toBeInstanceOf(MastraCompositeStore);
-        expect(storage?.stores.observability).toBeInstanceOf(
+        expect(storage?.stores?.observability).toBeInstanceOf(
           ObservabilityStorageClickhouseVNext,
         );
       } finally {

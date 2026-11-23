@@ -7,8 +7,13 @@ export const DEFAULT_MASTRA_API_PREFIX = "/api/mastra";
 
 export type MastraServerModuleOptions = Omit<
   MastraCoreModuleOptions,
-  "mastra" | "tools"
->;
+  "mastra" | "tools" | "auth" | "customRouteAuthConfig"
+> & {
+  /** Authentication belongs to NestJS guards and `@nest-boot/auth`. */
+  auth?: never;
+  /** Custom routes belong to NestJS controllers. */
+  customRouteAuthConfig?: never;
+};
 
 export interface MastraApiOptions extends MastraServerModuleOptions {
   /** Whether to register the Mastra HTTP API controller and middleware (default: `true`). */
@@ -27,7 +32,9 @@ export interface MastraStudioOptions {
   telemetryDisabled?: boolean;
 }
 
-export type MastraModuleOptions = MastraConfig & {
+export type MastraModuleOptions = Omit<MastraConfig, "server" | "studio"> & {
+  /** HTTP server configuration belongs to NestJS; supplying `server` is rejected at startup. */
+  server?: never;
   /**
    * Configure the Mastra HTTP API routes and server options.
    * - `true` / omitted: enabled under `/api/mastra`

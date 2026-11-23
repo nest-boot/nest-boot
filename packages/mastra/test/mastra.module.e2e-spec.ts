@@ -9,6 +9,7 @@ import {
   BaseWorkflow,
   MastraController,
   MastraModule,
+  type MastraModuleOptions,
 } from "../src/index.js";
 
 @Injectable()
@@ -77,6 +78,98 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
       delete process.env.MASTRA_CLICKHOUSE_URL;
     } else {
       process.env.MASTRA_CLICKHOUSE_URL = ORIGINAL_ENV.MASTRA_CLICKHOUSE_URL;
+    }
+  });
+
+  it.each([
+    { port: 4111 },
+    { auth: { enabled: false } },
+    { apiRoutes: [] },
+    { middleware: [] },
+    {},
+  ])(
+    "rejects server configuration in sync, async, and headless modules: %j",
+    async (server) => {
+      for (const api of [true, false]) {
+        const options = { server, api } as unknown as MastraModuleOptions;
+        for (const mastraModule of [
+          MastraModule.forRoot(options),
+          MastraModule.forRootAsync({
+            useFactory: () => Promise.resolve(options),
+          }),
+          MastraModule.forRootAsync({ api, useFactory: () => options }),
+        ]) {
+          await expect(
+            Test.createTestingModule({ imports: [mastraModule] }).compile(),
+          ).rejects.toThrow(/server.*NestJS/);
+        }
+      }
+    },
+  );
+
+  it.each(["auth", "customRouteAuthConfig"] as const)(
+    "rejects api.%s instead of enabling a second HTTP authorization layer",
+    async (key) => {
+      const options = { api: { [key]: {} } } as unknown as MastraModuleOptions;
+      for (const mastraModule of [
+        MastraModule.forRoot(options),
+        MastraModule.forRootAsync({ useFactory: () => options }),
+      ]) {
+        await expect(
+          Test.createTestingModule({ imports: [mastraModule] }).compile(),
+        ).rejects.toThrow(new RegExp(`api\\.${key}.*NestJS`));
+      }
+    },
+  );
+
+  it.each([true, false])(
+    "serves Studio with custom and global prefixes when api is %s",
+    async (apiEnabled) => {
+      const prefix = "/api/custom-mastra";
+      const moduleRef = await Test.createTestingModule({
+        imports: [
+          MastraModule.forRootAsync({
+            api: apiEnabled,
+            useFactory: () => ({
+              api: { enabled: apiEnabled, prefix },
+              studio: true,
+            }),
+          }),
+        ],
+      }).compile();
+      const app = moduleRef.createNestApplication();
+      app.setGlobalPrefix("v2/nested/");
+      await app.listen(0);
+      try {
+        const url = await app.getUrl();
+        const studioRes = await fetch(`${url}/v2/nested${prefix}/studio`);
+        expect(studioRes.status).toBe(200);
+        const html = await studioRes.text();
+        expect(html).toContain(`<base href="/v2/nested${prefix}/studio/" />`);
+        expect(html).toContain(
+          `window.MASTRA_API_PREFIX = '/v2/nested${prefix}';`,
+        );
+        const apiRes = await fetch(`${url}/v2/nested${prefix}/agents`);
+        expect(apiRes.status).toBe(apiEnabled ? 200 : 404);
+      } finally {
+        await app.close();
+      }
+    },
+  );
+
+  it("enforces NestJS guards on API requests while serving the public Studio shell", async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [MastraModule],
+    }).compile();
+    const app = moduleRef.createNestApplication();
+    app.useGlobalGuards({ canActivate: () => false });
+    await app.listen(0);
+    try {
+      const url = await app.getUrl();
+      expect((await fetch(`${url}/api/mastra/agents`)).status).toBe(403);
+      expect((await fetch(`${url}/api/mastra/studio`)).status).toBe(200);
+    } finally {
+      await app.close();
     }
   });
 
@@ -351,6 +444,23 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
       expect(Object.keys(prefixedAgentsBody)).toEqual(
         expect.arrayContaining(["writer-agent"]),
       );
+
+      for (const suffix of ["", "/index.html", "/agents/writer-agent"]) {
+        const studioRes = await fetch(`${url}/v1/api/mastra/studio${suffix}`);
+        expect(studioRes.status).toBe(200);
+        const html = await studioRes.text();
+        expect(html).toContain('<base href="/v1/api/mastra/studio/" />');
+        expect(html).toContain("window.MASTRA_API_PREFIX = '/v1/api/mastra';");
+        expect(html).toContain(
+          "window.MASTRA_STUDIO_BASE_PATH = '/v1/api/mastra/studio';",
+        );
+      }
+      const assetRes = await fetch(
+        `${url}/v1/api/mastra/studio/mastra-dark-tile.svg`,
+      );
+      expect(assetRes.status).toBe(200);
+      expect(assetRes.headers.get("content-type")).toContain("image/svg+xml");
+      expect((await fetch(`${url}/api/mastra/studio`)).status).toBe(404);
     } finally {
       await globalPrefixApp.close();
     }

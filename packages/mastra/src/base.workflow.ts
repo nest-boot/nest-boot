@@ -46,14 +46,14 @@ export type WorkflowOutput<T extends AnyWorkflow> = InferStandardSchemaOutput<
 
 /** Extracts the optional state type from a `BaseWorkflow` subclass or Mastra `Workflow`. */
 export type WorkflowState<T extends AnyWorkflow> =
-  T["stateSchema"] extends StandardSchemaWithJSON
-    ? InferStandardSchemaOutput<T["stateSchema"]>
+  NonNullable<T["stateSchema"]> extends StandardSchemaWithJSON
+    ? InferStandardSchemaOutput<NonNullable<T["stateSchema"]>>
     : unknown;
 
 /** Extracts the optional request context type from a `BaseWorkflow` subclass or Mastra `Workflow`. */
 export type WorkflowRequestContext<T extends AnyWorkflow> =
-  T["requestContextSchema"] extends StandardSchemaWithJSON
-    ? InferStandardSchemaOutput<T["requestContextSchema"]>
+  NonNullable<T["requestContextSchema"]> extends StandardSchemaWithJSON
+    ? InferStandardSchemaOutput<NonNullable<T["requestContextSchema"]>>
     : unknown;
 
 type InferOptionalSchema<TSchema extends PublicSchema | undefined> =

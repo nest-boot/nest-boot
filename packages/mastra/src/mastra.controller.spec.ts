@@ -2,8 +2,6 @@ import { Readable } from "node:stream";
 
 import type { Mastra } from "@mastra/core/mastra";
 import type {
-  AuthService,
-  CustomRouteService,
   MastraModuleOptions as MastraCoreModuleOptions,
   MastraThrottleGuard,
   RequestContextService,
@@ -55,8 +53,6 @@ interface ControllerHarnessOptions {
   moduleOptions?: MastraModuleOptions;
   coreOptions?: Partial<MastraCoreModuleOptions>;
   globalPrefix?: string;
-  authEnabled?: boolean;
-  authUser?: unknown;
 }
 
 /**
@@ -68,20 +64,10 @@ function createControllerHarness(options: ControllerHarnessOptions = {}) {
   const routeHandler = {
     matchRoute: vi.fn(),
     executeHandler: vi.fn(),
-    enforceRoutePermission: vi.fn().mockResolvedValue(undefined),
-    enforceRouteFGA: vi.fn().mockResolvedValue(undefined),
   };
   const requestContext = {
     requestContext: new Map<string, unknown>(),
     abortSignal: new AbortController().signal,
-    setUser: vi.fn(),
-  };
-  const customRoutes = {
-    handle: vi.fn().mockResolvedValue(false),
-  };
-  const authService = {
-    isEnabled: vi.fn().mockReturnValue(options.authEnabled ?? false),
-    authenticate: vi.fn().mockResolvedValue(options.authUser),
   };
   const throttleGuard = {
     getRateLimitSettings: vi
@@ -105,8 +91,6 @@ function createControllerHarness(options: ControllerHarnessOptions = {}) {
     },
     routeHandler as unknown as RouteHandlerService,
     requestContext as unknown as RequestContextService,
-    customRoutes as unknown as CustomRouteService,
-    authService as unknown as AuthService,
     throttleGuard as unknown as MastraThrottleGuard,
     applicationConfig,
   );
@@ -115,8 +99,6 @@ function createControllerHarness(options: ControllerHarnessOptions = {}) {
     controller,
     routeHandler,
     requestContext,
-    customRoutes,
-    authService,
     throttleGuard,
     res: {} as Response,
   };
@@ -243,7 +225,7 @@ describe("MastraController", () => {
     ).rejects.toThrow(NotFoundException);
   });
 
-  it("enforces Mastra auth, rate limiting, and body size limits including multipart uploads", async () => {
+  it("enforces rate limiting and body size limits including multipart uploads", async () => {
     const route = {
       method: "POST",
       path: "/agents/writer/generate",
@@ -253,8 +235,6 @@ describe("MastraController", () => {
     };
 
     const harness = createControllerHarness({
-      authEnabled: true,
-      authUser: { id: "user-1" },
       coreOptions: {
         prefix: "/api/mastra",
         rateLimitOptions: { enabled: true },
@@ -276,16 +256,6 @@ describe("MastraController", () => {
       }),
       harness.res,
     );
-    expect(harness.authService.authenticate).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        bearerOnly: true,
-        requiresAuth: true,
-      }),
-    );
-    expect(harness.requestContext.setUser).toHaveBeenCalledWith({
-      id: "user-1",
-    });
     expect(harness.throttleGuard.getRateLimitSettings).toHaveBeenCalled();
     expect(harness.throttleGuard.checkLimit).toHaveBeenCalled();
 
@@ -390,74 +360,15 @@ describe("MastraController", () => {
     );
   });
 
-  it("dispatches unmatched paths to customRoutes with auth, permission, and FGA hooks", async () => {
-    const harness = createControllerHarness({
-      authEnabled: true,
-      authUser: { id: "custom-user" },
-    });
+  it("returns 404 for unmatched routes without invoking a handler", async () => {
+    const harness = createControllerHarness();
     harness.routeHandler.matchRoute.mockReturnValue(null);
-    harness.customRoutes.handle.mockImplementation(
-      async (
-        _req: unknown,
-        _res: unknown,
-        _ctx: unknown,
-        authorize: (
-          customRoute: {
-            method: string;
-            path: string;
-            requiresPermission?: string;
-            fga?: { relation: string };
-          },
-          requiresAuth: boolean,
-          pathParams: Record<string, string>,
-        ) => Promise<void>,
-      ) => {
-        await authorize(
-          {
-            method: "POST",
-            path: "/custom/:id",
-            requiresPermission: "custom:write",
-            fga: { relation: "editor" },
-          },
-          true,
-          { id: "42" },
-        );
-        return true;
-      },
-    );
-
-    const result = await harness.controller.handleRequest(
-      createMockRequest({
-        method: "POST",
-        path: "/api/mastra/custom/42",
-        body: { draft: true },
-        query: { mode: "preview" },
-      }),
-      harness.res,
-    );
-
-    expect(result).toBeUndefined();
-    expect(harness.authService.authenticate).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        requiresAuth: true,
-        customRoute: true,
-      }),
-    );
-    expect(harness.requestContext.setUser).toHaveBeenCalledWith({
-      id: "custom-user",
-    });
-    expect(harness.routeHandler.enforceRoutePermission).toHaveBeenCalledTimes(
-      1,
-    );
-    expect(harness.routeHandler.enforceRouteFGA).toHaveBeenCalledWith(
-      expect.objectContaining({ path: "/custom/:id" }),
-      harness.requestContext.requestContext,
-      {
-        draft: true,
-        mode: "preview",
-        id: "42",
-      },
-    );
+    await expect(
+      harness.controller.handleRequest(
+        createMockRequest({ path: "/api/mastra/custom/42" }),
+        harness.res,
+      ),
+    ).rejects.toThrow(NotFoundException);
+    expect(harness.routeHandler.executeHandler).not.toHaveBeenCalled();
   });
 });

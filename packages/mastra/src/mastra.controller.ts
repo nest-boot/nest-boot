@@ -1,7 +1,5 @@
 import { Mastra } from "@mastra/core/mastra";
 import {
-  AuthService,
-  CustomRouteService,
   MASTRA_OPTIONS,
   MastraExceptionFilter,
   type MastraModuleOptions as MastraCoreModuleOptions,
@@ -164,8 +162,6 @@ export class MastraController {
     private readonly options: MastraCoreModuleOptions,
     private readonly routeHandler: RouteHandlerService,
     private readonly requestContext: RequestContextService,
-    private readonly customRoutes: CustomRouteService,
-    private readonly authService: AuthService,
     private readonly throttleGuard: MastraThrottleGuard,
     @Optional() private readonly applicationConfig?: ApplicationConfig,
   ) {
@@ -173,15 +169,15 @@ export class MastraController {
   }
 
   /**
-   * Dispatches incoming requests to matched Mastra server routes or custom API routes.
+   * Dispatches incoming requests to matched Mastra API routes.
    * @param req - Incoming Express request
-   * @param res - Outgoing Express response
+   * @param _res - Outgoing Express response managed by StreamingInterceptor
    * @returns Mastra route handler result for StreamingInterceptor
    */
   @All(["", "{*path}"])
   async handleRequest(
     @Req() req: RequestWithMastraMetadata,
-    @Res({ passthrough: true }) res: Response,
+    @Res({ passthrough: true }) _res: Response,
   ): Promise<unknown> {
     const requestPath = req.path;
     const method = req.method.toUpperCase();
@@ -200,77 +196,10 @@ export class MastraController {
         : null;
 
     if (!matchResult) {
-      const requestContext = this.requestContext.requestContext;
-      const handledCustomRoute = await this.customRoutes.handle(
-        req,
-        res,
-        requestContext,
-        async (customRoute, requiresAuth, pathParams) => {
-          if (this.authService.isEnabled()) {
-            const user = await this.authService.authenticate(req, {
-              requestContext,
-              response: res,
-              requiresAuth,
-              customRoute: true,
-            });
-            if (user !== undefined) {
-              this.requestContext.setUser(user);
-            }
-          }
-
-          const serverRoute = {
-            method: customRoute.method,
-            path: customRoute.path,
-            responseType: "json" as const,
-            handler: () => Promise.resolve(undefined),
-            requiresAuth,
-            requiresPermission: customRoute.requiresPermission,
-            fga: customRoute.fga,
-          };
-
-          if (requiresAuth) {
-            await this.routeHandler.enforceRoutePermission(
-              serverRoute,
-              requestContext,
-            );
-          }
-
-          if (customRoute.fga) {
-            await this.routeHandler.enforceRouteFGA(
-              serverRoute,
-              requestContext,
-              {
-                ...(typeof req.body === "object" && req.body !== null
-                  ? (req.body as Record<string, unknown>)
-                  : {}),
-                ...(req.query as Record<string, unknown>),
-                ...pathParams,
-              },
-            );
-          }
-        },
-      );
-
-      if (handledCustomRoute) {
-        return;
-      }
-
       throw new NotFoundException(`Route not found: ${method} ${requestPath}`);
     }
 
     const { route, pathParams } = matchResult;
-
-    if (this.authService.isEnabled()) {
-      const user = await this.authService.authenticate(req, {
-        requestContext: this.requestContext.requestContext,
-        bearerOnly: route.authTransport === "bearer",
-        response: res,
-        requiresAuth: route.requiresAuth,
-      });
-      if (user !== undefined) {
-        this.requestContext.setUser(user);
-      }
-    }
 
     if (this.options.rateLimitOptions?.enabled !== false && routePath) {
       const { limit, windowMs } = this.throttleGuard.getRateLimitSettings(

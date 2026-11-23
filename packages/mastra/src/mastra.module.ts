@@ -2,13 +2,10 @@ import { ObservabilityStorageClickhouseVNext } from "@mastra/clickhouse";
 import { type Config as MastraConfig, Mastra } from "@mastra/core/mastra";
 import { InMemoryStore, MastraCompositeStore } from "@mastra/core/storage";
 import {
-  AuthService,
   BodyLimitMiddleware,
-  CustomRouteService,
   JsonBodyMiddleware,
   MASTRA,
   MASTRA_OPTIONS,
-  MastraAuthGuard,
   MastraExceptionFilter,
   type MastraModuleOptions as MastraCoreModuleOptions,
   MastraService,
@@ -37,6 +34,7 @@ import {
   RequestMethod,
 } from "@nestjs/common";
 import { DiscoveryModule, ModulesContainer, RouterModule } from "@nestjs/core";
+import { omit } from "lodash-es";
 
 import { MastraController } from "./mastra.controller.js";
 import { MastraManager } from "./mastra.manager.js";
@@ -198,9 +196,21 @@ function createDefaultMastraObservability(): Observability {
  * @returns Core `Mastra` constructor config
  */
 function extractMastraCoreConfig(options: MastraModuleOptions): MastraConfig {
-  const mastraConfig: MastraModuleOptions = { ...options };
-  delete mastraConfig.api;
-  delete mastraConfig.studio;
+  if (options.server !== undefined) {
+    throw new Error(
+      "MastraModule does not support server configuration. Configure HTTP routes, authentication, middleware, and CORS through NestJS instead.",
+    );
+  }
+  if (typeof options.api === "object") {
+    for (const key of ["auth", "customRouteAuthConfig"] as const) {
+      if (options.api[key] !== undefined) {
+        throw new Error(
+          `MastraModule does not support api.${key}. Configure authentication and custom routes through NestJS instead.`,
+        );
+      }
+    }
+  }
+  const mastraConfig = omit(options, ["server", "api", "studio"]);
 
   const storage = mastraConfig.storage ?? createDefaultMastraStorage();
   const observability =
@@ -277,17 +287,16 @@ const MASTRA_SHARED_PROVIDERS: Provider[] = [
     ): MastraCoreModuleOptions => ({
       ...normalizeMastraApiOptions(options.api).serverOptions,
       mastra,
+      // NestJS guards own authorization; disable the upstream server auth layer.
+      auth: { enabled: false },
     }),
   },
   MastraService,
   RouteHandlerService,
   RequestContextService,
   ShutdownService,
-  AuthService,
-  CustomRouteService,
   BodyLimitMiddleware,
   JsonBodyMiddleware,
-  MastraAuthGuard,
   MastraThrottleGuard,
   TracingInterceptor,
   StreamingInterceptor,
@@ -303,7 +312,6 @@ const MASTRA_SHARED_EXPORTS = [
   Mastra,
   MastraManager,
   MastraService,
-  AuthService,
 ];
 
 /**

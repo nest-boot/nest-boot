@@ -47,6 +47,10 @@ MastraModule.forRoot({
 });
 ```
 
+HTTP 服务统一由 NestJS 管理。模块在 TypeScript 类型和启动时均禁止 `server.*`，通过 `forRootAsync` 返回的配置也会校验。自定义接口使用 NestJS 控制器，鉴权、中间件、CORS 和异常处理使用 NestJS 对应机制。`api.auth` 与 `api.customRouteAuthConfig` 同样不受支持，权限控制统一使用 `@nest-boot/auth`。
+
+API 和 Studio 路径均包含 NestJS 全局前缀。例如设置 `app.setGlobalPrefix("v1")` 后，默认路径分别为 `/v1/api/mastra` 和 `/v1/api/mastra/studio`，Studio 静态资源地址及 API 连接配置也会同步使用此前缀。
+
 ## 权限控制
 
 `MastraController` 上声明了 `@Can("manage", Mastra)`，只需在 `AuthModule` 的 `buildAbility` 回调中授予对应能力即可：

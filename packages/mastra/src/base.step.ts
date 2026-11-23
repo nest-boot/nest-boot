@@ -52,26 +52,26 @@ export type StepOutput<T extends AnyMastraStep> = InferStandardSchemaOutput<
 
 /** Extracts the optional workflow state type from a `BaseStep` subclass or Mastra `Step`. */
 export type StepState<T extends AnyMastraStep> =
-  T["stateSchema"] extends StandardSchemaWithJSON
-    ? InferStandardSchemaOutput<T["stateSchema"]>
+  NonNullable<T["stateSchema"]> extends StandardSchemaWithJSON
+    ? InferStandardSchemaOutput<NonNullable<T["stateSchema"]>>
     : unknown;
 
 /** Extracts the optional resume payload type from a `BaseStep` subclass or Mastra `Step`. */
 export type StepResume<T extends AnyMastraStep> =
-  T["resumeSchema"] extends StandardSchemaWithJSON
-    ? InferStandardSchemaOutput<T["resumeSchema"]>
+  NonNullable<T["resumeSchema"]> extends StandardSchemaWithJSON
+    ? InferStandardSchemaOutput<NonNullable<T["resumeSchema"]>>
     : unknown;
 
 /** Extracts the optional suspend payload type from a `BaseStep` subclass or Mastra `Step`. */
 export type StepSuspend<T extends AnyMastraStep> =
-  T["suspendSchema"] extends StandardSchemaWithJSON
-    ? InferStandardSchemaOutput<T["suspendSchema"]>
+  NonNullable<T["suspendSchema"]> extends StandardSchemaWithJSON
+    ? InferStandardSchemaOutput<NonNullable<T["suspendSchema"]>>
     : unknown;
 
 /** Extracts the optional request context type from a `BaseStep` subclass or Mastra `Step`. */
 export type StepRequestContext<T extends AnyMastraStep> =
-  T["requestContextSchema"] extends StandardSchemaWithJSON
-    ? InferStandardSchemaOutput<T["requestContextSchema"]>
+  NonNullable<T["requestContextSchema"]> extends StandardSchemaWithJSON
+    ? InferStandardSchemaOutput<NonNullable<T["requestContextSchema"]>>
     : unknown;
 
 /** Typed `execute` parameter object derived from a `BaseStep` subclass or Mastra `Step`. */
