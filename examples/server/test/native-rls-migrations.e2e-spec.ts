@@ -19,8 +19,7 @@ import { getDatabaseConfig } from '@nest-boot/database';
 import { entities as queueEntities } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20261114140546_AuthSchema } from '../src/database/migrations/Migration20261114140546_AuthSchema.js';
-import { Migration20261123090000_WorkspaceSlugAndUsername } from '../src/database/migrations/Migration20261123090000_WorkspaceSlugAndUsername.js';
+import { Migration20261123120442_Schema } from '../src/database/migrations/Migration20261123120442_Schema.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
@@ -51,8 +50,7 @@ describe('example native RLS migrations with PGlite', () => {
         migrations: {
           migrationsList: [
             Migration00000000000000_Initial,
-            Migration20261114140546_AuthSchema,
-            Migration20261123090000_WorkspaceSlugAndUsername,
+            Migration20261123120442_Schema,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',
@@ -210,7 +208,7 @@ describe('example native RLS migrations with PGlite', () => {
 
   it('creates the complete baseline through the official Migrator', async () => {
     expect(await orm.migrator.getPending()).toEqual([]);
-    expect(await orm.migrator.getExecuted()).toHaveLength(3);
+    expect(await orm.migrator.getExecuted()).toHaveLength(2);
     const policies = await orm.em.execute<
       {
         policyname: string;

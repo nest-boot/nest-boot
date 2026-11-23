@@ -5,8 +5,7 @@ import { entities as authEntities, workspaceEntities } from '@nest-boot/auth';
 import { JobEntity } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20261114140546_AuthSchema } from '../src/database/migrations/Migration20261114140546_AuthSchema.js';
-import { Migration20261123090000_WorkspaceSlugAndUsername } from '../src/database/migrations/Migration20261123090000_WorkspaceSlugAndUsername.js';
+import { Migration20261123120442_Schema } from '../src/database/migrations/Migration20261123120442_Schema.js';
 import { createDatabaseFixture } from './postgres.fixture.js';
 
 it('builds the current example schema from ordered migrations and can roll back and rebuild it', async () => {
@@ -26,33 +25,38 @@ it('builds the current example schema from ordered migrations and can roll back 
   };
   const orm = await MikroORM.init(options);
   try {
-    const base = await orm.migrator.up({
-      to: Migration20261114140546_AuthSchema.name,
-    });
-    expect(base).toHaveLength(2);
-    expect(base[0].name).toBe(Migration00000000000000_Initial.name);
-    await fixture.pool.query(`
-      insert into workspace (name)
-      values ('Legacy workspace A'), ('Legacy workspace B'), ('Legacy workspace C')
+    expect((await orm.migrator.up()).map(({ name }) => name)).toEqual([
+      Migration00000000000000_Initial.name,
+      Migration20261123120442_Schema.name,
+    ]);
+    const identifiers = await fixture.pool.query(`
+      select table_name, column_name, data_type, is_nullable
+      from information_schema.columns
+      where table_schema = 'public'
+        and (table_name, column_name) in (('user', 'username'), ('workspace', 'slug'))
+      order by table_name
     `);
-    const migrated = await orm.migrator.up();
-    expect(migrated).toHaveLength(1);
-    const legacy = await fixture.pool.query<{ slug: string }>(
-      'select slug from workspace',
-    );
-    expect(legacy.rows).toHaveLength(3);
-    for (const { slug } of legacy.rows) {
-      expect(slug).toMatch(/^[a-z][a-z0-9]{7}$/);
-    }
-    expect(new Set(legacy.rows.map(({ slug }) => slug)).size).toBe(3);
+    expect(identifiers.rows).toEqual([
+      {
+        table_name: 'user',
+        column_name: 'username',
+        data_type: 'text',
+        is_nullable: 'YES',
+      },
+      {
+        table_name: 'workspace',
+        column_name: 'slug',
+        data_type: 'text',
+        is_nullable: 'NO',
+      },
+    ]);
     const listed = await MikroORM.init({
       ...options,
       migrations: {
         ...options.migrations,
         migrationsList: [
           Migration00000000000000_Initial,
-          Migration20261114140546_AuthSchema,
-          Migration20261123090000_WorkspaceSlugAndUsername,
+          Migration20261123120442_Schema,
         ],
       },
     });
@@ -129,7 +133,7 @@ it('builds the current example schema from ordered migrations and can roll back 
       ).rows.map(({ extname }) => extname),
     ).toEqual(['pgcrypto', 'uuid-ossp']);
 
-    expect(await orm.migrator.up()).toHaveLength(3);
+    expect(await orm.migrator.up()).toHaveLength(2);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
     expect(await orm.migrator.checkSchema()).toBe(false);
   } finally {

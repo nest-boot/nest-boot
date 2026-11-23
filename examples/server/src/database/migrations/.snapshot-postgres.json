@@ -1607,20 +1607,20 @@
         },
         "username": {
           "name": "username",
-          "type": "varchar(30)",
+          "type": "text",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
           "unique": true,
-          "length": 30,
+          "length": null,
           "precision": null,
           "scale": null,
           "default": null,
           "comment": null,
           "collation": null,
           "enumItems": [],
-          "mappedType": "string"
+          "mappedType": "text"
         }
       },
       "indexes": [
@@ -1666,13 +1666,7 @@
           "unique": true
         }
       ],
-      "checks": [
-        {
-          "name": "user_username_format_check",
-          "expression": "char_length(\"username\") >= 3 and \"username\" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*$'",
-          "definition": "check (char_length(\"username\") >= 3 and \"username\" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*$')"
-        }
-      ],
+      "checks": [],
       "triggers": [],
       "foreignKeys": {},
       "comment": null,
@@ -1916,20 +1910,20 @@
         },
         "slug": {
           "name": "slug",
-          "type": "varchar(30)",
+          "type": "text",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": true,
-          "length": 30,
+          "length": null,
           "precision": null,
           "scale": null,
           "default": null,
           "comment": null,
           "collation": null,
           "enumItems": [],
-          "mappedType": "string"
+          "mappedType": "text"
         },
         "updated_at": {
           "name": "updated_at",
@@ -1984,13 +1978,7 @@
           "unique": true
         }
       ],
-      "checks": [
-        {
-          "name": "workspace_slug_format_check",
-          "expression": "char_length(\"slug\") >= 3 and \"slug\" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*$'",
-          "definition": "check (char_length(\"slug\") >= 3 and \"slug\" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*$')"
-        }
-      ],
+      "checks": [],
       "triggers": [],
       "foreignKeys": {},
       "comment": null,

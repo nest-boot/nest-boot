@@ -698,10 +698,10 @@ these mutation results and regenerate their GraphQL types.
 
 `CreateWorkspaceInput` requires a unique `slug` of 3–30 characters. It starts
 with a lowercase ASCII letter and can contain lowercase letters, digits and
-single hyphens between them. When upgrading an existing database, add the column
-as nullable with a unique constraint, backfill a valid slug per workspace, then
-enforce `NOT NULL`. The example migration generates a random eight-character slug
-for each existing workspace and retries if a generated slug is already in use.
+single hyphens between them. Auth validates the format and length with Zod.
+When upgrading an existing database, add the `text` column as nullable with a
+unique constraint, backfill a valid slug per workspace, then enforce `NOT NULL`.
+For example, generate random eight-character slugs and retry on collisions.
 
 `workspace(id: ID, slug: String)` and `user(id: ID, username: String)` each
 require exactly one argument. They use the same read authorization for either

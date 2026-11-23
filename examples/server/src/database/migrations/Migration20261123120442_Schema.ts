@@ -1,7 +1,7 @@
 import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20261114140546_AuthSchema extends Migration {
-  override name = 'Migration20261114140546_AuthSchema';
+export class Migration20261123120442_Schema extends Migration {
+  override name = 'Migration20261123120442_Schema';
 
   override up(): void | Promise<void> {
     this.addSql(
@@ -21,7 +21,10 @@ export class Migration20261114140546_AuthSchema extends Migration {
     );
 
     this.addSql(
-      `create table "user" ("id" bigserial primary key, "name" varchar(255) not null, "searchable_name" tsvector null, "email" varchar(255) not null, "email_verified" boolean not null, "image" varchar(255) null, "roles" text[] not null, "permissions" text[] not null, "banned" boolean not null default false, "ban_reason" varchar(255) null, "ban_expires_at" timestamptz null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
+      `create table "user" ("id" bigserial primary key, "name" varchar(255) not null, "username" text null, "searchable_name" tsvector null, "email" varchar(255) not null, "email_verified" boolean not null, "image" varchar(255) null, "roles" text[] not null, "permissions" text[] not null, "banned" boolean not null default false, "ban_reason" varchar(255) null, "ban_expires_at" timestamptz null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
+    );
+    this.addSql(
+      `alter table "user" add constraint "user_username_unique" unique ("username");`,
     );
     this.addSql(
       `alter table "user" add constraint "user_email_unique" unique ("email");`,
@@ -54,7 +57,7 @@ export class Migration20261114140546_AuthSchema extends Migration {
     );
 
     this.addSql(
-      `create table "api_key" ("id" bigserial primary key, "name" varchar(255) not null, "searchable_name" tsvector null, "start" varchar(255) null, "prefix" varchar(255) null, "key" text not null, "revoked_at" timestamptz null, "permissions" text[] not null default '{}', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "last_used_at" timestamptz null, "expires_at" timestamptz null, "created_by_id" bigint null, "owner_type" varchar(255) not null, "owner_id" bigint not null);`,
+      `create table "api_key" ("id" bigserial primary key, "owner_type" varchar(255) not null, "owner_id" bigint not null, "created_by_id" bigint null, "name" varchar(255) not null, "searchable_name" tsvector null, "start" varchar(255) null, "prefix" varchar(255) null, "key" text not null, "revoked_at" timestamptz null, "permissions" text[] not null default '{}', "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "last_used_at" timestamptz null, "expires_at" timestamptz null);`,
     );
     this.addSql(
       `alter table "api_key" add constraint "api_key_key_unique" unique ("key");`,
@@ -63,12 +66,12 @@ export class Migration20261114140546_AuthSchema extends Migration {
       `create index "api_key_searchable_name_index" on "public"."api_key" using gin("searchable_name");`,
     );
     this.addSql(
-      `create index "api_key_owner_type_owner_id_index" on "api_key" ("owner_type", "owner_id");`,
-    );
-    this.addSql(`create index "api_key_key_index" on "api_key" ("key");`);
-    this.addSql(`create index "api_key_prefix_index" on "api_key" ("prefix");`);
-    this.addSql(
       `create index "api_key_created_at_index" on "api_key" ("created_at");`,
+    );
+    this.addSql(`create index "api_key_prefix_index" on "api_key" ("prefix");`);
+    this.addSql(`create index "api_key_key_index" on "api_key" ("key");`);
+    this.addSql(
+      `create index "api_key_owner_type_owner_id_index" on "api_key" ("owner_type", "owner_id");`,
     );
 
     this.addSql(
@@ -89,7 +92,10 @@ export class Migration20261114140546_AuthSchema extends Migration {
     );
 
     this.addSql(
-      `create table "workspace" ("id" bigserial primary key, "name" varchar(255) not null, "searchable_name" tsvector null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
+      `create table "workspace" ("id" bigserial primary key, "name" varchar(255) not null, "slug" text not null, "searchable_name" tsvector null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
+    );
+    this.addSql(
+      `alter table "workspace" add constraint "workspace_slug_unique" unique ("slug");`,
     );
     this.addSql(
       `create index "workspace_searchable_name_index" on "public"."workspace" using gin("searchable_name");`,

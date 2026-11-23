@@ -15,5 +15,6 @@ can set or clear a username, and the plugin supports username sign-in. The
 by slug and username respectively.
 
 Use the `userExists` and `workspaceExists` GraphQL queries to
-check whether an identifier is already in use. Usernames and workspace slugs share
-a lowercase format with a length of 3–30 characters.
+check whether an identifier is already in use. PostgreSQL stores usernames and
+slugs as `text`. Auth validates their shared lowercase 3–30 character format
+with Zod.

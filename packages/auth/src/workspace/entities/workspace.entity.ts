@@ -1,6 +1,5 @@
 import { BaseEntity, Collection, type Opt, t } from "@mikro-orm/core";
 import {
-  Check,
   Entity,
   Index,
   OneToMany,
@@ -12,11 +11,6 @@ import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
 import { workspaceScopePolicy } from "../../common/policies/workspace-scope.policy.js";
-import {
-  URL_IDENTIFIER_MAX_LENGTH,
-  URL_IDENTIFIER_MIN_LENGTH,
-  URL_IDENTIFIER_PATTERN,
-} from "../../common/utils/url-identifier.util.js";
 import { WorkspaceMember } from "./workspace-member.entity.js";
 
 /** Built-in Workspace entity with authentication persistence and access policies. */
@@ -31,10 +25,6 @@ import { WorkspaceMember } from "./workspace-member.entity.js";
     workspaceScopePolicy({ property: "id", command: "update" }),
     workspaceScopePolicy({ property: "id", command: "delete" }),
   ],
-})
-@Check({
-  name: "workspace_slug_format_check",
-  expression: `char_length("slug") >= ${String(URL_IDENTIFIER_MIN_LENGTH)} and "slug" ~ '${URL_IDENTIFIER_PATTERN.source}'`,
 })
 @Index({ properties: ["createdAt"] })
 export class Workspace extends BaseEntity {
@@ -51,7 +41,7 @@ export class Workspace extends BaseEntity {
   name!: string;
 
   /** Unique workspace identifier for URL paths. */
-  @Property({ type: t.string, length: URL_IDENTIFIER_MAX_LENGTH, unique: true })
+  @Property({ type: t.text, unique: true })
   @Field(() => String)
   slug!: string;
 
