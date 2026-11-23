@@ -70,7 +70,16 @@ export function createWorkspaceServices(
       vi.fn<() => import("@mikro-orm/core").SessionContext | undefined>(),
     isInTransaction: vi.fn(() => false),
     fork: vi.fn(),
-    assign: vi.fn((entity, data) => Object.assign(entity, data)),
+    assign: vi.fn((entity, data, options?: { ignoreUndefined?: boolean }) =>
+      Object.assign(
+        entity,
+        options?.ignoreUndefined
+          ? Object.fromEntries(
+              Object.entries(data).filter(([, value]) => value !== undefined),
+            )
+          : data,
+      ),
+    ),
     create: vi.fn((Entity, data) => Object.assign(new Entity(), data)),
     find: vi.fn(),
     findOne: vi.fn(),

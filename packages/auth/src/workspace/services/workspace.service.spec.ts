@@ -1,8 +1,13 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { LockMode } from "@mikro-orm/core";
+import { LockMode, UniqueConstraintViolationException } from "@mikro-orm/core";
 import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 
 import { withIdentity } from "../../../test/fixtures/conditional-authorization.fixture.js";
 import { mockRlsContext } from "../../../test/mock-rls-context.js";
@@ -212,6 +217,12 @@ describe("WorkspaceService and cross-domain coordination", () => {
         failure === "missing" ? "Workspace not found" : "Forbidden",
       );
       expect(em.findOne).toHaveBeenCalledTimes(failure === "type" ? 0 : 1);
+      if (failure === "missing") {
+        // The selected row can disappear before the transaction obtains its lock.
+        await expect(
+          workspaceService.updateWorkspace(workspace, { name: "Denied" }),
+        ).rejects.toBeInstanceOf(NotFoundException);
+      }
       expect(workspace.name).toBe("Acme");
       expect(em.assign).not.toHaveBeenCalled();
       expect(em.flush).not.toHaveBeenCalled();
@@ -293,6 +304,29 @@ describe("WorkspaceService and cross-domain coordination", () => {
       workspaceService.getUserWorkspace(workspace.id, user),
     ).resolves.toBe(workspace);
     expect(authorization.assertCurrentUser).toHaveBeenCalledWith(user);
+    em.findOne
+      .mockResolvedValueOnce(workspace)
+      .mockResolvedValueOnce(createTestWorkspaceMember());
+    await expect(
+      workspaceService.getUserWorkspaceBySlug(" acme ", user),
+    ).resolves.toBe(workspace);
+    expect(em.findOne).toHaveBeenCalledWith(Workspace, { slug: "acme" });
+    em.count = vi.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    await expect(workspaceService.slugExists(" acme ", user)).resolves.toBe(
+      true,
+    );
+    await expect(workspaceService.slugExists("available", user)).resolves.toBe(
+      false,
+    );
+    expect(em.count).toHaveBeenCalledWith(Workspace, { slug: "acme" });
+    expect(authorization.authorize).toHaveBeenCalledWith("create", Workspace);
+    await expect(
+      workspaceService.getUserWorkspaceBySlug("invalid/slug", user),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      workspaceService.slugExists("invalid/slug", user),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(em.count).toHaveBeenCalledTimes(2);
     em.findOne.mockResolvedValueOnce(workspace).mockResolvedValueOnce(null);
     await expect(
       workspaceService.getUserWorkspace(workspace.id, user),
@@ -301,6 +335,22 @@ describe("WorkspaceService and cross-domain coordination", () => {
     await expect(
       workspaceService.getUserWorkspace("missing", user),
     ).resolves.toBeNull();
+    await RequestContext.run(new RequestContext({ type: "test" }), async () => {
+      RequestContext.set(SELECTED_WORKSPACE, workspace);
+      RequestContext.set<ApiKeyObject | null>(
+        ApiKey,
+        new UserApiKey(new ApiKey()),
+      );
+      em.findOne.mockResolvedValueOnce(workspace);
+      vi.mocked(authorization.assertUserSession).mockClear();
+      await expect(
+        workspaceService.getUserWorkspaceBySlug("acme", user),
+      ).resolves.toBe(workspace);
+      expect(em.findOne).toHaveBeenLastCalledWith(Workspace, {
+        $and: [{ slug: "acme" }, { id: workspace.id }],
+      });
+      expect(authorization.assertUserSession).not.toHaveBeenCalled();
+    });
   });
   it("validates the current workspace and membership inside the service", async () => {
     const { workspaceService, workspaceMemberService } =
@@ -396,8 +446,12 @@ describe("WorkspaceService and cross-domain coordination", () => {
         name: "Denied",
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      workspaceService.slugExists("acme", createTestUser()),
+    ).rejects.toBeInstanceOf(ForbiddenException);
     expect(em.assign).not.toHaveBeenCalled();
     expect(em.flush).not.toHaveBeenCalled();
+    expect(em.findOne).not.toHaveBeenCalled();
   });
   it.each(["assertCurrentUser", "authorize"] as const)(
     "checks %s before starting unrestricted workspace creation",
@@ -446,6 +500,27 @@ describe("WorkspaceService and cross-domain coordination", () => {
     expect(em.persist).toHaveBeenCalledTimes(2);
     expect(em.flush).toHaveBeenCalledTimes(1);
     expect(em.transactional).toHaveBeenCalledTimes(1);
+    const generated = await workspaceService.createWorkspace(user, {
+      name: "Generated",
+    });
+    expect(generated.slug).toHaveLength(30);
+    expect(generated.slug).toMatch(/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/);
+    await expect(
+      workspaceService.createWorkspace(user, {
+        name: "Invalid",
+        slug: "invalid/slug",
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(em.flush).toHaveBeenCalledTimes(2);
+    em.flush.mockRejectedValueOnce(
+      new UniqueConstraintViolationException(new Error("duplicate")),
+    );
+    await expect(
+      workspaceService.createWorkspace(user, {
+        name: "Duplicate",
+        slug: "acme",
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
   it("uses configured creator and default member roles", async () => {
     const { em, workspaceService, workspaceMemberService } =
@@ -516,6 +591,21 @@ describe("WorkspaceService and cross-domain coordination", () => {
     expect(authorization.assertCurrentWorkspace).toHaveBeenCalledWith(
       workspace,
     );
+    await expect(
+      workspaceService.updateWorkspace(workspace, { slug: "invalid/slug" }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    for (const update of [
+      () => workspaceService.updateWorkspace(workspace, { slug: "taken-slug" }),
+      () =>
+        workspaceService.updatePlatformWorkspace(workspace.id, {
+          slug: "taken-slug",
+        }),
+    ]) {
+      em.flush.mockRejectedValueOnce(
+        new UniqueConstraintViolationException(new Error("duplicate")),
+      );
+      await expect(update()).rejects.toBeInstanceOf(ConflictException);
+    }
   });
   it("rejects workspace deletion without delete ability", async () => {
     const { em, workspaceService, authorization } = createWorkspaceServices();
@@ -842,7 +932,9 @@ describe("conditional authorization", () => {
         }
 
         // A denial on another field must not block a legitimate name edit.
-        await expect(update({ name: "Renamed" })).resolves.toBe(workspace);
+        await expect(
+          update({ name: "Renamed", slug: undefined }),
+        ).resolves.toBe(workspace);
         expect(workspace.name).toBe("Renamed");
         expect(workspace.slug).toBe("protected-slug");
         em.flush.mockClear();

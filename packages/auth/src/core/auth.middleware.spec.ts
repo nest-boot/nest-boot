@@ -1,5 +1,6 @@
 import { EntityManager } from "@mikro-orm/core";
 import { REQUEST, RequestContext } from "@nest-boot/request-context";
+import { BadRequestException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { NextFunction, Request } from "express";
 import { type Mock } from "vitest";
@@ -169,7 +170,7 @@ async function runInRequestContext<T>(
 }
 
 describe("AuthMiddleware", () => {
-  it("ignores both workspace selectors when workspace features are disabled", async () => {
+  it("validates selectors only when enabled and preserves header precedence", async () => {
     const findOne = vi.fn();
     const { middleware } = await createMiddleware(
       vi.fn().mockResolvedValue(null),
@@ -192,6 +193,39 @@ describe("AuthMiddleware", () => {
       ).toBeNull();
     });
     expect(next).toHaveBeenCalledExactlyOnceWith();
+    expect(findOne).not.toHaveBeenCalled();
+    const { middleware: enabled } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      findOne,
+    );
+    for (const header of [
+      [],
+      ["101", "102"],
+      "9223372036854775808",
+      "invalid/slug",
+    ]) {
+      const invalid = {
+        headers: { "x-workspace": header, cookie: "workspace=101" },
+      } as unknown as Request;
+      await runInRequestContext(invalid, async () => {
+        const next = vi.fn();
+        await enabled.use(invalid, {} as never, next);
+        expect(next).toHaveBeenCalledExactlyOnceWith(
+          expect.any(BadRequestException),
+        );
+      });
+    }
+    const empty = {
+      headers: { "x-workspace": "", cookie: "workspace=101" },
+    } as unknown as Request;
+    await runInRequestContext(empty, async () => {
+      const next = vi.fn();
+      await enabled.use(empty, {} as never, next);
+      expect(
+        RequestContext.get<Workspace | null>(SELECTED_WORKSPACE),
+      ).toBeNull();
+      expect(next).toHaveBeenCalledExactlyOnceWith();
+    });
     expect(findOne).not.toHaveBeenCalled();
   });
   it.each([true, false])(
