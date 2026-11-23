@@ -825,14 +825,13 @@ credential-hydration helper for session revocation, not a GraphQL listing API.
 
 ## Internal BetterAuth integration
 
-The Better Auth Username plugin provides a required, unique `User.username`.
-Registration accepts an optional username; when omitted, the backend generates
-a random 30-character username. ORM and OAuth creation use the same default.
-Existing databases must backfill missing usernames before enforcing `NOT NULL`.
+The Better Auth Username plugin provides an optional, unique `User.username`.
+Registration, ORM and OAuth creation leave it unassigned when omitted. The
+database column is nullable; usernames are not generated automatically.
 It uses the same lowercase 3–30 character format as workspace slugs.
 `User.name` is the display name.
-Users can change `username` with `updateCurrentUser`; omission preserves it and
-`null` is rejected. The plugin
+Users can set or change `username` with `updateCurrentUser`; omission preserves it and
+`null` clears it. Non-null values retain the shared format and uniqueness checks. The plugin
 provides `/sign-in/username` under the configured Auth base path when password
 sign-in is enabled.
 

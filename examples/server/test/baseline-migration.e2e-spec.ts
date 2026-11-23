@@ -5,7 +5,7 @@ import { entities as authEntities, workspaceEntities } from '@nest-boot/auth';
 import { JobEntity } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20261123135647_Schema } from '../src/database/migrations/Migration20261123135647_Schema.js';
+import { Migration20261123155228_Schema } from '../src/database/migrations/Migration20261123155228_Schema.js';
 import { createDatabaseFixture } from './postgres.fixture.js';
 
 it('builds the current example schema from ordered migrations and can roll back and rebuild it', async () => {
@@ -27,7 +27,7 @@ it('builds the current example schema from ordered migrations and can roll back 
   try {
     expect((await orm.migrator.up()).map(({ name }) => name)).toEqual([
       Migration00000000000000_Initial.name,
-      Migration20261123135647_Schema.name,
+      Migration20261123155228_Schema.name,
     ]);
     const identifiers = await fixture.pool.query(`
       select table_name, column_name, data_type, is_nullable
@@ -41,7 +41,7 @@ it('builds the current example schema from ordered migrations and can roll back 
         table_name: 'user',
         column_name: 'username',
         data_type: 'text',
-        is_nullable: 'NO',
+        is_nullable: 'YES',
       },
       {
         table_name: 'workspace',
@@ -59,6 +59,13 @@ it('builds the current example schema from ordered migrations and can roll back 
     expect(checks.rows).toEqual([
       { conname: 'user_username_check' },
       { conname: 'workspace_slug_check' },
+    ]);
+    const unassignedUsers = await fixture.pool.query(
+      "insert into \"user\" (name, email, email_verified, roles, permissions) values ('No handle', 'first-unassigned@example.test', true, array['user'], array[]::text[]), ('No handle', 'second-unassigned@example.test', true, array['user'], array[]::text[]) returning username",
+    );
+    expect(unassignedUsers.rows).toEqual([
+      { username: null },
+      { username: null },
     ]);
     // Bypass all application validation to verify the database boundary itself.
     for (const [table, column, constraint] of [
@@ -116,7 +123,7 @@ it('builds the current example schema from ordered migrations and can roll back 
         ...options.migrations,
         migrationsList: [
           Migration00000000000000_Initial,
-          Migration20261123135647_Schema,
+          Migration20261123155228_Schema,
         ],
       },
     });

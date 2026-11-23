@@ -13,6 +13,7 @@ describe("username validation through Better Auth HTTP endpoints", () => {
   let auth: ReturnType<typeof createAuthInstance>;
   let cookie: string;
   let userId: string;
+  let options: Parameters<typeof createAuthInstance>[0];
   const password = "valid-test-password";
   const baseURL = "http://localhost:4100";
 
@@ -21,10 +22,16 @@ describe("username validation through Better Auth HTTP endpoints", () => {
    * @param path - Auth endpoint path relative to its base path.
    * @param body - JSON payload submitted to the endpoint.
    * @param sessionCookie - Optional authenticated session cookie.
+   * @param instance - Auth handler instance to exercise.
    * @returns HTTP response from the configured handler.
    */
-  function post(path: string, body: object, sessionCookie?: string) {
-    return auth.handler(
+  function post(
+    path: string,
+    body: object,
+    sessionCookie?: string,
+    instance = auth,
+  ) {
+    return instance.handler(
       new Request(`${baseURL}/api/auth${path}`, {
         method: "POST",
         headers: {
@@ -48,7 +55,7 @@ describe("username validation through Better Auth HTTP endpoints", () => {
       await orm.em.execute(`create role ${role} nologin`);
     }
     await orm.schema.create();
-    const options = {
+    options = {
       baseURL,
       secret:
         "username-integration-secret-with-more-than-thirty-two-characters",
@@ -87,7 +94,7 @@ describe("username validation through Better Auth HTTP endpoints", () => {
     await orm?.close();
   });
 
-  it.each([null, 0, false, 42, true, [], {}])(
+  it.each([0, false, 42, true, [], {}])(
     "rejects a non-string username %j without changing persistence",
     async (username) => {
       const email = `${randomUUID()}@example.test`;
@@ -131,7 +138,7 @@ describe("username validation through Better Auth HTTP endpoints", () => {
   );
 
   it.each(["existing-user", "Invalid display name"])(
-    "ignores the disabled displayUsername %j when generating a username",
+    "ignores the disabled displayUsername %j and leaves username unassigned",
     async (displayUsername) => {
       const response = await post("/sign-up/email", {
         email: `${randomUUID()}@example.test`,
@@ -141,7 +148,7 @@ describe("username validation through Better Auth HTTP endpoints", () => {
       });
       expect(response.status).toBe(200);
       const { user } = await response.json();
-      expect(user.username).toMatch(/^[a-z][a-z0-9]{29}$/);
+      expect(user.username).toBeNull();
       expect((await orm.em.fork().findOneOrFail(User, user.id)).username).toBe(
         user.username,
       );
@@ -190,35 +197,33 @@ describe("username validation through Better Auth HTTP endpoints", () => {
     );
   });
 
-  it("generates distinct maximum-length usernames when signup omits them", async () => {
-    const usernames: string[] = [];
-    for (let index = 0; index < 2; index++) {
+  it("leaves usernames unassigned when signup omits them or explicitly supplies null", async () => {
+    for (const username of [undefined, null]) {
       const response = await post("/sign-up/email", {
         email: `${randomUUID()}@example.test`,
         name: "Optional username",
         password,
+        username,
       });
       expect(response.status).toBe(200);
       const { user } = await response.json();
-      expect(user.username).toMatch(/^[a-z][a-z0-9]{29}$/);
+      expect(user.username).toBeNull();
       expect((await orm.em.fork().findOneOrFail(User, user.id)).username).toBe(
         user.username,
       );
-      usernames.push(user.username);
     }
-    expect(new Set(usernames).size).toBe(2);
   });
 
-  it("generates usernames through OAuth's internal user-creation path and direct ORM creation", async () => {
+  it("leaves usernames unassigned through OAuth and direct ORM creation", async () => {
     const context = await auth.$context;
     const user = await context.internalAdapter.createUser({
       name: "Provider user",
       email: "provider@example.test",
       emailVerified: true,
     });
-    expect((await orm.em.fork().findOneOrFail(User, user.id)).username).toMatch(
-      /^[a-z][a-z0-9]{29}$/,
-    );
+    expect(
+      (await orm.em.fork().findOneOrFail(User, user.id)).username,
+    ).toBeNull();
     const em = orm.em.fork();
     const direct = em.create(User, {
       name: "ORM user",
@@ -226,13 +231,44 @@ describe("username validation through Better Auth HTTP endpoints", () => {
       emailVerified: true,
     });
     await em.persist(direct).flush();
-    expect(direct.username).toMatch(/^[a-z][a-z0-9]{29}$/);
-    await expect(
-      em.nativeUpdate(User, { id: direct.id }, { username: null }),
-    ).rejects.toThrow(/null/i);
+    expect(direct.username).toBeNull();
   });
 
-  it("preserves an omitted username and rejects clearing it with null", async () => {
+  it("returns null usernames for both real and synthetic verification-gated signup", async () => {
+    const gatedOptions = {
+      ...options,
+      emailAndPassword: {
+        ...options.emailAndPassword,
+        requireEmailVerification: true,
+      },
+    };
+    const gated = createAuthInstance(
+      gatedOptions,
+      orm,
+      { sendMail: vi.fn() } as never,
+      {} as never,
+      new UserDeletionService(orm.em),
+      createTestAuthContext(orm.em, gatedOptions),
+    );
+    const body = {
+      email: `${randomUUID()}@example.test`,
+      name: "Verification user",
+      password,
+    };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await post("/sign-up/email", body, undefined, gated);
+      expect(response.status).toBe(200);
+      expect((await response.json()).user.username).toBeNull();
+    }
+  });
+
+  it("rejects null usernames on sign-in and availability endpoints", async () => {
+    for (const path of ["/sign-in/username", "/is-username-available"]) {
+      expect((await post(path, { username: null, password })).status).toBe(422);
+    }
+  });
+
+  it("preserves an omitted username and allows clearing and reclaiming a handle", async () => {
     const before = await orm.em.fork().findOneOrFail(User, userId);
     const update = await post(
       "/update-user",
@@ -245,9 +281,20 @@ describe("username validation through Better Auth HTTP endpoints", () => {
       username: before.username,
     });
     const clear = await post("/update-user", { username: null }, cookie);
-    expect(clear.status).toBe(400);
-    expect((await orm.em.fork().findOneOrFail(User, userId)).username).toBe(
-      before.username,
-    );
+    expect(clear.status).toBe(200);
+    expect(
+      (await orm.em.fork().findOneOrFail(User, userId)).username,
+    ).toBeNull();
+    const available = await post("/is-username-available", {
+      username: before.username,
+    });
+    expect(await available.json()).toEqual({ available: true });
+    const reclaimed = await post("/sign-up/email", {
+      email: `${randomUUID()}@example.test`,
+      name: "Reclaimed handle",
+      password,
+      username: before.username,
+    });
+    expect(reclaimed.status).toBe(200);
   });
 });

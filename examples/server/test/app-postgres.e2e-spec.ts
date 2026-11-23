@@ -2746,7 +2746,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expect(other.id).not.toBe(id);
   });
 
-  it('generates required usernames and allows changes while rejecting clearing, uppercase and duplicates', async () => {
+  it('leaves usernames optional, allows changing and clearing them, and rejects uppercase and duplicates', async () => {
     const alice = await createAuthenticatedUser('Alice username');
     const bob = await createAuthenticatedUser('Bob username');
     const update = (
@@ -2762,7 +2762,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       gql('{ currentUser { name username } }', { cookies: user.cookies });
     const originalBobUsername = (await read(bob)).body.data.currentUser
       .username;
-    expect(originalBobUsername).toMatch(/^[a-z][a-z0-9]{29}$/);
+    expect(originalBobUsername).toBeNull();
     const invalidUpdate = await update(alice, 'Alice-42');
     expectGraphQLError(invalidUpdate);
     expect(invalidUpdate.body.errors[0].extensions.code).toBe('BAD_USER_INPUT');
@@ -2836,8 +2836,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       username: originalBobUsername,
     });
     const clearing = await update(alice, null);
-    expectGraphQLError(clearing);
-    expect(clearing.body.errors[0].extensions.code).toBe('BAD_USER_INPUT');
+    expectNoGraphQLErrors(clearing);
+    expect((await read(alice)).body.data.currentUser.username).toBeNull();
     expectNoGraphQLErrors(await update(alice, 'alice-renamed'));
     expectNoGraphQLErrors(await update(bob, 'alice-42'));
     expect((await read(bob)).body.data.currentUser.username).toBe('alice-42');

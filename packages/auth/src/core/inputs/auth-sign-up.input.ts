@@ -11,10 +11,10 @@ export class AuthSignUpInput {
   @Field(() => String)
   name!: string;
 
-  /** Optional account handle; the backend generates one when omitted. */
-  @ZodField(() => urlIdentifierSchema.optional())
+  /** Optional account handle; omitted or null leaves it unassigned. */
+  @ZodField(() => urlIdentifierSchema.nullish())
   @Field(() => String, { nullable: true })
-  username?: string;
+  username?: string | null;
 
   /** User email address. */
   @ZodField((z) => z.email().max(255))

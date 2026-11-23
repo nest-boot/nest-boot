@@ -14,6 +14,7 @@
       },
       "username": {
         "label": "Username",
+        "description": "Optional. Leave blank to remove your username.",
         "format": "Use 3–30 lowercase letters, digits, or single hyphens. Start with a letter and end with a letter or digit."
       },
       "email": {

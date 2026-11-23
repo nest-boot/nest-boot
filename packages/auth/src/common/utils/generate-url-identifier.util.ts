@@ -3,7 +3,7 @@ import { randomBytes, randomInt } from "node:crypto";
 import { URL_IDENTIFIER_MAX_LENGTH } from "./url-identifier.util.js";
 
 /**
- * Generates a valid random username or workspace slug at the maximum length.
+ * Generates a valid random workspace slug at the maximum length.
  * @returns A lowercase handle beginning with an ASCII letter.
  */
 export function generateUrlIdentifier(): string {

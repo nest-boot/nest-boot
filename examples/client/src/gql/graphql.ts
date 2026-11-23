@@ -1292,7 +1292,7 @@ export type User = {
   roles: Array<UserRole>;
   sessions: SessionConnection;
   updatedAt: Scalars["DateTime"]["output"];
-  username: Scalars["String"]["output"];
+  username?: Maybe<Scalars["String"]["output"]>;
   workspaces: WorkspaceConnection;
 };
 
@@ -2250,7 +2250,7 @@ export type GetCurrentUserFromAuthenticatedRouteQuery = {
     __typename?: "User";
     id: string;
     name: string;
-    username: string;
+    username?: string | null;
     email: string;
     permissions: Array<UserPermission>;
   } | null;

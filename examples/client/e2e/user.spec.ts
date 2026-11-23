@@ -10,7 +10,7 @@ import { createFirstWorkspace, createWorkspaceByApi } from "./utils/workspace";
 import type { Page } from "@playwright/test";
 
 test.describe("user pages", () => {
-  test("sets a username independently of the display name", async ({
+  test("sets and clears an optional username independently of the display name", async ({
     page,
   }) => {
     const profileUsername = `profile-${randomUUID().replaceAll("-", "").slice(0, 16)}`;
@@ -20,7 +20,12 @@ test.describe("user pages", () => {
     });
     await page.goto("/user/profile");
     const username = page.getByLabel("Username", { exact: true });
-    await expect(username).toHaveValue(/^[a-z][a-z0-9-]{29}$/);
+    await expect(username).toHaveValue("");
+    await expect(
+      page.getByText("Optional. Leave blank to remove your username.", {
+        exact: true,
+      }),
+    ).toBeVisible();
     await username.fill("Profile-User");
     expect(
       await username.evaluate(
@@ -39,6 +44,17 @@ test.describe("user pages", () => {
     await expect(page.getByLabel("Username", { exact: true })).toHaveValue(
       profileUsername,
     );
+    await username.fill("");
+    await page.locator("button[form='user-profile-form']").click();
+    await expect(
+      page.getByText("Profile updated", { exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(username).toHaveValue("");
+    const data = await graphqlRequest<{
+      currentUser: { username: string | null };
+    }>(page.request, "query { currentUser { username } }");
+    expect(data.currentUser.username).toBeNull();
   });
 
   test("opens the personal overview from the user row and persists language and theme preferences", async ({
@@ -80,6 +96,9 @@ test.describe("user pages", () => {
       .click();
     await expect(
       page.getByRole("heading", { name: "个人资料", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("选填，留空可清除用户名。", { exact: true }),
     ).toBeVisible();
 
     const nameInput = page.getByLabel(/^(Name|名称)$/);

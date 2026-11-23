@@ -150,7 +150,7 @@ export function resolveBetterAuthOptions(
           delete ctx.body.displayUsername;
         }
         const value: unknown = ctx.body?.username;
-        if (value === undefined) {
+        if (value === undefined || (writesUser && value === null)) {
           return Promise.resolve();
         }
         if (typeof value !== "string") {

@@ -1159,7 +1159,7 @@ type User {
     query: String
   ): SessionConnection!
   updatedAt: DateTime!
-  username: String!
+  username: String
   workspaces(
     """Returns the elements that come after the specified cursor."""
     after: String

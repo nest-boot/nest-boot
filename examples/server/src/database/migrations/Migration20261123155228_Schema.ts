@@ -1,7 +1,7 @@
 import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20261123135647_Schema extends Migration {
-  override name = 'Migration20261123135647_Schema';
+export class Migration20261123155228_Schema extends Migration {
+  override name = 'Migration20261123155228_Schema';
 
   override up(): void | Promise<void> {
     this.addSql(
@@ -21,7 +21,7 @@ export class Migration20261123135647_Schema extends Migration {
     );
 
     this.addSql(
-      `create table "user" ("id" bigserial primary key, "name" varchar(255) not null, "username" text not null, "searchable_name" tsvector null, "email" varchar(255) not null, "email_verified" boolean not null, "image" varchar(255) null, "roles" text[] not null, "permissions" text[] not null, "banned" boolean not null default false, "ban_reason" varchar(255) null, "ban_expires_at" timestamptz null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
+      `create table "user" ("id" bigserial primary key, "name" varchar(255) not null, "username" text null, "searchable_name" tsvector null, "email" varchar(255) not null, "email_verified" boolean not null, "image" varchar(255) null, "roles" text[] not null, "permissions" text[] not null, "banned" boolean not null default false, "ban_reason" varchar(255) null, "ban_expires_at" timestamptz null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
     );
     this.addSql(
       `alter table "user" add constraint "user_username_unique" unique ("username");`,

@@ -11,7 +11,6 @@ import { SearchableProperty } from "@nest-boot/database";
 import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
-import { generateUrlIdentifier } from "../../common/utils/generate-url-identifier.util.js";
 import { urlIdentifierCheckExpression } from "../../common/utils/url-identifier.util.js";
 import { UserPermission } from "../enums/user-permission.enum.js";
 import { UserRole } from "../enums/user-role.enum.js";
@@ -57,10 +56,10 @@ export class User extends BaseEntity {
   @Field(() => String)
   name!: string;
 
-  /** Unique account handle, generated when omitted during creation. */
-  @Property({ type: t.text, unique: true, onCreate: generateUrlIdentifier })
-  @Field(() => String)
-  username!: Opt<string>;
+  /** Optional unique account handle; follows Better Auth's nullable username. */
+  @Property({ type: t.text, unique: true, nullable: true })
+  @Field(() => String, { nullable: true })
+  username?: string | null = null;
 
   /** Tokenized display name used only for indexed search. */
   @SearchableProperty({ properties: "name", nullable: true })

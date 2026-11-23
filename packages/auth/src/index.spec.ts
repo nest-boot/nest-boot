@@ -430,12 +430,13 @@ describe("exported input contracts", () => {
         rememberMe: false,
       },
       required: ["name", "email", "password"],
+      nullable: ["username"],
     },
     {
       name: "AuthUpdateUserInput",
       values: { name: "User", image: "/avatar.png", username: "alice" },
       required: [],
-      nullable: ["image"],
+      nullable: ["image", "username"],
     },
     {
       name: "BanUserInput",

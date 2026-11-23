@@ -85,7 +85,7 @@ function UserComponent() {
 
   const profileChanges = useFormChanges({
     name: currentUser.name.trim(),
-    username: currentUser.username,
+    username: currentUser.username ?? "",
   });
   const form = useForm({
     ...defaultFormOptions,
@@ -99,14 +99,20 @@ function UserComponent() {
           .max(255, t("common:validation.max_length", { max: 255 })),
         username: createUrlIdentifierSchema(
           t("user:profile.form.username.format"),
-        ),
+        ).or(z.literal("")),
       }),
     },
     onSubmit: async ({ value }) => {
       const name = value.name.trim();
       const username = value.username.trim();
       const values = { name, username };
-      const input = profileChanges.getChanges(values);
+      const changes = profileChanges.getChanges(values);
+      const input = {
+        ...changes,
+        ...(changes.username !== undefined
+          ? { username: changes.username || null }
+          : {}),
+      };
       if (!Object.keys(input).length) return;
 
       try {
@@ -274,7 +280,9 @@ function UserComponent() {
                           id="username"
                           label={t("user:profile.form.username.label")}
                           title={t("user:profile.form.username.format")}
-                          required
+                          description={t(
+                            "user:profile.form.username.description",
+                          )}
                           placeholder="alice"
                           {...urlIdentifierInput}
                           autoComplete="username"

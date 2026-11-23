@@ -9,11 +9,11 @@ Add and backfill the slug column before upgrading existing workspaces. The
 creation API accepts an optional `slug`; the backend generates a random
 30-character slug when omitted. Rename it later through workspace settings.
 
-Enable the Better Auth Username plugin with a required, unique `User.username`.
-Registration accepts an optional username. The backend generates a random
-30-character username when omitted, including OAuth and ORM creation. Profile
-updates can change the username but cannot clear it. Backfill existing users
-before enforcing `NOT NULL`. The plugin supports username sign-in. The
+Enable the Better Auth Username plugin with an optional, unique `User.username`.
+Registration, OAuth and ORM creation leave the username unassigned when omitted.
+Profile updates can set or change the username, omit it to preserve the current
+value, or pass `null` to clear it, following Better Auth's nullable behavior.
+The plugin supports username sign-in. The
 `workspace` and `user` GraphQL queries accept exactly one identifier, by ID or
 by slug and username respectively.
 
