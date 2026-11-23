@@ -94,6 +94,10 @@ describe("MastraStudioMiddleware", () => {
       },
     });
     const server = await startMiddlewareServer(middleware);
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    const clearIntervalSpy = vi.spyOn(globalThis, "clearInterval");
+    const setIntervalSpy = vi.spyOn(globalThis, "setInterval");
+    let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
 
     try {
       // Explicit /index.html must serve the injected HTML rather than the raw template
@@ -122,6 +126,20 @@ describe("MastraStudioMiddleware", () => {
         "public, max-age=31536000, immutable",
       );
 
+      const faviconRes = await fetch(
+        `${server.baseUrl}/api/mastra/studio/mastra-dark-tile.svg`,
+      );
+      expect(faviconRes.status).toBe(200);
+      expect(faviconRes.headers.get("cache-control")).not.toContain(
+        "immutable",
+      );
+
+      const spaRes = await fetch(
+        `${server.baseUrl}/api/mastra/studio/agents/writer-agent`,
+      );
+      expect(spaRes.status).toBe(200);
+      expect(await spaRes.text()).toBe(indexHtml);
+
       // Missing file with extension returns 404 instead of SPA HTML
       const missingPngRes = await fetch(
         `${server.baseUrl}/api/mastra/studio/missing-logo.png`,
@@ -141,15 +159,36 @@ describe("MastraStudioMiddleware", () => {
       );
       expect(sseRes.status).toBe(200);
       expect(sseRes.headers.get("content-type")).toContain("text/event-stream");
+      const heartbeatIndex = setIntervalSpy.mock.calls.findIndex(
+        ([, timeout]) => timeout === 30_000,
+      );
+      expect(heartbeatIndex).toBeGreaterThanOrEqual(0);
+      heartbeatTimer = setIntervalSpy.mock.results[heartbeatIndex]?.value;
       const reader = sseRes.body?.getReader();
       expect(reader).toBeDefined();
       const firstChunk = await reader?.read();
       const decoded = new TextDecoder().decode(firstChunk?.value);
       expect(decoded).toContain("data: connected");
+      vi.advanceTimersByTime(30_000);
+      const heartbeat = await reader?.read();
+      expect(new TextDecoder().decode(heartbeat?.value)).toContain(
+        ": ping\n\n",
+      );
       abortController.abort();
       await reader?.cancel().catch(() => undefined);
     } finally {
-      await server.close();
+      try {
+        await server.close();
+        if (heartbeatTimer) {
+          await vi.waitFor(() => {
+            expect(clearIntervalSpy).toHaveBeenCalledWith(heartbeatTimer);
+          });
+        }
+      } finally {
+        setIntervalSpy.mockRestore();
+        clearIntervalSpy.mockRestore();
+        vi.useRealTimers();
+      }
     }
   });
 

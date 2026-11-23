@@ -307,6 +307,7 @@ describe("MastraModule", () => {
         }),
         WriterFeatureModule,
       ],
+      providers: [{ provide: "REUSED_AGENT", useValue: preconfiguredAgent }],
     }).compile();
 
     await syncModuleRef.init();
@@ -314,6 +315,12 @@ describe("MastraModule", () => {
     try {
       const mastra = syncModuleRef.get(Mastra);
       expect(mastra.getAgent("preconfigured-agent")).toBe(preconfiguredAgent);
+      expect(
+        syncModuleRef
+          .get(MastraManager)
+          .getAgents()
+          .filter((agent) => agent.id === preconfiguredAgent.id),
+      ).toEqual([preconfiguredAgent]);
       expect(mastra.getAgent("writer-agent")).toBe(
         syncModuleRef.get(WriterAgent),
       );
