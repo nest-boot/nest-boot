@@ -18,6 +18,9 @@ export function loadDefaultConfig() {
     timezone: "UTC",
     metadataProvider: TsMorphMetadataProvider,
     metadataCache: { enabled: false },
+    schemaGenerator: {
+      ignoreSchema: ["mastra"],
+    },
     entities: ["dist/**/*.entity.js"],
     entitiesTs: ["src/**/*.entity.ts"],
     migrations: {

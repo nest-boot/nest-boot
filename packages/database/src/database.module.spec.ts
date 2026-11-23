@@ -113,6 +113,7 @@ describe("DatabaseModule", () => {
       expect(config).toMatchObject({
         dataloader: DataloaderType.ALL,
         metadataCache: { enabled: false },
+        schemaGenerator: { ignoreSchema: ["mastra"] },
         entities: ["dist/**/*.entity.js"],
         entitiesTs: ["src/**/*.entity.ts"],
       });
@@ -173,6 +174,37 @@ describe("DatabaseModule", () => {
       });
 
       expect(config.metadataCache).toEqual(expected);
+    },
+  );
+
+  it.each([
+    { input: undefined, expected: { ignoreSchema: ["mastra"] } },
+    { input: {}, expected: { ignoreSchema: ["mastra"] } },
+    {
+      input: { disableForeignKeys: true },
+      expected: { disableForeignKeys: true, ignoreSchema: ["mastra"] },
+    },
+    {
+      input: { ignoreSchema: undefined, disableForeignKeys: true },
+      expected: { disableForeignKeys: true, ignoreSchema: ["mastra"] },
+    },
+    {
+      input: { ignoreSchema: [] },
+      expected: { ignoreSchema: [] },
+    },
+    {
+      input: { ignoreSchema: ["custom"], disableForeignKeys: true },
+      expected: { disableForeignKeys: true, ignoreSchema: ["custom"] },
+    },
+  ])(
+    "should apply schema generator defaults to $input",
+    async ({ input, expected }) => {
+      const config = await getRootOptionsFactory()({
+        dbName: "memory://",
+        schemaGenerator: input,
+      });
+
+      expect(config.schemaGenerator).toEqual(expected);
     },
   );
 
