@@ -137,9 +137,10 @@ describe("SystemAccountFormPage field authorization", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Save$/ }));
     await waitFor(() =>
-      expect(onSave).toHaveBeenCalledExactlyOnceWith({
-        name: "Renamed account",
-      }),
+      expect(onSave).toHaveBeenCalledExactlyOnceWith(
+        { name: "Renamed account", permissions: [] },
+        { name: "Renamed account" },
+      ),
     );
     expect(screen.queryByRole("button", { name: /Disable$/ })).toBeNull();
   });

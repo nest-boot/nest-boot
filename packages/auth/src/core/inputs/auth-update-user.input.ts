@@ -11,10 +11,10 @@ export class AuthUpdateUserInput {
   @Field(() => String, { nullable: true })
   name?: string;
 
-  /** New username, or null to remove the username. */
-  @ZodField(() => urlIdentifierSchema.nullish())
+  /** New username; omit it to preserve the current handle. */
+  @ZodField(() => urlIdentifierSchema.optional())
   @Field(() => String, { nullable: true })
-  username?: string | null;
+  username?: string;
 
   /** New avatar URL, or `null` to remove the avatar. */
   @ZodField((z) => z.string().max(255).nullish())

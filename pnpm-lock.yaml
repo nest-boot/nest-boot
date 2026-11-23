@@ -198,7 +198,7 @@ importers:
         specifier: ^0.8.4
         version: 0.8.6
       '@tanstack/react-form':
-        specifier: ^1.27.7
+        specifier: ^1.33.5
         version: 1.33.5
       '@tanstack/react-router':
         specifier: ^1.170.41

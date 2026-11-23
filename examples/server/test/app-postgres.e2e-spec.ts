@@ -2614,22 +2614,24 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const variables = { id: workspace.id, slug };
     const expectedWorkspace = { id: workspace.id, slug };
     for (const workspaceId of [workspace.id, slug]) {
-      const result = await gql(lookup, {
-        cookies: owner.cookies,
-        variables,
-        workspaceId,
-      });
-      expectNoGraphQLErrors(result);
-      expect(result.body.data).toEqual({
-        byId: expectedWorkspace,
-        bySlug: expectedWorkspace,
-        currentWorkspace: expectedWorkspace,
-      });
+      for (const source of ['header', 'cookie']) {
+        const result = await gql(lookup, {
+          variables,
+          ...(source === 'header'
+            ? { cookies: owner.cookies, workspaceId }
+            : { cookies: [...owner.cookies, `workspace=${workspaceId}`] }),
+        });
+        expectNoGraphQLErrors(result);
+        expect(result.body.data).toEqual({
+          byId: expectedWorkspace,
+          bySlug: expectedWorkspace,
+          currentWorkspace: expectedWorkspace,
+        });
+      }
     }
     const hidden = await gql(lookup, {
-      cookies: stranger.cookies,
+      cookies: [...stranger.cookies, `workspace=${slug}`],
       variables,
-      workspaceId: slug,
     });
     expectNoGraphQLErrors(hidden);
     expect(hidden.body.data).toEqual({
@@ -2657,10 +2659,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     const create =
       'mutation ($input: CreateWorkspaceInput!) { createWorkspace(input: $input) { id } }';
-    for (const input of [
-      { name: 'Missing slug' },
-      { name: 'Null slug', slug: null },
-    ]) {
+    for (const input of [{ name: 'Null slug', slug: null }]) {
       const rejected = await gql(create, {
         cookies: owner.cookies,
         variables: { input },
@@ -2684,7 +2683,70 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     }
   });
 
-  it('updates and clears optional usernames while rejecting uppercase and duplicates', async () => {
+  it('generates workspace slugs and allows authorized renames without changing workspace identity', async () => {
+    const owner = await createAuthenticatedUser('Generated slug owner');
+    const create =
+      'mutation { createWorkspace(input: { name: "Generated slug" }) { id } }';
+    const created = await gql(create, { cookies: owner.cookies });
+    expectNoGraphQLErrors(created);
+    const id = created.body.data.createWorkspace.id;
+    const read = () =>
+      gql('query($id: ID!) { workspace(id: $id) { id name slug } }', {
+        cookies: owner.cookies,
+        variables: { id },
+      });
+    const initial = (await read()).body.data.workspace;
+    expect(initial.slug).toMatch(/^[a-z][a-z0-9]{29}$/);
+    const other = await createWorkspace(
+      owner,
+      'Occupied slug',
+      'occupied-slug',
+    );
+    const rename = (slug: string | null, name?: string) =>
+      gql(
+        'mutation($id: ID!, $input: UpdateWorkspaceInput!) { updateWorkspace(id: $id, input: $input) { id } }',
+        {
+          cookies: owner.cookies,
+          workspaceId: id,
+          variables: { id, input: { slug, ...(name ? { name } : {}) } },
+        },
+      );
+    for (const slug of [null, 'UPPERCASE', 'ab']) {
+      const invalid = await rename(slug);
+      expectGraphQLError(invalid);
+      expect(invalid.body.errors[0].extensions.code).toBe('BAD_USER_INPUT');
+    }
+    const duplicate = await rename('occupied-slug', 'Must not be saved');
+    expectGraphQLError(duplicate);
+    expect(duplicate.body.errors[0].extensions.code).toBe('CONFLICT');
+    expect((await read()).body.data.workspace).toEqual(initial);
+    expectNoGraphQLErrors(await rename(' renamed-workspace '));
+    const selected = await gql(
+      '{ selectedWorkspace { id slug } currentWorkspace { id } }',
+      { cookies: owner.cookies, workspaceId: 'renamed-workspace' },
+    );
+    expectNoGraphQLErrors(selected);
+    expect(selected.body.data).toEqual({
+      selectedWorkspace: { id, slug: 'renamed-workspace' },
+      currentWorkspace: { id },
+    });
+    const old = await gql('{ selectedWorkspace { id } }', {
+      cookies: owner.cookies,
+      workspaceId: initial.slug,
+    });
+    expectNoGraphQLErrors(old);
+    expect(old.body.data.selectedWorkspace).toBeNull();
+    const stranger = await createAuthenticatedUser('Rename outsider');
+    const denied = await gql(
+      'mutation($id: ID!) { updateWorkspace(id: $id, input: { slug: "stolen-slug" }) { id } }',
+      { cookies: stranger.cookies, workspaceId: id, variables: { id } },
+    );
+    expectGraphQLError(denied);
+    expect(denied.body.errors[0].extensions.code).toBe('FORBIDDEN');
+    expect(other.id).not.toBe(id);
+  });
+
+  it('generates required usernames and allows changes while rejecting clearing, uppercase and duplicates', async () => {
     const alice = await createAuthenticatedUser('Alice username');
     const bob = await createAuthenticatedUser('Bob username');
     const update = (
@@ -2698,6 +2760,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       );
     const read = (user: AuthenticatedUser) =>
       gql('{ currentUser { name username } }', { cookies: user.cookies });
+    const originalBobUsername = (await read(bob)).body.data.currentUser
+      .username;
+    expect(originalBobUsername).toMatch(/^[a-z][a-z0-9]{29}$/);
     const invalidUpdate = await update(alice, 'Alice-42');
     expectGraphQLError(invalidUpdate);
     expect(invalidUpdate.body.errors[0].extensions.code).toBe('BAD_USER_INPUT');
@@ -2768,9 +2833,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expect(duplicate.body.errors[0].extensions.code).toBe('CONFLICT');
     expect((await read(bob)).body.data.currentUser).toEqual({
       name: bob.user.name,
-      username: null,
+      username: originalBobUsername,
     });
-    expectNoGraphQLErrors(await update(alice, null));
+    const clearing = await update(alice, null);
+    expectGraphQLError(clearing);
+    expect(clearing.body.errors[0].extensions.code).toBe('BAD_USER_INPUT');
+    expectNoGraphQLErrors(await update(alice, 'alice-renamed'));
     expectNoGraphQLErrors(await update(bob, 'alice-42'));
     expect((await read(bob)).body.data.currentUser.username).toBe('alice-42');
   });
@@ -3312,7 +3380,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         }
       `,
       {
-        cookies: [...alice.cookies, `workspace_id=${aliceWorkspace.id}`],
+        cookies: [...alice.cookies, `workspace=${aliceWorkspace.id}`],
       },
     );
 
@@ -5131,7 +5199,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
               options: {
                 cookies: [
                   ...fixture.owner.cookies,
-                  `workspace_id=${other.workspace.id}`,
+                  `workspace=${other.workspace.id}`,
                 ],
                 bearerToken: other.memberKey.apiKey,
                 workspaceId: fixture.workspace.id,
@@ -5265,7 +5333,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         bearerToken: key.apiKey,
         ...(selection === 'header'
           ? { workspaceId: otherWorkspace.id }
-          : { cookies: [`workspace_id=${otherWorkspace.id}`] }),
+          : { cookies: [`workspace=${otherWorkspace.id}`] }),
       });
       expectNoGraphQLErrors(selected);
       expect(selected.body.data).toEqual({

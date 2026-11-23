@@ -422,6 +422,7 @@ describe("exported input contracts", () => {
       name: "AuthSignUpInput",
       values: {
         name: "User",
+        username: "alice",
         email: "user@example.com",
         password: "pass",
         image: "/avatar.png",
@@ -434,7 +435,7 @@ describe("exported input contracts", () => {
       name: "AuthUpdateUserInput",
       values: { name: "User", image: "/avatar.png", username: "alice" },
       required: [],
-      nullable: ["image", "username"],
+      nullable: ["image"],
     },
     {
       name: "BanUserInput",
@@ -487,7 +488,7 @@ describe("exported input contracts", () => {
     {
       name: "CreateWorkspaceInput",
       values: { name: "Workspace", slug: "workspace" },
-      required: ["name", "slug"],
+      required: ["name"],
     },
     {
       name: "SetWorkspaceMemberPermissionsInput",
@@ -553,7 +554,7 @@ describe("exported input contracts", () => {
     },
     {
       name: "UpdateWorkspaceInput",
-      values: { name: "Workspace" },
+      values: { name: "Workspace", slug: "workspace" },
       required: [],
     },
     { name: "UserIdInput", values: { id: "opaque-id" }, required: ["id"] },

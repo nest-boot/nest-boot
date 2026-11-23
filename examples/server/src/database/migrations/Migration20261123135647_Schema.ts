@@ -1,7 +1,7 @@
 import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20261123120442_Schema extends Migration {
-  override name = 'Migration20261123120442_Schema';
+export class Migration20261123135647_Schema extends Migration {
+  override name = 'Migration20261123135647_Schema';
 
   override up(): void | Promise<void> {
     this.addSql(
@@ -21,7 +21,7 @@ export class Migration20261123120442_Schema extends Migration {
     );
 
     this.addSql(
-      `create table "user" ("id" bigserial primary key, "name" varchar(255) not null, "username" text null, "searchable_name" tsvector null, "email" varchar(255) not null, "email_verified" boolean not null, "image" varchar(255) null, "roles" text[] not null, "permissions" text[] not null, "banned" boolean not null default false, "ban_reason" varchar(255) null, "ban_expires_at" timestamptz null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
+      `create table "user" ("id" bigserial primary key, "name" varchar(255) not null, "username" text not null, "searchable_name" tsvector null, "email" varchar(255) not null, "email_verified" boolean not null, "image" varchar(255) null, "roles" text[] not null, "permissions" text[] not null, "banned" boolean not null default false, "ban_reason" varchar(255) null, "ban_expires_at" timestamptz null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now());`,
     );
     this.addSql(
       `alter table "user" add constraint "user_username_unique" unique ("username");`,
@@ -146,6 +146,9 @@ export class Migration20261123120442_Schema extends Migration {
       `alter table "job" add constraint "job_status_check" check ("status" in ('prioritized', 'unknown', 'waiting', 'active', 'completed', 'failed', 'delayed', 'waiting-children'));`,
     );
 
+    this.addSql(
+      `alter table "user" add constraint "user_username_check" check (char_length("username") >= 3 and char_length("username") <= 30 and "username" collate "C" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*\$');`,
+    );
     this.addSql(`alter table "user" enable row level security;`);
     this.addSql(
       `create policy "user_select_policy" on "user" for select to "authenticated" using (true);`,
@@ -200,6 +203,9 @@ export class Migration20261123120442_Schema extends Migration {
       `create policy "verification_all_policy" on "verification" to "anonymous", "authenticated" using (false) with check (false);`,
     );
 
+    this.addSql(
+      `alter table "workspace" add constraint "workspace_slug_check" check (char_length("slug") >= 3 and char_length("slug") <= 30 and "slug" collate "C" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*\$');`,
+    );
     this.addSql(`alter table "workspace" enable row level security;`);
     this.addSql(
       `create policy "workspace_select_policy" on "workspace" for select to "authenticated", "anonymous" using (true);`,

@@ -1,5 +1,4 @@
 import { useMutation } from "@apollo/client/react";
-import { useForm } from "@tanstack/react-form";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { t } from "i18next";
@@ -7,15 +6,22 @@ import { useTranslation } from "react-i18next";
 import { CircleX, MailCheck } from "lucide-react";
 import { z } from "zod";
 
+import { useForm } from "@tanstack/react-form";
 import { useAuthUserContext } from "../../contexts/auth-user-context";
+import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
-import { urlIdentifierInput } from "@/lib/url-identifier";
+import {
+  createUrlIdentifierSchema,
+  urlIdentifierInput,
+} from "@/lib/url-identifier";
+import { useFormChanges } from "@/hooks/use-form-changes";
+
 import {
   PageLayout,
   PageLayoutSection,
 } from "@/components/thread-ui/page-layout";
 import { toast } from "@/components/thread-ui/toast";
-import { Button } from "@/components/thread-ui/button";
+
 import { Page } from "@/components/thread-ui/page";
 import { Input } from "@/components/thread-ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -29,6 +35,8 @@ import {
 } from "@/components/ui/card";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { graphql } from "@/gql";
+import { SubmitButton } from "@/components/form/submit-button";
+import { getFormErrorMessage } from "@/lib/form-errors";
 
 const UPDATE_USER_FROM_USER_ROUTE = graphql(`
   mutation updateUserFromUserRoute($input: AuthUpdateUserInput!) {
@@ -75,21 +83,39 @@ function UserComponent() {
     !emailChangeCompleted,
   );
 
+  const profileChanges = useFormChanges({
+    name: currentUser.name.trim(),
+    username: currentUser.username,
+  });
   const form = useForm({
-    defaultValues: {
-      name: currentUser.name,
-      username: currentUser.username ?? "",
+    ...defaultFormOptions,
+    defaultValues: profileChanges.defaultValues,
+    validators: {
+      onDynamic: z.object({
+        name: z
+          .string()
+          .trim()
+          .min(1, t("user:profile.form.name.required"))
+          .max(255, t("common:validation.max_length", { max: 255 })),
+        username: createUrlIdentifierSchema(
+          t("user:profile.form.username.format"),
+        ),
+      }),
     },
     onSubmit: async ({ value }) => {
       const name = value.name.trim();
       const username = value.username.trim();
+      const values = { name, username };
+      const input = profileChanges.getChanges(values);
+      if (!Object.keys(input).length) return;
 
       try {
         await updateUser({
-          variables: { input: { name, username: username || null } },
+          variables: { input },
         });
         await refreshAfterMutation(() => router.invalidate());
-        form.reset({ name, username });
+        profileChanges.accept(values);
+        form.reset(values);
         toast.add({ type: "success", title: t("user:profile.toast.updated") });
       } catch (error) {
         toast.add({
@@ -103,8 +129,18 @@ function UserComponent() {
     },
   });
   const emailForm = useForm({
+    ...defaultFormOptions,
     defaultValues: {
       newEmail: "",
+    },
+    validators: {
+      onDynamic: z.object({
+        newEmail: z
+          .string()
+          .trim()
+          .email(t("user:email.form.invalid"))
+          .max(255, t("user:email.form.invalid")),
+      }),
     },
     onSubmit: async ({ value }) => {
       const newEmail = value.newEmail.trim().toLowerCase();
@@ -201,35 +237,25 @@ function UserComponent() {
             <CardContent>
               <form
                 id="user-profile-form"
+                noValidate
                 onSubmit={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  form.handleSubmit();
+                  void submitForm(event, form);
                 }}
               >
                 <FormLayout>
                   <FormLayoutItem>
-                    <form.Field
-                      name="name"
-                      validators={{
-                        onChange: ({ value }) =>
-                          value.trim()
-                            ? undefined
-                            : t("user:profile.form.name.required"),
-                      }}
-                    >
+                    <form.Field name="name">
                       {(field) => (
                         <Input
-                          id="name"
-                          label={t("user:profile.form.name.label")}
+                          name={field.name}
                           value={field.state.value}
-                          onBlur={field.handleBlur}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
-                          error={
-                            field.state.meta.errors.join(", ") || undefined
-                          }
+                          onBlur={() => handleFieldBlur(field)}
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                          id="name"
+                          label={t("user:profile.form.name.label")}
                         />
                       )}
                     </form.Field>
@@ -238,17 +264,20 @@ function UserComponent() {
                     <form.Field name="username">
                       {(field) => (
                         <Input
-                          id="username"
-                          label={t("user:profile.form.username.label")}
-                          title={t("user:profile.form.username.format")}
-                          placeholder="alice"
-                          {...urlIdentifierInput}
-                          autoComplete="username"
+                          name={field.name}
                           value={field.state.value}
-                          onBlur={field.handleBlur}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
+                          onBlur={() => handleFieldBlur(field)}
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                          id="username"
+                          label={t("user:profile.form.username.label")}
+                          title={t("user:profile.form.username.format")}
+                          required
+                          placeholder="alice"
+                          {...urlIdentifierInput}
+                          autoComplete="username"
                         />
                       )}
                     </form.Field>
@@ -257,24 +286,13 @@ function UserComponent() {
               </form>
             </CardContent>
             <CardFooter>
-              <form.Subscribe
-                selector={(state) => [
-                  state.isDirty,
-                  state.isSubmitting,
-                  state.canSubmit,
-                ]}
+              <SubmitButton
+                formApi={form}
+                form="user-profile-form"
+                requireDirty
               >
-                {([isDirty, isSubmitting, canSubmit]) => (
-                  <Button
-                    type="submit"
-                    form="user-profile-form"
-                    disabled={!isDirty || !canSubmit}
-                    loading={isSubmitting}
-                  >
-                    {t("action.save")}
-                  </Button>
-                )}
-              </form.Subscribe>
+                {t("action.save")}
+              </SubmitButton>
             </CardFooter>
           </Card>
         </PageLayoutSection>
@@ -290,10 +308,9 @@ function UserComponent() {
             <CardContent>
               <form
                 id="user-email-form"
+                noValidate
                 onSubmit={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  emailForm.handleSubmit();
+                  void submitForm(event, emailForm);
                 }}
               >
                 <FormLayout>
@@ -306,29 +323,20 @@ function UserComponent() {
                     />
                   </FormLayoutItem>
                   <FormLayoutItem>
-                    <emailForm.Field
-                      name="newEmail"
-                      validators={{
-                        onChange: ({ value }) =>
-                          z.string().email().safeParse(value.trim()).success
-                            ? undefined
-                            : t("user:email.form.invalid"),
-                      }}
-                    >
+                    <emailForm.Field name="newEmail">
                       {(field) => (
                         <Input
+                          name={field.name}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          onBlur={() => handleFieldBlur(field)}
+                          error={getFormErrorMessage(field.state.meta.errors)}
                           id="new-email"
                           type="email"
                           autoComplete="email"
                           label={t("user:email.form.new_email")}
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(event) =>
-                            field.handleChange(event.target.value)
-                          }
-                          error={
-                            field.state.meta.errors.join(", ") || undefined
-                          }
                         />
                       )}
                     </emailForm.Field>
@@ -337,24 +345,13 @@ function UserComponent() {
               </form>
             </CardContent>
             <CardFooter>
-              <emailForm.Subscribe
-                selector={(state) => [
-                  state.isDirty,
-                  state.isSubmitting,
-                  state.canSubmit,
-                ]}
+              <SubmitButton
+                formApi={emailForm}
+                form="user-email-form"
+                requireDirty
               >
-                {([isDirty, isSubmitting, canSubmit]) => (
-                  <Button
-                    type="submit"
-                    form="user-email-form"
-                    disabled={!isDirty || !canSubmit}
-                    loading={isSubmitting}
-                  >
-                    {t("user:email.form.submit")}
-                  </Button>
-                )}
-              </emailForm.Subscribe>
+                {t("user:email.form.submit")}
+              </SubmitButton>
             </CardFooter>
           </Card>
         </PageLayoutSection>

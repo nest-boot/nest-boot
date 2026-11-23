@@ -3,9 +3,11 @@ import type { HashService } from "@nest-boot/hash";
 import type { Mailer } from "@nest-boot/mailer";
 import { RequestContext } from "@nest-boot/request-context";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { genericOAuth } from "better-auth/plugins";
 import {
   username,
+  USERNAME_ERROR_CODES,
   type UsernamePluginWithoutDisplayUsername,
 } from "better-auth/plugins/username";
 
@@ -132,6 +134,37 @@ export function resolveBetterAuthOptions(
     ...(socialProvidersConfig
       ? { socialProviders: socialProvidersConfig }
       : {}),
+    hooks: {
+      before: createAuthMiddleware((ctx) => {
+        const writesUser =
+          ctx.path === "/sign-up/email" || ctx.path === "/update-user";
+        if (
+          !writesUser &&
+          ctx.path !== "/sign-in/username" &&
+          ctx.path !== "/is-username-available"
+        ) {
+          return Promise.resolve();
+        }
+        // Upstream's signup hook copies this disabled field into username.
+        if (writesUser && ctx.body) {
+          delete ctx.body.displayUsername;
+        }
+        const value: unknown = ctx.body?.username;
+        if (value === undefined) {
+          return Promise.resolve();
+        }
+        if (typeof value !== "string") {
+          throw APIError.from(
+            writesUser ? "BAD_REQUEST" : "UNPROCESSABLE_ENTITY",
+            USERNAME_ERROR_CODES.INVALID_USERNAME,
+          );
+        }
+        // Run before plugin hooks: upstream skips non-string writes and checks
+        // raw lengths on sign-in/availability before invoking our validator.
+        ctx.body.username = value.trim();
+        return Promise.resolve();
+      }),
+    },
     plugins: [
       username({
         displayUsername: false,

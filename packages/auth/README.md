@@ -397,7 +397,7 @@ Request decorators distinguish `@AuthUser()`, `@AuthSession()`, `@AuthApiKey()`,
 with `selectedWorkspace` for selection and `currentWorkspace` for authenticated workspace scope.
 
 All credentials use the `x-workspace` header to select a workspace by ID or
-slug. When the header is absent, the `workspace_id` cookie can select by ID.
+slug. When the header is absent, the `workspace` cookie can select by ID or slug.
 An empty header clears selection. Workspace keys require explicit selection and retain private grants
 only in their owning workspace. Any identity can select a different workspace
 for explicitly public resources.
@@ -696,9 +696,14 @@ separately with the caller's read permissions.
 Clients must remove selections such as `name` or `members` from
 these mutation results and regenerate their GraphQL types.
 
-`CreateWorkspaceInput` requires a unique `slug` of 3–30 characters. It starts
+`CreateWorkspaceInput` accepts an optional unique `slug` of 3–30 characters.
+When omitted, the backend generates a random 30-character slug. It can be
+changed later with `updateWorkspace` or in workspace settings. It starts
 with a lowercase ASCII letter and can contain lowercase letters, digits and
 single hyphens between them. Auth validates the format and length with Zod.
+Database `CHECK` constraints enforce the same length and ASCII format for both
+workspace slugs and usernames, including direct SQL writes. MikroORM owns these
+constraints through entity metadata and generates their names automatically.
 When upgrading an existing database, add the `text` column as nullable with a
 unique constraint, backfill a valid slug per workspace, then enforce `NOT NULL`.
 For example, generate random eight-character slugs and retry on collisions.
@@ -820,10 +825,14 @@ credential-hydration helper for session revocation, not a GraphQL listing API.
 
 ## Internal BetterAuth integration
 
-The Better Auth Username plugin provides an optional unique `User.username`.
+The Better Auth Username plugin provides a required, unique `User.username`.
+Registration accepts an optional username; when omitted, the backend generates
+a random 30-character username. ORM and OAuth creation use the same default.
+Existing databases must backfill missing usernames before enforcing `NOT NULL`.
 It uses the same lowercase 3–30 character format as workspace slugs.
 `User.name` is the display name.
-Users can set or clear `username` with `updateCurrentUser`, and the plugin
+Users can change `username` with `updateCurrentUser`; omission preserves it and
+`null` is rejected. The plugin
 provides `/sign-in/username` under the configured Auth base path when password
 sign-in is enabled.
 

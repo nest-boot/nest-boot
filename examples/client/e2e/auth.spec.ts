@@ -57,9 +57,7 @@ test.describe("email authentication", () => {
       page.getByText("Password must contain at least 6 characters."),
     ).toBeVisible();
     await page.getByLabel("Password", { exact: true }).fill("12345678901");
-    await page
-      .getByRole("button", { name: /^(Loading )?(Sign in|Create account)$/ })
-      .click();
+    // After the first submit, schema errors update while typing.
     await expect(
       page.getByText("Password must contain at most 10 characters."),
     ).toBeVisible();

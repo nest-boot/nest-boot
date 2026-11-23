@@ -1,15 +1,17 @@
 import { useId, useState } from "react";
-import { useForm, useStore } from "@tanstack/react-form";
+import { useForm, useSelector } from "@tanstack/react-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import type { PermissionOption } from "@/lib/permissions";
+import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
+import { useFormChanges } from "@/hooks/use-form-changes";
 import { SystemAccountPermission } from "@/gql/graphql";
 import { Page } from "@/components/thread-ui/page";
 import {
   PageLayout,
   PageLayoutSection,
 } from "@/components/thread-ui/page-layout";
-import { Input } from "@/components/thread-ui/input";
+
 import { Button } from "@/components/thread-ui/button";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -23,6 +25,8 @@ import { getFormErrorMessage } from "@/lib/form-errors";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { systemAccountSearchSchema } from "@/schemas/system-account-search-schema";
 import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
+import { SubmitButton } from "@/components/form/submit-button";
+import { Input } from "@/components/thread-ui/input";
 
 interface Account {
   id: string;
@@ -39,10 +43,16 @@ interface Props {
   canToggle?: boolean;
   canReadKeys?: boolean;
   options: ReadonlyArray<PermissionOption<SystemAccountPermission>>;
-  onSave: (input: {
-    name: string;
-    permissions?: Array<SystemAccountPermission>;
-  }) => Promise<void>;
+  onSave: (
+    input: {
+      name: string;
+      permissions: Array<SystemAccountPermission>;
+    },
+    changes: Partial<{
+      name: string;
+      permissions: Array<SystemAccountPermission>;
+    }>,
+  ) => Promise<void>;
   onToggle?: () => Promise<void>;
   onDelete?: () => Promise<void>;
 }
@@ -68,14 +78,19 @@ export function SystemAccountFormPage({
     key: [user.id, "admin", "system-accounts"],
     searchSchema: systemAccountSearchSchema,
   });
-  const form = useForm({
-    defaultValues: {
-      name: account?.name ?? "",
+  const metadataChanges = useFormChanges(
+    {
+      name: account?.name.trim() ?? "",
       permissions:
         account?.permissions ?? ([] as Array<SystemAccountPermission>),
     },
+    { setFields: ["permissions"] },
+  );
+  const form = useForm({
+    ...defaultFormOptions,
+    defaultValues: metadataChanges.defaultValues,
     validators: {
-      onSubmit: z.object({
+      onDynamic: z.object({
         name: z
           .string()
           .trim()
@@ -84,21 +99,16 @@ export function SystemAccountFormPage({
         permissions: z.array(z.enum(SystemAccountPermission)),
       }),
     },
-    listeners: {
-      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
-    },
+
     onSubmit: async ({ value, formApi }) => {
       if (!canSave || pending) return;
+      const values = { ...value, name: value.name.trim() };
+      const changes = metadataChanges.getChanges(values);
+      if (account && !Object.keys(changes).length) return;
       try {
-        const changed =
-          !account ||
-          [...account.permissions].sort().join() !==
-            [...value.permissions].sort().join();
-        await onSave({
-          name: value.name.trim(),
-          ...(changed ? { permissions: value.permissions } : {}),
-        });
-        formApi.reset(value);
+        await onSave(values, changes);
+        metadataChanges.accept(values);
+        formApi.reset(values);
         toast.add({ type: "success", title: t("admin:system_accounts.saved") });
       } catch (error) {
         formApi.setErrorMap({
@@ -110,8 +120,8 @@ export function SystemAccountFormPage({
       }
     },
   });
-  const submitting = useStore(form.store, (state) => state.isSubmitting);
-  const error = useStore(form.store, (state) =>
+  const submitting = useSelector(form.store, (state) => state.isSubmitting);
+  const error = useSelector(form.store, (state) =>
     getFormErrorMessage(state.errors),
   );
   const action = async (remove: boolean) => {
@@ -207,12 +217,7 @@ export function SystemAccountFormPage({
                 id={id}
                 noValidate
                 onSubmit={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (canSave && !submitting && !pending) {
-                    form.setErrorMap({ onSubmit: undefined });
-                    void form.handleSubmit();
-                  }
+                  void submitForm(event, form, !canSave || pending);
                 }}
               >
                 <FormLayout>
@@ -220,13 +225,15 @@ export function SystemAccountFormPage({
                     <form.Field name="name">
                       {(field) => (
                         <Input
-                          label={t("admin:users.table.name")}
+                          name={field.name}
                           value={field.state.value}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
-                          disabled={!canEditName || pending || submitting}
+                          onBlur={() => handleFieldBlur(field)}
                           error={getFormErrorMessage(field.state.meta.errors)}
+                          label={t("admin:users.table.name")}
+                          disabled={!canEditName || pending || submitting}
                         />
                       )}
                     </form.Field>
@@ -266,14 +273,9 @@ export function SystemAccountFormPage({
             </CardContent>
             {canSave && (
               <CardFooter>
-                <Button
-                  type="submit"
-                  form={id}
-                  loading={submitting}
-                  disabled={pending}
-                >
+                <SubmitButton formApi={form} form={id} disabled={pending}>
                   {t(account ? "action.save" : "action.create")}
-                </Button>
+                </SubmitButton>
               </CardFooter>
             )}
           </Card>

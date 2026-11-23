@@ -1,5 +1,5 @@
 import { useId, useMemo, useState } from "react";
-import { useForm, useStore } from "@tanstack/react-form";
+import { useForm, useSelector } from "@tanstack/react-form";
 import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { LogIn, ShieldCheck, UserPlus } from "lucide-react";
@@ -7,6 +7,7 @@ import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import type { ComponentProps } from "react";
+import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
 import { createExistingPasswordSchema } from "@/lib/password-schema";
 import { usePasswordPolicy } from "@/hooks/use-password-policy";
 import { getFormErrorMessage } from "@/lib/form-errors";
@@ -22,7 +23,7 @@ import { toast } from "@/components/thread-ui/toast";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/thread-ui/button";
-import { Input } from "@/components/thread-ui/input";
+
 import {
   Card,
   CardContent,
@@ -39,6 +40,8 @@ import {
   resolvePostAuthPath,
 } from "@/lib/auth-redirect";
 import { graphql } from "@/gql";
+import { SubmitButton } from "@/components/form/submit-button";
+import { Input } from "@/components/thread-ui/input";
 
 const AUTH_SIGN_IN_FROM_LOGIN_FORM = graphql(`
   mutation signInFromLoginForm($input: AuthSignInInput!) {
@@ -154,11 +157,10 @@ export function LoginForm({
       ? createLoginSchema()
       : createRegisterSchema(createLoginSchema(), passwordSchema);
   const form = useForm({
+    ...defaultFormOptions,
     defaultValues: { email: "", name: "", password: "", rememberMe: true },
-    validators: { onSubmit: schema },
-    listeners: {
-      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
-    },
+    validators: { onDynamic: schema },
+
     onSubmit: async ({ value, formApi }) => {
       try {
         if (mode === "login") {
@@ -225,8 +227,8 @@ export function LoginForm({
       }
     },
   });
-  const loading = useStore(form.store, (state) => state.isSubmitting);
-  const formError = useStore(form.store, (state) =>
+  const loading = useSelector(form.store, (state) => state.isSubmitting);
+  const formError = useSelector(form.store, (state) =>
     getFormErrorMessage(state.errors),
   );
 
@@ -263,11 +265,7 @@ export function LoginForm({
               noValidate
               id={formId}
               onSubmit={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (form.state.isSubmitting) return;
-                form.setErrorMap({ onSubmit: undefined });
-                form.handleSubmit();
+                void submitForm(event, form);
               }}
               className="mt-6"
             >
@@ -277,15 +275,17 @@ export function LoginForm({
                     <form.Field name="name">
                       {(field) => (
                         <Input
-                          id="name"
-                          autoComplete="name"
-                          label={t("auth:form.name.label")}
-                          placeholder={t("auth:form.name.placeholder")}
+                          name={field.name}
                           value={field.state.value}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
+                          onBlur={() => handleFieldBlur(field)}
                           error={getFormErrorMessage(field.state.meta.errors)}
+                          id="name"
+                          autoComplete="name"
+                          label={t("auth:form.name.label")}
+                          placeholder={t("auth:form.name.placeholder")}
                         />
                       )}
                     </form.Field>
@@ -296,16 +296,18 @@ export function LoginForm({
                   <form.Field name="email">
                     {(field) => (
                       <Input
+                        name={field.name}
+                        value={field.state.value}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        onBlur={() => handleFieldBlur(field)}
+                        error={getFormErrorMessage(field.state.meta.errors)}
                         id="email"
                         type="email"
                         autoComplete="email"
                         label={t("auth:form.email.label")}
                         placeholder={t("auth:form.email.placeholder")}
-                        value={field.state.value}
-                        onChange={(event) =>
-                          field.handleChange(event.target.value)
-                        }
-                        error={getFormErrorMessage(field.state.meta.errors)}
                       />
                     )}
                   </form.Field>
@@ -315,6 +317,13 @@ export function LoginForm({
                   <form.Field name="password">
                     {(field) => (
                       <Input
+                        name={field.name}
+                        value={field.state.value}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        onBlur={() => handleFieldBlur(field)}
+                        error={getFormErrorMessage(field.state.meta.errors)}
                         id="password"
                         type="password"
                         autoComplete={
@@ -322,11 +331,6 @@ export function LoginForm({
                         }
                         label={t("auth:form.password.label")}
                         placeholder={t("auth:form.password.placeholder")}
-                        value={field.state.value}
-                        onChange={(event) =>
-                          field.handleChange(event.target.value)
-                        }
-                        error={getFormErrorMessage(field.state.meta.errors)}
                       />
                     )}
                   </form.Field>
@@ -374,15 +378,10 @@ export function LoginForm({
         <CardFooter>
           <FormLayout className="w-full">
             <FormLayoutItem>
-              <Button
-                type="submit"
-                form={formId}
-                className="w-full"
-                loading={loading}
-              >
+              <SubmitButton formApi={form} form={formId} className="w-full">
                 {mode === "login" ? <LogIn /> : <UserPlus />}
                 {submitLabel}
-              </Button>
+              </SubmitButton>
             </FormLayoutItem>
 
             {socialProviders.length > 0 && (
@@ -427,7 +426,11 @@ export function LoginForm({
 function createLoginSchema() {
   return z.object({
     name: z.string(),
-    email: z.string().email(t("auth:form.email.invalid")),
+    email: z
+      .string()
+      .trim()
+      .email(t("auth:form.email.invalid"))
+      .max(255, t("auth:form.email.invalid")),
     password: createExistingPasswordSchema(),
     rememberMe: z.boolean(),
   });
@@ -439,7 +442,11 @@ function createRegisterSchema(
 ) {
   return loginSchema.extend({
     password: passwordSchema,
-    name: z.string().trim().min(1, t("auth:form.name.required")),
+    name: z
+      .string()
+      .trim()
+      .min(1, t("auth:form.name.required"))
+      .max(255, t("common:validation.max_length", { max: 255 })),
   });
 }
 

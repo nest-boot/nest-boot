@@ -13,6 +13,7 @@ const GET_CURRENT_WORKSPACE_FROM_WORKSPACE_LAYOUT = graphql(`
     workspace(id: $workspaceId) {
       id
       name
+      slug
       createdAt
       updatedAt
     }

@@ -94,6 +94,45 @@ const props = {
 };
 
 describe("ApiKeyFormPage field authorization", () => {
+  it("keeps untouched grants out of the patch when server props refresh during a draft", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const { rerender } = render(
+      <ApiKeyFormPage {...props} {...access(["name"])} onSave={onSave} />,
+      { wrapper },
+    );
+    fireEvent.change(screen.getByLabelText(apiKeyMessages.form.name.label), {
+      target: { value: "Draft name" },
+    });
+    rerender(
+      <ApiKeyFormPage
+        {...props}
+        apiKey={{
+          ...apiKey,
+          permissions: [SystemApiKeyPermission.USER__READ],
+        }}
+        {...access(["name"])}
+        onSave={onSave}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Save$/ }));
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledExactlyOnceWith(
+        { name: "Draft name", permissions: [] },
+        { name: "Draft name" },
+      ),
+    );
+    fireEvent.change(screen.getByLabelText(apiKeyMessages.form.name.label), {
+      target: { value: "Next name" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Save$/ }));
+    await waitFor(() =>
+      expect(onSave).toHaveBeenLastCalledWith(
+        { name: "Next name", permissions: [] },
+        { name: "Next name" },
+      ),
+    );
+  });
+
   it("allows a revocation-only actor to revoke without offering or submitting a metadata save", async () => {
     const onSave = vi.fn();
     const onRevoke = vi.fn();
@@ -135,10 +174,10 @@ describe("ApiKeyFormPage field authorization", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Save$/ }));
     await waitFor(() =>
-      expect(onSave).toHaveBeenCalledExactlyOnceWith({
-        name: "Renamed deployment",
-        permissions: [],
-      }),
+      expect(onSave).toHaveBeenCalledExactlyOnceWith(
+        { name: "Renamed deployment", permissions: [] },
+        { name: "Renamed deployment" },
+      ),
     );
     expect(screen.queryByRole("button", { name: /Revoke$/ })).toBeNull();
     expect(onRevoke).not.toHaveBeenCalled();

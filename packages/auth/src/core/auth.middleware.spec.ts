@@ -181,7 +181,7 @@ describe("AuthMiddleware", () => {
     const request = {
       headers: {
         "x-workspace": "invalid",
-        cookie: "workspace_id=also-invalid",
+        cookie: "workspace=also-invalid",
       },
     } as unknown as Request;
     const next = vi.fn();
@@ -1097,31 +1097,36 @@ describe("AuthMiddleware", () => {
     });
     expect(next).toHaveBeenCalledExactlyOnceWith();
   });
-  it("reads the selected workspace from the raw Cookie header", async () => {
-    const workspace = Object.assign(new TestWorkspace(), {
-      id: "101",
-      name: "Acme",
-    });
-    const findOne = vi.fn().mockResolvedValue(workspace);
-    const { middleware } = await createMiddleware(
-      vi.fn().mockResolvedValue(null),
-      findOne,
-    );
-    const request = {
-      headers: {
-        cookie: "unrelated=value; workspace_id=101",
-      },
-    } as unknown as Request;
-    await runInRequestContext(request, async () => {
-      await middleware.use(request, {} as never, vi.fn());
-      expect(RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)).toBe(
-        workspace,
+  it.each([
+    { selector: "101", where: { id: "101" } },
+    { selector: "acme", where: { slug: "acme" } },
+  ])(
+    "reads workspace $selector from the raw Cookie header",
+    async ({ selector, where }) => {
+      const workspace = Object.assign(new TestWorkspace(), {
+        id: "101",
+        name: "Acme",
+        slug: "acme",
+      });
+      const findOne = vi.fn().mockResolvedValue(workspace);
+      const { middleware } = await createMiddleware(
+        vi.fn().mockResolvedValue(null),
+        findOne,
       );
-    });
-    expect(findOne).toHaveBeenCalledWith(WorkspaceEntity, {
-      id: "101",
-    });
-  });
+      const request = {
+        headers: {
+          cookie: `unrelated=value; workspace=${selector}`,
+        },
+      } as unknown as Request;
+      await runInRequestContext(request, async () => {
+        await middleware.use(request, {} as never, vi.fn());
+        expect(RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)).toBe(
+          workspace,
+        );
+      });
+      expect(findOne).toHaveBeenCalledWith(WorkspaceEntity, where);
+    },
+  );
 });
 
 describe("optional workspace behavior", () => {
@@ -1152,7 +1157,7 @@ describe("optional workspace behavior", () => {
       const request = {
         headers: {
           "x-workspace": "123",
-          cookie: "workspace_id=456",
+          cookie: "workspace=456",
           ...(kind === "user-key"
             ? { authorization: "Bearer personal-key" }
             : {}),

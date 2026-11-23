@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { expect, test } from "@playwright/test";
 
 import { registerUser, testPassword } from "./utils/auth";
@@ -11,19 +13,21 @@ test.describe("user pages", () => {
   test("sets a username independently of the display name", async ({
     page,
   }) => {
+    const profileUsername = `profile-${randomUUID().replaceAll("-", "").slice(0, 16)}`;
     await registerUser(page, {
       email: `${uniqueSeed("username-profile")}@example.com`,
       name: "Profile Display Name",
     });
     await page.goto("/user/profile");
     const username = page.getByLabel("Username", { exact: true });
+    await expect(username).toHaveValue(/^[a-z][a-z0-9-]{29}$/);
     await username.fill("Profile-User");
     expect(
       await username.evaluate(
         (input: HTMLInputElement) => input.validity.patternMismatch,
       ),
     ).toBe(true);
-    await username.fill("profile-user");
+    await username.fill(profileUsername);
     await page.locator("button[form='user-profile-form']").click();
     await expect(
       page.getByText("Profile updated", { exact: true }),
@@ -33,7 +37,7 @@ test.describe("user pages", () => {
       "Profile Display Name",
     );
     await expect(page.getByLabel("Username", { exact: true })).toHaveValue(
-      "profile-user",
+      profileUsername,
     );
   });
 

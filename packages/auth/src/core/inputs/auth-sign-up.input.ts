@@ -1,6 +1,8 @@
 import { Field, InputType } from "@nest-boot/graphql";
 import { ZodField } from "@nest-boot/validator";
 
+import { urlIdentifierSchema } from "../../common/utils/url-identifier.util.js";
+
 /** Email and password registration input. */
 @InputType()
 export class AuthSignUpInput {
@@ -8,6 +10,11 @@ export class AuthSignUpInput {
   @ZodField((z) => z.string().trim().min(1).max(255))
   @Field(() => String)
   name!: string;
+
+  /** Optional account handle; the backend generates one when omitted. */
+  @ZodField(() => urlIdentifierSchema.optional())
+  @Field(() => String, { nullable: true })
+  username?: string;
 
   /** User email address. */
   @ZodField((z) => z.email().max(255))

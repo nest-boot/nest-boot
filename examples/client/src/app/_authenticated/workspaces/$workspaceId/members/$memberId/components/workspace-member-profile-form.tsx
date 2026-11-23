@@ -1,17 +1,21 @@
 import { useId } from "react";
 import { useMutation } from "@apollo/client/react";
-import { useForm } from "@tanstack/react-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
-
+import { useForm } from "@tanstack/react-form";
 import type { WorkspaceMemberFormProps } from "./workspace-member-form-props";
+import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
+import { useFormChanges } from "@/hooks/use-form-changes";
+
 import { CardContent, CardFooter } from "@/components/ui/card";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { graphql } from "@/gql";
 import { WorkspaceMemberType } from "@/gql/graphql";
-import { Button } from "@/components/thread-ui/button";
-import { Input } from "@/components/thread-ui/input";
+
 import { FieldSet } from "@/components/ui/field";
+import { SubmitButton } from "@/components/form/submit-button";
+import { Input } from "@/components/thread-ui/input";
+import { getFormErrorMessage } from "@/lib/form-errors";
 
 const UPDATE_WORKSPACE_MEMBER = graphql(`
   mutation updateWorkspaceMemberFromWorkspaceMemberRoute(
@@ -37,29 +41,54 @@ export function WorkspaceMemberProfileForm({
     ? (["name"] as const)
     : (["name", "email"] as const);
   const [updateWorkspaceMember] = useMutation(UPDATE_WORKSPACE_MEMBER);
+  const profileChanges = useFormChanges({
+    name: member.name.trim(),
+    email: member.email ?? "",
+  });
   const form = useForm({
-    defaultValues: { name: member.name, email: member.email ?? "" },
+    ...defaultFormOptions,
+    defaultValues: profileChanges.defaultValues,
     validators: {
-      onSubmit: z.object({
-        name: z.string().trim().min(1).max(255),
-        email: z.string().email().or(z.literal("")),
+      onDynamic: z.object({
+        name: z
+          .string()
+          .trim()
+          .min(1, t("user:profile.form.name.required"))
+          .max(255, t("common:validation.max_length", { max: 255 })),
+        email: z
+          .string()
+          .trim()
+          .pipe(
+            z
+              .string()
+              .email(t("auth:form.email.invalid"))
+              .max(255, t("auth:form.email.invalid"))
+              .or(z.literal("")),
+          ),
       }),
     },
     onSubmit: async ({ value }) => {
+      const values = { name: value.name.trim(), email: value.email.trim() };
+      const changes = profileChanges.getChanges(values);
+      const input = {
+        ...(changes.name !== undefined ? { name: changes.name } : {}),
+        ...(!isWorkspaceServiceAccount && changes.email !== undefined
+          ? { email: changes.email || null }
+          : {}),
+      };
+      if (!Object.keys(input).length) return;
       const saved = await onSave(() =>
         updateWorkspaceMember({
           variables: {
             id: member.id,
-            input: {
-              name: value.name.trim(),
-              ...(!isWorkspaceServiceAccount
-                ? { email: value.email || null }
-                : {}),
-            },
+            input,
           },
         }),
       );
-      if (saved) form.reset({ ...value, name: value.name.trim() });
+      if (saved) {
+        profileChanges.accept(values);
+        form.reset(values);
+      }
     },
   });
   return (
@@ -67,10 +96,9 @@ export function WorkspaceMemberProfileForm({
       <CardContent>
         <form
           id={formId}
+          noValidate
           onSubmit={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            void form.handleSubmit();
+            void submitForm(event, form);
           }}
         >
           <FieldSet
@@ -83,6 +111,13 @@ export function WorkspaceMemberProfileForm({
                   <form.Field name={name}>
                     {(field) => (
                       <Input
+                        name={field.name}
+                        value={field.state.value}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        onBlur={() => handleFieldBlur(field)}
+                        error={getFormErrorMessage(field.state.meta.errors)}
                         id={`member-${name}`}
                         label={t(`workspace-member:details.form.${name}.label`)}
                         description={
@@ -93,15 +128,6 @@ export function WorkspaceMemberProfileForm({
                               )
                         }
                         disabled={disabled}
-                        error={field.state.meta.errors
-                          .map((error) => error?.message)
-                          .filter(Boolean)
-                          .join(", ")}
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(event) =>
-                          field.handleChange(event.target.value)
-                        }
                       />
                     )}
                   </form.Field>
@@ -112,24 +138,14 @@ export function WorkspaceMemberProfileForm({
         </form>
       </CardContent>
       <CardFooter>
-        <form.Subscribe
-          selector={(state) => [
-            state.isDirty,
-            state.canSubmit,
-            state.isSubmitting,
-          ]}
+        <SubmitButton
+          formApi={form}
+          form={formId}
+          requireDirty
+          disabled={disabled}
         >
-          {([isDirty, canSubmit, isSubmitting]) => (
-            <Button
-              type="submit"
-              form={formId}
-              disabled={disabled || !isDirty || !canSubmit}
-              loading={isSubmitting}
-            >
-              {t("action.save")}
-            </Button>
-          )}
-        </form.Subscribe>
+          {t("action.save")}
+        </SubmitButton>
       </CardFooter>
     </>
   );

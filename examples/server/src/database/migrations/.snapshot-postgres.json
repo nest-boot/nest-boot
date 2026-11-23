@@ -1611,7 +1611,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "unique": true,
           "length": null,
           "precision": null,
@@ -1666,7 +1666,14 @@
           "unique": true
         }
       ],
-      "checks": [],
+      "checks": [
+        {
+          "name": "user_username_check",
+          "expression": "char_length(\"username\") >= 3 and char_length(\"username\") <= 30 and \"username\" collate \"C\" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*$'",
+          "definition": "check (char_length(\"username\") >= 3 and char_length(\"username\") <= 30 and \"username\" collate \"C\" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*$')",
+          "columnName": "username"
+        }
+      ],
       "triggers": [],
       "foreignKeys": {},
       "comment": null,
@@ -1978,7 +1985,14 @@
           "unique": true
         }
       ],
-      "checks": [],
+      "checks": [
+        {
+          "name": "workspace_slug_check",
+          "expression": "char_length(\"slug\") >= 3 and char_length(\"slug\") <= 30 and \"slug\" collate \"C\" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*$'",
+          "definition": "check (char_length(\"slug\") >= 3 and char_length(\"slug\") <= 30 and \"slug\" collate \"C\" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*$')",
+          "columnName": "slug"
+        }
+      ],
       "triggers": [],
       "foreignKeys": {},
       "comment": null,

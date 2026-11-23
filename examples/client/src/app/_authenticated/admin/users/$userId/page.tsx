@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useForm, useStore } from "@tanstack/react-form";
+import { useForm, useSelector } from "@tanstack/react-form";
 import { z } from "zod";
 import { useLazyQuery, useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
@@ -9,9 +9,10 @@ import { useTranslation } from "react-i18next";
 
 import { useAuthUserContext } from "../../../contexts/auth-user-context";
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
-import type { UserPermission } from "@/lib/permissions";
-import type { UserRole } from "@/gql/graphql";
+import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
+import { UserPermission, UserRole } from "@/gql/graphql";
 import { usePasswordPolicy } from "@/hooks/use-password-policy";
+import { useFormChanges } from "@/hooks/use-form-changes";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { Link } from "@/components/link";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
@@ -33,7 +34,7 @@ import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Badge } from "@/components/thread-ui/badge";
 import { Button } from "@/components/thread-ui/button";
 import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
-import { Input } from "@/components/thread-ui/input";
+
 import { Page } from "@/components/thread-ui/page";
 import {
   Card,
@@ -46,6 +47,8 @@ import {
 import { graphql } from "@/gql";
 import { getPermissionOptions } from "@/lib/permissions";
 import { createAbilitySubject } from "@/lib/ability";
+import { SubmitButton } from "@/components/form/submit-button";
+import { Input } from "@/components/thread-ui/input";
 
 const GET_ADMIN_USER_NEIGHBORS = graphql(`
   query getAdminUserNeighbors(
@@ -363,95 +366,132 @@ function AdminUserDetails() {
       ),
     );
 
+  const profileChanges = useFormChanges({
+    name: (user ?? initialUser).name.trim(),
+    email: (user ?? initialUser).email,
+    emailVerified: (user ?? initialUser).emailVerified,
+  });
   const profileForm = useForm({
-    defaultValues: {
-      name: user?.name ?? "",
-      email: user?.email ?? "",
-      emailVerified: user?.emailVerified ?? false,
-    },
+    ...defaultFormOptions,
+    defaultValues: profileChanges.defaultValues,
     validators: {
-      onSubmit: z.object({
-        name: z.string().trim().min(1, t("auth:form.name.required")),
-        email: z.string().email(t("auth:form.email.invalid")),
+      onDynamic: z.object({
+        name: z
+          .string()
+          .trim()
+          .min(1, t("auth:form.name.required"))
+          .max(255, t("common:validation.max_length", { max: 255 })),
+        email: z
+          .string()
+          .trim()
+          .email(t("auth:form.email.invalid"))
+          .max(255, t("auth:form.email.invalid")),
         emailVerified: z.boolean(),
       }),
     },
-    listeners: {
-      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
-    },
+
     onSubmit: async ({ value, formApi }) => {
       if (!canUpdate) return;
+      const values = {
+        ...value,
+        name: value.name.trim(),
+        email: value.email.trim(),
+      };
+      const changes = profileChanges.getChanges(values);
+      const input = {
+        ...(changes.name !== undefined ? { name: changes.name } : {}),
+        ...(canSetEmail && changes.email !== undefined
+          ? { email: changes.email }
+          : {}),
+        ...(canSetEmail && changes.emailVerified !== undefined
+          ? { emailVerified: changes.emailVerified }
+          : {}),
+      };
+      if (!Object.keys(input).length) return;
       const error = await run(
         () =>
           updateUser({
             variables: {
               id: userId,
-              input: {
-                name: value.name,
-                ...(canSetEmail
-                  ? { email: value.email, emailVerified: value.emailVerified }
-                  : {}),
-              },
+              input,
             },
           }),
         t("admin:user.profile.success"),
       );
       if (error) formApi.setErrorMap({ onSubmit: { form: error, fields: {} } });
-      else formApi.reset(value);
+      else {
+        profileChanges.accept(values);
+        formApi.reset(values);
+      }
     },
   });
+  const roleChanges = useFormChanges(
+    { roles: (user ?? initialUser).roles },
+    { setFields: ["roles"] },
+  );
   const rolesForm = useForm({
-    defaultValues: { roles: user?.roles ?? [] },
+    ...defaultFormOptions,
+    defaultValues: roleChanges.defaultValues,
     validators: {
-      onSubmit: ({ value }) =>
-        canGrantRoles(value.roles)
-          ? undefined
-          : { fields: { roles: t("admin:user.roles.invalid") } },
+      onDynamic: z.object({
+        roles: z
+          .array(z.enum(UserRole))
+          .refine(canGrantRoles, t("admin:user.roles.invalid")),
+      }),
     },
-    listeners: {
-      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
-    },
+
     onSubmit: async ({ value, formApi }) => {
       if (!canSetRoles || !canGrantRoles(value.roles)) return;
+      if (!roleChanges.getChanges(value).roles) return;
       const error = await run(
         () => setUserRoles({ variables: { id: userId, input: value } }),
         t("admin:user.roles.success"),
       );
       if (error) formApi.setErrorMap({ onSubmit: { form: error, fields: {} } });
-      else formApi.reset(value);
+      else {
+        roleChanges.accept(value);
+        formApi.reset(value);
+      }
     },
   });
+  const permissionChanges = useFormChanges(
+    { permissions: (user ?? initialUser).permissions },
+    { setFields: ["permissions"] },
+  );
   const permissionsForm = useForm({
-    defaultValues: { permissions: user?.permissions ?? [] },
+    ...defaultFormOptions,
+    defaultValues: permissionChanges.defaultValues,
     validators: {
-      onSubmit: ({ value }) =>
-        canGrantPermissions(value.permissions)
-          ? undefined
-          : { fields: { permissions: t("admin:user.permissions.invalid") } },
+      onDynamic: z.object({
+        permissions: z
+          .array(z.enum(UserPermission))
+          .refine(canGrantPermissions, t("admin:user.permissions.invalid")),
+      }),
     },
-    listeners: {
-      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
-    },
+
     onSubmit: async ({ value, formApi }) => {
       if (!canSetPermissions || !canGrantPermissions(value.permissions)) return;
+      if (!permissionChanges.getChanges(value).permissions) return;
       const error = await run(
         () => setUserPermissions({ variables: { id: userId, input: value } }),
         t("admin:user.permissions.success"),
       );
       if (error) formApi.setErrorMap({ onSubmit: { form: error, fields: {} } });
-      else formApi.reset(value);
+      else {
+        permissionChanges.accept(value);
+        formApi.reset(value);
+      }
     },
   });
   const passwordForm = useForm({
+    ...defaultFormOptions,
     defaultValues: { password: "" },
     validators: {
-      onSubmit: z.object({
+      onDynamic: z.object({
         password: passwordSchema,
       }),
     },
-    listeners: {
-      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
-    },
+
     onSubmit: async ({ value, formApi }) => {
       if (!canSetPassword) return;
       const error = await run(
@@ -463,10 +503,16 @@ function AdminUserDetails() {
     },
   });
   const banForm = useForm({
+    ...defaultFormOptions,
     defaultValues: { reason: user?.banReason ?? "" },
-    listeners: {
-      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
+    validators: {
+      onDynamic: z.object({
+        reason: z
+          .string()
+          .max(255, t("common:validation.max_length", { max: 255 })),
+      }),
     },
+
     onSubmit: async ({ value, formApi }) => {
       if (!canBan || userId === currentUser.id || user?.banned) return;
       const error = await run(
@@ -483,26 +529,8 @@ function AdminUserDetails() {
       else formApi.reset(value);
     },
   });
-  const updating = useStore(profileForm.store, (state) => state.isSubmitting);
-  const savingRole = useStore(rolesForm.store, (state) => state.isSubmitting);
-  const savingPermissions = useStore(
-    permissionsForm.store,
-    (state) => state.isSubmitting,
-  );
-  const settingPassword = useStore(
-    passwordForm.store,
-    (state) => state.isSubmitting,
-  );
-  const banning = useStore(banForm.store, (state) => state.isSubmitting);
-  const roles = useStore(rolesForm.store, (state) => state.values.roles);
-  const permissions = useStore(
-    permissionsForm.store,
-    (state) => state.values.permissions,
-  );
-  const newPassword = useStore(
-    passwordForm.store,
-    (state) => state.values.password,
-  );
+
+  const banning = useSelector(banForm.store, (state) => state.isSubmitting);
 
   if (loading) {
     return <Page variant="compact" title={t("admin:user.loading")} />;
@@ -612,11 +640,7 @@ function AdminUserDetails() {
                 id="admin-user-profile-form"
                 noValidate
                 onSubmit={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (profileForm.state.isSubmitting) return;
-                  profileForm.setErrorMap({ onSubmit: undefined });
-                  profileForm.handleSubmit();
+                  void submitForm(event, profileForm);
                 }}
               >
                 <FormLayout>
@@ -624,13 +648,15 @@ function AdminUserDetails() {
                     <profileForm.Field name="name">
                       {(field) => (
                         <Input
-                          label={t("admin:users.table.name")}
-                          disabled={!canUpdate}
+                          name={field.name}
                           value={field.state.value}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
+                          onBlur={() => handleFieldBlur(field)}
                           error={getFormErrorMessage(field.state.meta.errors)}
+                          label={t("admin:users.table.name")}
+                          disabled={!canUpdate}
                         />
                       )}
                     </profileForm.Field>
@@ -639,14 +665,16 @@ function AdminUserDetails() {
                     <profileForm.Field name="email">
                       {(field) => (
                         <Input
-                          type="email"
-                          label={t("admin:users.table.email")}
-                          disabled={!canSetEmail}
+                          name={field.name}
                           value={field.state.value}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
+                          onBlur={() => handleFieldBlur(field)}
                           error={getFormErrorMessage(field.state.meta.errors)}
+                          type="email"
+                          label={t("admin:users.table.email")}
+                          disabled={!canSetEmail}
                         />
                       )}
                     </profileForm.Field>
@@ -686,14 +714,13 @@ function AdminUserDetails() {
               </form>
             </CardContent>
             <CardFooter>
-              <Button
-                loading={updating}
+              <SubmitButton
+                formApi={profileForm}
                 disabled={!canUpdate}
-                type="submit"
                 form="admin-user-profile-form"
               >
                 {t("action.save")}
-              </Button>
+              </SubmitButton>
             </CardFooter>
           </Card>
         </PageLayoutSection>
@@ -711,11 +738,7 @@ function AdminUserDetails() {
                 id="admin-user-roles-form"
                 noValidate
                 onSubmit={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (rolesForm.state.isSubmitting) return;
-                  rolesForm.setErrorMap({ onSubmit: undefined });
-                  rolesForm.handleSubmit();
+                  void submitForm(event, rolesForm);
                 }}
               >
                 <FormLayout>
@@ -752,14 +775,13 @@ function AdminUserDetails() {
               </form>
             </CardContent>
             <CardFooter>
-              <Button
-                disabled={!canSetRoles || !canGrantRoles(roles)}
-                loading={savingRole}
-                type="submit"
+              <SubmitButton
+                formApi={rolesForm}
+                disabled={!canSetRoles}
                 form="admin-user-roles-form"
               >
                 {t("action.save")}
-              </Button>
+              </SubmitButton>
             </CardFooter>
           </Card>
         </PageLayoutSection>
@@ -777,11 +799,7 @@ function AdminUserDetails() {
                 id="admin-user-permissions-form"
                 noValidate
                 onSubmit={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (permissionsForm.state.isSubmitting) return;
-                  permissionsForm.setErrorMap({ onSubmit: undefined });
-                  permissionsForm.handleSubmit();
+                  void submitForm(event, permissionsForm);
                 }}
               >
                 <FormLayout>
@@ -819,16 +837,13 @@ function AdminUserDetails() {
               </form>
             </CardContent>
             <CardFooter>
-              <Button
-                loading={savingPermissions}
-                disabled={
-                  !canSetPermissions || !canGrantPermissions(permissions)
-                }
-                type="submit"
+              <SubmitButton
+                formApi={permissionsForm}
+                disabled={!canSetPermissions}
                 form="admin-user-permissions-form"
               >
                 {t("action.save")}
-              </Button>
+              </SubmitButton>
             </CardFooter>
           </Card>
         </PageLayoutSection>
@@ -943,11 +958,7 @@ function AdminUserDetails() {
                 id="admin-user-password-form"
                 noValidate
                 onSubmit={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (passwordForm.state.isSubmitting) return;
-                  passwordForm.setErrorMap({ onSubmit: undefined });
-                  passwordForm.handleSubmit();
+                  void submitForm(event, passwordForm);
                 }}
               >
                 <FormLayout>
@@ -955,14 +966,16 @@ function AdminUserDetails() {
                     <passwordForm.Field name="password">
                       {(field) => (
                         <Input
-                          type="password"
-                          label={t("admin:user.password.new")}
-                          disabled={!canSetPassword}
+                          name={field.name}
                           value={field.state.value}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
+                          onBlur={() => handleFieldBlur(field)}
                           error={getFormErrorMessage(field.state.meta.errors)}
+                          type="password"
+                          label={t("admin:user.password.new")}
+                          disabled={!canSetPassword}
                         />
                       )}
                     </passwordForm.Field>
@@ -982,17 +995,13 @@ function AdminUserDetails() {
               </form>
             </CardContent>
             <CardFooter>
-              <Button
-                disabled={
-                  !canSetPassword ||
-                  !passwordSchema.safeParse(newPassword).success
-                }
-                loading={settingPassword}
-                type="submit"
+              <SubmitButton
+                formApi={passwordForm}
+                disabled={!canSetPassword}
                 form="admin-user-password-form"
               >
                 {t("admin:user.password.action")}
-              </Button>
+              </SubmitButton>
             </CardFooter>
           </Card>
         </PageLayoutSection>
@@ -1014,11 +1023,7 @@ function AdminUserDetails() {
                 id="admin-user-ban-form"
                 noValidate
                 onSubmit={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (banForm.state.isSubmitting) return;
-                  banForm.setErrorMap({ onSubmit: undefined });
-                  banForm.handleSubmit();
+                  void submitForm(event, banForm);
                 }}
               >
                 <FormLayout>
@@ -1031,13 +1036,15 @@ function AdminUserDetails() {
                       <banForm.Field name="reason">
                         {(field) => (
                           <Input
-                            label={t("admin:user.ban.reason")}
-                            disabled={!canBan}
+                            name={field.name}
                             value={field.state.value}
                             onChange={(event) =>
                               field.handleChange(event.target.value)
                             }
+                            onBlur={() => handleFieldBlur(field)}
                             error={getFormErrorMessage(field.state.meta.errors)}
+                            label={t("admin:user.ban.reason")}
+                            disabled={!canBan}
                           />
                         )}
                       </banForm.Field>
@@ -1072,15 +1079,14 @@ function AdminUserDetails() {
                   {t("admin:user.ban.unban")}
                 </Button>
               ) : (
-                <Button
+                <SubmitButton
+                  formApi={banForm}
                   variant="destructive"
                   disabled={!canBan || currentUser.id === userId}
-                  loading={banning}
-                  type="submit"
                   form="admin-user-ban-form"
                 >
                   {t("admin:user.ban.action")}
-                </Button>
+                </SubmitButton>
               )}
             </CardFooter>
           </Card>

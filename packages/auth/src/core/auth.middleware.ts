@@ -243,7 +243,7 @@ export class AuthMiddleware implements NestMiddleware {
     }
     const selector = (
       (Array.isArray(header) ? header[0] : header) ??
-      cookies().get("workspace_id")?.value
+      cookies().get("workspace")?.value
     )?.trim();
     if (!selector) {
       return null;
@@ -253,9 +253,6 @@ export class AuthMiddleware implements NestMiddleware {
         throw new BadRequestException("Invalid workspace ID");
       }
       return await this.em.findOne(Workspace, { id: selector });
-    }
-    if (header === undefined) {
-      throw new BadRequestException("Invalid workspace ID");
     }
     const parsed = urlIdentifierSchema.safeParse(selector);
     if (!parsed.success) {

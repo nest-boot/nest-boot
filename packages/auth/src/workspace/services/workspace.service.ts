@@ -23,6 +23,7 @@ import type { GraphQLResolveInfo } from "graphql";
 
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
+import { generateUrlIdentifier } from "../../common/utils/generate-url-identifier.util.js";
 import { runAuthQuery } from "../../common/utils/run-auth-query.js";
 import { urlIdentifierSchema } from "../../common/utils/url-identifier.util.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
@@ -111,6 +112,7 @@ export class WorkspaceService {
     input: UpdateWorkspaceOptions,
   ): Promise<Workspace> {
     authorize("update-any", Workspace);
+    input = this.normalizeWorkspaceChanges(input);
     this.assertCurrentWorkspaceCanChange(id);
     const workspace = await runAuthQuery(this.em, (em) =>
       em.transactional(
@@ -136,7 +138,12 @@ export class WorkspaceService {
         },
         { clear: true },
       ),
-    );
+    ).catch((error: unknown) => {
+      if (error instanceof UniqueConstraintViolationException) {
+        throw new ConflictException("Workspace slug is already taken");
+      }
+      throw error;
+    });
     if (
       RequestContext.isActive() &&
       RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)?.id === id
@@ -345,7 +352,7 @@ export class WorkspaceService {
     return await runAuthQuery(this.em, async (em) => {
       assertCurrentUser(user);
       authorize("create", Workspace);
-      const parsed = urlIdentifierSchema.safeParse(input.slug);
+      const parsed = urlIdentifierSchema.optional().safeParse(input.slug);
       if (!parsed.success) {
         throw new BadRequestException("Invalid workspace slug");
       }
@@ -356,7 +363,7 @@ export class WorkspaceService {
           async (em) => {
             const workspace = em.create(Workspace, {
               name: input.name,
-              slug: parsed.data,
+              slug: parsed.data ?? generateUrlIdentifier(),
             });
             authorize("create", workspace);
             const member = em.create(WorkspaceMember, {
@@ -415,23 +422,48 @@ export class WorkspaceService {
     workspace = await this.resolveWorkspaceForAction(workspace, "update");
     assertCurrentWorkspace(workspace);
     authorize("update", workspace);
+    input = this.normalizeWorkspaceChanges(input);
     if (this.em.isInTransaction()) {
       throw new BadRequestException(
         "Change the current workspace outside an active transaction",
       );
     }
     const previousName = workspace.name;
+    const previousSlug = workspace.slug;
     try {
       this.em.assign(workspace, input, { ignoreUndefined: true });
+      authorize("update", workspace);
+      for (const [field, value] of Object.entries(input)) {
+        if (value !== undefined) {
+          authorize("update", workspace, field);
+        }
+      }
       await this.em.flush();
     } catch (error) {
       workspace.name = previousName;
+      workspace.slug = previousSlug;
+      if (error instanceof UniqueConstraintViolationException) {
+        throw new ConflictException("Workspace slug is already taken");
+      }
       throw error;
     }
     if (RequestContext.isActive()) {
       this.authContext.set({ workspace });
     }
     return workspace;
+  }
+
+  private normalizeWorkspaceChanges(
+    input: UpdateWorkspaceOptions,
+  ): UpdateWorkspaceOptions {
+    if (input.slug === undefined) {
+      return input;
+    }
+    const parsed = urlIdentifierSchema.safeParse(input.slug);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid workspace slug");
+    }
+    return { ...input, slug: parsed.data };
   }
 
   /**

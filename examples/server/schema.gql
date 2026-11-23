@@ -184,6 +184,7 @@ input AuthSignUpInput {
   name: String!
   password: String!
   rememberMe: Boolean
+  username: String
 }
 
 type AuthSocialProviderType {
@@ -267,7 +268,7 @@ type CreateWorkspaceApiKeyResult {
 
 input CreateWorkspaceInput {
   name: String!
-  slug: String!
+  slug: String
 }
 
 input CreateWorkspaceInvitationInput {
@@ -1029,6 +1030,7 @@ input UpdateWorkspaceApiKeyInput {
 
 input UpdateWorkspaceInput {
   name: String
+  slug: String
 }
 
 input UpdateWorkspaceMemberInput {
@@ -1157,7 +1159,7 @@ type User {
     query: String
   ): SessionConnection!
   updatedAt: DateTime!
-  username: String
+  username: String!
   workspaces(
     """Returns the elements that come after the specified cursor."""
     after: String

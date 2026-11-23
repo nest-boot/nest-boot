@@ -1,5 +1,6 @@
 import { BaseEntity, type Opt, t } from "@mikro-orm/core";
 import {
+  Check,
   Entity,
   Index,
   PrimaryKey,
@@ -10,6 +11,8 @@ import { SearchableProperty } from "@nest-boot/database";
 import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
+import { generateUrlIdentifier } from "../../common/utils/generate-url-identifier.util.js";
+import { urlIdentifierCheckExpression } from "../../common/utils/url-identifier.util.js";
 import { UserPermission } from "../enums/user-permission.enum.js";
 import { UserRole } from "../enums/user-role.enum.js";
 
@@ -36,6 +39,10 @@ import { UserRole } from "../enums/user-role.enum.js";
     },
   ],
 })
+@Check<typeof User>({
+  property: "username",
+  expression: (columns) => urlIdentifierCheckExpression(columns.username),
+})
 @Index({ properties: ["createdAt"] })
 export class User extends BaseEntity {
   /** Primary key (Sonyflake ID, auto-generated). */
@@ -50,10 +57,10 @@ export class User extends BaseEntity {
   @Field(() => String)
   name!: string;
 
-  /** Optional, unique account handle. */
-  @Property({ type: t.text, nullable: true, unique: true })
-  @Field(() => String, { nullable: true })
-  username?: Opt<string> | null;
+  /** Unique account handle, generated when omitted during creation. */
+  @Property({ type: t.text, unique: true, onCreate: generateUrlIdentifier })
+  @Field(() => String)
+  username!: Opt<string>;
 
   /** Tokenized display name used only for indexed search. */
   @SearchableProperty({ properties: "name", nullable: true })

@@ -11,7 +11,7 @@ use the same configuration.
 ## Selecting a Workspace
 
 Clients send the workspace ID or slug in `x-workspace`. When the header is
-absent, the `workspace_id` cookie can select by ID. `AuthMiddleware` resolves
+absent, the `workspace` cookie can select by ID or slug. `AuthMiddleware` resolves
 the selection to its workspace ID, finds the authenticated user's active membership, and stores both entities in `RequestContext`.
 
 ```typescript
@@ -42,8 +42,10 @@ different workspaces.
 - `updateWorkspace(id, input)`;
 - `deleteWorkspace(id)`.
 
-Creating a workspace requires a name and unique slug and also creates its
-active owner membership. Slugs are 3–30 characters, start with a lowercase ASCII
+Creating a workspace requires a name and also creates its active owner
+membership. The slug is optional in the creation API; when omitted, the backend
+generates a random 30-character slug. The example creation form only asks for
+a name. Rename the slug later in workspace settings or with `updateWorkspace`. Slugs are 3–30 characters, start with a lowercase ASCII
 letter, and allow lowercase letters, digits and single hyphens between them.
 Query `workspace(id: ...)` or `workspace(slug: ...)` with exactly one selector.
 

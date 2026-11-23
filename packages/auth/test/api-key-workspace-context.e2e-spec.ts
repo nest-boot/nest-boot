@@ -199,7 +199,7 @@ describe("workspace selection independently of authentication", () => {
                 session ? credential : "",
                 workspaceCookie === undefined
                   ? ""
-                  : `workspace_id=${encodeURIComponent(workspaceCookie)}`,
+                  : `workspace=${encodeURIComponent(workspaceCookie)}`,
               ]
                 .filter(Boolean)
                 .join("; "),
@@ -502,7 +502,9 @@ describe("workspace selection independently of authentication", () => {
     ["anonymous", "session", "user-key", "workspace-key", "system-key"].flatMap(
       (identity) => [
         { identity, source: "header" },
+        { identity, source: "header-slug" },
         { identity, source: "cookie" },
+        { identity, source: "cookie-slug" },
         { identity, source: "header-wins" },
         { identity, source: "empty-header" },
         { identity, source: "unknown-header" },
@@ -522,18 +524,25 @@ describe("workspace selection independently of authentication", () => {
                 ? workspaceKey
                 : key;
       const header =
-        source === "cookie"
+        source === "cookie" || source === "cookie-slug"
           ? undefined
           : source === "empty-header"
             ? ""
             : source === "unknown-header"
               ? "999999999999999"
-              : workspaces[1].id;
-      const cookie = source === "header" ? undefined : workspaces[0].id;
+              : source === "header-slug"
+                ? workspaces[1].slug
+                : workspaces[1].id;
+      const cookie =
+        source === "header" || source === "header-slug"
+          ? undefined
+          : source === "cookie"
+            ? workspaces[0].id
+            : workspaces[0].slug;
       const expected =
         source === "empty-header" || source === "unknown-header"
           ? null
-          : source === "cookie"
+          : source === "cookie" || source === "cookie-slug"
             ? workspaces[0].id
             : workspaces[1].id;
       const response = await request(
@@ -567,14 +576,11 @@ describe("workspace selection independently of authentication", () => {
         source === "header" ? "invalid/slug" : undefined,
         "GET",
         false,
-        source === "cookie" ? "invalid-id" : workspaces[0].id,
+        source === "cookie" ? "invalid/slug" : workspaces[0].id,
       );
       expect(response.status).toBe(400);
       expect(await response.json()).toMatchObject({
-        message:
-          source === "header"
-            ? "Invalid workspace slug"
-            : "Invalid workspace ID",
+        message: "Invalid workspace slug",
       });
     },
   );

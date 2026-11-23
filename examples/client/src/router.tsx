@@ -55,7 +55,7 @@ export const getRouter = () => {
             location.pathname.match(/^\/workspaces\/(\d+)/)?.[1];
 
           if (workspaceId) {
-            document.cookie = `workspace_id=${encodeURIComponent(workspaceId)}; path=/; max-age=31536000; samesite=lax`;
+            document.cookie = `workspace=${encodeURIComponent(workspaceId)}; path=/; max-age=31536000; samesite=lax`;
           }
 
           return {

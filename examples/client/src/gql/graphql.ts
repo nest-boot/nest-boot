@@ -272,6 +272,7 @@ export type AuthSignUpInput = {
   name: Scalars["String"]["input"];
   password: Scalars["String"]["input"];
   rememberMe?: InputMaybe<Scalars["Boolean"]["input"]>;
+  username?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type AuthSocialProviderType = {
@@ -362,7 +363,7 @@ export type CreateWorkspaceApiKeyResult = {
 
 export type CreateWorkspaceInput = {
   name: Scalars["String"]["input"];
-  slug: Scalars["String"]["input"];
+  slug?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type CreateWorkspaceInvitationInput = {
@@ -1253,6 +1254,7 @@ export type UpdateWorkspaceApiKeyInput = {
 
 export type UpdateWorkspaceInput = {
   name?: InputMaybe<Scalars["String"]["input"]>;
+  slug?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type UpdateWorkspaceMemberInput = {
@@ -1290,7 +1292,7 @@ export type User = {
   roles: Array<UserRole>;
   sessions: SessionConnection;
   updatedAt: Scalars["DateTime"]["output"];
-  username?: Maybe<Scalars["String"]["output"]>;
+  username: Scalars["String"]["output"];
   workspaces: WorkspaceConnection;
 };
 
@@ -2248,7 +2250,7 @@ export type GetCurrentUserFromAuthenticatedRouteQuery = {
     __typename?: "User";
     id: string;
     name: string;
-    username?: string | null;
+    username: string;
     email: string;
     permissions: Array<UserPermission>;
   } | null;
@@ -2914,6 +2916,7 @@ export type GetCurrentWorkspaceFromWorkspaceLayoutQuery = {
     __typename?: "Workspace";
     id: string;
     name: string;
+    slug: string;
     createdAt: any;
     updatedAt: any;
   } | null;
@@ -8946,6 +8949,7 @@ export const GetCurrentWorkspaceFromWorkspaceLayoutDocument = {
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "slug" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                 { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
               ],

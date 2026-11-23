@@ -5,7 +5,6 @@ import { useCallback } from "react";
 
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 import { REVOKE_USER_API_KEY } from "@/graphql/mutations/revoke-user-api-key";
-import { getApiKeyUpdateInput } from "@/lib/api-key-update";
 import { graphql } from "@/gql";
 import { UPDATE_USER_API_KEY } from "@/graphql/mutations/update-user-api-key";
 import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
@@ -222,11 +221,11 @@ function ApiKeyDetailsPage() {
         await deleteApiKey({ variables: { id: apiKey.id } });
         await navigate({ to: "/user/api-keys", search: backSearch });
       }}
-      onSave={async (input) => {
+      onSave={async (_values, changes) => {
         await updateApiKey({
           variables: {
             id: apiKey.id,
-            input: getApiKeyUpdateInput(apiKey, input),
+            input: changes,
           },
         });
         await router.invalidate();

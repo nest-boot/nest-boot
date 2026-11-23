@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { useForm, useStore } from "@tanstack/react-form";
+import { useForm, useSelector } from "@tanstack/react-form";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle } from "lucide-react";
 import z from "zod";
@@ -20,10 +20,11 @@ import type { PagePaginationActionsConfig } from "@/components/thread-ui/page";
 import type { ApiKeyRow } from "@/components/api-keys-page";
 import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
 import type { PermissionOption } from "@/lib/permissions";
+import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
 import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-context";
 import { Link } from "@/components/link";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
-import { Button } from "@/components/thread-ui/button";
+
 import { Input } from "@/components/thread-ui/input";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Page } from "@/components/thread-ui/page";
@@ -36,6 +37,8 @@ import { toast } from "@/components/thread-ui/toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { getFormErrorMessage } from "@/lib/form-errors";
+import { useFormChanges } from "@/hooks/use-form-changes";
+import { SubmitButton } from "@/components/form/submit-button";
 
 type CredentialPermission =
   | UserApiKeyPermission
@@ -64,12 +67,15 @@ interface ApiKeyFormPageProps<Permission extends CredentialPermission> {
   canRevoke?: boolean;
   onRevoke?: () => Promise<void>;
   onDelete?: () => Promise<void>;
-  onSave: (input: {
-    name: string;
-    memberId?: string;
-    systemAccountId?: string;
-    permissions: Array<Permission>;
-  }) => Promise<void>;
+  onSave: (
+    input: {
+      name: string;
+      memberId?: string;
+      systemAccountId?: string;
+      permissions: Array<Permission>;
+    },
+    changes: Partial<{ name: string; permissions: Array<Permission> }>,
+  ) => Promise<void>;
 }
 
 /** All owner scopes use the same editor; only creation can reveal the full secret. */
@@ -118,15 +124,19 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
         (option) => option.value === permission && option.grantable !== false,
       ),
     );
+  const metadataChanges = useFormChanges(
+    { name: apiKey?.name.trim() ?? "", permissions: initialPermissions },
+    { setFields: ["permissions"] },
+  );
   const form = useForm({
+    ...defaultFormOptions,
     defaultValues: {
-      name: apiKey?.name ?? "",
+      ...metadataChanges.defaultValues,
       memberId: "",
       systemAccountId: "",
-      permissions: initialPermissions,
     },
     validators: {
-      onSubmit: z.object({
+      onDynamic: z.object({
         name: z
           .string()
           .trim()
@@ -137,9 +147,7 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
         permissions: z.array(z.enum(permissionValues)),
       }),
     },
-    listeners: {
-      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
-    },
+
     onSubmit: async ({ value, formApi }) => {
       if (!canSave || pendingAction) return;
       if (
@@ -172,14 +180,25 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
           : {}),
         permissions: value.permissions.filter(isPermission),
       };
+      const values = { name: input.name, permissions: input.permissions };
+      const changed = metadataChanges.getChanges(values);
+      const changes = {
+        ...(changed.name !== undefined ? { name: changed.name } : {}),
+        ...(changed.permissions !== undefined
+          ? { permissions: changed.permissions.filter(isPermission) }
+          : {}),
+      };
+      if (apiKey && !Object.keys(changes).length) return;
       try {
-        await onSave(input);
-        if (apiKey)
+        await onSave(input, changes);
+        if (apiKey) {
+          metadataChanges.accept(values);
           formApi.reset({
             ...input,
             memberId: value.memberId,
             systemAccountId: value.systemAccountId,
           });
+        }
         toast.add({
           type: "success",
           title: t(
@@ -201,8 +220,8 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
       }
     },
   });
-  const submitting = useStore(form.store, (state) => state.isSubmitting);
-  const error = useStore(form.store, (state) =>
+  const submitting = useSelector(form.store, (state) => state.isSubmitting);
+  const error = useSelector(form.store, (state) =>
     getFormErrorMessage(state.errors),
   );
 
@@ -296,11 +315,7 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
         id={formId}
         noValidate
         onSubmit={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          if (form.state.isSubmitting || pendingAction || !canSave) return;
-          form.setErrorMap({ onSubmit: undefined });
-          form.handleSubmit();
+          void submitForm(event, form, !canSave || !!pendingAction);
         }}
       >
         <PageLayout>
@@ -340,17 +355,19 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
                     <form.Field name="name">
                       {(field) => (
                         <Input
-                          id={`${formId}-name`}
-                          label={t("api-key:form.name.label")}
-                          placeholder={t("api-key:form.name.placeholder")}
+                          name={field.name}
                           value={field.state.value}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
+                          onBlur={() => handleFieldBlur(field)}
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                          id={`${formId}-name`}
+                          label={t("api-key:form.name.label")}
+                          placeholder={t("api-key:form.name.placeholder")}
                           disabled={
                             !canEditName || submitting || !!pendingAction
                           }
-                          error={getFormErrorMessage(field.state.meta.errors)}
                         />
                       )}
                     </form.Field>
@@ -453,14 +470,13 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
               </CardContent>
               {canSave && (
                 <CardFooter>
-                  <Button
-                    type="submit"
+                  <SubmitButton
+                    formApi={form}
                     form={formId}
-                    loading={submitting}
                     disabled={!!pendingAction}
                   >
                     {t(apiKey ? "action.save" : "action.create")}
-                  </Button>
+                  </SubmitButton>
                 </CardFooter>
               )}
             </Card>

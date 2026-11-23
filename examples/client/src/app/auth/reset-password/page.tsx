@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm, useStore } from "@tanstack/react-form";
+import { useForm, useSelector } from "@tanstack/react-form";
 import { useMutation } from "@apollo/client/react";
 import { Link, createFileRoute, useSearch } from "@tanstack/react-router";
 import { CircleCheck, CircleX } from "lucide-react";
@@ -9,12 +9,13 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
 import { AuthPageShell } from "../components/auth-page-shell";
+import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
 import { usePasswordPolicy } from "@/hooks/use-password-policy";
 import { getFormErrorMessage } from "@/lib/form-errors";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { FieldError } from "@/components/ui/field";
 import { Button } from "@/components/thread-ui/button";
-import { Input } from "@/components/thread-ui/input";
+
 import {
   Card,
   CardContent,
@@ -25,6 +26,8 @@ import {
 } from "@/components/ui/card";
 
 import { graphql } from "@/gql";
+import { SubmitButton } from "@/components/form/submit-button";
+import { Input } from "@/components/thread-ui/input";
 
 const RESET_PASSWORD_FROM_RESET_PASSWORD = graphql(`
   mutation resetPasswordFromResetPassword($input: AuthResetPasswordInput!) {
@@ -51,11 +54,10 @@ function ResetPasswordComponent() {
   const invalidToken = Boolean(search.error || !search.token);
 
   const form = useForm({
+    ...defaultFormOptions,
     defaultValues: { newPassword: "", confirmPassword: "" },
-    validators: { onSubmit: createResetPasswordSchema(passwordSchema) },
-    listeners: {
-      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
-    },
+    validators: { onDynamic: createResetPasswordSchema(passwordSchema) },
+
     onSubmit: async ({ value, formApi }) => {
       if (invalidToken || !search.token) return;
       try {
@@ -86,8 +88,8 @@ function ResetPasswordComponent() {
       }
     },
   });
-  const loading = useStore(form.store, (state) => state.isSubmitting);
-  const error = useStore(form.store, (state) =>
+
+  const error = useSelector(form.store, (state) =>
     getFormErrorMessage(state.errors),
   );
 
@@ -118,11 +120,7 @@ function ResetPasswordComponent() {
               noValidate
               id="reset-password-form"
               onSubmit={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (form.state.isSubmitting) return;
-                form.setErrorMap({ onSubmit: undefined });
-                form.handleSubmit();
+                void submitForm(event, form);
               }}
             >
               <FormLayout>
@@ -130,15 +128,17 @@ function ResetPasswordComponent() {
                   <form.Field name="newPassword">
                     {(field) => (
                       <Input
-                        id="reset-password-new"
-                        type="password"
-                        autoComplete="new-password"
-                        label={t("auth:passwordReset.newPassword")}
+                        name={field.name}
                         value={field.state.value}
                         onChange={(event) =>
                           field.handleChange(event.target.value)
                         }
+                        onBlur={() => handleFieldBlur(field)}
                         error={getFormErrorMessage(field.state.meta.errors)}
+                        id="reset-password-new"
+                        type="password"
+                        autoComplete="new-password"
+                        label={t("auth:passwordReset.newPassword")}
                       />
                     )}
                   </form.Field>
@@ -147,15 +147,17 @@ function ResetPasswordComponent() {
                   <form.Field name="confirmPassword">
                     {(field) => (
                       <Input
-                        id="reset-password-confirm"
-                        type="password"
-                        autoComplete="new-password"
-                        label={t("auth:passwordReset.confirmPassword")}
+                        name={field.name}
                         value={field.state.value}
                         onChange={(event) =>
                           field.handleChange(event.target.value)
                         }
+                        onBlur={() => handleFieldBlur(field)}
                         error={getFormErrorMessage(field.state.meta.errors)}
+                        id="reset-password-confirm"
+                        type="password"
+                        autoComplete="new-password"
+                        label={t("auth:passwordReset.confirmPassword")}
                       />
                     )}
                   </form.Field>
@@ -186,14 +188,13 @@ function ResetPasswordComponent() {
                 : t("auth:passwordReset.requestNewLink")}
             </Button>
           ) : (
-            <Button
-              type="submit"
+            <SubmitButton
+              formApi={form}
               form="reset-password-form"
               className="w-full"
-              loading={loading}
             >
               {t("auth:passwordReset.resetSubmit")}
-            </Button>
+            </SubmitButton>
           )}
         </CardFooter>
       </Card>
