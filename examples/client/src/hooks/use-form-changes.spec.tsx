@@ -9,12 +9,12 @@ describe("form change baseline", () => {
   it("keeps the loaded baseline when a refetch changes the props", () => {
     const { result, rerender } = renderHook(
       (initial) => useFormChanges(initial),
-      { initialProps: { name: "Original", username: "old-username" } },
+      { initialProps: { name: "Original", slug: "old-slug" } },
     );
-    rerender({ name: "Server update", username: "new-username" });
-    expect(result.current.defaultValues.username).toBe("old-username");
+    rerender({ name: "Server update", slug: "new-slug" });
+    expect(result.current.defaultValues.slug).toBe("old-slug");
     expect(
-      result.current.getChanges({ name: "Draft", username: "old-username" }),
+      result.current.getChanges({ name: "Draft", slug: "old-slug" }),
     ).toEqual({ name: "Draft" });
   });
 

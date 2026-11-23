@@ -15,7 +15,6 @@ export type BetterAuthAdapter = Pick<AuthInstance, "$context"> & {
     | "deleteUser"
     | "getAccessToken"
     | "getSession"
-    | "isUsernameAvailable"
     | "linkSocialAccount"
     | "listSessions"
     | "listUserAccounts"

@@ -1,6 +1,5 @@
 import { BaseEntity, type Opt, t } from "@mikro-orm/core";
 import {
-  Check,
   Entity,
   Index,
   PrimaryKey,
@@ -11,7 +10,6 @@ import { SearchableProperty } from "@nest-boot/database";
 import { Field, HideField, ID, ObjectType } from "@nest-boot/graphql";
 import { Sonyflake } from "sonyflake-js";
 
-import { urlIdentifierCheckExpression } from "../../common/utils/url-identifier.util.js";
 import { UserPermission } from "../enums/user-permission.enum.js";
 import { UserRole } from "../enums/user-role.enum.js";
 
@@ -38,10 +36,6 @@ import { UserRole } from "../enums/user-role.enum.js";
     },
   ],
 })
-@Check<typeof User>({
-  property: "username",
-  expression: (columns) => urlIdentifierCheckExpression(columns.username),
-})
 @Index({ properties: ["createdAt"] })
 export class User extends BaseEntity {
   /** Primary key (Sonyflake ID, auto-generated). */
@@ -55,11 +49,6 @@ export class User extends BaseEntity {
   @Property({ type: t.string })
   @Field(() => String)
   name!: string;
-
-  /** Optional unique account handle; follows Better Auth's nullable username. */
-  @Property({ type: t.text, unique: true, nullable: true })
-  @Field(() => String, { nullable: true })
-  username?: string | null = null;
 
   /** Tokenized display name used only for indexed search. */
   @SearchableProperty({ properties: "name", nullable: true })

@@ -2,8 +2,6 @@
 export interface SignUpOptions {
   /** User display name. */
   name: string;
-  /** Optional account handle; omitted or null leaves it unassigned. */
-  username?: string | null;
   /** User email address. */
   email: string;
   /** Initial account password. */

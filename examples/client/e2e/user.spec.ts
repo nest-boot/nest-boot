@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import { expect, test } from "@playwright/test";
 
 import { registerUser, testPassword } from "./utils/auth";
@@ -10,51 +8,22 @@ import { createFirstWorkspace, createWorkspaceByApi } from "./utils/workspace";
 import type { Page } from "@playwright/test";
 
 test.describe("user pages", () => {
-  test("sets and clears an optional username independently of the display name", async ({
-    page,
-  }) => {
-    const profileUsername = `profile-${randomUUID().replaceAll("-", "").slice(0, 16)}`;
+  test("edits the display name without a username field", async ({ page }) => {
     await registerUser(page, {
-      email: `${uniqueSeed("username-profile")}@example.com`,
-      name: "Profile Display Name",
+      email: `${uniqueSeed("profile-name")}@example.com`,
+      name: "Original display name",
     });
     await page.goto("/user/profile");
-    const username = page.getByLabel("Username", { exact: true });
-    await expect(username).toHaveValue("");
-    await expect(
-      page.getByText("Optional. Leave blank to remove your username.", {
-        exact: true,
-      }),
-    ).toBeVisible();
-    await username.fill("Profile-User");
-    expect(
-      await username.evaluate(
-        (input: HTMLInputElement) => input.validity.patternMismatch,
-      ),
-    ).toBe(true);
-    await username.fill(profileUsername);
+    await expect(page.getByLabel("Username", { exact: true })).toHaveCount(0);
+    await page.getByLabel("Name", { exact: true }).fill("Updated display name");
     await page.locator("button[form='user-profile-form']").click();
     await expect(
       page.getByText("Profile updated", { exact: true }),
     ).toBeVisible();
     await page.reload();
     await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
-      "Profile Display Name",
+      "Updated display name",
     );
-    await expect(page.getByLabel("Username", { exact: true })).toHaveValue(
-      profileUsername,
-    );
-    await username.fill("");
-    await page.locator("button[form='user-profile-form']").click();
-    await expect(
-      page.getByText("Profile updated", { exact: true }),
-    ).toBeVisible();
-    await page.reload();
-    await expect(username).toHaveValue("");
-    const data = await graphqlRequest<{
-      currentUser: { username: string | null };
-    }>(page.request, "query { currentUser { username } }");
-    expect(data.currentUser.username).toBeNull();
   });
 
   test("opens the personal overview from the user row and persists language and theme preferences", async ({
@@ -96,9 +65,6 @@ test.describe("user pages", () => {
       .click();
     await expect(
       page.getByRole("heading", { name: "个人资料", exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("选填，留空可清除用户名。", { exact: true }),
     ).toBeVisible();
 
     const nameInput = page.getByLabel(/^(Name|名称)$/);

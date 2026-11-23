@@ -19,7 +19,7 @@ import { getDatabaseConfig } from '@nest-boot/database';
 import { entities as queueEntities } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20261123155228_Schema } from '../src/database/migrations/Migration20261123155228_Schema.js';
+import { Migration20261123162523_Schema } from '../src/database/migrations/Migration20261123162523_Schema.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
@@ -50,7 +50,7 @@ describe('example native RLS migrations with PGlite', () => {
         migrations: {
           migrationsList: [
             Migration00000000000000_Initial,
-            Migration20261123155228_Schema,
+            Migration20261123162523_Schema,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',

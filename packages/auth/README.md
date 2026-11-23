@@ -701,22 +701,20 @@ When omitted, the backend generates a random 30-character slug. It can be
 changed later with `updateWorkspace` or in workspace settings. It starts
 with a lowercase ASCII letter and can contain lowercase letters, digits and
 single hyphens between them. Auth validates the format and length with Zod.
-Database `CHECK` constraints enforce the same length and ASCII format for both
-workspace slugs and usernames, including direct SQL writes. MikroORM owns these
-constraints through entity metadata and generates their names automatically.
+A database `CHECK` constraint enforces the same length and ASCII format for
+workspace slugs, including direct SQL writes. MikroORM owns the constraint
+through entity metadata and generates its name automatically.
 When upgrading an existing database, add the `text` column as nullable with a
 unique constraint, backfill a valid slug per workspace, then enforce `NOT NULL`.
 For example, generate random eight-character slugs and retry on collisions.
 
-`workspace(id: ID, slug: String)` and `user(id: ID, username: String)` each
-require exactly one argument. They use the same read authorization for either
-selector. The `user` query is available with the administration API.
+`workspace(id: ID, slug: String)` requires exactly one argument and uses the
+same read authorization for either selector. The administration `user(id: ID!)`
+query continues to identify users by ID.
 
-`userExists(username: String!)` is public, like the Username plugin's
-availability endpoint. `workspaceExists(slug: String!)` requires
-permission to create a workspace. Both return true when the normalized
-identifier is already in use and reject invalid input. The database unique
-constraint resolves competing writes.
+`workspaceExists(slug: String!)` requires permission to create a workspace. It
+returns true when the normalized slug is already in use and rejects invalid
+input. The database unique constraint resolves competing writes.
 
 `deleteUser` and `removeWorkspaceMember` likewise return `DeleteUserPayload` and
 `RemoveWorkspaceMemberPayload`, each containing only `id: ID!`. `leaveWorkspace` returns
@@ -824,16 +822,6 @@ connection methods instead. `listCurrentUserSessions` remains an internal
 credential-hydration helper for session revocation, not a GraphQL listing API.
 
 ## Internal BetterAuth integration
-
-The Better Auth Username plugin provides an optional, unique `User.username`.
-Registration, ORM and OAuth creation leave it unassigned when omitted. The
-database column is nullable; usernames are not generated automatically.
-It uses the same lowercase 3–30 character format as workspace slugs.
-`User.name` is the display name.
-Users can set or change `username` with `updateCurrentUser`; omission preserves it and
-`null` clears it. Non-null values retain the shared format and uniqueness checks. The plugin
-provides `/sign-in/username` under the configured Auth base path when password
-sign-in is enabled.
 
 `AuthModule` owns Nest provider registration and HTTP middleware wiring.
 `core/create-auth-instance.ts` validates options, resolves environment/default

@@ -5,8 +5,8 @@ describe("form changes", () => {
   it("omits untouched identifiers when another field changes", () => {
     expect(
       getFormChanges(
-        { name: "Original", username: "old-username" },
-        { name: "Renamed", username: "old-username" },
+        { name: "Original", slug: "old-slug" },
+        { name: "Renamed", slug: "old-slug" },
       ),
     ).toEqual({ name: "Renamed" });
   });

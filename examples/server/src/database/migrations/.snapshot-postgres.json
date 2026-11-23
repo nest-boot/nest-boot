@@ -1604,23 +1604,6 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "datetime"
-        },
-        "username": {
-          "name": "username",
-          "type": "text",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": true,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "text"
         }
       },
       "indexes": [
@@ -1656,24 +1639,9 @@
           "primary": false,
           "unique": false,
           "type": "fulltext"
-        },
-        {
-          "columnNames": ["username"],
-          "composite": false,
-          "constraint": true,
-          "keyName": "user_username_unique",
-          "primary": false,
-          "unique": true
         }
       ],
-      "checks": [
-        {
-          "name": "user_username_check",
-          "expression": "char_length(\"username\") >= 3 and char_length(\"username\") <= 30 and \"username\" collate \"C\" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*$'",
-          "definition": "check (char_length(\"username\") >= 3 and char_length(\"username\") <= 30 and \"username\" collate \"C\" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*$')",
-          "columnName": "username"
-        }
-      ],
+      "checks": [],
       "triggers": [],
       "foreignKeys": {},
       "comment": null,

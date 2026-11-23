@@ -184,7 +184,6 @@ input AuthSignUpInput {
   name: String!
   password: String!
   rememberMe: Boolean
-  username: String
 }
 
 type AuthSocialProviderType {
@@ -195,7 +194,6 @@ type AuthSocialProviderType {
 input AuthUpdateUserInput {
   image: String
   name: String
-  username: String
 }
 
 input BanUserInput {
@@ -555,9 +553,8 @@ type Query {
     """
     query: String
   ): JobConnection!
-  user(id: ID, username: String): User
+  user(id: ID!): User
   userApiKeyPermissions: [UserApiKeyPermissionOption!]!
-  userExists(username: String!): Boolean!
   userJob(id: ID!): Job
   userJobs(
     """Returns the elements that come after the specified cursor."""
@@ -1159,7 +1156,6 @@ type User {
     query: String
   ): SessionConnection!
   updatedAt: DateTime!
-  username: String
   workspaces(
     """Returns the elements that come after the specified cursor."""
     after: String

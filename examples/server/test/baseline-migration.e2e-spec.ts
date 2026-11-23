@@ -5,7 +5,7 @@ import { entities as authEntities, workspaceEntities } from '@nest-boot/auth';
 import { JobEntity } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20261123155228_Schema } from '../src/database/migrations/Migration20261123155228_Schema.js';
+import { Migration20261123162523_Schema } from '../src/database/migrations/Migration20261123162523_Schema.js';
 import { createDatabaseFixture } from './postgres.fixture.js';
 
 it('builds the current example schema from ordered migrations and can roll back and rebuild it', async () => {
@@ -27,7 +27,7 @@ it('builds the current example schema from ordered migrations and can roll back 
   try {
     expect((await orm.migrator.up()).map(({ name }) => name)).toEqual([
       Migration00000000000000_Initial.name,
-      Migration20261123155228_Schema.name,
+      Migration20261123162523_Schema.name,
     ]);
     const identifiers = await fixture.pool.query(`
       select table_name, column_name, data_type, is_nullable
@@ -37,12 +37,6 @@ it('builds the current example schema from ordered migrations and can roll back 
       order by table_name
     `);
     expect(identifiers.rows).toEqual([
-      {
-        table_name: 'user',
-        column_name: 'username',
-        data_type: 'text',
-        is_nullable: 'YES',
-      },
       {
         table_name: 'workspace',
         column_name: 'slug',
@@ -56,32 +50,16 @@ it('builds the current example schema from ordered migrations and can roll back 
         and conrelid in ('public.user'::regclass, 'public.workspace'::regclass)
       order by conname
     `);
-    expect(checks.rows).toEqual([
-      { conname: 'user_username_check' },
-      { conname: 'workspace_slug_check' },
-    ]);
-    const unassignedUsers = await fixture.pool.query(
-      "insert into \"user\" (name, email, email_verified, roles, permissions) values ('No handle', 'first-unassigned@example.test', true, array['user'], array[]::text[]), ('No handle', 'second-unassigned@example.test', true, array['user'], array[]::text[]) returning username",
-    );
-    expect(unassignedUsers.rows).toEqual([
-      { username: null },
-      { username: null },
-    ]);
+    expect(checks.rows).toEqual([{ conname: 'workspace_slug_check' }]);
     // Bypass all application validation to verify the database boundary itself.
     for (const [table, column, constraint] of [
-      ['user', 'username', 'user_username_check'],
       ['workspace', 'slug', 'workspace_slug_check'],
     ] as const) {
       const insert = (value: string) =>
-        table === 'user'
-          ? fixture.pool.query(
-              'insert into "user" (name, username, email, email_verified, roles, permissions) values ($1, $2, $3, true, array[\'user\'], array[]::text[]) returning id',
-              ['Check fixture', value, `${table}-${value}@example.test`],
-            )
-          : fixture.pool.query(
-              'insert into workspace (name, slug) values ($1, $2) returning id',
-              ['Check fixture', value],
-            );
+        fixture.pool.query(
+          'insert into workspace (name, slug) values ($1, $2) returning id',
+          ['Check fixture', value],
+        );
       for (const value of ['abc', 'a-2', 'z'.repeat(30)]) {
         await expect(insert(value)).resolves.toHaveProperty('rowCount', 1);
       }
@@ -123,7 +101,7 @@ it('builds the current example schema from ordered migrations and can roll back 
         ...options.migrations,
         migrationsList: [
           Migration00000000000000_Initial,
-          Migration20261123155228_Schema,
+          Migration20261123162523_Schema,
         ],
       },
     });

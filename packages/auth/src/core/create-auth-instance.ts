@@ -3,22 +3,11 @@ import type { HashService } from "@nest-boot/hash";
 import type { Mailer } from "@nest-boot/mailer";
 import { RequestContext } from "@nest-boot/request-context";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
-import { APIError, createAuthMiddleware } from "better-auth/api";
 import { genericOAuth } from "better-auth/plugins";
-import {
-  username,
-  USERNAME_ERROR_CODES,
-  type UsernamePluginWithoutDisplayUsername,
-} from "better-auth/plugins/username";
 
 import { resolveApiKeyPermissionCatalog } from "../api-key/utils/api-key-permissions.util.js";
 import { resolveAuthCatalog } from "../common/utils/resolve-auth-catalog.util.js";
 import { runAuthQuery } from "../common/utils/run-auth-query.js";
-import {
-  URL_IDENTIFIER_MAX_LENGTH,
-  URL_IDENTIFIER_MIN_LENGTH,
-  urlIdentifierSchema,
-} from "../common/utils/url-identifier.util.js";
 import {
   DEFAULT_WORKSPACE_CREATOR_ROLE,
   DEFAULT_WORKSPACE_ROLE,
@@ -53,13 +42,6 @@ import { resolveAuthFeatures } from "./utils/resolve-auth-features.util.js";
 import { resolveSecret } from "./utils/resolve-secret.js";
 import { splitAuthProviders } from "./utils/split-auth-providers.js";
 
-type ResolvedBetterAuthOptions = BetterAuthOptions & {
-  plugins: [
-    UsernamePluginWithoutDisplayUsername,
-    ...ReturnType<typeof genericOAuth>[],
-  ];
-};
-
 /**
  * Resolves framework configuration before constructing the upstream instance.
  * @param options - Authentication module configuration.
@@ -78,7 +60,7 @@ export function resolveBetterAuthOptions(
   hashService: HashService,
   userDeletionService: UserDeletionService,
   authContext: AuthContext,
-): ResolvedBetterAuthOptions {
+): BetterAuthOptions {
   validateAuthOptions(options);
   const secret = resolveSecret(options);
   const disableSignUp = isEnvTrue("AUTH_DISABLE_SIGN_UP");
@@ -120,61 +102,18 @@ export function resolveBetterAuthOptions(
     },
   );
 
-  const betterAuthOptions: ResolvedBetterAuthOptions = {
+  const betterAuthOptions: BetterAuthOptions = {
     appName: options.appName ?? process.env.APP_NAME,
     baseURL: options.baseURL ?? process.env.AUTH_URL ?? process.env.APP_URL,
     ...(options.account ? { account: options.account } : {}),
     secret,
     emailAndPassword: emailAndPasswordConfig,
-    ...(emailAndPasswordConfig.enabled
-      ? {}
-      : { disabledPaths: ["/sign-in/username"] }),
     emailVerification: emailVerificationConfig,
     ...(userConfig ? { user: userConfig } : {}),
     ...(socialProvidersConfig
       ? { socialProviders: socialProvidersConfig }
       : {}),
-    hooks: {
-      before: createAuthMiddleware((ctx) => {
-        const writesUser =
-          ctx.path === "/sign-up/email" || ctx.path === "/update-user";
-        if (
-          !writesUser &&
-          ctx.path !== "/sign-in/username" &&
-          ctx.path !== "/is-username-available"
-        ) {
-          return Promise.resolve();
-        }
-        // Upstream's signup hook copies this disabled field into username.
-        if (writesUser && ctx.body) {
-          delete ctx.body.displayUsername;
-        }
-        const value: unknown = ctx.body?.username;
-        if (value === undefined || (writesUser && value === null)) {
-          return Promise.resolve();
-        }
-        if (typeof value !== "string") {
-          throw APIError.from(
-            writesUser ? "BAD_REQUEST" : "UNPROCESSABLE_ENTITY",
-            USERNAME_ERROR_CODES.INVALID_USERNAME,
-          );
-        }
-        // Run before plugin hooks: upstream skips non-string writes and checks
-        // raw lengths on sign-in/availability before invoking our validator.
-        ctx.body.username = value.trim();
-        return Promise.resolve();
-      }),
-    },
     plugins: [
-      username({
-        displayUsername: false,
-        minUsernameLength: URL_IDENTIFIER_MIN_LENGTH,
-        maxUsernameLength: URL_IDENTIFIER_MAX_LENGTH,
-        usernameValidator: (value) =>
-          urlIdentifierSchema.safeParse(value).success,
-        usernameNormalization: (value) => value.trim(),
-        validationOrder: { username: "post-normalization" },
-      }),
       ...(genericOAuthConfig.length > 0
         ? [
             genericOAuth({
@@ -215,7 +154,7 @@ export function createAuthInstance(
   hashService: HashService,
   userDeletionService: UserDeletionService,
   authContext: AuthContext,
-): ReturnType<typeof betterAuth<ResolvedBetterAuthOptions>> {
+): ReturnType<typeof betterAuth> {
   return betterAuth(
     resolveBetterAuthOptions(
       options,

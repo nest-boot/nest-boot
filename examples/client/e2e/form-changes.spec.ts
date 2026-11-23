@@ -25,7 +25,7 @@ async function submitInput(
 }
 
 for (const kind of ["profile", "workspace"] as const) {
-  test(`${kind} preserves identifier edits made while a name save is pending`, async ({
+  test(`${kind} preserves edits made while a name save is pending`, async ({
     page,
   }) => {
     await registerUser(page, {
@@ -43,10 +43,9 @@ for (const kind of ["profile", "workspace"] as const) {
       ? "updateWorkspaceFromSettingsRoute"
       : "updateUserFromUserRoute";
     const formId = workspace ? "workspace-settings-form" : "user-profile-form";
-    const identifier = page.getByLabel(
-      workspace ? "Workspace slug" : "Username",
-      { exact: true },
-    );
+    const draftField = page.getByLabel(workspace ? "Workspace slug" : "Name", {
+      exact: true,
+    });
     const draft = `pending-${randomUUID().slice(0, 12)}`;
     let release!: () => void;
     let started!: () => void;
@@ -69,67 +68,27 @@ for (const kind of ["profile", "workspace"] as const) {
       const button = page.locator(`button[form='${formId}']`);
       await button.click();
       await intercepted;
-      await identifier.fill(draft);
+      await draftField.fill(draft);
       release();
       await expect(
         page.getByText(workspace ? "Workspace updated" : "Profile updated", {
           exact: true,
         }),
       ).toBeVisible();
-      await expect(identifier).toHaveValue(draft);
+      await expect(draftField).toHaveValue(draft);
       await expect(button).toBeEnabled();
       await page.unroute("**/api/graphql");
       expect(await submitInput(page, operation, () => button.click())).toEqual(
-        workspace ? { slug: draft } : { username: draft },
+        workspace ? { slug: draft } : { name: draft },
       );
       await expect(button).toBeDisabled();
       await page.reload();
-      await expect(identifier).toHaveValue(draft);
+      await expect(draftField).toHaveValue(draft);
     } finally {
       release();
     }
   });
 }
-
-test("saving a display name preserves a username changed in another tab", async ({
-  page,
-}) => {
-  await registerUser(page, {
-    email: `${uniqueSeed("profile-diff")}@example.com`,
-    name: "Original name",
-  });
-  await page.goto("/user/profile");
-  const other = await page.context().newPage();
-  try {
-    await other.goto("/user/profile");
-    const username = `changed-${randomUUID().slice(0, 12)}`;
-    await other.getByLabel("Username", { exact: true }).fill(username);
-    expect(
-      await submitInput(other, "updateUserFromUserRoute", () =>
-        other.locator("button[form='user-profile-form']").click(),
-      ),
-    ).toEqual({ username });
-    await expect(
-      other.getByText("Profile updated", { exact: true }),
-    ).toBeVisible();
-
-    await page.getByLabel("Name", { exact: true }).fill("Changed display name");
-    expect(
-      await submitInput(page, "updateUserFromUserRoute", () =>
-        page.locator("button[form='user-profile-form']").click(),
-      ),
-    ).toEqual({ name: "Changed display name" });
-    const data = await graphqlRequest<{
-      currentUser: { name: string; username: string };
-    }>(page.request, "query { currentUser { name username } }");
-    expect(data.currentUser).toMatchObject({
-      name: "Changed display name",
-      username,
-    });
-  } finally {
-    await other.close();
-  }
-});
 
 test("changing a workspace slug preserves its externally updated name", async ({
   page,
@@ -287,9 +246,9 @@ test("TanStack validation blocks invalid identifiers and whitespace-only workspa
       writes++;
   });
   await page.goto("/user/profile");
-  await page.getByLabel("Username", { exact: true }).fill("Invalid--username");
+  await page.getByLabel("Name", { exact: true }).fill("   ");
   await page.locator("button[form='user-profile-form']").click();
-  await expect(page.getByLabel("Username", { exact: true })).toHaveAttribute(
+  await expect(page.getByLabel("Name", { exact: true })).toHaveAttribute(
     "aria-invalid",
     "true",
   );

@@ -2547,51 +2547,25 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     },
   );
 
-  it('checks whether normalized usernames and workspace slugs exist', async () => {
-    const owner = await createAuthenticatedUser('Identifier owner');
-    const query = `query ($username: String!, $slug: String!) {
-      userExists(username: $username)
-      workspaceExists(slug: $slug)
-    }`;
+  it('checks whether normalized workspace slugs exist', async () => {
+    const owner = await createAuthenticatedUser('Slug owner');
+    const query = `query ($slug: String!) { workspaceExists(slug: $slug) }`;
     const options = {
       cookies: owner.cookies,
-      variables: { username: ' example-name ', slug: ' example-slug ' },
+      variables: { slug: ' example-slug ' },
     };
     const before = await gql(query, options);
     expectNoGraphQLErrors(before);
-    expect(before.body.data).toEqual({
-      userExists: false,
-      workspaceExists: false,
-    });
-
-    expectNoGraphQLErrors(
-      await gql(
-        'mutation { updateCurrentUser(input: { username: "example-name" }) }',
-        options,
-      ),
-    );
+    expect(before.body.data.workspaceExists).toBe(false);
     await createWorkspace(owner, 'Availability example', 'example-slug');
     const after = await gql(query, options);
     expectNoGraphQLErrors(after);
-    expect(after.body.data).toEqual({
-      userExists: true,
-      workspaceExists: true,
-    });
-
-    const publicCheck = await gql('{ userExists(username: "example-name") }');
-    expectNoGraphQLErrors(publicCheck);
-    expect(publicCheck.body.data.userExists).toBe(true);
+    expect(after.body.data.workspaceExists).toBe(true);
     const privateCheck = await gql('{ workspaceExists(slug: "example-slug") }');
     expectGraphQLError(privateCheck);
     expect(privateCheck.body.errors[0].extensions.code).toBe('UNAUTHORIZED');
-
-    for (const invalid of [
-      '{ userExists(username: "ab") }',
-      '{ workspaceExists(slug: "ab") }',
-      '{ userExists(username: "Example-Name") }',
-      '{ workspaceExists(slug: "Example-Slug") }',
-    ]) {
-      const result = await gql(invalid, options);
+    for (const slug of ['ab', 'Example-Slug']) {
+      const result = await gql(query, { ...options, variables: { slug } });
       expectGraphQLError(result);
       expect(result.body.errors[0].extensions.code).toBe('BAD_REQUEST');
     }
@@ -2746,101 +2720,48 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expect(other.id).not.toBe(id);
   });
 
-  it('leaves usernames optional, allows changing and clearing them, and rejects uppercase and duplicates', async () => {
-    const alice = await createAuthenticatedUser('Alice username');
-    const bob = await createAuthenticatedUser('Bob username');
-    const update = (
-      user: AuthenticatedUser,
-      username: string | null,
-      name = user.user.name,
-    ) =>
-      gql(
-        'mutation ($input: AuthUpdateUserInput!) { updateCurrentUser(input: $input) }',
-        { cookies: user.cookies, variables: { input: { username, name } } },
-      );
-    const read = (user: AuthenticatedUser) =>
-      gql('{ currentUser { name username } }', { cookies: user.cookies });
-    const originalBobUsername = (await read(bob)).body.data.currentUser
-      .username;
-    expect(originalBobUsername).toBeNull();
-    const invalidUpdate = await update(alice, 'Alice-42');
-    expectGraphQLError(invalidUpdate);
-    expect(invalidUpdate.body.errors[0].extensions.code).toBe('BAD_USER_INPUT');
-    const updated = await update(alice, ' alice-42 ');
-    expectNoGraphQLErrors(updated);
-    expect((await read(alice)).body.data.currentUser).toEqual({
-      name: alice.user.name,
-      username: 'alice-42',
-    });
-    const signedIn = await request(baseUrl)
-      .post('/api/auth/sign-in/username')
-      .send({ username: 'alice-42', password: alice.password });
-    expect(signedIn.status).toBe(200);
-    expect(signedIn.body.user).toMatchObject({
-      name: alice.user.name,
-      username: 'alice-42',
-    });
-    expect(signedIn.body.user).not.toHaveProperty('displayUsername');
-    const invalidSignIn = await request(baseUrl)
-      .post('/api/auth/sign-in/username')
-      .send({ username: 'Alice-42', password: alice.password });
-    expect(invalidSignIn.status).toBe(422);
-    expect(invalidSignIn.body.code).toBe('INVALID_USERNAME');
-    const invalidProfile = await request(baseUrl)
-      .post('/api/auth/update-user')
-      .set('Cookie', toCookieHeader(alice.cookies))
-      .send({ username: 'Alice-42' });
-    expect(invalidProfile.status).toBe(400);
-    expect(invalidProfile.body.code).toBe('INVALID_USERNAME');
-    await migrationOrm.em.execute(
-      'update "user" set roles = array[\'admin\'] where id = ?',
-      [alice.user.id],
-    );
-    const lookup = `query ($id: ID!) {
-      byId: user(id: $id) { id name username }
-      byUsername: user(username: "alice-42") { id name username }
-    }`;
-    const queryOptions = {
-      cookies: alice.cookies,
-      variables: { id: alice.user.id },
-    };
-    const found = await gql(lookup, queryOptions);
-    expectNoGraphQLErrors(found);
-    const expected = {
-      id: alice.user.id,
-      name: alice.user.name,
-      username: 'alice-42',
-    };
-    expect(found.body.data).toEqual({ byId: expected, byUsername: expected });
-    const denied = await gql(lookup, { ...queryOptions, cookies: bob.cookies });
-    expectGraphQLError(denied);
-    expect(
-      denied.body.errors.map(
-        ({ extensions }: { extensions: { code: string } }) => extensions.code,
-      ),
-    ).toEqual(['FORBIDDEN', 'FORBIDDEN']);
-    for (const query of [
-      '{ user { id } }',
-      '{ user(id: "1", username: "alice-42") { id } }',
-      '{ user(username: "ALICE-42") { id } }',
-    ]) {
-      const invalidLookup = await gql(query, queryOptions);
-      expectGraphQLError(invalidLookup);
-      expect(invalidLookup.body.errors[0].extensions.code).toBe('BAD_REQUEST');
+  it('keeps email authentication without username fields or plugin endpoints', async () => {
+    const actor = await createAuthenticatedUser('Email-only user');
+    const session = await request(baseUrl)
+      .get('/api/auth/get-session')
+      .set('Cookie', toCookieHeader(actor.cookies));
+    expect(session.status).toBe(200);
+    expect(session.body.user).not.toHaveProperty('username');
+    expect(session.body.user).not.toHaveProperty('displayUsername');
+    for (const path of ['/sign-in/username', '/is-username-available']) {
+      const response = await request(baseUrl)
+        .post(`/api/auth${path}`)
+        .send({ username: 'unsupported', password: actor.password });
+      expect(response.status).toBe(404);
     }
-    const duplicate = await update(bob, 'alice-42', 'Uncommitted name');
-    expectGraphQLError(duplicate);
-    expect(duplicate.body.errors[0].extensions.code).toBe('CONFLICT');
-    expect((await read(bob)).body.data.currentUser).toEqual({
-      name: bob.user.name,
-      username: originalBobUsername,
-    });
-    const clearing = await update(alice, null);
-    expectNoGraphQLErrors(clearing);
-    expect((await read(alice)).body.data.currentUser.username).toBeNull();
-    expectNoGraphQLErrors(await update(alice, 'alice-renamed'));
-    expectNoGraphQLErrors(await update(bob, 'alice-42'));
-    expect((await read(bob)).body.data.currentUser.username).toBe('alice-42');
+    const schema = await gql(
+      `{
+      userType: __type(name: "User") { fields { name } }
+      signupType: __type(name: "AuthSignUpInput") { inputFields { name } }
+      updateType: __type(name: "AuthUpdateUserInput") { inputFields { name } }
+      queryType: __type(name: "Query") { fields { name args { name type { kind } } } }
+    }`,
+      { cookies: actor.cookies },
+    );
+    expectNoGraphQLErrors(schema);
+    const { userType, signupType, updateType, queryType } = schema.body.data;
+    expect(
+      userType.fields.map(({ name }: { name: string }) => name),
+    ).not.toContain('username');
+    for (const input of [signupType, updateType]) {
+      expect(
+        input.inputFields.map(({ name }: { name: string }) => name),
+      ).not.toContain('username');
+    }
+    expect(
+      queryType.fields.map(({ name }: { name: string }) => name),
+    ).not.toContain('userExists');
+    const userQuery = queryType.fields.find(
+      ({ name }: { name: string }) => name === 'user',
+    );
+    expect(userQuery.args).toEqual([
+      { name: 'id', type: { kind: 'NON_NULL' } },
+    ]);
   });
 
   it.each([false, true])(

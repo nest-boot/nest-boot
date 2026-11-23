@@ -15,7 +15,6 @@ const GET_CURRENT_USER_FROM_AUTHENTICATED_ROUTE = graphql(`
     currentUser {
       id
       name
-      username
       email
       permissions
     }

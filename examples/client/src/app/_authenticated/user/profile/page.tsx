@@ -15,10 +15,6 @@ import {
   submitForm,
 } from "@/lib/form";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
-import {
-  createUrlIdentifierSchema,
-  urlIdentifierInput,
-} from "@/lib/url-identifier";
 import { useFormChanges } from "@/hooks/use-form-changes";
 
 import {
@@ -90,7 +86,6 @@ function UserComponent() {
 
   const profileChanges = useFormChanges({
     name: currentUser.name.trim(),
-    username: currentUser.username ?? "",
   });
   const form = useForm({
     ...defaultFormOptions,
@@ -102,22 +97,12 @@ function UserComponent() {
           .trim()
           .min(1, t("user:profile.form.name.required"))
           .max(255, t("common:validation.max_length", { max: 255 })),
-        username: createUrlIdentifierSchema(
-          t("user:profile.form.username.format"),
-        ).or(z.literal("")),
       }),
     },
     onSubmit: async ({ value }) => {
       const name = value.name.trim();
-      const username = value.username.trim();
-      const values = { name, username };
-      const changes = profileChanges.getChanges(values);
-      const input = {
-        ...changes,
-        ...(changes.username !== undefined
-          ? { username: changes.username || null }
-          : {}),
-      };
+      const values = { name };
+      const input = profileChanges.getChanges(values);
       if (!Object.keys(input).length) return;
 
       try {
@@ -267,30 +252,6 @@ function UserComponent() {
                           error={getFormErrorMessage(field.state.meta.errors)}
                           id="name"
                           label={t("user:profile.form.name.label")}
-                        />
-                      )}
-                    </form.Field>
-                  </FormLayoutItem>
-                  <FormLayoutItem>
-                    <form.Field name="username">
-                      {(field) => (
-                        <Input
-                          name={field.name}
-                          value={field.state.value}
-                          onChange={(event) =>
-                            field.handleChange(event.target.value)
-                          }
-                          onBlur={() => handleFieldBlur(field)}
-                          error={getFormErrorMessage(field.state.meta.errors)}
-                          id="username"
-                          label={t("user:profile.form.username.label")}
-                          title={t("user:profile.form.username.format")}
-                          description={t(
-                            "user:profile.form.username.description",
-                          )}
-                          placeholder="alice"
-                          {...urlIdentifierInput}
-                          autoComplete="username"
                         />
                       )}
                     </form.Field>

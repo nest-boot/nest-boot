@@ -422,7 +422,6 @@ describe("exported input contracts", () => {
       name: "AuthSignUpInput",
       values: {
         name: "User",
-        username: "alice",
         email: "user@example.com",
         password: "pass",
         image: "/avatar.png",
@@ -430,13 +429,12 @@ describe("exported input contracts", () => {
         rememberMe: false,
       },
       required: ["name", "email", "password"],
-      nullable: ["username"],
     },
     {
       name: "AuthUpdateUserInput",
-      values: { name: "User", image: "/avatar.png", username: "alice" },
+      values: { name: "User", image: "/avatar.png" },
       required: [],
-      nullable: ["image", "username"],
+      nullable: ["image"],
     },
     {
       name: "BanUserInput",
@@ -612,9 +610,8 @@ describe("exported input contracts", () => {
         });
       }
     });
-    it("uses the same lowercase format for workspace slugs and usernames", () => {
+    it("validates the lowercase format for workspace slugs", () => {
       const workspace = toZodSchema(auth.CreateWorkspaceInput);
-      const profile = toZodSchema(auth.AuthUpdateUserInput);
       for (const identifier of [
         "ab",
         "x".repeat(31),
@@ -631,16 +628,12 @@ describe("exported input contracts", () => {
         expect(
           workspace.safeParse({ name: "Acme", slug: identifier }).success,
         ).toBe(false);
-        expect(profile.safeParse({ username: identifier }).success).toBe(false);
       }
       for (const identifier of [" acme-2 ", "abc", "x".repeat(30)]) {
         const normalized = identifier.trim();
         expect(workspace.parse({ name: "Acme", slug: identifier })).toEqual({
           name: "Acme",
           slug: normalized,
-        });
-        expect(profile.parse({ username: identifier })).toEqual({
-          username: normalized,
         });
       }
     });

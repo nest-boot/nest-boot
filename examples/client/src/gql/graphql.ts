@@ -272,7 +272,6 @@ export type AuthSignUpInput = {
   name: Scalars["String"]["input"];
   password: Scalars["String"]["input"];
   rememberMe?: InputMaybe<Scalars["Boolean"]["input"]>;
-  username?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type AuthSocialProviderType = {
@@ -284,7 +283,6 @@ export type AuthSocialProviderType = {
 export type AuthUpdateUserInput = {
   image?: InputMaybe<Scalars["String"]["input"]>;
   name?: InputMaybe<Scalars["String"]["input"]>;
-  username?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type BanUserInput = {
@@ -795,7 +793,6 @@ export type Query = {
   systemJobs: JobConnection;
   user?: Maybe<User>;
   userApiKeyPermissions: Array<UserApiKeyPermissionOption>;
-  userExists: Scalars["Boolean"]["output"];
   userJob?: Maybe<Job>;
   userJobs: JobConnection;
   userPermissions: Array<UserPermissionOption>;
@@ -866,12 +863,7 @@ export type QuerySystemJobsArgs = {
 };
 
 export type QueryUserArgs = {
-  id?: InputMaybe<Scalars["ID"]["input"]>;
-  username?: InputMaybe<Scalars["String"]["input"]>;
-};
-
-export type QueryUserExistsArgs = {
-  username: Scalars["String"]["input"];
+  id: Scalars["ID"]["input"];
 };
 
 export type QueryUserJobArgs = {
@@ -1292,7 +1284,6 @@ export type User = {
   roles: Array<UserRole>;
   sessions: SessionConnection;
   updatedAt: Scalars["DateTime"]["output"];
-  username?: Maybe<Scalars["String"]["output"]>;
   workspaces: WorkspaceConnection;
 };
 
@@ -2250,7 +2241,6 @@ export type GetCurrentUserFromAuthenticatedRouteQuery = {
     __typename?: "User";
     id: string;
     name: string;
-    username?: string | null;
     email: string;
     permissions: Array<UserPermission>;
   } | null;
@@ -5840,7 +5830,6 @@ export const GetCurrentUserFromAuthenticatedRouteDocument = {
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "name" } },
-                { kind: "Field", name: { kind: "Name", value: "username" } },
                 { kind: "Field", name: { kind: "Name", value: "email" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
               ],

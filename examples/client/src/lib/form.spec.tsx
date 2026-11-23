@@ -24,20 +24,20 @@ import { useFormChanges } from "@/hooks/use-form-changes";
 
 afterEach(cleanup);
 
-type EditableProfile = {
+type EditableWorkspace = {
   name: string;
-  username: string;
+  slug: string;
   permissions: Array<string>;
 };
 
-function EditableProfileExample({
+function EditableWorkspaceExample({
   save,
 }: {
-  save: (value: Partial<EditableProfile>) => Promise<void>;
+  save: (value: Partial<EditableWorkspace>) => Promise<void>;
 }) {
-  const changes = useFormChanges<EditableProfile>({
+  const changes = useFormChanges<EditableWorkspace>({
     name: "Original",
-    username: "old-username",
+    slug: "old-slug",
     permissions: ["READ"],
   });
   const form = useForm({
@@ -52,7 +52,7 @@ function EditableProfileExample({
   });
   return (
     <form onSubmit={(event) => void submitForm(event, form)}>
-      {(["name", "username"] as const).map((name) => (
+      {(["name", "slug"] as const).map((name) => (
         <form.Field key={name} name={name}>
           {(field) => (
             <Input
@@ -140,7 +140,7 @@ describe("shared useForm behavior", () => {
   it("preserves pending name edits, identifier clears and grant removals for the next save", async () => {
     let release!: () => void;
     const save = vi
-      .fn<(_: Partial<EditableProfile>) => Promise<void>>()
+      .fn<(_: Partial<EditableWorkspace>) => Promise<void>>()
       .mockImplementationOnce(
         () =>
           new Promise<void>((resolve) => {
@@ -148,9 +148,9 @@ describe("shared useForm behavior", () => {
           }),
       )
       .mockResolvedValue(undefined);
-    render(<EditableProfileExample save={save} />);
+    render(<EditableWorkspaceExample save={save} />);
     const name = screen.getByLabelText<HTMLInputElement>("name");
-    const username = screen.getByLabelText<HTMLInputElement>("username");
+    const slug = screen.getByLabelText<HTMLInputElement>("slug");
     const permission = screen.getByRole("checkbox", { name: "READ" });
     const button = screen.getByRole<HTMLButtonElement>("button", {
       name: /Save$/,
@@ -162,19 +162,19 @@ describe("shared useForm behavior", () => {
     );
 
     fireEvent.change(name, { target: { value: "Next save" } });
-    fireEvent.change(username, { target: { value: "" } });
+    fireEvent.change(slug, { target: { value: "" } });
     fireEvent.click(permission);
     release();
     await waitFor(() => expect(button.disabled).toBe(false));
     expect(name.value).toBe("Next save");
-    expect(username.value).toBe("");
+    expect(slug.value).toBe("");
     expect(permission.getAttribute("aria-checked")).toBe("false");
 
     fireEvent.click(button);
     await waitFor(() =>
       expect(save).toHaveBeenNthCalledWith(2, {
         name: "Next save",
-        username: "",
+        slug: "",
         permissions: [],
       }),
     );
@@ -183,7 +183,7 @@ describe("shared useForm behavior", () => {
 
   it("normalizes the saved baseline without treating the submitted raw text as a new edit", async () => {
     const save = vi.fn().mockResolvedValue(undefined);
-    render(<EditableProfileExample save={save} />);
+    render(<EditableWorkspaceExample save={save} />);
     fireEvent.change(screen.getByLabelText("name"), {
       target: { value: " Saved " },
     });
