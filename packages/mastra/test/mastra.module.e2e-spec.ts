@@ -464,5 +464,56 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
     } finally {
       await globalPrefixApp.close();
     }
+
+    @Controller("demo")
+    class ExcludedPrefixDemoController {
+      @Get("ping")
+      ping() {
+        return { ok: true };
+      }
+    }
+
+    @Module({
+      controllers: [ExcludedPrefixDemoController],
+    })
+    class ExcludedPrefixDemoModule {}
+
+    const excludedPrefixRef = await Test.createTestingModule({
+      imports: [MastraModule, ExcludedPrefixDemoModule, SampleFeatureModule],
+    }).compile();
+
+    const excludedPrefixApp = excludedPrefixRef.createNestApplication();
+    excludedPrefixApp.setGlobalPrefix("v1", {
+      exclude: ["/api/mastra", "/api/mastra/{*path}"],
+    });
+    await excludedPrefixApp.init();
+    await excludedPrefixApp.listen(0);
+
+    try {
+      const url = await excludedPrefixApp.getUrl();
+
+      const demoRes = await fetch(`${url}/v1/demo/ping`);
+      expect(demoRes.status).toBe(200);
+      expect(await demoRes.json()).toEqual({ ok: true });
+
+      const agentsRes = await fetch(`${url}/api/mastra/agents`);
+      expect(agentsRes.status).toBe(200);
+      const agentsBody = (await agentsRes.json()) as Record<string, unknown>;
+      expect(Object.keys(agentsBody)).toEqual(
+        expect.arrayContaining(["writer-agent"]),
+      );
+
+      const studioRes = await fetch(`${url}/api/mastra/studio`);
+      expect(studioRes.status).toBe(200);
+      const studioHtml = await studioRes.text();
+      expect(studioHtml).toContain('<base href="/api/mastra/studio/" />');
+      expect(studioHtml).toContain("window.MASTRA_API_PREFIX = '/api/mastra';");
+      expect(studioHtml).toContain(
+        "window.MASTRA_STUDIO_BASE_PATH = '/api/mastra/studio';",
+      );
+      expect((await fetch(`${url}/v1/api/mastra/studio`)).status).toBe(404);
+    } finally {
+      await excludedPrefixApp.close();
+    }
   });
 });

@@ -6,6 +6,8 @@ NestJS-native [Mastra](https://mastra.ai/) integration for Nest Boot with depend
 
 ```bash
 pnpm add @nest-boot/mastra @mastra/core @nest-boot/auth zod
+# Optional: install `mastra` to enable embedded Mastra Studio at `/api/mastra/studio`
+pnpm add mastra
 ```
 
 ## Quick Start

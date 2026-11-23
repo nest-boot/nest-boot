@@ -1,10 +1,15 @@
-import { readdirSync } from "node:fs";
+import fs, { readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
+import { Logger, RequestMethod } from "@nestjs/common";
+import { ApplicationConfig } from "@nestjs/core";
 import express from "express";
 
-import { MastraStudioMiddleware } from "./mastra-studio.middleware.js";
+import {
+  MastraStudioMiddleware,
+  resolveMastraStudioDistDir,
+} from "./mastra-studio.middleware.js";
 
 const requireFromHere = createRequire(import.meta.url);
 
@@ -145,6 +150,86 @@ describe("MastraStudioMiddleware", () => {
       await reader?.cancel().catch(() => undefined);
     } finally {
       await server.close();
+    }
+  });
+
+  it("gracefully skips Studio when the optional mastra package or index.html is unavailable", () => {
+    expect(
+      resolveMastraStudioDistDir(() => {
+        throw new Error("Cannot find package 'mastra'");
+      }),
+    ).toBeNull();
+
+    const existsSpy = vi.spyOn(fs, "existsSync").mockReturnValue(false);
+    const warnSpy = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+
+    try {
+      const middleware = new MastraStudioMiddleware({});
+      middleware.onApplicationBootstrap();
+      const next = vi.fn();
+      middleware.use(
+        {} as express.Request,
+        {} as express.Response,
+        next as express.NextFunction,
+      );
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('optional "mastra" peer dependency'),
+      );
+      expect(next).toHaveBeenCalledTimes(1);
+    } finally {
+      existsSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("pre-initializes during onApplicationBootstrap and respects globalPrefix exclude rules", async () => {
+    const applicationConfig = new ApplicationConfig();
+    applicationConfig.setGlobalPrefix("v1");
+    applicationConfig.setGlobalPrefixOptions({
+      exclude: [
+        {
+          path: "/api/mastra/studio",
+          pathRegex: /^\/api\/mastra\/studio(?:\/.*)?$/,
+          requestMethod: RequestMethod.GET,
+        },
+        {
+          path: "/ignored-post-only",
+          pathRegex: /^\/api\/mastra\/agents$/,
+          requestMethod: RequestMethod.POST,
+        },
+      ],
+    });
+
+    const readSpy = vi.spyOn(fs, "readFileSync");
+    const middleware = new MastraStudioMiddleware({}, applicationConfig);
+
+    try {
+      middleware.onApplicationBootstrap();
+      const readsAfterBootstrap = readSpy.mock.calls.length;
+      expect(readsAfterBootstrap).toBeGreaterThan(0);
+
+      const server = await startMiddlewareServer(middleware);
+      try {
+        // Studio is excluded from globalPrefix (/api/mastra/studio), while API stays under /v1/api/mastra
+        const res = await fetch(`${server.baseUrl}/api/mastra/studio`);
+        expect(res.status).toBe(200);
+        const html = await res.text();
+        expect(html).toContain('<base href="/api/mastra/studio/" />');
+        expect(html).toContain("window.MASTRA_API_PREFIX = '/v1/api/mastra';");
+        expect(html).toContain(
+          "window.MASTRA_STUDIO_BASE_PATH = '/api/mastra/studio';",
+        );
+
+        // Serving requests reuses the pre-built router without re-reading index.html
+        expect(readSpy.mock.calls.length).toBe(readsAfterBootstrap);
+      } finally {
+        await server.close();
+      }
+    } finally {
+      readSpy.mockRestore();
     }
   });
 });

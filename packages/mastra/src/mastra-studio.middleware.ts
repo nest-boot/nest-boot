@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
@@ -11,8 +11,11 @@ import {
 import {
   Inject,
   Injectable,
+  Logger,
   type NestMiddleware,
+  type OnApplicationBootstrap,
   Optional,
+  RequestMethod,
 } from "@nestjs/common";
 import { ApplicationConfig } from "@nestjs/core";
 import express, {
@@ -33,12 +36,53 @@ import {
 const requireFromHere = createRequire(import.meta.url);
 
 /**
- * Resolves the bundled `mastra/dist/studio` directory path.
- * @returns Absolute path to the Mastra Studio distribution directory
+ * Resolves the bundled `mastra/dist/studio` directory path when the optional
+ * `mastra` peer dependency is installed.
+ * @param resolvePackage - Package specifier resolver (overridable for tests)
+ * @returns Absolute path to the Mastra Studio distribution directory, or `null` when unavailable
  */
-function resolveMastraStudioDistDir(): string {
-  const mastraPkgPath = requireFromHere.resolve("mastra/package.json");
-  return path.join(path.dirname(mastraPkgPath), "dist", "studio");
+export function resolveMastraStudioDistDir(
+  resolvePackage: (specifier: string) => string = (specifier) =>
+    requireFromHere.resolve(specifier),
+): string | null {
+  try {
+    const mastraPkgPath = resolvePackage("mastra/package.json");
+    return path.join(path.dirname(mastraPkgPath), "dist", "studio");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Checks whether a route path is excluded from NestJS's configured global prefix.
+ * @param applicationConfig - NestJS application configuration
+ * @param routePath - Candidate route path without global prefix
+ * @param method - HTTP request method to match against exclude rules
+ * @returns True when the route matches a global prefix exclude entry
+ */
+function isGlobalPrefixExcluded(
+  applicationConfig: ApplicationConfig | undefined,
+  routePath: string,
+  method: RequestMethod,
+): boolean {
+  const excludedRoutes = applicationConfig?.getGlobalPrefixOptions().exclude;
+  if (!Array.isArray(excludedRoutes) || excludedRoutes.length === 0) {
+    return false;
+  }
+
+  const normalizedPath = routePath.startsWith("/")
+    ? routePath
+    : `/${routePath}`;
+  return excludedRoutes.some((route) => {
+    const matchesMethod =
+      route.requestMethod === RequestMethod.ALL ||
+      route.requestMethod === method;
+    if (!matchesMethod) {
+      return false;
+    }
+
+    return route.pathRegex.test(normalizedPath);
+  });
 }
 
 /**
@@ -62,7 +106,10 @@ function looksLikeMissingAsset(relativePath: string): boolean {
  * at `${prefix}/studio` without requiring route-level authentication (matching GraphQL Playground).
  */
 @Injectable()
-export class MastraStudioMiddleware implements NestMiddleware {
+export class MastraStudioMiddleware
+  implements NestMiddleware, OnApplicationBootstrap
+{
+  private readonly logger = new Logger(MastraStudioMiddleware.name);
   private router: Router | null | undefined;
 
   constructor(
@@ -70,6 +117,21 @@ export class MastraStudioMiddleware implements NestMiddleware {
     private readonly options: MastraModuleOptions,
     @Optional() private readonly applicationConfig?: ApplicationConfig,
   ) {}
+
+  /**
+   * Pre-builds the Studio router once NestJS has finished applying global prefix options,
+   * avoiding synchronous file I/O on the first incoming HTTP request.
+   */
+  onApplicationBootstrap(): void {
+    this.ensureRouter();
+  }
+
+  private ensureRouter(): Router | null {
+    if (this.router === undefined) {
+      this.router = this.createRouter();
+    }
+    return this.router;
+  }
 
   /**
    * Builds the Studio router after the host has configured its global prefix.
@@ -83,22 +145,57 @@ export class MastraStudioMiddleware implements NestMiddleware {
       this.options.studio,
       apiEnabled,
     );
-    const studioDir = resolveMastraStudioDistDir();
-    const indexPath = path.join(studioDir, "index.html");
 
-    if (!studioOptions.enabled || !existsSync(indexPath)) {
+    if (!studioOptions.enabled) {
+      return null;
+    }
+
+    const studioDir = resolveMastraStudioDistDir();
+    const indexPath = studioDir ? path.join(studioDir, "index.html") : null;
+
+    if (!studioDir || !indexPath || !fs.existsSync(indexPath)) {
+      this.logger.warn(
+        'Mastra Studio is enabled, but the optional "mastra" peer dependency (dist/studio/index.html) was not found. Install "mastra" to serve embedded Studio.',
+      );
       return null;
     }
 
     const globalPrefix = normalizeStudioBase(
       this.applicationConfig?.getGlobalPrefix() ?? "",
     );
-    const apiPrefix = `${globalPrefix}${serverOptions.prefix}`;
-    const studioBasePath = resolveMastraStudioBasePath(apiPrefix);
+    const rawApiPrefix = serverOptions.prefix;
+    const rawStudioBasePath = resolveMastraStudioBasePath(rawApiPrefix);
+    const apiExcluded =
+      globalPrefix.length > 0 &&
+      (isGlobalPrefixExcluded(
+        this.applicationConfig,
+        rawApiPrefix,
+        RequestMethod.ALL,
+      ) ||
+        isGlobalPrefixExcluded(
+          this.applicationConfig,
+          `${rawApiPrefix}/agents`,
+          RequestMethod.GET,
+        ));
+    const studioExcluded =
+      globalPrefix.length > 0 &&
+      isGlobalPrefixExcluded(
+        this.applicationConfig,
+        rawStudioBasePath,
+        RequestMethod.GET,
+      );
+    const apiPrefix =
+      globalPrefix && !apiExcluded
+        ? `${globalPrefix}${rawApiPrefix}`
+        : rawApiPrefix;
+    const studioBasePath =
+      globalPrefix && !studioExcluded
+        ? `${globalPrefix}${rawStudioBasePath}`
+        : rawStudioBasePath;
     const devServerInstanceId = randomUUID();
 
     const renderedIndexHtml = injectStudioHtmlConfig(
-      readFileSync(indexPath, "utf8"),
+      fs.readFileSync(indexPath, "utf8"),
       {
         basePath: studioBasePath,
         host: "window.location.hostname",
@@ -201,12 +298,12 @@ export class MastraStudioMiddleware implements NestMiddleware {
    * @param next - Next middleware callback
    */
   use(req: Request, res: Response, next: NextFunction): void {
-    this.router = this.router === undefined ? this.createRouter() : this.router;
-    if (!this.router) {
+    const router = this.ensureRouter();
+    if (!router) {
       next();
       return;
     }
 
-    void this.router(req, res, next);
+    void router(req, res, next);
   }
 }
