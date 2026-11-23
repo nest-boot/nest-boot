@@ -10,12 +10,76 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { useForm } from "@tanstack/react-form";
-import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
+import {
+  defaultFormOptions,
+  handleFieldBlur,
+  resetFormAfterSave,
+  submitForm,
+} from "@/lib/form";
 import { getFormErrorMessage } from "@/lib/form-errors";
 import { SubmitButton } from "@/components/form/submit-button";
 import { Input } from "@/components/thread-ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useFormChanges } from "@/hooks/use-form-changes";
 
 afterEach(cleanup);
+
+type EditableProfile = {
+  name: string;
+  username: string;
+  permissions: Array<string>;
+};
+
+function EditableProfileExample({
+  save,
+}: {
+  save: (value: Partial<EditableProfile>) => Promise<void>;
+}) {
+  const changes = useFormChanges<EditableProfile>({
+    name: "Original",
+    username: "old-username",
+    permissions: ["READ"],
+  });
+  const form = useForm({
+    ...defaultFormOptions,
+    defaultValues: changes.defaultValues,
+    onSubmit: async ({ value, formApi }) => {
+      const saved = { ...value, name: value.name.trim() };
+      await save(changes.getChanges(saved));
+      changes.accept(saved);
+      resetFormAfterSave(formApi, value, saved);
+    },
+  });
+  return (
+    <form onSubmit={(event) => void submitForm(event, form)}>
+      {(["name", "username"] as const).map((name) => (
+        <form.Field key={name} name={name}>
+          {(field) => (
+            <Input
+              label={name}
+              value={field.state.value}
+              onChange={(event) => field.handleChange(event.target.value)}
+            />
+          )}
+        </form.Field>
+      ))}
+      <form.Field name="permissions">
+        {(field) => (
+          <Checkbox
+            aria-label="READ"
+            checked={field.state.value.includes("READ")}
+            onCheckedChange={(checked) =>
+              field.handleChange(checked ? ["READ"] : [])
+            }
+          />
+        )}
+      </form.Field>
+      <SubmitButton formApi={form} requireDirty>
+        Save
+      </SubmitButton>
+    </form>
+  );
+}
 
 function Example({
   id,
@@ -73,6 +137,68 @@ function Example({
 }
 
 describe("shared useForm behavior", () => {
+  it("preserves pending name edits, identifier clears and grant removals for the next save", async () => {
+    let release!: () => void;
+    const save = vi
+      .fn<(_: Partial<EditableProfile>) => Promise<void>>()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            release = resolve;
+          }),
+      )
+      .mockResolvedValue(undefined);
+    render(<EditableProfileExample save={save} />);
+    const name = screen.getByLabelText<HTMLInputElement>("name");
+    const username = screen.getByLabelText<HTMLInputElement>("username");
+    const permission = screen.getByRole("checkbox", { name: "READ" });
+    const button = screen.getByRole<HTMLButtonElement>("button", {
+      name: /Save$/,
+    });
+    fireEvent.change(name, { target: { value: " First save " } });
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(save).toHaveBeenCalledExactlyOnceWith({ name: "First save" }),
+    );
+
+    fireEvent.change(name, { target: { value: "Next save" } });
+    fireEvent.change(username, { target: { value: "" } });
+    fireEvent.click(permission);
+    release();
+    await waitFor(() => expect(button.disabled).toBe(false));
+    expect(name.value).toBe("Next save");
+    expect(username.value).toBe("");
+    expect(permission.getAttribute("aria-checked")).toBe("false");
+
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(save).toHaveBeenNthCalledWith(2, {
+        name: "Next save",
+        username: "",
+        permissions: [],
+      }),
+    );
+    await waitFor(() => expect(button.disabled).toBe(true));
+  });
+
+  it("normalizes the saved baseline without treating the submitted raw text as a new edit", async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(<EditableProfileExample save={save} />);
+    fireEvent.change(screen.getByLabelText("name"), {
+      target: { value: " Saved " },
+    });
+    const button = screen.getByRole<HTMLButtonElement>("button", {
+      name: /Save$/,
+    });
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(screen.getByLabelText<HTMLInputElement>("name").value).toBe(
+        "Saved",
+      ),
+    );
+    expect(save).toHaveBeenCalledExactlyOnceWith({ name: "Saved" });
+    await waitFor(() => expect(button.disabled).toBe(true));
+  });
   it("validates on submit, focuses within that form, and revalidates changes", async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     render(

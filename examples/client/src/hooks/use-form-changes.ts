@@ -12,7 +12,7 @@ export function useFormChanges<Values extends object>(
     defaultValues,
     getChanges: (values: Values) =>
       getFormChanges(defaultValues, values, options),
-    // Advance only after a successful save, together with form.reset(values).
+    // Advance only after a successful save, together with resetFormAfterSave.
     accept: (values: Values) => accept(structuredClone(values)),
   };
 }

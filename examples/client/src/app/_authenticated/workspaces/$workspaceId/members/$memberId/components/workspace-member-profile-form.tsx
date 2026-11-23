@@ -4,7 +4,12 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { useForm } from "@tanstack/react-form";
 import type { WorkspaceMemberFormProps } from "./workspace-member-form-props";
-import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
+import {
+  defaultFormOptions,
+  handleFieldBlur,
+  resetFormAfterSave,
+  submitForm,
+} from "@/lib/form";
 import { useFormChanges } from "@/hooks/use-form-changes";
 
 import { CardContent, CardFooter } from "@/components/ui/card";
@@ -87,7 +92,7 @@ export function WorkspaceMemberProfileForm({
       );
       if (saved) {
         profileChanges.accept(values);
-        form.reset(values);
+        resetFormAfterSave(form, value, values);
       }
     },
   });

@@ -9,7 +9,12 @@ import { useTranslation } from "react-i18next";
 
 import { useAuthUserContext } from "../../../contexts/auth-user-context";
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
-import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
+import {
+  defaultFormOptions,
+  handleFieldBlur,
+  resetFormAfterSave,
+  submitForm,
+} from "@/lib/form";
 import { UserPermission, UserRole } from "@/gql/graphql";
 import { usePasswordPolicy } from "@/hooks/use-password-policy";
 import { useFormChanges } from "@/hooks/use-form-changes";
@@ -421,7 +426,7 @@ function AdminUserDetails() {
       if (error) formApi.setErrorMap({ onSubmit: { form: error, fields: {} } });
       else {
         profileChanges.accept(values);
-        formApi.reset(values);
+        resetFormAfterSave(formApi, value, values);
       }
     },
   });
@@ -450,7 +455,7 @@ function AdminUserDetails() {
       if (error) formApi.setErrorMap({ onSubmit: { form: error, fields: {} } });
       else {
         roleChanges.accept(value);
-        formApi.reset(value);
+        resetFormAfterSave(formApi, value);
       }
     },
   });
@@ -479,7 +484,7 @@ function AdminUserDetails() {
       if (error) formApi.setErrorMap({ onSubmit: { form: error, fields: {} } });
       else {
         permissionChanges.accept(value);
-        formApi.reset(value);
+        resetFormAfterSave(formApi, value);
       }
     },
   });

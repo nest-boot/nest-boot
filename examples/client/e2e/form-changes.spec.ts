@@ -24,6 +24,73 @@ async function submitInput(
   return saved.request().postDataJSON().variables.input;
 }
 
+for (const kind of ["profile", "workspace"] as const) {
+  test(`${kind} preserves identifier edits made while a name save is pending`, async ({
+    page,
+  }) => {
+    await registerUser(page, {
+      email: `${uniqueSeed(`pending-${kind}`)}@example.com`,
+      name: "Original name",
+    });
+    const workspace =
+      kind === "workspace"
+        ? await createWorkspaceByApi(page, "Original workspace")
+        : undefined;
+    await page.goto(
+      workspace ? `/workspaces/${workspace.id}/settings` : "/user/profile",
+    );
+    const operation = workspace
+      ? "updateWorkspaceFromSettingsRoute"
+      : "updateUserFromUserRoute";
+    const formId = workspace ? "workspace-settings-form" : "user-profile-form";
+    const identifier = page.getByLabel(
+      workspace ? "Workspace slug" : "Username",
+      { exact: true },
+    );
+    const draft = `pending-${randomUUID().slice(0, 12)}`;
+    let release!: () => void;
+    let started!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const intercepted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    await page.route("**/api/graphql", async (route) => {
+      if (!route.request().postData()?.includes(operation))
+        return route.continue();
+      const response = await route.fetch();
+      started();
+      await pending;
+      await route.fulfill({ response });
+    });
+    try {
+      await page.getByLabel("Name", { exact: true }).fill("Saved name");
+      const button = page.locator(`button[form='${formId}']`);
+      await button.click();
+      await intercepted;
+      await identifier.fill(draft);
+      release();
+      await expect(
+        page.getByText(workspace ? "Workspace updated" : "Profile updated", {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(identifier).toHaveValue(draft);
+      await expect(button).toBeEnabled();
+      await page.unroute("**/api/graphql");
+      expect(await submitInput(page, operation, () => button.click())).toEqual(
+        workspace ? { slug: draft } : { username: draft },
+      );
+      await expect(button).toBeDisabled();
+      await page.reload();
+      await expect(identifier).toHaveValue(draft);
+    } finally {
+      release();
+    }
+  });
+}
+
 test("saving a display name preserves a username changed in another tab", async ({
   page,
 }) => {

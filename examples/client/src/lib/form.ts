@@ -1,6 +1,20 @@
 import { formOptions, revalidateLogic } from "@tanstack/react-form";
+import { getFormChanges } from "./form-changes";
 import type { AnyFieldApi, AnyFormApi } from "@tanstack/react-form";
 import type { FormEvent } from "react";
+
+/** Advance saved defaults while keeping edits made during the request dirty. */
+export function resetFormAfterSave<Values extends object>(
+  form: Pick<AnyFormApi, "state" | "reset" | "setFieldValue">,
+  submitted: Values,
+  saved: Values = submitted,
+) {
+  const pendingChanges = getFormChanges(submitted, form.state.values);
+  form.reset(saved);
+  for (const [field, value] of Object.entries(pendingChanges)) {
+    form.setFieldValue(field, value);
+  }
+}
 
 /** Validate at first submit, then on changes; request errors use a separate slot. */
 export const defaultFormOptions = formOptions({

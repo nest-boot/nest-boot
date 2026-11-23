@@ -3,7 +3,12 @@ import { useForm, useSelector } from "@tanstack/react-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import type { PermissionOption } from "@/lib/permissions";
-import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
+import {
+  defaultFormOptions,
+  handleFieldBlur,
+  resetFormAfterSave,
+  submitForm,
+} from "@/lib/form";
 import { useFormChanges } from "@/hooks/use-form-changes";
 import { SystemAccountPermission } from "@/gql/graphql";
 import { Page } from "@/components/thread-ui/page";
@@ -108,7 +113,7 @@ export function SystemAccountFormPage({
       try {
         await onSave(values, changes);
         metadataChanges.accept(values);
-        formApi.reset(values);
+        resetFormAfterSave(formApi, value, values);
         toast.add({ type: "success", title: t("admin:system_accounts.saved") });
       } catch (error) {
         formApi.setErrorMap({

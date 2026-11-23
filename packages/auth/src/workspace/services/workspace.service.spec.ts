@@ -782,6 +782,54 @@ describe("WorkspaceService and cross-domain coordination", () => {
 });
 
 describe("conditional authorization", () => {
+  it.each(["update", "update-any"] as const)(
+    "checks original and proposed workspace fields for %s",
+    async (action) => {
+      await withIdentity(async ({ workspaceService, workspace, em }) => {
+        workspace.slug = "protected-slug";
+        workspace.name = "Original";
+        em.findOne.mockResolvedValue(workspace);
+        RequestContext.set(
+          AuthAbility,
+          new AuthAbility([
+            { action, subject: Workspace, fields: ["name", "slug"] },
+            {
+              action,
+              subject: Workspace,
+              fields: ["slug"],
+              conditions: { slug: "protected-slug" },
+              inverted: true,
+            },
+          ]),
+        );
+        const update = (input: { name?: string; slug?: string }) =>
+          action === "update"
+            ? workspaceService.updateWorkspace(workspace, input)
+            : workspaceService.updatePlatformWorkspace(workspace.id, input);
+
+        // Changing the condition itself must not evade the original denial.
+        await expect(update({ slug: "public-slug" })).rejects.toThrow(
+          ForbiddenException,
+        );
+        expect(workspace.slug).toBe("protected-slug");
+        expect(em.assign).not.toHaveBeenCalled();
+        expect(em.flush).not.toHaveBeenCalled();
+
+        // A denial on another field must not block a legitimate name edit.
+        await expect(update({ name: "Renamed" })).resolves.toBe(workspace);
+        expect(workspace.name).toBe("Renamed");
+        expect(workspace.slug).toBe("protected-slug");
+        em.flush.mockClear();
+
+        // Proposed-state checks must still prevent entering a protected state.
+        workspace.slug = "public-slug";
+        await expect(update({ slug: "protected-slug" })).rejects.toThrow(
+          ForbiddenException,
+        );
+        expect(em.flush).not.toHaveBeenCalled();
+      });
+    },
+  );
   describe("conditional service authorization", () => {
     it.each(
       (["member", "workspace"] as const).filter((_row, index) => index === 1),

@@ -20,7 +20,12 @@ import type { PagePaginationActionsConfig } from "@/components/thread-ui/page";
 import type { ApiKeyRow } from "@/components/api-keys-page";
 import type { ApiKeySearch } from "@/schemas/api-key-search-schema";
 import type { PermissionOption } from "@/lib/permissions";
-import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
+import {
+  defaultFormOptions,
+  handleFieldBlur,
+  resetFormAfterSave,
+  submitForm,
+} from "@/lib/form";
 import { useCreatedApiKey } from "@/app/_authenticated/contexts/created-api-key-context";
 import { Link } from "@/components/link";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
@@ -193,7 +198,7 @@ export function ApiKeyFormPage<Permission extends CredentialPermission>({
         await onSave(input, changes);
         if (apiKey) {
           metadataChanges.accept(values);
-          formApi.reset({
+          resetFormAfterSave(formApi, value, {
             ...input,
             memberId: value.memberId,
             systemAccountId: value.systemAccountId,

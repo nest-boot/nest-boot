@@ -8,7 +8,12 @@ import { z } from "zod";
 
 import { useForm } from "@tanstack/react-form";
 import { useAuthUserContext } from "../../contexts/auth-user-context";
-import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
+import {
+  defaultFormOptions,
+  handleFieldBlur,
+  resetFormAfterSave,
+  submitForm,
+} from "@/lib/form";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import {
   createUrlIdentifierSchema,
@@ -121,7 +126,7 @@ function UserComponent() {
         });
         await refreshAfterMutation(() => router.invalidate());
         profileChanges.accept(values);
-        form.reset(values);
+        resetFormAfterSave(form, value, values);
         toast.add({ type: "success", title: t("user:profile.toast.updated") });
       } catch (error) {
         toast.add({

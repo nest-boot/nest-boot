@@ -9,7 +9,12 @@ import {
 import { useTranslation } from "react-i18next";
 import { useForm } from "@tanstack/react-form";
 import { useSelectedWorkspaceContext } from "../contexts/selected-workspace-context";
-import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
+import {
+  defaultFormOptions,
+  handleFieldBlur,
+  resetFormAfterSave,
+  submitForm,
+} from "@/lib/form";
 
 import { useFormChanges } from "@/hooks/use-form-changes";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
@@ -146,7 +151,7 @@ function SettingsComponent() {
         });
         await refreshAfterMutation(() => router.invalidate());
         workspaceChanges.accept(values);
-        form.reset(values);
+        resetFormAfterSave(form, value, values);
         toast.add({ type: "success", title: t("workspace:settings.saved") });
       } catch (error) {
         toast.add({

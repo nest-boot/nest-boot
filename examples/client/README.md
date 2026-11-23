@@ -314,8 +314,12 @@ snapshot of normalized loaded values; `getChanges(values)` returns only fields
 that differ from that snapshot. Compare roles and permissions with
 `{ setFields: ["roles", "permissions"] }` so reordering does not replace grants.
 Preserve explicit clears (`null`, `false`, and empty arrays) and skip empty
-updates. After a successful request, call `accept(values)` and
-`form.reset(values)` together. Failed requests retain the draft and comparison
+updates. After a successful request, call `accept(savedValues)` and
+`resetFormAfterSave(formApi, value, savedValues)` together. Here `value` is the
+raw submit snapshot and `savedValues` contains the normalized values that were
+saved. The helper advances the saved defaults and restores any edits made while
+the request was pending, keeping them dirty for the next save. If no normalization
+is needed, omit its third argument. Failed requests retain the draft and comparison
 baseline. Query refreshes must not replace that baseline while editing.
 Shared create/edit components pass complete creation values and the update
 patch separately to `onSave`; create routes use the complete values, and edit

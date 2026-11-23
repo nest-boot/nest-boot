@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useForm } from "@tanstack/react-form";
 import type { WorkspaceMemberFormProps } from "./workspace-member-form-props";
 import type { GetWorkspaceMemberFromWorkspaceMemberRouteQuery } from "@/gql/graphql";
-import { defaultFormOptions, submitForm } from "@/lib/form";
+import { defaultFormOptions, resetFormAfterSave, submitForm } from "@/lib/form";
 import { useFormChanges } from "@/hooks/use-form-changes";
 import { getFormErrorMessage } from "@/lib/form-errors";
 
@@ -71,7 +71,7 @@ export function WorkspaceMemberPermissionsForm({
       }, true);
       if (saved) {
         permissionChanges.accept(value);
-        form.reset(value);
+        resetFormAfterSave(form, value);
       }
     },
   });

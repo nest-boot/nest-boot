@@ -6,7 +6,7 @@ import { z } from "zod";
 import { useForm } from "@tanstack/react-form";
 import type { WorkspaceMemberFormProps } from "./workspace-member-form-props";
 import type { GetWorkspaceMemberFromWorkspaceMemberRouteQuery } from "@/gql/graphql";
-import { defaultFormOptions, submitForm } from "@/lib/form";
+import { defaultFormOptions, resetFormAfterSave, submitForm } from "@/lib/form";
 import { useFormChanges } from "@/hooks/use-form-changes";
 import { CardContent, CardFooter } from "@/components/ui/card";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
@@ -75,7 +75,7 @@ export function WorkspaceMemberRolesForm({
       }, true);
       if (saved) {
         roleChanges.accept(value);
-        form.reset(value);
+        resetFormAfterSave(form, value);
       }
     },
   });

@@ -126,6 +126,12 @@ export class WorkspaceService {
             throw new NotFoundException("Workspace not found");
           }
           authorize("update-any", workspace);
+          // Conditional field rules must see the original record as well.
+          for (const [field, value] of Object.entries(input)) {
+            if (value !== undefined) {
+              authorize("update-any", workspace, field);
+            }
+          }
           tx.assign(workspace, input, { ignoreUndefined: true });
           authorize("update-any", workspace);
           for (const [field, value] of Object.entries(input)) {
@@ -423,6 +429,12 @@ export class WorkspaceService {
     assertCurrentWorkspace(workspace);
     authorize("update", workspace);
     input = this.normalizeWorkspaceChanges(input);
+    // Authorize fields before assignment so changing a condition cannot bypass it.
+    for (const [field, value] of Object.entries(input)) {
+      if (value !== undefined) {
+        authorize("update", workspace, field);
+      }
+    }
     if (this.em.isInTransaction()) {
       throw new BadRequestException(
         "Change the current workspace outside an active transaction",
