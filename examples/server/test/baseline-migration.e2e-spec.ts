@@ -31,18 +31,20 @@ it('builds the current example schema from ordered migrations and can roll back 
     });
     expect(base).toHaveLength(2);
     expect(base[0].name).toBe(Migration00000000000000_Initial.name);
-    const legacy = await fixture.pool.query(`
-      insert into workspace (name) values ('Legacy workspace') returning id
+    await fixture.pool.query(`
+      insert into workspace (name)
+      values ('Legacy workspace A'), ('Legacy workspace B'), ('Legacy workspace C')
     `);
     const migrated = await orm.migrator.up();
     expect(migrated).toHaveLength(1);
-    expect(
-      (
-        await fixture.pool.query('select slug from workspace where id = $1', [
-          legacy.rows[0].id,
-        ])
-      ).rows,
-    ).toEqual([{ slug: `workspace-${legacy.rows[0].id}` }]);
+    const legacy = await fixture.pool.query<{ slug: string }>(
+      'select slug from workspace',
+    );
+    expect(legacy.rows).toHaveLength(3);
+    for (const { slug } of legacy.rows) {
+      expect(slug).toMatch(/^[a-z][a-z0-9]{7}$/);
+    }
+    expect(new Set(legacy.rows.map(({ slug }) => slug)).size).toBe(3);
     const listed = await MikroORM.init({
       ...options,
       migrations: {
