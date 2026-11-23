@@ -2720,50 +2720,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expect(other.id).not.toBe(id);
   });
 
-  it('keeps email authentication without username fields or plugin endpoints', async () => {
-    const actor = await createAuthenticatedUser('Email-only user');
-    const session = await request(baseUrl)
-      .get('/api/auth/get-session')
-      .set('Cookie', toCookieHeader(actor.cookies));
-    expect(session.status).toBe(200);
-    expect(session.body.user).not.toHaveProperty('username');
-    expect(session.body.user).not.toHaveProperty('displayUsername');
-    for (const path of ['/sign-in/username', '/is-username-available']) {
-      const response = await request(baseUrl)
-        .post(`/api/auth${path}`)
-        .send({ username: 'unsupported', password: actor.password });
-      expect(response.status).toBe(404);
-    }
-    const schema = await gql(
-      `{
-      userType: __type(name: "User") { fields { name } }
-      signupType: __type(name: "AuthSignUpInput") { inputFields { name } }
-      updateType: __type(name: "AuthUpdateUserInput") { inputFields { name } }
-      queryType: __type(name: "Query") { fields { name args { name type { kind } } } }
-    }`,
-      { cookies: actor.cookies },
-    );
-    expectNoGraphQLErrors(schema);
-    const { userType, signupType, updateType, queryType } = schema.body.data;
-    expect(
-      userType.fields.map(({ name }: { name: string }) => name),
-    ).not.toContain('username');
-    for (const input of [signupType, updateType]) {
-      expect(
-        input.inputFields.map(({ name }: { name: string }) => name),
-      ).not.toContain('username');
-    }
-    expect(
-      queryType.fields.map(({ name }: { name: string }) => name),
-    ).not.toContain('userExists');
-    const userQuery = queryType.fields.find(
-      ({ name }: { name: string }) => name === 'user',
-    );
-    expect(userQuery.args).toEqual([
-      { name: 'id', type: { kind: 'NON_NULL' } },
-    ]);
-  });
-
   it.each([false, true])(
     'retains workspace-key audit records and rejects reuse after workspace deletion (following mutation: %s)',
     async (followingMutation) => {

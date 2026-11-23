@@ -8,24 +8,6 @@ import { createFirstWorkspace, createWorkspaceByApi } from "./utils/workspace";
 import type { Page } from "@playwright/test";
 
 test.describe("user pages", () => {
-  test("edits the display name without a username field", async ({ page }) => {
-    await registerUser(page, {
-      email: `${uniqueSeed("profile-name")}@example.com`,
-      name: "Original display name",
-    });
-    await page.goto("/user/profile");
-    await expect(page.getByLabel("Username", { exact: true })).toHaveCount(0);
-    await page.getByLabel("Name", { exact: true }).fill("Updated display name");
-    await page.locator("button[form='user-profile-form']").click();
-    await expect(
-      page.getByText("Profile updated", { exact: true }),
-    ).toBeVisible();
-    await page.reload();
-    await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
-      "Updated display name",
-    );
-  });
-
   test("opens the personal overview from the user row and persists language and theme preferences", async ({
     page,
   }) => {

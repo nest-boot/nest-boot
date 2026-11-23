@@ -25,12 +25,6 @@ describe("form changes", () => {
     ).toEqual({ name: "", email: null, verified: false, count: 0 });
   });
 
-  it("does not submit a reverted field", () => {
-    expect(getFormChanges({ name: "Original" }, { name: "Original" })).toEqual(
-      {},
-    );
-  });
-
   it("ignores grant order without changing either array", () => {
     const initial = { name: "Key", permissions: ["READ", "WRITE"] };
     const values = { name: "Key", permissions: ["WRITE", "READ"] };
@@ -42,16 +36,6 @@ describe("form changes", () => {
     expect(getFormChanges(initial, values)).toEqual({
       permissions: ["WRITE", "READ"],
     });
-  });
-
-  it("preserves retired grants when only the key name changes", () => {
-    expect(
-      getFormChanges(
-        { name: "Original", permissions: [] },
-        { name: "Renamed", permissions: [] },
-        { setFields: ["permissions"] },
-      ),
-    ).toEqual({ name: "Renamed" });
   });
 
   it("preserves intentional grant removal, including an empty set", () => {

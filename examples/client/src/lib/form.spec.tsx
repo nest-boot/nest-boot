@@ -24,20 +24,18 @@ import { useFormChanges } from "@/hooks/use-form-changes";
 
 afterEach(cleanup);
 
-type EditableWorkspace = {
+type EditableAccount = {
   name: string;
-  slug: string;
   permissions: Array<string>;
 };
 
-function EditableWorkspaceExample({
+function EditableAccountExample({
   save,
 }: {
-  save: (value: Partial<EditableWorkspace>) => Promise<void>;
+  save: (value: Partial<EditableAccount>) => Promise<void>;
 }) {
-  const changes = useFormChanges<EditableWorkspace>({
+  const changes = useFormChanges<EditableAccount>({
     name: "Original",
-    slug: "old-slug",
     permissions: ["READ"],
   });
   const form = useForm({
@@ -52,17 +50,15 @@ function EditableWorkspaceExample({
   });
   return (
     <form onSubmit={(event) => void submitForm(event, form)}>
-      {(["name", "slug"] as const).map((name) => (
-        <form.Field key={name} name={name}>
-          {(field) => (
-            <Input
-              label={name}
-              value={field.state.value}
-              onChange={(event) => field.handleChange(event.target.value)}
-            />
-          )}
-        </form.Field>
-      ))}
+      <form.Field name="name">
+        {(field) => (
+          <Input
+            label="name"
+            value={field.state.value}
+            onChange={(event) => field.handleChange(event.target.value)}
+          />
+        )}
+      </form.Field>
       <form.Field name="permissions">
         {(field) => (
           <Checkbox
@@ -137,10 +133,10 @@ function Example({
 }
 
 describe("shared useForm behavior", () => {
-  it("preserves pending name edits, identifier clears and grant removals for the next save", async () => {
+  it("preserves pending edits and grant removals for the next save", async () => {
     let release!: () => void;
     const save = vi
-      .fn<(_: Partial<EditableWorkspace>) => Promise<void>>()
+      .fn<(_: Partial<EditableAccount>) => Promise<void>>()
       .mockImplementationOnce(
         () =>
           new Promise<void>((resolve) => {
@@ -148,9 +144,8 @@ describe("shared useForm behavior", () => {
           }),
       )
       .mockResolvedValue(undefined);
-    render(<EditableWorkspaceExample save={save} />);
+    render(<EditableAccountExample save={save} />);
     const name = screen.getByLabelText<HTMLInputElement>("name");
-    const slug = screen.getByLabelText<HTMLInputElement>("slug");
     const permission = screen.getByRole("checkbox", { name: "READ" });
     const button = screen.getByRole<HTMLButtonElement>("button", {
       name: /Save$/,
@@ -161,44 +156,24 @@ describe("shared useForm behavior", () => {
       expect(save).toHaveBeenCalledExactlyOnceWith({ name: "First save" }),
     );
 
-    fireEvent.change(name, { target: { value: "Next save" } });
-    fireEvent.change(slug, { target: { value: "" } });
+    fireEvent.change(name, { target: { value: " Next save " } });
     fireEvent.click(permission);
     release();
     await waitFor(() => expect(button.disabled).toBe(false));
-    expect(name.value).toBe("Next save");
-    expect(slug.value).toBe("");
+    expect(name.value).toBe(" Next save ");
     expect(permission.getAttribute("aria-checked")).toBe("false");
 
     fireEvent.click(button);
     await waitFor(() =>
       expect(save).toHaveBeenNthCalledWith(2, {
         name: "Next save",
-        slug: "",
         permissions: [],
       }),
     );
+    await waitFor(() => expect(name.value).toBe("Next save"));
     await waitFor(() => expect(button.disabled).toBe(true));
   });
 
-  it("normalizes the saved baseline without treating the submitted raw text as a new edit", async () => {
-    const save = vi.fn().mockResolvedValue(undefined);
-    render(<EditableWorkspaceExample save={save} />);
-    fireEvent.change(screen.getByLabelText("name"), {
-      target: { value: " Saved " },
-    });
-    const button = screen.getByRole<HTMLButtonElement>("button", {
-      name: /Save$/,
-    });
-    fireEvent.click(button);
-    await waitFor(() =>
-      expect(screen.getByLabelText<HTMLInputElement>("name").value).toBe(
-        "Saved",
-      ),
-    );
-    expect(save).toHaveBeenCalledExactlyOnceWith({ name: "Saved" });
-    await waitFor(() => expect(button.disabled).toBe(true));
-  });
   it("validates on submit, focuses within that form, and revalidates changes", async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     render(

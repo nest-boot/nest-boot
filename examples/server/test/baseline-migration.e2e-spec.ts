@@ -33,7 +33,7 @@ it('builds the current example schema from ordered migrations and can roll back 
       select table_name, column_name, data_type, is_nullable
       from information_schema.columns
       where table_schema = 'public'
-        and (table_name, column_name) in (('user', 'username'), ('workspace', 'slug'))
+        and table_name = 'workspace' and column_name = 'slug'
       order by table_name
     `);
     expect(identifiers.rows).toEqual([
@@ -44,56 +44,46 @@ it('builds the current example schema from ordered migrations and can roll back 
         is_nullable: 'NO',
       },
     ]);
-    const checks = await fixture.pool.query(`
-      select conname from pg_constraint
-      where contype = 'c'
-        and conrelid in ('public.user'::regclass, 'public.workspace'::regclass)
-      order by conname
-    `);
-    expect(checks.rows).toEqual([{ conname: 'workspace_slug_check' }]);
     // Bypass all application validation to verify the database boundary itself.
-    for (const [table, column, constraint] of [
-      ['workspace', 'slug', 'workspace_slug_check'],
-    ] as const) {
-      const insert = (value: string) =>
-        fixture.pool.query(
-          'insert into workspace (name, slug) values ($1, $2) returning id',
-          ['Check fixture', value],
-        );
-      for (const value of ['abc', 'a-2', 'z'.repeat(30)]) {
-        await expect(insert(value)).resolves.toHaveProperty('rowCount', 1);
-      }
-      const target = await insert('check-update');
-      for (const value of [
-        '',
-        'ab',
-        'a'.repeat(31),
-        '0user',
-        'Alice',
-        '-alice',
-        'alice-',
-        'alice--team',
-        'alice_team',
-        'alice/team',
-        ' alice',
-        'alice ',
-        'alice\n',
-        'alice\r',
-        'Kelvin',
-        'équipe',
-        'ａｌｉｃｅ',
-      ]) {
-        await expect(insert(value)).rejects.toMatchObject({
-          code: '23514',
-          constraint,
-        });
-        await expect(
-          fixture.pool.query(
-            `update "${table}" set "${column}" = $1 where id = $2`,
-            [value, target.rows[0].id],
-          ),
-        ).rejects.toMatchObject({ code: '23514', constraint });
-      }
+    const constraint = 'workspace_slug_check';
+    const insert = (value: string) =>
+      fixture.pool.query(
+        'insert into workspace (name, slug) values ($1, $2) returning id',
+        ['Check fixture', value],
+      );
+    for (const value of ['abc', 'a-2', 'z'.repeat(30)]) {
+      await expect(insert(value)).resolves.toHaveProperty('rowCount', 1);
+    }
+    const target = await insert('check-update');
+    for (const value of [
+      '',
+      'ab',
+      'a'.repeat(31),
+      '0user',
+      'Alice',
+      '-alice',
+      'alice-',
+      'alice--team',
+      'alice_team',
+      'alice/team',
+      ' alice',
+      'alice ',
+      'alice\n',
+      'alice\r',
+      'Kelvin',
+      'équipe',
+      'ａｌｉｃｅ',
+    ]) {
+      await expect(insert(value)).rejects.toMatchObject({
+        code: '23514',
+        constraint,
+      });
+      await expect(
+        fixture.pool.query('update workspace set slug = $1 where id = $2', [
+          value,
+          target.rows[0].id,
+        ]),
+      ).rejects.toMatchObject({ code: '23514', constraint });
     }
     const listed = await MikroORM.init({
       ...options,

@@ -229,7 +229,7 @@ test("member name edits preserve a concurrent contact email change", async ({
   expect(data.workspaceMember).toEqual({ name: "Edited member", email });
 });
 
-test("TanStack validation blocks invalid identifiers and whitespace-only workspace names", async ({
+test("TanStack validation blocks whitespace-only profile and workspace names", async ({
   page,
 }) => {
   await registerUser(page, {
