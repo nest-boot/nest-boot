@@ -59,7 +59,7 @@ test("creates service accounts with default, role and direct permission grants",
       page.request,
       `query ($id: ID!) { workspaceMember(id: $id) { name type roles permissions } }`,
       { id: memberId },
-      { "x-workspace-id": workspace.id },
+      { "x-workspace": workspace.id },
     );
     expect(data.workspaceMember).toEqual({
       name,
@@ -117,7 +117,7 @@ test("guards service account creation and limits available grants", async ({
           ],
         },
       },
-      { "x-workspace-id": workspace.id },
+      { "x-workspace": workspace.id },
     );
     await issuer.goto(`${path}/create-service-account`);
     await expect(

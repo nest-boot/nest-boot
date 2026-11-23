@@ -396,9 +396,9 @@ Request decorators distinguish `@AuthUser()`, `@AuthSession()`, `@AuthApiKey()`,
 `@AuthWorkspace()` and `@SelectedWorkspace()`. GraphQL retains `currentUser`, `currentSession` and `currentWorkspaceMember`,
 with `selectedWorkspace` for selection and `currentWorkspace` for authenticated workspace scope.
 
-All credentials use Header `x-workspace-id` or Cookie `workspace_id` to select a
-target. The Header takes precedence, including an empty Header that clears
-selection. Workspace keys require explicit selection and retain private grants
+All credentials use the `x-workspace` header to select a workspace by ID or
+slug. When the header is absent, the `workspace_id` cookie can select by ID.
+An empty header clears selection. Workspace keys require explicit selection and retain private grants
 only in their owning workspace. Any identity can select a different workspace
 for explicitly public resources.
 
@@ -696,6 +696,21 @@ separately with the caller's read permissions.
 Clients must remove selections such as `name` or `members` from
 these mutation results and regenerate their GraphQL types.
 
+`CreateWorkspaceInput` accepts an optional unique `slug` of 3–30 characters.
+It starts with a lowercase ASCII letter and can contain lowercase letters,
+digits and single hyphens between them. Add a nullable, unique slug column when
+upgrading an existing database. Workspaces without a slug can be selected by ID.
+
+`workspace(id: ID, slug: String)` and `user(id: ID, username: String)` each
+require exactly one argument. They use the same read authorization for either
+selector. The `user` query is available with the administration API.
+
+`userExists(username: String!)` is public, like the Username plugin's
+availability endpoint. `workspaceExists(slug: String!)` requires
+permission to create a workspace. Both return true when the normalized
+identifier is already in use and reject invalid input. The database unique
+constraint resolves competing writes.
+
 `deleteUser` and `removeWorkspaceMember` likewise return `DeleteUserPayload` and
 `RemoveWorkspaceMemberPayload`, each containing only `id: ID!`. `leaveWorkspace` returns
 `LeaveWorkspacePayload { memberId: ID! }`, identifying the removed member, not
@@ -802,6 +817,13 @@ connection methods instead. `listCurrentUserSessions` remains an internal
 credential-hydration helper for session revocation, not a GraphQL listing API.
 
 ## Internal BetterAuth integration
+
+The Better Auth Username plugin provides an optional unique `User.username`.
+It uses the same lowercase 3–30 character format as workspace slugs.
+`User.name` is the display name.
+Users can set or clear `username` with `updateCurrentUser`, and the plugin
+provides `/sign-in/username` under the configured Auth base path when password
+sign-in is enabled.
 
 `AuthModule` owns Nest provider registration and HTTP middleware wiring.
 `core/create-auth-instance.ts` validates options, resolves environment/default

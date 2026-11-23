@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { useAuthUserContext } from "../../contexts/auth-user-context";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
+import { urlIdentifierInput } from "@/lib/url-identifier";
 import {
   PageLayout,
   PageLayoutSection,
@@ -77,14 +78,18 @@ function UserComponent() {
   const form = useForm({
     defaultValues: {
       name: currentUser.name,
+      username: currentUser.username ?? "",
     },
     onSubmit: async ({ value }) => {
       const name = value.name.trim();
+      const username = value.username.trim();
 
       try {
-        await updateUser({ variables: { input: { name } } });
+        await updateUser({
+          variables: { input: { name, username: username || null } },
+        });
         await refreshAfterMutation(() => router.invalidate());
-        form.reset({ name });
+        form.reset({ name, username });
         toast.add({ type: "success", title: t("user:profile.toast.updated") });
       } catch (error) {
         toast.add({
@@ -224,6 +229,25 @@ function UserComponent() {
                           }
                           error={
                             field.state.meta.errors.join(", ") || undefined
+                          }
+                        />
+                      )}
+                    </form.Field>
+                  </FormLayoutItem>
+                  <FormLayoutItem>
+                    <form.Field name="username">
+                      {(field) => (
+                        <Input
+                          id="username"
+                          label={t("user:profile.form.username.label")}
+                          title={t("user:profile.form.username.format")}
+                          placeholder="alice"
+                          {...urlIdentifierInput}
+                          autoComplete="username"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
                           }
                         />
                       )}

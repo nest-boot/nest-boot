@@ -56,7 +56,7 @@ function Overview() {
       includeWorkspaceMembers: canReadWorkspaceMembers,
       includeApiKeys: canReadApiKeys,
     },
-    context: { headers: { "x-workspace-id": workspace.id } },
+    context: { headers: { "x-workspace": workspace.id } },
     fetchPolicy: "no-cache",
   });
   const summary =

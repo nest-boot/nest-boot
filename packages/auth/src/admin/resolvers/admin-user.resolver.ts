@@ -1,5 +1,6 @@
 import { Args, ID, Info, Mutation, Query, Resolver } from "@nest-boot/graphql";
 import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
+import { BadRequestException } from "@nestjs/common";
 import { type GraphQLResolveInfo } from "graphql";
 
 import {
@@ -67,13 +68,24 @@ export class AdminUserResolver {
   }
 
   /**
-   * Returns a user by identifier.
+   * Returns a user by ID or username.
    * @param id - Identifier of the record to access.
+   * @param username - Unique account handle.
    * @returns Matching user, or null if unavailable.
    */
   @Query(() => User, { nullable: true })
-  async user(@Args("id", { type: () => ID }) id: string): Promise<User | null> {
-    return await this.userService.getUser(id);
+  async user(
+    @Args("id", { type: () => ID, nullable: true }) id: string | null,
+    @Args("username", { type: () => String, nullable: true })
+    username: string | null,
+  ): Promise<User | null> {
+    if (id != null && username == null) {
+      return await this.userService.getUser(id);
+    }
+    if (username != null && id == null) {
+      return await this.userService.getUserByUsername(username);
+    }
+    throw new BadRequestException("Provide exactly one of id or username");
   }
 
   /**

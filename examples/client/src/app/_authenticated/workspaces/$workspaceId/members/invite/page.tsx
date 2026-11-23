@@ -70,7 +70,7 @@ export const Route = createFileRoute(
     const { data } = await context.apolloClient
       .query({
         query: GET_ROLES_FROM_INVITE_WORKSPACE_MEMBER_ROUTE,
-        context: { headers: { "x-workspace-id": params.workspaceId } },
+        context: { headers: { "x-workspace": params.workspaceId } },
         fetchPolicy: "network-only",
       })
       .catch((error: unknown) => {

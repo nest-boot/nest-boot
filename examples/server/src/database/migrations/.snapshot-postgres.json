@@ -1604,6 +1604,23 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "username": {
+          "name": "username",
+          "type": "varchar(30)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": true,
+          "length": 30,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
         }
       },
       "indexes": [
@@ -1639,9 +1656,23 @@
           "primary": false,
           "unique": false,
           "type": "fulltext"
+        },
+        {
+          "columnNames": ["username"],
+          "composite": false,
+          "constraint": true,
+          "keyName": "user_username_unique",
+          "primary": false,
+          "unique": true
         }
       ],
-      "checks": [],
+      "checks": [
+        {
+          "name": "user_username_format_check",
+          "expression": "char_length(\"username\") >= 3 and \"username\" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*$'",
+          "definition": "check (char_length(\"username\") >= 3 and \"username\" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*$')"
+        }
+      ],
       "triggers": [],
       "foreignKeys": {},
       "comment": null,
@@ -1883,6 +1914,23 @@
           "collation": null,
           "enumItems": []
         },
+        "slug": {
+          "name": "slug",
+          "type": "varchar(30)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": true,
+          "length": 30,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamptz(6)",
@@ -1926,9 +1974,23 @@
           "primary": false,
           "unique": false,
           "type": "fulltext"
+        },
+        {
+          "columnNames": ["slug"],
+          "composite": false,
+          "constraint": true,
+          "keyName": "workspace_slug_unique",
+          "primary": false,
+          "unique": true
         }
       ],
-      "checks": [],
+      "checks": [
+        {
+          "name": "workspace_slug_format_check",
+          "expression": "char_length(\"slug\") >= 3 and \"slug\" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*$'",
+          "definition": "check (char_length(\"slug\") >= 3 and \"slug\" ~ '^[a-z][a-z0-9]*(-[a-z0-9]+)*$')"
+        }
+      ],
       "triggers": [],
       "foreignKeys": {},
       "comment": null,

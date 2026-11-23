@@ -9,6 +9,7 @@ import {
   Resolver,
 } from "@nest-boot/graphql";
 import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
+import { BadRequestException } from "@nestjs/common";
 import { type GraphQLResolveInfo } from "graphql";
 
 import { Public } from "../../common/decorators/public.decorator.js";
@@ -175,17 +176,39 @@ export class WorkspaceResolver {
   }
 
   /**
-   * Returns a workspace by ID.
+   * Returns a workspace by ID or URL slug.
    * @param id - Workspace identifier.
+   * @param slug - Workspace URL slug.
    * @param user - The user whose account is being accessed.
    * @returns Matching workspace, or null when not found.
    */
   @Query(() => Workspace, { nullable: true })
   async workspace(
-    @Args({ name: "id", type: () => ID }) id: string,
+    @Args("id", { type: () => ID, nullable: true }) id: string | null,
+    @Args("slug", { type: () => String, nullable: true }) slug: string | null,
     @AuthUser() user: User,
   ): Promise<Workspace | null> {
-    return await this.workspaceService.getUserWorkspace(id, user);
+    if (id != null && slug == null) {
+      return await this.workspaceService.getUserWorkspace(id, user);
+    }
+    if (slug != null && id == null) {
+      return await this.workspaceService.getUserWorkspaceBySlug(slug, user);
+    }
+    throw new BadRequestException("Provide exactly one of id or slug");
+  }
+
+  /**
+   * Checks whether a workspace already uses a slug.
+   * @param slug - Requested workspace slug.
+   * @param user - Authenticated user making the request.
+   * @returns Whether a workspace already uses the slug.
+   */
+  @Query(() => Boolean)
+  async workspaceExists(
+    @Args("slug", { type: () => String }) slug: string,
+    @AuthUser() user: User,
+  ): Promise<boolean> {
+    return await this.workspaceService.slugExists(slug, user);
   }
 
   /**

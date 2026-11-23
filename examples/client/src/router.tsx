@@ -61,8 +61,8 @@ export const getRouter = () => {
           return {
             headers: {
               ...headers,
-              ...(workspaceId && !("x-workspace-id" in headers)
-                ? { "x-workspace-id": workspaceId }
+              ...(workspaceId && !("x-workspace" in headers)
+                ? { "x-workspace": workspaceId }
                 : {}),
               "X-Timezone-Offset": String(new Date().getTimezoneOffset()),
             },

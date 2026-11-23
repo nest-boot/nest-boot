@@ -401,7 +401,10 @@ describe("WorkspaceService and cross-domain coordination", () => {
         throw new ForbiddenException();
       });
       await expect(
-        workspaceService.createWorkspace(createTestUser(), { name: "Denied" }),
+        workspaceService.createWorkspace(createTestUser(), {
+          name: "Denied",
+          slug: "denied",
+        }),
       ).rejects.toBeInstanceOf(ForbiddenException);
       expect(em.fork).not.toHaveBeenCalled();
       expect(em.transactional).not.toHaveBeenCalled();
@@ -418,9 +421,11 @@ describe("WorkspaceService and cross-domain coordination", () => {
     });
     const workspace = await workspaceService.createWorkspace(user, {
       name: "Acme",
+      slug: "acme",
     });
     expect(em.create).toHaveBeenNthCalledWith(1, Workspace, {
       name: "Acme",
+      slug: "acme",
     });
     expect(em.create).toHaveBeenNthCalledWith(
       2,
@@ -448,7 +453,10 @@ describe("WorkspaceService and cross-domain coordination", () => {
       email: "alice@example.com",
       name: "Alice",
     });
-    await workspaceService.createWorkspace(user, { name: "Acme" });
+    await workspaceService.createWorkspace(user, {
+      name: "Acme",
+      slug: "acme",
+    });
     em.findOne.mockResolvedValueOnce(null);
     await workspaceMemberService.addWorkspaceMember(
       createTestWorkspace(),
@@ -1048,7 +1056,10 @@ describe("conditional authorization", () => {
                   password: "valid-password",
                 })
               : kind === "workspace"
-                ? workspaceService.createWorkspace(user, { name: "blocked" })
+                ? workspaceService.createWorkspace(user, {
+                    name: "blocked",
+                    slug: "blocked",
+                  })
                 : kind === "member"
                   ? workspaceMemberService.addWorkspaceMember(
                       workspace,

@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import { EntityManager, Reference } from "@mikro-orm/core";
+import { EntityManager, type FilterQuery, Reference } from "@mikro-orm/core";
 import type { EntityManager as SqlEntityManager } from "@mikro-orm/sql";
 import {
   type ConnectionArgsInterface,
@@ -37,6 +37,7 @@ import {
   resolveUserPermissions,
 } from "../../common/utils/resolve-effective-permissions.util.js";
 import { runAuthQuery } from "../../common/utils/run-auth-query.js";
+import { urlIdentifierSchema } from "../../common/utils/url-identifier.util.js";
 import { MODULE_OPTIONS_TOKEN } from "../auth.module-definition.js";
 import { AuthContext } from "../auth-context.js";
 import { UserConnection } from "../connections/user.connection-definition.js";
@@ -178,14 +179,7 @@ export class UserService {
    * @returns Matching user, or null if no user has that identifier.
    */
   async getUser(userId: string): Promise<User | null> {
-    authorize("read", User);
-    const user = await this.em.findOne(User, {
-      id: userId,
-    });
-    if (user) {
-      authorize("read", user);
-    }
-    return user;
+    return await this.findReadableUser({ id: userId });
   }
 
   /**
@@ -194,10 +188,27 @@ export class UserService {
    * @returns Matching user, or null if no user has that email.
    */
   async getUserByEmail(email: string): Promise<User | null> {
+    return await this.findReadableUser({ email: email.trim().toLowerCase() });
+  }
+
+  /**
+   * Gets a user by normalized username using the same read permissions as lookup by ID.
+   * @param username - Unique account handle.
+   * @returns Matching user, or null if the username is unassigned.
+   */
+  async getUserByUsername(username: string): Promise<User | null> {
+    const parsed = urlIdentifierSchema.safeParse(username);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid username");
+    }
+    return await this.findReadableUser({ username: parsed.data });
+  }
+
+  private async findReadableUser(
+    where: FilterQuery<User>,
+  ): Promise<User | null> {
     authorize("read", User);
-    const user = await this.em.findOne(User, {
-      email: email.trim().toLowerCase(),
-    });
+    const user = await this.em.findOne(User, where);
     if (user) {
       authorize("read", user);
     }

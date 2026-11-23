@@ -283,6 +283,7 @@ export type AuthSocialProviderType = {
 export type AuthUpdateUserInput = {
   image?: InputMaybe<Scalars["String"]["input"]>;
   name?: InputMaybe<Scalars["String"]["input"]>;
+  username?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type BanUserInput = {
@@ -361,6 +362,7 @@ export type CreateWorkspaceApiKeyResult = {
 
 export type CreateWorkspaceInput = {
   name: Scalars["String"]["input"];
+  slug?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type CreateWorkspaceInvitationInput = {
@@ -792,6 +794,7 @@ export type Query = {
   systemJobs: JobConnection;
   user?: Maybe<User>;
   userApiKeyPermissions: Array<UserApiKeyPermissionOption>;
+  userExists: Scalars["Boolean"]["output"];
   userJob?: Maybe<Job>;
   userJobs: JobConnection;
   userPermissions: Array<UserPermissionOption>;
@@ -800,6 +803,7 @@ export type Query = {
   workspace?: Maybe<Workspace>;
   workspaceApiKeyPermissions: Array<WorkspaceApiKeyPermissionOption>;
   workspaceApiKeys: WorkspaceApiKeyConnection;
+  workspaceExists: Scalars["Boolean"]["output"];
   workspaceInvitation?: Maybe<WorkspaceInvitation>;
   workspaceJob?: Maybe<Job>;
   workspaceJobs: JobConnection;
@@ -861,7 +865,12 @@ export type QuerySystemJobsArgs = {
 };
 
 export type QueryUserArgs = {
-  id: Scalars["ID"]["input"];
+  id?: InputMaybe<Scalars["ID"]["input"]>;
+  username?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type QueryUserExistsArgs = {
+  username: Scalars["String"]["input"];
 };
 
 export type QueryUserJobArgs = {
@@ -889,7 +898,8 @@ export type QueryUsersArgs = {
 };
 
 export type QueryWorkspaceArgs = {
-  id: Scalars["ID"]["input"];
+  id?: InputMaybe<Scalars["ID"]["input"]>;
+  slug?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type QueryWorkspaceApiKeysArgs = {
@@ -900,6 +910,10 @@ export type QueryWorkspaceApiKeysArgs = {
   last?: InputMaybe<Scalars["Int"]["input"]>;
   orderBy?: InputMaybe<WorkspaceApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type QueryWorkspaceExistsArgs = {
+  slug: Scalars["String"]["input"];
 };
 
 export type QueryWorkspaceInvitationArgs = {
@@ -1276,6 +1290,7 @@ export type User = {
   roles: Array<UserRole>;
   sessions: SessionConnection;
   updatedAt: Scalars["DateTime"]["output"];
+  username?: Maybe<Scalars["String"]["output"]>;
   workspaces: WorkspaceConnection;
 };
 
@@ -1525,6 +1540,7 @@ export type Workspace = {
   invitations: WorkspaceInvitationConnection;
   members: WorkspaceMemberConnection;
   name: Scalars["String"]["output"];
+  slug?: Maybe<Scalars["String"]["output"]>;
   updatedAt: Scalars["DateTime"]["output"];
 };
 
@@ -2232,6 +2248,7 @@ export type GetCurrentUserFromAuthenticatedRouteQuery = {
     __typename?: "User";
     id: string;
     name: string;
+    username?: string | null;
     email: string;
     permissions: Array<UserPermission>;
   } | null;
@@ -5820,6 +5837,7 @@ export const GetCurrentUserFromAuthenticatedRouteDocument = {
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "username" } },
                 { kind: "Field", name: { kind: "Name", value: "email" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
               ],

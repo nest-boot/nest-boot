@@ -49,7 +49,7 @@ export const Route = createFileRoute(
       .query({
         query: GET_WORKSPACE_SERVICE_ACCOUNT_GRANTS,
         fetchPolicy: "network-only",
-        context: { headers: { "x-workspace-id": params.workspaceId } },
+        context: { headers: { "x-workspace": params.workspaceId } },
       })
       .catch((error: unknown) => {
         if (isAccessDenied(error))

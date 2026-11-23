@@ -91,7 +91,7 @@ describe("WorkspaceResolver", () => {
     const { resolver, workspaceService } = createResolver({
       getUserWorkspace: vi.fn(async () => workspace),
     });
-    await expect(resolver.workspace(workspace.id, user)).resolves.toBe(
+    await expect(resolver.workspace(workspace.id, null, user)).resolves.toBe(
       workspace,
     );
     expect(workspaceService.getUserWorkspace).toHaveBeenCalledWith(
@@ -99,7 +99,9 @@ describe("WorkspaceResolver", () => {
       user,
     );
     workspaceService.getUserWorkspace.mockResolvedValueOnce(null);
-    await expect(resolver.workspace(workspace.id, user)).resolves.toBeNull();
+    await expect(
+      resolver.workspace(workspace.id, null, user),
+    ).resolves.toBeNull();
   });
   it("delegates workspace lifecycle operations to WorkspaceService", async () => {
     const workspace = { id: "workspace_1", name: "Acme" } as Workspace;
@@ -110,7 +112,7 @@ describe("WorkspaceResolver", () => {
       deleteWorkspace: vi.fn(async () => workspace),
     });
     await expect(
-      resolver.createWorkspace(user, { name: "Acme" }),
+      resolver.createWorkspace(user, { name: "Acme", slug: "acme" }),
     ).resolves.toEqual({ id: workspace.id });
     await expect(
       resolver.updateWorkspace(workspace.id, { name: "New" }),
@@ -120,6 +122,7 @@ describe("WorkspaceResolver", () => {
     });
     expect(workspaceService.createWorkspace).toHaveBeenCalledWith(user, {
       name: "Acme",
+      slug: "acme",
     });
     expect(workspaceService.updateWorkspace).toHaveBeenCalledWith(
       workspace.id,

@@ -12,6 +12,7 @@ import { type NextFunction, type Request, type Response } from "express";
 import { ApiKeyAuthenticationService } from "../api-key/services/api-key-authentication.service.js";
 import { extractApiKey } from "../api-key/utils/extract-api-key.util.js";
 import { runAuthQuery } from "../common/utils/run-auth-query.js";
+import { urlIdentifierSchema } from "../common/utils/url-identifier.util.js";
 import { Workspace } from "../workspace/entities/workspace.entity.js";
 import { WorkspaceMember } from "../workspace/entities/workspace-member.entity.js";
 import { MODULE_OPTIONS_TOKEN } from "./auth.module-definition.js";
@@ -236,18 +237,31 @@ export class AuthMiddleware implements NestMiddleware {
     if (this.options.workspace?.enabled !== true) {
       return null;
     }
-    const header = req.headers["x-workspace-id"];
-    const id = (
+    const header = req.headers["x-workspace"];
+    if (Array.isArray(header) && header.length !== 1) {
+      throw new BadRequestException("Invalid workspace selector");
+    }
+    const selector = (
       (Array.isArray(header) ? header[0] : header) ??
       cookies().get("workspace_id")?.value
     )?.trim();
-    if (!id) {
+    if (!selector) {
       return null;
     }
-    if (!/^\d+$/.test(id) || BigInt(id) > 9223372036854775807n) {
+    if (/^\d+$/.test(selector)) {
+      if (BigInt(selector) > 9223372036854775807n) {
+        throw new BadRequestException("Invalid workspace ID");
+      }
+      return await this.em.findOne(Workspace, { id: selector });
+    }
+    if (header === undefined) {
       throw new BadRequestException("Invalid workspace ID");
     }
-    return await this.em.findOne(Workspace, { id });
+    const parsed = urlIdentifierSchema.safeParse(selector);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid workspace slug");
+    }
+    return await this.em.findOne(Workspace, { slug: parsed.data });
   }
 
   private async findWorkspaceMember(

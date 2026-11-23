@@ -4,10 +4,39 @@ import { registerUser, testPassword } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { waitForEmailUrl } from "./utils/mailpit";
 import { uniqueSeed } from "./utils/unique";
-import { createFirstWorkspace } from "./utils/workspace";
+import { createFirstWorkspace, createWorkspaceByApi } from "./utils/workspace";
 import type { Page } from "@playwright/test";
 
 test.describe("user pages", () => {
+  test("sets a username independently of the display name", async ({
+    page,
+  }) => {
+    await registerUser(page, {
+      email: `${uniqueSeed("username-profile")}@example.com`,
+      name: "Profile Display Name",
+    });
+    await page.goto("/user/profile");
+    const username = page.getByLabel("Username", { exact: true });
+    await username.fill("Profile-User");
+    expect(
+      await username.evaluate(
+        (input: HTMLInputElement) => input.validity.patternMismatch,
+      ),
+    ).toBe(true);
+    await username.fill("profile-user");
+    await page.locator("button[form='user-profile-form']").click();
+    await expect(
+      page.getByText("Profile updated", { exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
+      "Profile Display Name",
+    );
+    await expect(page.getByLabel("Username", { exact: true })).toHaveValue(
+      "profile-user",
+    );
+  });
+
   test("opens the personal overview from the user row and persists language and theme preferences", async ({
     page,
   }) => {
@@ -595,26 +624,6 @@ test.describe("user pages", () => {
   });
 });
 
-async function createWorkspaceByApi(page: Page, name: string) {
-  return (
-    await graphqlRequest<{
-      createWorkspace: { id: string };
-    }>(
-      page.request,
-      /* GraphQL */ `
-        mutation CreateWorkspaceForUserWorkspaceInvitationTest(
-          $input: CreateWorkspaceInput!
-        ) {
-          createWorkspace(input: $input) {
-            id
-          }
-        }
-      `,
-      { input: { name } },
-    )
-  ).createWorkspace;
-}
-
 async function createWorkspaceInvitationByApi(
   page: Page,
   workspaceId: string,
@@ -640,7 +649,7 @@ async function createWorkspaceInvitationByApi(
           roles: ["MEMBER"],
         },
       },
-      { "x-workspace-id": workspaceId },
+      { "x-workspace": workspaceId },
     )
   ).createWorkspaceInvitation;
 }

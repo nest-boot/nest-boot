@@ -1,4 +1,9 @@
-import { EntityManager, type FilterQuery, LockMode } from "@mikro-orm/core";
+import {
+  EntityManager,
+  type FilterQuery,
+  LockMode,
+  UniqueConstraintViolationException,
+} from "@mikro-orm/core";
 import type { SqlEntityManager } from "@mikro-orm/sql";
 import {
   type ConnectionArgsInterface,
@@ -8,6 +13,7 @@ import {
 import { RequestContext } from "@nest-boot/request-context";
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -18,6 +24,7 @@ import type { GraphQLResolveInfo } from "graphql";
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
 import { runAuthQuery } from "../../common/utils/run-auth-query.js";
+import { urlIdentifierSchema } from "../../common/utils/url-identifier.util.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
 import { AuthContext } from "../../core/auth-context.js";
 import { SELECTED_WORKSPACE } from "../../core/constants/auth.constants.js";
@@ -220,14 +227,52 @@ export class WorkspaceService {
    * @returns Workspace when the user has an active membership, otherwise null.
    */
   async getUserWorkspace(id: string, user: User): Promise<Workspace | null> {
+    return await this.findUserWorkspace({ id }, user);
+  }
+
+  /**
+   * Finds a workspace by slug using the same access rules as lookup by ID.
+   * @param slug - Workspace URL slug.
+   * @param user - The user whose account is being accessed.
+   * @returns Accessible workspace or null.
+   */
+  async getUserWorkspaceBySlug(
+    slug: string,
+    user: User,
+  ): Promise<Workspace | null> {
+    const parsed = urlIdentifierSchema.safeParse(slug);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid workspace slug");
+    }
+    return await this.findUserWorkspace({ slug: parsed.data }, user);
+  }
+
+  /**
+   * Checks whether a workspace already uses a slug.
+   * @param slug - Requested workspace slug.
+   * @param user - Authenticated user making the request.
+   * @returns Whether a workspace already uses the slug.
+   */
+  async slugExists(slug: string, user: User): Promise<boolean> {
+    assertCurrentUser(user);
+    authorize("create", Workspace);
+    const parsed = urlIdentifierSchema.safeParse(slug);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid workspace slug");
+    }
+    return (await this.em.count(Workspace, { slug: parsed.data })) > 0;
+  }
+
+  private async findUserWorkspace(
+    where: FilterQuery<Workspace>,
+    user: User,
+  ): Promise<Workspace | null> {
     assertCurrentUser(user);
     if (getCurrentApiKey()) {
-      return await this.findOne({ id });
+      return await this.findOne(where);
     }
     assertUserSession(user);
-    const workspace = await this.em.findOne(Workspace, {
-      id,
-    });
+    const workspace = await this.em.findOne(Workspace, where);
     if (!workspace) {
       return null;
     }
@@ -300,29 +345,41 @@ export class WorkspaceService {
     return await runAuthQuery(this.em, async (em) => {
       assertCurrentUser(user);
       authorize("create", Workspace);
+      const parsed = urlIdentifierSchema.nullish().safeParse(input.slug);
+      if (!parsed.success) {
+        throw new BadRequestException("Invalid workspace slug");
+      }
       // The new workspace has no request session yet. Only this authorized
       // operation may bootstrap its owner outside the application's RLS scope.
-      return await em.transactional(
-        async (em) => {
-          const workspace = em.create(Workspace, {
-            name: input.name,
-          });
-          authorize("create", workspace);
-          const member = em.create(WorkspaceMember, {
-            name: user.name,
-            email: user.email.trim().toLowerCase(),
-            roles: [this.creatorRole],
-            status: "ACTIVE",
-            // Do not attach the caller's potentially dirty user to this fork.
-            user: user.id,
-            workspace,
-          });
+      try {
+        return await em.transactional(
+          async (em) => {
+            const workspace = em.create(Workspace, {
+              name: input.name,
+              slug: parsed.data ?? null,
+            });
+            authorize("create", workspace);
+            const member = em.create(WorkspaceMember, {
+              name: user.name,
+              email: user.email.trim().toLowerCase(),
+              roles: [this.creatorRole],
+              status: "ACTIVE",
+              // Do not attach the caller's potentially dirty user to this fork.
+              user: user.id,
+              workspace,
+            });
 
-          await em.persist(workspace).persist(member).flush();
-          return workspace;
-        },
-        { clear: true },
-      );
+            await em.persist(workspace).persist(member).flush();
+            return workspace;
+          },
+          { clear: true },
+        );
+      } catch (error) {
+        if (error instanceof UniqueConstraintViolationException) {
+          throw new ConflictException("Workspace slug is already taken");
+        }
+        throw error;
+      }
     });
   }
 

@@ -6,6 +6,7 @@ import { JobEntity } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
 import { Migration20261114140546_AuthSchema } from '../src/database/migrations/Migration20261114140546_AuthSchema.js';
+import { Migration20261123090000_WorkspaceSlugAndUsername } from '../src/database/migrations/Migration20261123090000_WorkspaceSlugAndUsername.js';
 import { createDatabaseFixture } from './postgres.fixture.js';
 
 it('builds the current example schema from ordered migrations and can roll back and rebuild it', async () => {
@@ -25,9 +26,23 @@ it('builds the current example schema from ordered migrations and can roll back 
   };
   const orm = await MikroORM.init(options);
   try {
+    const base = await orm.migrator.up({
+      to: Migration20261114140546_AuthSchema.name,
+    });
+    expect(base).toHaveLength(2);
+    expect(base[0].name).toBe(Migration00000000000000_Initial.name);
+    const legacy = await fixture.pool.query(`
+      insert into workspace (name) values ('Legacy workspace') returning id
+    `);
     const migrated = await orm.migrator.up();
-    expect(migrated).toHaveLength(2);
-    expect(migrated[0].name).toBe(Migration00000000000000_Initial.name);
+    expect(migrated).toHaveLength(1);
+    expect(
+      (
+        await fixture.pool.query('select slug from workspace where id = $1', [
+          legacy.rows[0].id,
+        ])
+      ).rows,
+    ).toEqual([{ slug: null }]);
     const listed = await MikroORM.init({
       ...options,
       migrations: {
@@ -35,6 +50,7 @@ it('builds the current example schema from ordered migrations and can roll back 
         migrationsList: [
           Migration00000000000000_Initial,
           Migration20261114140546_AuthSchema,
+          Migration20261123090000_WorkspaceSlugAndUsername,
         ],
       },
     });
@@ -111,7 +127,7 @@ it('builds the current example schema from ordered migrations and can roll back 
       ).rows.map(({ extname }) => extname),
     ).toEqual(['pgcrypto', 'uuid-ossp']);
 
-    expect(await orm.migrator.up()).toHaveLength(2);
+    expect(await orm.migrator.up()).toHaveLength(3);
     expect(await orm.schema.getUpdateSchemaSQL({ wrap: false })).toBe('');
     expect(await orm.migrator.checkSchema()).toBe(false);
   } finally {

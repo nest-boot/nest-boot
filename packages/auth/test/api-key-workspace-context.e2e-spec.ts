@@ -205,7 +205,7 @@ describe("workspace selection independently of authentication", () => {
                 .join("; "),
             }
           : {}),
-        ...(workspaceId !== undefined ? { "x-workspace-id": workspaceId } : {}),
+        ...(workspaceId !== undefined ? { "x-workspace": workspaceId } : {}),
       },
     });
 
@@ -290,8 +290,8 @@ describe("workspace selection independently of authentication", () => {
     const em = orm.em.fork();
     user = await em.findOneOrFail(User, body.user.id);
     workspaces = [
-      em.create(Workspace, { name: "First" }),
-      em.create(Workspace, { name: "Second" }),
+      em.create(Workspace, { name: "First", slug: "first" }),
+      em.create(Workspace, { name: "Second", slug: "second" }),
     ];
     account = em.create(SystemAccount, {
       name: "Machine",
@@ -455,7 +455,7 @@ describe("workspace selection independently of authentication", () => {
           headers: {
             "content-type": "application/json",
             authorization: `Bearer ${key}`,
-            "x-workspace-id": workspace.id,
+            "x-workspace": workspace.id,
           },
           body: JSON.stringify({
             query:
@@ -564,14 +564,17 @@ describe("workspace selection independently of authentication", () => {
       const response = await request(
         "/workspace-resources/context",
         key,
-        source === "header" ? "invalid-id" : undefined,
+        source === "header" ? "invalid/slug" : undefined,
         "GET",
         false,
         source === "cookie" ? "invalid-id" : workspaces[0].id,
       );
       expect(response.status).toBe(400);
       expect(await response.json()).toMatchObject({
-        message: "Invalid workspace ID",
+        message:
+          source === "header"
+            ? "Invalid workspace slug"
+            : "Invalid workspace ID",
       });
     },
   );

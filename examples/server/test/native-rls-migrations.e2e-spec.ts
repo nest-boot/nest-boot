@@ -20,6 +20,7 @@ import { entities as queueEntities } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
 import { Migration20261114140546_AuthSchema } from '../src/database/migrations/Migration20261114140546_AuthSchema.js';
+import { Migration20261123090000_WorkspaceSlugAndUsername } from '../src/database/migrations/Migration20261123090000_WorkspaceSlugAndUsername.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
@@ -51,6 +52,7 @@ describe('example native RLS migrations with PGlite', () => {
           migrationsList: [
             Migration00000000000000_Initial,
             Migration20261114140546_AuthSchema,
+            Migration20261123090000_WorkspaceSlugAndUsername,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',
@@ -208,7 +210,7 @@ describe('example native RLS migrations with PGlite', () => {
 
   it('creates the complete baseline through the official Migrator', async () => {
     expect(await orm.migrator.getPending()).toEqual([]);
-    expect(await orm.migrator.getExecuted()).toHaveLength(2);
+    expect(await orm.migrator.getExecuted()).toHaveLength(3);
     const policies = await orm.em.execute<
       {
         policyname: string;
@@ -245,7 +247,7 @@ describe('example native RLS migrations with PGlite', () => {
 
   it('enforces the example policy and grants with an anonymous workspace session', async () => {
     const admin = orm.em.fork();
-    await admin.insert(Workspace, { name: 'Example' });
+    await admin.insert(Workspace, { name: 'Example', slug: 'example' });
     const em = orm.em.fork({
       session: {
         role: 'anonymous',

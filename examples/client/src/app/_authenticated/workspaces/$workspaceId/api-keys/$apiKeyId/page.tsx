@@ -125,7 +125,7 @@ export const Route = createFileRoute(
         query: GET_WORKSPACE_API_KEY,
         variables: { id: params.apiKeyId },
         fetchPolicy: "network-only",
-        context: { headers: { "x-workspace-id": params.workspaceId } },
+        context: { headers: { "x-workspace": params.workspaceId } },
       })
       .catch((error: unknown) => {
         if (isAccessDenied(error)) throw denied();
@@ -180,7 +180,7 @@ function ApiKeyDetailsPage() {
           cursor,
         },
         context: {
-          headers: { "x-workspace-id": workspaceId },
+          headers: { "x-workspace": workspaceId },
           queryDeduplication: false,
         },
       });

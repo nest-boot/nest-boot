@@ -100,7 +100,7 @@ export const Route = createFileRoute(
         query: GET_WORKSPACE_API_KEY_OPTIONS,
         variables: { includeWorkspaceMembers, memberFilter },
         fetchPolicy: "network-only",
-        context: { headers: { "x-workspace-id": params.workspaceId } },
+        context: { headers: { "x-workspace": params.workspaceId } },
       })
       .catch((error: unknown) => {
         if (isAccessDenied(error)) throw denied();
@@ -118,7 +118,7 @@ export const Route = createFileRoute(
           after: pageInfo.endCursor,
         },
         fetchPolicy: "network-only",
-        context: { headers: { "x-workspace-id": params.workspaceId } },
+        context: { headers: { "x-workspace": params.workspaceId } },
       });
       members.push(
         ...(page.data?.selectedWorkspace?.members.edges.map(

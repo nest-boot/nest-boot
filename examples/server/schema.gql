@@ -194,6 +194,7 @@ type AuthSocialProviderType {
 input AuthUpdateUserInput {
   image: String
   name: String
+  username: String
 }
 
 input BanUserInput {
@@ -266,6 +267,7 @@ type CreateWorkspaceApiKeyResult {
 
 input CreateWorkspaceInput {
   name: String!
+  slug: String
 }
 
 input CreateWorkspaceInvitationInput {
@@ -552,8 +554,9 @@ type Query {
     """
     query: String
   ): JobConnection!
-  user(id: ID!): User
+  user(id: ID, username: String): User
   userApiKeyPermissions: [UserApiKeyPermissionOption!]!
+  userExists(username: String!): Boolean!
   userJob(id: ID!): Job
   userJobs(
     """Returns the elements that come after the specified cursor."""
@@ -609,7 +612,7 @@ type Query {
     """
     query: String
   ): UserConnection!
-  workspace(id: ID!): Workspace
+  workspace(id: ID, slug: String): Workspace
   workspaceApiKeyPermissions: [WorkspaceApiKeyPermissionOption!]!
   workspaceApiKeys(
     """Returns the elements that come after the specified cursor."""
@@ -637,6 +640,7 @@ type Query {
     """
     query: String
   ): WorkspaceApiKeyConnection!
+  workspaceExists(slug: String!): Boolean!
   workspaceInvitation(id: ID!): WorkspaceInvitation
   workspaceJob(id: ID!): Job
   workspaceJobs(
@@ -1153,6 +1157,7 @@ type User {
     query: String
   ): SessionConnection!
   updatedAt: DateTime!
+  username: String
   workspaces(
     """Returns the elements that come after the specified cursor."""
     after: String
@@ -1433,6 +1438,7 @@ type Workspace {
     query: String
   ): WorkspaceMemberConnection!
   name: String!
+  slug: String
   updatedAt: DateTime!
 }
 

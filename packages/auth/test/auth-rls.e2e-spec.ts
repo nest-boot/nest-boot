@@ -74,6 +74,7 @@ describe("Auth services and native RLS boundaries", () => {
     await orm.em.fork().insert(Workspace, {
       id: "1",
       name: "Workspace boundary fixture",
+      slug: "workspace-boundary-fixture",
     });
   }, 30000);
   afterAll(async () => {
@@ -379,6 +380,7 @@ describe("Auth services and native RLS boundaries", () => {
                   createTestAuthContext(em, options),
                 ).createWorkspace(user, {
                   name: "Denied after reset",
+                  slug: "denied-after-reset",
                 }),
               ).rejects.toThrow("another user");
             }
@@ -526,6 +528,7 @@ describe("Auth services and native RLS boundaries", () => {
                   createTestAuthContext(em, options),
                 ).createWorkspace(user, {
                   name: "Denied after deletion",
+                  slug: "denied-after-deletion",
                 }),
               ).rejects.toThrow("another user");
             }
@@ -777,7 +780,10 @@ describe("Auth services and native RLS boundaries", () => {
         }),
     );
     await admin.persist([administrator, target, other]).flush();
-    const workspace = admin.create(Workspace, { name: "Deletion fixture" });
+    const workspace = admin.create(Workspace, {
+      name: "Deletion fixture",
+      slug: "deletion-fixture",
+    });
     const member = admin.create(WorkspaceMember, {
       workspace,
       user: target,
@@ -946,7 +952,10 @@ describe("Auth services and native RLS boundaries", () => {
       roles: ["user"],
       permissions: ["user:read"],
     });
-    const workspace = admin.create(Workspace, { name: "Context workspace" });
+    const workspace = admin.create(Workspace, {
+      name: "Context workspace",
+      slug: "context-workspace",
+    });
     const member = admin.create(WorkspaceMember, {
       user,
       workspace,
@@ -972,7 +981,7 @@ describe("Auth services and native RLS boundaries", () => {
         createTestAuthContext(em, withAuthTestFeatures(options)),
       );
       const request = {
-        headers: { "x-workspace-id": workspace.id },
+        headers: { "x-workspace": workspace.id },
       } as unknown as Request;
       const context = new RequestContext({ type: "http" });
       context.set(REQUEST, request);
@@ -1152,7 +1161,7 @@ describe("Auth services and native RLS boundaries", () => {
       );
       const request = {
         headers: {
-          "x-workspace-id": "1",
+          "x-workspace": "1",
           ...(kind.endsWith("key") ? { authorization: "Bearer sk-key" } : {}),
         },
       } as unknown as Request;
@@ -1202,6 +1211,7 @@ describe("Auth services and native RLS boundaries", () => {
       const admin = orm.em.fork();
       const workspace = admin.create(Workspace, {
         name: "WorkspaceMember type permissions",
+        slug: "member-type-permissions",
       });
       const user = admin.create(User, {
         name: "Reader",
@@ -1294,6 +1304,7 @@ describe("Auth services and native RLS boundaries", () => {
       });
       const workspace = admin.create(Workspace, {
         name: "Automatic service account",
+        slug: "automatic-service-account",
       });
       const actor = admin.create(WorkspaceMember, {
         user,
@@ -1456,6 +1467,7 @@ describe("Auth services and native RLS boundaries", () => {
     });
     const workspace = admin.create(Workspace, {
       name: "Inherited key boundary",
+      slug: "inherited-key-boundary",
     });
     const actor = admin.create(WorkspaceMember, {
       user,
@@ -1689,10 +1701,12 @@ describe("Auth services and native RLS boundaries", () => {
       const workspace = admin.create(Workspace, {
         id: userId,
         name: "Key owner",
+        slug: "key-owner",
       });
       const foreignWorkspace = admin.create(Workspace, {
         id: foreignId,
         name: "Other key owner",
+        slug: "other-key-owner",
       });
       keys = [user, workspace, foreignUser, foreignWorkspace].map((owner) =>
         owner instanceof User
@@ -1789,7 +1803,10 @@ describe("Auth services and native RLS boundaries", () => {
 
     it("retains member-key audit records after workspace deletion", async () => {
       const em = orm.em.fork();
-      const workspace = em.create(Workspace, { name: "Cascade workspace" });
+      const workspace = em.create(Workspace, {
+        name: "Cascade workspace",
+        slug: "cascade-workspace",
+      });
       const key = em.create(ApiKey, {
         owner: ref(
           WorkspaceMember,
@@ -1942,9 +1959,12 @@ describe("Auth services and native RLS boundaries", () => {
         permissions: [],
         roles: ["user"],
       });
-      current = admin.create(Workspace, { name: "Current" });
-      foreign = admin.create(Workspace, { name: "Foreign" });
-      unrelated = admin.create(Workspace, { name: "Unrelated" });
+      current = admin.create(Workspace, { name: "Current", slug: "current" });
+      foreign = admin.create(Workspace, { name: "Foreign", slug: "foreign" });
+      unrelated = admin.create(Workspace, {
+        name: "Unrelated",
+        slug: "unrelated",
+      });
       ownWorkspaceMember = admin.create(WorkspaceMember, {
         user,
         workspace: current,
@@ -2140,6 +2160,7 @@ describe("Auth services and native RLS boundaries", () => {
           pendingUser,
           {
             name: "Created via service",
+            slug: "created-via-service",
           },
         );
         expect(RequestContext.get(EntityManager)).toBe(em);
@@ -2177,7 +2198,10 @@ describe("Auth services and native RLS boundaries", () => {
             withAuthTestFeatures(options),
           ).getAbility();
           await expect(
-            workspaceServiceFor(em).createWorkspace(missingUser, { name }),
+            workspaceServiceFor(em).createWorkspace(missingUser, {
+              name,
+              slug: "must-roll-back",
+            }),
           ).rejects.toThrow(/foreign key/i);
         },
       );
@@ -2187,12 +2211,16 @@ describe("Auth services and native RLS boundaries", () => {
     it("requires the authorized service to create workspaces", async () => {
       const em = scoped("");
       await expect(
-        em.insert(Workspace, { name: "Direct insert is denied" }),
+        em.insert(Workspace, {
+          name: "Direct insert is denied",
+          slug: "direct-insert",
+        }),
       ).rejects.toThrow(/row.level security/i);
       // Check SQL without RETURNING too: no request-role INSERT policy exists.
       await expect(
-        em.execute("insert into workspace (name) values (?)", [
+        em.execute("insert into workspace (name, slug) values (?, ?)", [
           "Direct insert without returning is denied",
+          "direct-insert-sql",
         ]),
       ).rejects.toThrow(/row.level security/i);
     });
@@ -2217,6 +2245,7 @@ describe("Auth services and native RLS boundaries", () => {
         const admin = orm.em.fork();
         const targetWorkspace = admin.create(Workspace, {
           name: "Matrix target",
+          slug: `matrix-${crypto.randomUUID().slice(0, 8)}`,
         });
         const otherUser = admin.create(User, {
           name: "Other member",
@@ -2327,6 +2356,7 @@ describe("Auth services and native RLS boundaries", () => {
       const admin = orm.em.fork();
       const workspace = admin.create(Workspace, {
         name: "Deleted before authentication",
+        slug: "deleted-before-authentication",
       });
       const member = admin.create(WorkspaceMember, {
         workspace,
@@ -2349,7 +2379,7 @@ describe("Auth services and native RLS boundaries", () => {
         createTestAuthContext(em, withAuthTestFeatures({})),
       );
       const request = {
-        headers: { "x-workspace-id": workspace.id },
+        headers: { "x-workspace": workspace.id },
       } as unknown as Request;
       const context = new RequestContext({ type: "http" });
       context.set(REQUEST, request);
@@ -2372,7 +2402,10 @@ describe("Auth services and native RLS boundaries", () => {
 
     it("permanently deletes through the authorized service with scoped RLS and foreign-key cascades", async () => {
       const admin = orm.em.fork();
-      const workspace = admin.create(Workspace, { name: "Permanent deletion" });
+      const workspace = admin.create(Workspace, {
+        name: "Permanent deletion",
+        slug: "permanent-deletion",
+      });
       const owner = admin.create(WorkspaceMember, {
         workspace,
         user,
@@ -2426,6 +2459,7 @@ describe("Auth services and native RLS boundaries", () => {
     });
     const workspace = admin.create(Workspace, {
       name: "Private profile boundary",
+      slug: "private-profile-boundary",
     });
     const owner = admin.create(WorkspaceMember, {
       name: "Visible owner",
@@ -2624,7 +2658,10 @@ describe("Auth services and native RLS boundaries", () => {
       email: "baseline-user@example.test",
       emailVerified: true,
     });
-    const workspace = admin.create(Workspace, { name: "Baseline membership" });
+    const workspace = admin.create(Workspace, {
+      name: "Baseline membership",
+      slug: "baseline-membership",
+    });
     await admin.persist([user, workspace]).flush();
     const member = admin.create(WorkspaceMember, {
       user,

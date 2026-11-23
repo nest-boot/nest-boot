@@ -4,10 +4,19 @@ import type { Mailer } from "@nest-boot/mailer";
 import { RequestContext } from "@nest-boot/request-context";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { genericOAuth } from "better-auth/plugins";
+import {
+  username,
+  type UsernamePluginWithoutDisplayUsername,
+} from "better-auth/plugins/username";
 
 import { resolveApiKeyPermissionCatalog } from "../api-key/utils/api-key-permissions.util.js";
 import { resolveAuthCatalog } from "../common/utils/resolve-auth-catalog.util.js";
 import { runAuthQuery } from "../common/utils/run-auth-query.js";
+import {
+  URL_IDENTIFIER_MAX_LENGTH,
+  URL_IDENTIFIER_MIN_LENGTH,
+  urlIdentifierSchema,
+} from "../common/utils/url-identifier.util.js";
 import {
   DEFAULT_WORKSPACE_CREATOR_ROLE,
   DEFAULT_WORKSPACE_ROLE,
@@ -42,6 +51,13 @@ import { resolveAuthFeatures } from "./utils/resolve-auth-features.util.js";
 import { resolveSecret } from "./utils/resolve-secret.js";
 import { splitAuthProviders } from "./utils/split-auth-providers.js";
 
+type ResolvedBetterAuthOptions = BetterAuthOptions & {
+  plugins: [
+    UsernamePluginWithoutDisplayUsername,
+    ...ReturnType<typeof genericOAuth>[],
+  ];
+};
+
 /**
  * Resolves framework configuration before constructing the upstream instance.
  * @param options - Authentication module configuration.
@@ -60,7 +76,7 @@ export function resolveBetterAuthOptions(
   hashService: HashService,
   userDeletionService: UserDeletionService,
   authContext: AuthContext,
-): BetterAuthOptions {
+): ResolvedBetterAuthOptions {
   validateAuthOptions(options);
   const secret = resolveSecret(options);
   const disableSignUp = isEnvTrue("AUTH_DISABLE_SIGN_UP");
@@ -102,18 +118,30 @@ export function resolveBetterAuthOptions(
     },
   );
 
-  const betterAuthOptions: BetterAuthOptions = {
+  const betterAuthOptions: ResolvedBetterAuthOptions = {
     appName: options.appName ?? process.env.APP_NAME,
     baseURL: options.baseURL ?? process.env.AUTH_URL ?? process.env.APP_URL,
     ...(options.account ? { account: options.account } : {}),
     secret,
     emailAndPassword: emailAndPasswordConfig,
+    ...(emailAndPasswordConfig.enabled
+      ? {}
+      : { disabledPaths: ["/sign-in/username"] }),
     emailVerification: emailVerificationConfig,
     ...(userConfig ? { user: userConfig } : {}),
     ...(socialProvidersConfig
       ? { socialProviders: socialProvidersConfig }
       : {}),
     plugins: [
+      username({
+        displayUsername: false,
+        minUsernameLength: URL_IDENTIFIER_MIN_LENGTH,
+        maxUsernameLength: URL_IDENTIFIER_MAX_LENGTH,
+        usernameValidator: (value) =>
+          urlIdentifierSchema.safeParse(value).success,
+        usernameNormalization: (value) => value.trim(),
+        validationOrder: { username: "post-normalization" },
+      }),
       ...(genericOAuthConfig.length > 0
         ? [
             genericOAuth({
@@ -154,7 +182,7 @@ export function createAuthInstance(
   hashService: HashService,
   userDeletionService: UserDeletionService,
   authContext: AuthContext,
-): ReturnType<typeof betterAuth> {
+): ReturnType<typeof betterAuth<ResolvedBetterAuthOptions>> {
   return betterAuth(
     resolveBetterAuthOptions(
       options,

@@ -59,7 +59,7 @@ test.describe("workspace invitations", () => {
             roles: ["MEMBER"],
           },
         },
-        { "x-workspace-id": workspaceId },
+        { "x-workspace": workspaceId },
       );
 
       const { workspaceInvitation: invitation } = await graphqlRequest<{
@@ -68,7 +68,7 @@ test.describe("workspace invitations", () => {
         page.request,
         "query ($id: ID!) { workspaceInvitation(id: $id) { expiresAt } }",
         { id: createWorkspaceInvitation.id },
-        { "x-workspace-id": workspaceId },
+        { "x-workspace": workspaceId },
       );
       await inviteePage.evaluate((invitationId) => {
         localStorage.setItem("invitation_id", invitationId);
@@ -491,7 +491,7 @@ test.describe("workspace invitations", () => {
         page.request,
         "query { currentWorkspaceMember { id } }",
         {},
-        { "x-workspace-id": workspaceId },
+        { "x-workspace": workspaceId },
       );
 
       await memberPage.goto(
@@ -530,7 +530,7 @@ test.describe("workspace invitations", () => {
             ],
           },
         },
-        { "x-workspace-id": workspaceId },
+        { "x-workspace": workspaceId },
       );
       await memberPage.reload();
       await expect(memberPage.locator("#member-name")).toBeDisabled();
@@ -569,7 +569,7 @@ test.describe("workspace invitations", () => {
         page.request,
         "mutation ($id: ID!, $input: SetWorkspaceMemberRolesInput!) { setWorkspaceMemberRoles(id: $id, input: $input) { id } }",
         { id: memberId, input: { roles: ["ADMIN"] } },
-        { "x-workspace-id": workspaceId },
+        { "x-workspace": workspaceId },
       );
       await memberPage.goto(`/workspaces/${workspaceId}/members/${memberId}`);
       await expect(
@@ -644,7 +644,7 @@ test.describe("workspace invitations", () => {
         page.request,
         "query ($id: ID!) { workspaceMember(id: $id) { permissions roles name email } }",
         { id: currentWorkspaceMember.id },
-        { "x-workspace-id": workspaceId },
+        { "x-workspace": workspaceId },
       );
       expect(member.permissions).toEqual(["WORKSPACE__UPDATE"]);
       expect(member.roles).toEqual(["OWNER"]);
@@ -793,7 +793,7 @@ test.describe("workspace invitations", () => {
         page.request,
         "query ($id: ID!) { workspaceMember(id: $id) { name roles permissions } }",
         { id: memberId },
-        { "x-workspace-id": workspaceId },
+        { "x-workspace": workspaceId },
       );
       expect(unchanged.workspaceMember).toEqual({
         name: "Workspace Member",
@@ -905,7 +905,7 @@ test.describe("workspace invitations", () => {
         page.request,
         "query { currentWorkspaceMember { id } }",
         {},
-        { "x-workspace-id": workspaceId },
+        { "x-workspace": workspaceId },
       );
       await page.goto(
         `/workspaces/${workspaceId}/members/${currentWorkspaceMember.id}`,

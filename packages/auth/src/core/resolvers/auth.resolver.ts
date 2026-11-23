@@ -48,6 +48,19 @@ export class AuthResolver {
   }
 
   /**
+   * Checks whether a username is already registered.
+   * @param username - Requested username.
+   * @returns Whether a user already has this username.
+   */
+  @Public()
+  @Query(() => Boolean)
+  async userExists(
+    @Args("username", { type: () => String }) username: string,
+  ): Promise<boolean> {
+    return await this.authService.userExists(username);
+  }
+
+  /**
    * Returns the currently authenticated user.
    * @param user - Authenticated user, or null for anonymous and system credentials.
    * @returns Authenticated user from the current request.

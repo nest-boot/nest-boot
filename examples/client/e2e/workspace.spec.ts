@@ -20,7 +20,7 @@ test.describe("workspace management", () => {
       name: "Workspace owner",
     });
     const workspace = await createWorkspaceByApi(page, seed);
-    const headers = { "x-workspace-id": workspace.id };
+    const headers = { "x-workspace": workspace.id };
     const { currentWorkspaceMember } = await graphqlRequest<{
       currentWorkspaceMember: { id: string };
     }>(page.request, "query { currentWorkspaceMember { id } }", {}, headers);
@@ -123,7 +123,7 @@ test.describe("workspace management", () => {
         page.request,
         "query { selectedWorkspace { members(first: 10) { edges { node { roles } } } } }",
         {},
-        { "x-workspace-id": workspaceId },
+        { "x-workspace": workspaceId },
       );
       expect(
         selectedWorkspace.members.edges.filter(({ node }) =>

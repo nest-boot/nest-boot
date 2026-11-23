@@ -88,7 +88,7 @@ function ApiKeysComponent() {
   const { data } = useQuery(GET_WORKSPACE_API_KEYS, {
     fetchPolicy: "no-cache",
     context: {
-      headers: { "x-workspace-id": workspaceId },
+      headers: { "x-workspace": workspaceId },
       queryDeduplication: false,
     },
     variables: search,

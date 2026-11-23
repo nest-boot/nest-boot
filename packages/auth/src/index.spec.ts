@@ -432,9 +432,9 @@ describe("exported input contracts", () => {
     },
     {
       name: "AuthUpdateUserInput",
-      values: { name: "User", image: "/avatar.png" },
+      values: { name: "User", image: "/avatar.png", username: "alice" },
       required: [],
-      nullable: ["image"],
+      nullable: ["image", "username"],
     },
     {
       name: "BanUserInput",
@@ -486,8 +486,9 @@ describe("exported input contracts", () => {
     },
     {
       name: "CreateWorkspaceInput",
-      values: { name: "Workspace" },
+      values: { name: "Workspace", slug: "workspace" },
       required: ["name"],
+      nullable: ["slug"],
     },
     {
       name: "SetWorkspaceMemberPermissionsInput",
@@ -607,6 +608,38 @@ describe("exported input contracts", () => {
         }
         expect(schema.parse({ ...values, name: "  Name  " })).toMatchObject({
           name: "Name",
+        });
+      }
+    });
+    it("uses the same lowercase format for workspace slugs and usernames", () => {
+      const workspace = toZodSchema(auth.CreateWorkspaceInput);
+      const profile = toZodSchema(auth.AuthUpdateUserInput);
+      for (const identifier of [
+        "ab",
+        "x".repeat(31),
+        "42",
+        "42alice",
+        "Acme-2",
+        "acme-TEAM",
+        "acme--team",
+        "acme-",
+        "alice_team",
+        "alice/team",
+        "Kelvin",
+      ]) {
+        expect(
+          workspace.safeParse({ name: "Acme", slug: identifier }).success,
+        ).toBe(false);
+        expect(profile.safeParse({ username: identifier }).success).toBe(false);
+      }
+      for (const identifier of [" acme-2 ", "abc", "x".repeat(30)]) {
+        const normalized = identifier.trim();
+        expect(workspace.parse({ name: "Acme", slug: identifier })).toEqual({
+          name: "Acme",
+          slug: normalized,
+        });
+        expect(profile.parse({ username: identifier })).toEqual({
+          username: normalized,
         });
       }
     });

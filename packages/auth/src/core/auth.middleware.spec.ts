@@ -180,7 +180,7 @@ describe("AuthMiddleware", () => {
     );
     const request = {
       headers: {
-        "x-workspace-id": "invalid",
+        "x-workspace": "invalid",
         cookie: "workspace_id=also-invalid",
       },
     } as unknown as Request;
@@ -219,7 +219,7 @@ describe("AuthMiddleware", () => {
       const request = {
         headers: {
           authorization: "Bearer sys-key",
-          ...(workspace ? { "x-workspace-id": workspace.id } : {}),
+          ...(workspace ? { "x-workspace": workspace.id } : {}),
         },
       } as unknown as Request;
       await runInRequestContext(request, async () => {
@@ -476,7 +476,7 @@ describe("AuthMiddleware", () => {
       );
       const request = {
         headers: {
-          "x-workspace-id": workspace.id,
+          "x-workspace": workspace.id,
           ...(useKey ? { authorization: "Bearer sk-key" } : {}),
         },
       } as unknown as Request;
@@ -562,7 +562,7 @@ describe("AuthMiddleware", () => {
       );
       const request = {
         headers: {
-          "x-workspace-id": workspace.id,
+          "x-workspace": workspace.id,
           ...(kind.endsWith("key") ? { authorization: "Bearer sk-key" } : {}),
         },
       } as unknown as Request;
@@ -772,7 +772,7 @@ describe("AuthMiddleware", () => {
       mockRlsContext(em);
       const request = {
         headers: {
-          "x-workspace-id": "101",
+          "x-workspace": "101",
           ...(kind.endsWith("key") ? { authorization: "Bearer sk-key" } : {}),
         },
       } as unknown as Request;
@@ -831,7 +831,7 @@ describe("AuthMiddleware", () => {
     );
     mockRlsContext(em);
     const request = {
-      headers: { "x-workspace-id": "999999999999999" },
+      headers: { "x-workspace": "999999999999999" },
     } as unknown as Request;
     await runInRequestContext(request, () =>
       middleware.use(request, {} as never, vi.fn()),
@@ -998,7 +998,7 @@ describe("AuthMiddleware", () => {
     const request = {
       headers: {
         authorization: "Bearer sk-key",
-        "x-workspace-id": "101",
+        "x-workspace": "101",
       },
     } as unknown as Request;
     await runInRequestContext(request, async () => {
@@ -1044,7 +1044,7 @@ describe("AuthMiddleware", () => {
     const request = {
       headers: {
         authorization: "Bearer sk-key",
-        "x-workspace-id": "101",
+        "x-workspace": "101",
       },
     } as unknown as Request;
     await runInRequestContext(request, async () => {
@@ -1085,7 +1085,7 @@ describe("AuthMiddleware", () => {
     const request = {
       headers: {
         authorization: "Bearer sk-key",
-        "x-workspace-id": "101",
+        "x-workspace": "101",
       },
     } as unknown as Request;
     await runInRequestContext(request, async () => {
@@ -1151,7 +1151,7 @@ describe("optional workspace behavior", () => {
       );
       const request = {
         headers: {
-          "x-workspace-id": "123",
+          "x-workspace": "123",
           cookie: "workspace_id=456",
           ...(kind === "user-key"
             ? { authorization: "Bearer personal-key" }

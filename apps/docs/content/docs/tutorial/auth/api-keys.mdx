@@ -8,7 +8,7 @@ description: "Authenticate personal and workspace automation with scoped API key
 - A **user key** restores its user. Its private workspace grants require an active
   membership in the selected workspace; public resources use their own access rules.
 - A **member key** authenticates its owning member without selecting a workspace.
-  Select a workspace through `x-workspace-id` or the workspace Cookie. Its member
+  Select a workspace through `x-workspace` or the workspace Cookie. Its member
   grants apply only when that selection matches the owner's workspace. Other
   workspaces may still expose public resources. User members also restore their
   login user; service accounts have no login user. Disabled members and currently
@@ -330,7 +330,7 @@ Polymorphic relations have no native owner FK or custom owner triggers. Deleting
 
 System credentials and accounts are unavailable to request-role SQL; only administrator-session services manage them. The framework records successful usage through an isolated writer scoped to the captured key ID.
 
-System keys select an existing workspace through `x-workspace-id` or, when the header is absent, the `workspace_id` Cookie. `@SelectedWorkspace()` and `AuthContext.selectedWorkspace` expose the target without granting access. `@AuthWorkspace()` and `AuthContext.authWorkspace` expose the selected workspace only when effective system workspace grants establish a scope. The `user` and `member` identities remain null. The nullable GraphQL queries are `currentUser`, `currentSession`, `currentWorkspaceMember`, `currentWorkspace` and `selectedWorkspace`. Business `buildAbility` callbacks receive the authenticated scope as `workspace` and the independent target as `selectedWorkspace`; they continue to use effective permission grants and resource conditions.
+System keys select an existing workspace through `x-workspace` or, when the header is absent, the `workspace_id` Cookie. `@SelectedWorkspace()` and `AuthContext.selectedWorkspace` expose the target without granting access. `@AuthWorkspace()` and `AuthContext.authWorkspace` expose the selected workspace only when effective system workspace grants establish a scope. The `user` and `member` identities remain null. The nullable GraphQL queries are `currentUser`, `currentSession`, `currentWorkspaceMember`, `currentWorkspace` and `selectedWorkspace`. Business `buildAbility` callbacks receive the authenticated scope as `workspace` and the independent target as `selectedWorkspace`; they continue to use effective permission grants and resource conditions.
 
 All authenticated credential types use the `authenticated` database role. Auth stages four variables: `app.auth.user.id`, `app.auth.workspace_member.id`, `app.auth.workspace.id` and `app.selected.workspace.id`. System credentials carry no database account identifier and use no separate role. Effective workspace grants can establish the authenticated scope for the selected target; empty, user-only or disallowed grants cannot. Private policies use the authenticated scope. Public-read policies can instead match the selected target and a public-row condition. An explicit empty header clears selection, unknown IDs do not fall back to the Cookie, malformed IDs return 400, and disabling workspace features ignores both selectors.
 

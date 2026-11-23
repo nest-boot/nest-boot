@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { workspaceSearchSchema } from "@/schemas/workspace-search-schema";
 import { workspacesResourceKey } from "@/lib/resource-keys";
+import { urlIdentifierInput } from "@/lib/url-identifier";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { Button } from "@/components/thread-ui/button";
 import { Link } from "@/components/link";
@@ -44,22 +45,24 @@ function CreateWorkspaceComponent() {
   });
   const navigate = Route.useNavigate();
 
-  const [createWorkspace, { loading }] = useMutation(
+  const [createWorkspace, { error, loading }] = useMutation(
     CREATE_WORKSPACE_FROM_CREATE_WORKSPACE_ROUTE,
   );
 
   const form = useForm({
     defaultValues: {
       name: "",
+      slug: "",
     },
     onSubmit: async ({ value }) => {
       const { data } = await createWorkspace({
         variables: {
           input: {
             name: value.name,
+            slug: value.slug.trim() || null,
           },
         },
-      });
+      }).catch(() => ({ data: undefined }));
 
       if (data?.createWorkspace.id) {
         navigate({
@@ -113,6 +116,29 @@ function CreateWorkspaceComponent() {
                       )}
                     </form.Field>
                   </FormLayoutItem>
+                  <FormLayoutItem>
+                    <form.Field name="slug">
+                      {(field) => (
+                        <Input
+                          id="slug"
+                          label={t("workspace:create.form.slug.label")}
+                          placeholder="acme"
+                          title={t("workspace:create.form.slug.format")}
+                          {...urlIdentifierInput}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          onBlur={field.handleBlur}
+                        />
+                      )}
+                    </form.Field>
+                  </FormLayoutItem>
+                  {error && (
+                    <FormLayoutItem>
+                      <p role="alert">{t("workspace:create.failed")}</p>
+                    </FormLayoutItem>
+                  )}
                 </FormLayout>
               </form>
             </CardContent>

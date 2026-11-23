@@ -1,6 +1,16 @@
+import { UniqueConstraintViolationException } from "@mikro-orm/core";
 import { headers, RequestContext } from "@nest-boot/request-context";
-import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+} from "@nestjs/common";
+import { isAPIError } from "better-auth/api";
+import { USERNAME_ERROR_CODES } from "better-auth/plugins/username";
 
+import { urlIdentifierSchema } from "../../common/utils/url-identifier.util.js";
 import { AuthMiddleware } from "../auth.middleware.js";
 import {
   adaptBetterAuth,
@@ -199,6 +209,22 @@ export class AuthService {
   }
 
   /**
+   * Checks whether a username already exists through the Username plugin.
+   * @param username - Requested username.
+   * @returns Whether a user already has this username.
+   */
+  async userExists(username: string): Promise<boolean> {
+    const parsed = urlIdentifierSchema.safeParse(username);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid username");
+    }
+    const { available } = await this.auth.api.isUsernameAvailable({
+      body: { username: parsed.data },
+    });
+    return !available;
+  }
+
+  /**
    * Signs up a user with an email address and password.
    * @param options - Configuration for this operation.
    * @returns User registration response and optional session token.
@@ -332,11 +358,25 @@ export class AuthService {
    */
   async updateCurrentUser(options: UpdateAuthUserOptions): Promise<boolean> {
     this.authMiddleware.assertAuthenticationCanChange();
-    const result = await this.auth.api.updateUser({
-      body: options,
-      headers: await this.sessionService.getCurrentSessionHeaders(),
-      returnHeaders: true,
-    });
+    const headers = await this.sessionService.getCurrentSessionHeaders();
+    const result = await this.auth.api
+      .updateUser({
+        body: options,
+        headers,
+        returnHeaders: true,
+      })
+      .catch((error: unknown) => {
+        if (
+          options.username &&
+          (error instanceof UniqueConstraintViolationException ||
+            (isAPIError(error) &&
+              error.body?.code ===
+                USERNAME_ERROR_CODES.USERNAME_IS_ALREADY_TAKEN.code))
+        ) {
+          throw new ConflictException("Username is already taken");
+        }
+        throw error;
+      });
     if (result.response.status) {
       await this.authMiddleware.refreshCurrentUser();
     }

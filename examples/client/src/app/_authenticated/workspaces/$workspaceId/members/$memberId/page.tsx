@@ -140,7 +140,7 @@ export const Route = createFileRoute(
       .query({
         query: GET_WORKSPACE_MEMBER_FROM_WORKSPACE_MEMBER_ROUTE,
         variables: { id: memberId },
-        context: { headers: { "x-workspace-id": workspaceId } },
+        context: { headers: { "x-workspace": workspaceId } },
         fetchPolicy: "network-only",
       })
       .catch((error: unknown) => {
@@ -216,7 +216,7 @@ function WorkspaceMemberDetails({
             orderBy,
             cursor: createConnectionCursor(member, search),
           },
-          context: { headers: { "x-workspace-id": workspaceId } },
+          context: { headers: { "x-workspace": workspaceId } },
         });
         if (data?.selectedWorkspace?.id !== workspaceId) return undefined;
         return {
