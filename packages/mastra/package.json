@@ -33,7 +33,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.ts --coverage"
+    "test:e2e": "pnpm typecheck && vitest run --config ./vitest.config.e2e.ts --coverage"
   },
   "dependencies": {
     "@mastra/clickhouse": "^1.30.1",
