@@ -1,0 +1,150 @@
+---
+title: "Mastra"
+description: "基于 NestJS 依赖注入的 Mastra Agent、Tool、Workflow、内嵌 Studio 与可观测存储集成。"
+---
+
+`@nest-boot/mastra` 将 [Mastra](https://mastra.ai/) 深度集成到 Nest Boot 中，提供可注入的 `BaseAgent`、`BaseTool`、`BaseStep`、`BaseWorkflow` 基类、自动发现注册、内嵌 Mastra Studio、`@nest-boot/auth` 路由鉴权以及基于环境变量的 PostgreSQL / ClickHouse 存储配置。
+
+## 安装
+
+```bash
+pnpm add @nest-boot/mastra @mastra/core @nest-boot/auth zod
+```
+
+## 模块注册
+
+在公共模块中直接导入 `MastraModule` 即可开箱即用，也可使用 `forRoot` / `forRootAsync` 自定义选项：
+
+```typescript
+import { MastraModule } from "@nest-boot/mastra";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [MastraModule],
+})
+export class CommonModule {}
+```
+
+默认行为：
+
+- Mastra HTTP API 挂载在 `/api/mastra/*`，并使用 `@Can("manage", Mastra)` 保护。
+- 内嵌 Mastra Studio 通过中间件挂载在 `/api/mastra/studio`。
+- 自动发现并注册所有模块中的单例 `BaseAgent`（或原生 Mastra `Agent`）和 `BaseWorkflow`（或原生 Mastra `Workflow`）Provider。
+
+自定义前缀或关闭 API / Studio：
+
+```typescript
+MastraModule.forRoot({
+  api: {
+    prefix: "/api/mastra",
+  },
+  studio: true,
+});
+
+// 无头模式（不注册 HTTP 控制器与 Studio，仅保留 DI 自动发现）
+MastraModule.forRoot({
+  api: false,
+});
+```
+
+## 权限控制
+
+`MastraController` 上声明了 `@Can("manage", Mastra)`，只需在 `AuthModule` 的 `buildAbility` 回调中授予对应能力即可：
+
+```typescript
+import { Mastra } from "@mastra/core/mastra";
+
+AuthModule.forRoot({
+  user: {
+    permissions: ["mastra:manage"],
+    roles: {
+      admin: ["mastra:manage"],
+    },
+  },
+  buildAbility: ({ builder, permissions }) => {
+    if (permissions.includes("mastra:manage")) {
+      builder.can("manage", Mastra);
+    }
+  },
+});
+```
+
+内嵌 Studio 静态壳免登录加载（与 GraphiQL 一致），而所有发往 `/api/mastra/*` 的接口请求都会经由 `AuthGuard` 与 `@Can("manage", Mastra)` 鉴权。
+
+## 可注入基类
+
+### `BaseTool` 与 `BaseAgent`
+
+```typescript
+import { BaseAgent, BaseTool } from "@nest-boot/mastra";
+import { Injectable } from "@nestjs/common";
+import { z } from "zod";
+
+@Injectable()
+export class SearchPostsTool extends BaseTool({
+  description: "按关键词搜索已发布文章",
+  inputSchema: z.object({ keyword: z.string().min(1) }),
+  outputSchema: z.object({ titles: z.array(z.string()) }),
+}) {
+  constructor(private readonly postService: PostService) {
+    super();
+  }
+
+  async execute(inputData: { keyword: string }) {
+    return { titles: await this.postService.searchTitles(inputData.keyword) };
+  }
+}
+
+@Injectable()
+export class AssistantAgent extends BaseAgent {
+  constructor(searchPostsTool: SearchPostsTool) {
+    super({
+      name: "Assistant Agent",
+      instructions: "帮助用户检索博客文章。",
+      model: "openai/gpt-4o-mini",
+      tools: {
+        searchPosts: searchPostsTool,
+      },
+    });
+  }
+}
+```
+
+### `BaseStep` 与 `BaseWorkflow`
+
+```typescript
+import { BaseStep, BaseWorkflow } from "@nest-boot/mastra";
+import { Injectable } from "@nestjs/common";
+import { z } from "zod";
+
+@Injectable()
+export class SummarizeStep extends BaseStep({
+  inputSchema: z.object({ title: z.string() }),
+  outputSchema: z.object({ summary: z.string() }),
+}) {
+  async execute({ inputData }: { inputData: { title: string } }) {
+    return { summary: `Summary: ${inputData.title}` };
+  }
+}
+
+@Injectable()
+export class PublishWorkflow extends BaseWorkflow({
+  inputSchema: z.object({ title: z.string() }),
+  outputSchema: z.object({ summary: z.string() }),
+}) {
+  constructor(summarizeStep: SummarizeStep) {
+    super();
+    this.then(summarizeStep).commit();
+  }
+}
+```
+
+`BaseWorkflow.commit()` 会将实例上的 `then` 属性替换为非可调用哨兵对象，避免 NestJS 异步依赖注入容器将已提交的 Workflow 误判为 Promise Thenable。
+
+## 存储与可观测性
+
+未通过 `MastraModule.forRoot({ storage, observability })` 显式覆盖时，模块会根据环境变量自动配置：
+
+- **`MASTRA_DATABASE_URL ?? DATABASE_URL`**：当解析结果为 `postgres:` 或 `postgresql:` 时，启用 `@mastra/pg` 的 `PostgresStore`（`schemaName: "mastra"`）。非 PostgreSQL 协议（例如 PGlite 的 `file:` / `memory:`）不启用 `PostgresStore`。
+- **`MASTRA_CLICKHOUSE_URL`**：配置后（支持 `http:`、`https:`、`clickhouse:`、`clickhouses:`），通过 `MastraCompositeStore` 将 `observability` 域路由到 `@mastra/clickhouse` 的 `ObservabilityStorageClickhouseVNext`。
+- **默认可观测性**：内置 `Observability`（`MastraStorageExporter` + `SensitiveDataFilter`），并在应用停机时自动调用 `mastra.shutdown()` 刷新缓冲并释放连接池。

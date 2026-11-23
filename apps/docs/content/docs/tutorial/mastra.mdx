@@ -1,0 +1,150 @@
+---
+title: "Mastra"
+description: "NestJS-native Mastra agents, tools, workflows, embedded Studio, and observability storage."
+---
+
+`@nest-boot/mastra` integrates [Mastra](https://mastra.ai/) with NestJS dependency injection, `@nest-boot/auth`, embedded Mastra Studio, and environment-driven PostgreSQL / ClickHouse storage.
+
+## Installation
+
+```bash
+pnpm add @nest-boot/mastra @mastra/core @nest-boot/auth zod
+```
+
+## Module Registration
+
+Import `MastraModule` directly for zero-config defaults, or customize via `forRoot` / `forRootAsync`:
+
+```typescript
+import { MastraModule } from "@nest-boot/mastra";
+import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [MastraModule],
+})
+export class CommonModule {}
+```
+
+By default:
+
+- Mastra HTTP API routes are mounted at `/api/mastra/*` and protected with `@Can("manage", Mastra)`.
+- Embedded Mastra Studio is served via middleware at `/api/mastra/studio`.
+- All singleton `BaseAgent` (or Mastra `Agent`) and `BaseWorkflow` (or Mastra `Workflow`) providers across loaded NestJS modules are automatically discovered and registered into the shared `Mastra` instance.
+
+To customize prefixes or disable HTTP API / Studio:
+
+```typescript
+MastraModule.forRoot({
+  api: {
+    prefix: "/api/mastra",
+  },
+  studio: true,
+});
+
+// Headless mode (no HTTP routes or Studio, keeps DI auto-discovery)
+MastraModule.forRoot({
+  api: false,
+});
+```
+
+## Authorization
+
+`MastraController` applies `@Can("manage", Mastra)`. Grant the ability in your `AuthModule` `buildAbility` callback:
+
+```typescript
+import { Mastra } from "@mastra/core/mastra";
+
+AuthModule.forRoot({
+  user: {
+    permissions: ["mastra:manage"],
+    roles: {
+      admin: ["mastra:manage"],
+    },
+  },
+  buildAbility: ({ builder, permissions }) => {
+    if (permissions.includes("mastra:manage")) {
+      builder.can("manage", Mastra);
+    }
+  },
+});
+```
+
+Embedded Studio serves its static HTML/JS shell without route-level authentication (matching GraphiQL), while every API request to `/api/mastra/*` is enforced by `AuthGuard` and `@Can("manage", Mastra)`.
+
+## Injectable Base Classes
+
+### `BaseTool` and `BaseAgent`
+
+```typescript
+import { BaseAgent, BaseTool } from "@nest-boot/mastra";
+import { Injectable } from "@nestjs/common";
+import { z } from "zod";
+
+@Injectable()
+export class SearchPostsTool extends BaseTool({
+  description: "Search published posts by keyword",
+  inputSchema: z.object({ keyword: z.string().min(1) }),
+  outputSchema: z.object({ titles: z.array(z.string()) }),
+}) {
+  constructor(private readonly postService: PostService) {
+    super();
+  }
+
+  async execute(inputData: { keyword: string }) {
+    return { titles: await this.postService.searchTitles(inputData.keyword) };
+  }
+}
+
+@Injectable()
+export class AssistantAgent extends BaseAgent {
+  constructor(searchPostsTool: SearchPostsTool) {
+    super({
+      name: "Assistant Agent",
+      instructions: "Help users search blog posts.",
+      model: "openai/gpt-4o-mini",
+      tools: {
+        searchPosts: searchPostsTool,
+      },
+    });
+  }
+}
+```
+
+### `BaseStep` and `BaseWorkflow`
+
+```typescript
+import { BaseStep, BaseWorkflow } from "@nest-boot/mastra";
+import { Injectable } from "@nestjs/common";
+import { z } from "zod";
+
+@Injectable()
+export class SummarizeStep extends BaseStep({
+  inputSchema: z.object({ title: z.string() }),
+  outputSchema: z.object({ summary: z.string() }),
+}) {
+  async execute({ inputData }: { inputData: { title: string } }) {
+    return { summary: `Summary: ${inputData.title}` };
+  }
+}
+
+@Injectable()
+export class PublishWorkflow extends BaseWorkflow({
+  inputSchema: z.object({ title: z.string() }),
+  outputSchema: z.object({ summary: z.string() }),
+}) {
+  constructor(summarizeStep: SummarizeStep) {
+    super();
+    this.then(summarizeStep).commit();
+  }
+}
+```
+
+`BaseWorkflow.commit()` shadows `then` with a non-callable sentinel so NestJS's async DI container does not treat committed workflow providers as Promise thenables.
+
+## Storage & Observability
+
+Unless overridden via `MastraModule.forRoot({ storage, observability })`, `MastraModule` configures storage from environment variables:
+
+- **`MASTRA_DATABASE_URL ?? DATABASE_URL`**: When the resolved URL uses `postgres:` or `postgresql:`, enables `@mastra/pg` `PostgresStore` with `schemaName: "mastra"`. Non-PostgreSQL URLs (such as PGlite `file:` / `memory:`) do not enable `PostgresStore`.
+- **`MASTRA_CLICKHOUSE_URL`**: When set (`http:`, `https:`, `clickhouse:`, or `clickhouses:`), composes `@mastra/clickhouse` `ObservabilityStorageClickhouseVNext` as the `observability` domain via `MastraCompositeStore`.
+- **Default Observability**: Configures `Observability` with `MastraStorageExporter` and `SensitiveDataFilter`, and calls `mastra.shutdown()` automatically during NestJS application shutdown.
