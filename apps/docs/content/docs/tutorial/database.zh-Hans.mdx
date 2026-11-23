@@ -64,6 +64,8 @@ PostgreSQL 的 TLS 文件参数使用 `sslrootcert`、`sslcert` 和 `sslkey`，�
 
 MikroORM 7.2.0 的 JSON 元数据缓存不能完整保留策略回调；实体使用 `policies.using` 或 `policies.check` 函数时，请保持缓存关闭。
 
+Schema 生成器默认忽略 `mastra` schema（`schemaGenerator: { ignoreSchema: ["mastra"] }`），模块注册与 `getDatabaseConfig()` 保持一致，避免与业务共用同一 PostgreSQL 数据库时 MikroORM schema diff 误删 Mastra 表。仅传入部分 `schemaGenerator` 选项时会保留该默认值；如需覆盖，请显式设置 `schemaGenerator: { ignoreSchema: [...] }`（或 `[]`）。
+
 ### 异步注册
 
 ```typescript

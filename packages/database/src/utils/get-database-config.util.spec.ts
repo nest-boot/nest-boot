@@ -69,6 +69,9 @@ describe("getDatabaseConfig", () => {
       entitiesTs: ["src/**/*.entity.ts"],
       host: "localhost",
       metadataCache: { enabled: false },
+      schemaGenerator: {
+        ignoreSchema: ["mastra"],
+      },
       metadataProvider: TsMorphMetadataProvider,
       migrations: {
         path: "dist/database/migrations",

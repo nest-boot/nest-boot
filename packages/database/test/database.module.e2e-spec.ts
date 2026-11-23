@@ -26,8 +26,67 @@ describe("DatabaseModule driver integration", () => {
 
     expect(moduleRef.get(PgliteEntityManager)).toBe(orm.em);
     expect(orm.config.get("metadataCache").enabled).toBe(false);
+    expect(orm.config.get("schemaGenerator").ignoreSchema).toEqual(["mastra"]);
 
     await moduleRef.close();
+  });
+
+  it("ignores the mastra schema during live schema diff by default and allows overriding", async () => {
+    const defaultModuleRef = await Test.createTestingModule({
+      imports: [
+        DatabaseModule.forRoot({
+          driver: PgliteDriver,
+          dbName: "memory://",
+          entities: [TestEntity],
+        }),
+      ],
+    }).compile();
+
+    try {
+      await defaultModuleRef.init();
+      const orm = defaultModuleRef.get(MikroORM);
+
+      await orm.schema.create();
+      await orm.em.execute('create schema if not exists "mastra"');
+      await orm.em.execute(
+        'create table "mastra"."mastra_threads" ("id" text primary key)',
+      );
+
+      const updateSql = await orm.schema.getUpdateSchemaSQL();
+      expect(updateSql).not.toContain("mastra");
+    } finally {
+      await defaultModuleRef.close();
+    }
+
+    const overrideModuleRef = await Test.createTestingModule({
+      imports: [
+        DatabaseModule.forRoot({
+          driver: PgliteDriver,
+          dbName: "memory://",
+          entities: [TestEntity],
+          schemaGenerator: {
+            ignoreSchema: [],
+          },
+        }),
+      ],
+    }).compile();
+
+    try {
+      await overrideModuleRef.init();
+      const orm = overrideModuleRef.get(MikroORM);
+
+      await orm.schema.create();
+      await orm.em.execute('create schema if not exists "mastra"');
+      await orm.em.execute(
+        'create table "mastra"."mastra_threads" ("id" text primary key)',
+      );
+
+      const updateSql = await orm.schema.getUpdateSchemaSQL();
+      expect(updateSql).toContain('"mastra"."mastra_threads"');
+      expect(updateSql).toContain('drop schema if exists "mastra"');
+    } finally {
+      await overrideModuleRef.close();
+    }
   });
 
   it("keeps metadata caching disabled with partial async options", async () => {

@@ -176,6 +176,12 @@ export class DatabaseModule
               envOptions.metadataCache?.enabled ??
               false,
           },
+          schemaGenerator: {
+            ...envOptions.schemaGenerator,
+            ...ormOptions.schemaGenerator,
+            ignoreSchema: ormOptions.schemaGenerator?.ignoreSchema ??
+              envOptions.schemaGenerator?.ignoreSchema ?? ["mastra"],
+          },
         };
 
         if (

@@ -67,6 +67,8 @@ Metadata caching is disabled by default (`metadataCache: { enabled: false }`) fo
 
 MikroORM 7.2.0's JSON metadata cache does not fully preserve policy callbacks. Keep caching disabled when entities use functions for `policies.using` or `policies.check`.
 
+Schema generation ignores the `mastra` schema by default (`schemaGenerator: { ignoreSchema: ["mastra"] }`) for both module registration and `getDatabaseConfig()`, so Mastra tables stored in the same PostgreSQL database are not dropped by MikroORM schema diffs. Partial `schemaGenerator` options preserve this default; pass an explicit `schemaGenerator: { ignoreSchema: [...] }` (or `[]`) to override it.
+
 ### Async Registration
 
 ```typescript
