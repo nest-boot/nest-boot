@@ -46,7 +46,6 @@
   "peerDependencies": {
     "@mastra/core": "^1.84.0",
     "@nest-boot/auth": "workspace:^",
-    "@nest-boot/logger": "workspace:^",
     "@nestjs/common": "^12.0.0",
     "@nestjs/core": "^12.0.0",
     "express": "^5.0.0",
@@ -54,17 +53,11 @@
     "rxjs": "^7.0.0",
     "zod": "^4.0.0"
   },
-  "peerDependenciesMeta": {
-    "@nest-boot/logger": {
-      "optional": true
-    }
-  },
   "devDependencies": {
     "@mastra/core": "^1.84.0",
     "@nest-boot/auth": "workspace:^",
     "@nest-boot/eslint-config": "workspace:^",
     "@nest-boot/eslint-plugin": "workspace:^",
-    "@nest-boot/logger": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",

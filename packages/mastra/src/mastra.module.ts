@@ -359,12 +359,7 @@ export type MastraModuleAsyncOptions = typeof ASYNC_OPTIONS_TYPE & {
         modulesContainer: ModulesContainer,
         options: MastraModuleOptions,
       ) => {
-        const { enabled, serverOptions } = normalizeMastraApiOptions(
-          options.api,
-        );
-        if (!enabled) {
-          return null;
-        }
+        const { serverOptions } = normalizeMastraApiOptions(options.api);
         return new RouterModule(modulesContainer, [
           {
             path: serverOptions.prefix,

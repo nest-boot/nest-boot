@@ -157,6 +157,19 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
       expect(studioHtml).toContain("window.MASTRA_AUTO_DETECT_URL = 'true';");
       expect(studioHtml).not.toContain("%%MASTRA_");
 
+      const studioIndexHtmlRes = await fetch(
+        `${baseUrl}/api/mastra/studio/index.html`,
+      );
+      expect(studioIndexHtmlRes.status).toBe(200);
+      expect(studioIndexHtmlRes.headers.get("content-type")).toContain(
+        "text/html",
+      );
+      const studioIndexHtml = await studioIndexHtmlRes.text();
+      expect(studioIndexHtml).toContain(
+        "window.MASTRA_API_PREFIX = '/api/mastra';",
+      );
+      expect(studioIndexHtml).not.toContain("%%MASTRA_");
+
       const studioSubRouteRes = await fetch(
         `${baseUrl}/api/mastra/studio/agents/writer-agent`,
       );
@@ -274,6 +287,19 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
       await disabledApiApp.close();
     }
 
+    @Controller("api/demo")
+    class AsyncDisabledDemoController {
+      @Get("ping")
+      ping() {
+        return { ok: true };
+      }
+    }
+
+    @Module({
+      controllers: [AsyncDisabledDemoController],
+    })
+    class AsyncDisabledDemoModule {}
+
     const asyncDisabledApiRef = await Test.createTestingModule({
       imports: [
         MastraModule.forRootAsync({
@@ -281,6 +307,7 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
             api: false,
           }),
         }),
+        AsyncDisabledDemoModule,
         SampleFeatureModule,
       ],
     }).compile();
@@ -295,10 +322,37 @@ describe("MastraModule HTTP & Studio (e2e)", () => {
       );
 
       const url = await asyncDisabledApiApp.getUrl();
+      const demoRes = await fetch(`${url}/api/demo/ping`);
+      expect(demoRes.status).toBe(200);
+      expect(await demoRes.json()).toEqual({ ok: true });
       expect((await fetch(`${url}/api/mastra/agents`)).status).toBe(404);
       expect((await fetch(`${url}/api/mastra/studio`)).status).toBe(404);
     } finally {
       await asyncDisabledApiApp.close();
+    }
+
+    const globalPrefixRef = await Test.createTestingModule({
+      imports: [MastraModule, SampleFeatureModule],
+    }).compile();
+
+    const globalPrefixApp = globalPrefixRef.createNestApplication();
+    globalPrefixApp.setGlobalPrefix("v1");
+    await globalPrefixApp.init();
+    await globalPrefixApp.listen(0);
+
+    try {
+      const url = await globalPrefixApp.getUrl();
+      const prefixedAgentsRes = await fetch(`${url}/v1/api/mastra/agents`);
+      expect(prefixedAgentsRes.status).toBe(200);
+      const prefixedAgentsBody = (await prefixedAgentsRes.json()) as Record<
+        string,
+        unknown
+      >;
+      expect(Object.keys(prefixedAgentsBody)).toEqual(
+        expect.arrayContaining(["writer-agent"]),
+      );
+    } finally {
+      await globalPrefixApp.close();
     }
   });
 });

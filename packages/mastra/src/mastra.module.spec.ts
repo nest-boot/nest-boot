@@ -11,8 +11,7 @@ import { MastraService } from "@mastra/nestjs";
 import { MastraStorageExporter, Observability } from "@mastra/observability";
 import { ObservabilityPG, PostgresStore } from "@mastra/pg";
 import { CAN_METADATA } from "@nest-boot/auth";
-import { Logger } from "@nest-boot/logger";
-import { Global, Injectable, Module, Scope } from "@nestjs/common";
+import { Injectable, Module, Scope } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { expectTypeOf } from "vitest";
 import { z } from "zod";
@@ -27,29 +26,15 @@ import {
   MastraController,
   MastraManager,
   MastraModule,
+  normalizeMastraApiOptions,
+  normalizeMastraStudioOptions,
+  resolveMastraApiPrefix,
+  resolveMastraStudioBasePath,
   type StepInput,
   type StepOutput,
   type WorkflowInput,
   type WorkflowOutput,
 } from "./index.js";
-
-/** Minimal global logger provider for isolated module tests. */
-@Global()
-@Module({
-  providers: [
-    {
-      provide: Logger,
-      useValue: {
-        log: vi.fn(),
-        warn: vi.fn(),
-        error: vi.fn(),
-        debug: vi.fn(),
-      },
-    },
-  ],
-  exports: [Logger],
-})
-class MockLoggerModule {}
 
 @Injectable()
 class WriterAgent extends BaseAgent {
@@ -223,12 +208,7 @@ describe("MastraModule", () => {
     expectTypeOf<BaseWorkflowOptions>().not.toHaveProperty("outputSchema");
 
     const moduleRef = await Test.createTestingModule({
-      imports: [
-        MockLoggerModule,
-        MastraModule,
-        WriterFeatureModule,
-        ReviewFeatureModule,
-      ],
+      imports: [MastraModule, WriterFeatureModule, ReviewFeatureModule],
     }).compile();
 
     await moduleRef.init();
@@ -320,7 +300,6 @@ describe("MastraModule", () => {
 
     const syncModuleRef = await Test.createTestingModule({
       imports: [
-        MockLoggerModule,
         MastraModule.forRoot({
           agents: {
             "preconfigured-agent": preconfiguredAgent,
@@ -344,7 +323,6 @@ describe("MastraModule", () => {
 
     const asyncModuleRef = await Test.createTestingModule({
       imports: [
-        MockLoggerModule,
         MastraModule.forRootAsync({
           useFactory: () => ({
             agents: {
@@ -507,7 +485,7 @@ describe("MastraModule", () => {
 
     try {
       const noDbRef = await Test.createTestingModule({
-        imports: [MockLoggerModule, MastraModule],
+        imports: [MastraModule],
       }).compile();
       await noDbRef.init();
       try {
@@ -521,7 +499,7 @@ describe("MastraModule", () => {
 
       process.env.DATABASE_URL = "memory://";
       const pgliteRef = await Test.createTestingModule({
-        imports: [MockLoggerModule, MastraModule],
+        imports: [MastraModule],
       }).compile();
       await pgliteRef.init();
       try {
@@ -537,7 +515,7 @@ describe("MastraModule", () => {
         "postgresql://postgres:secret@localhost:5432/postgres";
       process.env.MASTRA_DATABASE_URL = "memory://";
       const overriddenToNonPgRef = await Test.createTestingModule({
-        imports: [MockLoggerModule, MastraModule],
+        imports: [MastraModule],
       }).compile();
       await overriddenToNonPgRef.init();
       try {
@@ -553,7 +531,7 @@ describe("MastraModule", () => {
       process.env.MASTRA_DATABASE_URL =
         "postgresql://postgres:secret@localhost:5432/mastra_dedicated";
       const dedicatedPgRef = await Test.createTestingModule({
-        imports: [MockLoggerModule, MastraModule],
+        imports: [MastraModule],
       }).compile();
       await dedicatedPgRef.init();
       const dedicatedPgMastra = dedicatedPgRef.get(Mastra);
@@ -575,7 +553,7 @@ describe("MastraModule", () => {
       process.env.MASTRA_CLICKHOUSE_URL =
         "http://default:secret@localhost:8123/mastra_obs";
       const pgWithClickhouseRef = await Test.createTestingModule({
-        imports: [MockLoggerModule, MastraModule],
+        imports: [MastraModule],
       }).compile();
       await pgWithClickhouseRef.init();
       try {
@@ -596,7 +574,7 @@ describe("MastraModule", () => {
       process.env.MASTRA_CLICKHOUSE_URL =
         "clickhouse://admin:pass@localhost:8123/analytics";
       const clickhouseOnlyRef = await Test.createTestingModule({
-        imports: [MockLoggerModule, MastraModule],
+        imports: [MastraModule],
       }).compile();
       await clickhouseOnlyRef.init();
       try {
@@ -625,12 +603,58 @@ describe("MastraModule", () => {
         },
       });
 
+      // Invalid URLs and unsupported protocols safely fall back to in-memory storage
+      process.env.DATABASE_URL = "not-a-valid-url";
+      process.env.MASTRA_CLICKHOUSE_URL = "ftp://localhost:8123";
+      const invalidEnvRef = await Test.createTestingModule({
+        imports: [MastraModule],
+      }).compile();
+      await invalidEnvRef.init();
+      try {
+        expect(invalidEnvRef.get(Mastra).getStorage()).toBeInstanceOf(
+          InMemoryStore,
+        );
+      } finally {
+        await invalidEnvRef.close();
+      }
+
+      process.env.MASTRA_CLICKHOUSE_URL = "not-a-valid-url";
+      const badClickhouseRef = await Test.createTestingModule({
+        imports: [MastraModule],
+      }).compile();
+      await badClickhouseRef.init();
+      try {
+        expect(badClickhouseRef.get(Mastra).getStorage()).toBeInstanceOf(
+          InMemoryStore,
+        );
+      } finally {
+        await badClickhouseRef.close();
+      }
+
+      // Empty MASTRA_DATABASE_URL falls back to DATABASE_URL; clickhouses:// without credentials works
+      process.env.MASTRA_DATABASE_URL = "   ";
+      process.env.DATABASE_URL =
+        "postgres://postgres:secret@localhost:5432/fallback_db";
+      process.env.MASTRA_CLICKHOUSE_URL = "clickhouses://localhost:8443/obs";
+      const fallbackPgAndChRef = await Test.createTestingModule({
+        imports: [MastraModule],
+      }).compile();
+      await fallbackPgAndChRef.init();
+      try {
+        const storage = fallbackPgAndChRef.get(Mastra).getStorage();
+        expect(storage).toBeInstanceOf(MastraCompositeStore);
+        expect(storage?.stores.observability).toBeInstanceOf(
+          ObservabilityStorageClickhouseVNext,
+        );
+      } finally {
+        await fallbackPgAndChRef.close();
+      }
+
       delete process.env.MASTRA_DATABASE_URL;
       delete process.env.DATABASE_URL;
       delete process.env.MASTRA_CLICKHOUSE_URL;
       const customModuleRef = await Test.createTestingModule({
         imports: [
-          MockLoggerModule,
           MastraModule.forRoot({
             storage: customStorage,
             observability: customObservability,
@@ -649,6 +673,104 @@ describe("MastraModule", () => {
     } finally {
       pgInitSpy.mockRestore();
       clickhouseInitSpy.mockRestore();
+    }
+  });
+
+  it("normalizes module options, supports static forRootAsync api: false, preconfigured workflows, and workflow onError", async () => {
+    expect(resolveMastraApiPrefix("/")).toBe("/api");
+    expect(resolveMastraStudioBasePath("/custom")).toBe("/custom/studio");
+    expect(normalizeMastraApiOptions(false)).toEqual({
+      enabled: false,
+      serverOptions: { prefix: DEFAULT_MASTRA_API_PREFIX },
+    });
+    expect(normalizeMastraStudioOptions(true, false)).toEqual({
+      enabled: true,
+      hideCloudCta: true,
+      telemetryDisabled: true,
+    });
+    expect(normalizeMastraStudioOptions(false, true)).toEqual({
+      enabled: false,
+      hideCloudCta: true,
+      telemetryDisabled: true,
+    });
+
+    @Injectable()
+    class FailingStep extends BaseStep({
+      inputSchema: z.object({ value: z.string() }),
+      outputSchema: z.object({ value: z.string() }),
+    }) {
+      execute(): Promise<{ value: string }> {
+        return Promise.reject(new Error("boom"));
+      }
+    }
+
+    @Injectable()
+    class FailingWorkflow extends BaseWorkflow({
+      inputSchema: z.object({ value: z.string() }),
+      outputSchema: z.object({ value: z.string() }),
+    }) {
+      readonly errors: string[] = [];
+
+      constructor(failingStep: FailingStep) {
+        super();
+        this.then(failingStep).commit();
+      }
+
+      override onError(errorInfo: { error?: Error }): void {
+        this.errors.push(errorInfo.error?.message ?? "unknown");
+      }
+    }
+
+    const preconfiguredWorkflow = new MastraWorkflow({
+      id: "preconfigured-workflow",
+      inputSchema: z.object({ value: z.string() }),
+      outputSchema: z.object({ value: z.string() }),
+    });
+    preconfiguredWorkflow.commit();
+
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        MastraModule.forRootAsync({
+          api: false,
+          useFactory: () => ({
+            workflows: {
+              "preconfigured-workflow": preconfiguredWorkflow,
+            },
+          }),
+        }),
+      ],
+      providers: [
+        FailingStep,
+        FailingWorkflow,
+        {
+          provide: "REUSED_WORKFLOW_ALIAS",
+          useValue: preconfiguredWorkflow,
+        },
+      ],
+    }).compile();
+
+    await moduleRef.init();
+    try {
+      expect(() =>
+        moduleRef.get(MastraController, { strict: false }),
+      ).toThrow();
+
+      const manager = moduleRef.get(MastraManager);
+      expect(manager.getWorkflow("preconfigured-workflow")).toBe(
+        preconfiguredWorkflow,
+      );
+
+      const failingWorkflow = moduleRef.get(FailingWorkflow);
+      const run = await failingWorkflow.createRun();
+      const result = await run.start({ inputData: { value: "fail" } });
+      expect(result.status).toBe("failed");
+      expect(failingWorkflow.errors).toEqual(["boom"]);
+
+      // Calling shutdown twice is idempotent
+      await manager.onApplicationShutdown();
+      await manager.onApplicationShutdown();
+    } finally {
+      await moduleRef.close();
     }
   });
 });

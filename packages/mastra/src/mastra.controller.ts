@@ -19,12 +19,14 @@ import {
   Controller,
   Inject,
   NotFoundException,
+  Optional,
   PayloadTooLargeException,
   Req,
   Res,
   UseFilters,
   UseInterceptors,
 } from "@nestjs/common";
+import { ApplicationConfig } from "@nestjs/core";
 import type { Request, Response } from "express";
 
 import {
@@ -41,38 +43,54 @@ interface RequestWithMastraMetadata extends Request {
 }
 
 /**
- * Strips the configured Mastra API prefix from an incoming request path.
+ * Normalizes a route prefix to either empty string or a leading-slash path without trailing slashes.
+ * @param prefix - Raw prefix string
+ * @returns Normalized route prefix
+ */
+function normalizeRoutePrefix(prefix?: string): string {
+  let normalized = prefix?.trim() ?? "";
+  if (normalized && !normalized.startsWith("/")) {
+    normalized = `/${normalized}`;
+  }
+  while (normalized.endsWith("/")) {
+    normalized = normalized.slice(0, -1);
+  }
+  return normalized;
+}
+
+/**
+ * Strips the effective mounted prefix (accounting for NestJS global prefix and Mastra API prefix)
+ * from an incoming request path.
  * @param requestPath - Express request path
  * @param prefix - Configured Mastra API prefix
+ * @param globalPrefix - Optional NestJS application global prefix
  * @returns Mastra-relative route path, or null when outside the prefix
  */
 function getMastraRoutePath(
   requestPath: string,
   prefix?: string,
+  globalPrefix?: string,
 ): string | null {
-  let normalizedPrefix = prefix ?? "";
-  if (normalizedPrefix && !normalizedPrefix.startsWith("/")) {
-    normalizedPrefix = `/${normalizedPrefix}`;
-  }
-  if (normalizedPrefix.endsWith("/")) {
-    normalizedPrefix = normalizedPrefix.slice(0, -1);
-  }
+  const normalizedPrefix = normalizeRoutePrefix(prefix);
+  const normalizedGlobalPrefix = normalizeRoutePrefix(globalPrefix);
+  const candidatePrefixes = normalizedGlobalPrefix
+    ? [`${normalizedGlobalPrefix}${normalizedPrefix}`, normalizedPrefix]
+    : [normalizedPrefix];
 
-  let routePath = requestPath;
-  if (normalizedPrefix) {
+  for (const candidatePrefix of candidatePrefixes) {
+    if (!candidatePrefix) {
+      return requestPath || "/";
+    }
     if (
-      requestPath !== normalizedPrefix &&
-      !requestPath.startsWith(`${normalizedPrefix}/`)
+      requestPath === candidatePrefix ||
+      requestPath.startsWith(`${candidatePrefix}/`)
     ) {
-      return null;
-    }
-    routePath = requestPath.slice(normalizedPrefix.length);
-    if (routePath && !routePath.startsWith("/")) {
-      routePath = `/${routePath}`;
+      const routePath = requestPath.slice(candidatePrefix.length);
+      return routePath || "/";
     }
   }
 
-  return routePath || "/";
+  return null;
 }
 
 /**
@@ -149,6 +167,7 @@ export class MastraController {
     private readonly customRoutes: CustomRouteService,
     private readonly authService: AuthService,
     private readonly throttleGuard: MastraThrottleGuard,
+    @Optional() private readonly applicationConfig?: ApplicationConfig,
   ) {
     this.apiEnabled = normalizeMastraApiOptions(moduleOptions.api).enabled;
   }
@@ -170,7 +189,11 @@ export class MastraController {
     if (!this.apiEnabled) {
       throw new NotFoundException(`Route not found: ${method} ${requestPath}`);
     }
-    const routePath = getMastraRoutePath(requestPath, this.options.prefix);
+    const routePath = getMastraRoutePath(
+      requestPath,
+      this.options.prefix,
+      this.applicationConfig?.getGlobalPrefix(),
+    );
     const matchResult =
       routePath && !routePath.includes("//")
         ? this.routeHandler.matchRoute(method, routePath)

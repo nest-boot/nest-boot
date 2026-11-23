@@ -4,12 +4,11 @@ import {
   type AnyWorkflow,
   Workflow as MastraWorkflow,
 } from "@mastra/core/workflows";
-import { Logger } from "@nest-boot/logger";
 import {
   Injectable,
+  Logger,
   type OnApplicationShutdown,
   type OnModuleInit,
-  Optional,
 } from "@nestjs/common";
 import { DiscoveryService } from "@nestjs/core";
 
@@ -20,6 +19,7 @@ import { DiscoveryService } from "@nestjs/core";
  */
 @Injectable()
 export class MastraManager implements OnModuleInit, OnApplicationShutdown {
+  private readonly logger = new Logger(MastraManager.name);
   private readonly agents = new Map<string, MastraAgent>();
   private readonly workflows = new Map<string, AnyWorkflow>();
   private initialized = false;
@@ -28,7 +28,6 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
   constructor(
     private readonly discovery: DiscoveryService,
     private readonly mastra: Mastra,
-    @Optional() private readonly logger?: Logger,
   ) {}
 
   /**
@@ -104,11 +103,9 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
         this.mastra.addAgent(instance);
         this.agents.set(instance.id, instance);
 
-        this.logger?.log("Registered Mastra agent", {
-          agentId: instance.id,
-          agentName: instance.name,
-          provider: instance.constructor.name,
-        });
+        this.logger.log(
+          `Registered Mastra agent "${String(instance.id)}" (${instance.constructor.name})`,
+        );
         continue;
       }
 
@@ -135,10 +132,9 @@ export class MastraManager implements OnModuleInit, OnApplicationShutdown {
       this.mastra.addWorkflow(instance);
       this.workflows.set(instance.id, instance);
 
-      this.logger?.log("Registered Mastra workflow", {
-        workflowId: instance.id,
-        provider: instance.constructor.name,
-      });
+      this.logger.log(
+        `Registered Mastra workflow "${String(instance.id)}" (${instance.constructor.name})`,
+      );
     }
 
     this.initialized = true;

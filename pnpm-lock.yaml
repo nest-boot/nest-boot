@@ -1827,9 +1827,6 @@ importers:
       '@nest-boot/eslint-plugin':
         specifier: workspace:^
         version: link:../eslint-plugin
-      '@nest-boot/logger':
-        specifier: workspace:^
-        version: link:../logger
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig

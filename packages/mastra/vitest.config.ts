@@ -8,10 +8,8 @@ export default defineConfig({
     root: "./",
     include: ["src/**/*.spec.ts"],
     coverage: {
-      include: ["src/**/*.ts"],
-      exclude: ["src/**/*.spec.ts"],
       reportsDirectory: "coverage/unit",
-      reporter: ["text", "lcov", "json-summary"],
+      reporter: ["text", "html", "clover", "json"],
     },
   },
 });

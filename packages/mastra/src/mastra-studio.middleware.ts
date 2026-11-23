@@ -133,6 +133,18 @@ export class MastraStudioMiddleware implements NestMiddleware {
       res.on("close", cleanup);
     });
 
+    const sendRenderedIndexHtml = (res: Response) => {
+      res
+        .status(200)
+        .type("html")
+        .set("Cache-Control", "no-cache")
+        .send(renderedIndexHtml);
+    };
+
+    studioRouter.get(["/", "/index.html"], (_req: Request, res: Response) => {
+      sendRenderedIndexHtml(res);
+    });
+
     studioRouter.use(
       express.static(studioDir, {
         index: false,
@@ -149,19 +161,13 @@ export class MastraStudioMiddleware implements NestMiddleware {
       }),
     );
 
-    studioRouter.get(["/", "/{*path}"], (req: Request, res: Response) => {
-      if (req.path !== "/" && req.path !== "/index.html") {
-        if (looksLikeMissingAsset(req.path)) {
-          res.status(404).end();
-          return;
-        }
+    studioRouter.get("/{*path}", (req: Request, res: Response) => {
+      if (looksLikeMissingAsset(req.path)) {
+        res.status(404).end();
+        return;
       }
 
-      res
-        .status(200)
-        .type("html")
-        .set("Cache-Control", "no-cache")
-        .send(renderedIndexHtml);
+      sendRenderedIndexHtml(res);
     });
 
     const mountedRouter = express.Router();
