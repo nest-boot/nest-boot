@@ -17,6 +17,7 @@
     "i18n",
     "logger",
     "mailer",
+    "mastra",
     "metrics",
     "storage",
     "staged-upload",
