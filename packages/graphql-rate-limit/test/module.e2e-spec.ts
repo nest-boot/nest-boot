@@ -14,7 +14,7 @@ import { GraphQLRateLimitModule } from "../src/graphql-rate-limit.module.js";
 
 interface GraphQLResponse {
   data?: { hello: string };
-  errors?: { message: string }[];
+  errors?: { message: string; extensions?: { code?: string } }[];
   extensions?: {
     cost?: {
       requestedQueryCost: number;
@@ -107,13 +107,14 @@ describe("GraphQLRateLimitModule - e2e", () => {
     const response = await request(app.getHttpServer())
       .post("/api/graphql")
       .send({ query: "{ hello }" })
-      .expect(500);
+      .expect(429);
     const body = response.body as GraphQLResponse;
 
     expect(body.data).toBeUndefined();
-    expect(body.errors?.[0]?.message).toBe(
-      "Query is too complex: 7. Maximum allowed complexity: 7",
-    );
+    expect(body.errors?.[0]).toMatchObject({
+      message: "Query is too complex: 7. Maximum allowed complexity: 7",
+      extensions: { code: "TOO_MANY_REQUESTS" },
+    });
   });
 
   it.each([
@@ -149,6 +150,32 @@ describe("GraphQLRateLimitModule - e2e", () => {
       }
     },
   );
+
+  it("returns HTTP 429 when the client has insufficient points", async () => {
+    const app = await createApp(
+      GraphQLRateLimitModule.forRoot({
+        defaultComplexity: 15,
+        maximumAvailable: 20,
+        restoreRate: 1,
+        getId: () => "client",
+      }),
+    );
+    apps.push(app);
+    const http = request(app.getHttpServer());
+
+    await http.post("/api/graphql").send({ query: "{ hello }" }).expect(200);
+    const response = await http
+      .post("/api/graphql")
+      .send({ query: "{ hello }" })
+      .expect(429);
+    const body = response.body as GraphQLResponse;
+
+    expect(body.data).toBeUndefined();
+    expect(body.errors?.[0]).toMatchObject({
+      message: "Too Many Requests",
+      extensions: { code: "TOO_MANY_REQUESTS" },
+    });
+  });
 
   /**
    * Returns initialized test application and its exposed dependencies.
