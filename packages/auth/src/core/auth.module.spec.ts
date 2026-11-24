@@ -70,8 +70,9 @@ const {
   })),
 }));
 
-vi.mock("better-auth", () => ({
+vi.mock("better-auth", async (importOriginal) => ({
   betterAuth: mockBetterAuth,
+  getBaseURL: (await importOriginal<typeof import("better-auth")>()).getBaseURL,
 }));
 
 vi.mock("better-auth/node", () => ({

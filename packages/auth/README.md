@@ -24,7 +24,9 @@ Use the public origin for `baseURL`, `AUTH_URL`, or its `APP_URL` fallback, such
 as `https://example.com`. A full URL with a pathname is accepted only when that
 pathname matches the effective auth path (for example,
 `https://example.com/api/auth` with the `api` global prefix). Conflicting paths
-are rejected during startup instead of silently overriding the middleware mount.
+are rejected during startup instead of silently overriding the middleware mount. If the selected framework URL is unset or empty, Better Auth's own environment
+fallbacks, including `BETTER_AUTH_URL`, are resolved and checked against the same
+mount before the backend is created.
 
 Applications without a prefix must update clients and provider callback URLs from
 `/api/auth` to `/auth`, or explicitly configure `basePath: "/api/auth"`.

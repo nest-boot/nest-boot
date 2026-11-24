@@ -83,6 +83,8 @@ AuthModule.forRoot({
 `https://example.com`。若 URL 包含路径，该路径必须与最终认证路径一致，
 例如 `api` 全局前缀下的 `https://example.com/api/auth`。
 路径冲突会在启动时报告错误，避免 Better Auth 覆盖中间件挂载路径。
+最终选中的框架 URL 为空或未设置时，会继续读取 Better Auth 的环境变量回退
+（包括 `BETTER_AUTH_URL`），并在创建认证后端前执行相同的路径校验。
 
 未设置全局前缀的应用升级时，需将客户端地址和 Provider 回调 URL 更新为 `/auth`，
 或显式设置 `basePath: "/api/auth"`。使用 `api` 全局前缀的应用应移除旧的

@@ -3,7 +3,7 @@ import type { HashService } from "@nest-boot/hash";
 import type { Mailer } from "@nest-boot/mailer";
 import { RequestContext } from "@nest-boot/request-context";
 import type { ApplicationConfig } from "@nestjs/core";
-import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { betterAuth, type BetterAuthOptions, getBaseURL } from "better-auth";
 import { genericOAuth } from "better-auth/plugins";
 
 import { resolveApiKeyPermissionCatalog } from "../api-key/utils/api-key-permissions.util.js";
@@ -104,13 +104,13 @@ export function resolveBetterAuthOptions(
     },
   );
 
+  const baseURL =
+    options.baseURL ?? process.env.AUTH_URL ?? process.env.APP_URL;
   const betterAuthOptions: BetterAuthOptions = {
     appName: options.appName ?? process.env.APP_NAME,
-    baseURL: (
-      options.baseURL ??
-      process.env.AUTH_URL ??
-      process.env.APP_URL
-    )?.replace(/\/+$/g, ""),
+    // Resolve upstream URL environment fallbacks before validating the mount.
+    // Use the root path here so the actual auth path is applied only at initialization.
+    baseURL: (getBaseURL(baseURL, "/") ?? baseURL)?.replace(/\/+$/g, ""),
     basePath: resolveAuthBasePath(options.basePath),
     ...(options.account ? { account: options.account } : {}),
     secret,

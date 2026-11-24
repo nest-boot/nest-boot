@@ -32,6 +32,21 @@ class Infrastructure {}
 describe("Auth global prefix", () => {
   let app: INestApplication;
 
+  const upstreamURLVariables = [
+    "BETTER_AUTH_URL",
+    "NEXT_PUBLIC_BETTER_AUTH_URL",
+    "PUBLIC_BETTER_AUTH_URL",
+    "NUXT_PUBLIC_BETTER_AUTH_URL",
+    "NUXT_PUBLIC_AUTH_URL",
+    "BASE_URL",
+  ] as const;
+
+  beforeEach(() => {
+    for (const name of ["AUTH_URL", "APP_URL", ...upstreamURLVariables]) {
+      vi.stubEnv(name, undefined);
+    }
+  });
+
   afterEach(async () => {
     vi.unstubAllEnvs();
     await app?.close();
@@ -143,6 +158,57 @@ describe("Auth global prefix", () => {
       expect((await fetch(`${url}/api/auth/get-session`)).status).toBe(200);
     },
   );
+
+  it.each(upstreamURLVariables)(
+    "rejects an inherited %s pathname that conflicts with the mount",
+    async (name) => {
+      vi.stubEnv(name, "http://localhost/api/auth");
+      await expect(createApp({ baseURL: undefined })).rejects.toThrow(
+        /baseURL.*pathname.*basePath/i,
+      );
+    },
+  );
+
+  it.each(upstreamURLVariables)(
+    "uses the inherited %s origin with the global prefix",
+    async (name) => {
+      vi.stubEnv(name, "http://localhost");
+      const url = await createApp({ baseURL: undefined }, "api");
+      const auth = app.get<ReturnType<typeof betterAuth>>(AUTH_TOKEN);
+      expect(auth.options.baseURL).toBe("http://localhost");
+      expect((await auth.$context).baseURL).toBe("http://localhost/api/auth");
+      expect((await fetch(`${url}/api/auth/get-session`)).status).toBe(200);
+    },
+  );
+
+  it("normalizes an inherited full auth URL before creating the backend", async () => {
+    vi.stubEnv("BETTER_AUTH_URL", "http://localhost/api/auth/");
+    const url = await createApp({ baseURL: undefined }, "api");
+    const auth = app.get<ReturnType<typeof betterAuth>>(AUTH_TOKEN);
+    expect((await auth.$context).baseURL).toBe("http://localhost/api/auth");
+    expect((await fetch(`${url}/api/auth/ok`)).status).toBe(200);
+  });
+
+  it.each(["options", "AUTH_URL", "APP_URL"] as const)(
+    "keeps %s ahead of the upstream URL fallback",
+    async (source) => {
+      vi.stubEnv("BETTER_AUTH_URL", "http://localhost/legacy/auth");
+      if (source !== "options") {
+        vi.stubEnv(source, "http://localhost");
+      }
+      const url = await createApp(
+        { baseURL: source === "options" ? "http://localhost" : undefined },
+        "api",
+      );
+      expect((await fetch(`${url}/api/auth/ok`)).status).toBe(200);
+    },
+  );
+
+  it("preserves request-derived URLs when upstream BASE_URL is /", async () => {
+    vi.stubEnv("BASE_URL", "/");
+    const url = await createApp({ baseURL: undefined }, "api");
+    expect((await fetch(`${url}/api/auth/ok`)).status).toBe(200);
+  });
 
   it("rejects a conflicting AUTH_URL pathname during startup", async () => {
     vi.stubEnv("AUTH_URL", "http://localhost/api/auth");

@@ -33,8 +33,9 @@ import { WorkspaceService } from "./workspace/services/workspace.service.js";
 import { WorkspaceInvitationService } from "./workspace/services/workspace-invitation.service.js";
 import { WorkspaceMemberService } from "./workspace/services/workspace-member.service.js";
 
-vi.mock("better-auth", () => ({
+vi.mock("better-auth", async (importOriginal) => ({
   betterAuth: vi.fn(),
+  getBaseURL: (await importOriginal<typeof import("better-auth")>()).getBaseURL,
 }));
 
 vi.mock("better-auth/node", () => ({
