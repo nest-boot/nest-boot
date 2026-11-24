@@ -26,7 +26,7 @@ const fieldDecorators = new Set([
 ]);
 
 export default createRule({
-  name: "entity-property-no-spread",
+  name: "database/entity-property-no-spread",
   meta: {
     type: "problem",
     schema: [],

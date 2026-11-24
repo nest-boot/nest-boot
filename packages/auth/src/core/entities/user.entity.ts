@@ -77,13 +77,13 @@ export class User extends BaseEntity {
   image?: Opt<string>;
 
   /** Application roles used to resolve user-administration permissions. */
-  // eslint-disable-next-line @nest-boot/graphql-field-config-from-types -- Dynamic enums preserve the stored string array type.
+  // eslint-disable-next-line @nest-boot/graphql/field-config-from-types -- Dynamic enums preserve the stored string array type.
   @Property({ type: t.array })
   @Field(() => [UserRole])
   roles: Opt<string[]> = ["user"];
 
   /** User-administration and session permissions granted to this identity. */
-  // eslint-disable-next-line @nest-boot/graphql-field-config-from-types -- Dynamic enums preserve the stored string array type.
+  // eslint-disable-next-line @nest-boot/graphql/field-config-from-types -- Dynamic enums preserve the stored string array type.
   @Property({ type: t.array })
   @Field(() => [UserPermission])
   permissions: Opt<string[]> = [];

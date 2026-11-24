@@ -52,7 +52,7 @@ export function createConnection<Entity extends object>(
     description: `An auto-generated type for paginating through multiple ${pluralizeEntityName}.`,
   })
   class Connection implements ConnectionInterface<Entity> {
-    // eslint-disable-next-line @nest-boot/graphql-field-config-from-types
+    // eslint-disable-next-line @nest-boot/graphql/field-config-from-types
     @Field(() => [EdgeClass], {
       complexity: 0,
       description: `A list of edges.`,

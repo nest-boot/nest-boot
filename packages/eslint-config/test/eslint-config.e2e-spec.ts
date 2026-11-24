@@ -90,6 +90,56 @@ export function identity<T>(value: T): T {
     expect(results[0]?.messages).toEqual([]);
   });
 
+  it.each([
+    [
+      "@nest-boot/graphql/field-definite-assignment",
+      `import { Field, ObjectType } from "@nestjs/graphql";
+@ObjectType()
+export class Book {
+  @Field()
+  title: string;
+}
+`,
+    ],
+    [
+      "@nest-boot/database/entity-property-definite-assignment",
+      `import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+export class Book {
+  @Property()
+  title: string;
+}
+`,
+    ],
+  ])("reports and suppresses %s by its namespaced ID", async (ruleId, code) => {
+    const sourceFile = join(fixtureDirectory, "book.ts");
+    const suppressedFile = join(fixtureDirectory, "suppressed-book.ts");
+    await Promise.all([
+      writeFile(sourceFile, code),
+      writeFile(suppressedFile, `/* eslint-disable ${ruleId} */\n${code}`),
+    ]);
+    const eslint = new ESLint({
+      cwd: fixtureDirectory,
+      overrideConfig: config,
+      overrideConfigFile: true,
+    });
+
+    const [reported, suppressed] = await eslint.lintFiles([
+      sourceFile,
+      suppressedFile,
+    ]);
+
+    expect(reported?.messages).toContainEqual(
+      expect.objectContaining({ ruleId, severity: 2 }),
+    );
+    expect(suppressed?.messages).not.toContainEqual(
+      expect.objectContaining({ ruleId }),
+    );
+    expect(suppressed?.suppressedMessages).toContainEqual(
+      expect.objectContaining({ ruleId, severity: 2 }),
+    );
+  });
+
   it("checks processor names through the queue plugin namespace", async () => {
     const validFile = join(fixtureDirectory, "processor.ts");
     const invalidFile = join(fixtureDirectory, "wrong-processor.ts");
