@@ -266,6 +266,7 @@ type CreateWorkspaceApiKeyResult {
 
 input CreateWorkspaceInput {
   name: String!
+  slug: String
 }
 
 input CreateWorkspaceInvitationInput {
@@ -609,7 +610,7 @@ type Query {
     """
     query: String
   ): UserConnection!
-  workspace(id: ID!): Workspace
+  workspace(id: ID, slug: String): Workspace
   workspaceApiKeyPermissions: [WorkspaceApiKeyPermissionOption!]!
   workspaceApiKeys(
     """Returns the elements that come after the specified cursor."""
@@ -637,6 +638,7 @@ type Query {
     """
     query: String
   ): WorkspaceApiKeyConnection!
+  workspaceExists(slug: String!): Boolean!
   workspaceInvitation(id: ID!): WorkspaceInvitation
   workspaceJob(id: ID!): Job
   workspaceJobs(
@@ -1025,6 +1027,7 @@ input UpdateWorkspaceApiKeyInput {
 
 input UpdateWorkspaceInput {
   name: String
+  slug: String
 }
 
 input UpdateWorkspaceMemberInput {
@@ -1433,6 +1436,7 @@ type Workspace {
     query: String
   ): WorkspaceMemberConnection!
   name: String!
+  slug: String!
   updatedAt: DateTime!
 }
 

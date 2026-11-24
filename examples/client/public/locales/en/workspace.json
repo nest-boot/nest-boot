@@ -50,6 +50,10 @@
         "label": "Name",
         "placeholder": "My Workspace",
         "required": "Workspace name is required"
+      },
+      "slug": {
+        "label": "Workspace slug",
+        "format": "Use 3–30 lowercase letters, digits, or single hyphens. Start with a letter and end with a letter or digit."
       }
     },
     "leave": {
@@ -72,10 +76,15 @@
   "create": {
     "title": "Create Workspace",
     "description": "Create a new workspace to start managing your projects.",
+    "failed": "Could not create the workspace. Please try again.",
     "form": {
       "name": {
         "label": "Name",
         "placeholder": "My Workspace"
+      },
+      "slug": {
+        "label": "Workspace slug",
+        "format": "Use 3–30 lowercase letters, digits, or single hyphens. Start with a letter and end with a letter or digit."
       }
     }
   }

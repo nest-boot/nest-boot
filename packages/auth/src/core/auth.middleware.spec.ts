@@ -1,5 +1,6 @@
 import { EntityManager } from "@mikro-orm/core";
 import { REQUEST, RequestContext } from "@nest-boot/request-context";
+import { BadRequestException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { NextFunction, Request } from "express";
 import { type Mock } from "vitest";
@@ -169,7 +170,7 @@ async function runInRequestContext<T>(
 }
 
 describe("AuthMiddleware", () => {
-  it("ignores both workspace selectors when workspace features are disabled", async () => {
+  it("validates selectors only when enabled and preserves header precedence", async () => {
     const findOne = vi.fn();
     const { middleware } = await createMiddleware(
       vi.fn().mockResolvedValue(null),
@@ -180,8 +181,8 @@ describe("AuthMiddleware", () => {
     );
     const request = {
       headers: {
-        "x-workspace-id": "invalid",
-        cookie: "workspace_id=also-invalid",
+        "x-workspace": "invalid",
+        cookie: "workspace=also-invalid",
       },
     } as unknown as Request;
     const next = vi.fn();
@@ -192,6 +193,39 @@ describe("AuthMiddleware", () => {
       ).toBeNull();
     });
     expect(next).toHaveBeenCalledExactlyOnceWith();
+    expect(findOne).not.toHaveBeenCalled();
+    const { middleware: enabled } = await createMiddleware(
+      vi.fn().mockResolvedValue(null),
+      findOne,
+    );
+    for (const header of [
+      [],
+      ["101", "102"],
+      "9223372036854775808",
+      "invalid/slug",
+    ]) {
+      const invalid = {
+        headers: { "x-workspace": header, cookie: "workspace=101" },
+      } as unknown as Request;
+      await runInRequestContext(invalid, async () => {
+        const next = vi.fn();
+        await enabled.use(invalid, {} as never, next);
+        expect(next).toHaveBeenCalledExactlyOnceWith(
+          expect.any(BadRequestException),
+        );
+      });
+    }
+    const empty = {
+      headers: { "x-workspace": "", cookie: "workspace=101" },
+    } as unknown as Request;
+    await runInRequestContext(empty, async () => {
+      const next = vi.fn();
+      await enabled.use(empty, {} as never, next);
+      expect(
+        RequestContext.get<Workspace | null>(SELECTED_WORKSPACE),
+      ).toBeNull();
+      expect(next).toHaveBeenCalledExactlyOnceWith();
+    });
     expect(findOne).not.toHaveBeenCalled();
   });
   it.each([true, false])(
@@ -219,7 +253,7 @@ describe("AuthMiddleware", () => {
       const request = {
         headers: {
           authorization: "Bearer sys-key",
-          ...(workspace ? { "x-workspace-id": workspace.id } : {}),
+          ...(workspace ? { "x-workspace": workspace.id } : {}),
         },
       } as unknown as Request;
       await runInRequestContext(request, async () => {
@@ -476,7 +510,7 @@ describe("AuthMiddleware", () => {
       );
       const request = {
         headers: {
-          "x-workspace-id": workspace.id,
+          "x-workspace": workspace.id,
           ...(useKey ? { authorization: "Bearer sk-key" } : {}),
         },
       } as unknown as Request;
@@ -562,7 +596,7 @@ describe("AuthMiddleware", () => {
       );
       const request = {
         headers: {
-          "x-workspace-id": workspace.id,
+          "x-workspace": workspace.id,
           ...(kind.endsWith("key") ? { authorization: "Bearer sk-key" } : {}),
         },
       } as unknown as Request;
@@ -772,7 +806,7 @@ describe("AuthMiddleware", () => {
       mockRlsContext(em);
       const request = {
         headers: {
-          "x-workspace-id": "101",
+          "x-workspace": "101",
           ...(kind.endsWith("key") ? { authorization: "Bearer sk-key" } : {}),
         },
       } as unknown as Request;
@@ -831,7 +865,7 @@ describe("AuthMiddleware", () => {
     );
     mockRlsContext(em);
     const request = {
-      headers: { "x-workspace-id": "999999999999999" },
+      headers: { "x-workspace": "999999999999999" },
     } as unknown as Request;
     await runInRequestContext(request, () =>
       middleware.use(request, {} as never, vi.fn()),
@@ -998,7 +1032,7 @@ describe("AuthMiddleware", () => {
     const request = {
       headers: {
         authorization: "Bearer sk-key",
-        "x-workspace-id": "101",
+        "x-workspace": "101",
       },
     } as unknown as Request;
     await runInRequestContext(request, async () => {
@@ -1044,7 +1078,7 @@ describe("AuthMiddleware", () => {
     const request = {
       headers: {
         authorization: "Bearer sk-key",
-        "x-workspace-id": "101",
+        "x-workspace": "101",
       },
     } as unknown as Request;
     await runInRequestContext(request, async () => {
@@ -1085,7 +1119,7 @@ describe("AuthMiddleware", () => {
     const request = {
       headers: {
         authorization: "Bearer sk-key",
-        "x-workspace-id": "101",
+        "x-workspace": "101",
       },
     } as unknown as Request;
     await runInRequestContext(request, async () => {
@@ -1097,31 +1131,36 @@ describe("AuthMiddleware", () => {
     });
     expect(next).toHaveBeenCalledExactlyOnceWith();
   });
-  it("reads the selected workspace from the raw Cookie header", async () => {
-    const workspace = Object.assign(new TestWorkspace(), {
-      id: "101",
-      name: "Acme",
-    });
-    const findOne = vi.fn().mockResolvedValue(workspace);
-    const { middleware } = await createMiddleware(
-      vi.fn().mockResolvedValue(null),
-      findOne,
-    );
-    const request = {
-      headers: {
-        cookie: "unrelated=value; workspace_id=101",
-      },
-    } as unknown as Request;
-    await runInRequestContext(request, async () => {
-      await middleware.use(request, {} as never, vi.fn());
-      expect(RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)).toBe(
-        workspace,
+  it.each([
+    { selector: "101", where: { id: "101" } },
+    { selector: "acme", where: { slug: "acme" } },
+  ])(
+    "reads workspace $selector from the raw Cookie header",
+    async ({ selector, where }) => {
+      const workspace = Object.assign(new TestWorkspace(), {
+        id: "101",
+        name: "Acme",
+        slug: "acme",
+      });
+      const findOne = vi.fn().mockResolvedValue(workspace);
+      const { middleware } = await createMiddleware(
+        vi.fn().mockResolvedValue(null),
+        findOne,
       );
-    });
-    expect(findOne).toHaveBeenCalledWith(WorkspaceEntity, {
-      id: "101",
-    });
-  });
+      const request = {
+        headers: {
+          cookie: `unrelated=value; workspace=${selector}`,
+        },
+      } as unknown as Request;
+      await runInRequestContext(request, async () => {
+        await middleware.use(request, {} as never, vi.fn());
+        expect(RequestContext.get<Workspace | null>(SELECTED_WORKSPACE)).toBe(
+          workspace,
+        );
+      });
+      expect(findOne).toHaveBeenCalledWith(WorkspaceEntity, where);
+    },
+  );
 });
 
 describe("optional workspace behavior", () => {
@@ -1151,8 +1190,8 @@ describe("optional workspace behavior", () => {
       );
       const request = {
         headers: {
-          "x-workspace-id": "123",
-          cookie: "workspace_id=456",
+          "x-workspace": "123",
+          cookie: "workspace=456",
           ...(kind === "user-key"
             ? { authorization: "Bearer personal-key" }
             : {}),

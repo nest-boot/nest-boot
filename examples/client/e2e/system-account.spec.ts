@@ -5,6 +5,51 @@ import { getPermissionCheckbox } from "./utils/permissions";
 import { clickPageAction } from "./utils/page-actions";
 import { uniqueSeed } from "./utils/unique";
 
+test("preserves a system-account name draft while toggling its enabled state", async ({
+  page,
+}) => {
+  await signInAsE2eAdministrator(page);
+  const { createSystemAccount: account } = await graphqlRequest<{
+    createSystemAccount: { id: string };
+  }>(
+    page.request,
+    'mutation { createSystemAccount(input: {name: "Original account", permissions: [USER__READ]}) { id } }',
+  );
+  await page.goto(`/admin/system-accounts/${account.id}`);
+  const name = page.getByLabel("Name", { exact: true });
+  await name.fill("Unsaved account draft");
+  await page.getByRole("button", { name: "Disable", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Enable", exact: true }),
+  ).toBeVisible();
+  await expect(name).toHaveValue("Unsaved account draft");
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().postData()?.includes("updateManagedSystemAccount") ===
+      true,
+  );
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  expect((await saved).request().postDataJSON().variables.input).toEqual({
+    name: "Unsaved account draft",
+  });
+  const data = await graphqlRequest<{
+    systemAccount: {
+      name: string;
+      enabled: boolean;
+      permissions: Array<string>;
+    };
+  }>(
+    page.request,
+    "query($id: ID!) { systemAccount(id: $id) { name enabled permissions } }",
+    { id: account.id },
+  );
+  expect(data.systemAccount).toEqual({
+    name: "Unsaved account draft",
+    enabled: false,
+    permissions: ["USER__READ"],
+  });
+});
+
 test("manages system identities and credentials under admin, with one-time secrets and immediate revocation", async ({
   page,
   playwright,

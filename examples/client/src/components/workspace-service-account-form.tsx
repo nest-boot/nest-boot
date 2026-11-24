@@ -1,14 +1,17 @@
-import { useId, useState } from "react";
+import { useId } from "react";
+import { useForm, useSelector } from "@tanstack/react-form";
 import { useMutation } from "@apollo/client/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import type {
-  GetWorkspaceServiceAccountGrantsFromCreateWorkspaceMemberRouteQuery,
+import { z } from "zod";
+import type { GetWorkspaceServiceAccountGrantsFromCreateWorkspaceMemberRouteQuery } from "@/gql/graphql";
+import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
+import { graphql } from "@/gql";
+import {
+  WorkspaceMemberType,
   WorkspacePermission,
   WorkspaceRole,
 } from "@/gql/graphql";
-import { graphql } from "@/gql";
-import { WorkspaceMemberType } from "@/gql/graphql";
 import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
 import { PermissionCheckboxGroup } from "@/components/permission-checkbox-group";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
@@ -18,9 +21,11 @@ import {
 } from "@/components/thread-ui/page-layout";
 import { FieldError } from "@/components/ui/field";
 import { getPermissionOptions } from "@/lib/permissions";
-import { Button } from "@/components/thread-ui/button";
-import { Input } from "@/components/thread-ui/input";
+import { getFormErrorMessage } from "@/lib/form-errors";
+
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { SubmitButton } from "@/components/form/submit-button";
+import { Input } from "@/components/thread-ui/input";
 
 const ADD_SERVICE_ACCOUNT = graphql(`
   mutation addWorkspaceServiceAccountFromWorkspaceMembersRoute(
@@ -45,45 +50,70 @@ export function WorkspaceServiceAccountForm({
   const { t } = useTranslation();
   const id = useId();
   const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [roles, setRoles] = useState<Array<WorkspaceRole>>([]);
-  const [permissions, setPermissions] = useState<Array<WorkspacePermission>>(
-    [],
+  const [addWorkspaceMember] = useMutation(ADD_SERVICE_ACCOUNT);
+  const form = useForm({
+    ...defaultFormOptions,
+    defaultValues: {
+      name: "",
+      roles: [] as Array<WorkspaceRole>,
+      permissions: [] as Array<WorkspacePermission>,
+    },
+    validators: {
+      onDynamic: z.object({
+        name: z
+          .string()
+          .trim()
+          .min(1, t("auth:form.name.required"))
+          .max(255, t("common:validation.max_length", { max: 255 })),
+        roles: z.array(z.enum(WorkspaceRole)),
+        permissions: z.array(z.enum(WorkspacePermission)),
+      }),
+    },
+
+    onSubmit: async ({ value, formApi }) => {
+      try {
+        const result = await addWorkspaceMember({
+          variables: {
+            input: {
+              type: WorkspaceMemberType.SERVICE_ACCOUNT,
+              name: value.name.trim(),
+              ...(value.roles.length || value.permissions.length
+                ? { roles: value.roles }
+                : {}),
+              permissions: value.permissions,
+            },
+          },
+        });
+        const memberId = result.data?.addWorkspaceMember.id;
+        if (!memberId)
+          throw new Error(t("workspace-member:service_account.failed"));
+        await navigate({
+          to: "/workspaces/$workspaceId/members/$memberId",
+          params: { workspaceId, memberId },
+        });
+      } catch (cause) {
+        formApi.setErrorMap({
+          onSubmit: {
+            form:
+              cause instanceof Error
+                ? cause.message
+                : t("workspace-member:service_account.failed"),
+            fields: {},
+          },
+        });
+      }
+    },
+  });
+  const submitting = useSelector(form.store, (state) => state.isSubmitting);
+  const error = useSelector(form.store, (state) =>
+    getFormErrorMessage(state.errors),
   );
-  const [error, setError] = useState<string>();
-  const [addWorkspaceMember, { loading }] = useMutation(ADD_SERVICE_ACCOUNT);
   return (
     <form
       id={id}
-      onSubmit={async (event) => {
-        event.preventDefault();
-        if (loading || !name.trim()) return;
-        setError(undefined);
-        try {
-          const result = await addWorkspaceMember({
-            variables: {
-              input: {
-                type: WorkspaceMemberType.SERVICE_ACCOUNT,
-                name: name.trim(),
-                ...(roles.length || permissions.length ? { roles } : {}),
-                permissions,
-              },
-            },
-          });
-          const memberId = result.data?.addWorkspaceMember.id;
-          if (!memberId)
-            throw new Error(t("workspace-member:service_account.failed"));
-          await navigate({
-            to: "/workspaces/$workspaceId/members/$memberId",
-            params: { workspaceId, memberId },
-          });
-        } catch (cause) {
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : t("workspace-member:service_account.failed"),
-          );
-        }
+      noValidate
+      onSubmit={(event) => {
+        void submitForm(event, form);
       }}
     >
       <PageLayout>
@@ -92,15 +122,24 @@ export function WorkspaceServiceAccountForm({
             <CardContent>
               <FormLayout>
                 <FormLayoutItem>
-                  <Input
-                    id={`${id}-name`}
-                    label={t("workspace-member:table.name")}
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    maxLength={255}
-                    required
-                    disabled={loading}
-                  />
+                  <form.Field name="name">
+                    {(field) => (
+                      <Input
+                        name={field.name}
+                        value={field.state.value}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        onBlur={() => handleFieldBlur(field)}
+                        error={getFormErrorMessage(field.state.meta.errors)}
+                        id={`${id}-name`}
+                        label={t("workspace-member:table.name")}
+                        maxLength={255}
+                        required
+                        disabled={submitting}
+                      />
+                    )}
+                  </form.Field>
                 </FormLayoutItem>
               </FormLayout>
             </CardContent>
@@ -111,13 +150,17 @@ export function WorkspaceServiceAccountForm({
             <CardContent>
               <FormLayout>
                 <FormLayoutItem>
-                  <RoleCheckboxGroup
-                    label={t("workspace-member:details.form.role.label")}
-                    options={roleOptions}
-                    value={roles}
-                    onValueChange={setRoles}
-                    disabled={loading}
-                  />
+                  <form.Field name="roles">
+                    {(field) => (
+                      <RoleCheckboxGroup
+                        label={t("workspace-member:details.form.role.label")}
+                        options={roleOptions}
+                        value={field.state.value}
+                        onValueChange={field.handleChange}
+                        disabled={submitting}
+                      />
+                    )}
+                  </form.Field>
                 </FormLayoutItem>
               </FormLayout>
             </CardContent>
@@ -128,12 +171,16 @@ export function WorkspaceServiceAccountForm({
             <CardContent>
               <FormLayout>
                 <FormLayoutItem>
-                  <PermissionCheckboxGroup
-                    options={getPermissionOptions(permissionOptions)}
-                    value={permissions}
-                    onChange={setPermissions}
-                    disabled={loading}
-                  />
+                  <form.Field name="permissions">
+                    {(field) => (
+                      <PermissionCheckboxGroup
+                        options={getPermissionOptions(permissionOptions)}
+                        value={field.state.value}
+                        onChange={field.handleChange}
+                        disabled={submitting}
+                      />
+                    )}
+                  </form.Field>
                 </FormLayoutItem>
                 <FormLayoutItem>
                   <p className="text-muted-foreground text-sm">
@@ -148,14 +195,9 @@ export function WorkspaceServiceAccountForm({
               </FormLayout>
             </CardContent>
             <CardFooter>
-              <Button
-                type="submit"
-                form={id}
-                disabled={loading || !name.trim()}
-                loading={loading}
-              >
+              <SubmitButton formApi={form} form={id}>
                 {t("action.create")}
-              </Button>
+              </SubmitButton>
             </CardFooter>
           </Card>
         </PageLayoutSection>

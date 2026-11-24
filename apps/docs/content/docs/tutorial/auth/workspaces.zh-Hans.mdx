@@ -8,8 +8,9 @@ AuthModule 会自动注册对应实体，`nb database` 命令复用相同配置�
 
 ## 选择工作区
 
-客户端通过 `x-workspace-id` 请求头或 `workspace_id` Cookie 选择工作区。
-`AuthMiddleware` 会校验该选择，解析已认证用户的活动成员身份，并把两个实体保存到
+客户端在 `x-workspace` 请求头中传入工作区 ID 或 slug。请求头缺失时，
+`workspace` Cookie 也可按 ID 或 slug 选择。`AuthMiddleware` 会将选择解析为工作区 ID，
+查找已认证用户的活动成员身份，并把两个实体保存到
 `RequestContext`。
 
 ```typescript
@@ -38,6 +39,12 @@ selectedWorkspace(
 - `createWorkspace(user, input)`；
 - `updateWorkspace(id, input)`；
 - `deleteWorkspace(id)`。
+
+创建工作区时只需提供名称。slug 在创建 API 中选填，省略时由后端生成 30 字符的随机值；
+创建表单不显示 slug，之后可在工作区设置或通过 `updateWorkspace` 修改。
+slug 长度为 3–30 个字符，以小写英文字母开头，
+允许小写英文字母、数字和夹在其间的单个连字符。GraphQL 查询
+`workspace(id: ...)` 和 `workspace(slug: ...)` 任选其一，每次只传一个参数。
 
 创建工作区会同时创建已激活的所有者成员。删除采用硬删除，需要具备所选工作区的
 删除能力。数据库外键级联删除成员和邀请，用户与全部 API Key 审计记录保留；成员不存在时，其密钥无法认证。

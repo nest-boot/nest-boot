@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useForm } from "@tanstack/react-form";
+import { useForm, useSelector } from "@tanstack/react-form";
+import { z } from "zod";
 import { useMutation } from "@apollo/client/react";
 import { useTranslation } from "react-i18next";
+import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
+import { getFormErrorMessage } from "@/lib/form-errors";
 import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { workspaceSearchSchema } from "@/schemas/workspace-search-schema";
 import { workspacesResourceKey } from "@/lib/resource-keys";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
-import { Button } from "@/components/thread-ui/button";
+
 import { Link } from "@/components/link";
 import { Page } from "@/components/thread-ui/page";
 import {
@@ -14,10 +17,11 @@ import {
   PageLayoutSection,
 } from "@/components/thread-ui/page-layout";
 
-import { Input } from "@/components/thread-ui/input";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { graphql } from "@/gql";
+import { SubmitButton } from "@/components/form/submit-button";
+import { Input } from "@/components/thread-ui/input";
 
 const CREATE_WORKSPACE_FROM_CREATE_WORKSPACE_ROUTE = graphql(`
   mutation createWorkspaceFromCreateWorkspaceRoute(
@@ -44,32 +48,51 @@ function CreateWorkspaceComponent() {
   });
   const navigate = Route.useNavigate();
 
-  const [createWorkspace, { loading }] = useMutation(
+  const [createWorkspace] = useMutation(
     CREATE_WORKSPACE_FROM_CREATE_WORKSPACE_ROUTE,
   );
 
   const form = useForm({
+    ...defaultFormOptions,
     defaultValues: {
       name: "",
     },
-    onSubmit: async ({ value }) => {
-      const { data } = await createWorkspace({
-        variables: {
-          input: {
-            name: value.name,
-          },
-        },
-      });
+    validators: {
+      onDynamic: z.object({
+        name: z
+          .string()
+          .trim()
+          .min(1, t("workspace:settings.form.name.required"))
+          .max(255, t("common:validation.max_length", { max: 255 })),
+      }),
+    },
 
-      if (data?.createWorkspace.id) {
-        navigate({
+    onSubmit: async ({ value, formApi }) => {
+      try {
+        const { data } = await createWorkspace({
+          variables: {
+            input: {
+              name: value.name.trim(),
+            },
+          },
+        });
+        if (!data?.createWorkspace.id)
+          throw new Error(t("workspace:create.failed"));
+        await navigate({
           to: `/workspaces/$workspaceId`,
           params: { workspaceId: data.createWorkspace.id },
           reloadDocument: true,
         });
+      } catch {
+        formApi.setErrorMap({
+          onSubmit: { form: t("workspace:create.failed"), fields: {} },
+        });
       }
     },
   });
+  const error = useSelector(form.store, (state) =>
+    getFormErrorMessage(state.errors),
+  );
 
   return (
     <Page
@@ -89,10 +112,9 @@ function CreateWorkspaceComponent() {
             <CardContent>
               <form
                 id="workspace-create-form"
+                noValidate
                 onSubmit={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  form.handleSubmit();
+                  void submitForm(event, form);
                 }}
               >
                 <FormLayout>
@@ -100,30 +122,35 @@ function CreateWorkspaceComponent() {
                     <form.Field name="name">
                       {(field) => (
                         <Input
+                          name={field.name}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          onBlur={() => handleFieldBlur(field)}
+                          error={getFormErrorMessage(field.state.meta.errors)}
                           id="name"
                           label={t("workspace:create.form.name.label")}
                           placeholder={t(
                             "workspace:create.form.name.placeholder",
                           )}
                           required
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          onBlur={field.handleBlur}
                         />
                       )}
                     </form.Field>
                   </FormLayoutItem>
+                  {error && (
+                    <FormLayoutItem>
+                      <p role="alert">{error}</p>
+                    </FormLayoutItem>
+                  )}
                 </FormLayout>
               </form>
             </CardContent>
             <CardFooter>
-              <Button
-                type="submit"
-                form="workspace-create-form"
-                loading={loading}
-              >
+              <SubmitButton formApi={form} form="workspace-create-form">
                 {t("common:action.create")}
-              </Button>
+              </SubmitButton>
             </CardFooter>
           </Card>
         </PageLayoutSection>

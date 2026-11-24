@@ -34,6 +34,9 @@
     "failed": "Could not load overview.",
     "view_api_keys": "View API keys"
   },
+  "validation": {
+    "max_length": "Use at most {{max}} characters."
+  },
   "mutation": {
     "refresh_failed": "Saved successfully, but the latest data could not be loaded."
   }

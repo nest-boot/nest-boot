@@ -87,8 +87,14 @@ describe("independent system accounts with real persistence and authentication",
       email: "ordinary@example.test",
       emailVerified: true,
     });
-    workspace = em.create(Workspace, { name: "First tenant" });
-    otherWorkspace = em.create(Workspace, { name: "Second tenant" });
+    workspace = em.create(Workspace, {
+      name: "First tenant",
+      slug: "first-tenant",
+    });
+    otherWorkspace = em.create(Workspace, {
+      name: "Second tenant",
+      slug: "second-tenant",
+    });
     await em
       .persist([administrator, ordinary, workspace, otherWorkspace])
       .flush();
@@ -156,7 +162,7 @@ describe("independent system accounts with real persistence and authentication",
       RequestContext.set(REQUEST, {
         headers: {
           authorization: `Bearer ${plaintext}`,
-          "x-workspace-id": otherWorkspace.id,
+          "x-workspace": otherWorkspace.id,
         },
       } as unknown as Request);
       const middleware = new AuthMiddleware(
@@ -476,7 +482,10 @@ describe("independent system accounts with real persistence and authentication",
       "workspace:delete-any",
     ]);
     const admin = orm.em.fork();
-    const tenant = admin.create(Workspace, { name: "Platform-managed tenant" });
+    const tenant = admin.create(Workspace, {
+      name: "Platform-managed tenant",
+      slug: "platform-managed-tenant",
+    });
     const member = admin.create(WorkspaceMember, {
       workspace: tenant,
       type: "SERVICE_ACCOUNT",
@@ -940,7 +949,10 @@ describe("independent system accounts with real persistence and authentication",
     "retains $kind-key audit metadata after $removal deletion with a warm identity map",
     async ({ kind, removal }) => {
       const em = orm.em.fork();
-      const tenant = em.create(Workspace, { name: "Audit tenant" });
+      const tenant = em.create(Workspace, {
+        name: "Audit tenant",
+        slug: `audit-${kind.replaceAll("_", "-")}-${removal.toLowerCase()}`,
+      });
       const owner =
         kind === "user"
           ? em.create(User, {

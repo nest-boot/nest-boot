@@ -58,7 +58,10 @@ describe("atomic API key and service-account creation", () => {
       roles: ["admin"],
       emailVerified: true,
     });
-    workspace = em.create(Workspace, { name: "Atomic workspace" });
+    workspace = em.create(Workspace, {
+      name: "Atomic workspace",
+      slug: "atomic-workspace",
+    });
     member = em.create(WorkspaceMember, {
       name: "Owner",
       user,

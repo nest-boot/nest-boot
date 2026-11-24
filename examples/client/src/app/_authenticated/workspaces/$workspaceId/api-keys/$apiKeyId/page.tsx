@@ -5,7 +5,6 @@ import { useCallback } from "react";
 
 import type { ResourceNavigationQueryOptions } from "@/hooks/use-resource-navigation";
 import { REVOKE_WORKSPACE_API_KEY } from "@/graphql/mutations/revoke-workspace-api-key";
-import { getApiKeyUpdateInput } from "@/lib/api-key-update";
 import { graphql } from "@/gql";
 import { UPDATE_WORKSPACE_API_KEY } from "@/graphql/mutations/update-workspace-api-key";
 import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
@@ -62,6 +61,7 @@ const GET_WORKSPACE_API_KEY = graphql(`
         revokedAt
         permissions
         createdAt
+        updatedAt
         lastUsedAt
         expiresAt
       }
@@ -125,7 +125,7 @@ export const Route = createFileRoute(
         query: GET_WORKSPACE_API_KEY,
         variables: { id: params.apiKeyId },
         fetchPolicy: "network-only",
-        context: { headers: { "x-workspace-id": params.workspaceId } },
+        context: { headers: { "x-workspace": params.workspaceId } },
       })
       .catch((error: unknown) => {
         if (isAccessDenied(error)) throw denied();
@@ -180,7 +180,7 @@ function ApiKeyDetailsPage() {
           cursor,
         },
         context: {
-          headers: { "x-workspace-id": workspaceId },
+          headers: { "x-workspace": workspaceId },
           queryDeduplication: false,
         },
       });
@@ -258,11 +258,11 @@ function ApiKeyDetailsPage() {
           search: backSearch,
         });
       }}
-      onSave={async (input) => {
+      onSave={async (_values, changes) => {
         await updateApiKey({
           variables: {
             id: apiKey.id,
-            input: getApiKeyUpdateInput(apiKey, input),
+            input: changes,
           },
         });
         await router.invalidate();

@@ -30,9 +30,7 @@ function Details() {
   const [remove] = useMutation(DELETE_SYSTEM_ACCOUNT);
   return (
     <SystemAccountFormPage
-      key={
-        account.id + account.enabled + account.name + account.permissions.join()
-      }
+      key={account.id}
       account={account}
       canWrite={ability.can(
         "write",
@@ -55,16 +53,11 @@ function Details() {
       )}
       canReadKeys={ability.can("read", "SystemApiKey")}
       options={getPermissionOptions(accountPermissionOptions)}
-      onSave={async (input) => {
+      onSave={async (_values, changes) => {
         await update({
           variables: {
             id: account.id,
-            input: {
-              ...(input.name !== account.name ? { name: input.name } : {}),
-              ...(input.permissions !== undefined
-                ? { permissions: input.permissions }
-                : {}),
-            },
+            input: changes,
           },
         });
         await refreshAfterMutation(() => router.invalidate());

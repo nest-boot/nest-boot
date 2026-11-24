@@ -1967,7 +1967,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       [administrator.user.id],
     );
     const stopped = await gql(
-      'mutation($name: String!) { stopImpersonating { id } createWorkspace(input: { name: $name }) { id } }',
+      'mutation($name: String!) { stopImpersonating { id } createWorkspace(input: { name: $name, slug: "after-impersonation" }) { id } }',
       {
         cookies,
         variables: { name: `Revoked restoration ${target.user.id}` },
@@ -2118,7 +2118,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       `mutation($input: AuthChangePasswordInput!) {
         changeCurrentUserPassword(input: $input) { token }
         stopImpersonating { id }
-        createWorkspace(input: { name: "Rotated identity workspace" }) { id }
+        createWorkspace(input: { name: "Rotated identity workspace", slug: "rotated-identity-workspace" }) { id }
       }`,
       {
         cookies: impersonatedCookies,
@@ -2400,7 +2400,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
   it('clears authentication after signing out before the next mutation', async () => {
     const owner = await createAuthenticatedUser('Signing out owner');
     const response = await gql(
-      'mutation { signOut createWorkspace(input: { name: "Must not exist" }) { id } }',
+      'mutation { signOut createWorkspace(input: { name: "Must not exist", slug: "must-not-exist" }) { id } }',
       { cookies: owner.cookies },
     );
     expectGraphQLError(response);
@@ -2422,7 +2422,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
   it('uses the refreshed profile in a subsequent workspace creation', async () => {
     const owner = await createAuthenticatedUser('Original profile');
     const response = await gql(
-      'mutation { updateCurrentUser(input: { name: "Updated profile" }) createWorkspace(input: { name: "Updated member profile" }) { id } }',
+      'mutation { updateCurrentUser(input: { name: "Updated profile" }) createWorkspace(input: { name: "Updated member profile", slug: "updated-member-profile" }) { id } }',
       { cookies: owner.cookies },
     );
     expectNoGraphQLErrors(response);
@@ -2546,6 +2546,179 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       expect(updated[field]).toEqual(field === 'roles' ? ['user'] : []);
     },
   );
+
+  it('checks whether normalized workspace slugs exist', async () => {
+    const owner = await createAuthenticatedUser('Slug owner');
+    const query = `query ($slug: String!) { workspaceExists(slug: $slug) }`;
+    const options = {
+      cookies: owner.cookies,
+      variables: { slug: ' example-slug ' },
+    };
+    const before = await gql(query, options);
+    expectNoGraphQLErrors(before);
+    expect(before.body.data.workspaceExists).toBe(false);
+    await createWorkspace(owner, 'Availability example', 'example-slug');
+    const after = await gql(query, options);
+    expectNoGraphQLErrors(after);
+    expect(after.body.data.workspaceExists).toBe(true);
+    const privateCheck = await gql('{ workspaceExists(slug: "example-slug") }');
+    expectGraphQLError(privateCheck);
+    expect(privateCheck.body.errors[0].extensions.code).toBe('UNAUTHORIZED');
+    for (const slug of ['ab', 'Example-Slug']) {
+      const result = await gql(query, { ...options, variables: { slug } });
+      expectGraphQLError(result);
+      expect(result.body.errors[0].extensions.code).toBe('BAD_REQUEST');
+    }
+  });
+
+  it('requires a unique workspace slug and keeps slug lookups scoped to members', async () => {
+    const owner = await createAuthenticatedUser('Slug owner');
+    const stranger = await createAuthenticatedUser('Slug outsider');
+    const slug = 'acme-2';
+    const workspace = await createWorkspace(
+      owner,
+      'Acme workspace',
+      ' acme-2 ',
+    );
+    const lookup = `query ($id: ID!, $slug: String!) {
+      byId: workspace(id: $id) { id slug }
+      bySlug: workspace(slug: $slug) { id slug }
+      currentWorkspace { id slug }
+    }`;
+    const variables = { id: workspace.id, slug };
+    const expectedWorkspace = { id: workspace.id, slug };
+    for (const workspaceId of [workspace.id, slug]) {
+      for (const source of ['header', 'cookie']) {
+        const result = await gql(lookup, {
+          variables,
+          ...(source === 'header'
+            ? { cookies: owner.cookies, workspaceId }
+            : { cookies: [...owner.cookies, `workspace=${workspaceId}`] }),
+        });
+        expectNoGraphQLErrors(result);
+        expect(result.body.data).toEqual({
+          byId: expectedWorkspace,
+          bySlug: expectedWorkspace,
+          currentWorkspace: expectedWorkspace,
+        });
+      }
+    }
+    const hidden = await gql(lookup, {
+      cookies: [...stranger.cookies, `workspace=${slug}`],
+      variables,
+    });
+    expectNoGraphQLErrors(hidden);
+    expect(hidden.body.data).toEqual({
+      byId: null,
+      bySlug: null,
+      currentWorkspace: null,
+    });
+
+    const invalidHeader = await gql('{ currentWorkspace { id } }', {
+      cookies: owner.cookies,
+      workspaceId: 'ACME-2',
+    });
+    expect(invalidHeader.status).toBe(400);
+    expect(invalidHeader.body.message).toBe('Invalid workspace slug');
+
+    for (const query of [
+      '{ workspace { id } }',
+      '{ workspace(id: "1", slug: "acme-2") { id } }',
+      '{ workspace(slug: "ACME-2") { id } }',
+    ]) {
+      const invalidLookup = await gql(query, { cookies: owner.cookies });
+      expectGraphQLError(invalidLookup);
+      expect(invalidLookup.body.errors[0].extensions.code).toBe('BAD_REQUEST');
+    }
+
+    const create =
+      'mutation ($input: CreateWorkspaceInput!) { createWorkspace(input: $input) { id } }';
+    for (const input of [{ name: 'Null slug', slug: null }]) {
+      const rejected = await gql(create, {
+        cookies: owner.cookies,
+        variables: { input },
+      });
+      expectGraphQLError(rejected);
+      expect(rejected.body.errors[0].extensions.code).toBe('BAD_USER_INPUT');
+    }
+    const duplicate = await gql(create, {
+      cookies: stranger.cookies,
+      variables: { input: { name: 'Duplicate', slug } },
+    });
+    expectGraphQLError(duplicate);
+    expect(duplicate.body.errors[0].extensions.code).toBe('CONFLICT');
+    for (const invalidSlug of ['42', 'ACME-2']) {
+      const invalid = await gql(create, {
+        cookies: owner.cookies,
+        variables: { input: { name: 'Invalid', slug: invalidSlug } },
+      });
+      expectGraphQLError(invalid);
+      expect(invalid.body.errors[0].extensions.code).toBe('BAD_USER_INPUT');
+    }
+  });
+
+  it('generates workspace slugs and allows authorized renames without changing workspace identity', async () => {
+    const owner = await createAuthenticatedUser('Generated slug owner');
+    const create =
+      'mutation { createWorkspace(input: { name: "Generated slug" }) { id } }';
+    const created = await gql(create, { cookies: owner.cookies });
+    expectNoGraphQLErrors(created);
+    const id = created.body.data.createWorkspace.id;
+    const read = () =>
+      gql('query($id: ID!) { workspace(id: $id) { id name slug } }', {
+        cookies: owner.cookies,
+        variables: { id },
+      });
+    const initial = (await read()).body.data.workspace;
+    expect(initial.slug).toMatch(/^[a-z][a-z0-9]{29}$/);
+    const other = await createWorkspace(
+      owner,
+      'Occupied slug',
+      'occupied-slug',
+    );
+    const rename = (slug: string | null, name?: string) =>
+      gql(
+        'mutation($id: ID!, $input: UpdateWorkspaceInput!) { updateWorkspace(id: $id, input: $input) { id } }',
+        {
+          cookies: owner.cookies,
+          workspaceId: id,
+          variables: { id, input: { slug, ...(name ? { name } : {}) } },
+        },
+      );
+    for (const slug of [null, 'UPPERCASE', 'ab']) {
+      const invalid = await rename(slug);
+      expectGraphQLError(invalid);
+      expect(invalid.body.errors[0].extensions.code).toBe('BAD_USER_INPUT');
+    }
+    const duplicate = await rename('occupied-slug', 'Must not be saved');
+    expectGraphQLError(duplicate);
+    expect(duplicate.body.errors[0].extensions.code).toBe('CONFLICT');
+    expect((await read()).body.data.workspace).toEqual(initial);
+    expectNoGraphQLErrors(await rename(' renamed-workspace '));
+    const selected = await gql(
+      '{ selectedWorkspace { id slug } currentWorkspace { id } }',
+      { cookies: owner.cookies, workspaceId: 'renamed-workspace' },
+    );
+    expectNoGraphQLErrors(selected);
+    expect(selected.body.data).toEqual({
+      selectedWorkspace: { id, slug: 'renamed-workspace' },
+      currentWorkspace: { id },
+    });
+    const old = await gql('{ selectedWorkspace { id } }', {
+      cookies: owner.cookies,
+      workspaceId: initial.slug,
+    });
+    expectNoGraphQLErrors(old);
+    expect(old.body.data.selectedWorkspace).toBeNull();
+    const stranger = await createAuthenticatedUser('Rename outsider');
+    const denied = await gql(
+      'mutation($id: ID!) { updateWorkspace(id: $id, input: { slug: "stolen-slug" }) { id } }',
+      { cookies: stranger.cookies, workspaceId: id, variables: { id } },
+    );
+    expectGraphQLError(denied);
+    expect(denied.body.errors[0].extensions.code).toBe('FORBIDDEN');
+    expect(other.id).not.toBe(id);
+  });
 
   it.each([false, true])(
     'retains workspace-key audit records and rejects reuse after workspace deletion (following mutation: %s)',
@@ -3084,7 +3257,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         }
       `,
       {
-        cookies: [...alice.cookies, `workspace_id=${aliceWorkspace.id}`],
+        cookies: [...alice.cookies, `workspace=${aliceWorkspace.id}`],
       },
     );
 
@@ -4903,7 +5076,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
               options: {
                 cookies: [
                   ...fixture.owner.cookies,
-                  `workspace_id=${other.workspace.id}`,
+                  `workspace=${other.workspace.id}`,
                 ],
                 bearerToken: other.memberKey.apiKey,
                 workspaceId: fixture.workspace.id,
@@ -5037,7 +5210,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         bearerToken: key.apiKey,
         ...(selection === 'header'
           ? { workspaceId: otherWorkspace.id }
-          : { cookies: [`workspace_id=${otherWorkspace.id}`] }),
+          : { cookies: [`workspace=${otherWorkspace.id}`] }),
       });
       expectNoGraphQLErrors(selected);
       expect(selected.body.data).toEqual({
@@ -5154,7 +5327,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         : null;
       const response = await gql(
         `mutation {
-          createWorkspace(input: { name: "Payload workspace" }) { __typename id }
+          createWorkspace(input: { name: "Payload workspace", slug: "payload-${selected ? 'selected' : 'unselected'}" }) { __typename id }
           ${original ? `updateWorkspace(id: "${original.id}", input: { name: "Original after create" }) { id }` : ''}
         }`,
         {
@@ -5193,14 +5366,16 @@ describe('Server application PostgreSQL integration (e2e)', () => {
   );
 
   /**
-   * Returns identifier and name of the created workspace.
+   * Returns the created workspace fixture.
    * @param user - The user whose account is being accessed.
    * @param name - Name used to identify the resource.
-   * @returns Identifier and name of the created workspace.
+   * @param slug - Unique URL identifier for the workspace.
+   * @returns Workspace ID and name.
    */
   async function createWorkspace(
     user: AuthenticatedUser,
     name: string,
+    slug = `workspace-${randomUUID().slice(0, 18)}`,
   ): Promise<WorkspaceFixture> {
     const response = await gql(
       /* GraphQL */ `
@@ -5213,9 +5388,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       {
         cookies: user.cookies,
         variables: {
-          input: {
-            name,
-          },
+          input: { name, slug },
         },
       },
     );
@@ -5985,7 +6158,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     }
 
     if (options.workspaceId) {
-      req.set('x-workspace-id', options.workspaceId);
+      req.set('x-workspace', options.workspaceId);
     }
 
     if (options.bearerToken) {

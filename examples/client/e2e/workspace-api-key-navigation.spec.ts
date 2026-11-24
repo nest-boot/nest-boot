@@ -27,7 +27,7 @@ async function prepareWorkspace(
       page.request,
       `mutation ($name: String!, $prefix: String!) { createWorkspaceApiKey(input: { name: $name, prefix: $prefix, permissions: [] }) { entity { id name } } }`,
       { name: `${query} ${index + 1}`, prefix: query.toLowerCase() },
-      { "x-workspace-id": workspace.id },
+      { "x-workspace": workspace.id },
     );
     keys.push(data.createWorkspaceApiKey.entity);
   }

@@ -9,6 +9,105 @@ import {
   createWorkspaceByApi,
 } from "./utils/workspace";
 
+test("validates service account names and preserves grants when creation is retried", async ({
+  page,
+}) => {
+  await registerUser(page, {
+    email: `${uniqueSeed("service-form")}@example.com`,
+    name: "Service account owner",
+  });
+  const workspace = await createWorkspaceByApi(page, "Service form workspace");
+  await page.goto(`/workspaces/${workspace.id}/members/create-service-account`);
+  let attempts = 0;
+  await page.route("**/api/graphql", async (route) => {
+    if (
+      !route
+        .request()
+        .postData()
+        ?.includes("addWorkspaceServiceAccountFromWorkspaceMembersRoute")
+    )
+      return route.continue();
+    attempts++;
+    if (attempts === 1)
+      return route.fulfill({
+        json: { errors: [{ message: "Temporary service account failure" }] },
+      });
+    return route.continue();
+  });
+  const name = page.getByLabel("Name", { exact: true });
+  await name.fill("   ");
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(name).toHaveAttribute("aria-invalid", "true");
+  expect(attempts).toBe(0);
+  await name.fill("Retry service account");
+  await page.getByRole("checkbox", { name: "Member", exact: true }).check();
+  await getPermissionCheckbox(page, "WORKSPACE__READ").check();
+  await name.press("Enter");
+  await expect(
+    page.getByText("Temporary service account failure", { exact: true }),
+  ).toBeVisible();
+  await expect(name).toHaveValue("Retry service account");
+  await expect(
+    page.getByRole("checkbox", { name: "Member", exact: true }),
+  ).toBeChecked();
+  await expect(getPermissionCheckbox(page, "WORKSPACE__READ")).toBeChecked();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(page).toHaveURL(
+    new RegExp(`/workspaces/${workspace.id}/members/[0-9]+$`),
+  );
+  expect(attempts).toBe(2);
+});
+
+for (const language of ["en", "zh"]) {
+  test(`shows localized TanStack length validation in ${language}`, async ({
+    page,
+  }) => {
+    await registerUser(page, {
+      email: `${uniqueSeed(`service-validation-${language}`)}@example.com`,
+      name: "Service validation owner",
+    });
+    const workspace = await createWorkspaceByApi(
+      page,
+      "Localized validation workspace",
+    );
+    await page.evaluate(
+      (lng) => localStorage.setItem("i18nextLng", lng),
+      language,
+    );
+    await page.goto(
+      `/workspaces/${workspace.id}/members/create-service-account`,
+    );
+    const name = page.getByLabel(language === "en" ? "Name" : "姓名", {
+      exact: true,
+    });
+    // Bypass the native maxlength to exercise TanStack's schema validation.
+    await name.evaluate((input: HTMLInputElement, value) => {
+      const setValue = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!;
+      setValue.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }, "a".repeat(256));
+    await expect(name).toHaveValue("a".repeat(256));
+    await page
+      .getByRole("button", {
+        name: language === "en" ? "Create" : "创建",
+        exact: true,
+      })
+      .click();
+    await expect(
+      page.getByText(
+        language === "en"
+          ? "Use at most 255 characters."
+          : "最多输入 255 个字符。",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(name).toHaveAttribute("aria-invalid", "true");
+  });
+}
+
 test("creates service accounts with default, role and direct permission grants", async ({
   page,
 }) => {
@@ -59,7 +158,7 @@ test("creates service accounts with default, role and direct permission grants",
       page.request,
       `query ($id: ID!) { workspaceMember(id: $id) { name type roles permissions } }`,
       { id: memberId },
-      { "x-workspace-id": workspace.id },
+      { "x-workspace": workspace.id },
     );
     expect(data.workspaceMember).toEqual({
       name,
@@ -117,7 +216,7 @@ test("guards service account creation and limits available grants", async ({
           ],
         },
       },
-      { "x-workspace-id": workspace.id },
+      { "x-workspace": workspace.id },
     );
     await issuer.goto(`${path}/create-service-account`);
     await expect(

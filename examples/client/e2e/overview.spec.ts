@@ -136,7 +136,7 @@ test("workspace overviews isolate counts when switching and respect read permiss
       setWorkspaceMemberPermissions(id: $id, input: $input) { id }
     }`,
       { id: memberId, input: { permissions: [] } },
-      { "x-workspace-id": first.id },
+      { "x-workspace": first.id },
     );
     const queries: Array<{ workspaceId: string; header: string | undefined }> =
       [];
@@ -144,7 +144,7 @@ test("workspace overviews isolate counts when switching and respect read permiss
       if (!request.postData()?.includes("query getWorkspaceOverview")) return;
       queries.push({
         workspaceId: request.postDataJSON().variables.workspaceId,
-        header: request.headers()["x-workspace-id"],
+        header: request.headers()["x-workspace"],
       });
     });
     await page.goto("/user/workspaces");

@@ -290,9 +290,62 @@ Apollo mutations still perform requests. Await those requests and any refresh
 before ending submission. Separate Card forms save independently, so saving
 roles must not reset an unsaved profile draft.
 
-The migrated forms validate on submit and clear request errors on edit/retry.
-They do not bind blur validation: clearing a submit error on blur can move the
+All forms import `useForm` directly from `@tanstack/react-form`. Spread
+`defaultFormOptions` from `src/lib/form.ts` and put Zod schemas in
+`validators.onDynamic`. Use `form.Field` and bind inputs explicitly with
+`field.name`, `field.state.value`, `field.handleChange`, and
+`handleFieldBlur(field)`. Format field errors with `getFormErrorMessage` and
+pass them to Thread UI's `Input` for accessible descriptions.
+Pass the form instance explicitly to `<SubmitButton formApi={form}>`; the shared
+button subscribes locally with `useSelector` and keeps request failures retryable.
+Pending submissions, business restrictions and unchanged edit forms disable the
+native button; schema validity uses `aria-disabled` and TanStack guards the write.
+
+Use `submitForm(event, form)` for HTML submission, including buttons outside the
+HTML form associated through their `form` attribute. It prevents duplicate
+submissions, clears only request errors, and focuses an invalid input within
+that form. Pass a third boolean argument for business restrictions when needed.
+Keep HTML forms `noValidate` so browser tooltips do not intercept schema errors.
+Schemas validate values without replacing them with transformed output; parse
+or normalize the mutation input explicitly (for example, trim names and emails).
+
+Use `useFormChanges` with TanStack Form for editors. Its `defaultValues` keep a
+snapshot of normalized loaded values; `getChanges(values)` returns only fields
+that differ from that snapshot. Pass the record's `updatedAt` as `revision` so a
+fresh version is recognized even when its values match an older snapshot. Supply
+one `normalize` function for the editor and use `changes.normalize(value)` for
+mutation values; draft detection uses that same canonical representation while
+retaining raw text for actual drafts. Compare roles and permissions with
+`{ setFields: ["roles", "permissions"] }` so reordering does not replace grants.
+Preserve explicit clears (`null`, `false`, and empty arrays) and skip empty
+updates. After a successful request, call `accept(savedValues)` and
+`resetFormAfterSave(formApi, value, savedValues)` together. Here `value` is the
+raw submit snapshot and `savedValues` contains the normalized values that were
+saved. The helper advances the saved defaults and restores any edits made while
+the request was pending, keeping them dirty for the next save. If no normalization
+is needed, omit its third argument. Failed requests retain the draft and comparison
+baseline. `accept` advances the comparison reference immediately, before resetting
+the form can release deferred refreshes. Edit pages attach
+`useSyncFormChanges(form, changes)` after `useForm`.
+It synchronizes new server snapshots into unedited fields while retaining local
+drafts, validation state and request errors. Refreshes received during submission
+are applied when it finishes. Shared create/edit pages enable synchronization
+only when editing an existing record. Key editors by record ID so drafts cannot
+carry over when switching records.
+Shared create/edit components pass complete creation values and the update
+patch separately to `onSave`; create routes use the complete values, and edit
+routes use the patch. Concurrent edits to the same field still use the server's
+normal last-write behavior.
+
+Shared [`revalidateLogic`](https://tanstack.com/form/latest/docs/framework/react/guides/dynamic-validation)
+validates on the first submit and then revalidates on change. Request failures
+live in `errorMap.onSubmit`, separately from schema errors in `onDynamic`, and
+clear on edit/retry. Do not add duplicate field validators for the same rule.
+Forms do not bind blur validation: clearing a submit error on blur can move the
 footer button between pointer-down and pointer-up and swallow a retry click.
+While a request error exists, `handleFieldBlur` marks blur metadata with TanStack's
+`field.setMeta` instead of running blur validation; ordinary blur events use
+`field.handleBlur`. Schema errors still revalidate on change.
 Keep submission guards and native form associations for Enter-key submission.
 Use local UI state for dialogs/success screens, URL state for DataFilter and
 pagination, and direct mutations for actions with no editable fields.

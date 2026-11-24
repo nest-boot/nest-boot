@@ -179,7 +179,10 @@ describe("permission output after catalog removal", () => {
     user = await em.findOneOrFail(User, signedUp.user.id);
     user.roles = ["admin"];
     user.permissions = ["project:read", "retired:user"];
-    workspace = em.create(Workspace, { name: "Permission workspace" });
+    workspace = em.create(Workspace, {
+      name: "Permission workspace",
+      slug: "permission-workspace",
+    });
     member = em.create(WorkspaceMember, {
       name: "Permission member",
       workspace,
@@ -234,7 +237,7 @@ describe("permission output after catalog removal", () => {
       systemAccounts(first: 10) { edges { node { id permissions } } }
       systemApiKeys(first: 10) { edges { node { id permissions } } }
     }`,
-      { "x-workspace-id": workspace.id },
+      { "x-workspace": workspace.id },
     );
     expect(result.errors).toBeUndefined();
     expect(result.data).toMatchObject({
@@ -280,7 +283,7 @@ describe("permission output after catalog removal", () => {
   it("checks a static class route with native CASL rules and serializes their reasons", async () => {
     const output = await query(
       "{ permissionProbeTask currentAbilityRules { actions subjects reason } }",
-      { "x-workspace-id": workspace.id },
+      { "x-workspace": workspace.id },
     );
     expect(output.errors).toBeUndefined();
     expect(output.data?.permissionProbeTask).toBe(true);
@@ -341,7 +344,7 @@ describe("permission output after catalog removal", () => {
     await em.persist(key).flush();
     const renamed = await query(
       `mutation { updateWorkspaceApiKey(id: "${key.id}", input: {name: "Renamed workspace key"}) {name permissions} }`,
-      { "x-workspace-id": workspace.id },
+      { "x-workspace": workspace.id },
     );
     expect(renamed.errors).toBeUndefined();
     expect(renamed.data).toEqual({
@@ -353,7 +356,7 @@ describe("permission output after catalog removal", () => {
     const forbidden = await query("{ permissionProbeTask }", {
       cookie: "",
       authorization: "Bearer workspace-retired-output",
-      "x-workspace-id": workspace.id,
+      "x-workspace": workspace.id,
     });
     expect(forbidden.errors).toEqual([
       expect.objectContaining({
@@ -363,7 +366,7 @@ describe("permission output after catalog removal", () => {
     expect(
       (
         await query("{ permissionProbeTask }", {
-          "x-workspace-id": workspace.id,
+          "x-workspace": workspace.id,
         })
       ).data,
     ).toEqual({ permissionProbeTask: true });

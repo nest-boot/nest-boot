@@ -29,7 +29,7 @@ test.describe("API keys", () => {
       const email = `${seed}-issuer@example.com`;
       await registerUser(issuer, { email, name: "Key Issuer" });
       const memberId = await addWorkspaceMemberByApi(page, workspaceId, email);
-      const headers = { "x-workspace-id": workspaceId };
+      const headers = { "x-workspace": workspaceId };
       await graphqlRequest(
         page.request,
         `mutation ($id: ID!, $input: SetWorkspaceMemberPermissionsInput!) {
@@ -138,7 +138,7 @@ test.describe("API keys", () => {
             ],
           },
         },
-        { "x-workspace-id": workspaceId },
+        { "x-workspace": workspaceId },
       );
       await issuerPage.goto(`/workspaces/${workspaceId}/api-keys`);
       await issuerPage
@@ -191,7 +191,7 @@ test.describe("API keys", () => {
       name: "Key Owner",
     });
     const workspaceId = await createFirstWorkspace(page, seed);
-    const headers = { "x-workspace-id": workspaceId };
+    const headers = { "x-workspace": workspaceId };
     const { addWorkspaceMember } = await graphqlRequest<{
       addWorkspaceMember: { id: string };
     }>(
@@ -432,7 +432,7 @@ test.describe("API keys", () => {
       createWorkspaceApiKey(input: { name: "Workspace scoped key", permissions: [] }) { entity { id } }
     }`,
       {},
-      { "x-workspace-id": workspaceId },
+      { "x-workspace": workspaceId },
     );
     const { createUserApiKey: userKey } = await graphqlRequest<{
       createUserApiKey: { entity: { id: string } };

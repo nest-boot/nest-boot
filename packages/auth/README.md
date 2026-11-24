@@ -396,9 +396,9 @@ Request decorators distinguish `@AuthUser()`, `@AuthSession()`, `@AuthApiKey()`,
 `@AuthWorkspace()` and `@SelectedWorkspace()`. GraphQL retains `currentUser`, `currentSession` and `currentWorkspaceMember`,
 with `selectedWorkspace` for selection and `currentWorkspace` for authenticated workspace scope.
 
-All credentials use Header `x-workspace-id` or Cookie `workspace_id` to select a
-target. The Header takes precedence, including an empty Header that clears
-selection. Workspace keys require explicit selection and retain private grants
+All credentials use the `x-workspace` header to select a workspace by ID or
+slug. When the header is absent, the `workspace` cookie can select by ID or slug.
+An empty header clears selection. Workspace keys require explicit selection and retain private grants
 only in their owning workspace. Any identity can select a different workspace
 for explicitly public resources.
 
@@ -695,6 +695,26 @@ mutations also return dedicated ID-only payloads. Query the affected resource
 separately with the caller's read permissions.
 Clients must remove selections such as `name` or `members` from
 these mutation results and regenerate their GraphQL types.
+
+`CreateWorkspaceInput` accepts an optional unique `slug` of 3–30 characters.
+When omitted, the backend generates a random 30-character slug. It can be
+changed later with `updateWorkspace` or in workspace settings. It starts
+with a lowercase ASCII letter and can contain lowercase letters, digits and
+single hyphens between them. Auth validates the format and length with Zod.
+A database `CHECK` constraint enforces the same length and ASCII format for
+workspace slugs, including direct SQL writes. MikroORM owns the constraint
+through entity metadata and generates its name automatically.
+When upgrading an existing database, add the `text` column as nullable with a
+unique constraint, backfill a valid slug per workspace, then enforce `NOT NULL`.
+For example, generate random eight-character slugs and retry on collisions.
+
+`workspace(id: ID, slug: String)` requires exactly one argument and uses the
+same read authorization for either selector. The administration `user(id: ID!)`
+query continues to identify users by ID.
+
+`workspaceExists(slug: String!)` requires permission to create a workspace. It
+returns true when the normalized slug is already in use and rejects invalid
+input. The database unique constraint resolves competing writes.
 
 `deleteUser` and `removeWorkspaceMember` likewise return `DeleteUserPayload` and
 `RemoveWorkspaceMemberPayload`, each containing only `id: ID!`. `leaveWorkspace` returns

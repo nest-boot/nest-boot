@@ -51,7 +51,7 @@ test("refreshes the workspace menu after changes outside its Apollo cache", asyn
     page.request,
     "mutation ($id: ID!) { deleteWorkspace(id: $id) { id } }",
     { id: workspace.id },
-    { "x-workspace-id": workspace.id },
+    { "x-workspace": workspace.id },
   );
   const refreshedMenu = page.waitForResponse(
     (response) =>

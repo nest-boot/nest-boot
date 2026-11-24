@@ -13,6 +13,7 @@ const GET_CURRENT_WORKSPACE_FROM_WORKSPACE_LAYOUT = graphql(`
     workspace(id: $workspaceId) {
       id
       name
+      slug
       createdAt
       updatedAt
     }
@@ -46,7 +47,7 @@ export const Route = createFileRoute("/_authenticated/workspaces/$workspaceId")(
         variables: {
           workspaceId: params.workspaceId,
         },
-        context: { headers: { "x-workspace-id": params.workspaceId } },
+        context: { headers: { "x-workspace": params.workspaceId } },
         errorPolicy: "all",
         fetchPolicy: "network-only",
       });

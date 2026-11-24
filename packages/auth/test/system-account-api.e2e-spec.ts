@@ -75,9 +75,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        ...(selectedWorkspaceId
-          ? { "x-workspace-id": selectedWorkspaceId }
-          : {}),
+        ...(selectedWorkspaceId ? { "x-workspace": selectedWorkspaceId } : {}),
         ...(credential
           ? bearer
             ? { authorization: `Bearer ${credential}` }
@@ -166,9 +164,10 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
       .fork()
       .nativeUpdate(User, administrator.body.user.id, { roles: ["admin"] });
     ordinaryCookies = (await signup("ordinary@example.test")).cookies;
-    const workspace = orm.em
-      .fork()
-      .create(Workspace, { name: "Unjoined workspace" });
+    const workspace = orm.em.fork().create(Workspace, {
+      name: "Unjoined workspace",
+      slug: "unjoined-workspace",
+    });
     await orm.em.fork().persist(workspace).flush();
     workspaceId = workspace.id;
   }, 30000);
@@ -234,7 +233,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
   it("creates a workspace service member and its key from one GraphQL input", async () => {
     const workspace = data(
       await graphql(
-        'mutation { createWorkspace(input: {name: "Atomic GraphQL"}) { id } }',
+        'mutation { createWorkspace(input: {name: "Atomic GraphQL", slug: "atomic-graphql"}) { id } }',
       ),
     ).createWorkspace.id;
     const result = data(

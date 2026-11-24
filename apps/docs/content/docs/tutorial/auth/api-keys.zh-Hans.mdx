@@ -6,9 +6,9 @@ description: "使用带权限范围的 API Key 认证个人和工作区自动化
 `UserApiKeyService` 和 `WorkspaceApiKeyService` 管理归属于用户的个人 Key 和归属于 member 的工作区范围 Key。
 
 - **User Key** 会恢复所属用户；私有工作区权限要求用户是所选工作区的有效成员，公开资源按自身规则开放。
-- **WorkspaceMember Key** 认证所属成员，但不会自动选择工作区。通过 `x-workspace-id` 或工作区 Cookie 选择目标；只有选中归属工作区时，才建立当前成员及其私有权限。其他工作区仍可提供公开资源。用户成员还会恢复登录用户，服务账号没有登录用户；停用成员或封禁其登录用户后，Key 不能继续认证。
+- **WorkspaceMember Key** 认证所属成员，但不会自动选择工作区。通过 `x-workspace` 或工作区 Cookie 选择目标；只有选中归属工作区时，才建立当前成员及其私有权限。其他工作区仍可提供公开资源。用户成员还会恢复登录用户，服务账号没有登录用户；停用成员或封禁其登录用户后，Key 不能继续认证。
 
-工作区选择与认证、授权分开：匿名请求和没有成员关系的凭证也可以选择已存在的工作区。公开接口可以使用 `@SelectedWorkspace()`，并配置独立的公开读取 RLS 策略；私有服务继续检查有效权限。未提供选择器时，任何凭证都不会自动补上工作区。请求头优先于 `workspace_id` Cookie；关闭 workspace 功能时忽略两者。
+工作区选择与认证、授权分开：匿名请求和没有成员关系的凭证也可以选择已存在的工作区。公开接口可以使用 `@SelectedWorkspace()`，并配置独立的公开读取 RLS 策略；私有服务继续检查有效权限。未提供选择器时，任何凭证都不会自动补上工作区。请求头优先于 `workspace` Cookie；关闭 workspace 功能时忽略两者。
 
 个人 Key 管理使用 `user-api-key:read` 和 `user-api-key:write`；
 成员 Key 管理使用 `workspace-api-key:read` 和 `workspace-api-key:write`。
@@ -265,7 +265,7 @@ mutation {
 
 内置平台权限为 `user:read`、`user:update`、`user:delete`、`workspace:read-any`、`workspace:update-any`、`workspace:delete-any`。用户操作仍经过 User Service 授权；平台工作区入口单独提供 `workspaces`、`platformWorkspace(id)`、`updatePlatformWorkspace(id, input)`、`deletePlatformWorkspace(id)`。关闭 workspace 后对应权限不生效，也不会自动开放业务表。
 
-系统密钥通过 `x-workspace-id` 或请求头缺失时的 `workspace_id` Cookie 选择目标。`@SelectedWorkspace()`、`AuthContext.selectedWorkspace` 只暴露选择，不授予权限；只有有效的系统工作区权限支持该作用域时，`@AuthWorkspace()`、`AuthContext.authWorkspace` 才返回所选工作区。`user`、`member` 仍为 null。GraphQL 对应五个可空查询：`currentUser`、`currentSession`、`currentWorkspaceMember`、`currentWorkspace`、`selectedWorkspace`。业务 `buildAbility` 的 `workspace` 表示认证作用域，`selectedWorkspace` 表示独立选择，继续通过有效权限和资源条件构造授权。
+系统密钥通过 `x-workspace` 或请求头缺失时的 `workspace` Cookie 选择目标。`@SelectedWorkspace()`、`AuthContext.selectedWorkspace` 只暴露选择，不授予权限；只有有效的系统工作区权限支持该作用域时，`@AuthWorkspace()`、`AuthContext.authWorkspace` 才返回所选工作区。`user`、`member` 仍为 null。GraphQL 对应五个可空查询：`currentUser`、`currentSession`、`currentWorkspaceMember`、`currentWorkspace`、`selectedWorkspace`。业务 `buildAbility` 的 `workspace` 表示认证作用域，`selectedWorkspace` 表示独立选择，继续通过有效权限和资源条件构造授权。
 
 所有已认证凭证都使用 `authenticated` 数据库角色。Auth 设置 `app.auth.user.id`、`app.auth.workspace_member.id`、`app.auth.workspace.id` 和 `app.selected.workspace.id`，不传系统账户 ID，也不创建单独角色。系统凭证的有效工作区权限可以为所选目标建立认证作用域；空权限、仅用户权限或被配置上限排除的权限不能建立该作用域。私有策略使用认证作用域，公开读取策略可使用所选目标与公开行条件。显式空 Header 清除选择，未知 ID 不回退 Cookie，无效 ID 返回 400；关闭 workspace 功能时忽略两种选择器。
 

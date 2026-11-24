@@ -1,18 +1,22 @@
 import { useId } from "react";
 import { useMutation } from "@apollo/client/react";
-import { useForm } from "@tanstack/react-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
+import { useForm } from "@tanstack/react-form";
 import type { WorkspaceMemberFormProps } from "./workspace-member-form-props";
 import type { GetWorkspaceMemberFromWorkspaceMemberRouteQuery } from "@/gql/graphql";
+import { defaultFormOptions, resetFormAfterSave, submitForm } from "@/lib/form";
+import { useFormChanges, useSyncFormChanges } from "@/hooks/use-form-changes";
 import { CardContent, CardFooter } from "@/components/ui/card";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
-import { WorkspaceRole } from "@/gql/graphql";
+import { WorkspaceMemberType, WorkspaceRole } from "@/gql/graphql";
+import { getFormErrorMessage } from "@/lib/form-errors";
 import { graphql } from "@/gql";
 import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
-import { Button } from "@/components/thread-ui/button";
-import { FieldSet } from "@/components/ui/field";
+
+import { FieldError, FieldSet } from "@/components/ui/field";
+import { SubmitButton } from "@/components/form/submit-button";
 
 const SET_WORKSPACE_MEMBER_ROLES = graphql(`
   mutation setWorkspaceMemberRolesFromWorkspaceMemberRoute(
@@ -36,36 +40,54 @@ export function WorkspaceMemberRolesForm({
   const { t } = useTranslation();
   const formId = useId();
   const [setRoles] = useMutation(SET_WORKSPACE_MEMBER_ROLES);
+  const roleChanges = useFormChanges(
+    { roles: member.roles },
+    { revision: member.updatedAt, setFields: ["roles"] },
+  );
   const form = useForm({
-    defaultValues: { roles: member.roles },
+    ...defaultFormOptions,
+    defaultValues: roleChanges.defaultValues,
     validators: {
-      onSubmit: z.object({ roles: z.array(z.enum(WorkspaceRole)).min(1) }),
+      onDynamic: z.object({
+        roles: z
+          .array(z.enum(WorkspaceRole))
+          .refine(
+            (roles) =>
+              member.type === WorkspaceMemberType.SERVICE_ACCOUNT ||
+              roles.length > 0,
+            t("workspace-member:invite.role_required"),
+          )
+          .refine(
+            (roles) =>
+              roles.every((role) =>
+                options.some(
+                  (option) => option.role === role && option.grantable,
+                ),
+              ),
+            t("workspace-member:invite.role_invalid"),
+          ),
+      }),
     },
     onSubmit: async ({ value }) => {
+      if (!roleChanges.getChanges(value).roles) return;
       const saved = await onSave(async () => {
-        if (
-          value.roles.some(
-            (role) =>
-              !options.some(
-                (option) => option.role === role && option.grantable,
-              ),
-          )
-        )
-          throw new Error("Selected roles exceed your grant permissions");
         await setRoles({ variables: { id: member.id, input: value } });
       }, true);
-      if (saved) form.reset(value);
+      if (saved) {
+        roleChanges.accept(value);
+        resetFormAfterSave(form, value);
+      }
     },
   });
+  useSyncFormChanges(form, roleChanges);
   return (
     <>
       <CardContent>
         <form
           id={formId}
+          noValidate
           onSubmit={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            void form.handleSubmit();
+            void submitForm(event, form);
           }}
         >
           <FieldSet
@@ -76,13 +98,18 @@ export function WorkspaceMemberRolesForm({
               <FormLayoutItem>
                 <form.Field name="roles">
                   {(field) => (
-                    <RoleCheckboxGroup
-                      label={t("workspace-member:details.form.role.label")}
-                      options={options}
-                      value={field.state.value}
-                      onValueChange={field.handleChange}
-                      disabled={disabled}
-                    />
+                    <>
+                      <RoleCheckboxGroup
+                        label={t("workspace-member:details.form.role.label")}
+                        options={options}
+                        value={field.state.value}
+                        onValueChange={field.handleChange}
+                        disabled={disabled}
+                      />
+                      <FieldError>
+                        {getFormErrorMessage(field.state.meta.errors)}
+                      </FieldError>
+                    </>
                   )}
                 </form.Field>
               </FormLayoutItem>
@@ -91,24 +118,14 @@ export function WorkspaceMemberRolesForm({
         </form>
       </CardContent>
       <CardFooter>
-        <form.Subscribe
-          selector={(state) => [
-            state.isDirty,
-            state.canSubmit,
-            state.isSubmitting,
-          ]}
+        <SubmitButton
+          formApi={form}
+          form={formId}
+          requireDirty
+          disabled={disabled}
         >
-          {([isDirty, canSubmit, isSubmitting]) => (
-            <Button
-              type="submit"
-              form={formId}
-              disabled={disabled || !isDirty || !canSubmit}
-              loading={isSubmitting}
-            >
-              {t("action.save")}
-            </Button>
-          )}
-        </form.Subscribe>
+          {t("action.save")}
+        </SubmitButton>
       </CardFooter>
     </>
   );

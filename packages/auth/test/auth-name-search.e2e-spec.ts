@@ -85,7 +85,10 @@ describe("Auth name search through real connection queries", () => {
         email: `${crypto.randomUUID()}@example.test`,
         emailVerified: true,
       });
-      const workspace = em.create(Workspace, { name });
+      const workspace = em.create(Workspace, {
+        name,
+        slug: `deployment-${crypto.randomUUID().slice(0, 8)}`,
+      });
       const member = em.create(WorkspaceMember, {
         name,
         workspace,
@@ -155,8 +158,11 @@ describe("Auth name search through real connection queries", () => {
 
   it("applies workspace RLS to matching names and connection counts", async () => {
     const em = orm.em.fork();
-    const workspace = em.create(Workspace, { name: "Allowed" });
-    const other = em.create(Workspace, { name: "Other" });
+    const workspace = em.create(Workspace, {
+      name: "Allowed",
+      slug: "allowed",
+    });
+    const other = em.create(Workspace, { name: "Other", slug: "other" });
     const member = em.create(WorkspaceMember, {
       name: "Shared Deployment",
       type: "SERVICE_ACCOUNT",
@@ -193,7 +199,10 @@ describe("Auth name search through real connection queries", () => {
         emailVerified: true,
         roles: ["admin"],
       });
-      const workspace = em.create(Workspace, { name: "Service search" });
+      const workspace = em.create(Workspace, {
+        name: "Service search",
+        slug: `service-search-${crypto.randomUUID().slice(0, 8)}`,
+      });
       const member = em.create(WorkspaceMember, {
         name: "Owner",
         user,

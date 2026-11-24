@@ -1,18 +1,18 @@
 import { useId } from "react";
-import { useForm, useStore } from "@tanstack/react-form";
+import { useForm, useSelector } from "@tanstack/react-form";
 import { useMutation } from "@apollo/client/react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
 import { Link } from "@/components/link";
 import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { adminUserSearchSchema } from "@/schemas/admin-user-search-schema";
 import { adminUsersResourceKey } from "@/lib/resource-keys";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
+import { usePasswordPolicy } from "@/hooks/use-password-policy";
 
-import { Button } from "@/components/thread-ui/button";
-import { Input } from "@/components/thread-ui/input";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Page } from "@/components/thread-ui/page";
 import {
@@ -31,6 +31,8 @@ import { FieldError } from "@/components/ui/field";
 import { useAbility } from "@/contexts/ability-context";
 import { graphql } from "@/gql";
 import { getFormErrorMessage } from "@/lib/form-errors";
+import { SubmitButton } from "@/components/form/submit-button";
+import { Input } from "@/components/thread-ui/input";
 
 const CREATE_USER_FROM_CREATE_USER_ROUTE = graphql(`
   mutation createUserFromCreateUserRoute($input: CreateUserInput!) {
@@ -51,6 +53,7 @@ export const Route = createFileRoute("/_authenticated/admin/users/create/")({
 
 function CreateUserPage() {
   const { t } = useTranslation();
+  const { passwordSchema } = usePasswordPolicy();
   const formId = useId();
   const currentUser = useAuthUserContext();
   const { backSearch } = useResourceNavigation({
@@ -62,17 +65,24 @@ function CreateUserPage() {
   const canCreate = ability.can("create", "User");
   const [createUser] = useMutation(CREATE_USER_FROM_CREATE_USER_ROUTE);
   const createForm = useForm({
+    ...defaultFormOptions,
     defaultValues: { name: "", email: "", password: "" },
     validators: {
-      onSubmit: z.object({
-        name: z.string().trim().min(1, t("auth:form.name.required")),
-        email: z.string().trim().email(t("auth:form.email.invalid")),
-        password: z.string().min(8, t("auth:form.password.min")),
+      onDynamic: z.object({
+        name: z
+          .string()
+          .trim()
+          .min(1, t("auth:form.name.required"))
+          .max(255, t("common:validation.max_length", { max: 255 })),
+        email: z
+          .string()
+          .trim()
+          .email(t("auth:form.email.invalid"))
+          .max(255, t("auth:form.email.invalid")),
+        password: passwordSchema,
       }),
     },
-    listeners: {
-      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
-    },
+
     onSubmit: async ({ value, formApi }) => {
       if (!canCreate) return;
       try {
@@ -103,8 +113,8 @@ function CreateUserPage() {
       }
     },
   });
-  const creating = useStore(createForm.store, (state) => state.isSubmitting);
-  const createError = useStore(createForm.store, (state) =>
+  const creating = useSelector(createForm.store, (state) => state.isSubmitting);
+  const createError = useSelector(createForm.store, (state) =>
     getFormErrorMessage(state.errors),
   );
 
@@ -131,11 +141,7 @@ function CreateUserPage() {
                 id={formId}
                 noValidate
                 onSubmit={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (createForm.state.isSubmitting) return;
-                  createForm.setErrorMap({ onSubmit: undefined });
-                  createForm.handleSubmit();
+                  void submitForm(event, createForm);
                 }}
               >
                 <FormLayout>
@@ -143,13 +149,15 @@ function CreateUserPage() {
                     <createForm.Field name="name">
                       {(field) => (
                         <Input
-                          label={t("admin:users.table.name")}
-                          disabled={creating}
+                          name={field.name}
                           value={field.state.value}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
+                          onBlur={() => handleFieldBlur(field)}
                           error={getFormErrorMessage(field.state.meta.errors)}
+                          label={t("admin:users.table.name")}
+                          disabled={creating}
                         />
                       )}
                     </createForm.Field>
@@ -158,14 +166,16 @@ function CreateUserPage() {
                     <createForm.Field name="email">
                       {(field) => (
                         <Input
-                          type="email"
-                          label={t("admin:users.table.email")}
-                          disabled={creating}
+                          name={field.name}
                           value={field.state.value}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
+                          onBlur={() => handleFieldBlur(field)}
                           error={getFormErrorMessage(field.state.meta.errors)}
+                          type="email"
+                          label={t("admin:users.table.email")}
+                          disabled={creating}
                         />
                       )}
                     </createForm.Field>
@@ -174,14 +184,16 @@ function CreateUserPage() {
                     <createForm.Field name="password">
                       {(field) => (
                         <Input
-                          type="password"
-                          label={t("admin:users.create.password")}
-                          disabled={creating}
+                          name={field.name}
                           value={field.state.value}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
+                          onBlur={() => handleFieldBlur(field)}
                           error={getFormErrorMessage(field.state.meta.errors)}
+                          type="password"
+                          label={t("admin:users.create.password")}
+                          disabled={creating}
                         />
                       )}
                     </createForm.Field>
@@ -195,14 +207,13 @@ function CreateUserPage() {
               </form>
             </CardContent>
             <CardFooter>
-              <Button
-                type="submit"
+              <SubmitButton
+                formApi={createForm}
                 form={formId}
                 disabled={!canCreate}
-                loading={creating}
               >
                 {t("admin:users.create.action")}
-              </Button>
+              </SubmitButton>
             </CardFooter>
           </Card>
         </PageLayoutSection>

@@ -321,12 +321,12 @@ export async function verifyAuthFeatures(
     }
     if (expected.workspace) {
       const workspace = await graphql(
-        'mutation { createWorkspace(input: {name: "Workspace"}) {id} }',
+        'mutation { createWorkspace(input: {name: "Workspace", slug: "workspace"}) {id} }',
       );
       expect(workspace.errors).toBeUndefined();
       const workspaceId = workspace.data?.createWorkspace.id;
       assert(workspaceId);
-      const workspaceHeaders = { "x-workspace-id": workspaceId };
+      const workspaceHeaders = { "x-workspace": workspaceId };
       const workspaceRoles = await graphql(
         "{ workspaceRoles { role grantable } currentWorkspaceMember { id } }",
         {},
@@ -353,7 +353,7 @@ export async function verifyAuthFeatures(
         const key = await graphql(
           'mutation($id: ID!) { createWorkspaceApiKey(input: {memberId: $id, name: "Workspace key"}) { apiKey entity { id member { __typename  id workspaceId  } } } }',
           { id: workspaceRoles.data?.currentWorkspaceMember.id },
-          { "x-workspace-id": workspaceId },
+          { "x-workspace": workspaceId },
         );
         expect(key.errors).toBeUndefined();
         expect(key.data?.createWorkspaceApiKey.entity.member.workspaceId).toBe(
@@ -362,7 +362,7 @@ export async function verifyAuthFeatures(
         const lists = await graphql(
           "{ currentWorkspaceMember { apiKeys(first: 10) { edges { node { id } } } } workspaceApiKeys(first: 10) { edges { node { id } } } }",
           {},
-          { "x-workspace-id": workspaceId },
+          { "x-workspace": workspaceId },
         );
         expect(lists.errors).toBeUndefined();
         const expectedKeys = [
@@ -373,7 +373,7 @@ export async function verifyAuthFeatures(
         );
         expect(lists.data?.workspaceApiKeys.edges).toEqual(expectedKeys);
         await verifyRevocation("Workspace", key.data?.createWorkspaceApiKey, {
-          "x-workspace-id": workspaceId,
+          "x-workspace": workspaceId,
         });
       }
     }

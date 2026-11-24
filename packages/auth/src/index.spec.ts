@@ -486,7 +486,7 @@ describe("exported input contracts", () => {
     },
     {
       name: "CreateWorkspaceInput",
-      values: { name: "Workspace" },
+      values: { name: "Workspace", slug: "workspace" },
       required: ["name"],
     },
     {
@@ -553,7 +553,7 @@ describe("exported input contracts", () => {
     },
     {
       name: "UpdateWorkspaceInput",
-      values: { name: "Workspace" },
+      values: { name: "Workspace", slug: "workspace" },
       required: [],
     },
     { name: "UserIdInput", values: { id: "opaque-id" }, required: ["id"] },
@@ -607,6 +607,33 @@ describe("exported input contracts", () => {
         }
         expect(schema.parse({ ...values, name: "  Name  " })).toMatchObject({
           name: "Name",
+        });
+      }
+    });
+    it("validates the lowercase format for workspace slugs", () => {
+      const workspace = toZodSchema(auth.CreateWorkspaceInput);
+      for (const identifier of [
+        "ab",
+        "x".repeat(31),
+        "42",
+        "42alice",
+        "Acme-2",
+        "acme-TEAM",
+        "acme--team",
+        "acme-",
+        "alice_team",
+        "alice/team",
+        "Kelvin",
+      ]) {
+        expect(
+          workspace.safeParse({ name: "Acme", slug: identifier }).success,
+        ).toBe(false);
+      }
+      for (const identifier of [" acme-2 ", "abc", "x".repeat(30)]) {
+        const normalized = identifier.trim();
+        expect(workspace.parse({ name: "Acme", slug: identifier })).toEqual({
+          name: "Acme",
+          slug: normalized,
         });
       }
     });

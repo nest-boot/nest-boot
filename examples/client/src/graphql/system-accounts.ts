@@ -18,6 +18,7 @@ export const SYSTEM_ACCOUNT_DETAILS = graphql(`
       permissions
       createdById
       createdAt
+      updatedAt
     }
   }
 `);
@@ -71,6 +72,7 @@ export const SYSTEM_API_KEY_DETAILS = graphql(`
       prefix
       start
       createdAt
+      updatedAt
       lastUsedAt
       expiresAt
     }

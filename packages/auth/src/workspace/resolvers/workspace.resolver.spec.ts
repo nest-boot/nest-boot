@@ -1,4 +1,11 @@
-import { ForbiddenException } from "@nestjs/common";
+import assert from "node:assert/strict";
+
+import {
+  GraphQLSchemaBuilderModule,
+  GraphQLSchemaFactory,
+} from "@nest-boot/graphql";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import { Test } from "@nestjs/testing";
 import type { GraphQLResolveInfo } from "graphql";
 import { type Mocked } from "vitest";
 
@@ -85,13 +92,42 @@ describe("WorkspaceResolver", () => {
     expect(resolver.selectedWorkspace(workspace)).toBe(workspace);
     expect(resolver.selectedWorkspace(null)).toBeNull();
   });
-  it("forwards workspace lookup arguments and nullable service results", async () => {
+  it("publishes ID/slug lookup and forwards nullable results and availability checks", async () => {
+    const module = await Test.createTestingModule({
+      imports: [GraphQLSchemaBuilderModule],
+    }).compile();
+    try {
+      const schema = await module
+        .get(GraphQLSchemaFactory)
+        .create([WorkspaceResolver]);
+      const query = schema.getQueryType();
+      assert(query);
+      const queries = query.getFields();
+      expect(
+        queries.workspace.args.map(({ name, type }) => [name, String(type)]),
+      ).toEqual([
+        ["id", "ID"],
+        ["slug", "String"],
+      ]);
+      expect(String(queries.workspace.type)).toBe("Workspace");
+      expect(
+        queries.workspaceExists.args.map(({ name, type }) => [
+          name,
+          String(type),
+        ]),
+      ).toEqual([["slug", "String!"]]);
+      expect(String(queries.workspaceExists.type)).toBe("Boolean!");
+    } finally {
+      await module.close();
+    }
     const workspace = { id: "workspace_1" } as Workspace;
     const user = { id: "user_1" } as User;
     const { resolver, workspaceService } = createResolver({
       getUserWorkspace: vi.fn(async () => workspace),
+      getUserWorkspaceBySlug: vi.fn().mockResolvedValue(workspace),
+      slugExists: vi.fn().mockResolvedValue(true),
     });
-    await expect(resolver.workspace(workspace.id, user)).resolves.toBe(
+    await expect(resolver.workspace(workspace.id, null, user)).resolves.toBe(
       workspace,
     );
     expect(workspaceService.getUserWorkspace).toHaveBeenCalledWith(
@@ -99,7 +135,30 @@ describe("WorkspaceResolver", () => {
       user,
     );
     workspaceService.getUserWorkspace.mockResolvedValueOnce(null);
-    await expect(resolver.workspace(workspace.id, user)).resolves.toBeNull();
+    await expect(
+      resolver.workspace(workspace.id, null, user),
+    ).resolves.toBeNull();
+    await expect(resolver.workspace(null, "acme", user)).resolves.toBe(
+      workspace,
+    );
+    expect(workspaceService.getUserWorkspaceBySlug).toHaveBeenCalledWith(
+      "acme",
+      user,
+    );
+    for (const [id, slug] of [
+      [null, null],
+      [workspace.id, "acme"],
+    ]) {
+      await expect(resolver.workspace(id, slug, user)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    }
+    await expect(resolver.workspaceExists("acme", user)).resolves.toBe(true);
+    expect(workspaceService.slugExists).toHaveBeenCalledWith("acme", user);
+    workspaceService.slugExists.mockRejectedValueOnce(new ForbiddenException());
+    await expect(resolver.workspaceExists("acme", user)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
   it("delegates workspace lifecycle operations to WorkspaceService", async () => {
     const workspace = { id: "workspace_1", name: "Acme" } as Workspace;
@@ -110,7 +169,7 @@ describe("WorkspaceResolver", () => {
       deleteWorkspace: vi.fn(async () => workspace),
     });
     await expect(
-      resolver.createWorkspace(user, { name: "Acme" }),
+      resolver.createWorkspace(user, { name: "Acme", slug: "acme" }),
     ).resolves.toEqual({ id: workspace.id });
     await expect(
       resolver.updateWorkspace(workspace.id, { name: "New" }),
@@ -120,6 +179,7 @@ describe("WorkspaceResolver", () => {
     });
     expect(workspaceService.createWorkspace).toHaveBeenCalledWith(user, {
       name: "Acme",
+      slug: "acme",
     });
     expect(workspaceService.updateWorkspace).toHaveBeenCalledWith(
       workspace.id,

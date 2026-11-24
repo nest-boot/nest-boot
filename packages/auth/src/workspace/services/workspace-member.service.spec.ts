@@ -2160,7 +2160,10 @@ describe("conditional authorization", () => {
                   password: "valid-password",
                 })
               : kind === "workspace"
-                ? workspaceService.createWorkspace(user, { name: "blocked" })
+                ? workspaceService.createWorkspace(user, {
+                    name: "blocked",
+                    slug: "blocked",
+                  })
                 : kind === "member"
                   ? workspaceMemberService.addWorkspaceMember(
                       workspace,

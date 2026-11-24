@@ -5,7 +5,7 @@ import { entities as authEntities, workspaceEntities } from '@nest-boot/auth';
 import { JobEntity } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20261114140546_AuthSchema } from '../src/database/migrations/Migration20261114140546_AuthSchema.js';
+import { Migration20261123162523_Schema } from '../src/database/migrations/Migration20261123162523_Schema.js';
 import { createDatabaseFixture } from './postgres.fixture.js';
 
 it('builds the current example schema from ordered migrations and can roll back and rebuild it', async () => {
@@ -25,16 +25,73 @@ it('builds the current example schema from ordered migrations and can roll back 
   };
   const orm = await MikroORM.init(options);
   try {
-    const migrated = await orm.migrator.up();
-    expect(migrated).toHaveLength(2);
-    expect(migrated[0].name).toBe(Migration00000000000000_Initial.name);
+    expect((await orm.migrator.up()).map(({ name }) => name)).toEqual([
+      Migration00000000000000_Initial.name,
+      Migration20261123162523_Schema.name,
+    ]);
+    const identifiers = await fixture.pool.query(`
+      select table_name, column_name, data_type, is_nullable
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'workspace' and column_name = 'slug'
+      order by table_name
+    `);
+    expect(identifiers.rows).toEqual([
+      {
+        table_name: 'workspace',
+        column_name: 'slug',
+        data_type: 'text',
+        is_nullable: 'NO',
+      },
+    ]);
+    // Bypass all application validation to verify the database boundary itself.
+    const constraint = 'workspace_slug_check';
+    const insert = (value: string) =>
+      fixture.pool.query(
+        'insert into workspace (name, slug) values ($1, $2) returning id',
+        ['Check fixture', value],
+      );
+    for (const value of ['abc', 'a-2', 'z'.repeat(30)]) {
+      await expect(insert(value)).resolves.toHaveProperty('rowCount', 1);
+    }
+    const target = await insert('check-update');
+    for (const value of [
+      '',
+      'ab',
+      'a'.repeat(31),
+      '0user',
+      'Alice',
+      '-alice',
+      'alice-',
+      'alice--team',
+      'alice_team',
+      'alice/team',
+      ' alice',
+      'alice ',
+      'alice\n',
+      'alice\r',
+      'Kelvin',
+      'équipe',
+      'ａｌｉｃｅ',
+    ]) {
+      await expect(insert(value)).rejects.toMatchObject({
+        code: '23514',
+        constraint,
+      });
+      await expect(
+        fixture.pool.query('update workspace set slug = $1 where id = $2', [
+          value,
+          target.rows[0].id,
+        ]),
+      ).rejects.toMatchObject({ code: '23514', constraint });
+    }
     const listed = await MikroORM.init({
       ...options,
       migrations: {
         ...options.migrations,
         migrationsList: [
           Migration00000000000000_Initial,
-          Migration20261114140546_AuthSchema,
+          Migration20261123162523_Schema,
         ],
       },
     });

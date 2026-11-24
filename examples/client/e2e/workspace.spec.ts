@@ -11,6 +11,42 @@ import { uniqueSeed } from "./utils/unique";
 import type { Page } from "@playwright/test";
 
 test.describe("workspace management", () => {
+  test("generates a workspace slug during creation and lets its owner rename it later", async ({
+    page,
+  }) => {
+    const seed = uniqueSeed("generated-workspace");
+    await registerUser(page, {
+      email: `${seed}@example.com`,
+      name: "Workspace owner",
+    });
+    const id = await createFirstWorkspace(page, seed);
+    await page.goto(`/workspaces/${id}/settings`);
+    const slug = page.getByLabel("Workspace slug", { exact: true });
+    await expect(slug).toHaveValue(/^[a-z][a-z0-9]{29}$/);
+    const nextSlug = `workspace-${Date.now()}`;
+    await slug.fill(nextSlug);
+    await page.locator("button[form='workspace-settings-form']").click();
+    await expect(
+      page.getByText("Workspace updated", { exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(slug).toHaveValue(nextSlug);
+    const result = await graphqlRequest<{
+      selectedWorkspace: { id: string; slug: string };
+    }>(
+      page.request,
+      "query { selectedWorkspace { id slug } }",
+      {},
+      { "x-workspace": nextSlug },
+    );
+    expect(result.selectedWorkspace).toEqual({ id, slug: nextSlug });
+    await page.evaluate(() => localStorage.setItem("i18nextLng", "zh"));
+    await page.reload();
+    await expect(
+      page.getByLabel("工作空间网址标识", { exact: true }),
+    ).toHaveValue(nextSlug);
+  });
+
   test("prevents disabling the current member in the UI and through GraphQL", async ({
     page,
   }) => {
@@ -20,7 +56,7 @@ test.describe("workspace management", () => {
       name: "Workspace owner",
     });
     const workspace = await createWorkspaceByApi(page, seed);
-    const headers = { "x-workspace-id": workspace.id };
+    const headers = { "x-workspace": workspace.id };
     const { currentWorkspaceMember } = await graphqlRequest<{
       currentWorkspaceMember: { id: string };
     }>(page.request, "query { currentWorkspaceMember { id } }", {}, headers);
@@ -123,7 +159,7 @@ test.describe("workspace management", () => {
         page.request,
         "query { selectedWorkspace { members(first: 10) { edges { node { roles } } } } }",
         {},
-        { "x-workspace-id": workspaceId },
+        { "x-workspace": workspaceId },
       );
       expect(
         selectedWorkspace.members.edges.filter(({ node }) =>

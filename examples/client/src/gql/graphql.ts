@@ -361,6 +361,7 @@ export type CreateWorkspaceApiKeyResult = {
 
 export type CreateWorkspaceInput = {
   name: Scalars["String"]["input"];
+  slug?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type CreateWorkspaceInvitationInput = {
@@ -800,6 +801,7 @@ export type Query = {
   workspace?: Maybe<Workspace>;
   workspaceApiKeyPermissions: Array<WorkspaceApiKeyPermissionOption>;
   workspaceApiKeys: WorkspaceApiKeyConnection;
+  workspaceExists: Scalars["Boolean"]["output"];
   workspaceInvitation?: Maybe<WorkspaceInvitation>;
   workspaceJob?: Maybe<Job>;
   workspaceJobs: JobConnection;
@@ -889,7 +891,8 @@ export type QueryUsersArgs = {
 };
 
 export type QueryWorkspaceArgs = {
-  id: Scalars["ID"]["input"];
+  id?: InputMaybe<Scalars["ID"]["input"]>;
+  slug?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type QueryWorkspaceApiKeysArgs = {
@@ -900,6 +903,10 @@ export type QueryWorkspaceApiKeysArgs = {
   last?: InputMaybe<Scalars["Int"]["input"]>;
   orderBy?: InputMaybe<WorkspaceApiKeyOrder>;
   query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type QueryWorkspaceExistsArgs = {
+  slug: Scalars["String"]["input"];
 };
 
 export type QueryWorkspaceInvitationArgs = {
@@ -1239,6 +1246,7 @@ export type UpdateWorkspaceApiKeyInput = {
 
 export type UpdateWorkspaceInput = {
   name?: InputMaybe<Scalars["String"]["input"]>;
+  slug?: InputMaybe<Scalars["String"]["input"]>;
 };
 
 export type UpdateWorkspaceMemberInput = {
@@ -1525,6 +1533,7 @@ export type Workspace = {
   invitations: WorkspaceInvitationConnection;
   members: WorkspaceMemberConnection;
   name: Scalars["String"]["output"];
+  slug: Scalars["String"]["output"];
   updatedAt: Scalars["DateTime"]["output"];
 };
 
@@ -2233,6 +2242,7 @@ export type GetCurrentUserFromAuthenticatedRouteQuery = {
     id: string;
     name: string;
     email: string;
+    updatedAt: any;
     permissions: Array<UserPermission>;
   } | null;
   currentSession?: {
@@ -2302,6 +2312,7 @@ export type GetUserApiKeyDetailsQuery = {
       revokedAt?: any | null;
       permissions: Array<UserApiKeyPermission>;
       createdAt: any;
+      updatedAt: any;
       lastUsedAt?: any | null;
       expiresAt?: any | null;
     } | null;
@@ -2747,6 +2758,7 @@ export type GetWorkspaceApiKeyDetailsQuery = {
       revokedAt?: any | null;
       permissions: Array<WorkspaceApiKeyPermission>;
       createdAt: any;
+      updatedAt: any;
       lastUsedAt?: any | null;
       expiresAt?: any | null;
       member?: {
@@ -2897,6 +2909,7 @@ export type GetCurrentWorkspaceFromWorkspaceLayoutQuery = {
     __typename?: "Workspace";
     id: string;
     name: string;
+    slug: string;
     createdAt: any;
     updatedAt: any;
   } | null;
@@ -3012,6 +3025,7 @@ export type GetWorkspaceMemberFromWorkspaceMemberRouteQuery = {
     name: string;
     email?: string | null;
     createdAt: any;
+    updatedAt: any;
   } | null;
   workspaceRoles: Array<{
     __typename?: "WorkspaceRoleOption";
@@ -3486,6 +3500,7 @@ export type ManagedSystemAccountQuery = {
     permissions: Array<SystemAccountPermission>;
     createdById?: string | null;
     createdAt: any;
+    updatedAt: any;
   } | null;
 };
 
@@ -3545,6 +3560,7 @@ export type SystemApiKeyQuery = {
     prefix?: string | null;
     start?: string | null;
     createdAt: any;
+    updatedAt: any;
     lastUsedAt?: any | null;
     expiresAt?: any | null;
     systemAccount?: {
@@ -5821,6 +5837,7 @@ export const GetCurrentUserFromAuthenticatedRouteDocument = {
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "email" } },
+                { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
               ],
             },
@@ -6017,6 +6034,10 @@ export const GetUserApiKeyDetailsDocument = {
                       {
                         kind: "Field",
                         name: { kind: "Name", value: "createdAt" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "updatedAt" },
                       },
                       {
                         kind: "Field",
@@ -8130,6 +8151,10 @@ export const GetWorkspaceApiKeyDetailsDocument = {
                       },
                       {
                         kind: "Field",
+                        name: { kind: "Name", value: "updatedAt" },
+                      },
+                      {
+                        kind: "Field",
                         name: { kind: "Name", value: "lastUsedAt" },
                       },
                       {
@@ -8928,6 +8953,7 @@ export const GetCurrentWorkspaceFromWorkspaceLayoutDocument = {
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "id" } },
                 { kind: "Field", name: { kind: "Name", value: "name" } },
+                { kind: "Field", name: { kind: "Name", value: "slug" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                 { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
               ],
@@ -9467,6 +9493,7 @@ export const GetWorkspaceMemberFromWorkspaceMemberRouteDocument = {
                 { kind: "Field", name: { kind: "Name", value: "name" } },
                 { kind: "Field", name: { kind: "Name", value: "email" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
               ],
             },
           },
@@ -11547,6 +11574,7 @@ export const ManagedSystemAccountDocument = {
                 { kind: "Field", name: { kind: "Name", value: "permissions" } },
                 { kind: "Field", name: { kind: "Name", value: "createdById" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
               ],
             },
           },
@@ -11852,6 +11880,7 @@ export const SystemApiKeyDocument = {
                 { kind: "Field", name: { kind: "Name", value: "prefix" } },
                 { kind: "Field", name: { kind: "Name", value: "start" } },
                 { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                 { kind: "Field", name: { kind: "Name", value: "lastUsedAt" } },
                 { kind: "Field", name: { kind: "Name", value: "expiresAt" } },
               ],

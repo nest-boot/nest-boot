@@ -1,18 +1,31 @@
 import { t } from "i18next";
 import { useMutation } from "@apollo/client/react";
-import { useForm } from "@tanstack/react-form";
+import { z } from "zod";
 import {
   createFileRoute,
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { useForm } from "@tanstack/react-form";
 import { useSelectedWorkspaceContext } from "../contexts/selected-workspace-context";
+import {
+  defaultFormOptions,
+  handleFieldBlur,
+  resetFormAfterSave,
+  submitForm,
+} from "@/lib/form";
+
+import { useFormChanges, useSyncFormChanges } from "@/hooks/use-form-changes";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { workspaceSearchSchema } from "@/schemas/workspace-search-schema";
 import { workspacesResourceKey } from "@/lib/resource-keys";
+import {
+  createUrlIdentifierSchema,
+  urlIdentifierInput,
+} from "@/lib/url-identifier";
 import {
   PageLayout,
   PageLayoutSection,
@@ -33,9 +46,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
-import { Input } from "@/components/thread-ui/input";
+
 import { graphql } from "@/gql";
 import { createAbilitySubject } from "@/lib/ability";
+import { SubmitButton } from "@/components/form/submit-button";
+import { Input } from "@/components/thread-ui/input";
+import { getFormErrorMessage } from "@/lib/form-errors";
 
 const UPDATE_WORKSPACE_FROM_SETTINGS_ROUTE = graphql(`
   mutation updateWorkspaceFromSettingsRoute(
@@ -103,22 +119,49 @@ function SettingsComponent() {
   const [leaveWorkspace, { loading: leaving }] = useMutation(
     LEAVE_WORKSPACE_FROM_SETTINGS_ROUTE,
   );
+  const workspaceChanges = useFormChanges(
+    {
+      name: workspace.name.trim(),
+      slug: workspace.slug,
+    },
+    {
+      revision: workspace.updatedAt,
+      normalize: (values) => ({
+        ...values,
+        name: values.name.trim(),
+        slug: values.slug.trim(),
+      }),
+    },
+  );
   const form = useForm({
-    defaultValues: {
-      name: workspace.name,
+    ...defaultFormOptions,
+    defaultValues: workspaceChanges.defaultValues,
+    validators: {
+      onDynamic: z.object({
+        name: z
+          .string()
+          .trim()
+          .min(1, t("workspace:settings.form.name.required"))
+          .max(255, t("common:validation.max_length", { max: 255 })),
+        slug: createUrlIdentifierSchema(
+          t("workspace:settings.form.slug.format"),
+        ),
+      }),
     },
     onSubmit: async ({ value }) => {
+      const values = workspaceChanges.normalize(value);
+      const input = workspaceChanges.getChanges(values);
+      if (!Object.keys(input).length) return;
       try {
         await updateWorkspace({
           variables: {
             id: workspace.id,
-            input: {
-              name: value.name.trim(),
-            },
+            input,
           },
         });
         await refreshAfterMutation(() => router.invalidate());
-        form.reset({ name: value.name.trim() });
+        workspaceChanges.accept(values);
+        resetFormAfterSave(form, value, values);
         toast.add({ type: "success", title: t("workspace:settings.saved") });
       } catch (error) {
         toast.add({
@@ -131,6 +174,7 @@ function SettingsComponent() {
       }
     },
   });
+  useSyncFormChanges(form, workspaceChanges);
 
   const handleDelete = async () => {
     try {
@@ -197,44 +241,48 @@ function SettingsComponent() {
             <CardContent>
               <form
                 id="workspace-settings-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  form.handleSubmit();
+                noValidate
+                onSubmit={(event) => {
+                  void submitForm(event, form);
                 }}
               >
                 <FormLayout>
                   <FormLayoutItem>
-                    <form.Field
-                      name="name"
-                      validators={{
-                        onChange: ({ value }) =>
-                          !value.trim()
-                            ? t("workspace:settings.form.name.required")
-                            : undefined,
-                      }}
-                    >
+                    <form.Field name="name">
                       {(field) => (
                         <Input
+                          name={field.name}
+                          value={field.state.value}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          onBlur={() => handleFieldBlur(field)}
+                          error={getFormErrorMessage(field.state.meta.errors)}
                           id="name"
                           label={t("workspace:settings.form.name.label")}
                           placeholder={t(
                             "workspace:settings.form.name.placeholder",
                           )}
+                        />
+                      )}
+                    </form.Field>
+                  </FormLayoutItem>
+                  <FormLayoutItem>
+                    <form.Field name="slug">
+                      {(field) => (
+                        <Input
+                          name={field.name}
                           value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          onBlur={field.handleBlur}
-                          error={
-                            field.state.meta.errors.length > 0
-                              ? field.state.meta.errors
-                                  .map((error: any) =>
-                                    typeof error === "string"
-                                      ? error
-                                      : error?.message || error,
-                                  )
-                                  .join(", ")
-                              : undefined
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
                           }
+                          onBlur={() => handleFieldBlur(field)}
+                          error={getFormErrorMessage(field.state.meta.errors)}
+                          id="slug"
+                          label={t("workspace:settings.form.slug.label")}
+                          title={t("workspace:settings.form.slug.format")}
+                          required
+                          {...urlIdentifierInput}
                         />
                       )}
                     </form.Field>
@@ -243,24 +291,14 @@ function SettingsComponent() {
               </form>
             </CardContent>
             <CardFooter>
-              <form.Subscribe
-                selector={(state) => [
-                  state.isDirty,
-                  state.isSubmitting,
-                  state.canSubmit,
-                ]}
+              <SubmitButton
+                formApi={form}
+                form="workspace-settings-form"
+                requireDirty
+                disabled={!canUpdateWorkspace}
               >
-                {([isDirty, isSubmitting, canSubmit]) => (
-                  <Button
-                    type="submit"
-                    form="workspace-settings-form"
-                    disabled={!canUpdateWorkspace || !isDirty || !canSubmit}
-                    loading={isSubmitting}
-                  >
-                    {t("action.save")}
-                  </Button>
-                )}
-              </form.Subscribe>
+                {t("action.save")}
+              </SubmitButton>
             </CardFooter>
           </Card>
         </PageLayoutSection>

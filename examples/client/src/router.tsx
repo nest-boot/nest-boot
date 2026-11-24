@@ -55,14 +55,14 @@ export const getRouter = () => {
             location.pathname.match(/^\/workspaces\/(\d+)/)?.[1];
 
           if (workspaceId) {
-            document.cookie = `workspace_id=${encodeURIComponent(workspaceId)}; path=/; max-age=31536000; samesite=lax`;
+            document.cookie = `workspace=${encodeURIComponent(workspaceId)}; path=/; max-age=31536000; samesite=lax`;
           }
 
           return {
             headers: {
               ...headers,
-              ...(workspaceId && !("x-workspace-id" in headers)
-                ? { "x-workspace-id": workspaceId }
+              ...(workspaceId && !("x-workspace" in headers)
+                ? { "x-workspace": workspaceId }
                 : {}),
               "X-Timezone-Offset": String(new Date().getTimezoneOffset()),
             },

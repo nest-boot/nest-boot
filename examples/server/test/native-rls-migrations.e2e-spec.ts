@@ -19,7 +19,7 @@ import { getDatabaseConfig } from '@nest-boot/database';
 import { entities as queueEntities } from '@nest-boot/queue-api';
 
 import { Migration00000000000000_Initial } from '../src/database/migrations/Migration00000000000000_Initial.js';
-import { Migration20261114140546_AuthSchema } from '../src/database/migrations/Migration20261114140546_AuthSchema.js';
+import { Migration20261123162523_Schema } from '../src/database/migrations/Migration20261123162523_Schema.js';
 
 describe('example native RLS migrations with PGlite', () => {
   let orm: MikroORM;
@@ -50,7 +50,7 @@ describe('example native RLS migrations with PGlite', () => {
         migrations: {
           migrationsList: [
             Migration00000000000000_Initial,
-            Migration20261114140546_AuthSchema,
+            Migration20261123162523_Schema,
           ],
           path: './src/database/migrations',
           pathTs: './src/database/migrations',
@@ -245,7 +245,7 @@ describe('example native RLS migrations with PGlite', () => {
 
   it('enforces the example policy and grants with an anonymous workspace session', async () => {
     const admin = orm.em.fork();
-    await admin.insert(Workspace, { name: 'Example' });
+    await admin.insert(Workspace, { name: 'Example', slug: 'example' });
     const em = orm.em.fork({
       session: {
         role: 'anonymous',

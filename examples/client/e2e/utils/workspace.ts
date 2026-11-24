@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { expect } from "@playwright/test";
 import { graphqlRequest } from "./graphql";
 import type { Page } from "@playwright/test";
@@ -9,6 +11,7 @@ export async function createFirstWorkspace(page: Page, name: string) {
   await page.getByRole("link", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/user\/workspaces\/create$/);
   await page.getByLabel("Name", { exact: true }).fill(name);
+  await expect(page.locator("#slug")).toHaveCount(0);
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page).toHaveURL(/\/workspaces\/\d+$/);
 
@@ -39,7 +42,7 @@ export async function addWorkspaceMemberByApi(
       },
     },
     {
-      "x-workspace-id": workspaceId,
+      "x-workspace": workspaceId,
     },
   );
 
@@ -47,6 +50,7 @@ export async function addWorkspaceMemberByApi(
 }
 
 export async function createWorkspaceByApi(page: Page, name: string) {
+  const slug = newWorkspaceSlug();
   const data = await graphqlRequest<{
     createWorkspace: {
       id: string;
@@ -60,10 +64,14 @@ export async function createWorkspaceByApi(page: Page, name: string) {
         }
       }
     `,
-    { input: { name } },
+    { input: { name, slug } },
   );
 
-  return { id: data.createWorkspace.id, name };
+  return { id: data.createWorkspace.id, name, slug };
+}
+
+function newWorkspaceSlug() {
+  return `workspace-${randomUUID().slice(0, 18)}`;
 }
 
 function currentWorkspaceId(page: Page) {

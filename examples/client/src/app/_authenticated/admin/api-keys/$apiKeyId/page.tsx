@@ -1,7 +1,6 @@
 import { useMutation } from "@apollo/client/react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { t } from "i18next";
-import { getApiKeyUpdateInput } from "@/lib/api-key-update";
 import { adminApiKeysResourceKey } from "@/lib/resource-keys";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { SystemApiKeyPermission } from "@/gql/graphql";
@@ -76,7 +75,7 @@ function Details() {
           ? apiKey.systemAccount.name
           : undefined
       }
-      key={apiKey.id + apiKey.revokedAt + apiKey.permissions.join()}
+      key={apiKey.id}
       apiKey={apiKey}
       canWrite={ability.can(
         "write",
@@ -97,11 +96,11 @@ function Details() {
       permissionValues={Object.values(SystemApiKeyPermission)}
       permissionOptions={getPermissionOptions(permissionOptions)}
       permissionsHint={t("admin:system_accounts.key_permissions_hint")}
-      onSave={async (input) => {
+      onSave={async (_values, changes) => {
         await update({
           variables: {
             id: apiKey.id,
-            input: getApiKeyUpdateInput(apiKey, input),
+            input: changes,
           },
         });
         await refreshAfterMutation(() => router.invalidate());

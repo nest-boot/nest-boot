@@ -1235,7 +1235,7 @@ describe("permission checks", () => {
       const customFactory = vi.fn(
         (_data: unknown, context: ExecutionContext) =>
           context.switchToHttp().getRequest<Request>().headers[
-            "x-workspace-id"
+            "x-workspace"
           ] === workspace.id
             ? workspace
             : null,
@@ -1283,7 +1283,7 @@ describe("permission checks", () => {
           guard.canActivate(
             createContext(
               {
-                headers: { "x-workspace-id": workspace.id },
+                headers: { "x-workspace": workspace.id },
                 params: { id: "post-1" },
               } as unknown as Request,
               {} as Response,

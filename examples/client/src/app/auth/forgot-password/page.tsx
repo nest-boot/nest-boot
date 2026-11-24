@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm, useStore } from "@tanstack/react-form";
+import { useForm, useSelector } from "@tanstack/react-form";
 import { useMutation } from "@apollo/client/react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { MailCheck } from "lucide-react";
@@ -7,10 +7,11 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { AuthPageShell } from "../components/auth-page-shell";
+import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
 import { getFormErrorMessage } from "@/lib/form-errors";
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Button } from "@/components/thread-ui/button";
-import { Input } from "@/components/thread-ui/input";
+
 import {
   Card,
   CardContent,
@@ -21,6 +22,8 @@ import {
 } from "@/components/ui/card";
 import { FieldDescription, FieldError } from "@/components/ui/field";
 import { graphql } from "@/gql";
+import { SubmitButton } from "@/components/form/submit-button";
+import { Input } from "@/components/thread-ui/input";
 
 const REQUEST_PASSWORD_RESET_FROM_FORGOT_PASSWORD = graphql(`
   mutation requestPasswordResetFromForgotPassword(
@@ -44,21 +47,24 @@ function ForgotPasswordComponent() {
   const [submitted, setSubmitted] = useState(false);
 
   const form = useForm({
+    ...defaultFormOptions,
     defaultValues: { email: "" },
     validators: {
-      onSubmit: z.object({
-        email: z.string().email(t("auth:form.email.invalid")),
+      onDynamic: z.object({
+        email: z
+          .string()
+          .trim()
+          .email(t("auth:form.email.invalid"))
+          .max(255, t("auth:form.email.invalid")),
       }),
     },
-    listeners: {
-      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
-    },
+
     onSubmit: async ({ value, formApi }) => {
       try {
         const result = await requestPasswordReset({
           variables: {
             input: {
-              email: value.email,
+              email: value.email.trim(),
               redirectTo: `${window.location.origin}/auth/reset-password`,
             },
           },
@@ -82,8 +88,8 @@ function ForgotPasswordComponent() {
       }
     },
   });
-  const loading = useStore(form.store, (state) => state.isSubmitting);
-  const error = useStore(form.store, (state) =>
+
+  const error = useSelector(form.store, (state) =>
     getFormErrorMessage(state.errors),
   );
 
@@ -108,11 +114,7 @@ function ForgotPasswordComponent() {
               noValidate
               id="forgot-password-form"
               onSubmit={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (form.state.isSubmitting) return;
-                form.setErrorMap({ onSubmit: undefined });
-                form.handleSubmit();
+                void submitForm(event, form);
               }}
             >
               <FormLayout>
@@ -120,16 +122,18 @@ function ForgotPasswordComponent() {
                   <form.Field name="email">
                     {(field) => (
                       <Input
+                        name={field.name}
+                        value={field.state.value}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        onBlur={() => handleFieldBlur(field)}
+                        error={getFormErrorMessage(field.state.meta.errors)}
                         id="forgot-password-email"
                         type="email"
                         autoComplete="email"
                         label={t("auth:form.email.label")}
                         placeholder={t("auth:form.email.placeholder")}
-                        value={field.state.value}
-                        onChange={(event) =>
-                          field.handleChange(event.target.value)
-                        }
-                        error={getFormErrorMessage(field.state.meta.errors)}
                       />
                     )}
                   </form.Field>
@@ -155,14 +159,13 @@ function ForgotPasswordComponent() {
           ) : (
             <FormLayout className="w-full">
               <FormLayoutItem>
-                <Button
-                  type="submit"
+                <SubmitButton
+                  formApi={form}
                   form="forgot-password-form"
                   className="w-full"
-                  loading={loading}
                 >
                   {t("auth:passwordReset.sendLink")}
-                </Button>
+                </SubmitButton>
               </FormLayoutItem>
 
               <FormLayoutItem>

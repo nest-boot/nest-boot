@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useForm, useStore } from "@tanstack/react-form";
+import { useForm, useSelector } from "@tanstack/react-form";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MonitorSmartphone } from "lucide-react";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
 import { usePasswordPolicy } from "@/hooks/use-password-policy";
 import { refreshAfterMutation } from "@/lib/refresh-after-mutation";
 import { getFormErrorMessage } from "@/lib/form-errors";
@@ -19,7 +20,7 @@ import { toast } from "@/components/thread-ui/toast";
 
 import { alertDialog } from "@/components/thread-ui/alert-dialog";
 import { Button } from "@/components/thread-ui/button";
-import { Input } from "@/components/thread-ui/input";
+
 import { Page } from "@/components/thread-ui/page";
 import {
   Card,
@@ -32,6 +33,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { graphql } from "@/gql";
+import { SubmitButton } from "@/components/form/submit-button";
+import { Input } from "@/components/thread-ui/input";
 
 const CHANGE_PASSWORD_FROM_USER_SECURITY = graphql(`
   mutation changePasswordFromUserSecurity($input: AuthChangePasswordInput!) {
@@ -246,16 +249,15 @@ function UserSecurityComponent() {
   };
 
   const passwordForm = useForm({
+    ...defaultFormOptions,
     defaultValues: {
       currentPassword: "",
       newPassword: "",
       confirmPassword: "",
       revokeOtherSessions: true,
     },
-    validators: { onSubmit: createChangePasswordSchema(passwordSchema) },
-    listeners: {
-      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
-    },
+    validators: { onDynamic: createChangePasswordSchema(passwordSchema) },
+
     onSubmit: async ({ value, formApi }) => {
       try {
         const result = await changePassword({
@@ -290,8 +292,8 @@ function UserSecurityComponent() {
       }
     },
   });
-  const loading = useStore(passwordForm.store, (state) => state.isSubmitting);
-  const error = useStore(passwordForm.store, (state) =>
+
+  const error = useSelector(passwordForm.store, (state) =>
     getFormErrorMessage(state.errors),
   );
 
@@ -358,15 +360,14 @@ function UserSecurityComponent() {
   };
 
   const deleteForm = useForm({
+    ...defaultFormOptions,
     defaultValues: { password: "" },
     validators: {
-      onSubmit: z.object({
+      onDynamic: z.object({
         password: z.string().min(1, t("user:security.form.current_required")),
       }),
     },
-    listeners: {
-      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
-    },
+
     onSubmit: async ({ value, formApi }) => {
       const confirmed = await alertDialog({
         title: t("user:security.delete.confirm_title"),
@@ -403,15 +404,12 @@ function UserSecurityComponent() {
       }
     },
   });
-  const deletingUser = useStore(
-    deleteForm.store,
-    (state) => state.isSubmitting,
-  );
-  const deletePassword = useStore(
+
+  const deletePassword = useSelector(
     deleteForm.store,
     (state) => state.values.password,
   );
-  const deleteError = useStore(deleteForm.store, (state) =>
+  const deleteError = useSelector(deleteForm.store, (state) =>
     getFormErrorMessage(state.errors),
   );
 
@@ -435,11 +433,7 @@ function UserSecurityComponent() {
                 noValidate
                 id="user-password-form"
                 onSubmit={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (passwordForm.state.isSubmitting) return;
-                  passwordForm.setErrorMap({ onSubmit: undefined });
-                  passwordForm.handleSubmit();
+                  void submitForm(event, passwordForm);
                 }}
               >
                 <FormLayout>
@@ -447,15 +441,17 @@ function UserSecurityComponent() {
                     <passwordForm.Field name="currentPassword">
                       {(field) => (
                         <Input
-                          id="current-password"
-                          type="password"
-                          autoComplete="current-password"
-                          label={t("user:security.form.current_password")}
+                          name={field.name}
                           value={field.state.value}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
+                          onBlur={() => handleFieldBlur(field)}
                           error={getFormErrorMessage(field.state.meta.errors)}
+                          id="current-password"
+                          type="password"
+                          autoComplete="current-password"
+                          label={t("user:security.form.current_password")}
                         />
                       )}
                     </passwordForm.Field>
@@ -464,15 +460,17 @@ function UserSecurityComponent() {
                     <passwordForm.Field name="newPassword">
                       {(field) => (
                         <Input
-                          id="new-password"
-                          type="password"
-                          autoComplete="new-password"
-                          label={t("user:security.form.new_password")}
+                          name={field.name}
                           value={field.state.value}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
+                          onBlur={() => handleFieldBlur(field)}
                           error={getFormErrorMessage(field.state.meta.errors)}
+                          id="new-password"
+                          type="password"
+                          autoComplete="new-password"
+                          label={t("user:security.form.new_password")}
                         />
                       )}
                     </passwordForm.Field>
@@ -481,15 +479,17 @@ function UserSecurityComponent() {
                     <passwordForm.Field name="confirmPassword">
                       {(field) => (
                         <Input
-                          id="confirm-password"
-                          type="password"
-                          autoComplete="new-password"
-                          label={t("user:security.form.confirm_password")}
+                          name={field.name}
                           value={field.state.value}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
+                          onBlur={() => handleFieldBlur(field)}
                           error={getFormErrorMessage(field.state.meta.errors)}
+                          id="confirm-password"
+                          type="password"
+                          autoComplete="new-password"
+                          label={t("user:security.form.confirm_password")}
                         />
                       )}
                     </passwordForm.Field>
@@ -519,9 +519,9 @@ function UserSecurityComponent() {
               </form>
             </CardContent>
             <CardFooter>
-              <Button type="submit" form="user-password-form" loading={loading}>
+              <SubmitButton formApi={passwordForm} form="user-password-form">
                 {t("user:security.form.submit")}
-              </Button>
+              </SubmitButton>
             </CardFooter>
           </Card>
         </PageLayoutSection>
@@ -765,11 +765,7 @@ function UserSecurityComponent() {
                 noValidate
                 id="user-delete-form"
                 onSubmit={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (deleteForm.state.isSubmitting) return;
-                  deleteForm.setErrorMap({ onSubmit: undefined });
-                  deleteForm.handleSubmit();
+                  void submitForm(event, deleteForm);
                 }}
               >
                 <FormLayout>
@@ -777,15 +773,17 @@ function UserSecurityComponent() {
                     <deleteForm.Field name="password">
                       {(field) => (
                         <Input
-                          id="delete-account-password"
-                          type="password"
-                          autoComplete="current-password"
-                          label={t("user:security.delete.password")}
+                          name={field.name}
                           value={field.state.value}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
+                          onBlur={() => handleFieldBlur(field)}
                           error={getFormErrorMessage(field.state.meta.errors)}
+                          id="delete-account-password"
+                          type="password"
+                          autoComplete="current-password"
+                          label={t("user:security.delete.password")}
                         />
                       )}
                     </deleteForm.Field>
@@ -799,15 +797,14 @@ function UserSecurityComponent() {
               </form>
             </CardContent>
             <CardFooter>
-              <Button
-                type="submit"
+              <SubmitButton
+                formApi={deleteForm}
                 form="user-delete-form"
                 variant="destructive"
                 disabled={!deletePassword}
-                loading={deletingUser}
               >
                 {t("user:security.delete.action")}
-              </Button>
+              </SubmitButton>
             </CardFooter>
           </Card>
         </PageLayoutSection>

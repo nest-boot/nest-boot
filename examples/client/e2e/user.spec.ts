@@ -4,7 +4,7 @@ import { registerUser, testPassword } from "./utils/auth";
 import { graphqlRequest } from "./utils/graphql";
 import { waitForEmailUrl } from "./utils/mailpit";
 import { uniqueSeed } from "./utils/unique";
-import { createFirstWorkspace } from "./utils/workspace";
+import { createFirstWorkspace, createWorkspaceByApi } from "./utils/workspace";
 import type { Page } from "@playwright/test";
 
 test.describe("user pages", () => {
@@ -595,26 +595,6 @@ test.describe("user pages", () => {
   });
 });
 
-async function createWorkspaceByApi(page: Page, name: string) {
-  return (
-    await graphqlRequest<{
-      createWorkspace: { id: string };
-    }>(
-      page.request,
-      /* GraphQL */ `
-        mutation CreateWorkspaceForUserWorkspaceInvitationTest(
-          $input: CreateWorkspaceInput!
-        ) {
-          createWorkspace(input: $input) {
-            id
-          }
-        }
-      `,
-      { input: { name } },
-    )
-  ).createWorkspace;
-}
-
 async function createWorkspaceInvitationByApi(
   page: Page,
   workspaceId: string,
@@ -640,7 +620,7 @@ async function createWorkspaceInvitationByApi(
           roles: ["MEMBER"],
         },
       },
-      { "x-workspace-id": workspaceId },
+      { "x-workspace": workspaceId },
     )
   ).createWorkspaceInvitation;
 }

@@ -1,11 +1,12 @@
 import { useId, useState } from "react";
 import { useMutation } from "@apollo/client/react";
-import { useForm, useStore } from "@tanstack/react-form";
+import { useForm, useSelector } from "@tanstack/react-form";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Check, Copy } from "lucide-react";
 import z from "zod";
+import { defaultFormOptions, handleFieldBlur, submitForm } from "@/lib/form";
 import { useAuthUserContext } from "@/app/_authenticated/contexts/auth-user-context";
 import { getWorkspaceMembersResourceKey } from "@/lib/resource-keys";
 import { workspaceMemberSearchSchema } from "@/schemas/workspace-member-search-schema";
@@ -14,7 +15,7 @@ import { useResourceNavigation } from "@/hooks/use-resource-navigation";
 import { Link } from "@/components/link";
 import { RoleCheckboxGroup } from "@/components/role-checkbox-group";
 import { Button } from "@/components/thread-ui/button";
-import { Input } from "@/components/thread-ui/input";
+
 import { FormLayout, FormLayoutItem } from "@/components/thread-ui/form-layout";
 import { Page } from "@/components/thread-ui/page";
 import {
@@ -36,6 +37,8 @@ import { graphql } from "@/gql";
 import { WorkspaceRole } from "@/gql/graphql";
 import { isAccessDenied } from "@/lib/auth-errors";
 import { getFormErrorMessage } from "@/lib/form-errors";
+import { SubmitButton } from "@/components/form/submit-button";
+import { Input } from "@/components/thread-ui/input";
 
 const GET_ROLES_FROM_INVITE_WORKSPACE_MEMBER_ROUTE = graphql(`
   query getRolesFromInviteWorkspaceMemberRoute {
@@ -70,7 +73,7 @@ export const Route = createFileRoute(
     const { data } = await context.apolloClient
       .query({
         query: GET_ROLES_FROM_INVITE_WORKSPACE_MEMBER_ROUTE,
-        context: { headers: { "x-workspace-id": params.workspaceId } },
+        context: { headers: { "x-workspace": params.workspaceId } },
         fetchPolicy: "network-only",
       })
       .catch((error: unknown) => {
@@ -125,9 +128,10 @@ function InviteWorkspaceMemberForm() {
   };
 
   const form = useForm({
+    ...defaultFormOptions,
     defaultValues: { email: "", roles: [] as Array<WorkspaceRole> },
     validators: {
-      onSubmit: z.object({
+      onDynamic: z.object({
         email: z
           .string()
           .trim()
@@ -145,9 +149,7 @@ function InviteWorkspaceMemberForm() {
           ),
       }),
     },
-    listeners: {
-      onChange: ({ formApi }) => formApi.setErrorMap({ onSubmit: undefined }),
-    },
+
     onSubmit: async ({ value, formApi }) => {
       if (!canInvite || inviteLink) return;
       try {
@@ -174,8 +176,8 @@ function InviteWorkspaceMemberForm() {
       }
     },
   });
-  const submitting = useStore(form.store, (state) => state.isSubmitting);
-  const error = useStore(form.store, (state) =>
+  const submitting = useSelector(form.store, (state) => state.isSubmitting);
+  const error = useSelector(form.store, (state) =>
     getFormErrorMessage(state.errors),
   );
 
@@ -241,11 +243,7 @@ function InviteWorkspaceMemberForm() {
                   id={formId}
                   noValidate
                   onSubmit={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (form.state.isSubmitting || !canInvite) return;
-                    form.setErrorMap({ onSubmit: undefined });
-                    form.handleSubmit();
+                    void submitForm(event, form);
                   }}
                 >
                   <FormLayout>
@@ -253,17 +251,19 @@ function InviteWorkspaceMemberForm() {
                       <form.Field name="email">
                         {(field) => (
                           <Input
+                            name={field.name}
+                            value={field.state.value}
+                            onChange={(event) =>
+                              field.handleChange(event.target.value)
+                            }
+                            onBlur={() => handleFieldBlur(field)}
+                            error={getFormErrorMessage(field.state.meta.errors)}
                             type="email"
                             label={t("workspace-member:invite.email_label")}
                             placeholder={t(
                               "workspace-member:invite.email_placeholder",
                             )}
-                            value={field.state.value}
-                            onChange={(event) =>
-                              field.handleChange(event.target.value)
-                            }
                             disabled={submitting || !canInvite}
-                            error={getFormErrorMessage(field.state.meta.errors)}
                           />
                         )}
                       </form.Field>
@@ -302,14 +302,13 @@ function InviteWorkspaceMemberForm() {
                 </form>
               </CardContent>
               <CardFooter>
-                <Button
-                  type="submit"
+                <SubmitButton
+                  formApi={form}
                   form={formId}
-                  loading={submitting}
                   disabled={!canInvite || grantableOptions.length === 0}
                 >
                   {t("workspace-member:invite.confirm_and_copy")}
-                </Button>
+                </SubmitButton>
               </CardFooter>
             </Card>
           )}
