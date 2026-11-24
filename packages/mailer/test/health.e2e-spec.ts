@@ -100,7 +100,7 @@ describe("Mailer health HTTP integration", () => {
     if (!app) {
       throw new Error("HTTP application has not been initialized");
     }
-    const response = await fetch(`${await app.getUrl()}/api/health`);
+    const response = await fetch(`${await app.getUrl()}/health`);
     const body: unknown = await response.json();
     return { status: response.status, body };
   }

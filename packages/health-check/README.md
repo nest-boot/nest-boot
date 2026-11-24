@@ -2,7 +2,7 @@
 
 Restores the original Nest Boot health check design on NestJS 12 and Terminus 12:
 application modules register indicators, and one service executes all registered
-checks through Terminus. Built-in middleware exposes `GET /api/health`.
+checks through Terminus. Built-in middleware exposes `GET /health`.
 
 Import `HealthCheckModule` once in the application root. Its registry and check
 service are global providers available to other application modules. Importing the
@@ -44,23 +44,29 @@ Register the feature provider in its module. Indicators may instead call Terminu
 built-in checks; their providers are configured through `TerminusModule` in the
 feature module as usual.
 
-`GET /api/health` reads the current registry on every request and preserves
+`GET /health` reads the current registry on every request and preserves
 Terminus's result and exceptions: healthy checks return HTTP 200, and unhealthy
 checks return HTTP 503. With no registered indicators, Terminus returns an empty
 healthy result. `HealthCheckService.check()` remains available for programmatic
 checks.
 
-The middleware follows Nest's route prefix configuration. If your application
-sets a global prefix, exclude this route to keep `/api/health` and
-avoid an extra prefix (for example, `/api/api/health`):
+The endpoint follows Nest's global prefix configuration. Without a global prefix,
+its URL is `/health`. With `app.setGlobalPrefix("api")`, its URL is `/api/health`;
+with `app.setGlobalPrefix("v2")`, it is `/v2/health`.
+
+To expose `/health` outside the global prefix, use Nest's standard exclusion:
 
 ```ts
 import { RequestMethod } from "@nestjs/common";
 
 app.setGlobalPrefix("api", {
-  exclude: [{ path: "api/health", method: RequestMethod.GET }],
+  exclude: [{ path: "health", method: RequestMethod.GET }],
 });
 ```
+
+Applications upgrading from the fixed `/api/health` route should set
+`app.setGlobalPrefix("api")` or update their probe URL to `/health`. Remove any
+previous `api/health` exclusion.
 
 The health middleware ends the response before Nest's guards,
 interceptors, pipes, and controller handling. Responses include

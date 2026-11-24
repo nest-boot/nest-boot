@@ -185,7 +185,7 @@ describe("registered health checks", () => {
     new HealthCheckModule(manager, middleware);
     const configuration = manager.middlewareConfigMap.get(middleware);
     expect(configuration?.routes).toEqual([
-      { path: "api/health", method: RequestMethod.GET },
+      { path: "health", method: RequestMethod.GET },
     ]);
     const next = vi.fn();
     await configuration?.middleware({}, {}, next);

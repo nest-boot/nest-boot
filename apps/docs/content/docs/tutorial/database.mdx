@@ -163,7 +163,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-`GET /api/health` returns HTTP 200 with `details.database.status: "up"` when
+`GET /health` returns HTTP 200 with `details.database.status: "up"` when
 the connection responds, or HTTP 503 when it fails or exceeds the indicator's
 default 1,000 ms timeout. Pending automatic probes are shared across requests
 until the database operation settles. Subsequent requests perform a new probe,

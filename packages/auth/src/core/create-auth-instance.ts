@@ -2,7 +2,8 @@ import type { MikroORM } from "@mikro-orm/core";
 import type { HashService } from "@nest-boot/hash";
 import type { Mailer } from "@nest-boot/mailer";
 import { RequestContext } from "@nest-boot/request-context";
-import { betterAuth, type BetterAuthOptions } from "better-auth";
+import type { ApplicationConfig } from "@nestjs/core";
+import { betterAuth, type BetterAuthOptions, getBaseURL } from "better-auth";
 import { genericOAuth } from "better-auth/plugins";
 
 import { resolveApiKeyPermissionCatalog } from "../api-key/utils/api-key-permissions.util.js";
@@ -38,6 +39,7 @@ import { createOidcConfig } from "./utils/create-oidc-config.js";
 import { createSocialProvidersConfig } from "./utils/create-social-providers-config.js";
 import { createUserConfig } from "./utils/create-user-config.js";
 import { isEnvTrue } from "./utils/is-env-true.js";
+import { resolveAuthBasePath } from "./utils/resolve-auth-base-path.util.js";
 import { resolveAuthFeatures } from "./utils/resolve-auth-features.util.js";
 import { resolveSecret } from "./utils/resolve-secret.js";
 import { splitAuthProviders } from "./utils/split-auth-providers.js";
@@ -102,9 +104,14 @@ export function resolveBetterAuthOptions(
     },
   );
 
+  const baseURL =
+    options.baseURL ?? process.env.AUTH_URL ?? process.env.APP_URL;
   const betterAuthOptions: BetterAuthOptions = {
     appName: options.appName ?? process.env.APP_NAME,
-    baseURL: options.baseURL ?? process.env.AUTH_URL ?? process.env.APP_URL,
+    // Resolve upstream URL environment fallbacks before validating the mount.
+    // Use the root path here so the actual auth path is applied only at initialization.
+    baseURL: (getBaseURL(baseURL, "/") ?? baseURL)?.replace(/\/+$/g, ""),
+    basePath: resolveAuthBasePath(options.basePath),
     ...(options.account ? { account: options.account } : {}),
     secret,
     emailAndPassword: emailAndPasswordConfig,
@@ -144,6 +151,7 @@ export function resolveBetterAuthOptions(
  * @param hashService - Service for hashing and verifying passwords.
  * @param userDeletionService - Service that deletes users and their related records.
  * @param authContext - Current request authentication context.
+ * @param applicationConfig - Host application's prefix, configured before initialization.
  * @returns Configured Better Auth instance.
  * @internal
  */
@@ -154,17 +162,86 @@ export function createAuthInstance(
   hashService: HashService,
   userDeletionService: UserDeletionService,
   authContext: AuthContext,
+  applicationConfig?: ApplicationConfig,
 ): ReturnType<typeof betterAuth> {
-  return betterAuth(
-    resolveBetterAuthOptions(
-      options,
-      orm,
-      mailer,
-      hashService,
-      userDeletionService,
-      authContext,
-    ),
+  const config = resolveBetterAuthOptions(
+    options,
+    orm,
+    mailer,
+    hashService,
+    userDeletionService,
+    authContext,
   );
+  // NestFactory.create() resolves providers before callers can setGlobalPrefix().
+  // Reconcile early service reads with the final mount at app.init(). Afterwards
+  // the mount is fixed, just like Nest's registered middleware routes.
+  let instance: ReturnType<typeof betterAuth> | undefined;
+  let instanceBasePath: string | undefined;
+  let initializedBasePath: string | undefined;
+  const getInstance = () => {
+    const basePath =
+      initializedBasePath ??
+      resolveAuthBasePath(options.basePath, applicationConfig);
+    if (!instance || instanceBasePath !== basePath) {
+      instance = betterAuth<BetterAuthOptions>({ ...config, basePath });
+      instanceBasePath = basePath;
+    }
+    return instance;
+  };
+  if (!applicationConfig) {
+    assertAuthBaseURL(config.baseURL, resolveAuthBasePath(options.basePath));
+    return getInstance();
+  }
+  const handler: ReturnType<typeof betterAuth>["handler"] = (request) =>
+    getInstance().handler(request);
+  const deferred = {
+    handler,
+    fetch: handler,
+    get api() {
+      return getInstance().api;
+    },
+    get options() {
+      return getInstance().options;
+    },
+    get $context() {
+      return getInstance().$context;
+    },
+    get $ERROR_CODES() {
+      return getInstance().$ERROR_CODES;
+    },
+    get $Infer() {
+      return getInstance().$Infer;
+    },
+    async onModuleInit() {
+      initializedBasePath ??= resolveAuthBasePath(
+        options.basePath,
+        applicationConfig,
+      );
+      assertAuthBaseURL(config.baseURL, initializedBasePath);
+      await getInstance().$context;
+    },
+  };
+  return deferred;
+}
+
+/**
+ * Rejects public URLs whose pathname would override the middleware mount.
+ * @param baseURL - Configured public URL from options or the environment
+ * @param basePath - Effective authentication mount
+ */
+function assertAuthBaseURL(
+  baseURL: BetterAuthOptions["baseURL"],
+  basePath: string,
+): void {
+  if (typeof baseURL !== "string" || !baseURL) {
+    return;
+  }
+  const pathname = new URL(baseURL).pathname.replace(/\/+$/g, "");
+  if (pathname && pathname !== basePath) {
+    throw new Error(
+      `Auth baseURL pathname must match the effective basePath (${basePath}). Configure baseURL, AUTH_URL, or APP_URL with the public origin or matching auth path.`,
+    );
+  }
 }
 
 /**
@@ -283,9 +360,6 @@ function copyBetterAuthOptions(
   target: BetterAuthOptions,
   source: AuthModuleOptions,
 ): void {
-  if (source.basePath !== undefined) {
-    target.basePath = source.basePath;
-  }
   if (source.session !== undefined) {
     target.session = source.session;
   }

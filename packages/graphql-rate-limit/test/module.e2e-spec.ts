@@ -79,7 +79,7 @@ describe("GraphQLRateLimitModule - e2e", () => {
     apps.push(app);
 
     const response = await request(app.getHttpServer())
-      .post("/api/graphql")
+      .post("/graphql")
       .send({ query: "{ hello }" })
       .expect(200);
     const body = response.body as GraphQLResponse;
@@ -105,7 +105,7 @@ describe("GraphQLRateLimitModule - e2e", () => {
     apps.push(app);
 
     const response = await request(app.getHttpServer())
-      .post("/api/graphql")
+      .post("/graphql")
       .send({ query: "{ hello }" })
       .expect(429);
     const body = response.body as GraphQLResponse;
@@ -138,7 +138,7 @@ describe("GraphQLRateLimitModule - e2e", () => {
         ["mutation { updateWithExplicitCost }", 3],
       ] as const) {
         const response = await http
-          .post("/api/graphql")
+          .post("/graphql")
           .send({ query })
           .expect(200);
         const body = response.body as GraphQLResponse;
@@ -163,9 +163,9 @@ describe("GraphQLRateLimitModule - e2e", () => {
     apps.push(app);
     const http = request(app.getHttpServer());
 
-    await http.post("/api/graphql").send({ query: "{ hello }" }).expect(200);
+    await http.post("/graphql").send({ query: "{ hello }" }).expect(200);
     const response = await http
-      .post("/api/graphql")
+      .post("/graphql")
       .send({ query: "{ hello }" })
       .expect(429);
     const body = response.body as GraphQLResponse;

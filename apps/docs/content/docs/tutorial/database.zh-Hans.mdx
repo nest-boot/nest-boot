@@ -154,7 +154,7 @@ import { Module } from "@nestjs/common";
 export class AppModule {}
 ```
 
-连接正常时，`GET /api/health` 返回 HTTP 200，且
+连接正常时，`GET /health` 返回 HTTP 200，且
 `details.database.status` 为 `"up"`；连接异常或超过默认 1,000 ms 超时后
 返回 HTTP 503。尚未完成的自动探测会在多次请求间复用，待数据库操作结束后
 重新探测，因此连接恢复无需重启应用。

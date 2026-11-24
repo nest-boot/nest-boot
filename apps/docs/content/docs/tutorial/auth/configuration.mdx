@@ -66,10 +66,35 @@ Important Nest Boot options include:
 - **`apiKey.workspace`** — member-key defaults and grant limits;
 - **`apiKey.system`** — opt-in system-account keys, defaults and grant limits;
 - **`middleware`** — controls auth middleware registration and route selection;
-- **`basePath`** — changes the auth endpoint path from `/api/auth/`;
+- **`basePath`** — changes the relative auth endpoint path from `/auth`, following the NestJS global prefix;
 - **`trustedOrigins`** — configures allowed browser origins;
 - **`account`** — configures OAuth account linking, storage, and state validation;
 - **`providers`** — configures built-in social, custom OAuth 2.0, and OpenID Connect providers.
+
+### Global Prefix
+
+The default relative path is `/auth`. Set `app.setGlobalPrefix("api")` before
+`app.init()` or `app.listen()` to expose `/api/auth`. Custom `basePath` values
+also follow the prefix: `{ basePath: "/identity" }` becomes `/api/identity`.
+The same configuration works with `forRootAsync()`.
+
+The middleware and Better Auth use the same effective path for authentication,
+session endpoints, OAuth callbacks, and email links. To keep auth outside the
+prefix, exclude the whole subtree with
+`app.setGlobalPrefix("api", { exclude: ["auth", "auth/{*path}"] })`.
+
+Use the public origin for `baseURL`, `AUTH_URL`, or its `APP_URL` fallback, such
+as `https://example.com`. A full URL with a pathname is accepted only when that
+pathname matches the effective auth path (for example,
+`https://example.com/api/auth` with the `api` global prefix). Conflicting paths
+are rejected during startup instead of silently overriding the middleware mount. If the selected framework URL is unset or empty, Better Auth's own environment
+fallbacks, including `BETTER_AUTH_URL`, are resolved and checked against the same
+mount before the backend is created.
+
+Applications upgrading without a global prefix must update their clients and
+provider callback URLs to `/auth`, or explicitly set `basePath: "/api/auth"`.
+Applications using the `api` global prefix should remove old `api/auth` route
+exclusions and any redundant `api` segment from `basePath`.
 
 When workspaces are enabled, `user.permissions` defaults to `user:*`, `session:*`, `user-api-key:*`, and `workspace:create`.
 `user.roles` defaults to `admin` and `user`. The `admin` role grants the full

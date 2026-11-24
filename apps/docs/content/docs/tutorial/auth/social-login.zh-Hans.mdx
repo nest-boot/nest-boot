@@ -30,8 +30,9 @@ return await authService.signInSocial({
 ```
 
 `disableRedirect` 为 true 时，前端跳转到 `result.url`。Provider 默认回调到
-`/api/auth/callback/:providerId`，需要在 Provider 控制台登记完整 URL；`basePath` 会
-改变其中的 `/api/auth` 前缀。
+`/auth/callback/:providerId`；调用 `app.setGlobalPrefix("api")` 后变为
+`/api/auth/callback/:providerId`。需要在 Provider 控制台登记完整公开 URL。
+`basePath` 是相对于全局前缀的路径，模块会使用最终路径生成 OAuth 回调和认证邮件链接。
 
 ## 关联账号
 
