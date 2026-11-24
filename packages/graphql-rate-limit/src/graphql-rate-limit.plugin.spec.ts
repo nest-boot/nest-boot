@@ -255,6 +255,26 @@ describe("GraphQLRateLimitPlugin", () => {
     },
   );
 
+  it("reserves zero points for an aliased __typename mutation selection", async () => {
+    const actual = await vi.importActual<
+      typeof import("graphql-query-complexity/cjs")
+    >("graphql-query-complexity/cjs");
+    mockedGetComplexity.mockImplementationOnce(actual.getComplexity);
+    const typeNameDocument = parse("mutation { type: __typename }");
+    const context = {
+      request: {},
+      document: typeNameDocument,
+      operation: getOperationAST(typeNameDocument),
+    } as unknown as GraphQLRequestContext<BaseContext>;
+    const listener = (await createPlugin({
+      defaultComplexity: 7,
+    }).requestDidStart()) as TestRequestListener;
+
+    await listener.didResolveOperation(context);
+
+    expect(subPoint).toHaveBeenCalledWith(context, 0);
+  });
+
   it("rejects invalid mutation directive variables before reserving any points", async () => {
     const listener =
       (await createPlugin().requestDidStart()) as TestRequestListener;

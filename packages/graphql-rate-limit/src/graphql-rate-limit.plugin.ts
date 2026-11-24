@@ -25,6 +25,7 @@ import {
   Kind,
   type OperationDefinitionNode,
   OperationTypeNode,
+  TypeNameMetaFieldDef,
 } from "graphql/index.js";
 import type {
   ComplexityEstimator,
@@ -186,6 +187,10 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
       args: ComplexityEstimatorArgs & FieldComplexityEstimatorArgs,
       isRootMutation: boolean,
     ): number => {
+      if (args.node.name.value === TypeNameMetaFieldDef.name) {
+        return 0;
+      }
+
       const resultCost = estimateFieldCost(fieldEstimators, args);
       return isRootMutation
         ? mutationBaseCost(args.field) + (resultCost ?? args.childComplexity)
@@ -230,11 +235,7 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
           variables: request.variables,
           estimators: [
             (field) =>
-              estimateCost(
-                field,
-                field.field.name !== "__typename" &&
-                  mutationSelections?.has(field.node) === true,
-              ),
+              estimateCost(field, mutationSelections?.has(field.node) === true),
           ],
         });
 

@@ -192,6 +192,47 @@ describe("GraphQLRateLimitModule - e2e", () => {
     });
   });
 
+  it.each([
+    {
+      selection: "an aliased root query field",
+      query: "{ type: __typename }",
+      cost: 0,
+    },
+    {
+      selection: "root and nested query fields",
+      query: "{ __typename hello reportSummaries { type: __typename title } }",
+      cost: 10,
+    },
+    {
+      selection: "root and nested mutation fields",
+      query:
+        "mutation { type: __typename refreshWeightedSummary(weighted: false) { __typename title } }",
+      cost: 12,
+    },
+  ])(
+    "excludes __typename from the cost of $selection with a nonzero default",
+    async ({ query, cost }) => {
+      const app = await createApp(
+        GraphQLRateLimitModule.forRoot({
+          maxComplexity: 13,
+          defaultComplexity: 7,
+        }),
+      );
+      apps.push(app);
+
+      const response = await request(app.getHttpServer())
+        .post("/graphql")
+        .send({ query })
+        .expect(200);
+      const body = response.body as GraphQLResponse;
+      expect(body.errors).toBeUndefined();
+      expect(body.extensions?.cost).toMatchObject({
+        requestedQueryCost: cost,
+        actualQueryCost: cost,
+      });
+    },
+  );
+
   it("passes field arguments and results to query and mutation cost callbacks", async () => {
     const app = await createApp(GraphQLRateLimitModule.forRoot({}));
     apps.push(app);
