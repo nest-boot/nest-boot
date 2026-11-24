@@ -5,9 +5,12 @@ import {
   type BaseContext,
   type GraphQLRequestListener,
 } from "@apollo/server";
-import { GraphQLSchemaHost } from "@nest-boot/graphql";
+import {
+  GraphQLSchemaHost,
+  GraphQLTooManyRequestsError,
+} from "@nest-boot/graphql";
 import { Plugin } from "@nestjs/apollo";
-import { HttpException, Inject } from "@nestjs/common";
+import { Inject } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import {
   GraphQLInterfaceType,
@@ -123,9 +126,8 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
         });
 
         if (cost.requestedQueryCost >= maxComplexity) {
-          throw new HttpException(
+          throw new GraphQLTooManyRequestsError(
             `Query is too complex: ${String(cost.requestedQueryCost)}. Maximum allowed complexity: ${String(maxComplexity)}`,
-            429,
           );
         }
 
@@ -140,7 +142,7 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
         };
 
         if (blocked) {
-          throw new HttpException(`Too Many Requests`, 429);
+          throw new GraphQLTooManyRequestsError();
         }
       },
       executionDidStart: async () => {

@@ -1,4 +1,4 @@
-import { GraphQLError } from "graphql";
+import { GraphQLBadUserInputError } from "@nest-boot/graphql";
 
 /**
  * Validates pagination before any field can contribute to the operation cost.
@@ -16,9 +16,9 @@ export function connectionPageSize(
       value != null &&
       (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)
     ) {
-      throw new GraphQLError(`${name} must be a non-negative safe integer`, {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
+      throw new GraphQLBadUserInputError(
+        `${name} must be a non-negative safe integer`,
+      );
     }
   }
   return (args.first ?? args.last ?? fallback) as number;
