@@ -3,7 +3,7 @@ import { ConnectionBuilder } from "@nest-boot/graphql-connection";
 
 import { User } from "../entities/user.entity.js";
 
-const { Connection, ConnectionArgs } = new ConnectionBuilder(User)
+const { Connection, ConnectionArgs, CountArgs } = new ConnectionBuilder(User)
   .addField({
     field: "name",
     fulltext: "searchableName",
@@ -30,6 +30,10 @@ const { Connection, ConnectionArgs } = new ConnectionBuilder(User)
 /** User pagination arguments. */
 @ArgsType()
 export class UserConnectionArgs extends ConnectionArgs {}
+
+/** User count filters. */
+@ArgsType()
+export class UserCountArgs extends CountArgs {}
 
 /** A page of visible users. */
 @ObjectType()

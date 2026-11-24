@@ -1,5 +1,4 @@
 import type { EntityClass, FilterQuery } from "@mikro-orm/core";
-import type { ComplexityEstimator } from "@nest-boot/graphql";
 import { type Type } from "@nestjs/common";
 import { GraphQLScalarType } from "graphql";
 import type { ZodType } from "zod";
@@ -14,7 +13,6 @@ import {
   OrderFieldType,
   OrderInterface,
 } from "./interfaces/index.js";
-import { createCountComplexity } from "./utils/create-connection-complexity.js";
 import {
   createConnection,
   createConnectionArgs,
@@ -42,8 +40,6 @@ export type ConnectionBuildResult<Entity extends object> = {
   ConnectionArgs: Type<ConnectionArgsInterface<Entity>>;
   /** Search and filter arguments for the count query. */
   CountArgs: Type<CountArgsInterface<Entity>>;
-  /** The callback to use in a standalone count field's complexity option. */
-  getCountComplexity: ComplexityEstimator;
   /** The generated Edge object type class. */
   Edge: Type<EdgeInterface<Entity>>;
   /** GraphQL scalar type for filter queries. */
@@ -225,10 +221,6 @@ export class ConnectionBuilder<Entity extends object> {
       Connection,
       ConnectionArgs,
       CountArgs,
-      getCountComplexity: createCountComplexity({
-        fieldOptionsMap: this.fieldOptionsMap,
-        filterQuerySchema,
-      }),
       Edge,
       Filter,
       filterQuerySchema,

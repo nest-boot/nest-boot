@@ -201,6 +201,16 @@ type CancelWorkspaceInvitationPayload {
   id: ID!
 }
 
+type Count {
+  count: Int!
+  precision: CountPrecision!
+}
+
+enum CountPrecision {
+  AT_LEAST
+  EXACT
+}
+
 input CreateSystemAccountInput {
   name: String!
   permissions: [SystemAccountPermission!]
@@ -614,6 +624,17 @@ type Query {
     """
     query: String
   ): UserConnection!
+  usersCount(
+    """Filter users using MongoDB query syntax."""
+    filter: UserFilter
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `email`
+    """
+    query: String
+  ): Count!
   workspace(id: ID, slug: String): Workspace
   workspaceApiKeyPermissions: [WorkspaceApiKeyPermissionOption!]!
   workspaceApiKeys(
@@ -712,6 +733,17 @@ type Query {
     """
     query: String
   ): WorkspaceConnection!
+  workspacesCount(
+    """Filter workspaces using MongoDB query syntax."""
+    filter: WorkspaceFilter
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `created_at`
+    """
+    query: String
+  ): Count!
 }
 
 type RejectWorkspaceInvitationPayload {
@@ -1438,6 +1470,17 @@ type Workspace {
     """
     query: String
   ): WorkspaceMemberConnection!
+  membersCount(
+    """Filter workspacemembers using MongoDB query syntax."""
+    filter: WorkspaceMemberFilter
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `email`, `type`, `status`, `created_at`
+    """
+    query: String
+  ): Count!
   name: String!
   slug: String!
   updatedAt: DateTime!

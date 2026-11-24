@@ -42,10 +42,11 @@ const BookSchema = new EntitySchema({
     name: { type: "string" },
   },
 });
-const { Connection, ConnectionArgs, CountArgs, getCountComplexity } =
-  new ConnectionBuilder(CostBook)
-    .addField({ field: "name", type: "string", filterable: true })
-    .build();
+const { Connection, ConnectionArgs, CountArgs } = new ConnectionBuilder(
+  CostBook,
+)
+  .addField({ field: "name", type: "string", filterable: true })
+  .build();
 
 @ObjectType()
 class BookPage extends Connection {}
@@ -88,8 +89,22 @@ class BookResolver {
     return this.manager.find(Connection, args);
   }
 
-  @Query(() => Count, { complexity: getCountComplexity })
+  @Query(() => Count)
   catalogCount(
+    @Args({ type: () => CountArgs }) args: CountArgsInterface<CostBook>,
+  ): Promise<Count> {
+    return this.manager.count(Connection, args);
+  }
+
+  @Query(() => Count, { complexity: 0 })
+  freeCount(
+    @Args({ type: () => CountArgs }) args: CountArgsInterface<CostBook>,
+  ): Promise<Count> {
+    return this.manager.count(Connection, args);
+  }
+
+  @ResolveField(() => Count)
+  booksCount(
     @Args({ type: () => CountArgs }) args: CountArgsInterface<CostBook>,
   ): Promise<Count> {
     return this.manager.count(Connection, args);
@@ -254,21 +269,20 @@ describe("Connection complexity over GraphQL HTTP", () => {
     }
   });
 
-  it("keeps count complexity fixed when the selected result has a field cost", async () => {
-    const url = await startApp(
-      GraphQLRateLimitModule.forRoot({ defaultComplexity: 1 }),
-    );
+  it("infers nested count costs and honors explicit complexity", async () => {
+    const url = await startApp(GraphQLRateLimitModule.forRoot({}));
     const response = await query(
       url,
-      '{ catalogCount(query: "name:alpha") { count precision __typename } }',
+      '{ owner(present: true) { booksCount(query: "name:alpha") { count } } freeCount(query: "name:beta") { count } }',
     );
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
       data: {
-        catalogCount: { count: 2, precision: "EXACT", __typename: "Count" },
+        owner: { booksCount: { count: 2 } },
+        freeCount: { count: 1 },
       },
-      extensions: { cost: { requestedQueryCost: 11, actualQueryCost: 11 } },
+      extensions: { cost: { requestedQueryCost: 12, actualQueryCost: 12 } },
     });
   });
 

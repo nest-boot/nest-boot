@@ -3,12 +3,12 @@ import "reflect-metadata";
 import type { FieldComplexityEstimatorArgs } from "@nest-boot/graphql";
 import { LazyMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage.js";
 import { TypeMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/type-metadata.storage.js";
-import { Kind } from "graphql";
+import { GraphQLInt, GraphQLObjectType, Kind } from "graphql";
 
 import { ConnectionBuilder } from "./connection.builder.js";
 import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants.js";
 import type { ConnectionMetadata } from "./interfaces/index.js";
-import { PageInfo } from "./objects/index.js";
+import { Count, PageInfo } from "./objects/index.js";
 
 interface BuilderBook {
   id: number;
@@ -57,7 +57,7 @@ describe("ConnectionBuilder", () => {
       title!: string;
     }
 
-    const { Connection, getCountComplexity } = new ConnectionBuilder(CostBook)
+    const { Connection, Filter } = new ConnectionBuilder(CostBook)
       .addField({ field: "title", type: "string", filterable: true })
       .addField({ field: "id", type: "number", sortable: true })
       .build();
@@ -96,10 +96,17 @@ describe("ConnectionBuilder", () => {
       cost({ first: 10, filter: { title: "book" } }, { result: null }),
     ).toBe(3);
     expect(cost({})).toBe(0);
+    const countField = new GraphQLObjectType({
+      name: "CountCostQuery",
+      fields: {
+        booksCount: { type: GraphQLInt, args: { filter: { type: Filter } } },
+      },
+    }).getFields().booksCount;
     expect(
-      getCountComplexity({
+      Count.complexity({
         args: { query: "title:book", filter: { title: { $ne: "other" } } },
         childComplexity: 5,
+        field: countField,
       } as FieldComplexityEstimatorArgs),
     ).toBe(13);
     expect(cost({ last: 1, after: "cursor" })).toBe(0);
@@ -137,7 +144,6 @@ describe("ConnectionBuilder", () => {
       })
       .build();
 
-    expect(result.getCountComplexity).toBeTypeOf("function");
     expect(result.BuilderBookEntityConnection).toBe(result.Connection);
     expect(result.BuilderBookEntityConnectionArgs).toBe(result.ConnectionArgs);
     expect(result.BuilderBookEntityEdge).toBe(result.Edge);

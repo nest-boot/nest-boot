@@ -6,6 +6,8 @@ import {
   type ConnectionArgsInterface,
   ConnectionManager,
   type ConnectionResult,
+  type Count,
+  type CountArgsInterface,
 } from "@nest-boot/graphql-connection";
 import { HashService } from "@nest-boot/hash";
 import { RequestContext } from "@nest-boot/request-context";
@@ -26,6 +28,7 @@ import type { UserRoleOption } from "../../admin/objects/user-role-option.object
 import { ApiKey } from "../../api-key/entities/api-key.entity.js";
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
+import { getCountAuthorization } from "../../common/utils/get-count-authorization.util.js";
 import {
   assertCanGrantPermissions,
   canGrantPermissions,
@@ -375,6 +378,20 @@ export class UserService {
       authorize("read", node);
     }
     return connection;
+  }
+
+  /**
+   * Counts users visible to the current principal.
+   * @param args - The search and filter arguments.
+   * @returns The bounded count of matching users.
+   */
+  async getUserCount(args: CountArgsInterface<User>): Promise<Count> {
+    const assertMatch = getCountAuthorization("read", User);
+    return await new ConnectionManager(this.em as SqlEntityManager).count(
+      UserConnection,
+      args,
+      { assertMatch },
+    );
   }
 
   /**

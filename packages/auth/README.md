@@ -278,6 +278,8 @@ connection definition is required. Its GraphQL transport exposes these connectio
 
 ## User and session connections
 
+`Query.usersCount`, `Query.workspacesCount`, and `Workspace.membersCount` accept the same search and filter arguments as their lists. Each count follows its list's authorization and returns `count` and `precision`.
+
 `UserService.getUserConnection(args)`, `SessionService.getSessionConnectionByUser(user, args)` and `AccountService.getAccountConnectionByUser(user, args)` use the built-in connection definitions registered by `AuthModule`. Own browser-session reads do not require administrative permissions; foreign-user and delegated API-key session reads require `session:read`. Application RLS must grant the corresponding SELECT access. Account connections require the owning user session, reject API keys and exclude credential columns. `UserService.listUserAccounts` is removed without an alias.
 
 `SessionService` owns `getSessionConnectionByUser`,

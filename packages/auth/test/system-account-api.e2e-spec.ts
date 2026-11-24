@@ -547,13 +547,18 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     ).not.toContain("key");
 
     const access = await graphql(
-      "query($id: ID!) { users(first: 10) { edges { node { id } } } workspaces(first: 10) { edges { node { id } } } platformWorkspace(id: $id) { id } }",
+      "query($id: ID!) { users(first: 10) { edges { node { id } } } usersCount { count precision } workspaces(first: 10) { edges { node { id } } } workspacesCount { count precision } platformWorkspace(id: $id) { id } }",
       { id: workspaceId },
       plaintext,
       true,
     );
     expect(access.errors).toBeUndefined();
     expect(data(access).users.edges.length).toBe(2);
+    expect(data(access).usersCount).toEqual({ count: 2, precision: "EXACT" });
+    expect(data(access).workspacesCount).toEqual({
+      count: data(access).workspaces.edges.length,
+      precision: "EXACT",
+    });
     expect(data(access).platformWorkspace.id).toBe(workspaceId);
     expect(
       data(await graphql("{ currentUser { id } }", {}, plaintext, true))
@@ -580,6 +585,13 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
       true,
     );
     expect(readOnly.errors?.[0]?.extensions.code).toBe("FORBIDDEN");
+    const deniedCount = await graphql(
+      "{ workspacesCount { count } }",
+      {},
+      plaintext,
+      true,
+    );
+    expect(deniedCount.errors?.[0]?.extensions.code).toBe("FORBIDDEN");
     const disabled = await graphql(
       "mutation($id: ID!) { updateSystemAccount(id: $id, input: {enabled: false}) { id enabled } }",
       { id: accountId },

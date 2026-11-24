@@ -296,6 +296,19 @@ export type CancelWorkspaceInvitationPayload = {
   id: Scalars["ID"]["output"];
 };
 
+export type Count = {
+  __typename?: "Count";
+  count: Scalars["Int"]["output"];
+  precision: CountPrecision;
+};
+
+export const CountPrecision = {
+  AT_LEAST: "AT_LEAST",
+  EXACT: "EXACT",
+} as const;
+
+export type CountPrecision =
+  (typeof CountPrecision)[keyof typeof CountPrecision];
 export type CreateSystemAccountInput = {
   name: Scalars["String"]["input"];
   permissions?: InputMaybe<Array<SystemAccountPermission>>;
@@ -790,6 +803,7 @@ export type Query = {
   userPermissions: Array<UserPermissionOption>;
   userRoles: Array<UserRoleOption>;
   users: UserConnection;
+  usersCount: Count;
   workspace?: Maybe<Workspace>;
   workspaceApiKeyPermissions: Array<WorkspaceApiKeyPermissionOption>;
   workspaceApiKeys: WorkspaceApiKeyConnection;
@@ -801,6 +815,7 @@ export type Query = {
   workspacePermissions: Array<WorkspacePermissionOption>;
   workspaceRoles: Array<WorkspaceRoleOption>;
   workspaces: WorkspaceConnection;
+  workspacesCount: Count;
 };
 
 export type QueryPlatformWorkspaceArgs = {
@@ -882,6 +897,11 @@ export type QueryUsersArgs = {
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
+export type QueryUsersCountArgs = {
+  filter?: InputMaybe<Scalars["UserFilter"]["input"]>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
 export type QueryWorkspaceArgs = {
   id?: InputMaybe<Scalars["ID"]["input"]>;
   slug?: InputMaybe<Scalars["String"]["input"]>;
@@ -930,6 +950,11 @@ export type QueryWorkspacesArgs = {
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
   orderBy?: InputMaybe<WorkspaceOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type QueryWorkspacesCountArgs = {
+  filter?: InputMaybe<Scalars["WorkspaceFilter"]["input"]>;
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
@@ -1497,6 +1522,7 @@ export type Workspace = {
   id: Scalars["ID"]["output"];
   invitations: WorkspaceInvitationConnection;
   members: WorkspaceMemberConnection;
+  membersCount: Count;
   name: Scalars["String"]["output"];
   slug: Scalars["String"]["output"];
   updatedAt: Scalars["DateTime"]["output"];
@@ -1523,6 +1549,11 @@ export type WorkspaceMembersArgs = {
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
   orderBy?: InputMaybe<WorkspaceMemberOrder>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type WorkspaceMembersCountArgs = {
+  filter?: InputMaybe<Scalars["WorkspaceMemberFilter"]["input"]>;
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 

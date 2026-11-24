@@ -1,10 +1,12 @@
 import {
   EntityManager,
+  type EntityMetadata,
   type FilterQuery,
   type FindOptions,
+  type ObjectQuery,
   QueryFlag,
 } from "@mikro-orm/core";
-import type { SqlEntityManager } from "@mikro-orm/sql";
+import type { QueryBuilder, SqlEntityManager } from "@mikro-orm/sql";
 import { Inject, Injectable } from "@nestjs/common";
 
 import { ConnectionQueryBuilder } from "./connection-query-builder.js";
@@ -47,13 +49,26 @@ export interface ConnectionFindOptions<
   where?: FilterQuery<Entity>;
 }
 
-/** SQL options shared by paginated reads and counts. */
+/** Scope options used to count matching entities. */
 export type ConnectionCountOptions<Entity extends object> = Pick<
   ConnectionFindOptions<Entity>,
   "where" | "schema" | "filters"
->;
+> & {
+  /** An optional per-entity assertion applied before returning a count. */
+  assertMatch?: (entity: Entity) => void;
+};
 
 const COUNT_LIMIT = 10_000;
+
+interface SqlReadPlanner<Entity extends object> {
+  createQueryBuilderFromOptions(
+    entity: EntityMetadata<Entity>,
+    where: FilterQuery<Entity>,
+    options: FindOptions<Entity> & {
+      _populateWhere: FindOptions<Entity>["populateWhere"];
+    },
+  ): Promise<QueryBuilder<Entity>>;
+}
 
 /**
  * Service for executing paginated GraphQL connection queries.
@@ -138,44 +153,93 @@ export class ConnectionManager {
     const metadata = getConnectionMetadata(connectionClass);
     const { entityClass } = metadata;
     const em = this.em.getContext();
-    const where = getConnectionWhere(metadata, args, options?.where);
+    const { assertMatch, ...scope } = options ?? {};
+    const where = getConnectionWhere(metadata, args, scope.where) ?? {};
     const entity = em.getMetadata(entityClass);
-
-    // Reuse the read planning hooks used by MikroORM's find() before adding the SQL limit.
-    /* eslint-disable @typescript-eslint/dot-notation */
-    const readOptions = em["prepareOptions"]({ ...options });
-    await em.tryFlush(entityClass, {});
-    const filteredWhere = await em["processWhere"](
-      entityClass,
-      where ?? {},
-      readOptions,
-      "read",
-    );
-    const populate = await em.preparePopulate(entityClass, readOptions);
-    const populateFilter = await em["getJoinedFilters"](entity, {
-      ...readOptions,
-      populate: populate as never,
-    });
-    /* eslint-enable @typescript-eslint/dot-notation */
-
-    const matches = em.createQueryBuilder(entityClass);
-    matches
-      .unsetFlag(QueryFlag.CONVERT_CUSTOM_TYPES)
-      .select(entity.primaryKeys)
-      .withSchema(em.getDriver().getSchemaName(entity, readOptions))
-      .populate(populate, undefined, populateFilter)
-      .where(filteredWhere)
-      .limit(COUNT_LIMIT + 1);
-    await matches.applyJoinedFilters(em, readOptions.filters);
-    const count = await em
-      .createQueryBuilder(matches, "bounded_count")
-      .count()
-      .getCount();
+    let count: number;
+    if (entity.virtual || assertMatch) {
+      const matches = await em.find(entityClass, where, {
+        ...scope,
+        limit: COUNT_LIMIT + 1,
+      });
+      if (assertMatch) {
+        matches.forEach(assertMatch);
+      }
+      count = matches.length;
+    } else {
+      count = await this.countStoredEntities(em, entity, where, scope);
+    }
 
     return {
       count: Math.min(count, COUNT_LIMIT),
       precision:
         count > COUNT_LIMIT ? CountPrecision.AT_LEAST : CountPrecision.EXACT,
     };
+  }
+
+  private async countStoredEntities<Entity extends object>(
+    em: SqlEntityManager,
+    entity: EntityMetadata<Entity>,
+    where: FilterQuery<Entity>,
+    options?: ConnectionCountOptions<Entity>,
+  ): Promise<number> {
+    // Use the same filter and join planning as a normal MikroORM read.
+    /* eslint-disable @typescript-eslint/dot-notation */
+    const readOptions = em["prepareOptions"]<FindOptions<Entity>>({
+      ...options,
+    });
+    await em.tryFlush(entity.class, readOptions);
+    const filteredWhere = await em["processWhere"](
+      entity.class,
+      where,
+      readOptions,
+      "read",
+    );
+    const populate = await em.preparePopulate(entity.class, readOptions);
+    const populateFilter = await em["getJoinedFilters"](entity, {
+      ...readOptions,
+      populate: populate as never,
+    });
+    const populateWhere = em["createPopulateWhere"](
+      { ...filteredWhere } as ObjectQuery<Entity>,
+      readOptions,
+    );
+    /* eslint-enable @typescript-eslint/dot-notation */
+
+    const driver = em.getDriver() as unknown as SqlReadPlanner<Entity>;
+    const matches = await driver.createQueryBuilderFromOptions(
+      entity,
+      filteredWhere,
+      {
+        ...readOptions,
+        em,
+        ctx: em.getTransactionContext(),
+        populate: populate as never,
+        _populateWhere:
+          readOptions.populateWhere ?? em.config.get("populateWhere"),
+        populateWhere,
+        populateFilter,
+      },
+    );
+    matches
+      .setFlag(QueryFlag.DISABLE_PAGINATE)
+      .select(entity.primaryKeys, Object.keys(matches.getAliasMap()).length > 1)
+      .orderBy([])
+      .limit(COUNT_LIMIT + 1);
+
+    // The outer aggregate has no entity metadata, so it applies no discriminator or filters.
+    const { sql, params } = em
+      .getPlatform()
+      .createNativeQueryBuilder()
+      .from(matches.getNativeQuery().as("bounded_count"))
+      .count()
+      .compile();
+    const result = await em.execute<{ count: number | string }>(sql, params, {
+      method: "get",
+      loggerContext: readOptions.loggerContext,
+      signal: readOptions.signal,
+      inflightQueryAbortStrategy: readOptions.inflightQueryAbortStrategy,
+    });
+    return Number(result.count);
   }
 }

@@ -1,4 +1,10 @@
-import { EntityManager, EntitySchema, MikroORM, raw } from "@mikro-orm/core";
+import {
+  Collection,
+  EntityManager,
+  EntitySchema,
+  MikroORM,
+  raw,
+} from "@mikro-orm/core";
 import { PgliteDriver } from "@mikro-orm/pglite";
 import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { FullTextType, SqlEntityManager } from "@mikro-orm/sql";
@@ -54,7 +60,7 @@ const VolumeSchema = new EntitySchema({
   class: Volume,
   properties: {
     id: { type: "number", primary: true },
-    edition: { kind: "m:1", entity: () => Edition },
+    edition: { kind: "m:1", entity: () => Edition, eager: true },
   },
 });
 
@@ -199,9 +205,151 @@ describe("GraphQL connection and official SQL driver integration", () => {
         count: 2,
         precision: CountPrecision.EXACT,
       });
+      const execute = vi.spyOn(em.getConnection(), "execute");
       await expect(
         manager.count(Connection, {}, { filters: false }),
       ).resolves.toEqual({ count: 3, precision: CountPrecision.EXACT });
+      expect(execute.mock.calls[0][0]).toMatch(/\bjoin\s+"edition"/i);
+    } finally {
+      await orm.close(true);
+    }
+  });
+
+  it("counts each root entity once when matching multiple related rows", async () => {
+    class Shelf {
+      id!: number;
+      books = new Collection<ShelfBook>(this);
+    }
+    class ShelfBook {
+      id!: number;
+      shelf!: Shelf;
+    }
+    const shelf = new EntitySchema({
+      class: Shelf,
+      properties: {
+        id: { type: "number", primary: true },
+        books: {
+          kind: "1:m",
+          entity: () => ShelfBook,
+          mappedBy: "shelf",
+          eager: true,
+          strategy: "joined",
+        },
+      },
+    });
+    const book = new EntitySchema({
+      class: ShelfBook,
+      properties: {
+        id: { type: "number", primary: true },
+        shelf: { kind: "m:1", entity: () => Shelf },
+      },
+    });
+    const orm = await MikroORM.init({
+      driver: PgliteDriver,
+      entities: [shelf, book],
+      dbName: "memory://",
+    });
+    try {
+      await orm.schema.create();
+      const em = orm.em.fork();
+      await em.insertMany(Shelf, [{ id: 1 }, { id: 2 }]);
+      await em.execute(
+        'insert into "shelf_book" ("id", "shelf_id") select id, 1 from generate_series(1, 10001) as ids(id)',
+      );
+      const { Connection } = new ConnectionBuilder(Shelf).build();
+      const manager = new ConnectionManager(em);
+      const scope = { where: { books: { id: { $gt: 0 } } } };
+
+      const page = await manager.find(Connection, { first: 10 }, scope);
+      expect(page.edges.map(({ node }) => node.id)).toEqual([1]);
+      const execute = vi.spyOn(em.getConnection(), "execute");
+      await expect(manager.count(Connection, {}, scope)).resolves.toEqual({
+        count: 1,
+        precision: CountPrecision.EXACT,
+      });
+      expect(execute.mock.calls[0][0]).toMatch(/\bselect distinct\b/i);
+    } finally {
+      await orm.close(true);
+    }
+  });
+
+  it("applies the subtype discriminator inside the bounded count", async () => {
+    class Publication {
+      id!: number;
+    }
+    class Novel extends Publication {}
+    class Magazine extends Publication {}
+    const publication = new EntitySchema({
+      class: Publication,
+      discriminatorColumn: "kind",
+      properties: { id: { type: "number", primary: true } },
+    });
+    const novel = new EntitySchema<Novel, Publication>({
+      class: Novel,
+      extends: Publication,
+      discriminatorValue: "novel",
+    });
+    const magazine = new EntitySchema<Magazine, Publication>({
+      class: Magazine,
+      extends: Publication,
+      discriminatorValue: "magazine",
+    });
+    const orm = await MikroORM.init({
+      driver: PgliteDriver,
+      entities: [publication, novel, magazine],
+      dbName: "memory://",
+    });
+    try {
+      await orm.schema.create();
+      const em = orm.em.fork();
+      await em.execute(
+        'insert into "publication" ("id", "kind") values (?, ?), (?, ?)',
+        [1, "novel", 2, "magazine"],
+      );
+      const { Connection } = new ConnectionBuilder(Novel).build();
+      const manager = new ConnectionManager(em);
+      const page = await manager.find(Connection, { first: 10 });
+      expect(page.edges.map(({ node }) => node.id)).toEqual([1]);
+      await expect(manager.count(Connection, {})).resolves.toEqual({
+        count: 1,
+        precision: CountPrecision.EXACT,
+      });
+    } finally {
+      await orm.close(true);
+    }
+  });
+
+  it("counts filtered matches from a virtual SQL entity", async () => {
+    class VirtualBook {
+      id!: number;
+      title!: string;
+    }
+    const virtual = new EntitySchema({
+      class: VirtualBook,
+      expression: "select id, title from connection_book",
+      properties: { id: { type: "number" }, title: { type: "string" } },
+    });
+    const orm = await MikroORM.init({
+      driver: PgliteDriver,
+      entities: [BookSchema, virtual],
+      dbName: "memory://",
+    });
+    try {
+      await orm.schema.create();
+      const em = orm.em.fork();
+      await em.insertMany(ConnectionBook, [
+        { id: 1, title: "Novel" },
+        { id: 2, title: "Magazine" },
+      ]);
+      const { Connection } = new ConnectionBuilder(VirtualBook).build();
+      const manager = new ConnectionManager(em);
+      const scope = { where: { title: "Novel" } };
+      const page = await manager.find(Connection, { first: 10 }, scope);
+      expect(page.edges.map(({ node }) => node.id)).toEqual([1]);
+      await expect(manager.count(Connection, {}, scope)).resolves.toEqual({
+        count: 1,
+        precision: CountPrecision.EXACT,
+      });
     } finally {
       await orm.close(true);
     }
@@ -402,7 +550,7 @@ describe("GraphQL connection and official SQL driver integration", () => {
     },
   );
 
-  it("executes paginated queries through the injected PGlite entity manager", async () => {
+  it("loads a page with one select and no aggregate through the injected entity manager", async () => {
     const module = await Test.createTestingModule({
       imports: [
         DatabaseModule.forRoot({
@@ -424,6 +572,7 @@ describe("GraphQL connection and official SQL driver integration", () => {
         { id: 2, title: "Second" },
       ]);
       const { Connection } = new ConnectionBuilder(ConnectionBook).build();
+      const execute = vi.spyOn(orm.em.getConnection(), "execute");
       const result = await module.get(ConnectionManager).find(Connection, {
         first: 1,
       });
@@ -431,6 +580,8 @@ describe("GraphQL connection and official SQL driver integration", () => {
       expect(result.edges).toHaveLength(1);
       expect(result.edges[0].node).toMatchObject({ id: 1, title: "First" });
       expect(result.pageInfo.hasNextPage).toBe(true);
+      expect(execute).toHaveBeenCalledTimes(1);
+      expect(execute.mock.calls[0][0]).not.toMatch(/\bcount\s*\(/i);
     } finally {
       await module.close();
     }

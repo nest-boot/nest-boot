@@ -9,6 +9,8 @@ import {
   type ConnectionArgsInterface,
   ConnectionManager,
   type ConnectionResult,
+  type Count,
+  type CountArgsInterface,
 } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 import {
@@ -23,6 +25,7 @@ import {
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
 import { generateUrlIdentifier } from "../../common/utils/generate-url-identifier.util.js";
+import { getCountAuthorization } from "../../common/utils/get-count-authorization.util.js";
 import { runAuthQuery } from "../../common/utils/run-auth-query.js";
 import { urlIdentifierSchema } from "../../common/utils/url-identifier.util.js";
 import { MODULE_OPTIONS_TOKEN } from "../../core/auth.module-definition.js";
@@ -80,6 +83,24 @@ export class WorkspaceService {
       }
       return page;
     });
+  }
+
+  /**
+   * Counts workspaces through the platform administration boundary.
+   * @param args - The search and filter arguments.
+   * @returns The bounded count of matching workspaces.
+   */
+  async getPlatformWorkspaceCount(
+    args: CountArgsInterface<Workspace>,
+  ): Promise<Count> {
+    const assertMatch = getCountAuthorization("read-any", Workspace);
+    return await runAuthQuery(this.em, (em) =>
+      new ConnectionManager(em as SqlEntityManager).count(
+        WorkspaceConnection,
+        args,
+        { where: {}, assertMatch },
+      ),
+    );
   }
 
   /**

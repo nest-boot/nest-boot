@@ -57,9 +57,15 @@ describe("API-key management", () => {
         await service.getWorkspaceApiKeyConnection(
           createTestWorkspace(),
           { first: 10 },
+          undefined,
           member,
         );
-        expect(find).toHaveBeenCalledWith(
+        await service.getWorkspaceApiKeyConnection(
+          createTestWorkspace(),
+          { first: 10 },
+          member,
+        );
+        const expectedArgs = [
           WorkspaceApiKeyConnection,
           { first: 10 },
           expect.objectContaining({
@@ -69,7 +75,9 @@ describe("API-key management", () => {
             }),
             exclude: ["key"],
           }),
-        );
+        ] as const;
+        expect(find).toHaveBeenNthCalledWith(1, ...expectedArgs);
+        expect(find).toHaveBeenNthCalledWith(2, ...expectedArgs);
         const foreign = createTestWorkspaceMember();
         foreign.workspace = ref(
           Workspace,
@@ -82,7 +90,7 @@ describe("API-key management", () => {
             foreign,
           ),
         ).rejects.toThrow("selected workspace");
-        expect(find).toHaveBeenCalledOnce();
+        expect(find).toHaveBeenCalledTimes(2);
       },
     );
 

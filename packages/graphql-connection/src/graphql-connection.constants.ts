@@ -12,3 +12,6 @@ export const GRAPHQL_CONNECTION_METADATA = Symbol(
 
 /** Maximum requested page size for a Connection. */
 export const MAX_CONNECTION_PAGE_SIZE = 100;
+
+/** Scalar extension used to recover a count field's filter complexity. */
+export const COUNT_COMPLEXITY_EXTENSION = "nestBootCountComplexity";

@@ -39,7 +39,6 @@ export const {
   Connection: UserConnection,
   ConnectionArgs: UserConnectionArgs,
   CountArgs: UserCountArgs,
-  getCountComplexity: getUserCountComplexity,
 } = new ConnectionBuilder(User)
   .addField({ field: "name", type: "string", filterable: true, sortable: true })
   .addField({
@@ -176,17 +175,13 @@ Human-friendly search syntax with field-specific filters: `field:value`, quoted 
 
 ## Standalone Counts
 
-`ConnectionManager.find()` returns one page. To expose a total, get `CountArgs` and `getCountComplexity` from `ConnectionBuilder.build()` and define a separate query. Share the same `query`, `filter`, and server-side scope between the list and count.
+`ConnectionManager.find()` returns one page. To expose a total, get `CountArgs` from `ConnectionBuilder.build()` and define a separate query. Share the same `query`, `filter`, and server-side scope between the list and count.
 
 ```typescript
 import { Count, type CountArgsInterface } from "@nest-boot/graphql-connection";
-import {
-  getUserCountComplexity,
-  UserConnection,
-  UserCountArgs,
-} from "./user.connection";
+import { UserConnection, UserCountArgs } from "./user.connection";
 
-@Query(() => Count, { complexity: getUserCountComplexity })
+@Query(() => Count)
 async usersCount(
   @Args({ type: () => UserCountArgs }) args: CountArgsInterface<User>,
 ): Promise<Count> {
@@ -194,7 +189,7 @@ async usersCount(
 }
 ```
 
-Up to 10,000 matches return `precision: EXACT`. Above that threshold, the query returns `count: 10000` with `precision: AT_LEAST`. Clients can request subsequent pages using only the list query. With rate limiting enabled, the count costs 10 base points plus the cost of applying the filters once.
+Up to 10,000 matches return `precision: EXACT`. Above that threshold, the query returns `count: 10000` with `precision: AT_LEAST`. Clients can request subsequent pages using only the list query. With rate limiting enabled, the generated filter sets the count cost to 10 base points plus the cost of applying the filters once.
 
 ## Features
 

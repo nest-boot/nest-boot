@@ -11,6 +11,8 @@ import {
   type ConnectionArgsInterface,
   ConnectionManager,
   type ConnectionResult,
+  type Count,
+  type CountArgsInterface,
 } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 import {
@@ -25,6 +27,7 @@ import {
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
 import { can } from "../../common/utils/can.util.js";
+import { getCountAuthorization } from "../../common/utils/get-count-authorization.util.js";
 import {
   assertCanGrantPermissions,
   canGrantPermissions,
@@ -134,6 +137,25 @@ export class WorkspaceMemberService {
       authorize("read", node);
     }
     return connection;
+  }
+
+  /**
+   * Counts members within the selected workspace.
+   * @param workspace - The workspace that scopes the count.
+   * @param args - The search and filter arguments.
+   * @returns The bounded count of matching members.
+   */
+  async getWorkspaceMemberCount(
+    workspace: Workspace,
+    args: CountArgsInterface<WorkspaceMember>,
+  ): Promise<Count> {
+    const where = this.getWorkspaceMemberListFilter(workspace);
+    const assertMatch = getCountAuthorization("read", WorkspaceMember);
+    return await new ConnectionManager(this.em as SqlEntityManager).count(
+      WorkspaceMemberConnection,
+      args,
+      { where, assertMatch },
+    );
   }
 
   /**

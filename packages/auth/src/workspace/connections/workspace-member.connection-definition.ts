@@ -3,7 +3,7 @@ import { ConnectionBuilder } from "@nest-boot/graphql-connection";
 
 import { WorkspaceMember } from "../entities/workspace-member.entity.js";
 
-const { Connection, ConnectionArgs, Edge } = new ConnectionBuilder(
+const { Connection, ConnectionArgs, CountArgs, Edge } = new ConnectionBuilder(
   WorkspaceMember,
 )
   .addField({
@@ -46,6 +46,10 @@ ObjectType("WorkspaceMemberEdge", {
 /** Workspace member pagination arguments. */
 @ArgsType()
 export class WorkspaceMemberConnectionArgs extends ConnectionArgs {}
+
+/** Workspace member count filters. */
+@ArgsType()
+export class WorkspaceMemberCountArgs extends CountArgs {}
 
 /** A page of visible workspace members. */
 @ObjectType({ isAbstract: true })

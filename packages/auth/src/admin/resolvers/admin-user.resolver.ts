@@ -1,9 +1,14 @@
 import { Args, ID, Mutation, Query, Resolver } from "@nest-boot/graphql";
-import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
+import {
+  type ConnectionArgsInterface,
+  Count,
+  type CountArgsInterface,
+} from "@nest-boot/graphql-connection";
 
 import {
   UserConnection,
   UserConnectionArgs,
+  UserCountArgs,
 } from "../../core/connections/user.connection-definition.js";
 import { User } from "../../core/entities/user.entity.js";
 import { UserService } from "../../core/services/user.service.js";
@@ -61,6 +66,18 @@ export class AdminUserResolver {
     args: ConnectionArgsInterface<User>,
   ) {
     return await this.userService.getUserConnection(args);
+  }
+
+  /**
+   * Counts users using the same filters as the list.
+   * @param args - The search and filter arguments.
+   * @returns The bounded user count.
+   */
+  @Query(() => Count)
+  async usersCount(
+    @Args({ type: () => UserCountArgs }) args: CountArgsInterface<User>,
+  ): Promise<Count> {
+    return await this.userService.getUserCount(args);
   }
 
   /**

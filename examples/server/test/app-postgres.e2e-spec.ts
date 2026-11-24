@@ -5583,9 +5583,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
     expectNoGraphQLErrors(update);
     const query = `query ($query: String) {
-      selectedWorkspace { members(first: 10, query: $query) {
-        edges { node { id name email } }
-      } }
+      selectedWorkspace {
+        members(first: 10, query: $query) { edges { node { id name email } } }
+        membersCount(query: $query) { count precision }
+      }
     }`;
     for (const viewer of [owner, peer]) {
       const options = { cookies: viewer.cookies, workspaceId: workspace.id };
@@ -5594,6 +5595,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         variables: { query: 'Shared*' },
       });
       expectNoGraphQLErrors(visible);
+      expect(visible.body.data.selectedWorkspace.membersCount).toEqual({
+        count: 1,
+        precision: 'EXACT',
+      });
       expect(visible.body.data.selectedWorkspace.members).toEqual({
         edges: [
           {
@@ -5614,6 +5619,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         expect(hidden.body.data.selectedWorkspace.members.edges).toHaveLength(
           0,
         );
+        expect(hidden.body.data.selectedWorkspace.membersCount).toEqual({
+          count: 0,
+          precision: 'EXACT',
+        });
       }
       const hiddenUser = await gql(
         'query ($id: ID!) { workspaceMember(id: $id) { name email user { name email } } }',

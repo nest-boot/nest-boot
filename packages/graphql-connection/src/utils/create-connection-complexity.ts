@@ -115,10 +115,14 @@ export function createConnectionComplexity<Entity extends object>(
  * @returns An estimator that prices the count and its filters.
  */
 export function createCountComplexity<Entity extends object>(
-  metadata: Pick<
+  metadata?: Pick<
     ConnectionMetadata<Entity>,
     "fieldOptionsMap" | "filterQuerySchema"
   >,
 ): ComplexityEstimator {
-  return ({ args }) => 10 + estimateConnectionFilterComplexity(args, metadata);
+  return ({ args }) =>
+    10 +
+    (metadata
+      ? estimateConnectionFilterComplexity(args, metadata)
+      : filterComplexity(args.filter));
 }

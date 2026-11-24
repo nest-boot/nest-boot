@@ -514,7 +514,7 @@ With `GraphQLModule` from `@nest-boot/graphql`, `Query`, `Mutation`, `ResolveFie
 
 The rate limiter reserves one point per requested edge and settles that part of the cost using the number of edges returned by the resolver. This applies to cursor-only selections as well. The callback charges once for the normalized `query` and `filter`. Each comparison and logical group costs one point. Array comparisons such as `$in` cost one point per value, with a minimum of one.
 
-Use `getCountComplexity` from `ConnectionBuilder.build()` for standalone count fields. Each count costs 10 base points plus one charge for the filters using the list rules. The child fields of `Count` cost zero.
+Standalone fields returning `Count` use the filters in their generated `CountArgs` to calculate complexity automatically. Each count costs 10 base points plus one charge for the filters using the list rules. The child fields of `Count` cost zero.
 
 Custom `complexity` callbacks receive the resolver's value before GraphQL serialization through `resolved.result` during settlement. The result can be `null` or `undefined`. With `Query`, `Mutation`, `ResolveField`, or `Field` from `@nest-boot/graphql`, result inference follows NestJS's `@Field` default-value types. Scalar references such as `ID` and `Int` infer `unknown`.
 
