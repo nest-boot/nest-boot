@@ -489,6 +489,8 @@ To supply a custom Redis instance managed outside the rate limit module, pass `n
 
 ### Custom Complexity
 
+Each root mutation field has a default base cost of 10 points. The selected child fields add their costs, and explicitly configured field costs take precedence. Use `defaultMutationComplexity` to change the default base cost.
+
 Use the `@Complexity()` decorator to emit a `@complexity` schema directive. Set a base value and optional argument names that multiply that value:
 
 ```typescript

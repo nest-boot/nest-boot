@@ -17,6 +17,8 @@ export interface GraphQLRateLimitOptions {
   maxComplexity: number;
   /** Default complexity assigned to fields without explicit `@complexity` directives. */
   defaultComplexity: number;
+  /** Base cost of a root mutation field before adding its selection cost. Defaults to 10. */
+  defaultMutationComplexity?: number;
   /** Key prefix for rate limit state. */
   keyPrefix: string;
   /** Rate at which cost budget restores (points per second). */

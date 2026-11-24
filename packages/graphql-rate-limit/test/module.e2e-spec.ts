@@ -1,4 +1,11 @@
-import { GraphQLModule, Query, Resolver } from "@nest-boot/graphql";
+import {
+  Field,
+  GraphQLModule,
+  Mutation,
+  ObjectType,
+  Query,
+  Resolver,
+} from "@nest-boot/graphql";
 import { type DynamicModule, type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
@@ -16,11 +23,41 @@ interface GraphQLResponse {
   };
 }
 
+@ObjectType()
+class MutationDetails {
+  @Field(() => String)
+  message!: string;
+}
+
+@ObjectType()
+class MutationPayload {
+  @Field(() => String)
+  status!: string;
+
+  @Field(() => MutationDetails, { complexity: 2 })
+  details!: MutationDetails;
+}
+
 @Resolver()
 class TestResolver {
   @Query(() => String)
   hello(): string {
     return "world";
+  }
+
+  @Mutation(() => Boolean)
+  updateStatus(): boolean {
+    return true;
+  }
+
+  @Mutation(() => MutationPayload)
+  updateRecord(): MutationPayload {
+    return { status: "updated", details: { message: "saved" } };
+  }
+
+  @Mutation(() => Boolean, { complexity: 3 })
+  updateWithExplicitCost(): boolean {
+    return true;
   }
 }
 
@@ -78,6 +115,40 @@ describe("GraphQLRateLimitModule - e2e", () => {
       "Query is too complex: 7. Maximum allowed complexity: 7",
     );
   });
+
+  it.each([
+    { label: "default", options: {}, baseCost: 10 },
+    { label: "custom", options: { defaultMutationComplexity: 4 }, baseCost: 4 },
+    { label: "zero", options: { defaultMutationComplexity: 0 }, baseCost: 0 },
+  ])(
+    "prices root mutations with $label complexity",
+    async ({ options, baseCost }) => {
+      const app = await createApp(
+        GraphQLRateLimitModule.forRoot({ ...options, getId: () => "client" }),
+      );
+      apps.push(app);
+      const http = request(app.getHttpServer());
+
+      for (const [query, expectedCost] of [
+        ["{ hello }", 0],
+        ["mutation { updateStatus }", baseCost],
+        ["mutation { updateRecord { status } }", baseCost],
+        ["mutation { updateRecord { details { message } } }", baseCost + 2],
+        ["mutation { updateWithExplicitCost }", 3],
+      ] as const) {
+        const response = await http
+          .post("/api/graphql")
+          .send({ query })
+          .expect(200);
+        const body = response.body as GraphQLResponse;
+        expect(body.errors).toBeUndefined();
+        expect(body.extensions?.cost).toMatchObject({
+          requestedQueryCost: expectedCost,
+          actualQueryCost: expectedCost,
+        });
+      }
+    },
+  );
 
   /**
    * Returns initialized test application and its exposed dependencies.

@@ -78,28 +78,32 @@ function shopifyEstimator(
 
 @Plugin()
 export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
-  private readonly complexityEstimators: ComplexityEstimator[] = [];
-
-  private readonly maxComplexity: number;
-  private readonly defaultComplexity: number;
+  private readonly defaultEstimator: ComplexityEstimator;
 
   constructor(
     private readonly storage: GraphQLRateLimitStorage,
     private readonly moduleRef: ModuleRef,
-    @Inject(OPTIONS_TOKEN) options: GraphQLRateLimitOptions,
+    @Inject(OPTIONS_TOKEN) private readonly options: GraphQLRateLimitOptions,
   ) {
-    this.maxComplexity = options.maxComplexity;
-    this.defaultComplexity = options.defaultComplexity;
-    this.complexityEstimators = [
-      directiveEstimator(),
-      fieldExtensionsEstimator(),
-      shopifyEstimator,
-      simpleEstimator({ defaultComplexity: this.defaultComplexity }),
-    ];
+    this.defaultEstimator = simpleEstimator({
+      defaultComplexity: options.defaultComplexity,
+    });
   }
 
   async requestDidStart(): Promise<GraphQLRequestListener<BaseContext>> {
     const { schema } = this.moduleRef.get(GraphQLSchemaHost, { strict: false });
+    const { maxComplexity, defaultMutationComplexity } = this.options;
+    const mutationType = schema.getMutationType();
+    const complexityEstimators: ComplexityEstimator[] = [
+      directiveEstimator(),
+      fieldExtensionsEstimator(),
+      ({ type, childComplexity }) =>
+        type === mutationType && defaultMutationComplexity !== undefined
+          ? defaultMutationComplexity + childComplexity
+          : undefined,
+      shopifyEstimator,
+      this.defaultEstimator,
+    ];
 
     const cost: CostResponse = {
       requestedQueryCost: 0,
@@ -115,12 +119,12 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
           operationName: request.operationName,
           query: document,
           variables: request.variables,
-          estimators: this.complexityEstimators,
+          estimators: complexityEstimators,
         });
 
-        if (cost.requestedQueryCost >= this.maxComplexity) {
+        if (cost.requestedQueryCost >= maxComplexity) {
           throw new HttpException(
-            `Query is too complex: ${String(cost.requestedQueryCost)}. Maximum allowed complexity: ${String(this.maxComplexity)}`,
+            `Query is too complex: ${String(cost.requestedQueryCost)}. Maximum allowed complexity: ${String(maxComplexity)}`,
             429,
           );
         }
@@ -158,7 +162,7 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
                 // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
                 let fieldCost: number | void;
 
-                for (const complexityEstimator of this.complexityEstimators) {
+                for (const complexityEstimator of complexityEstimators) {
                   fieldCost = complexityEstimator(estimatorArgs);
 
                   if (typeof fieldCost === "number" && !isNaN(fieldCost)) {

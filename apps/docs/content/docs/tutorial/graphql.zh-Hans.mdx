@@ -488,6 +488,8 @@ export class CommonModule {}
 
 ### 自定义复杂度
 
+每个根 mutation 字段的基础成本默认为 10 点，所选子字段的成本另计。字段显式配置的成本优先。可通过 `defaultMutationComplexity` 调整默认基础成本。
+
 使用 `@Complexity()` 装饰器生成 `@complexity` Schema 指令。可以设置基础值，以及用于乘算该值的参数名：
 
 ```typescript
