@@ -7,7 +7,9 @@ import {
   RequestContext,
   RequestContextMiddleware,
 } from "@nest-boot/request-context";
+import { type OnModuleInit } from "@nestjs/common";
 import { MODULE_METADATA } from "@nestjs/common/constants";
+import { ApplicationConfig } from "@nestjs/core";
 import { Args as NestArgs, Resolver as NestResolver } from "@nestjs/graphql";
 import { Test } from "@nestjs/testing";
 
@@ -504,7 +506,64 @@ describe("AuthModule", () => {
       HashService,
       UserDeletionService,
       AuthContext,
+      ApplicationConfig,
     ]);
+  });
+  it("initializes one backend after the host configures its global prefix", async () => {
+    const config = new ApplicationConfig();
+    const options = { secret };
+    const auth = getAuthProvider().useFactory(
+      options,
+      { em: {} },
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext({}, options),
+      config,
+    );
+    // Reading the handler during middleware construction must not freeze the path.
+    expect(auth.handler).toEqual(expect.any(Function));
+    expect(mockBetterAuth).not.toHaveBeenCalled();
+    config.setGlobalPrefix("v2");
+    await (auth as unknown as OnModuleInit).onModuleInit();
+    await (auth as unknown as OnModuleInit).onModuleInit();
+    expect(auth.options.basePath).toBe("/v2/auth");
+    expect(auth.api).toEqual({});
+    expect(mockBetterAuth).toHaveBeenCalledOnce();
+  });
+  it.each(["api", "options", "$context"])(
+    "does not freeze the HTTP path after an early %s read",
+    async (property) => {
+      const config = new ApplicationConfig();
+      const options = { secret };
+      const auth = getAuthProvider().useFactory(
+        options,
+        { em: {} },
+        undefined,
+        undefined,
+        undefined,
+        createTestAuthContext({}, options),
+        config,
+      );
+      Reflect.get(auth, property);
+      config.setGlobalPrefix("api");
+      await (auth as unknown as OnModuleInit).onModuleInit();
+      expect(auth.options.basePath).toBe("/api/auth");
+      expect(mockBetterAuth.mock.calls.at(-1)?.[0].basePath).toBe("/api/auth");
+    },
+  );
+  it("preserves an empty public URL for standalone backend creation", () => {
+    const options = { secret, baseURL: "" };
+    const auth = getAuthProvider().useFactory(
+      options,
+      { em: {} },
+      undefined,
+      undefined,
+      undefined,
+      createTestAuthContext({}, options),
+    );
+    expect(auth.options.baseURL).toBe("");
+    expect(mockBetterAuth).toHaveBeenCalledOnce();
   });
   it("preserves explicit upstream options ahead of environment defaults", () => {
     process.env.APP_NAME = "Environment app";
@@ -1879,8 +1938,8 @@ describe("AuthModule", () => {
       middlewareManager,
       authMiddleware,
     );
-    expect(middlewareManager.globalExclude).toHaveBeenCalledWith("/api/auth/");
-    expect(authProxy.forRoutes).toHaveBeenCalledWith("/api/auth/");
+    expect(middlewareManager.globalExclude).toHaveBeenCalledWith("/auth");
+    expect(authProxy.forRoutes).toHaveBeenCalledWith("/auth");
     expect(middlewareProxy.dependencies).not.toHaveBeenCalled();
   });
 });

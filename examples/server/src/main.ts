@@ -13,6 +13,8 @@ async function bootstrap() {
     cors: true,
   });
 
+  app.setGlobalPrefix('api');
+
   const logger = await app.resolve(Logger);
 
   process.on('unhandledRejection', (err, promise) => {

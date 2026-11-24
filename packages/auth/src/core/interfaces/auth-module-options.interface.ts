@@ -28,9 +28,9 @@ export interface AuthModuleOptions<
 > {
   /** Application name used by authentication flows. */
   appName?: string;
-  /** Public application URL used to construct authentication callbacks. */
+  /** Public origin, or full URL matching the effective auth path, used to construct callbacks. */
   baseURL?: string;
-  /** Base path for the auth API endpoints. */
+  /** Relative auth API path (default: `/auth`), following the NestJS global prefix. */
   basePath?: string;
   /** Secret used for authentication signing and encryption. */
   secret?: string;

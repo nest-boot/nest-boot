@@ -208,7 +208,7 @@ export async function verifyAuthFeatures(
 
     await app.listen(0, "127.0.0.1");
     const url = await app.getUrl();
-    const signup = await fetch(url + "/api/auth/sign-up/email", {
+    const signup = await fetch(url + "/auth/sign-up/email", {
       method: "POST",
       headers: {
         "content-type": "application/json",

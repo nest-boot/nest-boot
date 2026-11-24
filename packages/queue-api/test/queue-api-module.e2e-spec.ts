@@ -62,7 +62,7 @@ it.each([true, false])(
       if (!workspaceEnabled) {
         expect(module.get(WorkspaceService)).toBeNull();
         const response = await request(app.getHttpServer())
-          .post("/api/graphql")
+          .post("/graphql")
           .send({
             query:
               '{ workspaceJob(id: "ignored") { id } workspaceJobs(first: 1) { totalCount } }',

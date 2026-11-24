@@ -21,6 +21,8 @@ The API listens on `http://localhost:4000`; Better Auth is mounted at
 `/api/auth` and GraphQL at `/api/graphql`. The configured `AuthModule` provides
 all authentication, session, user, workspace, member, invitation and API-key
 operations, with cookie sessions and Service authorization preserved.
+`main.ts` sets the NestJS global prefix to `api`, so GraphQL uses its default
+`/graphql` path at `/api/graphql`. Auth uses its default `/auth` path at `/api/auth` through the same global prefix.
 Entities, connections, enums and resolvers live in `packages/auth/src` and use
 concrete class references. Both the runtime ORM configuration and the migration
 CLI register `entities` imported from `@nest-boot/auth`. The example configures

@@ -32,9 +32,11 @@ return await authService.signInSocial({
 ```
 
 When `disableRedirect` is true, navigate the browser to `result.url`.
-The provider returns to `/api/auth/callback/:providerId` by default; register
-that complete URL in the provider console. `basePath` changes the `/api/auth`
-prefix.
+The provider returns to `/auth/callback/:providerId` by default, or
+`/api/auth/callback/:providerId` with `app.setGlobalPrefix("api")`. Register the
+complete public URL in the provider console. Custom `basePath` values are relative
+to the global prefix; the module uses the effective path for OAuth callbacks and
+authentication emails.
 
 ## Linking Accounts
 

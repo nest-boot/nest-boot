@@ -110,7 +110,7 @@ export class AppModule {}
 ```
 
 应用需声明与 Nest Boot 版本匹配的 `@nest-boot/health-check`，以及
-`@nestjs/terminus@^12`。注册后，`GET /api/health` 包含 `mailer` 状态：
+`@nestjs/terminus@^12`。注册后，`GET /health` 包含 `mailer` 状态：
 检查成功返回 HTTP 200，任一已注册检查失败返回 HTTP 503。
 是否让 SMTP 故障影响就绪状态由应用决定；仅导入这两个模块不会改变现有检查。
 

@@ -5,6 +5,10 @@ description: "Expose Prometheus default and custom metrics from a Nest applicati
 
 The `@nest-boot/metrics` module creates a dedicated [prom-client](https://github.com/siimon/prom-client) registry, collects Node.js default metrics, and exposes them through `GET /metrics` in the Prometheus exposition format.
 
+The endpoint follows the NestJS global prefix: without a prefix it is `/metrics`;
+with `app.setGlobalPrefix("api")` it is `/api/metrics`. Configure the Prometheus
+scrape URL to match.
+
 ## Installation
 
 Install the module and its `prom-client` peer dependency:

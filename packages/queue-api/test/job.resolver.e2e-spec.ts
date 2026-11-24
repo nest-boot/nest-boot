@@ -241,7 +241,7 @@ describe("scoped Job GraphQL API", () => {
     authenticated = true,
   ) {
     return request(app.getHttpServer())
-      .post("/api/graphql")
+      .post("/graphql")
       .set("x-test-authenticated", String(authenticated))
       .send({ query: source, variables });
   }

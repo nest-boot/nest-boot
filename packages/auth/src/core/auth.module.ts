@@ -19,7 +19,7 @@ import {
   Module,
   type NestMiddleware,
 } from "@nestjs/common";
-import { APP_INTERCEPTOR } from "@nestjs/core";
+import { APP_INTERCEPTOR, ApplicationConfig } from "@nestjs/core";
 
 import { adminProviders } from "../admin/admin.providers.js";
 import { SystemAccountService } from "../admin/services/system-account.service.js";
@@ -121,6 +121,7 @@ class AuthOptionsHostModule {}
         HashService,
         UserDeletionService,
         AuthContext,
+        ApplicationConfig,
       ],
       useFactory: createAuthInstance,
     },
@@ -259,7 +260,7 @@ export class AuthModule extends ConfigurableModuleClass {
   ) {
     super();
 
-    const basePath = this.options.basePath ?? "/api/auth/";
+    const basePath = this.options.basePath ?? "/auth";
 
     this.middlewareManager.globalExclude(basePath);
 

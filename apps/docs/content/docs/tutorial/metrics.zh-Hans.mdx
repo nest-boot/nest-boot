@@ -5,6 +5,9 @@ description: "使用 @nest-boot/metrics 从 Nest 应用暴露 Prometheus 默认�
 
 `@nest-boot/metrics` 模块会创建独立的 [prom-client](https://github.com/siimon/prom-client) Registry，采集 Node.js 默认指标，并通过 `GET /metrics` 以 Prometheus exposition format 输出。
 
+端点遵循 NestJS 全局前缀：未设置前缀时为 `/metrics`；调用
+`app.setGlobalPrefix("api")` 后为 `/api/metrics`。请相应调整 Prometheus 抓取地址。
+
 ## 安装
 
 安装模块及其 `prom-client` peer dependency：
