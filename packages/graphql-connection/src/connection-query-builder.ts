@@ -7,12 +7,11 @@ import {
 } from "@mikro-orm/core";
 import { type SqlEntityManager } from "@mikro-orm/sql";
 import { GraphQLBadUserInputError } from "@nest-boot/graphql";
-import { compact, get, set } from "lodash-es";
+import { get, set } from "lodash-es";
 
 import { type ConnectionFindOptions } from "./connection.manager.js";
 import { Cursor } from "./cursor.js";
 import { OrderDirection, PagingType } from "./enums/index.js";
-import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants.js";
 import {
   ConnectionArgsInterface,
   ConnectionMetadata,
@@ -21,8 +20,8 @@ import {
 } from "./interfaces/index.js";
 import { ConnectionClass } from "./types/index.js";
 import {
-  combineConnectionFilters,
-  connectionFilters,
+  getConnectionMetadata,
+  getConnectionWhere,
 } from "./utils/connection-filters.js";
 import { resolveConnectionPagination } from "./utils/resolve-connection-pagination.js";
 
@@ -66,7 +65,7 @@ export class ConnectionQueryBuilder<
 
   constructor(
     private readonly entityManager: SqlEntityManager,
-    private readonly connectionClass: ConnectionClass<Entity>,
+    connectionClass: ConnectionClass<Entity>,
     private readonly args: ConnectionArgsInterface<Entity>,
     private readonly options?: ConnectionFindOptions<
       Entity,
@@ -75,14 +74,7 @@ export class ConnectionQueryBuilder<
       Excludes
     >,
   ) {
-    this.metadata = Reflect.getMetadata(
-      GRAPHQL_CONNECTION_METADATA,
-      connectionClass,
-    );
-
-    if (typeof this.metadata === "undefined") {
-      throw new Error("Connection metadata not found");
-    }
+    this.metadata = getConnectionMetadata(connectionClass);
 
     const pagination = resolveConnectionPagination(args);
     if ("error" in pagination) {
@@ -97,11 +89,11 @@ export class ConnectionQueryBuilder<
     this.queryOrderMap = this.getQueryOrderMap();
     this.findOptions = this.getFindOptions();
 
-    this.allFilterQuery = combineConnectionFilters(
-      compact([
-        this.getCursorFilterQuery(),
-        ...connectionFilters(this.metadata, this.args, this.options?.where),
-      ]),
+    this.allFilterQuery = getConnectionWhere(
+      this.metadata,
+      args,
+      options?.where,
+      this.getCursorFilterQuery(),
     );
   }
 

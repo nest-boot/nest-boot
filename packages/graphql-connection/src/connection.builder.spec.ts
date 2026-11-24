@@ -57,7 +57,7 @@ describe("ConnectionBuilder", () => {
       title!: string;
     }
 
-    const { Connection } = new ConnectionBuilder(CostBook)
+    const { Connection, getCountComplexity } = new ConnectionBuilder(CostBook)
       .addField({ field: "title", type: "string", filterable: true })
       .addField({ field: "id", type: "number", sortable: true })
       .build();
@@ -96,6 +96,12 @@ describe("ConnectionBuilder", () => {
       cost({ first: 10, filter: { title: "book" } }, { result: null }),
     ).toBe(3);
     expect(cost({})).toBe(0);
+    expect(
+      getCountComplexity({
+        args: { query: "title:book", filter: { title: { $ne: "other" } } },
+        childComplexity: 5,
+      } as FieldComplexityEstimatorArgs),
+    ).toBe(13);
     expect(cost({ last: 1, after: "cursor" })).toBe(0);
   });
 

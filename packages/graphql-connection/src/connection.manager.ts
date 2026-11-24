@@ -2,24 +2,23 @@ import {
   EntityManager,
   type FilterQuery,
   type FindOptions,
+  QueryFlag,
 } from "@mikro-orm/core";
 import type { SqlEntityManager } from "@mikro-orm/sql";
 import { Inject, Injectable } from "@nestjs/common";
 
 import { ConnectionQueryBuilder } from "./connection-query-builder.js";
 import { CountPrecision } from "./enums/count-precision.enum.js";
-import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants.js";
 import {
   ConnectionArgsInterface,
-  ConnectionMetadata,
   ConnectionResult,
   CountArgsInterface,
 } from "./interfaces/index.js";
 import type { Count } from "./objects/count.object.js";
 import { ConnectionClass } from "./types/index.js";
 import {
-  combineConnectionFilters,
-  connectionFilters,
+  getConnectionMetadata,
+  getConnectionWhere,
 } from "./utils/connection-filters.js";
 
 /**
@@ -136,28 +135,40 @@ export class ConnectionManager {
     args: CountArgsInterface<Entity>,
     options?: ConnectionCountOptions<Entity>,
   ): Promise<Count> {
-    const metadata: ConnectionMetadata<Entity> | undefined =
-      Reflect.getMetadata(GRAPHQL_CONNECTION_METADATA, connectionClass);
-    if (!metadata) {
-      throw new Error("Connection metadata not found");
-    }
+    const metadata = getConnectionMetadata(connectionClass);
+    const { entityClass } = metadata;
+    const em = this.em.getContext();
+    const where = getConnectionWhere(metadata, args, options?.where);
+    const entity = em.getMetadata(entityClass);
 
-    const where = combineConnectionFilters(
-      connectionFilters(metadata, args, options?.where),
+    // Reuse the read planning hooks used by MikroORM's find() before adding the SQL limit.
+    /* eslint-disable @typescript-eslint/dot-notation */
+    const readOptions = em["prepareOptions"]({ ...options });
+    await em.tryFlush(entityClass, {});
+    const filteredWhere = await em["processWhere"](
+      entityClass,
+      where ?? {},
+      readOptions,
+      "read",
     );
-    const matches = this.em
-      .createQueryBuilder(metadata.entityClass)
-      .select("id" as never)
-      .limit(COUNT_LIMIT + 1)
-      .withSchema(options?.schema);
+    const populate = await em.preparePopulate(entityClass, readOptions);
+    const populateFilter = await em["getJoinedFilters"](entity, {
+      ...readOptions,
+      populate: populate as never,
+    });
+    /* eslint-enable @typescript-eslint/dot-notation */
 
-    if (where !== null) {
-      matches.where(where as never);
-    }
-
-    await matches.applyFilters(options?.filters);
-    const count = await this.em
-      .createQueryBuilder(matches as never, "bounded_count")
+    const matches = em.createQueryBuilder(entityClass);
+    matches
+      .unsetFlag(QueryFlag.CONVERT_CUSTOM_TYPES)
+      .select(entity.primaryKeys)
+      .withSchema(em.getDriver().getSchemaName(entity, readOptions))
+      .populate(populate, undefined, populateFilter)
+      .where(filteredWhere)
+      .limit(COUNT_LIMIT + 1);
+    await matches.applyJoinedFilters(em, readOptions.filters);
+    const count = await em
+      .createQueryBuilder(matches, "bounded_count")
       .count()
       .getCount();
 

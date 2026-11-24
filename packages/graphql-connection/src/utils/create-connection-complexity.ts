@@ -120,6 +120,5 @@ export function createCountComplexity<Entity extends object>(
     "fieldOptionsMap" | "filterQuerySchema"
   >,
 ): ComplexityEstimator {
-  return ({ args, childComplexity }) =>
-    10 + childComplexity + estimateConnectionFilterComplexity(args, metadata);
+  return ({ args }) => 10 + estimateConnectionFilterComplexity(args, metadata);
 }

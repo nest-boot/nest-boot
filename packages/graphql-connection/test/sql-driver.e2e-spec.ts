@@ -12,6 +12,7 @@ import { Test } from "@nestjs/testing";
 import {
   ConnectionBuilder,
   ConnectionManager,
+  CountPrecision,
   GraphQLConnectionModule,
   OrderDirection,
 } from "../src/index.js";
@@ -28,6 +29,32 @@ const BookSchema = new EntitySchema({
     id: { type: "number", primary: true },
     title: { type: "string" },
     lastUsedAt: { type: "Date", nullable: true },
+  },
+});
+
+class Edition {
+  id!: number;
+  published!: boolean;
+}
+
+const EditionSchema = new EntitySchema({
+  class: Edition,
+  properties: {
+    id: { type: "number", primary: true },
+    published: { type: "boolean" },
+  },
+});
+
+class Volume {
+  id!: number;
+  edition!: Edition;
+}
+
+const VolumeSchema = new EntitySchema({
+  class: Volume,
+  properties: {
+    id: { type: "number", primary: true },
+    edition: { kind: "m:1", entity: () => Edition },
   },
 });
 
@@ -52,6 +79,134 @@ const SearchableBookSchema = new EntitySchema({
 });
 
 describe("GraphQL connection and official SQL driver integration", () => {
+  it("counts the same matches as a list when an ORM filter reads the query schema", async () => {
+    const orm = await MikroORM.init({
+      driver: PgliteDriver,
+      entities: [BookSchema],
+      dbName: "memory://",
+    });
+    try {
+      await orm.schema.create();
+      const em = orm.em.fork({ schema: "public" });
+      await em.insertMany(ConnectionBook, [
+        { id: 1, title: "Standard" },
+        { id: 2, title: "Annotated" },
+        { id: 3, title: "Annotated" },
+      ]);
+      em.addFilter({
+        name: "edition",
+        entity: ConnectionBook,
+        args: false,
+        cond: (_args, _type, _em, options) => ({
+          title: options?.schema === "public" ? "Standard" : "Annotated",
+        }),
+      });
+      const { Connection } = new ConnectionBuilder(ConnectionBook).build();
+      const manager = new ConnectionManager(em);
+
+      for (const scope of [{ schema: "public" }, {}]) {
+        const page = await manager.find(Connection, { first: 10 }, scope);
+        expect(page.edges.map(({ node }) => node.id)).toEqual([1]);
+        await expect(manager.count(Connection, {}, scope)).resolves.toEqual({
+          count: 1,
+          precision: CountPrecision.EXACT,
+        });
+      }
+      await expect(
+        manager.count(Connection, {}, { filters: false }),
+      ).resolves.toEqual({ count: 3, precision: CountPrecision.EXACT });
+      const zeroId = { where: 0, filters: false } as const;
+      await expect(
+        manager.find(Connection, { first: 10 }, zeroId),
+      ).resolves.toMatchObject({ edges: [] });
+      await expect(manager.count(Connection, {}, zeroId)).resolves.toEqual({
+        count: 0,
+        precision: CountPrecision.EXACT,
+      });
+    } finally {
+      await orm.close(true);
+    }
+  });
+
+  it("distinguishes an exact count of 10,000 from a lower bound", async () => {
+    const orm = await MikroORM.init({
+      driver: PgliteDriver,
+      entities: [BookSchema],
+      dbName: "memory://",
+    });
+    try {
+      await orm.schema.create();
+      const em = orm.em.fork();
+      await em.execute(
+        'insert into "connection_book" ("id", "title") select id, \'Book\' from generate_series(1, 10001) as ids(id)',
+      );
+      const { Connection } = new ConnectionBuilder(ConnectionBook).build();
+      const manager = new ConnectionManager(em);
+
+      const execute = vi.spyOn(em.getConnection(), "execute");
+      await expect(manager.count(Connection, {})).resolves.toEqual({
+        count: 10_000,
+        precision: CountPrecision.AT_LEAST,
+      });
+      expect(execute).toHaveBeenCalledTimes(1);
+      expect(execute.mock.calls[0].slice(0, 2)).toEqual([
+        expect.stringMatching(
+          /select count\(\*\).*from \(select .* limit \?\)/i,
+        ),
+        [10_001],
+      ]);
+      await expect(
+        manager.count(Connection, {}, { where: { id: { $lte: 10_000 } } }),
+      ).resolves.toEqual({ count: 10_000, precision: CountPrecision.EXACT });
+      await expect(
+        manager.count(Connection, {}, { where: { id: { $lt: 0 } } }),
+      ).resolves.toEqual({ count: 0, precision: CountPrecision.EXACT });
+    } finally {
+      await orm.close(true);
+    }
+  });
+
+  it("counts the same volumes when MikroORM implicitly filters their editions", async () => {
+    const orm = await MikroORM.init({
+      driver: PgliteDriver,
+      entities: [VolumeSchema, EditionSchema],
+      dbName: "memory://",
+    });
+    try {
+      await orm.schema.create();
+      const em = orm.em.fork();
+      await em.insertMany(Edition, [
+        { id: 1, published: true },
+        { id: 2, published: false },
+      ]);
+      await em.insertMany(Volume, [
+        { id: 1, edition: 1 },
+        { id: 2, edition: 1 },
+        { id: 3, edition: 2 },
+      ]);
+      em.addFilter({
+        name: "published",
+        entity: Edition,
+        cond: { published: true },
+      });
+      const { Connection } = new ConnectionBuilder(Volume).build();
+      const manager = new ConnectionManager(em);
+      const page = await manager.find(Connection, { first: 1 });
+
+      expect(page.edges.map(({ node }) => node.id)).toEqual([1]);
+      expect(page.pageInfo.hasNextPage).toBe(true);
+      await expect(manager.count(Connection, {})).resolves.toEqual({
+        count: 2,
+        precision: CountPrecision.EXACT,
+      });
+      await expect(
+        manager.count(Connection, {}, { filters: false }),
+      ).resolves.toEqual({ count: 3, precision: CountPrecision.EXACT });
+    } finally {
+      await orm.close(true);
+    }
+  });
+
   it("uses matching full-text boundaries for query syntax and schema filters while preserving native conditions", async () => {
     const orm = await MikroORM.init({
       driver: PgliteDriver,

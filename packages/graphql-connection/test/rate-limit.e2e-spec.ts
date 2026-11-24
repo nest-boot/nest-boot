@@ -254,6 +254,24 @@ describe("Connection complexity over GraphQL HTTP", () => {
     }
   });
 
+  it("keeps count complexity fixed when the selected result has a field cost", async () => {
+    const url = await startApp(
+      GraphQLRateLimitModule.forRoot({ defaultComplexity: 1 }),
+    );
+    const response = await query(
+      url,
+      '{ catalogCount(query: "name:alpha") { count precision __typename } }',
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      data: {
+        catalogCount: { count: 2, precision: "EXACT", __typename: "Count" },
+      },
+      extensions: { cost: { requestedQueryCost: 11, actualQueryCost: 11 } },
+    });
+  });
+
   it.each([false, true])(
     "keeps pagination errors on the executed field with rate limiting=%s",
     async (rateLimited) => {
