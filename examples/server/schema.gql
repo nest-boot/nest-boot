@@ -24,14 +24,6 @@ type AccountConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 """
@@ -318,14 +310,6 @@ type JobConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 """
@@ -756,14 +740,6 @@ type SessionConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 """
@@ -886,14 +862,6 @@ type SystemAccountConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 type SystemAccountEdge {
@@ -961,14 +929,6 @@ type SystemApiKeyConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 type SystemApiKeyEdge {
@@ -1015,11 +975,6 @@ type SystemApiKeyPermissionOption {
   default: Boolean!
   grantable: Boolean!
   permission: SystemApiKeyPermission!
-}
-
-enum TotalCountRelation {
-  EQ
-  GTE
 }
 
 type UnbanUserPayload {
@@ -1261,14 +1216,6 @@ type UserApiKeyConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 type UserApiKeyEdge {
@@ -1352,14 +1299,6 @@ type UserConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 """
@@ -1525,14 +1464,6 @@ type WorkspaceApiKeyConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 type WorkspaceApiKeyEdge {
@@ -1593,14 +1524,6 @@ type WorkspaceConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 """
@@ -1638,14 +1561,6 @@ type WorkspaceInvitationConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 """
@@ -1737,14 +1652,6 @@ type WorkspaceMemberConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 """

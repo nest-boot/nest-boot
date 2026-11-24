@@ -216,7 +216,7 @@ cross-identity contexts supplied by infrastructure; creation and cancellation re
 `WorkspaceInvitationService.getWorkspaceInvitationConnectionByWorkspace(workspace, args)` and
 `getWorkspaceInvitationConnectionByUser(user, args)` return Relay connections rather than arrays.
 Pass connection arguments such as `{ first: 20, after: cursor }` and read
-`edges`, `pageInfo`, and `totalCount` from the result.
+`edges` and `pageInfo` from the result.
 
 The service calls `ConnectionManager` after authorization, using the request
 ORM manager without disabling filters or native RLS. It enforces the selected workspace or

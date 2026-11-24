@@ -1,6 +1,5 @@
-import { Args, ID, Info, Mutation, Query, Resolver } from "@nest-boot/graphql";
+import { Args, ID, Mutation, Query, Resolver } from "@nest-boot/graphql";
 import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
-import { type GraphQLResolveInfo } from "graphql";
 
 import {
   UserConnection,
@@ -54,16 +53,14 @@ export class AdminUserResolver {
   /**
    * Paginates users using the application's connection definition.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated users matching the query.
    */
   @Query(() => UserConnection)
   async users(
     @Args({ type: () => UserConnectionArgs })
     args: ConnectionArgsInterface<User>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
-    return await this.userService.getUserConnection(args, info);
+    return await this.userService.getUserConnection(args);
   }
 
   /**

@@ -6,7 +6,8 @@ describe("public exports", () => {
     expect(publicApi.ConnectionManager).toBeDefined();
     expect(publicApi.GraphQLConnectionModule).toBeDefined();
     expect(publicApi.OrderDirection).toBeDefined();
-    expect(publicApi.TotalCountRelation).toBeDefined();
+    expect(publicApi.Count).toBeDefined();
+    expect(publicApi.CountPrecision).toBeDefined();
     expect(publicApi.PageInfo).toBeDefined();
     expect(publicApi.createFilter).toBeDefined();
   });

@@ -82,14 +82,12 @@ describe("GraphQL connection and official SQL driver integration", () => {
         query: "你好世界",
       });
       expect(queried.edges.map(({ node }) => node.id)).toEqual([1]);
-      expect(queried.totalCount).toBe(1);
 
       const filtered = await manager.find(Connection, {
         first: 10,
         filter: Filter.parseValue({ title: { $fulltext: "你好世界, HELLO!" } }),
       });
       expect(filtered.edges.map(({ node }) => node.id)).toEqual([1]);
-      expect(filtered.totalCount).toBe(1);
 
       const constrained = await manager.find(Connection, {
         first: 10,
@@ -101,7 +99,6 @@ describe("GraphQL connection and official SQL driver integration", () => {
         }),
       });
       expect(constrained.edges.map(({ node }) => node.id)).toEqual([2, 3]);
-      expect(constrained.totalCount).toBe(2);
 
       for (const [text, expectedIds] of [
         ["你好世界", []],
@@ -115,36 +112,42 @@ describe("GraphQL connection and official SQL driver integration", () => {
           },
         );
         expect(native.edges.map(({ node }) => node.id)).toEqual(expectedIds);
-        expect(native.totalCount).toBe(expectedIds.length);
       }
 
+      const search = {
+        query: "title:你好世界",
+        filter: Filter.parseValue({ title: { $fulltext: "HELLO!" } }),
+      };
+      const scope = { where: { title: { $eq: "你好世界 HELLO" } } };
       const combined = await manager.find(
         Connection,
-        {
-          first: 10,
-          query: "title:你好世界",
-          filter: Filter.parseValue({ title: { $fulltext: "HELLO!" } }),
-        },
-        { where: { title: { $eq: "你好世界 HELLO" } } },
+        { first: 10, ...search },
+        scope,
       );
       expect(combined.edges.map(({ node }) => node.id)).toEqual([1]);
-      expect(combined.totalCount).toBe(1);
+      expect(await manager.count(Connection, search, scope)).toEqual({
+        count: 1,
+        precision: "EXACT",
+      });
 
       for (const query of [undefined, "HELLO!"]) {
+        const scope = {
+          where: {
+            $and: [
+              { [raw((alias) => `${alias}."id"`)]: { $lte: 1 } },
+              { title: { $ne: "Unpublished" } },
+            ],
+          },
+        };
         const scoped = await manager.find(
           Connection,
           { first: 10, query },
-          {
-            where: {
-              $and: [
-                { [raw((alias) => `${alias}."id"`)]: { $lte: 1 } },
-                { title: { $ne: "Unpublished" } },
-              ],
-            },
-          },
+          scope,
         );
         expect(scoped.edges.map(({ node }) => node.id)).toEqual([1]);
-        expect(scoped.totalCount).toBe(1);
+        expect((await manager.count(Connection, { query }, scope)).count).toBe(
+          1,
+        );
       }
 
       const empty = await manager.find(Connection, {
@@ -152,7 +155,6 @@ describe("GraphQL connection and official SQL driver integration", () => {
         filter: Filter.parseValue({ title: { $fulltext: "!!!" } }),
       });
       expect(empty.edges).toEqual([]);
-      expect(empty.totalCount).toBe(0);
     } finally {
       await orm.close(true);
     }
@@ -196,7 +198,6 @@ describe("GraphQL connection and official SQL driver integration", () => {
             // GraphQL resolves order enums to their entity property paths.
             orderBy: { field: "lastUsedAt", direction },
           });
-          expect(result.totalCount).toBe(5);
           expect(result.edges).toHaveLength(1);
           const pageIds = result.edges.map(({ node }) => node.id);
           if (backward) {
@@ -272,7 +273,6 @@ describe("GraphQL connection and official SQL driver integration", () => {
         first: 1,
       });
 
-      expect(result.totalCount).toBe(2);
       expect(result.edges).toHaveLength(1);
       expect(result.edges[0].node).toMatchObject({ id: 1, title: "First" });
       expect(result.pageInfo.hasNextPage).toBe(true);

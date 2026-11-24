@@ -4,10 +4,7 @@ import { wrap } from "@mikro-orm/core";
 import { EntityManager } from "@mikro-orm/core";
 import { MikroORM } from "@mikro-orm/pglite";
 import { getDatabaseConfig } from "@nest-boot/database";
-import {
-  type ConnectionClass,
-  ConnectionManager,
-} from "@nest-boot/graphql-connection";
+import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 
 import { SystemAccountConnection } from "../src/admin/connections/system-account.connection-definition.js";
@@ -113,8 +110,8 @@ describe("Auth name search through real connection queries", () => {
       assert(record);
       const manager = new ConnectionManager(em);
       const find = (query: string, id = record.id) =>
-        manager.find(
-          connection as ConnectionClass<NamedRecord>,
+        manager.find<NamedRecord>(
+          connection,
           { first: 10, query },
           { where: { id } },
         );
@@ -122,18 +119,18 @@ describe("Auth name search through real connection queries", () => {
       for (const query of ["deployment", "世界", "name:Deployment"]) {
         const result = await find(query);
         expect(result.edges.map(({ node }) => node.id)).toEqual([record.id]);
-        expect(result.totalCount).toBe(1);
+        expect(result.edges.length).toBe(1);
       }
       expect((await find("Deployment", "0")).edges).toEqual([]);
       expect(wrap(record).toObject()).not.toHaveProperty("searchableName");
 
       if (record instanceof User || record instanceof WorkspaceMember) {
         assert(record.email);
-        expect((await find(`email:"${record.email}"`)).totalCount).toBe(1);
+        expect((await find(`email:"${record.email}"`)).edges.length).toBe(1);
         expect(
-          (await find(`email:${record.email.slice(0, 5)}*`)).totalCount,
+          (await find(`email:${record.email.slice(0, 5)}*`)).edges.length,
         ).toBe(1);
-        expect((await find("name:你*")).totalCount).toBe(1);
+        expect((await find("name:你*")).edges.length).toBe(1);
       }
 
       record.name = "上海 Release";
@@ -141,8 +138,8 @@ describe("Auth name search through real connection queries", () => {
       em.clear();
       expect((await find("Deployment")).edges).toEqual([]);
       expect((await find("世界")).edges).toEqual([]);
-      expect((await find("release")).totalCount).toBe(1);
-      expect((await find("上海")).totalCount).toBe(1);
+      expect((await find("release")).edges.length).toBe(1);
+      expect((await find("上海")).edges.length).toBe(1);
 
       const indexes = await em.execute<{ indexdef: string }[]>(
         "select indexdef from pg_indexes where tablename = ?",
@@ -186,7 +183,7 @@ describe("Auth name search through real connection queries", () => {
       { first: 10, query: "deployment" },
     );
     expect(result.edges.map(({ node }) => node.id)).toEqual([member.id]);
-    expect(result.totalCount).toBe(1);
+    expect(result.edges.length).toBe(1);
   });
 
   it.each(["user", "workspace", "system"] as const)(
@@ -306,7 +303,7 @@ describe("Auth name search through real connection queries", () => {
           } else {
             await system.updateSystemApiKey(created.entity.id, expiration);
           }
-          expect((await find("Release")).totalCount).toBe(1);
+          expect((await find("Release")).edges.length).toBe(1);
         },
       );
     },
@@ -337,7 +334,7 @@ describe("Auth name search through real connection queries", () => {
     const find = (id: string, query: string) =>
       manager.find(UserConnection, { first: 10, query }, { where: { id } });
     expect((await find(user.id, "Deployment")).edges).toEqual([]);
-    expect((await find(user.id, "上海 Release")).totalCount).toBe(1);
-    expect((await find(other.id, "Deployment")).totalCount).toBe(1);
+    expect((await find(user.id, "上海 Release")).edges.length).toBe(1);
+    expect((await find(other.id, "Deployment")).edges.length).toBe(1);
   });
 });

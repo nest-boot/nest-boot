@@ -337,8 +337,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       shared: userJob(id: "${ids.shared}") {id}
       foreign: userJob(id: "${ids.foreign}") {id}
       workspaceJob(id: "${ids.shared}") {id}
-      userJobs(first:10, filter:{queue:"report-queue",name:"generate-report"}) {totalCount edges{node{id}}}
-      workspaceJobs(first:10, filter:{queue:"report-queue",name:"generate-report"}) {totalCount edges{node{id}}}
+      userJobs(first:10, filter:{queue:"report-queue",name:"generate-report"}) {edges{node{id}}}
+      workspaceJobs(first:10, filter:{queue:"report-queue",name:"generate-report"}) {edges{node{id}}}
     }`;
     const response = await gql(source, {
       cookies: user.cookies,
@@ -353,28 +353,28 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expect(response.body.data.shared).toBeNull();
     expect(response.body.data.foreign).toBeNull();
     expect(response.body.data.workspaceJob).toEqual({ id: ids.shared });
-    expect(response.body.data.userJobs.totalCount).toBe(1);
-    expect(response.body.data.workspaceJobs.totalCount).toBe(1);
+    expect(response.body.data.userJobs.edges).toHaveLength(1);
+    expect(response.body.data.workspaceJobs.edges).toHaveLength(1);
     const key = await createWorkspaceApiKey(user, workspace.id, {
       memberId: null,
       name: 'Job history key',
     });
     const keyed = await gql(
-      `{workspaceJobs(first:10,filter:{queue:"report-queue",name:"generate-report"}){totalCount edges{node{id}}}}`,
+      `{workspaceJobs(first:10,filter:{queue:"report-queue",name:"generate-report"}){edges{node{id}}}}`,
       { bearerToken: key.apiKey, workspaceId: workspace.id },
     );
     expectNoGraphQLErrors(keyed);
-    expect(keyed.body.data.workspaceJobs.totalCount).toBe(1);
+    expect(keyed.body.data.workspaceJobs.edges).toHaveLength(1);
     expect(
       keyed.body.data.workspaceJobs.edges.map(({ node }) => node.id),
     ).toEqual([ids.shared]);
     expectGraphQLError(
-      await gql('{userJobs(first:10){totalCount}}', {
+      await gql('{userJobs(first:10){ edges { node { id } } }}', {
         bearerToken: key.apiKey,
         workspaceId: workspace.id,
       }),
     );
-    const system = `{systemJob(id:"${ids.background}"){id} systemJobs(first:10,filter:{queue:"report-queue",name:"generate-report"}){totalCount}}`;
+    const system = `{systemJob(id:"${ids.background}"){id} systemJobs(first:10,filter:{queue:"report-queue",name:"generate-report"}){ edges { node { id } } }}`;
     expectGraphQLError(await gql(system, { cookies: user.cookies }));
     await migrationOrm.em.execute(
       'update "user" set roles = array[\'admin\'] where id = ?',
@@ -383,8 +383,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     const administrator = await gql(system, { cookies: user.cookies });
     expectNoGraphQLErrors(administrator);
     expect(administrator.body.data.systemJob).toEqual({ id: ids.background });
-    expect(administrator.body.data.systemJobs.totalCount).toBe(1);
-    const anonymous = await gql('{userJobs(first:10){totalCount}}');
+    expect(administrator.body.data.systemJobs.edges).toHaveLength(1);
+    const anonymous = await gql(
+      '{userJobs(first:10){ edges { node { id } } }}',
+    );
     expectGraphQLError(anonymous);
     expect(anonymous.body.errors[0].extensions.code).toBe('UNAUTHORIZED');
   });
@@ -569,7 +571,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
   it('rejects registration user relations before creating an account', async () => {
     const email = uniqueEmail('graphql-signup-relations');
     const response = await gql(
-      'mutation($input: AuthSignUpInput!) { signUp(input: $input) { user { accounts { totalCount } } } }',
+      'mutation($input: AuthSignUpInput!) { signUp(input: $input) { user { accounts(first: 1) { edges { node { id } } } } } }',
       {
         variables: {
           input: {
@@ -1125,7 +1127,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           },
         },
       );
-    const rejected = await create('accounts { totalCount }');
+    const rejected = await create(
+      'accounts(first: 1) { edges { node { id } } }',
+    );
     expect(rejected.body.errors[0].message).toContain(
       'Cannot query field "accounts"',
     );
@@ -1174,7 +1178,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           },
         );
       const before = await readUser();
-      const invalid = await mutate('accounts { totalCount }');
+      const invalid = await mutate(
+        'accounts(first: 1) { edges { node { id } } }',
+      );
       expect(invalid.body.errors[0].message).toContain(
         'Cannot query field "accounts"',
       );
@@ -1581,17 +1587,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
     expectNoGraphQLErrors(denied);
     expect(denied.body.data.currentUser.sessions.edges).toHaveLength(1);
-    const countOnly = await gql(
-      'query { currentUser { sessions(first: 1) { totalCount } } }',
-      { cookies: target.cookies },
-    );
-    expectNoGraphQLErrors(countOnly);
-    expect(countOnly.body.data.currentUser.sessions).toEqual({
-      totalCount: 1,
-    });
-
     const missingPageSize = await gql(
-      'query { currentUser { sessions { totalCount } } }',
+      'query { currentUser { sessions { edges { node { id } } } } }',
       { cookies: target.cookies },
     );
     expectGraphQLError(missingPageSize);
@@ -1621,13 +1618,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       .execute(`update "user" set roles = array['admin'] where id = ?`, [
         admin.user.id,
       ]);
-    const query = `query($after: String, $query: String) { users(first: 1, after: $after, query: $query) { totalCount edges { node { id } } pageInfo { hasNextPage endCursor } } }`;
+    const query = `query($after: String, $query: String) { users(first: 1, after: $after, query: $query) { edges { node { id } } pageInfo { hasNextPage endCursor } } }`;
     const first = await gql(query, {
       cookies: admin.cookies,
       variables: { query: prefix + '*' },
     });
     expectNoGraphQLErrors(first);
-    expect(first.body.data.users.totalCount).toBe(2);
     expect(first.body.data.users.pageInfo.hasNextPage).toBe(true);
     const second = await gql(query, {
       cookies: admin.cookies,
@@ -1653,11 +1649,10 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         `insert into session (id, token, user_id, expires_at) values (gen_random_uuid(), ?, ?, now() - interval '1 day')`,
         [`expired-${prefix}`, owner.user.id],
       );
-    const sessions = `query($after: String) { currentUser { sessions(first: 1, after: $after) { totalCount edges { node { id current } } pageInfo { hasNextPage endCursor } } accounts(first: 20) { edges { node { id } } } } }`;
+    const sessions = `query($after: String) { currentUser { sessions(first: 1, after: $after) { edges { node { id current } } pageInfo { hasNextPage endCursor } } accounts(first: 20) { edges { node { id } } } } }`;
     const sessionFirst = await gql(sessions, { cookies: owner.cookies });
     expectNoGraphQLErrors(sessionFirst);
     const connection = sessionFirst.body.data.currentUser.sessions;
-    expect(connection.totalCount).toBe(2);
     expect(connection.pageInfo.hasNextPage).toBe(true);
     const sessionNext = await gql(sessions, {
       cookies: owner.cookies,
@@ -1692,7 +1687,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     }
     const query = `query($after: String, $before: String, $first: Int, $last: Int, $filter: AccountFilter) {
       currentUser { accounts(first: $first, last: $last, after: $after, before: $before, filter: $filter) {
-        totalCount edges { node { id providerId } } pageInfo { hasNextPage endCursor startCursor }
+        edges { node { id providerId } } pageInfo { hasNextPage endCursor startCursor }
       } }
     }`;
     const first = await gql(query, {
@@ -1701,7 +1696,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
     expectNoGraphQLErrors(first);
     const page = first.body.data.currentUser.accounts;
-    expect(page.totalCount).toBe(3);
     expect(page.edges).toHaveLength(2);
     expect(page.pageInfo.hasNextPage).toBe(true);
     const second = await gql(query, {
@@ -1734,7 +1728,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       },
     });
     expectNoGraphQLErrors(filtered);
-    expect(filtered.body.data.currentUser.accounts.totalCount).toBe(0);
+    expect(filtered.body.data.currentUser.accounts.edges).toHaveLength(0);
     const key = await createUserApiKey(owner, {
       name: 'No account access',
       permissions: [],
@@ -1747,7 +1741,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expect(anonymous.body.data.currentUser).toBeNull();
     expectGraphQLError(
       await gql(
-        'query($id: ID!) { user(id: $id) { accounts(first: 10) { totalCount } } }',
+        'query($id: ID!) { user(id: $id) { accounts(first: 10) { edges { node { id } } } } }',
         {
           cookies: owner.cookies,
           variables: { id: other.user.id },
@@ -3333,7 +3327,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         query {
           currentUser {
             workspaces(first: 10) {
-              totalCount
               edges {
                 node {
                   id
@@ -3349,7 +3342,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(aliceWorkspaces);
     expect(aliceWorkspaces.body.data.currentUser.workspaces).toMatchObject({
-      totalCount: 1,
       edges: [
         {
           node: aliceWorkspace,
@@ -3374,7 +3366,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         query {
           currentUser {
             workspaces(first: 10) {
-              totalCount
               edges {
                 node {
                   id
@@ -3389,7 +3380,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
 
     expectNoGraphQLErrors(response);
-    expect(response.body.data.currentUser.workspaces.totalCount).toBe(2);
+    expect(response.body.data.currentUser.workspaces.edges).toHaveLength(2);
     expect(response.body.data.currentUser.workspaces.edges).toEqual(
       expect.arrayContaining([
         {
@@ -3558,7 +3549,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       currentUser { invitations(first: $first, last: $last, after: $after, before: $before, filter: $filter) {
         edges { node { id } }
         pageInfo { startCursor endCursor hasNextPage hasPreviousPage }
-        totalCount
       } }
     }`;
     const first = await gql(userQuery, {
@@ -3567,7 +3557,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     });
     expectNoGraphQLErrors(first);
     const firstPage = first.body.data.currentUser.invitations;
-    expect(firstPage.totalCount).toBe(2);
     expect(firstPage.edges).toHaveLength(1);
     expect(firstPage.pageInfo.hasNextPage).toBe(true);
     const second = await gql(userQuery, {
@@ -3595,11 +3584,11 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       variables: { first: 20, filter: { email: { $eq: unrelated.email } } },
     });
     expectNoGraphQLErrors(override);
-    expect(override.body.data.currentUser.invitations.totalCount).toBe(0);
+    expect(override.body.data.currentUser.invitations.edges).toHaveLength(0);
 
     const scoped = await gql(
       `query($filter: WorkspaceInvitationFilter) {
-      selectedWorkspace { invitations(first: 1, filter: $filter) { edges { node { id } } totalCount pageInfo { hasNextPage } } }
+      selectedWorkspace { invitations(first: 1, filter: $filter) { edges { node { id } } pageInfo { hasNextPage } } }
     }`,
       {
         cookies: owner.cookies,
@@ -3608,7 +3597,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       },
     );
     expectNoGraphQLErrors(scoped);
-    expect(scoped.body.data.selectedWorkspace.invitations.totalCount).toBe(2);
     expect(scoped.body.data.selectedWorkspace.invitations.edges).toHaveLength(
       1,
     );
@@ -3618,7 +3606,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     for (const field of ['invitations', 'members']) {
       const wrongWorkspace = await gql(
-        `query($id: ID!) { workspace(id: $id) { ${field}(first: 1) { totalCount } } }`,
+        `query($id: ID!) { workspace(id: $id) { ${field}(first: 1) { edges { node { id } } } } }`,
         {
           cookies: owner.cookies,
           workspaceId: workspaces[0].id,
@@ -3634,7 +3622,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       ]);
     for (const field of ['invitations', 'workspaces', 'apiKeys']) {
       const wrongUser = await gql(
-        `query($id: ID!) { user(id: $id) { ${field}(first: 1) { totalCount } } }`,
+        `query($id: ID!) { user(id: $id) { ${field}(first: 1) { edges { node { id } } } } }`,
         {
           cookies: owner.cookies,
           variables: { id: recipient.user.id },
@@ -4435,7 +4423,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         query {
           currentUser {
             apiKeys(first: 10) {
-              totalCount
               edges {
                 node {
                   id
@@ -4451,7 +4438,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
 
     expectNoGraphQLErrors(listed);
     expect(listed.body.data.currentUser.apiKeys).toMatchObject({
-      totalCount: 1,
       edges: [
         {
           node: {
@@ -4581,8 +4567,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         read: `query($id: ID!) { owner: ${names.parent} { result: apiKey(id: $id) { id permissions } } }`,
         list:
           scope === 'user'
-            ? `query { owner: currentUser { result: apiKeys(first: 100) { totalCount edges { node { id } } } } }`
-            : `query { result: workspaceApiKeys(first: 100) { totalCount edges { node { id } } } }`,
+            ? `query { owner: currentUser { result: apiKeys(first: 100) { edges { node { id } } } } }`
+            : `query { result: workspaceApiKeys(first: 100) { edges { node { id } } } }`,
         create: `mutation($input: Create${scope === 'user' ? 'User' : 'Workspace'}ApiKeyInput!) { result: ${names.create}(input: $input) { entity { id permissions } } }`,
         update: `mutation($id: ID!, $input: Update${scope === 'user' ? 'User' : 'Workspace'}ApiKeyInput!) { result: ${names.update}(id: $id, input: $input) { id permissions name } }`,
         delete: `mutation($id: ID!) { result: ${names.delete}(id: $id) { id } }`,
@@ -4640,8 +4626,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         (scope === 'user'
           ? inheritedList.body.data.owner.result
           : inheritedList.body.data.result
-        ).totalCount,
-      ).toBe(4);
+        ).edges,
+      ).toHaveLength(4);
       for (const operation of ['read', 'update', 'delete'] as const) {
         const result = await call(operation, manager.apiKey, {
           id: empty.entity.id,
@@ -4660,8 +4646,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         (scope === 'user'
           ? listed.body.data.owner.result
           : listed.body.data.result
-        ).totalCount,
-      ).toBe(2);
+        ).edges,
+      ).toHaveLength(2);
       expect(
         (scope === 'user'
           ? listed.body.data.owner.result
@@ -4752,8 +4738,8 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         (scope === 'user'
           ? sessionList.body.data.owner.result
           : sessionList.body.data.result
-        ).totalCount,
-      ).toBe(4);
+        ).edges,
+      ).toHaveLength(4);
     },
   );
 
@@ -5052,7 +5038,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
         }
         selectedWorkspace {
           members(first: 10) {
-            totalCount
             edges {
               node {
                 roles
@@ -5111,7 +5096,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
               id: expect.any(String),
             });
             expect(result.body.data.selectedWorkspace.members).toEqual({
-              totalCount: 1,
               edges: [{ node: { roles: ['OWNER'] } }],
             });
           });
@@ -5119,7 +5103,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       );
 
       const anonymous = await gql(
-        'query { selectedWorkspace { members(first: 10) { totalCount } } }',
+        'query { selectedWorkspace { members(first: 10) { edges { node { id } } } } }',
       );
       expectNoGraphQLErrors(anonymous);
       expect(anonymous.body.data).toEqual({ selectedWorkspace: null });
@@ -5600,7 +5584,7 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expectNoGraphQLErrors(update);
     const query = `query ($query: String) {
       selectedWorkspace { members(first: 10, query: $query) {
-        totalCount edges { node { id name email } }
+        edges { node { id name email } }
       } }
     }`;
     for (const viewer of [owner, peer]) {
@@ -5611,7 +5595,6 @@ describe('Server application PostgreSQL integration (e2e)', () => {
       });
       expectNoGraphQLErrors(visible);
       expect(visible.body.data.selectedWorkspace.members).toEqual({
-        totalCount: 1,
         edges: [
           {
             node: {
@@ -5628,7 +5611,9 @@ describe('Server application PostgreSQL integration (e2e)', () => {
           variables: { query: search },
         });
         expectNoGraphQLErrors(hidden);
-        expect(hidden.body.data.selectedWorkspace.members.totalCount).toBe(0);
+        expect(hidden.body.data.selectedWorkspace.members.edges).toHaveLength(
+          0,
+        );
       }
       const hiddenUser = await gql(
         'query ($id: ID!) { workspaceMember(id: $id) { name email user { name email } } }',

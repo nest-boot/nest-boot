@@ -3,18 +3,16 @@ import {
   Args,
   Float,
   ID,
-  Info,
   Parent,
   Query,
   ResolveField,
   Resolver,
 } from "@nest-boot/graphql";
-import type {
-  ConnectionArgsInterface,
-  ConnectionResult,
+import {
+  type ConnectionArgsInterface,
+  type ConnectionResult,
 } from "@nest-boot/graphql-connection";
 import { UseGuards } from "@nestjs/common";
-import type { GraphQLResolveInfo } from "graphql";
 
 import {
   JobConnection,
@@ -56,16 +54,14 @@ export class JobResolver {
   /**
    * Paginates tasks belonging to the current user.
    * @param args - Cursor pagination, filters and creation-time ordering.
-   * @param info - GraphQL selection used to shape the query.
-   * @returns Nodes and counts within the same authorized scope.
+   * @returns A page of jobs in the authorized scope.
    */
   @Query(() => JobConnection)
   async userJobs(
     @Args({ type: () => JobConnectionArgs })
     args: ConnectionArgsInterface<JobEntity>,
-    @Info() info: GraphQLResolveInfo,
   ): Promise<ConnectionResult<JobEntity>> {
-    return await this.jobService.getUserJobConnection(args, info);
+    return await this.jobService.getUserJobConnection(args);
   }
 
   /**
@@ -83,16 +79,14 @@ export class JobResolver {
   /**
    * Paginates tasks in the authorized current workspace.
    * @param args - Cursor pagination, filters and creation-time ordering.
-   * @param info - GraphQL selection used to shape the query.
-   * @returns Nodes and counts within the same authorized scope.
+   * @returns A page of jobs in the authorized scope.
    */
   @Query(() => JobConnection)
   async workspaceJobs(
     @Args({ type: () => JobConnectionArgs })
     args: ConnectionArgsInterface<JobEntity>,
-    @Info() info: GraphQLResolveInfo,
   ): Promise<ConnectionResult<JobEntity>> {
-    return await this.jobService.getWorkspaceJobConnection(args, info);
+    return await this.jobService.getWorkspaceJobConnection(args);
   }
 
   /**
@@ -110,15 +104,13 @@ export class JobResolver {
   /**
    * Paginates unowned tasks after administrator authorization.
    * @param args - Cursor pagination, filters and creation-time ordering.
-   * @param info - GraphQL selection used to shape the query.
-   * @returns Nodes and counts within the same authorized scope.
+   * @returns A page of jobs in the authorized scope.
    */
   @Query(() => JobConnection)
   async systemJobs(
     @Args({ type: () => JobConnectionArgs })
     args: ConnectionArgsInterface<JobEntity>,
-    @Info() info: GraphQLResolveInfo,
   ): Promise<ConnectionResult<JobEntity>> {
-    return await this.jobService.getSystemJobConnection(args, info);
+    return await this.jobService.getSystemJobConnection(args);
   }
 }

@@ -5,7 +5,7 @@ import { type SqlEntityManager } from "@mikro-orm/sql";
 
 import { ConnectionQueryBuilder } from "./connection-query-builder.js";
 import { Cursor } from "./cursor.js";
-import { OrderDirection, TotalCountRelation } from "./enums/index.js";
+import { OrderDirection } from "./enums/index.js";
 import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants.js";
 import type {
   ConnectionFieldOptions,
@@ -77,32 +77,13 @@ function setConnectionMetadata(
 /**
  * Returns entity manager fixture and its query spies.
  * @param entities - Entity classes registered for the operation.
- * @param totalCount - Total number of matching records reported by the fixture.
  * @param nullsLowest - Whether the database sorts nulls before non-null values.
  * @returns Entity manager fixture and its query spies.
  */
-function createEntityManager(
-  entities: Book[] = [],
-  totalCount: number = entities.length,
-  nullsLowest = false,
-) {
+function createEntityManager(entities: Book[] = [], nullsLowest = false) {
   const find = vi.fn().mockResolvedValue(entities);
   const findAll = vi.fn().mockResolvedValue(entities);
-  const limitedCountQueryBuilder = {
-    applyFilters: vi.fn().mockResolvedValue(undefined),
-    limit: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    withSchema: vi.fn().mockReturnThis(),
-  };
-  const countQueryBuilder = {
-    count: vi.fn().mockReturnThis(),
-    getCount: vi.fn().mockResolvedValue(totalCount),
-  };
-  const createQueryBuilder = vi
-    .fn()
-    .mockReturnValueOnce(limitedCountQueryBuilder)
-    .mockReturnValueOnce(countQueryBuilder);
+  const createQueryBuilder = vi.fn();
 
   return {
     entityManager: {
@@ -111,11 +92,9 @@ function createEntityManager(
       find,
       findAll,
     } as unknown as SqlEntityManager,
-    countQueryBuilder,
     createQueryBuilder,
     find,
     findAll,
-    limitedCountQueryBuilder,
   };
 }
 
@@ -164,7 +143,7 @@ describe("ConnectionQueryBuilder", () => {
   ])(
     "respects nulls-lowest platforms for $direction at $value",
     async ({ direction, value, expected }) => {
-      const { entityManager, find } = createEntityManager([], 0, true);
+      const { entityManager, find } = createEntityManager([], true);
       await new ConnectionQueryBuilder(
         entityManager,
         BookConnection as unknown as ConnectionClass<Book>,
@@ -264,8 +243,7 @@ describe("ConnectionQueryBuilder", () => {
   );
 
   it("maps query string fulltext searches to a configured fulltext field path", async () => {
-    const { entityManager, find, limitedCountQueryBuilder } =
-      createEntityManager();
+    const { entityManager, find } = createEntityManager();
 
     await new ConnectionQueryBuilder(
       entityManager,
@@ -280,9 +258,6 @@ describe("ConnectionQueryBuilder", () => {
       expect.objectContaining({ limit: 11 }),
     );
     expect(find).toHaveBeenCalledTimes(1);
-    expect(limitedCountQueryBuilder.where).toHaveBeenCalledWith({
-      searchableTitle: { $fulltext: "search" },
-    });
   });
 
   it.each([
@@ -292,8 +267,7 @@ describe("ConnectionQueryBuilder", () => {
   ])(
     "automatically tokenizes full-text query syntax: $query",
     async ({ query }) => {
-      const { entityManager, find, limitedCountQueryBuilder } =
-        createEntityManager();
+      const { entityManager, find } = createEntityManager();
       await new ConnectionQueryBuilder(
         entityManager,
         BookConnection as unknown as ConnectionClass<Book>,
@@ -306,13 +280,11 @@ describe("ConnectionQueryBuilder", () => {
         expected,
         expect.any(Object),
       );
-      expect(limitedCountQueryBuilder.where).toHaveBeenCalledWith(expected);
     },
   );
 
   it("passes programmatic filters and option constraints unchanged to records and counts", async () => {
-    const { entityManager, find, limitedCountQueryBuilder } =
-      createEntityManager();
+    const { entityManager, find } = createEntityManager();
     const filter = { searchableTitle: { $fulltext: "你好世界" } };
     const where = { $or: [{ searchableTitle: { $fulltext: "HELLO!" } }] };
     await new ConnectionQueryBuilder(
@@ -325,7 +297,6 @@ describe("ConnectionQueryBuilder", () => {
       $and: [where, filter],
     };
     expect(find).toHaveBeenCalledWith(BookEntity, expected, expect.any(Object));
-    expect(limitedCountQueryBuilder.where).toHaveBeenCalledWith(expected);
     expect(filter.searchableTitle.$fulltext).toBe("你好世界");
     expect(where.$or[0].searchableTitle.$fulltext).toBe("HELLO!");
     expect(find.mock.calls[0]?.[1].$and[0]).toBe(where);
@@ -362,14 +333,8 @@ describe("ConnectionQueryBuilder", () => {
       { id: 1, title: "A", isbn: "1", searchableTitle: "A" },
       { id: 2, title: "B", isbn: "2", searchableTitle: "B" },
     ];
-    const {
-      countQueryBuilder,
-      createQueryBuilder,
-      entityManager,
-      find,
-      findAll,
-      limitedCountQueryBuilder,
-    } = createEntityManager(rows);
+    const { createQueryBuilder, entityManager, find, findAll } =
+      createEntityManager(rows);
 
     const result = await new ConnectionQueryBuilder(
       entityManager,
@@ -387,23 +352,8 @@ describe("ConnectionQueryBuilder", () => {
       }),
     );
     expect(findAll).toHaveBeenCalledTimes(1);
-    expect(createQueryBuilder).toHaveBeenNthCalledWith(1, BookEntity);
-    expect(limitedCountQueryBuilder.select).toHaveBeenCalledWith("id");
-    expect(limitedCountQueryBuilder.limit).toHaveBeenCalledWith(10001);
-    expect(limitedCountQueryBuilder.where).not.toHaveBeenCalled();
-    expect(limitedCountQueryBuilder.applyFilters).toHaveBeenCalledWith(
-      undefined,
-    );
-    expect(createQueryBuilder).toHaveBeenNthCalledWith(
-      2,
-      limitedCountQueryBuilder,
-      "bounded_count",
-    );
-    expect(countQueryBuilder.count).toHaveBeenCalledTimes(1);
-    expect(countQueryBuilder.getCount).toHaveBeenCalledTimes(1);
+    expect(createQueryBuilder).not.toHaveBeenCalled();
     expect(result).toEqual({
-      totalCount: 2,
-      totalCountRelation: TotalCountRelation.EQ,
       edges: expect.arrayContaining([
         expect.objectContaining({ node: rows[0] }),
         expect.objectContaining({ node: rows[1] }),
@@ -416,29 +366,6 @@ describe("ConnectionQueryBuilder", () => {
       },
     });
   });
-
-  it.each([
-    [10000, TotalCountRelation.EQ],
-    [10001, TotalCountRelation.GTE],
-  ])(
-    "reports the total count relation for %i matching entities",
-    async (matchingCount, expectedRelation) => {
-      const rows = [{ id: 1, title: "A", isbn: "1", searchableTitle: "A" }];
-      const { entityManager, findAll, limitedCountQueryBuilder } =
-        createEntityManager(rows, matchingCount);
-
-      const result = await new ConnectionQueryBuilder(
-        entityManager,
-        BookConnection as unknown as ConnectionClass<Book>,
-        { first: 1 },
-      ).query();
-
-      expect(result.totalCount).toBe(Math.min(matchingCount, 10000));
-      expect(result.totalCountRelation).toBe(expectedRelation);
-      expect(findAll).toHaveBeenCalledTimes(1);
-      expect(limitedCountQueryBuilder.limit).toHaveBeenCalledWith(10001);
-    },
-  );
 
   it("applies forward cursor filters for ordered queries", async () => {
     const rows = [

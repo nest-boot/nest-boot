@@ -8,7 +8,6 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
-import { type GraphQLResolveInfo } from "graphql";
 import { expectTypeOf, type Mocked } from "vitest";
 
 import { createTestAuthContext } from "../../../test/fixtures/auth-context.fixture.js";
@@ -400,41 +399,33 @@ describe("UserService", () => {
     expect(em.create).not.toHaveBeenCalled();
     expect(hash).not.toHaveBeenCalled();
   });
-  it.each([undefined, { fieldNodes: [] } as unknown as GraphQLResolveInfo])(
-    "paginates users with list authorization and the request RLS context (selection: %j)",
-    async (info) => {
-      const { service, em, authorization } = createService();
-      const context = mockRlsContext(em);
-      const connection = { edges: [], pageInfo: {} };
-      const find = vi
-        .spyOn(ConnectionManager.prototype, "find")
-        .mockResolvedValue(connection as never);
-      try {
-        const args = { first: 10 };
-        await expect(service.getUserConnection(args, info)).resolves.toBe(
-          connection,
-        );
-        expect(authorization.authorize).toHaveBeenCalledWith("read", User);
-        expect(find).toHaveBeenCalledExactlyOnceWith(
-          UserConnection,
-          args,
-          ...(info ? [{ info }] : []),
-        );
-        expect(em.fork).not.toHaveBeenCalled();
-        expect(em.getSessionContext()).toEqual(context);
-        find.mockClear();
-        vi.mocked(authorization.authorize).mockImplementation(() => {
-          throw new ForbiddenException();
-        });
-        await expect(service.getUserConnection(args, info)).rejects.toThrow(
-          ForbiddenException,
-        );
-        expect(find).not.toHaveBeenCalled();
-      } finally {
-        find.mockRestore();
-      }
-    },
-  );
+  it("paginates users with list authorization and the request RLS context", async () => {
+    const { service, em, authorization } = createService();
+    const context = mockRlsContext(em);
+    const connection = { edges: [], pageInfo: {} };
+    const find = vi
+      .spyOn(ConnectionManager.prototype, "find")
+      .mockResolvedValue(connection as never);
+    try {
+      const args = { first: 10 };
+      await expect(service.getUserConnection(args)).resolves.toBe(connection);
+      expect(authorization.authorize).toHaveBeenCalledWith("read", User);
+      expect(find).toHaveBeenCalledExactlyOnceWith(UserConnection, args);
+      expect(em.fork).not.toHaveBeenCalled();
+      expect(em.getSessionContext()).toEqual(context);
+      find.mockClear();
+      vi.mocked(authorization.authorize).mockImplementation(() => {
+        throw new ForbiddenException();
+      });
+      await expect(service.getUserConnection(args)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(find).not.toHaveBeenCalled();
+    } finally {
+      find.mockRestore();
+    }
+  });
+
   it.each(["roles", "permissions"] as const)(
     "checks initial %s with its own grant-setting action",
     async (field) => {
@@ -1176,7 +1167,6 @@ describe("conditional authorization", () => {
             const result = {
               edges: [{ node, cursor: "cursor" }],
               pageInfo: { hasNextPage: true },
-              totalCount: 2,
             };
             vi.spyOn(ConnectionManager.prototype, "find").mockResolvedValue(
               result as never,
@@ -1277,7 +1267,6 @@ describe("conditional authorization", () => {
               await expect(read()).rejects.toThrow(ForbiddenException);
             }
             expect(result.edges).toHaveLength(1);
-            expect(result.totalCount).toBe(2);
           },
         );
       },

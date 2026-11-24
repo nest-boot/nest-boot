@@ -131,6 +131,7 @@ describe("ConnectionBuilder", () => {
       })
       .build();
 
+    expect(result.getCountComplexity).toBeTypeOf("function");
     expect(result.BuilderBookEntityConnection).toBe(result.Connection);
     expect(result.BuilderBookEntityConnectionArgs).toBe(result.ConnectionArgs);
     expect(result.BuilderBookEntityEdge).toBe(result.Edge);
@@ -198,7 +199,7 @@ describe("ConnectionBuilder", () => {
       fieldNamesAndInvokeTypeFns(
         TypeMetadataStorage.getObjectTypeMetadataByTarget(result.Connection),
       ),
-    ).toEqual(["edges", "pageInfo", "totalCount", "totalCountRelation"]);
+    ).toEqual(["edges", "pageInfo"]);
     expect(
       fieldNamesAndInvokeTypeFns(
         TypeMetadataStorage.getObjectTypeMetadataByTarget(result.Edge),
@@ -213,15 +214,12 @@ describe("ConnectionBuilder", () => {
       fieldNamesAndInvokeTypeFns(
         TypeMetadataStorage.getArgumentsMetadataByTarget(result.ConnectionArgs),
       ),
-    ).toEqual([
-      "query",
-      "filter",
-      "first",
-      "last",
-      "after",
-      "before",
-      "orderBy",
-    ]);
+    ).toEqual(["first", "last", "after", "before", "orderBy"]);
+    expect(
+      fieldNamesAndInvokeTypeFns(
+        TypeMetadataStorage.getArgumentsMetadataByTarget(result.CountArgs),
+      ),
+    ).toEqual(["query", "filter"]);
     expect(
       TypeMetadataStorage.getArgumentsMetadataByTarget(result.ConnectionArgs),
     ).toMatchObject({ name: "BuilderBookEntityConnectionArgs" });

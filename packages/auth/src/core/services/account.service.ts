@@ -6,7 +6,6 @@ import {
   type ConnectionResult,
 } from "@nest-boot/graphql-connection";
 import { ForbiddenException, Injectable } from "@nestjs/common";
-import type { GraphQLResolveInfo } from "graphql";
 
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { omitCredentials } from "../../common/utils/omit-credentials.util.js";
@@ -28,13 +27,11 @@ export class AccountService {
    * Paginates the current session user's accounts without loading credentials.
    * @param user - The user whose account is being accessed.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated provider accounts with credentials omitted.
    */
   async getAccountConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<Account>,
-    info?: GraphQLResolveInfo,
   ): Promise<
     ConnectionResult<
       Omit<Account, "password" | "accessToken" | "refreshToken" | "idToken">
@@ -49,7 +46,6 @@ export class AccountService {
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find(AccountConnection, args, {
-      ...(info && { info }),
       where: { user: String(user.id) },
       exclude: ["password", "accessToken", "refreshToken", "idToken"],
     });

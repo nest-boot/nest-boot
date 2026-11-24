@@ -16,7 +16,6 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { GraphQLResolveInfo } from "graphql";
 
 import type { BanUserOptions } from "../../admin/interfaces/ban-user-options.interface.js";
 import type { CreateUserOptions } from "../../admin/interfaces/create-user-options.interface.js";
@@ -364,18 +363,14 @@ export class UserService {
   /**
    * Paginates users without bypassing application RLS.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated users matching the supplied query.
    */
   async getUserConnection(
     args: ConnectionArgsInterface<User>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<User>> {
     authorize("read", User);
     const manager = new ConnectionManager(this.em as SqlEntityManager);
-    const connection = info
-      ? await manager.find<User>(UserConnection, args, { info })
-      : await manager.find<User>(UserConnection, args);
+    const connection = await manager.find<User>(UserConnection, args);
     for (const { node } of connection.edges) {
       authorize("read", node);
     }

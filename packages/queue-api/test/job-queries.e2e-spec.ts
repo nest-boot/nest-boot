@@ -168,12 +168,12 @@ describe("Job queries over HTTP with Redis and PostgreSQL", () => {
   it("persists unmarked queues while hiding their records from API queries", async () => {
     const result = await graphql(`{
       userJob(id:"${hiddenId}"){id}
-      userJobs(first:10,filter:{queue:"hidden-reports"}){totalCount edges{node{id}}}
+      userJobs(first:10,filter:{queue:"hidden-reports"}){edges{node{id}}}
     }`);
     expect(result.errors).toBeUndefined();
     expect(result.data).toEqual({
       userJob: null,
-      userJobs: { totalCount: 0, edges: [] },
+      userJobs: { edges: [] },
     });
   });
   it("reads synchronized history across queues and rejects invalid identifiers", async () => {
@@ -220,22 +220,19 @@ describe("Job queries over HTTP with Redis and PostgreSQL", () => {
   });
   it("paginates history across queues using stable UUID cursors", async () => {
     const query =
-      "query($after: String) { userJobs(first: 1, after: $after) { totalCount pageInfo { endCursor hasNextPage } edges { node { id } } } }";
+      "query($after: String) { userJobs(first: 1, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id } } } }";
     const first = await graphql(query);
     expect(first.errors).toBeUndefined();
-    expect(first.data.userJobs.totalCount).toBe(3);
     expect(first.data.userJobs.pageInfo.hasNextPage).toBe(true);
     const second = await graphql(query, {
       after: first.data.userJobs.pageInfo.endCursor,
     });
     expect(second.errors).toBeUndefined();
-    expect(second.data.userJobs.totalCount).toBe(3);
     expect(second.data.userJobs.pageInfo.hasNextPage).toBe(true);
     const third = await graphql(query, {
       after: second.data.userJobs.pageInfo.endCursor,
     });
     expect(third.errors).toBeUndefined();
-    expect(third.data.userJobs.totalCount).toBe(3);
     expect(third.data.userJobs.pageInfo.hasNextPage).toBe(false);
     expect(
       new Set([

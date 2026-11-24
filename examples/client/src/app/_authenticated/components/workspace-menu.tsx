@@ -38,7 +38,6 @@ const GET_WORKSPACES_FROM_WORKSPACE_SWITCHER = graphql(`
           startCursor
           endCursor
         }
-        totalCount
       }
     }
   }

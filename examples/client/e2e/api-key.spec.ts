@@ -69,13 +69,13 @@ test.describe("API keys", () => {
             permissions: Array<string>;
             member: { __typename: string; id: string } | null;
           };
-          members: { totalCount: number };
+          members: { edges: Array<{ node: { id: string } }> };
         };
       }>(
         page.request,
         `query ($id: ID!, $memberFilter: WorkspaceMemberFilter) { selectedWorkspace {
         apiKey(id: $id) { id permissions member { __typename  id  } }
-        members(first: 10, filter: $memberFilter) { totalCount }
+        members(first: 10, filter: $memberFilter) { edges { node { id } } }
       } }`,
         { id, memberFilter: { type: { $eq: "SERVICE_ACCOUNT" } } },
         headers,
@@ -85,7 +85,7 @@ test.describe("API keys", () => {
         permissions: [],
         member: { __typename: "WorkspaceMember", id: memberId },
       });
-      expect(data.selectedWorkspace.members.totalCount).toBe(0);
+      expect(data.selectedWorkspace.members.edges).toHaveLength(0);
       const { workspaceMember: member } = await graphqlRequest<{
         workspaceMember: {
           apiKeys: { edges: Array<{ node: { id: string } }> };

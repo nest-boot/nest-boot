@@ -11,7 +11,6 @@ import {
 } from "@nest-boot/graphql-connection";
 import { ForbiddenException } from "@nestjs/common";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
-import type { GraphQLResolveInfo } from "graphql";
 
 import { ApiKey } from "../../api-key/entities/api-key.entity.js";
 import { SystemAccount } from "../../api-key/entities/system-account.entity.js";
@@ -88,19 +87,17 @@ export class SystemAccountService {
   /**
    * Paginates platform identities without exposing them through request-role SQL.
    * @param args - Cursor pagination, ordering and filtering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Page of authorized independent system accounts.
    */
   async getSystemAccountConnection(
     args: ConnectionArgsInterface<SystemAccount>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<SystemAccount>> {
     this.assertAccess("read");
     return await runAuthQuery(this.em, async (em) => {
       const page = await new ConnectionManager(em as SqlEntityManager).find(
         SystemAccountConnection,
         args,
-        { ...(info && { info }), where: {} },
+        { where: {} },
       );
       for (const { node } of page.edges) {
         authorize("read", node);

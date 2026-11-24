@@ -74,7 +74,7 @@ describe("AdminUserResolver", () => {
     });
     const args = { first: 10, after: "cursor", query: "alice" };
     await expect(resolver.users(args)).resolves.toBe(connection);
-    expect(service.getUserConnection).toHaveBeenCalledWith(args, undefined);
+    expect(service.getUserConnection).toHaveBeenCalledWith(args);
   });
 
   it("updates permissions through UserService", async () => {

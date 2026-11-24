@@ -21,7 +21,6 @@ import {
 import { makeSignature } from "better-auth/crypto";
 import type { BetterAuthCookies } from "better-auth/types";
 import { parseCookie, stringifyCookie } from "cookie";
-import type { GraphQLResolveInfo } from "graphql";
 
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
@@ -85,19 +84,16 @@ export class SessionService {
    * Paginates active sessions visible to the caller for the parent user.
    * @param user - The user whose account is being accessed.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated active sessions with session tokens omitted.
    */
   async getSessionConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<Session>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<Omit<Session, "token">>> {
     this.assertCanListSessions(user);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find(SessionConnection, args, {
-      ...(info && { info }),
       exclude: ["token"],
       where: {
         user: String(user.id),

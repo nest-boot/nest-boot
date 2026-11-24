@@ -100,7 +100,7 @@ test("retries menu requests and keeps pagination within the current opening", as
         json:
           initialRequests === 1
             ? { errors: [{ message: "Temporary menu failure" }] }
-            : menuData(workspaces.slice(0, 10), true, workspaces.length),
+            : menuData(workspaces.slice(0, 10), true),
       });
     }
     moreRequests++;
@@ -108,7 +108,7 @@ test("retries menu requests and keeps pagination within the current opening", as
       json:
         moreRequests === 1
           ? { errors: [{ message: "Temporary page failure" }] }
-          : menuData(workspaces.slice(9), false, workspaces.length),
+          : menuData(workspaces.slice(9), false),
     });
   });
   const pageErrors: Array<string> = [];
@@ -249,7 +249,6 @@ test("ignores a late page from a closed workspace menu", async ({ page }) => {
 function menuData(
   workspaces: Array<{ id: string; name: string }>,
   hasNextPage: boolean,
-  totalCount = workspaces.length,
 ) {
   return {
     data: {
@@ -268,7 +267,6 @@ function menuData(
             hasNextPage,
             hasPreviousPage: false,
           },
-          totalCount,
         },
       },
     },

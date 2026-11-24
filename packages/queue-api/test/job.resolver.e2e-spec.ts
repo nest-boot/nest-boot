@@ -334,14 +334,13 @@ describe("scoped Job GraphQL API", () => {
       const { body } = await query(
         `query($filter:JobFilter){
           ${field}(first:10,filter:$filter) {
-            totalCount edges{node{id}} pageInfo{hasNextPage hasPreviousPage}
+            edges{node{id}} pageInfo{hasNextPage hasPreviousPage}
           }
         }`,
         { filter: { $or: [{ queue: "hidden" }, { queue: "unregistered" }] } },
       ).set("x-test-role", "operator");
       expect(body.errors).toBeUndefined();
       expect(body.data[field]).toEqual({
-        totalCount: 0,
         edges: [],
         pageInfo: { hasNextPage: false, hasPreviousPage: false },
       });
@@ -356,16 +355,16 @@ describe("scoped Job GraphQL API", () => {
         userJob(id:"${id(1)}"){id}
         workspaceJob(id:"${id(2)}"){id}
         systemJob(id:"${id(8)}"){id}
-        userJobs(first:10){totalCount edges{node{id}}}
-        workspaceJobs(first:10){totalCount edges{node{id}}}
-        systemJobs(first:10){totalCount edges{node{id}}}
+        userJobs(first:10){edges{node{id}}}
+        workspaceJobs(first:10){edges{node{id}}}
+        systemJobs(first:10){edges{node{id}}}
       }`).set("x-test-role", "operator");
       expect(body.errors).toBeUndefined();
       for (const field of ["userJob", "workspaceJob", "systemJob"]) {
         expect(body.data[field]).toBeNull();
       }
       for (const field of ["userJobs", "workspaceJobs", "systemJobs"]) {
-        expect(body.data[field]).toEqual({ totalCount: 0, edges: [] });
+        expect(body.data[field]).toEqual({ edges: [] });
       }
     } finally {
       manager.getQueues.mockReturnValue(queues);
@@ -381,7 +380,7 @@ describe("scoped Job GraphQL API", () => {
     "systemJobs",
   ])("requires authentication for %s", async (field) => {
     const args = field.endsWith("Jobs") ? "first: 10" : `id: "${id(8)}"`;
-    const selection = field.endsWith("Jobs") ? "totalCount" : "id";
+    const selection = field.endsWith("Jobs") ? "edges { node { id } }" : "id";
     const { body } = await query(
       `{ ${field}(${args}) { ${selection} } }`,
       {},
@@ -395,7 +394,7 @@ describe("scoped Job GraphQL API", () => {
     async (role) => {
       for (const source of [
         `{systemJob(id: "${id(8)}") {id}}`,
-        "{systemJobs(first: 10) {totalCount}}",
+        "{systemJobs(first: 10) { edges { node { id } } }}",
       ]) {
         const { body } = await query(source).set("x-test-role", role);
         expect(body.errors[0].extensions.code).toBe("FORBIDDEN");
@@ -404,7 +403,9 @@ describe("scoped Job GraphQL API", () => {
   );
 
   it("does not give an API key its owner's administrator access", async () => {
-    const { body } = await query("{systemJobs(first: 10) {totalCount}}")
+    const { body } = await query(
+      "{systemJobs(first: 10) { edges { node { id } } }}",
+    )
       .set("x-test-role", "operator")
       .set("x-test-api-key", "true");
     expect(body.errors[0].extensions.code).toBe("FORBIDDEN");
@@ -418,14 +419,16 @@ describe("scoped Job GraphQL API", () => {
     "denies workspace reads for invalid membership: $header=$value",
     async ({ header, value }) => {
       const { body } = await query(
-        "{workspaceJobs(first: 10) {totalCount}}",
+        "{workspaceJobs(first: 10) { edges { node { id } } }}",
       ).set(header, value);
       expect(body.errors[0].extensions.code).toBe("FORBIDDEN");
     },
   );
 
   it("denies user reads without a user identity", async () => {
-    const { body } = await query("{userJobs(first: 10) {totalCount}}")
+    const { body } = await query(
+      "{userJobs(first: 10) { edges { node { id } } }}",
+    )
       .set("x-test-user", "")
       .set("x-test-workspace", "");
     expect(body.errors[0].extensions.code).toBe("FORBIDDEN");
@@ -433,14 +436,14 @@ describe("scoped Job GraphQL API", () => {
 
   it("keeps all three scopes isolated within one concurrent GraphQL operation", async () => {
     const { body } = await query(`{
-      userJobs(first: 20) {totalCount edges {node {id}}}
-      workspaceJobs(first: 20) {totalCount edges {node {id}}}
-      systemJobs(first: 20) {totalCount edges {node {id}}}
+      userJobs(first: 20) {edges {node {id}}}
+      workspaceJobs(first: 20) {edges {node {id}}}
+      systemJobs(first: 20) {edges {node {id}}}
     }`).set("x-test-role", "operator");
     expect(body.errors).toBeUndefined();
-    expect(body.data.userJobs.totalCount).toBe(4);
-    expect(body.data.workspaceJobs.totalCount).toBe(4);
-    expect(body.data.systemJobs.totalCount).toBe(2);
+    expect(body.data.userJobs.edges.length).toBe(4);
+    expect(body.data.workspaceJobs.edges.length).toBe(4);
+    expect(body.data.systemJobs.edges.length).toBe(2);
     expect(nodeIds(body.data.userJobs.edges)).toEqual([5, 6, 3, 1].map(id));
     expect(nodeIds(body.data.workspaceJobs.edges)).toEqual(
       [7, 5, 3, 2].map(id),
@@ -483,12 +486,12 @@ describe("scoped Job GraphQL API", () => {
     async ({ field, direction, ids }) => {
       const source = `query($after: String, $before: String, $first: Int, $last: Int) {
       ${field}(first:$first, last:$last, after:$after, before:$before, orderBy:{field:CREATED_AT, direction:${direction}}) {
-        totalCount edges {node{id}} pageInfo{startCursor endCursor hasNextPage}
+        edges {node{id}} pageInfo{startCursor endCursor hasNextPage}
       }
     }`;
       const first = (await query(source, { first: 2 })).body;
       expect(first.errors).toBeUndefined();
-      expect(first.data[field].totalCount).toBe(4);
+      expect(first.data[field].pageInfo.hasNextPage).toBe(true);
       expect(nodeIds(first.data[field].edges)).toEqual(ids.slice(0, 2).map(id));
       const second = (
         await query(source, {
@@ -497,7 +500,6 @@ describe("scoped Job GraphQL API", () => {
         })
       ).body;
       expect(second.errors).toBeUndefined();
-      expect(second.data[field].totalCount).toBe(4);
       expect(nodeIds(second.data[field].edges)).toEqual(ids.slice(2).map(id));
       expect(second.data[field].pageInfo.hasNextPage).toBe(false);
       const previous = (
@@ -548,14 +550,14 @@ describe("scoped Job GraphQL API", () => {
     "PROGRESS",
   ])("rejects unsupported sorting by %s", async (field) => {
     const { body } = await query(
-      `{userJobs(first:10,orderBy:{field:${field},direction:ASC}){totalCount}}`,
+      `{userJobs(first:10,orderBy:{field:${field},direction:ASC}){ edges { node { id } } }}`,
     );
     expect(body.errors[0].extensions.code).toBe("GRAPHQL_VALIDATION_FAILED");
   });
 
   it("combines scope with filters and searches without widening counts", async () => {
     const { body } = await query(
-      `query($filter:JobFilter){userJobs(first:20,filter:$filter,query:"name:generate-report"){totalCount edges{node{id}}}}`,
+      `query($filter:JobFilter){userJobs(first:20,filter:$filter,query:"name:generate-report"){edges{node{id}}}}`,
       {
         filter: {
           $or: [{ queue: "reports" }, { queue: "exports" }],
@@ -565,13 +567,13 @@ describe("scoped Job GraphQL API", () => {
       },
     );
     expect(body.errors).toBeUndefined();
-    expect(body.data.userJobs.totalCount).toBe(3);
+    expect(body.data.userJobs.edges.length).toBe(3);
     expect(nodeIds(body.data.userJobs.edges)).toEqual([6, 3, 1].map(id));
   });
 
   it("rejects identity filtering outside the declared fields", async () => {
     const { body } = await query(
-      "query($filter:JobFilter){userJobs(first:10,filter:$filter){totalCount}}",
+      "query($filter:JobFilter){userJobs(first:10,filter:$filter){ edges { node { id } } }}",
       { filter: { data: { userId: "102" } } },
     );
     expect(body.errors).toBeDefined();
@@ -579,15 +581,15 @@ describe("scoped Job GraphQL API", () => {
   });
 
   it("isolates identities between parallel HTTP requests", async () => {
-    const source = "{userJobs(first:10){totalCount edges{node{id}}}}";
+    const source = "{userJobs(first:10){edges{node{id}}}}";
     const [first, second] = await Promise.all([
       query(source),
       query(source).set("x-test-user", "102").set("x-test-workspace", ""),
     ]);
     expect(first.body.errors).toBeUndefined();
     expect(second.body.errors).toBeUndefined();
-    expect(first.body.data.userJobs.totalCount).toBe(4);
-    expect(second.body.data.userJobs.totalCount).toBe(2);
+    expect(first.body.data.userJobs.edges.length).toBe(4);
+    expect(second.body.data.userJobs.edges.length).toBe(2);
     expect(nodeIds(second.body.data.userJobs.edges)).toEqual([4, 2].map(id));
   });
 

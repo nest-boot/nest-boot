@@ -1,15 +1,10 @@
-import { useQuery } from "@apollo/client/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { t } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Boxes, CircleUserRound, KeyRound, LockKeyhole } from "lucide-react";
 import { useAuthUserContext } from "../contexts/auth-user-context";
 import { Link } from "@/components/link";
-import {
-  OverviewCard,
-  OverviewCount,
-  OverviewError,
-} from "@/components/overview-card";
+import { OverviewCard } from "@/components/overview-card";
 import { Button } from "@/components/thread-ui/button";
 import { Page } from "@/components/thread-ui/page";
 import {
@@ -17,27 +12,7 @@ import {
   PageLayoutSection,
 } from "@/components/thread-ui/page-layout";
 import { useAbility } from "@/contexts/ability-context";
-import { graphql } from "@/gql";
 
-const GET_OVERVIEW = graphql(`
-  query getUserOverview($includeApiKeys: Boolean!) {
-    currentUser {
-      id
-      workspaces(first: 1) {
-        totalCount
-        totalCountRelation
-      }
-      sessions(first: 1) {
-        totalCount
-        totalCountRelation
-      }
-      apiKeys(first: 1) @include(if: $includeApiKeys) {
-        totalCount
-        totalCountRelation
-      }
-    }
-  }
-`);
 export const Route = createFileRoute("/_authenticated/user/")({
   component: Overview,
   beforeLoad: () => ({ title: t("common:overview.title") }),
@@ -47,26 +22,12 @@ function Overview() {
   const ability = useAbility();
   const user = useAuthUserContext();
   const canReadApiKeys = ability.can("read", "UserApiKey");
-  const { data, loading, error, refetch } = useQuery(GET_OVERVIEW, {
-    variables: { includeApiKeys: canReadApiKeys },
-    fetchPolicy: "network-only",
-  });
-  const summary = error ? undefined : data?.currentUser;
   return (
     <Page
       title={t("common:overview.title")}
       description={t("user:overview.description", { name: user.name })}
     >
       <PageLayout>
-        {error && (
-          <PageLayoutSection>
-            <OverviewError
-              onRetry={() => {
-                void refetch().catch(() => undefined);
-              }}
-            />
-          </PageLayoutSection>
-        )}
         <PageLayoutSection>
           <div className="grid gap-4 @3xl/page-layout:grid-cols-3">
             <OverviewCard
@@ -81,12 +42,7 @@ function Overview() {
                   {t("sidebar:switcher.manageWorkspaces")}
                 </Button>
               }
-            >
-              <OverviewCount
-                connection={summary?.workspaces}
-                loading={loading}
-              />
-            </OverviewCard>
+            />
 
             {canReadApiKeys && (
               <OverviewCard
@@ -101,12 +57,7 @@ function Overview() {
                     {t("common:overview.view_api_keys")}
                   </Button>
                 }
-              >
-                <OverviewCount
-                  connection={summary?.apiKeys}
-                  loading={loading}
-                />
-              </OverviewCard>
+              />
             )}
             <OverviewCard
               title={t("user:overview.sessions")}
@@ -117,9 +68,7 @@ function Overview() {
                   {t("user:overview.manage_security")}
                 </Button>
               }
-            >
-              <OverviewCount connection={summary?.sessions} loading={loading} />
-            </OverviewCard>
+            />
           </div>
         </PageLayoutSection>
         <PageLayoutSection span="full">

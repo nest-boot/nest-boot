@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
-import type { TotalCountRelation } from "@/gql/graphql";
+import { Button } from "@/components/thread-ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Card,
   CardAction,
@@ -10,8 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/thread-ui/button";
 
 export function OverviewCard({
   title,
@@ -23,7 +22,7 @@ export function OverviewCard({
   title: string;
   description: string;
   icon: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
   action: ReactNode;
 }) {
   return (
@@ -35,29 +34,9 @@ export function OverviewCard({
         <CardDescription>{description}</CardDescription>
         <CardAction>{icon}</CardAction>
       </CardHeader>
-      <div className="flex-1">
-        <CardContent>{children}</CardContent>
-      </div>
+      {children && <CardContent>{children}</CardContent>}
       <CardFooter>{action}</CardFooter>
     </Card>
-  );
-}
-
-export function OverviewCount({
-  connection,
-  loading,
-}: {
-  connection?: { totalCount: number; totalCountRelation: TotalCountRelation };
-  loading: boolean;
-}) {
-  const { t, i18n } = useTranslation();
-  if (loading) return <p role="status">{t("common:overview.loading")}</p>;
-  return (
-    <p className="text-3xl font-semibold tabular-nums">
-      {connection
-        ? `${new Intl.NumberFormat(i18n.resolvedLanguage).format(connection.totalCount)}${connection.totalCountRelation === "GTE" ? "+" : ""}`
-        : "—"}
-    </p>
   );
 }
 

@@ -19,7 +19,6 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { GraphQLResolveInfo } from "graphql";
 
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
@@ -64,19 +63,17 @@ export class WorkspaceService {
   /**
    * Lists every workspace after an explicit platform read grant.
    * @param args - Cursor pagination, ordering and filtering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Page of workspaces authorized for platform access.
    */
   async getPlatformWorkspaceConnection(
     args: ConnectionArgsInterface<Workspace>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<Workspace>> {
     authorize("read-any", Workspace);
     return await runAuthQuery(this.em, async (em) => {
       const page = await new ConnectionManager(em as SqlEntityManager).find(
         WorkspaceConnection,
         args,
-        { ...(info && { info }), where: {} },
+        { where: {} },
       );
       for (const { node } of page.edges) {
         authorize("read-any", node);
@@ -298,13 +295,11 @@ export class WorkspaceService {
    * Paginates workspaces belonging to the current user's active memberships.
    * @param user - The user whose account is being accessed.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated workspaces joined by the user.
    */
   async getWorkspaceConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<Workspace>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<Workspace>> {
     assertUserSession(user);
     const memberships = (this.em as SqlEntityManager)
@@ -314,7 +309,6 @@ export class WorkspaceService {
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<Workspace>(WorkspaceConnection, args, {
-      ...(info && { info }),
       where: {
         id: { $in: memberships.toRaw() },
       },

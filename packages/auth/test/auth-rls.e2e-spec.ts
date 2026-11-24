@@ -1271,7 +1271,7 @@ describe("Auth services and native RLS boundaries", () => {
           expect(page.edges.map(({ node }) => node.id)).toEqual([
             type === WorkspaceMemberType.USER ? actor.id : serviceAccount.id,
           ]);
-          expect(page.totalCount).toBe(1);
+          expect(page.edges.length).toBe(1);
           const forbidden =
             type === WorkspaceMemberType.USER ? serviceAccount : actor;
           expect(await service.getWorkspaceMember(forbidden.id)).toBeNull();
@@ -1281,7 +1281,7 @@ describe("Auth services and native RLS boundaries", () => {
               filter: { type: { $eq: forbidden.type } },
             });
           expect(filtered.edges).toEqual([]);
-          expect(filtered.totalCount).toBe(0);
+          expect(filtered.edges.length).toBe(0);
         },
       );
       await admin.nativeDelete(Workspace, workspace.id);
@@ -1538,7 +1538,7 @@ describe("Auth services and native RLS boundaries", () => {
         first: 10,
       });
       expect(page.edges.map(({ node }) => node.id)).toEqual([limited.id]);
-      expect(page.totalCount).toBe(1);
+      expect(page.edges.length).toBe(1);
       expect(
         await service.getWorkspaceApiKey(inherited.id, workspace),
       ).toBeNull();
@@ -1558,7 +1558,7 @@ describe("Auth services and native RLS boundaries", () => {
       const fullPage = await service.getWorkspaceApiKeyConnection(workspace, {
         first: 10,
       });
-      expect(fullPage.totalCount).toBe(2);
+      expect(fullPage.edges.length).toBe(2);
     });
     await admin.nativeDelete(Workspace, workspace.id);
     await admin.nativeDelete(User, user.id);
@@ -2136,7 +2136,7 @@ describe("Auth services and native RLS boundaries", () => {
             scoped("", "999999999"),
           ).getWorkspaceInvitationConnectionByUser(user, { first: 20 });
           expect(hidden.edges).toEqual([]);
-          expect(hidden.totalCount).toBe(0);
+          expect(hidden.edges.length).toBe(0);
           expect(
             em.getSessionContext()?.variables?.["app.auth.workspace.id"],
           ).toBe("");

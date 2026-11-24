@@ -6,9 +6,9 @@ import type {
 import { isPlainObject } from "lodash-es";
 
 import type {
-  ConnectionArgsInterface,
   ConnectionMetadata,
   ConnectionResult,
+  CountArgsInterface,
 } from "../interfaces/index.js";
 import { parseConnectionQuery } from "./parse-connection-query.js";
 import { resolveConnectionPagination } from "./resolve-connection-pagination.js";
@@ -49,23 +49,21 @@ function filterComplexity(filter: unknown): number {
 
 /**
  * Estimates the cost of applying the two client filters to one database query.
- * @param query - The caller's search expression.
- * @param filter - The GraphQL-coerced filter.
+ * @param args - The caller's search expression and GraphQL-coerced filter.
  * @param metadata - Filterable fields and the connection's filter schema.
- * @returns The cost of the conditions for one page.
+ * @returns The cost of applying the filters once.
  */
 function estimateConnectionFilterComplexity<Entity extends object>(
-  query: string | null,
-  filter: unknown,
+  args: CountArgsInterface<Entity>,
   metadata: Pick<
     ConnectionMetadata<Entity>,
     "fieldOptionsMap" | "filterQuerySchema"
   >,
 ): number {
-  const explicitCost = filterComplexity(filter);
+  const explicitCost = filterComplexity(args.filter);
   let searchFilter: FilterQuery<Entity> | null;
   try {
-    searchFilter = parseConnectionQuery(query, metadata);
+    searchFilter = parseConnectionQuery(args.query, metadata);
   } catch {
     // The resolver still validates search expressions and reports its usual error.
     return explicitCost;
@@ -93,14 +91,12 @@ export function createConnectionComplexity<Entity extends object>(
     childComplexity,
     resolved,
   }: FieldComplexityEstimatorArgs<ConnectionResult<Entity>>) => {
-    const { query, filter } = args as ConnectionArgsInterface<Entity>;
     const pagination = resolveConnectionPagination(args);
     if ("error" in pagination) {
       return 0;
     }
 
-    const baseCost =
-      2 + estimateConnectionFilterComplexity(query ?? null, filter, metadata);
+    const baseCost = 2 + estimateConnectionFilterComplexity(args, metadata);
     if (resolved) {
       const { result } = resolved;
       return (
@@ -110,4 +106,20 @@ export function createConnectionComplexity<Entity extends object>(
 
     return baseCost + pagination.limit * (1 + Math.max(0, childComplexity));
   };
+}
+
+/**
+ * Creates a field complexity estimator for a standalone count.
+ * @template Entity - The entity type being counted.
+ * @param metadata - Filterable fields and the connection's filter schema.
+ * @returns An estimator that prices the count and its filters.
+ */
+export function createCountComplexity<Entity extends object>(
+  metadata: Pick<
+    ConnectionMetadata<Entity>,
+    "fieldOptionsMap" | "filterQuerySchema"
+  >,
+): ComplexityEstimator {
+  return ({ args, childComplexity }) =>
+    10 + childComplexity + estimateConnectionFilterComplexity(args, metadata);
 }

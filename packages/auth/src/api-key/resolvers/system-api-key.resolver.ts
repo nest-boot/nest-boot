@@ -1,7 +1,6 @@
 import {
   Args,
   ID,
-  Info,
   Mutation,
   Parent,
   Query,
@@ -9,7 +8,6 @@ import {
   Resolver,
 } from "@nest-boot/graphql";
 import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
-import { type GraphQLResolveInfo } from "graphql";
 
 import {
   SystemApiKeyConnection,
@@ -65,23 +63,20 @@ export class SystemApiKeyResolver {
   /**
    * Lists system keys across independent accounts.
    * @param args - Cursor pagination, filtering and ordering arguments.
-   * @param info - GraphQL selection information.
    * @returns Authorized system credential metadata without hashes.
    */
   @Query(() => SystemApiKeyConnection)
   systemApiKeys(
     @Args({ type: () => SystemApiKeyConnectionArgs })
     args: ConnectionArgsInterface<ApiKey>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
-    return this.keys.getSystemApiKeyConnection(undefined, args, info);
+    return this.keys.getSystemApiKeyConnection(undefined, args);
   }
 
   /**
    * Lists credentials owned by the parent system identity.
    * @param account - System account whose credential metadata is requested.
    * @param args - Cursor pagination, ordering and filtering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Page of credential metadata belonging to the parent system account.
    */
   @ResolveField(() => SystemApiKeyConnection)
@@ -89,9 +84,8 @@ export class SystemApiKeyResolver {
     @Parent() account: SystemAccount,
     @Args({ type: () => SystemApiKeyConnectionArgs })
     args: ConnectionArgsInterface<ApiKey>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
-    return this.keys.getSystemApiKeyConnection(account.id, args, info);
+    return this.keys.getSystemApiKeyConnection(account.id, args);
   }
 
   /**

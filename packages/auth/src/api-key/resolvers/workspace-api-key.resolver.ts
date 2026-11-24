@@ -2,7 +2,6 @@ import { Reference } from "@mikro-orm/core";
 import {
   Args,
   ID,
-  Info,
   Mutation,
   Parent,
   Query,
@@ -10,7 +9,6 @@ import {
   Resolver,
 } from "@nest-boot/graphql";
 import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
-import { type GraphQLResolveInfo } from "graphql";
 
 import { SelectedWorkspace } from "../../workspace/decorators/selected-workspace.decorator.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
@@ -109,7 +107,6 @@ export class WorkspaceApiKeyResolver {
    * Lists credentials belonging to this member within the selected workspace.
    * @param member - Owning workspace identity.
    * @param args - Pagination, filtering and ordering arguments.
-   * @param info - GraphQL selection information.
    * @returns Authorized metadata belonging to this member only.
    */
   @ResolveField(() => WorkspaceApiKeyConnection)
@@ -117,12 +114,10 @@ export class WorkspaceApiKeyResolver {
     @Parent() member: WorkspaceMember,
     @Args({ type: () => WorkspaceApiKeyConnectionArgs })
     args: ConnectionArgsInterface<ApiKey>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
     return this.apiKeyService.getWorkspaceApiKeyConnection(
       Reference.unwrapReference(member.workspace),
       args,
-      info,
       member,
     );
   }

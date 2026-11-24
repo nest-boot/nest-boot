@@ -5,7 +5,6 @@ import {
   Field,
   GraphQLModule,
   ID,
-  Info,
   ObjectType,
   Query,
   ResolveField,
@@ -17,26 +16,36 @@ import {
 } from "@nest-boot/graphql-rate-limit";
 import type { DynamicModule, INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import type { GraphQLResolveInfo } from "graphql";
 
 import {
   type ConnectionArgsInterface,
   ConnectionBuilder,
   ConnectionManager,
   type ConnectionResult,
+  Count,
+  type CountArgsInterface,
 } from "../src/index.js";
 
 @ObjectType()
 class CostBook {
   @Field(() => ID, { complexity: 1 })
   id!: number;
+
+  @Field(() => String)
+  name!: string;
 }
 
 const BookSchema = new EntitySchema({
   class: CostBook,
-  properties: { id: { type: "number", primary: true } },
+  properties: {
+    id: { type: "number", primary: true },
+    name: { type: "string" },
+  },
 });
-const { Connection, ConnectionArgs } = new ConnectionBuilder(CostBook).build();
+const { Connection, ConnectionArgs, CountArgs, getCountComplexity } =
+  new ConnectionBuilder(CostBook)
+    .addField({ field: "name", type: "string", filterable: true })
+    .build();
 
 @ObjectType()
 class BookPage extends Connection {}
@@ -67,27 +76,31 @@ class BookResolver {
   catalog(
     @Args({ type: () => ConnectionArgs })
     args: ConnectionArgsInterface<CostBook>,
-    @Info() info: GraphQLResolveInfo,
   ): Promise<ConnectionResult<CostBook>> {
-    return this.manager.find(Connection, args, { info });
+    return this.manager.find(Connection, args);
   }
 
   @Query(() => Connection, { complexity: 0 })
   freeCatalog(
     @Args({ type: () => ConnectionArgs })
     args: ConnectionArgsInterface<CostBook>,
-    @Info() info: GraphQLResolveInfo,
   ): Promise<ConnectionResult<CostBook>> {
-    return this.manager.find(Connection, args, { info });
+    return this.manager.find(Connection, args);
+  }
+
+  @Query(() => Count, { complexity: getCountComplexity })
+  catalogCount(
+    @Args({ type: () => CountArgs }) args: CountArgsInterface<CostBook>,
+  ): Promise<Count> {
+    return this.manager.count(Connection, args);
   }
 
   @ResolveField(() => BookPage, { nullable: true })
   books(
     @Args({ type: () => ConnectionArgs })
     args: ConnectionArgsInterface<CostBook>,
-    @Info() info: GraphQLResolveInfo,
   ): Promise<ConnectionResult<CostBook>> {
-    return this.manager.find(Connection, args, { info });
+    return this.manager.find(Connection, args);
   }
 }
 
@@ -102,7 +115,11 @@ describe("Connection complexity over GraphQL HTTP", () => {
       dbName: "memory://",
     });
     await orm.schema.create();
-    await orm.em.fork().insertMany(CostBook, [{ id: 1 }, { id: 2 }, { id: 3 }]);
+    await orm.em.fork().insertMany(CostBook, [
+      { id: 1, name: "alpha" },
+      { id: 2, name: "alpha" },
+      { id: 3, name: "beta" },
+    ]);
   });
 
   afterEach(async () => {
@@ -150,8 +167,8 @@ describe("Connection complexity over GraphQL HTTP", () => {
         actual: 9,
       },
       {
-        selection: "books(first: 1) { totalCount }",
-        books: { totalCount: 3 },
+        selection: "books(first: 1) { pageInfo { hasNextPage } }",
+        books: { pageInfo: { hasNextPage: true } },
         requested: 4,
         actual: 4,
       },
@@ -208,6 +225,35 @@ describe("Connection complexity over GraphQL HTTP", () => {
     });
   });
 
+  it("charges a standalone count for its filters once", async () => {
+    const url = await startApp(GraphQLRateLimitModule.forRoot({}));
+    const cases = [
+      ["{ catalogCount { count } }", 10, { count: 3 }],
+      ['{ catalogCount(query: "name:alpha") { count } }', 11, { count: 2 }],
+      [
+        '{ catalogCount(filter: { name: "beta" }) { count } }',
+        11,
+        { count: 1 },
+      ],
+      [
+        '{ catalogCount(query: "name:alpha", filter: { name: "alpha" }) { count precision } }',
+        13,
+        { count: 2, precision: "EXACT" },
+      ],
+    ] as const;
+
+    for (const [document, points, result] of cases) {
+      const response = await query(url, document);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        data: { catalogCount: result },
+        extensions: {
+          cost: { requestedQueryCost: points, actualQueryCost: points },
+        },
+      });
+    }
+  });
+
   it.each([false, true])(
     "keeps pagination errors on the executed field with rate limiting=%s",
     async (rateLimited) => {
@@ -229,8 +275,8 @@ describe("Connection complexity over GraphQL HTTP", () => {
           url,
           `{
           status
-          absent: owner(present: false) { books${args} { totalCount } }
-          present: owner(present: true) { books${args} { totalCount } }
+          absent: owner(present: false) { books${args} { pageInfo { hasNextPage } } }
+          present: owner(present: true) { books${args} { pageInfo { hasNextPage } } }
         }`,
         );
         expect(response.status).toBe(200);

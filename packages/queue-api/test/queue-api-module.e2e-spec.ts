@@ -65,7 +65,7 @@ it.each([true, false])(
           .post("/graphql")
           .send({
             query:
-              '{ workspaceJob(id: "ignored") { id } workspaceJobs(first: 1) { totalCount } }',
+              '{ workspaceJob(id: "ignored") { id } workspaceJobs(first: 1) { edges { node { id } } } }',
           });
         expect(response.status).toBe(200);
         expect(response.body.errors).toEqual(

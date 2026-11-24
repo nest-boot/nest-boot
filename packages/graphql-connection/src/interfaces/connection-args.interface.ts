@@ -2,6 +2,14 @@ import { FilterQuery } from "@mikro-orm/core";
 
 import { OrderInterface } from "./order.interface.js";
 
+/** Search and filter inputs shared by a connection and its count. */
+export interface CountArgsInterface<Entity extends object> {
+  /** Search expression parsed with the connection's searchable fields. */
+  query?: string | null;
+  /** Structured filter applied to the results. */
+  filter?: FilterQuery<Entity> | null;
+}
+
 /**
  * Arguments for querying a paginated connection.
  *
@@ -26,7 +34,9 @@ import { OrderInterface } from "./order.interface.js";
  * };
  * ```
  */
-export interface ConnectionArgsInterface<Entity extends object> {
+export interface ConnectionArgsInterface<
+  Entity extends object,
+> extends CountArgsInterface<Entity> {
   /**
    * Returns elements after this cursor (for forward pagination).
    */
@@ -46,17 +56,6 @@ export interface ConnectionArgsInterface<Entity extends object> {
    * Returns up to the last n elements (for backward pagination). Use 1 to 100.
    */
   last?: number | null;
-
-  /**
-   * A search query string to filter results.
-   * Parsed using search-syntax and applied to searchable fields.
-   */
-  query?: string | null;
-
-  /**
-   * A MongoDB-style filter query to apply to the results.
-   */
-  filter?: FilterQuery<Entity> | null;
 
   /**
    * Ordering options for the returned results.

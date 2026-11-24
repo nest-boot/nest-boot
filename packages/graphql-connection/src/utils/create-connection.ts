@@ -2,14 +2,12 @@ import type { EntityClass, FilterQuery } from "@mikro-orm/core";
 import {
   type ComplexityEstimator,
   Field,
-  Int,
   ObjectType,
 } from "@nest-boot/graphql";
 import { type Type } from "@nestjs/common";
 import { pluralize } from "inflection";
 import type { ZodType } from "zod";
 
-import { TotalCountRelation } from "../enums/index.js";
 import { GRAPHQL_CONNECTION_METADATA } from "../graphql-connection.constants.js";
 import {
   ConnectionFieldOptions,
@@ -26,8 +24,6 @@ import { createConnectionComplexity } from "./create-connection-complexity.js";
  * The generated Connection type includes:
  * - `edges`: List of edges containing nodes and cursors
  * - `pageInfo`: Pagination information (hasNextPage, hasPreviousPage, cursors)
- * - `totalCount`: Number of items matching the query, capped at 10,000
- * - `totalCountRelation`: Whether totalCount is exact or a lower bound
  *
  * Used by ConnectionBuilder.build()
  * @template Entity - The entity type for the connection
@@ -77,18 +73,6 @@ export function createConnection<Entity extends object>(
       description: `Information to aid in pagination.`,
     })
     pageInfo!: PageInfo;
-
-    @Field(() => Int, {
-      complexity: 0,
-      description: `Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.`,
-    })
-    totalCount!: number;
-
-    @Field(() => TotalCountRelation, {
-      complexity: 0,
-      description: `Indicates whether totalCount is exact or a lower bound.`,
-    })
-    totalCountRelation!: TotalCountRelation;
   }
 
   return Connection;

@@ -3,11 +3,10 @@ import "reflect-metadata";
 import { EntityManager } from "@mikro-orm/core";
 import { SqlEntityManager } from "@mikro-orm/sql";
 import { ObjectType, TypeMetadataStorage } from "@nest-boot/graphql";
-import { type GraphQLResolveInfo, Kind, parse } from "graphql";
 
 import { ConnectionBuilder } from "./connection.builder.js";
 import { ConnectionManager } from "./connection.manager.js";
-import { TotalCountRelation } from "./enums/index.js";
+import { CountPrecision } from "./enums/index.js";
 
 interface ManagerBook {
   id: number;
@@ -18,40 +17,6 @@ class ManagerBookEntity implements ManagerBook {
   id!: number;
 
   title!: string;
-}
-
-/**
- * Returns graphQL resolve information parsed from the document.
- * @param source - Source value to read from.
- * @returns GraphQL resolve information parsed from the document.
- */
-function createResolveInfo(source: string): GraphQLResolveInfo {
-  const document = parse(source);
-  const operation = document.definitions.find(
-    (definition) => definition.kind === Kind.OPERATION_DEFINITION,
-  );
-
-  if (operation?.kind !== Kind.OPERATION_DEFINITION) {
-    throw new Error("Operation definition not found");
-  }
-
-  const fieldNode = operation.selectionSet.selections.find(
-    (selection) => selection.kind === Kind.FIELD,
-  );
-
-  if (fieldNode?.kind !== Kind.FIELD) {
-    throw new Error("Connection field not found");
-  }
-
-  return {
-    fieldNodes: [fieldNode],
-    fragments: Object.fromEntries(
-      document.definitions
-        .filter((definition) => definition.kind === Kind.FRAGMENT_DEFINITION)
-        .map((definition) => [definition.name.value, definition]),
-    ),
-    variableValues: {},
-  } as unknown as GraphQLResolveInfo;
 }
 
 describe("ConnectionManager", () => {
@@ -109,10 +74,11 @@ describe("ConnectionManager", () => {
         findAll,
       } as unknown as SqlEntityManager;
 
-      const result = await new ConnectionManager(
-        entityManager,
-      ).find<ManagerBook>(
-        reference === "generated class" ? Connection : ApplicationConnection,
+      const manager = new ConnectionManager(entityManager);
+      const connection =
+        reference === "generated class" ? Connection : ApplicationConnection;
+      const result = await manager.find<ManagerBook>(
+        connection,
         {
           first: 1,
           filter: { title: { $eq: "A" } },
@@ -140,6 +106,12 @@ describe("ConnectionManager", () => {
           where: { id: { $gt: 0 } },
         }),
       );
+      expect(createQueryBuilder).not.toHaveBeenCalled();
+      const count = await manager.count(
+        connection,
+        { filter: { title: { $eq: "A" } } },
+        { where: { id: { $gt: 0 } }, filters: false, schema: "tenant" },
+      );
       expect(limitedCountQueryBuilder.where).toHaveBeenCalledWith({
         $and: [{ id: { $gt: 0 } }, { title: { $eq: "A" } }],
       });
@@ -147,92 +119,53 @@ describe("ConnectionManager", () => {
       expect(limitedCountQueryBuilder.withSchema).toHaveBeenCalledWith(
         "tenant",
       );
-      expect(result.totalCount).toBe(2);
-      expect(result.totalCountRelation).toBe(TotalCountRelation.EQ);
+      expect(count).toEqual({ count: 2, precision: CountPrecision.EXACT });
       expect(result.edges).toHaveLength(1);
       expect(result.pageInfo.hasNextPage).toBe(true);
       expect(result.pageInfo.hasPreviousPage).toBe(false);
     },
   );
 
-  it("skips the total count query when count fields are not selected", async () => {
-    const { Connection } = new ConnectionBuilder(ManagerBookEntity).build();
-    const findAll = vi.fn().mockResolvedValue([]);
-    const createQueryBuilder = vi.fn();
-    const entityManager = {
-      createQueryBuilder,
-      find: vi.fn(),
-      findAll,
-    } as unknown as SqlEntityManager;
+  it.each([
+    [10_000, CountPrecision.EXACT],
+    [10_001, CountPrecision.AT_LEAST],
+  ])(
+    "bounds a standalone count of %i matches without reading a page",
+    async (rows, precision) => {
+      const { Connection } = new ConnectionBuilder(ManagerBookEntity).build();
+      const matches = {
+        select: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        withSchema: vi.fn().mockReturnThis(),
+        applyFilters: vi.fn().mockResolvedValue(undefined),
+      };
+      const countQuery = {
+        count: vi.fn().mockReturnThis(),
+        getCount: vi.fn().mockResolvedValue(rows),
+      };
+      const createQueryBuilder = vi
+        .fn()
+        .mockReturnValueOnce(matches)
+        .mockReturnValueOnce(countQuery);
+      const find = vi.fn();
+      const findAll = vi.fn();
+      const manager = new ConnectionManager({
+        find,
+        findAll,
+        createQueryBuilder,
+      } as unknown as SqlEntityManager);
 
-    const result = await new ConnectionManager(entityManager).find(
-      Connection,
-      { first: 10 },
-      {
-        info: createResolveInfo(`
-          query {
-            books {
-              edges {
-                cursor
-              }
-              pageInfo {
-                hasNextPage
-              }
-            }
-          }
-        `),
-      },
-    );
-
-    expect(findAll).toHaveBeenCalledTimes(1);
-    expect(createQueryBuilder).not.toHaveBeenCalled();
-    expect(result).not.toHaveProperty("totalCount");
-    expect(result).not.toHaveProperty("totalCountRelation");
-  });
-
-  it("executes the total count query when totalCountRelation is selected", async () => {
-    const { Connection } = new ConnectionBuilder(ManagerBookEntity).build();
-    const limitedCountQueryBuilder = {
-      applyFilters: vi.fn().mockResolvedValue(undefined),
-      limit: vi.fn().mockReturnThis(),
-      select: vi.fn().mockReturnThis(),
-      where: vi.fn().mockReturnThis(),
-      withSchema: vi.fn().mockReturnThis(),
-    };
-    const countQueryBuilder = {
-      count: vi.fn().mockReturnThis(),
-      getCount: vi.fn().mockResolvedValue(10_001),
-    };
-    const createQueryBuilder = vi
-      .fn()
-      .mockReturnValueOnce(limitedCountQueryBuilder)
-      .mockReturnValueOnce(countQueryBuilder);
-    const entityManager = {
-      createQueryBuilder,
-      find: vi.fn(),
-      findAll: vi.fn().mockResolvedValue([]),
-    } as unknown as SqlEntityManager;
-
-    const result = await new ConnectionManager(entityManager).find(
-      Connection,
-      { first: 10 },
-      {
-        info: createResolveInfo(`
-          query {
-            books {
-              ...CountFields
-            }
-          }
-
-          fragment CountFields on ManagerBookEntityConnection {
-            relation: totalCountRelation
-          }
-        `),
-      },
-    );
-
-    expect(createQueryBuilder).toHaveBeenCalledTimes(2);
-    expect(result.totalCount).toBe(10_000);
-    expect(result.totalCountRelation).toBe(TotalCountRelation.GTE);
-  });
+      expect(await manager.count(Connection, {})).toEqual({
+        count: 10_000,
+        precision,
+      });
+      expect(matches.limit).toHaveBeenCalledWith(10_001);
+      expect(createQueryBuilder).toHaveBeenLastCalledWith(
+        matches,
+        "bounded_count",
+      );
+      expect(find).not.toHaveBeenCalled();
+      expect(findAll).not.toHaveBeenCalled();
+    },
+  );
 });

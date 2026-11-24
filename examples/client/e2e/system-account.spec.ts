@@ -142,7 +142,7 @@ test("manages system identities and credentials under admin, with one-time secre
     const read = (credential = secret) =>
       machine.post("/api/graphql", {
         headers: { authorization: `Bearer ${credential}` },
-        data: { query: "{ users(first: 1) { totalCount } }" },
+        data: { query: "{ users(first: 1) { edges { node { id } } } }" },
       });
     expect((await read()).status()).toBe(200);
     expect((await (await read()).json()).errors).toBeUndefined();

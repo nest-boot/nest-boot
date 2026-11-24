@@ -21,7 +21,6 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { GraphQLResolveInfo } from "graphql";
 
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
@@ -119,20 +118,17 @@ export class WorkspaceMemberService {
    * Paginates members within the selected workspace and its RLS scope.
    * @param workspace - The workspace that scopes this operation.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated members visible to the current principal.
    */
   async getWorkspaceMemberConnectionByWorkspace(
     workspace: Workspace,
     args: ConnectionArgsInterface<WorkspaceMember>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<WorkspaceMember>> {
     const where = this.getWorkspaceMemberListFilter(workspace);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<WorkspaceMember>(WorkspaceMemberConnection, args, {
       where,
-      ...(info && { info }),
     });
     for (const { node } of connection.edges) {
       authorize("read", node);

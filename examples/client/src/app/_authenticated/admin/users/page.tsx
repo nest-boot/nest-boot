@@ -55,7 +55,6 @@ const GET_USERS_FROM_USERS_ROUTE = graphql(`
           createdAt
         }
       }
-      totalCount
       pageInfo {
         hasNextPage
         hasPreviousPage

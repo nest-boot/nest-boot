@@ -1,4 +1,5 @@
 import type { EntityClass, FilterQuery } from "@mikro-orm/core";
+import type { ComplexityEstimator } from "@nest-boot/graphql";
 import { type Type } from "@nestjs/common";
 import { GraphQLScalarType } from "graphql";
 import type { ZodType } from "zod";
@@ -7,14 +8,17 @@ import {
   ConnectionArgsInterface,
   ConnectionBuilderOptions,
   ConnectionFieldOptions,
+  CountArgsInterface,
   EdgeInterface,
   FieldOptions,
   OrderFieldType,
   OrderInterface,
 } from "./interfaces/index.js";
+import { createCountComplexity } from "./utils/create-connection-complexity.js";
 import {
   createConnection,
   createConnectionArgs,
+  createCountArgs,
   createEdge,
   createFilter,
   createOrder,
@@ -36,6 +40,10 @@ export type ConnectionBuildResult<Entity extends object> = {
   Connection: GeneratedConnection<Entity>;
   /** The generated ConnectionArgs input type class. */
   ConnectionArgs: Type<ConnectionArgsInterface<Entity>>;
+  /** Search and filter arguments for the count query. */
+  CountArgs: Type<CountArgsInterface<Entity>>;
+  /** The callback to use in a standalone count field's complexity option. */
+  getCountComplexity: ComplexityEstimator;
   /** The generated Edge object type class. */
   Edge: Type<EdgeInterface<Entity>>;
   /** GraphQL scalar type for filter queries. */
@@ -66,7 +74,7 @@ export type ConnectionBuildResult<Entity extends object> = {
  * Builder class for creating GraphQL connection types following the Relay specification.
  *
  * The ConnectionBuilder generates all necessary GraphQL types for cursor-based pagination:
- * - Connection type with edges, pageInfo, totalCount, and totalCountRelation
+ * - Connection type with edges and pageInfo
  * - Edge type with node and cursor
  * - ConnectionArgs type with first, last, after, before, orderBy, filter, and query
  * - Order input type for sorting
@@ -200,16 +208,27 @@ export class ConnectionBuilder<Entity extends object> {
       filterQuerySchema,
     );
 
+    const CountArgs = createCountArgs(
+      this.entityName,
+      this.fieldOptionsMap,
+      Filter,
+    );
     const ConnectionArgs = createConnectionArgs(
       this.entityName,
       this.fieldOptionsMap,
       Order,
       Filter,
+      CountArgs,
     );
 
     return {
       Connection,
       ConnectionArgs,
+      CountArgs,
+      getCountComplexity: createCountComplexity({
+        fieldOptionsMap: this.fieldOptionsMap,
+        filterQuerySchema,
+      }),
       Edge,
       Filter,
       filterQuerySchema,

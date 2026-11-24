@@ -1,6 +1,5 @@
-import { Args, Info, Parent, ResolveField, Resolver } from "@nest-boot/graphql";
-import type { ConnectionArgsInterface } from "@nest-boot/graphql-connection";
-import type { GraphQLResolveInfo } from "graphql";
+import { Args, Parent, ResolveField, Resolver } from "@nest-boot/graphql";
+import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
 
 import { User } from "../../core/entities/user.entity.js";
 import {
@@ -33,7 +32,6 @@ export class UserWorkspaceResolver {
    * Paginates workspaces joined by the parent user.
    * @param user - The user whose account is being accessed.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated workspaces accessible to the user.
    */
   @ResolveField(() => WorkspaceConnection)
@@ -41,20 +39,14 @@ export class UserWorkspaceResolver {
     @Parent() user: User,
     @Args({ type: () => WorkspaceConnectionArgs })
     args: ConnectionArgsInterface<Workspace>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
-    return await this.workspaceService.getWorkspaceConnectionByUser(
-      user,
-      args,
-      info,
-    );
+    return await this.workspaceService.getWorkspaceConnectionByUser(user, args);
   }
 
   /**
    * Paginates pending invitations addressed to the parent user.
    * @param user - The user whose account is being accessed.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated invitations visible to the current principal.
    */
   @ResolveField(() => WorkspaceInvitationConnection)
@@ -62,12 +54,10 @@ export class UserWorkspaceResolver {
     @Parent() user: User,
     @Args({ type: () => WorkspaceInvitationConnectionArgs })
     args: ConnectionArgsInterface<WorkspaceInvitation>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
     return await this.workspaceInvitationService.getWorkspaceInvitationConnectionByUser(
       user,
       args,
-      info,
     );
   }
 }

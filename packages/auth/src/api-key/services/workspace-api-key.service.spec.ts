@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 
 import { ref, Reference } from "@mikro-orm/core";
-import {
-  ConnectionManager,
-  TotalCountRelation,
-} from "@nest-boot/graphql-connection";
+import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 
@@ -56,13 +53,10 @@ describe("API-key management", () => {
               startCursor: null,
               endCursor: null,
             },
-            totalCount: 0,
-            totalCountRelation: TotalCountRelation.EQ,
           });
         await service.getWorkspaceApiKeyConnection(
           createTestWorkspace(),
           { first: 10 },
-          undefined,
           member,
         );
         expect(find).toHaveBeenCalledWith(
@@ -85,7 +79,6 @@ describe("API-key management", () => {
           service.getWorkspaceApiKeyConnection(
             createTestWorkspace(),
             { first: 10 },
-            undefined,
             foreign,
           ),
         ).rejects.toThrow("selected workspace");
@@ -613,7 +606,7 @@ describe("API-key management", () => {
           });
           const result = {
             edges: [{ cursor: "cursor", node: key }],
-            totalCount: 2,
+
             pageInfo: { hasNextPage: true, endCursor: "cursor" },
           };
           vi.spyOn(ConnectionManager.prototype, "find").mockResolvedValue(
@@ -635,7 +628,6 @@ describe("API-key management", () => {
           key.revokedAt = new Date();
           await expect(read()).rejects.toThrow(ForbiddenException);
           expect(result.edges).toHaveLength(1);
-          expect(result.totalCount).toBe(2);
           expect(result.pageInfo).toEqual({
             hasNextPage: true,
             endCursor: "cursor",

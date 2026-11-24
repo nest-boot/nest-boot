@@ -1,5 +1,3 @@
-import type { GraphQLResolveInfo } from "graphql";
-
 import { User } from "../entities/user.entity.js";
 import { User as BaseUser } from "../entities/user.entity.js";
 import { type AccountService } from "../services/account.service.js";
@@ -7,14 +5,9 @@ import { type SessionService } from "../services/session.service.js";
 import { UserResolver } from "./user.resolver.js";
 
 describe("UserResolver self-service relations", () => {
-  it("retains selection information when resolving session and account connections", async () => {
+  it("delegates session and account connections", async () => {
     const user = new User();
     const args = { first: 10 };
-    const info = {
-      fieldNodes: [],
-      fragments: {},
-      variableValues: {},
-    } as unknown as GraphQLResolveInfo;
     const result = { edges: [], pageInfo: {} };
     const getSessionConnectionByUser = vi.fn().mockResolvedValue(result);
     const getAccountConnectionByUser = vi.fn().mockResolvedValue(result);
@@ -22,17 +15,15 @@ describe("UserResolver self-service relations", () => {
       { getSessionConnectionByUser } as unknown as SessionService,
       { getAccountConnectionByUser } as unknown as AccountService,
     );
-    await expect(resolver.sessions(user, args, info)).resolves.toBe(result);
-    await expect(resolver.accounts(user, args, info)).resolves.toBe(result);
+    await expect(resolver.sessions(user, args)).resolves.toBe(result);
+    await expect(resolver.accounts(user, args)).resolves.toBe(result);
     expect(getSessionConnectionByUser).toHaveBeenCalledExactlyOnceWith(
       user,
       args,
-      info,
     );
     expect(getAccountConnectionByUser).toHaveBeenCalledExactlyOnceWith(
       user,
       args,
-      info,
     );
   });
 
@@ -46,11 +37,7 @@ describe("UserResolver self-service relations", () => {
       { getAccountConnectionByUser } as unknown as AccountService,
     );
     await expect(resolver.accounts(user, args)).resolves.toBe(result);
-    expect(getAccountConnectionByUser).toHaveBeenCalledWith(
-      user,
-      args,
-      undefined,
-    );
+    expect(getAccountConnectionByUser).toHaveBeenCalledWith(user, args);
     const denied = new Error("Account access denied");
     getAccountConnectionByUser.mockRejectedValueOnce(denied);
     await expect(resolver.accounts(user, args)).rejects.toBe(denied);
@@ -64,11 +51,9 @@ describe("UserResolver self-service relations", () => {
     await expect(resolver.sessions(user, { first: 10 })).resolves.toBe(
       sessions,
     );
-    expect(getSessionConnectionByUser).toHaveBeenCalledWith(
-      user,
-      { first: 10 },
-      undefined,
-    );
+    expect(getSessionConnectionByUser).toHaveBeenCalledWith(user, {
+      first: 10,
+    });
     const denied = new Error("session access denied");
     getSessionConnectionByUser.mockRejectedValueOnce(denied);
     await expect(resolver.sessions(user, { first: 10 })).rejects.toBe(denied);
