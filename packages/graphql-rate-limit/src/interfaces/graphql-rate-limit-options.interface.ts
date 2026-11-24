@@ -15,7 +15,7 @@ export interface GraphQLRateLimitOptions {
   connection?: RedisOptions;
   /** Maximum allowed query complexity per request. */
   maxComplexity: number;
-  /** Default complexity assigned to fields without explicit `@complexity` directives. */
+  /** Fallback complexity for fields without an assigned cost. `__typename` always costs zero. */
   defaultComplexity: number;
   /** Key prefix for rate limit state. */
   keyPrefix: string;
