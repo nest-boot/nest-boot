@@ -2,7 +2,9 @@ import { ApolloDriver } from "@nestjs/apollo";
 import { type DynamicModule, Global, Logger, Module } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
 import { GraphQLModule as BaseGraphQLModule } from "@nestjs/graphql";
+import type { GraphQLSchema } from "graphql";
 
+import { applyDefaultFieldComplexity } from "./field-complexity-defaults.js";
 import { GraphQLExceptionFilter } from "./graphql.exception-filter.js";
 import {
   ASYNC_OPTIONS_TYPE,
@@ -33,6 +35,10 @@ import { type GraphQLModuleOptions } from "./graphql-module-options.interface.js
           sortSchema: true,
           graphiql: true,
           ...options,
+          transformSchema(schema: GraphQLSchema) {
+            applyDefaultFieldComplexity(schema);
+            return options.transformSchema?.(schema) ?? schema;
+          },
         };
       },
     }),

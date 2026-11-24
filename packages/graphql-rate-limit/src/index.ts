@@ -1,4 +1,3 @@
-export * from "./complexities/index.js";
 export * from "./decorators/index.js";
 export * from "./drivers/index.js";
 export * from "./graphql-rate-limit.module.js";

@@ -1,33 +1,67 @@
-import {
-  Field as NestField,
-  Mutation as NestMutation,
-  Query as NestQuery,
-  ResolveField as NestResolveField,
-} from "@nestjs/graphql";
+import { Test } from "@nestjs/testing";
 import { expectTypeOf } from "vitest";
 
+import { applyDefaultFieldComplexity } from "./field-complexity-defaults.js";
 import {
   defineComplexity,
+  Extensions,
   Field,
+  GraphQLSchemaBuilderModule,
+  GraphQLSchemaFactory,
   ID,
   Int,
   Mutation,
+  ObjectType,
   Query,
   ResolveField,
+  Resolver,
 } from "./index.js";
 
 class Book {
   title!: string;
 }
 
-describe("decorator complexity types", () => {
-  it("uses the original NestJS decorators at runtime", () => {
-    expect(Query).toBe(NestQuery);
-    expect(Mutation).toBe(NestMutation);
-    expect(ResolveField).toBe(NestResolveField);
-    expect(Field).toBe(NestField);
-  });
+@ObjectType()
+class PricedBook {
+  static readonly complexity = 5;
 
+  @Field(() => String)
+  title!: string;
+}
+
+@Resolver()
+class PricedBookResolver {
+  @Query(() => PricedBook)
+  @Extensions({ catalog: "books" })
+  pricedBook(): PricedBook {
+    return { title: "Book" };
+  }
+}
+
+describe("decorator complexity metadata", () => {
+  it("preserves field extensions when resolving a static complexity default", async () => {
+    const module = await Test.createTestingModule({
+      imports: [GraphQLSchemaBuilderModule],
+    }).compile();
+
+    try {
+      const schema = await module
+        .get(GraphQLSchemaFactory)
+        .create([PricedBookResolver]);
+
+      applyDefaultFieldComplexity(schema);
+
+      expect(schema.getQueryType()?.getFields().pricedBook.extensions).toEqual({
+        catalog: "books",
+        complexity: 5,
+      });
+    } finally {
+      await module.close();
+    }
+  });
+});
+
+describe("decorator complexity types", () => {
   it("defines reusable complexity callbacks with inferred result types", () => {
     const callback = () => 1;
     expect(defineComplexity(Book, callback)).toBe(callback);

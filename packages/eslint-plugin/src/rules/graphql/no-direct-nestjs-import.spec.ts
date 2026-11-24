@@ -7,6 +7,7 @@ tester.run("no-direct-nestjs-import", rule, {
     'import type { Complexity } from "@nest-boot/graphql";',
     'import { LazyMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage.js";',
     'const name = "@nestjs/graphql";',
+    "declare namespace GraphQL { type Options = object; } import Options = GraphQL.Options;",
   ],
   invalid: [
     'import { ObjectType as Model } from "@nestjs/graphql";',

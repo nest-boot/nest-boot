@@ -6,7 +6,6 @@ import {
   type GraphQLRequestListener,
 } from "@apollo/server";
 import {
-  DEFAULT_FIELD_COMPLEXITY,
   type FieldComplexityEstimatorArgs,
   GraphQLSchemaHost,
   GraphQLTooManyRequestsError,
@@ -14,11 +13,18 @@ import {
 import { Plugin } from "@nestjs/apollo";
 import { Inject } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
+import { collectFields } from "graphql/execution/collectFields.js";
 import {
+  type DocumentNode,
+  type FieldNode,
   getNamedType,
+  getVariableValues,
+  type GraphQLField,
+  type GraphQLSchema,
   isCompositeType,
-  isNonNullType,
-  isObjectType,
+  Kind,
+  type OperationDefinitionNode,
+  OperationTypeNode,
 } from "graphql/index.js";
 import type {
   ComplexityEstimator,
@@ -59,29 +65,6 @@ function compositeFieldEstimator(
 }
 
 /**
- * Prices a field with the default defined on its object return type.
- * @param args - Field metadata, arguments, and calculated child cost.
- * @returns The return type's field cost, if configured.
- */
-function returnTypeEstimator(
-  args: ComplexityEstimatorArgs,
-): number | undefined {
-  const returnType = args.field.type;
-  const type = isNonNullType(returnType) ? returnType.ofType : returnType;
-  if (!isObjectType(type)) {
-    return;
-  }
-
-  const complexity = type.extensions[DEFAULT_FIELD_COMPLEXITY];
-  if (typeof complexity === "number") {
-    return complexity + args.childComplexity;
-  }
-  if (typeof complexity === "function") {
-    return (complexity as ComplexityEstimator)(args) ?? undefined;
-  }
-}
-
-/**
  * Returns the first cost assigned by the configured estimators.
  * @param estimators - Estimators ordered by priority.
  * @param field - The field and its calculated child cost.
@@ -97,6 +80,81 @@ function estimateFieldCost(
       return cost;
     }
   }
+}
+
+/**
+ * Collects root mutation fields as execution does, one per response key.
+ * @param schema - The request schema.
+ * @param document - The validated request document.
+ * @param operation - The selected mutation.
+ * @param variables - The request variables.
+ * @returns Root selections that can be identified separately from nested fields.
+ */
+function collectMutationSelections(
+  schema: GraphQLSchema,
+  document: DocumentNode,
+  operation: OperationDefinitionNode,
+  variables: Record<string, unknown>,
+): FieldNode[] {
+  const mutationType = schema.getMutationType();
+  if (!mutationType) {
+    return [];
+  }
+
+  // Field collection evaluates @include and @skip. Let the complexity
+  // estimator handle coercion of field arguments, including custom scalars.
+  const directiveVariables = (operation.variableDefinitions ?? []).filter(
+    ({ type }) => {
+      const variableType = type.kind === Kind.NON_NULL_TYPE ? type.type : type;
+      return (
+        variableType.kind === Kind.NAMED_TYPE &&
+        variableType.name.value === "Boolean"
+      );
+    },
+  );
+  const { coerced, errors } = getVariableValues(
+    schema,
+    directiveVariables,
+    variables,
+  );
+  if (errors) {
+    throw errors[0];
+  }
+
+  const fragments = Object.fromEntries(
+    document.definitions.flatMap((definition) =>
+      definition.kind === Kind.FRAGMENT_DEFINITION
+        ? [[definition.name.value, definition] as const]
+        : [],
+    ),
+  );
+  const fields = collectFields(
+    schema,
+    fragments,
+    coerced,
+    mutationType,
+    operation.selectionSet,
+  );
+  return Array.from(fields.values(), ([first, ...rest]) => ({
+    ...first,
+    selectionSet: first.selectionSet && {
+      ...first.selectionSet,
+      selections: [
+        ...first.selectionSet.selections,
+        ...rest.flatMap((node) => node.selectionSet?.selections ?? []),
+      ],
+    },
+  }));
+}
+
+/**
+ * Reads the configured cost of executing a root mutation.
+ * @param field - The root mutation field definition.
+ * @returns The configured base cost or the default of ten points.
+ */
+function mutationBaseCost(field: GraphQLField<unknown, unknown>): number {
+  const { mutationComplexity } = field.extensions;
+  return typeof mutationComplexity === "number" ? mutationComplexity : 10;
 }
 
 @Plugin()
@@ -115,23 +173,24 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
 
   async requestDidStart(): Promise<GraphQLRequestListener<BaseContext>> {
     const { schema } = this.moduleRef.get(GraphQLSchemaHost, { strict: false });
-    const { maxComplexity, defaultMutationComplexity } = this.options;
-    const mutationType = schema.getMutationType();
-    const subscriptionType = schema.getSubscriptionType();
+    const { maxComplexity } = this.options;
     const estimateDirective = directiveEstimator();
     const fieldEstimators: ComplexityEstimator[] = [
-      fieldExtensionsEstimator(),
+      // Directive multipliers reserve capacity for the requested selection.
       (args) =>
-        args.type === mutationType || args.type === subscriptionType
-          ? undefined
-          : returnTypeEstimator(args),
-      ({ type, childComplexity }) =>
-        type === mutationType && defaultMutationComplexity !== undefined
-          ? defaultMutationComplexity + childComplexity
-          : undefined,
-      compositeFieldEstimator,
-      this.defaultEstimator,
+        estimateDirective("resolved" in args ? { ...args, args: {} } : args),
+      fieldExtensionsEstimator(),
     ];
+    const fallbackEstimators = [compositeFieldEstimator, this.defaultEstimator];
+    const estimateCost = (
+      args: ComplexityEstimatorArgs & FieldComplexityEstimatorArgs,
+      isRootMutation: boolean,
+    ): number => {
+      const resultCost = estimateFieldCost(fieldEstimators, args);
+      return isRootMutation
+        ? mutationBaseCost(args.field) + (resultCost ?? args.childComplexity)
+        : (resultCost ?? estimateFieldCost(fallbackEstimators, args) ?? 0);
+    };
 
     const cost: CostResponse = {
       requestedQueryCost: 0,
@@ -140,13 +199,43 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
 
     return {
       didResolveOperation: async (args) => {
-        const { request, document } = args;
+        const { request, document, operation } = args;
+        let query = document;
+        let mutationSelections: Set<FieldNode> | undefined;
+        if (operation?.operation === OperationTypeNode.MUTATION) {
+          const selections = collectMutationSelections(
+            schema,
+            document,
+            operation,
+            request.variables ?? {},
+          );
+          query = {
+            ...document,
+            definitions: document.definitions.map((definition) =>
+              definition === operation
+                ? {
+                    ...operation,
+                    selectionSet: { ...operation.selectionSet, selections },
+                  }
+                : definition,
+            ),
+          };
+          mutationSelections = new Set(selections);
+        }
+
         cost.requestedQueryCost = getComplexity({
           schema,
           operationName: request.operationName,
-          query: document,
+          query,
           variables: request.variables,
-          estimators: [estimateDirective, ...fieldEstimators],
+          estimators: [
+            (field) =>
+              estimateCost(
+                field,
+                field.field.name !== "__typename" &&
+                  mutationSelections?.has(field.node) === true,
+              ),
+          ],
         });
 
         if (cost.requestedQueryCost >= maxComplexity) {
@@ -174,6 +263,9 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
           willResolveField: ({ args, info }) => {
             const parentTypeFields = info.parentType.getFields();
             const field = parentTypeFields[info.fieldName];
+            const isRootMutation =
+              info.operation?.operation === OperationTypeNode.MUTATION &&
+              info.path?.prev === undefined;
 
             const estimatorArgs: ComplexityEstimatorArgs = {
               childComplexity: 0,
@@ -185,15 +277,13 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
 
             return (error, result: unknown) => {
               if (error === null) {
-                // Directive multipliers reserve capacity for the requested selection.
-                // Field callbacks can use the resolved arguments and value to settle their own work.
-                cost.actualQueryCost +=
-                  estimateDirective({ ...estimatorArgs, args: {} }) ??
-                  estimateFieldCost(fieldEstimators, {
+                cost.actualQueryCost += estimateCost(
+                  {
                     ...estimatorArgs,
                     resolved: { result },
-                  }) ??
-                  0;
+                  },
+                  isRootMutation,
+                );
               }
             };
           },

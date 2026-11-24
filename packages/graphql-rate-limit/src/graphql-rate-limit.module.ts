@@ -58,7 +58,6 @@ import { createGraphQLRateLimitDriver } from "./utils/create-driver.util.js";
           connection: options?.connection,
           maxComplexity: options?.maxComplexity ?? 1000,
           defaultComplexity: options?.defaultComplexity ?? 0,
-          defaultMutationComplexity: options?.defaultMutationComplexity ?? 10,
           keyPrefix: options?.keyPrefix ?? "graphql-rate-limit",
           restoreRate: options?.restoreRate ?? 50,
           maximumAvailable: options?.maximumAvailable ?? 1000,

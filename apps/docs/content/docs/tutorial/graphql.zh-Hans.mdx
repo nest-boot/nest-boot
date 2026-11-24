@@ -510,7 +510,7 @@ export class CommonModule {}
 
 ### 自定义复杂度
 
-查询和嵌套字段返回生成的 Connection 时，默认使用类型上的 `Connection.complexity` 回调。字段显式设置的 `complexity` 优先，包括 0。声明 Connection 子类时，使用 `@nest-boot/graphql` 的 `ObjectType` 将继承的默认成本注册到 Schema。
+使用 `@nest-boot/graphql` 的 `GraphQLModule` 时，`Query`、`Mutation`、`ResolveField` 和 `Field` 对返回单个具体对象的字段默认使用返回类型上的静态 `complexity`。生成的 Connection 及其子类提供这个回调。要自定义列表成本或覆盖自动推断的默认值，请显式设置 `complexity`，包括设为 0。
 
 限流器按请求条数为每条边预留 1 点，再根据 resolver 实际返回的边数结算这部分成本。只查询游标时也适用。回调按一次归一化后的 `query` 和 `filter` 计费。每个比较和逻辑组计 1 点，`$in` 等数组比较按元素计费，最低 1 点。
 
@@ -528,7 +528,7 @@ export const booksComplexity = defineComplexity(
 );
 ```
 
-每个根 mutation 字段的基础成本默认为 10 点，所选子字段的成本另计。字段显式配置的成本优先。可通过 `defaultMutationComplexity` 调整默认基础成本。
+每个根 mutation 字段在结果成本之外默认加收 10 点基础费。可以在 `@Mutation` 上设置 `mutationComplexity` 来调整这个字段的基础费，包括设为 0。结果成本可以来自字段显式配置、返回类型的静态 `complexity`，或所选子字段。数值型 `complexity` 会与子字段成本相加，回调沿用查询字段的计费规则。
 
 使用 `@Complexity()` 装饰器生成 `@complexity` Schema 指令。可以设置基础值，以及用于乘算该值的参数名：
 

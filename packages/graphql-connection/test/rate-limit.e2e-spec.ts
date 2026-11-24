@@ -185,7 +185,7 @@ describe("Connection complexity over GraphQL HTTP", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("uses the type default for queries and honors an explicit zero cost", async () => {
+  it("uses the default query field cost and honors an explicit zero cost", async () => {
     const url = await startApp(
       GraphQLRateLimitModule.forRoot({ maxComplexity: 24 }),
     );

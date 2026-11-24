@@ -34,8 +34,6 @@ type GeneratedConnection<Entity extends object> = ReturnType<
 export type ConnectionBuildResult<Entity extends object> = {
   /** The generated Connection object type class. */
   Connection: GeneratedConnection<Entity>;
-  /** The callback to use in a resolver field's complexity option. */
-  complexity: GeneratedConnection<Entity>["complexity"];
   /** The generated ConnectionArgs input type class. */
   ConnectionArgs: Type<ConnectionArgsInterface<Entity>>;
   /** The generated Edge object type class. */
@@ -211,7 +209,6 @@ export class ConnectionBuilder<Entity extends object> {
 
     return {
       Connection,
-      complexity: Connection.complexity,
       ConnectionArgs,
       Edge,
       Filter,
