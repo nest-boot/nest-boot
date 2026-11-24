@@ -3,7 +3,7 @@ import "reflect-metadata";
 import type { FieldComplexityEstimatorArgs } from "@nest-boot/graphql";
 import { LazyMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage.js";
 import { TypeMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/type-metadata.storage.js";
-import { GraphQLInt, GraphQLObjectType, Kind } from "graphql";
+import { GraphQLInt, GraphQLNonNull, GraphQLObjectType, Kind } from "graphql";
 
 import { ConnectionBuilder } from "./connection.builder.js";
 import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants.js";
@@ -96,19 +96,21 @@ describe("ConnectionBuilder", () => {
       cost({ first: 10, filter: { title: "book" } }, { result: null }),
     ).toBe(3);
     expect(cost({})).toBe(0);
-    const countField = new GraphQLObjectType({
-      name: "CountCostQuery",
-      fields: {
-        booksCount: { type: GraphQLInt, args: { filter: { type: Filter } } },
-      },
-    }).getFields().booksCount;
-    expect(
-      Count.complexity({
-        args: { query: "title:book", filter: { title: { $ne: "other" } } },
-        childComplexity: 5,
-        field: countField,
-      } as FieldComplexityEstimatorArgs),
-    ).toBe(13);
+    for (const type of [Filter, new GraphQLNonNull(Filter)]) {
+      const countField = new GraphQLObjectType({
+        name: "CountCostQuery",
+        fields: {
+          booksCount: { type: GraphQLInt, args: { filter: { type } } },
+        },
+      }).getFields().booksCount;
+      expect(
+        Count.complexity({
+          args: { query: "title:book", filter: { title: { $ne: "other" } } },
+          childComplexity: 5,
+          field: countField,
+        } as FieldComplexityEstimatorArgs),
+      ).toBe(13);
+    }
     expect(cost({ last: 1, after: "cursor" })).toBe(0);
   });
 

@@ -1,3 +1,5 @@
+import { setImmediate } from "node:timers/promises";
+
 import {
   Collection,
   EntityManager,
@@ -167,6 +169,39 @@ describe("GraphQL connection and official SQL driver integration", () => {
       await expect(
         manager.count(Connection, {}, { where: { id: { $lt: 0 } } }),
       ).resolves.toEqual({ count: 0, precision: CountPrecision.EXACT });
+    } finally {
+      await orm.close(true);
+    }
+  });
+
+  it("awaits the assertion for each matched entity before returning its count", async () => {
+    const orm = await MikroORM.init({
+      driver: PgliteDriver,
+      entities: [BookSchema],
+      dbName: "memory://",
+    });
+    try {
+      await orm.schema.create();
+      const em = orm.em.fork();
+      await em.insertMany(ConnectionBook, [
+        { id: 1, title: "First" },
+        { id: 2, title: "Second" },
+      ]);
+      const { Connection } = new ConnectionBuilder(ConnectionBook).build();
+      const checked: number[] = [];
+      const result = await new ConnectionManager(em).count(
+        Connection,
+        {},
+        {
+          assertMatch: async (book) => {
+            await setImmediate();
+            checked.push(book.id);
+          },
+        },
+      );
+
+      expect(result).toEqual({ count: 2, precision: CountPrecision.EXACT });
+      expect(checked.sort()).toEqual([1, 2]);
     } finally {
       await orm.close(true);
     }

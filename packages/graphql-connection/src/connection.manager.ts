@@ -56,7 +56,7 @@ export type ConnectionCountOptions<Entity extends object> = Pick<
   "where" | "schema" | "filters"
 > & {
   /** An optional per-entity assertion applied before returning a count. */
-  assertMatch?: (entity: Entity) => void;
+  assertMatch?: (entity: Entity) => void | Promise<void>;
 };
 
 const COUNT_LIMIT = 10_000;
@@ -164,7 +164,9 @@ export class ConnectionManager {
         limit: COUNT_LIMIT + 1,
       });
       if (assertMatch) {
-        matches.forEach(assertMatch);
+        for (const match of matches) {
+          await assertMatch(match);
+        }
       }
       count = matches.length;
     } else {

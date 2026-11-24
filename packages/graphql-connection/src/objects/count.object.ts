@@ -4,7 +4,6 @@ import {
   Int,
   ObjectType,
 } from "@nest-boot/graphql";
-import { getNamedType } from "graphql/index.js";
 
 import { CountPrecision } from "../enums/count-precision.enum.js";
 import { COUNT_COMPLEXITY_EXTENSION } from "../graphql-connection.constants.js";
@@ -21,10 +20,13 @@ export class Count {
    * @returns The base count cost and its filter cost.
    */
   static readonly complexity: ComplexityEstimator = (context) => {
-    const filter = context.field.args.find(({ name }) => name === "filter");
-    const estimator =
-      filter &&
-      getNamedType(filter.type).extensions[COUNT_COMPLEXITY_EXTENSION];
+    let filterType = context.field.args.find(
+      ({ name }) => name === "filter",
+    )?.type;
+    while (filterType && "ofType" in filterType) {
+      filterType = filterType.ofType;
+    }
+    const estimator = filterType?.extensions[COUNT_COMPLEXITY_EXTENSION];
     return typeof estimator === "function"
       ? (estimator as ComplexityEstimator)(context)
       : countComplexity(context);
