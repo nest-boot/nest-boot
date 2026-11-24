@@ -5,6 +5,7 @@ import {
   type FindOptions,
   type ObjectQuery,
   QueryFlag,
+  type Transaction,
 } from "@mikro-orm/core";
 import type { QueryBuilder, SqlEntityManager } from "@mikro-orm/sql";
 import { Inject, Injectable } from "@nestjs/common";
@@ -183,6 +184,8 @@ export class ConnectionManager {
     where: FilterQuery<Entity>,
     options?: ConnectionCountOptions<Entity>,
   ): Promise<number> {
+    const sqlDriver = em.getDriver();
+    const ctx = em.getTransactionContext();
     // Use the same filter and join planning as a normal MikroORM read.
     /* eslint-disable @typescript-eslint/dot-notation */
     const readOptions = em["prepareOptions"]<FindOptions<Entity>>({
@@ -204,16 +207,20 @@ export class ConnectionManager {
       { ...filteredWhere } as ObjectQuery<Entity>,
       readOptions,
     );
+    const connectionType = sqlDriver["resolveConnectionType"]({
+      ctx,
+      connectionType: readOptions.connectionType,
+    });
     /* eslint-enable @typescript-eslint/dot-notation */
 
-    const driver = em.getDriver() as unknown as SqlReadPlanner<Entity>;
+    const driver = sqlDriver as unknown as SqlReadPlanner<Entity>;
     const matches = await driver.createQueryBuilderFromOptions(
       entity,
       filteredWhere,
       {
         ...readOptions,
         em,
-        ctx: em.getTransactionContext(),
+        ctx,
         populate: populate as never,
         _populateWhere:
           readOptions.populateWhere ?? em.config.get("populateWhere"),
@@ -234,12 +241,27 @@ export class ConnectionManager {
       .from(matches.getNativeQuery().as("bounded_count"))
       .count()
       .compile();
-    const result = await em.execute<{ count: number | string }>(sql, params, {
-      method: "get",
-      loggerContext: readOptions.loggerContext,
+    const connection = sqlDriver.getConnection(connectionType);
+    const loggerContext = {
+      ...readOptions.loggerContext,
       signal: readOptions.signal,
       inflightQueryAbortStrategy: readOptions.inflightQueryAbortStrategy,
-    });
+    };
+    const execute = (transaction?: Transaction) =>
+      connection.execute<{ count: number | string }>(
+        sql,
+        params,
+        "get",
+        transaction,
+        loggerContext,
+      );
+    const sessionContext = ctx ? undefined : em.getTransactionSessionContext();
+    const result = sessionContext
+      ? await connection.transactional(execute, {
+          loggerContext,
+          sessionContext,
+        })
+      : await execute(ctx);
     return Number(result.count);
   }
 }

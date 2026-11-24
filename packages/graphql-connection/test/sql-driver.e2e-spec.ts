@@ -172,6 +172,41 @@ describe("GraphQL connection and official SQL driver integration", () => {
     }
   });
 
+  it("uses the configured read connection for counts outside transactions", async () => {
+    const orm = await MikroORM.init({
+      driver: PgliteDriver,
+      entities: [BookSchema],
+      dbName: "memory://",
+      preferReadReplicas: true,
+    });
+    try {
+      await orm.schema.create();
+      const em = orm.em.fork();
+      await em.insertMany(ConnectionBook, [{ id: 1, title: "Book" }]);
+      const { Connection } = new ConnectionBuilder(ConnectionBook).build();
+      const getConnection = vi.spyOn(em.getDriver(), "getConnection");
+
+      expect(await new ConnectionManager(em).count(Connection, {})).toEqual({
+        count: 1,
+        precision: CountPrecision.EXACT,
+      });
+      expect(getConnection).toHaveBeenLastCalledWith("read");
+
+      await em.transactional(async (transaction) => {
+        getConnection.mockClear();
+        expect(
+          await new ConnectionManager(transaction).count(Connection, {}),
+        ).toEqual({
+          count: 1,
+          precision: CountPrecision.EXACT,
+        });
+        expect(getConnection).toHaveBeenLastCalledWith("write");
+      });
+    } finally {
+      await orm.close(true);
+    }
+  });
+
   it("counts the same volumes when MikroORM implicitly filters their editions", async () => {
     const orm = await MikroORM.init({
       driver: PgliteDriver,

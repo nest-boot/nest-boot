@@ -178,12 +178,19 @@ describe("Auth name search through real connection queries", () => {
         variables: { "app.auth.workspace.id": workspace.id },
       },
     });
-    const result = await new ConnectionManager(scoped).find(
-      WorkspaceMemberConnection,
-      { first: 10, query: "deployment" },
-    );
+    const manager = new ConnectionManager(scoped);
+    const args = { query: "deployment" };
+    const result = await manager.find(WorkspaceMemberConnection, {
+      ...args,
+      first: 10,
+    });
     expect(result.edges.map(({ node }) => node.id)).toEqual([member.id]);
-    expect(result.edges.length).toBe(1);
+    await expect(
+      manager.count(WorkspaceMemberConnection, args),
+    ).resolves.toEqual({
+      count: 1,
+      precision: "EXACT",
+    });
   });
 
   it.each(["user", "workspace", "system"] as const)(
