@@ -47,7 +47,7 @@ export default [
 
 ## 迁移规则 ID
 
-同时升级 `@nest-boot/eslint-plugin` 和 `@nest-boot/eslint-config`。在规则配置、`eslint-disable`、`eslint-enable` 注释和 bulk suppressions 文件中更新规则 ID。手写 flat config 的项目需要将原来的默认导入和 `@nest-boot` 注册替换为上例所示的具名导入和命名空间。
+升级共享配置时，请一并升级插件，并在规则配置、`eslint-disable`、`eslint-enable` 注释和 bulk suppressions 文件中更新规则 ID。手写 flat config 的项目可以通过上例中的具名导入和命名空间启用新规则 ID。插件的默认导出继续为旧版 v8 配置提供原有规则 ID。
 
 | 旧规则 ID                                        | 新规则 ID                                                 |
 | ------------------------------------------------ | --------------------------------------------------------- |

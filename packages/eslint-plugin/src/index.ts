@@ -30,3 +30,14 @@ export const queuePlugin = {
     "processor-name": processorName,
   },
 } as unknown as ESLint.Plugin;
+
+/** Preserves the flat rule IDs used by earlier v8 shared configs. */
+const legacyPlugin = {
+  rules: {
+    ...databasePlugin.rules,
+    "graphql-field-config-from-types": graphqlFieldConfigFromTypes,
+    "graphql-field-definite-assignment": graphqlFieldDefiniteAssignment,
+  },
+} as unknown as ESLint.Plugin;
+
+export default legacyPlugin;
