@@ -1,5 +1,5 @@
 ---
-"@nest-boot/auth": major
+"@nest-boot/auth": minor
 ---
 
 Store a required, unique `Workspace.slug` and accept workspace IDs and slugs in the
