@@ -48,7 +48,9 @@ export class UserResolver {
    * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated active sessions belonging to the user.
    */
-  @ResolveField(() => SessionConnection)
+  @ResolveField(() => SessionConnection, {
+    complexity: SessionConnection.getComplexity,
+  })
   async sessions(
     @Parent() user: User,
     @Args({ type: () => SessionConnectionArgs })
@@ -69,7 +71,9 @@ export class UserResolver {
    * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated linked accounts with credentials omitted.
    */
-  @ResolveField(() => AccountConnection)
+  @ResolveField(() => AccountConnection, {
+    complexity: AccountConnection.getComplexity,
+  })
   async accounts(
     @Parent() user: User,
     @Args({ type: () => AccountConnectionArgs })

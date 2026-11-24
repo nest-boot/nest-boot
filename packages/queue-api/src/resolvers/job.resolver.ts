@@ -59,7 +59,7 @@ export class JobResolver {
    * @param info - GraphQL selection used to shape the query.
    * @returns Nodes and counts within the same authorized scope.
    */
-  @Query(() => JobConnection)
+  @Query(() => JobConnection, { complexity: JobConnection.getComplexity })
   async userJobs(
     @Args({ type: () => JobConnectionArgs })
     args: ConnectionArgsInterface<JobEntity>,
@@ -86,7 +86,7 @@ export class JobResolver {
    * @param info - GraphQL selection used to shape the query.
    * @returns Nodes and counts within the same authorized scope.
    */
-  @Query(() => JobConnection)
+  @Query(() => JobConnection, { complexity: JobConnection.getComplexity })
   async workspaceJobs(
     @Args({ type: () => JobConnectionArgs })
     args: ConnectionArgsInterface<JobEntity>,
@@ -113,7 +113,7 @@ export class JobResolver {
    * @param info - GraphQL selection used to shape the query.
    * @returns Nodes and counts within the same authorized scope.
    */
-  @Query(() => JobConnection)
+  @Query(() => JobConnection, { complexity: JobConnection.getComplexity })
   async systemJobs(
     @Args({ type: () => JobConnectionArgs })
     args: ConnectionArgsInterface<JobEntity>,

@@ -1,6 +1,8 @@
 import {
+  Args,
   Field,
   GraphQLModule,
+  Int,
   Mutation,
   ObjectType,
   Query,
@@ -45,6 +47,14 @@ class TestResolver {
     return "world";
   }
 
+  @Query(() => String, {
+    complexity: ({ args, childComplexity }) =>
+      childComplexity + ((args.weight as number | undefined) ?? 0),
+  })
+  weighted(@Args("weight", { type: () => Int }) weight: number): string {
+    return String(weight);
+  }
+
   @Mutation(() => Boolean)
   updateStatus(): boolean {
     return true;
@@ -85,6 +95,25 @@ describe("GraphQLRateLimitModule - e2e", () => {
     const body = response.body as GraphQLResponse;
 
     expect(body.data).toEqual({ hello: "world" });
+    expect(body.extensions?.cost).toMatchObject({
+      requestedQueryCost: 7,
+      actualQueryCost: 7,
+    });
+  });
+
+  it("passes resolved arguments to field complexity callbacks", async () => {
+    const app = await createApp(GraphQLRateLimitModule.forRoot({}));
+    apps.push(app);
+
+    const response = await request(app.getHttpServer())
+      .post("/graphql")
+      .send({
+        query: "query ($weight: Int!) { weighted(weight: $weight) }",
+        variables: { weight: 7 },
+      })
+      .expect(200);
+    const body = response.body as GraphQLResponse;
+    expect(body.errors).toBeUndefined();
     expect(body.extensions?.cost).toMatchObject({
       requestedQueryCost: 7,
       actualQueryCost: 7,

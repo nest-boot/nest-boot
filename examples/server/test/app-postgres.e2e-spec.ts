@@ -1581,8 +1581,27 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     );
     expectNoGraphQLErrors(denied);
     expect(denied.body.data.currentUser.sessions.edges).toHaveLength(1);
+    const countOnly = await gql(
+      'query { currentUser { sessions(first: 0) { totalCount edges { node { id } } } } }',
+      { cookies: target.cookies },
+    );
+    expectNoGraphQLErrors(countOnly);
+    expect(countOnly.body.data.currentUser.sessions).toEqual({
+      totalCount: 1,
+      edges: [],
+    });
+
+    const missingPageSize = await gql(
+      'query { currentUser { sessions { totalCount } } }',
+      { cookies: target.cookies },
+    );
+    expectGraphQLError(missingPageSize);
+    expect(missingPageSize.body.errors[0].extensions.code).toBe(
+      'BAD_USER_INPUT',
+    );
+
     const credentials = await gql(
-      'query { currentUser { sessions { edges { node { token } } } } }',
+      'query { currentUser { sessions(first: 1) { edges { node { token } } } } }',
       {
         cookies: target.cookies,
       },

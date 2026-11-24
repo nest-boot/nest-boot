@@ -79,6 +79,24 @@ function shopifyEstimator(
   }
 }
 
+/**
+ * Returns the first cost assigned by the configured estimators.
+ * @param estimators - Estimators ordered by priority.
+ * @param field - The field and its calculated child cost.
+ * @returns The selected field cost, if an estimator supplied one.
+ */
+function estimateFieldCost(
+  estimators: ComplexityEstimator[],
+  field: ComplexityEstimatorArgs,
+): number | undefined {
+  for (const estimator of estimators) {
+    const cost = estimator(field);
+    if (typeof cost === "number" && !Number.isNaN(cost)) {
+      return cost;
+    }
+  }
+}
+
 @Plugin()
 export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
   private readonly defaultEstimator: ComplexityEstimator;
@@ -97,8 +115,8 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
     const { schema } = this.moduleRef.get(GraphQLSchemaHost, { strict: false });
     const { maxComplexity, defaultMutationComplexity } = this.options;
     const mutationType = schema.getMutationType();
-    const complexityEstimators: ComplexityEstimator[] = [
-      directiveEstimator(),
+    const estimateDirective = directiveEstimator();
+    const fieldEstimators: ComplexityEstimator[] = [
       fieldExtensionsEstimator(),
       ({ type, childComplexity }) =>
         type === mutationType && defaultMutationComplexity !== undefined
@@ -116,13 +134,12 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
     return {
       didResolveOperation: async (args) => {
         const { request, document } = args;
-
         cost.requestedQueryCost = getComplexity({
           schema,
           operationName: request.operationName,
           query: document,
           variables: request.variables,
-          estimators: complexityEstimators,
+          estimators: [estimateDirective, ...fieldEstimators],
         });
 
         if (cost.requestedQueryCost >= maxComplexity) {
@@ -147,13 +164,13 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
       },
       executionDidStart: async () => {
         return {
-          willResolveField: ({ info }) => {
+          willResolveField: ({ args, info }) => {
             const parentTypeFields = info.parentType.getFields();
             const field = parentTypeFields[info.fieldName];
 
             const estimatorArgs: ComplexityEstimatorArgs = {
               childComplexity: 0,
-              args: {},
+              args,
               field,
               node: info.fieldNodes[0],
               type: info.parentType,
@@ -161,17 +178,12 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
 
             return (error) => {
               if (error === null) {
-                // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-                let fieldCost: number | void;
-
-                for (const complexityEstimator of complexityEstimators) {
-                  fieldCost = complexityEstimator(estimatorArgs);
-
-                  if (typeof fieldCost === "number" && !isNaN(fieldCost)) {
-                    cost.actualQueryCost += fieldCost;
-                    break;
-                  }
-                }
+                // Directive multipliers reserve capacity for the requested selection.
+                // Field callbacks also use the resolved arguments to price work on the field itself.
+                cost.actualQueryCost +=
+                  estimateDirective({ ...estimatorArgs, args: {} }) ??
+                  estimateFieldCost(fieldEstimators, estimatorArgs) ??
+                  0;
               }
             };
           },

@@ -38,6 +38,7 @@ import { User } from "./user.entity";
 export const {
   Connection: UserConnection,
   ConnectionArgs: UserConnectionArgs,
+  getComplexity: getUserConnectionComplexity,
 } = new ConnectionBuilder(User)
   .addField({ field: "name", type: "string", filterable: true, sortable: true })
   .addField({
@@ -56,13 +57,17 @@ import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { Args, Info, Query, Resolver } from "@nest-boot/graphql";
 import type { GraphQLResolveInfo } from "graphql";
 
-import { UserConnection, UserConnectionArgs } from "./user.connection";
+import {
+  getUserConnectionComplexity,
+  UserConnection,
+  UserConnectionArgs,
+} from "./user.connection";
 
 @Resolver()
 export class UserResolver {
   constructor(private readonly connectionManager: ConnectionManager) {}
 
-  @Query(() => UserConnection)
+  @Query(() => UserConnection, { complexity: getUserConnectionComplexity })
   async users(
     @Args() args: UserConnectionArgs,
     @Info() info: GraphQLResolveInfo,
@@ -102,7 +107,7 @@ export class UserResolver {
 
 ## 分页
 
-同时支持正向的 `first`/`after` 和反向的 `last`/`before` 游标分页。
+查询必须且只能提供 `first` 或 `last`。`after` 搭配 `first`，`before` 搭配 `last`。分页参数缺失或冲突时返回 `BAD_USER_INPUT`。只需查询 Connection 的计数时，可以传入 `first: 0`。
 
 ## 过滤
 

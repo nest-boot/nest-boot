@@ -65,7 +65,9 @@ export class WorkspaceResolver {
    * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated members visible in the workspace.
    */
-  @ResolveField(() => WorkspaceMemberConnection)
+  @ResolveField(() => WorkspaceMemberConnection, {
+    complexity: WorkspaceMemberConnection.getComplexity,
+  })
   async members(
     @Parent() workspace: Workspace,
     @Args({ type: () => WorkspaceMemberConnectionArgs })
@@ -86,7 +88,9 @@ export class WorkspaceResolver {
    * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated invitations visible to the current principal.
    */
-  @ResolveField(() => WorkspaceInvitationConnection)
+  @ResolveField(() => WorkspaceInvitationConnection, {
+    complexity: WorkspaceInvitationConnection.getComplexity,
+  })
   async invitations(
     @Parent() workspace: Workspace,
     @Args({ type: () => WorkspaceInvitationConnectionArgs })
@@ -106,7 +110,9 @@ export class WorkspaceResolver {
    * @param info - GraphQL selection information used to shape the query.
    * @returns Page of workspaces authorized for platform access.
    */
-  @Query(() => WorkspaceConnection)
+  @Query(() => WorkspaceConnection, {
+    complexity: WorkspaceConnection.getComplexity,
+  })
   workspaces(
     @Args({ type: () => WorkspaceConnectionArgs })
     args: ConnectionArgsInterface<Workspace>,

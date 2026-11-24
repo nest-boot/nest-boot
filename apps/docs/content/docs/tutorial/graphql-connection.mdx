@@ -38,6 +38,7 @@ import { User } from "./user.entity";
 export const {
   Connection: UserConnection,
   ConnectionArgs: UserConnectionArgs,
+  getComplexity: getUserConnectionComplexity,
 } = new ConnectionBuilder(User)
   .addField({ field: "name", type: "string", filterable: true, sortable: true })
   .addField({
@@ -57,13 +58,17 @@ export const {
 import { Args, Info, Query, Resolver } from "@nestjs/graphql";
 import { ConnectionManager } from "@nest-boot/graphql-connection";
 import type { GraphQLResolveInfo } from "graphql";
-import { UserConnection, UserConnectionArgs } from "./user.connection";
+import {
+  getUserConnectionComplexity,
+  UserConnection,
+  UserConnectionArgs,
+} from "./user.connection";
 
 @Resolver()
 export class UserResolver {
   constructor(private readonly connectionManager: ConnectionManager) {}
 
-  @Query(() => UserConnection)
+  @Query(() => UserConnection, { complexity: getUserConnectionComplexity })
   async users(
     @Args() args: UserConnectionArgs,
     @Info() info: GraphQLResolveInfo,
@@ -105,7 +110,7 @@ and named-type lookup helpers have been removed.
 
 ## Pagination
 
-Supports both forward (`first`/`after`) and backward (`last`/`before`) pagination.
+Supply exactly one of `first` and `last`. Use `after` with `first` or `before` with `last`. Missing or conflicting paging arguments return `BAD_USER_INPUT`. Use `first: 0` when only the existing connection count is needed.
 
 ## Filtering
 

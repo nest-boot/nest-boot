@@ -50,7 +50,9 @@ export class WorkspaceApiKeyConnectionResolver {
    * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated API key metadata with credential hashes omitted.
    */
-  @Query(() => WorkspaceApiKeyConnection)
+  @Query(() => WorkspaceApiKeyConnection, {
+    complexity: WorkspaceApiKeyConnection.getComplexity,
+  })
   async workspaceApiKeys(
     @SelectedWorkspace() workspace: Workspace,
     @Args({ type: () => WorkspaceApiKeyConnectionArgs })

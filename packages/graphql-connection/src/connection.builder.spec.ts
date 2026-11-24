@@ -1,5 +1,6 @@
 import "reflect-metadata";
 
+import type { ComplexityEstimatorArgs } from "@nest-boot/graphql";
 import { LazyMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage.js";
 import { TypeMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/type-metadata.storage.js";
 import { Kind } from "graphql";
@@ -50,6 +51,39 @@ function fieldNamesAndInvokeTypeFns(
 }
 
 describe("ConnectionBuilder", () => {
+  it("provides a field complexity callback that prices normalized filters", () => {
+    class CostBook {
+      id!: number;
+      title!: string;
+    }
+
+    const { Connection, getComplexity } = new ConnectionBuilder(CostBook)
+      .addField({ field: "title", type: "string", filterable: true })
+      .build();
+    const cost = (args: Record<string, unknown>) =>
+      getComplexity({ args, childComplexity: 1 } as ComplexityEstimatorArgs);
+
+    expect(getComplexity).toBe(Connection.getComplexity);
+    expect(cost({ first: 10 })).toBe(12);
+    expect(
+      cost({
+        first: 10,
+        query: "title:book",
+        filter: { title: { $ne: "other" } },
+      }),
+    ).toBe(15);
+    expect(
+      cost({ last: 10, filter: { $or: [{ title: "a" }, { title: "b" }] } }),
+    ).toBe(15);
+    expect(
+      cost({ first: 10, filter: { title: { $in: ["a", "b", "c"] } } }),
+    ).toBe(15);
+    expect(() => cost({})).toThrow("Provide exactly one of first or last");
+    expect(() => cost({ last: 1, after: "cursor" })).toThrow(
+      "Use after with first and before with last",
+    );
+  });
+
   it("builds connection types with ordering metadata and filter parsing", () => {
     const result = new ConnectionBuilder(BuilderBookEntity, {
       filter: {

@@ -6,9 +6,7 @@ import {
   type QueryOrderMap,
 } from "@mikro-orm/core";
 import { type SqlEntityManager } from "@mikro-orm/sql";
-import { BadRequestException } from "@nestjs/common";
 import { compact, get, set } from "lodash-es";
-import { parse, type ParseOptions } from "search-syntax";
 
 import { type ConnectionFindOptions } from "./connection.manager.js";
 import { Cursor } from "./cursor.js";
@@ -27,6 +25,9 @@ import {
 import { ConnectionClass } from "./types/index.js";
 
 const TOTAL_COUNT_LIMIT = 10_000;
+
+import { parseConnectionQuery } from "./utils/parse-connection-query.js";
+import { resolveConnectionPagination } from "./utils/resolve-connection-pagination.js";
 
 /**
  * Builds and executes paginated queries for GraphQL connections.
@@ -52,7 +53,7 @@ export class ConnectionQueryBuilder<
 > {
   private readonly metadata: ConnectionMetadata<Entity>;
 
-  private readonly limit: number = 0;
+  private readonly limit: number;
 
   private readonly cursor: Cursor | null = null;
 
@@ -97,16 +98,21 @@ export class ConnectionQueryBuilder<
       throw new Error("Connection metadata not found");
     }
 
-    this.limit = this.getLimit();
-    this.cursor = this.getCursor();
-    this.pagingType = this.getPagingType();
+    const { limit, pagingType } = resolveConnectionPagination(args);
+    this.limit = limit;
+    this.pagingType = pagingType;
+    const cursor = pagingType === PagingType.FORWARD ? args.after : args.before;
+    this.cursor = cursor == null ? null : new Cursor(cursor);
     this.queryOrder = this.getQueryOrder();
     this.queryOrderMap = this.getQueryOrderMap();
     this.findOptions = this.getFindOptions();
 
     this.optionFilterQuery = this.options?.where ?? null;
     this.cursorFilterQuery = this.getCursorFilterQuery();
-    this.queryStringFilterQuery = this.getQueryStringToFilterQuery();
+    this.queryStringFilterQuery = parseConnectionQuery(
+      args.query,
+      this.metadata,
+    );
     this.argsFilterQuery = this.args.filter ?? null;
 
     this.totalCountFilterQuery = this.mergeFilterQuery(
@@ -125,50 +131,6 @@ export class ConnectionQueryBuilder<
         this.argsFilterQuery,
       ]),
     );
-  }
-
-  private getLimit(): number {
-    for (const name of ["first", "last"] as const) {
-      const value = this.args[name];
-      if (value != null && (!Number.isSafeInteger(value) || value < 0)) {
-        throw new BadRequestException(
-          `${name} must be a non-negative safe integer`,
-        );
-      }
-    }
-    return this.args.first ?? this.args.last ?? 0;
-  }
-
-  private getCursor(): Cursor | null {
-    return this.args.after != null
-      ? new Cursor(this.args.after)
-      : this.args.before != null
-        ? new Cursor(this.args.before)
-        : null;
-  }
-
-  private getPagingType(): PagingType {
-    const { first, last, after, before } = this.args;
-
-    const isForwardPaging =
-      typeof first === "number" || typeof after === "string";
-    const isBackwardPaging =
-      typeof last === "number" || typeof before === "string";
-
-    if (isForwardPaging && isBackwardPaging) {
-      if (
-        (isForwardPaging && before != null) ||
-        (isBackwardPaging && after != null)
-      ) {
-        throw new Error("paging must use either first/after or last/before");
-      } else {
-        throw new Error(
-          "cursor-based pagination cannot be forwards AND backwards",
-        );
-      }
-    }
-
-    return isBackwardPaging ? PagingType.BACKWARD : PagingType.FORWARD;
   }
 
   private getQueryOrder(): QueryOrder {
@@ -256,38 +218,6 @@ export class ConnectionQueryBuilder<
         ...(nullsFirst ? [] : [set({}, field, { $eq: null })]),
       ],
     } as FilterQuery<Entity>;
-  }
-
-  private getQueryStringToFilterQuery(): FilterQuery<Entity> | null {
-    if (this.args.query != null && this.args.query.trim() !== "") {
-      const { fieldOptionsMap, filterQuerySchema } = this.metadata;
-
-      // Build ParseOptions, only include filterable fields
-      const fields: ParseOptions["fields"] = {};
-      for (const [key, options] of fieldOptionsMap) {
-        if (options.filterable === true) {
-          fields[key] = {
-            type: options.type,
-            array: options.array,
-            searchable: options.searchable,
-            ...("fulltext" in options
-              ? { fulltext: Boolean(options.fulltext) }
-              : {}),
-            ...("prefix" in options ? { prefix: options.prefix } : {}),
-          };
-        }
-      }
-
-      const rawFilter = parse(this.args.query, { fields });
-
-      if (rawFilter === null) {
-        return null;
-      }
-
-      return filterQuerySchema.parse(rawFilter);
-    }
-
-    return null;
   }
 
   private mergeFilterQuery(

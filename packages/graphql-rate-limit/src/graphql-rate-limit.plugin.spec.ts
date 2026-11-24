@@ -39,6 +39,7 @@ vi.mock("graphql-query-complexity/cjs", async () => {
 
 interface TestExecutionListener {
   willResolveField(args: {
+    args: Record<string, unknown>;
     info: GraphQLResolveInfo;
   }): (error: Error | null) => void;
 }
@@ -161,6 +162,7 @@ describe("GraphQLRateLimitPlugin", () => {
       }
 
       const endField = executionListener.willResolveField({
+        args: {},
         info: {
           parentType: queryType,
           fieldName,

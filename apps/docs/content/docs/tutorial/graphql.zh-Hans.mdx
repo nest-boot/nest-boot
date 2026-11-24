@@ -357,7 +357,7 @@ export class UserResolver {
 
 ### 分页
 
-客户端支持正向和反向分页：
+查询必须且只能提供 `first` 或 `last`。`after` 搭配 `first`，`before` 搭配 `last`。分页参数缺失或冲突时返回 `BAD_USER_INPUT`。
 
 ```graphql
 # 正向分页
@@ -509,6 +509,8 @@ export class CommonModule {}
 如需传入由外部管理的自定义 Redis 实例，可将 `new RedisGraphQLRateLimitDriver(redis, false)` 作为 `driver`。第二个参数表示驱动不拥有连接，由调用方负责关闭。省略该参数时，驱动仍默认负责关闭传入的客户端。
 
 ### 自定义复杂度
+
+将 `ConnectionBuilder.build()` 返回的 `getComplexity` 用作列表字段的 `complexity` 回调。生成的 Connection 类也提供 `Connection.getComplexity`。回调根据每页条数估算分页成本，并按一次归一化后的 `query` 和 `filter` 计费。每个比较和逻辑组计 1 点，`$in` 等数组比较按元素计费，最低 1 点。
 
 每个根 mutation 字段的基础成本默认为 10 点，所选子字段的成本另计。字段显式配置的成本优先。可通过 `defaultMutationComplexity` 调整默认基础成本。
 

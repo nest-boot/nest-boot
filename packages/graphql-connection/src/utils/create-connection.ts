@@ -1,5 +1,10 @@
 import type { EntityClass, FilterQuery } from "@mikro-orm/core";
-import { Field, Int, ObjectType } from "@nest-boot/graphql";
+import {
+  type ComplexityEstimator,
+  Field,
+  Int,
+  ObjectType,
+} from "@nest-boot/graphql";
 import { type Type } from "@nestjs/common";
 import { pluralize } from "inflection";
 import type { ZodType } from "zod";
@@ -13,6 +18,7 @@ import {
   EdgeInterface,
 } from "../interfaces/index.js";
 import { PageInfo } from "../objects/index.js";
+import { createConnectionComplexity } from "./create-connection-complexity.js";
 
 /**
  * Creates a GraphQL Connection type for cursor-based pagination.
@@ -39,7 +45,9 @@ export function createConnection<Entity extends object>(
   EdgeClass: Type<EdgeInterface<Entity>>,
   fieldOptionsMap: Map<string, ConnectionFieldOptions<Entity>>,
   filterQuerySchema: ZodType<FilterQuery<Entity>>,
-): Type<ConnectionInterface<Entity>> {
+): Type<ConnectionInterface<Entity>> & {
+  readonly getComplexity: ComplexityEstimator;
+} {
   const pluralizeEntityName = pluralize(entityName);
 
   @Reflect.metadata(GRAPHQL_CONNECTION_METADATA, {
@@ -52,6 +60,11 @@ export function createConnection<Entity extends object>(
     description: `An auto-generated type for paginating through multiple ${pluralizeEntityName}.`,
   })
   class Connection implements ConnectionInterface<Entity> {
+    static readonly getComplexity = createConnectionComplexity({
+      fieldOptionsMap,
+      filterQuerySchema,
+    });
+
     // eslint-disable-next-line @nest-boot/graphql-field-config-from-types
     @Field(() => [EdgeClass], {
       complexity: 0,

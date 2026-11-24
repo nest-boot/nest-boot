@@ -68,7 +68,9 @@ export class SystemApiKeyResolver {
    * @param info - GraphQL selection information.
    * @returns Authorized system credential metadata without hashes.
    */
-  @Query(() => SystemApiKeyConnection)
+  @Query(() => SystemApiKeyConnection, {
+    complexity: SystemApiKeyConnection.getComplexity,
+  })
   systemApiKeys(
     @Args({ type: () => SystemApiKeyConnectionArgs })
     args: ConnectionArgsInterface<ApiKey>,
@@ -84,7 +86,9 @@ export class SystemApiKeyResolver {
    * @param info - GraphQL selection information used to shape the query.
    * @returns Page of credential metadata belonging to the parent system account.
    */
-  @ResolveField(() => SystemApiKeyConnection)
+  @ResolveField(() => SystemApiKeyConnection, {
+    complexity: SystemApiKeyConnection.getComplexity,
+  })
   apiKeys(
     @Parent() account: SystemAccount,
     @Args({ type: () => SystemApiKeyConnectionArgs })

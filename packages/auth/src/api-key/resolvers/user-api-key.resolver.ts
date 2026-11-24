@@ -118,7 +118,9 @@ export class UserApiKeyResolver {
    * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated API key metadata with credential hashes omitted.
    */
-  @ResolveField(() => UserApiKeyConnection)
+  @ResolveField(() => UserApiKeyConnection, {
+    complexity: UserApiKeyConnection.getComplexity,
+  })
   async apiKeys(
     @Parent() user: User,
     @Args({ type: () => UserApiKeyConnectionArgs })

@@ -358,7 +358,7 @@ The third argument to `cm.find()` accepts additional `where` filters that are me
 
 ### Pagination
 
-Clients can use both forward and backward pagination:
+Supply exactly one of `first` and `last`. Use `after` with `first` or `before` with `last`. Missing or conflicting paging arguments return `BAD_USER_INPUT`.
 
 ```graphql
 # Forward pagination
@@ -510,6 +510,8 @@ Custom drivers extend `GraphQLRateLimitDriver` and implement its atomic `update(
 To supply a custom Redis instance managed outside the rate limit module, pass `new RedisGraphQLRateLimitDriver(redis, false)` as the `driver`. The second argument disables connection ownership, so the caller is responsible for closing it. Omitting that argument preserves the driver's default behavior of closing its client.
 
 ### Custom Complexity
+
+Use the `getComplexity` callback returned by `ConnectionBuilder.build()` as the list field’s `complexity` option. The generated connection class also exposes it as `Connection.getComplexity`. The callback prices the requested page size and charges once for the normalized `query` and `filter`. Each comparison and logical group costs one point. Array comparisons such as `$in` cost one point per value, with a minimum of one.
 
 Each root mutation field has a default base cost of 10 points. The selected child fields add their costs, and explicitly configured field costs take precedence. Use `defaultMutationComplexity` to change the default base cost.
 
