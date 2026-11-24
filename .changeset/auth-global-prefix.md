@@ -1,5 +1,5 @@
 ---
-"@nest-boot/auth": major
+"@nest-boot/auth": minor
 ---
 
 Default authentication endpoints to the relative path `/auth` and follow the NestJS global prefix, including custom `basePath` values. With `app.setGlobalPrefix("api")`, endpoints remain at `/api/auth` without route exclusions or a duplicated prefix.

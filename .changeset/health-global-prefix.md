@@ -1,5 +1,5 @@
 ---
-"@nest-boot/health-check": major
+"@nest-boot/health-check": minor
 ---
 
 Register the health endpoint at `/health` and let NestJS apply the application's global prefix. With `app.setGlobalPrefix("api")`, the endpoint is `/api/health` without duplicating `api`.
