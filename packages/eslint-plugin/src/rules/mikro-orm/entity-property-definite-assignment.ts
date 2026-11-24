@@ -4,7 +4,7 @@ import { createRule } from "../../utils/createRule.js";
 import { importedBindingName } from "../../utils/named-imports.js";
 
 export default createRule({
-  name: "entity-property-definite-assignment",
+  name: "database/entity-property-definite-assignment",
   meta: {
     type: "suggestion",
     fixable: "code",

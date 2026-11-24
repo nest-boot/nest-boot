@@ -1,4 +1,4 @@
-/* eslint-disable @nest-boot/graphql-field-config-from-types -- Permission enums are populated from runtime catalogs. */
+/* eslint-disable @nest-boot/graphql/field-config-from-types -- Permission enums are populated from runtime catalogs. */
 import { type Ref } from "@mikro-orm/core";
 import { Field, HideField, ObjectType } from "@nest-boot/graphql";
 

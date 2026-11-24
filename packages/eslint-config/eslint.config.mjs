@@ -1,5 +1,9 @@
 import js from "@eslint/js";
-import nestBootPlugin, { queuePlugin } from "@nest-boot/eslint-plugin";
+import {
+  databasePlugin,
+  graphqlPlugin,
+  queuePlugin,
+} from "@nest-boot/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import prettierConfig from "eslint-config-prettier";
 import jsdoc from "eslint-plugin-jsdoc";
@@ -28,7 +32,8 @@ const config = [
       },
     },
     plugins: {
-      "@nest-boot": nestBootPlugin,
+      "@nest-boot/database": databasePlugin,
+      "@nest-boot/graphql": graphqlPlugin,
       "@nest-boot/queue": queuePlugin,
       "simple-import-sort": simpleImportSort,
     },
@@ -69,11 +74,11 @@ const config = [
       "@typescript-eslint/return-await": ["error", "always"],
 
       // NestBoot 自定义规则
-      "@nest-boot/entity-property-definite-assignment": "error",
-      "@nest-boot/entity-property-no-spread": "error",
-      "@nest-boot/entity-property-config-from-types": "error",
-      "@nest-boot/graphql-field-definite-assignment": "error",
-      "@nest-boot/graphql-field-config-from-types": "error",
+      "@nest-boot/database/entity-property-config-from-types": "error",
+      "@nest-boot/database/entity-property-definite-assignment": "error",
+      "@nest-boot/database/entity-property-no-spread": "error",
+      "@nest-boot/graphql/field-config-from-types": "error",
+      "@nest-boot/graphql/field-definite-assignment": "error",
       "@nest-boot/queue/processor-name": "error",
     },
   },

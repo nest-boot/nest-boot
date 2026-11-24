@@ -10,7 +10,7 @@ import { createRule } from "../../utils/createRule.js";
 import { importedBindingName } from "../../utils/named-imports.js";
 
 export default createRule<[], "processorName">({
-  name: "processor-name",
+  name: "queue/processor-name",
   meta: {
     type: "suggestion",
     docs: {

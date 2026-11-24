@@ -10,7 +10,7 @@ export default createRule<
   [],
   "addDefiniteAssignment" | "removeDefiniteAssignment"
 >({
-  name: "graphql-field-definite-assignment",
+  name: "graphql/field-definite-assignment",
   meta: {
     type: "problem",
     docs: {
