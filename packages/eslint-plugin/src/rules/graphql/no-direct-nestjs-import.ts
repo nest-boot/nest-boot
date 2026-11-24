@@ -3,7 +3,7 @@ import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import { createRule } from "../../utils/createRule.js";
 
 export default createRule({
-  name: "no-direct-nestjs-import",
+  name: "graphql/no-direct-nestjs-import",
   meta: {
     type: "problem",
     schema: [],

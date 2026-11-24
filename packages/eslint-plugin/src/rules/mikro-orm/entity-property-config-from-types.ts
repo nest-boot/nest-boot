@@ -41,7 +41,7 @@ export default createRule<
   | "useOptTypeForInitializedProperty"
   | "removeOptTypeForNonInitializedProperty"
 >({
-  name: "entity-property-config-from-types",
+  name: "database/entity-property-config-from-types",
   meta: {
     type: "problem",
     docs: {

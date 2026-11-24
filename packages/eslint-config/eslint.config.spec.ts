@@ -3,53 +3,54 @@ import config from "@nest-boot/eslint-config";
 describe("eslint config", () => {
   it("enables type-aware parsing and the Nest Boot rules", () => {
     const nestBootConfig = config.find(
-      (entry) => entry.plugins?.["@nest-boot"] !== undefined,
+      (entry) => entry.plugins?.["@nest-boot/database"] !== undefined,
     );
 
     expect(nestBootConfig).toBeDefined();
     expect(
-      Object.keys(nestBootConfig?.plugins?.["@nest-boot/graphql"]?.rules ?? {}),
-    ).toEqual(["no-direct-nestjs-import"]);
-    expect(
-      Object.keys(nestBootConfig?.plugins?.["@nest-boot/queue"]?.rules ?? {}),
-    ).toEqual(["processor-name"]);
+      Object.keys(nestBootConfig?.plugins ?? {})
+        .filter(
+          (name) => name === "@nest-boot" || name.startsWith("@nest-boot/"),
+        )
+        .sort(),
+    ).toEqual([
+      "@nest-boot/database",
+      "@nest-boot/graphql",
+      "@nest-boot/queue",
+    ]);
     expect(nestBootConfig?.languageOptions?.parserOptions).toMatchObject({
       projectService: true,
     });
     expect(nestBootConfig?.rules).toMatchObject({
-      "@nest-boot/entity-property-definite-assignment": "error",
-      "@nest-boot/entity-property-no-spread": "error",
-      "@nest-boot/entity-property-config-from-types": "error",
-      "@nest-boot/graphql-field-definite-assignment": "error",
-      "@nest-boot/graphql-field-config-from-types": "error",
-      "@nest-boot/graphql/no-direct-nestjs-import": "error",
-      "@nest-boot/queue/processor-name": "error",
       curly: ["error", "all"],
       "simple-import-sort/exports": "error",
       "simple-import-sort/imports": "error",
     });
   });
 
-  it("does not configure import migration rules", () => {
-    for (const entry of config) {
-      for (const name of [
-        "import-bullmq",
-        "import-queue",
-        "import-mikro-orm",
-        "import-database",
-        "import-graphql",
-      ]) {
-        expect(entry.rules ?? {}).not.toHaveProperty(`@nest-boot/${name}`);
-        expect(entry.rules ?? {}).not.toHaveProperty(
-          `@nest-boot/queue/${name}`,
-        );
-      }
-    }
+  it("configures the complete set of namespaced rules at error severity", () => {
+    const nestBootRules = Object.fromEntries(
+      config.flatMap((entry) =>
+        Object.entries(entry.rules ?? {}).filter(([name]) =>
+          name.startsWith("@nest-boot/"),
+        ),
+      ),
+    );
+
+    expect(nestBootRules).toEqual({
+      "@nest-boot/database/entity-property-config-from-types": "error",
+      "@nest-boot/database/entity-property-definite-assignment": "error",
+      "@nest-boot/database/entity-property-no-spread": "error",
+      "@nest-boot/graphql/field-config-from-types": "error",
+      "@nest-boot/graphql/field-definite-assignment": "error",
+      "@nest-boot/graphql/no-direct-nestjs-import": "error",
+      "@nest-boot/queue/processor-name": "error",
+    });
   });
 
   it("keeps the intentional TypeScript rule overrides", () => {
     const nestBootConfig = config.find(
-      (entry) => entry.plugins?.["@nest-boot"] !== undefined,
+      (entry) => entry.plugins?.["@nest-boot/database"] !== undefined,
     );
 
     expect(nestBootConfig?.rules).toMatchObject({

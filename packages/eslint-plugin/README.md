@@ -2,20 +2,21 @@
 
 Nest Boot 日常代码规范规则。`@nest-boot/eslint-config` 默认启用以下规则：
 
-| 规则                                             | 用途                                       |
-| ------------------------------------------------ | ------------------------------------------ |
-| `@nest-boot/entity-property-definite-assignment` | 检查实体字段的确定赋值断言                 |
-| `@nest-boot/entity-property-config-from-types`   | 根据 TypeScript 类型检查实体字段配置       |
-| `@nest-boot/entity-property-no-spread`           | 要求实体属性装饰器显式列出配置选项         |
-| `@nest-boot/graphql-field-definite-assignment`   | 检查 GraphQL 字段的确定赋值断言            |
-| `@nest-boot/graphql-field-config-from-types`     | 根据 TypeScript 类型检查 GraphQL 字段配置  |
-| `@nest-boot/graphql/no-direct-nestjs-import`     | 要求通过 Nest Boot 的公共 GraphQL 入口导入 |
-| `@nest-boot/queue/processor-name`                | 检查处理器名称与队列类名一致               |
+| 规则                                                      | 用途                                       |
+| --------------------------------------------------------- | ------------------------------------------ |
+| `@nest-boot/database/entity-property-definite-assignment` | 检查实体字段的确定赋值断言                 |
+| `@nest-boot/database/entity-property-config-from-types`   | 根据 TypeScript 类型检查实体字段配置       |
+| `@nest-boot/database/entity-property-no-spread`           | 要求实体属性装饰器显式列出配置选项         |
+| `@nest-boot/graphql/field-definite-assignment`            | 检查 GraphQL 字段的确定赋值断言            |
+| `@nest-boot/graphql/field-config-from-types`              | 根据 TypeScript 类型检查 GraphQL 字段配置  |
+| `@nest-boot/graphql/no-direct-nestjs-import`              | 要求通过 Nest Boot 的公共 GraphQL 入口导入 |
+| `@nest-boot/queue/processor-name`                         | 检查处理器名称与队列类名一致               |
 
-单独使用插件时，将默认导出注册为 `@nest-boot`，将 `graphqlPlugin` 和 `queuePlugin` 注册到各自的命名空间：
+单独使用插件时，在 ESLint flat config 中按领域注册具名导出。
 
 ```js
-import nestBootPlugin, {
+import {
+  databasePlugin,
   graphqlPlugin,
   queuePlugin,
 } from "@nest-boot/eslint-plugin";
@@ -29,15 +30,16 @@ export default [
       parserOptions: { projectService: true },
     },
     plugins: {
-      "@nest-boot": nestBootPlugin,
+      "@nest-boot/database": databasePlugin,
       "@nest-boot/graphql": graphqlPlugin,
       "@nest-boot/queue": queuePlugin,
     },
     rules: {
-      "@nest-boot/entity-property-config-from-types": "error",
-      "@nest-boot/entity-property-definite-assignment": "error",
-      "@nest-boot/entity-property-no-spread": "error",
-      "@nest-boot/graphql-field-config-from-types": "error",
+      "@nest-boot/database/entity-property-config-from-types": "error",
+      "@nest-boot/database/entity-property-definite-assignment": "error",
+      "@nest-boot/database/entity-property-no-spread": "error",
+      "@nest-boot/graphql/field-config-from-types": "error",
+      "@nest-boot/graphql/field-definite-assignment": "error",
       "@nest-boot/graphql/no-direct-nestjs-import": "error",
       "@nest-boot/queue/processor-name": "error",
     },
@@ -45,7 +47,19 @@ export default [
 ];
 ```
 
-### `@nest-boot/queue/processor-name`
+## 迁移规则 ID
+
+升级共享配置时，请一并升级插件，并在规则配置、`eslint-disable`、`eslint-enable` 注释和 bulk suppressions 文件中更新规则 ID。手写 flat config 的项目可以通过上例中的具名导入和命名空间启用新规则 ID。插件的默认导出继续为旧版 v8 配置提供原有规则 ID。
+
+| 旧规则 ID                                        | 新规则 ID                                                 |
+| ------------------------------------------------ | --------------------------------------------------------- |
+| `@nest-boot/entity-property-config-from-types`   | `@nest-boot/database/entity-property-config-from-types`   |
+| `@nest-boot/entity-property-definite-assignment` | `@nest-boot/database/entity-property-definite-assignment` |
+| `@nest-boot/entity-property-no-spread`           | `@nest-boot/database/entity-property-no-spread`           |
+| `@nest-boot/graphql-field-config-from-types`     | `@nest-boot/graphql/field-config-from-types`              |
+| `@nest-boot/graphql-field-definite-assignment`   | `@nest-boot/graphql/field-definite-assignment`            |
+
+## `@nest-boot/queue/processor-name`
 
 要求 `@Processor(EmailQueue)` 对应的类命名为 `EmailProcessor`。规则从队列类名去掉末尾的 `Queue`，再加上 `Processor`；例如 `JobQueue` 对应 `JobProcessor`。队列的 Redis 名称不影响检查。
 
@@ -65,5 +79,3 @@ export class SmsProcessor extends BaseProcessor {}
 已移除 `import-bullmq`、`import-queue`、`import-mikro-orm`、`import-database`、`import-graphql`，不提供兼容别名。删除自定义 ESLint 配置中的对应条目，包括设为 `off` 的条目。
 
 包名、导入路径和旧 API 的迁移由开发者手动完成。实体字段规则也不再迁移旧 MikroORM 装饰器、命名空间导入、重导出或 `@mikro-orm/knex` 路径；字段配置修复仍会添加所需的当前 API 导入。
-
-实体确定赋值规则统一命名为 `entity-property-definite-assignment`；使用手写 ESLint 配置的项目需要同步更新该规则的配置键。

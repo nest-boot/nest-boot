@@ -1,4 +1,4 @@
-/* eslint-disable @nest-boot/graphql-field-config-from-types -- MikroORM Opt/Ref markers require explicit GraphQL metadata. */
+/* eslint-disable @nest-boot/graphql/field-config-from-types -- MikroORM Opt/Ref markers require explicit GraphQL metadata. */
 import { BaseEntity, type Opt, type Ref, t } from "@mikro-orm/core";
 import {
   Entity,

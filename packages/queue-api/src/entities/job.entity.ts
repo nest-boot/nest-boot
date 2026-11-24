@@ -1,5 +1,5 @@
-/* eslint-disable @nest-boot/graphql-field-config-from-types -- Persist arbitrary progress but expose only numeric values via the resolver. */
-/* eslint-disable @nest-boot/entity-property-config-from-types -- History uses explicit SQL UUID, JSON and bigint types. */
+/* eslint-disable @nest-boot/graphql/field-config-from-types -- Persist arbitrary progress but expose only numeric values via the resolver. */
+/* eslint-disable @nest-boot/database/entity-property-config-from-types -- History uses explicit SQL UUID, JSON and bigint types. */
 import { BigIntType, t } from "@mikro-orm/core";
 import {
   Entity,

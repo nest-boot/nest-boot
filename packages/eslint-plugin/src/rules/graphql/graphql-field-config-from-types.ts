@@ -37,7 +37,7 @@ export default createRule<
   [Options],
   "alignFieldDecoratorWithTsType" | "removeFieldDecorator"
 >({
-  name: "graphql-field-config-from-types",
+  name: "graphql/field-config-from-types",
   meta: {
     type: "problem",
     docs: {
