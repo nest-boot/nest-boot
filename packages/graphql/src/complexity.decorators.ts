@@ -11,23 +11,16 @@ import {
   type ReturnTypeFunc,
   type ReturnTypeFuncValue,
 } from "@nestjs/graphql";
-import type { GraphQLScalarType } from "graphql";
 
 import type { FieldComplexityEstimatorArgs } from "./field-complexity-estimator-args.js";
 
-type ResolvedValue<T> = T extends readonly (infer Item)[]
-  ? (ResolvedValue<Item> | null | undefined)[]
-  : T extends StringConstructor
-    ? string
-    : T extends NumberConstructor
-      ? number
-      : T extends BooleanConstructor
-        ? boolean
-        : T extends GraphQLScalarType<infer Internal, unknown>
-          ? Internal
-          : T extends abstract new (...args: any[]) => infer Instance
-            ? Instance
-            : unknown;
+// The last Nest Field overload infers its options from the return type function.
+type NativeFieldOptions<T extends ReturnTypeFuncValue> = NonNullable<
+  Parameters<typeof NestField<T>>[1]
+>;
+
+type ResolvedValue<T extends ReturnTypeFuncValue> =
+  NativeFieldOptions<T>["defaultValue"];
 
 type ComplexityCallback<Result> = (
   args: FieldComplexityEstimatorArgs<Result>,
@@ -94,14 +87,11 @@ interface ResolveFieldDecorator {
 interface FieldDecorator {
   (): PropertyDecorator & MethodDecorator;
   <T extends ReturnTypeFuncValue>(
-    options: FieldOptions<ResolvedValue<T>>,
+    options: WithComplexity<NativeFieldOptions<T>, unknown>,
   ): PropertyDecorator & MethodDecorator;
   <T extends ReturnTypeFuncValue>(
     typeFunc?: ReturnTypeFunc<T>,
-    options?: FieldOptions<
-      ResolvedValue<NoInfer<T>>,
-      ResolvedValue<NoInfer<T>>
-    >,
+    options?: WithComplexity<NativeFieldOptions<T>, ResolvedValue<NoInfer<T>>>,
   ): PropertyDecorator & MethodDecorator;
 }
 

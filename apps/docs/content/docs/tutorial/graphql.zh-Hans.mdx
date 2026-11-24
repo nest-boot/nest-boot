@@ -514,7 +514,7 @@ export class CommonModule {}
 
 限流器按请求条数为每条边预留 1 点，再根据 resolver 实际返回的边数结算这部分成本。只查询游标时也适用。回调按一次归一化后的 `query` 和 `filter` 计费。每个比较和逻辑组计 1 点，`$in` 等数组比较按元素计费，最低 1 点。
 
-resolver 成功后，自定义 `complexity` 回调在结算阶段通过 `resolved.result` 读取返回值，结果可能是 `null` 或 `undefined`。使用 `@nest-boot/graphql` 的 `Query`、`Mutation`、`ResolveField` 或 `Field` 时，TypeScript 会根据装饰器的返回类型函数推断结果类型。
+resolver 成功后，自定义 `complexity` 回调在结算阶段通过 `resolved.result` 读取 GraphQL 序列化前的返回值，结果可能是 `null` 或 `undefined`。使用 `@nest-boot/graphql` 的 `Query`、`Mutation`、`ResolveField` 或 `Field` 时，结果类型沿用 NestJS `@Field` 的 `defaultValue` 推导规则。`ID` 和 `Int` 等标量引用推导为 `unknown`。
 
 使用 `defineComplexity` 可以定义并导出可复用的回调。第一个参数直接传入返回类型，再将回调传给字段的 `complexity` 选项。
 

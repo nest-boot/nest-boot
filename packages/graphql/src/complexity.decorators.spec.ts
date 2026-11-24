@@ -9,6 +9,7 @@ import { expectTypeOf } from "vitest";
 import {
   defineComplexity,
   Field,
+  ID,
   Int,
   Mutation,
   Query,
@@ -41,12 +42,15 @@ describe("decorator complexity types", () => {
     Query(() => Book, { complexity: bookComplexity });
 
     const booksComplexity = defineComplexity([Book], ({ resolved }) => {
-      expectTypeOf(resolved?.result).toEqualTypeOf<
-        (Book | null | undefined)[] | null | undefined
-      >();
+      expectTypeOf(resolved?.result).toEqualTypeOf<Book[] | null | undefined>();
       return resolved?.result?.length ?? 1;
     });
     ResolveField(() => [Book], { complexity: booksComplexity });
+
+    defineComplexity(ID, ({ resolved }) => {
+      expectTypeOf(resolved?.result).toBeUnknown();
+      return 1;
+    });
   });
 
   it("infers result types from GraphQL return type functions", () => {
@@ -59,27 +63,36 @@ describe("decorator complexity types", () => {
     ResolveField("books", () => [Book], {
       complexity: ({ resolved }) => {
         expectTypeOf(resolved?.result).toEqualTypeOf<
-          (Book | null | undefined)[] | null | undefined
+          Book[] | null | undefined
         >();
         return 1;
       },
     });
     Mutation(() => Int, {
       complexity: ({ resolved }) => {
-        expectTypeOf(resolved?.result).toEqualTypeOf<
-          number | null | undefined
-        >();
+        expectTypeOf(resolved?.result).toBeUnknown();
         return 1;
       },
     });
     Field(() => String, {
       complexity: ({ resolved }) => {
         expectTypeOf(resolved?.result).toEqualTypeOf<
-          string | null | undefined
+          InstanceType<StringConstructor> | null | undefined
         >();
         return 1;
       },
     });
+  });
+
+  it("preserves native field default values for GraphQL scalar types", () => {
+    Field(() => ID, {
+      defaultValue: 123,
+      complexity: ({ resolved }) => {
+        expectTypeOf(resolved?.result).toBeUnknown();
+        return 1;
+      },
+    });
+    Field(() => [ID], { defaultValue: [123] });
   });
 
   it("supports options-only overloads with an unknown result", () => {

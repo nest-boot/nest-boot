@@ -515,7 +515,7 @@ Queries and nested fields returning a generated Connection use the type's `Conne
 
 The rate limiter reserves one point per requested edge and settles that part of the cost using the number of edges returned by the resolver. This applies to cursor-only selections as well. The callback charges once for the normalized `query` and `filter`. Each comparison and logical group costs one point. Array comparisons such as `$in` cost one point per value, with a minimum of one.
 
-Custom `complexity` callbacks receive `resolved.result` during settlement for a successful resolver. The result can be `null` or `undefined`. With `Query`, `Mutation`, `ResolveField`, or `Field` from `@nest-boot/graphql`, TypeScript infers the result from the decorator's return type function.
+Custom `complexity` callbacks receive the resolver's value before GraphQL serialization through `resolved.result` during settlement. The result can be `null` or `undefined`. With `Query`, `Mutation`, `ResolveField`, or `Field` from `@nest-boot/graphql`, result inference follows NestJS's `@Field` default-value types. Scalar references such as `ID` and `Int` infer `unknown`.
 
 Use `defineComplexity` to export a reusable callback. Pass the return type reference directly and use the callback as the field's `complexity` option.
 

@@ -14,6 +14,6 @@ Generated Connections provide a default complexity callback for queries and nest
 
 `@nest-boot/graphql`'s `ObjectType` publishes a static `complexity` property as a return type default, including on Connection subclasses. Explicit field costs take precedence. The rate limiter replaces the previous Connection name-suffix rule with schema metadata. Set field complexity explicitly for custom Connections that supply their own pagination cost.
 
-Complexity callbacks receive `resolved.result` during settlement. The Nest Boot GraphQL decorators infer the result type from the declared GraphQL return type function. Use `defineComplexity` to define and export a callback with an inferred result type.
+Complexity callbacks receive `resolved.result` during settlement. The Nest Boot GraphQL decorators and `defineComplexity` infer the result using the same rule as NestJS's `@Field` default value.
 
 The shared ESLint config enables `@nest-boot/graphql/no-direct-nestjs-import`. Import public GraphQL APIs from `@nest-boot/graphql` so object types register Nest Boot's metadata.

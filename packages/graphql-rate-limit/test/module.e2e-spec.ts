@@ -98,7 +98,12 @@ class TestResolver {
   }
 
   @Mutation(() => Int, {
-    complexity: ({ resolved }) => (resolved ? (resolved.result ?? 0) : 7),
+    complexity: ({ resolved }) => {
+      if (!resolved) {
+        return 7;
+      }
+      return typeof resolved.result === "number" ? resolved.result : 0;
+    },
   })
   updateWithResolvedCost(): number {
     return 3;
