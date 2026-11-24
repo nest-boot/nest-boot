@@ -5,12 +5,14 @@ import {
   type BaseContext,
   type GraphQLRequestListener,
 } from "@apollo/server";
-import { GraphQLSchemaHost } from "@nest-boot/graphql";
+import {
+  GraphQLSchemaHost,
+  GraphQLTooManyRequestsError,
+} from "@nest-boot/graphql";
 import { Plugin } from "@nestjs/apollo";
-import { HttpStatus, Inject } from "@nestjs/common";
+import { Inject } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import {
-  GraphQLError,
   GraphQLInterfaceType,
   GraphQLList,
   GraphQLNonNull,
@@ -77,20 +79,6 @@ function shopifyEstimator(
   }
 }
 
-/**
- * Creates an Apollo operation error with the rate-limit status.
- * @param message - Why the operation was rejected.
- * @returns A GraphQL error with HTTP 429.
- */
-function tooManyRequests(message: string): GraphQLError {
-  return new GraphQLError(message, {
-    extensions: {
-      code: "TOO_MANY_REQUESTS",
-      http: { status: HttpStatus.TOO_MANY_REQUESTS },
-    },
-  });
-}
-
 @Plugin()
 export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
   private readonly defaultEstimator: ComplexityEstimator;
@@ -138,7 +126,7 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
         });
 
         if (cost.requestedQueryCost >= maxComplexity) {
-          throw tooManyRequests(
+          throw new GraphQLTooManyRequestsError(
             `Query is too complex: ${String(cost.requestedQueryCost)}. Maximum allowed complexity: ${String(maxComplexity)}`,
           );
         }
@@ -154,7 +142,7 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
         };
 
         if (blocked) {
-          throw tooManyRequests("Too Many Requests");
+          throw new GraphQLTooManyRequestsError();
         }
       },
       executionDidStart: async () => {
