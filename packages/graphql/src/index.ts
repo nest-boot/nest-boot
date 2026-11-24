@@ -1,3 +1,14 @@
+export {
+  defineComplexity,
+  Field,
+  type FieldOptions,
+  Mutation,
+  type MutationOptions,
+  Query,
+  type QueryOptions,
+  ResolveField,
+  type ResolveFieldOptions,
+} from "./complexity.decorators.js";
 export * from "./errors/index.js";
 export type { FieldComplexityEstimatorArgs } from "./field-complexity-estimator-args.js";
 export * from "./graphql.exception-filter.js";

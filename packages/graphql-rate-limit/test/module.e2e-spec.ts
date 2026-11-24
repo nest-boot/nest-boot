@@ -56,8 +56,12 @@ class TestResolver {
   }
 
   @Query(() => String, {
-    complexity: ({ args, childComplexity }) =>
-      childComplexity + ((args.weight as number | undefined) ?? 0),
+    complexity: ({ args, childComplexity, resolved }) => {
+      const weight = (args.weight as number | undefined) ?? 0;
+      return resolved
+        ? Math.min(weight, resolved.result?.length ?? 0)
+        : weight + childComplexity;
+    },
   })
   weighted(@Args("weight", { type: () => Int }) weight: number): string {
     return String(weight);
@@ -92,6 +96,13 @@ class TestResolver {
   updateWithExplicitCost(): boolean {
     return true;
   }
+
+  @Mutation(() => Int, {
+    complexity: ({ resolved }) => (resolved ? (resolved.result ?? 0) : 7),
+  })
+  updateWithResolvedCost(): number {
+    return 3;
+  }
 }
 
 describe("GraphQLRateLimitModule - e2e", () => {
@@ -124,7 +135,7 @@ describe("GraphQLRateLimitModule - e2e", () => {
     });
   });
 
-  it("passes resolved arguments to field complexity callbacks", async () => {
+  it("passes field arguments and results to query and mutation cost callbacks", async () => {
     const app = await createApp(GraphQLRateLimitModule.forRoot({}));
     apps.push(app);
 
@@ -139,7 +150,18 @@ describe("GraphQLRateLimitModule - e2e", () => {
     expect(body.errors).toBeUndefined();
     expect(body.extensions?.cost).toMatchObject({
       requestedQueryCost: 7,
-      actualQueryCost: 7,
+      actualQueryCost: 1,
+    });
+
+    const mutation = await request(app.getHttpServer())
+      .post("/graphql")
+      .send({ query: "mutation { updateWithResolvedCost }" })
+      .expect(200);
+    const mutationBody = mutation.body as GraphQLResponse;
+    expect(mutationBody.errors).toBeUndefined();
+    expect(mutationBody.extensions?.cost).toMatchObject({
+      requestedQueryCost: 7,
+      actualQueryCost: 3,
     });
   });
 

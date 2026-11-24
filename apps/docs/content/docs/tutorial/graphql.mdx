@@ -358,7 +358,7 @@ The third argument to `cm.find()` accepts additional `where` filters that are me
 
 ### Pagination
 
-Supply exactly one of `first` and `last`. Use `after` with `first` or `before` with `last`. Missing or conflicting paging arguments return `BAD_USER_INPUT`.
+Supply exactly one of `first` and `last` with an integer from 1 to 100. Use `after` with `first` or `before` with `last`. Missing, conflicting, or out-of-range paging arguments return `BAD_USER_INPUT`.
 
 ```graphql
 # Forward pagination
@@ -514,6 +514,20 @@ To supply a custom Redis instance managed outside the rate limit module, pass `n
 Queries and nested fields returning a generated Connection use the type's `Connection.complexity` callback by default. A field's explicit `complexity` option takes precedence, including zero. When declaring a Connection subclass, use `ObjectType` from `@nest-boot/graphql` to register its inherited default in the schema.
 
 The rate limiter reserves one point per requested edge and settles that part of the cost using the number of edges returned by the resolver. This applies to cursor-only selections as well. The callback charges once for the normalized `query` and `filter`. Each comparison and logical group costs one point. Array comparisons such as `$in` cost one point per value, with a minimum of one.
+
+Custom `complexity` callbacks receive `resolved.result` during settlement for a successful resolver. The result can be `null` or `undefined`. With `Query`, `Mutation`, `ResolveField`, or `Field` from `@nest-boot/graphql`, TypeScript infers the result from the decorator's return type function.
+
+Use `defineComplexity` to export a reusable callback. Pass the return type reference directly and use the callback as the field's `complexity` option.
+
+```typescript
+import { defineComplexity } from "@nest-boot/graphql";
+
+export const booksComplexity = defineComplexity(
+  [Book],
+  ({ childComplexity, resolved }) =>
+    resolved ? (resolved.result?.length ?? 0) : 10 * (1 + childComplexity),
+);
+```
 
 Each root mutation field has a default base cost of 10 points. The selected child fields add their costs, and explicitly configured field costs take precedence. Use `defaultMutationComplexity` to change the default base cost.
 

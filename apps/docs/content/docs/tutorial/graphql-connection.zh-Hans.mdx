@@ -102,7 +102,7 @@ export class UserResolver {
 
 ## 分页
 
-查询必须且只能提供 `first` 或 `last`。`after` 搭配 `first`，`before` 搭配 `last`。分页参数缺失或冲突时返回 `BAD_USER_INPUT`。只需查询 Connection 的计数时，可以传入 `first: 0`。
+查询必须且只能提供 `first` 或 `last`，且值为 1 至 100 的整数。`after` 搭配 `first`，`before` 搭配 `last`。分页参数缺失、冲突或超出范围时返回 `BAD_USER_INPUT`。
 
 ## 过滤
 

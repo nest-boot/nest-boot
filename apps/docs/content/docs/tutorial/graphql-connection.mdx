@@ -105,7 +105,7 @@ and named-type lookup helpers have been removed.
 
 ## Pagination
 
-Supply exactly one of `first` and `last`. Use `after` with `first` or `before` with `last`. Missing or conflicting paging arguments return `BAD_USER_INPUT`. Use `first: 0` when only the existing connection count is needed.
+Supply exactly one of `first` and `last` with an integer from 1 to 100. Use `after` with `first` or `before` with `last`. Missing, conflicting, or out-of-range paging arguments return `BAD_USER_INPUT`.
 
 ## Filtering
 

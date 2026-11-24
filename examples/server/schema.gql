@@ -482,10 +482,14 @@ type Query {
     """Filter systemaccounts using MongoDB query syntax."""
     filter: SystemAccountFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned systemaccounts."""
@@ -510,10 +514,14 @@ type Query {
     """Filter systemapikeys using MongoDB query syntax."""
     filter: SystemApiKeyFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned systemapikeys."""
@@ -537,10 +545,14 @@ type Query {
     """Filter jobs using MongoDB query syntax."""
     filter: JobFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned jobs."""
@@ -566,10 +578,14 @@ type Query {
     """Filter jobs using MongoDB query syntax."""
     filter: JobFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned jobs."""
@@ -594,10 +610,14 @@ type Query {
     """Filter users using MongoDB query syntax."""
     filter: UserFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned users."""
@@ -622,10 +642,14 @@ type Query {
     """Filter workspaceapikeys using MongoDB query syntax."""
     filter: WorkspaceApiKeyFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned workspaceapikeys."""
@@ -651,10 +675,14 @@ type Query {
     """Filter jobs using MongoDB query syntax."""
     filter: JobFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned jobs."""
@@ -680,10 +708,14 @@ type Query {
     """Filter workspaces using MongoDB query syntax."""
     filter: WorkspaceFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned workspaces."""
@@ -819,10 +851,14 @@ type SystemAccount {
     """Filter systemapikeys using MongoDB query syntax."""
     filter: SystemApiKeyFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned systemapikeys."""
@@ -1055,10 +1091,14 @@ type User {
     """Filter accounts using MongoDB query syntax."""
     filter: AccountFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned accounts."""
@@ -1082,10 +1122,14 @@ type User {
     """Filter userapikeys using MongoDB query syntax."""
     filter: UserApiKeyFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned userapikeys."""
@@ -1116,10 +1160,14 @@ type User {
     """Filter workspaceinvitations using MongoDB query syntax."""
     filter: WorkspaceInvitationFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned workspaceinvitations."""
@@ -1145,10 +1193,14 @@ type User {
     """Filter sessions using MongoDB query syntax."""
     filter: SessionFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned sessions."""
@@ -1166,10 +1218,14 @@ type User {
     """Filter workspaces using MongoDB query syntax."""
     filter: WorkspaceFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned workspaces."""
@@ -1393,10 +1449,14 @@ type Workspace {
     """Filter workspaceinvitations using MongoDB query syntax."""
     filter: WorkspaceInvitationFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned workspaceinvitations."""
@@ -1419,10 +1479,14 @@ type Workspace {
     """Filter workspacemembers using MongoDB query syntax."""
     filter: WorkspaceMemberFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned workspacemembers."""
@@ -1634,10 +1698,14 @@ type WorkspaceMember {
     """Filter workspaceapikeys using MongoDB query syntax."""
     filter: WorkspaceApiKeyFilter
 
-    """Returns up to the first `n` elements from the list."""
+    """
+    Returns up to the first `n` elements from the list. Use a value from 1 to 100.
+    """
     first: Int
 
-    """Returns up to the last `n` elements from the list."""
+    """
+    Returns up to the last `n` elements from the list. Use a value from 1 to 100.
+    """
     last: Int
 
     """Ordering options for the returned workspaceapikeys."""

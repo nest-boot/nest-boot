@@ -1,4 +1,5 @@
 import { PagingType } from "../enums/paging-type.enum.js";
+import { MAX_CONNECTION_PAGE_SIZE } from "../graphql-connection.constants.js";
 import type { ConnectionArgsInterface } from "../interfaces/index.js";
 
 /**
@@ -17,8 +18,15 @@ export function resolveConnectionPagination(
     ["first", first],
     ["last", last],
   ] as const) {
-    if (value != null && (!Number.isSafeInteger(value) || value < 0)) {
-      return { error: `${name} must be a non-negative safe integer` };
+    if (
+      value != null &&
+      (!Number.isInteger(value) ||
+        value < 1 ||
+        value > MAX_CONNECTION_PAGE_SIZE)
+    ) {
+      return {
+        error: `${name} must be an integer between 1 and ${String(MAX_CONNECTION_PAGE_SIZE)}`,
+      };
     }
   }
 

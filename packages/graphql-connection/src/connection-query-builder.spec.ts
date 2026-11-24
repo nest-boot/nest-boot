@@ -218,7 +218,27 @@ describe("ConnectionQueryBuilder", () => {
     });
   });
 
-  it.each([-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+  it.each([
+    [{ first: 1 }, 2, QueryOrder.ASC],
+    [{ last: 1 }, 2, QueryOrder.DESC],
+    [{ first: 100 }, 101, QueryOrder.ASC],
+    [{ last: 100 }, 101, QueryOrder.DESC],
+  ])("accepts boundary page sizes %j", async (args, limit, direction) => {
+    const { entityManager, findAll } = createEntityManager();
+
+    await new ConnectionQueryBuilder(
+      entityManager,
+      BookConnection as unknown as ConnectionClass<Book>,
+      args,
+    ).query();
+
+    expect(findAll).toHaveBeenCalledWith(BookEntity, {
+      limit,
+      orderBy: [{ id: direction }],
+    });
+  });
+
+  it.each([-1, 0, 1.5, 101, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
     "rejects invalid page sizes %s before database access",
     (size) => {
       const { entityManager, find, findAll, createQueryBuilder } =
@@ -235,7 +255,7 @@ describe("ConnectionQueryBuilder", () => {
               BookConnection as unknown as ConnectionClass<Book>,
               args,
             ),
-        ).toThrow("non-negative safe integer");
+        ).toThrow("must be an integer between 1 and 100");
       }
       expect(find).not.toHaveBeenCalled();
       expect(findAll).not.toHaveBeenCalled();

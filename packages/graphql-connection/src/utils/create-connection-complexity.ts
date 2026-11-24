@@ -91,8 +91,8 @@ export function createConnectionComplexity<Entity extends object>(
   return ({
     args,
     childComplexity,
-    execution,
-  }: FieldComplexityEstimatorArgs) => {
+    resolved,
+  }: FieldComplexityEstimatorArgs<ConnectionResult<Entity>>) => {
     const { query, filter } = args as ConnectionArgsInterface<Entity>;
     const pagination = resolveConnectionPagination(args);
     if ("error" in pagination) {
@@ -101,10 +101,8 @@ export function createConnectionComplexity<Entity extends object>(
 
     const baseCost =
       2 + estimateConnectionFilterComplexity(query ?? null, filter, metadata);
-    if (execution) {
-      const result = execution.result as Partial<
-        ConnectionResult<Entity>
-      > | null;
+    if (resolved) {
+      const { result } = resolved;
       return (
         baseCost + (Array.isArray(result?.edges) ? result.edges.length : 0)
       );

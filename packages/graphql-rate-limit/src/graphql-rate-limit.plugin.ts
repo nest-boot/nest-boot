@@ -191,7 +191,7 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
                   estimateDirective({ ...estimatorArgs, args: {} }) ??
                   estimateFieldCost(fieldEstimators, {
                     ...estimatorArgs,
-                    execution: { result },
+                    resolved: { result },
                   }) ??
                   0;
               }

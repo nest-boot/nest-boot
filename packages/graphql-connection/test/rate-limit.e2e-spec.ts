@@ -150,10 +150,10 @@ describe("Connection complexity over GraphQL HTTP", () => {
         actual: 9,
       },
       {
-        selection: "books(first: 0) { totalCount edges { cursor } }",
-        books: { totalCount: 3, edges: [] },
-        requested: 3,
-        actual: 3,
+        selection: "books(first: 1) { totalCount }",
+        books: { totalCount: 3 },
+        requested: 4,
+        actual: 4,
       },
     ];
 
@@ -218,6 +218,10 @@ describe("Connection complexity over GraphQL HTTP", () => {
       for (const args of [
         "",
         "(first: -1)",
+        "(first: 0)",
+        "(last: 0)",
+        "(first: 101)",
+        "(last: 101)",
         "(first: 1, last: 1)",
         '(last: 1, after: "cursor")',
       ]) {

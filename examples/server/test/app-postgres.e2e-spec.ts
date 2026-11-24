@@ -1582,13 +1582,12 @@ describe('Server application PostgreSQL integration (e2e)', () => {
     expectNoGraphQLErrors(denied);
     expect(denied.body.data.currentUser.sessions.edges).toHaveLength(1);
     const countOnly = await gql(
-      'query { currentUser { sessions(first: 0) { totalCount edges { node { id } } } } }',
+      'query { currentUser { sessions(first: 1) { totalCount } } }',
       { cookies: target.cookies },
     );
     expectNoGraphQLErrors(countOnly);
     expect(countOnly.body.data.currentUser.sessions).toEqual({
       totalCount: 1,
-      edges: [],
     });
 
     const missingPageSize = await gql(

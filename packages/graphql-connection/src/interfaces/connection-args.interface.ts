@@ -38,12 +38,12 @@ export interface ConnectionArgsInterface<Entity extends object> {
   before?: string | null;
 
   /**
-   * Returns up to the first n elements (for forward pagination).
+   * Returns up to the first n elements (for forward pagination). Use 1 to 100.
    */
   first?: number | null;
 
   /**
-   * Returns up to the last n elements (for backward pagination).
+   * Returns up to the last n elements (for backward pagination). Use 1 to 100.
    */
   last?: number | null;
 
