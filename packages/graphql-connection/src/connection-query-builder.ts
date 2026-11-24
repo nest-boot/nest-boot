@@ -6,6 +6,7 @@ import {
   type QueryOrderMap,
 } from "@mikro-orm/core";
 import { type SqlEntityManager } from "@mikro-orm/sql";
+import { GraphQLBadUserInputError } from "@nest-boot/graphql";
 import { compact, get, set } from "lodash-es";
 
 import { type ConnectionFindOptions } from "./connection.manager.js";
@@ -23,11 +24,10 @@ import {
   EdgeInterface,
 } from "./interfaces/index.js";
 import { ConnectionClass } from "./types/index.js";
-
-const TOTAL_COUNT_LIMIT = 10_000;
-
 import { parseConnectionQuery } from "./utils/parse-connection-query.js";
 import { resolveConnectionPagination } from "./utils/resolve-connection-pagination.js";
+
+const TOTAL_COUNT_LIMIT = 10_000;
 
 /**
  * Builds and executes paginated queries for GraphQL connections.
@@ -98,7 +98,11 @@ export class ConnectionQueryBuilder<
       throw new Error("Connection metadata not found");
     }
 
-    const { limit, pagingType } = resolveConnectionPagination(args);
+    const pagination = resolveConnectionPagination(args);
+    if ("error" in pagination) {
+      throw new GraphQLBadUserInputError(pagination.error);
+    }
+    const { limit, pagingType } = pagination;
     this.limit = limit;
     this.pagingType = pagingType;
     const cursor = pagingType === PagingType.FORWARD ? args.after : args.before;

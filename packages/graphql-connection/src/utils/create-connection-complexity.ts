@@ -1,10 +1,14 @@
 import type { FilterQuery } from "@mikro-orm/core";
-import type { ComplexityEstimator } from "@nest-boot/graphql";
+import type {
+  ComplexityEstimator,
+  FieldComplexityEstimatorArgs,
+} from "@nest-boot/graphql";
 import { isPlainObject } from "lodash-es";
 
 import type {
   ConnectionArgsInterface,
   ConnectionMetadata,
+  ConnectionResult,
 } from "../interfaces/index.js";
 import { parseConnectionQuery } from "./parse-connection-query.js";
 import { resolveConnectionPagination } from "./resolve-connection-pagination.js";
@@ -84,14 +88,28 @@ export function createConnectionComplexity<Entity extends object>(
     "fieldOptionsMap" | "filterQuerySchema"
   >,
 ): ComplexityEstimator {
-  return ({ args, childComplexity }) => {
+  return ({
+    args,
+    childComplexity,
+    execution,
+  }: FieldComplexityEstimatorArgs) => {
     const { query, filter } = args as ConnectionArgsInterface<Entity>;
-    const { limit } = resolveConnectionPagination(args);
+    const pagination = resolveConnectionPagination(args);
+    if ("error" in pagination) {
+      return 0;
+    }
 
-    return (
-      2 +
-      childComplexity * limit +
-      estimateConnectionFilterComplexity(query ?? null, filter, metadata)
-    );
+    const baseCost =
+      2 + estimateConnectionFilterComplexity(query ?? null, filter, metadata);
+    if (execution) {
+      const result = execution.result as Partial<
+        ConnectionResult<Entity>
+      > | null;
+      return (
+        baseCost + (Array.isArray(result?.edges) ? result.edges.length : 0)
+      );
+    }
+
+    return baseCost + pagination.limit * (1 + Math.max(0, childComplexity));
   };
 }

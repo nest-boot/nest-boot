@@ -38,7 +38,6 @@ import { User } from "./user.entity";
 export const {
   Connection: UserConnection,
   ConnectionArgs: UserConnectionArgs,
-  getComplexity: getUserConnectionComplexity,
 } = new ConnectionBuilder(User)
   .addField({ field: "name", type: "string", filterable: true, sortable: true })
   .addField({
@@ -55,20 +54,16 @@ export const {
 ### Using in Resolvers
 
 ```typescript
-import { Args, Info, Query, Resolver } from "@nestjs/graphql";
+import { Args, Info, Query, Resolver } from "@nest-boot/graphql";
 import { ConnectionManager } from "@nest-boot/graphql-connection";
 import type { GraphQLResolveInfo } from "graphql";
-import {
-  getUserConnectionComplexity,
-  UserConnection,
-  UserConnectionArgs,
-} from "./user.connection";
+import { UserConnection, UserConnectionArgs } from "./user.connection";
 
 @Resolver()
 export class UserResolver {
   constructor(private readonly connectionManager: ConnectionManager) {}
 
-  @Query(() => UserConnection, { complexity: getUserConnectionComplexity })
+  @Query(() => UserConnection)
   async users(
     @Args() args: UserConnectionArgs,
     @Info() info: GraphQLResolveInfo,

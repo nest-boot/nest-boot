@@ -1,7 +1,7 @@
 import { GraphQLBadUserInputError } from "@nest-boot/graphql";
 
 /**
- * Validates pagination before any field can contribute to the operation cost.
+ * Validates pagination for the explicit connection complexity callback.
  * @param args - Connection arguments containing an optional first or last limit.
  * @param fallback - Page size used when no limit is supplied.
  * @returns Requested connection limit or the fallback page size.

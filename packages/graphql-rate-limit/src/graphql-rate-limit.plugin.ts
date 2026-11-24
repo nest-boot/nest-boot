@@ -6,6 +6,8 @@ import {
   type GraphQLRequestListener,
 } from "@apollo/server";
 import {
+  DEFAULT_FIELD_COMPLEXITY,
+  type FieldComplexityEstimatorArgs,
   GraphQLSchemaHost,
   GraphQLTooManyRequestsError,
 } from "@nest-boot/graphql";
@@ -13,13 +15,11 @@ import { Plugin } from "@nestjs/apollo";
 import { Inject } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import {
-  GraphQLInterfaceType,
-  GraphQLList,
-  GraphQLNonNull,
-  GraphQLObjectType,
-  GraphQLType,
-  GraphQLUnionType,
-} from "graphql";
+  getNamedType,
+  isCompositeType,
+  isNonNullType,
+  isObjectType,
+} from "graphql/index.js";
 import type {
   ComplexityEstimator,
   ComplexityEstimatorArgs,
@@ -32,7 +32,6 @@ import type {
   CostResponse,
   GraphQLRateLimitOptions,
 } from "./interfaces/index.js";
-import { connectionPageSize } from "./utils/connection-page-size.util.js";
 
 // graphql-query-complexity has a native ESM build, but it loads
 // graphql/index.mjs while Nest's CommonJS packages load graphql/index.js.
@@ -46,36 +45,39 @@ const {
 } =
   graphqlQueryComplexity as unknown as typeof import("graphql-query-complexity");
 
-// https://shopify.engineering/rate-limiting-graphql-apis-calculating-query-complexity
 /**
- * Returns estimated field cost, or undefined when no estimate applies.
- * @param args - Pagination, filtering, and ordering arguments.
- * @param type - Type used to interpret the value.
- * @returns Estimated field cost, or undefined when no estimate applies.
+ * Adds one point to the child cost of an object, interface, or union field.
+ * @param args - Field metadata and its calculated child cost.
+ * @returns The composite field cost, if applicable.
  */
-function shopifyEstimator(
+function compositeFieldEstimator(
   args: ComplexityEstimatorArgs,
-  type?: GraphQLType,
 ): number | undefined {
-  type = type ?? args.field.type;
-
-  if (type instanceof GraphQLNonNull || type instanceof GraphQLList) {
-    return shopifyEstimator(args, type.ofType);
-  }
-
-  // A GraphQL Connection represents a one-to-many relationship. The cost is two points plus the number of objects to return.
-  if (type instanceof GraphQLObjectType && type.name.endsWith("Connection")) {
-    return 2 + args.childComplexity * connectionPageSize(args.args, 0);
-  }
-
-  // An Object is the basic unit of a query, generally representing a single server-side operation such as a database query or an internal service call.
-  // Interface and Union are similar to Object but can return different types of objects, so they cost one point.
-  if (
-    type instanceof GraphQLObjectType ||
-    type instanceof GraphQLInterfaceType ||
-    type instanceof GraphQLUnionType
-  ) {
+  if (isCompositeType(getNamedType(args.field.type))) {
     return 1 + args.childComplexity;
+  }
+}
+
+/**
+ * Prices a field with the default defined on its object return type.
+ * @param args - Field metadata, arguments, and calculated child cost.
+ * @returns The return type's field cost, if configured.
+ */
+function returnTypeEstimator(
+  args: ComplexityEstimatorArgs,
+): number | undefined {
+  const returnType = args.field.type;
+  const type = isNonNullType(returnType) ? returnType.ofType : returnType;
+  if (!isObjectType(type)) {
+    return;
+  }
+
+  const complexity = type.extensions[DEFAULT_FIELD_COMPLEXITY];
+  if (typeof complexity === "number") {
+    return complexity + args.childComplexity;
+  }
+  if (typeof complexity === "function") {
+    return (complexity as ComplexityEstimator)(args) ?? undefined;
   }
 }
 
@@ -87,7 +89,7 @@ function shopifyEstimator(
  */
 function estimateFieldCost(
   estimators: ComplexityEstimator[],
-  field: ComplexityEstimatorArgs,
+  field: ComplexityEstimatorArgs & FieldComplexityEstimatorArgs,
 ): number | undefined {
   for (const estimator of estimators) {
     const cost = estimator(field);
@@ -115,14 +117,19 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
     const { schema } = this.moduleRef.get(GraphQLSchemaHost, { strict: false });
     const { maxComplexity, defaultMutationComplexity } = this.options;
     const mutationType = schema.getMutationType();
+    const subscriptionType = schema.getSubscriptionType();
     const estimateDirective = directiveEstimator();
     const fieldEstimators: ComplexityEstimator[] = [
       fieldExtensionsEstimator(),
+      (args) =>
+        args.type === mutationType || args.type === subscriptionType
+          ? undefined
+          : returnTypeEstimator(args),
       ({ type, childComplexity }) =>
         type === mutationType && defaultMutationComplexity !== undefined
           ? defaultMutationComplexity + childComplexity
           : undefined,
-      shopifyEstimator,
+      compositeFieldEstimator,
       this.defaultEstimator,
     ];
 
@@ -176,13 +183,16 @@ export class GraphQLRateLimitPlugin implements ApolloServerPlugin {
               type: info.parentType,
             };
 
-            return (error) => {
+            return (error, result: unknown) => {
               if (error === null) {
                 // Directive multipliers reserve capacity for the requested selection.
-                // Field callbacks also use the resolved arguments to price work on the field itself.
+                // Field callbacks can use the resolved arguments and value to settle their own work.
                 cost.actualQueryCost +=
                   estimateDirective({ ...estimatorArgs, args: {} }) ??
-                  estimateFieldCost(fieldEstimators, estimatorArgs) ??
+                  estimateFieldCost(fieldEstimators, {
+                    ...estimatorArgs,
+                    execution: { result },
+                  }) ??
                   0;
               }
             };

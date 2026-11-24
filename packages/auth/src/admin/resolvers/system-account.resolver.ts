@@ -67,9 +67,7 @@ export class SystemAccountResolver {
    * @param info - GraphQL selection information used to shape the query.
    * @returns Page of authorized system accounts.
    */
-  @Query(() => SystemAccountConnection, {
-    complexity: SystemAccountConnection.getComplexity,
-  })
+  @Query(() => SystemAccountConnection)
   systemAccounts(
     @Args({ type: () => SystemAccountConnectionArgs })
     args: ConnectionArgsInterface<SystemAccount>,

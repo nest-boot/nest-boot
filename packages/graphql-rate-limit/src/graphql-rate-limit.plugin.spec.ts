@@ -175,12 +175,12 @@ describe("GraphQLRateLimitPlugin", () => {
     await listener.willSendResponse(context);
 
     expect(subPoint).toHaveBeenCalledWith(context, 7);
-    expect(addPoint).toHaveBeenCalledWith(context, 4);
+    expect(addPoint).toHaveBeenCalledWith(context, 5);
     expect(response.body.singleResult.extensions).toEqual({
       traceId: "request-1",
       cost: {
         requestedQueryCost: 7,
-        actualQueryCost: 3,
+        actualQueryCost: 2,
         throttleStatus: restored,
       },
     });
@@ -216,11 +216,11 @@ describe("GraphQLRateLimitPlugin", () => {
   });
 
   it.each([
-    "{ connection(first: -1) { nodes { name } } }",
+    "{ connection { nodes { name } } }",
+    "{ connection(first: 1000) { nodes { name } } }",
     "{ connection(last: -1) { nodes { name } } }",
     "query($size: Int!) { connection(first: $size) { nodes { name } } }",
-    "{ first: connection(first: 1000) { nodes { name } } second: connection(first: -1000) { nodes { name } } }",
-  ])("rejects invalid pagination before charging points: %s", async (query) => {
+  ])("uses ordinary object cost for a Connection type: %s", async (query) => {
     const actual = await vi.importActual<
       typeof import("graphql-query-complexity/cjs")
     >("graphql-query-complexity/cjs");
@@ -231,10 +231,8 @@ describe("GraphQLRateLimitPlugin", () => {
       request: { variables: { size: -1 } },
       document: parse(query),
     } as unknown as GraphQLRequestContext<BaseContext>;
-    await expect(listener.didResolveOperation(context)).rejects.toMatchObject({
-      extensions: { code: "BAD_USER_INPUT" },
-    });
-    expect(subPoint).not.toHaveBeenCalled();
+    await listener.didResolveOperation(context);
+    expect(subPoint).toHaveBeenCalledWith(context, 2);
   });
 
   it("uses configured complexity options", async () => {

@@ -3,6 +3,15 @@ import rule from "./graphql-field-config-from-types.js";
 
 tester.run("graphql-field-config-from-types", rule, {
   valid: [
+    /* typescript */ `
+      @ObjectType()
+      class User {
+        static readonly complexity = 4;
+
+        @Field(() => String)
+        name!: string;
+      }
+    `,
     // Correct string type
     /* typescript */ `
       @ObjectType()

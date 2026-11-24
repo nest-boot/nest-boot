@@ -57,7 +57,7 @@ export class AdminUserResolver {
    * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated users matching the query.
    */
-  @Query(() => UserConnection, { complexity: UserConnection.getComplexity })
+  @Query(() => UserConnection)
   async users(
     @Args({ type: () => UserConnectionArgs })
     args: ConnectionArgsInterface<User>,

@@ -46,7 +46,7 @@ export function createConnection<Entity extends object>(
   fieldOptionsMap: Map<string, ConnectionFieldOptions<Entity>>,
   filterQuerySchema: ZodType<FilterQuery<Entity>>,
 ): Type<ConnectionInterface<Entity>> & {
-  readonly getComplexity: ComplexityEstimator;
+  readonly complexity: ComplexityEstimator;
 } {
   const pluralizeEntityName = pluralize(entityName);
 
@@ -60,7 +60,7 @@ export function createConnection<Entity extends object>(
     description: `An auto-generated type for paginating through multiple ${pluralizeEntityName}.`,
   })
   class Connection implements ConnectionInterface<Entity> {
-    static readonly getComplexity = createConnectionComplexity({
+    static readonly complexity = createConnectionComplexity({
       fieldOptionsMap,
       filterQuerySchema,
     });

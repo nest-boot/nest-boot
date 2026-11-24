@@ -1,5 +1,8 @@
 import js from "@eslint/js";
-import nestBootPlugin, { queuePlugin } from "@nest-boot/eslint-plugin";
+import nestBootPlugin, {
+  graphqlPlugin,
+  queuePlugin,
+} from "@nest-boot/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import prettierConfig from "eslint-config-prettier";
 import jsdoc from "eslint-plugin-jsdoc";
@@ -29,6 +32,7 @@ const config = [
     },
     plugins: {
       "@nest-boot": nestBootPlugin,
+      "@nest-boot/graphql": graphqlPlugin,
       "@nest-boot/queue": queuePlugin,
       "simple-import-sort": simpleImportSort,
     },
@@ -74,6 +78,7 @@ const config = [
       "@nest-boot/entity-property-config-from-types": "error",
       "@nest-boot/graphql-field-definite-assignment": "error",
       "@nest-boot/graphql-field-config-from-types": "error",
+      "@nest-boot/graphql/no-direct-nestjs-import": "error",
       "@nest-boot/queue/processor-name": "error",
     },
   },

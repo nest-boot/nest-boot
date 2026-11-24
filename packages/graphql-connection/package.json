@@ -50,6 +50,7 @@
     "@nest-boot/eslint-config": "workspace:^",
     "@nest-boot/eslint-plugin": "workspace:^",
     "@nest-boot/graphql": "workspace:^",
+    "@nest-boot/graphql-rate-limit": "workspace:^",
     "@nest-boot/request-context": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",
     "@nestjs/apollo": "^14.0.0",

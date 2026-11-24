@@ -1252,6 +1252,9 @@ importers:
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../graphql
+      '@nest-boot/graphql-rate-limit':
+        specifier: workspace:^
+        version: link:../graphql-rate-limit
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../request-context

@@ -112,9 +112,7 @@ export class WorkspaceApiKeyResolver {
    * @param info - GraphQL selection information.
    * @returns Authorized metadata belonging to this member only.
    */
-  @ResolveField(() => WorkspaceApiKeyConnection, {
-    complexity: WorkspaceApiKeyConnection.getComplexity,
-  })
+  @ResolveField(() => WorkspaceApiKeyConnection)
   apiKeys(
     @Parent() member: WorkspaceMember,
     @Args({ type: () => WorkspaceApiKeyConnectionArgs })

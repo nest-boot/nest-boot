@@ -36,9 +36,7 @@ export class UserWorkspaceResolver {
    * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated workspaces accessible to the user.
    */
-  @ResolveField(() => WorkspaceConnection, {
-    complexity: WorkspaceConnection.getComplexity,
-  })
+  @ResolveField(() => WorkspaceConnection)
   async workspaces(
     @Parent() user: User,
     @Args({ type: () => WorkspaceConnectionArgs })
@@ -59,9 +57,7 @@ export class UserWorkspaceResolver {
    * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated invitations visible to the current principal.
    */
-  @ResolveField(() => WorkspaceInvitationConnection, {
-    complexity: WorkspaceInvitationConnection.getComplexity,
-  })
+  @ResolveField(() => WorkspaceInvitationConnection)
   async invitations(
     @Parent() user: User,
     @Args({ type: () => WorkspaceInvitationConnectionArgs })

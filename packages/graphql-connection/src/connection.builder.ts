@@ -35,7 +35,7 @@ export type ConnectionBuildResult<Entity extends object> = {
   /** The generated Connection object type class. */
   Connection: GeneratedConnection<Entity>;
   /** The callback to use in a resolver field's complexity option. */
-  getComplexity: GeneratedConnection<Entity>["getComplexity"];
+  complexity: GeneratedConnection<Entity>["complexity"];
   /** The generated ConnectionArgs input type class. */
   ConnectionArgs: Type<ConnectionArgsInterface<Entity>>;
   /** The generated Edge object type class. */
@@ -79,13 +79,13 @@ export type ConnectionBuildResult<Entity extends object> = {
  * import { ConnectionBuilder } from "@nest-boot/graphql-connection";
  * import { User } from "./user.entity.js";
  *
- * const { Connection, ConnectionArgs, getComplexity } = new ConnectionBuilder(User)
+ * const { Connection, ConnectionArgs } = new ConnectionBuilder(User)
  *   .addField({ field: "name", type: "string", filterable: true, sortable: true })
  *   .addField({ field: "createdAt", type: "date", sortable: true })
  *   .build();
  *
  * // Use in resolver
- * @Query(() => Connection, { complexity: getComplexity })
+ * @Query(() => Connection)
  * async users(@Args() args: typeof ConnectionArgs) {
  *   return this.connectionManager.find(Connection, args);
  * }
@@ -211,7 +211,7 @@ export class ConnectionBuilder<Entity extends object> {
 
     return {
       Connection,
-      getComplexity: Connection.getComplexity,
+      complexity: Connection.complexity,
       ConnectionArgs,
       Edge,
       Filter,

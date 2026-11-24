@@ -511,7 +511,9 @@ To supply a custom Redis instance managed outside the rate limit module, pass `n
 
 ### Custom Complexity
 
-Use the `getComplexity` callback returned by `ConnectionBuilder.build()` as the list field’s `complexity` option. The generated connection class also exposes it as `Connection.getComplexity`. The callback prices the requested page size and charges once for the normalized `query` and `filter`. Each comparison and logical group costs one point. Array comparisons such as `$in` cost one point per value, with a minimum of one.
+Queries and nested fields returning a generated Connection use the type's `Connection.complexity` callback by default. A field's explicit `complexity` option takes precedence, including zero. When declaring a Connection subclass, use `ObjectType` from `@nest-boot/graphql` to register its inherited default in the schema.
+
+The rate limiter reserves one point per requested edge and settles that part of the cost using the number of edges returned by the resolver. This applies to cursor-only selections as well. The callback charges once for the normalized `query` and `filter`. Each comparison and logical group costs one point. Array comparisons such as `$in` cost one point per value, with a minimum of one.
 
 Each root mutation field has a default base cost of 10 points. The selected child fields add their costs, and explicitly configured field costs take precedence. Use `defaultMutationComplexity` to change the default base cost.
 

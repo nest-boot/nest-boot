@@ -40,6 +40,14 @@ class MutationPayload {
   details!: MutationDetails;
 }
 
+@ObjectType()
+class ReportSummary {
+  static readonly complexity = 4;
+
+  @Field(() => String, { complexity: 2 })
+  title!: string;
+}
+
 @Resolver()
 class TestResolver {
   @Query(() => String)
@@ -53,6 +61,21 @@ class TestResolver {
   })
   weighted(@Args("weight", { type: () => Int }) weight: number): string {
     return String(weight);
+  }
+
+  @Query(() => ReportSummary)
+  reportSummary(): ReportSummary {
+    return { title: "Summary" };
+  }
+
+  @Query(() => [ReportSummary])
+  reportSummaries(): ReportSummary[] {
+    return [this.reportSummary()];
+  }
+
+  @Mutation(() => ReportSummary)
+  refreshSummary(): ReportSummary {
+    return this.reportSummary();
   }
 
   @Mutation(() => Boolean)
@@ -118,6 +141,26 @@ describe("GraphQLRateLimitModule - e2e", () => {
       requestedQueryCost: 7,
       actualQueryCost: 7,
     });
+  });
+
+  it("uses an object type's default for single query results", async () => {
+    const app = await createApp(GraphQLRateLimitModule.forRoot({}));
+    apps.push(app);
+    const http = request(app.getHttpServer());
+
+    for (const [query, cost] of [
+      ["{ reportSummary { title } }", 6],
+      ["{ reportSummaries { title } }", 3],
+      ["mutation { refreshSummary { title } }", 12],
+    ] as const) {
+      const response = await http.post("/graphql").send({ query }).expect(200);
+      const body = response.body as GraphQLResponse;
+      expect(body.errors).toBeUndefined();
+      expect(body.extensions?.cost).toMatchObject({
+        requestedQueryCost: cost,
+        actualQueryCost: cost,
+      });
+    }
   });
 
   it("applies asynchronously configured maximum complexity", async () => {

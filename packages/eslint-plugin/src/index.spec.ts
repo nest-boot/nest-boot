@@ -1,4 +1,4 @@
-import plugin, { queuePlugin } from "./index.js";
+import plugin, { graphqlPlugin, queuePlugin } from "./index.js";
 
 describe("plugin public API", () => {
   it("should export the rule map through the plugin entrypoint", () => {
@@ -9,6 +9,12 @@ describe("plugin public API", () => {
 
   it("exposes queue rules through their own plugin namespace", () => {
     expect(Object.keys(queuePlugin.rules ?? {})).toEqual(["processor-name"]);
+  });
+
+  it("exposes the GraphQL import rule through its own plugin namespace", () => {
+    expect(Object.keys(graphqlPlugin.rules ?? {})).toEqual([
+      "no-direct-nestjs-import",
+    ]);
   });
 
   it("does not expose import migration rules", () => {

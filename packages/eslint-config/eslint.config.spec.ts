@@ -8,6 +8,9 @@ describe("eslint config", () => {
 
     expect(nestBootConfig).toBeDefined();
     expect(
+      Object.keys(nestBootConfig?.plugins?.["@nest-boot/graphql"]?.rules ?? {}),
+    ).toEqual(["no-direct-nestjs-import"]);
+    expect(
       Object.keys(nestBootConfig?.plugins?.["@nest-boot/queue"]?.rules ?? {}),
     ).toEqual(["processor-name"]);
     expect(nestBootConfig?.languageOptions?.parserOptions).toMatchObject({
@@ -19,6 +22,7 @@ describe("eslint config", () => {
       "@nest-boot/entity-property-config-from-types": "error",
       "@nest-boot/graphql-field-definite-assignment": "error",
       "@nest-boot/graphql-field-config-from-types": "error",
+      "@nest-boot/graphql/no-direct-nestjs-import": "error",
       "@nest-boot/queue/processor-name": "error",
       curly: ["error", "all"],
       "simple-import-sort/exports": "error",

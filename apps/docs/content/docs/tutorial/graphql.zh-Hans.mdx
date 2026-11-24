@@ -510,7 +510,9 @@ export class CommonModule {}
 
 ### 自定义复杂度
 
-将 `ConnectionBuilder.build()` 返回的 `getComplexity` 用作列表字段的 `complexity` 回调。生成的 Connection 类也提供 `Connection.getComplexity`。回调根据每页条数估算分页成本，并按一次归一化后的 `query` 和 `filter` 计费。每个比较和逻辑组计 1 点，`$in` 等数组比较按元素计费，最低 1 点。
+查询和嵌套字段返回生成的 Connection 时，默认使用类型上的 `Connection.complexity` 回调。字段显式设置的 `complexity` 优先，包括 0。声明 Connection 子类时，使用 `@nest-boot/graphql` 的 `ObjectType` 将继承的默认成本注册到 Schema。
+
+限流器按请求条数为每条边预留 1 点，再根据 resolver 实际返回的边数结算这部分成本。只查询游标时也适用。回调按一次归一化后的 `query` 和 `filter` 计费。每个比较和逻辑组计 1 点，`$in` 等数组比较按元素计费，最低 1 点。
 
 每个根 mutation 字段的基础成本默认为 10 点，所选子字段的成本另计。字段显式配置的成本优先。可通过 `defaultMutationComplexity` 调整默认基础成本。
 
