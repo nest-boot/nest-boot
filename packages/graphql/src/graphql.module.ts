@@ -27,7 +27,8 @@ import { type GraphQLModuleOptions } from "./graphql-module-options.interface.js
       inject: [MODULE_OPTIONS_TOKEN],
       useFactory: (options: GraphQLModuleOptions) => {
         return {
-          path: "/api/graphql",
+          path: "/graphql",
+          useGlobalPrefix: true,
           autoSchemaFile: "schema.gql",
           sortSchema: true,
           graphiql: true,

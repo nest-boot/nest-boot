@@ -36,7 +36,7 @@ export class AppModule {}
 
 模块自动配置 Apollo Server 的合理默认值：
 
-- 端点路径 `/api/graphql`
+- 默认端点路径 `/graphql`，遵循 NestJS 全局前缀
 - 代码优先自动生成 Schema（`schema.gql`）
 - Schema 排序输出
 - 全局 `GraphQLExceptionFilter` 错误处理
@@ -55,6 +55,28 @@ const GraphQLDynamicModule = GraphQLModule.forRootAsync({
   }),
 });
 ```
+
+### 全局前缀
+
+Nest Boot 默认配置为 `path: "/graphql"` 和 `useGlobalPrefix: true`，由官方
+`@nestjs/graphql` driver 应用全局前缀，无需手动拼接。
+未设置全局前缀时，端点为 `/graphql`。
+
+```typescript
+GraphQLModule.forRoot({});
+// 在 bootstrap 中：
+app.setGlobalPrefix("api");
+// 端点：/api/graphql
+```
+
+`forRoot` 和 `forRootAsync` 均可覆盖这两个默认值。
+设置 `useGlobalPrefix: false` 可让 GraphQL 端点不受全局前缀影响；
+通过 `path` 可修改相对路由。上游 `@nestjs/graphql` 默认不启用
+`useGlobalPrefix`，Nest Boot 在此基础上默认开启。
+
+未设置全局前缀的应用升级时，需将客户端地址更新为 `/graphql`。
+若要保留原来的固定端点，可显式配置
+`{ path: "/api/graphql", useGlobalPrefix: false }`。
 
 ## 定义类型
 

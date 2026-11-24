@@ -16,6 +16,28 @@ describe("MetricsModule HTTP integration", () => {
     await Promise.all(apps.splice(0).map((app) => app.close()));
   });
 
+  it.each(["api", "v2/nested"])(
+    "follows the global prefix %s",
+    async (prefix) => {
+      const moduleRef = await Test.createTestingModule({
+        imports: [MetricsModule],
+      }).compile();
+      const app = moduleRef.createNestApplication();
+      apps.push(app);
+      app.setGlobalPrefix(prefix);
+      await app.init();
+
+      const response = await request(app.getHttpServer())
+        .get(`/${prefix}/metrics`)
+        .expect(200);
+      expect(response.text).toContain("process_cpu_user_seconds_total");
+      expect(normalizeContentType(response.headers["content-type"])).toEqual(
+        normalizeContentType(app.get(Registry).contentType),
+      );
+      await request(app.getHttpServer()).get("/metrics").expect(404);
+    },
+  );
+
   it("should expose default metrics from a statically registered module", async () => {
     const response = await getMetrics(MetricsModule);
 

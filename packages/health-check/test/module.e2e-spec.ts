@@ -57,7 +57,7 @@ describe("HealthCheckModule HTTP integration", () => {
     expect(app.get(FeatureChecks).registry).toBe(app.get(HealthCheckRegistry));
 
     const response = await request(app.getHttpServer())
-      .get("/api/health")
+      .get("/health")
       .expect("Cache-Control", "no-cache, no-store, must-revalidate")
       .expect(200);
     expect(response.body).toEqual({
@@ -66,7 +66,7 @@ describe("HealthCheckModule HTTP integration", () => {
       error: {},
       details: { feature: { status: "up" } },
     });
-    await request(app.getHttpServer()).get("/health").expect(404);
+    await request(app.getHttpServer()).get("/api/health").expect(404);
   });
 
   it("returns 503 when an indicator fails and recovers on the next request", async () => {
@@ -75,7 +75,7 @@ describe("HealthCheckModule HTTP integration", () => {
     checks.healthy = false;
 
     const failed = await request(app.getHttpServer())
-      .get("/api/health")
+      .get("/health")
       .expect("Cache-Control", "no-cache, no-store, must-revalidate")
       .expect(503);
     expect(failed.body).toEqual({
@@ -86,7 +86,7 @@ describe("HealthCheckModule HTTP integration", () => {
     });
 
     checks.healthy = true;
-    await request(app.getHttpServer()).get("/api/health").expect(200);
+    await request(app.getHttpServer()).get("/health").expect(200);
   });
 
   it("keeps independently bootstrapped application registries isolated", async () => {
@@ -96,29 +96,42 @@ describe("HealthCheckModule HTTP integration", () => {
       .get(HealthCheckRegistry)
       .register(() => ({ extra: { status: "down" } }));
 
-    await request(first.getHttpServer()).get("/api/health").expect(503);
+    await request(first.getHttpServer()).get("/health").expect(503);
     const response = await request(second.getHttpServer())
-      .get("/api/health")
+      .get("/health")
       .expect(200);
     expect(response.body.details).toEqual({ feature: { status: "up" } });
   });
 
-  it("keeps /api/health with a global prefix when excluded as documented", async () => {
+  it.each(["api", "v2/nested"])(
+    "follows the global prefix %s",
+    async (prefix) => {
+      const app = await createApp((app) => app.setGlobalPrefix(prefix));
+
+      await request(app.getHttpServer()).get(`/${prefix}/health`).expect(200);
+      await request(app.getHttpServer()).get("/health").expect(404);
+      await request(app.getHttpServer())
+        .get(`/${prefix}/api/health`)
+        .expect(404);
+    },
+  );
+
+  it("supports explicit global prefix exclusions", async () => {
     const app = await createApp((app) => {
       app.setGlobalPrefix("api", {
-        exclude: [{ path: "api/health", method: RequestMethod.GET }],
+        exclude: [{ path: "health", method: RequestMethod.GET }],
       });
     });
 
-    await request(app.getHttpServer()).get("/api/health").expect(200);
-    await request(app.getHttpServer()).get("/api/api/health").expect(404);
+    await request(app.getHttpServer()).get("/health").expect(200);
+    await request(app.getHttpServer()).get("/api/health").expect(404);
   });
 
   it("returns a healthy result when no indicators are registered", async () => {
     const app = await createApp(undefined, false);
 
     const response = await request(app.getHttpServer())
-      .get("/api/health")
+      .get("/health")
       .expect(200);
     expect(response.body).toEqual({
       status: "ok",
@@ -141,22 +154,21 @@ describe("HealthCheckModule HTTP integration", () => {
         (app) => {
           app.useGlobalGuards({ canActivate });
           if (withPrefix) {
-            app.setGlobalPrefix("api", {
-              exclude: [{ path: "api/health", method: RequestMethod.GET }],
-            });
+            app.setGlobalPrefix("api");
           }
         },
         true,
         authentication,
       );
 
-      await request(app.getHttpServer()).get("/api/health").expect(200);
+      const healthPath = withPrefix ? "/api/health" : "/health";
+      await request(app.getHttpServer()).get(healthPath).expect(200);
       expect(authentication).toHaveBeenCalled();
       expect(canActivate).not.toHaveBeenCalled();
 
       authentication.mockClear();
       app.get(FeatureChecks).healthy = false;
-      await request(app.getHttpServer()).get("/api/health").expect(503);
+      await request(app.getHttpServer()).get(healthPath).expect(503);
       expect(authentication).toHaveBeenCalled();
       expect(canActivate).not.toHaveBeenCalled();
 
@@ -175,8 +187,8 @@ describe("HealthCheckModule HTTP integration", () => {
     });
     const app = await createApp(undefined, true, authentication);
 
-    await request(app.getHttpServer()).post("/api/health").expect(404);
-    await request(app.getHttpServer()).get("/api/health/extra").expect(404);
+    await request(app.getHttpServer()).post("/health").expect(404);
+    await request(app.getHttpServer()).get("/health/extra").expect(404);
     expect(authentication).toHaveBeenCalledTimes(2);
   });
 
@@ -187,7 +199,7 @@ describe("HealthCheckModule HTTP integration", () => {
     });
 
     const response = await request(app.getHttpServer())
-      .get("/api/health")
+      .get("/health")
       .expect("Cache-Control", "no-cache, no-store, must-revalidate")
       .expect(500);
     expect(response.body).toEqual({
@@ -203,7 +215,7 @@ describe("HealthCheckModule HTTP integration", () => {
     const check = vi.fn(() => ({ extra: { status: "up" as const } }));
     app.get(HealthCheckRegistry).register(check);
 
-    await request(app.getHttpServer()).get("/api/health").expect(401);
+    await request(app.getHttpServer()).get("/health").expect(401);
     expect(check).not.toHaveBeenCalled();
   });
 

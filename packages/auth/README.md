@@ -8,6 +8,29 @@ The example's handwritten `Initial` migration creates roles and default
 privileges; generated migrations create and evolve tables and RLS policies.
 Apply the complete migration sequence to a fresh database.
 
+## HTTP prefix
+
+Auth endpoints default to `/auth` and follow the NestJS global prefix. Configure
+`app.setGlobalPrefix("api")` before initialization to expose `/api/auth`.
+`basePath` is relative to that prefix; for example, `/identity` becomes
+`/api/identity`. Synchronous and asynchronous registration share this behavior.
+Better Auth initializes after the host configures its prefix, so HTTP handlers,
+session endpoints, OAuth callbacks, and authentication email links use the same
+path. The default example needs no prefix exclusions.
+
+To exclude the entire auth subtree, configure
+`app.setGlobalPrefix("api", { exclude: ["auth", "auth/{*path}"] })`.
+Use the public origin for `baseURL`, `AUTH_URL`, or its `APP_URL` fallback, such
+as `https://example.com`. A full URL with a pathname is accepted only when that
+pathname matches the effective auth path (for example,
+`https://example.com/api/auth` with the `api` global prefix). Conflicting paths
+are rejected during startup instead of silently overriding the middleware mount. If the selected framework URL is unset or empty, Better Auth's own environment
+fallbacks, including `BETTER_AUTH_URL`, are resolved and checked against the same
+mount before the backend is created.
+
+Applications without a prefix must update clients and provider callback URLs from
+`/api/auth` to `/auth`, or explicitly configure `basePath: "/api/auth"`.
+
 ## Source organization
 
 Auth source lives in `common`, `core`, `workspace`, `admin`, and `api-key` feature directories. Each feature retains its own `entities`, `services`, `resolvers`, `inputs`, `objects`, and supporting layers. Unit tests use the tested file's name and sit beside it; HTTP, database and application-bootstrap tests remain under `test`.

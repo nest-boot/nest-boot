@@ -157,7 +157,7 @@ describe("Job queries over HTTP with Redis and PostgreSQL", () => {
     query: string,
     variables: Record<string, unknown> = {},
   ) {
-    const response = await fetch(`${await app.getUrl()}/api/graphql`, {
+    const response = await fetch(`${await app.getUrl()}/graphql`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ query, variables }),

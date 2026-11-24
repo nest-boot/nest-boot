@@ -6,7 +6,7 @@ import { HealthCheckMiddleware } from "./health-check.middleware.js";
 import { HealthCheckService } from "./health-check.service.js";
 import { HealthCheckRegistry } from "./health-check-registry.service.js";
 
-/** Provides a shared health check registry, service, and GET /api/health middleware. */
+/** Provides a shared health check registry, service, and GET /health middleware following the global prefix. */
 @Global()
 @Module({
   imports: [TerminusModule, MiddlewareModule],
@@ -25,6 +25,6 @@ export class HealthCheckModule {
   ) {
     middlewareManager
       .apply(healthCheckMiddleware)
-      .forRoutes({ path: "api/health", method: RequestMethod.GET });
+      .forRoutes({ path: "health", method: RequestMethod.GET });
   }
 }

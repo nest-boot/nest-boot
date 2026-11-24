@@ -52,7 +52,7 @@ The module automatically:
 - creates the internal Better Auth instance with the MikroORM adapter;
 - hashes credential passwords through the global `HashModule`;
 - sends built-in verification and password-reset messages through `MailerModule`;
-- mounts authentication endpoints at `/api/auth/`;
+- mounts authentication endpoints at `/auth`, following the NestJS global prefix;
 - resolves sessions, workspaces, members, and API keys into `RequestContext`;
 - provides authentication, session, administration, workspace, and API-key services.
 

@@ -111,7 +111,7 @@ export class AppModule {}
 ```
 
 Declare `@nest-boot/health-check` at the matching Nest Boot version and
-`@nestjs/terminus@^12` in the application. `GET /api/health` then includes the
+`@nestjs/terminus@^12` in the application. `GET /health` then includes the
 `mailer` result: HTTP 200 when checks succeed, or HTTP 503 when a registered check
 fails. Register SMTP only when email availability should affect readiness;
 importing the two modules alone leaves the existing checks unchanged.

@@ -36,7 +36,7 @@ export class AppModule {}
 
 The module auto-configures Apollo Server with sensible defaults:
 
-- Endpoint at `/api/graphql`
+- Endpoint at `/graphql`, following the NestJS global prefix by default
 - Code-first auto-generated schema (`schema.gql`)
 - Sorted schema output
 - Global `GraphQLExceptionFilter` for error handling
@@ -55,6 +55,28 @@ const GraphQLDynamicModule = GraphQLModule.forRootAsync({
   }),
 });
 ```
+
+### Global Prefix
+
+Nest Boot defaults to `path: "/graphql"` and `useGlobalPrefix: true`. The official
+`@nestjs/graphql` driver applies the application prefix; no manual prefix
+concatenation is needed. Without a global prefix, the endpoint is `/graphql`.
+
+```typescript
+GraphQLModule.forRoot({});
+// In bootstrap:
+app.setGlobalPrefix("api");
+// Endpoint: /api/graphql
+```
+
+Both defaults can be overridden with `forRoot` or `forRootAsync`. Set
+`useGlobalPrefix: false` to serve GraphQL outside the application prefix, or
+configure `path` to change its relative route. Unlike Nest Boot, upstream
+`@nestjs/graphql` requires explicitly enabling `useGlobalPrefix`.
+
+When upgrading an application without a global prefix, update clients to use
+`/graphql`. To preserve the previous fixed endpoint, configure
+`{ path: "/api/graphql", useGlobalPrefix: false }`.
 
 ## Defining Types
 

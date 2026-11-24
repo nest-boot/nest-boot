@@ -137,7 +137,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     await app.listen(0, "127.0.0.1");
     baseURL = await app.getUrl();
     const signup = async (email: string) => {
-      const response = await fetch(baseURL + "/api/auth/sign-up/email", {
+      const response = await fetch(baseURL + "/auth/sign-up/email", {
         method: "POST",
         headers: {
           "content-type": "application/json",

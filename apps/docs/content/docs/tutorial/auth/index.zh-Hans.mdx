@@ -50,7 +50,7 @@ export class CommonModule {}
 - 使用 MikroORM 适配器创建内部 Better Auth 实例；
 - 通过全局 `HashModule` 对凭据密码进行哈希与验证；
 - 通过 `MailerModule` 发送内置的验证和密码重置邮件；
-- 在 `/api/auth/` 挂载认证端点；
+- 在 `/auth` 挂载认证端点，并遵循 NestJS 全局前缀；
 - 将会话、工作区、成员与 API Key 解析到 `RequestContext`；
 - 提供身份认证、会话、用户管理、工作区与 API Key 服务。
 

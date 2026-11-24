@@ -272,7 +272,7 @@ describe("workspace selection independently of authentication", () => {
     await orm.schema.create();
     await app.listen(0, "127.0.0.1");
     url = await app.getUrl();
-    const signup = await fetch(url + "/api/auth/sign-up/email", {
+    const signup = await fetch(url + "/auth/sign-up/email", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

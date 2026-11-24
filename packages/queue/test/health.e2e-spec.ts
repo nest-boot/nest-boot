@@ -81,7 +81,7 @@ describe("Queue health HTTP integration", () => {
    * @returns HTTP status and body returned by the health endpoint.
    */
   async function health() {
-    const response = await fetch(`${await app.getUrl()}/api/health`);
+    const response = await fetch(`${await app.getUrl()}/health`);
     const body: unknown = await response.json();
     return { status: response.status, body };
   }

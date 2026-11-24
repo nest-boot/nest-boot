@@ -63,10 +63,32 @@ AuthModule.forRoot({
 - **`apiKey.workspace`** — 成员 Key 的默认权限与授予上限；
 - **`apiKey.system`** — 系统账户 Key 的独立开关、默认权限与授予上限；
 - **`middleware`** — 控制认证中间件的注册和路由范围；
-- **`basePath`** — 修改默认的 `/api/auth/` 认证端点路径；
+- **`basePath`** — 修改默认的 `/auth` 相对认证路径，遵循 NestJS 全局前缀；
 - **`trustedOrigins`** — 配置允许的浏览器来源；
 - **`account`** — 配置 OAuth 账号关联、存储与 state 校验；
 - **`providers`** — 配置内置社交、自定义 OAuth 2.0 与 OpenID Connect Provider。
+
+### 全局前缀
+
+默认相对路径为 `/auth`。在 `app.init()` 或 `app.listen()` 前调用
+`app.setGlobalPrefix("api")`，认证端点将位于 `/api/auth`。
+自定义 `basePath` 同样跟随前缀，例如 `{ basePath: "/identity" }`
+将挂载到 `/api/identity`。`forRootAsync()` 支持相同配置。
+
+中间件和 Better Auth 使用同一最终路径，保证认证、会话、OAuth 回调和邮件链接一致。
+若要将认证端点排除在全局前缀之外，可配置整个子树：
+`app.setGlobalPrefix("api", { exclude: ["auth", "auth/{*path}"] })`。
+
+`baseURL`、`AUTH_URL` 及其备用值 `APP_URL` 建议使用公开 origin，例如
+`https://example.com`。若 URL 包含路径，该路径必须与最终认证路径一致，
+例如 `api` 全局前缀下的 `https://example.com/api/auth`。
+路径冲突会在启动时报告错误，避免 Better Auth 覆盖中间件挂载路径。
+最终选中的框架 URL 为空或未设置时，会继续读取 Better Auth 的环境变量回退
+（包括 `BETTER_AUTH_URL`），并在创建认证后端前执行相同的路径校验。
+
+未设置全局前缀的应用升级时，需将客户端地址和 Provider 回调 URL 更新为 `/auth`，
+或显式设置 `basePath: "/api/auth"`。使用 `api` 全局前缀的应用应移除旧的
+`api/auth` 排除配置，以及 `basePath` 中重复的 `api` 段。
 
 开启工作区时，`user.permissions` 默认包含 `user:*`、`session:*`、`user-api-key:*` 与 `workspace:create`。
 `user.roles` 默认包含 `admin` 与 `user` 两个角色。`admin` 拥有完整默认权限目录，
