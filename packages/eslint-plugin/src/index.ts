@@ -2,6 +2,7 @@ import type { ESLint } from "eslint";
 
 import graphqlFieldConfigFromTypes from "./rules/graphql/graphql-field-config-from-types.js";
 import graphqlFieldDefiniteAssignment from "./rules/graphql/graphql-field-definite-assignment.js";
+import noDirectNestjsImport from "./rules/graphql/no-direct-nestjs-import.js";
 import entityPropertyConfigFromTypes from "./rules/mikro-orm/entity-property-config-from-types.js";
 import entityPropertyDefiniteAssignment from "./rules/mikro-orm/entity-property-definite-assignment.js";
 import entityPropertyNoSpread from "./rules/mikro-orm/entity-property-no-spread.js";
@@ -21,6 +22,7 @@ export const graphqlPlugin = {
   rules: {
     "field-config-from-types": graphqlFieldConfigFromTypes,
     "field-definite-assignment": graphqlFieldDefiniteAssignment,
+    "no-direct-nestjs-import": noDirectNestjsImport,
   },
 } as unknown as ESLint.Plugin;
 

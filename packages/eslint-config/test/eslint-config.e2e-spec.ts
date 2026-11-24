@@ -177,6 +177,30 @@ export class EmailProcessor {}
     ).toEqual([]);
   });
 
+  it("requires the Nest Boot GraphQL entry point in consuming projects", async () => {
+    const validFile = join(fixtureDirectory, "resolver.ts");
+    const invalidFile = join(fixtureDirectory, "upstream-resolver.ts");
+    await Promise.all([
+      writeFile(validFile, 'export { Query } from "@nest-boot/graphql";\n'),
+      writeFile(invalidFile, 'export { Query } from "@nestjs/graphql";\n'),
+    ]);
+    const eslint = new ESLint({
+      cwd: fixtureDirectory,
+      overrideConfig: config,
+      overrideConfigFile: true,
+    });
+
+    const [valid, invalid] = await eslint.lintFiles([validFile, invalidFile]);
+
+    expect(valid?.messages).toEqual([]);
+    expect(invalid?.messages).toEqual([
+      expect.objectContaining({
+        ruleId: "@nest-boot/graphql/no-direct-nestjs-import",
+        severity: 2,
+      }),
+    ]);
+  });
+
   it.each([
     ["@typeParam T - The value type.", "jsdoc/check-tag-names"],
     ["@param {T} value - The value to return.", "jsdoc/no-types"],

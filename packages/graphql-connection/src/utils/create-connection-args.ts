@@ -4,6 +4,7 @@ import { type Type } from "@nestjs/common";
 import { GraphQLScalarType } from "graphql";
 import { humanize, pluralize } from "inflection";
 
+import { MAX_CONNECTION_PAGE_SIZE } from "../graphql-connection.constants.js";
 import type {
   ConnectionArgsInterface,
   ConnectionFieldOptions,
@@ -64,13 +65,13 @@ export function createConnectionArgs<Entity extends object>(
 
     @Field(() => Int, {
       nullable: true,
-      description: "Returns up to the first `n` elements from the list.",
+      description: `Returns up to the first \`n\` elements from the list. Use a value from 1 to ${String(MAX_CONNECTION_PAGE_SIZE)}.`,
     })
     first?: number | null;
 
     @Field(() => Int, {
       nullable: true,
-      description: "Returns up to the last `n` elements from the list.",
+      description: `Returns up to the last \`n\` elements from the list. Use a value from 1 to ${String(MAX_CONNECTION_PAGE_SIZE)}.`,
     })
     last?: number | null;
 

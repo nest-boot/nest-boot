@@ -218,7 +218,27 @@ describe("ConnectionQueryBuilder", () => {
     });
   });
 
-  it.each([-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+  it.each([
+    [{ first: 1 }, 2, QueryOrder.ASC],
+    [{ last: 1 }, 2, QueryOrder.DESC],
+    [{ first: 100 }, 101, QueryOrder.ASC],
+    [{ last: 100 }, 101, QueryOrder.DESC],
+  ])("accepts boundary page sizes %j", async (args, limit, direction) => {
+    const { entityManager, findAll } = createEntityManager();
+
+    await new ConnectionQueryBuilder(
+      entityManager,
+      BookConnection as unknown as ConnectionClass<Book>,
+      args,
+    ).query();
+
+    expect(findAll).toHaveBeenCalledWith(BookEntity, {
+      limit,
+      orderBy: [{ id: direction }],
+    });
+  });
+
+  it.each([-1, 0, 1.5, 101, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
     "rejects invalid page sizes %s before database access",
     (size) => {
       const { entityManager, find, findAll, createQueryBuilder } =
@@ -235,7 +255,7 @@ describe("ConnectionQueryBuilder", () => {
               BookConnection as unknown as ConnectionClass<Book>,
               args,
             ),
-        ).toThrow("non-negative safe integer");
+        ).toThrow("must be an integer between 1 and 100");
       }
       expect(find).not.toHaveBeenCalled();
       expect(findAll).not.toHaveBeenCalled();
@@ -579,32 +599,30 @@ describe("ConnectionQueryBuilder", () => {
     );
   });
 
-  it("rejects ambiguous pagination arguments", () => {
-    const { entityManager } = createEntityManager();
+  it.each([
+    [{}, "Provide exactly one of first or last"],
+    [{ first: null, last: null }, "Provide exactly one of first or last"],
+    [{ first: 1, last: 1 }, "Provide exactly one of first or last"],
+    [{ after: "cursor" }, "Provide exactly one of first or last"],
+    [{ before: "cursor" }, "Provide exactly one of first or last"],
+    [
+      { first: 1, before: "cursor" },
+      "Use after with first and before with last",
+    ],
+    [{ last: 1, after: "cursor" }, "Use after with first and before with last"],
+  ])("rejects invalid pagination arguments %o", (args, message) => {
+    const { entityManager, find, findAll } = createEntityManager();
 
     expect(
       () =>
         new ConnectionQueryBuilder(
           entityManager,
           BookConnection as unknown as ConnectionClass<Book>,
-          {
-            first: 1,
-            before: new Cursor({ id: 1 }).toString(),
-          },
+          args,
         ),
-    ).toThrow("paging must use either first/after or last/before");
-
-    expect(
-      () =>
-        new ConnectionQueryBuilder(
-          entityManager,
-          BookConnection as unknown as ConnectionClass<Book>,
-          {
-            first: 1,
-            last: 1,
-          },
-        ),
-    ).toThrow("cursor-based pagination cannot be forwards AND backwards");
+    ).toThrow(message);
+    expect(find).not.toHaveBeenCalled();
+    expect(findAll).not.toHaveBeenCalled();
   });
 
   it("requires connection metadata", () => {

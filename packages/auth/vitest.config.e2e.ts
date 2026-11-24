@@ -4,7 +4,12 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
-    alias: { graphql: fileURLToPath(import.meta.resolve("graphql")) },
+    alias: [
+      {
+        find: /^graphql$/,
+        replacement: fileURLToPath(import.meta.resolve("graphql")),
+      },
+    ],
   },
   plugins: [tsconfigPaths()],
   test: {

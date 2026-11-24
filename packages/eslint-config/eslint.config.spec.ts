@@ -43,6 +43,7 @@ describe("eslint config", () => {
       "@nest-boot/database/entity-property-no-spread": "error",
       "@nest-boot/graphql/field-config-from-types": "error",
       "@nest-boot/graphql/field-definite-assignment": "error",
+      "@nest-boot/graphql/no-direct-nestjs-import": "error",
       "@nest-boot/queue/processor-name": "error",
     });
   });

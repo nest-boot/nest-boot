@@ -21,6 +21,7 @@ vi.mock("@nestjs/graphql", async () => {
 
   return {
     Args: decorator,
+    Extensions: decorator,
     Field: decorator,
     GraphQLModule: MockBaseGraphQLModule,
     InputType: decorator,

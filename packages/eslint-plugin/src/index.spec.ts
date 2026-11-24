@@ -17,6 +17,7 @@ describe("plugin public API", () => {
     expect(Object.keys(graphqlPlugin.rules ?? {}).sort()).toEqual([
       "field-config-from-types",
       "field-definite-assignment",
+      "no-direct-nestjs-import",
     ]);
   });
 

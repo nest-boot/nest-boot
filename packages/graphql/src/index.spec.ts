@@ -22,6 +22,7 @@ vi.mock("@nestjs/graphql", async () => {
   return {
     Args: decorator,
     ArgsType: decorator,
+    Extensions: decorator,
     Field: decorator,
     GraphQLModule: MockBaseGraphQLModule,
     InputType: decorator,
@@ -35,7 +36,7 @@ vi.mock("@nestjs/graphql", async () => {
   };
 });
 
-import { ArgsType } from "@nestjs/graphql";
+import { ArgsType, ObjectType } from "@nestjs/graphql";
 import { GraphQLError } from "graphql";
 
 import { GraphQLModule } from "./graphql.module.js";
@@ -44,6 +45,7 @@ import * as publicApi from "./index.js";
 describe("public API", () => {
   it("should expose local and upstream GraphQL helpers", () => {
     expect(publicApi.ArgsType).toBe(ArgsType);
+    expect(publicApi.ObjectType).toBe(ObjectType);
     expect(publicApi.GraphQLModule).toBe(GraphQLModule);
     expect(publicApi.Plugin).toBeDefined();
     expect(publicApi.Query).toBeDefined();

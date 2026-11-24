@@ -54,7 +54,7 @@ export const {
 ### Using in Resolvers
 
 ```typescript
-import { Args, Info, Query, Resolver } from "@nestjs/graphql";
+import { Args, Info, Query, Resolver } from "@nest-boot/graphql";
 import { ConnectionManager } from "@nest-boot/graphql-connection";
 import type { GraphQLResolveInfo } from "graphql";
 import { UserConnection, UserConnectionArgs } from "./user.connection";
@@ -105,7 +105,9 @@ and named-type lookup helpers have been removed.
 
 ## Pagination
 
-Supports both forward (`first`/`after`) and backward (`last`/`before`) pagination.
+Supply exactly one of `first` and `last` with an integer from 1 to 100. Use `after` with `first` or `before` with `last`. Missing, conflicting, or out-of-range paging arguments return `BAD_USER_INPUT`.
+
+If a field returns a generated Connection with a custom pagination contract, set that field's `complexity` explicitly to price its page size and results.
 
 ## Filtering
 

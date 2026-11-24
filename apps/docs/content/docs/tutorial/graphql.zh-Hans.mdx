@@ -357,7 +357,7 @@ export class UserResolver {
 
 ### 分页
 
-客户端支持正向和反向分页：
+查询必须且只能提供 `first` 或 `last`，且值为 1 至 100 的整数。`after` 搭配 `first`，`before` 搭配 `last`。分页参数缺失、冲突或超出范围时返回 `BAD_USER_INPUT`。
 
 ```graphql
 # 正向分页
@@ -510,7 +510,25 @@ export class CommonModule {}
 
 ### 自定义复杂度
 
-每个根 mutation 字段的基础成本默认为 10 点，所选子字段的成本另计。字段显式配置的成本优先。可通过 `defaultMutationComplexity` 调整默认基础成本。
+使用 `@nest-boot/graphql` 的 `GraphQLModule` 时，`Query`、`Mutation`、`ResolveField` 和 `Field` 对返回单个具体对象的字段默认使用返回类型上的静态 `complexity`。生成的 Connection 及其子类提供这个回调。要自定义列表成本或覆盖自动推断的默认值，请显式设置 `complexity`，包括设为 0。
+
+限流器按请求条数为每条边预留 1 点，再根据 resolver 实际返回的边数结算这部分成本。只查询游标时也适用。回调按一次归一化后的 `query` 和 `filter` 计费。每个比较和逻辑组计 1 点，`$in` 等数组比较按元素计费，最低 1 点。
+
+resolver 成功后，自定义 `complexity` 回调在结算阶段通过 `resolved.result` 读取 GraphQL 序列化前的返回值，结果可能是 `null` 或 `undefined`。使用 `@nest-boot/graphql` 的 `Query`、`Mutation`、`ResolveField` 或 `Field` 时，结果类型沿用 NestJS `@Field` 的 `defaultValue` 推导规则。`ID` 和 `Int` 等标量引用推导为 `unknown`。
+
+使用 `defineComplexity` 可以定义并导出可复用的回调。第一个参数直接传入返回类型，再将回调传给字段的 `complexity` 选项。
+
+```typescript
+import { defineComplexity } from "@nest-boot/graphql";
+
+export const booksComplexity = defineComplexity(
+  [Book],
+  ({ childComplexity, resolved }) =>
+    resolved ? (resolved.result?.length ?? 0) : 10 * (1 + childComplexity),
+);
+```
+
+每个根 mutation 字段在结果成本之外默认加收 10 点基础费。可以在 `@Mutation` 上设置 `mutationComplexity` 来调整这个字段的基础费，包括设为 0。结果成本可以来自字段显式配置、返回类型的静态 `complexity`，或所选子字段。数值型 `complexity` 会与子字段成本相加，回调沿用查询字段的计费规则。
 
 使用 `@Complexity()` 装饰器生成 `@complexity` Schema 指令。可以设置基础值，以及用于乘算该值的参数名：
 

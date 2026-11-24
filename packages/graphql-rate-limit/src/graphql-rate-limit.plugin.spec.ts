@@ -5,6 +5,7 @@ import { Test } from "@nestjs/testing";
 import {
   buildSchema,
   FieldNode,
+  getOperationAST,
   GraphQLResolveInfo,
   Kind,
   parse,
@@ -39,6 +40,7 @@ vi.mock("graphql-query-complexity/cjs", async () => {
 
 interface TestExecutionListener {
   willResolveField(args: {
+    args: Record<string, unknown>;
     info: GraphQLResolveInfo;
   }): (error: Error | null) => void;
 }
@@ -55,14 +57,19 @@ describe("GraphQLRateLimitPlugin", () => {
       name: String
     }
 
-    type ItemConnection {
-      nodes: [Item!]!
-    }
-
     type Query {
       hello: String!
       item: Item
-      connection(first: Int, last: Int): ItemConnection
+      failedItem: Item
+    }
+
+    type Mutation {
+      update: UpdateResult!
+    }
+
+    type UpdateResult {
+      status: String!
+      details: Item!
     }
   `);
   const document = parse(/* GraphQL */ `
@@ -71,8 +78,31 @@ describe("GraphQLRateLimitPlugin", () => {
       item {
         name
       }
-      connection(first: 2) {
-        nodes {
+      failedItem {
+        name
+      }
+    }
+  `);
+  const mutationDocument = parse(/* GraphQL */ `
+    query OtherOperation {
+      item {
+        name
+      }
+    }
+
+    mutation Update($include: Boolean!) {
+      update {
+        status
+      }
+      ...Repeated
+      optional: update @include(if: $include) {
+        status
+      }
+    }
+
+    fragment Repeated on Mutation {
+      update {
+        details {
           name
         }
       }
@@ -113,6 +143,12 @@ describe("GraphQLRateLimitPlugin", () => {
       ...options,
       ...overrides,
     });
+  const mutationContext = (include: boolean | null) =>
+    ({
+      request: { operationName: "Update", variables: { include } },
+      document: mutationDocument,
+      operation: getOperationAST(mutationDocument, "Update"),
+    }) as unknown as GraphQLRequestContext<BaseContext>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -121,7 +157,7 @@ describe("GraphQLRateLimitPlugin", () => {
     addPoint.mockResolvedValue(restored);
   });
 
-  it("charges requested cost, refunds unused cost, and reports throttle state", async () => {
+  it("settles successful fields, refunds unused cost, and reports throttle state", async () => {
     const response = {
       body: {
         kind: "single" as const,
@@ -151,7 +187,7 @@ describe("GraphQLRateLimitPlugin", () => {
       document.definitions[0].kind === Kind.OPERATION_DEFINITION
         ? document.definitions[0].selectionSet.selections
         : [];
-    for (const fieldName of ["hello", "item", "connection"]) {
+    for (const fieldName of ["hello", "item", "failedItem"]) {
       const fieldNode = selections.find(
         (selection): selection is FieldNode =>
           selection.kind === Kind.FIELD && selection.name.value === fieldName,
@@ -161,24 +197,25 @@ describe("GraphQLRateLimitPlugin", () => {
       }
 
       const endField = executionListener.willResolveField({
+        args: {},
         info: {
           parentType: queryType,
           fieldName,
           fieldNodes: [fieldNode],
         } as unknown as GraphQLResolveInfo,
       });
-      endField(null);
+      endField(fieldName === "failedItem" ? new Error("Item failed") : null);
     }
 
     await listener.willSendResponse(context);
 
     expect(subPoint).toHaveBeenCalledWith(context, 7);
-    expect(addPoint).toHaveBeenCalledWith(context, 4);
+    expect(addPoint).toHaveBeenCalledWith(context, 6);
     expect(response.body.singleResult.extensions).toEqual({
       traceId: "request-1",
       cost: {
         requestedQueryCost: 7,
-        actualQueryCost: 3,
+        actualQueryCost: 1,
         throttleStatus: restored,
       },
     });
@@ -198,6 +235,38 @@ describe("GraphQLRateLimitPlugin", () => {
     );
   });
 
+  it.each([
+    { include: false, cost: 11 },
+    { include: true, cost: 21 },
+  ])(
+    "reserves only the selected mutation fields with include=$include",
+    async ({ include, cost }) => {
+      const actual = await vi.importActual<
+        typeof import("graphql-query-complexity/cjs")
+      >("graphql-query-complexity/cjs");
+      mockedGetComplexity.mockImplementationOnce(actual.getComplexity);
+      const listener =
+        (await createPlugin().requestDidStart()) as TestRequestListener;
+      const context = mutationContext(include);
+
+      await listener.didResolveOperation(context);
+
+      expect(subPoint).toHaveBeenCalledWith(context, cost);
+    },
+  );
+
+  it("rejects invalid mutation directive variables before reserving any points", async () => {
+    const listener =
+      (await createPlugin().requestDidStart()) as TestRequestListener;
+
+    await expect(
+      listener.didResolveOperation(mutationContext(null)),
+    ).rejects.toThrow(
+      'Variable "$include" of non-null type "Boolean!" must not be null.',
+    );
+    expect(subPoint).not.toHaveBeenCalled();
+  });
+
   it("rejects overly complex requests before consuming driver points", async () => {
     mockedGetComplexity.mockReturnValue(1000);
     const context = {
@@ -210,28 +279,6 @@ describe("GraphQLRateLimitPlugin", () => {
     await expect(listener.didResolveOperation(context)).rejects.toThrow(
       "Query is too complex: 1000. Maximum allowed complexity: 1000",
     );
-    expect(subPoint).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    "{ connection(first: -1) { nodes { name } } }",
-    "{ connection(last: -1) { nodes { name } } }",
-    "query($size: Int!) { connection(first: $size) { nodes { name } } }",
-    "{ first: connection(first: 1000) { nodes { name } } second: connection(first: -1000) { nodes { name } } }",
-  ])("rejects invalid pagination before charging points: %s", async (query) => {
-    const actual = await vi.importActual<
-      typeof import("graphql-query-complexity/cjs")
-    >("graphql-query-complexity/cjs");
-    mockedGetComplexity.mockImplementationOnce(actual.getComplexity);
-    const listener =
-      (await createPlugin().requestDidStart()) as TestRequestListener;
-    const context = {
-      request: { variables: { size: -1 } },
-      document: parse(query),
-    } as unknown as GraphQLRequestContext<BaseContext>;
-    await expect(listener.didResolveOperation(context)).rejects.toMatchObject({
-      extensions: { code: "BAD_USER_INPUT" },
-    });
     expect(subPoint).not.toHaveBeenCalled();
   });
 

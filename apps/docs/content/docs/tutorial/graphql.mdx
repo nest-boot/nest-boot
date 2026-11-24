@@ -358,7 +358,7 @@ The third argument to `cm.find()` accepts additional `where` filters that are me
 
 ### Pagination
 
-Clients can use both forward and backward pagination:
+Supply exactly one of `first` and `last` with an integer from 1 to 100. Use `after` with `first` or `before` with `last`. Missing, conflicting, or out-of-range paging arguments return `BAD_USER_INPUT`.
 
 ```graphql
 # Forward pagination
@@ -511,7 +511,25 @@ To supply a custom Redis instance managed outside the rate limit module, pass `n
 
 ### Custom Complexity
 
-Each root mutation field has a default base cost of 10 points. The selected child fields add their costs, and explicitly configured field costs take precedence. Use `defaultMutationComplexity` to change the default base cost.
+With `GraphQLModule` from `@nest-boot/graphql`, `Query`, `Mutation`, `ResolveField`, and `Field` use the return type's static `complexity` as the default for fields that return a single concrete object. Generated Connections and their subclasses provide this callback. Use the explicit `complexity` option to customize list costs or override an inferred default, including setting it to zero.
+
+The rate limiter reserves one point per requested edge and settles that part of the cost using the number of edges returned by the resolver. This applies to cursor-only selections as well. The callback charges once for the normalized `query` and `filter`. Each comparison and logical group costs one point. Array comparisons such as `$in` cost one point per value, with a minimum of one.
+
+Custom `complexity` callbacks receive the resolver's value before GraphQL serialization through `resolved.result` during settlement. The result can be `null` or `undefined`. With `Query`, `Mutation`, `ResolveField`, or `Field` from `@nest-boot/graphql`, result inference follows NestJS's `@Field` default-value types. Scalar references such as `ID` and `Int` infer `unknown`.
+
+Use `defineComplexity` to export a reusable callback. Pass the return type reference directly and use the callback as the field's `complexity` option.
+
+```typescript
+import { defineComplexity } from "@nest-boot/graphql";
+
+export const booksComplexity = defineComplexity(
+  [Book],
+  ({ childComplexity, resolved }) =>
+    resolved ? (resolved.result?.length ?? 0) : 10 * (1 + childComplexity),
+);
+```
+
+Each root mutation field adds 10 points by default to its result cost. Set `mutationComplexity` on `@Mutation` to change that field's base cost, including setting it to zero. The result cost can come from explicit field complexity, the return type's static complexity, or the selected child fields. A numeric `complexity` adds to the child cost, and a callback uses the same rules as for queries.
 
 Use the `@Complexity()` decorator to emit a `@complexity` schema directive. Set a base value and optional argument names that multiply that value:
 

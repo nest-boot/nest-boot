@@ -7,7 +7,6 @@ import {
   ConnectionArgsInterface,
   ConnectionBuilderOptions,
   ConnectionFieldOptions,
-  ConnectionInterface,
   EdgeInterface,
   FieldOptions,
   OrderFieldType,
@@ -21,6 +20,10 @@ import {
   createOrder,
 } from "./utils/index.js";
 
+type GeneratedConnection<Entity extends object> = ReturnType<
+  typeof createConnection<Entity>
+>;
+
 /**
  * The result of building a connection with ConnectionBuilder.
  *
@@ -30,7 +33,7 @@ import {
  */
 export type ConnectionBuildResult<Entity extends object> = {
   /** The generated Connection object type class. */
-  Connection: Type<ConnectionInterface<Entity>>;
+  Connection: GeneratedConnection<Entity>;
   /** The generated ConnectionArgs input type class. */
   ConnectionArgs: Type<ConnectionArgsInterface<Entity>>;
   /** The generated Edge object type class. */
@@ -45,7 +48,7 @@ export type ConnectionBuildResult<Entity extends object> = {
   OrderField?: OrderFieldType<Entity>;
 } & Record<
   `${EntityClass<Entity>["name"]}Connection`,
-  Type<ConnectionInterface<Entity>>
+  GeneratedConnection<Entity>
 > &
   Record<
     `${EntityClass<Entity>["name"]}ConnectionArgs`,
@@ -74,7 +77,7 @@ export type ConnectionBuildResult<Entity extends object> = {
  * import { ConnectionBuilder } from "@nest-boot/graphql-connection";
  * import { User } from "./user.entity.js";
  *
- * const { Connection, ConnectionArgs, Edge } = new ConnectionBuilder(User)
+ * const { Connection, ConnectionArgs } = new ConnectionBuilder(User)
  *   .addField({ field: "name", type: "string", filterable: true, sortable: true })
  *   .addField({ field: "createdAt", type: "date", sortable: true })
  *   .build();

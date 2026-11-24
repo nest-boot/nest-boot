@@ -9,3 +9,6 @@
 export const GRAPHQL_CONNECTION_METADATA = Symbol(
   "GRAPHQL_CONNECTION_METADATA",
 );
+
+/** Maximum requested page size for a Connection. */
+export const MAX_CONNECTION_PAGE_SIZE = 100;

@@ -2,14 +2,15 @@
 
 Nest Boot 日常代码规范规则。`@nest-boot/eslint-config` 默认启用以下规则：
 
-| 规则                                                      | 用途                                      |
-| --------------------------------------------------------- | ----------------------------------------- |
-| `@nest-boot/database/entity-property-definite-assignment` | 检查实体字段的确定赋值断言                |
-| `@nest-boot/database/entity-property-config-from-types`   | 根据 TypeScript 类型检查实体字段配置      |
-| `@nest-boot/database/entity-property-no-spread`           | 要求实体属性装饰器显式列出配置选项        |
-| `@nest-boot/graphql/field-definite-assignment`            | 检查 GraphQL 字段的确定赋值断言           |
-| `@nest-boot/graphql/field-config-from-types`              | 根据 TypeScript 类型检查 GraphQL 字段配置 |
-| `@nest-boot/queue/processor-name`                         | 检查处理器名称与队列类名一致              |
+| 规则                                                      | 用途                                       |
+| --------------------------------------------------------- | ------------------------------------------ |
+| `@nest-boot/database/entity-property-definite-assignment` | 检查实体字段的确定赋值断言                 |
+| `@nest-boot/database/entity-property-config-from-types`   | 根据 TypeScript 类型检查实体字段配置       |
+| `@nest-boot/database/entity-property-no-spread`           | 要求实体属性装饰器显式列出配置选项         |
+| `@nest-boot/graphql/field-definite-assignment`            | 检查 GraphQL 字段的确定赋值断言            |
+| `@nest-boot/graphql/field-config-from-types`              | 根据 TypeScript 类型检查 GraphQL 字段配置  |
+| `@nest-boot/graphql/no-direct-nestjs-import`              | 要求通过 Nest Boot 的公共 GraphQL 入口导入 |
+| `@nest-boot/queue/processor-name`                         | 检查处理器名称与队列类名一致               |
 
 单独使用插件时，在 ESLint flat config 中按领域注册具名导出。
 
@@ -39,6 +40,7 @@ export default [
       "@nest-boot/database/entity-property-no-spread": "error",
       "@nest-boot/graphql/field-config-from-types": "error",
       "@nest-boot/graphql/field-definite-assignment": "error",
+      "@nest-boot/graphql/no-direct-nestjs-import": "error",
       "@nest-boot/queue/processor-name": "error",
     },
   },

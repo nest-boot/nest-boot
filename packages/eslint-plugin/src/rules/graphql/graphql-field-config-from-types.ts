@@ -510,7 +510,10 @@ export default createRule<
         }
 
         node.body.body.forEach((member: TSESTree.ClassElement) => {
-          if (member.type !== AST_NODE_TYPES.PropertyDefinition) {
+          if (
+            member.type !== AST_NODE_TYPES.PropertyDefinition ||
+            member.static
+          ) {
             return;
           }
 

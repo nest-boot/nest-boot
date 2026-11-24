@@ -1,5 +1,6 @@
 import "reflect-metadata";
 
+import type { FieldComplexityEstimatorArgs } from "@nest-boot/graphql";
 import { LazyMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage.js";
 import { TypeMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/type-metadata.storage.js";
 import { Kind } from "graphql";
@@ -50,6 +51,54 @@ function fieldNamesAndInvokeTypeFns(
 }
 
 describe("ConnectionBuilder", () => {
+  it("prices normalized filters during reservation and settlement", () => {
+    class CostBook {
+      id!: number;
+      title!: string;
+    }
+
+    const { Connection } = new ConnectionBuilder(CostBook)
+      .addField({ field: "title", type: "string", filterable: true })
+      .addField({ field: "id", type: "number", sortable: true })
+      .build();
+    const cost = (
+      args: Record<string, unknown>,
+      resolved?: FieldComplexityEstimatorArgs["resolved"],
+    ) =>
+      Connection.complexity({
+        args,
+        childComplexity: 1,
+        resolved,
+      } as FieldComplexityEstimatorArgs);
+
+    expect(cost({ first: 10 })).toBe(22);
+    expect(
+      cost({
+        first: 10,
+        query: "title:book",
+        filter: { title: { $ne: "other" } },
+      }),
+    ).toBe(25);
+    expect(
+      cost({ last: 10, filter: { $or: [{ title: "a" }, { title: "b" }] } }),
+    ).toBe(25);
+    expect(
+      cost({ first: 10, filter: { title: { $in: ["a", "b", "c"] } } }),
+    ).toBe(25);
+    expect(
+      cost({
+        first: 10,
+        query: "title:",
+        filter: { title: { $ne: "other" } },
+      }),
+    ).toBe(23);
+    expect(
+      cost({ first: 10, filter: { title: "book" } }, { result: null }),
+    ).toBe(3);
+    expect(cost({})).toBe(0);
+    expect(cost({ last: 1, after: "cursor" })).toBe(0);
+  });
+
   it("builds connection types with ordering metadata and filter parsing", () => {
     const result = new ConnectionBuilder(BuilderBookEntity, {
       filter: {

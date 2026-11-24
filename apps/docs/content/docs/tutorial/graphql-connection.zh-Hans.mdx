@@ -102,7 +102,9 @@ export class UserResolver {
 
 ## 分页
 
-同时支持正向的 `first`/`after` 和反向的 `last`/`before` 游标分页。
+查询必须且只能提供 `first` 或 `last`，且值为 1 至 100 的整数。`after` 搭配 `first`，`before` 搭配 `last`。分页参数缺失、冲突或超出范围时返回 `BAD_USER_INPUT`。
+
+如果返回生成的 Connection 的字段采用自定义分页规则，请显式设置该字段的 `complexity`，按该规则为请求条数和实际结果计费。
 
 ## 过滤
 
