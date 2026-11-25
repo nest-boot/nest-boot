@@ -395,6 +395,112 @@ tester.run("graphql-field-config-from-types", rule, {
         return Box;
       }
     `,
+    // Nullable array aliases with whole-value scalars, primitive/Record/Date aliases, inline literals, and structural scalar matching
+    /* typescript */ `
+      class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+        readonly _internal?: TInternal;
+        readonly _external?: TExternal;
+      }
+      enum Status {
+        ACTIVE = "ACTIVE",
+        DISABLED = "DISABLED",
+      }
+      enum Priority {
+        LOW = 0,
+        HIGH = 1,
+      }
+      type NullableTags = string[] | null;
+      type Tags = string[];
+      type UserName = string;
+      type Score = number;
+      type Flag = boolean;
+      type Payload = Record<string, unknown>;
+      type Timestamp = Date;
+      type OAuthProvider = "google" | "github";
+      type SortBit = 0 | 1;
+      type MaybeText = string | null;
+      type JsonMapA = { [key: string]: unknown };
+      type JsonMapB = { [key: string]: unknown };
+      interface RecursiveNodeA {
+        label: string;
+        next?: RecursiveNodeA;
+      }
+      interface RecursiveNodeB {
+        label: string;
+        next?: RecursiveNodeB;
+      }
+      declare const NullableTagsScalar: GraphQLScalarType<string[] | null>;
+      declare const JsonMapScalar: GraphQLScalarType<JsonMapA>;
+      declare const RecursiveNodeScalar: GraphQLScalarType<RecursiveNodeA>;
+      declare const PriorityPayloadScalar: GraphQLScalarType<{
+        priority: Priority;
+      }>;
+      @ObjectType()
+      class ExtendedTypeCoverage {
+        @Field(() => NullableTagsScalar, { nullable: true })
+        aliasedNullableArray!: NullableTags;
+
+        @Field(() => NullableTagsScalar, { nullable: true })
+        unionNullableArray!: Tags | null;
+
+        @Field(() => String)
+        userName!: UserName;
+
+        @Field(() => Int)
+        score!: Score;
+
+        @Field(() => Boolean)
+        flag!: Flag;
+
+        @Field(() => GraphQLJSONObject)
+        payload!: Payload;
+
+        @Field(() => Date)
+        createdAt!: Timestamp;
+
+        @Field(() => String)
+        provider!: OAuthProvider;
+
+        @Field(() => Int)
+        bit!: SortBit;
+
+        @Field(() => [String], { nullable: "items" })
+        maybeTexts!: MaybeText[];
+
+        @Field(() => [String])
+        aliasedElemTags!: UserName[];
+
+        @Field(() => [GraphQLJSONObject])
+        aliasedRecordItems!: Payload[];
+
+        @Field(() => Status)
+        inlineEnumUnion!: "ACTIVE" | "DISABLED";
+
+        @Field(() => [Status])
+        inlineEnumArray!: ("ACTIVE" | "DISABLED")[];
+
+        @Field(() => String)
+        templateLit!: \`v\${number}\`;
+
+        @Field(() => Float)
+        negativeLit!: -1;
+
+        @Field(() => Boolean)
+        boolLit!: true;
+
+        @Field(() => PriorityPayloadScalar)
+        inlinePayload!: { priority: Priority };
+
+        @Field(() => GraphQLJSONObject)
+        inlineIndexMap!: { [key: string]: unknown };
+
+        @Field(() => JsonMapScalar)
+        unknownIndex!: JsonMapB;
+
+        @Field(() => RecursiveNodeScalar)
+        recursiveNode!: RecursiveNodeB;
+      }
+    `,
   ],
   invalid: [
     // @Field type mismatch
@@ -1361,6 +1467,168 @@ function createBad<T extends object>(
 }`,
       output: null,
       errors: [
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+      ],
+    },
+    // Aliased/member built-in constructors and nested object/union/index/intersection numeric enum mismatches are rejected
+    {
+      code: /* typescript */ `import { Field, Float, Int, ObjectType } from "@nestjs/graphql";
+import { GraphQLJSONObject } from "graphql-type-json";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+enum Priority {
+  LOW = 0,
+  HIGH = 1,
+}
+const NativeObject = Object;
+const NativeNumber = Number;
+type OAuthProvider = "google" | "github";
+type SortBit = 0 | 1;
+type UserName = string;
+interface BaseMeta {
+  tag: string;
+}
+declare const PriorityObjScalar: GraphQLScalarType<{ priority: Priority }>;
+declare const OptionalPriorityObjScalar: GraphQLScalarType<{
+  priority?: Priority;
+}>;
+declare const UnionPriorityScalar: GraphQLScalarType<string | Priority>;
+declare const UnionObjPriorityScalar: GraphQLScalarType<
+  string | { priority: Priority }
+>;
+declare const NumIndexPriorityScalar: GraphQLScalarType<{
+  [index: number]: Priority;
+}>;
+declare const IntersectedPriorityScalar: GraphQLScalarType<
+  BaseMeta & { priority: Priority }
+>;
+@ObjectType()
+class DeepTypeMismatches {
+  @Field(() => globalThis.Object)
+  globalObj!: Record<string, unknown>;
+
+  @Field(() => NativeObject)
+  aliasedObj!: Record<string, unknown>;
+
+  @Field(() => NativeNumber)
+  aliasedNum!: number;
+
+  @Field(() => String)
+  provider?: OAuthProvider;
+
+  @Field(() => Int)
+  bit?: SortBit;
+
+  missingAlias!: UserName;
+
+  inlineIndexMissing!: { [key: string]: unknown };
+
+  @Field(() => PriorityObjScalar)
+  badInlineObj!: { priority: number };
+
+  @Field(() => OptionalPriorityObjScalar)
+  badOptionalPropObj!: { priority?: number };
+
+  @Field(() => UnionPriorityScalar)
+  badUnion!: string | number;
+
+  @Field(() => UnionObjPriorityScalar)
+  badUnionObj!: string | { priority: number };
+
+  @Field(() => NumIndexPriorityScalar)
+  badNumIndex!: { [index: number]: number };
+
+  @Field(() => IntersectedPriorityScalar)
+  badIntersection!: BaseMeta & { priority: number };
+}`,
+      output: /* typescript */ `import { Field, Float, Int, ObjectType } from "@nestjs/graphql";
+import { GraphQLJSONObject } from "graphql-type-json";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+enum Priority {
+  LOW = 0,
+  HIGH = 1,
+}
+const NativeObject = Object;
+const NativeNumber = Number;
+type OAuthProvider = "google" | "github";
+type SortBit = 0 | 1;
+type UserName = string;
+interface BaseMeta {
+  tag: string;
+}
+declare const PriorityObjScalar: GraphQLScalarType<{ priority: Priority }>;
+declare const OptionalPriorityObjScalar: GraphQLScalarType<{
+  priority?: Priority;
+}>;
+declare const UnionPriorityScalar: GraphQLScalarType<string | Priority>;
+declare const UnionObjPriorityScalar: GraphQLScalarType<
+  string | { priority: Priority }
+>;
+declare const NumIndexPriorityScalar: GraphQLScalarType<{
+  [index: number]: Priority;
+}>;
+declare const IntersectedPriorityScalar: GraphQLScalarType<
+  BaseMeta & { priority: Priority }
+>;
+@ObjectType()
+class DeepTypeMismatches {
+  @Field(() => GraphQLJSONObject)
+  globalObj!: Record<string, unknown>;
+
+  @Field(() => GraphQLJSONObject)
+  aliasedObj!: Record<string, unknown>;
+
+  @Field(() => Float)
+  aliasedNum!: number;
+
+  @Field(() => String, { nullable: true })
+  provider?: OAuthProvider;
+
+  @Field(() => Int, { nullable: true })
+  bit?: SortBit;
+
+  @Field(() => String)
+  missingAlias!: UserName;
+
+  @Field(() => GraphQLJSONObject)
+  inlineIndexMissing!: { [key: string]: unknown };
+
+  @Field(() => PriorityObjScalar)
+  badInlineObj!: { priority: number };
+
+  @Field(() => OptionalPriorityObjScalar)
+  badOptionalPropObj!: { priority?: number };
+
+  @Field(() => String)
+  badUnion!: string | number;
+
+  @Field(() => String)
+  badUnionObj!: string | { priority: number };
+
+  @Field(() => NumIndexPriorityScalar)
+  badNumIndex!: { [index: number]: number };
+
+  @Field(() => IntersectedPriorityScalar)
+  badIntersection!: BaseMeta & { priority: number };
+}`,
+      errors: [
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
         { messageId: "alignFieldDecoratorWithTsType" },
         { messageId: "alignFieldDecoratorWithTsType" },
         { messageId: "alignFieldDecoratorWithTsType" },

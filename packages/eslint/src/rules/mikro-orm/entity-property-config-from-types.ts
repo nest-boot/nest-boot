@@ -744,6 +744,28 @@ export default createRule<
       return null;
     };
 
+    const classifyArrayElementTsType = (
+      elemType: ts.Type,
+    ): {
+      propertyType: string | null;
+      arrayElementTypeName?: string;
+      unsupportedUnion?: boolean;
+    } => {
+      const elemKind = classifyScalarTsType(elemType);
+      if (elemKind === "string" || elemKind === "number") {
+        return { propertyType: "t.array", arrayElementTypeName: elemKind };
+      }
+      if (elemKind === "boolean") {
+        return { propertyType: "t.json", arrayElementTypeName: "boolean" };
+      }
+      if (elemKind === "bigint") {
+        return { propertyType: null, unsupportedUnion: true };
+      }
+      return isJsonSerializableType(elemType)
+        ? { propertyType: "t.json" }
+        : { propertyType: null, unsupportedUnion: true };
+    };
+
     const inferPropertyTypeFromResolvedTsType = (
       node: TSESTree.TypeNode,
     ): {
@@ -795,24 +817,11 @@ export default createRule<
           if (!elemType) {
             return { propertyType: null };
           }
-          const elemKind = classifyScalarTsType(elemType);
-          if (elemKind === "string" || elemKind === "number") {
-            return { propertyType: "t.array", arrayElementTypeName: elemKind };
-          }
-          if (elemKind === "boolean") {
-            return { propertyType: "t.json", arrayElementTypeName: "boolean" };
-          }
-          if (elemKind === "bigint") {
-            return { propertyType: null, unsupportedUnion: true };
-          }
-          return isJsonSerializableType(elemType)
-            ? { propertyType: "t.json" }
-            : { propertyType: null, unsupportedUnion: true };
+          return classifyArrayElementTsType(elemType);
         }
-        // Plain non-class object/interface types (excluding classes, arrays, built-in objects)
+        // Plain non-class object/interface/tuple types (excluding classes, arrays, built-in objects)
         if (
           resolved.flags & ts.TypeFlags.Object &&
-          !checker.isTupleType(resolved) &&
           !(resolved.symbol && resolved.symbol.flags & ts.SymbolFlags.Class) &&
           ![
             "Date",
@@ -825,7 +834,8 @@ export default createRule<
             "Uint8Array",
             "Buffer",
           ].includes(resolved.symbol?.name ?? "") &&
-          (checker.getPropertiesOfType(resolved).length > 0 ||
+          (checker.isTupleType(resolved) ||
+            checker.getPropertiesOfType(resolved).length > 0 ||
             checker.getIndexInfosOfType(resolved).length > 0) &&
           isJsonSerializableType(resolved)
         ) {
@@ -1089,21 +1099,112 @@ export default createRule<
         };
       }
 
-      // Identifier (class/custom type)
+      // Inline literal types (e.g. "open" | "closed", 0 | 1, true, 1n) when not an array
+      if (!isArray && targetTypeNode.type === AST_NODE_TYPES.TSLiteralType) {
+        const lit = targetTypeNode.literal;
+        const litKind =
+          lit.type === AST_NODE_TYPES.TemplateLiteral
+            ? "string"
+            : lit.type === AST_NODE_TYPES.Literal
+              ? typeof lit.value
+              : lit.type === AST_NODE_TYPES.UnaryExpression &&
+                  lit.operator === "-" &&
+                  lit.argument.type === AST_NODE_TYPES.Literal
+                ? typeof lit.argument.value
+                : null;
+        if (
+          litKind === "string" ||
+          litKind === "number" ||
+          litKind === "boolean" ||
+          litKind === "bigint"
+        ) {
+          return {
+            typeName: litKind,
+            isArray: false,
+            isNullable,
+            isEnum: false,
+            propertyType: getPropertyType(litKind),
+          };
+        }
+      }
+
+      // Identifier (class/custom type) or complex array element (e.g. readonly Tag[], ("a" | "b")[], (string | null)[])
       const ident = getIdentifierName(targetTypeNode);
-      if (ident) {
-        // For arrays, custom type arrays use t.json
-        if (isArray) {
+      if (isArray) {
+        if (ident === "String" || ident === "Number") {
+          const elemName = ident.toLowerCase();
           return {
             typeName: ident,
-            isArray,
+            isArray: true,
             isNullable,
-            isEnum,
+            isEnum: false,
+            propertyType: "t.array",
+            arrayElementTypeName: elemName,
+          };
+        }
+        if (ident === "Boolean") {
+          return {
+            typeName: ident,
+            isArray: true,
+            isNullable,
+            isEnum: false,
+            propertyType: "t.json",
+            arrayElementTypeName: "boolean",
+          };
+        }
+        if (ident === "BigInt") {
+          return null;
+        }
+        if (ident && isEnum) {
+          return {
+            typeName: ident,
+            isArray: true,
+            isNullable,
+            isEnum: true,
             propertyType: "t.json",
             arrayElementTypeName: ident,
           };
         }
+        const tsElemNode =
+          parserServices.esTreeNodeToTSNodeMap.get(targetTypeNode);
+        if (ts.isTypeNode(tsElemNode)) {
+          const elemType = checker.getTypeFromTypeNode(tsElemNode);
+          if (
+            (elemType.flags &
+              (ts.TypeFlags.Any |
+                ts.TypeFlags.Unknown |
+                ts.TypeFlags.Never |
+                ts.TypeFlags.Void)) ===
+            0
+          ) {
+            const elemInfo = classifyArrayElementTsType(elemType);
+            if (elemInfo.unsupportedUnion) {
+              return null;
+            }
+            return {
+              typeName: ident ?? elemInfo.arrayElementTypeName ?? "json",
+              isArray: true,
+              isNullable,
+              isEnum: false,
+              propertyType: elemInfo.propertyType,
+              arrayElementTypeName: elemInfo.arrayElementTypeName ?? ident,
+            };
+          }
+        }
+        if (ident) {
+          return {
+            typeName: ident,
+            isArray: true,
+            isNullable,
+            isEnum: false,
+            propertyType: "t.json",
+            arrayElementTypeName: ident,
+          };
+        }
+        return null;
+      }
 
+      if (ident) {
         const directPropertyType = getPropertyType(ident);
         const resolvedInfo =
           directPropertyType === null && !isEnum
@@ -1122,6 +1223,26 @@ export default createRule<
         };
       }
 
+      // Inline object literal, tuple, or intersection types (e.g. { count: number }, [number, string], A & B)
+      if (
+        targetTypeNode.type === AST_NODE_TYPES.TSTypeLiteral ||
+        targetTypeNode.type === AST_NODE_TYPES.TSTupleType ||
+        targetTypeNode.type === AST_NODE_TYPES.TSIntersectionType
+      ) {
+        const resolvedInfo =
+          inferPropertyTypeFromResolvedTsType(targetTypeNode);
+        if (resolvedInfo.unsupportedUnion || !resolvedInfo.propertyType) {
+          return null;
+        }
+        return {
+          typeName: "json",
+          isArray: false,
+          isNullable,
+          isEnum: false,
+          propertyType: resolvedInfo.propertyType,
+        };
+      }
+
       return null;
     };
 
@@ -1130,11 +1251,25 @@ export default createRule<
       return `${coreBinding("Opt")}<${typeString}>`;
     };
 
-    const buildEnumDecorator = (info: TypeInfo): string => {
+    const buildEnumDecorator = (
+      info: TypeInfo,
+      otherProps: { key: string; value: string }[] = [],
+      existingItems?: string | null,
+    ): string => {
       const options: string[] = [];
 
-      if (info.typeName) {
+      if (existingItems) {
+        options.push(`items: ${existingItems}`);
+      } else if (info.typeName) {
         options.push(`items: () => ${info.typeName}`);
+      }
+
+      if (info.isArray && !otherProps.some((prop) => prop.key === "array")) {
+        options.push("array: true");
+      }
+
+      for (const prop of otherProps) {
+        options.push(`${prop.key}: ${prop.value}`);
       }
 
       if (info.isNullable) {
@@ -1427,22 +1562,24 @@ export default createRule<
     ): {
       items: string | null;
       nullable: boolean;
+      otherProps: { key: string; value: string }[];
     } => {
       const callExpr = decorator.expression;
       if (
         callExpr.type !== AST_NODE_TYPES.CallExpression ||
         callExpr.arguments.length === 0
       ) {
-        return { items: null, nullable: false };
+        return { items: null, nullable: false, otherProps: [] };
       }
 
       const firstArg = callExpr.arguments[0];
       if (firstArg.type !== AST_NODE_TYPES.ObjectExpression) {
-        return { items: null, nullable: false };
+        return { items: null, nullable: false, otherProps: [] };
       }
 
       let items: string | null = null;
       let nullable = false;
+      const otherProps: { key: string; value: string }[] = [];
 
       for (const prop of firstArg.properties) {
         if (prop.type !== AST_NODE_TYPES.Property) {
@@ -1461,10 +1598,15 @@ export default createRule<
           ) {
             nullable = true;
           }
+        } else {
+          otherProps.push({
+            key: prop.key.name,
+            value: source.getText(prop.value),
+          });
         }
       }
 
-      return { items, nullable };
+      return { items, nullable, otherProps };
     };
 
     // Check if the file uses the Opt type but hasn't imported it
@@ -1810,10 +1952,14 @@ export default createRule<
           // If there is an @Enum decorator, check its configuration regardless of whether the type is recognized as enum
           if (enumDecorator) {
             const enumConfig = parseEnumDecorator(enumDecorator);
+            const missingArrayOption =
+              typeInfo.isArray &&
+              !enumConfig.otherProps.some((prop) => prop.key === "array");
 
-            // Check if nullable configuration matches the TypeScript type
+            // Check if nullable or array configuration matches the TypeScript type
             if (
               enumConfig.nullable !== typeInfo.isNullable ||
+              missingArrayOption ||
               (enumDecorator.expression.type ===
                 AST_NODE_TYPES.CallExpression &&
                 isTypeOnlyImportReference(
@@ -1821,7 +1967,11 @@ export default createRule<
                   enumDecorator.expression.callee,
                 ))
             ) {
-              const expectedEnumText = buildEnumDecorator(typeInfo);
+              const expectedEnumText = buildEnumDecorator(
+                typeInfo,
+                enumConfig.otherProps,
+                enumConfig.items,
+              );
               context.report({
                 node: enumDecorator,
                 messageId: "alignPropertyDecoratorWithTsType",

@@ -31,7 +31,7 @@ interface TypeInfo {
   fullTypeNode?: TSESTree.TypeNode;
   resolvedTargetTsType?: ts.Type;
   resolvedRawItemTsType?: ts.Type;
-  resolvedFullTsType?: ts.Type;
+  compatibleScalar?: string;
   isWholeValueScalar?: boolean;
   scalarExpression?: string;
 }
@@ -121,6 +121,35 @@ export default createRule<
         default:
           return null;
       }
+    };
+
+    const scalarFromTsLiteral = (node: TSESTree.TypeNode): string | null => {
+      if (node.type !== AST_NODE_TYPES.TSLiteralType) {
+        return null;
+      }
+      if (node.literal.type === AST_NODE_TYPES.TemplateLiteral) {
+        return "String";
+      }
+      if (node.literal.type === AST_NODE_TYPES.Literal) {
+        if (typeof node.literal.value === "string") {
+          return "String";
+        }
+        if (typeof node.literal.value === "number") {
+          return "Float";
+        }
+        if (typeof node.literal.value === "boolean") {
+          return "Boolean";
+        }
+      }
+      if (
+        node.literal.type === AST_NODE_TYPES.UnaryExpression &&
+        node.literal.operator === "-" &&
+        node.literal.argument.type === AST_NODE_TYPES.Literal &&
+        typeof node.literal.argument.value === "number"
+      ) {
+        return "Float";
+      }
+      return null;
     };
 
     const getIdentifierName = (node: TSESTree.TypeNode): string | null => {
@@ -261,6 +290,43 @@ export default createRule<
       );
     };
 
+    const classifyHomogeneousScalarFromTsType = (
+      type: ts.Type,
+    ): "Boolean" | "String" | "Float" | null => {
+      if (isEnumLikeType(type)) {
+        return null;
+      }
+      const isHomogeneous = (flag: ts.TypeFlags) =>
+        type.isUnion()
+          ? type.types.length > 0 &&
+            type.types.every((member) => (member.flags & flag) !== 0)
+          : (type.flags & flag) !== 0;
+      if (isHomogeneous(ts.TypeFlags.BooleanLike)) {
+        return "Boolean";
+      }
+      if (isHomogeneous(ts.TypeFlags.StringLike)) {
+        return "String";
+      }
+      if (isHomogeneous(ts.TypeFlags.NumberLike)) {
+        return "Float";
+      }
+      return null;
+    };
+
+    const isRecordObjectTsType = (
+      typeChecker: ts.TypeChecker,
+      type: ts.Type,
+    ): boolean => {
+      return (
+        type.aliasSymbol?.name === "Record" ||
+        ((type.flags & ts.TypeFlags.Object) !== 0 &&
+          !hasClassSymbol(type) &&
+          typeChecker.getIndexTypeOfType(type, ts.IndexKind.String) !==
+            undefined &&
+          typeChecker.getPropertiesOfType(type).length === 0)
+      );
+    };
+
     const inferGraphqlElementFromTsType = (
       typeChecker: ts.TypeChecker,
       elemType: ts.Type,
@@ -274,30 +340,11 @@ export default createRule<
       if (isIdProperty) {
         return { typeName: "ID" };
       }
-      if (!isEnumLikeType(elemType)) {
-        const isHomogeneous = (flag: ts.TypeFlags) =>
-          elemType.isUnion()
-            ? elemType.types.length > 0 &&
-              elemType.types.every((member) => (member.flags & flag) !== 0)
-            : (elemType.flags & flag) !== 0;
-        if (isHomogeneous(ts.TypeFlags.BooleanLike)) {
-          return { typeName: "Boolean" };
-        }
-        if (isHomogeneous(ts.TypeFlags.StringLike)) {
-          return { typeName: "String" };
-        }
-        if (isHomogeneous(ts.TypeFlags.NumberLike)) {
-          return { typeName: "Float" };
-        }
+      const homogeneousScalar = classifyHomogeneousScalarFromTsType(elemType);
+      if (homogeneousScalar) {
+        return { typeName: homogeneousScalar };
       }
-      if (
-        elemType.aliasSymbol?.name === "Record" ||
-        ((elemType.flags & ts.TypeFlags.Object) !== 0 &&
-          !hasClassSymbol(elemType) &&
-          typeChecker.getIndexTypeOfType(elemType, ts.IndexKind.String) !==
-            undefined &&
-          typeChecker.getPropertiesOfType(elemType).length === 0)
-      ) {
+      if (isRecordObjectTsType(typeChecker, elemType)) {
         return { typeName: "GraphQLJSONObject" };
       }
       const rawTargetSym = elemType.aliasSymbol ?? elemType.symbol;
@@ -500,7 +547,6 @@ export default createRule<
               fullTypeNode,
               resolvedTargetTsType: nonNullElem,
               resolvedRawItemTsType: elemTsType,
-              resolvedFullTsType: resolvedOuter,
             };
           }
         }
@@ -533,8 +579,10 @@ export default createRule<
         };
       }
 
-      // Keyword types → GraphQL scalars
-      const scalar = scalarFromTsKeyword(targetTypeNode.type);
+      // Keyword and literal types → GraphQL scalars
+      const scalar =
+        scalarFromTsKeyword(targetTypeNode.type) ??
+        scalarFromTsLiteral(targetTypeNode);
       if (scalar) {
         return {
           typeName: scalar,
@@ -546,6 +594,87 @@ export default createRule<
         };
       }
 
+      // Resolve aliased scalar/Record references (e.g. type Name = string, type Tag = "a" | "b", Tag[])
+      let compatibleScalar: string | undefined;
+      if (
+        checker &&
+        esTreeNodeToTSNodeMap &&
+        targetTypeNode.type === AST_NODE_TYPES.TSTypeReference
+      ) {
+        const tsTarget = esTreeNodeToTSNodeMap.get(targetTypeNode);
+        if (ts.isTypeNode(tsTarget)) {
+          const nonNullTarget = stripExplicitNullish(
+            checker,
+            checker.getTypeFromTypeNode(tsTarget),
+          );
+          if (
+            !isUnusableType(nonNullTarget) &&
+            !isEnumLikeType(nonNullTarget)
+          ) {
+            if (isArray) {
+              const elemScalar =
+                classifyHomogeneousScalarFromTsType(nonNullTarget) ??
+                (isRecordObjectTsType(checker, nonNullTarget)
+                  ? "GraphQLJSONObject"
+                  : null);
+              if (elemScalar) {
+                return {
+                  typeName: elemScalar,
+                  isArray: true,
+                  isNullable,
+                  isItemsNullable,
+                  targetTypeNode: semanticTargetNode,
+                  fullTypeNode,
+                };
+              }
+            } else {
+              if ((nonNullTarget.flags & ts.TypeFlags.Boolean) !== 0) {
+                return {
+                  typeName: "Boolean",
+                  isArray: false,
+                  isNullable,
+                  isItemsNullable,
+                  targetTypeNode: semanticTargetNode,
+                  fullTypeNode,
+                };
+              }
+              if ((nonNullTarget.flags & ts.TypeFlags.String) !== 0) {
+                return {
+                  typeName: "String",
+                  isArray: false,
+                  isNullable,
+                  isItemsNullable,
+                  targetTypeNode: semanticTargetNode,
+                  fullTypeNode,
+                };
+              }
+              if ((nonNullTarget.flags & ts.TypeFlags.Number) !== 0) {
+                return {
+                  typeName: "Float",
+                  isArray: false,
+                  isNullable,
+                  isItemsNullable,
+                  targetTypeNode: semanticTargetNode,
+                  fullTypeNode,
+                };
+              }
+              if (isRecordObjectTsType(checker, nonNullTarget)) {
+                return {
+                  typeName: "GraphQLJSONObject",
+                  isArray: false,
+                  isNullable,
+                  isItemsNullable,
+                  targetTypeNode: semanticTargetNode,
+                  fullTypeNode,
+                };
+              }
+              compatibleScalar =
+                classifyHomogeneousScalarFromTsType(nonNullTarget) ?? undefined;
+            }
+          }
+        }
+      }
+
       // Identifier (class/custom type)
       const ident = getIdentifierName(targetTypeNode);
       if (ident) {
@@ -555,12 +684,50 @@ export default createRule<
           isNullable,
           isItemsNullable,
           isCustomType: true,
+          compatibleScalar,
           targetTypeNode: semanticTargetNode,
           fullTypeNode,
           typeReference:
             targetTypeNode.type === AST_NODE_TYPES.TSTypeReference
               ? targetTypeNode.typeName
               : undefined,
+        };
+      }
+
+      // Inline structural types (object literals `{ ... }`, tuples `[...]`, and intersections `A & B`)
+      if (
+        targetTypeNode.type === AST_NODE_TYPES.TSTypeLiteral ||
+        targetTypeNode.type === AST_NODE_TYPES.TSTupleType ||
+        targetTypeNode.type === AST_NODE_TYPES.TSIntersectionType
+      ) {
+        if (checker && esTreeNodeToTSNodeMap) {
+          const tsTarget = esTreeNodeToTSNodeMap.get(targetTypeNode);
+          if (ts.isTypeNode(tsTarget)) {
+            const nonNullTarget = stripExplicitNullish(
+              checker,
+              checker.getTypeFromTypeNode(tsTarget),
+            );
+            if (isRecordObjectTsType(checker, nonNullTarget)) {
+              return {
+                typeName: "GraphQLJSONObject",
+                isArray,
+                isNullable,
+                isItemsNullable,
+                targetTypeNode: semanticTargetNode,
+                fullTypeNode,
+              };
+            }
+          }
+        }
+        return {
+          typeName: "__inline_structural__",
+          isArray,
+          isNullable,
+          isItemsNullable,
+          isCustomType: true,
+          unautofixableCustomType: true,
+          targetTypeNode: semanticTargetNode,
+          fullTypeNode,
         };
       }
 
@@ -571,13 +738,30 @@ export default createRule<
       "Number",
       "String",
       "Boolean",
-      "Date",
       "Array",
       "Object",
       "Function",
       "Symbol",
       "BigInt",
     ]);
+
+    const isDefaultLibraryType = (type: ts.Type): boolean => {
+      if (!program) {
+        return false;
+      }
+      const rawSym = type.aliasSymbol ?? type.symbol;
+      const sym =
+        rawSym && rawSym.flags & ts.SymbolFlags.Alias && checker
+          ? checker.getAliasedSymbol(rawSym)
+          : rawSym;
+      const declarations = sym?.getDeclarations();
+      if (!declarations || declarations.length === 0) {
+        return false;
+      }
+      return declarations.every((decl) =>
+        program.isSourceFileDefaultLibrary(decl.getSourceFile()),
+      );
+    };
 
     const unwrapTypeAssertions = (node: TSESTree.Node): TSESTree.Node => {
       let current = node;
@@ -603,25 +787,43 @@ export default createRule<
       );
     };
 
+    const hasBroadNumberMember = (type: ts.Type): boolean =>
+      type.isUnion()
+        ? type.types.some(
+            (member) => (member.flags & ts.TypeFlags.Number) !== 0,
+          )
+        : (type.flags & ts.TypeFlags.Number) !== 0;
+
+    const hasEnumLikeMember = (type: ts.Type): boolean =>
+      type.isUnion()
+        ? type.types.some(
+            (member) => (member.flags & ts.TypeFlags.EnumLike) !== 0,
+          )
+        : (type.flags & ts.TypeFlags.EnumLike) !== 0;
+
     const areTypesEquivalent = (
       typeChecker: ts.TypeChecker,
       a: ts.Type,
       b: ts.Type,
       visited = new Map<ts.Type, Set<ts.Type>>(),
     ): boolean => {
-      if (isUnusableType(a) || isUnusableType(b)) {
+      if (
+        (a.flags & ts.TypeFlags.Any) !== 0 ||
+        (b.flags & ts.TypeFlags.Any) !== 0
+      ) {
         return false;
       }
       if (a === b) {
         return true;
       }
+      if (isUnusableType(a) || isUnusableType(b)) {
+        return false;
+      }
       // TypeScript treats broad `number` and numeric enums as mutually assignable;
       // reject those pairs so unconstrained numbers cannot match finite numeric enums.
-      const aIsBroadNumber = (a.flags & ts.TypeFlags.Number) !== 0;
-      const bIsBroadNumber = (b.flags & ts.TypeFlags.Number) !== 0;
       if (
-        (aIsBroadNumber && isEnumLikeType(b)) ||
-        (bIsBroadNumber && isEnumLikeType(a))
+        hasBroadNumberMember(a) !== hasBroadNumberMember(b) &&
+        (hasEnumLikeMember(a) || hasEnumLikeMember(b))
       ) {
         return false;
       }
@@ -640,6 +842,24 @@ export default createRule<
       } else {
         visited.set(a, new Set([b]));
       }
+      if (a.isUnion() && b.isUnion()) {
+        for (const memberA of a.types) {
+          const matchesInB = b.types.filter(
+            (memberB) =>
+              typeChecker.isTypeAssignableTo(memberA, memberB) &&
+              typeChecker.isTypeAssignableTo(memberB, memberA),
+          );
+          if (
+            matchesInB.length > 0 &&
+            !matchesInB.some((memberB) =>
+              areTypesEquivalent(typeChecker, memberA, memberB, visited),
+            )
+          ) {
+            return false;
+          }
+        }
+        return true;
+      }
       const elemA = extractArrayElementTsType(typeChecker, a);
       const elemB = extractArrayElementTsType(typeChecker, b);
       if (elemA && elemB) {
@@ -656,33 +876,77 @@ export default createRule<
         );
       }
       if (
-        (a.flags & ts.TypeFlags.Object) !== 0 &&
-        (b.flags & ts.TypeFlags.Object) !== 0
+        (a.flags & (ts.TypeFlags.Object | ts.TypeFlags.Intersection)) !== 0 &&
+        (b.flags & (ts.TypeFlags.Object | ts.TypeFlags.Intersection)) !== 0
       ) {
         const refA =
-          (a as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference;
+          a.flags & ts.TypeFlags.Object
+            ? (a as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference
+            : 0;
         const refB =
-          (b as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference;
+          b.flags & ts.TypeFlags.Object
+            ? (b as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference
+            : 0;
         if (refA && refB && a.symbol && a.symbol === b.symbol) {
           const argsA = typeChecker.getTypeArguments(a as ts.TypeReference);
           const argsB = typeChecker.getTypeArguments(b as ts.TypeReference);
-          if (
+          return (
             argsA.length === argsB.length &&
-            !argsA.every((arg, index) =>
+            argsA.every((arg, index) =>
               areTypesEquivalent(typeChecker, arg, argsB[index], visited),
             )
-          ) {
-            return false;
-          }
+          );
         }
-        const indexA = typeChecker.getIndexTypeOfType(a, ts.IndexKind.String);
-        const indexB = typeChecker.getIndexTypeOfType(b, ts.IndexKind.String);
+        const strIndexA = typeChecker.getIndexTypeOfType(
+          a,
+          ts.IndexKind.String,
+        );
+        const strIndexB = typeChecker.getIndexTypeOfType(
+          b,
+          ts.IndexKind.String,
+        );
         if (
-          indexA &&
-          indexB &&
-          !areTypesEquivalent(typeChecker, indexA, indexB, visited)
+          strIndexA &&
+          strIndexB &&
+          !areTypesEquivalent(typeChecker, strIndexA, strIndexB, visited)
         ) {
           return false;
+        }
+        const numIndexA = typeChecker.getIndexTypeOfType(
+          a,
+          ts.IndexKind.Number,
+        );
+        const numIndexB = typeChecker.getIndexTypeOfType(
+          b,
+          ts.IndexKind.Number,
+        );
+        if (
+          numIndexA &&
+          numIndexB &&
+          !areTypesEquivalent(typeChecker, numIndexA, numIndexB, visited)
+        ) {
+          return false;
+        }
+        if (!(hasClassSymbol(a) && hasClassSymbol(b))) {
+          const propsA = typeChecker.getPropertiesOfType(a);
+          const propsB = typeChecker.getPropertiesOfType(b);
+          if (propsA.length !== propsB.length) {
+            return false;
+          }
+          for (const propA of propsA) {
+            const propB = typeChecker.getPropertyOfType(b, propA.name);
+            if (
+              !propB ||
+              !areTypesEquivalent(
+                typeChecker,
+                typeChecker.getTypeOfSymbol(propA),
+                typeChecker.getTypeOfSymbol(propB),
+                visited,
+              )
+            ) {
+              return false;
+            }
+          }
         }
       }
       return true;
@@ -807,6 +1071,25 @@ export default createRule<
       return null;
     };
 
+    const acceptConstructedInstanceType = (
+      exprType: ts.Type,
+      instanceType: ts.Type,
+    ): ts.Type | null => {
+      if (isUnusableType(instanceType)) {
+        return null;
+      }
+      // Reject standard-library JS constructors (Object, Number, Array, RegExp, etc.),
+      // regardless of how they are reached (e.g. globalThis.Object or const NativeObject = Object).
+      // Only Date is mapped by @nestjs/graphql as a built-in scalar constructor.
+      if (
+        instanceType.symbol?.name !== "Date" &&
+        (isDefaultLibraryType(exprType) || isDefaultLibraryType(instanceType))
+      ) {
+        return null;
+      }
+      return instanceType;
+    };
+
     const extractConstructedInstanceType = (
       typeChecker: ts.TypeChecker,
       type: ts.Type,
@@ -817,8 +1100,10 @@ export default createRule<
         ts.SignatureKind.Construct,
       );
       if (constructSignatures.length > 0) {
-        const returnType = constructSignatures[0].getReturnType();
-        return !isUnusableType(returnType) ? returnType : null;
+        return acceptConstructedInstanceType(
+          type,
+          constructSignatures[0].getReturnType(),
+        );
       }
 
       // Constructor-like intersections such as MikroORM's EntityClass<T> = Function & { prototype: T }
@@ -841,8 +1126,9 @@ export default createRule<
           proto,
           location,
         );
-        if (!isUnusableType(protoType)) {
-          return protoType;
+        const accepted = acceptConstructedInstanceType(type, protoType);
+        if (accepted) {
+          return accepted;
         }
       }
       return null;
@@ -1687,9 +1973,11 @@ export default createRule<
               ? `[${typeBinding(typeInfo)}]`
               : typeBinding(typeInfo);
 
-            // For number types, both Int and Float are valid
-            const isNumberType =
-              !typeInfo.isCustomType && typeInfo.typeName === "Float";
+            // For number types (or finite numeric literal aliases), both Int and Float are valid
+            const effectiveScalarName =
+              typeInfo.compatibleScalar ??
+              (typeInfo.isCustomType ? null : typeInfo.typeName);
+            const isNumberType = effectiveScalarName === "Float";
             const bodyIsArray =
               firstArg.body.type === AST_NODE_TYPES.ArrayExpression;
             const scalarNode =
@@ -1704,7 +1992,7 @@ export default createRule<
             const explicitScalar = scalarNode
               ? importedBindingName(
                   source,
-                  scalarModules(typeInfo.typeName),
+                  scalarModules(effectiveScalarName ?? typeInfo.typeName),
                   scalarNode,
                 )
               : null;
@@ -1715,6 +2003,24 @@ export default createRule<
               typeInfo.isArray === bodyIsArray;
             if (isValidNumberType) {
               typeInfo.typeName = explicitScalar;
+              typeInfo.isCustomType = false;
+              typeInfo.unautofixableCustomType = false;
+            }
+            const compatiblePrimitive =
+              typeInfo.compatibleScalar === "String" ||
+              typeInfo.compatibleScalar === "Boolean"
+                ? typeInfo.compatibleScalar
+                : null;
+            const isValidCompatiblePrimitive =
+              compatiblePrimitive !== null &&
+              scalarNode?.type === AST_NODE_TYPES.Identifier &&
+              scalarNode.name === compatiblePrimitive &&
+              !hasDeclaredBinding(scalarNode) &&
+              typeInfo.isArray === bodyIsArray;
+            if (compatiblePrimitive !== null && isValidCompatiblePrimitive) {
+              typeInfo.typeName = compatiblePrimitive;
+              typeInfo.isCustomType = false;
+              typeInfo.unautofixableCustomType = false;
             }
             const isValidScalar =
               !typeInfo.isCustomType &&
@@ -1740,6 +2046,7 @@ export default createRule<
               !typeInfo.unautofixableCustomType &&
               (calleeText === expectedTypeText ||
                 isValidNumberType ||
+                isValidCompatiblePrimitive ||
                 isValidScalar);
 
             const formatScalarExpression = (node: TSESTree.Node) =>
@@ -1769,13 +2076,8 @@ export default createRule<
               scalarNode &&
               !bodyIsArray &&
               typeInfo.isArray &&
-              (typeInfo.fullTypeNode || typeInfo.resolvedFullTsType) &&
-              matchesGraphqlReturnType(
-                scalarNode,
-                typeInfo.fullTypeNode,
-                true,
-                typeInfo.resolvedFullTsType,
-              )
+              typeInfo.fullTypeNode &&
+              matchesGraphqlReturnType(scalarNode, typeInfo.fullTypeNode, true)
             ) {
               typeMatches = true;
               isSemanticMatch = true;

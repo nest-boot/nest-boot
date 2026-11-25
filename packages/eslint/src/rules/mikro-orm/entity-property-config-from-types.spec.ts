@@ -495,6 +495,81 @@ class Book {
         bigIds!: ReadonlyBigIds;
       }
     `,
+    // Arrays of aliased element types, inline literals, inline object/tuple types, and @Enum({ array: true })
+    /* typescript */ `
+      import { ArrayType, Type, t } from "@mikro-orm/core";
+      import { Entity, Enum, Property } from "@mikro-orm/decorators/legacy";
+
+      enum Role {
+        ADMIN = "admin",
+        USER = "user",
+      }
+      type Tag = string;
+      type Score = number;
+      type Flag = boolean;
+      type BigId = bigint;
+      class BadTupleType extends Type<[number, bigint], string> {}
+
+      @Entity()
+      class ElementAliasesAndLiterals {
+        @Property({ type: t.array })
+        readonlyAliasedTags!: readonly Tag[];
+
+        @Property({ type: new VectorType(3) })
+        readonlyAliasedScores!: readonly Score[];
+
+        @Property({ type: t.json })
+        readonlyAliasedFlags!: readonly Flag[];
+
+        @Property({ type: new ArrayType(BigInt) })
+        readonlyAliasedBigIds!: readonly BigId[];
+
+        @Property({ type: t.array })
+        boxedStrings!: String[];
+
+        @Property({ type: t.array })
+        boxedNumbers!: Number[];
+
+        @Property({ type: t.json })
+        boxedBooleans!: Boolean[];
+
+        @Property({ type: new ArrayType(BigInt) })
+        boxedBigInts!: BigInt[];
+
+        @Property({ type: t.array })
+        inlineLiteralArray!: readonly ("a" | "b")[];
+
+        @Property({ type: t.json })
+        nullableElementArray!: (string | null)[];
+
+        @Property({ type: t.string })
+        inlineStringUnion!: "open" | "closed";
+
+        @Property({ type: t.string })
+        inlineTemplate!: \`k_\${string}\`;
+
+        @Property({ type: t.integer })
+        inlineNegativeLiteral!: -1 | 1;
+
+        @Property({ type: t.boolean })
+        inlineBooleanLiteral!: true;
+
+        @Property({ type: t.bigint })
+        inlineBigIntLiteral!: 1n | 2n;
+
+        @Property({ type: t.json })
+        inlineObject!: { count: number };
+
+        @Property({ type: t.json })
+        inlineTuple!: [number, string];
+
+        @Property({ type: BadTupleType })
+        nonJsonInlineTuple!: [number, bigint];
+
+        @Enum({ items: () => Role, array: true })
+        roles!: Role[];
+      }
+    `,
     // Non-JSON tuples, functions, and objects with bigint/Date properties are skipped for custom Types
     /* typescript */ `
       import { Type } from "@mikro-orm/core";
@@ -1886,6 +1961,63 @@ class Invoice {
   amount!: string;
 }`,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // Readonly element aliases, enum arrays, and inline literal/object types autofix cleanly
+    {
+      code: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Enum, Property } from "@mikro-orm/decorators/legacy";
+enum Role {
+  ADMIN = "admin",
+  USER = "user",
+}
+type Tag = string;
+@Entity()
+class ElementAliasFixes {
+  @Property({ type: t.string })
+  tags!: readonly Tag[];
+
+  @Enum({ items: () => Role, nativeEnumName: "role_enum" })
+  roles?: Role[];
+
+  missingEnumArray!: Role[];
+
+  @Property({ type: t.float })
+  status!: "open" | "closed";
+
+  @Property({ type: t.string })
+  meta!: { count: number };
+}`,
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Enum, Property } from "@mikro-orm/decorators/legacy";
+enum Role {
+  ADMIN = "admin",
+  USER = "user",
+}
+type Tag = string;
+@Entity()
+class ElementAliasFixes {
+  @Property({ type: t.array })
+  tags!: readonly Tag[];
+
+  @Enum({ items: () => Role, array: true, nativeEnumName: "role_enum", nullable: true })
+  roles?: Role[];
+
+  @Enum({ items: () => Role, array: true })
+  missingEnumArray!: Role[];
+
+  @Property({ type: t.string })
+  status!: "open" | "closed";
+
+  @Property({ type: t.json })
+  meta!: { count: number };
+}`,
+      errors: [
+        { messageId: "alignPropertyDecoratorWithTsType" },
+        { messageId: "alignPropertyDecoratorWithTsType" },
+        { messageId: "useEnumDecorator" },
+        { messageId: "alignPropertyDecoratorWithTsType" },
+        { messageId: "alignPropertyDecoratorWithTsType" },
+      ],
     },
   ],
 });
