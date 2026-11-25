@@ -87,14 +87,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Typecheck package source and tests
+        run: pnpm typecheck
+
       - name: Build packages
         run: pnpm build:packages --force
 
       - name: Build examples
         run: pnpm build:examples --force
-
-      - name: Typecheck Auth source and tests
-        run: pnpm --filter @nest-boot/auth typecheck
 
       - name: Format
         run: pnpm format:check

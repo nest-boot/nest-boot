@@ -18,7 +18,6 @@ it("declares the base preset", () => {
       sourceMap: true,
       outDir: "${configDir}/dist",
       incremental: true,
-      tsBuildInfoFile: "${configDir}/tsconfig.tsbuildinfo",
       skipLibCheck: true,
       strict: true,
       strictPropertyInitialization: false,

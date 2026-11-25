@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const executable = join(packageDirectory, "bin/nb");
-const testApplication = join(packageDirectory, "src/test");
+const testApplication = join(packageDirectory, "test/fixtures/cli-app");
 let project: string;
 
 beforeEach(() => {

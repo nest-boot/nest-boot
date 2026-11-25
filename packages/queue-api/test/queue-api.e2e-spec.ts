@@ -20,9 +20,9 @@ import { Test, type TestingModule } from "@nestjs/testing";
 import { Job as BullmqJob, Queue as BullmqQueue } from "bullmq";
 import { z } from "zod";
 
-import { JobEntity, JobStatus, QueueApiModule } from "../dist/index.js";
-import { JobProcessor } from "../dist/processors/job.processor.js";
-import { JobQueue } from "../dist/queues/job.queue.js";
+import { JobEntity, JobStatus, QueueApiModule } from "../src/index.js";
+import { JobProcessor } from "../src/processors/job.processor.js";
+import { JobQueue } from "../src/queues/job.queue.js";
 import { mockAuthService } from "./auth.fixture.js";
 import { createRedisFixture } from "./redis.fixture.js";
 

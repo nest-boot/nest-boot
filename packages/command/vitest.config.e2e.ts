@@ -11,7 +11,6 @@ export default defineConfig({
     coverage: {
       include: ["src/**/*.ts"],
       exclude: [
-        "src/test/**",
         "**/*.spec.ts",
         "src/{cli,run-cli,project-loader,ts-node.loader}.ts",
       ],

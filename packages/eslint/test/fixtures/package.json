@@ -1,0 +1,11 @@
+{
+  "name": "@nest-boot-tests/eslint-consumer",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@nest-boot/database": "workspace:^",
+    "@nest-boot/database-crypt": "workspace:^",
+    "@nest-boot/database-hash": "workspace:^",
+    "@nest-boot/graphql": "workspace:^"
+  }
+}

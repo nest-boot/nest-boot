@@ -24,11 +24,13 @@
     "!dist/**/*.tsbuildinfo"
   ],
   "scripts": {
+    "prebuild": "pnpm run clean",
     "build": "tsc -p tsconfig.build.json",
-    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
+    "clean": "tsc -b --clean tsconfig.build.json && rm -rf dist",
     "dev": "tsc -w -p tsconfig.build.json",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:cov": "vitest run --coverage --passWithNoTests",
     "test:watch": "vitest",

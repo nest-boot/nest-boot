@@ -5,10 +5,10 @@ import { Test } from "@nestjs/testing";
 import { isEnumType } from "graphql";
 import request from "supertest";
 
-import { JobProcessor } from "../dist/processors/job.processor.js";
-import { QueueApiModule } from "../dist/queue-api.module.js";
-import { JobResolver } from "../dist/resolvers/job.resolver.js";
-import { JobService } from "../dist/services/job.service.js";
+import { JobProcessor } from "../src/processors/job.processor.js";
+import { QueueApiModule } from "../src/queue-api.module.js";
+import { JobResolver } from "../src/resolvers/job.resolver.js";
+import { JobService } from "../src/services/job.service.js";
 import { mockAuthService } from "./auth.fixture.js";
 
 vi.mock("bullmq", async (original) => {

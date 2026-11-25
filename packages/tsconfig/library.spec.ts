@@ -10,7 +10,6 @@ it("declares the library preset", () => {
       removeComments: false,
       rootDir: "${configDir}/src",
       outDir: "${configDir}/dist",
-      tsBuildInfoFile: "${configDir}/tsconfig.build.tsbuildinfo",
     },
     include: ["${configDir}/src/**/*"],
     exclude: [

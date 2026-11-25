@@ -31,8 +31,9 @@
     "./package.json": "./package.json"
   },
   "scripts": {
+    "prebuild": "pnpm run clean",
     "build": "tsc -p tsconfig.build.json",
-    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf coverage && rm -rf dist",
+    "clean": "tsc -b --clean tsconfig.build.json && rm -rf dist",
     "dev": "tsc -p tsconfig.build.json --watch",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",

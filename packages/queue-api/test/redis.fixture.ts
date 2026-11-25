@@ -4,7 +4,7 @@ import { MikroORM, PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { parseRedisUrl } from "@nest-boot/redis/connection-options";
 import { type ConnectionOptions, Queue as BullmqQueue } from "bullmq";
 
-import { Job as JobEntity } from "../dist/entities/job.entity.js";
+import { Job as JobEntity } from "../src/entities/job.entity.js";
 import { createPostgresFixture } from "./postgres.fixture.js";
 
 /**

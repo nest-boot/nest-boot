@@ -40,8 +40,11 @@ tester.run("import-origin", rule, {
     "function EncryptedProperty() {} EncryptedProperty();",
     'import { EncryptedProperty } from "./unknown-package.js"; EncryptedProperty();',
   ],
-  invalid: ["src", "dist"].map((directory) => ({
-    code: `import { EncryptedProperty as Secret } from "../database-crypt/${directory}/index.js"; Secret();`,
+  invalid: [
+    "../database-crypt/src/index.js",
+    "./test/fixtures/encrypted-property.js",
+  ].map((module) => ({
+    code: `import { EncryptedProperty as Secret } from "${module}"; Secret();`,
     errors: [{ messageId: "recognized", data: { name: "EncryptedProperty" } }],
   })),
 });

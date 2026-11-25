@@ -4,7 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "*.tsbuildinfo"],
+      "outputs": ["dist/**", "!dist/tsconfig.tsbuildinfo", "*.tsbuildinfo"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "env": ["NODE_ENV"]
     },
@@ -50,8 +50,48 @@
       "dependsOn": ["build"],
       "cache": false
     },
+    "@nest-boot/eslint#test": {
+      "dependsOn": ["build", "@nest-boot-tests/eslint-consumer#build"],
+      "cache": false
+    },
+    "@nest-boot/eslint#test:cov": {
+      "dependsOn": ["build", "@nest-boot-tests/eslint-consumer#build"],
+      "cache": false
+    },
+    "@nest-boot/eslint#test:e2e": {
+      "dependsOn": ["build", "@nest-boot-tests/eslint-consumer#build"],
+      "cache": false
+    },
+    "@nest-boot/queue#test:e2e": {
+      "dependsOn": ["build", "@nest-boot-tests/queue-cli#build"],
+      "cache": false
+    },
     "typecheck": {
       "dependsOn": ["^build"],
+      "cache": false
+    },
+    "@nest-boot/command#typecheck": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/database#typecheck": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/eslint#typecheck": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/graphql#typecheck": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/health-check#typecheck": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/queue#typecheck": {
+      "dependsOn": ["@nest-boot-tests/queue-cli#build"],
       "cache": false
     }
   }

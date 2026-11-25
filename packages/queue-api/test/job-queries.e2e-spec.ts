@@ -20,8 +20,8 @@ import {
   JobStatus,
   QueueApiModule,
   QueueVisible,
-} from "../dist/index.js";
-import { JobQueue } from "../dist/queues/job.queue.js";
+} from "../src/index.js";
+import { JobQueue } from "../src/queues/job.queue.js";
 import { mockAuthService } from "./auth.fixture.js";
 import { createRedisFixture } from "./redis.fixture.js";
 

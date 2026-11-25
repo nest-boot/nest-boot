@@ -49,11 +49,14 @@ Source comments follow `eslint-plugin-jsdoc`'s `flat/recommended-typescript-erro
 Run focused checks first. Use the package's Vitest script or a Turborepo task:
 
 ```bash
+pnpm turbo run typecheck --filter=@nest-boot/<package>
 pnpm --filter @nest-boot/<package> test
 pnpm turbo run test --filter=@nest-boot/<package> --env-mode=loose
 pnpm turbo run build --filter=@nest-boot/<package> --force
 pnpm turbo run lint --filter=@nest-boot/<package>
 ```
+
+The filtered Turbo typecheck builds the required workspace declarations before running the package’s `tsc --noEmit` script.
 
 Do not run both test commands unless useful. Not every package defines every target or contains tests; run only available targets, then add checks for affected dependants and documentation.
 
@@ -64,6 +67,7 @@ Do not run both test commands unless useful. Not every package defines every tar
 - Split mixed suites at the behavior boundary while preserving their assertions. Share setup and test doubles through fixtures under `test/`; do not publish fixtures with production code.
 - Keep compile-time-only contracts in `test/*.type-test.ts` and include them in the package's TypeScript check.
 - Apply the same ownership and naming rules to examples: framework behavior belongs in its owning package, while example tests cover application configuration, migrations, business recipes, and application flows. Client unit tests use adjacent `*.spec.ts`/`*.spec.tsx` files; Playwright browser tests keep `*.spec.ts` under the configured `e2e/` directory and run through `test:e2e`.
+- Import local implementations from `src` in package tests. Consumer tests should import a workspace package by its public name. Declare fixture dependencies in its package manifest when a consumer would otherwise introduce a workspace cycle.
 - Run ordinary tests through `test`/`test:cov` and E2E tests through `test:e2e`. Build affected packages before E2E tests; CLI subprocesses and some package suites exercise compiled outputs. Keep their coverage reports in separate directories so neither run overwrites the other; CI collects both. In the command package, Vitest measures in-process E2E flows while c8 writes CLI subprocess coverage to `coverage/cli`; raw c8 snapshots stay in `node_modules/.cache/c8`.
 
 `pnpm test:layout` checks packages and examples, matches unit filenames to adjacent implementations (including TSX and JavaScript files), verifies that E2E files live under `test/`, and recognizes the configured Playwright test directory separately.
@@ -73,13 +77,14 @@ Do not run both test commands unless useful. Not every package defines every tar
 The pull request workflow runs:
 
 ```bash
+pnpm typecheck
 pnpm build:packages --force
 pnpm format:check
 pnpm lint
 pnpm test:cov
 ```
 
-For documentation changes, run `pnpm --filter @nest-boot/docs types:check`, `pnpm --filter @nest-boot/docs lint`, and `pnpm build:docs`. Keep tutorials, examples, and source comments aligned with public API changes.
+For documentation changes, run `pnpm --filter @nest-boot/docs typecheck`, `pnpm --filter @nest-boot/docs lint`, and `pnpm build:docs`. Keep tutorials, examples, and source comments aligned with public API changes.
 
 Coverage tests in CI use PostgreSQL, Redis, and RustFS. If equivalent services are unavailable locally, run the reliable subset and state exactly what was not run. Never claim a check passed without its output.
 

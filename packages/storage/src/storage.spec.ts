@@ -208,9 +208,9 @@ describe("Storage", () => {
     );
     const signedCommand = getSignedUrlMock.mock.calls.at(-1)?.[1];
     expect(signedCommand).toBeInstanceOf(GetObjectCommand);
-    expect(signedCommand?.input.Bucket).toBe(
-      "https://uploads.public.example.com/assets",
-    );
+    expect(signedCommand?.input).toMatchObject({
+      Bucket: "https://uploads.public.example.com/assets",
+    });
   });
 
   it("writes, copies, moves, and deletes paths relative to its root", async () => {

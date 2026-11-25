@@ -9,17 +9,17 @@ import * as ts from "typescript";
 import rule from "../src/rules/mikro-orm/entity-property-config-from-types.js";
 import noSpread from "../src/rules/mikro-orm/entity-property-no-spread.js";
 
-const packageRoot = fileURLToPath(new URL("../", import.meta.url));
+const projectRoot = fileURLToPath(new URL("./fixtures/", import.meta.url));
 // Keep executable compiler fixtures isolated from the workspace packages.
-const fixtureRoot = path.join(packageRoot, ".cache/orm-imports");
+const fixtureRoot = path.join(projectRoot, ".cache/orm-imports");
 mkdirSync(fixtureRoot, { recursive: true });
 afterAll(() => {
   rmSync(fixtureRoot, { recursive: true, force: true });
 });
 writeFileSync(
   path.join(fixtureRoot, "orm-barrel.ts"),
-  `export { EncryptedProperty } from "../../../database-crypt/dist/index.js";
-export { HashedProperty } from "../../../database-hash/dist/index.js";
+  `export { EncryptedProperty } from "@nest-boot/database-crypt";
+export { HashedProperty } from "@nest-boot/database-hash";
 export { type Opt,t } from "@mikro-orm/core";
 export { Entity, Property } from "@mikro-orm/decorators/legacy";
 `,
@@ -58,7 +58,7 @@ export function Field(...args: unknown[]): PropertyDecorator {
 `,
 );
 
-const filename = path.join(packageRoot, "v8-autofix-fixture.ts");
+const filename = path.join(projectRoot, "v8-autofix-fixture.ts");
 const linter = new Linter();
 const config: Linter.Config[] = [
   {
@@ -69,7 +69,7 @@ const config: Linter.Config[] = [
         // verifyAndFix reparses different source snapshots in this process, including on CI.
         disallowAutomaticSingleRunInference: true,
         projectService: { allowDefaultProject: ["v8-autofix-fixture.ts"] },
-        tsconfigRootDir: packageRoot,
+        tsconfigRootDir: projectRoot,
       },
     },
     plugins: {
@@ -83,7 +83,7 @@ const cases = [
   {
     name: "quoted searchable options and computed option keys",
     imports:
-      'import { Entity } from "@mikro-orm/decorators/legacy"; import { SearchableProperty } from "../database/dist/index.js"; const option = "hidden";',
+      'import { Entity } from "@mikro-orm/decorators/legacy"; import { SearchableProperty } from "@nest-boot/database"; const option = "hidden";',
     property:
       '@SearchableProperty<Thing>({ "properties": "name", "nullable": true, [option]: false }) name!: string | null;',
   },
@@ -97,27 +97,27 @@ const cases = [
   {
     name: "searchable property with external options and class-inferred source names",
     imports:
-      'import { Entity } from "@mikro-orm/decorators/legacy"; import { SearchableProperty as Search } from "../database/dist/index.js"; const options = { properties: "name" as const, nullable: true };',
+      'import { Entity } from "@mikro-orm/decorators/legacy"; import { SearchableProperty as Search } from "@nest-boot/database"; const options = { properties: "name" as const, nullable: true };',
     property: "@Search<Thing>(options) name!: string | null;",
   },
   {
     name: "native full-text callbacks with class-inferred entity types",
     imports:
-      'import { Entity, Property } from "@mikro-orm/decorators/legacy"; import { FullTextType } from "@mikro-orm/postgresql"; import { onFullTextCreate, onFullTextUpdate } from "../database/dist/index.js";',
+      'import { Entity, Property } from "@mikro-orm/decorators/legacy"; import { FullTextType } from "@mikro-orm/postgresql"; import { onFullTextCreate, onFullTextUpdate } from "@nest-boot/database";',
     property:
       '@Property<Thing>({ type: FullTextType, onCreate: onFullTextCreate("name"), onUpdate: onFullTextUpdate("name") }) name!: string | null;',
   },
   {
     name: "searchable property options and source mapping",
     imports:
-      'import { Entity } from "@mikro-orm/decorators/legacy"; import { SearchableProperty as Search } from "../database/dist/index.js";',
+      'import { Entity } from "@mikro-orm/decorators/legacy"; import { SearchableProperty as Search } from "@nest-boot/database";',
     property:
       '@Search<Thing>({ properties: "name", type: "text", index: true, onCreate: () => "custom", onUpdate: () => "custom", hidden: false }) name!: string | null;',
   },
   {
     name: "namespace searchable property with nullable inference",
     imports:
-      'import { Entity } from "@mikro-orm/decorators/legacy"; import * as database from "../database/dist/index.js";',
+      'import { Entity } from "@mikro-orm/decorators/legacy"; import * as database from "@nest-boot/database";',
     property:
       '@database.SearchableProperty<Thing>({ properties: ["name"] }) name!: string | null;',
   },
@@ -398,7 +398,7 @@ it.each([
   },
   {
     name: "relative custom decorator import",
-    code: 'import { Entity } from "@mikro-orm/decorators/legacy"; import { t } from "@mikro-orm/core"; import { EncryptedProperty as Secret } from "../database-crypt/dist/index.js"; @Entity() class Thing { @Secret({ type: t.string }) name!: string; }',
+    code: 'import { Entity } from "@mikro-orm/decorators/legacy"; import { t } from "@mikro-orm/core"; import { EncryptedProperty as Secret } from "./.cache/orm-imports/orm-barrel.js"; @Entity() class Thing { @Secret({ type: t.string }) name!: string; }',
   },
 ])("preserves $name", ({ code }) => {
   const result = linter.verifyAndFix(code, config, { filename });
@@ -461,11 +461,6 @@ function compileDiagnostics(code: string): string[] {
     target: ts.ScriptTarget.ES2023,
     skipLibCheck: true,
     types: [],
-    paths: {
-      "@nest-boot/database-crypt": [
-        path.resolve(packageRoot, "../database-crypt/dist/index.d.ts"),
-      ],
-    },
   };
   const host = ts.createCompilerHost(options);
   const getSourceFile = host.getSourceFile.bind(host);
@@ -562,7 +557,7 @@ it.each([
   (packageName, decorator) => {
     const code = `import { Entity } from "@mikro-orm/decorators/legacy";
 import { t } from "@mikro-orm/core";
-import { ${decorator} as Secret } from "../${packageName}/src/index.js";
+import { ${decorator} as Secret } from "../../../${packageName}/src/index.js";
 @Entity() class Thing { @Secret({ type: t.string }) name!: string; }`;
     const result = linter.verifyAndFix(code, config, { filename });
     expect(result.output).toBe(code);

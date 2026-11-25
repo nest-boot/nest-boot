@@ -1,7 +1,7 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 
-import { BaseQueue, Queue, QueueManager, QueueModule } from "../dist/index.js";
+import { BaseQueue, Queue, QueueManager, QueueModule } from "../src/index.js";
 import { createQueueTestingModule } from "./queue-testing.fixture.js";
 
 const { nativeAdd, nativeBulk, nativeScheduler } = vi.hoisted(() => ({

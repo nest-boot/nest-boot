@@ -1,18 +1,9 @@
 {
-  "extends": "@nest-boot/tsconfig/library.json",
+  "extends": "./tsconfig.build.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": ".",
-    "tsBuildInfoFile": "./tsconfig.tsbuildinfo"
+    "rootDir": "."
   },
-  "include": [
-    "src",
-    "test",
-    "vitest.config.ts",
-    "vitest.config.e2e.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src", "test", "vitest.config.ts", "vitest.config.e2e.ts"],
+  "exclude": ["node_modules", "dist"]
 }

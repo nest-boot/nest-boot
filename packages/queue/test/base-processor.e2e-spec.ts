@@ -11,7 +11,7 @@ import {
   Queue,
   QueueManager,
   QueueModule,
-} from "../dist/index.js";
+} from "../src/index.js";
 import { createQueueTestingModule } from "./queue-testing.fixture.js";
 
 const { workers } = vi.hoisted(() => ({ workers: [] as any[] }));

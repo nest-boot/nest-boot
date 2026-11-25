@@ -1,8 +1,8 @@
 import { CommandModule } from "@nest-boot/command";
 import { QueueModule } from "@nest-boot/queue";
+import { ScheduleModule } from "@nest-boot/schedule";
 import { Module } from "@nestjs/common";
 
-import { ScheduleModule } from "../../../schedule/dist/index.js";
 import { WorkerModule } from "./app/worker/worker.module.js";
 
 @Module({

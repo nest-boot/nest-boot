@@ -8,7 +8,7 @@ export default defineConfig({
     root: "./",
     include: ["**/*.e2e-spec.ts"],
     coverage: {
-      include: ["dist/**/*.js"],
+      include: ["src/**/*.ts"],
       exclude: [],
       reportsDirectory: "coverage/e2e",
       reporter: ["text", "lcov", "json-summary"],

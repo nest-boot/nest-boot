@@ -12,7 +12,6 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       // CLI bootstrap and loader coverage comes from c8's real child processes.
       exclude: [
-        "src/test/**",
         "**/*.spec.ts",
         "src/{cli,run-cli,project-loader,ts-node.loader}.ts",
       ],

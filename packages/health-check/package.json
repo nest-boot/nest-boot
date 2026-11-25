@@ -24,16 +24,18 @@
     "!dist/**/*.tsbuildinfo"
   ],
   "scripts": {
+    "prebuild": "pnpm run clean",
     "build": "tsc -p tsconfig.build.json",
-    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
+    "clean": "tsc -b --clean tsconfig.build.json && rm -rf dist",
     "dev": "tsc -w -p tsconfig.build.json",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
-    "test": "pnpm build && vitest run --passWithNoTests",
-    "test:cov": "pnpm build && vitest run --coverage --passWithNoTests",
-    "test:watch": "pnpm build && vitest",
-    "test:debug": "pnpm build && vitest --inspect-brk --no-file-parallelism --passWithNoTests",
-    "test:e2e": "pnpm build && vitest run --config ./vitest.config.e2e.ts --coverage"
+    "typecheck": "tsc --noEmit",
+    "test": "turbo run build && vitest run --passWithNoTests",
+    "test:cov": "turbo run build && vitest run --coverage --passWithNoTests",
+    "test:watch": "turbo run build && vitest",
+    "test:debug": "turbo run build && vitest --inspect-brk --no-file-parallelism --passWithNoTests",
+    "test:e2e": "turbo run build && vitest run --config ./vitest.config.e2e.ts --coverage"
   },
   "devDependencies": {
     "@nest-boot/eslint": "workspace:^",
