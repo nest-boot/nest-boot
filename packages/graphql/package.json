@@ -24,6 +24,7 @@
     "!dist/**/*.tsbuildinfo"
   ],
   "scripts": {
+    "prebuild": "pnpm run clean",
     "build": "tsc -p tsconfig.build.json",
     "clean": "tsc -b --clean tsconfig.build.json && rm -rf dist coverage",
     "dev": "tsc -w -p tsconfig.build.json",
@@ -31,10 +32,10 @@
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:cov": "vitest run --coverage",
+    "test:cov": "turbo run build && vitest run --coverage",
     "test:watch": "vitest",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "pnpm build && vitest run --config ./vitest.config.e2e.ts --coverage"
+    "test:e2e": "turbo run build && vitest run --config ./vitest.config.e2e.ts --coverage"
   },
   "devDependencies": {
     "@apollo/server": "^5.5.1",

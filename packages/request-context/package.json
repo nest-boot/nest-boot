@@ -27,6 +27,7 @@
     "cookie": "^2.0.1"
   },
   "scripts": {
+    "prebuild": "pnpm run clean",
     "build": "tsc -p tsconfig.build.json",
     "clean": "tsc -b --clean tsconfig.build.json && rm -rf dist coverage",
     "dev": "tsc -w -p tsconfig.build.json",
