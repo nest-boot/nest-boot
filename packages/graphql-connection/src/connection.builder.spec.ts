@@ -96,19 +96,23 @@ describe("ConnectionBuilder", () => {
       cost({ first: 10, filter: { title: "book" } }, { result: null }),
     ).toBe(3);
     expect(cost({})).toBe(0);
-    for (const type of [Filter, new GraphQLNonNull(Filter)]) {
-      const countField = new GraphQLObjectType({
+    for (const filterType of [Filter, new GraphQLNonNull(Filter)]) {
+      const queryType = new GraphQLObjectType({
         name: "CountCostQuery",
         fields: {
-          booksCount: { type: GraphQLInt, args: { filter: { type } } },
+          booksCount: {
+            type: GraphQLInt,
+            args: { filter: { type: filterType } },
+          },
         },
-      }).getFields().booksCount;
+      });
       expect(
         Count.complexity({
           args: { query: "title:book", filter: { title: { $ne: "other" } } },
           childComplexity: 5,
-          field: countField,
-        } as FieldComplexityEstimatorArgs),
+          field: queryType.getFields().booksCount,
+          type: queryType,
+        }),
       ).toBe(13);
     }
     expect(cost({ last: 1, after: "cursor" })).toBe(0);

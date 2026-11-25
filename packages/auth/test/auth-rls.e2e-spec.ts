@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { EntityManager, ref } from "@mikro-orm/core";
 import { MikroORM } from "@mikro-orm/pglite";
 import { getDatabaseConfig } from "@nest-boot/database";
+import { CountPrecision } from "@nest-boot/graphql-connection";
 import { REQUEST, RequestContext, RESPONSE } from "@nest-boot/request-context";
 import { type FactoryProvider, ForbiddenException } from "@nestjs/common";
 import type { Request } from "express";
@@ -43,6 +44,7 @@ import {
   WorkspaceMemberType,
   WorkspaceService,
 } from "../src/index.js";
+import { WorkspaceResolver } from "../src/workspace/resolvers/workspace.resolver.js";
 import { createTestApiKeyService } from "./fixtures/auth-context.fixture.js";
 import { stageIdentity } from "./fixtures/auth-context.fixture.js";
 import { createTestAuthContext } from "./fixtures/auth-context.fixture.js";
@@ -1244,14 +1246,13 @@ describe("Auth services and native RLS boundaries", () => {
           },
         },
       });
-      const service = new WorkspaceMemberService(
-        em,
-        {
-          workspace: { enabled: true },
-        },
-        createTestAuthContext(em, {
-          workspace: { enabled: true },
-        }),
+      const options = withAuthTestFeatures({ workspace: { enabled: true } });
+      const authContext = createTestAuthContext(em, options);
+      const service = new WorkspaceMemberService(em, options, authContext);
+      const resolver = new WorkspaceResolver(
+        new WorkspaceService(em, options, authContext),
+        service,
+        new WorkspaceInvitationService(em, options),
       );
       await RequestContext.run(
         new RequestContext({ type: "test" }),
@@ -1272,16 +1273,24 @@ describe("Auth services and native RLS boundaries", () => {
             type === WorkspaceMemberType.USER ? actor.id : serviceAccount.id,
           ]);
           expect(page.edges.length).toBe(1);
+          await expect(resolver.membersCount(workspace, {})).resolves.toEqual({
+            count: 1,
+            precision: CountPrecision.EXACT,
+          });
           const forbidden =
             type === WorkspaceMemberType.USER ? serviceAccount : actor;
           expect(await service.getWorkspaceMember(forbidden.id)).toBeNull();
+          const filter = { type: { $eq: forbidden.type } };
           const filtered =
             await service.getWorkspaceMemberConnectionByWorkspace(workspace, {
               first: 10,
-              filter: { type: { $eq: forbidden.type } },
+              filter,
             });
           expect(filtered.edges).toEqual([]);
           expect(filtered.edges.length).toBe(0);
+          await expect(
+            resolver.membersCount(workspace, { filter }),
+          ).resolves.toEqual({ count: 0, precision: CountPrecision.EXACT });
         },
       );
       await admin.nativeDelete(Workspace, workspace.id);
