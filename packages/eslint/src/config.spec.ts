@@ -1,4 +1,4 @@
-import { configs } from "./config.js";
+import nestBoot, { configs } from "./index.js";
 
 describe("eslint configs", () => {
   describe("standard", () => {
@@ -42,14 +42,14 @@ describe("eslint configs", () => {
   });
 
   describe("rules", () => {
-    it("only registers the nest-boot plugin and custom rules without external presets", () => {
+    it("registers the nest-boot plugin and custom rules without external presets", () => {
       expect(configs.rules).toHaveLength(1);
       const [rulesEntry] = configs.rules;
 
       expect(rulesEntry.name).toBe("@nest-boot/eslint/rules");
       expect(rulesEntry.files).toEqual(["**/*.{ts,mts,cts,tsx}"]);
       expect(rulesEntry.languageOptions).toBeUndefined();
-      expect(Object.keys(rulesEntry.plugins ?? {})).toEqual(["nest-boot"]);
+      expect(rulesEntry.plugins).toEqual({ "nest-boot": nestBoot });
       expect(rulesEntry.rules).toEqual({
         "nest-boot/database/entity-property-config-from-types": "error",
         "nest-boot/database/entity-property-definite-assignment": "error",

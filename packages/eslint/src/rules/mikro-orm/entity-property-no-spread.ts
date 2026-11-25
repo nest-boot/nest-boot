@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES } from "@typescript-eslint/utils";
 
 import { createRule } from "../../utils/createRule.js";
-import { importedBindingName } from "../../utils/named-imports.js";
+import { getImportedName } from "../../utils/imports.js";
 
 const decoratorModules = [
   "@mikro-orm/decorators/legacy",
@@ -9,6 +9,7 @@ const decoratorModules = [
   "@nest-boot/database-crypt",
   "@nest-boot/database-hash",
 ];
+
 const fieldDecorators = new Set([
   "Property",
   "PrimaryKey",
@@ -29,16 +30,16 @@ export default createRule({
   name: "database/entity-property-no-spread",
   meta: {
     type: "problem",
-    schema: [],
     docs: {
-      description: "Require explicit options in entity field decorators.",
+      description: "require explicit options in entity field decorators",
+      recommended: true,
     },
+    schema: [],
     messages: {
       noSpread:
         "List field decorator options explicitly instead of spreading shared configuration.",
     },
   },
-  defaultOptions: [],
   create(context) {
     return {
       PropertyDefinition(node) {
@@ -47,10 +48,11 @@ export default createRule({
           if (
             call.type !== AST_NODE_TYPES.CallExpression ||
             !fieldDecorators.has(
-              importedBindingName(
+              getImportedName(
                 context.sourceCode,
                 decoratorModules,
                 call.callee,
+                context.filename,
               ) ?? "",
             )
           ) {

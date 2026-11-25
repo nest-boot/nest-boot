@@ -1,9 +1,11 @@
-import { tester } from "../../../test/tester.js";
+import { RuleTester } from "@typescript-eslint/rule-tester";
+
 import rule from "./graphql-field-definite-assignment.js";
 
-tester.run("graphql-field-definite-assignment", rule, {
+const ruleTester = new RuleTester();
+
+ruleTester.run("field-definite-assignment", rule, {
   valid: [
-    // Property with initializer, no ! needed
     /* typescript */ `
       @ObjectType()
       class User {
@@ -11,7 +13,6 @@ tester.run("graphql-field-definite-assignment", rule, {
         createdAt: Date = new Date();
       }
     `,
-    // Property with !, no initializer
     /* typescript */ `
       @ObjectType()
       class User {
@@ -19,7 +20,6 @@ tester.run("graphql-field-definite-assignment", rule, {
         name!: string;
       }
     `,
-    // Optional property, no ! needed
     /* typescript */ `
       @ObjectType()
       class User {
@@ -27,7 +27,6 @@ tester.run("graphql-field-definite-assignment", rule, {
         age?: number;
       }
     `,
-    // Declare properties cannot use definite assignment assertions
     /* typescript */ `
       @ObjectType()
       class User extends BaseUser {
@@ -35,7 +34,6 @@ tester.run("graphql-field-definite-assignment", rule, {
         declare name: string;
       }
     `,
-    // InputType class
     /* typescript */ `
       @InputType()
       class CreateUserInput {
@@ -43,7 +41,6 @@ tester.run("graphql-field-definite-assignment", rule, {
         name!: string;
       }
     `,
-    // ArgsType class
     /* typescript */ `
       @ArgsType()
       class GetUserArgs {
@@ -51,21 +48,19 @@ tester.run("graphql-field-definite-assignment", rule, {
         id!: string;
       }
     `,
-    // Non-GraphQL model class is not checked
     /* typescript */ `
       class NotAGraphQLModel {
         @Field()
         field: string;
       }
     `,
-    // Property without @Field decorator is not checked
     /* typescript */ `
       @ObjectType()
       class User {
+        @Audit
         field: string;
       }
     `,
-    // Methods are ignored
     /* typescript */ `
       @ObjectType()
       class User {
@@ -74,7 +69,6 @@ tester.run("graphql-field-definite-assignment", rule, {
         }
       }
     `,
-    // Computed property names are skipped
     /* typescript */ `
       @ObjectType()
       class User {
@@ -84,7 +78,6 @@ tester.run("graphql-field-definite-assignment", rule, {
     `,
   ],
   invalid: [
-    // No initializer and no !
     {
       code: /* typescript */ `
         @ObjectType()
@@ -102,38 +95,21 @@ tester.run("graphql-field-definite-assignment", rule, {
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],
     },
-    // InputType - no initializer and no !
     {
       code: /* typescript */ `
-        @InputType()
+        import { InputType as Model, Field as GqlField } from "@nest-boot/graphql";
+        @Model()
         class CreateUserInput {
-          @Field()
+          @GqlField()
           name: string;
         }
       `,
       output: /* typescript */ `
-        @InputType()
+        import { InputType as Model, Field as GqlField } from "@nest-boot/graphql";
+        @Model()
         class CreateUserInput {
-          @Field()
+          @GqlField()
           name!: string;
-        }
-      `,
-      errors: [{ messageId: "addDefiniteAssignment" }],
-    },
-    // Number type, no initializer and no !
-    {
-      code: /* typescript */ `
-        @ObjectType()
-        class User {
-          @Field()
-          age: number;
-        }
-      `,
-      output: /* typescript */ `
-        @ObjectType()
-        class User {
-          @Field()
-          age!: number;
         }
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],

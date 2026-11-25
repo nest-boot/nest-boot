@@ -1,193 +1,86 @@
-import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
+import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 
 import { createRule } from "../../utils/createRule.js";
-import { importedBindingName } from "../../utils/named-imports.js";
+import { getImportedName } from "../../utils/imports.js";
+
+const decoratorModules = [
+  "@mikro-orm/decorators/legacy",
+  "@nest-boot/database",
+  "@nest-boot/database-crypt",
+  "@nest-boot/database-hash",
+];
+
+const trackedPropertyDecorators = new Set([
+  "Property",
+  "Enum",
+  "OneToOne",
+  "OneToMany",
+  "ManyToOne",
+  "ManyToMany",
+  "EncryptedProperty",
+  "HashedProperty",
+  "SearchableProperty",
+]);
 
 export default createRule({
   name: "database/entity-property-definite-assignment",
   meta: {
     type: "suggestion",
-    fixable: "code",
-    schema: [],
     docs: {
       description:
-        "Require definite assignment assertions for uninitialized entity properties.",
+        "require definite assignment assertions on uninitialized entity properties",
+      recommended: true,
     },
+    fixable: "code",
+    schema: [],
     messages: {
       addDefiniteAssignment: "Add definite assignment assertion (!).",
-      removeDefiniteAssignment: "Remove definite assignment assertion (!).",
     },
   },
-  defaultOptions: [],
   create(context) {
     const source = context.sourceCode;
-    const decoratorModules = [
-      "@mikro-orm/decorators/legacy",
-      "@nest-boot/database",
-      "@nest-boot/database-crypt",
-      "@nest-boot/database-hash",
-    ];
-    const decoratorName = (decorator: TSESTree.Decorator) =>
+
+    const getDecoratorName = (decorator: TSESTree.Decorator): string | null =>
       decorator.expression.type === AST_NODE_TYPES.CallExpression
-        ? importedBindingName(
+        ? getImportedName(
             source,
             decoratorModules,
             decorator.expression.callee,
+            context.filename,
           )
         : null;
 
-    const isEntityClass = (node: TSESTree.ClassDeclaration): boolean => {
-      return node.decorators.some(
-        (decorator) => decoratorName(decorator) === "Entity",
-      );
-    };
-
-    const getPropertyName = (
-      member: TSESTree.PropertyDefinition,
-    ): string | null => {
-      if (member.key.type === AST_NODE_TYPES.Identifier) {
-        return member.key.name;
-      }
-      return null;
-    };
-
-    const hasInitializer = (member: TSESTree.PropertyDefinition): boolean => {
-      return !!member.value;
-    };
-
-    const hasDefiniteAssignment = (
-      member: TSESTree.PropertyDefinition,
-    ): boolean => {
-      return member.definite;
-    };
-
-    const isOptionalProperty = (
-      member: TSESTree.PropertyDefinition,
-    ): boolean => {
-      // Check the AST node's optional flag
-      if (member.optional) {
-        return true;
-      }
-
-      // Check if there is a ? symbol in the source code (between property name and colon)
-      const keyEnd = member.key.range[1];
-      const text = source.text;
-      for (let i = keyEnd; i < member.range[1]; i++) {
-        if (text[i] === "?") {
-          return true;
-        }
-        if (text[i] === ":" || text[i] === "!") {
-          break;
-        }
-      }
-
-      return false;
-    };
-
-    const isDeclareProperty = (
-      member: TSESTree.PropertyDefinition,
-    ): boolean => {
-      return member.declare;
-    };
-
     return {
       ClassDeclaration(node) {
-        if (!isEntityClass(node)) {
+        if (
+          !node.decorators.some(
+            (decorator) => getDecoratorName(decorator) === "Entity",
+          )
+        ) {
           return;
         }
 
-        node.body.body.forEach((member: TSESTree.ClassElement) => {
-          if (member.type !== AST_NODE_TYPES.PropertyDefinition) {
-            return;
-          }
+        for (const member of node.body.body) {
           if (
+            member.type !== AST_NODE_TYPES.PropertyDefinition ||
+            member.key.type !== AST_NODE_TYPES.Identifier ||
+            member.optional ||
+            member.declare ||
+            member.value !== null ||
+            member.definite ||
             !member.decorators.some((decorator) =>
-              [
-                "Property",
-                "Enum",
-                "OneToOne",
-                "OneToMany",
-                "ManyToOne",
-                "ManyToMany",
-                "EncryptedProperty",
-                "HashedProperty",
-                "SearchableProperty",
-              ].includes(decoratorName(decorator) ?? ""),
+              trackedPropertyDecorators.has(getDecoratorName(decorator) ?? ""),
             )
           ) {
-            return;
+            continue;
           }
 
-          const propertyName = getPropertyName(member);
-          if (!propertyName) {
-            return;
-          }
-
-          // Optional properties (?:) do not need a definite assignment assertion
-          if (isOptionalProperty(member)) {
-            return;
-          }
-          if (isDeclareProperty(member)) {
-            return;
-          }
-
-          const hasInit = hasInitializer(member);
-          const hasDefinite = hasDefiniteAssignment(member);
-
-          // Case 1: No initializer and no definite assignment assertion
-          if (!hasInit && !hasDefinite) {
-            context.report({
-              node: member,
-              messageId: "addDefiniteAssignment",
-              data: {
-                propertyName,
-              },
-              fix: (fixer) => {
-                // Find the end position of the property name
-                const keyEnd = member.key.range[1];
-                // Insert ! after the property name
-                return fixer.insertTextAfterRange([keyEnd, keyEnd], "!");
-              },
-            });
-          }
-
-          // Case 2: Has initializer but also has definite assignment assertion
-          if (hasInit && hasDefinite) {
-            context.report({
-              node: member,
-              messageId: "removeDefiniteAssignment",
-              data: {
-                propertyName,
-              },
-              fix: (fixer) => {
-                // Find and remove the ! position
-                const keyEnd = member.key.range[1];
-                const text = source.text;
-
-                // Find the ! position (between the property name and the colon)
-                let exclamationPos = -1;
-                for (let i = keyEnd; i < member.range[1]; i++) {
-                  if (text[i] === "!") {
-                    exclamationPos = i;
-                    break;
-                  }
-                  // If we encounter a colon, there is no !
-                  if (text[i] === ":") {
-                    break;
-                  }
-                }
-
-                if (exclamationPos !== -1) {
-                  return fixer.removeRange([
-                    exclamationPos,
-                    exclamationPos + 1,
-                  ]);
-                }
-                return null;
-              },
-            });
-          }
-        });
+          context.report({
+            node: member,
+            messageId: "addDefiniteAssignment",
+            fix: (fixer) => fixer.insertTextAfter(member.key, "!"),
+          });
+        }
       },
     };
   },

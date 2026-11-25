@@ -9,8 +9,14 @@ export default defineConfig({
     globals: true,
     root: "./",
     passWithNoTests: true,
+    setupFiles: ["./test/setup.ts"],
     coverage: {
-      exclude: ["**/*.spec.ts", "bin/**", "test/**"],
+      exclude: [
+        "**/*.spec.ts",
+        "bin/**",
+        "test/**",
+        ".eslint-doc-generatorrc.*",
+      ],
       autoAttachSubprocess: true,
       reporter: ["text", "html", "json", "json-summary"],
     },
@@ -19,6 +25,7 @@ export default defineConfig({
         test: {
           name: "unit",
           include: ["src/**/*.spec.ts"],
+          setupFiles: ["./test/setup.ts"],
           testTimeout: 15000,
         },
       },
@@ -26,6 +33,7 @@ export default defineConfig({
         test: {
           name: "integration",
           include: ["test/integration/**/*.spec.ts"],
+          setupFiles: ["./test/setup.ts"],
           testTimeout: 30000,
           hookTimeout: 30000,
         },
@@ -34,6 +42,7 @@ export default defineConfig({
         test: {
           name: "e2e",
           include: ["test/e2e/**/*.spec.ts"],
+          setupFiles: ["./test/setup.ts"],
           testTimeout: 60000,
           hookTimeout: 30000,
         },

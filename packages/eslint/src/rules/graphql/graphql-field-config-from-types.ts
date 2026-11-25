@@ -4,20 +4,13 @@ import * as ts from "typescript";
 
 import { createRule } from "../../utils/createRule.js";
 import {
+  ensureNamedImportFixes,
+  getImportedName,
+  getLocalImportBinding,
   hasNamedImport,
-  importedBindingName,
   isTypeOnlyImportReference,
-  namedImportBinding,
-  namedImportEdits,
-  promoteImportReferences,
-} from "../../utils/named-imports.js";
-
-// Custom Fix object type for deferred fix application
-interface CustomFix {
-  type: "insert" | "replace";
-  range: readonly [number, number];
-  text: string;
-}
+  promoteTypeImportFixes,
+} from "../../utils/imports.js";
 
 interface TypeInfo {
   typeName: string | null;
@@ -53,24 +46,41 @@ export default createRule<
     type: "problem",
     docs: {
       description:
-        "Automatically generate or fix @Field decorator type and nullable configuration based on TypeScript types (with array support).",
+        "enforce @Field decorator type and nullable configuration from TypeScript types",
+      recommended: true,
+      requiresTypeChecking: true,
     },
     fixable: "code",
     schema: [
       {
         type: "object",
+        description:
+          "Options controlling decorator handling in GraphQL models.",
         properties: {
           decorators: {
             type: "object",
             additionalProperties: {
               type: "string",
               enum: ["ignore", "remove"],
+              description:
+                "Whether to ignore the property ('ignore') or remove @Field ('remove').",
             },
             description:
               "Configure behavior for each decorator. ignore: skip checks; remove: remove @Field. Default: { HideField: 'remove', OneToOne: 'remove', OneToMany: 'remove', ManyToOne: 'remove', ManyToMany: 'remove' }",
           },
         },
         additionalProperties: false,
+      },
+    ],
+    defaultOptions: [
+      {
+        decorators: {
+          HideField: "remove",
+          OneToOne: "remove",
+          OneToMany: "remove",
+          ManyToOne: "remove",
+          ManyToMany: "remove",
+        },
       },
     ],
     messages: {
@@ -80,19 +90,9 @@ export default createRule<
         "Property has a @{{decoratorName}} decorator, @Field decorator should be removed.",
     },
   },
-  defaultOptions: [
-    {
-      decorators: {
-        HideField: "remove",
-        OneToOne: "remove",
-        OneToMany: "remove",
-        ManyToOne: "remove",
-        ManyToMany: "remove",
-      },
-    },
-  ],
   create(context, [options]) {
     const source = context.sourceCode;
+    const filename = context.filename;
     let importLocation: TSESTree.Node = source.ast;
     const ormModules = [
       "@mikro-orm/core",
@@ -105,7 +105,7 @@ export default createRule<
       ),
     ];
     const ormTypeName = (name: TSESTree.Node) =>
-      importedBindingName(source, ormModules, name);
+      getImportedName(source, ormModules, name, filename);
 
     const scalarFromTsKeyword = (
       typeNodeType: AST_NODE_TYPES,
@@ -1402,10 +1402,11 @@ export default createRule<
       ) {
         return null;
       }
-      const importedScalar = importedBindingName(
+      const importedScalar = getImportedName(
         source,
         [...graphqlModules, jsonModule],
         unwrapped,
+        filename,
       );
       if (
         importedScalar &&
@@ -1529,7 +1530,13 @@ export default createRule<
       name === "GraphQLJSONObject" ? jsonModule : graphqlModules;
     const scalarBinding = (name: string): string =>
       ["Int", "Float", "ID", "GraphQLJSONObject"].includes(name)
-        ? namedImportBinding(source, scalarModules(name), name, importLocation)
+        ? getLocalImportBinding(
+            source,
+            scalarModules(name),
+            name,
+            importLocation,
+            filename,
+          )
         : name;
     const typeBinding = (info: TypeInfo) =>
       info.scalarExpression ??
@@ -1537,12 +1544,16 @@ export default createRule<
         ? (info.typeName ?? "")
         : scalarBinding(info.typeName ?? ""));
     const fieldBinding = () =>
-      namedImportBinding(source, graphqlModules, "Field", importLocation);
+      getLocalImportBinding(
+        source,
+        graphqlModules,
+        "Field",
+        importLocation,
+        filename,
+      );
     const decoratorName = (name: TSESTree.Node) =>
-      importedBindingName(source, graphqlModules, name);
+      getImportedName(source, graphqlModules, name, filename);
 
-    // Origin checks already verify imports and const namespace destructures.
-    // A resolved binding distinguishes those values from supported ambient names.
     const hasResolvedBinding = (node: TSESTree.Node) => {
       const identifier =
         node.type === AST_NODE_TYPES.MemberExpression ? node.object : node;
@@ -1567,43 +1578,40 @@ export default createRule<
     };
 
     const ensureImports = (
-      fixes: CustomFix[],
+      fixer: RuleFixer,
       info: TypeInfo,
       includeField = true,
-    ) => {
+    ): RuleFix[] => {
       const expected =
         info.isCustomType || info.scalarExpression ? "" : (info.typeName ?? "");
       const names = [
         ...(includeField ? ["Field"] : []),
         ...(["Int", "Float", "ID"].includes(expected) ? [expected] : []),
       ];
-      const edits = namedImportEdits(
+      const fixes = ensureNamedImportFixes(
+        fixer,
         source,
         graphqlModules,
         names,
         true,
         importLocation,
+        filename,
       );
       if (expected === "GraphQLJSONObject") {
-        edits.push(
-          ...namedImportEdits(
+        fixes.push(
+          ...ensureNamedImportFixes(
+            fixer,
             source,
             jsonModule,
             [expected],
             true,
             importLocation,
+            filename,
           ),
         );
       }
-      fixes.push(
-        ...edits.map((edit) => ({ ...edit, type: "replace" as const })),
-      );
+      return fixes;
     };
-
-    const customTypeImportEdits = (info: TypeInfo): RuleFix[] =>
-      info.typeReference
-        ? promoteImportReferences(source, [info.typeReference])
-        : [];
 
     const getExpectedNullableOption = (
       info: TypeInfo,
@@ -1640,12 +1648,12 @@ export default createRule<
         return null;
       }
       const prop = optionsArg.properties.findLast(
-        (item): item is TSESTree.Property =>
+        (item) =>
           item.type === AST_NODE_TYPES.Property &&
           item.key.type === AST_NODE_TYPES.Identifier &&
           item.key.name === "nullable",
       );
-      if (!prop) {
+      if (prop?.type !== AST_NODE_TYPES.Property) {
         return null;
       }
       if (prop.value.type === AST_NODE_TYPES.Literal) {
@@ -1664,11 +1672,10 @@ export default createRule<
     };
 
     const addFieldDecorator = (
+      fixer: RuleFixer,
       property: TSESTree.PropertyDefinition,
       info: TypeInfo,
-    ) => {
-      const fixes: CustomFix[] = [];
-
+    ): RuleFix[] => {
       const typeName = typeBinding(info);
       const typeExpr =
         info.isArray && !info.isWholeValueScalar
@@ -1678,27 +1685,19 @@ export default createRule<
         getExpectedNullableOption(info),
       );
       const optionsExpr = formattedNullable ? `, { ${formattedNullable} }` : "";
-
       const newDecoratorText = `@${fieldBinding()}(${typeExpr}${optionsExpr})`;
 
-      ensureImports(fixes, info);
-
-      fixes.push({
-        type: "insert",
-        range: property.range,
-        text: newDecoratorText + "\n  ",
-      });
-
-      return fixes;
+      return [
+        ...ensureImports(fixer, info),
+        fixer.insertTextBefore(property, `${newDecoratorText}\n  `),
+      ];
     };
 
     const fixWithTypeInfo = (
-      property: TSESTree.PropertyDefinition,
+      fixer: RuleFixer,
       fieldDecorator: TSESTree.Decorator,
       info: TypeInfo,
-    ) => {
-      const fixes: CustomFix[] = [];
-
+    ): RuleFix[] => {
       const typeName = typeBinding(info);
       const typeExpr =
         info.isArray && !info.isWholeValueScalar
@@ -1718,29 +1717,22 @@ export default createRule<
         callExpr.type === AST_NODE_TYPES.CallExpression &&
         callExpr.arguments.length > 0
       ) {
-        // If the first argument is an object expression (no type function)
         if (callExpr.arguments[0]?.type === AST_NODE_TYPES.ObjectExpression) {
           optionsArg = callExpr.arguments[0];
-        }
-        // If the second argument is an object expression (has type function)
-        else if (
+        } else if (
           callExpr.arguments[1]?.type === AST_NODE_TYPES.ObjectExpression
         ) {
           optionsArg = callExpr.arguments[1];
         }
       }
 
-      // Extract existing options, while handling nullable
       let hasNullableProperty = false;
       if (optionsArg) {
         optionsArg.properties.forEach((prop: TSESTree.ObjectLiteralElement) => {
-          // Handle spread elements (SpreadElement)
           if (prop.type === AST_NODE_TYPES.SpreadElement) {
-            const propText = source.getText(prop);
-            existingOptions.push(propText);
+            existingOptions.push(source.getText(prop));
             return;
           }
-          // Handle regular properties (Property)
           if (
             prop.key.type === AST_NODE_TYPES.Identifier &&
             prop.key.name === "nullable"
@@ -1750,19 +1742,15 @@ export default createRule<
               existingOptions.push(expectedNullableText);
             }
           } else {
-            // Keep other existing config options
-            const propText = source.getText(prop);
-            existingOptions.push(propText);
+            existingOptions.push(source.getText(prop));
           }
         });
       }
 
-      // If nullable is needed but not in original config, prepend it
       if (expectedNullableText && !hasNullableProperty) {
         existingOptions.unshift(expectedNullableText);
       }
 
-      // Build the new decorator text
       const optionsExpr =
         existingOptions.length > 0 ? `, { ${existingOptions.join(", ")} }` : "";
       const existingField =
@@ -1773,25 +1761,10 @@ export default createRule<
           : null;
       const newDecoratorText = `@${existingField ?? fieldBinding()}(${typeExpr}${optionsExpr})`;
 
-      ensureImports(fixes, info, existingField === null);
-
-      fixes.push({
-        type: "replace",
-        range: fieldDecorator.range,
-        text: newDecoratorText,
-      });
-
-      return fixes;
-    };
-
-    const applyFixes = (fixer: RuleFixer, fixes: CustomFix[]) => {
-      return fixes.map((fix) => {
-        if (fix.type === "replace") {
-          return fixer.replaceTextRange(fix.range, fix.text);
-        } else {
-          return fixer.insertTextBeforeRange(fix.range, fix.text);
-        }
-      });
+      return [
+        ...ensureImports(fixer, info, existingField === null),
+        fixer.replaceText(fieldDecorator, newDecoratorText),
+      ];
     };
 
     const isGraphqlModelClass = (node: TSESTree.ClassDeclaration): boolean => {
@@ -1810,20 +1783,19 @@ export default createRule<
           return;
         }
         importLocation = node;
-        const modelImports = promoteImportReferences(
-          source,
-          node.decorators.flatMap((decorator) =>
-            decorator.expression.type === AST_NODE_TYPES.CallExpression &&
-            decoratorName(decorator.expression.callee) !== null
-              ? [decorator.expression.callee]
-              : [],
-          ),
+        const modelImportRefs = node.decorators.flatMap((decorator) =>
+          decorator.expression.type === AST_NODE_TYPES.CallExpression &&
+          decoratorName(decorator.expression.callee) !== null &&
+          isTypeOnlyImportReference(source, decorator.expression.callee)
+            ? [decorator.expression.callee]
+            : [],
         );
-        if (modelImports.length) {
+        if (modelImportRefs.length > 0) {
           context.report({
             node,
             messageId: "alignFieldDecoratorWithTsType",
-            fix: () => modelImports,
+            fix: (fixer) =>
+              promoteTypeImportFixes(fixer, source, modelImportRefs),
           });
           return;
         }
@@ -1844,7 +1816,6 @@ export default createRule<
             ManyToMany: "remove",
           };
 
-          // Check if the property has a configured decorator
           let foundDecoratorName: string | null = null;
           let foundBehavior: DecoratorBehavior | null = null;
 
@@ -1852,10 +1823,11 @@ export default createRule<
             if (decorator.expression.type === AST_NODE_TYPES.CallExpression) {
               const callee = decorator.expression.callee;
               const name =
-                importedBindingName(
+                getImportedName(
                   source,
                   [...graphqlModules, ...ormModules],
                   callee,
+                  filename,
                 ) ??
                 (callee.type === AST_NODE_TYPES.Identifier
                   ? callee.name
@@ -1868,7 +1840,6 @@ export default createRule<
             }
           }
 
-          // If behavior is "ignore", skip directly
           if (foundBehavior === "ignore") {
             return;
           }
@@ -1879,7 +1850,6 @@ export default createRule<
               decoratorName(decorator.expression.callee) === "Field",
           );
 
-          // If behavior is "remove" and has @Field, remove @Field
           if (foundBehavior === "remove" && fieldDecorator) {
             context.report({
               node: fieldDecorator,
@@ -1888,11 +1858,8 @@ export default createRule<
                 decoratorName: foundDecoratorName ?? "unknown",
               },
               fix: (fixer) => {
-                // Remove the entire decorator line (including newline)
                 const decoratorStart = fieldDecorator.range[0];
                 const decoratorEnd = fieldDecorator.range[1];
-
-                // Find the newline and whitespace after the decorator
                 const textAfter = source.text.slice(
                   decoratorEnd,
                   decoratorEnd + 10,
@@ -1908,7 +1875,6 @@ export default createRule<
             return;
           }
 
-          // If behavior is "remove" but no @Field, skip
           if (foundBehavior === "remove") {
             return;
           }
@@ -1918,7 +1884,6 @@ export default createRule<
             return;
           }
 
-          // If there is no @Field decorator, add one
           if (!fieldDecorator) {
             if (
               typeInfo.isCustomType &&
@@ -1931,27 +1896,27 @@ export default createRule<
               });
               return;
             }
-            const customImports = customTypeImportEdits(typeInfo);
-            if (customImports.length) {
+            if (
+              typeInfo.typeReference &&
+              isTypeOnlyImportReference(source, typeInfo.typeReference)
+            ) {
+              const customRef = typeInfo.typeReference;
               context.report({
                 node: member,
                 messageId: "alignFieldDecoratorWithTsType",
-                fix: () => customImports,
+                fix: (fixer) =>
+                  promoteTypeImportFixes(fixer, source, [customRef]),
               });
               return;
             }
             context.report({
               node: member,
               messageId: "alignFieldDecoratorWithTsType",
-              fix: (fixer) => {
-                const fixes = addFieldDecorator(member, typeInfo);
-                return applyFixes(fixer, fixes);
-              },
+              fix: (fixer) => addFieldDecorator(fixer, member, typeInfo),
             });
             return;
           }
 
-          // If there is an existing ArrowFunction but it doesn't match expectations, fix it
           const callExpr = fieldDecorator.expression;
           if (callExpr.type !== AST_NODE_TYPES.CallExpression) {
             return;
@@ -1959,7 +1924,6 @@ export default createRule<
 
           let needReport = true;
           let scalarReference: TSESTree.Node | null = null;
-          let verifiedScalarReference: TSESTree.Node | null = null;
           let isSemanticMatch = false;
 
           if (
@@ -1973,7 +1937,6 @@ export default createRule<
               ? `[${typeBinding(typeInfo)}]`
               : typeBinding(typeInfo);
 
-            // For number types (or finite numeric literal aliases), both Int and Float are valid
             const effectiveScalarName =
               typeInfo.compatibleScalar ??
               (typeInfo.isCustomType ? null : typeInfo.typeName);
@@ -1990,10 +1953,11 @@ export default createRule<
               ? unwrapTypeAssertions(scalarNode)
               : null;
             const explicitScalar = scalarNode
-              ? importedBindingName(
+              ? getImportedName(
                   source,
                   scalarModules(effectiveScalarName ?? typeInfo.typeName),
                   scalarNode,
+                  filename,
                 )
               : null;
             const isValidNumberType =
@@ -2030,9 +1994,6 @@ export default createRule<
               ) &&
               explicitScalar === typeInfo.typeName &&
               typeInfo.isArray === bodyIsArray;
-            if (isValidScalar) {
-              verifiedScalarReference = scalarNode;
-            }
             if (
               isValidScalar &&
               scalarNode &&
@@ -2092,39 +2053,18 @@ export default createRule<
             }
           }
 
-          const destructuredImports = promoteImportReferences(
-            source,
-            [
-              callExpr.callee,
-              ...(verifiedScalarReference ? [verifiedScalarReference] : []),
-            ],
-            { destructuredOnly: true },
-          );
-          if (destructuredImports.length) {
-            context.report({
-              node: member,
-              messageId: "alignFieldDecoratorWithTsType",
-              fix: () => destructuredImports,
-            });
-            return;
-          }
-
           if (
             scalarReference !== null &&
             isTypeOnlyImportReference(source, scalarReference) &&
             (isSemanticMatch || (!needReport && typeInfo.isCustomType))
           ) {
-            const runtimePromotions = promoteImportReferences(source, [
-              scalarReference,
-            ]);
-            if (runtimePromotions.length) {
-              context.report({
-                node: member,
-                messageId: "alignFieldDecoratorWithTsType",
-                fix: () => runtimePromotions,
-              });
-              return;
-            }
+            const ref = scalarReference;
+            context.report({
+              node: member,
+              messageId: "alignFieldDecoratorWithTsType",
+              fix: (fixer) => promoteTypeImportFixes(fixer, source, [ref]),
+            });
+            return;
           }
 
           if (!needReport) {
@@ -2140,6 +2080,7 @@ export default createRule<
                     typeInfo.typeName,
                     false,
                     importLocation,
+                    filename,
                   ) &&
                   !hasNamedImport(
                     source,
@@ -2147,6 +2088,7 @@ export default createRule<
                     typeInfo.typeName,
                     true,
                     importLocation,
+                    filename,
                   )));
             const typeOnlyField =
               isTypeOnlyImportReference(source, callExpr.callee) ||
@@ -2156,6 +2098,7 @@ export default createRule<
                 "Field",
                 false,
                 importLocation,
+                filename,
               ) &&
                 !hasNamedImport(
                   source,
@@ -2163,6 +2106,7 @@ export default createRule<
                   "Field",
                   true,
                   importLocation,
+                  filename,
                 ));
             if (!typeOnlyScalar && !typeOnlyField) {
               return;
@@ -2181,12 +2125,16 @@ export default createRule<
               });
               return;
             }
-            const customImports = customTypeImportEdits(typeInfo);
-            if (customImports.length) {
+            if (
+              typeInfo.typeReference &&
+              isTypeOnlyImportReference(source, typeInfo.typeReference)
+            ) {
+              const customRef = typeInfo.typeReference;
               context.report({
                 node: member,
                 messageId: "alignFieldDecoratorWithTsType",
-                fix: () => customImports,
+                fix: (fixer) =>
+                  promoteTypeImportFixes(fixer, source, [customRef]),
               });
               return;
             }
@@ -2195,10 +2143,7 @@ export default createRule<
           context.report({
             node: member,
             messageId: "alignFieldDecoratorWithTsType",
-            fix: (fixer) => {
-              const fixes = fixWithTypeInfo(member, fieldDecorator, typeInfo);
-              return applyFixes(fixer, fixes);
-            },
+            fix: (fixer) => fixWithTypeInfo(fixer, fieldDecorator, typeInfo),
           });
         });
       },

@@ -1,7 +1,10 @@
-import { tester } from "../../../test/tester.js";
+import { RuleTester } from "@typescript-eslint/rule-tester";
+
 import rule from "./entity-property-definite-assignment.js";
 
-tester.run("entity-property-definite-assignment", rule, {
+const ruleTester = new RuleTester();
+
+ruleTester.run("entity-property-definite-assignment", rule, {
   valid: [
     `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Audit
@@ -17,7 +20,6 @@ import { SearchableProperty } from "other-decorators";
     `import { Entity as Model } from "other-decorators";
 import { SearchableProperty } from "@nest-boot/database";
 @Model() class Book { @SearchableProperty({ properties: "search" }) search: string; }`,
-    // Property with initializer, no ! needed
     /* typescript */ `
       @Entity()
       class User {
@@ -25,7 +27,6 @@ import { SearchableProperty } from "@nest-boot/database";
         createdAt: Date = new Date();
       }
     `,
-    // Property with !, no initializer
     /* typescript */ `
       @Entity()
       class User {
@@ -33,7 +34,6 @@ import { SearchableProperty } from "@nest-boot/database";
         name!: string;
       }
     `,
-    // Optional property, no ! needed
     /* typescript */ `
       @Entity()
       class User {
@@ -41,7 +41,6 @@ import { SearchableProperty } from "@nest-boot/database";
         age?: number;
       }
     `,
-    // Declare properties cannot use definite assignment assertions
     /* typescript */ `
       @Entity()
       class User extends BaseUser {
@@ -49,7 +48,6 @@ import { SearchableProperty } from "@nest-boot/database";
         declare name: string;
       }
     `,
-    // Nullable property with initializer
     /* typescript */ `
       @Entity()
       class User {
@@ -57,21 +55,18 @@ import { SearchableProperty } from "@nest-boot/database";
         name: string | null = null;
       }
     `,
-    // Non-Entity class is not checked
     /* typescript */ `
       class NotAnEntity {
         @Property()
         field: string;
       }
     `,
-    // Property without @Property decorator is not checked
     /* typescript */ `
       @Entity()
       class User {
         field: string;
       }
     `,
-    // Methods are ignored
     /* typescript */ `
       @Entity()
       class User {
@@ -80,7 +75,6 @@ import { SearchableProperty } from "@nest-boot/database";
         }
       }
     `,
-    // Computed property names are skipped
     /* typescript */ `
       @Entity()
       class User {
@@ -88,7 +82,6 @@ import { SearchableProperty } from "@nest-boot/database";
         ["name"]: string;
       }
     `,
-    // @Enum decorator - with !
     /* typescript */ `
       @Entity()
       class User {
@@ -96,7 +89,6 @@ import { SearchableProperty } from "@nest-boot/database";
         role!: UserRole;
       }
     `,
-    // @OneToOne decorator - using Ref
     /* typescript */ `
       @Entity()
       class User {
@@ -104,7 +96,6 @@ import { SearchableProperty } from "@nest-boot/database";
         profile!: Ref<Profile>;
       }
     `,
-    // @OneToMany decorator - initialized with Collection
     /* typescript */ `
       @Entity()
       class User {
@@ -112,7 +103,6 @@ import { SearchableProperty } from "@nest-boot/database";
         posts = new Collection<Post>(this);
       }
     `,
-    // @ManyToOne decorator - using Ref
     /* typescript */ `
       @Entity()
       class Post {
@@ -120,7 +110,6 @@ import { SearchableProperty } from "@nest-boot/database";
         author!: Ref<User>;
       }
     `,
-    // @ManyToMany decorator - initialized with Collection
     /* typescript */ `
       @Entity()
       class User {
@@ -161,7 +150,6 @@ class Book {
 }`,
       errors: [{ messageId: "addDefiniteAssignment" }],
     },
-    // No initializer and no !
     {
       code: /* typescript */ `
         @Entity()
@@ -179,7 +167,6 @@ class Book {
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],
     },
-    // @Enum decorator - no initializer and no !
     {
       code: /* typescript */ `
         @Entity()
@@ -197,7 +184,6 @@ class Book {
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],
     },
-    // @OneToOne decorator - no initializer and no ! (using Ref)
     {
       code: /* typescript */ `
         @Entity()
@@ -215,7 +201,6 @@ class Book {
       `,
       errors: [{ messageId: "addDefiniteAssignment" }],
     },
-    // @ManyToOne decorator - no initializer and no ! (using Ref)
     {
       code: /* typescript */ `
         @Entity()

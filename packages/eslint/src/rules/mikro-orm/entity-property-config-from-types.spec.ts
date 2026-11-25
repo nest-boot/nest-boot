@@ -1,7 +1,22 @@
-import { tester } from "../../../test/tester.js";
+import path from "node:path";
+
+import { RuleTester } from "@typescript-eslint/rule-tester";
+
 import rule from "./entity-property-config-from-types.js";
 
-tester.run("entity-property-config-from-types", rule, {
+const ruleTester = new RuleTester({
+  languageOptions: {
+    parserOptions: {
+      projectService: {
+        allowDefaultProject: ["*.ts*"],
+        defaultProject: "tsconfig.json",
+      },
+      tsconfigRootDir: path.resolve(import.meta.dirname, "../../.."),
+    },
+  },
+});
+
+ruleTester.run("entity-property-config-from-types", rule, {
   valid: [
     `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 import { FullTextType } from "@mikro-orm/postgresql";
@@ -2016,6 +2031,51 @@ class ElementAliasFixes {
         { messageId: "alignPropertyDecoratorWithTsType" },
         { messageId: "useEnumDecorator" },
         { messageId: "alignPropertyDecoratorWithTsType" },
+        { messageId: "alignPropertyDecoratorWithTsType" },
+      ],
+    },
+    // Promotes type-only imports and preserves aliased decorators
+    {
+      code: /* typescript */ `import type { t } from "@mikro-orm/core";
+import { Entity, type Property as Column } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Item {
+  @Column({ type: t.string })
+  title!: string;
+}`,
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property as Column } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Item {
+  @Column({ type: t.string })
+  title!: string;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    {
+      code: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property as Column } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Item {
+  enabled = true;
+}`,
+      output: [
+        /* typescript */ `import { t, Opt } from "@mikro-orm/core";
+import { Entity, Property as Column } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Item {
+  enabled: Opt<boolean> = true;
+}`,
+        /* typescript */ `import { t, Opt } from "@mikro-orm/core";
+import { Entity, Property as Column } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Item {
+  @Column({ type: t.boolean })
+  enabled: Opt<boolean> = true;
+}`,
+      ],
+      errors: [
+        { messageId: "useOptTypeForInitializedProperty" },
         { messageId: "alignPropertyDecoratorWithTsType" },
       ],
     },

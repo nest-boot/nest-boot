@@ -7,7 +7,7 @@ import { Scope } from "@typescript-eslint/utils/ts-eslint";
 import * as ts from "typescript";
 
 import { createRule } from "../../utils/createRule.js";
-import { importedBindingName } from "../../utils/named-imports.js";
+import { getImportedName } from "../../utils/imports.js";
 
 export default createRule<[], "processorName">({
   name: "queue/processor-name",
@@ -15,7 +15,9 @@ export default createRule<[], "processorName">({
     type: "suggestion",
     docs: {
       description:
-        "Requires a processor class name to match its declared queue class.",
+        "require a processor class name to match its declared queue class",
+      recommended: true,
+      requiresTypeChecking: true,
     },
     schema: [],
     messages: {
@@ -23,7 +25,6 @@ export default createRule<[], "processorName">({
         'Processor for "{{queueName}}" must be named "{{expectedName}}".',
     },
   },
-  defaultOptions: [],
   create(context) {
     const source = context.sourceCode;
 
@@ -103,8 +104,12 @@ export default createRule<[], "processorName">({
           const call = decorator.expression;
           if (
             call.type !== AST_NODE_TYPES.CallExpression ||
-            importedBindingName(source, "@nest-boot/queue", call.callee) !==
-              "Processor"
+            getImportedName(
+              source,
+              "@nest-boot/queue",
+              call.callee,
+              context.filename,
+            ) !== "Processor"
           ) {
             continue;
           }

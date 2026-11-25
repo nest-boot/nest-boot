@@ -6,15 +6,16 @@ export default createRule({
   name: "graphql/no-direct-nestjs-import",
   meta: {
     type: "problem",
-    schema: [],
     docs: {
-      description: "Require the Nest Boot public GraphQL entry point.",
+      description:
+        "require importing GraphQL symbols through the Nest Boot public entry point",
+      recommended: true,
     },
+    schema: [],
     messages: {
       useNestBootGraphql: "Use @nest-boot/graphql for public GraphQL imports.",
     },
   },
-  defaultOptions: [],
   create(context) {
     /**
      * Reports direct imports from `@nestjs/graphql`.

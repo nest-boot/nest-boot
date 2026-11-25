@@ -1,7 +1,10 @@
-import { tester } from "../../../test/tester.js";
+import { RuleTester } from "@typescript-eslint/rule-tester";
+
 import rule from "./no-direct-nestjs-import.js";
 
-tester.run("no-direct-nestjs-import", rule, {
+const ruleTester = new RuleTester();
+
+ruleTester.run("no-direct-nestjs-import", rule, {
   valid: [
     'import { Query, ResolveField } from "@nest-boot/graphql";',
     'import type { Complexity } from "@nest-boot/graphql";',
@@ -10,13 +13,37 @@ tester.run("no-direct-nestjs-import", rule, {
     "declare namespace GraphQL { type Options = object; } import Options = GraphQL.Options;",
   ],
   invalid: [
-    'import { ObjectType as Model } from "@nestjs/graphql";',
-    'import * as graphql from "@nestjs/graphql";',
-    'import type { Complexity } from "@nestjs/graphql";',
-    'type Complexity = import("@nestjs/graphql").Complexity;',
-    'import graphql = require("@nestjs/graphql");',
-    'const graphql = import("@nestjs/graphql");',
-    'export { Query } from "@nestjs/graphql";',
-    'export * from "@nestjs/graphql";',
-  ].map((code) => ({ code, errors: [{ messageId: "useNestBootGraphql" }] })),
+    {
+      code: 'import { ObjectType as Model } from "@nestjs/graphql";',
+      errors: [{ messageId: "useNestBootGraphql" }],
+    },
+    {
+      code: 'import * as graphql from "@nestjs/graphql";',
+      errors: [{ messageId: "useNestBootGraphql" }],
+    },
+    {
+      code: 'import type { Complexity } from "@nestjs/graphql";',
+      errors: [{ messageId: "useNestBootGraphql" }],
+    },
+    {
+      code: 'type Complexity = import("@nestjs/graphql").Complexity;',
+      errors: [{ messageId: "useNestBootGraphql" }],
+    },
+    {
+      code: 'import graphql = require("@nestjs/graphql");',
+      errors: [{ messageId: "useNestBootGraphql" }],
+    },
+    {
+      code: 'const graphql = import("@nestjs/graphql");',
+      errors: [{ messageId: "useNestBootGraphql" }],
+    },
+    {
+      code: 'export { Query } from "@nestjs/graphql";',
+      errors: [{ messageId: "useNestBootGraphql" }],
+    },
+    {
+      code: 'export * from "@nestjs/graphql";',
+      errors: [{ messageId: "useNestBootGraphql" }],
+    },
+  ],
 });

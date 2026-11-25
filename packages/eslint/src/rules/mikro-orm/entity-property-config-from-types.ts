@@ -8,45 +8,38 @@ import * as ts from "typescript";
 
 import { createRule } from "../../utils/createRule.js";
 import {
+  ensureNamedImportFixes,
+  getImportedName,
+  getLocalImportBinding,
   hasNamedImport,
-  importedBindingName,
   isTypeOnlyImportReference,
-  namedImportBinding,
-  namedImportEdits,
-  promoteImportReferences,
-} from "../../utils/named-imports.js";
-
-// Custom Fix object type for deferred fix application
-interface CustomFix {
-  type: "insert" | "replace";
-  range: readonly [number, number];
-  text: string;
-}
+  promoteTypeImportFixes,
+} from "../../utils/imports.js";
 
 interface TypeInfo {
   typeName: string | null;
   isArray: boolean;
   isNullable: boolean;
-  isEnum: boolean; // Whether the type is an enum
-  propertyType: string | null; // MikroORM type such as t.text, t.bigint, etc.
-  arrayElementTypeName?: string | null; // Type name of array elements (for special validation)
+  isEnum: boolean;
+  propertyType: string | null;
+  arrayElementTypeName?: string | null;
 }
 
 export default createRule<
   [],
   | "alignPropertyDecoratorWithTsType"
   | "alignSearchablePropertyOptions"
-  | "removePropertyDecorator"
   | "useEnumDecorator"
   | "useOptTypeForInitializedProperty"
-  | "removeOptTypeForNonInitializedProperty"
 >({
   name: "database/entity-property-config-from-types",
   meta: {
     type: "problem",
     docs: {
       description:
-        "Automatically generate or fix @Property decorator type and nullable configuration based on TypeScript types (with array support), as well as @Enum decorator nullable configuration. Checks whether properties with initializers use the Opt<T> type.",
+        "enforce @Property and @Enum decorator configuration from TypeScript types and require Opt<T> on initialized properties",
+      recommended: true,
+      requiresTypeChecking: true,
     },
     fixable: "code",
     schema: [],
@@ -55,19 +48,15 @@ export default createRule<
         "@Property decorator should align with the TypeScript type (type and nullable).",
       alignSearchablePropertyOptions:
         "@SearchableProperty should infer its entity type from the class, align nullable and omit type, index, onCreate and onUpdate.",
-      removePropertyDecorator:
-        "Property has a @{{decoratorName}} decorator, @Property decorator should be removed.",
       useEnumDecorator:
         "Enum types should use @Enum decorator instead of @Property decorator.",
       useOptTypeForInitializedProperty:
         "Properties with non-null initializers should use the Opt<T> type wrapper.",
-      removeOptTypeForNonInitializedProperty:
-        "Properties without initializers or initialized to null should not use the Opt<T> type wrapper.",
     },
   },
-  defaultOptions: [],
   create(context) {
     const source = context.sourceCode;
+    const filename = context.filename;
     let importLocation: TSESTree.Node = source.ast;
     const coreModule = "@mikro-orm/core";
     const decoratorsModule = "@mikro-orm/decorators/legacy";
@@ -77,7 +66,7 @@ export default createRule<
       "@mikro-orm/pglite",
     ];
     const coreName = (local: TSESTree.Node) =>
-      importedBindingName(source, coreModule, local);
+      getImportedName(source, coreModule, local, filename);
     const decoratorModules = [
       decoratorsModule,
       "@nest-boot/database",
@@ -85,21 +74,37 @@ export default createRule<
       "@nest-boot/database-hash",
     ];
     const decoratorName = (local: TSESTree.Node) =>
-      importedBindingName(source, decoratorModules, local);
-    const importEdits = (
+      getImportedName(source, decoratorModules, local, filename);
+    const importFixes = (
+      fixer: RuleFixer,
       modules: string | readonly string[],
       names: readonly string[],
       value = true,
-    ) => namedImportEdits(source, modules, names, value, importLocation);
+    ) =>
+      ensureNamedImportFixes(
+        fixer,
+        source,
+        modules,
+        names,
+        value,
+        importLocation,
+        filename,
+      );
     const hasImport = (
       modules: string | readonly string[],
       name: string,
       value = true,
-    ) => hasNamedImport(source, modules, name, value, importLocation);
+    ) => hasNamedImport(source, modules, name, value, importLocation, filename);
     const coreBinding = (name: string) =>
-      namedImportBinding(source, coreModule, name, importLocation);
+      getLocalImportBinding(source, coreModule, name, importLocation, filename);
     const decoratorBinding = (name: string) =>
-      namedImportBinding(source, decoratorsModule, name, importLocation);
+      getLocalImportBinding(
+        source,
+        decoratorsModule,
+        name,
+        importLocation,
+        filename,
+      );
     const parserServices = ESLintUtils.getParserServices(context);
     const checker = parserServices.program.getTypeChecker();
 
@@ -228,7 +233,8 @@ export default createRule<
       const mode = hasModeArg ? resolveStringLiteralValue(firstArg) : null;
 
       if (
-        importedBindingName(source, fullTextModules, target) === "FullTextType"
+        getImportedName(source, fullTextModules, target, filename) ===
+        "FullTextType"
       ) {
         return {
           canonical: "FullTextType",
@@ -907,14 +913,17 @@ export default createRule<
     const hasOptImport = () => hasImport(coreModule, "Opt", false);
     const hasEnumImport = () => hasImport(decoratorsModule, "Enum");
 
-    const addOptImport = (): RuleFix[] =>
-      importEdits(coreModule, ["Opt"], false);
-    const addEnumImport = (): RuleFix[] =>
-      importEdits(decoratorsModule, ["Enum"]);
-    const addPropertyDecoratorImports = (info: TypeInfo): RuleFix[] => [
-      ...importEdits(decoratorsModule, ["Property"]),
+    const addOptImport = (fixer: RuleFixer): RuleFix[] =>
+      importFixes(fixer, coreModule, ["Opt"], false);
+    const addEnumImport = (fixer: RuleFixer): RuleFix[] =>
+      importFixes(fixer, decoratorsModule, ["Enum"]);
+    const addPropertyDecoratorImports = (
+      fixer: RuleFixer,
+      info: TypeInfo,
+    ): RuleFix[] => [
+      ...importFixes(fixer, decoratorsModule, ["Property"]),
       ...(info.propertyType?.startsWith("t.")
-        ? importEdits(coreModule, ["t"])
+        ? importFixes(fixer, coreModule, ["t"])
         : []),
     ];
 
@@ -1320,24 +1329,15 @@ export default createRule<
     };
 
     const addPropertyDecorator = (
+      fixer: RuleFixer,
       property: TSESTree.PropertyDefinition,
       info: TypeInfo,
-    ) => {
-      const fixes: CustomFix[] = [];
-
+    ): RuleFix => {
       const newDecoratorText = buildPropertyDecorator(info);
-
-      fixes.push({
-        type: "insert",
-        range: property.range,
-        text: newDecoratorText + "\n  ",
-      });
-
-      return fixes;
+      return fixer.insertTextBefore(property, `${newDecoratorText}\n  `);
     };
 
-    const fixWithTypeInfo = (
-      property: TSESTree.PropertyDefinition,
+    const resolveAlignedDecoratorText = (
       propertyDecorator: TSESTree.Decorator,
       info: TypeInfo,
       currentConfig: {
@@ -1348,13 +1348,9 @@ export default createRule<
         otherProps: { key: string; value: string }[];
       },
       decoratorName = "Property",
-    ) => {
-      const fixes: CustomFix[] = [];
-
-      // If current config already has a valid value, keep it instead of replacing with default
+    ): string => {
       const finalInfo = { ...info };
 
-      // PrimaryKey number type defaults to t.integer
       if (
         decoratorName === "PrimaryKey" &&
         finalInfo.propertyType === "t.float"
@@ -1370,7 +1366,6 @@ export default createRule<
           currentConfig.runtimeType,
         )
       ) {
-        // Keep valid string type config
         finalInfo.propertyType = currentConfig.type;
       } else if (
         (info.propertyType === "t.float" ||
@@ -1381,19 +1376,16 @@ export default createRule<
           currentConfig.runtimeType,
         )
       ) {
-        // Keep valid number type config
         finalInfo.propertyType = currentConfig.type;
       } else if (
         info.propertyType === "t.bigint" &&
         isValidBigIntType(currentConfig.type, currentConfig.typeNode)
       ) {
-        // Keep valid bigint type config
         finalInfo.propertyType = currentConfig.type;
       } else if (
         info.propertyType === "t.datetime" &&
         isValidDateType(currentConfig.type, currentConfig.typeNode)
       ) {
-        // Keep valid Date type config
         finalInfo.propertyType = currentConfig.type;
       } else if (
         info.propertyType === "t.boolean" &&
@@ -1408,7 +1400,6 @@ export default createRule<
           currentConfig.typeNode,
         )
       ) {
-        // Keep valid array type config (t.array, VectorType, ArrayType, or explicit t.json)
         finalInfo.propertyType = currentConfig.type;
       } else if (
         (info.propertyType === "t.json" || info.propertyType === null) &&
@@ -1417,8 +1408,7 @@ export default createRule<
         finalInfo.propertyType = currentConfig.type;
       }
 
-      // Keep other property configs
-      const newDecoratorText = buildPropertyDecorator(
+      return buildPropertyDecorator(
         finalInfo,
         currentConfig.otherProps,
         decoratorName,
@@ -1427,24 +1417,6 @@ export default createRule<
           ? source.getText(propertyDecorator.expression.callee)
           : undefined,
       );
-
-      fixes.push({
-        type: "replace",
-        range: propertyDecorator.range,
-        text: newDecoratorText,
-      });
-
-      return fixes;
-    };
-
-    const applyFixes = (fixer: RuleFixer, fixes: CustomFix[]) => {
-      return fixes.map((fix) => {
-        if (fix.type === "replace") {
-          return fixer.replaceTextRange(fix.range, fix.text);
-        } else {
-          return fixer.insertTextBeforeRange(fix.range, fix.text);
-        }
-      });
     };
 
     const isEntityClass = (node: TSESTree.ClassDeclaration): boolean => {
@@ -1518,7 +1490,7 @@ export default createRule<
                 ? prop.value.callee
                 : prop.value;
             if (
-              importedBindingName(source, fullTextModules, reference) ===
+              getImportedName(source, fullTextModules, reference, filename) ===
                 "FullTextType" ||
               coreName(reference) !== null
             ) {
@@ -1638,7 +1610,7 @@ export default createRule<
           node,
           messageId: "useOptTypeForInitializedProperty",
           fix: (fixer) => [
-            ...addOptImport(),
+            ...addOptImport(fixer),
             ...missingOpt.map((identifier) =>
               fixer.replaceText(identifier, coreBinding("Opt")),
             ),
@@ -1681,12 +1653,14 @@ export default createRule<
             }
           }
         }
-        const promotions = promoteImportReferences(source, runtimeReferences);
-        if (promotions.length) {
+        const typeOnlyRefs = runtimeReferences.filter((ref) =>
+          isTypeOnlyImportReference(source, ref),
+        );
+        if (typeOnlyRefs.length > 0) {
           context.report({
             node,
             messageId: "alignPropertyDecoratorWithTsType",
-            fix: () => promotions,
+            fix: (fixer) => promoteTypeImportFixes(fixer, source, typeOnlyRefs),
           });
           return;
         }
@@ -1812,22 +1786,12 @@ export default createRule<
               context.report({
                 node: member,
                 messageId: "useOptTypeForInitializedProperty",
-                fix: (fixer) => {
-                  const fixes = [
-                    fixer.replaceText(typeAnnotation, wrappedType),
-                  ];
-
-                  // If needed, add Opt import
-                  if (needsImport) {
-                    const importFix = addOptImport();
-                    fixes.push(...importFix);
-                  }
-
-                  return fixes;
-                },
+                fix: (fixer) => [
+                  fixer.replaceText(typeAnnotation, wrappedType),
+                  ...(needsImport ? addOptImport(fixer) : []),
+                ],
               });
             } else if (member.value) {
-              // No type annotation, infer type from initializer
               let inferredType: string | null = null;
 
               if (member.value.type === AST_NODE_TYPES.Literal) {
@@ -1840,11 +1804,9 @@ export default createRule<
                   inferredType = "string";
                 }
               } else if (member.value.type === AST_NODE_TYPES.ArrayExpression) {
-                // Empty array [] case, need to infer type from @Property decorator
                 inferredType = "unknown[]";
               } else if (member.value.type === AST_NODE_TYPES.NewExpression) {
-                // new Date() case
-                if (member.value.callee?.type === AST_NODE_TYPES.Identifier) {
+                if (member.value.callee.type === AST_NODE_TYPES.Identifier) {
                   inferredType = member.value.callee.name;
                 }
               }
@@ -1856,19 +1818,10 @@ export default createRule<
                 context.report({
                   node: member,
                   messageId: "useOptTypeForInitializedProperty",
-                  fix: (fixer) => {
-                    const fixes = [
-                      fixer.insertTextAfter(propertyName, `: ${wrappedType}`),
-                    ];
-
-                    // If needed, add Opt import
-                    if (needsImport) {
-                      const importFix = addOptImport();
-                      fixes.push(...importFix);
-                    }
-
-                    return fixes;
-                  },
+                  fix: (fixer) => [
+                    fixer.insertTextAfter(propertyName, `: ${wrappedType}`),
+                    ...(needsImport ? addOptImport(fixer) : []),
+                  ],
                 });
               }
             }
@@ -1975,15 +1928,10 @@ export default createRule<
               context.report({
                 node: enumDecorator,
                 messageId: "alignPropertyDecoratorWithTsType",
-                fix: (fixer) => {
-                  return [
-                    ...addEnumImport(),
-                    fixer.replaceTextRange(
-                      enumDecorator.range,
-                      expectedEnumText,
-                    ),
-                  ];
-                },
+                fix: (fixer) => [
+                  ...addEnumImport(fixer),
+                  fixer.replaceText(enumDecorator, expectedEnumText),
+                ],
               });
             }
             // Properties with @Enum decorator do not need @Property decorator
@@ -1992,40 +1940,30 @@ export default createRule<
 
           // If it's an enum type but doesn't have @Enum decorator
           if (typeInfo.isEnum) {
-            // If it has @Property decorator, suggest replacing with @Enum
             if (propertyDecorator) {
               context.report({
                 node: propertyDecorator,
                 messageId: "useEnumDecorator",
                 fix: (fixer) => {
                   const newDecoratorText = buildEnumDecorator(typeInfo);
-                  const decoratorFix = fixer.replaceTextRange(
-                    propertyDecorator.range,
-                    newDecoratorText,
-                  );
-                  const importFix = hasEnumImport() ? null : addEnumImport();
-
-                  return importFix
-                    ? [...importFix, decoratorFix]
-                    : decoratorFix;
+                  return [
+                    ...(hasEnumImport() ? [] : addEnumImport(fixer)),
+                    fixer.replaceText(propertyDecorator, newDecoratorText),
+                  ];
                 },
               });
               return;
             }
 
-            // If it doesn't have @Enum decorator, add one
             context.report({
               node: member,
               messageId: "useEnumDecorator",
               fix: (fixer) => {
                 const newDecoratorText = buildEnumDecorator(typeInfo);
-                const decoratorFix = fixer.insertTextBeforeRange(
-                  member.range,
-                  newDecoratorText + "\n  ",
-                );
-                const importFix = hasEnumImport() ? null : addEnumImport();
-
-                return importFix ? [...importFix, decoratorFix] : decoratorFix;
+                return [
+                  ...(hasEnumImport() ? [] : addEnumImport(fixer)),
+                  fixer.insertTextBefore(member, `${newDecoratorText}\n  `),
+                ];
               },
             });
             return;
@@ -2036,15 +1974,10 @@ export default createRule<
             context.report({
               node: member,
               messageId: "alignPropertyDecoratorWithTsType",
-              fix: (fixer) => {
-                const decoratorFixes = applyFixes(
-                  fixer,
-                  addPropertyDecorator(member, typeInfo),
-                );
-                const importFix = addPropertyDecoratorImports(typeInfo);
-
-                return [...importFix, ...decoratorFixes];
-              },
+              fix: (fixer) => [
+                ...addPropertyDecoratorImports(fixer, typeInfo),
+                addPropertyDecorator(fixer, member, typeInfo),
+              ],
             });
             return;
           }
@@ -2185,23 +2118,22 @@ export default createRule<
             node: member,
             messageId: "alignPropertyDecoratorWithTsType",
             fix: (fixer) => {
-              const fixes = fixWithTypeInfo(
-                member,
+              const newDecoratorText = resolveAlignedDecoratorText(
                 propertyDecorator,
                 typeInfo,
                 currentConfig,
                 currentDecoratorName ?? "Property",
               );
-              const usesTypes = fixes.some((fix) =>
-                fix.text.includes(`${coreBinding("t")}.`),
+              const usesTypes = newDecoratorText.includes(
+                `${coreBinding("t")}.`,
               );
               return [
-                ...applyFixes(fixer, fixes),
+                fixer.replaceText(propertyDecorator, newDecoratorText),
                 ...(currentDecoratorName !== null &&
                 ["Property", "PrimaryKey"].includes(currentDecoratorName)
-                  ? importEdits(decoratorsModule, [currentDecoratorName])
+                  ? importFixes(fixer, decoratorsModule, [currentDecoratorName])
                   : []),
-                ...(usesTypes ? importEdits(coreModule, ["t"]) : []),
+                ...(usesTypes ? importFixes(fixer, coreModule, ["t"]) : []),
               ];
             },
           });

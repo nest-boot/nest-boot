@@ -1,12 +1,12 @@
-import parser from "@typescript-eslint/parser";
+import path from "node:path";
+
 import { RuleTester } from "@typescript-eslint/rule-tester";
 
-import { tester } from "../../../test/tester.js";
 import rule from "./processor-name.js";
 
-// Basic name checks also work without a TypeScript program.
-const syntaxTester = new RuleTester({ languageOptions: { parser } });
-syntaxTester.run("processor-name", rule, {
+const syntaxRuleTester = new RuleTester();
+
+syntaxRuleTester.run("processor-name", rule, {
   valid: [
     "@Processor(EmailQueue) class EmailProcessor extends BaseProcessor {}",
     "@Processor(JobQueue) class JobProcessor extends BaseProcessor {}",
@@ -26,20 +26,42 @@ syntaxTester.run("processor-name", rule, {
     "@Processor(Reports) class ReportsProcessor {}",
   ],
   invalid: [
-    ...[
-      ["EmailQueue", "SmsProcessor", "EmailProcessor"],
-      ["EmailQueue", "EmailWorker", "EmailProcessor"],
-      ["JobQueue", "SyncProcessor", "JobProcessor"],
-      ["Reports", "ReportsWorker", "ReportsProcessor"],
-    ].map(([queueName, actualName, expectedName]) => ({
-      code: `@Processor(${queueName}) class ${actualName} extends BaseProcessor {}`,
+    {
+      code: "@Processor(EmailQueue) class SmsProcessor extends BaseProcessor {}",
       errors: [
         {
-          messageId: "processorName" as const,
-          data: { queueName, expectedName },
+          messageId: "processorName",
+          data: { queueName: "EmailQueue", expectedName: "EmailProcessor" },
         },
       ],
-    })),
+    },
+    {
+      code: "@Processor(EmailQueue) class EmailWorker extends BaseProcessor {}",
+      errors: [
+        {
+          messageId: "processorName",
+          data: { queueName: "EmailQueue", expectedName: "EmailProcessor" },
+        },
+      ],
+    },
+    {
+      code: "@Processor(JobQueue) class SyncProcessor extends BaseProcessor {}",
+      errors: [
+        {
+          messageId: "processorName",
+          data: { queueName: "JobQueue", expectedName: "JobProcessor" },
+        },
+      ],
+    },
+    {
+      code: "@Processor(Reports) class ReportsWorker extends BaseProcessor {}",
+      errors: [
+        {
+          messageId: "processorName",
+          data: { queueName: "Reports", expectedName: "ReportsProcessor" },
+        },
+      ],
+    },
     {
       code: 'import { Processor as Consume } from "@nest-boot/queue"; @Consume(EmailQueue) class OtherProcessor {}',
       errors: [
@@ -78,10 +100,23 @@ syntaxTester.run("processor-name", rule, {
   ],
 });
 
-tester.run("processor-name with queue symbols", rule, {
+const typedRuleTester = new RuleTester({
+  languageOptions: {
+    parserOptions: {
+      projectService: {
+        allowDefaultProject: ["*.ts*"],
+        defaultProject: "tsconfig.json",
+      },
+      tsconfigRootDir: path.resolve(import.meta.dirname, "../../.."),
+    },
+  },
+});
+
+typedRuleTester.run("processor-name-type-checked", rule, {
   valid: [
     "class EmailQueue {} const Selected = EmailQueue; @Processor(Selected) class EmailProcessor {}",
     "class EmailQueue {} const queues = { selected: EmailQueue }; @Processor(queues.selected) class EmailProcessor {}",
+    'import EmailQueue from "./email.queue.js"; class LocalQueue {} @Processor(LocalQueue) class LocalProcessor {} void EmailQueue;',
   ],
   invalid: [
     {

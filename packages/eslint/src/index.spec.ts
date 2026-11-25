@@ -1,11 +1,26 @@
-import nestBoot, { configs, plugin } from "./index.js";
+import nestBoot, { configs, meta, rules } from "./index.js";
 
-describe("@nest-boot/eslint public API", () => {
-  it("exports configs and plugin on both default and named exports", () => {
-    expect(nestBoot).toEqual({ configs, plugin });
-    expect(Array.isArray(nestBoot.configs.standard)).toBe(true);
-    expect(Array.isArray(nestBoot.configs.rules)).toBe(true);
-    expect(Array.isArray(nestBoot.configs.recommended)).toBe(true);
-    expect(nestBoot.plugin).toBe(plugin);
+describe("@nest-boot/eslint public plugin API", () => {
+  it("exports a standard ESLint plugin with meta, rules, and configs", () => {
+    expect(nestBoot.meta).toBe(meta);
+    expect(nestBoot.rules).toBe(rules);
+    expect(nestBoot.configs).toBe(configs);
+    expect(meta).toMatchObject({
+      name: "eslint-plugin-nest-boot",
+      namespace: "nest-boot",
+    });
+    expect(typeof meta.version).toBe("string");
+    expect(Object.keys(rules).sort()).toEqual([
+      "database/entity-property-config-from-types",
+      "database/entity-property-definite-assignment",
+      "database/entity-property-no-spread",
+      "graphql/field-config-from-types",
+      "graphql/field-definite-assignment",
+      "graphql/no-direct-nestjs-import",
+      "queue/processor-name",
+    ]);
+    expect(Array.isArray(configs.standard)).toBe(true);
+    expect(Array.isArray(configs.rules)).toBe(true);
+    expect(Array.isArray(configs.recommended)).toBe(true);
   });
 });

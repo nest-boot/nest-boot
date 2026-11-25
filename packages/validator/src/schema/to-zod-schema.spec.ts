@@ -162,7 +162,7 @@ describe("decorated Zod schemas", () => {
     @ZodObject({
       configure: (schema) =>
         schema.refine((value) => value.password === value.confirmPassword, {
-          message: "Passwords do not match",
+          error: "Passwords do not match",
           path: ["confirmPassword"],
         }),
     })

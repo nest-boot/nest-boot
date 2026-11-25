@@ -1,7 +1,22 @@
-import { tester } from "../../../test/tester.js";
+import path from "node:path";
+
+import { RuleTester } from "@typescript-eslint/rule-tester";
+
 import rule from "./graphql-field-config-from-types.js";
 
-tester.run("graphql-field-config-from-types", rule, {
+const ruleTester = new RuleTester({
+  languageOptions: {
+    parserOptions: {
+      projectService: {
+        allowDefaultProject: ["*.ts*"],
+        defaultProject: "tsconfig.json",
+      },
+      tsconfigRootDir: path.resolve(import.meta.dirname, "../../.."),
+    },
+  },
+});
+
+ruleTester.run("field-config-from-types", rule, {
   valid: [
     /* typescript */ `
       @ObjectType()
@@ -1630,6 +1645,39 @@ class DeepTypeMismatches {
         { messageId: "alignFieldDecoratorWithTsType" },
         { messageId: "alignFieldDecoratorWithTsType" },
         { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+      ],
+    },
+    {
+      code: /* typescript */ `import { type Field as GqlField, type Int as GqlInt, ObjectType } from "@nest-boot/graphql";
+@ObjectType()
+class Metrics {
+  @GqlField(() => GqlInt)
+  count!: number;
+
+  score!: number;
+}`,
+      output: [
+        /* typescript */ `import { Field as GqlField, Int as GqlInt, ObjectType } from "@nest-boot/graphql";
+@ObjectType()
+class Metrics {
+  @GqlField(() => GqlInt)
+  count!: number;
+
+  score!: number;
+}`,
+        /* typescript */ `import { Field as GqlField, Int as GqlInt, ObjectType, Float } from "@nest-boot/graphql";
+@ObjectType()
+class Metrics {
+  @GqlField(() => GqlInt)
+  count!: number;
+
+  @GqlField(() => Float)
+  score!: number;
+}`,
+      ],
+      errors: [
         { messageId: "alignFieldDecoratorWithTsType" },
         { messageId: "alignFieldDecoratorWithTsType" },
       ],
