@@ -1682,5 +1682,74 @@ class Metrics {
         { messageId: "alignFieldDecoratorWithTsType" },
       ],
     },
+    // Preserves non-object options expressions (e.g. middleware) by reporting without autofix
+    {
+      code: /* typescript */ `import { Field, ObjectType, type FieldOptions } from "@nestjs/graphql";
+declare const protectedOptions: FieldOptions;
+@ObjectType()
+class ProtectedModel {
+  @Field(() => [String], protectedOptions)
+  secrets!: (string | null)[];
+}`,
+      output: null,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Skips nonpublic properties, preserves nested list depth, detects union-member nullability, and places nullable after spreads
+    {
+      code: /* typescript */ `import { Field, ObjectType } from "@nestjs/graphql";
+type Matrix = string[][];
+type MaybeText = "b" | null;
+const shared = { description: "shared" };
+@ObjectType()
+class GraphqlEdgeCases {
+  private credentials!: { [key: string]: string };
+  protected internalFlag!: boolean;
+
+  @Field(() => [[String]])
+  validMatrix!: Matrix;
+
+  @Field(() => [Array])
+  brokenMatrix!: Matrix;
+
+  @Field(() => [String])
+  unionItems!: ("a" | MaybeText)[];
+
+  @Field(() => String)
+  unionOuter!: "a" | MaybeText;
+
+  @Field(() => [String], { ...shared })
+  spreadItems!: (string | null)[];
+}`,
+      output: /* typescript */ `import { Field, ObjectType } from "@nestjs/graphql";
+type Matrix = string[][];
+type MaybeText = "b" | null;
+const shared = { description: "shared" };
+@ObjectType()
+class GraphqlEdgeCases {
+  private credentials!: { [key: string]: string };
+  protected internalFlag!: boolean;
+
+  @Field(() => [[String]])
+  validMatrix!: Matrix;
+
+  @Field(() => [[String]])
+  brokenMatrix!: Matrix;
+
+  @Field(() => [String], { nullable: "items" })
+  unionItems!: ("a" | MaybeText)[];
+
+  @Field(() => String, { nullable: true })
+  unionOuter!: "a" | MaybeText;
+
+  @Field(() => [String], { ...shared, nullable: "items" })
+  spreadItems!: (string | null)[];
+}`,
+      errors: [
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+      ],
+    },
   ],
 });

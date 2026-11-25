@@ -29,10 +29,12 @@ export default createRule<[], "processorName">({
   create(context) {
     const source = context.sourceCode;
 
-    const parserServices = ESLintUtils.getParserServices(context, true);
+    const parserServices = source.parserServices?.esTreeNodeToTSNodeMap
+      ? ESLintUtils.getParserServices(context, true)
+      : null;
 
     const queueClassName = (node: TSESTree.Node): string | null => {
-      if (parserServices.program) {
+      if (parserServices?.program) {
         const symbol = parserServices.program
           .getTypeChecker()
           .getTypeAtLocation(parserServices.esTreeNodeToTSNodeMap.get(node))
@@ -90,7 +92,8 @@ export default createRule<[], "processorName">({
 
     return {
       ClassDeclaration(node) {
-        for (const decorator of node.decorators) {
+        for (const decorator of (node as Partial<TSESTree.ClassDeclaration>)
+          .decorators ?? []) {
           const call = decorator.expression;
           if (
             call.type !== AST_NODE_TYPES.CallExpression ||
@@ -112,6 +115,13 @@ export default createRule<[], "processorName">({
             continue;
           }
           const expectedName = `${queueName.replace(/Queue$/, "")}Processor`;
+          if (
+            !/^[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*$/u.test(
+              expectedName,
+            )
+          ) {
+            continue;
+          }
           if (node.id?.name !== expectedName) {
             context.report({
               node: node.id ?? node,

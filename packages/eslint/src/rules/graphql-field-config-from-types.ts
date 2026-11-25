@@ -14,6 +14,7 @@ import {
   isObjectFlagSet,
   isSymbolFlagSet,
   isTypeFlagSet,
+  isTypeReference,
   unionConstituents,
 } from "ts-api-utils";
 import * as ts from "typescript";
@@ -31,6 +32,7 @@ import {
 interface TypeInfo {
   typeName: string | null;
   isArray: boolean;
+  arrayDepth?: number;
   isNullable: boolean;
   isItemsNullable?: boolean;
   isCustomType?: boolean;
@@ -270,7 +272,9 @@ export default createRule<
         type.symbol?.name === "ReadonlyArray"
       ) {
         return (
-          typeChecker.getTypeArguments(type as ts.TypeReference)[0] ??
+          (isTypeReference(type)
+            ? typeChecker.getTypeArguments(type)[0]
+            : undefined) ??
           typeChecker.getIndexTypeOfType(type, ts.IndexKind.Number) ??
           null
         );
@@ -440,31 +444,44 @@ export default createRule<
         break;
       }
 
-      // Carry nullability declared inside aliased types (e.g. type MaybeText = string | null)
-      if (!isNullable && baseTypeNode && hasResolvedNullishType(baseTypeNode)) {
+      // Carry nullability declared inside aliased or union-member types (e.g. "a" | MaybeText)
+      if (
+        !isNullable &&
+        ((semanticOuterNode && hasResolvedNullishType(semanticOuterNode)) ||
+          (baseTypeNode && hasResolvedNullishType(baseTypeNode)))
+      ) {
         isNullable = true;
       }
 
-      // Array type (T[], readonly T[], Array<T>, ReadonlyArray<T>) - checked after unwrapping Opt/Ref
-      const rawElementTypeNode = baseTypeNode
-        ? extractArrayElementType(baseTypeNode)
-        : null;
-      let elementTypeNode = rawElementTypeNode;
-      if (rawElementTypeNode) {
+      // Array type (T[], readonly T[], Array<T>, ReadonlyArray<T>, including nested lists T[][])
+      let arrayDepth = 0;
+      let rawElementTypeNode: TSESTree.TypeNode | null = null;
+      let elementTypeNode: TSESTree.TypeNode | null = baseTypeNode;
+      while (elementTypeNode) {
+        const nextElem = extractArrayElementType(elementTypeNode);
+        if (!nextElem) {
+          break;
+        }
         isArray = true;
-        if (rawElementTypeNode.type === AST_NODE_TYPES.TSUnionType) {
-          if (rawElementTypeNode.types.some(isNullishTypeNode)) {
+        arrayDepth += 1;
+        rawElementTypeNode = nextElem;
+        let unwrappedElem: TSESTree.TypeNode | null = nextElem;
+        if (unwrappedElem.type === AST_NODE_TYPES.TSUnionType) {
+          if (unwrappedElem.types.some(isNullishTypeNode)) {
             isItemsNullable = true;
           }
-          elementTypeNode =
-            rawElementTypeNode.types.find((t) => !isNullishTypeNode(t)) ?? null;
-        } else if (hasResolvedNullishType(rawElementTypeNode)) {
+          unwrappedElem =
+            unwrappedElem.types.find((t) => !isNullishTypeNode(t)) ?? null;
+        }
+        if (!isItemsNullable && hasResolvedNullishType(nextElem)) {
           isItemsNullable = true;
         }
+        elementTypeNode = unwrappedElem;
       }
 
-      const targetTypeNode: TSESTree.TypeNode | null =
-        elementTypeNode ?? baseTypeNode;
+      const targetTypeNode: TSESTree.TypeNode | null = isArray
+        ? elementTypeNode
+        : baseTypeNode;
       const semanticTargetNode: TSESTree.TypeNode | undefined =
         rawElementTypeNode ?? semanticOuterNode ?? undefined;
 
@@ -474,13 +491,13 @@ export default createRule<
           const value = property.value.value;
           const typeOf = typeof value;
           if (typeOf === "boolean") {
-            return { typeName: "Boolean", isArray, isNullable };
+            return { typeName: "Boolean", isArray, arrayDepth, isNullable };
           }
           if (typeOf === "number") {
-            return { typeName: "Float", isArray, isNullable };
+            return { typeName: "Float", isArray, arrayDepth, isNullable };
           }
           if (typeOf === "string") {
-            return { typeName: "String", isArray, isNullable };
+            return { typeName: "String", isArray, arrayDepth, isNullable };
           }
         }
         return null;
@@ -498,43 +515,60 @@ export default createRule<
 
       const fullTypeNode = semanticOuterNode ?? baseTypeNode ?? undefined;
 
-      // Resolve array type aliases (e.g. type Tags = readonly string[]) before falling back to custom identifier
+      // Resolve array type aliases (including nested aliases such as `type Matrix = string[][]` or `Row[]`)
       if (
-        !isArray &&
         checker &&
         esTreeNodeToTSNodeMap &&
-        baseTypeNode?.type === AST_NODE_TYPES.TSTypeReference
+        targetTypeNode.type === AST_NODE_TYPES.TSTypeReference
       ) {
-        const tsBase = esTreeNodeToTSNodeMap.get(baseTypeNode);
-        if (ts.isTypeNode(tsBase)) {
-          const resolvedOuter = stripExplicitNullish(
+        const tsTargetRef = esTreeNodeToTSNodeMap.get(targetTypeNode);
+        if (ts.isTypeNode(tsTargetRef)) {
+          let currentTs = stripExplicitNullish(
             checker,
-            checker.getTypeFromTypeNode(tsBase),
+            checker.getTypeFromTypeNode(tsTargetRef),
           );
-          const elemTsType = extractArrayElementTsType(checker, resolvedOuter);
-          if (elemTsType) {
-            isArray = true;
-            if (hasNullishFlag(elemTsType)) {
+          const seenArrayTypes = new Set<ts.Type>();
+          let hasCycle = false;
+          let lastRawElem: ts.Type | null = null;
+          let extraDepth = 0;
+          for (;;) {
+            if (seenArrayTypes.has(currentTs)) {
+              hasCycle = true;
+              break;
+            }
+            seenArrayTypes.add(currentTs);
+            const nextElem = extractArrayElementTsType(checker, currentTs);
+            if (!nextElem) {
+              break;
+            }
+            extraDepth += 1;
+            lastRawElem = nextElem;
+            if (hasNullishFlag(nextElem)) {
               isItemsNullable = true;
             }
-            const nonNullElem = stripExplicitNullish(checker, elemTsType);
+            currentTs = stripExplicitNullish(checker, nextElem);
+          }
+          if (!hasCycle && extraDepth > 0 && lastRawElem) {
+            isArray = true;
+            arrayDepth += extraDepth;
             const inferredElem = inferGraphqlElementFromTsType(
               checker,
-              nonNullElem,
-              tsBase,
+              currentTs,
+              tsTargetRef,
               isIdProperty,
             );
             return {
               typeName: inferredElem.typeName,
               isArray: true,
+              arrayDepth,
               isNullable,
               isItemsNullable,
               isCustomType: inferredElem.isCustomType,
               unautofixableCustomType: inferredElem.unautofixableCustomType,
               targetTypeNode: semanticTargetNode,
               fullTypeNode,
-              resolvedTargetTsType: nonNullElem,
-              resolvedRawItemTsType: elemTsType,
+              resolvedTargetTsType: currentTs,
+              resolvedRawItemTsType: lastRawElem,
             };
           }
         }
@@ -544,6 +578,7 @@ export default createRule<
         return {
           typeName: "ID",
           isArray,
+          arrayDepth,
           isNullable,
           isItemsNullable,
           targetTypeNode: semanticTargetNode,
@@ -560,6 +595,7 @@ export default createRule<
         return {
           typeName: "GraphQLJSONObject",
           isArray,
+          arrayDepth,
           isNullable,
           isItemsNullable,
           targetTypeNode: semanticTargetNode,
@@ -575,6 +611,7 @@ export default createRule<
         return {
           typeName: scalar,
           isArray,
+          arrayDepth,
           isNullable,
           isItemsNullable,
           targetTypeNode: semanticTargetNode,
@@ -609,6 +646,7 @@ export default createRule<
                 return {
                   typeName: elemScalar,
                   isArray: true,
+                  arrayDepth,
                   isNullable,
                   isItemsNullable,
                   targetTypeNode: semanticTargetNode,
@@ -620,6 +658,7 @@ export default createRule<
                 return {
                   typeName: "Boolean",
                   isArray: false,
+                  arrayDepth: 0,
                   isNullable,
                   isItemsNullable,
                   targetTypeNode: semanticTargetNode,
@@ -630,6 +669,7 @@ export default createRule<
                 return {
                   typeName: "String",
                   isArray: false,
+                  arrayDepth: 0,
                   isNullable,
                   isItemsNullable,
                   targetTypeNode: semanticTargetNode,
@@ -640,6 +680,7 @@ export default createRule<
                 return {
                   typeName: "Float",
                   isArray: false,
+                  arrayDepth: 0,
                   isNullable,
                   isItemsNullable,
                   targetTypeNode: semanticTargetNode,
@@ -650,6 +691,7 @@ export default createRule<
                 return {
                   typeName: "GraphQLJSONObject",
                   isArray: false,
+                  arrayDepth: 0,
                   isNullable,
                   isItemsNullable,
                   targetTypeNode: semanticTargetNode,
@@ -669,6 +711,7 @@ export default createRule<
         return {
           typeName: ident,
           isArray,
+          arrayDepth,
           isNullable,
           isItemsNullable,
           isCustomType: true,
@@ -699,6 +742,7 @@ export default createRule<
               return {
                 typeName: "GraphQLJSONObject",
                 isArray,
+                arrayDepth,
                 isNullable,
                 isItemsNullable,
                 targetTypeNode: semanticTargetNode,
@@ -710,6 +754,7 @@ export default createRule<
         return {
           typeName: "__inline_structural__",
           isArray,
+          arrayDepth,
           isNullable,
           isItemsNullable,
           isCustomType: true,
@@ -843,8 +888,8 @@ export default createRule<
         return areTypesEquivalent(typeChecker, elemA, elemB, visited);
       }
       if (typeChecker.isTupleType(a) && typeChecker.isTupleType(b)) {
-        const argsA = typeChecker.getTypeArguments(a as ts.TypeReference);
-        const argsB = typeChecker.getTypeArguments(b as ts.TypeReference);
+        const argsA = isTypeReference(a) ? typeChecker.getTypeArguments(a) : [];
+        const argsB = isTypeReference(b) ? typeChecker.getTypeArguments(b) : [];
         return (
           argsA.length === argsB.length &&
           argsA.every((arg, index) =>
@@ -856,15 +901,14 @@ export default createRule<
         isTypeFlagSet(a, ts.TypeFlags.Object | ts.TypeFlags.Intersection) &&
         isTypeFlagSet(b, ts.TypeFlags.Object | ts.TypeFlags.Intersection)
       ) {
-        const refA =
-          isTypeFlagSet(a, ts.TypeFlags.Object) &&
-          isObjectFlagSet(a as ts.ObjectType, ts.ObjectFlags.Reference);
-        const refB =
-          isTypeFlagSet(b, ts.TypeFlags.Object) &&
-          isObjectFlagSet(b as ts.ObjectType, ts.ObjectFlags.Reference);
-        if (refA && refB && a.symbol && a.symbol === b.symbol) {
-          const argsA = typeChecker.getTypeArguments(a as ts.TypeReference);
-          const argsB = typeChecker.getTypeArguments(b as ts.TypeReference);
+        if (
+          isTypeReference(a) &&
+          isTypeReference(b) &&
+          a.symbol &&
+          a.symbol === b.symbol
+        ) {
+          const argsA = typeChecker.getTypeArguments(a);
+          const argsB = typeChecker.getTypeArguments(b);
           return (
             argsA.length === argsB.length &&
             argsA.every((arg, index) =>
@@ -1003,14 +1047,8 @@ export default createRule<
         return null;
       }
       visited.add(type);
-      if (
-        type.symbol?.name === "GraphQLScalarType" &&
-        isTypeFlagSet(type, ts.TypeFlags.Object) &&
-        isObjectFlagSet(type as ts.ObjectType, ts.ObjectFlags.Reference)
-      ) {
-        const internal = typeChecker.getTypeArguments(
-          type as ts.TypeReference,
-        )[0];
+      if (type.symbol?.name === "GraphQLScalarType" && isTypeReference(type)) {
+        const internal = typeChecker.getTypeArguments(type)[0];
         return internal && !isUnusableType(internal) ? internal : null;
       }
       if (type.isIntersection()) {
@@ -1597,23 +1635,53 @@ export default createRule<
       return null;
     };
 
+    const wrapGraphqlList = (typeName: string, depth: number): string =>
+      `${"[".repeat(depth)}${typeName}${"]".repeat(depth)}`;
+
+    const getRawOptionsArg = (
+      callExpr: TSESTree.CallExpression,
+    ): TSESTree.CallExpressionArgument | null => {
+      if (callExpr.arguments.length === 0) {
+        return null;
+      }
+      const first = callExpr.arguments[0];
+      if (
+        first.type === AST_NODE_TYPES.ArrowFunctionExpression ||
+        first.type === AST_NODE_TYPES.FunctionExpression
+      ) {
+        return callExpr.arguments[1] ?? null;
+      }
+      return first;
+    };
+
+    const hasUnautofixableOptionsArg = (
+      callExpr: TSESTree.CallExpression,
+    ): boolean => {
+      if (callExpr.arguments.length > 2) {
+        return true;
+      }
+      const rawOptions = getRawOptionsArg(callExpr);
+      return (
+        rawOptions !== null &&
+        rawOptions.type !== AST_NODE_TYPES.ObjectExpression
+      );
+    };
+
     const parseNullableOption = (
       callExpr: TSESTree.CallExpression,
     ): ExpectedNullableOption | "invalid" => {
-      const optionsArg =
-        callExpr.arguments[0]?.type === AST_NODE_TYPES.ObjectExpression
-          ? callExpr.arguments[0]
-          : callExpr.arguments[1]?.type === AST_NODE_TYPES.ObjectExpression
-            ? callExpr.arguments[1]
-            : null;
-      if (!optionsArg) {
+      const rawOptions = getRawOptionsArg(callExpr);
+      if (!rawOptions) {
         return null;
       }
+      if (rawOptions.type !== AST_NODE_TYPES.ObjectExpression) {
+        return null;
+      }
+      const optionsArg = rawOptions;
       const prop = optionsArg.properties.findLast(
         (item) =>
           item.type === AST_NODE_TYPES.Property &&
-          !item.computed &&
-          ASTUtils.getPropertyName(item) === "nullable",
+          ASTUtils.getPropertyName(item, source.getScope(item)) === "nullable",
       );
       if (prop?.type !== AST_NODE_TYPES.Property) {
         return null;
@@ -1639,9 +1707,10 @@ export default createRule<
       info: TypeInfo,
     ): RuleFix[] => {
       const typeName = typeBinding(info);
+      const listDepth = info.isArray ? (info.arrayDepth ?? 1) : 0;
       const typeExpr =
-        info.isArray && !info.isWholeValueScalar
-          ? `() => [${typeName}]`
+        listDepth > 0 && !info.isWholeValueScalar
+          ? `() => ${wrapGraphqlList(typeName, listDepth)}`
           : `() => ${typeName}`;
       const formattedNullable = formatNullableOption(
         getExpectedNullableOption(info),
@@ -1661,9 +1730,10 @@ export default createRule<
       info: TypeInfo,
     ): RuleFix[] => {
       const typeName = typeBinding(info);
+      const listDepth = info.isArray ? (info.arrayDepth ?? 1) : 0;
       const typeExpr =
-        info.isArray && !info.isWholeValueScalar
-          ? `() => [${typeName}]`
+        listDepth > 0 && !info.isWholeValueScalar
+          ? `() => ${wrapGraphqlList(typeName, listDepth)}`
           : `() => ${typeName}`;
       const expectedNullableText = formatNullableOption(
         getExpectedNullableOption(info),
@@ -1675,27 +1745,25 @@ export default createRule<
 
       // Check if there is an existing config object
       let optionsArg: TSESTree.ObjectExpression | null = null;
-      if (
-        callExpr.type === AST_NODE_TYPES.CallExpression &&
-        callExpr.arguments.length > 0
-      ) {
-        if (callExpr.arguments[0]?.type === AST_NODE_TYPES.ObjectExpression) {
-          optionsArg = callExpr.arguments[0];
-        } else if (
-          callExpr.arguments[1]?.type === AST_NODE_TYPES.ObjectExpression
-        ) {
-          optionsArg = callExpr.arguments[1];
+      if (callExpr.type === AST_NODE_TYPES.CallExpression) {
+        const rawOptions = getRawOptionsArg(callExpr);
+        if (rawOptions?.type === AST_NODE_TYPES.ObjectExpression) {
+          optionsArg = rawOptions;
         }
       }
 
       let hasNullableProperty = false;
+      let hasSpread = false;
       if (optionsArg) {
         optionsArg.properties.forEach((prop: TSESTree.ObjectLiteralElement) => {
           if (prop.type === AST_NODE_TYPES.SpreadElement) {
+            hasSpread = true;
             existingOptions.push(source.getText(prop));
             return;
           }
-          if (!prop.computed && ASTUtils.getPropertyName(prop) === "nullable") {
+          if (
+            ASTUtils.getPropertyName(prop, source.getScope(prop)) === "nullable"
+          ) {
             hasNullableProperty = true;
             if (expectedNullableText) {
               existingOptions.push(expectedNullableText);
@@ -1707,7 +1775,11 @@ export default createRule<
       }
 
       if (expectedNullableText && !hasNullableProperty) {
-        existingOptions.unshift(expectedNullableText);
+        if (hasSpread) {
+          existingOptions.push(expectedNullableText);
+        } else {
+          existingOptions.unshift(expectedNullableText);
+        }
       }
 
       const optionsExpr =
@@ -1845,6 +1917,13 @@ export default createRule<
 
           if (!fieldDecorator) {
             if (
+              member.accessibility === "private" ||
+              member.accessibility === "protected" ||
+              member.key.type === AST_NODE_TYPES.PrivateIdentifier
+            ) {
+              return;
+            }
+            if (
               typeInfo.isCustomType &&
               (typeInfo.unautofixableCustomType ||
                 isTypeOnlySymbol(typeInfo.typeReference))
@@ -1892,22 +1971,30 @@ export default createRule<
           ) {
             const firstArg = callExpr.arguments[0];
             const calleeText = source.getText(firstArg.body);
-            const expectedTypeText = typeInfo.isArray
-              ? `[${typeBinding(typeInfo)}]`
-              : typeBinding(typeInfo);
+            const expectedArrayDepth = typeInfo.isArray
+              ? (typeInfo.arrayDepth ?? 1)
+              : 0;
+            const expectedTypeText =
+              expectedArrayDepth > 0
+                ? wrapGraphqlList(typeBinding(typeInfo), expectedArrayDepth)
+                : typeBinding(typeInfo);
 
             const effectiveScalarName =
               typeInfo.compatibleScalar ??
               (typeInfo.isCustomType ? null : typeInfo.typeName);
             const isNumberType = effectiveScalarName === "Float";
-            const bodyIsArray =
-              firstArg.body.type === AST_NODE_TYPES.ArrayExpression;
-            const scalarNode =
-              firstArg.body.type === AST_NODE_TYPES.ArrayExpression
-                ? firstArg.body.elements.length === 1
-                  ? firstArg.body.elements[0]
-                  : null
-                : firstArg.body;
+            let bodyArrayDepth = 0;
+            let unwrappedBody: TSESTree.Node | null = firstArg.body;
+            while (unwrappedBody?.type === AST_NODE_TYPES.ArrayExpression) {
+              if (unwrappedBody.elements.length !== 1) {
+                unwrappedBody = null;
+                break;
+              }
+              bodyArrayDepth += 1;
+              unwrappedBody = unwrappedBody.elements[0];
+            }
+            const scalarNode = unwrappedBody;
+            const depthMatches = expectedArrayDepth === bodyArrayDepth;
             scalarReference = scalarNode
               ? unwrapTypeAssertions(scalarNode)
               : null;
@@ -1923,7 +2010,7 @@ export default createRule<
               isNumberType &&
               !!explicitScalar &&
               ["Int", "Float"].includes(explicitScalar) &&
-              typeInfo.isArray === bodyIsArray;
+              depthMatches;
             if (isValidNumberType) {
               typeInfo.typeName = explicitScalar;
               typeInfo.isCustomType = false;
@@ -1939,7 +2026,7 @@ export default createRule<
               scalarNode?.type === AST_NODE_TYPES.Identifier &&
               scalarNode.name === compatiblePrimitive &&
               !hasDeclaredBinding(scalarNode) &&
-              typeInfo.isArray === bodyIsArray;
+              depthMatches;
             if (compatiblePrimitive !== null && isValidCompatiblePrimitive) {
               typeInfo.typeName = compatiblePrimitive;
               typeInfo.isCustomType = false;
@@ -1952,7 +2039,7 @@ export default createRule<
                 explicitScalar,
               ) &&
               explicitScalar === typeInfo.typeName &&
-              typeInfo.isArray === bodyIsArray;
+              depthMatches;
             if (
               isValidScalar &&
               scalarNode &&
@@ -1979,7 +2066,7 @@ export default createRule<
               !typeMatches &&
               scalarNode &&
               (typeInfo.targetTypeNode || typeInfo.resolvedTargetTsType) &&
-              typeInfo.isArray === bodyIsArray &&
+              depthMatches &&
               matchesGraphqlReturnType(
                 scalarNode,
                 typeInfo.targetTypeNode,
@@ -1994,7 +2081,7 @@ export default createRule<
             } else if (
               !typeMatches &&
               scalarNode &&
-              !bodyIsArray &&
+              bodyArrayDepth === 0 &&
               typeInfo.isArray &&
               typeInfo.fullTypeNode &&
               matchesGraphqlReturnType(scalarNode, typeInfo.fullTypeNode, true)
@@ -2099,10 +2186,13 @@ export default createRule<
             }
           }
 
+          const canFixOptions = !hasUnautofixableOptionsArg(callExpr);
           context.report({
             node: member,
             messageId: "alignFieldDecoratorWithTsType",
-            fix: (fixer) => fixWithTypeInfo(fixer, fieldDecorator, typeInfo),
+            fix: canFixOptions
+              ? (fixer) => fixWithTypeInfo(fixer, fieldDecorator, typeInfo)
+              : undefined,
           });
         });
       },

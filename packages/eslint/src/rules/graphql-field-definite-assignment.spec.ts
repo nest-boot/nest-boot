@@ -74,6 +74,9 @@ ruleTester.run("graphql-field-definite-assignment", rule, {
       class User {
         @Field()
         ["name"]: string;
+
+        @Field()
+        [fieldName]: string;
       }
     `,
   ],

@@ -68,6 +68,7 @@ export default createRule({
           ASTUtils.isNodeOfType(AST_NODE_TYPES.PropertyDefinition),
         )) {
           if (
+            member.computed ||
             !ASTUtils.isIdentifier(member.key) ||
             member.optional ||
             member.declare ||

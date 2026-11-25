@@ -80,6 +80,9 @@ import { SearchableProperty } from "@nest-boot/database";
       class User {
         @Property()
         ["name"]: string;
+
+        @Property()
+        [fieldName]: string;
       }
     `,
     /* typescript */ `

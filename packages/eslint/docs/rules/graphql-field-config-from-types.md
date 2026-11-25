@@ -16,9 +16,9 @@
 
 <!-- begin auto-generated rule options list -->
 
-| Name         | Description                                                                                                                                                                                             | Type   | Default           |
-| :----------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :----- | :---------------- |
-| `decorators` | Configure behavior for each decorator. ignore: skip checks; remove: remove @Field. Default: { HideField: 'remove', OneToOne: 'remove', OneToMany: 'remove', ManyToOne: 'remove', ManyToMany: 'remove' } | Object | `[object Object]` |
+| Name         | Description                                                                                                                                                                                             | Type   | Default                                                                                                       |
+| :----------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :----- | :------------------------------------------------------------------------------------------------------------ |
+| `decorators` | Configure behavior for each decorator. ignore: skip checks; remove: remove @Field. Default: { HideField: 'remove', OneToOne: 'remove', OneToMany: 'remove', ManyToOne: 'remove', ManyToMany: 'remove' } | Object | `{ HideField: "remove", OneToOne: "remove", OneToMany: "remove", ManyToOne: "remove", ManyToMany: "remove" }` |
 
 <!-- end auto-generated rule options list -->
 

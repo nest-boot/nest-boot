@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { RuleTester } from "@typescript-eslint/rule-tester";
+import { TSESLint } from "@typescript-eslint/utils";
 
 import rule from "./queue-processor-name.js";
 
@@ -19,6 +20,7 @@ syntaxRuleTester.run("queue-processor-name", rule, {
     'import { EmailQueue as SelectedQueue } from "./email.queue.js"; @Processor(SelectedQueue) class EmailProcessor {}',
     'import * as queues from "./queues.js"; @Processor(queues.EmailQueue) class EmailProcessor {}',
     'import * as queues from "./queues.js"; @Processor(queues["EmailQueue"]) class EmailProcessor {}',
+    'import * as queues from "./queues.js"; @Processor(queues[1]) class NumericKeyProcessor {}',
     "@Processor(makeQueue()) class DynamicProcessor {}",
     "@Processor() class IncompleteProcessor {}",
     "const Selected = makeQueue(); @Processor(Selected) class DynamicProcessor {}",
@@ -89,6 +91,24 @@ syntaxRuleTester.run("queue-processor-name", rule, {
       errors: [{ messageId: "processorName" }],
     },
     {
+      code: 'import * as boot from "@nest-boot/queue"; const { Processor: Consume } = boot; @Consume(EmailQueue) class OtherProcessor {}',
+      errors: [
+        {
+          messageId: "processorName",
+          data: { queueName: "EmailQueue", expectedName: "EmailProcessor" },
+        },
+      ],
+    },
+    {
+      code: 'import { Processor } from "@nest-boot/queue"; function scope() { type Processor = string; @Processor(EmailQueue) class OtherProcessor {} }',
+      errors: [
+        {
+          messageId: "processorName",
+          data: { queueName: "EmailQueue", expectedName: "EmailProcessor" },
+        },
+      ],
+    },
+    {
       code: "@Processor(EmailQueue) export default class {}",
       errors: [
         {
@@ -138,4 +158,21 @@ typedRuleTester.run("queue-processor-name", rule, {
       ],
     },
   ],
+});
+
+describe("queue-processor-name with non-TypeScript parser", () => {
+  it("does not throw when parserServices lacks TypeScript node maps", () => {
+    const linter = new TSESLint.Linter();
+    const messages = linter.verify("export class PlainJs {}", [
+      {
+        plugins: {
+          "nest-boot": {
+            rules: { "queue-processor-name": rule },
+          },
+        },
+        rules: { "nest-boot/queue-processor-name": "error" },
+      },
+    ]);
+    expect(messages).toEqual([]);
+  });
 });

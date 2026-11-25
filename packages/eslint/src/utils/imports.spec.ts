@@ -15,6 +15,18 @@ import {
 
 const ruleTester = new RuleTester();
 
+const typedRuleTester = new RuleTester({
+  languageOptions: {
+    parserOptions: {
+      projectService: {
+        allowDefaultProject: ["*.ts*", "src/utils/*.ts"],
+        defaultProject: "tsconfig.json",
+      },
+      tsconfigRootDir: path.resolve(import.meta.dirname, "../.."),
+    },
+  },
+});
+
 const inspectRule = createRule({
   name: "inspect",
   meta: {
@@ -37,7 +49,7 @@ const inspectRule = createRule({
         const has = hasNamedImport(
           source,
           ["@pkg/mod", "@nest-boot/eslint"],
-          "Target",
+          "createRule",
           true,
           node,
           context.filename,
@@ -45,7 +57,7 @@ const inspectRule = createRule({
         const local = getLocalImportBinding(
           source,
           ["@pkg/mod", "@nest-boot/eslint"],
-          "Target",
+          "createRule",
           node,
           context.filename,
         );
@@ -78,8 +90,8 @@ const fixRule = createRule({
     return {
       ClassDeclaration(node) {
         if (
-          hasNamedImport(source, "@pkg/mod", "Alpha", true, node) &&
-          hasNamedImport(source, "@pkg/mod", "Beta", true, node)
+          hasNamedImport(source, "@nest-boot/eslint", "Alpha", true, node) &&
+          hasNamedImport(source, "@nest-boot/eslint", "Beta", true, node)
         ) {
           return;
         }
@@ -98,10 +110,11 @@ const fixRule = createRule({
             ...ensureNamedImportFixes(
               fixer,
               source,
-              ["@pkg/mod"],
+              ["@nest-boot/eslint"],
               ["Alpha", "Beta"],
               true,
               node,
+              context.filename,
             ),
             ...promoteTypeImportFixes(fixer, source, typeNodes),
           ],
@@ -112,15 +125,15 @@ const fixRule = createRule({
 });
 
 ruleTester.run("inspect", inspectRule, {
-  valid: ['import { Target } from "@pkg/mod"; void Target;'],
+  valid: ['import { createRule } from "@pkg/mod"; void createRule;'],
   invalid: [
     {
-      code: 'import { "Target" as Alias } from "@pkg/mod"; Alias();',
+      code: 'import { "createRule" as Alias } from "@pkg/mod"; Alias();',
       errors: [
         {
           messageId: "hit",
           data: {
-            name: "Target",
+            name: "createRule",
             typeOnly: "false",
             has: "true",
             local: "Alias",
@@ -129,21 +142,49 @@ ruleTester.run("inspect", inspectRule, {
       ],
     },
     {
-      code: 'import type * as mod from "@pkg/mod"; mod["Target"]();',
+      code: 'import type * as mod from "@pkg/mod"; mod["createRule"]();',
       errors: [
         {
           messageId: "hit",
           data: {
-            name: "Target",
+            name: "createRule",
             typeOnly: "true",
             has: "false",
-            local: "Target",
+            local: "createRule",
           },
         },
       ],
     },
     {
-      code: "function run(Target: () => void) { Target(); }",
+      code: 'import * as mod from "@pkg/mod"; const { createRule: Consume } = mod; Consume();',
+      errors: [
+        {
+          messageId: "hit",
+          data: {
+            name: "createRule",
+            typeOnly: "false",
+            has: "false",
+            local: "createRule",
+          },
+        },
+      ],
+    },
+    {
+      code: 'import { createRule } from "@pkg/mod"; function run() { type createRule = string; createRule(); }',
+      errors: [
+        {
+          messageId: "hit",
+          data: {
+            name: "createRule",
+            typeOnly: "false",
+            has: "true",
+            local: "createRule",
+          },
+        },
+      ],
+    },
+    {
+      code: "function run(createRule: () => void) { createRule(); }",
       errors: [
         {
           messageId: "hit",
@@ -151,22 +192,73 @@ ruleTester.run("inspect", inspectRule, {
             name: "null",
             typeOnly: "false",
             has: "false",
-            local: "Target2",
+            local: "createRule2",
           },
         },
       ],
     },
     {
-      code: 'import { Target as LocalTarget } from "./createRule.js"; LocalTarget();',
+      code: 'import { NonExistent as LocalTarget } from "./createRule.js"; LocalTarget();',
       filename: path.join(import.meta.dirname, "sample.ts"),
       errors: [
         {
           messageId: "hit",
           data: {
-            name: "Target",
+            name: "null",
+            typeOnly: "false",
+            has: "false",
+            local: "createRule",
+          },
+        },
+      ],
+    },
+  ],
+});
+
+typedRuleTester.run("inspect-typed", inspectRule, {
+  valid: [],
+  invalid: [
+    {
+      code: 'import { createRule as LocalCreateRule } from "./createRule.js"; LocalCreateRule();',
+      filename: path.join(import.meta.dirname, "sample.ts"),
+      errors: [
+        {
+          messageId: "hit",
+          data: {
+            name: "createRule",
             typeOnly: "false",
             has: "true",
-            local: "LocalTarget",
+            local: "LocalCreateRule",
+          },
+        },
+      ],
+    },
+    {
+      code: 'import * as localMod from "./createRule.js"; localMod.createRule();',
+      filename: path.join(import.meta.dirname, "sample.ts"),
+      errors: [
+        {
+          messageId: "hit",
+          data: {
+            name: "createRule",
+            typeOnly: "false",
+            has: "false",
+            local: "createRule",
+          },
+        },
+      ],
+    },
+    {
+      code: 'import { NonExistent } from "./createRule.js"; NonExistent();',
+      filename: path.join(import.meta.dirname, "sample.ts"),
+      errors: [
+        {
+          messageId: "hit",
+          data: {
+            name: "null",
+            typeOnly: "false",
+            has: "false",
+            local: "createRule",
           },
         },
       ],
@@ -175,23 +267,31 @@ ruleTester.run("inspect", inspectRule, {
 });
 
 ruleTester.run("fix-imports", fixRule, {
-  valid: ['import { Alpha, Beta } from "@pkg/mod";\nclass Demo {}'],
+  valid: ['import { Alpha, Beta } from "@nest-boot/eslint";\nclass Demo {}'],
   invalid: [
     {
-      code: "/** Class doc. */\nclass Demo {}",
+      code: "/** Class doc. */\n// @ts-expect-error\n/* v8 ignore next */\nclass Demo {}",
       output:
-        'import { Alpha, Beta } from "@pkg/mod";\n/** Class doc. */\nclass Demo {}',
+        'import { Alpha, Beta } from "@nest-boot/eslint";\n/** Class doc. */\n// @ts-expect-error\n/* v8 ignore next */\nclass Demo {}',
       errors: [{ messageId: "fix" }],
     },
     {
-      code: 'import type { Alpha, Unused } from "@pkg/mod";\nimport { type Helper } from "@pkg/other";\nclass Demo { prop!: Helper; }',
+      code: 'import { createRule } from "./createRule.js";\nclass Demo {}',
+      filename: path.join(import.meta.dirname, "sample.ts"),
       output:
-        'import { Alpha, type Unused, Beta } from "@pkg/mod";\nimport { Helper } from "@pkg/other";\nclass Demo { prop!: Helper; }',
+        'import { Alpha, Beta } from "@nest-boot/eslint";\nimport { createRule } from "./createRule.js";\nclass Demo {}',
       errors: [{ messageId: "fix" }],
     },
     {
-      code: 'import {\n  type Alpha,\n} from "@pkg/mod";\nclass Demo {}',
-      output: 'import {\n  Alpha,\n  Beta,\n} from "@pkg/mod";\nclass Demo {}',
+      code: 'import type /* keep-decl */ { Alpha, Unused } from "@nest-boot/eslint";\nimport { type /* keep-spec */ Helper } from "@pkg/other";\nclass Demo { prop!: Helper; }',
+      output:
+        'import /* keep-decl */ { Alpha, type Unused, Beta } from "@nest-boot/eslint";\nimport { /* keep-spec */ Helper } from "@pkg/other";\nclass Demo { prop!: Helper; }',
+      errors: [{ messageId: "fix" }],
+    },
+    {
+      code: 'import {\n  type Alpha,\n} from "@nest-boot/eslint";\nclass Demo {}',
+      output:
+        'import {\n  Alpha,\n  Beta,\n} from "@nest-boot/eslint";\nclass Demo {}',
       errors: [{ messageId: "fix" }],
     },
   ],

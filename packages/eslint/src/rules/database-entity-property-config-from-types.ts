@@ -6,8 +6,11 @@ import {
 } from "@typescript-eslint/utils";
 import type { RuleFix, RuleFixer } from "@typescript-eslint/utils/ts-eslint";
 import {
+  intersectionConstituents,
+  isIntersectionType,
   isSymbolFlagSet,
   isTypeFlagSet,
+  isTypeReference,
   unionConstituents,
 } from "ts-api-utils";
 import * as ts from "typescript";
@@ -29,6 +32,12 @@ interface TypeInfo {
   isEnum: boolean;
   propertyType: string | null;
   arrayElementTypeName?: string | null;
+  typeReference?: TSESTree.Node;
+}
+
+interface RawPropertyEntry {
+  key: string | null;
+  raw: string;
 }
 
 export default createRule<
@@ -119,7 +128,7 @@ export default createRule<
       AST_NODE_TYPES.TSUndefinedKeyword,
     ]);
 
-    // Check if the type is a runtime enum (excluding pure type-only aliases)
+    // Check if the type is a runtime enum (excluding const enums and pure type-only aliases)
     const isEnumType = (node: TSESTree.Node): boolean => {
       try {
         const tsNode = parserServices.esTreeNodeToTSNodeMap.get(node);
@@ -131,18 +140,36 @@ export default createRule<
           rawSym && isSymbolFlagSet(rawSym, ts.SymbolFlags.Alias)
             ? checker.getAliasedSymbol(rawSym)
             : rawSym;
-        if (sym && !isSymbolFlagSet(sym, ts.SymbolFlags.Value)) {
+        if (
+          sym &&
+          (!isSymbolFlagSet(sym, ts.SymbolFlags.Value) ||
+            isSymbolFlagSet(sym, ts.SymbolFlags.ConstEnum))
+        ) {
           return false;
         }
         const type = checker.getTypeAtLocation(tsNode);
-        return unionConstituents(type).some(
-          (part) =>
-            part.symbol !== undefined &&
-            isSymbolFlagSet(
-              part.symbol,
-              ts.SymbolFlags.Enum | ts.SymbolFlags.EnumMember,
-            ),
-        );
+        return unionConstituents(type).some((part) => {
+          const partSym = part.symbol;
+          if (!partSym || isSymbolFlagSet(partSym, ts.SymbolFlags.ConstEnum)) {
+            return false;
+          }
+          const isConstEnumMember = partSym.declarations?.some((decl) => {
+            if (!ts.isEnumMember(decl)) {
+              return false;
+            }
+            const enumSym = checker.getSymbolAtLocation(decl.parent.name);
+            return Boolean(
+              enumSym && isSymbolFlagSet(enumSym, ts.SymbolFlags.ConstEnum),
+            );
+          });
+          if (isConstEnumMember) {
+            return false;
+          }
+          return isSymbolFlagSet(
+            partSym,
+            ts.SymbolFlags.Enum | ts.SymbolFlags.EnumMember,
+          );
+        });
       } catch {
         return false;
       }
@@ -176,16 +203,30 @@ export default createRule<
       }
     };
 
+    const isStaticUndefined = (node: TSESTree.Node): boolean => {
+      const evaluated = ASTUtils.getStaticValue(node, source.getScope(node));
+      if (evaluated !== null) {
+        return evaluated.value === undefined;
+      }
+      try {
+        const argType = checker.getTypeAtLocation(
+          parserServices.esTreeNodeToTSNodeMap.get(node),
+        );
+        return (
+          isTypeFlagSet(argType, ts.TypeFlags.Undefined) && !argType.isUnion()
+        );
+      } catch {
+        return false;
+      }
+    };
+
     const resolveStringLiteralValue = (node?: TSESTree.Node): string | null => {
       if (!node) {
         return null;
       }
-      const staticValue = ASTUtils.getStringIfConstant(
-        node,
-        source.getScope(node),
-      );
-      if (staticValue !== null) {
-        return staticValue;
+      const evaluated = ASTUtils.getStaticValue(node, source.getScope(node));
+      if (evaluated !== null) {
+        return typeof evaluated.value === "string" ? evaluated.value : null;
       }
       try {
         const tsArg = parserServices.esTreeNodeToTSNodeMap.get(node);
@@ -223,20 +264,7 @@ export default createRule<
       const isNew = typeNode.type === AST_NODE_TYPES.NewExpression;
       const target = isNew ? typeNode.callee : typeNode;
       const firstArg = isNew ? typeNode.arguments.at(0) : undefined;
-      let isExplicitUndefined = false;
-      if (firstArg) {
-        try {
-          const argType = checker.getTypeAtLocation(
-            parserServices.esTreeNodeToTSNodeMap.get(firstArg),
-          );
-          isExplicitUndefined =
-            isTypeFlagSet(argType, ts.TypeFlags.Undefined) &&
-            !argType.isUnion();
-        } catch {
-          // Leave unresolved if type lookup fails.
-        }
-      }
-      const hasModeArg = firstArg !== undefined && !isExplicitUndefined;
+      const hasModeArg = firstArg !== undefined && !isStaticUndefined(firstArg);
       const mode = hasModeArg ? resolveStringLiteralValue(firstArg) : null;
 
       if (
@@ -332,7 +360,36 @@ export default createRule<
           isDynamic: runtimeType.value === null,
         };
       }
-      return { mode: spec.isNew ? "string" : null, isDynamic: false };
+      return { mode: null, isDynamic: false };
+    };
+
+    const isValidBigIntMode = (
+      spec: ReturnType<typeof resolveColumnTypeSpec>,
+      expectedMode: "string" | "number" | "bigint",
+      runtimeType?: { present: boolean; value: string | null },
+    ): boolean => {
+      if (runtimeType?.present) {
+        if (runtimeType.value === null) {
+          return true;
+        }
+        const normalized = runtimeType.value.toLowerCase();
+        if (["string", "number", "bigint"].includes(normalized)) {
+          return normalized === expectedMode;
+        }
+      }
+      if (expectedMode === "bigint") {
+        return (
+          !spec.isNew ||
+          !spec.hasModeArg ||
+          spec.mode === null ||
+          spec.mode === "bigint"
+        );
+      }
+      return (
+        !spec.isNew ||
+        spec.mode === expectedMode ||
+        (spec.hasModeArg && spec.mode === null)
+      );
     };
 
     const isValidStringType = (
@@ -377,12 +434,7 @@ export default createRule<
       }
 
       if (spec.canonical === "t.bigint" || spec.canonical === "BigIntType") {
-        // Bare t.bigint / BigIntType is allowed; instantiated form must use "string" mode (or an unresolved dynamic mode)
-        return (
-          !spec.isNew ||
-          spec.mode === "string" ||
-          (spec.hasModeArg && spec.mode === null)
-        );
+        return isValidBigIntMode(spec, "string", runtimeType);
       }
 
       return false;
@@ -420,17 +472,13 @@ export default createRule<
         const effective = resolveEffectiveDecimalMode(spec, runtimeType);
         return (
           effective.isDynamic ||
-          (!spec.isNew && effective.mode === null) ||
+          effective.mode === null ||
           effective.mode === "number"
         );
       }
 
       if (spec.canonical === "t.bigint" || spec.canonical === "BigIntType") {
-        return (
-          !spec.isNew ||
-          spec.mode === "number" ||
-          (spec.hasModeArg && spec.mode === null)
-        );
+        return isValidBigIntMode(spec, "number", runtimeType);
       }
 
       return false;
@@ -439,18 +487,13 @@ export default createRule<
     const isValidBigIntType = (
       typeConfig: string | null,
       typeNode?: TSESTree.Node,
+      runtimeType?: { present: boolean; value: string | null },
     ): boolean => {
       const spec = resolveColumnTypeSpec(typeConfig, typeNode);
       if (spec.canonical !== "t.bigint" && spec.canonical !== "BigIntType") {
         return false;
       }
-      // BigIntType defaults to "bigint" mode; preserve dynamic modes that cannot be statically disproven
-      return (
-        !spec.isNew ||
-        !spec.hasModeArg ||
-        spec.mode === null ||
-        spec.mode === "bigint"
-      );
+      return isValidBigIntMode(spec, "bigint", runtimeType);
     };
 
     const isConverterCompatibleWithElement = (
@@ -496,6 +539,13 @@ export default createRule<
       typeConfig: string | null,
       typeNode?: TSESTree.Node,
     ): boolean => {
+      const literalType = resolveStringLiteralValue(typeNode);
+      if (elementTypeName === "number" && literalType === "number[]") {
+        return true;
+      }
+      if (elementTypeName === "string" && literalType === "string[]") {
+        return true;
+      }
       const spec = resolveColumnTypeSpec(typeConfig, typeNode);
       if (!spec.canonical) {
         return false;
@@ -580,6 +630,21 @@ export default createRule<
           )
         );
       }
+      if (isIntersectionType(member)) {
+        if (
+          checker.getSignaturesOfType(member, ts.SignatureKind.Call).length > 0
+        ) {
+          return false;
+        }
+        visited.add(member);
+        const parts = intersectionConstituents(member);
+        return (
+          parts.length > 0 &&
+          parts.every((item) =>
+            isJsonSerializableType(item, visited, allowUndefined, allowDynamic),
+          )
+        );
+      }
       if (
         allowDynamic &&
         isTypeFlagSet(member, ts.TypeFlags.Any | ts.TypeFlags.Unknown)
@@ -638,18 +703,18 @@ export default createRule<
 
         visited.add(member);
         if (checker.isTupleType(member)) {
-          return checker
-            .getTypeArguments(member as ts.TypeReference)
-            .every((item) =>
-              isJsonSerializableType(item, visited, false, true),
-            );
+          return (
+            isTypeReference(member) ? checker.getTypeArguments(member) : []
+          ).every((item) => isJsonSerializableType(item, visited, false, true));
         }
         if (
           checker.isArrayType(member) ||
           member.symbol?.name === "ReadonlyArray"
         ) {
           const elemType =
-            checker.getTypeArguments(member as ts.TypeReference)[0] ??
+            (isTypeReference(member)
+              ? checker.getTypeArguments(member)[0]
+              : undefined) ??
             checker.getIndexTypeOfType(member, ts.IndexKind.Number);
           return elemType
             ? isJsonSerializableType(elemType, visited, false, true)
@@ -797,20 +862,22 @@ export default createRule<
           resolved.symbol?.name === "ReadonlyArray"
         ) {
           const elemType =
-            checker.getTypeArguments(resolved as ts.TypeReference)[0] ??
+            (isTypeReference(resolved)
+              ? checker.getTypeArguments(resolved)[0]
+              : undefined) ??
             checker.getIndexTypeOfType(resolved, ts.IndexKind.Number);
           if (!elemType) {
             return { propertyType: null };
           }
           return classifyArrayElementTsType(elemType);
         }
-        // Plain non-class object/interface/tuple types (excluding classes, arrays, built-in objects)
-        if (
-          isTypeFlagSet(resolved, ts.TypeFlags.Object) &&
+        const isPlainObjectConstituent = (part: ts.Type): boolean =>
+          isTypeFlagSet(part, ts.TypeFlags.Object) &&
           !(
-            resolved.symbol &&
-            isSymbolFlagSet(resolved.symbol, ts.SymbolFlags.Class)
+            part.symbol && isSymbolFlagSet(part.symbol, ts.SymbolFlags.Class)
           ) &&
+          checker.getSignaturesOfType(part, ts.SignatureKind.Call).length ===
+            0 &&
           ![
             "Date",
             "RegExp",
@@ -821,7 +888,25 @@ export default createRule<
             "ReadonlyArray",
             "Uint8Array",
             "Buffer",
-          ].includes(resolved.symbol?.name ?? "") &&
+            "Function",
+          ].includes(part.symbol?.name ?? "");
+        if (isIntersectionType(resolved)) {
+          const parts = intersectionConstituents(resolved);
+          if (
+            parts.length > 0 &&
+            parts.every(isPlainObjectConstituent) &&
+            (checker.getPropertiesOfType(resolved).length > 0 ||
+              checker.getIndexInfosOfType(resolved).length > 0)
+          ) {
+            return isJsonSerializableType(resolved)
+              ? { propertyType: "t.json" }
+              : { propertyType: null, unsupportedUnion: true };
+          }
+          return { propertyType: null };
+        }
+        // Plain non-class object/interface/tuple types (excluding classes, arrays, built-in objects)
+        if (
+          isPlainObjectConstituent(resolved) &&
           (checker.isTupleType(resolved) ||
             checker.getPropertiesOfType(resolved).length > 0 ||
             checker.getIndexInfosOfType(resolved).length > 0) &&
@@ -928,9 +1013,18 @@ export default createRule<
           if (baseTypeNode.types.some(isNullishTypeNode)) {
             isNullable = true;
           }
-          baseTypeNode =
-            baseTypeNode.types.find((t) => !isNullishTypeNode(t)) ?? null;
-          continue;
+          const nonNullish = baseTypeNode.types.filter(
+            (member) => !isNullishTypeNode(member),
+          );
+          if (nonNullish.length === 0) {
+            baseTypeNode = null;
+            break;
+          }
+          if (nonNullish.length === 1) {
+            baseTypeNode = nonNullish[0];
+            continue;
+          }
+          break;
         }
         if (
           baseTypeNode.type === AST_NODE_TYPES.TSTypeReference &&
@@ -1139,6 +1233,10 @@ export default createRule<
             isEnum: true,
             propertyType: "t.json",
             arrayElementTypeName: ident,
+            typeReference:
+              targetTypeNode.type === AST_NODE_TYPES.TSTypeReference
+                ? targetTypeNode.typeName
+                : undefined,
           };
         }
         const tsElemNode =
@@ -1197,26 +1295,36 @@ export default createRule<
           isEnum,
           propertyType: resolvedInfo.propertyType,
           arrayElementTypeName: resolvedInfo.arrayElementTypeName,
+          typeReference:
+            isEnum && targetTypeNode.type === AST_NODE_TYPES.TSTypeReference
+              ? targetTypeNode.typeName
+              : undefined,
         };
       }
 
-      // Inline object literal, tuple, or intersection types (e.g. { count: number }, [number, string], A & B)
+      // Inline union, object literal, tuple, or intersection types
       if (
+        targetTypeNode.type === AST_NODE_TYPES.TSUnionType ||
         targetTypeNode.type === AST_NODE_TYPES.TSTypeLiteral ||
         targetTypeNode.type === AST_NODE_TYPES.TSTupleType ||
         targetTypeNode.type === AST_NODE_TYPES.TSIntersectionType
       ) {
+        if (isEnum) {
+          return null;
+        }
         const resolvedInfo =
           inferPropertyTypeFromResolvedTsType(targetTypeNode);
         if (resolvedInfo.unsupportedUnion || !resolvedInfo.propertyType) {
           return null;
         }
         return {
-          typeName: "json",
-          isArray: false,
+          typeName:
+            resolvedInfo.arrayElementTypeName ?? resolvedInfo.propertyType,
+          isArray: resolvedInfo.arrayElementTypeName !== undefined,
           isNullable,
           isEnum: false,
           propertyType: resolvedInfo.propertyType,
+          arrayElementTypeName: resolvedInfo.arrayElementTypeName,
         };
       }
 
@@ -1230,7 +1338,7 @@ export default createRule<
 
     const buildEnumDecorator = (
       info: TypeInfo,
-      otherProps: { key: string; value: string }[] = [],
+      otherProps: RawPropertyEntry[] = [],
       existingItems?: string | null,
     ): string => {
       const options: string[] = [];
@@ -1246,7 +1354,7 @@ export default createRule<
       }
 
       for (const prop of otherProps) {
-        options.push(`${prop.key}: ${prop.value}`);
+        options.push(prop.raw);
       }
 
       if (info.isNullable) {
@@ -1262,7 +1370,7 @@ export default createRule<
 
     const buildPropertyDecorator = (
       info: TypeInfo,
-      otherProps: { key: string; value: string }[] = [],
+      otherProps: RawPropertyEntry[] = [],
       decoratorName = "Property",
       customReference?: string,
     ): string => {
@@ -1280,9 +1388,9 @@ export default createRule<
         );
       }
 
-      // Add other properties (keeping original order)
+      // Add other properties verbatim (keeping original order, shorthands, computed keys, and spreads)
       for (const prop of otherProps) {
-        options.push(`${prop.key}: ${prop.value}`);
+        options.push(prop.raw);
       }
 
       if (info.isNullable) {
@@ -1313,7 +1421,7 @@ export default createRule<
         typeNode?: TSESTree.Node;
         runtimeType?: { present: boolean; value: string | null };
         nullable: boolean;
-        otherProps: { key: string; value: string }[];
+        otherProps: RawPropertyEntry[];
       },
       decoratorName = "Property",
     ): string => {
@@ -1347,7 +1455,11 @@ export default createRule<
         finalInfo.propertyType = currentConfig.type;
       } else if (
         info.propertyType === "t.bigint" &&
-        isValidBigIntType(currentConfig.type, currentConfig.typeNode)
+        isValidBigIntType(
+          currentConfig.type,
+          currentConfig.typeNode,
+          currentConfig.runtimeType,
+        )
       ) {
         finalInfo.propertyType = currentConfig.type;
       } else if (
@@ -1402,7 +1514,7 @@ export default createRule<
       typeNode?: TSESTree.Node;
       runtimeType?: { present: boolean; value: string | null };
       nullable: boolean;
-      otherProps: { key: string; value: string }[];
+      otherProps: RawPropertyEntry[];
       typeReference?: TSESTree.Node;
     } => {
       const callExpr = decorator.expression;
@@ -1423,16 +1535,14 @@ export default createRule<
       let runtimeType: { present: boolean; value: string | null } | undefined;
       let typeReference: TSESTree.Node | undefined;
       let nullable = false;
-      const otherProps: { key: string; value: string }[] = [];
+      const otherProps: RawPropertyEntry[] = [];
 
       for (const prop of firstArg.properties) {
-        if (prop.type !== AST_NODE_TYPES.Property || prop.computed) {
+        if (prop.type === AST_NODE_TYPES.SpreadElement) {
+          otherProps.push({ key: null, raw: source.getText(prop) });
           continue;
         }
-        const key = ASTUtils.getPropertyName(prop);
-        if (!key) {
-          continue;
-        }
+        const key = ASTUtils.getPropertyName(prop, source.getScope(prop));
 
         if (key === "type") {
           typeNode = prop.value;
@@ -1478,16 +1588,15 @@ export default createRule<
             nullable = true;
           }
         } else {
-          if (key === "runtimeType") {
+          if (key === "runtimeType" && !isStaticUndefined(prop.value)) {
             runtimeType = {
               present: true,
               value: resolveStringLiteralValue(prop.value),
             };
           }
-          // Keep all other properties
           otherProps.push({
             key,
-            value: source.getText(prop.value),
+            raw: source.getText(prop),
           });
         }
       }
@@ -1507,7 +1616,7 @@ export default createRule<
     ): {
       items: string | null;
       nullable: boolean;
-      otherProps: { key: string; value: string }[];
+      otherProps: RawPropertyEntry[];
     } => {
       const callExpr = decorator.expression;
       if (
@@ -1524,16 +1633,14 @@ export default createRule<
 
       let items: string | null = null;
       let nullable = false;
-      const otherProps: { key: string; value: string }[] = [];
+      const otherProps: RawPropertyEntry[] = [];
 
       for (const prop of firstArg.properties) {
-        if (prop.type !== AST_NODE_TYPES.Property || prop.computed) {
+        if (prop.type === AST_NODE_TYPES.SpreadElement) {
+          otherProps.push({ key: null, raw: source.getText(prop) });
           continue;
         }
-        const key = ASTUtils.getPropertyName(prop);
-        if (!key) {
-          continue;
-        }
+        const key = ASTUtils.getPropertyName(prop, source.getScope(prop));
 
         if (key === "items") {
           items = source.getText(prop.value);
@@ -1547,7 +1654,7 @@ export default createRule<
         } else {
           otherProps.push({
             key,
-            value: source.getText(prop.value),
+            raw: source.getText(prop),
           });
         }
       }
@@ -1898,17 +2005,47 @@ export default createRule<
 
           // If it's an enum type but doesn't have @Enum decorator
           if (typeInfo.isEnum) {
+            const enumRefFixes = (fixer: RuleFixer): RuleFix[] =>
+              typeInfo.typeReference &&
+              isTypeOnlyImportReference(source, typeInfo.typeReference)
+                ? promoteTypeImportFixes(fixer, source, [
+                    typeInfo.typeReference,
+                  ])
+                : [];
             if (propertyDecorator) {
+              const propCall = propertyDecorator.expression;
+              const canCarryOptions =
+                currentDecoratorName === "Property" &&
+                propCall.type === AST_NODE_TYPES.CallExpression &&
+                propCall.arguments.length <= 1 &&
+                (propCall.arguments.length === 0 ||
+                  (propCall.arguments[0].type ===
+                    AST_NODE_TYPES.ObjectExpression &&
+                    !propCall.arguments[0].properties.some(
+                      (option) => option.type === AST_NODE_TYPES.SpreadElement,
+                    )));
+              const carriedProps = canCarryOptions
+                ? parsePropertyDecorator(propertyDecorator).otherProps.filter(
+                    (prop) =>
+                      prop.key !== "runtimeType" && prop.key !== "items",
+                  )
+                : [];
               context.report({
                 node: propertyDecorator,
                 messageId: "useEnumDecorator",
-                fix: (fixer) => {
-                  const newDecoratorText = buildEnumDecorator(typeInfo);
-                  return [
-                    ...(hasEnumImport() ? [] : addEnumImport(fixer)),
-                    fixer.replaceText(propertyDecorator, newDecoratorText),
-                  ];
-                },
+                fix: canCarryOptions
+                  ? (fixer) => {
+                      const newDecoratorText = buildEnumDecorator(
+                        typeInfo,
+                        carriedProps,
+                      );
+                      return [
+                        ...(hasEnumImport() ? [] : addEnumImport(fixer)),
+                        ...enumRefFixes(fixer),
+                        fixer.replaceText(propertyDecorator, newDecoratorText),
+                      ];
+                    }
+                  : undefined,
               });
               return;
             }
@@ -1920,6 +2057,7 @@ export default createRule<
                 const newDecoratorText = buildEnumDecorator(typeInfo);
                 return [
                   ...(hasEnumImport() ? [] : addEnumImport(fixer)),
+                  ...enumRefFixes(fixer),
                   fixer.insertTextBefore(member, `${newDecoratorText}\n  `),
                 ];
               },
@@ -2015,7 +2153,11 @@ export default createRule<
               // Current config is a valid number type configuration, no modification needed
             } else if (
               expectedType === "t.bigint" &&
-              isValidBigIntType(currentConfig.type, currentConfig.typeNode)
+              isValidBigIntType(
+                currentConfig.type,
+                currentConfig.typeNode,
+                currentConfig.runtimeType,
+              )
             ) {
               // Current config is a valid bigint type configuration, no modification needed
             } else if (

@@ -340,7 +340,7 @@ class Book {
         ids!: bigint[];
       }
     `,
-    // DecimalType honors runtimeType: "number" when constructor mode is omitted
+    // DecimalType honors runtimeType: "number" or reflection metadata when constructor mode is omitted
     /* typescript */ `
       import { DecimalType } from "@mikro-orm/core";
       import { Entity, Property } from "@mikro-orm/decorators/legacy";
@@ -349,6 +349,47 @@ class Book {
       class Invoice {
         @Property({ type: new DecimalType(), runtimeType: "number" })
         amount!: number;
+
+        @Property({ type: new DecimalType() })
+        reflectedAmount!: number;
+
+        @Property({ type: new DecimalType(), runtimeType: undefined })
+        rawAmount!: string;
+      }
+    `,
+    // String literal array types ("number[]" / "string[]"), inline unions, and object intersections are preserved
+    /* typescript */ `
+      import { Type, t } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
+
+      interface BaseMeta {
+        tag: string;
+      }
+      interface ExtraMeta {
+        count: number;
+      }
+      type CombinedMeta = BaseMeta & ExtraMeta;
+      class InlineMixedType extends Type<string | bigint, string> {}
+
+      @Entity()
+      class ArrayAndIntersectionConfig {
+        @Property({ type: "number[]" })
+        scores!: readonly number[];
+
+        @Property({ type: "string[]" })
+        labels!: readonly string[];
+
+        @Property({ type: t.json, nullable: true })
+        inlineUnion!: (string | number) | null;
+
+        @Property({ type: InlineMixedType })
+        inlineCustom!: string | bigint;
+
+        @Property({ type: t.json })
+        aliasedIntersection!: CombinedMeta;
+
+        @Property({ type: t.json })
+        inlineIntersection!: { a: string } & { b: number };
       }
     `,
     // Explicit JSON storage and numeric ArrayType converters are valid for readonly/mutable arrays
@@ -1199,7 +1240,7 @@ class User {
 }`,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
     },
-    // Union types without nullish members use the first concrete type
+    // Heterogeneous inline union types should use t.json
     {
       code: /* typescript */ `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
@@ -1211,7 +1252,7 @@ class User {
 import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 class User {
-  @Property({ type: t.string })
+  @Property({ type: t.json })
   value!: string | number;
 }`,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
@@ -2078,6 +2119,86 @@ class Item {
         { messageId: "useOptTypeForInitializedProperty" },
         { messageId: "alignPropertyDecoratorWithTsType" },
       ],
+    },
+    // Preserves computed/quoted/method options, hidden on @Enum conversion, BigIntType runtimeType, and const enum
+    {
+      code: /* typescript */ `import { BigIntType, t } from "@mikro-orm/core";
+import { Entity, Enum, Property } from "@mikro-orm/decorators/legacy";
+const enum ConstStatus {
+  OPEN = "open",
+  CLOSED = "closed",
+}
+enum LocalRole {
+  ADMIN = "admin",
+  USER = "user",
+}
+@Entity()
+class DecoratorPreservation {
+  @Property({ type: t.json, ["hidden"]: true, "custom-opt": true, serializer(v: unknown) { return v; } })
+  settings?: { token: string };
+
+  @Property({ type: t.array, hidden: true })
+  roles!: readonly LocalRole[];
+
+  @Property({ type: new BigIntType("bigint"), runtimeType: "string" })
+  cursor!: bigint;
+
+  status!: ConstStatus;
+
+  @Property({ type: "number[]" })
+  scores?: readonly number[];
+}`,
+      output: /* typescript */ `import { BigIntType, t } from "@mikro-orm/core";
+import { Entity, Enum, Property } from "@mikro-orm/decorators/legacy";
+const enum ConstStatus {
+  OPEN = "open",
+  CLOSED = "closed",
+}
+enum LocalRole {
+  ADMIN = "admin",
+  USER = "user",
+}
+@Entity()
+class DecoratorPreservation {
+  @Property({ type: t.json, ["hidden"]: true, "custom-opt": true, serializer(v: unknown) { return v; }, nullable: true })
+  settings?: { token: string };
+
+  @Enum({ items: () => LocalRole, array: true, hidden: true })
+  roles!: readonly LocalRole[];
+
+  @Property({ type: t.bigint, runtimeType: "string" })
+  cursor!: bigint;
+
+  @Property({ type: t.string })
+  status!: ConstStatus;
+
+  @Property({ type: "number[]", nullable: true })
+  scores?: readonly number[];
+}`,
+      errors: [
+        { messageId: "alignPropertyDecoratorWithTsType" },
+        { messageId: "useEnumDecorator" },
+        { messageId: "alignPropertyDecoratorWithTsType" },
+        { messageId: "alignPropertyDecoratorWithTsType" },
+        { messageId: "alignPropertyDecoratorWithTsType" },
+      ],
+    },
+    // Promotes type-only enum imports when generating @Enum({ items: () => ... })
+    {
+      code: /* typescript */ `import type { IsolationLevel } from "@mikro-orm/core";
+import { Entity } from "@mikro-orm/decorators/legacy";
+@Entity()
+class TxConfig {
+  levels!: readonly IsolationLevel[];
+}`,
+      output: /* typescript */ `import { IsolationLevel } from "@mikro-orm/core";
+import { Entity, Enum } from "@mikro-orm/decorators/legacy";
+@Entity()
+class TxConfig {
+  @Enum({ items: () => IsolationLevel, array: true })
+  levels!: readonly IsolationLevel[];
+}`,
+      errors: [{ messageId: "useEnumDecorator" }],
     },
   ],
 });
