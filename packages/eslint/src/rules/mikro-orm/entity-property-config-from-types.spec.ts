@@ -193,6 +193,80 @@ class Book {
         externalId!: string;
       }
     `,
+    // Instantiated t.bigint("string") and t.decimal("string") are valid string configurations
+    /* typescript */ `
+      import { t } from "@mikro-orm/core";
+      import { Entity, PrimaryKey, Property } from "@mikro-orm/decorators/legacy";
+
+      @Entity()
+      class ApiKey {
+        @PrimaryKey({ type: new t.bigint("string"), autoincrement: true })
+        id!: string;
+
+        @Property({ type: new t.decimal("string") })
+        amount!: string;
+      }
+    `,
+    // Native bigint properties accept t.bigint and BigIntType("bigint")
+    /* typescript */ `
+      import { BigIntType, t } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
+
+      @Entity()
+      class EventCursor {
+        @Property({ type: new BigIntType("bigint"), default: 0 })
+        lastEventMs!: bigint;
+
+        @Property({ type: new t.bigint("bigint") })
+        lastEventSeq!: bigint;
+
+        @Property({ type: t.bigint })
+        counter!: bigint;
+      }
+    `,
+    // Heterogeneous union type aliases use t.json storage
+    /* typescript */ `
+      import { t } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
+
+      type JobProgress = string | boolean | number | object;
+
+      @Entity()
+      class Job {
+        @Property({ type: t.json, nullable: true })
+        progress!: JobProgress | null;
+      }
+    `,
+    // Custom class DTOs may explicitly opt into JSON storage
+    /* typescript */ `
+      import { t } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
+
+      class Profile {}
+
+      @Entity()
+      class User {
+        @Property({ type: t.json })
+        profile!: Profile;
+      }
+    `,
+    // Integer width variants and instantiated t.bigint("number") / t.decimal("number") are valid number configurations
+    /* typescript */ `
+      import { t } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
+
+      @Entity()
+      class Stats {
+        @Property({ type: t.smallint })
+        rank!: number;
+
+        @Property({ type: new t.bigint("number") })
+        total!: number;
+
+        @Property({ type: new t.decimal("number") })
+        ratio!: number;
+      }
+    `,
     // Decimal and BigInt number storage are valid number configurations
     /* typescript */ `
       import { Entity, Property } from "@mikro-orm/decorators/legacy";
@@ -1291,6 +1365,80 @@ import { Entity, Property } from "@mikro-orm/decorators/legacy";
 class User {
   @Property({ type: t.string })
   externalId!: string;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // Instantiated t.bigint("bigint") on string should be replaced
+    {
+      code: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class User {
+  @Property({ type: new t.bigint("bigint") })
+  externalId!: string;
+}`,
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class User {
+  @Property({ type: t.string })
+  externalId!: string;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // Instantiated BigIntType("string") on bigint should be replaced
+    {
+      code: /* typescript */ `import { BigIntType } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class EventCursor {
+  @Property({ type: new BigIntType("string") })
+  lastEventMs!: bigint;
+}`,
+      output: /* typescript */ `import { BigIntType, t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class EventCursor {
+  @Property({ type: t.bigint })
+  lastEventMs!: bigint;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // Heterogeneous union with wrong scalar type should be fixed to t.json
+    {
+      code: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+type JobProgress = string | boolean | number | object;
+@Entity()
+class Job {
+  @Property({ type: t.string, nullable: true })
+  progress!: JobProgress | null;
+}`,
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+type JobProgress = string | boolean | number | object;
+@Entity()
+class Job {
+  @Property({ type: t.json, nullable: true })
+  progress!: JobProgress | null;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // Nullability fix should preserve valid new t.bigint("string")
+    {
+      code: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class ApiKey {
+  @Property({ type: new t.bigint("string") })
+  externalId?: string;
+}`,
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class ApiKey {
+  @Property({ type: new t.bigint("string"), nullable: true })
+  externalId?: string;
 }`,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
     },

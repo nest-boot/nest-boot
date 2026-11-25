@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
 import type { RuleFix, RuleFixer } from "@typescript-eslint/utils/ts-eslint";
+import * as ts from "typescript";
 
 import { createRule } from "../../utils/createRule.js";
 import {
@@ -24,6 +25,7 @@ interface TypeInfo {
   isNullable: boolean;
   isCustomType?: boolean;
   typeReference?: TSESTree.Node;
+  targetTypeNode?: TSESTree.TypeNode;
   scalarExpression?: string;
 }
 
@@ -129,9 +131,17 @@ export default createRule<
         return node.elementType;
       }
       if (
+        node.type === AST_NODE_TYPES.TSTypeOperator &&
+        node.operator === "readonly" &&
+        node.typeAnnotation?.type === AST_NODE_TYPES.TSArrayType
+      ) {
+        return node.typeAnnotation.elementType;
+      }
+      if (
         node.type === AST_NODE_TYPES.TSTypeReference &&
         node.typeName.type === AST_NODE_TYPES.Identifier &&
-        node.typeName.name === "Array"
+        (node.typeName.name === "Array" ||
+          node.typeName.name === "ReadonlyArray")
       ) {
         return node.typeArguments?.params[0] ?? null;
       }
@@ -243,7 +253,7 @@ export default createRule<
         (typeof propertyName === "string" &&
           (propertyName.endsWith("Id") || propertyName.endsWith("ID")))
       ) {
-        return { typeName: "ID", isArray, isNullable };
+        return { typeName: "ID", isArray, isNullable, targetTypeNode };
       }
 
       // Record<*, *> → GraphQLJSONObject (no restriction on key/value types)
@@ -252,13 +262,18 @@ export default createRule<
         targetTypeNode.typeName.type === AST_NODE_TYPES.Identifier &&
         targetTypeNode.typeName.name === "Record"
       ) {
-        return { typeName: "GraphQLJSONObject", isArray, isNullable };
+        return {
+          typeName: "GraphQLJSONObject",
+          isArray,
+          isNullable,
+          targetTypeNode,
+        };
       }
 
       // Keyword types → GraphQL scalars
       const scalar = scalarFromTsKeyword(targetTypeNode.type);
       if (scalar) {
-        return { typeName: scalar, isArray, isNullable };
+        return { typeName: scalar, isArray, isNullable, targetTypeNode };
       }
 
       // Identifier (class/custom type)
@@ -269,6 +284,7 @@ export default createRule<
           isArray,
           isNullable,
           isCustomType: true,
+          targetTypeNode,
           typeReference:
             targetTypeNode.type === AST_NODE_TYPES.TSTypeReference
               ? targetTypeNode.typeName
@@ -277,6 +293,403 @@ export default createRule<
       }
 
       return null;
+    };
+
+    const parserServices = source.parserServices;
+    const program = parserServices?.program;
+    const esTreeNodeToTSNodeMap = parserServices?.esTreeNodeToTSNodeMap;
+    const checker = program?.getTypeChecker();
+
+    const builtInJsConstructors = new Set([
+      "Number",
+      "String",
+      "Boolean",
+      "Date",
+      "Array",
+      "Object",
+      "Function",
+      "Symbol",
+      "BigInt",
+    ]);
+
+    const unwrapTypeAssertions = (node: TSESTree.Node): TSESTree.Node => {
+      let current = node;
+      while (
+        current.type === AST_NODE_TYPES.TSAsExpression ||
+        current.type === AST_NODE_TYPES.TSTypeAssertion ||
+        current.type === AST_NODE_TYPES.TSSatisfiesExpression ||
+        current.type === AST_NODE_TYPES.TSNonNullExpression
+      ) {
+        current = current.expression;
+      }
+      return current;
+    };
+
+    const isUnusableType = (type: ts.Type): boolean => {
+      return (
+        (type.flags &
+          (ts.TypeFlags.Any |
+            ts.TypeFlags.Unknown |
+            ts.TypeFlags.Never |
+            ts.TypeFlags.Void)) !==
+        0
+      );
+    };
+
+    const areTypesEquivalent = (a: ts.Type, b: ts.Type): boolean => {
+      if (!checker || isUnusableType(a) || isUnusableType(b)) {
+        return false;
+      }
+      return (
+        checker.isTypeAssignableTo(a, b) && checker.isTypeAssignableTo(b, a)
+      );
+    };
+
+    const hasClassSymbol = (type: ts.Type): boolean => {
+      return Boolean(type.symbol && type.symbol.flags & ts.SymbolFlags.Class);
+    };
+
+    const isPrimitiveEnumValueType = (type: ts.Type): boolean => {
+      if (!checker || isUnusableType(type)) {
+        return false;
+      }
+      if (type.isUnion()) {
+        return (
+          type.types.length > 0 && type.types.every(isPrimitiveEnumValueType)
+        );
+      }
+      if (
+        type.flags &
+        (ts.TypeFlags.StringLike |
+          ts.TypeFlags.NumberLike |
+          ts.TypeFlags.EnumLike)
+      ) {
+        return true;
+      }
+      const constraint = checker.getBaseConstraintOfType(type);
+      return constraint !== undefined && constraint !== type
+        ? isPrimitiveEnumValueType(constraint)
+        : false;
+    };
+
+    const collectLiteralValues = (
+      type: ts.Type,
+    ): Set<string | number> | null => {
+      if (type.isUnion()) {
+        if (type.types.length === 0) {
+          return null;
+        }
+        const values = new Set<string | number>();
+        for (const member of type.types) {
+          const memberValues = collectLiteralValues(member);
+          if (!memberValues) {
+            return null;
+          }
+          for (const value of memberValues) {
+            values.add(value);
+          }
+        }
+        return values;
+      }
+      if (type.isStringLiteral() || type.isNumberLiteral()) {
+        return new Set([type.value]);
+      }
+      return null;
+    };
+
+    const literalSetsEqual = (
+      left: Set<string | number> | null,
+      right: Set<string | number> | null,
+    ): boolean => {
+      if (!left || !right || left.size === 0 || left.size !== right.size) {
+        return false;
+      }
+      for (const value of left) {
+        if (!right.has(value)) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    const extractGraphQLScalarInternalType = (
+      type: ts.Type,
+      visited = new Set<ts.Type>(),
+    ): ts.Type | null => {
+      if (!checker || visited.has(type)) {
+        return null;
+      }
+      visited.add(type);
+      if (
+        type.symbol?.name === "GraphQLScalarType" &&
+        type.flags & ts.TypeFlags.Object &&
+        (type as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference
+      ) {
+        const internal = checker.getTypeArguments(type as ts.TypeReference)[0];
+        return internal && !isUnusableType(internal) ? internal : null;
+      }
+      if (type.isClassOrInterface()) {
+        for (const base of checker.getBaseTypes(type)) {
+          const found = extractGraphQLScalarInternalType(base, visited);
+          if (found) {
+            return found;
+          }
+        }
+      }
+      return null;
+    };
+
+    const extractConstructedInstanceType = (
+      type: ts.Type,
+      location: ts.Node,
+    ): ts.Type | null => {
+      if (!checker) {
+        return null;
+      }
+      const constructSignatures = checker.getSignaturesOfType(
+        type,
+        ts.SignatureKind.Construct,
+      );
+      if (constructSignatures.length > 0) {
+        const returnType = constructSignatures[0].getReturnType();
+        return !isUnusableType(returnType) ? returnType : null;
+      }
+
+      // Constructor-like intersections such as MikroORM's EntityClass<T> = Function & { prototype: T }
+      const members = type.isIntersection() ? type.types : [type];
+      const isFunctionLike =
+        checker.getSignaturesOfType(type, ts.SignatureKind.Call).length > 0 ||
+        members.some((member) => member.symbol?.name === "Function");
+      if (!isFunctionLike) {
+        return null;
+      }
+      for (const member of members) {
+        if (member.symbol?.name === "Function") {
+          continue;
+        }
+        const proto = checker.getPropertyOfType(member, "prototype");
+        if (!proto) {
+          continue;
+        }
+        const protoType = checker.getTypeOfSymbolAtLocation(proto, location);
+        if (!isUnusableType(protoType)) {
+          return protoType;
+        }
+      }
+      return null;
+    };
+
+    const matchesEnumObjectType = (
+      exprType: ts.Type,
+      propType: ts.Type,
+      location: ts.Node,
+    ): boolean => {
+      if (!checker) {
+        return false;
+      }
+
+      // 1. TypeScript enum declaration (e.g. enum Status { ACTIVE = "ACTIVE" })
+      if (exprType.symbol && exprType.symbol.flags & ts.SymbolFlags.Enum) {
+        const declared = checker.getDeclaredTypeOfSymbol(exprType.symbol);
+        if (areTypesEquivalent(propType, declared)) {
+          return true;
+        }
+        const enumValues = new Set<string | number>();
+        let allLiterals = true;
+        for (const prop of checker.getPropertiesOfType(exprType)) {
+          if (!(prop.flags & ts.SymbolFlags.EnumMember)) {
+            continue;
+          }
+          const memberType = checker.getTypeOfSymbolAtLocation(prop, location);
+          if (memberType.isStringLiteral() || memberType.isNumberLiteral()) {
+            enumValues.add(memberType.value);
+          } else {
+            allLiterals = false;
+            break;
+          }
+        }
+        if (allLiterals) {
+          return literalSetsEqual(enumValues, collectLiteralValues(propType));
+        }
+        return false;
+      }
+
+      // 2. Runtime enum object map (Record<string, string>, OrderFieldType<Entity>, or `as const` map)
+      if (!(exprType.flags & ts.TypeFlags.Object)) {
+        return false;
+      }
+      if (
+        checker.isArrayType(exprType) ||
+        checker.isTupleType(exprType) ||
+        hasClassSymbol(exprType) ||
+        checker.getSignaturesOfType(exprType, ts.SignatureKind.Construct)
+          .length > 0 ||
+        checker.getSignaturesOfType(exprType, ts.SignatureKind.Call).length > 0
+      ) {
+        return false;
+      }
+      if (
+        [
+          "Date",
+          "RegExp",
+          "Map",
+          "Set",
+          "Promise",
+          "GraphQLScalarType",
+        ].includes(exprType.symbol?.name ?? "")
+      ) {
+        return false;
+      }
+
+      // 2a. Concrete string index signature (e.g. Record<string, string>)
+      const stringIndexType = checker.getIndexTypeOfType(
+        exprType,
+        ts.IndexKind.String,
+      );
+      if (stringIndexType) {
+        return (
+          isPrimitiveEnumValueType(stringIndexType) &&
+          areTypesEquivalent(propType, stringIndexType)
+        );
+      }
+
+      // 2b. Generic mapped type (e.g. Record<K, V> or OrderFieldType<Entity> = Record<OrderFieldKey<T>, OrderFieldValue<T>>)
+      const objectFlags = (exprType as ts.ObjectType).objectFlags;
+      if (objectFlags & ts.ObjectFlags.Mapped) {
+        if (
+          exprType.aliasSymbol?.name === "Record" &&
+          exprType.aliasTypeArguments?.length === 2
+        ) {
+          const valType = exprType.aliasTypeArguments[1];
+          return (
+            isPrimitiveEnumValueType(valType) &&
+            areTypesEquivalent(propType, valType)
+          );
+        }
+        const aliasDecl = exprType.aliasSymbol?.declarations?.find(
+          ts.isTypeAliasDeclaration,
+        );
+        if (
+          aliasDecl &&
+          ts.isTypeReferenceNode(aliasDecl.type) &&
+          ts.isIdentifier(aliasDecl.type.typeName) &&
+          aliasDecl.type.typeName.text === "Record" &&
+          aliasDecl.type.typeArguments?.length === 2
+        ) {
+          const valueTypeNode = aliasDecl.type.typeArguments[1];
+          const declaredValueType = checker.getTypeFromTypeNode(valueTypeNode);
+          if (
+            isPrimitiveEnumValueType(declaredValueType) &&
+            isPrimitiveEnumValueType(propType)
+          ) {
+            if (areTypesEquivalent(propType, declaredValueType)) {
+              return true;
+            }
+            if (
+              declaredValueType.aliasSymbol !== undefined &&
+              declaredValueType.aliasSymbol === propType.aliasSymbol
+            ) {
+              return true;
+            }
+            if (
+              ts.isTypeReferenceNode(valueTypeNode) &&
+              propType.aliasSymbol !== undefined
+            ) {
+              const rawSym = checker.getSymbolAtLocation(
+                valueTypeNode.typeName,
+              );
+              const targetSym =
+                rawSym && rawSym.flags & ts.SymbolFlags.Alias
+                  ? checker.getAliasedSymbol(rawSym)
+                  : rawSym;
+              if (targetSym === propType.aliasSymbol) {
+                return true;
+              }
+            }
+          }
+        }
+        return false;
+      }
+
+      // 2c. Plain `as const` enum object literal (e.g. const Status = { OPEN: "open", CLOSED: "closed" } as const)
+      const properties = checker.getPropertiesOfType(exprType);
+      if (properties.length > 0) {
+        const objectValues = new Set<string | number>();
+        for (const prop of properties) {
+          const memberType = checker.getTypeOfSymbolAtLocation(prop, location);
+          if (memberType.isStringLiteral() || memberType.isNumberLiteral()) {
+            objectValues.add(memberType.value);
+          } else {
+            return false;
+          }
+        }
+        return literalSetsEqual(objectValues, collectLiteralValues(propType));
+      }
+
+      return false;
+    };
+
+    const matchesGraphqlReturnType = (
+      innerExprNode: TSESTree.Node,
+      targetTypeNode: TSESTree.TypeNode,
+    ): boolean => {
+      if (!checker || !esTreeNodeToTSNodeMap) {
+        return false;
+      }
+      const unwrapped = unwrapTypeAssertions(innerExprNode);
+      if (
+        unwrapped.type === AST_NODE_TYPES.Identifier &&
+        builtInJsConstructors.has(unwrapped.name) &&
+        !hasResolvedBinding(unwrapped)
+      ) {
+        return false;
+      }
+      const importedScalar = importedBindingName(
+        source,
+        [...graphqlModules, jsonModule],
+        unwrapped,
+      );
+      if (
+        importedScalar &&
+        ["Int", "Float", "ID", "GraphQLJSONObject"].includes(importedScalar)
+      ) {
+        return false;
+      }
+
+      const tsExpr = esTreeNodeToTSNodeMap.get(unwrapped);
+      const tsTarget = esTreeNodeToTSNodeMap.get(targetTypeNode);
+      if (!ts.isTypeNode(tsTarget)) {
+        return false;
+      }
+      const exprType = checker.getTypeAtLocation(tsExpr);
+      const propType = checker.getNonNullableType(
+        checker.getTypeFromTypeNode(tsTarget),
+      );
+      if (isUnusableType(exprType) || isUnusableType(propType)) {
+        return false;
+      }
+
+      // A. Custom GraphQLScalarType<TInternal, TExternal>
+      const scalarInternalType = extractGraphQLScalarInternalType(exprType);
+      if (scalarInternalType) {
+        return areTypesEquivalent(propType, scalarInternalType);
+      }
+
+      // B. Runtime class / Type<T> / EntityClass<T>
+      const instanceType = extractConstructedInstanceType(exprType, tsExpr);
+      if (instanceType) {
+        if (
+          hasClassSymbol(instanceType) &&
+          hasClassSymbol(propType) &&
+          instanceType.symbol !== propType.symbol
+        ) {
+          return false;
+        }
+        return areTypesEquivalent(propType, instanceType);
+      }
+
+      // C. TypeScript enum or GraphQL enum object map
+      return matchesEnumObjectType(exprType, propType, tsExpr);
     };
 
     const graphqlModules = ["@nestjs/graphql", "@nest-boot/graphql"];
@@ -597,18 +1010,18 @@ export default createRule<
           if (!typeInfo?.typeName) {
             return;
           }
-          const customImports = customTypeImportEdits(typeInfo);
-          if (customImports.length) {
-            context.report({
-              node: member,
-              messageId: "alignFieldDecoratorWithTsType",
-              fix: () => customImports,
-            });
-            return;
-          }
 
           // If there is no @Field decorator, add one
           if (!fieldDecorator) {
+            const customImports = customTypeImportEdits(typeInfo);
+            if (customImports.length) {
+              context.report({
+                node: member,
+                messageId: "alignFieldDecoratorWithTsType",
+                fix: () => customImports,
+              });
+              return;
+            }
             context.report({
               node: member,
               messageId: "alignFieldDecoratorWithTsType",
@@ -629,6 +1042,7 @@ export default createRule<
           let needReport = true;
           let scalarReference: TSESTree.Node | null = null;
           let verifiedScalarReference: TSESTree.Node | null = null;
+          let isSemanticMatch = false;
 
           if (
             callExpr.arguments.length > 0 &&
@@ -659,13 +1073,17 @@ export default createRule<
             // For number types, both Int and Float are valid
             const isNumberType =
               !typeInfo.isCustomType && typeInfo.typeName === "Float";
+            const bodyIsArray =
+              firstArg.body.type === AST_NODE_TYPES.ArrayExpression;
             const scalarNode =
               firstArg.body.type === AST_NODE_TYPES.ArrayExpression
                 ? firstArg.body.elements.length === 1
                   ? firstArg.body.elements[0]
                   : null
                 : firstArg.body;
-            scalarReference = scalarNode;
+            scalarReference = scalarNode
+              ? unwrapTypeAssertions(scalarNode)
+              : null;
             const explicitScalar = scalarNode
               ? importedBindingName(
                   source,
@@ -677,8 +1095,7 @@ export default createRule<
               isNumberType &&
               !!explicitScalar &&
               ["Int", "Float"].includes(explicitScalar) &&
-              typeInfo.isArray ===
-                (firstArg.body.type === AST_NODE_TYPES.ArrayExpression);
+              typeInfo.isArray === bodyIsArray;
             if (isValidNumberType) {
               typeInfo.typeName = explicitScalar;
             }
@@ -689,8 +1106,7 @@ export default createRule<
                 explicitScalar,
               ) &&
               explicitScalar === typeInfo.typeName &&
-              typeInfo.isArray ===
-                (firstArg.body.type === AST_NODE_TYPES.ArrayExpression);
+              typeInfo.isArray === bodyIsArray;
             if (isValidScalar) {
               verifiedScalarReference = scalarNode;
             }
@@ -703,10 +1119,27 @@ export default createRule<
               typeInfo.scalarExpression = source.getText(scalarNode);
             }
 
-            const typeMatches =
+            let typeMatches =
               calleeText === expectedTypeText ||
               isValidNumberType ||
               isValidScalar;
+
+            if (
+              !typeMatches &&
+              scalarNode &&
+              typeInfo.targetTypeNode &&
+              typeInfo.isArray === bodyIsArray &&
+              matchesGraphqlReturnType(scalarNode, typeInfo.targetTypeNode)
+            ) {
+              typeMatches = true;
+              isSemanticMatch = true;
+              if (
+                scalarReference &&
+                !isTypeOnlyImportReference(source, scalarReference)
+              ) {
+                typeInfo.scalarExpression = source.getText(scalarNode);
+              }
+            }
 
             if (typeMatches && hasNullableOption === typeInfo.isNullable) {
               needReport = false;
@@ -731,25 +1164,43 @@ export default createRule<
           }
 
           if (!needReport) {
+            if (
+              scalarReference !== null &&
+              isTypeOnlyImportReference(source, scalarReference) &&
+              (isSemanticMatch || typeInfo.isCustomType)
+            ) {
+              const runtimePromotions = promoteImportReferences(source, [
+                scalarReference,
+              ]);
+              if (runtimePromotions.length) {
+                context.report({
+                  node: member,
+                  messageId: "alignFieldDecoratorWithTsType",
+                  fix: () => runtimePromotions,
+                });
+                return;
+              }
+            }
             const modules = scalarModules(typeInfo.typeName);
             const typeOnlyScalar =
-              (scalarReference !== null &&
+              !isSemanticMatch &&
+              ((scalarReference !== null &&
                 isTypeOnlyImportReference(source, scalarReference)) ||
-              (!typeInfo.isCustomType &&
-                hasNamedImport(
-                  source,
-                  modules,
-                  typeInfo.typeName,
-                  false,
-                  importLocation,
-                ) &&
-                !hasNamedImport(
-                  source,
-                  modules,
-                  typeInfo.typeName,
-                  true,
-                  importLocation,
-                ));
+                (!typeInfo.isCustomType &&
+                  hasNamedImport(
+                    source,
+                    modules,
+                    typeInfo.typeName,
+                    false,
+                    importLocation,
+                  ) &&
+                  !hasNamedImport(
+                    source,
+                    modules,
+                    typeInfo.typeName,
+                    true,
+                    importLocation,
+                  )));
             const typeOnlyField =
               isTypeOnlyImportReference(source, callExpr.callee) ||
               (hasNamedImport(
@@ -767,6 +1218,18 @@ export default createRule<
                   importLocation,
                 ));
             if (!typeOnlyScalar && !typeOnlyField) {
+              return;
+            }
+          }
+
+          if (!typeInfo.scalarExpression) {
+            const customImports = customTypeImportEdits(typeInfo);
+            if (customImports.length) {
+              context.report({
+                node: member,
+                messageId: "alignFieldDecoratorWithTsType",
+                fix: () => customImports,
+              });
               return;
             }
           }

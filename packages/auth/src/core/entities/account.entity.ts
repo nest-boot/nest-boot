@@ -1,4 +1,3 @@
-/* eslint-disable nest-boot/graphql/field-config-from-types -- MikroORM Opt/Ref markers require explicit GraphQL metadata. */
 import { BaseEntity, type Opt, type Ref, t } from "@mikro-orm/core";
 import {
   Entity,
@@ -53,30 +52,37 @@ export class Account extends BaseEntity {
 
   /** OAuth access token, if available. */
   @Property({ type: t.text, nullable: true })
+  @HideField()
   accessToken?: Opt<string>;
 
   /** OAuth refresh token, if available. */
   @Property({ type: t.text, nullable: true })
+  @HideField()
   refreshToken?: Opt<string>;
 
   /** OpenID Connect ID token, if available. */
   @Property({ type: t.text, nullable: true })
+  @HideField()
   idToken?: Opt<string>;
 
   /** Expiration timestamp of the access token. */
   @Property({ type: t.datetime, nullable: true })
+  @HideField()
   accessTokenExpiresAt?: Opt<Date>;
 
   /** Expiration timestamp of the refresh token. */
   @Property({ type: t.datetime, nullable: true })
+  @HideField()
   refreshTokenExpiresAt?: Opt<Date>;
 
   /** OAuth scopes granted to this account. */
   @Property({ type: t.text, nullable: true })
+  @HideField()
   scope?: Opt<string>;
 
   /** Hashed password for credential-based accounts. */
   @Property({ type: t.text, nullable: true })
+  @HideField()
   password?: Opt<string>;
 
   /** Timestamp when the account was created. */

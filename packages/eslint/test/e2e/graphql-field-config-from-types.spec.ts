@@ -695,3 +695,21 @@ const { ObjectType: Model } = gql;
     false,
   );
 });
+
+it("keeps type-only interface imports erased when @Field uses a runtime constructor", () => {
+  const code = `import { Field, ObjectType } from "@nest-boot/graphql";
+import type { User } from "./.cache/graphql-imports/barrel.js";
+interface RuntimeCtor<T> { new (...args: unknown[]): T; }
+export function createEdge(UserClass: RuntimeCtor<User>) {
+  @ObjectType()
+  class Edge {
+    @Field(() => UserClass)
+    node!: User;
+  }
+  return Edge;
+}`;
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).toBe(code);
+  expect(compileDiagnostics(result.output, true)).toEqual([]);
+});

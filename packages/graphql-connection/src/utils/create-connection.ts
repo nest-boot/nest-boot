@@ -61,7 +61,6 @@ export function createConnection<Entity extends object>(
       filterQuerySchema,
     });
 
-    // eslint-disable-next-line nest-boot/graphql/field-config-from-types
     @Field(() => [EdgeClass], {
       complexity: 0,
       description: `A list of edges.`,

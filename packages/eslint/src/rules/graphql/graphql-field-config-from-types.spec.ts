@@ -148,6 +148,102 @@ tester.run("graphql-field-config-from-types", rule, {
         ["name"]!: string;
       }
     `,
+    // Dynamic enum map (Record<string, string>) matches string and string[]
+    /* typescript */ `
+      const UserRole: Record<string, string> = { ADMIN: "admin", USER: "user" };
+      @ObjectType()
+      class User {
+        @Field(() => [UserRole])
+        roles!: string[];
+      }
+    `,
+    // TypeScript enum matches an identical string literal union type alias
+    /* typescript */ `
+      enum Status {
+        ACTIVE = "ACTIVE",
+        DISABLED = "DISABLED",
+      }
+      type StatusValue = "ACTIVE" | "DISABLED";
+      @ObjectType()
+      class Member {
+        @Field(() => Status)
+        status!: StatusValue;
+      }
+    `,
+    // Const enum object literal matches an identical string literal union
+    /* typescript */ `
+      const Status = {
+        ACTIVE: "ACTIVE",
+        DISABLED: "DISABLED",
+      } as const;
+      type StatusValue = "ACTIVE" | "DISABLED";
+      @ObjectType()
+      class Member {
+        @Field(() => Status)
+        status!: StatusValue;
+      }
+    `,
+    // Runtime constructor (Type<T>) and EntityClass<T> match interface / generic property types
+    /* typescript */ `
+      interface Type<T = unknown> extends Function {
+        new (...args: unknown[]): T;
+      }
+      type EntityClass<T = unknown> = Function & { prototype: T };
+      interface EdgeInterface<T> {
+        node: T;
+      }
+      function createConnection<Entity extends object>(
+        entityClass: EntityClass<Entity>,
+        EdgeClass: Type<EdgeInterface<Entity>>,
+      ) {
+        @ObjectType()
+        class Edge {
+          @Field(() => entityClass)
+          node!: Entity;
+        }
+        @ObjectType()
+        class Connection {
+          @Field(() => [EdgeClass])
+          edges!: EdgeInterface<Entity>[];
+        }
+        return { Edge, Connection };
+      }
+    `,
+    // Custom GraphQLScalarType<TInternal> matches TInternal
+    /* typescript */ `
+      class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+        readonly _internal?: TInternal;
+        readonly _external?: TExternal;
+      }
+      interface FilterQuery<T> {
+        field?: keyof T;
+      }
+      function createArgs<Entity extends object>(
+        FilterScalar: GraphQLScalarType<FilterQuery<Entity>>,
+      ) {
+        @ArgsType()
+        class Args {
+          @Field(() => FilterScalar, { nullable: true })
+          filter?: FilterQuery<Entity> | null;
+        }
+        return Args;
+      }
+    `,
+    // Generic mapped enum record matches its mapped value type
+    /* typescript */ `
+      type OrderFieldValue<T> = Extract<keyof T, string>;
+      type OrderFieldType<T> = Record<string & keyof T, OrderFieldValue<T>>;
+      function createOrder<Entity extends object>(
+        OrderField: OrderFieldType<Entity>,
+      ) {
+        @InputType()
+        class Order {
+          @Field(() => OrderField as object)
+          field!: OrderFieldValue<Entity>;
+        }
+        return Order;
+      }
+    `,
   ],
   invalid: [
     // @Field type mismatch
@@ -513,6 +609,99 @@ class User {
   password!: string;
 }`,
       errors: [{ messageId: "removeFieldDecorator" }],
+    },
+    // Nullability mismatch preserves valid dynamic enum expression
+    {
+      code: /* typescript */ `const UserRole: Record<string, string> = {};
+@ObjectType()
+class User {
+  @Field(() => [UserRole])
+  roles?: string[];
+}`,
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+const UserRole: Record<string, string> = {};
+@ObjectType()
+class User {
+  @Field(() => [UserRole], { nullable: true })
+  roles?: string[];
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Enum whose literal values do not match the union type must still report
+    {
+      code: /* typescript */ `enum Status {
+  ACTIVE = "ACTIVE",
+  DISABLED = "DISABLED",
+}
+type PartialStatus = "ACTIVE";
+@ObjectType()
+class Member {
+  @Field(() => Status)
+  status!: PartialStatus;
+}`,
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+enum Status {
+  ACTIVE = "ACTIVE",
+  DISABLED = "DISABLED",
+}
+type PartialStatus = "ACTIVE";
+@ObjectType()
+class Member {
+  @Field(() => PartialStatus)
+  status!: PartialStatus;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Numeric enum map does not match string property
+    {
+      code: /* typescript */ `const NumericMap: Record<string, number> = {};
+@ObjectType()
+class Thing {
+  @Field(() => NumericMap)
+  label!: string;
+}`,
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+const NumericMap: Record<string, number> = {};
+@ObjectType()
+class Thing {
+  @Field(() => String)
+  label!: string;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Distinct empty classes must not be conflated structurally
+    {
+      code: /* typescript */ `class First {}
+class Second {}
+@ObjectType()
+class Holder {
+  @Field(() => Second)
+  first!: First;
+}`,
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+class First {}
+class Second {}
+@ObjectType()
+class Holder {
+  @Field(() => First)
+  first!: First;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Built-in Number constructor is still rejected in favor of Float/Int
+    {
+      code: /* typescript */ `@ObjectType()
+class Metrics {
+  @Field(() => Number)
+  score!: number;
+}`,
+      output: /* typescript */ `import { Field, Float } from "@nestjs/graphql";
+@ObjectType()
+class Metrics {
+  @Field(() => Float)
+  score!: number;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
     },
   ],
 });

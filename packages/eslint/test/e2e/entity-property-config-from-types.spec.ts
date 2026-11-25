@@ -629,3 +629,21 @@ const shared = { hidden: true, onUpdate: (book: Thing) => book.name };
     false,
   );
 });
+
+it("promotes erased t import used in new t.bigint('string')", () => {
+  const code = `import type { t } from "@mikro-orm/core";
+import { Entity, PrimaryKey } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Thing {
+  @PrimaryKey({ type: new t.bigint("string") })
+  id!: string;
+}`;
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).not.toContain("import type");
+  expect(result.output).toContain('type: new t.bigint("string")');
+  expect(compileDiagnostics(result.output)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
+});

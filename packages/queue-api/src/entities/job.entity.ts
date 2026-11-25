@@ -1,5 +1,3 @@
-/* eslint-disable nest-boot/graphql/field-config-from-types -- Persist arbitrary progress but expose only numeric values via the resolver. */
-/* eslint-disable nest-boot/database/entity-property-config-from-types -- History uses explicit SQL UUID, JSON and bigint types. */
 import { BigIntType, t } from "@mikro-orm/core";
 import {
   Entity,
@@ -60,6 +58,7 @@ export class Job {
   @Field(() => JobStatus)
   status!: JobStatus;
 
+  // eslint-disable-next-line nest-boot/graphql/field-config-from-types -- Persist arbitrary progress but expose only numeric values via the resolver.
   @Property({ type: t.json, nullable: true })
   @Field(() => Float, { nullable: true })
   progress!: JobProgress | null;
