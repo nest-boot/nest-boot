@@ -168,15 +168,22 @@ export default createRule<
       return null;
     };
 
-    const getIdentifierName = (node: TSESTree.TypeNode): string | null => {
-      if (
-        node.type === AST_NODE_TYPES.TSTypeReference &&
-        node.typeName.type === AST_NODE_TYPES.Identifier
-      ) {
-        return node.typeName.name;
-      }
-      return null;
-    };
+    const isNullishTypeNode = ASTUtils.isNodeOfTypes([
+      AST_NODE_TYPES.TSNullKeyword,
+      AST_NODE_TYPES.TSUndefinedKeyword,
+    ]);
+    const isTypeAssertionLike = ASTUtils.isNodeOfTypes([
+      AST_NODE_TYPES.TSAsExpression,
+      AST_NODE_TYPES.TSTypeAssertion,
+      AST_NODE_TYPES.TSSatisfiesExpression,
+      AST_NODE_TYPES.TSNonNullExpression,
+    ]);
+
+    const getIdentifierName = (node: TSESTree.TypeNode): string | null =>
+      node.type === AST_NODE_TYPES.TSTypeReference &&
+      ASTUtils.isIdentifier(node.typeName)
+        ? node.typeName.name
+        : null;
 
     const extractArrayElementType = (
       node: TSESTree.TypeNode,
@@ -400,23 +407,12 @@ export default createRule<
       let semanticOuterNode: TSESTree.TypeNode | null = baseTypeNode;
       while (baseTypeNode) {
         if (baseTypeNode.type === AST_NODE_TYPES.TSUnionType) {
-          const hasNullish = baseTypeNode.types.some((t: TSESTree.TypeNode) => {
-            return (
-              t.type === AST_NODE_TYPES.TSNullKeyword ||
-              t.type === AST_NODE_TYPES.TSUndefinedKeyword
-            );
-          });
-          if (hasNullish) {
+          if (baseTypeNode.types.some(isNullishTypeNode)) {
             isNullable = true;
           }
           semanticOuterNode = baseTypeNode;
           baseTypeNode =
-            baseTypeNode.types.find((t: TSESTree.TypeNode) => {
-              return (
-                t.type !== AST_NODE_TYPES.TSNullKeyword &&
-                t.type !== AST_NODE_TYPES.TSUndefinedKeyword
-              );
-            }) ?? null;
+            baseTypeNode.types.find((t) => !isNullishTypeNode(t)) ?? null;
           if (
             baseTypeNode?.type === AST_NODE_TYPES.TSTypeReference &&
             (ormTypeName(baseTypeNode.typeName) === "Ref" ||
@@ -457,20 +453,11 @@ export default createRule<
       if (rawElementTypeNode) {
         isArray = true;
         if (rawElementTypeNode.type === AST_NODE_TYPES.TSUnionType) {
-          const elemHasNullish = rawElementTypeNode.types.some(
-            (t: TSESTree.TypeNode) =>
-              t.type === AST_NODE_TYPES.TSNullKeyword ||
-              t.type === AST_NODE_TYPES.TSUndefinedKeyword,
-          );
-          if (elemHasNullish) {
+          if (rawElementTypeNode.types.some(isNullishTypeNode)) {
             isItemsNullable = true;
           }
           elementTypeNode =
-            rawElementTypeNode.types.find(
-              (t: TSESTree.TypeNode) =>
-                t.type !== AST_NODE_TYPES.TSNullKeyword &&
-                t.type !== AST_NODE_TYPES.TSUndefinedKeyword,
-            ) ?? null;
+            rawElementTypeNode.types.find((t) => !isNullishTypeNode(t)) ?? null;
         } else if (hasResolvedNullishType(rawElementTypeNode)) {
           isItemsNullable = true;
         }
@@ -629,7 +616,7 @@ export default createRule<
                 };
               }
             } else {
-              if ((nonNullTarget.flags & ts.TypeFlags.Boolean) !== 0) {
+              if (isTypeFlagSet(nonNullTarget, ts.TypeFlags.Boolean)) {
                 return {
                   typeName: "Boolean",
                   isArray: false,
@@ -639,7 +626,7 @@ export default createRule<
                   fullTypeNode,
                 };
               }
-              if ((nonNullTarget.flags & ts.TypeFlags.String) !== 0) {
+              if (isTypeFlagSet(nonNullTarget, ts.TypeFlags.String)) {
                 return {
                   typeName: "String",
                   isArray: false,
@@ -649,7 +636,7 @@ export default createRule<
                   fullTypeNode,
                 };
               }
-              if ((nonNullTarget.flags & ts.TypeFlags.Number) !== 0) {
+              if (isTypeFlagSet(nonNullTarget, ts.TypeFlags.Number)) {
                 return {
                   typeName: "Float",
                   isArray: false,
@@ -766,12 +753,7 @@ export default createRule<
 
     const unwrapTypeAssertions = (node: TSESTree.Node): TSESTree.Node => {
       let current = node;
-      while (
-        current.type === AST_NODE_TYPES.TSAsExpression ||
-        current.type === AST_NODE_TYPES.TSTypeAssertion ||
-        current.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-        current.type === AST_NODE_TYPES.TSNonNullExpression
-      ) {
+      while (isTypeAssertionLike(current)) {
         current = current.expression;
       }
       return current;
@@ -1241,7 +1223,10 @@ export default createRule<
       }
 
       // 1. TypeScript enum declaration (e.g. enum Status { ACTIVE = "ACTIVE" })
-      if (exprType.symbol && exprType.symbol.flags & ts.SymbolFlags.Enum) {
+      if (
+        exprType.symbol &&
+        isSymbolFlagSet(exprType.symbol, ts.SymbolFlags.Enum)
+      ) {
         const declared = typeChecker.getDeclaredTypeOfSymbol(exprType.symbol);
         if (areTypesEquivalent(typeChecker, propType, declared)) {
           return true;
@@ -1249,7 +1234,7 @@ export default createRule<
         const enumValues = new Set<string | number>();
         let allLiterals = true;
         for (const prop of typeChecker.getPropertiesOfType(exprType)) {
-          if (!(prop.flags & ts.SymbolFlags.EnumMember)) {
+          if (!isSymbolFlagSet(prop, ts.SymbolFlags.EnumMember)) {
             continue;
           }
           const memberType = typeChecker.getTypeOfSymbolAtLocation(
@@ -1270,7 +1255,7 @@ export default createRule<
       }
 
       // 2. Runtime enum object map (Record<string, string>, OrderFieldType<Entity>, or `as const` map)
-      if (!(exprType.flags & ts.TypeFlags.Object)) {
+      if (!isTypeFlagSet(exprType, ts.TypeFlags.Object)) {
         return false;
       }
       if (
@@ -1310,8 +1295,7 @@ export default createRule<
       }
 
       // 2b. Generic mapped type (e.g. Record<K, V> or OrderFieldType<Entity> = Record<OrderFieldKey<T>, OrderFieldValue<T>>)
-      const objectFlags = (exprType as ts.ObjectType).objectFlags;
-      if (objectFlags & ts.ObjectFlags.Mapped) {
+      if (isObjectFlagSet(exprType as ts.ObjectType, ts.ObjectFlags.Mapped)) {
         if (
           exprType.aliasSymbol?.name === "Record" &&
           exprType.aliasTypeArguments?.length === 2
@@ -1508,7 +1492,7 @@ export default createRule<
         checker,
         esTreeNodeToTSNodeMap.get(node),
       );
-      return sym !== undefined && (sym.flags & ts.SymbolFlags.Value) === 0;
+      return sym !== undefined && !isSymbolFlagSet(sym, ts.SymbolFlags.Value);
     };
 
     const graphqlModules = ["@nestjs/graphql", "@nest-boot/graphql"];
@@ -1544,7 +1528,7 @@ export default createRule<
     const findRootVariable = (node: TSESTree.Node) => {
       const identifier =
         node.type === AST_NODE_TYPES.MemberExpression ? node.object : node;
-      return identifier.type === AST_NODE_TYPES.Identifier
+      return ASTUtils.isIdentifier(identifier)
         ? ASTUtils.findVariable(source.getScope(identifier), identifier)
         : null;
     };

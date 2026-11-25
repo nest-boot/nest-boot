@@ -114,6 +114,11 @@ export default createRule<
     const parserServices = ESLintUtils.getParserServices(context);
     const checker = parserServices.program.getTypeChecker();
 
+    const isNullishTypeNode = ASTUtils.isNodeOfTypes([
+      AST_NODE_TYPES.TSNullKeyword,
+      AST_NODE_TYPES.TSUndefinedKeyword,
+    ]);
+
     // Check if the type is a runtime enum (excluding pure type-only aliases)
     const isEnumType = (node: TSESTree.Node): boolean => {
       try {
@@ -175,11 +180,12 @@ export default createRule<
       if (!node) {
         return null;
       }
-      if (
-        node.type === AST_NODE_TYPES.Literal &&
-        typeof node.value === "string"
-      ) {
-        return node.value;
+      const staticValue = ASTUtils.getStringIfConstant(
+        node,
+        source.getScope(node),
+      );
+      if (staticValue !== null) {
+        return staticValue;
       }
       try {
         const tsArg = parserServices.esTreeNodeToTSNodeMap.get(node);
@@ -223,7 +229,9 @@ export default createRule<
           const argType = checker.getTypeAtLocation(
             parserServices.esTreeNodeToTSNodeMap.get(firstArg),
           );
-          isExplicitUndefined = argType.flags === ts.TypeFlags.Undefined;
+          isExplicitUndefined =
+            isTypeFlagSet(argType, ts.TypeFlags.Undefined) &&
+            !argType.isUnion();
         } catch {
           // Leave unresolved if type lookup fails.
         }
@@ -248,17 +256,19 @@ export default createRule<
       if (
         target.type === AST_NODE_TYPES.MemberExpression &&
         !target.computed &&
-        target.property.type === AST_NODE_TYPES.Identifier &&
         coreName(target.object) === "t"
       ) {
-        return {
-          canonical: `t.${target.property.name}`,
-          isNew,
-          hasModeArg,
-          mode,
-          firstArg,
-          isFullText: false,
-        };
+        const memberName = ASTUtils.getPropertyName(target);
+        if (memberName) {
+          return {
+            canonical: `t.${memberName}`,
+            isNew,
+            hasModeArg,
+            mode,
+            firstArg,
+            isFullText: false,
+          };
+        }
       }
 
       const coreIdent = coreName(target);
@@ -273,7 +283,7 @@ export default createRule<
         };
       }
 
-      if (target.type === AST_NODE_TYPES.Identifier) {
+      if (ASTUtils.isIdentifier(target)) {
         return {
           canonical: target.name,
           isNew,
@@ -287,8 +297,7 @@ export default createRule<
       if (
         target.type === AST_NODE_TYPES.MemberExpression &&
         !target.computed &&
-        target.property.type === AST_NODE_TYPES.Identifier &&
-        target.property.name === "VectorType"
+        ASTUtils.getPropertyName(target) === "VectorType"
       ) {
         return {
           canonical: "VectorType",
@@ -573,34 +582,38 @@ export default createRule<
       }
       if (
         allowDynamic &&
-        member.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)
+        isTypeFlagSet(member, ts.TypeFlags.Any | ts.TypeFlags.Unknown)
       ) {
         return true;
       }
-      if (allowUndefined && member.flags & ts.TypeFlags.Undefined) {
+      if (allowUndefined && isTypeFlagSet(member, ts.TypeFlags.Undefined)) {
         return true;
       }
       if (
-        member.flags &
-        (ts.TypeFlags.BigIntLike |
-          ts.TypeFlags.ESSymbolLike |
-          ts.TypeFlags.Void |
-          ts.TypeFlags.Undefined |
-          ts.TypeFlags.Never)
+        isTypeFlagSet(
+          member,
+          ts.TypeFlags.BigIntLike |
+            ts.TypeFlags.ESSymbolLike |
+            ts.TypeFlags.Void |
+            ts.TypeFlags.Undefined |
+            ts.TypeFlags.Never,
+        )
       ) {
         return false;
       }
       if (
-        member.flags &
-        (ts.TypeFlags.StringLike |
-          ts.TypeFlags.NumberLike |
-          ts.TypeFlags.BooleanLike |
-          ts.TypeFlags.Null |
-          ts.TypeFlags.NonPrimitive)
+        isTypeFlagSet(
+          member,
+          ts.TypeFlags.StringLike |
+            ts.TypeFlags.NumberLike |
+            ts.TypeFlags.BooleanLike |
+            ts.TypeFlags.Null |
+            ts.TypeFlags.NonPrimitive,
+        )
       ) {
         return true;
       }
-      if (member.flags & ts.TypeFlags.Object) {
+      if (isTypeFlagSet(member, ts.TypeFlags.Object)) {
         if (
           checker.getSignaturesOfType(member, ts.SignatureKind.Call).length > 0
         ) {
@@ -665,7 +678,7 @@ export default createRule<
         }
         for (const prop of checker.getPropertiesOfType(member)) {
           const propType = checker.getTypeOfSymbol(prop);
-          const isOptional = (prop.flags & ts.SymbolFlags.Optional) !== 0;
+          const isOptional = isSymbolFlagSet(prop, ts.SymbolFlags.Optional);
           if (!isJsonSerializableType(propType, visited, isOptional, true)) {
             return false;
           }
@@ -752,11 +765,13 @@ export default createRule<
           checker.getTypeFromTypeNode(tsNode),
         );
         if (
-          resolved.flags &
-          (ts.TypeFlags.Any |
-            ts.TypeFlags.Unknown |
-            ts.TypeFlags.Never |
-            ts.TypeFlags.Void)
+          isTypeFlagSet(
+            resolved,
+            ts.TypeFlags.Any |
+              ts.TypeFlags.Unknown |
+              ts.TypeFlags.Never |
+              ts.TypeFlags.Void,
+          )
         ) {
           return { propertyType: null };
         }
@@ -791,8 +806,11 @@ export default createRule<
         }
         // Plain non-class object/interface/tuple types (excluding classes, arrays, built-in objects)
         if (
-          resolved.flags & ts.TypeFlags.Object &&
-          !(resolved.symbol && resolved.symbol.flags & ts.SymbolFlags.Class) &&
+          isTypeFlagSet(resolved, ts.TypeFlags.Object) &&
+          !(
+            resolved.symbol &&
+            isSymbolFlagSet(resolved.symbol, ts.SymbolFlags.Class)
+          ) &&
           ![
             "Date",
             "RegExp",
@@ -817,15 +835,11 @@ export default createRule<
       }
     };
 
-    const getIdentifierName = (node: TSESTree.TypeNode): string | null => {
-      if (
-        node.type === AST_NODE_TYPES.TSTypeReference &&
-        node.typeName.type === AST_NODE_TYPES.Identifier
-      ) {
-        return node.typeName.name;
-      }
-      return null;
-    };
+    const getIdentifierName = (node: TSESTree.TypeNode): string | null =>
+      node.type === AST_NODE_TYPES.TSTypeReference &&
+      ASTUtils.isIdentifier(node.typeName)
+        ? node.typeName.name
+        : null;
 
     const extractArrayElementType = (
       node: TSESTree.TypeNode,
@@ -911,22 +925,11 @@ export default createRule<
       // Unwrap outer null/undefined and nested Ref<T>/Opt<T> wrappers
       while (baseTypeNode) {
         if (baseTypeNode.type === AST_NODE_TYPES.TSUnionType) {
-          const hasNullish = baseTypeNode.types.some((t: TSESTree.TypeNode) => {
-            return (
-              t.type === AST_NODE_TYPES.TSNullKeyword ||
-              t.type === AST_NODE_TYPES.TSUndefinedKeyword
-            );
-          });
-          if (hasNullish) {
+          if (baseTypeNode.types.some(isNullishTypeNode)) {
             isNullable = true;
           }
           baseTypeNode =
-            baseTypeNode.types.find((t: TSESTree.TypeNode) => {
-              return (
-                t.type !== AST_NODE_TYPES.TSNullKeyword &&
-                t.type !== AST_NODE_TYPES.TSUndefinedKeyword
-              );
-            }) ?? null;
+            baseTypeNode.types.find((t) => !isNullishTypeNode(t)) ?? null;
           continue;
         }
         if (
@@ -1143,12 +1146,13 @@ export default createRule<
         if (ts.isTypeNode(tsElemNode)) {
           const elemType = checker.getTypeFromTypeNode(tsElemNode);
           if (
-            (elemType.flags &
-              (ts.TypeFlags.Any |
+            !isTypeFlagSet(
+              elemType,
+              ts.TypeFlags.Any |
                 ts.TypeFlags.Unknown |
                 ts.TypeFlags.Never |
-                ts.TypeFlags.Void)) ===
-            0
+                ts.TypeFlags.Void,
+            )
           ) {
             const elemInfo = classifyArrayElementTsType(elemType);
             if (elemInfo.unsupportedUnion) {
@@ -1422,29 +1426,34 @@ export default createRule<
       const otherProps: { key: string; value: string }[] = [];
 
       for (const prop of firstArg.properties) {
-        if (prop.type !== AST_NODE_TYPES.Property) {
+        if (prop.type !== AST_NODE_TYPES.Property || prop.computed) {
           continue;
         }
-        if (prop.key.type !== AST_NODE_TYPES.Identifier || !prop.key.name) {
+        const key = ASTUtils.getPropertyName(prop);
+        if (!key) {
           continue;
         }
 
-        if (prop.key.name === "type") {
+        if (key === "type") {
           typeNode = prop.value;
           type = source.getText(prop.value);
-          if (
+          const memberProp =
             prop.value.type === AST_NODE_TYPES.MemberExpression &&
             !prop.value.computed &&
-            prop.value.property.type === AST_NODE_TYPES.Identifier &&
             coreName(prop.value.object) === "t"
+              ? ASTUtils.getPropertyName(prop.value)
+              : null;
+          if (
+            memberProp &&
+            prop.value.type === AST_NODE_TYPES.MemberExpression
           ) {
-            type = `t.${prop.value.property.name}`;
+            type = `t.${memberProp}`;
             typeReference = prop.value.object;
           } else if (
             prop.value.type === AST_NODE_TYPES.NewExpression &&
             prop.value.callee.type === AST_NODE_TYPES.MemberExpression &&
             !prop.value.callee.computed &&
-            prop.value.callee.property.type === AST_NODE_TYPES.Identifier &&
+            ASTUtils.getPropertyName(prop.value.callee) !== null &&
             coreName(prop.value.callee.object) === "t"
           ) {
             typeReference = prop.value.callee.object;
@@ -1461,7 +1470,7 @@ export default createRule<
               typeReference = reference;
             }
           }
-        } else if (prop.key.name === "nullable") {
+        } else if (key === "nullable") {
           if (
             prop.value.type === AST_NODE_TYPES.Literal &&
             prop.value.value === true
@@ -1469,7 +1478,7 @@ export default createRule<
             nullable = true;
           }
         } else {
-          if (prop.key.name === "runtimeType") {
+          if (key === "runtimeType") {
             runtimeType = {
               present: true,
               value: resolveStringLiteralValue(prop.value),
@@ -1477,7 +1486,7 @@ export default createRule<
           }
           // Keep all other properties
           otherProps.push({
-            key: prop.key.name,
+            key,
             value: source.getText(prop.value),
           });
         }
@@ -1518,16 +1527,17 @@ export default createRule<
       const otherProps: { key: string; value: string }[] = [];
 
       for (const prop of firstArg.properties) {
-        if (prop.type !== AST_NODE_TYPES.Property) {
+        if (prop.type !== AST_NODE_TYPES.Property || prop.computed) {
           continue;
         }
-        if (prop.key.type !== AST_NODE_TYPES.Identifier || !prop.key.name) {
+        const key = ASTUtils.getPropertyName(prop);
+        if (!key) {
           continue;
         }
 
-        if (prop.key.name === "items") {
+        if (key === "items") {
           items = source.getText(prop.value);
-        } else if (prop.key.name === "nullable") {
+        } else if (key === "nullable") {
           if (
             prop.value.type === AST_NODE_TYPES.Literal &&
             prop.value.value === true
@@ -1536,7 +1546,7 @@ export default createRule<
           }
         } else {
           otherProps.push({
-            key: prop.key.name,
+            key,
             value: source.getText(prop.value),
           });
         }
@@ -1547,17 +1557,14 @@ export default createRule<
 
     // Check if the file uses the Opt type but hasn't imported it
     const checkOptUsageWithoutImport = (node: TSESTree.ClassDeclaration) => {
-      const annotations = node.body.body.flatMap((member) =>
-        member.type === AST_NODE_TYPES.PropertyDefinition &&
-        member.typeAnnotation
-          ? [member.typeAnnotation]
-          : [],
-      );
-      const missingOpt = (source.scopeManager?.scopes ?? [])
-        .flatMap((scope) => scope.references)
+      const annotations = node.body.body
+        .filter(ASTUtils.isNodeOfType(AST_NODE_TYPES.PropertyDefinition))
+        .flatMap((member) =>
+          member.typeAnnotation ? [member.typeAnnotation] : [],
+        );
+      const missingOpt = (source.scopeManager?.globalScope?.through ?? [])
         .filter(
           (reference) =>
-            !reference.resolved &&
             reference.identifier.name === "Opt" &&
             reference.identifier.parent.type ===
               AST_NODE_TYPES.TSTypeReference &&

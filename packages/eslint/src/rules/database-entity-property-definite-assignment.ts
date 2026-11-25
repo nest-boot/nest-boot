@@ -1,4 +1,8 @@
-import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
+import {
+  AST_NODE_TYPES,
+  ASTUtils,
+  type TSESTree,
+} from "@typescript-eslint/utils";
 
 import { createRule } from "../utils/createRule.js";
 import { getImportedName } from "../utils/imports.js";
@@ -60,10 +64,11 @@ export default createRule({
           return;
         }
 
-        for (const member of node.body.body) {
+        for (const member of node.body.body.filter(
+          ASTUtils.isNodeOfType(AST_NODE_TYPES.PropertyDefinition),
+        )) {
           if (
-            member.type !== AST_NODE_TYPES.PropertyDefinition ||
-            member.key.type !== AST_NODE_TYPES.Identifier ||
+            !ASTUtils.isIdentifier(member.key) ||
             member.optional ||
             member.declare ||
             member.value !== null ||

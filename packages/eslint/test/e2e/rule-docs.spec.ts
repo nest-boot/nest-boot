@@ -2,12 +2,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import tsParser from "@typescript-eslint/parser";
-import { Linter } from "eslint";
+import { TSESLint } from "@typescript-eslint/utils";
 
 import nestBoot, { rules } from "../../src/index.js";
 
 const packageRoot = path.resolve(import.meta.dirname, "../..");
-const linter = new Linter();
+const linter = new TSESLint.Linter();
 
 /**
  * Extracts fenced TypeScript code blocks grouped under `### Incorrect` and `### Correct` headings.
@@ -54,7 +54,7 @@ describe("rule documentation examples", () => {
   for (const [ruleName, ruleModule] of Object.entries(rules)) {
     const docPath = path.join(packageRoot, "docs/rules", `${ruleName}.md`);
     const ruleId = `nest-boot/${ruleName}`;
-    const config: Linter.Config[] = [
+    const config: TSESLint.FlatConfig.ConfigArray = [
       {
         files: ["**/*.ts"],
         languageOptions: {

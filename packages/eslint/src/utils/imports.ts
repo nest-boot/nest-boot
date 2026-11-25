@@ -94,7 +94,7 @@ const matchesModule = (
 const getSpecifierImportedName = (
   specifier: TSESTree.ImportSpecifier,
 ): string =>
-  specifier.imported.type === AST_NODE_TYPES.Identifier
+  ASTUtils.isIdentifier(specifier.imported)
     ? specifier.imported.name
     : specifier.imported.value;
 
@@ -107,19 +107,19 @@ function extractReferenceParts(node: TSESTree.Node): {
   identifier: TSESTree.Identifier;
   member: string | null;
 } | null {
-  if (node.type === AST_NODE_TYPES.Identifier) {
+  if (ASTUtils.isIdentifier(node)) {
     return { identifier: node, member: null };
   }
   if (
     node.type === AST_NODE_TYPES.MemberExpression &&
-    node.object.type === AST_NODE_TYPES.Identifier
+    ASTUtils.isIdentifier(node.object)
   ) {
     const member = ASTUtils.getPropertyName(node);
     return member ? { identifier: node.object, member } : null;
   }
   if (
     node.type === AST_NODE_TYPES.TSQualifiedName &&
-    node.left.type === AST_NODE_TYPES.Identifier
+    ASTUtils.isIdentifier(node.left)
   ) {
     return { identifier: node.left, member: node.right.name };
   }
@@ -358,8 +358,11 @@ function buildPromotionFixes(
   const fixes: RuleFix[] = [];
   for (const [declaration, promotedNames] of promotions) {
     if (declaration.importKind === "type") {
-      const typeToken = source.getFirstToken(declaration, { skip: 1 });
-      if (typeToken?.value === "type") {
+      const typeToken = source.getFirstToken(
+        declaration,
+        ASTUtils.isTypeKeyword,
+      );
+      if (typeToken) {
         const tokenAfter = source.getTokenAfter(typeToken);
         fixes.push(
           fixer.removeRange([
@@ -368,23 +371,26 @@ function buildPromotionFixes(
           ]),
         );
       }
-      for (const specifier of declaration.specifiers) {
-        if (
-          specifier.type === AST_NODE_TYPES.ImportSpecifier &&
-          !promotedNames.has(specifier.local.name)
-        ) {
+      for (const specifier of declaration.specifiers.filter(
+        ASTUtils.isNodeOfType(AST_NODE_TYPES.ImportSpecifier),
+      )) {
+        if (!promotedNames.has(specifier.local.name)) {
           fixes.push(fixer.insertTextBefore(specifier, "type "));
         }
       }
     } else {
-      for (const specifier of declaration.specifiers) {
+      for (const specifier of declaration.specifiers.filter(
+        ASTUtils.isNodeOfType(AST_NODE_TYPES.ImportSpecifier),
+      )) {
         if (
-          specifier.type === AST_NODE_TYPES.ImportSpecifier &&
           specifier.importKind === "type" &&
           promotedNames.has(specifier.local.name)
         ) {
-          const typeToken = source.getFirstToken(specifier);
-          if (typeToken?.value === "type") {
+          const typeToken = source.getFirstToken(
+            specifier,
+            ASTUtils.isTypeKeyword,
+          );
+          if (typeToken) {
             const tokenAfter = source.getTokenAfter(typeToken);
             fixes.push(
               fixer.removeRange([
@@ -421,10 +427,11 @@ export function ensureNamedImportFixes(
   location: TSESTree.Node = source.ast,
   filename?: string,
 ): RuleFix[] {
-  const matchingDecls = source.ast.body.filter(
-    (stmt): stmt is TSESTree.ImportDeclaration =>
-      stmt.type === AST_NODE_TYPES.ImportDeclaration &&
-      matchesModule(modules, stmt.source.value, filename),
+  const allImports = source.ast.body.filter(
+    ASTUtils.isNodeOfType(AST_NODE_TYPES.ImportDeclaration),
+  );
+  const matchingDecls = allImports.filter((stmt) =>
+    matchesModule(modules, stmt.source.value, filename),
   );
   const missingSpecs: string[] = [];
   const promotions = new Map<TSESTree.ImportDeclaration, Set<string>>();
@@ -466,14 +473,14 @@ export function ensureNamedImportFixes(
     (decl) =>
       (!valueImport || decl.importKind !== "type" || promotions.has(decl)) &&
       decl.specifiers.some(
-        (spec) => spec.type === AST_NODE_TYPES.ImportSpecifier,
+        ASTUtils.isNodeOfType(AST_NODE_TYPES.ImportSpecifier),
       ),
   );
   const lastSpecifier = targetDecl?.specifiers.at(-1);
   if (targetDecl && lastSpecifier) {
-    const separator = source.getText(targetDecl).includes("\n")
-      ? ",\n  "
-      : ", ";
+    const separator = ASTUtils.isTokenOnSameLine(targetDecl, lastSpecifier)
+      ? ", "
+      : ",\n  ";
     fixes.push(
       fixer.insertTextAfter(
         lastSpecifier,
@@ -483,9 +490,7 @@ export function ensureNamedImportFixes(
     return fixes;
   }
 
-  const firstImport = source.ast.body.find(
-    (stmt) => stmt.type === AST_NODE_TYPES.ImportDeclaration,
-  );
+  const firstImport = allImports[0];
   const firstStatement = source.ast.body.find(
     (stmt) =>
       stmt.type !== AST_NODE_TYPES.ExpressionStatement || !stmt.directive,
