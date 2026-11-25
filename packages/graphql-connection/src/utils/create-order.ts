@@ -78,7 +78,7 @@ export function createOrder<Entity extends object>(
     description: `Ordering options for ${humanizeEntityName} connections`,
   })
   class Order implements OrderInterface<Entity> {
-    // eslint-disable-next-line @nest-boot/graphql/field-config-from-types
+    // eslint-disable-next-line nest-boot/graphql/field-config-from-types
     @Field(() => OrderField as object, {
       description: `The field to order ${humanizeAndPluralizeEntityName} by.`,
     })

@@ -1,4 +1,4 @@
-import config from "@nest-boot/eslint-config";
+import nestBoot from "@nest-boot/eslint";
 import { defineConfig } from "eslint/config";
 
-export default defineConfig([...config]);
+export default defineConfig([...nestBoot.configs.recommended]);

@@ -381,7 +381,7 @@ describe("Nest processor registration", () => {
     "starts a registered consumer once (async=$async, provider=$provider)",
     async ({ async, provider }) => {
       @Processor(EmailQueue)
-      // eslint-disable-next-line @nest-boot/queue/processor-name -- This parent fixture verifies inherited processor metadata.
+      // eslint-disable-next-line nest-boot/queue/processor-name -- This parent fixture verifies inherited processor metadata.
       class ParentWorker extends BaseProcessor {
         async processSend(_job: Job<EmailQueue, "send">) {
           await Promise.resolve();

@@ -26,7 +26,7 @@ export function createEdge<Entity extends object>(
     description: `An auto-generated type which holds one ${entityName} and a cursor during pagination.`,
   })
   class Edge implements EdgeInterface<Entity> {
-    // eslint-disable-next-line @nest-boot/graphql/field-config-from-types
+    // eslint-disable-next-line nest-boot/graphql/field-config-from-types
     @Field(() => entityClass, {
       description: `The item at the end of ${entityName}Edge.`,
     })

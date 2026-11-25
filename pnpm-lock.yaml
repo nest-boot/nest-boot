@@ -538,21 +538,12 @@ importers:
       '@electric-sql/pglite':
         specifier: 0.5.8
         version: 0.5.8
-      '@eslint/eslintrc':
-        specifier: ^3.3.3
-        version: 3.3.3
-      '@eslint/js':
-        specifier: ^9.39.2
-        version: 9.39.3
       '@mikro-orm/pglite':
         specifier: 7.2.0
         version: 7.2.0
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../../packages/eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../../packages/eslint-plugin
+        version: link:../../packages/eslint
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../../packages/tsconfig
@@ -583,9 +574,6 @@ importers:
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
-      eslint-config-prettier:
-        specifier: ^10.1.8
-        version: 10.1.8
       pino-pretty:
         specifier: ^13.1.3
         version: 13.1.3
@@ -644,12 +632,9 @@ importers:
       '@nest-boot/database':
         specifier: workspace:^
         version: link:../database
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../graphql
@@ -741,12 +726,9 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../request-context
@@ -789,12 +771,9 @@ importers:
 
   packages/crypt:
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
@@ -883,12 +862,9 @@ importers:
       '@nest-boot/command':
         specifier: workspace:^
         version: link:../command
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../request-context
@@ -952,12 +928,9 @@ importers:
       '@nest-boot/crypt':
         specifier: workspace:^
         version: link:../crypt
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
@@ -991,12 +964,9 @@ importers:
       '@mikro-orm/pglite':
         specifier: 7.2.0
         version: 7.2.0
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/hash':
         specifier: workspace:^
         version: link:../hash
@@ -1022,70 +992,30 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11
 
-  packages/eslint-config:
+  packages/eslint:
     dependencies:
-      eslint-plugin-jsdoc:
-        specifier: ^63.3.3
-        version: 63.3.3
-    devDependencies:
-      '@eslint/eslintrc':
-        specifier: ^3.3.3
-        version: 3.3.3
       '@eslint/js':
         specifier: ^9.39.2
-        version: 9.39.2
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
-      '@nest-boot/tsconfig':
-        specifier: workspace:^
-        version: link:../tsconfig
-      '@types/node':
-        specifier: ^24.0.0
-        version: 24.13.3
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^8.71.1
-        version: 8.71.1
+        version: 9.39.3
       '@typescript-eslint/parser':
         specifier: ^8.71.1
         version: 8.71.1
-      '@vitest/coverage-v8':
-        specifier: ^4.1.11
-        version: 4.1.11
-      eslint:
-        specifier: ^9.39.3
-        version: 9.39.3
-      eslint-config-prettier:
-        specifier: ^10.1.8
-        version: 10.1.8
-      eslint-plugin-simple-import-sort:
-        specifier: ^12.1.1
-        version: 12.1.1
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      typescript-eslint:
-        specifier: ^8.71.1
-        version: 8.71.1
-      vite-tsconfig-paths:
-        specifier: ^5.1.4
-        version: 5.1.4
-      vitest:
-        specifier: ^4.1.11
-        version: 4.1.11
-
-  packages/eslint-plugin:
-    dependencies:
       '@typescript-eslint/utils':
         specifier: ^8.71.1
         version: 8.71.1
+      eslint-config-prettier:
+        specifier: ^10.1.8
+        version: 10.1.8
+      eslint-plugin-jsdoc:
+        specifier: ^63.3.3
+        version: 63.3.3
+      eslint-plugin-simple-import-sort:
+        specifier: ^12.1.1
+        version: 12.1.1
+      typescript-eslint:
+        specifier: ^8.71.1
+        version: 8.71.1
     devDependencies:
-      '@eslint/eslintrc':
-        specifier: ^3.3.3
-        version: 3.3.3
-      '@eslint/js':
-        specifier: ^9.39.2
-        version: 9.39.2
       '@mikro-orm/core':
         specifier: 7.2.0
         version: 7.2.0
@@ -1103,10 +1033,7 @@ importers:
         version: link:../tsconfig
       '@types/node':
         specifier: ^24.0.0
-        version: 24.13.3
-      '@typescript-eslint/parser':
-        specifier: ^8.71.1
-        version: 8.71.1
+        version: 24.19.0
       '@typescript-eslint/rule-tester':
         specifier: ^8.71.1
         version: 8.71.1
@@ -1116,21 +1043,12 @@ importers:
       eslint:
         specifier: ^9.39.3
         version: 9.39.3
-      eslint-config-prettier:
-        specifier: ^10.1.8
-        version: 10.1.8
-      eslint-plugin-simple-import-sort:
-        specifier: ^12.1.1
-        version: 12.1.1
       graphql-type-json:
         specifier: 0.3.2
         version: 0.3.2
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-      typescript-eslint:
-        specifier: ^8.71.1
-        version: 8.71.1
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4
@@ -1146,12 +1064,9 @@ importers:
       '@as-integrations/express5':
         specifier: ^1.1.2
         version: 1.1.2
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
@@ -1243,12 +1158,9 @@ importers:
       '@nest-boot/database':
         specifier: workspace:^
         version: link:../database
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../graphql
@@ -1321,12 +1233,9 @@ importers:
       '@as-integrations/express5':
         specifier: ^1.1.2
         version: 1.1.2
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../graphql
@@ -1406,12 +1315,9 @@ importers:
       '@as-integrations/express5':
         specifier: ^1.1.2
         version: 1.1.2
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../graphql
@@ -1491,12 +1397,9 @@ importers:
         specifier: ^1.8.3
         version: 1.8.3
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
@@ -1536,12 +1439,9 @@ importers:
 
   packages/health-check:
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/middleware':
         specifier: workspace:^
         version: link:../middleware
@@ -1596,12 +1496,9 @@ importers:
 
   packages/i18n:
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/middleware':
         specifier: workspace:^
         version: link:../middleware
@@ -1684,12 +1581,9 @@ importers:
         specifier: ^10.5.0
         version: 10.5.0
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../request-context
@@ -1751,12 +1645,9 @@ importers:
         specifier: workspace:^
         version: link:../health-check
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
@@ -1821,12 +1712,9 @@ importers:
       '@nest-boot/auth':
         specifier: workspace:^
         version: link:../auth
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
@@ -1884,12 +1772,9 @@ importers:
 
   packages/metrics:
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
@@ -1941,12 +1826,9 @@ importers:
 
   packages/middleware:
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
@@ -1999,12 +1881,9 @@ importers:
       '@nest-boot/command':
         specifier: workspace:^
         version: link:../command
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../request-context
@@ -2084,12 +1963,9 @@ importers:
       '@nest-boot/database':
         specifier: workspace:^
         version: link:../database
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../graphql
@@ -2184,12 +2060,9 @@ importers:
         specifier: workspace:^
         version: link:../health-check
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
@@ -2242,12 +2115,9 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/middleware':
         specifier: workspace:^
         version: link:../middleware
@@ -2293,12 +2163,9 @@ importers:
 
   packages/schedule:
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/queue':
         specifier: workspace:^
         version: link:../queue
@@ -2366,12 +2233,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1123.0
         version: 3.1123.0
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/storage':
         specifier: workspace:^
         version: link:../storage
@@ -2429,12 +2293,9 @@ importers:
       '@as-integrations/express5':
         specifier: ^1.1.2
         version: 1.1.2
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/graphql':
         specifier: workspace:^
         version: link:../graphql
@@ -2516,12 +2377,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1123.0
         version: 3.1123.0
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
@@ -2564,12 +2422,9 @@ importers:
 
   packages/temporary-directory:
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/request-context':
         specifier: workspace:^
         version: link:../request-context
@@ -2639,12 +2494,9 @@ importers:
 
   packages/validator:
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
@@ -2690,12 +2542,9 @@ importers:
 
   packages/view:
     devDependencies:
-      '@nest-boot/eslint-config':
+      '@nest-boot/eslint':
         specifier: workspace:^
-        version: link:../eslint-config
-      '@nest-boot/eslint-plugin':
-        specifier: workspace:^
-        version: link:../eslint-plugin
+        version: link:../eslint
       '@nest-boot/tsconfig':
         specifier: workspace:^
         version: link:../tsconfig
@@ -3965,10 +3814,6 @@ packages:
 
   '@eslint/eslintrc@3.3.3':
     resolution: {integrity: sha512-Kr+LPIUVKz2qkx1HAMH8q1q6azbqBAsXJUxBl/ODDuVPX45Z9DfwB8tPjTi6nNZ8BuM3nbJxC5zCAg5elnBUTQ==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-
-  '@eslint/js@9.39.2':
-    resolution: {integrity: sha512-q1mjIoW1VX4IvSocvM/vbTiveKC4k9eLrajNEuSsmjymSDEbpGddtpfOoN7YGAqBK3NG+uqo8ia4PDTt8buCYA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   '@eslint/js@9.39.3':
@@ -7274,9 +7119,6 @@ packages:
 
   ajv@6.14.0:
     resolution: {integrity: sha512-IWrosm/yrn43eiKqkfkHis7QioDleaXQHdDVPKg0FSwwd/DuvyX79TZnFOnYpB7dcsFAMmtFztZuXPDvSePkFw==}
-
-  ajv@8.18.0:
-    resolution: {integrity: sha512-PlXPeEWMXMZ7sPYOHqmDyCJzcfNrUr3fGNKtezX14ykXOEIvyK81d+qydx89KY5O71FKMPaQ2vBfBFI5NHR63A==}
 
   ajv@8.20.0:
     resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
@@ -13584,7 +13426,7 @@ snapshots:
   '@commitlint/config-validator@19.0.3':
     dependencies:
       '@commitlint/types': 19.0.3
-      ajv: 8.18.0
+      ajv: 8.20.0
     optional: true
 
   '@commitlint/config-validator@21.0.1':
@@ -13814,7 +13656,7 @@ snapshots:
 
   '@es-joy/jsdoccomment@0.91.0':
     dependencies:
-      '@types/estree': 1.0.9
+      '@types/estree': 1.0.10
       '@typescript-eslint/types': 8.71.1
       comment-parser: 1.4.7
       esquery: 1.7.0
@@ -14009,8 +13851,6 @@ snapshots:
       js-yaml: 4.1.1
       minimatch: 3.1.2
       strip-json-comments: 3.1.1
-
-  '@eslint/js@9.39.2': {}
 
   '@eslint/js@9.39.3': {}
 
@@ -17434,8 +17274,8 @@ snapshots:
 
   '@typescript-eslint/project-service@8.56.1':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.56.1
-      '@typescript-eslint/types': 8.56.1
+      '@typescript-eslint/tsconfig-utils': 8.71.1
+      '@typescript-eslint/types': 8.71.1
       debug: 4.4.3
 
   '@typescript-eslint/project-service@8.71.1':
@@ -17826,14 +17666,6 @@ snapshots:
       fast-json-stable-stringify: 2.1.0
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
-
-  ajv@8.18.0:
-    dependencies:
-      fast-deep-equal: 3.1.3
-      fast-uri: 3.1.8
-      json-schema-traverse: 1.0.0
-      require-from-string: 2.0.2
-    optional: true
 
   ajv@8.20.0:
     dependencies:
@@ -21355,7 +21187,7 @@ snapshots:
 
   micromark-extension-mdx-expression@3.0.1:
     dependencies:
-      '@types/estree': 1.0.9
+      '@types/estree': 1.0.10
       devlop: 1.1.0
       micromark-factory-mdx-expression: 2.0.3
       micromark-factory-space: 2.1.0
@@ -21366,7 +21198,7 @@ snapshots:
 
   micromark-extension-mdx-jsx@3.0.2:
     dependencies:
-      '@types/estree': 1.0.9
+      '@types/estree': 1.0.10
       devlop: 1.1.0
       estree-util-is-identifier-name: 3.0.0
       micromark-factory-mdx-expression: 2.0.3
@@ -21383,7 +21215,7 @@ snapshots:
 
   micromark-extension-mdxjs-esm@3.0.0:
     dependencies:
-      '@types/estree': 1.0.9
+      '@types/estree': 1.0.10
       devlop: 1.1.0
       micromark-core-commonmark: 2.0.4
       micromark-util-character: 2.1.1
@@ -21419,7 +21251,7 @@ snapshots:
 
   micromark-factory-mdx-expression@2.0.3:
     dependencies:
-      '@types/estree': 1.0.9
+      '@types/estree': 1.0.10
       devlop: 1.1.0
       micromark-factory-space: 2.1.0
       micromark-util-character: 2.1.1
@@ -21487,7 +21319,7 @@ snapshots:
 
   micromark-util-events-to-acorn@2.0.3:
     dependencies:
-      '@types/estree': 1.0.9
+      '@types/estree': 1.0.10
       '@types/unist': 3.0.3
       devlop: 1.1.0
       estree-util-visit: 2.0.0
@@ -22579,7 +22411,7 @@ snapshots:
 
   recma-parse@1.0.0:
     dependencies:
-      '@types/estree': 1.0.9
+      '@types/estree': 1.0.10
       esast-util-from-js: 2.0.1
       unified: 11.0.5
       vfile: 6.0.3

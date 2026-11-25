@@ -1,0 +1,142 @@
+import { tester } from "../../../test/tester.js";
+import rule from "./graphql-field-definite-assignment.js";
+
+tester.run("graphql-field-definite-assignment", rule, {
+  valid: [
+    // Property with initializer, no ! needed
+    /* typescript */ `
+      @ObjectType()
+      class User {
+        @Field()
+        createdAt: Date = new Date();
+      }
+    `,
+    // Property with !, no initializer
+    /* typescript */ `
+      @ObjectType()
+      class User {
+        @Field()
+        name!: string;
+      }
+    `,
+    // Optional property, no ! needed
+    /* typescript */ `
+      @ObjectType()
+      class User {
+        @Field()
+        age?: number;
+      }
+    `,
+    // Declare properties cannot use definite assignment assertions
+    /* typescript */ `
+      @ObjectType()
+      class User extends BaseUser {
+        @Field()
+        declare name: string;
+      }
+    `,
+    // InputType class
+    /* typescript */ `
+      @InputType()
+      class CreateUserInput {
+        @Field()
+        name!: string;
+      }
+    `,
+    // ArgsType class
+    /* typescript */ `
+      @ArgsType()
+      class GetUserArgs {
+        @Field()
+        id!: string;
+      }
+    `,
+    // Non-GraphQL model class is not checked
+    /* typescript */ `
+      class NotAGraphQLModel {
+        @Field()
+        field: string;
+      }
+    `,
+    // Property without @Field decorator is not checked
+    /* typescript */ `
+      @ObjectType()
+      class User {
+        field: string;
+      }
+    `,
+    // Methods are ignored
+    /* typescript */ `
+      @ObjectType()
+      class User {
+        method() {
+          return "value";
+        }
+      }
+    `,
+    // Computed property names are skipped
+    /* typescript */ `
+      @ObjectType()
+      class User {
+        @Field()
+        ["name"]: string;
+      }
+    `,
+  ],
+  invalid: [
+    // No initializer and no !
+    {
+      code: /* typescript */ `
+        @ObjectType()
+        class User {
+          @Field()
+          name: string;
+        }
+      `,
+      output: /* typescript */ `
+        @ObjectType()
+        class User {
+          @Field()
+          name!: string;
+        }
+      `,
+      errors: [{ messageId: "addDefiniteAssignment" }],
+    },
+    // InputType - no initializer and no !
+    {
+      code: /* typescript */ `
+        @InputType()
+        class CreateUserInput {
+          @Field()
+          name: string;
+        }
+      `,
+      output: /* typescript */ `
+        @InputType()
+        class CreateUserInput {
+          @Field()
+          name!: string;
+        }
+      `,
+      errors: [{ messageId: "addDefiniteAssignment" }],
+    },
+    // Number type, no initializer and no !
+    {
+      code: /* typescript */ `
+        @ObjectType()
+        class User {
+          @Field()
+          age: number;
+        }
+      `,
+      output: /* typescript */ `
+        @ObjectType()
+        class User {
+          @Field()
+          age!: number;
+        }
+      `,
+      errors: [{ messageId: "addDefiniteAssignment" }],
+    },
+  ],
+});

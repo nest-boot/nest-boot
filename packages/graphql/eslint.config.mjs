@@ -1,7 +1,7 @@
-import config from "@nest-boot/eslint-config";
+import nestBoot from "@nest-boot/eslint";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
-  ...config,
-  { rules: { "@nest-boot/graphql/no-direct-nestjs-import": "off" } },
+  ...nestBoot.configs.recommended,
+  { rules: { "nest-boot/graphql/no-direct-nestjs-import": "off" } },
 ]);

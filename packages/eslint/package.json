@@ -1,0 +1,86 @@
+{
+  "name": "@nest-boot/eslint",
+  "version": "8.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nest-boot/nest-boot.git",
+    "directory": "packages/eslint"
+  },
+  "description": "Shared ESLint flat configuration and custom rules for Nest Boot applications",
+  "author": {
+    "name": "Xudong Huang",
+    "email": "me@huangxudong.com",
+    "url": "https://www.huangxudong.com/"
+  },
+  "homepage": "",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "directories": {
+    "lib": "dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf coverage && rm -rf dist",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "lint": "eslint \"{src,test}/**/*.ts\"",
+    "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
+    "test": "vitest run --testTimeout=15000",
+    "test:cov": "vitest run --coverage --testTimeout=15000",
+    "test:watch": "vitest",
+    "test:debug": "vitest --inspect-brk --no-file-parallelism",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts --coverage"
+  },
+  "dependencies": {
+    "@eslint/js": "^9.39.2",
+    "@typescript-eslint/parser": "^8.71.1",
+    "@typescript-eslint/utils": "^8.71.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsdoc": "^63.3.3",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "typescript-eslint": "^8.71.1"
+  },
+  "peerDependencies": {
+    "eslint": "^9.0.0",
+    "typescript": "^6.0.0"
+  },
+  "devDependencies": {
+    "@mikro-orm/core": "7.2.0",
+    "@mikro-orm/decorators": "7.2.0",
+    "@mikro-orm/postgresql": "7.2.0",
+    "@mikro-orm/sql": "7.2.0",
+    "@nest-boot/tsconfig": "workspace:^",
+    "@types/node": "^24.0.0",
+    "@typescript-eslint/rule-tester": "^8.71.1",
+    "@vitest/coverage-v8": "^4.1.11",
+    "eslint": "^9.39.3",
+    "graphql-type-json": "0.3.2",
+    "typescript": "^6.0.3",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.1.11"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "prettier --write",
+      "eslint --fix"
+    ]
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24.21.0"
+  }
+}

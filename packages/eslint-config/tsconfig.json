@@ -1,6 +1,0 @@
-{
-  "extends": "@nest-boot/tsconfig/base.json",
-  "compilerOptions": {
-    "rootDir": "."
-  }
-}
