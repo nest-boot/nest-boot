@@ -72,7 +72,6 @@
     "graphql-type-json": "0.3.2",
     "typescript": "^6.0.3",
     "vite": "^8.3.8",
-    "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^5.1.1"
   },
   "publishConfig": {
