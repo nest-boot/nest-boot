@@ -163,6 +163,7 @@ export default createRule<
     ): {
       canonical: string | null;
       isNew: boolean;
+      hasModeArg: boolean;
       mode: string | null;
       isFullText: boolean;
     } => {
@@ -171,6 +172,7 @@ export default createRule<
           return {
             canonical: null,
             isNew: false,
+            hasModeArg: false,
             mode: null,
             isFullText: false,
           };
@@ -178,6 +180,7 @@ export default createRule<
         return {
           canonical: typeConfig,
           isNew: typeConfig.startsWith("new "),
+          hasModeArg: false,
           mode: null,
           isFullText: false,
         };
@@ -186,16 +189,34 @@ export default createRule<
       const isNew = typeNode.type === AST_NODE_TYPES.NewExpression;
       const target = isNew ? typeNode.callee : typeNode;
       const firstArg = isNew ? typeNode.arguments.at(0) : undefined;
-      const mode =
+      const hasModeArg = firstArg !== undefined;
+      let mode: string | null =
         firstArg?.type === AST_NODE_TYPES.Literal &&
         typeof firstArg.value === "string"
           ? firstArg.value
           : null;
+      if (firstArg && mode === null) {
+        try {
+          const tsArg = parserServices.esTreeNodeToTSNodeMap.get(firstArg);
+          const argType = checker.getTypeAtLocation(tsArg);
+          if (argType.isStringLiteral()) {
+            mode = argType.value;
+          }
+        } catch {
+          // Leave mode unresolved if type lookup fails.
+        }
+      }
 
       if (
         importedBindingName(source, fullTextModules, target) === "FullTextType"
       ) {
-        return { canonical: "FullTextType", isNew, mode, isFullText: true };
+        return {
+          canonical: "FullTextType",
+          isNew,
+          hasModeArg,
+          mode,
+          isFullText: true,
+        };
       }
 
       if (
@@ -207,6 +228,7 @@ export default createRule<
         return {
           canonical: `t.${target.property.name}`,
           isNew,
+          hasModeArg,
           mode,
           isFullText: false,
         };
@@ -214,14 +236,32 @@ export default createRule<
 
       const coreIdent = coreName(target);
       if (coreIdent) {
-        return { canonical: coreIdent, isNew, mode, isFullText: false };
+        return {
+          canonical: coreIdent,
+          isNew,
+          hasModeArg,
+          mode,
+          isFullText: false,
+        };
       }
 
       if (target.type === AST_NODE_TYPES.Identifier) {
-        return { canonical: target.name, isNew, mode, isFullText: false };
+        return {
+          canonical: target.name,
+          isNew,
+          hasModeArg,
+          mode,
+          isFullText: false,
+        };
       }
 
-      return { canonical: typeConfig, isNew, mode, isFullText: false };
+      return {
+        canonical: typeConfig,
+        isNew,
+        hasModeArg,
+        mode,
+        isFullText: false,
+      };
     };
 
     const isValidStringType = (
@@ -242,24 +282,37 @@ export default createRule<
         "t.uuid",
         "t.character",
         "t.interval",
+        "t.date",
+        "t.time",
         "StringType",
         "TextType",
         "UuidType",
         "CharacterType",
         "IntervalType",
+        "DateType",
+        "TimeType",
       ]);
       if (stringTypes.has(spec.canonical)) {
         return true;
       }
 
       if (spec.canonical === "t.decimal" || spec.canonical === "DecimalType") {
-        // DecimalType defaults to "string" mode; reject explicit "number" mode
-        return !spec.isNew || spec.mode === null || spec.mode === "string";
+        // DecimalType defaults to "string" mode; reject explicit "number" mode and preserve dynamic modes
+        return (
+          !spec.isNew ||
+          !spec.hasModeArg ||
+          spec.mode === null ||
+          spec.mode === "string"
+        );
       }
 
       if (spec.canonical === "t.bigint" || spec.canonical === "BigIntType") {
-        // Bare t.bigint / BigIntType is allowed; instantiated form must use "string" mode
-        return !spec.isNew || spec.mode === "string";
+        // Bare t.bigint / BigIntType is allowed; instantiated form must use "string" mode (or an unresolved dynamic mode)
+        return (
+          !spec.isNew ||
+          spec.mode === "string" ||
+          (spec.hasModeArg && spec.mode === null)
+        );
       }
 
       return false;
@@ -293,11 +346,19 @@ export default createRule<
       }
 
       if (spec.canonical === "t.decimal" || spec.canonical === "DecimalType") {
-        return !spec.isNew || spec.mode === "number";
+        return (
+          !spec.isNew ||
+          spec.mode === "number" ||
+          (spec.hasModeArg && spec.mode === null)
+        );
       }
 
       if (spec.canonical === "t.bigint" || spec.canonical === "BigIntType") {
-        return !spec.isNew || spec.mode === "number";
+        return (
+          !spec.isNew ||
+          spec.mode === "number" ||
+          (spec.hasModeArg && spec.mode === null)
+        );
       }
 
       return false;
@@ -311,8 +372,13 @@ export default createRule<
       if (spec.canonical !== "t.bigint" && spec.canonical !== "BigIntType") {
         return false;
       }
-      // BigIntType defaults to "bigint" mode
-      return !spec.isNew || spec.mode === null || spec.mode === "bigint";
+      // BigIntType defaults to "bigint" mode; preserve dynamic modes that cannot be statically disproven
+      return (
+        !spec.isNew ||
+        !spec.hasModeArg ||
+        spec.mode === null ||
+        spec.mode === "bigint"
+      );
     };
 
     const isValidNumberArrayType = (
@@ -338,14 +404,17 @@ export default createRule<
       if (!spec.canonical) {
         return false;
       }
-      return [
-        "t.datetime",
-        "t.date",
-        "t.time",
-        "DateTimeType",
-        "DateType",
-        "TimeType",
-      ].includes(spec.canonical);
+      if (
+        spec.canonical === "t.datetime" ||
+        spec.canonical === "DateTimeType"
+      ) {
+        return true;
+      }
+      // Preserve legacy bare t.date / t.time usage on Date fields, but reject DateType/TimeType constructors that hydrate to strings
+      return (
+        !spec.isNew &&
+        (spec.canonical === "t.date" || spec.canonical === "t.time")
+      );
     };
 
     const isValidBooleanType = (
@@ -364,13 +433,57 @@ export default createRule<
       return spec.canonical === "t.json" || spec.canonical === "JsonType";
     };
 
+    const isJsonSerializableUnionMember = (member: ts.Type): boolean => {
+      if (
+        member.flags &
+        (ts.TypeFlags.BigIntLike |
+          ts.TypeFlags.ESSymbolLike |
+          ts.TypeFlags.Void |
+          ts.TypeFlags.Undefined |
+          ts.TypeFlags.Never)
+      ) {
+        return false;
+      }
+      if (
+        member.flags &
+        (ts.TypeFlags.StringLike |
+          ts.TypeFlags.NumberLike |
+          ts.TypeFlags.BooleanLike |
+          ts.TypeFlags.Null |
+          ts.TypeFlags.NonPrimitive)
+      ) {
+        return true;
+      }
+      if (member.flags & ts.TypeFlags.Object) {
+        if (
+          checker.getSignaturesOfType(member, ts.SignatureKind.Call).length >
+            0 &&
+          checker.getPropertiesOfType(member).length === 0
+        ) {
+          return false;
+        }
+        return ![
+          "RegExp",
+          "Map",
+          "Set",
+          "WeakMap",
+          "WeakSet",
+          "Promise",
+          "Uint8Array",
+          "Buffer",
+          "Function",
+        ].includes(member.symbol?.name ?? "");
+      }
+      return false;
+    };
+
     const inferPropertyTypeFromResolvedTsType = (
       node: TSESTree.TypeNode,
-    ): string | null => {
+    ): { propertyType: string | null; unsupportedUnion?: boolean } => {
       try {
         const tsNode = parserServices.esTreeNodeToTSNodeMap.get(node);
         if (!ts.isTypeNode(tsNode)) {
-          return null;
+          return { propertyType: null };
         }
         const resolved = checker.getNonNullableType(
           checker.getTypeFromTypeNode(tsNode),
@@ -382,54 +495,57 @@ export default createRule<
             ts.TypeFlags.Never |
             ts.TypeFlags.Void)
         ) {
-          return null;
+          return { propertyType: null };
         }
         if (resolved.isUnion()) {
           if (resolved.types.length === 0) {
-            return null;
+            return { propertyType: null };
           }
           if (
             resolved.types.every(
               (member) => (member.flags & ts.TypeFlags.StringLike) !== 0,
             )
           ) {
-            return "t.string";
+            return { propertyType: "t.string" };
           }
           if (
             resolved.types.every(
               (member) => (member.flags & ts.TypeFlags.NumberLike) !== 0,
             )
           ) {
-            return "t.float";
+            return { propertyType: "t.float" };
           }
           if (
             resolved.types.every(
               (member) => (member.flags & ts.TypeFlags.BooleanLike) !== 0,
             )
           ) {
-            return "t.boolean";
+            return { propertyType: "t.boolean" };
           }
           if (
             resolved.types.every(
               (member) => (member.flags & ts.TypeFlags.BigIntLike) !== 0,
             )
           ) {
-            return "t.bigint";
+            return { propertyType: "t.bigint" };
           }
-          // Heterogeneous union (e.g. string | boolean | number | object) requires JSON storage
-          return "t.json";
+          // Heterogeneous JSON-serializable union (e.g. string | boolean | number | object) requires JSON storage;
+          // unions with non-JSON-serializable members (e.g. string | bigint) require an explicit custom Type.
+          return resolved.types.every(isJsonSerializableUnionMember)
+            ? { propertyType: "t.json" }
+            : { propertyType: null, unsupportedUnion: true };
         }
         if (resolved.flags & ts.TypeFlags.StringLike) {
-          return "t.string";
+          return { propertyType: "t.string" };
         }
         if (resolved.flags & ts.TypeFlags.NumberLike) {
-          return "t.float";
+          return { propertyType: "t.float" };
         }
         if (resolved.flags & ts.TypeFlags.BooleanLike) {
-          return "t.boolean";
+          return { propertyType: "t.boolean" };
         }
         if (resolved.flags & ts.TypeFlags.BigIntLike) {
-          return "t.bigint";
+          return { propertyType: "t.bigint" };
         }
         // Plain non-class object/interface types (excluding classes, arrays, built-in objects)
         if (
@@ -450,11 +566,11 @@ export default createRule<
           (checker.getPropertiesOfType(resolved).length > 0 ||
             checker.getIndexInfosOfType(resolved).length > 0)
         ) {
-          return "t.json";
+          return { propertyType: "t.json" };
         }
-        return null;
+        return { propertyType: null };
       } catch {
-        return null;
+        return { propertyType: null };
       }
     };
 
@@ -703,13 +819,18 @@ export default createRule<
         };
       }
       if (targetTypeNode.type === AST_NODE_TYPES.TSBigIntKeyword) {
+        // MikroORM's default t.array returns string elements without a custom converter;
+        // do not infer bare t.array for bigint[].
+        if (isArray) {
+          return null;
+        }
         return {
           typeName: "bigint",
           isArray,
           isNullable,
           isEnum: false,
-          propertyType: isArray ? "t.array" : getPropertyType("bigint"),
-          arrayElementTypeName: isArray ? "bigint" : undefined,
+          propertyType: getPropertyType("bigint"),
+          arrayElementTypeName: undefined,
         };
       }
 
@@ -729,16 +850,19 @@ export default createRule<
         }
 
         const directPropertyType = getPropertyType(ident);
+        const resolvedInfo =
+          directPropertyType === null && !isEnum
+            ? inferPropertyTypeFromResolvedTsType(targetTypeNode)
+            : { propertyType: directPropertyType };
+        if (resolvedInfo.unsupportedUnion) {
+          return null;
+        }
         return {
           typeName: ident,
           isArray,
           isNullable,
           isEnum,
-          propertyType:
-            directPropertyType ??
-            (!isEnum
-              ? inferPropertyTypeFromResolvedTsType(targetTypeNode)
-              : null),
+          propertyType: resolvedInfo.propertyType,
           arrayElementTypeName: undefined,
         };
       }

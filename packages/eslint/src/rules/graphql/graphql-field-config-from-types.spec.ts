@@ -244,6 +244,19 @@ tester.run("graphql-field-config-from-types", rule, {
         return Order;
       }
     `,
+    // Custom scalar handling an entire array value without list brackets
+    /* typescript */ `
+      class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+        readonly _internal?: TInternal;
+        readonly _external?: TExternal;
+      }
+      declare const StringArrayScalar: GraphQLScalarType<string[]>;
+      @ObjectType()
+      class Thing {
+        @Field(() => StringArrayScalar)
+        values!: string[];
+      }
+    `,
   ],
   invalid: [
     // @Field type mismatch
@@ -627,7 +640,7 @@ class User {
 }`,
       errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
     },
-    // Enum whose literal values do not match the union type must still report
+    // Enum whose literal values do not match the union type must report without emitting an uncompilable type-alias value
     {
       code: /* typescript */ `enum Status {
   ACTIVE = "ACTIVE",
@@ -639,16 +652,48 @@ class Member {
   @Field(() => Status)
   status!: PartialStatus;
 }`,
-      output: /* typescript */ `import { Field } from "@nestjs/graphql";
-enum Status {
-  ACTIVE = "ACTIVE",
-  DISABLED = "DISABLED",
+      output: null,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Mapped enum record for a different type parameter must not match
+    {
+      code: /* typescript */ `type OrderFieldValue<T> = Extract<keyof T, string>;
+type OrderFieldType<T> = Record<string & keyof T, OrderFieldValue<T>>;
+function createOrder<A extends object, B extends object>(
+  OrderField: OrderFieldType<A>,
+) {
+  @InputType()
+  class Order {
+    @Field(() => OrderField as object)
+    field!: OrderFieldValue<B>;
+  }
+  return Order;
+}`,
+      output: null,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Whole-array custom scalar preserves non-list callback when fixing nullability
+    {
+      code: /* typescript */ `class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
 }
-type PartialStatus = "ACTIVE";
+declare const StringArrayScalar: GraphQLScalarType<string[]>;
 @ObjectType()
-class Member {
-  @Field(() => PartialStatus)
-  status!: PartialStatus;
+class Thing {
+  @Field(() => StringArrayScalar)
+  values?: string[];
+}`,
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+declare const StringArrayScalar: GraphQLScalarType<string[]>;
+@ObjectType()
+class Thing {
+  @Field(() => StringArrayScalar, { nullable: true })
+  values?: string[];
 }`,
       errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
     },

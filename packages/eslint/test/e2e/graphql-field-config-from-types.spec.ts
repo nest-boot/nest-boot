@@ -44,6 +44,16 @@ export * from "./barrel.js";
 export { Field, ObjectType } from "./other.js";
 `,
 );
+writeFileSync(
+  path.join(fixtureRoot, "custom-scalar.ts"),
+  `
+export class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+export const CustomStringScalar = new GraphQLScalarType<string, string>();
+`,
+);
 
 const filename = path.join(projectRoot, "v8-autofix-fixture.ts");
 const linter = new Linter();
@@ -712,4 +722,24 @@ export function createEdge(UserClass: RuntimeCtor<User>) {
   expect(result.messages).toEqual([]);
   expect(result.output).toBe(code);
   expect(compileDiagnostics(result.output, true)).toEqual([]);
+});
+
+it("promotes a type-only custom scalar while fixing nullability", () => {
+  const code = `import { Field, ObjectType } from "@nest-boot/graphql";
+import type { CustomStringScalar } from "./.cache/graphql-imports/custom-scalar.js";
+@ObjectType()
+export class Thing {
+  @Field(() => CustomStringScalar)
+  value?: string;
+}`;
+  const result = linter.verifyAndFix(code, config, { filename });
+  expect(result.messages).toEqual([]);
+  expect(result.output).not.toContain("import type");
+  expect(result.output).toContain(
+    "@Field(() => CustomStringScalar, { nullable: true })",
+  );
+  expect(compileDiagnostics(result.output, true)).toEqual([]);
+  expect(linter.verifyAndFix(result.output, config, { filename }).fixed).toBe(
+    false,
+  );
 });

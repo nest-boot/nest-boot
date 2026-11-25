@@ -26,6 +26,8 @@ interface TypeInfo {
   isCustomType?: boolean;
   typeReference?: TSESTree.Node;
   targetTypeNode?: TSESTree.TypeNode;
+  fullTypeNode?: TSESTree.TypeNode;
+  isWholeValueScalar?: boolean;
   scalarExpression?: string;
 }
 
@@ -248,12 +250,20 @@ export default createRule<
           ? property.key.name
           : null;
 
+      const fullTypeNode = baseTypeNode ?? undefined;
+
       if (
         propertyName === "id" ||
         (typeof propertyName === "string" &&
           (propertyName.endsWith("Id") || propertyName.endsWith("ID")))
       ) {
-        return { typeName: "ID", isArray, isNullable, targetTypeNode };
+        return {
+          typeName: "ID",
+          isArray,
+          isNullable,
+          targetTypeNode,
+          fullTypeNode,
+        };
       }
 
       // Record<*, *> → GraphQLJSONObject (no restriction on key/value types)
@@ -267,13 +277,20 @@ export default createRule<
           isArray,
           isNullable,
           targetTypeNode,
+          fullTypeNode,
         };
       }
 
       // Keyword types → GraphQL scalars
       const scalar = scalarFromTsKeyword(targetTypeNode.type);
       if (scalar) {
-        return { typeName: scalar, isArray, isNullable, targetTypeNode };
+        return {
+          typeName: scalar,
+          isArray,
+          isNullable,
+          targetTypeNode,
+          fullTypeNode,
+        };
       }
 
       // Identifier (class/custom type)
@@ -285,6 +302,7 @@ export default createRule<
           isNullable,
           isCustomType: true,
           targetTypeNode,
+          fullTypeNode,
           typeReference:
             targetTypeNode.type === AST_NODE_TYPES.TSTypeReference
               ? targetTypeNode.typeName
@@ -479,10 +497,109 @@ export default createRule<
       return null;
     };
 
+    const resolveAliasedSymbol = (node: ts.Node): ts.Symbol | undefined => {
+      if (!checker) {
+        return undefined;
+      }
+      const raw = checker.getSymbolAtLocation(node);
+      return raw && raw.flags & ts.SymbolFlags.Alias
+        ? checker.getAliasedSymbol(raw)
+        : raw;
+    };
+
+    const matchesMappedRecordAliasValue = (
+      exprType: ts.Type,
+      propType: ts.Type,
+      propTypeNode: ts.TypeNode,
+    ): boolean => {
+      if (!checker) {
+        return false;
+      }
+      const aliasDecl = exprType.aliasSymbol?.declarations?.find(
+        ts.isTypeAliasDeclaration,
+      );
+      if (
+        !aliasDecl ||
+        !ts.isTypeReferenceNode(aliasDecl.type) ||
+        !ts.isIdentifier(aliasDecl.type.typeName) ||
+        aliasDecl.type.typeName.text !== "Record" ||
+        aliasDecl.type.typeArguments?.length !== 2
+      ) {
+        return false;
+      }
+
+      const valueTypeNode = aliasDecl.type.typeArguments[1];
+      const declaredValueType = checker.getTypeFromTypeNode(valueTypeNode);
+      if (
+        !isPrimitiveEnumValueType(declaredValueType) ||
+        !isPrimitiveEnumValueType(propType)
+      ) {
+        return false;
+      }
+      if (!aliasDecl.typeParameters?.length) {
+        return areTypesEquivalent(propType, declaredValueType);
+      }
+      if (!ts.isTypeReferenceNode(valueTypeNode)) {
+        return false;
+      }
+
+      const targetSym = resolveAliasedSymbol(valueTypeNode.typeName);
+      if (!targetSym) {
+        return false;
+      }
+
+      // If TypeScript expanded the property alias (e.g. to Extract<...>), inspect its AST type reference.
+      let propAliasSym = propType.aliasSymbol;
+      let propArgs = propType.aliasTypeArguments;
+      if (targetSym !== propAliasSym && ts.isTypeReferenceNode(propTypeNode)) {
+        const refSym = resolveAliasedSymbol(propTypeNode.typeName);
+        if (refSym === targetSym) {
+          propAliasSym = refSym;
+          propArgs = (propTypeNode.typeArguments ?? []).map((arg) =>
+            checker.getTypeFromTypeNode(arg),
+          );
+        }
+      }
+      if (targetSym !== propAliasSym) {
+        return false;
+      }
+
+      const declaredParams = aliasDecl.typeParameters;
+      const instantiatedArgs = exprType.aliasTypeArguments ?? [];
+      const valueArgNodes = valueTypeNode.typeArguments ?? [];
+      const actualPropArgs = propArgs ?? [];
+      if (
+        declaredParams.length !== instantiatedArgs.length ||
+        valueArgNodes.length !== actualPropArgs.length
+      ) {
+        return false;
+      }
+
+      const paramMap = new Map<ts.Symbol, ts.Type>();
+      declaredParams.forEach((param, index) => {
+        const paramSym = checker.getSymbolAtLocation(param.name);
+        if (paramSym) {
+          paramMap.set(paramSym, instantiatedArgs[index]);
+        }
+      });
+
+      return valueArgNodes.every((argNode, index) => {
+        const argSym =
+          ts.isTypeReferenceNode(argNode) && !argNode.typeArguments?.length
+            ? checker.getSymbolAtLocation(argNode.typeName)
+            : undefined;
+        const substituted =
+          (argSym ? paramMap.get(argSym) : undefined) ??
+          checker.getTypeFromTypeNode(argNode);
+        return areTypesEquivalent(substituted, actualPropArgs[index]);
+      });
+    };
+
     const matchesEnumObjectType = (
       exprType: ts.Type,
       propType: ts.Type,
       location: ts.Node,
+      propTypeNode: ts.TypeNode,
     ): boolean => {
       if (!checker) {
         return false;
@@ -566,49 +683,7 @@ export default createRule<
             areTypesEquivalent(propType, valType)
           );
         }
-        const aliasDecl = exprType.aliasSymbol?.declarations?.find(
-          ts.isTypeAliasDeclaration,
-        );
-        if (
-          aliasDecl &&
-          ts.isTypeReferenceNode(aliasDecl.type) &&
-          ts.isIdentifier(aliasDecl.type.typeName) &&
-          aliasDecl.type.typeName.text === "Record" &&
-          aliasDecl.type.typeArguments?.length === 2
-        ) {
-          const valueTypeNode = aliasDecl.type.typeArguments[1];
-          const declaredValueType = checker.getTypeFromTypeNode(valueTypeNode);
-          if (
-            isPrimitiveEnumValueType(declaredValueType) &&
-            isPrimitiveEnumValueType(propType)
-          ) {
-            if (areTypesEquivalent(propType, declaredValueType)) {
-              return true;
-            }
-            if (
-              declaredValueType.aliasSymbol !== undefined &&
-              declaredValueType.aliasSymbol === propType.aliasSymbol
-            ) {
-              return true;
-            }
-            if (
-              ts.isTypeReferenceNode(valueTypeNode) &&
-              propType.aliasSymbol !== undefined
-            ) {
-              const rawSym = checker.getSymbolAtLocation(
-                valueTypeNode.typeName,
-              );
-              const targetSym =
-                rawSym && rawSym.flags & ts.SymbolFlags.Alias
-                  ? checker.getAliasedSymbol(rawSym)
-                  : rawSym;
-              if (targetSym === propType.aliasSymbol) {
-                return true;
-              }
-            }
-          }
-        }
-        return false;
+        return matchesMappedRecordAliasValue(exprType, propType, propTypeNode);
       }
 
       // 2c. Plain `as const` enum object literal (e.g. const Status = { OPEN: "open", CLOSED: "closed" } as const)
@@ -629,12 +704,35 @@ export default createRule<
       return false;
     };
 
-    const matchesGraphqlReturnType = (
+    const resolveRuntimeExpressionType = (tsExpr: ts.Node): ts.Type | null => {
+      if (!checker) {
+        return null;
+      }
+      let exprType = checker.getTypeAtLocation(tsExpr);
+      if (isUnusableType(exprType)) {
+        const sym = checker.getSymbolAtLocation(tsExpr);
+        if (sym) {
+          const resolved =
+            sym.flags & ts.SymbolFlags.Alias
+              ? checker.getAliasedSymbol(sym)
+              : sym;
+          exprType = checker.getTypeOfSymbolAtLocation(resolved, tsExpr);
+        }
+      }
+      return isUnusableType(exprType) ? null : exprType;
+    };
+
+    const resolveCustomReturnTypes = (
       innerExprNode: TSESTree.Node,
-      targetTypeNode: TSESTree.TypeNode,
-    ): boolean => {
+      typeNode: TSESTree.TypeNode,
+    ): {
+      tsExpr: ts.Node;
+      tsTarget: ts.TypeNode;
+      exprType: ts.Type;
+      propType: ts.Type;
+    } | null => {
       if (!checker || !esTreeNodeToTSNodeMap) {
-        return false;
+        return null;
       }
       const unwrapped = unwrapTypeAssertions(innerExprNode);
       if (
@@ -642,7 +740,7 @@ export default createRule<
         builtInJsConstructors.has(unwrapped.name) &&
         !hasResolvedBinding(unwrapped)
       ) {
-        return false;
+        return null;
       }
       const importedScalar = importedBindingName(
         source,
@@ -653,26 +751,41 @@ export default createRule<
         importedScalar &&
         ["Int", "Float", "ID", "GraphQLJSONObject"].includes(importedScalar)
       ) {
-        return false;
+        return null;
       }
-
       const tsExpr = esTreeNodeToTSNodeMap.get(unwrapped);
-      const tsTarget = esTreeNodeToTSNodeMap.get(targetTypeNode);
+      const tsTarget = esTreeNodeToTSNodeMap.get(typeNode);
       if (!ts.isTypeNode(tsTarget)) {
-        return false;
+        return null;
       }
-      const exprType = checker.getTypeAtLocation(tsExpr);
+      const exprType = resolveRuntimeExpressionType(tsExpr);
       const propType = checker.getNonNullableType(
         checker.getTypeFromTypeNode(tsTarget),
       );
-      if (isUnusableType(exprType) || isUnusableType(propType)) {
+      if (!exprType || isUnusableType(propType)) {
+        return null;
+      }
+      return { tsExpr, tsTarget, exprType, propType };
+    };
+
+    const matchesGraphqlReturnType = (
+      innerExprNode: TSESTree.Node,
+      targetTypeNode: TSESTree.TypeNode,
+      scalarOnly = false,
+    ): boolean => {
+      const resolved = resolveCustomReturnTypes(innerExprNode, targetTypeNode);
+      if (!resolved) {
         return false;
       }
+      const { tsExpr, tsTarget, exprType, propType } = resolved;
 
       // A. Custom GraphQLScalarType<TInternal, TExternal>
       const scalarInternalType = extractGraphQLScalarInternalType(exprType);
       if (scalarInternalType) {
         return areTypesEquivalent(propType, scalarInternalType);
+      }
+      if (scalarOnly) {
+        return false;
       }
 
       // B. Runtime class / Type<T> / EntityClass<T>
@@ -689,7 +802,15 @@ export default createRule<
       }
 
       // C. TypeScript enum or GraphQL enum object map
-      return matchesEnumObjectType(exprType, propType, tsExpr);
+      return matchesEnumObjectType(exprType, propType, tsExpr, tsTarget);
+    };
+
+    const isTypeOnlySymbol = (node?: TSESTree.Node): boolean => {
+      if (!node || !checker || !esTreeNodeToTSNodeMap) {
+        return false;
+      }
+      const sym = resolveAliasedSymbol(esTreeNodeToTSNodeMap.get(node));
+      return sym !== undefined && (sym.flags & ts.SymbolFlags.Value) === 0;
     };
 
     const graphqlModules = ["@nestjs/graphql", "@nest-boot/graphql"];
@@ -769,9 +890,10 @@ export default createRule<
       const fixes: CustomFix[] = [];
 
       const typeName = typeBinding(info);
-      const typeExpr = info.isArray
-        ? `() => [${typeName}]`
-        : `() => ${typeName}`;
+      const typeExpr =
+        info.isArray && !info.isWholeValueScalar
+          ? `() => [${typeName}]`
+          : `() => ${typeName}`;
       const optionsExpr = info.isNullable ? ", { nullable: true }" : "";
 
       const newDecoratorText = `@${fieldBinding()}(${typeExpr}${optionsExpr})`;
@@ -795,9 +917,10 @@ export default createRule<
       const fixes: CustomFix[] = [];
 
       const typeName = typeBinding(info);
-      const typeExpr = info.isArray
-        ? `() => [${typeName}]`
-        : `() => ${typeName}`;
+      const typeExpr =
+        info.isArray && !info.isWholeValueScalar
+          ? `() => [${typeName}]`
+          : `() => ${typeName}`;
 
       // Extract existing config options (except nullable)
       const callExpr = fieldDecorator.expression;
@@ -1013,6 +1136,16 @@ export default createRule<
 
           // If there is no @Field decorator, add one
           if (!fieldDecorator) {
+            if (
+              typeInfo.isCustomType &&
+              isTypeOnlySymbol(typeInfo.typeReference)
+            ) {
+              context.report({
+                node: member,
+                messageId: "alignFieldDecoratorWithTsType",
+              });
+              return;
+            }
             const customImports = customTypeImportEdits(typeInfo);
             if (customImports.length) {
               context.report({
@@ -1133,12 +1266,19 @@ export default createRule<
             ) {
               typeMatches = true;
               isSemanticMatch = true;
-              if (
-                scalarReference &&
-                !isTypeOnlyImportReference(source, scalarReference)
-              ) {
-                typeInfo.scalarExpression = source.getText(scalarNode);
-              }
+              typeInfo.scalarExpression = source.getText(scalarNode);
+            } else if (
+              !typeMatches &&
+              scalarNode &&
+              !bodyIsArray &&
+              typeInfo.isArray &&
+              typeInfo.fullTypeNode &&
+              matchesGraphqlReturnType(scalarNode, typeInfo.fullTypeNode, true)
+            ) {
+              typeMatches = true;
+              isSemanticMatch = true;
+              typeInfo.isWholeValueScalar = true;
+              typeInfo.scalarExpression = source.getText(scalarNode);
             }
 
             if (typeMatches && hasNullableOption === typeInfo.isNullable) {
@@ -1163,24 +1303,25 @@ export default createRule<
             return;
           }
 
-          if (!needReport) {
-            if (
-              scalarReference !== null &&
-              isTypeOnlyImportReference(source, scalarReference) &&
-              (isSemanticMatch || typeInfo.isCustomType)
-            ) {
-              const runtimePromotions = promoteImportReferences(source, [
-                scalarReference,
-              ]);
-              if (runtimePromotions.length) {
-                context.report({
-                  node: member,
-                  messageId: "alignFieldDecoratorWithTsType",
-                  fix: () => runtimePromotions,
-                });
-                return;
-              }
+          if (
+            scalarReference !== null &&
+            isTypeOnlyImportReference(source, scalarReference) &&
+            (isSemanticMatch || (!needReport && typeInfo.isCustomType))
+          ) {
+            const runtimePromotions = promoteImportReferences(source, [
+              scalarReference,
+            ]);
+            if (runtimePromotions.length) {
+              context.report({
+                node: member,
+                messageId: "alignFieldDecoratorWithTsType",
+                fix: () => runtimePromotions,
+              });
+              return;
             }
+          }
+
+          if (!needReport) {
             const modules = scalarModules(typeInfo.typeName);
             const typeOnlyScalar =
               !isSemanticMatch &&
@@ -1223,6 +1364,16 @@ export default createRule<
           }
 
           if (!typeInfo.scalarExpression) {
+            if (
+              typeInfo.isCustomType &&
+              isTypeOnlySymbol(typeInfo.typeReference)
+            ) {
+              context.report({
+                node: member,
+                messageId: "alignFieldDecoratorWithTsType",
+              });
+              return;
+            }
             const customImports = customTypeImportEdits(typeInfo);
             if (customImports.length) {
               context.report({

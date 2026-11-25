@@ -267,6 +267,54 @@ class Book {
         ratio!: number;
       }
     `,
+    // Constant and dynamic constructor modes are resolved via the type checker or preserved
+    /* typescript */ `
+      import { BigIntType, DecimalType } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
+
+      const STRING_MODE = "string";
+      declare const dynamicMode: "string" | "number";
+
+      @Entity()
+      class Ledger {
+        @Property({ type: new BigIntType(STRING_MODE) })
+        externalId!: string;
+
+        @Property({ type: new DecimalType(dynamicMode) })
+        amount!: number;
+      }
+    `,
+    // DateType and TimeType hydrate to strings in MikroORM
+    /* typescript */ `
+      import { DateType, TimeType } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
+
+      @Entity()
+      class Schedule {
+        @Property({ type: new DateType() })
+        day!: string;
+
+        @Property({ type: new TimeType() })
+        startTime!: string;
+      }
+    `,
+    // Unions with non-JSON-serializable members and bigint[] are skipped so custom Types are preserved
+    /* typescript */ `
+      import { ArrayType, Type } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
+
+      type MixedValue = string | bigint;
+      class MixedValueType extends Type<MixedValue, string> {}
+
+      @Entity()
+      class Custom {
+        @Property({ type: MixedValueType })
+        mixed!: MixedValue;
+
+        @Property({ type: new ArrayType(BigInt) })
+        ids!: bigint[];
+      }
+    `,
     // Decimal and BigInt number storage are valid number configurations
     /* typescript */ `
       import { Entity, Property } from "@mikro-orm/decorators/legacy";
@@ -1439,6 +1487,44 @@ import { Entity, Property } from "@mikro-orm/decorators/legacy";
 class ApiKey {
   @Property({ type: new t.bigint("string"), nullable: true })
   externalId?: string;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // Constant mismatched mode on BigIntType should still be reported
+    {
+      code: /* typescript */ `import { BigIntType } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+const NUMBER_MODE = "number";
+@Entity()
+class User {
+  @Property({ type: new BigIntType(NUMBER_MODE) })
+  externalId!: string;
+}`,
+      output: /* typescript */ `import { BigIntType, t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+const NUMBER_MODE = "number";
+@Entity()
+class User {
+  @Property({ type: t.string })
+  externalId!: string;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // String-hydrating DateType constructor should be rejected on Date properties
+    {
+      code: /* typescript */ `import { DateType } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Event {
+  @Property({ type: new DateType() })
+  day!: Date;
+}`,
+      output: /* typescript */ `import { DateType, t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Event {
+  @Property({ type: t.datetime })
+  day!: Date;
 }`,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
     },
