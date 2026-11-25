@@ -20,7 +20,8 @@
     "lib": "dist"
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/**/*.tsbuildinfo"
   ],
   "dependencies": {
     "cookie": "^2.0.1"

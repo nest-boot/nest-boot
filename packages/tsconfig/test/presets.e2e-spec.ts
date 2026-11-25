@@ -1,4 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 
 import { tmpdir } from "node:os";
 
@@ -65,6 +72,9 @@ describe("Nest CLI 12 ESM presets", () => {
     const parsed = resolveConfig("app.json");
     const projectRoot = currentProjectRoot();
     expect(parsed.options.outDir).toBe(join(projectRoot, "dist"));
+    expect(parsed.options.tsBuildInfoFile).toBe(
+      join(projectRoot, "tsconfig.tsbuildinfo"),
+    );
     expect(parsed.options.module).toBe(ts.ModuleKind.NodeNext);
     expect(parsed.options.moduleResolution).toBe(
       ts.ModuleResolutionKind.NodeNext,
@@ -80,6 +90,24 @@ describe("Nest CLI 12 ESM presets", () => {
     expect(parsed.options.removeComments).toBe(false);
     expect(parsed.options.rootDir).toBe(join(projectRoot, "src"));
     expect(parsed.options.outDir).toBe(join(projectRoot, "dist"));
+    expect(parsed.options.tsBuildInfoFile).toBe(
+      join(projectRoot, "tsconfig.build.tsbuildinfo"),
+    );
     expect(parsed.fileNames).toEqual([join(projectRoot, "src", "index.ts")]);
+
+    const program = ts.createIncrementalProgram({
+      rootNames: parsed.fileNames,
+      options: parsed.options,
+    });
+    const emitResult = program.emit();
+    expect(emitResult.diagnostics).toEqual([]);
+    expect(existsSync(join(projectRoot, "tsconfig.build.tsbuildinfo"))).toBe(
+      true,
+    );
+    expect(
+      readdirSync(join(projectRoot, "dist")).filter((file) =>
+        file.endsWith(".tsbuildinfo"),
+      ),
+    ).toEqual([]);
   });
 });
