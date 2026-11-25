@@ -38,6 +38,7 @@ import { User } from "./user.entity";
 export const {
   Connection: UserConnection,
   ConnectionArgs: UserConnectionArgs,
+  CountArgs: UserCountArgs,
 } = new ConnectionBuilder(User)
   .addField({ field: "name", type: "string", filterable: true, sortable: true })
   .addField({
@@ -53,8 +54,7 @@ export const {
 
 ```typescript
 import { ConnectionManager } from "@nest-boot/graphql-connection";
-import { Args, Info, Query, Resolver } from "@nest-boot/graphql";
-import type { GraphQLResolveInfo } from "graphql";
+import { Args, Query, Resolver } from "@nest-boot/graphql";
 
 import { UserConnection, UserConnectionArgs } from "./user.connection";
 
@@ -63,16 +63,11 @@ export class UserResolver {
   constructor(private readonly connectionManager: ConnectionManager) {}
 
   @Query(() => UserConnection)
-  async users(
-    @Args() args: UserConnectionArgs,
-    @Info() info: GraphQLResolveInfo,
-  ) {
-    return await this.connectionManager.find(UserConnection, args, { info });
+  async users(@Args() args: UserConnectionArgs) {
+    return await this.connectionManager.find(UserConnection, args);
   }
 }
 ```
-
-传入 `@Info()` 后，只有查询选择了 `totalCount` 或 `totalCountRelation`，`ConnectionManager` 才会执行计数查询。
 
 ### 使用连接类
 
@@ -172,11 +167,23 @@ export const { Connection: BookConnection } = new ConnectionBuilder(Book)
 
 支持面向用户的字段搜索语法，包括 `field:value`、带引号的字符串和否定条件。
 
-## 有界总数
+## 独立计数
 
-Connection 同时提供 `totalCount` 和 `totalCountRelation`。不超过 10,000 条时返回精确数量和 `EQ`；超过 10,000 条时返回 `totalCount: 10000` 和 `totalCountRelation: GTE`。
+`ConnectionManager.find()` 返回一页结果。需要总数时，通过 `ConnectionBuilder.build()` 获取 `CountArgs`，然后定义一个独立查询。列表和计数应复用相同的 `query`、`filter` 和服务端权限条件。
 
-计数由数据库侧最多处理 10,001 条匹配记录的有界查询完成。Resolver 按上面的示例传入 `@Info()` 后，如果两个计数字段都没有被选择，就不会执行这条查询。
+```typescript
+import { Count, type CountArgsInterface } from "@nest-boot/graphql-connection";
+import { UserConnection, UserCountArgs } from "./user.connection";
+
+@Query(() => Count)
+async usersCount(
+  @Args({ type: () => UserCountArgs }) args: CountArgsInterface<User>,
+): Promise<Count> {
+  return this.connectionManager.count(UserConnection, args);
+}
+```
+
+匹配数不超过 10,000 时，`precision` 为 `EXACT`。超过 10,000 时，返回 `count: 10000` 和 `precision: AT_LEAST`。前端翻页时只需发送列表查询。启用限流时，生成的过滤参数会让计数自动收取 10 点基础成本和一次筛选成本。
 
 ## 特性
 

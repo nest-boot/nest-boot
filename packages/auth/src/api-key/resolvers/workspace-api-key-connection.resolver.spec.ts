@@ -1,5 +1,4 @@
 import { ForbiddenException } from "@nestjs/common";
-import type { GraphQLResolveInfo } from "graphql";
 
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
 import type { WorkspaceApiKeyService } from "../services/workspace-api-key.service.js";
@@ -22,32 +21,26 @@ describe("WorkspaceApiKeyConnectionResolver", () => {
       ForbiddenException,
     );
   });
-  it("forwards pagination and selection information without hiding service failures", async () => {
+  it("forwards pagination without hiding service failures", async () => {
     const workspace = new Workspace();
     const args = { first: 10, after: "cursor" };
-    const info = {
-      fieldNodes: [],
-      fragments: {},
-      variableValues: {},
-    } as unknown as GraphQLResolveInfo;
     const result = { edges: [], pageInfo: {} };
     const getWorkspaceApiKeyConnection = vi.fn().mockResolvedValue(result);
     const resolver = new WorkspaceApiKeyConnectionResolver({
       getWorkspaceApiKeyConnection,
     } as unknown as WorkspaceApiKeyService);
-    await expect(
-      resolver.workspaceApiKeys(workspace, args, info),
-    ).resolves.toBe(result);
+    await expect(resolver.workspaceApiKeys(workspace, args)).resolves.toBe(
+      result,
+    );
     expect(getWorkspaceApiKeyConnection).toHaveBeenCalledExactlyOnceWith(
       workspace,
       args,
-      info,
     );
     getWorkspaceApiKeyConnection.mockRejectedValueOnce(
       new ForbiddenException(),
     );
     await expect(
-      resolver.workspaceApiKeys(workspace, args, info),
+      resolver.workspaceApiKeys(workspace, args),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

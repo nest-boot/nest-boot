@@ -1,7 +1,6 @@
 import {
   Args,
   ID,
-  Info,
   Mutation,
   Parent,
   Query,
@@ -9,7 +8,6 @@ import {
   Resolver,
 } from "@nest-boot/graphql";
 import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
-import { type GraphQLResolveInfo } from "graphql";
 
 import { SystemAccount } from "../../api-key/entities/system-account.entity.js";
 import { filterPermissionValues } from "../../common/utils/filter-permission-values.util.js";
@@ -64,16 +62,14 @@ export class SystemAccountResolver {
   /**
    * Paginates all system identities.
    * @param args - Cursor pagination, ordering and filtering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Page of authorized system accounts.
    */
   @Query(() => SystemAccountConnection)
   systemAccounts(
     @Args({ type: () => SystemAccountConnectionArgs })
     args: ConnectionArgsInterface<SystemAccount>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
-    return this.accounts.getSystemAccountConnection(args, info);
+    return this.accounts.getSystemAccountConnection(args);
   }
 
   /**

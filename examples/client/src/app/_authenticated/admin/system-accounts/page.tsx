@@ -54,7 +54,6 @@ const LIST = graphql(`
         startCursor
         endCursor
       }
-      totalCount
     }
   }
 `);

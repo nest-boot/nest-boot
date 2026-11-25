@@ -216,7 +216,7 @@ cross-identity contexts supplied by infrastructure; creation and cancellation re
 `WorkspaceInvitationService.getWorkspaceInvitationConnectionByWorkspace(workspace, args)` and
 `getWorkspaceInvitationConnectionByUser(user, args)` return Relay connections rather than arrays.
 Pass connection arguments such as `{ first: 20, after: cursor }` and read
-`edges`, `pageInfo`, and `totalCount` from the result.
+`edges` and `pageInfo` from the result.
 
 The service calls `ConnectionManager` after authorization, using the request
 ORM manager without disabling filters or native RLS. It enforces the selected workspace or
@@ -277,6 +277,8 @@ connection definition is required. Its GraphQL transport exposes these connectio
       after the contracts above are finalized.
 
 ## User and session connections
+
+`Query.usersCount`, `Query.workspacesCount`, and `Workspace.membersCount` accept the same search and filter arguments as their lists. Each count follows its list's authorization and returns `count` and `precision`.
 
 `UserService.getUserConnection(args)`, `SessionService.getSessionConnectionByUser(user, args)` and `AccountService.getAccountConnectionByUser(user, args)` use the built-in connection definitions registered by `AuthModule`. Own browser-session reads do not require administrative permissions; foreign-user and delegated API-key session reads require `session:read`. Application RLS must grant the corresponding SELECT access. Account connections require the owning user session, reject API keys and exclude credential columns. `UserService.listUserAccounts` is removed without an alias.
 

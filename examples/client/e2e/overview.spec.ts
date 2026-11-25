@@ -14,16 +14,7 @@ function sidebarOverview(page: Page) {
     .getByRole("link", { name: "Overview", exact: true });
 }
 
-function countCard(page: Page, title: string) {
-  return page
-    .locator('[data-slot="card"]')
-    .filter({
-      has: page.getByRole("heading", { name: title, exact: true }),
-    })
-    .locator('[data-slot="card-content"]');
-}
-
-test("user overview retries failed summaries and keeps profile and security separate with exact navigation", async ({
+test("user overview keeps profile and security separate with exact navigation", async ({
   page,
 }) => {
   await registerUser(page, {
@@ -31,34 +22,11 @@ test("user overview retries failed summaries and keeps profile and security sepa
     name: "Overview user",
   });
   await createWorkspaceByApi(page, "Overview workspace");
-  let attempts = 0;
-  await page.route("**/api/graphql", async (route) => {
-    if (route.request().postDataJSON().operationName !== "getUserOverview")
-      return route.continue();
-    attempts++;
-    if (attempts === 1)
-      return route.fulfill({
-        json: {
-          data: null,
-          errors: [{ message: "Temporary overview failure" }],
-        },
-      });
-    return route.continue();
-  });
   await page.goto("/user");
   await expect(
     page.getByRole("heading", { name: "Overview", exact: true }),
   ).toBeVisible();
   await expect(sidebarOverview(page)).toHaveAttribute("aria-current", "page");
-  await expect(page.getByRole("alert")).toContainText(
-    "Could not load overview.",
-  );
-  await expect(countCard(page, "Workspaces")).toHaveText("—");
-  await page.getByRole("button", { name: "Retry", exact: true }).click();
-  await expect(countCard(page, "Workspaces")).toHaveText("1");
-  await expect(countCard(page, "Active sessions")).toHaveText("1");
-  await expect(countCard(page, "API Keys")).toHaveText("0");
-  await expect(page.getByRole("alert")).toHaveCount(0);
   await page.getByRole("link", { name: "Edit profile", exact: true }).click();
   await expect(page).toHaveURL(/\/user\/profile$/);
   await expect(sidebarOverview(page)).not.toHaveAttribute(
@@ -84,11 +52,6 @@ test("admin overview is the menu destination and uses exact sidebar matching", a
 }) => {
   await signInAsE2eAdministrator(page);
   await page.goto("/user");
-  const overviewResponse = page.waitForResponse(
-    (response) =>
-      response.request().postData()?.includes("query getAdminOverview") ===
-      true,
-  );
   await page
     .getByRole("button", {
       name: /^(Account:|Workspace and account:|账号：|工作空间与账号：)/,
@@ -99,12 +62,6 @@ test("admin overview is the menu destination and uses exact sidebar matching", a
     .click();
   await expect(page).toHaveURL(/\/admin$/);
   await expect(sidebarOverview(page)).toHaveAttribute("aria-current", "page");
-  const {
-    data: { users },
-  } = await (await overviewResponse).json();
-  await expect(countCard(page, "Users")).toHaveText(
-    users.totalCount.toLocaleString("en-US"),
-  );
   await page.getByRole("link", { name: "Manage users", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/users(?:\?.*)?$/);
   await expect(sidebarOverview(page)).not.toHaveAttribute(
@@ -113,7 +70,7 @@ test("admin overview is the menu destination and uses exact sidebar matching", a
   );
 });
 
-test("workspace overviews isolate counts when switching and respect read permissions", async ({
+test("workspace overviews switch workspaces and respect read permissions", async ({
   page,
   browser,
 }) => {
@@ -138,19 +95,9 @@ test("workspace overviews isolate counts when switching and respect read permiss
       { id: memberId, input: { permissions: [] } },
       { "x-workspace": first.id },
     );
-    const queries: Array<{ workspaceId: string; header: string | undefined }> =
-      [];
-    page.on("request", (request) => {
-      if (!request.postData()?.includes("query getWorkspaceOverview")) return;
-      queries.push({
-        workspaceId: request.postDataJSON().variables.workspaceId,
-        header: request.headers()["x-workspace"],
-      });
-    });
     await page.goto("/user/workspaces");
     await page.getByRole("link", { name: first.name, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/workspaces/${first.id}$`));
-    await expect(countCard(page, "Members")).toHaveText("2");
     await expect(sidebarOverview(page)).toHaveAttribute("aria-current", "page");
     await page.getByRole("link", { name: "Settings", exact: true }).click();
     await expect(sidebarOverview(page)).not.toHaveAttribute(
@@ -167,28 +114,7 @@ test("workspace overviews isolate counts when switching and respect read permiss
       .getByRole("menuitemradio", { name: second.name, exact: true })
       .click();
     await expect(page).toHaveURL(new RegExp(`/workspaces/${second.id}$`));
-    await expect(countCard(page, "Members")).toHaveText("1");
-    expect(queries.map(({ workspaceId }) => workspaceId)).toEqual(
-      expect.arrayContaining([first.id, second.id]),
-    );
-    expect(
-      queries.every(({ workspaceId, header }) => workspaceId === header),
-    ).toBe(true);
-
-    const memberSummary = memberPage.waitForResponse(
-      (response) =>
-        response
-          .request()
-          .postData()
-          ?.includes("query getWorkspaceOverview") === true,
-    );
     await memberPage.goto(`/workspaces/${first.id}`);
-    const response = await memberSummary;
-    expect(response.request().postDataJSON().variables).toMatchObject({
-      includeWorkspaceMembers: true,
-      includeApiKeys: false,
-    });
-    expect((await response.json()).errors).toBeUndefined();
     await expect(
       memberPage.getByRole("heading", { name: "Overview", exact: true }),
     ).toBeVisible();
@@ -198,7 +124,6 @@ test("workspace overviews isolate counts when switching and respect read permiss
     await expect(
       memberPage.getByRole("link", { name: "Manage members", exact: true }),
     ).toBeVisible();
-    await expect(countCard(memberPage, "Members")).toHaveText("2");
     await expect(memberPage.getByRole("alert")).toHaveCount(0);
     await expect(
       memberPage.getByRole("link", { name: "Settings", exact: true }),

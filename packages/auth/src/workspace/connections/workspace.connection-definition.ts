@@ -3,7 +3,9 @@ import { ConnectionBuilder } from "@nest-boot/graphql-connection";
 
 import { Workspace } from "../entities/workspace.entity.js";
 
-const { Connection, ConnectionArgs, Edge } = new ConnectionBuilder(Workspace)
+const { Connection, ConnectionArgs, CountArgs, Edge } = new ConnectionBuilder(
+  Workspace,
+)
   .addField({
     field: "name",
     fulltext: "searchableName",
@@ -32,6 +34,10 @@ ObjectType("WorkspaceEdge", {
  */
 @ArgsType()
 export class WorkspaceConnectionArgs extends ConnectionArgs {}
+
+/** Workspace count filters. */
+@ArgsType()
+export class WorkspaceCountArgs extends CountArgs {}
 
 /**
  * A page of visible workspaces.

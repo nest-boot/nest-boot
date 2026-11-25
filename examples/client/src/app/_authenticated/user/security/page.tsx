@@ -93,7 +93,6 @@ const GET_ACCOUNTS_FROM_USER_SECURITY = graphql(`
         after: $after
         orderBy: { field: CREATED_AT, direction: DESC }
       ) {
-        totalCount
         pageInfo {
           hasNextPage
           endCursor
@@ -676,7 +675,7 @@ function UserSecurityComponent() {
                           </p>
                         </div>
                         {!credential &&
-                        (accountData?.currentUser?.accounts.totalCount ?? 0) >
+                        (accountData?.currentUser?.accounts.edges.length ?? 0) >
                           1 ? (
                           <Button
                             type="button"

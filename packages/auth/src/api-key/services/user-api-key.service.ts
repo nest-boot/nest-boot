@@ -12,7 +12,6 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import type { GraphQLResolveInfo } from "graphql";
 
 import { authorize } from "../../common/utils/authorize.util.js";
 import {
@@ -111,13 +110,11 @@ export class UserApiKeyService {
    * Paginates current-user keys after applying ownership and permission ceilings.
    * @param user - The user whose account is being accessed.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated user API key metadata with credential hashes omitted.
    */
   async getUserApiKeyConnection(
     user: User,
     args: ConnectionArgsInterface<ApiKey>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<UserApiKey>> {
     assertApiKeyFeature(this.authOptions, "userApiKey");
     assertCurrentUser(user);
@@ -126,7 +123,6 @@ export class UserApiKeyService {
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find(UserApiKeyConnection, args, {
-      ...(info && { info }),
       where,
       exclude: ["key"],
     });

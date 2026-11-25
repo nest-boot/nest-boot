@@ -6,7 +6,6 @@ import {
 } from "@nest-boot/graphql";
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import type { GraphQLResolveInfo } from "graphql";
 import { type Mocked } from "vitest";
 
 import { User } from "../../core/entities/user.entity.js";
@@ -18,14 +17,9 @@ import { type WorkspaceMemberService } from "../services/workspace-member.servic
 import { WorkspaceResolver } from "./workspace.resolver.js";
 
 describe("WorkspaceResolver", () => {
-  it("forwards pagination selection to authorized member and invitation queries", async () => {
+  it("forwards pagination to authorized member and invitation queries", async () => {
     const workspace = new Workspace();
     const args = { first: 10, after: "cursor" };
-    const info = {
-      fieldNodes: [],
-      fragments: {},
-      variableValues: {},
-    } as unknown as GraphQLResolveInfo;
     const result = { edges: [], pageInfo: {} };
     const getWorkspaceMemberConnectionByWorkspace = vi
       .fn()
@@ -38,22 +32,20 @@ describe("WorkspaceResolver", () => {
       { getWorkspaceMemberConnectionByWorkspace },
       { getWorkspaceInvitationConnectionByWorkspace },
     );
-    await expect(resolver.members(workspace, args, info)).resolves.toBe(result);
-    await expect(resolver.invitations(workspace, args, info)).resolves.toBe(
-      result,
-    );
+    await expect(resolver.members(workspace, args)).resolves.toBe(result);
+    await expect(resolver.invitations(workspace, args)).resolves.toBe(result);
     expect(
       getWorkspaceMemberConnectionByWorkspace,
-    ).toHaveBeenCalledExactlyOnceWith(workspace, args, info);
+    ).toHaveBeenCalledExactlyOnceWith(workspace, args);
     expect(
       getWorkspaceInvitationConnectionByWorkspace,
-    ).toHaveBeenCalledExactlyOnceWith(workspace, args, info);
+    ).toHaveBeenCalledExactlyOnceWith(workspace, args);
     getWorkspaceMemberConnectionByWorkspace.mockRejectedValueOnce(
       new ForbiddenException(),
     );
-    await expect(
-      resolver.members(workspace, args, info),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(resolver.members(workspace, args)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
   it("passes the parent workspace and pagination to the service and propagates denial", async () => {
     const workspace = { id: "parent-workspace" } as Workspace;
@@ -74,7 +66,6 @@ describe("WorkspaceResolver", () => {
     expect(getWorkspaceInvitationConnectionByWorkspace).toHaveBeenCalledWith(
       workspace,
       args,
-      undefined,
     );
     await expect(resolver.invitations(workspace, args)).rejects.toBeInstanceOf(
       ForbiddenException,

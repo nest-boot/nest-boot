@@ -11,7 +11,6 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { GraphQLResolveInfo } from "graphql";
 
 import { SystemAccountService } from "../../admin/services/system-account.service.js";
 import { assertSystemAccountAdministrator } from "../../admin/utils/assert-system-account-administrator.util.js";
@@ -132,13 +131,11 @@ export class SystemApiKeyService {
    * Lists system-owned key metadata without exposing credential hashes.
    * @param systemAccountId - Optional owner filter; omit to list all system credentials.
    * @param args - Cursor pagination, ordering and filtering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Page of system-account credential metadata without hashes.
    */
   async getSystemApiKeyConnection(
     systemAccountId: string | undefined,
     args: ConnectionArgsInterface<ApiKey>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<SystemApiKey>> {
     this.assertAccess("read");
     return await runAuthQuery(this.em, async (em) => {
@@ -146,7 +143,6 @@ export class SystemApiKeyService {
         SystemApiKeyConnection,
         args,
         {
-          ...(info && { info }),
           where: {
             ownerType: "system_account",
             ...(systemAccountId

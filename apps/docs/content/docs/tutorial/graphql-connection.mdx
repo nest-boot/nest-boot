@@ -38,6 +38,7 @@ import { User } from "./user.entity";
 export const {
   Connection: UserConnection,
   ConnectionArgs: UserConnectionArgs,
+  CountArgs: UserCountArgs,
 } = new ConnectionBuilder(User)
   .addField({ field: "name", type: "string", filterable: true, sortable: true })
   .addField({
@@ -54,9 +55,8 @@ export const {
 ### Using in Resolvers
 
 ```typescript
-import { Args, Info, Query, Resolver } from "@nest-boot/graphql";
+import { Args, Query, Resolver } from "@nest-boot/graphql";
 import { ConnectionManager } from "@nest-boot/graphql-connection";
-import type { GraphQLResolveInfo } from "graphql";
 import { UserConnection, UserConnectionArgs } from "./user.connection";
 
 @Resolver()
@@ -64,16 +64,11 @@ export class UserResolver {
   constructor(private readonly connectionManager: ConnectionManager) {}
 
   @Query(() => UserConnection)
-  async users(
-    @Args() args: UserConnectionArgs,
-    @Info() info: GraphQLResolveInfo,
-  ) {
-    return this.connectionManager.find(UserConnection, args, { info });
+  async users(@Args() args: UserConnectionArgs) {
+    return this.connectionManager.find(UserConnection, args);
   }
 }
 ```
-
-Passing `@Info()` lets `ConnectionManager` skip the count query unless the operation selects `totalCount` or `totalCountRelation`.
 
 ### Use Connection Classes
 
@@ -178,11 +173,23 @@ precise instants by the text search syntax.
 
 Human-friendly search syntax with field-specific filters: `field:value`, quoted strings, and negation.
 
-## Bounded Total Counts
+## Standalone Counts
 
-Connections expose `totalCount` together with `totalCountRelation`. Counts up to 10,000 are exact and use `EQ`. Larger result sets return `totalCount: 10000` with `totalCountRelation: GTE`.
+`ConnectionManager.find()` returns one page. To expose a total, get `CountArgs` from `ConnectionBuilder.build()` and define a separate query. Share the same `query`, `filter`, and server-side scope between the list and count.
 
-The count is computed with a database-side query bounded to 10,001 matching rows. When the resolver passes `@Info()` as shown above and neither count field is selected, this query is not executed.
+```typescript
+import { Count, type CountArgsInterface } from "@nest-boot/graphql-connection";
+import { UserConnection, UserCountArgs } from "./user.connection";
+
+@Query(() => Count)
+async usersCount(
+  @Args({ type: () => UserCountArgs }) args: CountArgsInterface<User>,
+): Promise<Count> {
+  return this.connectionManager.count(UserConnection, args);
+}
+```
+
+Up to 10,000 matches return `precision: EXACT`. Above that threshold, the query returns `count: 10000` with `precision: AT_LEAST`. Clients can request subsequent pages using only the list query. With rate limiting enabled, the generated filter sets the count cost to 10 base points plus the cost of applying the filters once.
 
 ## Features
 

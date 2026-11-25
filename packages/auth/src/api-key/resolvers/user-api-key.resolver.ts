@@ -1,7 +1,6 @@
 import {
   Args,
   ID,
-  Info,
   Mutation,
   Parent,
   Query,
@@ -9,7 +8,6 @@ import {
   Resolver,
 } from "@nest-boot/graphql";
 import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
-import { type GraphQLResolveInfo } from "graphql";
 
 import { AuthUser } from "../../core/decorators/auth-user.decorator.js";
 import { User } from "../../core/entities/user.entity.js";
@@ -115,7 +113,6 @@ export class UserApiKeyResolver {
    * Paginates API keys owned by the parent user.
    * @param user - The user whose account is being accessed.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated API key metadata with credential hashes omitted.
    */
   @ResolveField(() => UserApiKeyConnection)
@@ -123,8 +120,7 @@ export class UserApiKeyResolver {
     @Parent() user: User,
     @Args({ type: () => UserApiKeyConnectionArgs })
     args: ConnectionArgsInterface<ApiKey>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
-    return await this.apiKeyService.getUserApiKeyConnection(user, args, info);
+    return await this.apiKeyService.getUserApiKeyConnection(user, args);
   }
 }

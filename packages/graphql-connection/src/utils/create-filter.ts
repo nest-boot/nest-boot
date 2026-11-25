@@ -9,7 +9,9 @@ import {
   FilterQuerySchemaBuilder,
 } from "mikro-orm-filter-query-schema";
 
+import { COUNT_COMPLEXITY_EXTENSION } from "../graphql-connection.constants.js";
 import { ConnectionFieldOptions } from "../interfaces/index.js";
+import { createCountComplexity } from "./create-connection-complexity.js";
 import { normalizeDateFilter } from "./normalize-date-filter.js";
 
 /**
@@ -179,8 +181,13 @@ export function createFilter<Entity extends object>(
         ) as FilterQuery<Entity>,
     );
 
+  const countComplexity = createCountComplexity({
+    fieldOptionsMap,
+    filterQuerySchema,
+  });
   const Filter = new GraphQLScalarType<FilterQuery<Entity>>({
     name: `${entityName}Filter`,
+    extensions: { [COUNT_COMPLEXITY_EXTENSION]: countComplexity },
     description: `A filter for ${entityName} that accepts MongoDB query syntax.\nSupported fields: ${filterableFields.join(", ")}`,
     serialize: (value) => value as FilterQuery<Entity>,
     parseValue: (value) => {

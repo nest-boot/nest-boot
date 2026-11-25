@@ -7,16 +7,11 @@ import {
 } from "@mikro-orm/core";
 import { type SqlEntityManager } from "@mikro-orm/sql";
 import { GraphQLBadUserInputError } from "@nest-boot/graphql";
-import { compact, get, set } from "lodash-es";
+import { get, set } from "lodash-es";
 
 import { type ConnectionFindOptions } from "./connection.manager.js";
 import { Cursor } from "./cursor.js";
-import {
-  OrderDirection,
-  PagingType,
-  TotalCountRelation,
-} from "./enums/index.js";
-import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants.js";
+import { OrderDirection, PagingType } from "./enums/index.js";
 import {
   ConnectionArgsInterface,
   ConnectionMetadata,
@@ -24,10 +19,11 @@ import {
   EdgeInterface,
 } from "./interfaces/index.js";
 import { ConnectionClass } from "./types/index.js";
-import { parseConnectionQuery } from "./utils/parse-connection-query.js";
+import {
+  getConnectionMetadata,
+  getConnectionWhere,
+} from "./utils/connection-filters.js";
 import { resolveConnectionPagination } from "./utils/resolve-connection-pagination.js";
-
-const TOTAL_COUNT_LIMIT = 10_000;
 
 /**
  * Builds and executes paginated queries for GraphQL connections.
@@ -65,21 +61,11 @@ export class ConnectionQueryBuilder<
 
   private readonly findOptions: FindOptions<Entity, Hint, Fields, Excludes>;
 
-  private readonly optionFilterQuery: FilterQuery<Entity> | null = null;
-
-  private readonly cursorFilterQuery: FilterQuery<Entity> | null = null;
-
-  private readonly queryStringFilterQuery: FilterQuery<Entity> | null = null;
-
-  private readonly argsFilterQuery: FilterQuery<Entity> | null = null;
-
-  private readonly totalCountFilterQuery: FilterQuery<Entity> | null = null;
-
   private readonly allFilterQuery: FilterQuery<Entity> | null = null;
 
   constructor(
     private readonly entityManager: SqlEntityManager,
-    private readonly connectionClass: ConnectionClass<Entity>,
+    connectionClass: ConnectionClass<Entity>,
     private readonly args: ConnectionArgsInterface<Entity>,
     private readonly options?: ConnectionFindOptions<
       Entity,
@@ -87,16 +73,8 @@ export class ConnectionQueryBuilder<
       Fields,
       Excludes
     >,
-    private readonly includeTotalCount = true,
   ) {
-    this.metadata = Reflect.getMetadata(
-      GRAPHQL_CONNECTION_METADATA,
-      connectionClass,
-    );
-
-    if (typeof this.metadata === "undefined") {
-      throw new Error("Connection metadata not found");
-    }
+    this.metadata = getConnectionMetadata(connectionClass);
 
     const pagination = resolveConnectionPagination(args);
     if ("error" in pagination) {
@@ -111,29 +89,11 @@ export class ConnectionQueryBuilder<
     this.queryOrderMap = this.getQueryOrderMap();
     this.findOptions = this.getFindOptions();
 
-    this.optionFilterQuery = this.options?.where ?? null;
-    this.cursorFilterQuery = this.getCursorFilterQuery();
-    this.queryStringFilterQuery = parseConnectionQuery(
-      args.query,
+    this.allFilterQuery = getConnectionWhere(
       this.metadata,
-    );
-    this.argsFilterQuery = this.args.filter ?? null;
-
-    this.totalCountFilterQuery = this.mergeFilterQuery(
-      compact([
-        this.optionFilterQuery,
-        this.queryStringFilterQuery,
-        this.argsFilterQuery,
-      ]),
-    );
-
-    this.allFilterQuery = this.mergeFilterQuery(
-      compact([
-        this.cursorFilterQuery,
-        this.optionFilterQuery,
-        this.queryStringFilterQuery,
-        this.argsFilterQuery,
-      ]),
+      args,
+      options?.where,
+      this.getCursorFilterQuery(),
     );
   }
 
@@ -224,74 +184,25 @@ export class ConnectionQueryBuilder<
     } as FilterQuery<Entity>;
   }
 
-  private mergeFilterQuery(
-    filterQueryGroup: FilterQuery<Entity>[],
-  ): FilterQuery<Entity> | null {
-    if (filterQueryGroup.length === 0) {
-      return null;
-    }
-
-    if (filterQueryGroup.length === 1) {
-      return filterQueryGroup[0];
-    }
-
-    return {
-      $and: filterQueryGroup,
-    } as FilterQuery<Entity>;
-  }
-
-  private async getTotalCount(): Promise<number> {
-    const limitedCountQueryBuilder = this.entityManager
-      .createQueryBuilder(this.metadata.entityClass)
-      .select("id" as never)
-      .limit(TOTAL_COUNT_LIMIT + 1)
-      .withSchema(this.options?.schema);
-
-    if (this.totalCountFilterQuery !== null) {
-      limitedCountQueryBuilder.where(this.totalCountFilterQuery as never);
-    }
-
-    await limitedCountQueryBuilder.applyFilters(this.options?.filters);
-
-    return await this.entityManager
-      .createQueryBuilder(limitedCountQueryBuilder as never, "bounded_count")
-      .count()
-      .getCount();
+  private findPage(): Promise<Entity[]> {
+    return this.allFilterQuery === null
+      ? this.entityManager.findAll(
+          this.metadata.entityClass,
+          this.findOptions as never,
+        )
+      : this.entityManager.find(
+          this.metadata.entityClass,
+          this.allFilterQuery as never,
+          this.findOptions as never,
+        );
   }
 
   /**
    * Executes the paginated query and returns the connection result.
-   * @returns A promise that resolves to the connection with edges, pageInfo,
-   * totalCount, and totalCountRelation
+   * @returns A promise that resolves to the page of edges and its pagination info.
    */
   async query(): Promise<ConnectionResult<Entity>> {
-    const matchedCountPromise = this.includeTotalCount
-      ? this.getTotalCount()
-      : Promise.resolve(undefined);
-    const [entities, matchedCount] = await Promise.all([
-      this.allFilterQuery === null
-        ? this.entityManager.findAll(
-            this.metadata.entityClass,
-            this.findOptions as never,
-          )
-        : this.entityManager.find(
-            this.metadata.entityClass,
-            this.allFilterQuery as never,
-            this.findOptions as never,
-          ),
-      matchedCountPromise,
-    ]);
-
-    const totalCountFields =
-      typeof matchedCount === "undefined"
-        ? {}
-        : {
-            totalCount: Math.min(matchedCount, TOTAL_COUNT_LIMIT),
-            totalCountRelation:
-              matchedCount > TOTAL_COUNT_LIMIT
-                ? TotalCountRelation.GTE
-                : TotalCountRelation.EQ,
-          };
+    const entities = await this.findPage();
 
     // Re-sort results
     const sortedEntities =
@@ -316,7 +227,6 @@ export class ConnectionQueryBuilder<
 
     // Return collection
     return {
-      ...totalCountFields,
       edges,
       pageInfo: {
         ...(this.pagingType === PagingType.FORWARD

@@ -6,6 +6,8 @@ import {
   type ConnectionArgsInterface,
   ConnectionManager,
   type ConnectionResult,
+  type Count,
+  type CountArgsInterface,
 } from "@nest-boot/graphql-connection";
 import { HashService } from "@nest-boot/hash";
 import { RequestContext } from "@nest-boot/request-context";
@@ -16,7 +18,6 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { GraphQLResolveInfo } from "graphql";
 
 import type { BanUserOptions } from "../../admin/interfaces/ban-user-options.interface.js";
 import type { CreateUserOptions } from "../../admin/interfaces/create-user-options.interface.js";
@@ -27,6 +28,7 @@ import type { UserRoleOption } from "../../admin/objects/user-role-option.object
 import { ApiKey } from "../../api-key/entities/api-key.entity.js";
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
+import { getCountAuthorization } from "../../common/utils/get-count-authorization.util.js";
 import {
   assertCanGrantPermissions,
   canGrantPermissions,
@@ -364,22 +366,32 @@ export class UserService {
   /**
    * Paginates users without bypassing application RLS.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated users matching the supplied query.
    */
   async getUserConnection(
     args: ConnectionArgsInterface<User>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<User>> {
     authorize("read", User);
     const manager = new ConnectionManager(this.em as SqlEntityManager);
-    const connection = info
-      ? await manager.find<User>(UserConnection, args, { info })
-      : await manager.find<User>(UserConnection, args);
+    const connection = await manager.find<User>(UserConnection, args);
     for (const { node } of connection.edges) {
       authorize("read", node);
     }
     return connection;
+  }
+
+  /**
+   * Counts users visible to the current principal.
+   * @param args - The search and filter arguments.
+   * @returns The bounded count of matching users.
+   */
+  async getUserCount(args: CountArgsInterface<User>): Promise<Count> {
+    const assertMatch = getCountAuthorization("read", User);
+    return await new ConnectionManager(this.em as SqlEntityManager).count(
+      UserConnection,
+      args,
+      { assertMatch },
+    );
   }
 
   /**

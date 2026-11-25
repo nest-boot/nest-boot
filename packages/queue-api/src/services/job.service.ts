@@ -20,7 +20,6 @@ import {
   type OnModuleInit,
 } from "@nestjs/common";
 import { Job as BullmqJob, type JobProgress, type JobState } from "bullmq";
-import type { GraphQLResolveInfo } from "graphql";
 
 import { JobConnection } from "../connections/job.connection-definition.js";
 import { isQueueVisible } from "../decorators/queue-visible.decorator.js";
@@ -65,14 +64,12 @@ export class JobService implements OnModuleInit, OnModuleDestroy {
   /**
    * Paginates tasks belonging to the current user.
    * @param args - Cursor pagination, filters and creation-time ordering.
-   * @param info - GraphQL selection used to shape the query.
-   * @returns Nodes and counts within the same authorized scope.
+   * @returns A page of jobs in the authorized scope.
    */
   async getUserJobConnection(
     args: ConnectionArgsInterface<JobEntity>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<JobEntity>> {
-    return await this.getScopedJobConnection(this.userFilter(), args, info);
+    return await this.getScopedJobConnection(this.userFilter(), args);
   }
 
   /**
@@ -87,18 +84,12 @@ export class JobService implements OnModuleInit, OnModuleDestroy {
   /**
    * Paginates tasks in the authenticated, selected workspace.
    * @param args - Cursor pagination, filters and creation-time ordering.
-   * @param info - GraphQL selection used to shape the query.
-   * @returns Nodes and counts within the same authorized scope.
+   * @returns A page of jobs in the authorized scope.
    */
   async getWorkspaceJobConnection(
     args: ConnectionArgsInterface<JobEntity>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<JobEntity>> {
-    return await this.getScopedJobConnection(
-      this.workspaceFilter(),
-      args,
-      info,
-    );
+    return await this.getScopedJobConnection(this.workspaceFilter(), args);
   }
 
   /**
@@ -113,14 +104,12 @@ export class JobService implements OnModuleInit, OnModuleDestroy {
   /**
    * Paginates unowned tasks after checking the current administrator session.
    * @param args - Cursor pagination, filters and creation-time ordering.
-   * @param info - GraphQL selection used to shape the query.
-   * @returns Nodes and counts within the same authorized scope.
+   * @returns A page of jobs in the authorized scope.
    */
   async getSystemJobConnection(
     args: ConnectionArgsInterface<JobEntity>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<JobEntity>> {
-    return await this.getScopedJobConnection(this.systemFilter(), args, info);
+    return await this.getScopedJobConnection(this.systemFilter(), args);
   }
 
   private currentUser(): User {
@@ -184,7 +173,6 @@ export class JobService implements OnModuleInit, OnModuleDestroy {
   private async getScopedJobConnection(
     where: FilterQuery<JobEntity>,
     args: ConnectionArgsInterface<JobEntity>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<JobEntity>> {
     if (args.orderBy && args.orderBy.field !== "createdAt") {
       throw new BadRequestException("Jobs can only be ordered by CREATED_AT.");
@@ -201,7 +189,6 @@ export class JobService implements OnModuleInit, OnModuleDestroy {
       {
         where: this.visibleFilter(where),
         refresh: true,
-        ...(info && { info }),
       },
     );
   }

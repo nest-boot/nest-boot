@@ -326,9 +326,8 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
       await em.persist(unrelated).flush();
       try {
         const query =
-          '{ systemApiKeys(first: 1, filter: { name: "Global list" }) { totalCount edges { node { id systemAccount { __typename  id name  } } } pageInfo { hasNextPage endCursor } } systemApiKeyPermissions { permission grantable default } }';
+          '{ systemApiKeys(first: 1, filter: { name: "Global list" }) { edges { node { id systemAccount { __typename  id name  } } } pageInfo { hasNextPage endCursor } } systemApiKeyPermissions { permission grantable default } }';
         const result = data(await graphql(query));
-        expect(result.systemApiKeys.totalCount).toBe(2);
         expect(
           result.systemApiKeys.edges[0].node.systemAccount.__typename,
         ).toBe("SystemAccount");
@@ -404,7 +403,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
         await em.nativeUpdate(User, ordinary.id, { roles: ["key-reader"] });
         try {
           const readOnly = data(await graphql(query, {}, ordinaryCookies));
-          expect(readOnly.systemApiKeys.totalCount).toBe(2);
+          expect(readOnly.systemApiKeys.pageInfo.hasNextPage).toBe(true);
           expect(readOnly.systemApiKeys.edges[0].node.systemAccount).toBeNull();
           expect(
             data(
@@ -419,7 +418,7 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
             ),
           ).toBe(true);
           for (const denied of [
-            "{ systemAccounts(first: 1) { totalCount } }",
+            "{ systemAccounts(first: 1) { edges { node { id } } } }",
             'mutation { createSystemAccount(input: { name: "Denied" }) { id } }',
             'mutation($id: ID!) { createSystemApiKey(input: {systemAccountId: $id,name: "Denied"}) { entity { id } } }',
           ]) {
@@ -488,7 +487,9 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
         "content-type": "application/json",
         authorization: `Bearer ${issued.apiKey}`,
       },
-      body: JSON.stringify({ query: "{ users(first: 1) {totalCount} }" }),
+      body: JSON.stringify({
+        query: "{ users(first: 1) { edges { node { id } } } }",
+      }),
     });
     expect(response.status).toBe(401);
     const stored = await orm.em.fork().findOneOrFail(ApiKey, issued.entity.id);
@@ -521,11 +522,11 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     expect(stored.key).toMatch(/^[A-Za-z0-9_-]{43}$/u);
 
     const result = await graphql(
-      "query($id: ID!, $key: ID!) { systemAccounts(first: 10) { totalCount edges { node { id } } } systemAccount(id: $id) { id apiKeyPermissions { permission grantable default } apiKeys(first: 10) { totalCount edges { node { id name createdById } } } } systemApiKey(id: $key) { id name } }",
+      "query($id: ID!, $key: ID!) { systemAccounts(first: 10) { edges { node { id } } } systemAccount(id: $id) { id apiKeyPermissions { permission grantable default } apiKeys(first: 10) { edges { node { id name createdById } } } } systemApiKey(id: $key) { id name } }",
       { id: accountId, key: keyId },
     );
     expect(result.errors).toBeUndefined();
-    expect(data(result).systemAccounts.totalCount).toBe(1);
+    expect(data(result).systemAccounts.edges.length).toBe(1);
     expect(
       data(result)
         .systemAccount.apiKeyPermissions.filter(
@@ -546,13 +547,18 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     ).not.toContain("key");
 
     const access = await graphql(
-      "query($id: ID!) { users(first: 10) { totalCount } workspaces(first: 10) { edges { node { id } } } platformWorkspace(id: $id) { id } }",
+      "query($id: ID!) { users(first: 10) { edges { node { id } } } usersCount { count precision } workspaces(first: 10) { edges { node { id } } } workspacesCount { count precision } platformWorkspace(id: $id) { id } }",
       { id: workspaceId },
       plaintext,
       true,
     );
     expect(access.errors).toBeUndefined();
-    expect(data(access).users.totalCount).toBe(2);
+    expect(data(access).users.edges.length).toBe(2);
+    expect(data(access).usersCount).toEqual({ count: 2, precision: "EXACT" });
+    expect(data(access).workspacesCount).toEqual({
+      count: data(access).workspaces.edges.length,
+      precision: "EXACT",
+    });
     expect(data(access).platformWorkspace.id).toBe(workspaceId);
     expect(
       data(await graphql("{ currentUser { id } }", {}, plaintext, true))
@@ -573,12 +579,19 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
     expect(changed.errors).toBeUndefined();
     expect(data(changed).updateSystemApiKey.name).toBe("Renamed");
     const readOnly = await graphql(
-      "{ workspaces(first: 1) { totalCount } }",
+      "{ workspaces(first: 1) { edges { node { id } } } }",
       {},
       plaintext,
       true,
     );
     expect(readOnly.errors?.[0]?.extensions.code).toBe("FORBIDDEN");
+    const deniedCount = await graphql(
+      "{ workspacesCount { count } }",
+      {},
+      plaintext,
+      true,
+    );
+    expect(deniedCount.errors?.[0]?.extensions.code).toBe("FORBIDDEN");
     const disabled = await graphql(
       "mutation($id: ID!) { updateSystemAccount(id: $id, input: {enabled: false}) { id enabled } }",
       { id: accountId },
@@ -590,7 +603,9 @@ describe("system-account GraphQL lifecycle over HTTP", () => {
         "content-type": "application/json",
         authorization: `Bearer ${plaintext}`,
       },
-      body: JSON.stringify({ query: "{ users(first: 1) { totalCount } }" }),
+      body: JSON.stringify({
+        query: "{ users(first: 1) { edges { node { id } } } }",
+      }),
     });
     expect(response.status).toBe(401);
 

@@ -1,10 +1,14 @@
-import { Args, ID, Info, Mutation, Query, Resolver } from "@nest-boot/graphql";
-import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
-import { type GraphQLResolveInfo } from "graphql";
+import { Args, ID, Mutation, Query, Resolver } from "@nest-boot/graphql";
+import {
+  type ConnectionArgsInterface,
+  Count,
+  type CountArgsInterface,
+} from "@nest-boot/graphql-connection";
 
 import {
   UserConnection,
   UserConnectionArgs,
+  UserCountArgs,
 } from "../../core/connections/user.connection-definition.js";
 import { User } from "../../core/entities/user.entity.js";
 import { UserService } from "../../core/services/user.service.js";
@@ -54,16 +58,26 @@ export class AdminUserResolver {
   /**
    * Paginates users using the application's connection definition.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated users matching the query.
    */
   @Query(() => UserConnection)
   async users(
     @Args({ type: () => UserConnectionArgs })
     args: ConnectionArgsInterface<User>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
-    return await this.userService.getUserConnection(args, info);
+    return await this.userService.getUserConnection(args);
+  }
+
+  /**
+   * Counts users using the same filters as the list.
+   * @param args - The search and filter arguments.
+   * @returns The bounded user count.
+   */
+  @Query(() => Count)
+  async usersCount(
+    @Args({ type: () => UserCountArgs }) args: CountArgsInterface<User>,
+  ): Promise<Count> {
+    return await this.userService.getUserCount(args);
   }
 
   /**

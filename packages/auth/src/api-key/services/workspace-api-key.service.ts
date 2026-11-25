@@ -125,20 +125,23 @@ export class WorkspaceApiKeyService {
    * Paginates all selected-workspace member keys within the caller's permission ceilings.
    * @param workspace - The workspace that scopes this operation.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
-   * @param member - Optional parent member whose keys are being listed.
+   * @param memberOrInfo - Optional parent member or legacy GraphQL selection metadata.
+   * @param legacyMember - Parent member in the former four-argument call.
    * @returns Paginated member API key metadata with credential hashes omitted.
    */
   async getWorkspaceApiKeyConnection(
     workspace: Workspace,
     args: ConnectionArgsInterface<ApiKey>,
-    info?: GraphQLResolveInfo,
-    member?: WorkspaceMember,
+    memberOrInfo?: WorkspaceMember | GraphQLResolveInfo,
+    legacyMember?: WorkspaceMember,
   ): Promise<ConnectionResult<WorkspaceApiKey>> {
     assertApiKeyFeature(this.authOptions, "workspaceApiKey");
     this.assertWorkspacePrincipal(workspace);
     authorize("read", WorkspaceApiKey);
     const where = this.getOwnedListFilter(workspace);
+    const member =
+      legacyMember ??
+      (memberOrInfo && "fieldNodes" in memberOrInfo ? undefined : memberOrInfo);
     if (member) {
       authorize("read", member);
       if (member.workspace.id !== workspace.id) {
@@ -151,7 +154,6 @@ export class WorkspaceApiKeyService {
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find(WorkspaceApiKeyConnection, args, {
-      ...(info && { info }),
       where,
       populate: ["owner"],
       exclude: ["key"],

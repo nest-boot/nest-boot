@@ -115,10 +115,6 @@ export type AccountConnection = {
   edges: Array<AccountEdge>;
   /** Information to aid in pagination. */
   pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
 };
 
 /** An auto-generated type which holds one Account and a cursor during pagination. */
@@ -300,6 +296,19 @@ export type CancelWorkspaceInvitationPayload = {
   id: Scalars["ID"]["output"];
 };
 
+export type Count = {
+  __typename?: "Count";
+  count: Scalars["Int"]["output"];
+  precision: CountPrecision;
+};
+
+export const CountPrecision = {
+  AT_LEAST: "AT_LEAST",
+  EXACT: "EXACT",
+} as const;
+
+export type CountPrecision =
+  (typeof CountPrecision)[keyof typeof CountPrecision];
 export type CreateSystemAccountInput = {
   name: Scalars["String"]["input"];
   permissions?: InputMaybe<Array<SystemAccountPermission>>;
@@ -408,10 +417,6 @@ export type JobConnection = {
   edges: Array<JobEdge>;
   /** Information to aid in pagination. */
   pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
 };
 
 /** An auto-generated type which holds one Job and a cursor during pagination. */
@@ -798,6 +803,7 @@ export type Query = {
   userPermissions: Array<UserPermissionOption>;
   userRoles: Array<UserRoleOption>;
   users: UserConnection;
+  usersCount: Count;
   workspace?: Maybe<Workspace>;
   workspaceApiKeyPermissions: Array<WorkspaceApiKeyPermissionOption>;
   workspaceApiKeys: WorkspaceApiKeyConnection;
@@ -809,6 +815,7 @@ export type Query = {
   workspacePermissions: Array<WorkspacePermissionOption>;
   workspaceRoles: Array<WorkspaceRoleOption>;
   workspaces: WorkspaceConnection;
+  workspacesCount: Count;
 };
 
 export type QueryPlatformWorkspaceArgs = {
@@ -890,6 +897,11 @@ export type QueryUsersArgs = {
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
+export type QueryUsersCountArgs = {
+  filter?: InputMaybe<Scalars["UserFilter"]["input"]>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
 export type QueryWorkspaceArgs = {
   id?: InputMaybe<Scalars["ID"]["input"]>;
   slug?: InputMaybe<Scalars["String"]["input"]>;
@@ -941,6 +953,11 @@ export type QueryWorkspacesArgs = {
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
+export type QueryWorkspacesCountArgs = {
+  filter?: InputMaybe<Scalars["WorkspaceFilter"]["input"]>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
 export type RejectWorkspaceInvitationPayload = {
   __typename?: "RejectWorkspaceInvitationPayload";
   id: Scalars["ID"]["output"];
@@ -970,10 +987,6 @@ export type SessionConnection = {
   edges: Array<SessionEdge>;
   /** Information to aid in pagination. */
   pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
 };
 
 /** An auto-generated type which holds one Session and a cursor during pagination. */
@@ -1076,10 +1089,6 @@ export type SystemAccountConnection = {
   edges: Array<SystemAccountEdge>;
   /** Information to aid in pagination. */
   pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
 };
 
 export type SystemAccountEdge = {
@@ -1146,10 +1155,6 @@ export type SystemApiKeyConnection = {
   edges: Array<SystemApiKeyEdge>;
   /** Information to aid in pagination. */
   pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
 };
 
 export type SystemApiKeyEdge = {
@@ -1196,13 +1201,6 @@ export type SystemApiKeyPermissionOption = {
   permission: SystemApiKeyPermission;
 };
 
-export const TotalCountRelation = {
-  EQ: "EQ",
-  GTE: "GTE",
-} as const;
-
-export type TotalCountRelation =
-  (typeof TotalCountRelation)[keyof typeof TotalCountRelation];
 export type UnbanUserPayload = {
   __typename?: "UnbanUserPayload";
   id: Scalars["ID"]["output"];
@@ -1363,10 +1361,6 @@ export type UserApiKeyConnection = {
   edges: Array<UserApiKeyEdge>;
   /** Information to aid in pagination. */
   pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
 };
 
 export type UserApiKeyEdge = {
@@ -1448,10 +1442,6 @@ export type UserConnection = {
   edges: Array<UserEdge>;
   /** Information to aid in pagination. */
   pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
 };
 
 /** An auto-generated type which holds one User and a cursor during pagination. */
@@ -1532,6 +1522,7 @@ export type Workspace = {
   id: Scalars["ID"]["output"];
   invitations: WorkspaceInvitationConnection;
   members: WorkspaceMemberConnection;
+  membersCount: Count;
   name: Scalars["String"]["output"];
   slug: Scalars["String"]["output"];
   updatedAt: Scalars["DateTime"]["output"];
@@ -1561,6 +1552,11 @@ export type WorkspaceMembersArgs = {
   query?: InputMaybe<Scalars["String"]["input"]>;
 };
 
+export type WorkspaceMembersCountArgs = {
+  filter?: InputMaybe<Scalars["WorkspaceMemberFilter"]["input"]>;
+  query?: InputMaybe<Scalars["String"]["input"]>;
+};
+
 export type WorkspaceApiKey = {
   __typename?: "WorkspaceApiKey";
   createdAt: Scalars["DateTime"]["output"];
@@ -1583,10 +1579,6 @@ export type WorkspaceApiKeyConnection = {
   edges: Array<WorkspaceApiKeyEdge>;
   /** Information to aid in pagination. */
   pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
 };
 
 export type WorkspaceApiKeyEdge = {
@@ -1645,10 +1637,6 @@ export type WorkspaceConnection = {
   edges: Array<WorkspaceEdge>;
   /** Information to aid in pagination. */
   pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
 };
 
 /** An auto-generated type which holds one Workspace and a cursor during pagination. */
@@ -1679,10 +1667,6 @@ export type WorkspaceInvitationConnection = {
   edges: Array<WorkspaceInvitationEdge>;
   /** Information to aid in pagination. */
   pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
 };
 
 /** An auto-generated type which holds one WorkspaceInvitation and a cursor during pagination. */
@@ -1751,10 +1735,6 @@ export type WorkspaceMemberConnection = {
   edges: Array<WorkspaceMemberEdge>;
   /** Information to aid in pagination. */
   pageInfo: PageInfo;
-  /** Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact. */
-  totalCount: Scalars["Int"]["output"];
-  /** Indicates whether totalCount is exact or a lower bound. */
-  totalCountRelation: TotalCountRelation;
 };
 
 /** An auto-generated type which holds one WorkspaceMember and a cursor during pagination. */
@@ -1892,45 +1872,6 @@ export type SystemApiKeysQuery = {
   };
 };
 
-export type GetAdminOverviewQueryVariables = Exact<{
-  includeUsers?: Scalars["Boolean"]["input"];
-}>;
-
-export type GetAdminOverviewQuery = {
-  __typename?: "Query";
-  users?: {
-    __typename?: "UserConnection";
-    totalCount: number;
-    totalCountRelation: TotalCountRelation;
-  };
-};
-
-export type GetAdminSystemAccountOverviewQueryVariables = Exact<{
-  [key: string]: never;
-}>;
-
-export type GetAdminSystemAccountOverviewQuery = {
-  __typename?: "Query";
-  systemAccounts: {
-    __typename?: "SystemAccountConnection";
-    totalCount: number;
-    totalCountRelation: TotalCountRelation;
-  };
-};
-
-export type GetAdminSystemKeyOverviewQueryVariables = Exact<{
-  [key: string]: never;
-}>;
-
-export type GetAdminSystemKeyOverviewQuery = {
-  __typename?: "Query";
-  systemApiKeys: {
-    __typename?: "SystemApiKeyConnection";
-    totalCount: number;
-    totalCountRelation: TotalCountRelation;
-  };
-};
-
 export type ManagedSystemAccountsQueryVariables = Exact<{
   first?: InputMaybe<Scalars["Int"]["input"]>;
   last?: InputMaybe<Scalars["Int"]["input"]>;
@@ -1945,7 +1886,6 @@ export type ManagedSystemAccountsQuery = {
   __typename?: "Query";
   systemAccounts: {
     __typename?: "SystemAccountConnection";
-    totalCount: number;
     edges: Array<{
       __typename?: "SystemAccountEdge";
       node: {
@@ -2169,7 +2109,6 @@ export type GetUsersFromUsersRouteQuery = {
   __typename?: "Query";
   users: {
     __typename?: "UserConnection";
-    totalCount: number;
     edges: Array<{
       __typename?: "UserEdge";
       node: {
@@ -2215,7 +2154,6 @@ export type GetWorkspacesFromWorkspaceSwitcherQuery = {
     __typename?: "User";
     workspaces: {
       __typename?: "WorkspaceConnection";
-      totalCount: number;
       edges: Array<{
         __typename?: "WorkspaceEdge";
         node: { __typename?: "Workspace"; id: string; name: string };
@@ -2430,33 +2368,6 @@ export type GetUserApiKeysQuery = {
   } | null;
 };
 
-export type GetUserOverviewQueryVariables = Exact<{
-  includeApiKeys: Scalars["Boolean"]["input"];
-}>;
-
-export type GetUserOverviewQuery = {
-  __typename?: "Query";
-  currentUser?: {
-    __typename?: "User";
-    id: string;
-    workspaces: {
-      __typename?: "WorkspaceConnection";
-      totalCount: number;
-      totalCountRelation: TotalCountRelation;
-    };
-    sessions: {
-      __typename?: "SessionConnection";
-      totalCount: number;
-      totalCountRelation: TotalCountRelation;
-    };
-    apiKeys?: {
-      __typename?: "UserApiKeyConnection";
-      totalCount: number;
-      totalCountRelation: TotalCountRelation;
-    };
-  } | null;
-};
-
 export type UpdateUserFromUserRouteMutationVariables = Exact<{
   input: AuthUpdateUserInput;
 }>;
@@ -2548,7 +2459,6 @@ export type GetAccountsFromUserSecurityQuery = {
     id: string;
     accounts: {
       __typename?: "AccountConnection";
-      totalCount: number;
       pageInfo: {
         __typename?: "PageInfo";
         hasNextPage: boolean;
@@ -3189,30 +3099,6 @@ export type CancelWorkspaceInvitationFromWorkspaceMembersRouteMutation = {
   cancelWorkspaceInvitation: {
     __typename?: "CancelWorkspaceInvitationPayload";
     id: string;
-  };
-};
-
-export type GetWorkspaceOverviewQueryVariables = Exact<{
-  workspaceId: Scalars["ID"]["input"];
-  includeWorkspaceMembers: Scalars["Boolean"]["input"];
-  includeApiKeys: Scalars["Boolean"]["input"];
-}>;
-
-export type GetWorkspaceOverviewQuery = {
-  __typename?: "Query";
-  workspace?: {
-    __typename?: "Workspace";
-    id: string;
-    members?: {
-      __typename?: "WorkspaceMemberConnection";
-      totalCount: number;
-      totalCountRelation: TotalCountRelation;
-    };
-  } | null;
-  workspaceApiKeys?: {
-    __typename?: "WorkspaceApiKeyConnection";
-    totalCount: number;
-    totalCountRelation: TotalCountRelation;
   };
 };
 
@@ -3902,156 +3788,6 @@ export const SystemApiKeysDocument = {
     },
   ],
 } as unknown as DocumentNode<SystemApiKeysQuery, SystemApiKeysQueryVariables>;
-export const GetAdminOverviewDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "query",
-      name: { kind: "Name", value: "getAdminOverview" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "includeUsers" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "Boolean" },
-            },
-          },
-          defaultValue: { kind: "BooleanValue", value: true },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "users" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "first" },
-                value: { kind: "IntValue", value: "1" },
-              },
-            ],
-            directives: [
-              {
-                kind: "Directive",
-                name: { kind: "Name", value: "include" },
-                arguments: [
-                  {
-                    kind: "Argument",
-                    name: { kind: "Name", value: "if" },
-                    value: {
-                      kind: "Variable",
-                      name: { kind: "Name", value: "includeUsers" },
-                    },
-                  },
-                ],
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "totalCount" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "totalCountRelation" },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  GetAdminOverviewQuery,
-  GetAdminOverviewQueryVariables
->;
-export const GetAdminSystemAccountOverviewDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "query",
-      name: { kind: "Name", value: "getAdminSystemAccountOverview" },
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "systemAccounts" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "first" },
-                value: { kind: "IntValue", value: "1" },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "totalCount" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "totalCountRelation" },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  GetAdminSystemAccountOverviewQuery,
-  GetAdminSystemAccountOverviewQueryVariables
->;
-export const GetAdminSystemKeyOverviewDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "query",
-      name: { kind: "Name", value: "getAdminSystemKeyOverview" },
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "systemApiKeys" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "first" },
-                value: { kind: "IntValue", value: "1" },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "totalCount" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "totalCountRelation" },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  GetAdminSystemKeyOverviewQuery,
-  GetAdminSystemKeyOverviewQueryVariables
->;
 export const ManagedSystemAccountsDocument = {
   kind: "Document",
   definitions: [
@@ -4250,7 +3986,6 @@ export const ManagedSystemAccountsDocument = {
                     ],
                   },
                 },
-                { kind: "Field", name: { kind: "Name", value: "totalCount" } },
               ],
             },
           },
@@ -5584,7 +5319,6 @@ export const GetUsersFromUsersRouteDocument = {
                     ],
                   },
                 },
-                { kind: "Field", name: { kind: "Name", value: "totalCount" } },
                 {
                   kind: "Field",
                   name: { kind: "Name", value: "pageInfo" },
@@ -5799,10 +5533,6 @@ export const GetWorkspacesFromWorkspaceSwitcherDocument = {
                             },
                           ],
                         },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "totalCount" },
                       },
                     ],
                   },
@@ -6639,138 +6369,6 @@ export const GetUserApiKeysDocument = {
     },
   ],
 } as unknown as DocumentNode<GetUserApiKeysQuery, GetUserApiKeysQueryVariables>;
-export const GetUserOverviewDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "query",
-      name: { kind: "Name", value: "getUserOverview" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "includeApiKeys" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "Boolean" },
-            },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "currentUser" },
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "workspaces" },
-                  arguments: [
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "first" },
-                      value: { kind: "IntValue", value: "1" },
-                    },
-                  ],
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "totalCount" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "totalCountRelation" },
-                      },
-                    ],
-                  },
-                },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "sessions" },
-                  arguments: [
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "first" },
-                      value: { kind: "IntValue", value: "1" },
-                    },
-                  ],
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "totalCount" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "totalCountRelation" },
-                      },
-                    ],
-                  },
-                },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "apiKeys" },
-                  arguments: [
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "first" },
-                      value: { kind: "IntValue", value: "1" },
-                    },
-                  ],
-                  directives: [
-                    {
-                      kind: "Directive",
-                      name: { kind: "Name", value: "include" },
-                      arguments: [
-                        {
-                          kind: "Argument",
-                          name: { kind: "Name", value: "if" },
-                          value: {
-                            kind: "Variable",
-                            name: { kind: "Name", value: "includeApiKeys" },
-                          },
-                        },
-                      ],
-                    },
-                  ],
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "totalCount" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "totalCountRelation" },
-                      },
-                    ],
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  GetUserOverviewQuery,
-  GetUserOverviewQueryVariables
->;
 export const UpdateUserFromUserRouteDocument = {
   kind: "Document",
   definitions: [
@@ -7192,10 +6790,6 @@ export const GetAccountsFromUserSecurityDocument = {
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "totalCount" },
-                      },
                       {
                         kind: "Field",
                         name: { kind: "Name", value: "pageInfo" },
@@ -10297,165 +9891,6 @@ export const CancelWorkspaceInvitationFromWorkspaceMembersRouteDocument = {
 } as unknown as DocumentNode<
   CancelWorkspaceInvitationFromWorkspaceMembersRouteMutation,
   CancelWorkspaceInvitationFromWorkspaceMembersRouteMutationVariables
->;
-export const GetWorkspaceOverviewDocument = {
-  kind: "Document",
-  definitions: [
-    {
-      kind: "OperationDefinition",
-      operation: "query",
-      name: { kind: "Name", value: "getWorkspaceOverview" },
-      variableDefinitions: [
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "workspaceId" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "includeWorkspaceMembers" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "Boolean" },
-            },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: {
-            kind: "Variable",
-            name: { kind: "Name", value: "includeApiKeys" },
-          },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "NamedType",
-              name: { kind: "Name", value: "Boolean" },
-            },
-          },
-        },
-      ],
-      selectionSet: {
-        kind: "SelectionSet",
-        selections: [
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "workspace" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "id" },
-                value: {
-                  kind: "Variable",
-                  name: { kind: "Name", value: "workspaceId" },
-                },
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "id" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "members" },
-                  arguments: [
-                    {
-                      kind: "Argument",
-                      name: { kind: "Name", value: "first" },
-                      value: { kind: "IntValue", value: "1" },
-                    },
-                  ],
-                  directives: [
-                    {
-                      kind: "Directive",
-                      name: { kind: "Name", value: "include" },
-                      arguments: [
-                        {
-                          kind: "Argument",
-                          name: { kind: "Name", value: "if" },
-                          value: {
-                            kind: "Variable",
-                            name: {
-                              kind: "Name",
-                              value: "includeWorkspaceMembers",
-                            },
-                          },
-                        },
-                      ],
-                    },
-                  ],
-                  selectionSet: {
-                    kind: "SelectionSet",
-                    selections: [
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "totalCount" },
-                      },
-                      {
-                        kind: "Field",
-                        name: { kind: "Name", value: "totalCountRelation" },
-                      },
-                    ],
-                  },
-                },
-              ],
-            },
-          },
-          {
-            kind: "Field",
-            name: { kind: "Name", value: "workspaceApiKeys" },
-            arguments: [
-              {
-                kind: "Argument",
-                name: { kind: "Name", value: "first" },
-                value: { kind: "IntValue", value: "1" },
-              },
-            ],
-            directives: [
-              {
-                kind: "Directive",
-                name: { kind: "Name", value: "include" },
-                arguments: [
-                  {
-                    kind: "Argument",
-                    name: { kind: "Name", value: "if" },
-                    value: {
-                      kind: "Variable",
-                      name: { kind: "Name", value: "includeApiKeys" },
-                    },
-                  },
-                ],
-              },
-            ],
-            selectionSet: {
-              kind: "SelectionSet",
-              selections: [
-                { kind: "Field", name: { kind: "Name", value: "totalCount" } },
-                {
-                  kind: "Field",
-                  name: { kind: "Name", value: "totalCountRelation" },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  ],
-} as unknown as DocumentNode<
-  GetWorkspaceOverviewQuery,
-  GetWorkspaceOverviewQueryVariables
 >;
 export const UpdateWorkspaceFromSettingsRouteDocument = {
   kind: "Document",

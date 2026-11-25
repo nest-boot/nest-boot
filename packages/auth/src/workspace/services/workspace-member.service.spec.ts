@@ -2021,7 +2021,6 @@ describe("conditional authorization", () => {
             const result = {
               edges: [{ node, cursor: "cursor" }],
               pageInfo: { hasNextPage: true },
-              totalCount: 2,
             };
             vi.spyOn(ConnectionManager.prototype, "find").mockResolvedValue(
               result as never,
@@ -2122,7 +2121,6 @@ describe("conditional authorization", () => {
               await expect(read()).rejects.toThrow(ForbiddenException);
             }
             expect(result.edges).toHaveLength(1);
-            expect(result.totalCount).toBe(2);
           },
         );
       },

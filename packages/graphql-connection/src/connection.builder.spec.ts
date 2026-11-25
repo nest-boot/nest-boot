@@ -3,12 +3,12 @@ import "reflect-metadata";
 import type { FieldComplexityEstimatorArgs } from "@nest-boot/graphql";
 import { LazyMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage.js";
 import { TypeMetadataStorage } from "@nestjs/graphql/dist/schema-builder/storages/type-metadata.storage.js";
-import { Kind } from "graphql";
+import { GraphQLInt, GraphQLNonNull, GraphQLObjectType, Kind } from "graphql";
 
 import { ConnectionBuilder } from "./connection.builder.js";
 import { GRAPHQL_CONNECTION_METADATA } from "./graphql-connection.constants.js";
 import type { ConnectionMetadata } from "./interfaces/index.js";
-import { PageInfo } from "./objects/index.js";
+import { Count, PageInfo } from "./objects/index.js";
 
 interface BuilderBook {
   id: number;
@@ -57,7 +57,7 @@ describe("ConnectionBuilder", () => {
       title!: string;
     }
 
-    const { Connection } = new ConnectionBuilder(CostBook)
+    const { Connection, Filter } = new ConnectionBuilder(CostBook)
       .addField({ field: "title", type: "string", filterable: true })
       .addField({ field: "id", type: "number", sortable: true })
       .build();
@@ -96,6 +96,25 @@ describe("ConnectionBuilder", () => {
       cost({ first: 10, filter: { title: "book" } }, { result: null }),
     ).toBe(3);
     expect(cost({})).toBe(0);
+    for (const filterType of [Filter, new GraphQLNonNull(Filter)]) {
+      const queryType = new GraphQLObjectType({
+        name: "CountCostQuery",
+        fields: {
+          booksCount: {
+            type: GraphQLInt,
+            args: { filter: { type: filterType } },
+          },
+        },
+      });
+      expect(
+        Count.complexity({
+          args: { query: "title:book", filter: { title: { $ne: "other" } } },
+          childComplexity: 5,
+          field: queryType.getFields().booksCount,
+          type: queryType,
+        }),
+      ).toBe(13);
+    }
     expect(cost({ last: 1, after: "cursor" })).toBe(0);
   });
 
@@ -198,7 +217,7 @@ describe("ConnectionBuilder", () => {
       fieldNamesAndInvokeTypeFns(
         TypeMetadataStorage.getObjectTypeMetadataByTarget(result.Connection),
       ),
-    ).toEqual(["edges", "pageInfo", "totalCount", "totalCountRelation"]);
+    ).toEqual(["edges", "pageInfo"]);
     expect(
       fieldNamesAndInvokeTypeFns(
         TypeMetadataStorage.getObjectTypeMetadataByTarget(result.Edge),
@@ -213,15 +232,12 @@ describe("ConnectionBuilder", () => {
       fieldNamesAndInvokeTypeFns(
         TypeMetadataStorage.getArgumentsMetadataByTarget(result.ConnectionArgs),
       ),
-    ).toEqual([
-      "query",
-      "filter",
-      "first",
-      "last",
-      "after",
-      "before",
-      "orderBy",
-    ]);
+    ).toEqual(["first", "last", "after", "before", "orderBy"]);
+    expect(
+      fieldNamesAndInvokeTypeFns(
+        TypeMetadataStorage.getArgumentsMetadataByTarget(result.CountArgs),
+      ),
+    ).toEqual(["query", "filter"]);
     expect(
       TypeMetadataStorage.getArgumentsMetadataByTarget(result.ConnectionArgs),
     ).toMatchObject({ name: "BuilderBookEntityConnectionArgs" });

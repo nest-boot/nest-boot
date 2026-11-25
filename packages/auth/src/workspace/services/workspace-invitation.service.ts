@@ -19,7 +19,6 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { GraphQLResolveInfo } from "graphql";
 
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
@@ -398,20 +397,17 @@ export class WorkspaceInvitationService {
    * Paginates invitations for the selected workspace after authorization.
    * @param workspace - The workspace that scopes this operation.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated invitations belonging to the workspace.
    */
   async getWorkspaceInvitationConnectionByWorkspace(
     workspace: Workspace,
     args: ConnectionArgsInterface<WorkspaceInvitation>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<WorkspaceInvitation>> {
     assertCurrentWorkspace(workspace);
     authorize("read", WorkspaceInvitation);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<WorkspaceInvitation>(WorkspaceInvitationConnection, args, {
-      ...(info && { info }),
       where: { workspace },
     });
     for (const { node } of connection.edges) {
@@ -424,20 +420,17 @@ export class WorkspaceInvitationService {
    * Paginates unexpired pending invitations addressed to the current user.
    * @param user - The user whose account is being accessed.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated invitations addressed to the user.
    */
   async getWorkspaceInvitationConnectionByUser(
     user: User,
     args: ConnectionArgsInterface<WorkspaceInvitation>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<WorkspaceInvitation>> {
     assertUserSession(user);
     const now = new Date();
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<WorkspaceInvitation>(WorkspaceInvitationConnection, args, {
-      ...(info && { info }),
       where: {
         email: user.email.toLowerCase(),
         expiresAt: { $gt: now },

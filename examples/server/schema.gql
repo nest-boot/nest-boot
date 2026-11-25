@@ -24,14 +24,6 @@ type AccountConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 """
@@ -209,6 +201,16 @@ type CancelWorkspaceInvitationPayload {
   id: ID!
 }
 
+type Count {
+  count: Int!
+  precision: CountPrecision!
+}
+
+enum CountPrecision {
+  AT_LEAST
+  EXACT
+}
+
 input CreateSystemAccountInput {
   name: String!
   permissions: [SystemAccountPermission!]
@@ -318,14 +320,6 @@ type JobConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 """
@@ -630,6 +624,17 @@ type Query {
     """
     query: String
   ): UserConnection!
+  usersCount(
+    """Filter users using MongoDB query syntax."""
+    filter: UserFilter
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `email`
+    """
+    query: String
+  ): Count!
   workspace(id: ID, slug: String): Workspace
   workspaceApiKeyPermissions: [WorkspaceApiKeyPermissionOption!]!
   workspaceApiKeys(
@@ -728,6 +733,17 @@ type Query {
     """
     query: String
   ): WorkspaceConnection!
+  workspacesCount(
+    """Filter workspaces using MongoDB query syntax."""
+    filter: WorkspaceFilter
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `created_at`
+    """
+    query: String
+  ): Count!
 }
 
 type RejectWorkspaceInvitationPayload {
@@ -756,14 +772,6 @@ type SessionConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 """
@@ -886,14 +894,6 @@ type SystemAccountConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 type SystemAccountEdge {
@@ -961,14 +961,6 @@ type SystemApiKeyConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 type SystemApiKeyEdge {
@@ -1015,11 +1007,6 @@ type SystemApiKeyPermissionOption {
   default: Boolean!
   grantable: Boolean!
   permission: SystemApiKeyPermission!
-}
-
-enum TotalCountRelation {
-  EQ
-  GTE
 }
 
 type UnbanUserPayload {
@@ -1261,14 +1248,6 @@ type UserApiKeyConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 type UserApiKeyEdge {
@@ -1352,14 +1331,6 @@ type UserConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 """
@@ -1499,6 +1470,17 @@ type Workspace {
     """
     query: String
   ): WorkspaceMemberConnection!
+  membersCount(
+    """Filter workspacemembers using MongoDB query syntax."""
+    filter: WorkspaceMemberFilter
+
+    """
+    Apply one or multiple filters to the query.
+    Supported filter parameters:
+    `name`, `email`, `type`, `status`, `created_at`
+    """
+    query: String
+  ): Count!
   name: String!
   slug: String!
   updatedAt: DateTime!
@@ -1525,14 +1507,6 @@ type WorkspaceApiKeyConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 type WorkspaceApiKeyEdge {
@@ -1593,14 +1567,6 @@ type WorkspaceConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 """
@@ -1638,14 +1604,6 @@ type WorkspaceInvitationConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 """
@@ -1737,14 +1695,6 @@ type WorkspaceMemberConnection {
 
   """Information to aid in pagination."""
   pageInfo: PageInfo!
-
-  """
-  Identifies up to 10,000 items in the connection. Use totalCountRelation to determine whether the value is exact.
-  """
-  totalCount: Int!
-
-  """Indicates whether totalCount is exact or a lower bound."""
-  totalCountRelation: TotalCountRelation!
 }
 
 """

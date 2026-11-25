@@ -1,6 +1,5 @@
-import { Args, Info, Parent, ResolveField, Resolver } from "@nest-boot/graphql";
+import { Args, Parent, ResolveField, Resolver } from "@nest-boot/graphql";
 import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
-import { type GraphQLResolveInfo } from "graphql";
 
 import { filterPermissionValues } from "../../common/utils/filter-permission-values.util.js";
 import {
@@ -45,7 +44,6 @@ export class UserResolver {
    * Lists active sessions belonging to the parent user after service authorization.
    * @param user - The user whose account is being accessed.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated active sessions belonging to the user.
    */
   @ResolveField(() => SessionConnection)
@@ -53,20 +51,14 @@ export class UserResolver {
     @Parent() user: User,
     @Args({ type: () => SessionConnectionArgs })
     args: ConnectionArgsInterface<Session>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
-    return await this.sessionService.getSessionConnectionByUser(
-      user,
-      args,
-      info,
-    );
+    return await this.sessionService.getSessionConnectionByUser(user, args);
   }
 
   /**
    * Paginates the parent's linked accounts after service authorization.
    * @param user - The user whose account is being accessed.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated linked accounts with credentials omitted.
    */
   @ResolveField(() => AccountConnection)
@@ -74,12 +66,7 @@ export class UserResolver {
     @Parent() user: User,
     @Args({ type: () => AccountConnectionArgs })
     args: ConnectionArgsInterface<Account>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
-    return await this.accountService.getAccountConnectionByUser(
-      user,
-      args,
-      info,
-    );
+    return await this.accountService.getAccountConnectionByUser(user, args);
   }
 }

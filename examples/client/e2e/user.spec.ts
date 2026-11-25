@@ -250,7 +250,6 @@ test.describe("user pages", () => {
               id: currentUser.id,
               accounts: {
                 __typename: "AccountConnection",
-                totalCount: 21,
                 edges,
                 pageInfo: {
                   __typename: "PageInfo",

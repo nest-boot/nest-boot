@@ -1,16 +1,18 @@
 import {
   Args,
   ID,
-  Info,
   Mutation,
   Parent,
   Query,
   ResolveField,
   Resolver,
 } from "@nest-boot/graphql";
-import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
+import {
+  type ConnectionArgsInterface,
+  Count,
+  type CountArgsInterface,
+} from "@nest-boot/graphql-connection";
 import { BadRequestException } from "@nestjs/common";
-import { type GraphQLResolveInfo } from "graphql";
 
 import { Public } from "../../common/decorators/public.decorator.js";
 import { AuthUser } from "../../core/decorators/auth-user.decorator.js";
@@ -18,6 +20,7 @@ import { User } from "../../core/entities/user.entity.js";
 import {
   WorkspaceConnection,
   WorkspaceConnectionArgs,
+  WorkspaceCountArgs,
 } from "../connections/workspace.connection-definition.js";
 import {
   WorkspaceInvitationConnection,
@@ -26,6 +29,7 @@ import {
 import {
   WorkspaceMemberConnection,
   WorkspaceMemberConnectionArgs,
+  WorkspaceMemberCountArgs,
 } from "../connections/workspace-member.connection-definition.js";
 import { AuthWorkspace } from "../decorators/auth-workspace.decorator.js";
 import { AuthWorkspaceMember } from "../decorators/auth-workspace-member.decorator.js";
@@ -62,7 +66,6 @@ export class WorkspaceResolver {
    * Paginates members of the parent workspace.
    * @param workspace - The workspace that scopes this operation.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated members visible in the workspace.
    */
   @ResolveField(() => WorkspaceMemberConnection)
@@ -70,12 +73,28 @@ export class WorkspaceResolver {
     @Parent() workspace: Workspace,
     @Args({ type: () => WorkspaceMemberConnectionArgs })
     args: ConnectionArgsInterface<WorkspaceMember>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
     return await this.workspaceMemberService.getWorkspaceMemberConnectionByWorkspace(
       workspace,
       args,
-      info,
+    );
+  }
+
+  /**
+   * Counts members of the parent workspace using the list's scope.
+   * @param workspace - The parent workspace.
+   * @param args - The search and filter arguments.
+   * @returns The bounded workspace member count.
+   */
+  @ResolveField(() => Count)
+  async membersCount(
+    @Parent() workspace: Workspace,
+    @Args({ type: () => WorkspaceMemberCountArgs })
+    args: CountArgsInterface<WorkspaceMember>,
+  ): Promise<Count> {
+    return await this.workspaceMemberService.getWorkspaceMemberCount(
+      workspace,
+      args,
     );
   }
 
@@ -83,7 +102,6 @@ export class WorkspaceResolver {
    * Paginates workspace invitations with authorization and querying handled by the service.
    * @param workspace - The workspace that scopes this operation.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated invitations visible to the current principal.
    */
   @ResolveField(() => WorkspaceInvitationConnection)
@@ -91,28 +109,37 @@ export class WorkspaceResolver {
     @Parent() workspace: Workspace,
     @Args({ type: () => WorkspaceInvitationConnectionArgs })
     args: ConnectionArgsInterface<WorkspaceInvitation>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
     return await this.workspaceInvitationService.getWorkspaceInvitationConnectionByWorkspace(
       workspace,
       args,
-      info,
     );
   }
 
   /**
    * Lists workspaces through the explicit platform administration boundary.
    * @param args - Cursor pagination, ordering and filtering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Page of workspaces authorized for platform access.
    */
   @Query(() => WorkspaceConnection)
   workspaces(
     @Args({ type: () => WorkspaceConnectionArgs })
     args: ConnectionArgsInterface<Workspace>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
-    return this.workspaceService.getPlatformWorkspaceConnection(args, info);
+    return this.workspaceService.getPlatformWorkspaceConnection(args);
+  }
+
+  /**
+   * Counts workspaces visible to platform administrators.
+   * @param args - The search and filter arguments.
+   * @returns The bounded workspace count.
+   */
+  @Query(() => Count)
+  async workspacesCount(
+    @Args({ type: () => WorkspaceCountArgs })
+    args: CountArgsInterface<Workspace>,
+  ): Promise<Count> {
+    return await this.workspaceService.getPlatformWorkspaceCount(args);
   }
 
   /**
@@ -203,7 +230,7 @@ export class WorkspaceResolver {
    * @param user - Authenticated user making the request.
    * @returns Whether a workspace already uses the slug.
    */
-  @Query(() => Boolean)
+  @Query(() => Boolean, { complexity: 1 })
   async workspaceExists(
     @Args("slug", { type: () => String }) slug: string,
     @AuthUser() user: User,

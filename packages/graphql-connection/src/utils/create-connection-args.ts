@@ -8,42 +8,31 @@ import { MAX_CONNECTION_PAGE_SIZE } from "../graphql-connection.constants.js";
 import type {
   ConnectionArgsInterface,
   ConnectionFieldOptions,
+  CountArgsInterface,
   OrderInterface,
 } from "../interfaces/index.js";
 
 /**
- * Creates a GraphQL Args type for connection queries.
- *
- * The generated Args type includes:
- * - `first`/`last`: Number of items to return (for forward/backward pagination)
- * - `after`/`before`: Cursor for pagination position
- * - `query`: Search query string
- * - `filter`: MongoDB-style filter query
- * - `orderBy`: Sorting options
- *
- * Used by ConnectionBuilder.build()
- * @template Entity - The entity type being queried
- * @param entityName - The name to use for the GraphQL type
- * @param fieldOptionsMap - Map of field configurations
- * @param OrderClass - The Order input type class
- * @param FilterScalar - The Filter scalar type
- * @returns A class implementing ConnectionArgsInterface
- * @internal
+ * Creates the GraphQL arguments shared by list and count queries.
+ * @template Entity - The entity type.
+ * @param entityName - Entity name used for the GraphQL type.
+ * @param fieldOptionsMap - Field configurations.
+ * @param FilterScalar - Filter scalar shared by the two operations.
+ * @returns The count arguments class.
  */
-export function createConnectionArgs<Entity extends object>(
+export function createCountArgs<Entity extends object>(
   entityName: string,
   fieldOptionsMap: Map<string, ConnectionFieldOptions<Entity>>,
-  OrderClass: Type<OrderInterface<Entity>>,
   FilterScalar: GraphQLScalarType<FilterQuery<Entity>>,
-): Type<ConnectionArgsInterface<Entity>> {
+): Type<CountArgsInterface<Entity>> {
   const humanizeAndPluralizeEntityName = pluralize(humanize(entityName, true));
 
   const filterableFields = [...fieldOptionsMap.values()].filter(
     (field) => field.filterable,
   );
 
-  @ArgsType(`${entityName}ConnectionArgs`)
-  class ConnectionArgs implements ConnectionArgsInterface<Entity> {
+  @ArgsType(`${entityName}CountArgs`)
+  class CountArgs implements CountArgsInterface<Entity> {
     @Field(() => String, {
       nullable: true,
       ...(filterableFields.length > 0
@@ -62,7 +51,45 @@ export function createConnectionArgs<Entity extends object>(
       description: `Filter ${humanizeAndPluralizeEntityName} using MongoDB query syntax.`,
     })
     filter?: FilterQuery<Entity> | null;
+  }
 
+  return CountArgs;
+}
+
+/**
+ * Creates a GraphQL Args type for connection queries.
+ *
+ * The generated Args type includes:
+ * - `first`/`last`: Number of items to return (for forward/backward pagination)
+ * - `after`/`before`: Cursor for pagination position
+ * - `query`: Search query string
+ * - `filter`: MongoDB-style filter query
+ * - `orderBy`: Sorting options
+ *
+ * Used by ConnectionBuilder.build()
+ * @template Entity - The entity type being queried
+ * @param entityName - The name to use for the GraphQL type
+ * @param fieldOptionsMap - Map of field configurations
+ * @param OrderClass - The Order input type class
+ * @param FilterScalar - The Filter scalar type
+ * @param CountArgs - Shared search and filter arguments
+ * @returns A class implementing ConnectionArgsInterface
+ * @internal
+ */
+export function createConnectionArgs<Entity extends object>(
+  entityName: string,
+  fieldOptionsMap: Map<string, ConnectionFieldOptions<Entity>>,
+  OrderClass: Type<OrderInterface<Entity>>,
+  FilterScalar: GraphQLScalarType<FilterQuery<Entity>>,
+  CountArgs = createCountArgs(entityName, fieldOptionsMap, FilterScalar),
+): Type<ConnectionArgsInterface<Entity>> {
+  const humanizeAndPluralizeEntityName = pluralize(humanize(entityName, true));
+
+  @ArgsType(`${entityName}ConnectionArgs`)
+  class ConnectionArgs
+    extends CountArgs
+    implements ConnectionArgsInterface<Entity>
+  {
     @Field(() => Int, {
       nullable: true,
       description: `Returns up to the first \`n\` elements from the list. Use a value from 1 to ${String(MAX_CONNECTION_PAGE_SIZE)}.`,

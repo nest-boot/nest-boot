@@ -1,14 +1,12 @@
 import {
   Args,
   ID,
-  Info,
   Parent,
   Query,
   ResolveField,
   Resolver,
 } from "@nest-boot/graphql";
 import { type ConnectionArgsInterface } from "@nest-boot/graphql-connection";
-import { type GraphQLResolveInfo } from "graphql";
 
 import { SelectedWorkspace } from "../../workspace/decorators/selected-workspace.decorator.js";
 import { Workspace } from "../../workspace/entities/workspace.entity.js";
@@ -47,7 +45,6 @@ export class WorkspaceApiKeyConnectionResolver {
    * Paginates credentials across members of the selected workspace.
    * @param workspace - The workspace that scopes this operation.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated API key metadata with credential hashes omitted.
    */
   @Query(() => WorkspaceApiKeyConnection)
@@ -55,12 +52,10 @@ export class WorkspaceApiKeyConnectionResolver {
     @SelectedWorkspace() workspace: Workspace,
     @Args({ type: () => WorkspaceApiKeyConnectionArgs })
     args: ConnectionArgsInterface<ApiKey>,
-    @Info() info?: GraphQLResolveInfo,
   ) {
     return await this.apiKeyService.getWorkspaceApiKeyConnection(
       workspace,
       args,
-      info,
     );
   }
 }

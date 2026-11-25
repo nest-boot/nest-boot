@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 
 import { ref, Reference } from "@mikro-orm/core";
-import {
-  ConnectionManager,
-  TotalCountRelation,
-} from "@nest-boot/graphql-connection";
+import { ConnectionManager } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 
@@ -56,8 +53,6 @@ describe("API-key management", () => {
               startCursor: null,
               endCursor: null,
             },
-            totalCount: 0,
-            totalCountRelation: TotalCountRelation.EQ,
           });
         await service.getWorkspaceApiKeyConnection(
           createTestWorkspace(),
@@ -65,7 +60,12 @@ describe("API-key management", () => {
           undefined,
           member,
         );
-        expect(find).toHaveBeenCalledWith(
+        await service.getWorkspaceApiKeyConnection(
+          createTestWorkspace(),
+          { first: 10 },
+          member,
+        );
+        const expectedArgs = [
           WorkspaceApiKeyConnection,
           { first: 10 },
           expect.objectContaining({
@@ -75,7 +75,9 @@ describe("API-key management", () => {
             }),
             exclude: ["key"],
           }),
-        );
+        ] as const;
+        expect(find).toHaveBeenNthCalledWith(1, ...expectedArgs);
+        expect(find).toHaveBeenNthCalledWith(2, ...expectedArgs);
         const foreign = createTestWorkspaceMember();
         foreign.workspace = ref(
           Workspace,
@@ -85,11 +87,10 @@ describe("API-key management", () => {
           service.getWorkspaceApiKeyConnection(
             createTestWorkspace(),
             { first: 10 },
-            undefined,
             foreign,
           ),
         ).rejects.toThrow("selected workspace");
-        expect(find).toHaveBeenCalledOnce();
+        expect(find).toHaveBeenCalledTimes(2);
       },
     );
 
@@ -613,7 +614,7 @@ describe("API-key management", () => {
           });
           const result = {
             edges: [{ cursor: "cursor", node: key }],
-            totalCount: 2,
+
             pageInfo: { hasNextPage: true, endCursor: "cursor" },
           };
           vi.spyOn(ConnectionManager.prototype, "find").mockResolvedValue(
@@ -635,7 +636,6 @@ describe("API-key management", () => {
           key.revokedAt = new Date();
           await expect(read()).rejects.toThrow(ForbiddenException);
           expect(result.edges).toHaveLength(1);
-          expect(result.totalCount).toBe(2);
           expect(result.pageInfo).toEqual({
             hasNextPage: true,
             endCursor: "cursor",

@@ -148,7 +148,7 @@ describe("API-key management", () => {
           });
           const result = {
             edges: [{ cursor: "cursor", node: key }],
-            totalCount: 2,
+
             pageInfo: { hasNextPage: true, endCursor: "cursor" },
           };
           vi.spyOn(ConnectionManager.prototype, "find").mockResolvedValue(
@@ -170,7 +170,6 @@ describe("API-key management", () => {
           key.revokedAt = new Date();
           await expect(read()).rejects.toThrow(ForbiddenException);
           expect(result.edges).toHaveLength(1);
-          expect(result.totalCount).toBe(2);
           expect(result.pageInfo).toEqual({
             hasNextPage: true,
             endCursor: "cursor",

@@ -11,6 +11,8 @@ import {
   type ConnectionArgsInterface,
   ConnectionManager,
   type ConnectionResult,
+  type Count,
+  type CountArgsInterface,
 } from "@nest-boot/graphql-connection";
 import { RequestContext } from "@nest-boot/request-context";
 import {
@@ -21,11 +23,11 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { GraphQLResolveInfo } from "graphql";
 
 import { getCurrentApiKey } from "../../api-key/utils/get-current-api-key.util.js";
 import { authorize } from "../../common/utils/authorize.util.js";
 import { can } from "../../common/utils/can.util.js";
+import { getCountAuthorization } from "../../common/utils/get-count-authorization.util.js";
 import {
   assertCanGrantPermissions,
   canGrantPermissions,
@@ -119,25 +121,41 @@ export class WorkspaceMemberService {
    * Paginates members within the selected workspace and its RLS scope.
    * @param workspace - The workspace that scopes this operation.
    * @param args - Pagination, filtering, and ordering arguments.
-   * @param info - GraphQL selection information used to shape the query.
    * @returns Paginated members visible to the current principal.
    */
   async getWorkspaceMemberConnectionByWorkspace(
     workspace: Workspace,
     args: ConnectionArgsInterface<WorkspaceMember>,
-    info?: GraphQLResolveInfo,
   ): Promise<ConnectionResult<WorkspaceMember>> {
     const where = this.getWorkspaceMemberListFilter(workspace);
     const connection = await new ConnectionManager(
       this.em as SqlEntityManager,
     ).find<WorkspaceMember>(WorkspaceMemberConnection, args, {
       where,
-      ...(info && { info }),
     });
     for (const { node } of connection.edges) {
       authorize("read", node);
     }
     return connection;
+  }
+
+  /**
+   * Counts members within the selected workspace.
+   * @param workspace - The workspace that scopes the count.
+   * @param args - The search and filter arguments.
+   * @returns The bounded count of matching members.
+   */
+  async getWorkspaceMemberCount(
+    workspace: Workspace,
+    args: CountArgsInterface<WorkspaceMember>,
+  ): Promise<Count> {
+    const where = this.getWorkspaceMemberListFilter(workspace);
+    const assertMatch = getCountAuthorization("read", WorkspaceMember);
+    return await new ConnectionManager(this.em as SqlEntityManager).count(
+      WorkspaceMemberConnection,
+      args,
+      { where, assertMatch },
+    );
   }
 
   /**
