@@ -828,7 +828,7 @@ export default createRule<
       if (
         unwrapped.type === AST_NODE_TYPES.Identifier &&
         builtInJsConstructors.has(unwrapped.name) &&
-        !hasResolvedBinding(unwrapped)
+        !hasDeclaredBinding(unwrapped)
       ) {
         return null;
       }
@@ -955,6 +955,18 @@ export default createRule<
         scope.references.some(
           (reference) =>
             reference.identifier === identifier && reference.resolved !== null,
+        ),
+      );
+    };
+
+    const hasDeclaredBinding = (node: TSESTree.Node) => {
+      const identifier =
+        node.type === AST_NODE_TYPES.MemberExpression ? node.object : node;
+      return (source.scopeManager?.scopes ?? []).some((scope) =>
+        scope.references.some(
+          (reference) =>
+            reference.identifier === identifier &&
+            (reference.resolved?.defs.length ?? 0) > 0,
         ),
       );
     };

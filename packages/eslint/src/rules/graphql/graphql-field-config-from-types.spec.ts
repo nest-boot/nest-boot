@@ -944,6 +944,7 @@ enum ComputedEnum {
 const BuiltinDate = new Date();
 const PrimitiveVal = 42;
 const EmptyObj = {};
+const PlainArray = ["a"];
 const NonLiteralObj = { A: "a" };
 const DisjointEnum = { OTHER: "other" } as const;
 const SomeFn = (() => undefined) as (() => void) & { tag: string };
@@ -962,6 +963,9 @@ class BadEnums {
 
   @Field(() => EmptyObj)
   emptyVal!: string;
+
+  @Field(() => PlainArray)
+  arrayVal!: string;
 
   @Field(() => SomeFn)
   fnVal!: string;
@@ -989,6 +993,7 @@ enum ComputedEnum {
 const BuiltinDate = new Date();
 const PrimitiveVal = 42;
 const EmptyObj = {};
+const PlainArray = ["a"];
 const NonLiteralObj = { A: "a" };
 const DisjointEnum = { OTHER: "other" } as const;
 const SomeFn = (() => undefined) as (() => void) & { tag: string };
@@ -1007,6 +1012,9 @@ class BadEnums {
 
   @Field(() => String)
   emptyVal!: string;
+
+  @Field(() => String)
+  arrayVal!: string;
 
   @Field(() => String)
   fnVal!: string;
@@ -1035,6 +1043,58 @@ class BadEnums {
         { messageId: "alignFieldDecoratorWithTsType" },
         { messageId: "alignFieldDecoratorWithTsType" },
         { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+      ],
+    },
+    // Ambient built-in Object constructor and cross-enum numeric member unions are rejected
+    {
+      code: /* typescript */ `import { Field, Float, ObjectType } from "@nestjs/graphql";
+import { GraphQLJSONObject } from "graphql-type-json";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+enum Alpha {
+  X = 0,
+}
+enum Beta {
+  Y = 1,
+}
+type CrossEnum = Alpha.X | Beta.Y;
+declare const CrossScalar: GraphQLScalarType<CrossEnum>;
+@ObjectType()
+class BuiltinAndCrossEnum {
+  @Field(() => Object)
+  payload!: Record<string, unknown>;
+
+  @Field(() => CrossScalar)
+  rank!: number;
+}`,
+      output: /* typescript */ `import { Field, Float, ObjectType } from "@nestjs/graphql";
+import { GraphQLJSONObject } from "graphql-type-json";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+enum Alpha {
+  X = 0,
+}
+enum Beta {
+  Y = 1,
+}
+type CrossEnum = Alpha.X | Beta.Y;
+declare const CrossScalar: GraphQLScalarType<CrossEnum>;
+@ObjectType()
+class BuiltinAndCrossEnum {
+  @Field(() => GraphQLJSONObject)
+  payload!: Record<string, unknown>;
+
+  @Field(() => Float)
+  rank!: number;
+}`,
+      errors: [
         { messageId: "alignFieldDecoratorWithTsType" },
         { messageId: "alignFieldDecoratorWithTsType" },
       ],
