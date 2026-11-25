@@ -49,6 +49,7 @@ Source comments follow `eslint-plugin-jsdoc`'s `flat/recommended-typescript-erro
 Run focused checks first. Use the package's Vitest script or a Turborepo task:
 
 ```bash
+pnpm --filter @nest-boot/<package> typecheck
 pnpm --filter @nest-boot/<package> test
 pnpm turbo run test --filter=@nest-boot/<package> --env-mode=loose
 pnpm turbo run build --filter=@nest-boot/<package> --force
@@ -73,6 +74,7 @@ Do not run both test commands unless useful. Not every package defines every tar
 The pull request workflow runs:
 
 ```bash
+pnpm typecheck
 pnpm build:packages --force
 pnpm format:check
 pnpm lint

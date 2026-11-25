@@ -50,6 +50,50 @@
       "dependsOn": ["build"],
       "cache": false
     },
+    "check:types": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "@nest-boot/auth#check:types": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/command#check:types": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/database#check:types": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/eslint#check:types": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/graphql#check:types": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/health-check#check:types": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/mailer#check:types": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/queue#check:types": {
+      "dependsOn": ["build", "@nest-boot/schedule#build"],
+      "cache": false
+    },
+    "@nest-boot/queue-api#check:types": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/redis#check:types": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
     "typecheck": {
       "dependsOn": ["^build"],
       "cache": false

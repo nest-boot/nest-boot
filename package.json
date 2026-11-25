@@ -21,6 +21,7 @@
     "clean": "turbo run clean && rm -rf .turbo node_modules",
     "dev": "turbo run dev --filter='!@nest-boot/docs' --concurrency=100 --env-mode=loose",
     "dev:docs": "turbo run dev --filter=@nest-boot/docs --env-mode=loose",
+    "typecheck": "turbo run check:types --filter='./packages/*'",
     "test": "pnpm -r --filter './packages/**' --if-present test",
     "test:cov": "pnpm -r --filter './packages/**' --if-present test:cov",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",

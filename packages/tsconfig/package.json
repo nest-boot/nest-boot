@@ -14,6 +14,8 @@
   ],
   "scripts": {
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf coverage && rm -rf dist",
+    "typecheck": "turbo run check:types",
+    "check:types": "tsc --noEmit --tsBuildInfoFile node_modules/.cache/typecheck.tsbuildinfo",
     "test": "vitest run",
     "test:cov": "vitest run --coverage",
     "test:watch": "vitest",

@@ -44,7 +44,7 @@ describe("DatabaseModule driver integration", () => {
 
     try {
       await defaultModuleRef.init();
-      const orm = defaultModuleRef.get(MikroORM);
+      const orm = defaultModuleRef.get(MikroORM<PgliteDriver>);
 
       await orm.schema.create();
       await orm.em.execute('create schema if not exists "mastra"');
@@ -73,7 +73,7 @@ describe("DatabaseModule driver integration", () => {
 
     try {
       await overrideModuleRef.init();
-      const orm = overrideModuleRef.get(MikroORM);
+      const orm = overrideModuleRef.get(MikroORM<PgliteDriver>);
 
       await orm.schema.create();
       await orm.em.execute('create schema if not exists "mastra"');
