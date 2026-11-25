@@ -97,7 +97,7 @@ pnpm release:status
 ```
 
 Applications extending `@nest-boot/tsconfig` must install its compiler and global
-type peers: `typescript@^6`, `@types/node@^24`, and `vitest@^4.1.11 || ^5.1.1`.
+type peers: `typescript@^6`, `@types/node@^24`, and `vitest@^5.1.1`.
 
 Run `git diff --check` and inspect `git status --short` before committing. Do not include `.env` files, caches, build artifacts, coverage output, production data, or unrelated lockfile changes.
 
