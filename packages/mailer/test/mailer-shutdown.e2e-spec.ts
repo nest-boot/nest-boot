@@ -5,7 +5,7 @@ import { createInterface } from "node:readline";
 import { Test, type TestingModule } from "@nestjs/testing";
 import Mailer from "nodemailer/lib/mailer/index.js";
 
-import { MailerModule } from "../dist/mailer.module.js";
+import { MailerModule } from "../src/mailer.module.js";
 
 describe("Mailer shutdown", () => {
   afterEach(() => vi.unstubAllEnvs());

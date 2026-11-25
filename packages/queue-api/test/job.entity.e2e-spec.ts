@@ -1,6 +1,6 @@
 import { MikroORM } from "@mikro-orm/postgresql";
 
-import { entities } from "../dist/index.js";
+import { entities } from "../src/index.js";
 import { createPostgresFixture } from "./postgres.fixture.js";
 
 it("creates only the Job history table with database-generated UUIDs and bigint stream IDs", async () => {

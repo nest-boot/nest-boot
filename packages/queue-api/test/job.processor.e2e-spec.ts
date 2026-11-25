@@ -1,9 +1,9 @@
 import { MikroORM } from "@mikro-orm/postgresql";
 import { type Job } from "@nest-boot/queue";
 
-import { JobEntity, JobStatus } from "../dist/index.js";
-import { JobProcessor } from "../dist/processors/job.processor.js";
-import type { JobQueue } from "../dist/queues/job.queue.js";
+import { JobEntity, JobStatus } from "../src/index.js";
+import { JobProcessor } from "../src/processors/job.processor.js";
+import type { JobQueue } from "../src/queues/job.queue.js";
 import { createPostgresFixture } from "./postgres.fixture.js";
 
 describe("Job history persistence in PostgreSQL", () => {

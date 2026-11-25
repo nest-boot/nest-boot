@@ -8,9 +8,9 @@ import * as ts from "typescript";
 
 import rule from "../src/rules/graphql/graphql-field-config-from-types.js";
 
-const packageRoot = fileURLToPath(new URL("../", import.meta.url));
+const projectRoot = fileURLToPath(new URL("./fixtures/", import.meta.url));
 // Real re-exports let the parser and compiler verify the same symbol origins.
-const fixtureRoot = path.join(packageRoot, ".cache/graphql-imports");
+const fixtureRoot = path.join(projectRoot, ".cache/graphql-imports");
 mkdirSync(fixtureRoot, { recursive: true });
 afterAll(() => {
   rmSync(fixtureRoot, { recursive: true, force: true });
@@ -45,7 +45,7 @@ export { Field, ObjectType } from "./other.js";
 `,
 );
 
-const filename = path.join(packageRoot, "v8-autofix-fixture.ts");
+const filename = path.join(projectRoot, "v8-autofix-fixture.ts");
 const linter = new Linter();
 const config: Linter.Config[] = [
   {
@@ -56,7 +56,7 @@ const config: Linter.Config[] = [
         // verifyAndFix reparses different source snapshots in this process, including on CI.
         disallowAutomaticSingleRunInference: true,
         projectService: { allowDefaultProject: ["v8-autofix-fixture.ts"] },
-        tsconfigRootDir: packageRoot,
+        tsconfigRootDir: projectRoot,
       },
     },
     plugins: {
@@ -397,23 +397,6 @@ const options: ts.CompilerOptions = {
   target: ts.ScriptTarget.ES2023,
   skipLibCheck: true,
   types: [],
-  paths: {
-    "@mikro-orm/decorators/legacy": [
-      path.resolve(
-        packageRoot,
-        "../mikro-orm/node_modules/@mikro-orm/decorators/legacy/index.d.ts",
-      ),
-    ],
-    "@mikro-orm/core": [
-      path.resolve(
-        packageRoot,
-        "../mikro-orm/node_modules/@mikro-orm/core/index.d.ts",
-      ),
-    ],
-    "@nest-boot/graphql": [
-      path.resolve(packageRoot, "../graphql/dist/index.d.ts"),
-    ],
-  },
 };
 const sourceFiles = new Map<string, ts.SourceFile>();
 let previousProgram: ts.Program | undefined;

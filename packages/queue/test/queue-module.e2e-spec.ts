@@ -1,7 +1,7 @@
 import { Test } from "@nestjs/testing";
 
-import { QueueManager } from "../dist/queue.manager.js";
-import { QueueModule } from "../dist/queue.module.js";
+import { QueueManager } from "../src/queue.manager.js";
+import { QueueModule } from "../src/queue.module.js";
 
 it("initializes Redis queue infrastructure without database, GraphQL, auth or schedule modules", async () => {
   const app = await Test.createTestingModule({

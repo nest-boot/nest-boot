@@ -1,8 +1,8 @@
+// Exercise the published ESM entry; test:e2e builds it before running.
+import { GraphQLModule, Query, Resolver } from "@nest-boot/graphql";
 import { type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-// Exercise the published ESM entry; test:e2e builds it before running.
-import { GraphQLModule, Query, Resolver } from "../dist/index.js";
 import { type GraphQLModuleOptions } from "../src/graphql-module-options.interface.js";
 
 @Resolver()

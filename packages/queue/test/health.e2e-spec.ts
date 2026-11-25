@@ -11,7 +11,7 @@ import {
   Queue,
   QueueHealthIndicator,
   QueueModule,
-} from "../dist/index.js";
+} from "../src/index.js";
 import { createRedisFixture } from "./redis.fixture.js";
 
 describe("Queue health HTTP integration", () => {

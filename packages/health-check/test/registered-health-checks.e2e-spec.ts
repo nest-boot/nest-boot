@@ -9,7 +9,7 @@ import {
   HealthCheckModule,
   HealthCheckRegistry,
   HealthCheckService,
-} from "../dist/index.js";
+} from "../src/index.js";
 
 describe("registered health checks", () => {
   let module: TestingModule;

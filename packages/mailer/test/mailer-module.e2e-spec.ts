@@ -4,7 +4,7 @@ import type JSONTransport from "nodemailer/lib/json-transport/index.js";
 import Mailer from "nodemailer/lib/mailer/index.js";
 import SMTPConnection from "nodemailer/lib/smtp-connection/index.js";
 
-import { MailerModule } from "../dist/mailer.module.js";
+import { MailerModule } from "../src/mailer.module.js";
 
 @Injectable()
 class MailerConsumer {

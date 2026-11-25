@@ -1,0 +1,14 @@
+{
+  "name": "@nest-boot-tests/eslint-consumer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules"
+  },
+  "devDependencies": {
+    "@nest-boot/database": "workspace:^",
+    "@nest-boot/database-crypt": "workspace:^",
+    "@nest-boot/database-hash": "workspace:^",
+    "@nest-boot/graphql": "workspace:^"
+  }
+}

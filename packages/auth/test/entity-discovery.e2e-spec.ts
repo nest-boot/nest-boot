@@ -1,7 +1,7 @@
 import { MikroORM } from "@mikro-orm/core";
 import { PgliteDriver } from "@mikro-orm/pglite";
 
-import { entities, workspaceEntities } from "../dist/index.js";
+import { entities, workspaceEntities } from "../src/index.js";
 import {
   Account,
   ApiKey,
@@ -10,7 +10,7 @@ import {
   Workspace,
   WorkspaceInvitation,
   WorkspaceMember,
-} from "../dist/index.js";
+} from "../src/index.js";
 
 describe("built-in auth entity discovery", () => {
   it("discovers concrete relations without AuthModule initialization or application entity declarations", async () => {

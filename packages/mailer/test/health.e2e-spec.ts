@@ -11,7 +11,7 @@ import {
 } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 
-import { Mailer, MailerHealthIndicator, MailerModule } from "../dist/index.js";
+import { Mailer, MailerHealthIndicator, MailerModule } from "../src/index.js";
 import { createSmtpServer } from "./helpers/smtp-server.js";
 
 @Injectable()

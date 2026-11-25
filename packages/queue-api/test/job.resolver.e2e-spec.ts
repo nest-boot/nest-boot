@@ -30,7 +30,7 @@ import {
   JobService,
   JobStatus,
   QueueVisible,
-} from "../dist/index.js";
+} from "../src/index.js";
 import { createPostgresFixture } from "./postgres.fixture.js";
 
 const id = (value: number) =>

@@ -10,7 +10,7 @@ import {
   Queue,
   QueueManager,
   QueueModule,
-} from "../dist/index.js";
+} from "../src/index.js";
 import { createRedisFixture } from "./redis.fixture.js";
 
 describe("Redis job schema contracts", () => {

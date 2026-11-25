@@ -1056,6 +1056,21 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11
 
+  packages/eslint/test/fixtures:
+    devDependencies:
+      '@nest-boot/database':
+        specifier: workspace:^
+        version: link:../../../database
+      '@nest-boot/database-crypt':
+        specifier: workspace:^
+        version: link:../../../database-crypt
+      '@nest-boot/database-hash':
+        specifier: workspace:^
+        version: link:../../../database-hash
+      '@nest-boot/graphql':
+        specifier: workspace:^
+        version: link:../../../graphql
+
   packages/graphql:
     devDependencies:
       '@apollo/server':
@@ -2050,6 +2065,27 @@ importers:
       vitest:
         specifier: ^4.1.11
         version: 4.1.11
+      zod:
+        specifier: ^4.3.6
+        version: 4.6.5
+
+  packages/queue/test/src:
+    devDependencies:
+      '@nest-boot/command':
+        specifier: workspace:^
+        version: link:../../../command
+      '@nest-boot/queue':
+        specifier: workspace:^
+        version: link:../..
+      '@nest-boot/schedule':
+        specifier: workspace:^
+        version: link:../../../schedule
+      '@nest-boot/tsconfig':
+        specifier: workspace:^
+        version: link:../../../tsconfig
+      '@nestjs/common':
+        specifier: ^12.0.1
+        version: 12.0.1
       zod:
         specifier: ^4.3.6
         version: 4.6.5

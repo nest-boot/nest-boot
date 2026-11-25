@@ -1,3 +1,8 @@
+// Exercise the published ESM entry and TypeScript's constructor metadata.
+import {
+  HealthCheckModule,
+  HealthCheckRegistry,
+} from "@nest-boot/health-check";
 import {
   type MiddlewareFunction,
   MiddlewareManager,
@@ -15,9 +20,6 @@ import {
 } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
-
-// Exercise the published ESM entry and TypeScript's constructor metadata.
-import { HealthCheckModule, HealthCheckRegistry } from "../dist/index.js";
 
 @Injectable()
 class FeatureChecks implements OnModuleInit {

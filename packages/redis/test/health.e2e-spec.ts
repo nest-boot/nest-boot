@@ -8,7 +8,7 @@ import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { Redis } from "ioredis";
 
-import { RedisHealthIndicator, RedisModule } from "../dist/index.js";
+import { RedisHealthIndicator, RedisModule } from "../src/index.js";
 
 describe("Redis health HTTP integration", () => {
   let app: INestApplication;

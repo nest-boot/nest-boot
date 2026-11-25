@@ -1,6 +1,5 @@
+import { Interval } from "@nest-boot/schedule";
 import { Injectable } from "@nestjs/common";
-
-import { Interval } from "../../../../../schedule/dist/index.js";
 
 @Injectable()
 export class TasksService {

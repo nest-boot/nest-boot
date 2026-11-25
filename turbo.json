@@ -50,12 +50,24 @@
       "dependsOn": ["build"],
       "cache": false
     },
-    "check:types": {
-      "dependsOn": ["^build"],
+    "@nest-boot/eslint#test": {
+      "dependsOn": ["build", "@nest-boot-tests/eslint-consumer#build"],
       "cache": false
     },
-    "@nest-boot/auth#check:types": {
-      "dependsOn": ["build"],
+    "@nest-boot/eslint#test:cov": {
+      "dependsOn": ["build", "@nest-boot-tests/eslint-consumer#build"],
+      "cache": false
+    },
+    "@nest-boot/eslint#test:e2e": {
+      "dependsOn": ["build", "@nest-boot-tests/eslint-consumer#build"],
+      "cache": false
+    },
+    "@nest-boot/queue#test:e2e": {
+      "dependsOn": ["build", "@nest-boot-tests/queue-cli#build"],
+      "cache": false
+    },
+    "check:types": {
+      "dependsOn": ["^build"],
       "cache": false
     },
     "@nest-boot/command#check:types": {
@@ -78,20 +90,8 @@
       "dependsOn": ["build"],
       "cache": false
     },
-    "@nest-boot/mailer#check:types": {
-      "dependsOn": ["build"],
-      "cache": false
-    },
     "@nest-boot/queue#check:types": {
-      "dependsOn": ["build", "@nest-boot/schedule#build"],
-      "cache": false
-    },
-    "@nest-boot/queue-api#check:types": {
-      "dependsOn": ["build"],
-      "cache": false
-    },
-    "@nest-boot/redis#check:types": {
-      "dependsOn": ["build"],
+      "dependsOn": ["@nest-boot-tests/queue-cli#build"],
       "cache": false
     },
     "typecheck": {

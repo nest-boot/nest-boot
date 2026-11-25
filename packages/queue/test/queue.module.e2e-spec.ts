@@ -1,6 +1,6 @@
+import { QueueManager } from "@nest-boot/queue";
 import { Test } from "@nestjs/testing";
 
-import { QueueManager } from "../dist/index.js";
 import { createRedisFixture } from "./redis.fixture.js";
 import { AppModule } from "./src/app.module.js";
 import { ReportsQueue } from "./src/app/worker/reports.queue.js";
