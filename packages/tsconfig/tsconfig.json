@@ -1,5 +1,5 @@
 {
-  "extends": ["./base.json", "./typecheck.json"],
+  "extends": "./base.json",
   "compilerOptions": {
     "rootDir": "."
   },

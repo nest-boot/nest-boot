@@ -7,8 +7,7 @@
     "declaration": true,
     "removeComments": false,
     "rootDir": "${configDir}/src",
-    "outDir": "${configDir}/dist",
-    "tsBuildInfoFile": "${configDir}/tsconfig.build.tsbuildinfo"
+    "outDir": "${configDir}/dist"
   },
   "include": ["${configDir}/src/**/*"],
   "exclude": [

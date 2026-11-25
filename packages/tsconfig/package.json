@@ -10,8 +10,7 @@
   "files": [
     "app.json",
     "base.json",
-    "library.json",
-    "typecheck.json"
+    "library.json"
   ],
   "scripts": {
     "clean": "rm -rf dist coverage",
@@ -45,7 +44,6 @@
     "./app.json": "./app.json",
     "./base.json": "./base.json",
     "./library.json": "./library.json",
-    "./typecheck.json": "./typecheck.json",
     "./package.json": "./package.json"
   }
 }

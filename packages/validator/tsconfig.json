@@ -1,5 +1,5 @@
 {
-  "extends": ["./tsconfig.build.json", "@nest-boot/tsconfig/typecheck.json"],
+  "extends": "./tsconfig.build.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "."

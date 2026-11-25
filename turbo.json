@@ -4,7 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "*.tsbuildinfo"],
+      "outputs": ["dist/**", "!dist/tsconfig.tsbuildinfo", "*.tsbuildinfo"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "env": ["NODE_ENV"]
     },

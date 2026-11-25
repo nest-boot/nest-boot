@@ -17,7 +17,10 @@ const packageRoot = resolve(import.meta.dirname, "..");
 
 const temporaryProjects: string[] = [];
 
-function resolveConfig(...presets: string[]): ts.ParsedCommandLine {
+function resolveConfig(
+  preset: string,
+  configName = "tsconfig.json",
+): ts.ParsedCommandLine {
   const projectRoot = mkdtempSync(join(tmpdir(), "nest-boot-tsconfig-"));
   temporaryProjects.push(projectRoot);
   mkdirSync(join(projectRoot, "src"));
@@ -28,14 +31,18 @@ function resolveConfig(...presets: string[]): ts.ParsedCommandLine {
   );
   writeFileSync(join(projectRoot, "src", "index.spec.ts"), "export {};\n");
   writeFileSync(join(projectRoot, "test", "fixture.ts"), "export {};\n");
-  const configPath = join(projectRoot, "tsconfig.json");
+  const configPath = join(projectRoot, configName);
   writeFileSync(
     configPath,
     JSON.stringify({
-      extends: presets.map((name) => join(packageRoot, name)),
+      extends: join(packageRoot, preset),
       compilerOptions: { types: [] },
     }),
   );
+  return parseConfig(configPath);
+}
+
+function parseConfig(configPath: string): ts.ParsedCommandLine {
   const diagnostics: ts.Diagnostic[] = [];
   const parsed = ts.getParsedCommandLineOfConfigFile(
     configPath,
@@ -48,7 +55,7 @@ function resolveConfig(...presets: string[]): ts.ParsedCommandLine {
   );
   expect(diagnostics).toEqual([]);
   if (!parsed) {
-    throw new Error(`Failed to resolve ${presets.join(", ")}`);
+    throw new Error(`Failed to resolve ${configPath}`);
   }
   return parsed;
 }
@@ -72,9 +79,7 @@ describe("Nest CLI 12 ESM presets", () => {
     const parsed = resolveConfig("app.json");
     const projectRoot = currentProjectRoot();
     expect(parsed.options.outDir).toBe(join(projectRoot, "dist"));
-    expect(parsed.options.tsBuildInfoFile).toBe(
-      join(projectRoot, "tsconfig.tsbuildinfo"),
-    );
+    expect(parsed.options.tsBuildInfoFile).toBeUndefined();
     expect(parsed.options.module).toBe(ts.ModuleKind.NodeNext);
     expect(parsed.options.moduleResolution).toBe(
       ts.ModuleResolutionKind.NodeNext,
@@ -83,36 +88,38 @@ describe("Nest CLI 12 ESM presets", () => {
     expect(parsed.options.strictPropertyInitialization).toBe(false);
     expect(parsed.options.removeComments).toBe(true);
   });
-  it("writes no-emit state in the consuming project's own cache", () => {
-    const parsed = resolveConfig("library.json", "typecheck.json");
+  it("uses separate default build info for library checks and builds", () => {
+    resolveConfig("library.json", "tsconfig.build.json");
     const projectRoot = currentProjectRoot();
-    const cache = join(
-      projectRoot,
-      "node_modules/.cache/typecheck.tsbuildinfo",
+    const checkConfig = join(projectRoot, "tsconfig.json");
+    writeFileSync(
+      checkConfig,
+      JSON.stringify({
+        extends: "./tsconfig.build.json",
+        compilerOptions: { rootDir: ".", noEmit: true },
+      }),
     );
-    expect(parsed.options.tsBuildInfoFile).toBe(cache);
-
+    const parsed = parseConfig(checkConfig);
     const program = ts.createIncrementalProgram({
       rootNames: parsed.fileNames,
-      options: { ...parsed.options, noEmit: true },
+      options: parsed.options,
     });
     expect(program.emit().diagnostics).toEqual([]);
-    expect(existsSync(cache)).toBe(true);
-    expect(existsSync(join(projectRoot, "dist"))).toBe(false);
+    expect(readdirSync(join(projectRoot, "dist"))).toEqual([
+      "tsconfig.tsbuildinfo",
+    ]);
     expect(existsSync(join(projectRoot, "tsconfig.build.tsbuildinfo"))).toBe(
       false,
     );
   });
   it("matches the generated library boundaries in the consuming project", () => {
-    const parsed = resolveConfig("library.json");
+    const parsed = resolveConfig("library.json", "tsconfig.build.json");
     const projectRoot = currentProjectRoot();
     expect(parsed.options.composite).toBe(true);
     expect(parsed.options.removeComments).toBe(false);
     expect(parsed.options.rootDir).toBe(join(projectRoot, "src"));
     expect(parsed.options.outDir).toBe(join(projectRoot, "dist"));
-    expect(parsed.options.tsBuildInfoFile).toBe(
-      join(projectRoot, "tsconfig.build.tsbuildinfo"),
-    );
+    expect(parsed.options.tsBuildInfoFile).toBeUndefined();
     expect(parsed.fileNames).toEqual([join(projectRoot, "src", "index.ts")]);
 
     const program = ts.createIncrementalProgram({
