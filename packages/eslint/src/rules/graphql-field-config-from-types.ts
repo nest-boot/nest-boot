@@ -1,5 +1,21 @@
-import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
-import type { RuleFix, RuleFixer } from "@typescript-eslint/utils/ts-eslint";
+import {
+  AST_NODE_TYPES,
+  ASTUtils,
+  ESLintUtils,
+  TSESTree,
+} from "@typescript-eslint/utils";
+import {
+  type RuleFix,
+  type RuleFixer,
+  Scope,
+} from "@typescript-eslint/utils/ts-eslint";
+import {
+  intersectionConstituents,
+  isObjectFlagSet,
+  isSymbolFlagSet,
+  isTypeFlagSet,
+  unionConstituents,
+} from "ts-api-utils";
 import * as ts from "typescript";
 
 import { createRule } from "../utils/createRule.js";
@@ -186,23 +202,15 @@ export default createRule<
       return null;
     };
 
-    const parserServices = source.parserServices;
-    const program = parserServices?.program;
-    const esTreeNodeToTSNodeMap = parserServices?.esTreeNodeToTSNodeMap;
+    const parserServices = ESLintUtils.getParserServices(context, true);
+    const program = parserServices.program;
+    const esTreeNodeToTSNodeMap = parserServices.esTreeNodeToTSNodeMap;
     const checker = program?.getTypeChecker();
 
-    const hasNullishFlag = (type: ts.Type): boolean => {
-      if ((type.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) !== 0) {
-        return true;
-      }
-      return (
-        type.isUnion() &&
-        type.types.some(
-          (member) =>
-            (member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) !== 0,
-        )
+    const hasNullishFlag = (type: ts.Type): boolean =>
+      unionConstituents(type).some((member) =>
+        isTypeFlagSet(member, ts.TypeFlags.Null | ts.TypeFlags.Undefined),
       );
-    };
 
     const stripExplicitNullish = (
       typeChecker: ts.TypeChecker,
@@ -213,13 +221,13 @@ export default createRule<
         // narrows an unconstrained type parameter T into `T & {}`.
         return type;
       }
-      const hasTypeParam = type.types.some(
-        (member) => (member.flags & ts.TypeFlags.TypeParameter) !== 0,
+      const hasTypeParam = type.types.some((member) =>
+        isTypeFlagSet(member, ts.TypeFlags.TypeParameter),
       );
       if (hasTypeParam) {
         const remaining = type.types.filter(
           (member) =>
-            (member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) === 0,
+            !isTypeFlagSet(member, ts.TypeFlags.Null | ts.TypeFlags.Undefined),
         );
         if (remaining.length === 1) {
           return remaining[0];
@@ -264,31 +272,24 @@ export default createRule<
     };
 
     const isEnumLikeType = (type: ts.Type): boolean => {
-      if ((type.flags & ts.TypeFlags.EnumLike) !== 0) {
-        return true;
-      }
+      const parts = unionConstituents(type);
       return (
-        type.isUnion() &&
-        type.types.length > 0 &&
-        type.types.every(
-          (member) => (member.flags & ts.TypeFlags.EnumLike) !== 0,
-        )
+        parts.length > 0 &&
+        parts.every((member) => isTypeFlagSet(member, ts.TypeFlags.EnumLike))
       );
     };
 
-    const isTypeOnlyImportedName = (name: string): boolean => {
-      return source.ast.body.some(
-        (stmt) =>
-          stmt.type === AST_NODE_TYPES.ImportDeclaration &&
-          stmt.specifiers.some(
-            (spec) =>
-              spec.local.name === name &&
-              (stmt.importKind === "type" ||
-                (spec.type === AST_NODE_TYPES.ImportSpecifier &&
-                  spec.importKind === "type")),
-          ),
+    const isTypeOnlyImportedName = (name: string): boolean =>
+      (
+        ASTUtils.findVariable(source.getScope(importLocation), name)?.defs ?? []
+      ).some(
+        (def) =>
+          def.type === Scope.DefinitionType.ImportBinding &&
+          def.parent.type === AST_NODE_TYPES.ImportDeclaration &&
+          (def.parent.importKind === "type" ||
+            (def.node.type === AST_NODE_TYPES.ImportSpecifier &&
+              def.node.importKind === "type")),
       );
-    };
 
     const classifyHomogeneousScalarFromTsType = (
       type: ts.Type,
@@ -296,11 +297,10 @@ export default createRule<
       if (isEnumLikeType(type)) {
         return null;
       }
+      const parts = unionConstituents(type);
       const isHomogeneous = (flag: ts.TypeFlags) =>
-        type.isUnion()
-          ? type.types.length > 0 &&
-            type.types.every((member) => (member.flags & flag) !== 0)
-          : (type.flags & flag) !== 0;
+        parts.length > 0 &&
+        parts.every((member) => isTypeFlagSet(member, flag));
       if (isHomogeneous(ts.TypeFlags.BooleanLike)) {
         return "Boolean";
       }
@@ -319,7 +319,7 @@ export default createRule<
     ): boolean => {
       return (
         type.aliasSymbol?.name === "Record" ||
-        ((type.flags & ts.TypeFlags.Object) !== 0 &&
+        (isTypeFlagSet(type, ts.TypeFlags.Object) &&
           !hasClassSymbol(type) &&
           typeChecker.getIndexTypeOfType(type, ts.IndexKind.String) !==
             undefined &&
@@ -349,10 +349,10 @@ export default createRule<
       }
       const rawTargetSym = elemType.aliasSymbol ?? elemType.symbol;
       const targetSym =
-        rawTargetSym && rawTargetSym.flags & ts.SymbolFlags.Alias
+        rawTargetSym && isSymbolFlagSet(rawTargetSym, ts.SymbolFlags.Alias)
           ? typeChecker.getAliasedSymbol(rawTargetSym)
           : rawTargetSym;
-      if (targetSym && (targetSym.flags & ts.SymbolFlags.Value) !== 0) {
+      if (targetSym && isSymbolFlagSet(targetSym, ts.SymbolFlags.Value)) {
         const resolvedInScope = typeChecker.resolveName(
           targetSym.name,
           location,
@@ -360,7 +360,8 @@ export default createRule<
           false,
         );
         const unaliasedInScope =
-          resolvedInScope && resolvedInScope.flags & ts.SymbolFlags.Alias
+          resolvedInScope &&
+          isSymbolFlagSet(resolvedInScope, ts.SymbolFlags.Alias)
             ? typeChecker.getAliasedSymbol(resolvedInScope)
             : resolvedInScope;
         if (
@@ -751,7 +752,7 @@ export default createRule<
       }
       const rawSym = type.aliasSymbol ?? type.symbol;
       const sym =
-        rawSym && rawSym.flags & ts.SymbolFlags.Alias && checker
+        rawSym && isSymbolFlagSet(rawSym, ts.SymbolFlags.Alias) && checker
           ? checker.getAliasedSymbol(rawSym)
           : rawSym;
       const declarations = sym?.getDeclarations();
@@ -776,30 +777,24 @@ export default createRule<
       return current;
     };
 
-    const isUnusableType = (type: ts.Type): boolean => {
-      return (
-        (type.flags &
-          (ts.TypeFlags.Any |
-            ts.TypeFlags.Unknown |
-            ts.TypeFlags.Never |
-            ts.TypeFlags.Void)) !==
-        0
+    const isUnusableType = (type: ts.Type): boolean =>
+      isTypeFlagSet(
+        type,
+        ts.TypeFlags.Any |
+          ts.TypeFlags.Unknown |
+          ts.TypeFlags.Never |
+          ts.TypeFlags.Void,
       );
-    };
 
     const hasBroadNumberMember = (type: ts.Type): boolean =>
-      type.isUnion()
-        ? type.types.some(
-            (member) => (member.flags & ts.TypeFlags.Number) !== 0,
-          )
-        : (type.flags & ts.TypeFlags.Number) !== 0;
+      unionConstituents(type).some((member) =>
+        isTypeFlagSet(member, ts.TypeFlags.Number),
+      );
 
     const hasEnumLikeMember = (type: ts.Type): boolean =>
-      type.isUnion()
-        ? type.types.some(
-            (member) => (member.flags & ts.TypeFlags.EnumLike) !== 0,
-          )
-        : (type.flags & ts.TypeFlags.EnumLike) !== 0;
+      unionConstituents(type).some((member) =>
+        isTypeFlagSet(member, ts.TypeFlags.EnumLike),
+      );
 
     const areTypesEquivalent = (
       typeChecker: ts.TypeChecker,
@@ -808,8 +803,8 @@ export default createRule<
       visited = new Map<ts.Type, Set<ts.Type>>(),
     ): boolean => {
       if (
-        (a.flags & ts.TypeFlags.Any) !== 0 ||
-        (b.flags & ts.TypeFlags.Any) !== 0
+        isTypeFlagSet(a, ts.TypeFlags.Any) ||
+        isTypeFlagSet(b, ts.TypeFlags.Any)
       ) {
         return false;
       }
@@ -876,17 +871,15 @@ export default createRule<
         );
       }
       if (
-        (a.flags & (ts.TypeFlags.Object | ts.TypeFlags.Intersection)) !== 0 &&
-        (b.flags & (ts.TypeFlags.Object | ts.TypeFlags.Intersection)) !== 0
+        isTypeFlagSet(a, ts.TypeFlags.Object | ts.TypeFlags.Intersection) &&
+        isTypeFlagSet(b, ts.TypeFlags.Object | ts.TypeFlags.Intersection)
       ) {
         const refA =
-          a.flags & ts.TypeFlags.Object
-            ? (a as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference
-            : 0;
+          isTypeFlagSet(a, ts.TypeFlags.Object) &&
+          isObjectFlagSet(a as ts.ObjectType, ts.ObjectFlags.Reference);
         const refB =
-          b.flags & ts.TypeFlags.Object
-            ? (b as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference
-            : 0;
+          isTypeFlagSet(b, ts.TypeFlags.Object) &&
+          isObjectFlagSet(b as ts.ObjectType, ts.ObjectFlags.Reference);
         if (refA && refB && a.symbol && a.symbol === b.symbol) {
           const argsA = typeChecker.getTypeArguments(a as ts.TypeReference);
           const argsB = typeChecker.getTypeArguments(b as ts.TypeReference);
@@ -952,9 +945,9 @@ export default createRule<
       return true;
     };
 
-    const hasClassSymbol = (type: ts.Type): boolean => {
-      return Boolean(type.symbol && type.symbol.flags & ts.SymbolFlags.Class);
-    };
+    const hasClassSymbol = (type: ts.Type): boolean =>
+      type.symbol !== undefined &&
+      isSymbolFlagSet(type.symbol, ts.SymbolFlags.Class);
 
     const isPrimitiveEnumValueType = (
       typeChecker: ts.TypeChecker,
@@ -972,10 +965,12 @@ export default createRule<
         );
       }
       if (
-        type.flags &
-        (ts.TypeFlags.StringLike |
-          ts.TypeFlags.NumberLike |
-          ts.TypeFlags.EnumLike)
+        isTypeFlagSet(
+          type,
+          ts.TypeFlags.StringLike |
+            ts.TypeFlags.NumberLike |
+            ts.TypeFlags.EnumLike,
+        )
       ) {
         return true;
       }
@@ -988,26 +983,18 @@ export default createRule<
     const collectLiteralValues = (
       type: ts.Type,
     ): Set<string | number> | null => {
-      if (type.isUnion()) {
-        if (type.types.length === 0) {
+      const parts = unionConstituents(type);
+      if (parts.length === 0) {
+        return null;
+      }
+      const values = new Set<string | number>();
+      for (const part of parts) {
+        if (!part.isStringLiteral() && !part.isNumberLiteral()) {
           return null;
         }
-        const values = new Set<string | number>();
-        for (const member of type.types) {
-          const memberValues = collectLiteralValues(member);
-          if (!memberValues) {
-            return null;
-          }
-          for (const value of memberValues) {
-            values.add(value);
-          }
-        }
-        return values;
+        values.add(part.value);
       }
-      if (type.isStringLiteral() || type.isNumberLiteral()) {
-        return new Set([type.value]);
-      }
-      return null;
+      return values;
     };
 
     const literalSetsEqual = (
@@ -1036,8 +1023,8 @@ export default createRule<
       visited.add(type);
       if (
         type.symbol?.name === "GraphQLScalarType" &&
-        type.flags & ts.TypeFlags.Object &&
-        (type as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference
+        isTypeFlagSet(type, ts.TypeFlags.Object) &&
+        isObjectFlagSet(type as ts.ObjectType, ts.ObjectFlags.Reference)
       ) {
         const internal = typeChecker.getTypeArguments(
           type as ts.TypeReference,
@@ -1107,7 +1094,7 @@ export default createRule<
       }
 
       // Constructor-like intersections such as MikroORM's EntityClass<T> = Function & { prototype: T }
-      const members = type.isIntersection() ? type.types : [type];
+      const members = intersectionConstituents(type);
       const isFunctionLike =
         typeChecker.getSignaturesOfType(type, ts.SignatureKind.Call).length >
           0 || members.some((member) => member.symbol?.name === "Function");
@@ -1139,7 +1126,7 @@ export default createRule<
       node: ts.Node,
     ): ts.Symbol | undefined => {
       const raw = typeChecker.getSymbolAtLocation(node);
-      return raw && raw.flags & ts.SymbolFlags.Alias
+      return raw && isSymbolFlagSet(raw, ts.SymbolFlags.Alias)
         ? typeChecker.getAliasedSymbol(raw)
         : raw;
     };
@@ -1554,28 +1541,19 @@ export default createRule<
     const decoratorName = (name: TSESTree.Node) =>
       getImportedName(source, graphqlModules, name, filename);
 
-    const hasResolvedBinding = (node: TSESTree.Node) => {
+    const findRootVariable = (node: TSESTree.Node) => {
       const identifier =
         node.type === AST_NODE_TYPES.MemberExpression ? node.object : node;
-      return (source.scopeManager?.scopes ?? []).some((scope) =>
-        scope.references.some(
-          (reference) =>
-            reference.identifier === identifier && reference.resolved !== null,
-        ),
-      );
+      return identifier.type === AST_NODE_TYPES.Identifier
+        ? ASTUtils.findVariable(source.getScope(identifier), identifier)
+        : null;
     };
 
-    const hasDeclaredBinding = (node: TSESTree.Node) => {
-      const identifier =
-        node.type === AST_NODE_TYPES.MemberExpression ? node.object : node;
-      return (source.scopeManager?.scopes ?? []).some((scope) =>
-        scope.references.some(
-          (reference) =>
-            reference.identifier === identifier &&
-            (reference.resolved?.defs.length ?? 0) > 0,
-        ),
-      );
-    };
+    const hasResolvedBinding = (node: TSESTree.Node) =>
+      findRootVariable(node) !== null;
+
+    const hasDeclaredBinding = (node: TSESTree.Node) =>
+      (findRootVariable(node)?.defs.length ?? 0) > 0;
 
     const ensureImports = (
       fixer: RuleFixer,
@@ -1650,8 +1628,8 @@ export default createRule<
       const prop = optionsArg.properties.findLast(
         (item) =>
           item.type === AST_NODE_TYPES.Property &&
-          item.key.type === AST_NODE_TYPES.Identifier &&
-          item.key.name === "nullable",
+          !item.computed &&
+          ASTUtils.getPropertyName(item) === "nullable",
       );
       if (prop?.type !== AST_NODE_TYPES.Property) {
         return null;
@@ -1733,10 +1711,7 @@ export default createRule<
             existingOptions.push(source.getText(prop));
             return;
           }
-          if (
-            prop.key.type === AST_NODE_TYPES.Identifier &&
-            prop.key.name === "nullable"
-          ) {
+          if (!prop.computed && ASTUtils.getPropertyName(prop) === "nullable") {
             hasNullableProperty = true;
             if (expectedNullableText) {
               existingOptions.push(expectedNullableText);

@@ -1,6 +1,7 @@
 import {
   AST_NODE_TYPES,
   ASTUtils,
+  ESLintUtils,
   type TSESTree,
 } from "@typescript-eslint/utils";
 import { Scope } from "@typescript-eslint/utils/ts-eslint";
@@ -28,12 +29,13 @@ export default createRule<[], "processorName">({
   create(context) {
     const source = context.sourceCode;
 
+    const parserServices = ESLintUtils.getParserServices(context, true);
+
     const queueClassName = (node: TSESTree.Node): string | null => {
-      const { program, esTreeNodeToTSNodeMap } = source.parserServices ?? {};
-      if (program && esTreeNodeToTSNodeMap) {
-        const symbol = program
+      if (parserServices.program) {
+        const symbol = parserServices.program
           .getTypeChecker()
-          .getTypeAtLocation(esTreeNodeToTSNodeMap.get(node))
+          .getTypeAtLocation(parserServices.esTreeNodeToTSNodeMap.get(node))
           .getSymbol();
         const declaration = symbol
           ?.getDeclarations()
@@ -81,19 +83,7 @@ export default createRule<[], "processorName">({
         ) {
           return null;
         }
-        if (
-          !node.computed &&
-          node.property.type === AST_NODE_TYPES.Identifier
-        ) {
-          return node.property.name;
-        }
-        if (
-          node.computed &&
-          node.property.type === AST_NODE_TYPES.Literal &&
-          typeof node.property.value === "string"
-        ) {
-          return node.property.value;
-        }
+        return ASTUtils.getPropertyName(node);
       }
       return null;
     };

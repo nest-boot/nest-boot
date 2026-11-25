@@ -114,14 +114,7 @@ function extractReferenceParts(node: TSESTree.Node): {
     node.type === AST_NODE_TYPES.MemberExpression &&
     node.object.type === AST_NODE_TYPES.Identifier
   ) {
-    const member =
-      !node.computed && node.property.type === AST_NODE_TYPES.Identifier
-        ? node.property.name
-        : node.computed &&
-            node.property.type === AST_NODE_TYPES.Literal &&
-            typeof node.property.value === "string"
-          ? node.property.value
-          : null;
+    const member = ASTUtils.getPropertyName(node);
     return member ? { identifier: node.object, member } : null;
   }
   if (
@@ -134,27 +127,23 @@ function extractReferenceParts(node: TSESTree.Node): {
 }
 
 /**
- * Collects enclosing lexical scopes from `location` out to the module scope.
+ * Resolves the lexical scope to start variable lookups from for `location`.
  * @param source - The ESLint source code for the current file.
- * @param location - The AST node whose visible scopes should be inspected.
- * @returns Enclosing scopes from innermost to outermost.
+ * @param location - The AST node whose visible scope should be inspected.
+ * @returns Starting `Scope` (module scope when `location` is `Program`).
  */
-function collectVisibleScopes(
+function getLookupScope(
   source: Readonly<SourceCode>,
   location: TSESTree.Node,
-): Scope.Scope[] {
-  const scopes: Scope.Scope[] = [];
-  let current: Scope.Scope | null = source.getScope(location);
+): Scope.Scope {
   if (location === source.ast) {
-    current =
+    return (
       source.scopeManager?.scopes.find(
         (candidate) => candidate.type === Scope.ScopeType.module,
-      ) ?? current;
+      ) ?? source.getScope(location)
+    );
   }
-  for (; current; current = current.upper) {
-    scopes.push(current);
-  }
-  return scopes;
+  return source.getScope(location);
 }
 
 /**
@@ -178,7 +167,7 @@ function findVisibleImport(
       specifier: TSESTree.ImportSpecifier;
     }
   | undefined {
-  const scopes = collectVisibleScopes(source, location);
+  const lookupScope = getLookupScope(source, location);
   const candidates = source.ast.body.flatMap((statement) =>
     statement.type !== AST_NODE_TYPES.ImportDeclaration ||
     !matchesModule(modules, statement.source.value, filename)
@@ -190,9 +179,10 @@ function findVisibleImport(
           ) {
             return [];
           }
-          const visibleVar = scopes
-            .map((scope) => scope.set.get(specifier.local.name))
-            .find((variable) => variable !== undefined);
+          const visibleVar = ASTUtils.findVariable(
+            lookupScope,
+            specifier.local.name,
+          );
           const resolvesToSpecifier = visibleVar?.defs.some(
             (def) =>
               def.type === Scope.DefinitionType.ImportBinding &&
@@ -341,20 +331,13 @@ export function getLocalImportBinding(
   if (existing) {
     return existing.specifier.local.name;
   }
-  const occupied = new Set(
-    [
-      ...new Set([
-        ...collectVisibleScopes(source, location),
-        ...collectVisibleScopes(source, source.ast),
-      ]),
-    ].flatMap((scope) =>
-      scope.variables
-        .filter((variable) => variable.defs.length > 0)
-        .map((variable) => variable.name),
-    ),
-  );
+  const lookupScope = getLookupScope(source, location);
+  const moduleScope = getLookupScope(source, source.ast);
+  const isOccupied = (candidate: string): boolean =>
+    (ASTUtils.findVariable(lookupScope, candidate)?.defs.length ?? 0) > 0 ||
+    (ASTUtils.findVariable(moduleScope, candidate)?.defs.length ?? 0) > 0;
   let local = name;
-  for (let suffix = 2; occupied.has(local); suffix++) {
+  for (let suffix = 2; isOccupied(local); suffix++) {
     local = `${name}${String(suffix)}`;
   }
   return local;

@@ -1009,6 +1009,9 @@ importers:
       eslint-plugin-simple-import-sort:
         specifier: ^12.1.1
         version: 12.1.1
+      ts-api-utils:
+        specifier: ^2.5.0
+        version: 2.5.0
       typescript-eslint:
         specifier: ^8.74.0
         version: 8.74.0

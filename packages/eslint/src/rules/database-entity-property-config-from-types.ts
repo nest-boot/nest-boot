@@ -1,9 +1,15 @@
 import {
   AST_NODE_TYPES,
+  ASTUtils,
   ESLintUtils,
   TSESTree,
 } from "@typescript-eslint/utils";
 import type { RuleFix, RuleFixer } from "@typescript-eslint/utils/ts-eslint";
+import {
+  isSymbolFlagSet,
+  isTypeFlagSet,
+  unionConstituents,
+} from "ts-api-utils";
 import * as ts from "typescript";
 
 import { createRule } from "../utils/createRule.js";
@@ -117,28 +123,21 @@ export default createRule<
             ? checker.getSymbolAtLocation(tsNode.typeName)
             : checker.getSymbolAtLocation(tsNode);
         const sym =
-          rawSym && rawSym.flags & ts.SymbolFlags.Alias
+          rawSym && isSymbolFlagSet(rawSym, ts.SymbolFlags.Alias)
             ? checker.getAliasedSymbol(rawSym)
             : rawSym;
-        if (sym && (sym.flags & ts.SymbolFlags.Value) === 0) {
+        if (sym && !isSymbolFlagSet(sym, ts.SymbolFlags.Value)) {
           return false;
         }
         const type = checker.getTypeAtLocation(tsNode);
-
-        if ((type.symbol?.flags ?? 0) & ts.SymbolFlags.Enum) {
-          return true;
-        }
-
-        if (type.isUnion()) {
-          return type.types.some((t) => {
-            const flags = t.symbol?.flags ?? 0;
-            return Boolean(
-              flags & ts.SymbolFlags.EnumMember || flags & ts.SymbolFlags.Enum,
-            );
-          });
-        }
-
-        return false;
+        return unionConstituents(type).some(
+          (part) =>
+            part.symbol !== undefined &&
+            isSymbolFlagSet(
+              part.symbol,
+              ts.SymbolFlags.Enum | ts.SymbolFlags.EnumMember,
+            ),
+        );
       } catch {
         return false;
       }
@@ -464,15 +463,16 @@ export default createRule<
             ? ts.TypeFlags.NumberLike
             : ts.TypeFlags.StringLike;
         const matchesExpectedType = (type: ts.Type): boolean => {
-          if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) {
-            return true;
-          }
-          if (type.isUnion()) {
-            return (
-              type.types.length > 0 && type.types.every(matchesExpectedType)
-            );
-          }
-          return (type.flags & expectedFlag) !== 0;
+          const parts = unionConstituents(type);
+          return (
+            parts.length > 0 &&
+            parts.every((part) =>
+              isTypeFlagSet(
+                part,
+                ts.TypeFlags.Any | ts.TypeFlags.Unknown | expectedFlag,
+              ),
+            )
+          );
         };
         return signatures.some((signature) =>
           matchesExpectedType(signature.getReturnType()),
@@ -682,16 +682,8 @@ export default createRule<
           return false;
         }
         const resolved = checker.getTypeFromTypeNode(tsNode);
-        if (resolved.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) {
-          return true;
-        }
-        return (
-          resolved.isUnion() &&
-          resolved.types.some(
-            (member) =>
-              (member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) !==
-              0,
-          )
+        return unionConstituents(resolved).some((member) =>
+          isTypeFlagSet(member, ts.TypeFlags.Null | ts.TypeFlags.Undefined),
         );
       } catch {
         return false;
@@ -701,50 +693,22 @@ export default createRule<
     const classifyScalarTsType = (
       type: ts.Type,
     ): "string" | "number" | "boolean" | "bigint" | null => {
-      if (type.isUnion()) {
-        if (type.types.length === 0) {
-          return null;
-        }
-        if (
-          type.types.every(
-            (member) => (member.flags & ts.TypeFlags.StringLike) !== 0,
-          )
-        ) {
-          return "string";
-        }
-        if (
-          type.types.every(
-            (member) => (member.flags & ts.TypeFlags.NumberLike) !== 0,
-          )
-        ) {
-          return "number";
-        }
-        if (
-          type.types.every(
-            (member) => (member.flags & ts.TypeFlags.BooleanLike) !== 0,
-          )
-        ) {
-          return "boolean";
-        }
-        if (
-          type.types.every(
-            (member) => (member.flags & ts.TypeFlags.BigIntLike) !== 0,
-          )
-        ) {
-          return "bigint";
-        }
+      const parts = unionConstituents(type);
+      if (parts.length === 0) {
         return null;
       }
-      if (type.flags & ts.TypeFlags.StringLike) {
+      const isHomogeneous = (flag: ts.TypeFlags) =>
+        parts.every((member) => isTypeFlagSet(member, flag));
+      if (isHomogeneous(ts.TypeFlags.StringLike)) {
         return "string";
       }
-      if (type.flags & ts.TypeFlags.NumberLike) {
+      if (isHomogeneous(ts.TypeFlags.NumberLike)) {
         return "number";
       }
-      if (type.flags & ts.TypeFlags.BooleanLike) {
+      if (isHomogeneous(ts.TypeFlags.BooleanLike)) {
         return "boolean";
       }
-      if (type.flags & ts.TypeFlags.BigIntLike) {
+      if (isHomogeneous(ts.TypeFlags.BigIntLike)) {
         return "bigint";
       }
       return null;
@@ -1841,23 +1805,10 @@ export default createRule<
               }
               return;
             }
-            const optionName = (
-              option: TSESTree.Property | TSESTree.SpreadElement,
-            ) => {
-              if (option.type !== AST_NODE_TYPES.Property) {
-                return undefined;
-              }
-              if (
-                !option.computed &&
-                option.key.type === AST_NODE_TYPES.Identifier
-              ) {
-                return option.key.name;
-              }
-              return option.key.type === AST_NODE_TYPES.Literal &&
-                typeof option.key.value === "string"
-                ? option.key.value
-                : undefined;
-            };
+            const optionName = (option: TSESTree.ObjectLiteralElement) =>
+              option.type === AST_NODE_TYPES.Property
+                ? ASTUtils.getPropertyName(option)
+                : null;
             const managed = new Set(["type", "index", "onCreate", "onUpdate"]);
             const nullableOption = argument.properties.findLast(
               (option) => optionName(option) === "nullable",
