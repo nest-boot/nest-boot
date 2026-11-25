@@ -15,8 +15,7 @@
   ],
   "scripts": {
     "clean": "rm -rf coverage dist",
-    "typecheck": "turbo run check:types",
-    "check:types": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:cov": "vitest run --coverage",
     "test:watch": "vitest",

@@ -29,13 +29,12 @@
     "dev": "tsc -w -p tsconfig.build.json",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
-    "test": "pnpm typecheck && vitest run",
-    "test:cov": "pnpm typecheck && vitest run --coverage",
+    "test": "turbo run typecheck && vitest run",
+    "test:cov": "turbo run typecheck && vitest run --coverage",
     "test:watch": "vitest",
-    "typecheck": "turbo run check:types",
-    "check:types": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "pnpm typecheck && vitest run --config ./vitest.config.e2e.ts --coverage"
+    "test:e2e": "turbo run typecheck && vitest run --config ./vitest.config.e2e.ts --coverage"
   },
   "dependencies": {
     "@mastra/clickhouse": "^1.30.1",

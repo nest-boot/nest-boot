@@ -66,36 +66,32 @@
       "dependsOn": ["build", "@nest-boot-tests/queue-cli#build"],
       "cache": false
     },
-    "check:types": {
-      "dependsOn": ["^build"],
-      "cache": false
-    },
-    "@nest-boot/command#check:types": {
-      "dependsOn": ["build"],
-      "cache": false
-    },
-    "@nest-boot/database#check:types": {
-      "dependsOn": ["build"],
-      "cache": false
-    },
-    "@nest-boot/eslint#check:types": {
-      "dependsOn": ["build"],
-      "cache": false
-    },
-    "@nest-boot/graphql#check:types": {
-      "dependsOn": ["build"],
-      "cache": false
-    },
-    "@nest-boot/health-check#check:types": {
-      "dependsOn": ["build"],
-      "cache": false
-    },
-    "@nest-boot/queue#check:types": {
-      "dependsOn": ["@nest-boot-tests/queue-cli#build"],
-      "cache": false
-    },
     "typecheck": {
       "dependsOn": ["^build"],
+      "cache": false
+    },
+    "@nest-boot/command#typecheck": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/database#typecheck": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/eslint#typecheck": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/graphql#typecheck": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/health-check#typecheck": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@nest-boot/queue#typecheck": {
+      "dependsOn": ["@nest-boot-tests/queue-cli#build"],
       "cache": false
     }
   }

@@ -39,7 +39,7 @@ The site exposes the same content to tools and coding agents:
 ## Validation
 
 ```bash
-pnpm --filter @nest-boot/docs types:check
+pnpm --filter @nest-boot/docs typecheck
 pnpm --filter @nest-boot/docs lint
 pnpm build:docs
 ```
