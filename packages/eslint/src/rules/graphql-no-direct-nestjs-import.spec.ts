@@ -1,10 +1,10 @@
 import { RuleTester } from "@typescript-eslint/rule-tester";
 
-import rule from "./no-direct-nestjs-import.js";
+import rule from "./graphql-no-direct-nestjs-import.js";
 
 const ruleTester = new RuleTester();
 
-ruleTester.run("no-direct-nestjs-import", rule, {
+ruleTester.run("graphql-no-direct-nestjs-import", rule, {
   valid: [
     'import { Query, ResolveField } from "@nest-boot/graphql";',
     'import type { Complexity } from "@nest-boot/graphql";',

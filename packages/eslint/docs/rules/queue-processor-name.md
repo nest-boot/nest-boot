@@ -1,4 +1,4 @@
-# nest-boot/queue/processor-name
+# nest-boot/queue-processor-name
 
 📝 Require a processor class name to match its declared queue class.
 

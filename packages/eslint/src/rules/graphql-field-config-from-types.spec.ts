@@ -11,12 +11,12 @@ const ruleTester = new RuleTester({
         allowDefaultProject: ["*.ts*"],
         defaultProject: "tsconfig.json",
       },
-      tsconfigRootDir: path.resolve(import.meta.dirname, "../../.."),
+      tsconfigRootDir: path.resolve(import.meta.dirname, "../.."),
     },
   },
 });
 
-ruleTester.run("field-config-from-types", rule, {
+ruleTester.run("graphql-field-config-from-types", rule, {
   valid: [
     /* typescript */ `
       @ObjectType()

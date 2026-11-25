@@ -6,11 +6,11 @@ import {
 import { Scope } from "@typescript-eslint/utils/ts-eslint";
 import * as ts from "typescript";
 
-import { createRule } from "../../utils/createRule.js";
-import { getImportedName } from "../../utils/imports.js";
+import { createRule } from "../utils/createRule.js";
+import { getImportedName } from "../utils/imports.js";
 
 export default createRule<[], "processorName">({
-  name: "queue/processor-name",
+  name: "queue-processor-name",
   meta: {
     type: "suggestion",
     docs: {

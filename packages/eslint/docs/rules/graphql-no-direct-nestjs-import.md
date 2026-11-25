@@ -1,4 +1,4 @@
-# nest-boot/graphql/no-direct-nestjs-import
+# nest-boot/graphql-no-direct-nestjs-import
 
 📝 Require importing GraphQL symbols through the Nest Boot public entry point.
 

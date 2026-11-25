@@ -2,11 +2,11 @@ import path from "node:path";
 
 import { RuleTester } from "@typescript-eslint/rule-tester";
 
-import rule from "./processor-name.js";
+import rule from "./queue-processor-name.js";
 
 const syntaxRuleTester = new RuleTester();
 
-syntaxRuleTester.run("processor-name", rule, {
+syntaxRuleTester.run("queue-processor-name", rule, {
   valid: [
     "@Processor(EmailQueue) class EmailProcessor extends BaseProcessor {}",
     "@Processor(JobQueue) class JobProcessor extends BaseProcessor {}",
@@ -107,12 +107,12 @@ const typedRuleTester = new RuleTester({
         allowDefaultProject: ["*.ts*"],
         defaultProject: "tsconfig.json",
       },
-      tsconfigRootDir: path.resolve(import.meta.dirname, "../../.."),
+      tsconfigRootDir: path.resolve(import.meta.dirname, "../.."),
     },
   },
 });
 
-typedRuleTester.run("processor-name-type-checked", rule, {
+typedRuleTester.run("queue-processor-name", rule, {
   valid: [
     "class EmailQueue {} const Selected = EmailQueue; @Processor(Selected) class EmailProcessor {}",
     "class EmailQueue {} const queues = { selected: EmailQueue }; @Processor(queues.selected) class EmailProcessor {}",

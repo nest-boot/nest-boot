@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { RuleTester } from "@typescript-eslint/rule-tester";
 
-import rule from "./entity-property-config-from-types.js";
+import rule from "./database-entity-property-config-from-types.js";
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -11,12 +11,12 @@ const ruleTester = new RuleTester({
         allowDefaultProject: ["*.ts*"],
         defaultProject: "tsconfig.json",
       },
-      tsconfigRootDir: path.resolve(import.meta.dirname, "../../.."),
+      tsconfigRootDir: path.resolve(import.meta.dirname, "../.."),
     },
   },
 });
 
-ruleTester.run("entity-property-config-from-types", rule, {
+ruleTester.run("database-entity-property-config-from-types", rule, {
   valid: [
     `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 import { FullTextType } from "@mikro-orm/postgresql";

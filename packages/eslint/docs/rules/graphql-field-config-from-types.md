@@ -1,4 +1,4 @@
-# nest-boot/graphql/field-config-from-types
+# nest-boot/graphql-field-config-from-types
 
 📝 Enforce @Field decorator type and nullable configuration from TypeScript types.
 

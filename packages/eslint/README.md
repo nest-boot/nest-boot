@@ -54,8 +54,8 @@ export default [
       "nest-boot": nestBoot,
     },
     rules: {
-      "nest-boot/database/entity-property-config-from-types": "error",
-      "nest-boot/graphql/field-config-from-types": "error",
+      "nest-boot/database-entity-property-config-from-types": "error",
+      "nest-boot/graphql-field-config-from-types": "error",
     },
   },
 ];
@@ -91,24 +91,25 @@ export default [
 
 | Name                                                                                                       | Description                                                                                                            | 💼    | 🔧  | 💭  |
 | :--------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------- | :---- | :-- | :-- |
-| [database/entity-property-config-from-types](docs/rules/database/entity-property-config-from-types.md)     | enforce @Property and @Enum decorator configuration from TypeScript types and require Opt<T> on initialized properties | ✅ 🧩 | 🔧  | 💭  |
-| [database/entity-property-definite-assignment](docs/rules/database/entity-property-definite-assignment.md) | require definite assignment assertions on uninitialized entity properties                                              | ✅ 🧩 | 🔧  |     |
-| [database/entity-property-no-spread](docs/rules/database/entity-property-no-spread.md)                     | require explicit options in entity field decorators                                                                    | ✅ 🧩 |     |     |
-| [graphql/field-config-from-types](docs/rules/graphql/field-config-from-types.md)                           | enforce @Field decorator type and nullable configuration from TypeScript types                                         | ✅ 🧩 | 🔧  | 💭  |
-| [graphql/field-definite-assignment](docs/rules/graphql/field-definite-assignment.md)                       | require definite assignment assertions on uninitialized GraphQL @Field properties                                      | ✅ 🧩 | 🔧  |     |
-| [graphql/no-direct-nestjs-import](docs/rules/graphql/no-direct-nestjs-import.md)                           | require importing GraphQL symbols through the Nest Boot public entry point                                             | ✅ 🧩 |     |     |
-| [queue/processor-name](docs/rules/queue/processor-name.md)                                                 | require a processor class name to match its declared queue class                                                       | ✅ 🧩 |     | 💭  |
+| [database-entity-property-config-from-types](docs/rules/database-entity-property-config-from-types.md)     | enforce @Property and @Enum decorator configuration from TypeScript types and require Opt<T> on initialized properties | ✅ 🧩 | 🔧  | 💭  |
+| [database-entity-property-definite-assignment](docs/rules/database-entity-property-definite-assignment.md) | require definite assignment assertions on uninitialized entity properties                                              | ✅ 🧩 | 🔧  |     |
+| [database-entity-property-no-spread](docs/rules/database-entity-property-no-spread.md)                     | require explicit options in entity field decorators                                                                    | ✅ 🧩 |     |     |
+| [graphql-field-config-from-types](docs/rules/graphql-field-config-from-types.md)                           | enforce @Field decorator type and nullable configuration from TypeScript types                                         | ✅ 🧩 | 🔧  | 💭  |
+| [graphql-field-definite-assignment](docs/rules/graphql-field-definite-assignment.md)                       | require definite assignment assertions on uninitialized GraphQL @Field properties                                      | ✅ 🧩 | 🔧  |     |
+| [graphql-no-direct-nestjs-import](docs/rules/graphql-no-direct-nestjs-import.md)                           | require importing GraphQL symbols through the Nest Boot public entry point                                             | ✅ 🧩 |     |     |
+| [queue-processor-name](docs/rules/queue-processor-name.md)                                                 | require a processor class name to match its declared queue class                                                       | ✅ 🧩 |     | 💭  |
 
 <!-- end auto-generated rules list -->
 
 ## 迁移说明
 
-`@nest-boot/eslint` 合并了原有的 `@nest-boot/eslint-config` 与 `@nest-boot/eslint-plugin`。迁移时将依赖统一替换为 `@nest-boot/eslint`，并将规则 ID 更新为 `nest-boot/<domain>/<rule>`：
+`@nest-boot/eslint` 合并了原有的 `@nest-boot/eslint-config` 与 `@nest-boot/eslint-plugin`。迁移时将依赖统一替换为 `@nest-boot/eslint`，并将规则 ID 更新为 `nest-boot/<domain>-<rule>`：
 
 | 旧规则 ID                                        | 新规则 ID                                                |
 | :----------------------------------------------- | :------------------------------------------------------- |
-| `@nest-boot/entity-property-config-from-types`   | `nest-boot/database/entity-property-config-from-types`   |
-| `@nest-boot/entity-property-definite-assignment` | `nest-boot/database/entity-property-definite-assignment` |
-| `@nest-boot/entity-property-no-spread`           | `nest-boot/database/entity-property-no-spread`           |
-| `@nest-boot/graphql-field-config-from-types`     | `nest-boot/graphql/field-config-from-types`              |
-| `@nest-boot/graphql-field-definite-assignment`   | `nest-boot/graphql/field-definite-assignment`            |
+| `@nest-boot/entity-property-config-from-types`   | `nest-boot/database-entity-property-config-from-types`   |
+| `@nest-boot/entity-property-definite-assignment` | `nest-boot/database-entity-property-definite-assignment` |
+| `@nest-boot/entity-property-no-spread`           | `nest-boot/database-entity-property-no-spread`           |
+| `@nest-boot/graphql-field-config-from-types`     | `nest-boot/graphql-field-config-from-types`              |
+| `@nest-boot/graphql-field-definite-assignment`   | `nest-boot/graphql-field-definite-assignment`            |
+| `@nest-boot/queue/processor-name`                | `nest-boot/queue-processor-name`                         |

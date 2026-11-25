@@ -58,7 +58,7 @@ export class Job {
   @Field(() => JobStatus)
   status!: JobStatus;
 
-  // eslint-disable-next-line nest-boot/graphql/field-config-from-types -- Persist arbitrary progress but expose only numeric values via the resolver.
+  // eslint-disable-next-line nest-boot/graphql-field-config-from-types -- Persist arbitrary progress but expose only numeric values via the resolver.
   @Property({ type: t.json, nullable: true })
   @Field(() => Float, { nullable: true })
   progress!: JobProgress | null;

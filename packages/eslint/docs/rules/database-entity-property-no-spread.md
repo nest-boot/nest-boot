@@ -1,4 +1,4 @@
-# nest-boot/database/entity-property-no-spread
+# nest-boot/database-entity-property-no-spread
 
 📝 Require explicit options in entity field decorators.
 

@@ -1,4 +1,4 @@
-# nest-boot/database/entity-property-definite-assignment
+# nest-boot/database-entity-property-definite-assignment
 
 📝 Require definite assignment assertions on uninitialized entity properties.
 

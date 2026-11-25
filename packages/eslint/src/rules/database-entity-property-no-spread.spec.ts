@@ -1,10 +1,10 @@
 import { RuleTester } from "@typescript-eslint/rule-tester";
 
-import rule from "./entity-property-no-spread.js";
+import rule from "./database-entity-property-no-spread.js";
 
 const ruleTester = new RuleTester();
 
-ruleTester.run("entity-property-no-spread", rule, {
+ruleTester.run("database-entity-property-no-spread", rule, {
   valid: [
     `import { Property } from "@mikro-orm/decorators/legacy";
 class Book { @Property({ hidden: true, nullable: true }) title!: string | null; }`,

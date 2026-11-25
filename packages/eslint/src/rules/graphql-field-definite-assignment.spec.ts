@@ -4,7 +4,7 @@ import rule from "./graphql-field-definite-assignment.js";
 
 const ruleTester = new RuleTester();
 
-ruleTester.run("field-definite-assignment", rule, {
+ruleTester.run("graphql-field-definite-assignment", rule, {
   valid: [
     /* typescript */ `
       @ObjectType()

@@ -118,7 +118,7 @@ An unknown job name or missing handler fails the job at runtime with `Unrecovera
 
 Register `EmailProcessor` and `EmailQueue` as providers, or import the module exporting the queue. Consumer-only applications also register their queue provider. Missing queues fail startup before workers are created. Workers inherit their queue's connection, prefix and telemetry. Import native `Job`, `Queue`, `Worker` and `QueueEvents` directly from `bullmq` when needed.
 
-The shared ESLint config enables `nest-boot/queue/processor-name`: the processor class must match its queue class name, replacing the trailing `Queue` with `Processor`. For example, `@Processor(EmailQueue)` requires `EmailProcessor`, and `JobQueue` requires `JobProcessor`. This naming check runs during linting and is independent of the Redis queue name.
+The shared ESLint config enables `nest-boot/queue-processor-name`: the processor class must match its queue class name, replacing the trailing `Queue` with `Processor`. For example, `@Processor(EmailQueue)` requires `EmailProcessor`, and `JobQueue` requires `JobProcessor`. This naming check runs during linting and is independent of the Redis queue name.
 
 ## Run workers separately
 

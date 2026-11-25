@@ -94,7 +94,7 @@ export function identity<T>(value: T): T {
 
   it.each([
     [
-      "nest-boot/graphql/field-definite-assignment",
+      "nest-boot/graphql-field-definite-assignment",
       `import { Field, ObjectType } from "@nestjs/graphql";
 @ObjectType()
 export class Book {
@@ -104,7 +104,7 @@ export class Book {
 `,
     ],
     [
-      "nest-boot/database/entity-property-definite-assignment",
+      "nest-boot/database-entity-property-definite-assignment",
       `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Entity()
 export class Book {
@@ -165,7 +165,7 @@ export class EmailProcessor {}
     const results = await eslint.lintFiles([validFile, invalidFile]);
     const namingMessages = results
       .flatMap((result) => result.messages)
-      .filter((message) => message.ruleId === "nest-boot/queue/processor-name");
+      .filter((message) => message.ruleId === "nest-boot/queue-processor-name");
     expect(namingMessages).toEqual([
       expect.objectContaining({
         severity: 2,
@@ -195,7 +195,7 @@ export class EmailProcessor {}
     expect(valid.messages).toEqual([]);
     expect(invalid.messages).toEqual([
       expect.objectContaining({
-        ruleId: "nest-boot/graphql/no-direct-nestjs-import",
+        ruleId: "nest-boot/graphql-no-direct-nestjs-import",
         severity: 2,
       }),
     ]);
@@ -269,9 +269,9 @@ export { Query };
     const results = await eslint.lintFiles([file]);
     const ruleIds = results[0]?.messages.map((message) => message.ruleId) ?? [];
 
-    expect(ruleIds).toContain("nest-boot/graphql/no-direct-nestjs-import");
+    expect(ruleIds).toContain("nest-boot/graphql-no-direct-nestjs-import");
     expect(ruleIds).toContain(
-      "nest-boot/database/entity-property-definite-assignment",
+      "nest-boot/database-entity-property-definite-assignment",
     );
     expect(ruleIds.every((id) => id?.startsWith("nest-boot/"))).toBe(true);
   });

@@ -1,4 +1,4 @@
-# nest-boot/graphql/field-definite-assignment
+# nest-boot/graphql-field-definite-assignment
 
 📝 Require definite assignment assertions on uninitialized GraphQL @Field properties.
 

@@ -2,7 +2,7 @@ import { AST_NODE_TYPES, TSESTree } from "@typescript-eslint/utils";
 import type { RuleFix, RuleFixer } from "@typescript-eslint/utils/ts-eslint";
 import * as ts from "typescript";
 
-import { createRule } from "../../utils/createRule.js";
+import { createRule } from "../utils/createRule.js";
 import {
   ensureNamedImportFixes,
   getImportedName,
@@ -10,7 +10,7 @@ import {
   hasNamedImport,
   isTypeOnlyImportReference,
   promoteTypeImportFixes,
-} from "../../utils/imports.js";
+} from "../utils/imports.js";
 
 interface TypeInfo {
   typeName: string | null;
@@ -41,7 +41,7 @@ export default createRule<
   [Options],
   "alignFieldDecoratorWithTsType" | "removeFieldDecorator"
 >({
-  name: "graphql/field-config-from-types",
+  name: "graphql-field-config-from-types",
   meta: {
     type: "problem",
     docs: {

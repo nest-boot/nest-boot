@@ -6,7 +6,7 @@ import {
 import type { RuleFix, RuleFixer } from "@typescript-eslint/utils/ts-eslint";
 import * as ts from "typescript";
 
-import { createRule } from "../../utils/createRule.js";
+import { createRule } from "../utils/createRule.js";
 import {
   ensureNamedImportFixes,
   getImportedName,
@@ -14,7 +14,7 @@ import {
   hasNamedImport,
   isTypeOnlyImportReference,
   promoteTypeImportFixes,
-} from "../../utils/imports.js";
+} from "../utils/imports.js";
 
 interface TypeInfo {
   typeName: string | null;
@@ -32,7 +32,7 @@ export default createRule<
   | "useEnumDecorator"
   | "useOptTypeForInitializedProperty"
 >({
-  name: "database/entity-property-config-from-types",
+  name: "database-entity-property-config-from-types",
   meta: {
     type: "problem",
     docs: {

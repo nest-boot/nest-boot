@@ -1,10 +1,10 @@
 import { RuleTester } from "@typescript-eslint/rule-tester";
 
-import rule from "./entity-property-definite-assignment.js";
+import rule from "./database-entity-property-definite-assignment.js";
 
 const ruleTester = new RuleTester();
 
-ruleTester.run("entity-property-definite-assignment", rule, {
+ruleTester.run("database-entity-property-definite-assignment", rule, {
   valid: [
     `import { Entity, Property } from "@mikro-orm/decorators/legacy";
 @Audit

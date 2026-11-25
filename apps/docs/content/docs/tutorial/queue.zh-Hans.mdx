@@ -116,7 +116,7 @@ Worker 按 `process${PascalCase<name>}` 分发：send 对应 processSend，send-
 
 注册 Processor 和对应 Queue provider；仅消费任务的应用也需要注册 Queue。缺少队列时初始化失败，尚未创建 Worker。并发等 Worker 配置传给 `super(workerOptions)`，连接、prefix 和 telemetry 继承对应队列。Worker 仍由 BaseProcessor 配合 QueueManager 管理，无需单独声明 Worker 类。需要原生 `Job`、`Queue`、`Worker`、`QueueEvents` 时直接从 `bullmq` 导入。
 
-共享 ESLint 配置默认启用 `nest-boot/queue/processor-name`：处理器类名必须将队列类名末尾的 Queue 替换为 Processor。例如 `@Processor(EmailQueue)` 要求类名为 EmailProcessor，JobQueue 对应 JobProcessor。该约束在 lint 时检查，与 Redis 队列名称无关。
+共享 ESLint 配置默认启用 `nest-boot/queue-processor-name`：处理器类名必须将队列类名末尾的 Queue 替换为 Processor。例如 `@Processor(EmailQueue)` 要求类名为 EmailProcessor，JobQueue 对应 JobProcessor。该约束在 lint 时检查，与 Redis 队列名称无关。
 
 Processor 必须为单例。request、transient 或被 request 依赖传播作用域的 Processor 会在初始化时被拒绝。同一实例处理所有任务，避免在实例字段中保存当前任务数据。
 

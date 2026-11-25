@@ -1,4 +1,4 @@
-# nest-boot/database/entity-property-config-from-types
+# nest-boot/database-entity-property-config-from-types
 
 📝 Enforce @Property and @Enum decorator configuration from TypeScript types and require Opt<T> on initialized properties.
 

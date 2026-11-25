@@ -1,25 +1,40 @@
 import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 
-import { createRule } from "../../utils/createRule.js";
-import { getImportedName } from "../../utils/imports.js";
+import { createRule } from "../utils/createRule.js";
+import { getImportedName } from "../utils/imports.js";
 
-const graphqlModules = ["@nestjs/graphql", "@nest-boot/graphql"];
-const modelDecorators = new Set(["ObjectType", "InputType", "ArgsType"]);
+const decoratorModules = [
+  "@mikro-orm/decorators/legacy",
+  "@nest-boot/database",
+  "@nest-boot/database-crypt",
+  "@nest-boot/database-hash",
+];
 
-export default createRule<[], "addDefiniteAssignment">({
-  name: "graphql/field-definite-assignment",
+const trackedPropertyDecorators = new Set([
+  "Property",
+  "Enum",
+  "OneToOne",
+  "OneToMany",
+  "ManyToOne",
+  "ManyToMany",
+  "EncryptedProperty",
+  "HashedProperty",
+  "SearchableProperty",
+]);
+
+export default createRule({
+  name: "database-entity-property-definite-assignment",
   meta: {
-    type: "problem",
+    type: "suggestion",
     docs: {
       description:
-        "require definite assignment assertions on uninitialized GraphQL @Field properties",
+        "require definite assignment assertions on uninitialized entity properties",
       recommended: true,
     },
     fixable: "code",
     schema: [],
     messages: {
-      addDefiniteAssignment:
-        "Property '{{propertyName}}' has a @Field decorator without an initializer and requires a definite assignment assertion (!).",
+      addDefiniteAssignment: "Add definite assignment assertion (!).",
     },
   },
   create(context) {
@@ -29,7 +44,7 @@ export default createRule<[], "addDefiniteAssignment">({
       decorator.expression.type === AST_NODE_TYPES.CallExpression
         ? getImportedName(
             source,
-            graphqlModules,
+            decoratorModules,
             decorator.expression.callee,
             context.filename,
           )
@@ -38,8 +53,8 @@ export default createRule<[], "addDefiniteAssignment">({
     return {
       ClassDeclaration(node) {
         if (
-          !node.decorators.some((decorator) =>
-            modelDecorators.has(getDecoratorName(decorator) ?? ""),
+          !node.decorators.some(
+            (decorator) => getDecoratorName(decorator) === "Entity",
           )
         ) {
           return;
@@ -53,8 +68,8 @@ export default createRule<[], "addDefiniteAssignment">({
             member.declare ||
             member.value !== null ||
             member.definite ||
-            !member.decorators.some(
-              (decorator) => getDecoratorName(decorator) === "Field",
+            !member.decorators.some((decorator) =>
+              trackedPropertyDecorators.has(getDecoratorName(decorator) ?? ""),
             )
           ) {
             continue;
@@ -63,7 +78,6 @@ export default createRule<[], "addDefiniteAssignment">({
           context.report({
             node: member,
             messageId: "addDefiniteAssignment",
-            data: { propertyName: member.key.name },
             fix: (fixer) => fixer.insertTextAfter(member.key, "!"),
           });
         }

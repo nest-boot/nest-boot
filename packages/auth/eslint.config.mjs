@@ -13,7 +13,7 @@ export default defineConfig([
       "test/e2e/permission-output.spec.ts",
       "test/e2e/system-account-api.spec.ts",
     ],
-    rules: { "nest-boot/graphql/no-direct-nestjs-import": "off" },
+    rules: { "nest-boot/graphql-no-direct-nestjs-import": "off" },
   },
   {
     // Preserve the existing GraphQL resolver mock conventions after the package merge.

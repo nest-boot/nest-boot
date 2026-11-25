@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES } from "@typescript-eslint/utils";
 
-import { createRule } from "../../utils/createRule.js";
-import { getImportedName } from "../../utils/imports.js";
+import { createRule } from "../utils/createRule.js";
+import { getImportedName } from "../utils/imports.js";
 
 const decoratorModules = [
   "@mikro-orm/decorators/legacy",
@@ -27,7 +27,7 @@ const fieldDecorators = new Set([
 ]);
 
 export default createRule({
-  name: "database/entity-property-no-spread",
+  name: "database-entity-property-no-spread",
   meta: {
     type: "problem",
     docs: {

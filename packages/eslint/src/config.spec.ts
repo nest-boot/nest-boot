@@ -51,13 +51,13 @@ describe("eslint configs", () => {
       expect(rulesEntry.languageOptions).toBeUndefined();
       expect(rulesEntry.plugins).toEqual({ "nest-boot": nestBoot });
       expect(rulesEntry.rules).toEqual({
-        "nest-boot/database/entity-property-config-from-types": "error",
-        "nest-boot/database/entity-property-definite-assignment": "error",
-        "nest-boot/database/entity-property-no-spread": "error",
-        "nest-boot/graphql/field-config-from-types": "error",
-        "nest-boot/graphql/field-definite-assignment": "error",
-        "nest-boot/graphql/no-direct-nestjs-import": "error",
-        "nest-boot/queue/processor-name": "error",
+        "nest-boot/database-entity-property-config-from-types": "error",
+        "nest-boot/database-entity-property-definite-assignment": "error",
+        "nest-boot/database-entity-property-no-spread": "error",
+        "nest-boot/graphql-field-config-from-types": "error",
+        "nest-boot/graphql-field-definite-assignment": "error",
+        "nest-boot/graphql-no-direct-nestjs-import": "error",
+        "nest-boot/queue-processor-name": "error",
       });
     });
   });
