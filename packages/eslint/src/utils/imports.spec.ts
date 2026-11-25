@@ -19,7 +19,7 @@ const linter = new Linter();
 describe("imports utilities", () => {
   it("resolves named, aliased, quoted, namespace, and shadowed bindings", () => {
     const inspectRule = createRule({
-      name: "test/inspect",
+      name: "inspect",
       meta: {
         type: "problem",
         docs: { description: "inspect imports" },
@@ -107,7 +107,7 @@ describe("imports utilities", () => {
 
   it("inserts, appends, and promotes named imports while preserving doc comments", () => {
     const fixRule = createRule({
-      name: "test/fix-imports",
+      name: "fix-imports",
       meta: {
         type: "problem",
         fixable: "code",
