@@ -35,8 +35,7 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "devDependencies": {
-    "@nest-boot/eslint-config": "workspace:^",
-    "@nest-boot/eslint-plugin": "workspace:^",
+    "@nest-boot/eslint": "workspace:^",
     "@nest-boot/middleware": "workspace:^",
     "@nest-boot/request-context": "workspace:^",
     "@nest-boot/tsconfig": "workspace:^",

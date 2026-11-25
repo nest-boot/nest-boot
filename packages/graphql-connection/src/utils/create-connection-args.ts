@@ -45,7 +45,7 @@ export function createCountArgs<Entity extends object>(
     })
     query?: string | null;
 
-    // eslint-disable-next-line @nest-boot/graphql/field-config-from-types
+    // eslint-disable-next-line nest-boot/graphql/field-config-from-types
     @Field(() => FilterScalar, {
       nullable: true,
       description: `Filter ${humanizeAndPluralizeEntityName} using MongoDB query syntax.`,
@@ -114,7 +114,7 @@ export function createConnectionArgs<Entity extends object>(
     })
     before?: string | null;
 
-    // eslint-disable-next-line @nest-boot/graphql/field-config-from-types
+    // eslint-disable-next-line nest-boot/graphql/field-config-from-types
     @Field(() => OrderClass, {
       nullable: true,
       description: `Ordering options for the returned ${humanizeAndPluralizeEntityName}.`,

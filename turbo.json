@@ -26,8 +26,16 @@
       "dependsOn": ["^build"],
       "cache": false
     },
+    "@nest-boot/eslint#lint": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
     "lint:fix": {
       "dependsOn": ["^build"],
+      "cache": false
+    },
+    "@nest-boot/eslint#lint:fix": {
+      "dependsOn": ["build"],
       "cache": false
     },
     "test": {

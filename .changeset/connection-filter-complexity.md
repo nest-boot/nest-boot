@@ -4,8 +4,7 @@
 "@nest-boot/auth": minor
 "@nest-boot/queue-api": minor
 "@nest-boot/graphql-rate-limit": minor
-"@nest-boot/eslint-plugin": minor
-"@nest-boot/eslint-config": minor
+"@nest-boot/eslint": minor
 ---
 
 Connection queries require exactly one of `first` or `last`, with a page size from 1 to 100. Use `after` with `first` or `before` with `last`. This also applies to Auth and job connections.
@@ -18,4 +17,4 @@ The `connectionComplexity` export has been removed from `@nest-boot/graphql-rate
 
 Complexity callbacks receive `resolved.result` during settlement. The Nest Boot GraphQL decorators and `defineComplexity` infer the result using the same rule as NestJS's `@Field` default value.
 
-The shared ESLint config enables `@nest-boot/graphql/no-direct-nestjs-import`. Import public GraphQL APIs from `@nest-boot/graphql` to use the field decorators that register default complexity.
+The shared ESLint config enables `nest-boot/graphql/no-direct-nestjs-import`. Import public GraphQL APIs from `@nest-boot/graphql` to use the field decorators that register default complexity.

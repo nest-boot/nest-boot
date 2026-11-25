@@ -1,8 +1,8 @@
-import config from "@nest-boot/eslint-config";
+import nestBoot from "@nest-boot/eslint";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
-  ...config,
+  ...nestBoot.configs.recommended,
   {
     // These fixtures exercise Auth with the upstream module or decorators.
     files: [
@@ -13,7 +13,7 @@ export default defineConfig([
       "test/permission-output.e2e-spec.ts",
       "test/system-account-api.e2e-spec.ts",
     ],
-    rules: { "@nest-boot/graphql/no-direct-nestjs-import": "off" },
+    rules: { "nest-boot/graphql/no-direct-nestjs-import": "off" },
   },
   {
     // Preserve the existing GraphQL resolver mock conventions after the package merge.

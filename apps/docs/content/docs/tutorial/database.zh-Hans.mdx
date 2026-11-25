@@ -348,7 +348,7 @@ searchableText!: string | null;
 
 装饰器接受相同的三种源属性形式，其选项排除内部管理的 `type`、`index`、`onCreate` 和 `onUpdate`，仍可配置 `hidden` 等其他属性选项。
 
-实体 ESLint 规则会根据字段类型推断 `nullable`，移除 `SearchableProperty` 中的受管选项，并识别装饰器别名和命名空间导入。原生 `@Property` 和 `@SearchableProperty` 均可从所在 class 推断实体类型，自动修复会去掉冗余的显式泛型，源字段名仍会根据 class 检查，同时保留原生 `FullTextType` 和生命周期回调。`@nest-boot/database/entity-property-no-spread` 规则要求在实体字段装饰器中显式列出选项，不允许 `...shared` 这样的配置展开；需要手动改写为具体选项。
+实体 ESLint 规则会根据字段类型推断 `nullable`，移除 `SearchableProperty` 中的受管选项，并识别装饰器别名和命名空间导入。原生 `@Property` 和 `@SearchableProperty` 均可从所在 class 推断实体类型，自动修复会去掉冗余的显式泛型，源字段名仍会根据 class 检查，同时保留原生 `FullTextType` 和生命周期回调。`nest-boot/database/entity-property-no-spread` 规则要求在实体字段装饰器中显式列出选项，不允许 `...shared` 这样的配置展开；需要手动改写为具体选项。
 
 分词使用原生 `Intl.Segmenter`，采用运行时默认 locale 和词级粒度，保留词语和数字。分词器会懒初始化并复用；不支持 `Intl.Segmenter` 的运行时会回退到匹配 Unicode 字母、组合标记和数字的正则表达式，无需配置语言或安装额外的分词依赖。
 

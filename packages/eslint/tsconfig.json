@@ -1,0 +1,15 @@
+{
+  "extends": "@nest-boot/tsconfig/library.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "outDir": "./dist",
+    "rootDir": ".",
+    "tsBuildInfoFile": "./tsconfig.tsbuildinfo"
+  },
+  "include": ["src", "test", "vitest.config.ts", "vitest.config.e2e.ts"],
+  "exclude": ["node_modules", "dist"]
+}
