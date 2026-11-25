@@ -13,7 +13,7 @@
     "library.json"
   ],
   "scripts": {
-    "clean": "rm -rf dist coverage",
+    "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:cov": "vitest run --coverage",
