@@ -9,8 +9,8 @@ import {
   GraphQLResolveInfo,
   Kind,
   parse,
-} from "graphql";
-import * as graphqlQueryComplexity from "graphql-query-complexity/cjs";
+} from "graphql/index.js";
+import { getComplexity, simpleEstimator } from "graphql-query-complexity";
 
 import { OPTIONS_TOKEN } from "./graphql-rate-limit.module-definition.js";
 import { GraphQLRateLimitPlugin } from "./graphql-rate-limit.plugin.js";
@@ -20,16 +20,10 @@ import {
   GraphQLRateLimitOptions,
 } from "./interfaces/index.js";
 
-const { getComplexity, simpleEstimator } =
-  graphqlQueryComplexity as unknown as typeof import("graphql-query-complexity");
-
-// Match Nest and the complexity library's CommonJS GraphQL runtime.
-vi.mock("graphql", async () => await vi.importActual("graphql/index.js"));
-
-vi.mock("graphql-query-complexity/cjs", async () => {
+vi.mock("graphql-query-complexity", async () => {
   const actual = await vi.importActual<
-    typeof import("graphql-query-complexity/cjs")
-  >("graphql-query-complexity/cjs");
+    typeof import("graphql-query-complexity")
+  >("graphql-query-complexity");
 
   return {
     ...actual,
@@ -242,8 +236,8 @@ describe("GraphQLRateLimitPlugin", () => {
     "reserves only the selected mutation fields with include=$include",
     async ({ include, cost }) => {
       const actual = await vi.importActual<
-        typeof import("graphql-query-complexity/cjs")
-      >("graphql-query-complexity/cjs");
+        typeof import("graphql-query-complexity")
+      >("graphql-query-complexity");
       mockedGetComplexity.mockImplementationOnce(actual.getComplexity);
       const listener =
         (await createPlugin().requestDidStart()) as TestRequestListener;
@@ -257,8 +251,8 @@ describe("GraphQLRateLimitPlugin", () => {
 
   it("reserves zero points for an aliased __typename mutation selection", async () => {
     const actual = await vi.importActual<
-      typeof import("graphql-query-complexity/cjs")
-    >("graphql-query-complexity/cjs");
+      typeof import("graphql-query-complexity")
+    >("graphql-query-complexity");
     mockedGetComplexity.mockImplementationOnce(actual.getComplexity);
     const typeNameDocument = parse("mutation { type: __typename }");
     const context = {
