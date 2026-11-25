@@ -96,6 +96,11 @@ class BookResolver {
     return this.manager.count(Connection, args);
   }
 
+  @Query(() => Count)
+  unfilteredCount(): Promise<Count> {
+    return this.manager.count(Connection, {});
+  }
+
   @Query(() => Count, { complexity: 0 })
   freeCount(
     @Args({ type: () => CountArgs }) args: CountArgsInterface<CostBook>,
@@ -269,11 +274,11 @@ describe("Connection complexity over GraphQL HTTP", () => {
     }
   });
 
-  it("infers nested count costs and honors explicit complexity", async () => {
+  it("infers costs for nested and unfiltered counts and honors explicit complexity", async () => {
     const url = await startApp(GraphQLRateLimitModule.forRoot({}));
     const response = await query(
       url,
-      '{ owner(present: true) { booksCount(query: "name:alpha") { count } } freeCount(query: "name:beta") { count } }',
+      '{ owner(present: true) { booksCount(query: "name:alpha") { count } } freeCount(query: "name:beta") { count } unfilteredCount { count } }',
     );
 
     expect(response.status).toBe(200);
@@ -281,8 +286,9 @@ describe("Connection complexity over GraphQL HTTP", () => {
       data: {
         owner: { booksCount: { count: 2 } },
         freeCount: { count: 1 },
+        unfilteredCount: { count: 3 },
       },
-      extensions: { cost: { requestedQueryCost: 12, actualQueryCost: 12 } },
+      extensions: { cost: { requestedQueryCost: 22, actualQueryCost: 22 } },
     });
   });
 

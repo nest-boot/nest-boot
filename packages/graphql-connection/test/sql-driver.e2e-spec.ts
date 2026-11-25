@@ -237,6 +237,24 @@ describe("GraphQL connection and official SQL driver integration", () => {
         });
         expect(getConnection).toHaveBeenLastCalledWith("write");
       });
+
+      const scoped = em.fork({
+        session: { variables: { "app.test.count_title": "Book" } },
+      });
+      await expect(
+        new ConnectionManager(scoped).count(
+          Connection,
+          {},
+          {
+            where: {
+              [raw(
+                (alias) =>
+                  `${alias}."title" = current_setting('app.test.count_title', true)`,
+              )]: [],
+            },
+          },
+        ),
+      ).resolves.toEqual({ count: 1, precision: CountPrecision.EXACT });
     } finally {
       await orm.close(true);
     }
@@ -330,7 +348,14 @@ describe("GraphQL connection and official SQL driver integration", () => {
       const manager = new ConnectionManager(em);
       const scope = { where: { books: { id: { $gt: 0 } } } };
 
-      const page = await manager.find(Connection, { first: 10 }, scope);
+      const page = await manager.find(
+        Connection,
+        { first: 10 },
+        {
+          ...scope,
+          populate: false,
+        },
+      );
       expect(page.edges.map(({ node }) => node.id)).toEqual([1]);
       const execute = vi.spyOn(em.getConnection(), "execute");
       await expect(manager.count(Connection, {}, scope)).resolves.toEqual({
