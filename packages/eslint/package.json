@@ -32,7 +32,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "clean": "tsc -b --clean tsconfig.build.json && rm -rf coverage dist",
+    "clean": "tsc -b --clean tsconfig.build.json && rm -rf dist coverage",
     "dev": "tsc -p tsconfig.build.json --watch",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",

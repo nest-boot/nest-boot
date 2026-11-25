@@ -14,7 +14,7 @@
     "typecheck.json"
   ],
   "scripts": {
-    "clean": "rm -rf coverage dist",
+    "clean": "rm -rf dist coverage",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:cov": "vitest run --coverage",
