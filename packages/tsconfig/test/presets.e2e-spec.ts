@@ -17,7 +17,7 @@ const packageRoot = resolve(import.meta.dirname, "..");
 
 const temporaryProjects: string[] = [];
 
-function resolveConfig(name: string): ts.ParsedCommandLine {
+function resolveConfig(...presets: string[]): ts.ParsedCommandLine {
   const projectRoot = mkdtempSync(join(tmpdir(), "nest-boot-tsconfig-"));
   temporaryProjects.push(projectRoot);
   mkdirSync(join(projectRoot, "src"));
@@ -32,7 +32,7 @@ function resolveConfig(name: string): ts.ParsedCommandLine {
   writeFileSync(
     configPath,
     JSON.stringify({
-      extends: join(packageRoot, name),
+      extends: presets.map((name) => join(packageRoot, name)),
       compilerOptions: { types: [] },
     }),
   );
@@ -48,7 +48,7 @@ function resolveConfig(name: string): ts.ParsedCommandLine {
   );
   expect(diagnostics).toEqual([]);
   if (!parsed) {
-    throw new Error(`Failed to resolve ${name}`);
+    throw new Error(`Failed to resolve ${presets.join(", ")}`);
   }
   return parsed;
 }
@@ -82,6 +82,26 @@ describe("Nest CLI 12 ESM presets", () => {
     expect(parsed.options.strict).toBe(true);
     expect(parsed.options.strictPropertyInitialization).toBe(false);
     expect(parsed.options.removeComments).toBe(true);
+  });
+  it("writes no-emit state in the consuming project's own cache", () => {
+    const parsed = resolveConfig("library.json", "typecheck.json");
+    const projectRoot = currentProjectRoot();
+    const cache = join(
+      projectRoot,
+      "node_modules/.cache/typecheck.tsbuildinfo",
+    );
+    expect(parsed.options.tsBuildInfoFile).toBe(cache);
+
+    const program = ts.createIncrementalProgram({
+      rootNames: parsed.fileNames,
+      options: { ...parsed.options, noEmit: true },
+    });
+    expect(program.emit().diagnostics).toEqual([]);
+    expect(existsSync(cache)).toBe(true);
+    expect(existsSync(join(projectRoot, "dist"))).toBe(false);
+    expect(existsSync(join(projectRoot, "tsconfig.build.tsbuildinfo"))).toBe(
+      false,
+    );
   });
   it("matches the generated library boundaries in the consuming project", () => {
     const parsed = resolveConfig("library.json");

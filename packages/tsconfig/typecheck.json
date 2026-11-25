@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Typecheck",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "${configDir}/node_modules/.cache/typecheck.tsbuildinfo"
+  }
+}

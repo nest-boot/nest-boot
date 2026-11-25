@@ -10,12 +10,13 @@
   "files": [
     "app.json",
     "base.json",
-    "library.json"
+    "library.json",
+    "typecheck.json"
   ],
   "scripts": {
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf coverage && rm -rf dist",
     "typecheck": "turbo run check:types",
-    "check:types": "tsc --noEmit --tsBuildInfoFile node_modules/.cache/typecheck.tsbuildinfo",
+    "check:types": "tsc --noEmit",
     "test": "vitest run",
     "test:cov": "vitest run --coverage",
     "test:watch": "vitest",
@@ -45,6 +46,7 @@
     "./app.json": "./app.json",
     "./base.json": "./base.json",
     "./library.json": "./library.json",
+    "./typecheck.json": "./typecheck.json",
     "./package.json": "./package.json"
   }
 }

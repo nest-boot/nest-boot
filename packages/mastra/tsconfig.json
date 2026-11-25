@@ -1,9 +1,8 @@
 {
-  "extends": "@nest-boot/tsconfig/library.json",
+  "extends": ["./tsconfig.build.json", "@nest-boot/tsconfig/typecheck.json"],
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": ".",
-    "tsBuildInfoFile": "./tsconfig.tsbuildinfo"
+    "rootDir": "."
   },
   "include": [
     "src",
