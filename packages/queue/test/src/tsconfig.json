@@ -1,8 +1,0 @@
-{
-  "extends": "@nest-boot/tsconfig/app.json",
-  "compilerOptions": {
-    "noEmit": true,
-    "incremental": false
-  },
-  "include": ["**/*.ts"]
-}

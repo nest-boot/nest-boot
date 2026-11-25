@@ -38,7 +38,7 @@ Run the recipe's cross-layer tests:
 
 ```bash
 pnpm --filter @nest-boot/auth build
-pnpm --filter @nest-boot/example-server exec vitest run --config ./vitest.config.e2e.ts test/report-authorization.e2e-spec.ts
+pnpm --filter @nest-boot/example-server exec vitest run --project e2e test/e2e/report-authorization.spec.ts
 ```
 
 The tests cover roles, direct grants, object conditions, empty/restricted API keys,

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", ".source/**", "*.tsbuildinfo"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "env": ["NODE_ENV", "VERCEL_PROJECT_PRODUCTION_URL"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "cache": false
+    }
+  }
+}

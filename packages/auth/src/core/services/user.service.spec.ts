@@ -33,6 +33,12 @@ import { type AuthModuleOptions } from "../interfaces/auth-module-options.interf
 import { UserService } from "./user.service.js";
 import { UserDeletionService } from "./user-deletion.service.js";
 
+// Unit tests freeze and rewind time; keep generated IDs independent of that clock.
+vi.mock("sonyflake-js", () => {
+  let id = 0n;
+  return { Sonyflake: { next: () => ++id } };
+});
+
 describe("UserService", () => {
   it("exposes the same default and configured password limits used for administrative writes", () => {
     expect(createService().service.getPasswordPolicy()).toEqual({

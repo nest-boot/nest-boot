@@ -1,7 +1,0 @@
-{
-  "include": ["{src,dist}/{cli,run-cli,project-loader,ts-node.loader}.{ts,js}"],
-  "exclude-after-remap": true,
-  "reports-dir": "coverage/cli",
-  "reporter": ["text", "lcov", "json"],
-  "temp-directory": "node_modules/.cache/c8"
-}

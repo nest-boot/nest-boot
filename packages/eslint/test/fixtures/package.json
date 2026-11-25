@@ -1,5 +1,5 @@
 {
-  "name": "@nest-boot-tests/eslint-consumer",
+  "name": "@nest-boot/eslint-test-fixtures",
   "private": true,
   "type": "module",
   "devDependencies": {

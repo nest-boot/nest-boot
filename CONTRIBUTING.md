@@ -63,14 +63,15 @@ Do not run both test commands unless useful. Not every package defines every tar
 ## Test organization
 
 - Unit tests focus on one implementation using test doubles for infrastructure. Place them beside that implementation and keep the same filename stem: `foo.service.ts` has `foo.service.spec.ts`. Root JavaScript or JSON configuration files use the same convention.
-- Tests that assemble complete modules, exercise command or HTTP entry points, or use real databases, Redis, SMTP, or compiler projects belong under the package's `test/` directory as `*.e2e-spec.ts`. Running in the same process does not make such a test a unit test.
+- Integration tests that verify cross-component or multi-module interactions belong under the package's `test/integration/` directory as `*.spec.ts`.
+- End-to-end tests that assemble complete modules, exercise command or HTTP entry points, or use real databases, Redis, SMTP, or compiler projects belong under the package's `test/e2e/` directory as `*.spec.ts`. Running in the same process does not make such a test a unit test.
 - Split mixed suites at the behavior boundary while preserving their assertions. Share setup and test doubles through fixtures under `test/`; do not publish fixtures with production code.
 - Keep compile-time-only contracts in `test/*.type-test.ts` and include them in the package's TypeScript check.
 - Apply the same ownership and naming rules to examples: framework behavior belongs in its owning package, while example tests cover application configuration, migrations, business recipes, and application flows. Client unit tests use adjacent `*.spec.ts`/`*.spec.tsx` files; Playwright browser tests keep `*.spec.ts` under the configured `e2e/` directory and run through `test:e2e`.
 - Import local implementations from `src` in package tests. Consumer tests should import a workspace package by its public name. Declare fixture dependencies in its package manifest when a consumer would otherwise introduce a workspace cycle.
-- Run ordinary tests through `test`/`test:cov` and E2E tests through `test:e2e`. Build affected packages before E2E tests; CLI subprocesses and some package suites exercise compiled outputs. Keep their coverage reports in separate directories so neither run overwrites the other; CI collects both. In the command package, Vitest measures in-process E2E flows while c8 writes CLI subprocess coverage to `coverage/cli`; raw c8 snapshots stay in `node_modules/.cache/c8`.
+- Each package defines `unit`, `integration`, and `e2e` projects in `vitest.config.ts`, and the root `vitest.config.ts` composes them as nested Vitest projects. Run all Vitest projects through `test`, unit tests through `test:unit`, integration tests through `test:integration`, E2E tests through `test:e2e`, and combined coverage across all projects through `test:cov`. Build affected packages before E2E tests; CLI subprocesses and some package suites exercise compiled outputs. Vitest's V8 coverage uses `autoAttachSubprocess: true` so CLI child-process coverage is collected into the same `coverage` report.
 
-`pnpm test:layout` checks packages and examples, matches unit filenames to adjacent implementations (including TSX and JavaScript files), verifies that E2E files live under `test/`, and recognizes the configured Playwright test directory separately.
+`pnpm test:layout` checks packages and examples, matches unit filenames to adjacent implementations (including TSX and JavaScript files), verifies that non-unit tests under `test/` live in `test/integration/` or `test/e2e/`, and recognizes the configured Playwright test directory separately.
 
 ## Match pull request CI
 
@@ -96,7 +97,7 @@ pnpm release:status
 ```
 
 Applications extending `@nest-boot/tsconfig` must install its compiler and global
-type peers: `typescript@^6`, `@types/node@^24`, and `vitest@^4.1.11`.
+type peers: `typescript@^6`, `@types/node@^24`, and `vitest@^4.1.11 || ^5.1.1`.
 
 Run `git diff --check` and inspect `git status --short` before committing. Do not include `.env` files, caches, build artifacts, coverage output, production data, or unrelated lockfile changes.
 

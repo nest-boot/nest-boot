@@ -8,12 +8,6 @@
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "env": ["NODE_ENV"]
     },
-    "@nest-boot/docs#build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", ".source/**", "*.tsbuildinfo"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "env": ["NODE_ENV", "VERCEL_PROJECT_PRODUCTION_URL"]
-    },
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,
@@ -26,23 +20,19 @@
       "dependsOn": ["^build"],
       "cache": false
     },
-    "@nest-boot/eslint#lint": {
-      "dependsOn": ["build"],
-      "cache": false
-    },
     "lint:fix": {
       "dependsOn": ["^build"],
-      "cache": false
-    },
-    "@nest-boot/eslint#lint:fix": {
-      "dependsOn": ["build"],
       "cache": false
     },
     "test": {
       "dependsOn": ["build"],
       "cache": false
     },
-    "test:cov": {
+    "test:unit": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "test:integration": {
       "dependsOn": ["build"],
       "cache": false
     },
@@ -50,48 +40,12 @@
       "dependsOn": ["build"],
       "cache": false
     },
-    "@nest-boot/eslint#test": {
-      "dependsOn": ["build", "@nest-boot-tests/eslint-consumer#build"],
-      "cache": false
-    },
-    "@nest-boot/eslint#test:cov": {
-      "dependsOn": ["build", "@nest-boot-tests/eslint-consumer#build"],
-      "cache": false
-    },
-    "@nest-boot/eslint#test:e2e": {
-      "dependsOn": ["build", "@nest-boot-tests/eslint-consumer#build"],
-      "cache": false
-    },
-    "@nest-boot/queue#test:e2e": {
-      "dependsOn": ["build", "@nest-boot-tests/queue-cli#build"],
+    "test:cov": {
+      "dependsOn": ["build"],
       "cache": false
     },
     "typecheck": {
-      "dependsOn": ["^build"],
-      "cache": false
-    },
-    "@nest-boot/command#typecheck": {
       "dependsOn": ["build"],
-      "cache": false
-    },
-    "@nest-boot/database#typecheck": {
-      "dependsOn": ["build"],
-      "cache": false
-    },
-    "@nest-boot/eslint#typecheck": {
-      "dependsOn": ["build"],
-      "cache": false
-    },
-    "@nest-boot/graphql#typecheck": {
-      "dependsOn": ["build"],
-      "cache": false
-    },
-    "@nest-boot/health-check#typecheck": {
-      "dependsOn": ["build"],
-      "cache": false
-    },
-    "@nest-boot/queue#typecheck": {
-      "dependsOn": ["@nest-boot-tests/queue-cli#build"],
       "cache": false
     }
   }

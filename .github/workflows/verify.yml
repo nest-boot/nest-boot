@@ -106,23 +106,11 @@ jobs:
         run: pnpm test:layout
 
       - name: Test example client units
-        run: pnpm --filter @nest-boot/example-client test
-
-      - name: Test
-        run: pnpm test:cov
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
-          REDIS_URL: redis://localhost:6379
-          STORAGE_ENDPOINT_URL: http://localhost:9000
-          STORAGE_REGION: us-east-1
-          STORAGE_BUCKET: test-bucket
-          STORAGE_FORCE_PATH_STYLE: true
-          STORAGE_ACCESS_KEY_ID: rustfs
-          STORAGE_SECRET_ACCESS_KEY: secretsecret
+        run: pnpm --filter @nest-boot/example-client test:unit
 
       # Storage e2e suites create their buckets through the AWS SDK.
-      - name: End-to-end test
-        run: pnpm test:e2e
+      - name: Test
+        run: pnpm test:cov
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
           REDIS_URL: redis://localhost:6379
@@ -137,7 +125,8 @@ jobs:
       - name: Verify full example server integration
         run: |
           pnpm --filter @nest-boot/example-server exec tsc --noEmit -p tsconfig.json
-          pnpm --filter @nest-boot/example-server test
+          pnpm --filter @nest-boot/example-server test:unit
+          pnpm --filter @nest-boot/example-server test:integration
           pnpm --filter @nest-boot/example-server test:e2e
         env:
           SERVER_E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres

@@ -1,30 +1,44 @@
-import { fileURLToPath } from "node:url";
-
-import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
+
 export default defineConfig({
-  // Match Nest's Node entry point instead of loading a second GraphQL scalar implementation.
   resolve: {
-    alias: [
-      {
-        find: /^graphql$/,
-        replacement: fileURLToPath(import.meta.resolve("graphql")),
-      },
-    ],
+    tsconfigPaths: true,
+    alias: [{ find: /^graphql$/, replacement: "graphql/index.js" }],
   },
-  // Resolves the path aliases declared in tsconfig.json, including the ones
-  // added by `nest g library`.
-  plugins: [tsconfigPaths()],
   test: {
-    setupFiles: ["./test/setup.ts"],
     globals: true,
     root: "./",
-    include: ["src/**/*.spec.ts"],
+    passWithNoTests: true,
     coverage: {
-      include: ["src/**/*.ts"],
-      exclude: ["src/**/*.spec.ts"],
-      reportsDirectory: "coverage/unit",
-      reporter: ["text", "html", "clover", "json"],
+      include: ["src/**/*.ts", "dist/**/*.js"],
+      exclude: ["**/*.spec.ts", "dist/test/**"],
+      autoAttachSubprocess: true,
+      reporter: ["text", "html", "json", "json-summary"],
     },
+    projects: [
+      {
+        test: {
+          name: "unit",
+          include: ["src/**/*.spec.ts"],
+          testTimeout: 15000,
+        },
+      },
+      {
+        test: {
+          name: "integration",
+          include: ["test/integration/**/*.spec.ts"],
+          testTimeout: 30000,
+          hookTimeout: 30000,
+        },
+      },
+      {
+        test: {
+          name: "e2e",
+          include: ["test/e2e/**/*.spec.ts"],
+          testTimeout: 60000,
+          hookTimeout: 30000,
+        },
+      },
+    ],
   },
 });

@@ -9,6 +9,27 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   test: {
-    include: ["src/**/*.spec.{ts,tsx}", "eslint/**/*.spec.mjs"],
+    passWithNoTests: true,
+    coverage: {
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["**/*.spec.{ts,tsx}"],
+      reporter: ["text", "html", "json", "json-summary"],
+    },
+    projects: [
+      {
+        test: {
+          name: "unit",
+          include: ["src/**/*.spec.{ts,tsx}", "eslint/**/*.spec.mjs"],
+        },
+      },
+      {
+        test: {
+          name: "integration",
+          include: ["test/integration/**/*.spec.{ts,tsx}"],
+          testTimeout: 30000,
+          hookTimeout: 30000,
+        },
+      },
+    ],
   },
 });

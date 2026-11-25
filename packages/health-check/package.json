@@ -31,11 +31,13 @@
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
     "typecheck": "tsc --noEmit",
-    "test": "turbo run build && vitest run --passWithNoTests",
-    "test:cov": "turbo run build && vitest run --coverage --passWithNoTests",
-    "test:watch": "turbo run build && vitest",
-    "test:debug": "turbo run build && vitest --inspect-brk --no-file-parallelism --passWithNoTests",
-    "test:e2e": "turbo run build && vitest run --config ./vitest.config.e2e.ts --coverage"
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:e2e": "vitest run --project e2e",
+    "test:cov": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:debug": "vitest --inspect-brk --no-file-parallelism"
   },
   "devDependencies": {
     "@nest-boot/eslint": "workspace:^",
@@ -48,14 +50,15 @@
     "@nestjs/testing": "^12.0.1",
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.2.1",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^5.1.1",
     "eslint": "^9.39.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "supertest": "^7.2.2",
     "typescript": "^6.0.3",
+    "vite": "^8.3.8",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^4.1.11"
+    "vitest": "^5.1.1"
   },
   "peerDependencies": {
     "@nest-boot/middleware": "workspace:^",

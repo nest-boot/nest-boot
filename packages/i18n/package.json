@@ -32,10 +32,12 @@
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:e2e": "vitest run --project e2e",
     "test:cov": "vitest run --coverage",
     "test:watch": "vitest",
-    "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
+    "test:debug": "vitest --inspect-brk --no-file-parallelism"
   },
   "devDependencies": {
     "@nest-boot/eslint": "workspace:^",
@@ -50,7 +52,7 @@
     "@types/i18next-fs-backend": "^1.2.0",
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.2.1",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^5.1.1",
     "eslint": "^9.39.3",
     "express": "^5.3.0",
     "i18next": "^26.4.0",
@@ -60,8 +62,9 @@
     "rxjs": "^7.8.2",
     "supertest": "^7.2.2",
     "typescript": "^6.0.3",
+    "vite": "^8.3.8",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^4.1.11"
+    "vitest": "^5.1.1"
   },
   "peerDependencies": {
     "@nest-boot/middleware": "workspace:^",

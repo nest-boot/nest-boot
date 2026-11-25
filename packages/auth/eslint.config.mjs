@@ -7,11 +7,11 @@ export default defineConfig([
     // These fixtures exercise Auth with the upstream module or decorators.
     files: [
       "src/core/auth.module.spec.ts",
-      "test/api-key-workspace-context.e2e-spec.ts",
+      "test/e2e/api-key-workspace-context.spec.ts",
       "test/fixtures/auth-feature-bootstrap.fixture.ts",
       "test/fixtures/auth-workspace-bootstrap.fixture.ts",
-      "test/permission-output.e2e-spec.ts",
-      "test/system-account-api.e2e-spec.ts",
+      "test/e2e/permission-output.spec.ts",
+      "test/e2e/system-account-api.spec.ts",
     ],
     rules: { "nest-boot/graphql/no-direct-nestjs-import": "off" },
   },

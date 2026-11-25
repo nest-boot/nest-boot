@@ -9,11 +9,13 @@ const ignored = new Set([
   ".turbo",
   ".tanstack",
   ".output",
+  ".vitest",
   "playwright-report",
   "test-results",
 ]);
 const problems = [];
 let units = 0;
+let integration = 0;
 let endToEnd = 0;
 let browser = 0;
 
@@ -25,21 +27,41 @@ function visit(directory, packageRoot, browserDirectory) {
       continue;
     }
     if (!entry.isFile()) continue;
+
+    const rel = relative(packageRoot, file);
+
     if (/\.e2e-spec\.[cm]?[jt]sx?$/.test(entry.name)) {
-      endToEnd++;
-      if (!relative(packageRoot, file).startsWith(`test${sep}`)) {
-        problems.push(
-          `${file}: E2E tests belong under the package's test/ directory`,
-        );
-      }
-    } else if (/\.(?:spec|test)\.[cm]?[jt]sx?$/.test(entry.name)) {
-      if (
-        browserDirectory &&
-        relative(packageRoot, file).startsWith(`${browserDirectory}${sep}`)
-      ) {
+      problems.push(
+        `${file}: E2E tests use test/e2e/**/*.spec.* instead of *.e2e-spec.*`,
+      );
+      continue;
+    }
+
+    if (/\.(?:spec|test)\.[cm]?[jt]sx?$/.test(entry.name)) {
+      if (browserDirectory && rel.startsWith(`${browserDirectory}${sep}`)) {
         browser++;
         continue;
       }
+
+      if (rel.startsWith(`test${sep}`)) {
+        if (!/\.spec\.[cm]?[jt]sx?$/.test(entry.name)) {
+          problems.push(
+            `${file}: integration and E2E tests use the *.spec.* naming convention`,
+          );
+          continue;
+        }
+        if (rel.startsWith(`test${sep}integration${sep}`)) {
+          integration++;
+        } else if (rel.startsWith(`test${sep}e2e${sep}`)) {
+          endToEnd++;
+        } else {
+          problems.push(
+            `${file}: tests under test/ must live in test/integration/ or test/e2e/`,
+          );
+        }
+        continue;
+      }
+
       units++;
       if (!/\.spec\.[cm]?[jt]sx?$/.test(entry.name)) {
         problems.push(`${file}: unit tests use the *.spec.* naming convention`);
@@ -85,6 +107,6 @@ if (problems.length) {
   process.exitCode = 1;
 } else {
   process.stdout.write(
-    `Test layout verified: ${units} unit files, ${endToEnd} E2E files, ${browser} browser files.\n`,
+    `Test layout verified: ${units} unit files, ${integration} integration files, ${endToEnd} E2E files, ${browser} browser files.\n`,
   );
 }

@@ -10,7 +10,6 @@
     "dist",
     "packages/*/dist/**",
     "packages/*/test/**",
-    "packages/**/*.spec.ts",
-    "packages/**/*.e2e-spec.ts"
+    "packages/**/*.spec.ts"
   ]
 }
