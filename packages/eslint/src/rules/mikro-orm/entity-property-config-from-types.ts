@@ -103,24 +103,34 @@ export default createRule<
     const parserServices = ESLintUtils.getParserServices(context);
     const checker = parserServices.program.getTypeChecker();
 
-    // Check if the type is an enum
+    // Check if the type is a runtime enum (excluding pure type-only aliases)
     const isEnumType = (node: TSESTree.Node): boolean => {
       try {
         const tsNode = parserServices.esTreeNodeToTSNodeMap.get(node);
+        const rawSym =
+          ts.isTypeReferenceNode(tsNode) && ts.isIdentifier(tsNode.typeName)
+            ? checker.getSymbolAtLocation(tsNode.typeName)
+            : checker.getSymbolAtLocation(tsNode);
+        const sym =
+          rawSym && rawSym.flags & ts.SymbolFlags.Alias
+            ? checker.getAliasedSymbol(rawSym)
+            : rawSym;
+        if (sym && (sym.flags & ts.SymbolFlags.Value) === 0) {
+          return false;
+        }
         const type = checker.getTypeAtLocation(tsNode);
 
-        // Check if it is an enum type
-        if (type.symbol.flags & ts.SymbolFlags.Enum) {
+        if ((type.symbol?.flags ?? 0) & ts.SymbolFlags.Enum) {
           return true;
         }
 
-        // Check each member in a union type
         if (type.isUnion()) {
-          return type.types.some(
-            (t) =>
-              t.symbol.flags & ts.SymbolFlags.EnumMember ||
-              t.symbol.flags & ts.SymbolFlags.Enum,
-          );
+          return type.types.some((t) => {
+            const flags = t.symbol?.flags ?? 0;
+            return Boolean(
+              flags & ts.SymbolFlags.EnumMember || flags & ts.SymbolFlags.Enum,
+            );
+          });
         }
 
         return false;
@@ -261,6 +271,22 @@ export default createRule<
       if (target.type === AST_NODE_TYPES.Identifier) {
         return {
           canonical: target.name,
+          isNew,
+          hasModeArg,
+          mode,
+          firstArg,
+          isFullText: false,
+        };
+      }
+
+      if (
+        target.type === AST_NODE_TYPES.MemberExpression &&
+        !target.computed &&
+        target.property.type === AST_NODE_TYPES.Identifier &&
+        target.property.name === "VectorType"
+      ) {
+        return {
+          canonical: "VectorType",
           isNew,
           hasModeArg,
           mode,
@@ -666,6 +692,58 @@ export default createRule<
       }
     };
 
+    const classifyScalarTsType = (
+      type: ts.Type,
+    ): "string" | "number" | "boolean" | "bigint" | null => {
+      if (type.isUnion()) {
+        if (type.types.length === 0) {
+          return null;
+        }
+        if (
+          type.types.every(
+            (member) => (member.flags & ts.TypeFlags.StringLike) !== 0,
+          )
+        ) {
+          return "string";
+        }
+        if (
+          type.types.every(
+            (member) => (member.flags & ts.TypeFlags.NumberLike) !== 0,
+          )
+        ) {
+          return "number";
+        }
+        if (
+          type.types.every(
+            (member) => (member.flags & ts.TypeFlags.BooleanLike) !== 0,
+          )
+        ) {
+          return "boolean";
+        }
+        if (
+          type.types.every(
+            (member) => (member.flags & ts.TypeFlags.BigIntLike) !== 0,
+          )
+        ) {
+          return "bigint";
+        }
+        return null;
+      }
+      if (type.flags & ts.TypeFlags.StringLike) {
+        return "string";
+      }
+      if (type.flags & ts.TypeFlags.NumberLike) {
+        return "number";
+      }
+      if (type.flags & ts.TypeFlags.BooleanLike) {
+        return "boolean";
+      }
+      if (type.flags & ts.TypeFlags.BigIntLike) {
+        return "bigint";
+      }
+      return null;
+    };
+
     const inferPropertyTypeFromResolvedTsType = (
       node: TSESTree.TypeNode,
     ): {
@@ -690,37 +768,13 @@ export default createRule<
         ) {
           return { propertyType: null };
         }
+        const scalarKind = classifyScalarTsType(resolved);
+        if (scalarKind !== null) {
+          return { propertyType: getPropertyType(scalarKind) };
+        }
         if (resolved.isUnion()) {
           if (resolved.types.length === 0) {
             return { propertyType: null };
-          }
-          if (
-            resolved.types.every(
-              (member) => (member.flags & ts.TypeFlags.StringLike) !== 0,
-            )
-          ) {
-            return { propertyType: "t.string" };
-          }
-          if (
-            resolved.types.every(
-              (member) => (member.flags & ts.TypeFlags.NumberLike) !== 0,
-            )
-          ) {
-            return { propertyType: "t.float" };
-          }
-          if (
-            resolved.types.every(
-              (member) => (member.flags & ts.TypeFlags.BooleanLike) !== 0,
-            )
-          ) {
-            return { propertyType: "t.boolean" };
-          }
-          if (
-            resolved.types.every(
-              (member) => (member.flags & ts.TypeFlags.BigIntLike) !== 0,
-            )
-          ) {
-            return { propertyType: "t.bigint" };
           }
           // Heterogeneous JSON-serializable union (e.g. string | boolean | number | object) requires JSON storage;
           // unions with non-JSON-serializable members (e.g. string | bigint, string | bigint[], boolean | Date) require an explicit custom Type.
@@ -730,19 +784,7 @@ export default createRule<
             ? { propertyType: "t.json" }
             : { propertyType: null, unsupportedUnion: true };
         }
-        if (resolved.flags & ts.TypeFlags.StringLike) {
-          return { propertyType: "t.string" };
-        }
-        if (resolved.flags & ts.TypeFlags.NumberLike) {
-          return { propertyType: "t.float" };
-        }
-        if (resolved.flags & ts.TypeFlags.BooleanLike) {
-          return { propertyType: "t.boolean" };
-        }
-        if (resolved.flags & ts.TypeFlags.BigIntLike) {
-          return { propertyType: "t.bigint" };
-        }
-        // Resolved array / ReadonlyArray type aliases (e.g. type Tags = readonly string[])
+        // Resolved array / ReadonlyArray type aliases (e.g. type Tags = readonly string[] or readonly ("a" | "b")[])
         if (
           checker.isArrayType(resolved) ||
           resolved.symbol?.name === "ReadonlyArray"
@@ -753,16 +795,14 @@ export default createRule<
           if (!elemType) {
             return { propertyType: null };
           }
-          if (elemType.flags & ts.TypeFlags.StringLike) {
-            return { propertyType: "t.array", arrayElementTypeName: "string" };
+          const elemKind = classifyScalarTsType(elemType);
+          if (elemKind === "string" || elemKind === "number") {
+            return { propertyType: "t.array", arrayElementTypeName: elemKind };
           }
-          if (elemType.flags & ts.TypeFlags.NumberLike) {
-            return { propertyType: "t.array", arrayElementTypeName: "number" };
-          }
-          if (elemType.flags & ts.TypeFlags.BooleanLike) {
+          if (elemKind === "boolean") {
             return { propertyType: "t.json", arrayElementTypeName: "boolean" };
           }
-          if (elemType.flags & ts.TypeFlags.BigIntLike) {
+          if (elemKind === "bigint") {
             return { propertyType: null, unsupportedUnion: true };
           }
           return isJsonSerializableType(elemType)
@@ -885,36 +925,10 @@ export default createRule<
         isNullable = true;
       }
 
-      // Handle null/undefined in union types
-      if (baseTypeNode?.type === AST_NODE_TYPES.TSUnionType) {
-        const hasNullish = baseTypeNode.types.some((t: TSESTree.TypeNode) => {
-          return (
-            t.type === AST_NODE_TYPES.TSNullKeyword ||
-            t.type === AST_NODE_TYPES.TSUndefinedKeyword
-          );
-        });
-        if (hasNullish) {
-          isNullable = true;
-        }
-
-        baseTypeNode =
-          baseTypeNode.types.find((t: TSESTree.TypeNode) => {
-            return (
-              t.type !== AST_NODE_TYPES.TSNullKeyword &&
-              t.type !== AST_NODE_TYPES.TSUndefinedKeyword
-            );
-          }) ?? null;
-      }
-
-      // First unwrap Ref<T> and Opt<T> → T, and handle null/undefined within
-      if (
-        baseTypeNode?.type === AST_NODE_TYPES.TSTypeReference &&
-        (coreName(baseTypeNode.typeName) === "Ref" ||
-          coreName(baseTypeNode.typeName) === "Opt")
-      ) {
-        let inner = baseTypeNode.typeArguments?.params[0] ?? null;
-        if (inner?.type === AST_NODE_TYPES.TSUnionType) {
-          const hasNullish = inner.types.some((t: TSESTree.TypeNode) => {
+      // Unwrap outer null/undefined and nested Ref<T>/Opt<T> wrappers
+      while (baseTypeNode) {
+        if (baseTypeNode.type === AST_NODE_TYPES.TSUnionType) {
+          const hasNullish = baseTypeNode.types.some((t: TSESTree.TypeNode) => {
             return (
               t.type === AST_NODE_TYPES.TSNullKeyword ||
               t.type === AST_NODE_TYPES.TSUndefinedKeyword
@@ -923,15 +937,28 @@ export default createRule<
           if (hasNullish) {
             isNullable = true;
           }
-          inner =
-            inner.types.find((t: TSESTree.TypeNode) => {
+          baseTypeNode =
+            baseTypeNode.types.find((t: TSESTree.TypeNode) => {
               return (
                 t.type !== AST_NODE_TYPES.TSNullKeyword &&
                 t.type !== AST_NODE_TYPES.TSUndefinedKeyword
               );
-            }) ?? inner;
+            }) ?? null;
+          continue;
         }
-        baseTypeNode = inner ?? baseTypeNode;
+        if (
+          baseTypeNode.type === AST_NODE_TYPES.TSTypeReference &&
+          (coreName(baseTypeNode.typeName) === "Ref" ||
+            coreName(baseTypeNode.typeName) === "Opt")
+        ) {
+          const inner = baseTypeNode.typeArguments?.params[0] ?? null;
+          if (!inner || inner === baseTypeNode) {
+            break;
+          }
+          baseTypeNode = inner;
+          continue;
+        }
+        break;
       }
 
       // Skip Collection<T> types (these should be handled by OneToMany etc. decorators)

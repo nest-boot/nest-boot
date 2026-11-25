@@ -320,6 +320,81 @@ tester.run("graphql-field-config-from-types", rule, {
         return Item;
       }
     `,
+    // Unconstrained generics, recursive array scalars, intersection scalars, array aliases, and nullable: "items" / "itemsAndList"
+    /* typescript */ `
+      class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+        readonly _internal?: TInternal;
+        readonly _external?: TExternal;
+      }
+      interface Type<T = unknown> extends Function {
+        new (...args: unknown[]): T;
+      }
+      type Tree = Tree[];
+      type TreeB = TreeB[];
+      declare const TreeScalar: GraphQLScalarType<Tree>;
+      declare const IntersectedStringScalar: GraphQLScalarType<string> & {
+        readonly tag: "custom";
+      };
+      enum Role {
+        ADMIN = "ADMIN",
+        USER = "USER",
+      }
+      type ReadonlyTags = readonly string[];
+      type ReadonlyFlags = readonly boolean[];
+      type ReadonlyScores = readonly number[];
+      type ReadonlyLiterals = readonly ("x" | "y")[];
+      type ReadonlyRecords = readonly Record<string, unknown>[];
+      type ReadonlyRoles = readonly Role[];
+      type MaybeText = string | null;
+      type NullableItemsAlias = readonly (string | null)[];
+      function createGenericBox<T>(ItemClass: Type<T>) {
+        @ObjectType()
+        class Box {
+          @Field(() => ItemClass)
+          item!: T;
+
+          @Field(() => ItemClass, { nullable: true })
+          maybeItem!: T | null;
+
+          @Field(() => ItemClass)
+          unionParam!: T | string extends never ? never : T;
+
+          @Field(() => TreeScalar)
+          tree!: TreeB;
+
+          @Field(() => IntersectedStringScalar, { nullable: false })
+          label!: string;
+
+          @Field(() => [ID])
+          parentId!: ReadonlyTags;
+
+          @Field(() => [String])
+          tags!: ReadonlyLiterals;
+
+          @Field(() => [Boolean])
+          flags!: ReadonlyFlags;
+
+          @Field(() => [Float])
+          scores!: ReadonlyScores;
+
+          @Field(() => [GraphQLJSONObject])
+          records!: ReadonlyRecords;
+
+          @Field(() => [Role])
+          roles!: ReadonlyRoles;
+
+          @Field(() => [String], { nullable: "items" })
+          inlineNullableItems!: (string | null)[];
+
+          @Field(() => [IntersectedStringScalar], { nullable: "items" })
+          scalarNullableItems!: MaybeText[];
+
+          @Field(() => [String], { nullable: "itemsAndList" })
+          bothNullable!: NullableItemsAlias | null;
+        }
+        return Box;
+      }
+    `,
   ],
   invalid: [
     // @Field type mismatch
@@ -1108,7 +1183,7 @@ class BuiltinAndCrossEnum {
         { messageId: "alignFieldDecoratorWithTsType" },
       ],
     },
-    // Nullable list items must not silently match non-nullable GraphQL list scalar
+    // Nullable list items must require and autofix { nullable: "items" } / { nullable: "itemsAndList" }
     {
       code: /* typescript */ `import { Field, ObjectType } from "@nestjs/graphql";
 class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
@@ -1117,13 +1192,119 @@ class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
 }
 declare const CustomStringScalar: GraphQLScalarType<string>;
 type MaybeText = string | null;
+type ReadonlyTags = readonly string[];
 @ObjectType()
 class ListItemNullability {
   @Field(() => [CustomStringScalar])
   values!: MaybeText[];
+
+  @Field(() => [String])
+  optionalItems?: (string | null)[];
+
+  aliasedTags!: ReadonlyTags;
 }`,
-      output: null,
-      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+      output: /* typescript */ `import { Field, ObjectType } from "@nestjs/graphql";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+declare const CustomStringScalar: GraphQLScalarType<string>;
+type MaybeText = string | null;
+type ReadonlyTags = readonly string[];
+@ObjectType()
+class ListItemNullability {
+  @Field(() => [CustomStringScalar], { nullable: "items" })
+  values!: MaybeText[];
+
+  @Field(() => [String], { nullable: "itemsAndList" })
+  optionalItems?: (string | null)[];
+
+  @Field(() => [String])
+  aliasedTags!: ReadonlyTags;
+}`,
+      errors: [
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+      ],
+    },
+    // Numeric enum inside tuple/set/record scalars and invalid nullable options are rejected
+    {
+      code: /* typescript */ `import { Field, ObjectType } from "@nestjs/graphql";
+import { Opt, Ref } from "@mikro-orm/core";
+import { GraphQLJSONObject } from "graphql-type-json";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+class User {}
+enum Priority {
+  LOW = 0,
+  HIGH = 1,
+}
+declare const PriorityRecordScalar: GraphQLScalarType<Record<string, Priority>>;
+declare const PriorityTupleScalar: GraphQLScalarType<[Priority, string]>;
+declare const PrioritySetScalar: GraphQLScalarType<Set<Priority>>;
+type TupleAlias = [number, string];
+type SetAlias = Set<number>;
+@ObjectType()
+class TupleAndRecordCheck {
+  @Field(() => PriorityRecordScalar)
+  scores!: Record<string, number>;
+
+  @Field(() => PriorityTupleScalar)
+  pair!: TupleAlias;
+
+  @Field(() => PrioritySetScalar)
+  setVal!: SetAlias;
+
+  @Field(() => String, { nullable: "bogus" as never })
+  badNullable!: string;
+
+  @Field(() => User)
+  nestedOptRef!: Opt<Ref<User> | null>;
+}`,
+      output: /* typescript */ `import { Field, ObjectType } from "@nestjs/graphql";
+import { Opt, Ref } from "@mikro-orm/core";
+import { GraphQLJSONObject } from "graphql-type-json";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+class User {}
+enum Priority {
+  LOW = 0,
+  HIGH = 1,
+}
+declare const PriorityRecordScalar: GraphQLScalarType<Record<string, Priority>>;
+declare const PriorityTupleScalar: GraphQLScalarType<[Priority, string]>;
+declare const PrioritySetScalar: GraphQLScalarType<Set<Priority>>;
+type TupleAlias = [number, string];
+type SetAlias = Set<number>;
+@ObjectType()
+class TupleAndRecordCheck {
+  @Field(() => GraphQLJSONObject)
+  scores!: Record<string, number>;
+
+  @Field(() => PriorityTupleScalar)
+  pair!: TupleAlias;
+
+  @Field(() => PrioritySetScalar)
+  setVal!: SetAlias;
+
+  @Field(() => String)
+  badNullable!: string;
+
+  @Field(() => User, { nullable: true })
+  nestedOptRef!: Opt<Ref<User> | null>;
+}`,
+      errors: [
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+        { messageId: "alignFieldDecoratorWithTsType" },
+      ],
     },
     // Parenthesized sequence expression in semantic callback preserves grouping when fixing nullability
     {

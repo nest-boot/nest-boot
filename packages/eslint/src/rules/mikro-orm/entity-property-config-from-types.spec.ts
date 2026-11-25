@@ -451,15 +451,36 @@ class Book {
       import { ArrayType, t } from "@mikro-orm/core";
       import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
+      enum Status {
+        OPEN = "open",
+        CLOSED = "closed",
+      }
       type ReadonlyTags = readonly string[];
+      type LiteralTags = readonly ("a" | "b")[];
+      type BitVector = readonly (0 | 1)[];
+      type StatusList = Status[];
+      type StatusAlias = Status;
       type ReadonlyVector = readonly number[];
       type ReadonlyFlags = readonly boolean[];
       type ReadonlyBigIds = readonly bigint[];
+      const vectorTypes = { VectorType: class {} };
 
       @Entity()
       class Tagged {
         @Property({ type: t.array })
         tags!: ReadonlyTags;
+
+        @Property({ type: t.array })
+        literalTags!: LiteralTags;
+
+        @Property({ type: new vectorTypes.VectorType(3) })
+        bits!: BitVector;
+
+        @Property({ type: t.array })
+        statuses!: StatusList;
+
+        @Property({ type: t.string })
+        statusAlias!: StatusAlias;
 
         @Property({ type: t.json })
         jsonTags!: ReadonlyTags;

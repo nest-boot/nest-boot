@@ -23,13 +23,20 @@ interface TypeInfo {
   typeName: string | null;
   isArray: boolean;
   isNullable: boolean;
+  isItemsNullable?: boolean;
   isCustomType?: boolean;
+  unautofixableCustomType?: boolean;
   typeReference?: TSESTree.Node;
   targetTypeNode?: TSESTree.TypeNode;
   fullTypeNode?: TSESTree.TypeNode;
+  resolvedTargetTsType?: ts.Type;
+  resolvedRawItemTsType?: ts.Type;
+  resolvedFullTsType?: ts.Type;
   isWholeValueScalar?: boolean;
   scalarExpression?: string;
 }
+
+type ExpectedNullableOption = true | "items" | "itemsAndList" | null;
 
 export type DecoratorBehavior = "ignore" | "remove";
 
@@ -155,6 +162,46 @@ export default createRule<
     const esTreeNodeToTSNodeMap = parserServices?.esTreeNodeToTSNodeMap;
     const checker = program?.getTypeChecker();
 
+    const hasNullishFlag = (type: ts.Type): boolean => {
+      if ((type.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) !== 0) {
+        return true;
+      }
+      return (
+        type.isUnion() &&
+        type.types.some(
+          (member) =>
+            (member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) !== 0,
+        )
+      );
+    };
+
+    const stripExplicitNullish = (
+      typeChecker: ts.TypeChecker,
+      type: ts.Type,
+    ): ts.Type => {
+      if (!type.isUnion()) {
+        // Avoid getNonNullableType on non-unions: in TS 4.8+, getNonNullableType(T)
+        // narrows an unconstrained type parameter T into `T & {}`.
+        return type;
+      }
+      const hasTypeParam = type.types.some(
+        (member) => (member.flags & ts.TypeFlags.TypeParameter) !== 0,
+      );
+      if (hasTypeParam) {
+        const remaining = type.types.filter(
+          (member) =>
+            (member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) === 0,
+        );
+        if (remaining.length === 1) {
+          return remaining[0];
+        }
+        if (remaining.length === type.types.length) {
+          return type;
+        }
+      }
+      return typeChecker.getNonNullableType(type);
+    };
+
     const hasResolvedNullishType = (node: TSESTree.TypeNode): boolean => {
       if (!checker || !esTreeNodeToTSNodeMap) {
         return false;
@@ -164,27 +211,130 @@ export default createRule<
         if (!ts.isTypeNode(tsNode)) {
           return false;
         }
-        const resolved = checker.getTypeFromTypeNode(tsNode);
-        if (resolved.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) {
-          return true;
-        }
-        return (
-          resolved.isUnion() &&
-          resolved.types.some(
-            (member) =>
-              (member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) !==
-              0,
-          )
-        );
+        return hasNullishFlag(checker.getTypeFromTypeNode(tsNode));
       } catch {
         return false;
       }
+    };
+
+    const extractArrayElementTsType = (
+      typeChecker: ts.TypeChecker,
+      type: ts.Type,
+    ): ts.Type | null => {
+      if (
+        typeChecker.isArrayType(type) ||
+        type.symbol?.name === "ReadonlyArray"
+      ) {
+        return (
+          typeChecker.getTypeArguments(type as ts.TypeReference)[0] ??
+          typeChecker.getIndexTypeOfType(type, ts.IndexKind.Number) ??
+          null
+        );
+      }
+      return null;
+    };
+
+    const isEnumLikeType = (type: ts.Type): boolean => {
+      if ((type.flags & ts.TypeFlags.EnumLike) !== 0) {
+        return true;
+      }
+      return (
+        type.isUnion() &&
+        type.types.length > 0 &&
+        type.types.every(
+          (member) => (member.flags & ts.TypeFlags.EnumLike) !== 0,
+        )
+      );
+    };
+
+    const isTypeOnlyImportedName = (name: string): boolean => {
+      return source.ast.body.some(
+        (stmt) =>
+          stmt.type === AST_NODE_TYPES.ImportDeclaration &&
+          stmt.specifiers.some(
+            (spec) =>
+              spec.local.name === name &&
+              (stmt.importKind === "type" ||
+                (spec.type === AST_NODE_TYPES.ImportSpecifier &&
+                  spec.importKind === "type")),
+          ),
+      );
+    };
+
+    const inferGraphqlElementFromTsType = (
+      typeChecker: ts.TypeChecker,
+      elemType: ts.Type,
+      location: ts.Node,
+      isIdProperty: boolean,
+    ): {
+      typeName: string;
+      isCustomType?: boolean;
+      unautofixableCustomType?: boolean;
+    } => {
+      if (isIdProperty) {
+        return { typeName: "ID" };
+      }
+      if (!isEnumLikeType(elemType)) {
+        const isHomogeneous = (flag: ts.TypeFlags) =>
+          elemType.isUnion()
+            ? elemType.types.length > 0 &&
+              elemType.types.every((member) => (member.flags & flag) !== 0)
+            : (elemType.flags & flag) !== 0;
+        if (isHomogeneous(ts.TypeFlags.BooleanLike)) {
+          return { typeName: "Boolean" };
+        }
+        if (isHomogeneous(ts.TypeFlags.StringLike)) {
+          return { typeName: "String" };
+        }
+        if (isHomogeneous(ts.TypeFlags.NumberLike)) {
+          return { typeName: "Float" };
+        }
+      }
+      if (
+        elemType.aliasSymbol?.name === "Record" ||
+        ((elemType.flags & ts.TypeFlags.Object) !== 0 &&
+          !hasClassSymbol(elemType) &&
+          typeChecker.getIndexTypeOfType(elemType, ts.IndexKind.String) !==
+            undefined &&
+          typeChecker.getPropertiesOfType(elemType).length === 0)
+      ) {
+        return { typeName: "GraphQLJSONObject" };
+      }
+      const rawTargetSym = elemType.aliasSymbol ?? elemType.symbol;
+      const targetSym =
+        rawTargetSym && rawTargetSym.flags & ts.SymbolFlags.Alias
+          ? typeChecker.getAliasedSymbol(rawTargetSym)
+          : rawTargetSym;
+      if (targetSym && (targetSym.flags & ts.SymbolFlags.Value) !== 0) {
+        const resolvedInScope = typeChecker.resolveName(
+          targetSym.name,
+          location,
+          ts.SymbolFlags.Value,
+          false,
+        );
+        const unaliasedInScope =
+          resolvedInScope && resolvedInScope.flags & ts.SymbolFlags.Alias
+            ? typeChecker.getAliasedSymbol(resolvedInScope)
+            : resolvedInScope;
+        if (
+          unaliasedInScope === targetSym &&
+          !isTypeOnlyImportedName(targetSym.name)
+        ) {
+          return { typeName: targetSym.name, isCustomType: true };
+        }
+      }
+      return {
+        typeName: targetSym?.name ?? "__unresolvable__",
+        isCustomType: true,
+        unautofixableCustomType: true,
+      };
     };
 
     const computeTypeInfo = (
       property: TSESTree.PropertyDefinition,
     ): TypeInfo | null => {
       let isNullable = false;
+      let isItemsNullable = false;
       let isArray = false;
 
       let baseTypeNode: TSESTree.TypeNode | null =
@@ -197,36 +347,12 @@ export default createRule<
         isNullable = true;
       }
 
-      // Handle null/undefined in union types
-      if (baseTypeNode?.type === AST_NODE_TYPES.TSUnionType) {
-        const hasNullish = baseTypeNode.types.some((t: TSESTree.TypeNode) => {
-          return (
-            t.type === AST_NODE_TYPES.TSNullKeyword ||
-            t.type === AST_NODE_TYPES.TSUndefinedKeyword
-          );
-        });
-        if (hasNullish) {
-          isNullable = true;
-        }
-
-        baseTypeNode =
-          baseTypeNode.types.find((t: TSESTree.TypeNode) => {
-            return (
-              t.type !== AST_NODE_TYPES.TSNullKeyword &&
-              t.type !== AST_NODE_TYPES.TSUndefinedKeyword
-            );
-          }) ?? null;
-      }
-
-      // First unwrap Ref<T> and Opt<T> → T, and handle null/undefined within
-      if (
-        baseTypeNode?.type === AST_NODE_TYPES.TSTypeReference &&
-        (ormTypeName(baseTypeNode.typeName) === "Ref" ||
-          ormTypeName(baseTypeNode.typeName) === "Opt")
-      ) {
-        let inner = baseTypeNode.typeArguments?.params[0] ?? null;
-        if (inner?.type === AST_NODE_TYPES.TSUnionType) {
-          const hasNullish = inner.types.some((t: TSESTree.TypeNode) => {
+      // Unwrap outer null/undefined and nested Ref<T>/Opt<T> wrappers, preserving
+      // the full union node prior to collapsing multi-member unions.
+      let semanticOuterNode: TSESTree.TypeNode | null = baseTypeNode;
+      while (baseTypeNode) {
+        if (baseTypeNode.type === AST_NODE_TYPES.TSUnionType) {
+          const hasNullish = baseTypeNode.types.some((t: TSESTree.TypeNode) => {
             return (
               t.type === AST_NODE_TYPES.TSNullKeyword ||
               t.type === AST_NODE_TYPES.TSUndefinedKeyword
@@ -235,15 +361,39 @@ export default createRule<
           if (hasNullish) {
             isNullable = true;
           }
-          inner =
-            inner.types.find((t: TSESTree.TypeNode) => {
+          semanticOuterNode = baseTypeNode;
+          baseTypeNode =
+            baseTypeNode.types.find((t: TSESTree.TypeNode) => {
               return (
                 t.type !== AST_NODE_TYPES.TSNullKeyword &&
                 t.type !== AST_NODE_TYPES.TSUndefinedKeyword
               );
-            }) ?? inner;
+            }) ?? null;
+          if (
+            baseTypeNode?.type === AST_NODE_TYPES.TSTypeReference &&
+            (ormTypeName(baseTypeNode.typeName) === "Ref" ||
+              ormTypeName(baseTypeNode.typeName) === "Opt")
+          ) {
+            semanticOuterNode = baseTypeNode;
+            continue;
+          }
+          break;
         }
-        baseTypeNode = inner ?? baseTypeNode;
+        if (
+          baseTypeNode.type === AST_NODE_TYPES.TSTypeReference &&
+          (ormTypeName(baseTypeNode.typeName) === "Ref" ||
+            ormTypeName(baseTypeNode.typeName) === "Opt")
+        ) {
+          const inner = baseTypeNode.typeArguments?.params[0] ?? null;
+          if (!inner || inner === baseTypeNode) {
+            break;
+          }
+          baseTypeNode = inner;
+          semanticOuterNode = inner;
+          continue;
+        }
+        semanticOuterNode = baseTypeNode;
+        break;
       }
 
       // Carry nullability declared inside aliased types (e.g. type MaybeText = string | null)
@@ -251,16 +401,37 @@ export default createRule<
         isNullable = true;
       }
 
-      // Array type (T[] or Array<T>) - checked after unwrapping Opt/Ref
-      const elementTypeNode = baseTypeNode
+      // Array type (T[], readonly T[], Array<T>, ReadonlyArray<T>) - checked after unwrapping Opt/Ref
+      const rawElementTypeNode = baseTypeNode
         ? extractArrayElementType(baseTypeNode)
         : null;
-      if (elementTypeNode) {
+      let elementTypeNode = rawElementTypeNode;
+      if (rawElementTypeNode) {
         isArray = true;
+        if (rawElementTypeNode.type === AST_NODE_TYPES.TSUnionType) {
+          const elemHasNullish = rawElementTypeNode.types.some(
+            (t: TSESTree.TypeNode) =>
+              t.type === AST_NODE_TYPES.TSNullKeyword ||
+              t.type === AST_NODE_TYPES.TSUndefinedKeyword,
+          );
+          if (elemHasNullish) {
+            isItemsNullable = true;
+          }
+          elementTypeNode =
+            rawElementTypeNode.types.find(
+              (t: TSESTree.TypeNode) =>
+                t.type !== AST_NODE_TYPES.TSNullKeyword &&
+                t.type !== AST_NODE_TYPES.TSUndefinedKeyword,
+            ) ?? null;
+        } else if (hasResolvedNullishType(rawElementTypeNode)) {
+          isItemsNullable = true;
+        }
       }
 
       const targetTypeNode: TSESTree.TypeNode | null =
         elementTypeNode ?? baseTypeNode;
+      const semanticTargetNode: TSESTree.TypeNode | undefined =
+        rawElementTypeNode ?? semanticOuterNode ?? undefined;
 
       // When no explicit type, try to infer from literal initializer
       if (!targetTypeNode) {
@@ -285,19 +456,63 @@ export default createRule<
         property.key.type === AST_NODE_TYPES.Identifier
           ? property.key.name
           : null;
-
-      const fullTypeNode = baseTypeNode ?? undefined;
-
-      if (
+      const isIdProperty =
         propertyName === "id" ||
         (typeof propertyName === "string" &&
-          (propertyName.endsWith("Id") || propertyName.endsWith("ID")))
+          (propertyName.endsWith("Id") || propertyName.endsWith("ID")));
+
+      const fullTypeNode = semanticOuterNode ?? baseTypeNode ?? undefined;
+
+      // Resolve array type aliases (e.g. type Tags = readonly string[]) before falling back to custom identifier
+      if (
+        !isArray &&
+        checker &&
+        esTreeNodeToTSNodeMap &&
+        baseTypeNode?.type === AST_NODE_TYPES.TSTypeReference
       ) {
+        const tsBase = esTreeNodeToTSNodeMap.get(baseTypeNode);
+        if (ts.isTypeNode(tsBase)) {
+          const resolvedOuter = stripExplicitNullish(
+            checker,
+            checker.getTypeFromTypeNode(tsBase),
+          );
+          const elemTsType = extractArrayElementTsType(checker, resolvedOuter);
+          if (elemTsType) {
+            isArray = true;
+            if (hasNullishFlag(elemTsType)) {
+              isItemsNullable = true;
+            }
+            const nonNullElem = stripExplicitNullish(checker, elemTsType);
+            const inferredElem = inferGraphqlElementFromTsType(
+              checker,
+              nonNullElem,
+              tsBase,
+              isIdProperty,
+            );
+            return {
+              typeName: inferredElem.typeName,
+              isArray: true,
+              isNullable,
+              isItemsNullable,
+              isCustomType: inferredElem.isCustomType,
+              unautofixableCustomType: inferredElem.unautofixableCustomType,
+              targetTypeNode: semanticTargetNode,
+              fullTypeNode,
+              resolvedTargetTsType: nonNullElem,
+              resolvedRawItemTsType: elemTsType,
+              resolvedFullTsType: resolvedOuter,
+            };
+          }
+        }
+      }
+
+      if (isIdProperty) {
         return {
           typeName: "ID",
           isArray,
           isNullable,
-          targetTypeNode,
+          isItemsNullable,
+          targetTypeNode: semanticTargetNode,
           fullTypeNode,
         };
       }
@@ -312,7 +527,8 @@ export default createRule<
           typeName: "GraphQLJSONObject",
           isArray,
           isNullable,
-          targetTypeNode,
+          isItemsNullable,
+          targetTypeNode: semanticTargetNode,
           fullTypeNode,
         };
       }
@@ -324,7 +540,8 @@ export default createRule<
           typeName: scalar,
           isArray,
           isNullable,
-          targetTypeNode,
+          isItemsNullable,
+          targetTypeNode: semanticTargetNode,
           fullTypeNode,
         };
       }
@@ -336,8 +553,9 @@ export default createRule<
           typeName: ident,
           isArray,
           isNullable,
+          isItemsNullable,
           isCustomType: true,
-          targetTypeNode,
+          targetTypeNode: semanticTargetNode,
           fullTypeNode,
           typeReference:
             targetTypeNode.type === AST_NODE_TYPES.TSTypeReference
@@ -385,43 +603,17 @@ export default createRule<
       );
     };
 
-    const isEnumLikeType = (type: ts.Type): boolean => {
-      if ((type.flags & ts.TypeFlags.EnumLike) !== 0) {
-        return true;
-      }
-      return (
-        type.isUnion() &&
-        type.types.length > 0 &&
-        type.types.every(
-          (member) => (member.flags & ts.TypeFlags.EnumLike) !== 0,
-        )
-      );
-    };
-
-    const extractArrayElementTsType = (
-      typeChecker: ts.TypeChecker,
-      type: ts.Type,
-    ): ts.Type | null => {
-      if (
-        typeChecker.isArrayType(type) ||
-        type.symbol?.name === "ReadonlyArray"
-      ) {
-        return (
-          typeChecker.getTypeArguments(type as ts.TypeReference)[0] ??
-          typeChecker.getIndexTypeOfType(type, ts.IndexKind.Number) ??
-          null
-        );
-      }
-      return null;
-    };
-
     const areTypesEquivalent = (
       typeChecker: ts.TypeChecker,
       a: ts.Type,
       b: ts.Type,
+      visited = new Map<ts.Type, Set<ts.Type>>(),
     ): boolean => {
       if (isUnusableType(a) || isUnusableType(b)) {
         return false;
+      }
+      if (a === b) {
+        return true;
       }
       // TypeScript treats broad `number` and numeric enums as mutually assignable;
       // reject those pairs so unconstrained numbers cannot match finite numeric enums.
@@ -433,16 +625,65 @@ export default createRule<
       ) {
         return false;
       }
+      const seenForA = visited.get(a);
+      if (seenForA?.has(b)) {
+        return true;
+      }
       if (
         !typeChecker.isTypeAssignableTo(a, b) ||
         !typeChecker.isTypeAssignableTo(b, a)
       ) {
         return false;
       }
+      if (seenForA) {
+        seenForA.add(b);
+      } else {
+        visited.set(a, new Set([b]));
+      }
       const elemA = extractArrayElementTsType(typeChecker, a);
       const elemB = extractArrayElementTsType(typeChecker, b);
       if (elemA && elemB) {
-        return areTypesEquivalent(typeChecker, elemA, elemB);
+        return areTypesEquivalent(typeChecker, elemA, elemB, visited);
+      }
+      if (typeChecker.isTupleType(a) && typeChecker.isTupleType(b)) {
+        const argsA = typeChecker.getTypeArguments(a as ts.TypeReference);
+        const argsB = typeChecker.getTypeArguments(b as ts.TypeReference);
+        return (
+          argsA.length === argsB.length &&
+          argsA.every((arg, index) =>
+            areTypesEquivalent(typeChecker, arg, argsB[index], visited),
+          )
+        );
+      }
+      if (
+        (a.flags & ts.TypeFlags.Object) !== 0 &&
+        (b.flags & ts.TypeFlags.Object) !== 0
+      ) {
+        const refA =
+          (a as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference;
+        const refB =
+          (b as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference;
+        if (refA && refB && a.symbol && a.symbol === b.symbol) {
+          const argsA = typeChecker.getTypeArguments(a as ts.TypeReference);
+          const argsB = typeChecker.getTypeArguments(b as ts.TypeReference);
+          if (
+            argsA.length === argsB.length &&
+            !argsA.every((arg, index) =>
+              areTypesEquivalent(typeChecker, arg, argsB[index], visited),
+            )
+          ) {
+            return false;
+          }
+        }
+        const indexA = typeChecker.getIndexTypeOfType(a, ts.IndexKind.String);
+        const indexB = typeChecker.getIndexTypeOfType(b, ts.IndexKind.String);
+        if (
+          indexA &&
+          indexB &&
+          !areTypesEquivalent(typeChecker, indexA, indexB, visited)
+        ) {
+          return false;
+        }
       }
       return true;
     };
@@ -539,6 +780,18 @@ export default createRule<
         )[0];
         return internal && !isUnusableType(internal) ? internal : null;
       }
+      if (type.isIntersection()) {
+        for (const member of type.types) {
+          const found = extractGraphQLScalarInternalType(
+            typeChecker,
+            member,
+            visited,
+          );
+          if (found) {
+            return found;
+          }
+        }
+      }
       if (type.isClassOrInterface()) {
         for (const base of typeChecker.getBaseTypes(type)) {
           const found = extractGraphQLScalarInternalType(
@@ -609,7 +862,7 @@ export default createRule<
       typeChecker: ts.TypeChecker,
       exprType: ts.Type,
       propType: ts.Type,
-      propTypeNode: ts.TypeNode,
+      propTypeNode?: ts.TypeNode,
     ): boolean => {
       const aliasDecl = exprType.aliasSymbol?.declarations?.find(
         ts.isTypeAliasDeclaration,
@@ -650,7 +903,11 @@ export default createRule<
       // If TypeScript expanded the property alias (e.g. to Extract<...>), inspect its AST type reference.
       let propAliasSym = propType.aliasSymbol;
       let propArgs = propType.aliasTypeArguments;
-      if (targetSym !== propAliasSym && ts.isTypeReferenceNode(propTypeNode)) {
+      if (
+        targetSym !== propAliasSym &&
+        propTypeNode &&
+        ts.isTypeReferenceNode(propTypeNode)
+      ) {
         const refSym = resolveAliasedSymbol(typeChecker, propTypeNode.typeName);
         if (refSym === targetSym) {
           propAliasSym = refSym;
@@ -704,7 +961,7 @@ export default createRule<
       exprType: ts.Type,
       propType: ts.Type,
       location: ts.Node,
-      propTypeNode: ts.TypeNode,
+      propTypeNode?: ts.TypeNode,
     ): boolean => {
       if (exprNode.type === AST_NODE_TYPES.ObjectExpression) {
         return false;
@@ -837,15 +1094,16 @@ export default createRule<
 
     const resolveCustomReturnTypes = (
       innerExprNode: TSESTree.Node,
-      typeNode: TSESTree.TypeNode,
-      preserveNullability = false,
+      typeNode?: TSESTree.TypeNode,
+      explicitPropType?: ts.Type,
     ): {
       typeChecker: ts.TypeChecker;
       exprNode: TSESTree.Node;
       tsExpr: ts.Node;
-      tsTarget: ts.TypeNode;
+      tsTarget?: ts.TypeNode;
       exprType: ts.Type;
       propType: ts.Type;
+      rawPropType: ts.Type;
     } | null => {
       if (!checker || !esTreeNodeToTSNodeMap) {
         return null;
@@ -870,15 +1128,20 @@ export default createRule<
         return null;
       }
       const tsExpr = esTreeNodeToTSNodeMap.get(unwrapped);
-      const tsTarget = esTreeNodeToTSNodeMap.get(typeNode);
-      if (!ts.isTypeNode(tsTarget)) {
+      let tsTarget: ts.TypeNode | undefined;
+      let rawPropType: ts.Type | undefined = explicitPropType;
+      if (typeNode) {
+        const mappedTarget = esTreeNodeToTSNodeMap.get(typeNode);
+        if (ts.isTypeNode(mappedTarget)) {
+          tsTarget = mappedTarget;
+          rawPropType ??= checker.getTypeFromTypeNode(mappedTarget);
+        }
+      }
+      if (!rawPropType) {
         return null;
       }
       const exprType = resolveRuntimeExpressionType(checker, tsExpr);
-      const rawPropType = checker.getTypeFromTypeNode(tsTarget);
-      const propType = preserveNullability
-        ? rawPropType
-        : checker.getNonNullableType(rawPropType);
+      const propType = stripExplicitNullish(checker, rawPropType);
       if (!exprType || isUnusableType(propType)) {
         return null;
       }
@@ -889,25 +1152,34 @@ export default createRule<
         tsTarget,
         exprType,
         propType,
+        rawPropType,
       };
     };
 
     const matchesGraphqlReturnType = (
       innerExprNode: TSESTree.Node,
-      targetTypeNode: TSESTree.TypeNode,
+      targetTypeNode: TSESTree.TypeNode | undefined,
       scalarOnly = false,
-      preserveNullability = false,
+      explicitPropType?: ts.Type,
+      alternateRawPropType?: ts.Type,
     ): boolean => {
       const resolved = resolveCustomReturnTypes(
         innerExprNode,
         targetTypeNode,
-        preserveNullability,
+        explicitPropType,
       );
       if (!resolved) {
         return false;
       }
-      const { typeChecker, exprNode, tsExpr, tsTarget, exprType, propType } =
-        resolved;
+      const {
+        typeChecker,
+        exprNode,
+        tsExpr,
+        tsTarget,
+        exprType,
+        propType,
+        rawPropType,
+      } = resolved;
 
       // A. Custom GraphQLScalarType<TInternal, TExternal>
       const scalarInternalType = extractGraphQLScalarInternalType(
@@ -915,7 +1187,12 @@ export default createRule<
         exprType,
       );
       if (scalarInternalType) {
-        return areTypesEquivalent(typeChecker, propType, scalarInternalType);
+        const rawCandidate = alternateRawPropType ?? rawPropType;
+        return (
+          areTypesEquivalent(typeChecker, propType, scalarInternalType) ||
+          (rawCandidate !== propType &&
+            areTypesEquivalent(typeChecker, rawCandidate, scalarInternalType))
+        );
       }
       if (scalarOnly) {
         return false;
@@ -1042,6 +1319,64 @@ export default createRule<
         ? promoteImportReferences(source, [info.typeReference])
         : [];
 
+    const getExpectedNullableOption = (
+      info: TypeInfo,
+    ): ExpectedNullableOption => {
+      const isGraphqlList = info.isArray && !info.isWholeValueScalar;
+      if (isGraphqlList && info.isItemsNullable) {
+        return info.isNullable ? "itemsAndList" : "items";
+      }
+      return info.isNullable ? true : null;
+    };
+
+    const formatNullableOption = (
+      option: ExpectedNullableOption,
+    ): string | null => {
+      if (option === true) {
+        return "nullable: true";
+      }
+      if (option !== null) {
+        return `nullable: "${option}"`;
+      }
+      return null;
+    };
+
+    const parseNullableOption = (
+      callExpr: TSESTree.CallExpression,
+    ): ExpectedNullableOption | "invalid" => {
+      const optionsArg =
+        callExpr.arguments[0]?.type === AST_NODE_TYPES.ObjectExpression
+          ? callExpr.arguments[0]
+          : callExpr.arguments[1]?.type === AST_NODE_TYPES.ObjectExpression
+            ? callExpr.arguments[1]
+            : null;
+      if (!optionsArg) {
+        return null;
+      }
+      const prop = optionsArg.properties.findLast(
+        (item): item is TSESTree.Property =>
+          item.type === AST_NODE_TYPES.Property &&
+          item.key.type === AST_NODE_TYPES.Identifier &&
+          item.key.name === "nullable",
+      );
+      if (!prop) {
+        return null;
+      }
+      if (prop.value.type === AST_NODE_TYPES.Literal) {
+        if (prop.value.value === false) {
+          return null;
+        }
+        if (
+          prop.value.value === true ||
+          prop.value.value === "items" ||
+          prop.value.value === "itemsAndList"
+        ) {
+          return prop.value.value;
+        }
+      }
+      return "invalid";
+    };
+
     const addFieldDecorator = (
       property: TSESTree.PropertyDefinition,
       info: TypeInfo,
@@ -1053,7 +1388,10 @@ export default createRule<
         info.isArray && !info.isWholeValueScalar
           ? `() => [${typeName}]`
           : `() => ${typeName}`;
-      const optionsExpr = info.isNullable ? ", { nullable: true }" : "";
+      const formattedNullable = formatNullableOption(
+        getExpectedNullableOption(info),
+      );
+      const optionsExpr = formattedNullable ? `, { ${formattedNullable} }` : "";
 
       const newDecoratorText = `@${fieldBinding()}(${typeExpr}${optionsExpr})`;
 
@@ -1080,6 +1418,9 @@ export default createRule<
         info.isArray && !info.isWholeValueScalar
           ? `() => [${typeName}]`
           : `() => ${typeName}`;
+      const expectedNullableText = formatNullableOption(
+        getExpectedNullableOption(info),
+      );
 
       // Extract existing config options (except nullable)
       const callExpr = fieldDecorator.expression;
@@ -1119,11 +1460,9 @@ export default createRule<
             prop.key.name === "nullable"
           ) {
             hasNullableProperty = true;
-            // Decide whether to keep or update nullable based on type
-            if (info.isNullable) {
-              existingOptions.push("nullable: true");
+            if (expectedNullableText) {
+              existingOptions.push(expectedNullableText);
             }
-            // If nullable is not needed, skip (don't keep)
           } else {
             // Keep other existing config options
             const propText = source.getText(prop);
@@ -1133,8 +1472,8 @@ export default createRule<
       }
 
       // If nullable is needed but not in original config, prepend it
-      if (info.isNullable && !hasNullableProperty) {
-        existingOptions.unshift("nullable: true");
+      if (expectedNullableText && !hasNullableProperty) {
+        existingOptions.unshift(expectedNullableText);
       }
 
       // Build the new decorator text
@@ -1297,7 +1636,8 @@ export default createRule<
           if (!fieldDecorator) {
             if (
               typeInfo.isCustomType &&
-              isTypeOnlySymbol(typeInfo.typeReference)
+              (typeInfo.unautofixableCustomType ||
+                isTypeOnlySymbol(typeInfo.typeReference))
             ) {
               context.report({
                 node: member,
@@ -1346,21 +1686,6 @@ export default createRule<
             const expectedTypeText = typeInfo.isArray
               ? `[${typeBinding(typeInfo)}]`
               : typeBinding(typeInfo);
-
-            const hasNullableOption =
-              callExpr.arguments.length > 1 &&
-              callExpr.arguments[1].type === AST_NODE_TYPES.ObjectExpression &&
-              callExpr.arguments[1].properties.some(
-                (prop: TSESTree.ObjectLiteralElement) => {
-                  return (
-                    prop.type === AST_NODE_TYPES.Property &&
-                    prop.key.type === AST_NODE_TYPES.Identifier &&
-                    prop.key.name === "nullable" &&
-                    prop.value.type === AST_NODE_TYPES.Literal &&
-                    prop.value.value === true
-                  );
-                },
-              );
 
             // For number types, both Int and Float are valid
             const isNumberType =
@@ -1412,9 +1737,10 @@ export default createRule<
             }
 
             let typeMatches =
-              calleeText === expectedTypeText ||
-              isValidNumberType ||
-              isValidScalar;
+              !typeInfo.unautofixableCustomType &&
+              (calleeText === expectedTypeText ||
+                isValidNumberType ||
+                isValidScalar);
 
             const formatScalarExpression = (node: TSESTree.Node) =>
               node.type === AST_NODE_TYPES.SequenceExpression
@@ -1425,13 +1751,14 @@ export default createRule<
             if (
               !typeMatches &&
               scalarNode &&
-              typeInfo.targetTypeNode &&
+              (typeInfo.targetTypeNode || typeInfo.resolvedTargetTsType) &&
               typeInfo.isArray === bodyIsArray &&
               matchesGraphqlReturnType(
                 scalarNode,
                 typeInfo.targetTypeNode,
                 isIdField,
-                typeInfo.isArray && bodyIsArray,
+                typeInfo.resolvedTargetTsType,
+                typeInfo.resolvedRawItemTsType,
               )
             ) {
               typeMatches = true;
@@ -1442,8 +1769,13 @@ export default createRule<
               scalarNode &&
               !bodyIsArray &&
               typeInfo.isArray &&
-              typeInfo.fullTypeNode &&
-              matchesGraphqlReturnType(scalarNode, typeInfo.fullTypeNode, true)
+              (typeInfo.fullTypeNode || typeInfo.resolvedFullTsType) &&
+              matchesGraphqlReturnType(
+                scalarNode,
+                typeInfo.fullTypeNode,
+                true,
+                typeInfo.resolvedFullTsType,
+              )
             ) {
               typeMatches = true;
               isSemanticMatch = true;
@@ -1451,7 +1783,9 @@ export default createRule<
               typeInfo.scalarExpression = formatScalarExpression(scalarNode);
             }
 
-            if (typeMatches && hasNullableOption === typeInfo.isNullable) {
+            const currentNullable = parseNullableOption(callExpr);
+            const expectedNullable = getExpectedNullableOption(typeInfo);
+            if (typeMatches && currentNullable === expectedNullable) {
               needReport = false;
             }
           }
@@ -1536,7 +1870,8 @@ export default createRule<
           if (!typeInfo.scalarExpression) {
             if (
               typeInfo.isCustomType &&
-              isTypeOnlySymbol(typeInfo.typeReference)
+              (typeInfo.unautofixableCustomType ||
+                isTypeOnlySymbol(typeInfo.typeReference))
             ) {
               context.report({
                 node: member,
