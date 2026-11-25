@@ -35,7 +35,8 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts --coverage"
   },
   "dependencies": {
-    "@isaacs/ttlcache": "^2.1.5"
+    "@isaacs/ttlcache": "^2.1.5",
+    "graphql-query-complexity": "^2.0.0"
   },
   "devDependencies": {
     "@apollo/server": "^5.5.1",
@@ -58,7 +59,6 @@
     "eslint": "^9.39.3",
     "express": "^5.3.0",
     "graphql": "^16.11.0",
-    "graphql-query-complexity": "^1.1.0",
     "ioredis": "^5.8.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
@@ -75,8 +75,7 @@
     "@nestjs/core": "^12.0.0",
     "@nestjs/graphql": "^14.0.3",
     "express": "^5.3.0",
-    "graphql": "^16.0.0",
-    "graphql-query-complexity": "^1.0.0",
+    "graphql": "^16.6.0",
     "ioredis": "^5.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.0.0"

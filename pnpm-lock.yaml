@@ -1399,6 +1399,9 @@ importers:
       '@isaacs/ttlcache':
         specifier: ^2.1.5
         version: 2.1.5
+      graphql-query-complexity:
+        specifier: ^2.0.0
+        version: 2.0.0
     devDependencies:
       '@apollo/server':
         specifier: ^5.5.1
@@ -1460,9 +1463,6 @@ importers:
       graphql:
         specifier: ^16.11.0
         version: 16.12.0
-      graphql-query-complexity:
-        specifier: ^1.1.0
-        version: 1.1.0
       ioredis:
         specifier: ^5.8.0
         version: 5.8.2
@@ -8974,8 +8974,8 @@ packages:
     resolution: {integrity: sha512-fCkYnm4Kdq3un0YIM4BCZHVR5xl0UeLP6syxxO7KAstdY7QVyVvTHP0kRPDYEP1v08uwtJVgis5sj3IOTLOniQ==}
     engines: {node: '>= 16.0.0'}
 
-  graphql-query-complexity@1.1.0:
-    resolution: {integrity: sha512-6sfAX+9CgkcPeZ7UiuBwgTGA+M1FYgHrQOXvORhQGd6SiaXbNVkLDcJ9ZSvNgzyChIfH0uPFFOY3Jm4wFZ4qEA==}
+  graphql-query-complexity@2.0.0:
+    resolution: {integrity: sha512-gmdNp8Lq3KbJcWeX9mpIqpIxD2oDEVO5QgZtw7eiDB7Q1RYMlqDFQnGq6ZcaDclBNcwTnyOCHUtEr3qAjnUDVg==}
 
   graphql-tag@2.12.7:
     resolution: {integrity: sha512-xnE/NFzy+0eIesvAsREJZ284zTl/wYuBAvpsFSDhRGRdRHdnE90M21Q3xAWyYInb0J756c6x0pIQ62+vtvOs1Q==}
@@ -19982,7 +19982,7 @@ snapshots:
       string-env-interpolation: 1.0.1
       tslib: 2.8.1
 
-  graphql-query-complexity@1.1.0:
+  graphql-query-complexity@2.0.0:
     dependencies:
       lodash.get: 4.4.2
 
