@@ -257,6 +257,33 @@ tester.run("graphql-field-config-from-types", rule, {
         values!: string[];
       }
     `,
+    // Nullability inside a type alias is preserved when matching a custom scalar
+    /* typescript */ `
+      class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+        readonly _internal?: TInternal;
+        readonly _external?: TExternal;
+      }
+      declare const CustomTextScalar: GraphQLScalarType<string>;
+      type MaybeText = string | null;
+      @ObjectType()
+      class Note {
+        @Field(() => CustomTextScalar, { nullable: true })
+        text!: MaybeText;
+      }
+    `,
+    // Custom GraphQLScalarType still matches ID-named fields
+    /* typescript */ `
+      class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+        readonly _internal?: TInternal;
+        readonly _external?: TExternal;
+      }
+      declare const UuidScalar: GraphQLScalarType<string>;
+      @ObjectType()
+      class Account {
+        @Field(() => UuidScalar)
+        userId!: string;
+      }
+    `,
   ],
   invalid: [
     // @Field type mismatch
@@ -745,6 +772,117 @@ class Metrics {
 class Metrics {
   @Field(() => Float)
   score!: number;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Finite numeric TypeScript enum must not match unconstrained number
+    {
+      code: /* typescript */ `enum Priority {
+  LOW = 0,
+  HIGH = 1,
+}
+@ObjectType()
+class Task {
+  @Field(() => Priority)
+  priority!: number;
+}`,
+      output: /* typescript */ `import { Field, Float } from "@nestjs/graphql";
+enum Priority {
+  LOW = 0,
+  HIGH = 1,
+}
+@ObjectType()
+class Task {
+  @Field(() => Float)
+  priority!: number;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Custom scalar wrapping a numeric enum must not match unconstrained number
+    {
+      code: /* typescript */ `class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+enum Priority {
+  LOW = 0,
+  HIGH = 1,
+}
+declare const PriorityScalar: GraphQLScalarType<Priority>;
+@ObjectType()
+class Task {
+  @Field(() => PriorityScalar)
+  score!: number;
+}`,
+      output: /* typescript */ `import { Field, Float } from "@nestjs/graphql";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+enum Priority {
+  LOW = 0,
+  HIGH = 1,
+}
+declare const PriorityScalar: GraphQLScalarType<Priority>;
+@ObjectType()
+class Task {
+  @Field(() => Float)
+  score!: number;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Inline object literal inside @Field callback is rejected (no stable enum identity)
+    {
+      code: /* typescript */ `type State = "ready";
+@ObjectType()
+class Job {
+  @Field(() => ({ READY: "ready" } as const))
+  state!: State;
+}`,
+      output: null,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Record<string, string> enum map must not override ID mapping on *Id fields
+    {
+      code: /* typescript */ `const Roles: Record<string, string> = { ADMIN: "admin" };
+@ObjectType()
+class Membership {
+  @Field(() => Roles)
+  userId!: string;
+}`,
+      output: /* typescript */ `import { Field, ID } from "@nestjs/graphql";
+const Roles: Record<string, string> = { ADMIN: "admin" };
+@ObjectType()
+class Membership {
+  @Field(() => ID)
+  userId!: string;
+}`,
+      errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
+    },
+    // Alias-declared nullability should require { nullable: true } on matched scalar
+    {
+      code: /* typescript */ `class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+declare const CustomTextScalar: GraphQLScalarType<string>;
+type MaybeText = string | null;
+@ObjectType()
+class Note {
+  @Field(() => CustomTextScalar)
+  text!: MaybeText;
+}`,
+      output: /* typescript */ `import { Field } from "@nestjs/graphql";
+class GraphQLScalarType<TInternal = unknown, TExternal = TInternal> {
+  readonly _internal?: TInternal;
+  readonly _external?: TExternal;
+}
+declare const CustomTextScalar: GraphQLScalarType<string>;
+type MaybeText = string | null;
+@ObjectType()
+class Note {
+  @Field(() => CustomTextScalar, { nullable: true })
+  text!: MaybeText;
 }`,
       errors: [{ messageId: "alignFieldDecoratorWithTsType" }],
     },

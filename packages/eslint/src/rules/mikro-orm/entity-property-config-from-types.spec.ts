@@ -304,15 +304,63 @@ class Book {
       import { Entity, Property } from "@mikro-orm/decorators/legacy";
 
       type MixedValue = string | bigint;
+      type BigIntArrayUnion = string | bigint[];
+      type DateUnion = boolean | Date;
       class MixedValueType extends Type<MixedValue, string> {}
+      class BigIntArrayUnionType extends Type<BigIntArrayUnion, string> {}
+      class DateUnionType extends Type<DateUnion, string> {}
 
       @Entity()
       class Custom {
         @Property({ type: MixedValueType })
         mixed!: MixedValue;
 
+        @Property({ type: BigIntArrayUnionType })
+        payload!: BigIntArrayUnion;
+
+        @Property({ type: DateUnionType })
+        dated!: DateUnion;
+
         @Property({ type: new ArrayType(BigInt) })
         ids!: bigint[];
+      }
+    `,
+    // DecimalType honors runtimeType: "number" when constructor mode is omitted
+    /* typescript */ `
+      import { DecimalType } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
+
+      @Entity()
+      class Invoice {
+        @Property({ type: new DecimalType(), runtimeType: "number" })
+        amount!: number;
+      }
+    `,
+    // Explicit JSON storage and numeric ArrayType converters are valid for readonly/mutable arrays
+    /* typescript */ `
+      import { ArrayType, t } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
+
+      @Entity()
+      class Metrics {
+        @Property({ type: t.json })
+        samples!: readonly number[];
+
+        @Property({ type: new ArrayType(Number) })
+        scores!: number[];
+      }
+    `,
+    // Nullability inside a type alias is preserved on JSON-backed properties
+    /* typescript */ `
+      import { t } from "@mikro-orm/core";
+      import { Entity, Property } from "@mikro-orm/decorators/legacy";
+
+      type NullableProgress = string | number | null;
+
+      @Entity()
+      class Job {
+        @Property({ type: t.json, nullable: true })
+        progress!: NullableProgress;
       }
     `,
     // Decimal and BigInt number storage are valid number configurations
@@ -1525,6 +1573,62 @@ import { Entity, Property } from "@mikro-orm/decorators/legacy";
 class Event {
   @Property({ type: t.datetime })
   day!: Date;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // ArrayType with String converter should be rejected on number[]
+    {
+      code: /* typescript */ `import { ArrayType } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Metrics {
+  @Property({ type: new ArrayType(String) })
+  values!: number[];
+}`,
+      output: /* typescript */ `import { ArrayType, t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Metrics {
+  @Property({ type: t.array })
+  values!: number[];
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // IntervalType / t.interval hydrates to PostgresInterval on PostgreSQL, not string
+    {
+      code: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Timer {
+  @Property({ type: new t.interval() })
+  duration!: string;
+}`,
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+@Entity()
+class Timer {
+  @Property({ type: t.string })
+  duration!: string;
+}`,
+      errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
+    },
+    // Alias-declared nullability should add nullable: true rather than drop it
+    {
+      code: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+type NullableProgress = string | number | null;
+@Entity()
+class Job {
+  @Property({ type: t.json })
+  progress!: NullableProgress;
+}`,
+      output: /* typescript */ `import { t } from "@mikro-orm/core";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
+type NullableProgress = string | number | null;
+@Entity()
+class Job {
+  @Property({ type: t.json, nullable: true })
+  progress!: NullableProgress;
 }`,
       errors: [{ messageId: "alignPropertyDecoratorWithTsType" }],
     },

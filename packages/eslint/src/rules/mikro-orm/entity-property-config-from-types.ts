@@ -157,6 +157,28 @@ export default createRule<
       }
     };
 
+    const resolveStringLiteralValue = (node?: TSESTree.Node): string | null => {
+      if (!node) {
+        return null;
+      }
+      if (
+        node.type === AST_NODE_TYPES.Literal &&
+        typeof node.value === "string"
+      ) {
+        return node.value;
+      }
+      try {
+        const tsArg = parserServices.esTreeNodeToTSNodeMap.get(node);
+        const argType = checker.getTypeAtLocation(tsArg);
+        if (argType.isStringLiteral()) {
+          return argType.value;
+        }
+      } catch {
+        // Leave value unresolved if type lookup fails.
+      }
+      return null;
+    };
+
     const resolveColumnTypeSpec = (
       typeConfig: string | null,
       typeNode?: TSESTree.Node,
@@ -165,6 +187,7 @@ export default createRule<
       isNew: boolean;
       hasModeArg: boolean;
       mode: string | null;
+      firstArg?: TSESTree.Node;
       isFullText: boolean;
     } => {
       if (!typeNode) {
@@ -190,22 +213,7 @@ export default createRule<
       const target = isNew ? typeNode.callee : typeNode;
       const firstArg = isNew ? typeNode.arguments.at(0) : undefined;
       const hasModeArg = firstArg !== undefined;
-      let mode: string | null =
-        firstArg?.type === AST_NODE_TYPES.Literal &&
-        typeof firstArg.value === "string"
-          ? firstArg.value
-          : null;
-      if (firstArg && mode === null) {
-        try {
-          const tsArg = parserServices.esTreeNodeToTSNodeMap.get(firstArg);
-          const argType = checker.getTypeAtLocation(tsArg);
-          if (argType.isStringLiteral()) {
-            mode = argType.value;
-          }
-        } catch {
-          // Leave mode unresolved if type lookup fails.
-        }
-      }
+      const mode = resolveStringLiteralValue(firstArg);
 
       if (
         importedBindingName(source, fullTextModules, target) === "FullTextType"
@@ -215,6 +223,7 @@ export default createRule<
           isNew,
           hasModeArg,
           mode,
+          firstArg,
           isFullText: true,
         };
       }
@@ -230,6 +239,7 @@ export default createRule<
           isNew,
           hasModeArg,
           mode,
+          firstArg,
           isFullText: false,
         };
       }
@@ -241,6 +251,7 @@ export default createRule<
           isNew,
           hasModeArg,
           mode,
+          firstArg,
           isFullText: false,
         };
       }
@@ -251,6 +262,7 @@ export default createRule<
           isNew,
           hasModeArg,
           mode,
+          firstArg,
           isFullText: false,
         };
       }
@@ -260,13 +272,31 @@ export default createRule<
         isNew,
         hasModeArg,
         mode,
+        firstArg,
         isFullText: false,
       };
+    };
+
+    const resolveEffectiveDecimalMode = (
+      spec: ReturnType<typeof resolveColumnTypeSpec>,
+      runtimeType?: { present: boolean; value: string | null },
+    ): { mode: string | null; isDynamic: boolean } => {
+      if (spec.isNew && spec.hasModeArg) {
+        return { mode: spec.mode, isDynamic: spec.mode === null };
+      }
+      if (runtimeType?.present) {
+        return {
+          mode: runtimeType.value,
+          isDynamic: runtimeType.value === null,
+        };
+      }
+      return { mode: spec.isNew ? "string" : null, isDynamic: false };
     };
 
     const isValidStringType = (
       typeConfig: string | null,
       typeNode?: TSESTree.Node,
+      runtimeType?: { present: boolean; value: string | null },
     ): boolean => {
       const spec = resolveColumnTypeSpec(typeConfig, typeNode);
       if (!spec.canonical) {
@@ -281,14 +311,12 @@ export default createRule<
         "t.text",
         "t.uuid",
         "t.character",
-        "t.interval",
         "t.date",
         "t.time",
         "StringType",
         "TextType",
         "UuidType",
         "CharacterType",
-        "IntervalType",
         "DateType",
         "TimeType",
       ]);
@@ -297,12 +325,12 @@ export default createRule<
       }
 
       if (spec.canonical === "t.decimal" || spec.canonical === "DecimalType") {
-        // DecimalType defaults to "string" mode; reject explicit "number" mode and preserve dynamic modes
+        // MikroORM DecimalType hydrates via (this.mode ?? this.prop?.runtimeType ?? "string")
+        const effective = resolveEffectiveDecimalMode(spec, runtimeType);
         return (
-          !spec.isNew ||
-          !spec.hasModeArg ||
-          spec.mode === null ||
-          spec.mode === "string"
+          effective.isDynamic ||
+          effective.mode === null ||
+          effective.mode === "string"
         );
       }
 
@@ -321,6 +349,7 @@ export default createRule<
     const isValidNumberType = (
       typeConfig: string | null,
       typeNode?: TSESTree.Node,
+      runtimeType?: { present: boolean; value: string | null },
     ): boolean => {
       const spec = resolveColumnTypeSpec(typeConfig, typeNode);
       if (!spec.canonical) {
@@ -346,10 +375,11 @@ export default createRule<
       }
 
       if (spec.canonical === "t.decimal" || spec.canonical === "DecimalType") {
+        const effective = resolveEffectiveDecimalMode(spec, runtimeType);
         return (
-          !spec.isNew ||
-          spec.mode === "number" ||
-          (spec.hasModeArg && spec.mode === null)
+          effective.isDynamic ||
+          (!spec.isNew && effective.mode === null) ||
+          effective.mode === "number"
         );
       }
 
@@ -381,7 +411,38 @@ export default createRule<
       );
     };
 
-    const isValidNumberArrayType = (
+    const isConverterCompatibleWithElement = (
+      converterNode: TSESTree.Node,
+      elementTypeName: "number" | "string",
+    ): boolean => {
+      try {
+        const tsArg = parserServices.esTreeNodeToTSNodeMap.get(converterNode);
+        const argType = checker.getTypeAtLocation(tsArg);
+        const signatures = checker.getSignaturesOfType(
+          argType,
+          ts.SignatureKind.Call,
+        );
+        if (signatures.length === 0) {
+          return true;
+        }
+        const expectedFlag =
+          elementTypeName === "number"
+            ? ts.TypeFlags.NumberLike
+            : ts.TypeFlags.StringLike;
+        return signatures.some((signature) => {
+          const returnType = signature.getReturnType();
+          if (returnType.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) {
+            return true;
+          }
+          return (returnType.flags & expectedFlag) !== 0;
+        });
+      } catch {
+        return true;
+      }
+    };
+
+    const isValidArrayType = (
+      elementTypeName: string | null | undefined,
       typeConfig: string | null,
       typeNode?: TSESTree.Node,
     ): boolean => {
@@ -389,11 +450,30 @@ export default createRule<
       if (!spec.canonical) {
         return false;
       }
-      return (
-        spec.canonical === "t.array" ||
-        spec.canonical === "ArrayType" ||
-        spec.canonical === "VectorType"
-      );
+      if (spec.canonical === "t.json" || spec.canonical === "JsonType") {
+        return true;
+      }
+      if (elementTypeName === "number" && spec.canonical === "VectorType") {
+        return true;
+      }
+      if (spec.canonical === "t.array" || spec.canonical === "ArrayType") {
+        if (!spec.isNew) {
+          return true;
+        }
+        if (elementTypeName === "number") {
+          return (
+            spec.firstArg !== undefined &&
+            isConverterCompatibleWithElement(spec.firstArg, "number")
+          );
+        }
+        if (elementTypeName === "string") {
+          return (
+            spec.firstArg === undefined ||
+            isConverterCompatibleWithElement(spec.firstArg, "string")
+          );
+        }
+      }
+      return false;
     };
 
     const isValidDateType = (
@@ -433,7 +513,32 @@ export default createRule<
       return spec.canonical === "t.json" || spec.canonical === "JsonType";
     };
 
-    const isJsonSerializableUnionMember = (member: ts.Type): boolean => {
+    const isJsonSerializableType = (
+      member: ts.Type,
+      visited = new Set<ts.Type>(),
+      allowUndefined = false,
+      allowDynamic = false,
+    ): boolean => {
+      if (visited.has(member)) {
+        return true;
+      }
+      if (member.isUnion()) {
+        return (
+          member.types.length > 0 &&
+          member.types.every((item) =>
+            isJsonSerializableType(item, visited, allowUndefined, allowDynamic),
+          )
+        );
+      }
+      if (
+        allowDynamic &&
+        member.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)
+      ) {
+        return true;
+      }
+      if (allowUndefined && member.flags & ts.TypeFlags.Undefined) {
+        return true;
+      }
       if (
         member.flags &
         (ts.TypeFlags.BigIntLike |
@@ -462,19 +567,96 @@ export default createRule<
         ) {
           return false;
         }
-        return ![
-          "RegExp",
-          "Map",
-          "Set",
-          "WeakMap",
-          "WeakSet",
-          "Promise",
-          "Uint8Array",
-          "Buffer",
-          "Function",
-        ].includes(member.symbol?.name ?? "");
+        if (
+          [
+            "Date",
+            "RegExp",
+            "Map",
+            "Set",
+            "WeakMap",
+            "WeakSet",
+            "Promise",
+            "Uint8Array",
+            "Buffer",
+            "Function",
+          ].includes(member.symbol?.name ?? "")
+        ) {
+          return false;
+        }
+
+        visited.add(member);
+        if (checker.isTupleType(member)) {
+          return checker
+            .getTypeArguments(member as ts.TypeReference)
+            .every((item) =>
+              isJsonSerializableType(item, visited, false, true),
+            );
+        }
+        if (
+          checker.isArrayType(member) ||
+          member.symbol?.name === "ReadonlyArray"
+        ) {
+          const elemType =
+            checker.getTypeArguments(member as ts.TypeReference)[0] ??
+            checker.getIndexTypeOfType(member, ts.IndexKind.Number);
+          return elemType
+            ? isJsonSerializableType(elemType, visited, false, true)
+            : true;
+        }
+
+        const stringIndexType = checker.getIndexTypeOfType(
+          member,
+          ts.IndexKind.String,
+        );
+        if (
+          stringIndexType &&
+          !isJsonSerializableType(stringIndexType, visited, false, true)
+        ) {
+          return false;
+        }
+        const numberIndexType = checker.getIndexTypeOfType(
+          member,
+          ts.IndexKind.Number,
+        );
+        if (
+          numberIndexType &&
+          !isJsonSerializableType(numberIndexType, visited, false, true)
+        ) {
+          return false;
+        }
+        for (const prop of checker.getPropertiesOfType(member)) {
+          const propType = checker.getTypeOfSymbol(prop);
+          const isOptional = (prop.flags & ts.SymbolFlags.Optional) !== 0;
+          if (!isJsonSerializableType(propType, visited, isOptional, true)) {
+            return false;
+          }
+        }
+        return true;
       }
       return false;
+    };
+
+    const hasResolvedNullishType = (node: TSESTree.TypeNode): boolean => {
+      try {
+        const tsNode = parserServices.esTreeNodeToTSNodeMap.get(node);
+        if (!ts.isTypeNode(tsNode)) {
+          return false;
+        }
+        const resolved = checker.getTypeFromTypeNode(tsNode);
+        if (resolved.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) {
+          return true;
+        }
+        return (
+          resolved.isUnion() &&
+          resolved.types.some(
+            (member) =>
+              (member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) !==
+              0,
+          )
+        );
+      } catch {
+        return false;
+      }
     };
 
     const inferPropertyTypeFromResolvedTsType = (
@@ -530,8 +712,10 @@ export default createRule<
             return { propertyType: "t.bigint" };
           }
           // Heterogeneous JSON-serializable union (e.g. string | boolean | number | object) requires JSON storage;
-          // unions with non-JSON-serializable members (e.g. string | bigint) require an explicit custom Type.
-          return resolved.types.every(isJsonSerializableUnionMember)
+          // unions with non-JSON-serializable members (e.g. string | bigint, string | bigint[], boolean | Date) require an explicit custom Type.
+          return resolved.types.every((member) =>
+            isJsonSerializableType(member),
+          )
             ? { propertyType: "t.json" }
             : { propertyType: null, unsupportedUnion: true };
         }
@@ -564,7 +748,8 @@ export default createRule<
             "Buffer",
           ].includes(resolved.symbol?.name ?? "") &&
           (checker.getPropertiesOfType(resolved).length > 0 ||
-            checker.getIndexInfosOfType(resolved).length > 0)
+            checker.getIndexInfosOfType(resolved).length > 0) &&
+          isJsonSerializableType(resolved)
         ) {
           return { propertyType: "t.json" };
         }
@@ -714,6 +899,11 @@ export default createRule<
       // Skip Collection<T> types (these should be handled by OneToMany etc. decorators)
       if (baseTypeNode && isCollectionType(baseTypeNode)) {
         return null;
+      }
+
+      // Carry nullability declared inside aliased types (e.g. type Progress = string | number | null)
+      if (!isNullable && baseTypeNode && hasResolvedNullishType(baseTypeNode)) {
+        isNullable = true;
       }
 
       // Array type (T[] or Array<T>) - checked after unwrapping Opt/Ref
@@ -953,6 +1143,7 @@ export default createRule<
       currentConfig: {
         type: string | null;
         typeNode?: TSESTree.Node;
+        runtimeType?: { present: boolean; value: string | null };
         nullable: boolean;
         otherProps: { key: string; value: string }[];
       },
@@ -973,14 +1164,22 @@ export default createRule<
 
       if (
         info.propertyType === "t.string" &&
-        isValidStringType(currentConfig.type, currentConfig.typeNode)
+        isValidStringType(
+          currentConfig.type,
+          currentConfig.typeNode,
+          currentConfig.runtimeType,
+        )
       ) {
         // Keep valid string type config
         finalInfo.propertyType = currentConfig.type;
       } else if (
         (info.propertyType === "t.float" ||
           info.propertyType === "t.integer") &&
-        isValidNumberType(currentConfig.type, currentConfig.typeNode)
+        isValidNumberType(
+          currentConfig.type,
+          currentConfig.typeNode,
+          currentConfig.runtimeType,
+        )
       ) {
         // Keep valid number type config
         finalInfo.propertyType = currentConfig.type;
@@ -1002,11 +1201,14 @@ export default createRule<
       ) {
         finalInfo.propertyType = currentConfig.type;
       } else if (
-        info.isArray &&
-        info.arrayElementTypeName === "number" &&
-        isValidNumberArrayType(currentConfig.type, currentConfig.typeNode)
+        info.propertyType === "t.array" &&
+        isValidArrayType(
+          info.arrayElementTypeName,
+          currentConfig.type,
+          currentConfig.typeNode,
+        )
       ) {
-        // Keep valid number[] type config (VectorType)
+        // Keep valid array type config (t.array, VectorType, ArrayType, or explicit t.json)
         finalInfo.propertyType = currentConfig.type;
       } else if (
         (info.propertyType === "t.json" || info.propertyType === null) &&
@@ -1058,6 +1260,7 @@ export default createRule<
     ): {
       type: string | null;
       typeNode?: TSESTree.Node;
+      runtimeType?: { present: boolean; value: string | null };
       nullable: boolean;
       otherProps: { key: string; value: string }[];
       typeReference?: TSESTree.Node;
@@ -1077,6 +1280,7 @@ export default createRule<
 
       let type: string | null = null;
       let typeNode: TSESTree.Node | undefined;
+      let runtimeType: { present: boolean; value: string | null } | undefined;
       let typeReference: TSESTree.Node | undefined;
       let nullable = false;
       const otherProps: { key: string; value: string }[] = [];
@@ -1129,6 +1333,12 @@ export default createRule<
             nullable = true;
           }
         } else {
+          if (prop.key.name === "runtimeType") {
+            runtimeType = {
+              present: true,
+              value: resolveStringLiteralValue(prop.value),
+            };
+          }
           // Keep all other properties
           otherProps.push({
             key: prop.key.name,
@@ -1137,7 +1347,14 @@ export default createRule<
         }
       }
 
-      return { type, typeNode, nullable, otherProps, typeReference };
+      return {
+        type,
+        typeNode,
+        runtimeType,
+        nullable,
+        otherProps,
+        typeReference,
+      };
     };
 
     const parseEnumDecorator = (
@@ -1685,12 +1902,20 @@ export default createRule<
             // For string type, accept multiple valid configurations
             if (
               expectedType === "t.string" &&
-              isValidStringType(currentConfig.type, currentConfig.typeNode)
+              isValidStringType(
+                currentConfig.type,
+                currentConfig.typeNode,
+                currentConfig.runtimeType,
+              )
             ) {
               // Current config is a valid string type configuration, no modification needed
             } else if (
               (expectedType === "t.float" || expectedType === "t.integer") &&
-              isValidNumberType(currentConfig.type, currentConfig.typeNode)
+              isValidNumberType(
+                currentConfig.type,
+                currentConfig.typeNode,
+                currentConfig.runtimeType,
+              )
             ) {
               // Current config is a valid number type configuration, no modification needed
             } else if (
@@ -1710,10 +1935,13 @@ export default createRule<
               // Current config is a valid Date type configuration, no modification needed
             } else if (
               expectedType === "t.array" &&
-              typeInfo.arrayElementTypeName === "number" &&
-              isValidNumberArrayType(currentConfig.type, currentConfig.typeNode)
+              isValidArrayType(
+                typeInfo.arrayElementTypeName,
+                currentConfig.type,
+                currentConfig.typeNode,
+              )
             ) {
-              // Current config is a valid number[] type configuration (t.array or VectorType), no modification needed
+              // Current config is a valid array type configuration (t.array, VectorType, ArrayType, or explicit t.json)
             } else if (expectedType === "t.json") {
               // For t.json type (Record, heterogeneous unions, or custom type arrays)
               if (isValidJsonType(currentConfig.type, currentConfig.typeNode)) {

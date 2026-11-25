@@ -150,6 +150,37 @@ export default createRule<
       return null;
     };
 
+    const parserServices = source.parserServices;
+    const program = parserServices?.program;
+    const esTreeNodeToTSNodeMap = parserServices?.esTreeNodeToTSNodeMap;
+    const checker = program?.getTypeChecker();
+
+    const hasResolvedNullishType = (node: TSESTree.TypeNode): boolean => {
+      if (!checker || !esTreeNodeToTSNodeMap) {
+        return false;
+      }
+      try {
+        const tsNode = esTreeNodeToTSNodeMap.get(node);
+        if (!ts.isTypeNode(tsNode)) {
+          return false;
+        }
+        const resolved = checker.getTypeFromTypeNode(tsNode);
+        if (resolved.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) {
+          return true;
+        }
+        return (
+          resolved.isUnion() &&
+          resolved.types.some(
+            (member) =>
+              (member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) !==
+              0,
+          )
+        );
+      } catch {
+        return false;
+      }
+    };
+
     const computeTypeInfo = (
       property: TSESTree.PropertyDefinition,
     ): TypeInfo | null => {
@@ -213,6 +244,11 @@ export default createRule<
             }) ?? inner;
         }
         baseTypeNode = inner ?? baseTypeNode;
+      }
+
+      // Carry nullability declared inside aliased types (e.g. type MaybeText = string | null)
+      if (!isNullable && baseTypeNode && hasResolvedNullishType(baseTypeNode)) {
+        isNullable = true;
       }
 
       // Array type (T[] or Array<T>) - checked after unwrapping Opt/Ref
@@ -313,11 +349,6 @@ export default createRule<
       return null;
     };
 
-    const parserServices = source.parserServices;
-    const program = parserServices?.program;
-    const esTreeNodeToTSNodeMap = parserServices?.esTreeNodeToTSNodeMap;
-    const checker = program?.getTypeChecker();
-
     const builtInJsConstructors = new Set([
       "Number",
       "String",
@@ -354,8 +385,31 @@ export default createRule<
       );
     };
 
+    const isEnumLikeType = (type: ts.Type): boolean => {
+      if ((type.flags & ts.TypeFlags.EnumLike) !== 0) {
+        return true;
+      }
+      return (
+        type.isUnion() &&
+        type.types.length > 0 &&
+        type.types.every(
+          (member) => (member.flags & ts.TypeFlags.EnumLike) !== 0,
+        )
+      );
+    };
+
     const areTypesEquivalent = (a: ts.Type, b: ts.Type): boolean => {
       if (!checker || isUnusableType(a) || isUnusableType(b)) {
+        return false;
+      }
+      // TypeScript treats broad `number` and numeric enums as mutually assignable;
+      // reject those pairs so unconstrained numbers cannot match finite numeric enums.
+      const aIsBroadNumber = (a.flags & ts.TypeFlags.Number) !== 0;
+      const bIsBroadNumber = (b.flags & ts.TypeFlags.Number) !== 0;
+      if (
+        (aIsBroadNumber && isEnumLikeType(b)) ||
+        (bIsBroadNumber && isEnumLikeType(a))
+      ) {
         return false;
       }
       return (
@@ -596,12 +650,13 @@ export default createRule<
     };
 
     const matchesEnumObjectType = (
+      exprNode: TSESTree.Node,
       exprType: ts.Type,
       propType: ts.Type,
       location: ts.Node,
       propTypeNode: ts.TypeNode,
     ): boolean => {
-      if (!checker) {
+      if (!checker || exprNode.type === AST_NODE_TYPES.ObjectExpression) {
         return false;
       }
 
@@ -726,6 +781,7 @@ export default createRule<
       innerExprNode: TSESTree.Node,
       typeNode: TSESTree.TypeNode,
     ): {
+      exprNode: TSESTree.Node;
       tsExpr: ts.Node;
       tsTarget: ts.TypeNode;
       exprType: ts.Type;
@@ -765,7 +821,7 @@ export default createRule<
       if (!exprType || isUnusableType(propType)) {
         return null;
       }
-      return { tsExpr, tsTarget, exprType, propType };
+      return { exprNode: unwrapped, tsExpr, tsTarget, exprType, propType };
     };
 
     const matchesGraphqlReturnType = (
@@ -777,7 +833,7 @@ export default createRule<
       if (!resolved) {
         return false;
       }
-      const { tsExpr, tsTarget, exprType, propType } = resolved;
+      const { exprNode, tsExpr, tsTarget, exprType, propType } = resolved;
 
       // A. Custom GraphQLScalarType<TInternal, TExternal>
       const scalarInternalType = extractGraphQLScalarInternalType(exprType);
@@ -802,7 +858,13 @@ export default createRule<
       }
 
       // C. TypeScript enum or GraphQL enum object map
-      return matchesEnumObjectType(exprType, propType, tsExpr, tsTarget);
+      return matchesEnumObjectType(
+        exprNode,
+        exprType,
+        propType,
+        tsExpr,
+        tsTarget,
+      );
     };
 
     const isTypeOnlySymbol = (node?: TSESTree.Node): boolean => {
@@ -1257,12 +1319,18 @@ export default createRule<
               isValidNumberType ||
               isValidScalar;
 
+            const isIdField =
+              !typeInfo.isCustomType && typeInfo.typeName === "ID";
             if (
               !typeMatches &&
               scalarNode &&
               typeInfo.targetTypeNode &&
               typeInfo.isArray === bodyIsArray &&
-              matchesGraphqlReturnType(scalarNode, typeInfo.targetTypeNode)
+              matchesGraphqlReturnType(
+                scalarNode,
+                typeInfo.targetTypeNode,
+                isIdField,
+              )
             ) {
               typeMatches = true;
               isSemanticMatch = true;
